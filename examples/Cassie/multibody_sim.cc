@@ -268,7 +268,6 @@ int do_main(int argc, char* argv[]) {
   double mu_fp = 0.5;         // 0
   double min_normal_fp = 10;  // 70
   double toe_spread = .15;
-
   // Create a plant for CassieFixedPointSolver.
   // Note that we cannot use the plant from the above diagram, because after the
   // diagram is built, plant.get_actuation_input_port().HasValue(*context)
@@ -286,7 +285,17 @@ int do_main(int argc, char* argv[]) {
     CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
                            min_normal_fp, true, toe_spread, &q_init, &u_init,
                            &lambda_init, "", FLAGS_ground_incline, &all_sol);
+    // std::cout << "q_init = \n" << q_init.transpose() << std::endl;
+    // std::cout << "v_init = \n" << v_init.transpose() << std::endl;
 
+    VectorXd pelvis_xy_vel(2);
+    pelvis_xy_vel << FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel;
+    CassieInitStateSolver(plant_for_solver, pelvis_xy_vel, FLAGS_init_height,
+                          mu_fp, min_normal_fp, true, toe_spread,
+                          FLAGS_ground_incline, q_init, u_init, lambda_init,
+                          &q_init, &v_init, &u_init, &lambda_init);
+    std::cout << "q_init = \n" << q_init.transpose() << std::endl;
+    std::cout << "v_init = \n" << v_init.transpose() << std::endl;
   } else {
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);
@@ -325,6 +334,306 @@ int do_main(int argc, char* argv[]) {
   simulator.AdvanceTo(FLAGS_end_time);
 
   return 0;
+}
+
+class VdotConstraint : public NonlinearConstraint<double> {
+ public:
+  VdotConstraint(const MultibodyPlant<double>& plant,
+                 const KinematicEvaluatorSet<double>& evaluators)
+      : NonlinearConstraint<double>(
+            plant.num_velocities(),
+            plant.num_positions() + plant.num_velocities() +
+                plant.num_actuators() + evaluators.count_full() +
+                plant.num_velocities(),
+            VectorXd::Zero(plant.num_velocities()),
+            VectorXd::Zero(plant.num_velocities()), ""),
+        plant_(plant),
+        world_(plant.world_frame()),
+        context_(plant.CreateDefaultContext()),
+        evaluators_(evaluators),
+        n_q_(plant.num_positions()),
+        n_v_(plant.num_velocities()) {}
+  ~VdotConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& vars,
+                          drake::VectorX<double>* y) const override {
+    const auto& x = vars.head(plant_.num_positions() + plant_.num_velocities());
+    const auto& u =
+        vars.segment(plant_.num_positions() + plant_.num_velocities(),
+                     plant_.num_actuators());
+    const auto& lambda =
+        vars.segment(plant_.num_positions() + plant_.num_velocities() +
+                         plant_.num_actuators(),
+                     evaluators_.count_full());
+    const auto& vdot = vars.tail(plant_.num_velocities());
+    multibody::setContext<double>(plant_, x, u, context_.get());
+
+    *y = vdot -
+         evaluators_.EvalActiveSecondTimeDerivative(context_.get(), lambda)
+             .tail(n_v_);
+  };
+
+ private:
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const multibody::KinematicEvaluatorSet<double>& evaluators_;
+  int n_q_;
+  int n_v_;
+};
+
+class BodyPointVelConstraint : public NonlinearConstraint<double> {
+ public:
+  BodyPointVelConstraint(
+      const MultibodyPlant<double>& plant,
+      const multibody::KinematicEvaluatorSet<double>& evaluators)
+      : NonlinearConstraint<double>(
+            evaluators.count_active(),
+            plant.num_positions() + plant.num_velocities(),
+            VectorXd::Zero(evaluators.count_active()),
+            VectorXd::Zero(evaluators.count_active()), ""),
+        plant_(plant),
+        world_(plant.world_frame()),
+        context_(plant.CreateDefaultContext()),
+        evaluators_(evaluators),
+        n_q_(plant.num_positions()),
+        n_v_(plant.num_velocities()) {}
+  ~BodyPointVelConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& vars,
+                          drake::VectorX<double>* y) const override {
+    const auto& q = vars.head(plant_.num_positions());
+    const auto& v = vars.tail(plant_.num_velocities());
+
+    plant_.SetPositions(context_.get(), q);
+
+    MatrixXd J = evaluators_.EvalActiveJacobian(*context_);
+
+    *y = J * v;
+  };
+
+ private:
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const multibody::KinematicEvaluatorSet<double>& evaluators_;
+  int n_q_;
+  int n_v_;
+};
+
+void CassieInitStateSolver(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const VectorXd& pelvis_xy_vel, double height, double mu,
+    double min_normal_force, bool linear_friction_cone, double toe_spread,
+    double ground_incline, const VectorXd& q_desired, const VectorXd& u_desired,
+    const VectorXd& lambda_desired, VectorXd* q_result, VectorXd* v_result,
+    VectorXd* u_result, VectorXd* lambda_result) {
+  // Get the rotational matrix
+  Eigen::AngleAxisd roll_angle(ground_incline, Eigen::Vector3d::UnitZ());
+  Eigen::AngleAxisd yaw_angle(0, Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd pitch_angle(0, Eigen::Vector3d::UnitX());
+  Eigen::Quaternion<double> quat = roll_angle * yaw_angle * pitch_angle;
+  Eigen::Matrix3d rotation_mat = quat.matrix();
+
+  multibody::KinematicEvaluatorSet<double> evaluators(plant);
+
+  // Add loop closures
+  auto left_loop = LeftLoopClosureEvaluator(plant);
+  auto right_loop = RightLoopClosureEvaluator(plant);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
+
+  // Add contact points
+  std::vector<int> yz_active_idx = {1, 2};
+  std::vector<int> z_active_idx = {2};
+  auto left_toe = LeftToeFront(plant);
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, left_toe.first, left_toe.second, rotation_mat,
+      Eigen::Vector3d(0, toe_spread, 1e-4), yz_active_idx);
+  evaluators.add_evaluator(&left_toe_evaluator);
+
+  auto left_heel = LeftToeRear(plant);
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, left_heel.first, left_heel.second, rotation_mat,
+      Eigen::Vector3d(0, 0, 1e-4), z_active_idx);
+  evaluators.add_evaluator(&left_heel_evaluator);
+
+  auto right_toe = RightToeFront(plant);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, right_toe.first, right_toe.second, rotation_mat,
+      Eigen::Vector3d(0, -toe_spread, 0), yz_active_idx);
+  evaluators.add_evaluator(&right_toe_evaluator);
+
+  auto right_heel = RightToeRear(plant);
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, right_heel.first, right_heel.second, rotation_mat,
+      Eigen::Vector3d(0, 0, 1e-4), z_active_idx);
+  evaluators.add_evaluator(&right_heel_evaluator);
+
+  auto program = multibody::MultibodyProgram(plant);
+
+  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto q = program.AddPositionVariables();
+  auto u = program.AddInputVariables();
+  auto lambda = program.AddConstraintForceVariables(evaluators);
+  auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
+  program.AddJointLimitConstraints(q);
+
+  // Velocity part
+  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+  int n_v = plant.num_velocities();
+  auto v = program.NewContinuousVariables(n_v, "v");
+
+  // Equation of motion
+  auto vdot = program.NewContinuousVariables(n_v, "vdot");
+  auto constraint = std::make_shared<VdotConstraint>(plant, evaluators);
+  program.AddConstraint(constraint, {q, v, u, lambda, vdot});
+
+  // Zero velocity on feet
+  multibody::KinematicEvaluatorSet<double> contact_evaluators(plant);
+  contact_evaluators.add_evaluator(&left_toe_evaluator);
+  contact_evaluators.add_evaluator(&left_heel_evaluator);
+  contact_evaluators.add_evaluator(&right_toe_evaluator);
+  contact_evaluators.add_evaluator(&right_heel_evaluator);
+  auto contact_vel_constraint =
+      std::make_shared<BodyPointVelConstraint>(plant, contact_evaluators);
+  program.AddConstraint(contact_vel_constraint, {q, v});
+
+  // Fix floating base
+  program.AddBoundingBoxConstraint(1, 1, q(positions_map.at("base_qw")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_qx")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_qy")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_qz")));
+
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_x")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_y")));
+  program.AddBoundingBoxConstraint(height, height,
+                                   q(positions_map.at("base_z")));
+
+  program.AddBoundingBoxConstraint(-10, 10, v);
+
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wx")));
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wy")));
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wz")));
+
+  program.AddBoundingBoxConstraint(pelvis_xy_vel(0), pelvis_xy_vel(0),
+                                   v(vel_map.at("base_vx")));
+  program.AddBoundingBoxConstraint(pelvis_xy_vel(1), pelvis_xy_vel(1),
+                                   v(vel_map.at("base_vy")));
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_vz")));
+
+  // Add symmetry constraints, and zero roll/pitch on the hip
+  program.AddConstraint(q(positions_map.at("knee_left")) ==
+                        q(positions_map.at("knee_right")));
+  program.AddConstraint(q(positions_map.at("hip_pitch_left")) ==
+                        q(positions_map.at("hip_pitch_right")));
+  program.AddConstraint(q(positions_map.at("hip_roll_left")) ==
+                        -q(positions_map.at("hip_roll_right")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("hip_yaw_right")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("hip_yaw_left")));
+
+  // Add some contact force constraints: linear version
+  if (linear_friction_cone) {
+    int num_linear_faces = 40;  // try lots of faces!
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+        lambda.segment(2, 3));
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+        lambda.segment(5, 3));
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+        lambda.segment(8, 3));
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+        lambda.segment(11, 3));
+  } else {
+    // Add some contact force constraints: Lorentz version
+    program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
+                          lambda.segment(2, 3));
+    program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
+                          lambda.segment(5, 3));
+    program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
+                          lambda.segment(8, 3));
+    program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
+                          lambda.segment(11, 3));
+  }
+
+  // Add minimum normal forces on all contact points
+  program.AddLinearConstraint(lambda(4) >= min_normal_force);
+  program.AddLinearConstraint(lambda(7) >= min_normal_force);
+  program.AddLinearConstraint(lambda(10) >= min_normal_force);
+  program.AddLinearConstraint(lambda(13) >= min_normal_force);
+
+  // Add costs
+  double s = 100;
+  auto q_cost_binding = program.AddQuadraticErrorCost(
+      s * MatrixXd::Identity(q.size(), q.size()), q_desired, q);
+  auto u_cost_binding = program.AddQuadraticErrorCost(
+      s * 0.001 * MatrixXd::Identity(u.size(), u.size()), u_desired, u);
+  auto lambda_cost_binding = program.AddQuadraticErrorCost(
+      s * 0.000001 * MatrixXd::Identity(lambda.size(), lambda.size()),
+      lambda_desired, lambda);
+  auto v_cost_binding = program.AddQuadraticCost(
+      v.tail(n_v - 6).dot(s * 0.001 * v.tail(n_v - 6)));
+  // auto vdot_cost_binding = program.AddQuadraticCost(vdot.dot(s * 0.001 *
+  // vdot));
+
+  // Initial guesses
+  program.SetInitialGuessForAllVariables(
+      0.01 * Eigen::VectorXd::Random(program.num_vars()));
+  program.SetInitialGuess(q, q_desired);
+  program.SetInitialGuess(u, u_desired);
+  program.SetInitialGuess(lambda, lambda_desired);
+
+  // Snopt settings
+  // program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+  //                         "../snopt_test.out");
+  // std::cout << "Save log to ../snopt_test.out\n";
+  program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
+  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major optimality tolerance", 1e-2);
+  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major feasibility tolerance", 1e-4);
+
+  std::cout << "Start solving" << std::endl;
+  auto start = std::chrono::high_resolution_clock::now();
+  //  drake::solvers::IpoptSolver ipopt_solver;
+  //  const auto result = ipopt_solver.Solve(program, guess);
+  const auto result = drake::solvers::Solve(program, program.initial_guess());
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "Solve time:" << elapsed.count() << std::endl;
+
+  std::cout << to_string(result.get_solution_result()) << std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
+
+  *q_result = result.GetSolution(q);
+  *v_result = result.GetSolution(v);
+  *u_result = result.GetSolution(u);
+  *lambda_result = result.GetSolution(lambda);
+
+  //  std::cout << "q = " << *q_result << std::endl;
+  //  std::cout << "v = " << *v_result << std::endl;
+  //  std::cout << "u = " << *u_result << std::endl;
+  //  std::cout << "lambda = " << *lambda_result << std::endl;
+  //  std::cout << "vdot = " << result.GetSolution(vdot) << std::endl;
+  //
+  //  std::cout << "q_cost_binding = "
+  //            << solvers::EvalCostGivenSolution(result, q_cost_binding)
+  //            << std::endl;
+  //  std::cout << "u_cost_binding = "
+  //            << solvers::EvalCostGivenSolution(result, u_cost_binding)
+  //            << std::endl;
+  //  std::cout << "lambda_cost_binding = "
+  //            << solvers::EvalCostGivenSolution(result, lambda_cost_binding)
+  //            << std::endl;
+  //  std::cout << "v_cost_binding = "
+  //            << solvers::EvalCostGivenSolution(result, v_cost_binding)
+  //            << std::endl;
+  // //  std::cout << "vdot_cost_binding = "
+  // //            << solvers::EvalCostGivenSolution(result, vdot_cost_binding)
+  // //            << std::endl;
 }
 
 }  // namespace dairlib

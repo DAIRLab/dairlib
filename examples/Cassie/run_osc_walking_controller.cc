@@ -496,13 +496,13 @@ int DoMain(int argc, char* argv[]) {
   if (wrt_com_in_local_frame) {
     swing_ft_traj_local.SetTimeVaryingGains(
         swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_local.SetFeedforwardAccelRatio(
+    swing_ft_traj_local.SetFeedforwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);
     osc->AddTrackingData(&swing_ft_traj_local);
   } else {
     swing_ft_traj_global.SetTimeVaryingGains(
         swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_global.SetFeedforwardAccelRatio(
+    swing_ft_traj_global.SetFeedforwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);
     osc->AddTrackingData(&swing_ft_traj_global);
   }

@@ -346,7 +346,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int left_support_state_;
   int right_support_state_;
   std::vector<int> ds_states_;
-  double w_blend_constraint_ = 0.1;  // 0.1 // for soft constraint
+  double w_blend_constraint_ = 0.1;  // for soft constraint
   mutable double prev_distinct_fsm_state_ = -1;
   drake::solvers::LinearEqualityConstraint* blend_constraint_;
   drake::solvers::VectorXDecisionVariable epsilon_blend_;

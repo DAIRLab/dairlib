@@ -103,9 +103,10 @@ OperationalSpaceControl::OperationalSpaceControl(
       multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
   // Initialize the mapping from spring to no spring
-  map_state_from_spring_to_no_spring_ =
-      multibody::CreateWithSpringsToWithoutSpringsMapPos(plant_w_spr,
-                                                         plant_wo_spr);
+  map_position_from_spring_to_no_spring_ =
+      PositionMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
+  map_velocity_from_spring_to_no_spring_ =
+      VelocityMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
 
   // Get input limits
   VectorXd u_min(n_u_);
@@ -704,7 +705,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         alpha_right = time_since_last_state_switch /
                       (ds_duration_ - time_since_last_state_switch);
 
-      } else if (!prev_distinct_fsm_state_ == left_support_state_) {
+      } else if (prev_distinct_fsm_state_ == left_support_state_) {
         alpha_left = time_since_last_state_switch /
                      (ds_duration_ - time_since_last_state_switch);
         alpha_right = -1;

@@ -6,7 +6,6 @@
 #include <fstream>
 #include <utility>
 
-#include "drake/math/orthonormal_basis.h"
 #include "drake/solvers/equality_constrained_qp_solver.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"

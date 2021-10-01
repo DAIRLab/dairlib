@@ -31,20 +31,20 @@ using multibody::makeNameToPositionsMap;
 using multibody::makeNameToVelocitiesMap;
 
 /**** OscTrackingData ****/
-OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
-                                 const MatrixXd& K_p, const MatrixXd& K_d,
-                                 const MatrixXd& W,
-                                 const MultibodyPlant<double>& plant_w_spr,
-                                 const MultibodyPlant<double>& plant_wo_spr)
-    : plant_w_spr_(plant_w_spr),
+OscTrackingData::OscTrackingData(
+    const std::string& name, int n_y, int n_ydot, const Eigen::MatrixXd& K_p,
+    const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
+    const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<double>& plant_wo_spr)
+    : K_p_(K_p),
+      K_d_(K_d),
+      plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       world_w_spr_(plant_w_spr_.world_frame()),
       world_wo_spr_(plant_wo_spr_.world_frame()),
       name_(name),
       n_y_(n_y),
       n_ydot_(n_ydot),
-      K_p_(K_p),
-      K_d_(K_d),
       W_(W) {}
 
 // Update
@@ -52,7 +52,7 @@ bool OscTrackingData::Update(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
-    int finite_state_machine_state) {
+    int finite_state_machine_state, const Eigen::VectorXd& v_proj) {
   // Update track_at_current_state_
   UpdateTrackingFlag(finite_state_machine_state);
 
@@ -65,8 +65,8 @@ bool OscTrackingData::Update(
       ydot_des_ = traj.EvalDerivative(t, 1);
       yddot_des_ = traj.EvalDerivative(t, 2);
     }
-    // TODO (yangwill): Remove this edge case after EvalDerivative has been
-    // implemented for ExponentialPlusPiecewisePolynomial
+      // TODO (yangwill): Remove this edge case after EvalDerivative has been
+      // implemented for ExponentialPlusPiecewisePolynomial
     else {
       ydot_des_ = traj.MakeDerivative(1)->value(t);
       yddot_des_ = traj.MakeDerivative(2)->value(t);
@@ -78,6 +78,9 @@ bool OscTrackingData::Update(
     UpdateYddotDes();
     UpdateJ(x_wo_spr, context_wo_spr);
     UpdateJdotV(x_wo_spr, context_wo_spr);
+    if(impact_invariant_projection_){
+      error_ydot_ -= GetJ() * v_proj;
+    }
 
     // Update command output (desired output with pd control)
     yddot_command_ =
@@ -166,6 +169,7 @@ void ComTrackingData::UpdateYdotAndError(const VectorXd& x_w_spr,
       &J_w_spr);
   ydot_ = J_w_spr * x_w_spr.tail(plant_w_spr_.num_velocities());
   error_ydot_ = ydot_des_ - ydot_;
+  //  error_ydot_ = ydot_des_ - ydot_;
 }
 
 void ComTrackingData::UpdateYddotDes() { yddot_des_converted_ = yddot_des_; }
@@ -333,13 +337,14 @@ void RotTaskSpaceTrackingData::UpdateYdotAndError(
       frame_pose_.at(GetStateIdx()).translation(), world_w_spr_, world_w_spr_,
       &J_spatial);
   ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
-          x_w_spr.tail(plant_w_spr_.num_velocities());
+      x_w_spr.tail(plant_w_spr_.num_velocities());
   // Transform qdot to w
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
   Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
                           ydot_des_(3));
-  Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
-  error_ydot_ = w_des_ - ydot_;
+  Vector3d w_des = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
+  ydot_des_ = w_des;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
+  error_ydot_ = w_des - ydot_;
 }
 
 void RotTaskSpaceTrackingData::UpdateYddotDes() {
@@ -365,12 +370,12 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void RotTaskSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
-               .CalcBiasSpatialAcceleration(
-                   context_wo_spr, JacobianWrtVariable::kV,
-                   *body_frames_wo_spr_.at(GetStateIdx()),
-                   frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
-                   world_wo_spr_)
-               .rotational();
+      .CalcBiasSpatialAcceleration(
+          context_wo_spr, JacobianWrtVariable::kV,
+          *body_frames_wo_spr_.at(GetStateIdx()),
+          frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
+          world_wo_spr_)
+      .rotational();
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
@@ -561,8 +566,8 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
   DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == joint_pos_idx_wo_spr_.size());
   DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == joint_vel_idx_wo_spr_.size());
   DRAKE_DEMAND(state_.empty() ||
-               ((state_.size() == joint_pos_idx_wo_spr_.size()) &&
-                (state_.size() == joint_vel_idx_wo_spr_.size())));
+      ((state_.size() == joint_pos_idx_wo_spr_.size()) &&
+          (state_.size() == joint_vel_idx_wo_spr_.size())));
   if (state_.empty()) {
     DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == 1);
     DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == 1);

@@ -26,9 +26,6 @@
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
 
-// Maximum time limit for each QP solve
-static constexpr double kMaxSolveDuration = 0;
-
 namespace dairlib::systems::controllers {
 
 /// `OperationalSpaceControl` takes in desired trajectory in world frame and
@@ -101,7 +98,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context_w_spr,
       drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true,
-      bool print_tracking_info = false);
+      bool print_tracking_info = false, double qp_time_limit=0);
 
   const drake::systems::OutputPort<double>& get_osc_output_port() const {
     return this->get_output_port(osc_output_port_);
@@ -119,9 +116,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
       const std::string& name) const {
-    try{
+    try {
       return this->get_input_port(traj_name_to_port_index_map_.at(name));
-    }catch(std::exception& e){
+    } catch (std::exception& e) {
       std::cerr << "Cannot find tracking data named: " << name << std::endl;
     }
     return this->get_input_port(0);
@@ -221,7 +218,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_q_;
   int n_v_;
   int n_u_;
-  int n_joints_;
+  int n_revolute_joints_;
 
   // Size of holonomic constraint and total/active contact constraints
   int n_h_;
@@ -313,6 +310,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // We only apply the control when t_s <= t <= t_e
   std::vector<double> t_s_vec_;
   std::vector<double> t_e_vec_;
+
+  // Maximum time limit for each QP solve
+  const double qp_time_limit_;
 
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_;

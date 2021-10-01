@@ -10,6 +10,7 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
+#include "examples/Cassie/cassie_utils.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 
@@ -60,6 +61,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_int32(knot_points, 10, "Number of knot points per contact mode");
 DEFINE_double(height, 0.2, "Target height for jumping.");
+DEFINE_double(start_height, 1.0, "Starting pelvis height for the trajectory.");
 DEFINE_double(distance, 0.0, "Target distance (x) from the initial position.");
 DEFINE_double(duration, 0.0, "Duration of the total gait");
 DEFINE_int32(scale_option, 0,
@@ -69,12 +71,13 @@ DEFINE_double(tol, 1e-6, "Tolerance for constraint violation and dual gap");
 DEFINE_string(load_filename, "", "File to load decision vars from.");
 DEFINE_string(
     data_directory,
-    "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/",
+    "examples/Cassie/saved_trajectories/",
     "Directory path to save decision vars to.");
 DEFINE_string(save_filename, "default_filename",
               "Filename to save decision "
               "vars to.");
 DEFINE_string(traj_name, "", "File to load saved LCM trajs from.");
+DEFINE_bool(use_springs, false, "Whether or not to use the spring model");
 
 namespace dairlib {
 
@@ -90,28 +93,19 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_guess, double dt,
                                   const MultibodyPlant<double>& plant);
 MatrixXd loadSavedDecisionVars(const string& filepath);
 
-MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,
-                                     const PiecewisePolynomial<double>& inputs,
-                                     VectorXd times);
-vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
-                                            const map<string, int>& vel_map,
-                                            const map<string, int>& act_map);
-void printConstraint(const shared_ptr<HybridDircon<double>>& trajopt,
-                     const MathematicalProgramResult& result);
-
 void DoMain() {
   // Drake system initialization stuff
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
   MultibodyPlant<double> plant(0.0);
-  Parser parser(&plant, &scene_graph);
 
-  string full_name =
-      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
+  string file_name = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+  if(FLAGS_use_springs)
+    file_name = "examples/Cassie/urdf/cassie_v2.urdf";
+  addCassieMultibody(&plant, &scene_graph, true,
+                     file_name, false,
+                     false);
   plant.Finalize();
 
   int n_q = plant.num_positions();
@@ -315,24 +309,10 @@ void DoMain() {
     }
   }
 
-  //   Printing
-  //  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
-  //    cout << trajopt->decision_variable(i) << ", ";
-  //    cout << trajopt->decision_variable(i).get_id() << ", ";
-  //    cout <<
-  //    trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
-  //         << ", ";
-  //    auto scale_map = trajopt->GetVariableScaling();
-  //    auto it = scale_map.find(i);
-  //    if (it != scale_map.end()) {
-  //      cout << it->second;
-  //    } else {
-  //      cout << "none";
-  //    }
-  //    cout << ", ";
-  //    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
-  //    cout << endl;
-  //  }
+  double alpha = .2;
+  int num_poses = std::min(FLAGS_knot_points, 5);
+  trajopt->CreateVisualizationCallback(
+      file_name, num_poses, alpha);
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
@@ -369,23 +349,6 @@ void DoMain() {
   }
 }
 
-void printConstraint(const shared_ptr<HybridDircon<double>>& trajopt,
-                     const MathematicalProgramResult& result) {
-  for (auto const& binding : trajopt->generic_constraints()) {
-    double tol = 1e-6;
-    auto y = trajopt->EvalBinding(binding, result.GetSolution());
-    auto c = binding.evaluator();
-    bool isSatisfied = (y.array() >= c->lower_bound().array() - tol).all() &&
-                       (y.array() <= c->upper_bound().array() + tol).all();
-    if (!isSatisfied) {
-      cout << "Constraint violation: " << c->get_description() << endl;
-      MatrixXd tmp(y.size(), 3);
-      tmp << c->lower_bound(), y, c->upper_bound();
-      cout << tmp << endl;
-    }
-  }
-}
-
 void setKinematicConstraints(HybridDircon<double>* trajopt,
                              const MultibodyPlant<double>& plant) {
   // Create maps for joints
@@ -408,7 +371,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto x0 = trajopt->initial_state();
   auto x_top = trajopt->state(N / 2);
   auto xf = trajopt->final_state();
-  auto x_second_to_last = trajopt->state(N - 2);
   auto u = trajopt->input();
   auto u0 = trajopt->input(0);
   auto uf = trajopt->input(N - 1);
@@ -421,17 +383,35 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddDurationBounds(min_duration, max_duration);
 
   // Standing constraints
-  double rest_height = 1.0;
+  double rest_height = FLAGS_start_height;
   double eps = 1e-6;
 
   // position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_y")));
 
   // initial fb orientation constraint
   VectorXd quat_identity(4);
   quat_identity << 1, 0, 0, 0;
   trajopt->AddBoundingBoxConstraint(quat_identity, quat_identity, x0.head(4));
+  trajopt->AddBoundingBoxConstraint(quat_identity, quat_identity, xf.head(4));
+
+  // hip yaw and roll constraints
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_left")));
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("hip_yaw_right")));
+
+  trajopt->AddBoundingBoxConstraint(0.05, 0.2, x0(pos_map.at("hip_roll_left")));
+  trajopt->AddBoundingBoxConstraint(-0.2, -0.05, x0(pos_map.at("hip_roll_right")));
+
+  // hip yaw and roll constraints
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_yaw_left")));
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("hip_yaw_right")));
+
+  trajopt->AddBoundingBoxConstraint(-1.9, -1.8, x0(pos_map.at("toe_left")));
+  trajopt->AddBoundingBoxConstraint(-1.9, -1.8, x0(pos_map.at("toe_right")));
+  trajopt->AddBoundingBoxConstraint(-1.9, -1.8, xf(pos_map.at("toe_left")));
+  trajopt->AddBoundingBoxConstraint(-1.9, -1.8, xf(pos_map.at("toe_right")));
 
   // Jumping height constraints
   trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
@@ -445,8 +425,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   // Zero starting and final velocities
   trajopt->AddLinearConstraint(VectorXd::Zero(n_v) == x0.tail(n_v));
   trajopt->AddLinearConstraint(VectorXd::Zero(n_v) == xf.tail(n_v));
-  trajopt->AddLinearConstraint(VectorXd::Zero(n_v) ==
-                               x_second_to_last.tail(n_v));
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
@@ -480,17 +458,17 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
     for (const auto& sym_joint_name : sym_joint_names) {
       trajopt->AddLinearConstraint(
           x0(pos_map[sym_joint_name + l_r_pair.first]) ==
-          x0(pos_map[sym_joint_name + l_r_pair.second]));
+              x0(pos_map[sym_joint_name + l_r_pair.second]));
       trajopt->AddLinearConstraint(
           xf(pos_map[sym_joint_name + l_r_pair.first]) ==
-          xf(pos_map[sym_joint_name + l_r_pair.second]));
+              xf(pos_map[sym_joint_name + l_r_pair.second]));
       if (sym_joint_name != "ankle_joint") {  // No actuator at ankle
         trajopt->AddLinearConstraint(
             u0(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) ==
-            u0(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
+                u0(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
         trajopt->AddLinearConstraint(
             uf(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) ==
-            uf(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
+                uf(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
       }
     }
   }
@@ -500,10 +478,10 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   for (const auto& member : joint_names) {
     trajopt->AddConstraintToAllKnotPoints(
         x(pos_map.at(member)) <=
-        plant.GetJointByName(member).position_upper_limits()(0));
+            plant.GetJointByName(member).position_upper_limits()(0));
     trajopt->AddConstraintToAllKnotPoints(
         x(pos_map.at(member)) >=
-        plant.GetJointByName(member).position_lower_limits()(0));
+            plant.GetJointByName(member).position_lower_limits()(0));
   }
 
   // actuator limits
@@ -519,17 +497,17 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto left_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          0.05 * VectorXd::Ones(1), 0.6 * VectorXd::Ones(1));
+          0.2 * VectorXd::Ones(1), 0.25 * VectorXd::Ones(1));
   auto right_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          -0.6 * VectorXd::Ones(1), -0.05 * VectorXd::Ones(1));
-  for (int mode = 0; mode < 3; ++mode) {
+          -0.25 * VectorXd::Ones(1), -0.2 * VectorXd::Ones(1));
+  for (int mode = 2; mode < 3; ++mode) {
     for (int index = 0; index < mode_lengths[mode]; index++) {
       // Assumes mode_lengths are the same across modes
-      auto x = trajopt->state((mode_lengths[mode] - 1) * mode + index);
-      trajopt->AddConstraint(left_foot_y_constraint, x.head(n_q));
-      trajopt->AddConstraint(right_foot_y_constraint, x.head(n_q));
+      auto x_i = trajopt->state((mode_lengths[mode] - 1) * mode + index);
+      trajopt->AddConstraint(left_foot_y_constraint, x_i.head(n_q));
+      trajopt->AddConstraint(right_foot_y_constraint, x_i.head(n_q));
     }
   }
   // Jumping distance constraint
@@ -579,16 +557,19 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
     trajopt->AddLinearConstraint(lambda(11) <= 300);
   }
 
-  const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
-  const MatrixXd R = 0.005 * MatrixXd::Identity(n_u, n_u);
+  MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd R = 0.005 * MatrixXd::Identity(n_u, n_u);
+  Q(0, 0) = 5;
+  Q(1, 1) = 5;
+  Q(2, 2) = 5;
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 
   // Add some cost to hip roll and yaw
   double w_q_hip_roll = 0.3;
   double w_q_hip_yaw = 0.3;
-  double w_q_hip_pitch = 0.5;
-  double w_q_quat_xyz = 0.3;
+  double w_q_hip_pitch = 0.0;
+  double w_q_quat_xyz = 0.0;
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(7, 2);
@@ -604,7 +585,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   if (w_q_hip_pitch) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(11, 2);
-      trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
+      trajopt->AddCost(w_q_hip_pitch * q.transpose() * q);
     }
   }
   if (w_q_quat_xyz) {
@@ -634,7 +615,7 @@ vector<VectorXd> GetInitGuessForQStance(int num_knot_points,
     Vector3d eps_vec = eps * VectorXd::Ones(3);
     Vector3d pelvis_pos(
         0.0, 0.0,
-        1.0 + 0.01 * (i - num_knot_points / 2) * (i - num_knot_points / 2));
+        FLAGS_start_height + 0.01 * (i - num_knot_points / 2) * (i - num_knot_points / 2));
     Vector3d left_toe_pos(0.0, 0.12, 0.05);
     Vector3d right_toe_pos(0.0, -0.12, 0.05);
 
@@ -661,11 +642,11 @@ vector<VectorXd> GetInitGuessForQStance(int num_knot_points,
     ik.get_mutable_prog()->AddLinearConstraint(
         (ik.q())(positions_map.at("knee_left")) +
             (ik.q())(positions_map.at("ankle_joint_left")) ==
-        M_PI * 13 / 180.0);
+            M_PI * 13 / 180.0);
     ik.get_mutable_prog()->AddLinearConstraint(
         (ik.q())(positions_map.at("knee_right")) +
             (ik.q())(positions_map.at("ankle_joint_right")) ==
-        M_PI * 13 / 180.0);
+            M_PI * 13 / 180.0);
     ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
     const auto result = Solve(ik.prog());
     const auto q_sol = result.GetSolution(ik.q());
@@ -676,7 +657,7 @@ vector<VectorXd> GetInitGuessForQStance(int num_knot_points,
     q_ik_guess = q_sol_normd;
     q_init_guess.push_back(q_sol_normd);
 
-    bool visualize_init_traj = true;
+    bool visualize_init_traj = false;
     if (visualize_init_traj) {
       // Build temporary diagram for visualization
       drake::systems::DiagramBuilder<double> builder_ik;
@@ -731,7 +712,7 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
     double eps = 1e-3;
     Vector3d eps_vec = eps * VectorXd::Ones(3);
     double height_offset = apex_height - factor * (i - num_knot_points / 2.0) *
-                                             (i - num_knot_points / 2.0);
+        (i - num_knot_points / 2.0);
     Vector3d pelvis_pos(0.0, 0.0, rest_height + height_offset);
     // Do not raise the toes as much as the pelvis, (leg extension)
     Vector3d left_toe_pos(0.0, 0.12, 0.05 + height_offset * 0.5);
@@ -760,11 +741,11 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
     ik.get_mutable_prog()->AddLinearConstraint(
         (ik.q())(positions_map.at("knee_left")) +
             (ik.q())(positions_map.at("ankle_joint_left")) ==
-        M_PI * 13 / 180.0);
+            M_PI * 13 / 180.0);
     ik.get_mutable_prog()->AddLinearConstraint(
         (ik.q())(positions_map.at("knee_right")) +
             (ik.q())(positions_map.at("ankle_joint_right")) ==
-        M_PI * 13 / 180.0);
+            M_PI * 13 / 180.0);
 
     ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
     const auto result = Solve(ik.prog());
@@ -776,7 +757,7 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
     q_ik_guess = q_sol_normd;
     q_init_guess.push_back(q_sol_normd);
 
-    bool visualize_init_traj = true;
+    bool visualize_init_traj = false;
     if (visualize_init_traj) {
       // Build temporary diagram for visualization
       drake::systems::DiagramBuilder<double> builder_ik;
@@ -852,31 +833,6 @@ MatrixXd loadSavedDecisionVars(const string& filepath) {
     std::cout << name << std::endl;
   }
   return loaded_decision_vars.GetDecisionVariables();
-}
-
-MatrixXd generateStateAndInputMatrix(const PiecewisePolynomial<double>& states,
-                                     const PiecewisePolynomial<double>& inputs,
-                                     VectorXd times) {
-  int num_states = states.value(0).size();
-  int num_inputs = inputs.value(0).size();
-  auto state_derivatives = states.MakeDerivative(1);
-  MatrixXd states_matrix = MatrixXd::Zero(num_states, times.size());
-  MatrixXd state_derivatives_matrix = MatrixXd::Zero(num_states, times.size());
-  MatrixXd inputs_matrix = MatrixXd::Zero(num_inputs, times.size());
-
-  for (int i = 0; i < times.size(); ++i) {
-    states_matrix.col(i) = states.value(times[i]);
-    state_derivatives_matrix.col(i) = state_derivatives->value(times[i]);
-    inputs_matrix.col(i) = inputs.value(times[i]);
-  }
-  MatrixXd states_and_inputs(num_states + num_states + num_inputs,
-                             times.size());
-  states_and_inputs.topRows(num_states) = states_matrix;
-  states_and_inputs.block(num_states, 0, num_states, times.size()) =
-      state_derivatives_matrix;
-  states_and_inputs.bottomRows(num_inputs) = inputs_matrix;
-
-  return states_and_inputs;
 }
 
 }  // namespace dairlib

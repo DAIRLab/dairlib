@@ -78,11 +78,16 @@ export DAIRLIB_LOCAL_INEKF_PATH=/home/user/my-workspace/invariant-ekf
 ```
 
 ### Notes for macOS
-
 1. Be sure to have Xcode 9.0 or later installed with Command Line Tools. If you receive a `clang: error: cannot specify -o when generating multiple output files` message during the build process, re-run `install_prereqs.sh`, and be sure that it runs fully before termination, as this will reconfigure Xcode to work with Drake.
 
+### Notes for for Ubuntu Focal (20.04)
+1. We do not yet support lcm signal scope for Ubuntu 20.04. Before building dairlib, remove `data = ["@signal_scope"]` from `signalscope/BUILD.bazel`. You may build signal scope from source via [DAIRLab's fork](https://github.com/DAIRLab/signal-scope) if you wish, though it is not necessary for the funcionality of the rest of the library.
+
 ### Build dairlib
-Build what you want via Bazel. From `dairlib`, `bazel build ...` will build the entire project. Drake will be built as an external dependency.
+Build what you want via Bazel. From `dairlib`,  `bazel build ...` will build the entire project. Drake will be built as an external dependency.
+- If you run into ram/cpu limits while building, you can cap the number of threads bazel will use (here we choose `8`) by either:
+    - adding `build --jobs=8` to `.bazelrc` 
+    - using the `jobs` flag when calling `build` (e.g. `bazel build [target] --jobs=8`)
 
 ## Included Modules
 A list of included modules

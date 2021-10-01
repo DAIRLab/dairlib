@@ -11,3 +11,4 @@ attic/multibody/solver_log/
 .ijwb/
 .vscode/
 rabbit_walking
+/examples/Cassie/saved_trajectories/

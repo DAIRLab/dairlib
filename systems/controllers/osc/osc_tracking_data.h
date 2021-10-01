@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+
 #include <Eigen/Dense>
 #include <drake/common/trajectories/trajectory.h>
 #include <drake/multibody/plant/multibody_plant.h>
@@ -89,7 +90,7 @@ class OscTrackingData {
               const Eigen::VectorXd& x_wo_spr,
               const drake::systems::Context<double>& context_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
-              int finite_state_machine_state);
+              int finite_state_machine_state, const Eigen::VectorXd& v_proj);
 
   // Getters for debugging
   const Eigen::VectorXd& GetY() const { return y_; }
@@ -107,10 +108,15 @@ class OscTrackingData {
   }
 
   // Getters used by osc block
+  const Eigen::MatrixXd& GetKp() const { return K_p_; }
+  const Eigen::MatrixXd& GetKd() const { return K_d_; }
   const Eigen::MatrixXd& GetJ() const { return J_; }
   const Eigen::VectorXd& GetJdotTimesV() const { return JdotV_; }
   const Eigen::VectorXd& GetYddotCommand() const { return yddot_command_; }
   const Eigen::MatrixXd& GetWeight() const { return W_; }
+  const bool GetImpactInvariantProjection() const {
+    return impact_invariant_projection_;
+  }
 
   // Getters
   const std::string& GetName() const { return name_; };
@@ -122,6 +128,11 @@ class OscTrackingData {
 
   // Print feedback and desired values
   void PrintFeedbackAndDesiredValues(const Eigen::VectorXd& dv);
+
+  // Set whether or not to use the impact invariant projection
+  void SetImpactInvariantProjection(bool use_impact_invariant_projection) {
+    impact_invariant_projection_ = use_impact_invariant_projection;
+  }
 
   // Finalize and ensure that users construct OscTrackingData class
   // correctly.
@@ -139,6 +150,10 @@ class OscTrackingData {
   Eigen::MatrixXd J_;
   Eigen::VectorXd JdotV_;
 
+  // PD control gains
+  Eigen::MatrixXd K_p_;
+  Eigen::MatrixXd K_d_;
+
   // Desired output
   Eigen::VectorXd y_des_;
   Eigen::VectorXd ydot_des_;
@@ -153,6 +168,8 @@ class OscTrackingData {
   // `state_` is the finite state machine state when the tracking is enabled
   // If `state_` is empty, then the tracking is always on.
   std::vector<int> state_;
+
+  bool impact_invariant_projection_ = false;
 
   /// OSC calculates feedback positions/velocities from `plant_w_spr_`,
   /// but in the optimization it uses `plant_wo_spr_`. The reason of using
@@ -194,10 +211,6 @@ class OscTrackingData {
   // Dimension of the traj
   int n_y_;
   int n_ydot_;
-
-  // PD control gains
-  Eigen::MatrixXd K_p_;
-  Eigen::MatrixXd K_d_;
 
   // Cost weights
   Eigen::MatrixXd W_;
@@ -274,7 +287,7 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_sp);
 
   void AddPointToTrack(
       const std::string& body_name,

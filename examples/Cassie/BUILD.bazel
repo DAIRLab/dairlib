@@ -237,6 +237,22 @@ cc_binary(
 )
 
 cc_binary(
+    name = "multibody_sim_w_platform",
+    srcs = ["multibody_sim_w_platform.cc"],
+    deps = [
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "parse_log_test",
     srcs = ["test/parse_log_test.cc"],
     deps = [
@@ -323,7 +339,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//examples/Cassie/osc_jump",
-        "//lcm:lcm_trajectory_saver",
+        "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",

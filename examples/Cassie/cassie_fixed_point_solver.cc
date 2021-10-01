@@ -23,13 +23,11 @@ void CassieFixedPointSolver(
     VectorXd* lambda_result, std::string visualize_model_urdf,
     double ground_incline, VectorXd* all_sol) {
   // Get the rotational matrix
-  Eigen::AngleAxisd rollAngle(ground_incline, Eigen::Vector3d::UnitZ());
-  Eigen::AngleAxisd yawAngle(0, Eigen::Vector3d::UnitY());
-  Eigen::AngleAxisd pitchAngle(0, Eigen::Vector3d::UnitX());
-  Eigen::Quaternion<double> quat = rollAngle * yawAngle * pitchAngle;
-  Eigen::Matrix3d rotationMatrix = quat.matrix();
-  // Get normal direction
-  Eigen::Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
+  Eigen::AngleAxisd roll_angle(ground_incline, Eigen::Vector3d::UnitZ());
+  Eigen::AngleAxisd yaw_angle(0, Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd pitch_angle(0, Eigen::Vector3d::UnitX());
+  Eigen::Quaternion<double> quat = roll_angle * yaw_angle * pitch_angle;
+  Eigen::Matrix3d rotation_mat = quat.matrix();
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
@@ -40,28 +38,30 @@ void CassieFixedPointSolver(
   evaluators.add_evaluator(&right_loop);
 
   // Add contact points
+  std::vector<int> yz_active_idx = {1, 2};
+  std::vector<int> z_active_idx = {2};
   auto left_toe = LeftToeFront(plant);
-  auto left_toe_evaluator = multibody::WorldPointEvaluator(plant,
-      left_toe.first, left_toe.second, rotationMatrix,
-      Eigen::Vector3d(0, toe_spread, 0), {1, 2});
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, left_toe.first, left_toe.second, rotation_mat,
+      Eigen::Vector3d(0, toe_spread, 0), yz_active_idx);
   evaluators.add_evaluator(&left_toe_evaluator);
 
   auto left_heel = LeftToeRear(plant);
-  auto left_heel_evaluator = multibody::WorldPointEvaluator(plant,
-      left_heel.first, left_heel.second, ground_normal,
-      Eigen::Vector3d::Zero(), false);
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, left_heel.first, left_heel.second, rotation_mat,
+      Eigen::Vector3d::Zero(), z_active_idx);
   evaluators.add_evaluator(&left_heel_evaluator);
 
   auto right_toe = RightToeFront(plant);
-  auto right_toe_evaluator = multibody::WorldPointEvaluator(plant,
-      right_toe.first, right_toe.second, rotationMatrix,
-      Eigen::Vector3d(0, -toe_spread, 0), {1, 2});
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, right_toe.first, right_toe.second, rotation_mat,
+      Eigen::Vector3d(0, -toe_spread, 0), yz_active_idx);
   evaluators.add_evaluator(&right_toe_evaluator);
 
   auto right_heel = RightToeRear(plant);
-  auto right_heel_evaluator = multibody::WorldPointEvaluator(plant,
-      right_heel.first, right_heel.second, ground_normal,
-      Eigen::Vector3d::Zero(), false);
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, right_heel.first, right_heel.second, rotation_mat,
+      Eigen::Vector3d::Zero(), z_active_idx);
   evaluators.add_evaluator(&right_heel_evaluator);
 
   auto program = multibody::MultibodyProgram(plant);

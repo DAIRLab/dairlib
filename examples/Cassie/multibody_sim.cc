@@ -11,21 +11,15 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "multibody/kinematic/world_point_evaluator.h"
-#include "multibody/multibody_solvers.h"
+
 #include "multibody/multibody_utils.h"
 #include "solvers/constraint_factory.h"
-#include "solvers/optimization_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
-#include "drake/solvers/ipopt_solver.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/solve.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -35,8 +29,6 @@
 #include "drake/systems/primitives/discrete_time_delay.h"
 
 namespace dairlib {
-using multibody::KinematicEvaluatorSet;
-using solvers::NonlinearConstraint;
 
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;

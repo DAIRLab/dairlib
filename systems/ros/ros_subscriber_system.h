@@ -152,8 +152,7 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
     drake::systems::EventCollection<
         drake::systems::UnrestrictedUpdateEvent<double>>&
         uu_events = events->get_mutable_unrestricted_update_events();
-    uu_events.AddEvent(
-        std::make_unique<drake::systems::UnrestrictedUpdateEvent<double>>(
+    uu_events.AddEvent(drake::systems::UnrestrictedUpdateEvent<double>(
             drake::systems::Event<double>::TriggerType::kTimed));
   }
 

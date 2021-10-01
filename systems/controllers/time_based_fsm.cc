@@ -83,18 +83,21 @@ TimeBasedFiniteStateMachineWithTrigger::TimeBasedFiniteStateMachineWithTrigger(
   DRAKE_DEMAND(states.size() == state_durations.size());
 
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
+                    .get_index();
   fsm_port_ = this->DeclareVectorOutputPort(
-      BasicVector<double>(1),
-      &TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState).get_index();
+                      "fsm", BasicVector<double>(1),
+                      &TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState)
+                  .get_index();
 
-  global_fsm_idx_port_ = this->DeclareVectorOutputPort(
-      BasicVector<double>(1),
-      &TimeBasedFiniteStateMachineWithTrigger::CalcGlobalFsmIdx).get_index();
+  global_fsm_idx_port_ =
+      this->DeclareVectorOutputPort(
+              "global_fsm_idx", BasicVector<double>(1),
+              &TimeBasedFiniteStateMachineWithTrigger::CalcGlobalFsmIdx)
+          .get_index();
 
   if (with_trigger_input_port) {
     trigger_port_ =

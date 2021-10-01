@@ -48,7 +48,7 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::TwoFrameTrackingData;
+using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::WorldYawOscViewFrame;
 
 using multibody::FixedJointEvaluator;
@@ -475,7 +475,7 @@ int DoMain(int argc, char* argv[]) {
                            plant_w_spr, plant_w_spr);
   com_data.AddStateToTrack(left_stance_state);
   com_data.AddStateToTrack(right_stance_state);
-  TwoFrameTrackingData swing_ft_traj_local(
+  RelativeTranslationTrackingData swing_ft_traj_local(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data, com_data);
   WorldYawOscViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));

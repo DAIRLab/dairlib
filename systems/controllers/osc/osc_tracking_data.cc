@@ -454,7 +454,7 @@ void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
       context_w_spr,
       plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
   Quaterniond y_quat(transform_mat.rotation() *
-      frame_pose_.at(GetStateIdx()).linear());
+                     frame_pose_.at(GetStateIdx()).linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
@@ -513,12 +513,12 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void RotTaskSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
-      .CalcBiasSpatialAcceleration(
-          context_wo_spr, JacobianWrtVariable::kV,
-          *body_frames_wo_spr_.at(GetStateIdx()),
-          frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
-          world_wo_spr_)
-      .rotational();
+               .CalcBiasSpatialAcceleration(
+                   context_wo_spr, JacobianWrtVariable::kV,
+                   *body_frames_wo_spr_.at(GetStateIdx()),
+                   frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
+                   world_wo_spr_)
+               .rotational();
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
@@ -657,19 +657,19 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
   }
 }
 
-/**** TwoFrameTrackingData ****/
-TwoFrameTrackingData::TwoFrameTrackingData(
+/**** RelativeTranslationTrackingData ****/
+RelativeTranslationTrackingData::RelativeTranslationTrackingData(
     const std::string& name, const Eigen::MatrixXd& K_p,
     const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
     const drake::multibody::MultibodyPlant<double>& plant_w_spr,
     const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-    OscTrackingData& to_frame, OscTrackingData& from_frame)
+    OscTrackingData& to_frame_data, OscTrackingData& from_frame_data)
     : OscTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr,
                       plant_wo_spr),
-      to_frame_(to_frame),
-      from_frame_(from_frame) {
-  auto states1 = to_frame.GetStates();
-  auto states2 = from_frame.GetStates();
+      to_frame_data_(to_frame_data),
+      from_frame_data_(from_frame_data) {
+  auto states1 = to_frame_data.GetStates();
+  auto states2 = from_frame_data.GetStates();
   DRAKE_DEMAND(states1.size() == states2.size());
   for (int i = 0; i < states1.size(); i++) {
     DRAKE_DEMAND(states1.at(i) == states2.at(i));
@@ -679,55 +679,54 @@ TwoFrameTrackingData::TwoFrameTrackingData(
   pre_update_ = true;
 }
 
-void TwoFrameTrackingData::PreUpdate(
+void RelativeTranslationTrackingData::PreUpdate(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
     double t_since_last_state_switch, int finite_state_machine_state,
     const Eigen::VectorXd& v_proj, bool no_desired_traj) {
-  to_frame_.Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj, t,
-                   t_since_last_state_switch, finite_state_machine_state,
-                   v_proj, true);
-  from_frame_.Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj, t,
-                     t_since_last_state_switch, finite_state_machine_state,
-                     v_proj, true);
+  to_frame_data_.Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj,
+                        t, t_since_last_state_switch,
+                        finite_state_machine_state, v_proj, true);
+  from_frame_data_.Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr,
+                          traj, t, t_since_last_state_switch,
+                          finite_state_machine_state, v_proj, true);
 }
 
-void TwoFrameTrackingData::UpdateYddotDes() {
+void RelativeTranslationTrackingData::UpdateYddotDes() {
   yddot_des_converted_ = yddot_des_;
 }
 
-void TwoFrameTrackingData::UpdateY(const VectorXd& x_w_spr,
-                                   const Context<double>& context_w_spr) {
-  y_ = to_frame_.GetY() - from_frame_.GetY();
+void RelativeTranslationTrackingData::UpdateY(
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
+  y_ = to_frame_data_.GetY() - from_frame_data_.GetY();
 }
 
-void TwoFrameTrackingData::UpdateYError() { error_y_ = y_des_ - y_; }
+void RelativeTranslationTrackingData::UpdateYError() { error_y_ = y_des_ - y_; }
 
-void TwoFrameTrackingData::UpdateYdot(const VectorXd& x_w_spr,
-                                      const Context<double>& context_w_spr) {
-  ydot_ = to_frame_.GetYdot() - from_frame_.GetYdot();
+void RelativeTranslationTrackingData::UpdateYdot(
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
+  ydot_ = to_frame_data_.GetYdot() - from_frame_data_.GetYdot();
 }
 
-void TwoFrameTrackingData::UpdateYdotError() {
+void RelativeTranslationTrackingData::UpdateYdotError() {
   error_ydot_ = ydot_des_ - ydot_;
 }
 
-void TwoFrameTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-                                   const Context<double>& context_wo_spr) {
-  J_ = to_frame_.GetJ() - from_frame_.GetJ();
+void RelativeTranslationTrackingData::UpdateJ(
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
+  J_ = to_frame_data_.GetJ() - from_frame_data_.GetJ();
 }
 
-void TwoFrameTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
-                                       const Context<double>& context_wo_spr) {
-  JdotV_ = to_frame_.GetJdotTimesV() - from_frame_.GetJdotTimesV();
+void RelativeTranslationTrackingData::UpdateJdotV(
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
+  JdotV_ = to_frame_data_.GetJdotTimesV() - from_frame_data_.GetJdotTimesV();
 }
 
-void TwoFrameTrackingData::CheckDerivedOscTrackingData() {
-  to_frame_.CheckOscTrackingData(true);
-  from_frame_.CheckOscTrackingData(true);
+void RelativeTranslationTrackingData::CheckDerivedOscTrackingData() {
+  to_frame_data_.CheckOscTrackingData(true);
+  from_frame_data_.CheckOscTrackingData(true);
 }
-
 
 /**** WorldYawOscViewFrame ****/
 Eigen::Matrix3d WorldYawOscViewFrame::CalcRotationalMatrix(

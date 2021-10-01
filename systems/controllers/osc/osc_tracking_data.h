@@ -112,14 +112,12 @@ class OscTrackingData {
   //  - `t`, current time
   //  - `finite_state_machine_state`, current finite state machine state
   bool Update(const Eigen::VectorXd& x_w_spr,
-                      const drake::systems::Context<double>& context_w_spr,
-                      const Eigen::VectorXd& x_wo_spr,
-                      const drake::systems::Context<double>& context_wo_spr,
-                      const drake::trajectories::Trajectory<double>& traj,
-                      double t, double t_since_last_state_switch,
-                      int finite_state_machine_state,
-                      const Eigen::VectorXd& v_proj,
-                      bool no_desired_traj = false);
+              const drake::systems::Context<double>& context_w_spr,
+              const Eigen::VectorXd& x_wo_spr,
+              const drake::systems::Context<double>& context_wo_spr,
+              const drake::trajectories::Trajectory<double>& traj, double t,
+              double t_since_last_state_switch, int finite_state_machine_state,
+              const Eigen::VectorXd& v_proj, bool no_desired_traj = false);
   virtual void PreUpdate(const Eigen::VectorXd& x_w_spr,
                          const drake::systems::Context<double>& context_w_spr,
                          const Eigen::VectorXd& x_wo_spr,
@@ -128,7 +126,7 @@ class OscTrackingData {
                          double t, double t_since_last_state_switch,
                          int finite_state_machine_state,
                          const Eigen::VectorXd& v_proj,
-                         bool no_desired_traj = false) {};
+                         bool no_desired_traj = false){};
   bool pre_update_ = false;
 
   void SetLowPassFilter(double tau, const std::set<int>& element_idx = {});
@@ -509,23 +507,23 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<std::vector<int>> joint_vel_idx_wo_spr_;
 };
 
-class TwoFrameTrackingData final : public OscTrackingData {
+class RelativeTranslationTrackingData final : public OscTrackingData {
  public:
-  TwoFrameTrackingData(
+  RelativeTranslationTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      OscTrackingData& to_frame, OscTrackingData& from_frame);
+      OscTrackingData& to_frame_data, OscTrackingData& from_frame_data);
 
   void PreUpdate(const Eigen::VectorXd& x_w_spr,
-              const drake::systems::Context<double>& context_w_spr,
-              const Eigen::VectorXd& x_wo_spr,
-              const drake::systems::Context<double>& context_wo_spr,
-              const drake::trajectories::Trajectory<double>& traj, double t,
-              double t_since_last_state_switch, int finite_state_machine_state,
-              const Eigen::VectorXd& v_proj,
-              bool no_desired_traj = false) final;
+                 const drake::systems::Context<double>& context_w_spr,
+                 const Eigen::VectorXd& x_wo_spr,
+                 const drake::systems::Context<double>& context_wo_spr,
+                 const drake::trajectories::Trajectory<double>& traj, double t,
+                 double t_since_last_state_switch,
+                 int finite_state_machine_state, const Eigen::VectorXd& v_proj,
+                 bool no_desired_traj = false) final;
 
  private:
   void UpdateYddotDes() final;
@@ -542,8 +540,8 @@ class TwoFrameTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  OscTrackingData& to_frame_;
-  OscTrackingData& from_frame_;
+  OscTrackingData& to_frame_data_;
+  OscTrackingData& from_frame_data_;
 };
 
 }  // namespace controllers

@@ -118,9 +118,10 @@ bool OscTrackingData::Update(
     for (auto idx : idx_zero_feedforward_accel_) {
       yddot_des_converted_(idx) = 0;
     }
-    if (ff_accel_ratio_ != nullptr) {
-      yddot_des_converted_ = ff_accel_ratio_->value(t_since_last_state_switch) *
-                             yddot_des_converted_;
+    if (ff_accel_multiplier_ != nullptr) {
+      yddot_des_converted_ =
+          ff_accel_multiplier_->value(t_since_last_state_switch) *
+          yddot_des_converted_;
     }
 
     // 3. Update error
@@ -133,15 +134,16 @@ bool OscTrackingData::Update(
     }
 
     // 4. Update command output (desired output with pd control)
-    MatrixXd gain_ratio;
-    if (gain_ratio_ != nullptr) {
-      gain_ratio = gain_ratio_->value(t_since_last_state_switch);
+    MatrixXd gain_multiplier;
+    if (gain_multiplier_ != nullptr) {
+      gain_multiplier = gain_multiplier_->value(t_since_last_state_switch);
     } else {
-      gain_ratio = MatrixXd::Identity(n_ydot_, n_ydot_);
+      gain_multiplier = MatrixXd::Identity(n_ydot_, n_ydot_);
     }
 
-    yddot_command_ = yddot_des_converted_ +
-                     gain_ratio * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
+    yddot_command_ =
+        yddot_des_converted_ +
+        gain_multiplier * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
   }
   return track_at_current_state_;
 }
@@ -159,20 +161,20 @@ void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
 }
 
 void OscTrackingData::SetTimeVaryingGains(
-    const drake::trajectories::Trajectory<double>& gain_ratio) {
-  DRAKE_DEMAND(gain_ratio.cols() == n_ydot_);
-  DRAKE_DEMAND(gain_ratio.rows() == n_ydot_);
-  DRAKE_DEMAND(gain_ratio.start_time() == 0);
-  //  DRAKE_DEMAND(gain_ratio.end_time() == );
-  gain_ratio_ = &gain_ratio;
+    const drake::trajectories::Trajectory<double>& gain_multiplier) {
+  DRAKE_DEMAND(gain_multiplier.cols() == n_ydot_);
+  DRAKE_DEMAND(gain_multiplier.rows() == n_ydot_);
+  DRAKE_DEMAND(gain_multiplier.start_time() == 0);
+  //  DRAKE_DEMAND(gain_multiplier.end_time() == );
+  gain_multiplier_ = &gain_multiplier;
 }
-void OscTrackingData::SetFeedforwardAccelRatio(
-    const drake::trajectories::Trajectory<double>& ff_accel_ratio) {
-  DRAKE_DEMAND(ff_accel_ratio.cols() == n_ydot_);
-  DRAKE_DEMAND(ff_accel_ratio.rows() == n_ydot_);
-  DRAKE_DEMAND(ff_accel_ratio.start_time() == 0);
-  //  DRAKE_DEMAND(ff_accel_ratio.end_time() == );
-  ff_accel_ratio_ = &ff_accel_ratio;
+void OscTrackingData::SetFeedforwardAccelMultiplier(
+    const drake::trajectories::Trajectory<double>& ff_accel_multiplier) {
+  DRAKE_DEMAND(ff_accel_multiplier.cols() == n_ydot_);
+  DRAKE_DEMAND(ff_accel_multiplier.rows() == n_ydot_);
+  DRAKE_DEMAND(ff_accel_multiplier.start_time() == 0);
+  //  DRAKE_DEMAND(ff_accel_multiplier.end_time() == );
+  ff_accel_multiplier_ = &ff_accel_multiplier;
 }
 
 void OscTrackingData::SetLowPassFilter(double tau,

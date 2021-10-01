@@ -134,17 +134,6 @@ class OscTrackingData {
                          bool no_desired_traj = false){};
   bool pre_update_ = false;
 
-  void SetLowPassFilter(double tau, const std::set<int>& element_idx = {});
-
-  // TOOD(yminchen): You can make ratio dictionary so that we have one ratio per
-  //  finite state
-  void SetTimeVaryingGains(
-      const drake::trajectories::Trajectory<double>& gain_ratio);
-  const drake::trajectories::Trajectory<double>* gain_ratio_ = nullptr;
-  void SetFeedforwardAccelRatio(
-      const drake::trajectories::Trajectory<double>& ff_accel_ratio);
-  const drake::trajectories::Trajectory<double>* ff_accel_ratio_ = nullptr;
-
   // Getters for debugging
   const Eigen::VectorXd& GetY() const { return y_; }
   const Eigen::VectorXd& GetYDes() const { return y_des_; }
@@ -196,6 +185,9 @@ class OscTrackingData {
 
   // Finalize and ensure that users construct OscTrackingData class
   // correctly.
+  // When the flag `no_control_gains` is true, it doesn't check the dimensions
+  // of Kp, Kd and W. We use this for the TrackingData's in
+  // TwoFrameTrackingData, since we only need gains for the relative position.
   void CheckOscTrackingData(bool no_control_gains = false);
 
   // For unit test
@@ -208,6 +200,19 @@ class OscTrackingData {
   void DisableFeedforwardAccel(const std::set<int>& indices) {
     idx_zero_feedforward_accel_ = indices;
   };
+
+  // Additional feature -- low pass filter
+  void SetLowPassFilter(double tau, const std::set<int>& element_idx = {});
+
+  // Additional feature -- multipliers for gains and feedforward acceleration
+  // TOOD(yminchen): You can make ratio dictionary so that we have one ratio per
+  //  finite state
+  void SetTimeVaryingGains(
+      const drake::trajectories::Trajectory<double>& gain_multiplier);
+  const drake::trajectories::Trajectory<double>* gain_multiplier_ = nullptr;
+  void SetFeedforwardAccelMultiplier(
+      const drake::trajectories::Trajectory<double>& ff_accel_multiplier);
+  const drake::trajectories::Trajectory<double>* ff_accel_multiplier_ = nullptr;
 
   // Additional feature -- OscViewFrame
   bool with_view_frame_ = false;
@@ -534,6 +539,9 @@ class RelativeTranslationTrackingData final : public OscTrackingData {
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
       OscTrackingData& to_frame_data, OscTrackingData& from_frame_data);
 
+  // PreUpdate updates the kinematics data for to_frame_data and
+  // from_frame_data. E.g. we have to compute the positions of both frames
+  // before we can get the relative position.
   void PreUpdate(const Eigen::VectorXd& x_w_spr,
                  const drake::systems::Context<double>& context_w_spr,
                  const Eigen::VectorXd& x_wo_spr,

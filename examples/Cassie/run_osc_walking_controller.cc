@@ -447,24 +447,25 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Swing foot tracking
-  std::vector<double> swing_ft_ratio_breaks{0, left_support_duration / 2,
-                                            left_support_duration};
-  std::vector<drake::MatrixX<double>> swing_ft_ratio_samples(
+  std::vector<double> swing_ft_gain_multiplier_breaks{
+      0, left_support_duration / 2, left_support_duration};
+  std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples(
       3, drake::MatrixX<double>::Identity(3, 3));
-  swing_ft_ratio_samples[2](2, 2) *= 0.3;
-  PiecewisePolynomial<double> swing_ft_ratio_gain_ratio =
-      PiecewisePolynomial<double>::FirstOrderHold(swing_ft_ratio_breaks,
-                                                  swing_ft_ratio_samples);
-  std::vector<double> swing_ft_accel_ratio_breaks{0, left_support_duration / 2,
-                                                  left_support_duration * 3 / 4,
-                                                  left_support_duration};
-  std::vector<drake::MatrixX<double>> swing_ft_accel_ratio_samples(
+  swing_ft_gain_multiplier_samples[2](2, 2) *= 0.3;
+  PiecewisePolynomial<double> swing_ft_gain_multiplier_gain_multiplier =
+      PiecewisePolynomial<double>::FirstOrderHold(
+          swing_ft_gain_multiplier_breaks, swing_ft_gain_multiplier_samples);
+  std::vector<double> swing_ft_accel_gain_multiplier_breaks{
+      0, left_support_duration / 2, left_support_duration * 3 / 4,
+      left_support_duration};
+  std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples(
       4, drake::MatrixX<double>::Identity(3, 3));
-  swing_ft_accel_ratio_samples[2](2, 2) *= 0;
-  swing_ft_accel_ratio_samples[3](2, 2) *= 0;
-  PiecewisePolynomial<double> swing_ft_accel_ratio_gain_ratio =
-      PiecewisePolynomial<double>::FirstOrderHold(swing_ft_accel_ratio_breaks,
-                                                  swing_ft_accel_ratio_samples);
+  swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0;
+  swing_ft_accel_gain_multiplier_samples[3](2, 2) *= 0;
+  PiecewisePolynomial<double> swing_ft_accel_gain_multiplier_gain_multiplier =
+      PiecewisePolynomial<double>::FirstOrderHold(
+          swing_ft_accel_gain_multiplier_breaks,
+          swing_ft_accel_gain_multiplier_samples);
 
   TransTaskSpaceTrackingData swing_foot_data(
       "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
@@ -493,14 +494,16 @@ int DoMain(int argc, char* argv[]) {
   }
 
   if (wrt_com_in_local_frame) {
-    swing_ft_traj_local.SetTimeVaryingGains(swing_ft_ratio_gain_ratio);
+    swing_ft_traj_local.SetTimeVaryingGains(
+        swing_ft_gain_multiplier_gain_multiplier);
     swing_ft_traj_local.SetFeedforwardAccelRatio(
-        swing_ft_accel_ratio_gain_ratio);
+        swing_ft_accel_gain_multiplier_gain_multiplier);
     osc->AddTrackingData(&swing_ft_traj_local);
   } else {
-    swing_ft_traj_global.SetTimeVaryingGains(swing_ft_ratio_gain_ratio);
+    swing_ft_traj_global.SetTimeVaryingGains(
+        swing_ft_gain_multiplier_gain_multiplier);
     swing_ft_traj_global.SetFeedforwardAccelRatio(
-        swing_ft_accel_ratio_gain_ratio);
+        swing_ft_accel_gain_multiplier_gain_multiplier);
     osc->AddTrackingData(&swing_ft_traj_global);
   }
 

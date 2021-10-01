@@ -69,7 +69,7 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   // The trajectory optimization solution sets the final CoM very close to
   // rear toe contacts - this is an offset to move it closer to the center of
   // the support polygon
-  static constexpr double kLandingOffset = -0.02;  // 0.04 m (4cm)
+  static constexpr double kLandingOffset = 0.00;  // 0.04 m (4cm)
 //  static constexpr double kLandingOffset = 0.04;  // 0.04 m (4cm)
 };
 

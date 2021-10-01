@@ -1,8 +1,8 @@
 w_input: 0.000
-w_accel: 0.005
+w_accel: 0.00001
 w_soft_constraint: 100
-x_offset: 0.0
-relative_feet: true
+x_offset: -0.02
+relative_feet: false
 
 mu: 0.8
 

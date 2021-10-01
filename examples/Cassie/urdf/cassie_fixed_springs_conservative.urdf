@@ -617,7 +617,7 @@
         <parent link="pelvis" />
         <child link="yaw_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.12" upper="0.215" effort="300"/>
+        <limit lower="-0.05" upper="0.100" effort="300"/>
         <dynamics damping="1" />
     </joint>
 
@@ -626,7 +626,7 @@
         <parent link="pelvis" />
         <child link="yaw_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.215" upper="0.12" effort="300"/>
+        <limit lower="-0.100" upper="0.05" effort="300"/>
         <dynamics damping="1" />
     </joint>
 
@@ -655,7 +655,7 @@
         <parent link="hip_left" />
         <child link="thigh_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.72" upper="1.24" effort="300"/>
+        <limit lower="-0.4" upper="1.00" effort="300"/>
         <dynamics damping="1" />
     </joint>
 
@@ -664,7 +664,7 @@
         <parent link="hip_right" />
         <child link="thigh_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.72" upper="1.24" effort="300"/>
+        <limit lower="-0.4" upper="1.00" effort="300"/>
         <dynamics damping="1" />
     </joint>
 

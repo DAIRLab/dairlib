@@ -137,7 +137,7 @@ def main():
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
-  if True:
+  if False:
     # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context_w_spr, x, l_toe_frame,
                         front_contact_disp,
@@ -259,35 +259,35 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   #
   # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
-  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  plot_osc(osc_debug, osc_traj0, 2, "pos")
 
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plot_osc(osc_debug, osc_traj0, 1, "vel")
-  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  plot_osc(osc_debug, osc_traj0, 2, "vel")
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "acc")
   # plot_osc(osc_debug, osc_traj0, 1, "acc")
-  # plot_osc(osc_debug, osc_traj0, 2, "acc")
+  plot_osc(osc_debug, osc_traj0, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plot_osc(osc_debug, osc_traj1, 1, "pos")
-  plot_osc(osc_debug, osc_traj1, 2, "pos")
+  # plot_osc(osc_debug, osc_traj1, 2, "pos")
   # #
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  plot_osc(osc_debug, osc_traj2, 2, "pos")
+  # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj1, 0, "vel")
-  # plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
+  # plot_osc(osc_debug, osc_traj1, 1, "vel")
+  plot_osc(osc_debug, osc_traj1, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj2, 0, "vel")
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
+  plot_osc(osc_debug, osc_traj2, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "acc")
   # plot_osc(osc_debug, osc_traj1, 1, "acc")
@@ -444,10 +444,10 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
   state_names = [name + contact_type for name in state_names]
-  # ps.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
-  #          data_label=state_names[state_indices])
-  ps.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices])
-  ps.add_legend(state_names[state_indices])
+  ps.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices],
+           data_label=state_names[state_indices])
+  # ps.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices])
+  # ps.add_legend(state_names[state_indices])
   plt.legend()
 
 

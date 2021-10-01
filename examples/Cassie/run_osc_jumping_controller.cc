@@ -407,6 +407,15 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&left_toe_angle_traj);
   osc->AddTrackingData(&right_toe_angle_traj);
 
+  left_toe_angle_traj.SetImpactInvariantProjection(true);
+  right_toe_angle_traj.SetImpactInvariantProjection(true);
+  left_foot_tracking_data.SetImpactInvariantProjection(true);
+  right_foot_tracking_data.SetImpactInvariantProjection(true);
+  swing_hip_yaw_left_traj.SetImpactInvariantProjection(true);
+  swing_hip_yaw_right_traj.SetImpactInvariantProjection(true);
+  pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
+  com_tracking_data.SetImpactInvariantProjection(true);
+
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;

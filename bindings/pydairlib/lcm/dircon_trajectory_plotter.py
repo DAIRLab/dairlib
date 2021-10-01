@@ -10,7 +10,8 @@ def main():
   # Default filename for the example
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.5h_0.3d")
-  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_box_0.4h_0.3d_6")
+  # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_box_0.5h_0.3d_2")
+  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/springs/jumping_box_0.4h_0.3d_1")
   # filename = "/home/yangwill/Documents/research/projects/cassie/hardware/backup/dair/saved_trajectories/jumping_0.15h_0.3d"
 
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/" + sys.argv[1])
@@ -52,13 +53,14 @@ def main():
   # reflected_state_samples = state_samples @ M
   # Plotting reconstructed state trajectories
   plt.figure("state trajectory")
-  plt.plot(t, state_samples[:, 0:7])
+  plt.plot(t, state_samples[:, 7:23])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 0:7])
   # plt.plot(t, state_samples[:, -18:])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 7:13])
   # plt.plot(t, state_samples[:, 25:31])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 25:31])
-  plt.legend(state_datatypes[0:7])
+  # plt.legend(state_datatypes[0:7])
+  plt.legend(state_datatypes[7:13])
 
   plt.figure("input trajectory")
   plt.plot(t, input_samples[:, :])

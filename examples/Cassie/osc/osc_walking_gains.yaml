@@ -34,7 +34,7 @@ k_ff_lateral: 0
 k_fb_lateral: 0.23
 
 # Finite state machine
-ss_time: 0.3
+ss_time: 0.35
 ds_time: 0.075
 
 # Swing foot trajectory

@@ -960,7 +960,7 @@ void OperationalSpaceControl::CalcOptimalInput(
         context.get_discrete_state(prev_event_time_idx_).get_value();
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, clock_time, fsm_state(0),
                     current_time - prev_event_time(0),
-                    near_impact->get_value()(0), near_impact->get_value()(1));
+                    alpha, next_fsm_state);
   } else {
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time,
                     0, -1);

@@ -1,0 +1,222 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_py_library",
+)
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+
+py_library(
+    name = "urdf",
+    data = ["urdf/cube.urdf"],
+)
+
+py_library(
+    name = "cube_sim",
+    srcs = ["cube_sim.py"],
+    deps = [],
+)
+
+py_library(
+    name = "drake_cube_sim_py",
+    srcs = ["drake_cube_sim.py"],
+    deps = [
+        ":cube_sim",
+        ":urdf",
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "cassie_loss_utils",
+    srcs = ["cassie_loss_utils.py"],
+    deps = [
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "mujoco_cube_sim_py",
+    srcs = ["mujoco_cube_sim.py"],
+    deps = [":cube_sim"],
+)
+
+py_library(
+    name = "drake_cassie_sim_py",
+    srcs = ["drake_cassie_sim.py"],
+    deps = [":cassie_loss_utils"],
+)
+
+py_library(
+    name = "mujoco_cassie_sim_py",
+    srcs = ["mujoco_cassie_sim.py"],
+    deps = [
+        ":cassie_loss_utils",
+        "//bindings/pydairlib/cassie:mujoco_sim",
+    ],
+)
+
+py_binary(
+    name = "cube_sim_test",
+    srcs = ["cube_sim_test.py"],
+    deps = [
+        ":cube_sim",
+        ":drake_cube_sim_py",
+        ":mujoco_cube_sim_py",
+    ],
+)
+
+py_binary(
+    name = "learn_cube_parameters",
+    srcs = ["learn_cube_parameters.py"],
+    deps = [
+        ":bullet_cube_sim_py",
+        ":cube_sim",
+        ":drake_cube_sim_py",
+        ":mujoco_cube_sim_py",
+    ],
+)
+
+py_library(
+    name = "bullet_cube_sim_py",
+    srcs = ["bullet_cube_sim.py"],
+    deps = [
+        ":cube_sim",
+    ],
+)
+
+py_library(
+    name = "plotting_utils",
+    srcs = ["plotting_utils.py"],
+)
+
+py_binary(
+    name = "evaluate_cube_parameters",
+    srcs = ["evaluate_cube_parameters.py"],
+    deps = [
+        ":bullet_cube_sim_py",
+        ":cube_sim",
+        ":drake_cube_sim_py",
+        ":learn_cube_parameters",
+        ":mujoco_cube_sim_py",
+        ":plotting_utils",
+        "//bindings/pydairlib",
+    ],
+)
+
+py_binary(
+    name = "sensitivity_analysis",
+    srcs = ["sensitivity_analysis.py"],
+    deps = [
+        ":bullet_cube_sim_py",
+        ":cube_sim",
+        ":drake_cassie_sim_py",
+        ":drake_cube_sim_py",
+        ":evaluate_cube_parameters",
+        ":learn_cube_parameters",
+        ":mujoco_cube_sim_py",
+        "//bindings/pydairlib/cassie:mujoco_sim",
+        "//bindings/pydairlib/common:plot_styler",
+    ],
+)
+
+py_binary(
+    name = "cube_figures",
+    srcs = ["cube_figures.py"],
+    deps = [
+        ":bullet_cube_sim_py",
+        ":cube_sim",
+        ":drake_cube_sim_py",
+        ":evaluate_cube_parameters",
+        ":mujoco_cube_sim_py",
+        ":plotting_utils",
+        ":sensitivity_analysis",
+        "//bindings/pydairlib",
+    ],
+)
+
+py_binary(
+    name = "cassie_figures",
+    srcs = ["cassie_figures.py"],
+    deps = [
+        ":cassie_loss_plotter",
+        ":plotting_utils",
+        ":evaluate_cube_parameters",
+        ":sensitivity_analysis",
+        "//bindings/pydairlib",
+    ],
+)
+
+py_binary(
+    name = "learn_cassie_parameters",
+    srcs = ["learn_cassie_parameters.py"],
+    deps = [
+        ":cassie_loss_utils",
+        ":cube_sim",
+        ":drake_cassie_sim_py",
+        ":mujoco_cube_sim_py",
+        "//bindings/pydairlib/cassie:kinematics_helper",
+        "//bindings/pydairlib/cassie:mujoco_sim",
+        "//bindings/pydairlib/common:plot_styler",
+    ],
+)
+
+py_binary(
+    name = "test_drake_sim",
+    srcs = ["test_drake_sim.py"],
+    deps = [
+        ":cassie_loss_utils",
+        ":drake_cassie_sim_py",
+        ":mujoco_cube_sim_py",
+        "//bindings/pydairlib/common:plot_styler",
+    ],
+)
+
+py_binary(
+    name = "test_mujoco_sim",
+    srcs = ["test_mujoco_sim.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils",
+        "//bindings/pydairlib/cassie:mujoco_sim",
+        "//bindings/pydairlib/multibody",
+        "@drake//bindings/pydrake",
+        "@lcm//:lcm-python",
+    ],
+)
+
+py_library(
+    name = "cassie_impact_data",
+    srcs = ["cassie_impact_data.py"],
+    deps = [
+        ":cassie_loss_utils",
+        "//bindings/pydairlib/cassie:cassie_utils",
+        "//bindings/pydairlib/cassie:mujoco_sim",
+        "//bindings/pydairlib/multibody",
+        "@drake//bindings/pydrake",
+        "@lcm//:lcm-python",
+    ],
+)
+
+py_binary(
+    name = "cassie_loss_plotter",
+    srcs = ["cassie_loss_plotter.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils",
+        "//bindings/pydairlib/cassie:kinematics_helper",
+        "//bindings/pydairlib/common",
+#        "//bindings/pydairlib/cassie:mujoco_sim",
+        "//bindings/pydairlib/multibody",
+        "@drake//bindings/pydrake",
+        "@lcm//:lcm-python",
+    ],
+)

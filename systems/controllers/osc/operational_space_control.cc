@@ -265,7 +265,7 @@ void OperationalSpaceControl::CheckCostSettings() {
   }
   if (W_joint_accel_.size() != 0) {
     DRAKE_DEMAND((W_joint_accel_.rows() == n_v_) &&
-        (W_joint_accel_.cols() == n_v_));
+                 (W_joint_accel_.cols() == n_v_));
   }
 }
 void OperationalSpaceControl::CheckConstraintSettings() {
@@ -290,8 +290,8 @@ void OperationalSpaceControl::Build() {
 
   // Size of decision variable
   n_h_ = (kinematic_evaluators_ == nullptr)
-         ? 0
-         : kinematic_evaluators_->count_full();
+             ? 0
+             : kinematic_evaluators_->count_full();
   n_c_ = kSpaceDim * all_contacts_.size();
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
@@ -450,7 +450,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   double timestamp = robot_output->get_timestamp();
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-      .get_mutable_value();
+                            .get_mutable_value();
   if (fsm_state(0) != prev_fsm_state(0)) {
     prev_fsm_state(0) = fsm_state(0);
 
@@ -475,9 +475,9 @@ VectorXd OperationalSpaceControl::SolveQp(
       active_contact_set = map_iterator->second;
     } else {
       static const drake::logging::Warn log_once(const_cast<char*>(
-                                                     (std::to_string(fsm_state) +
-                                                         " is not a valid finite state machine state in OSC.")
-                                                         .c_str()));
+          (std::to_string(fsm_state) +
+           " is not a valid finite state machine state in OSC.")
+              .c_str()));
     }
   }
 
@@ -719,7 +719,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (w_soft_constraint_ > 0) {
       cout << "soft constraint cost = "
            << 0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
-               (*epsilon_sol_)
+                  (*epsilon_sol_)
            << endl;
     }
     // 4. Tracking cost
@@ -734,7 +734,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         // term was not added to the QP since it doesn't change the result.
         cout << "Tracking cost (" << tracking_data->GetName() << ") = "
              << 0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
-                 (J_t * (*dv_sol_) + JdotV_t - ddy_t)
+                    (J_t * (*dv_sol_) + JdotV_t - ddy_t)
              << endl;
       }
     }
@@ -830,25 +830,25 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   double time_since_last_state_switch =
       used_with_finite_state_machine_
-      ? state->get_timestamp() -
-          context.get_discrete_state(prev_event_time_idx_).get_value()(0)
-      : state->get_timestamp();
+          ? state->get_timestamp() -
+                context.get_discrete_state(prev_event_time_idx_).get_value()(0)
+          : state->get_timestamp();
 
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_output->get_value()(0);
   output->input_cost =
       (W_input_.size() > 0)
-      ? (0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_))(0)
-      : 0;
+          ? (0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_))(0)
+          : 0;
   output->acceleration_cost =
       (W_joint_accel_.size() > 0)
-      ? (0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_))(0)
-      : 0;
+          ? (0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_))(0)
+          : 0;
   output->soft_constraint_cost =
       (w_soft_constraint_ > 0)
-      ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
-          (*epsilon_sol_))(0)
-      : 0;
+          ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
+             (*epsilon_sol_))(0)
+          : 0;
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
@@ -903,7 +903,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       output->tracking_cost.push_back(
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
-              (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0));
+           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0));
     }
   }
 
@@ -919,7 +919,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
-      plant_w_spr_.num_velocities());
+                   plant_w_spr_.num_velocities());
   x_w_spr << q_w_spr, v_w_spr;
 
   double timestamp = robot_output->get_timestamp();

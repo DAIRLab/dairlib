@@ -26,7 +26,7 @@ pybind_py_library(
 
 py_binary(
     name = "lcm_trajectory_plotter",
-    srcs = [":lcm_trajectory_plotter.py"],
+    srcs = ["lcm_trajectory_plotter.py"],
     deps = [
         ":lcm_trajectory_py",
         ":module_py",
@@ -36,7 +36,7 @@ py_binary(
 
 py_binary(
     name = "dircon_trajectory_plotter",
-    srcs = [":dircon_trajectory_plotter.py"],
+    srcs = ["dircon_trajectory_plotter.py"],
     deps = [
         ":lcm_trajectory_py",
         ":module_py",
@@ -48,7 +48,7 @@ py_binary(
 
 py_library(
     name = "process_lcm_log_py",
-    srcs = [":process_lcm_log.py"],
+    srcs = ["process_lcm_log.py"],
     deps = [
         ":module_py",
         "//lcmtypes:lcmtypes_robot_py",

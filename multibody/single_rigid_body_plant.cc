@@ -26,7 +26,7 @@ SingleRigidBodyPlant::SingleRigidBodyPlant(
   nv_ = plant_.num_velocities();
 }
 
-VectorXd SingleRigidBodyPlant::CalcSRBStateFromPlantState(const VectorXd& x) {
+VectorXd SingleRigidBodyPlant::CalcSRBStateFromPlantState(const VectorXd& x) const {
   Vector3d com_pos;
   Vector3d com_vel;
   Vector3d omega;

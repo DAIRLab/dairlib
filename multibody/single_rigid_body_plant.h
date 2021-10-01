@@ -24,7 +24,7 @@ class SingleRigidBodyPlant {
       bool use_com);
   double CalcMassFromListOfBodies(const std::vector<std::string>& bodies);
   double SetMassFromListOfBodies(const std::vector<std::string>& bodies);
-  Eigen::VectorXd CalcSRBStateFromPlantState(const Eigen::VectorXd& x);
+  Eigen::VectorXd CalcSRBStateFromPlantState(const Eigen::VectorXd& x) const;
   std::vector<Eigen::Vector3d> CalcFootPositions(const Eigen::VectorXd& x);
 
 

@@ -6,7 +6,6 @@
 #include "common/file_utils.h"
 
 using drake::multibody::JacobianWrtVariable;
-using drake::multibody::MultibodyPlant;
 using drake::multibody::BodyFrame;
 
 using drake::systems::Context;
@@ -30,7 +29,7 @@ using Eigen::MatrixXd;
 using Eigen::Matrix3d;
 using Eigen::Quaterniond;
 
-using dairlib::multibody::WorldPointEvaluator;
+using dairlib::multibody::SingleRigidBodyPlant;
 using dairlib::multibody::makeNameToPositionsMap;
 using dairlib::multibody::makeNameToVelocitiesMap;
 using dairlib::multibody::SetPositionsAndVelocitiesIfNew;
@@ -45,24 +44,15 @@ Matrix3d HatOperator3x3(const Vector3d& v){
   return v_hat;
 }
 
-SrbdCMPC::SrbdCMPC(const MultibodyPlant<double>& plant,
-                   Context<double> *plant_context, double dt,
-                   double swing_ft_height, bool planar, bool traj,
+SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
+                   double swing_ft_height, bool traj,
                    bool used_with_finite_state_machine,
                    bool use_com) :
-    plant_(plant),
-    plant_context_(plant_context),
-    world_frame_(plant_.world_frame()),
     dt_(dt),
     swing_ft_ht_(swing_ft_height),
-    planar_(planar),
     traj_tracking_(traj),
     use_com_(use_com),
     use_fsm_(used_with_finite_state_machine){
-
-  nq_ = plant.num_positions();
-  nv_ = plant.num_velocities();
-  nu_p_ = plant.num_actuators();
 
   nx_ = kNx3d;
   nu_ = kNu3d;
@@ -431,11 +421,11 @@ EventStatus SrbdCMPC::PeriodicUpdate(
     double last_event_time = discrete_state->get_vector(prev_event_time_idx_).get_value()(0);
     time_since_last_event = (last_event_time <= 0) ? timestamp : timestamp - last_event_time;
 
-    UpdateInitialStateConstraint(CalcCentroidalStateFromPlant(x, timestamp),
+    UpdateInitialStateConstraint(plant_.CalcSRBStateFromPlantState(x),
                                  fsm_state, time_since_last_event);
   } else {
     UpdateInitialStateConstraint(
-        CalcCentroidalStateFromPlant(x, timestamp), 0, 0);
+        plant_.CalcSRBStateFromPlantState(x), 0, 0);
   }
 
   solver_.Solve(prog_, {}, {}, &result_);
@@ -456,11 +446,6 @@ EventStatus SrbdCMPC::PeriodicUpdate(
 
   most_recent_sol_ = MakeLcmTrajFromSol(
       result_, timestamp, time_since_last_event,  x);
-
-  //print_current_init_state_constraint();
-  //print_initial_state_constraints();
-  //print_state_knot_constraints();
-  //print_dynamics_constraints();
 
   return EventStatus::Succeeded();
 }
@@ -541,10 +526,12 @@ void SrbdCMPC::UpdateInitialStateConstraint(const VectorXd& x0,
 }
 
 /// TODO(@Brian-Acosta) Update trajectory to be pelvis trajectory given offset
-lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalProgramResult& result,
-                                             double time, double time_since_last_touchdown,
-                                             const VectorXd& state) const {
-  DRAKE_ASSERT(result.is_success());
+lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
+    const drake::solvers::MathematicalProgramResult& result,
+    double time, double time_since_last_touchdown,
+    const VectorXd& state) const {
+
+  DRAKE_DEMAND(result.is_success());
 
   LcmTrajectory::Trajectory CoMTraj;
   LcmTrajectory::Trajectory AngularTraj;
@@ -612,54 +599,9 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(const drake::solvers::MathematicalP
 }
 
 MatrixXd SrbdCMPC::CalcSwingFootKnotPoints(const VectorXd& x,
-                                           const MathematicalProgramResult& result, double time_since_last_touchdown) const {
+    const MathematicalProgramResult& result,
+    double time_since_last_touchdown) const {
 
-  int next_mode_idx = (x0_idx_[0] == nmodes_ - 1) ? 0 : x0_idx_[0] + 1;
-  auto& curr_mode = modes_.at(x0_idx_[0]);
-  auto& next_mode = modes_.at(next_mode_idx);
-
-  VectorXd curr_pos = VectorXd::Zero(kLinearDim_), mid_pos = VectorXd::Zero(kLinearDim_),
-      end_pos = VectorXd::Zero(kLinearDim_), curr_vel = VectorXd::Zero(kLinearDim_),
-      mid_vel = VectorXd::Zero(kLinearDim_);
-
-  Vector3d swing_ft_plant = Vector3d::Zero(), swing_vel_plant = Vector3d::Zero();
-
-  MatrixXd J_swing_vel = MatrixXd::Zero(3, nv_);
-  MatrixXd swing_ft_traj = MatrixXd::Zero(2*kLinearDim_, 3);
-
-  /** Calculate current swing foot position and velocity **/
-  auto& swing_pt = contact_points_.at(1 - curr_mode.stance);
-  SetPositionsAndVelocitiesIfNew<double>(plant_, x, plant_context_);
-  plant_.CalcPointsPositions(*plant_context_, swing_pt.first,
-                             swing_pt.second, world_frame_, &swing_ft_plant);
-  plant_.CalcJacobianTranslationalVelocity(*plant_context_,
-                                           JacobianWrtVariable::kV, swing_pt.first,Vector3d::Zero(),
-                                           world_frame_, world_frame_, &J_swing_vel);
-
-  swing_vel_plant = J_swing_vel * x.tail(nv_);
-
-  if (planar_) {
-    curr_pos = MakePlanarVectorFrom3d(swing_ft_plant);
-    curr_vel = MakePlanarVectorFrom3d(swing_vel_plant);
-  } else {
-    curr_pos = swing_ft_plant;
-    curr_vel = swing_vel_plant;
-  }
-
-  end_pos = result.GetSolution(next_mode.xx.at(0)
-                                   .segment(nx_ + kLinearDim_ * next_mode.stance, kLinearDim_));
-
-  mid_pos = (curr_pos  + end_pos) / 2.0;
-  mid_pos (kLinearDim_-1) = swing_ft_ht_ - pow((time_since_last_touchdown - (dt_* curr_mode.N)/2.0), 2);
-
-  swing_ft_traj.block(0, 0, kLinearDim_, 1) = curr_pos;
-  swing_ft_traj.block(0, 1, kLinearDim_, 1) = mid_pos;
-  swing_ft_traj.block(0,2, kLinearDim_, 1) = end_pos;
-  swing_ft_traj.block(kLinearDim_, 0, kLinearDim_, 1) = curr_vel;
-  swing_ft_traj.block(kLinearDim_, 1, kLinearDim_, 1) = mid_vel;
-  swing_ft_traj.block(kLinearDim_, 2, kLinearDim_, 1) = VectorXd::Zero(kLinearDim_);
-
-  return swing_ft_traj;
 }
 
 void SrbdCMPC::print_initial_state_constraints() const {

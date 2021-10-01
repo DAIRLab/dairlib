@@ -21,9 +21,8 @@
 #include "drake/solvers/solve.h"
 
 #include "lcm/lcm_trajectory.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/single_rigid_body_plant.h"
 #include "solvers/constraint_factory.h"
 #include "systems/framework/output_vector.h"
 #include "solvers/fast_osqp_solver.h"
@@ -67,14 +66,14 @@ Eigen::Matrix3d HatOperator3x3(const Eigen::Vector3d& v);
 
 class SrbdCMPC : public drake::systems::LeafSystem<double> {
  public:
-  SrbdCMPC(const drake::multibody::MultibodyPlant<double>& plant,
-           drake::systems::Context<double>* plant_context, double dt,
-           double swing_ft_height, bool planar, bool traj,
+  SrbdCMPC(const multibody::SingleRigidBodyPlant& plant, double dt,
+           double swing_ft_height, bool traj,
            bool used_with_finite_state_machine = true,
-           bool use_com = true);
+           bool use_com = false);
 
 
-  /// Appends a contact mode to the end of the planning horizon. Currently SrbdCMPC only supports the contact sequence
+  /// Appends a contact mode to the end of the planning horizon.
+  /// Currently SrbdCMPC only supports the contact sequence
   /// [kLeft, kRight] so one should call AddMode(BipedStance::kLeft, BipedStance::kRight
   /// @param stance BipedStance::kLeft or BipedStance::kRight
   /// @param dynamics
@@ -114,8 +113,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
   void SetMu(double mu) { mu_ = mu; }
   int num_modes() { return nmodes_; }
-
-  Eigen::Vector2d MakePlanarVectorFrom3d(Eigen::Vector3d vec) const;
 
   std::vector<SrbdMode> get_modes() {return modes_;}
 
@@ -199,8 +196,9 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   // Problem variables
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd R_;
-  Eigen::VectorXd xdes_;
   Eigen::MatrixXd Qf_;
+  mutable Eigen::VectorXd x_des_;
+  mutable Eigen::MatrixXd x_des_mat_;
   std::vector<SrbdMode> modes_;
   std::vector<int> mode_knot_counts_;
   int total_knots_ = 0;
@@ -234,14 +232,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
 
   // drake boilerplate
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  const drake::multibody::BodyFrame<double>& world_frame_;
-  std::string base_;
-  Eigen::Vector3d com_from_base_origin_;
-
-  mutable drake::systems::Context<double>* plant_context_;
-  mutable Eigen::VectorXd x_des_;
-  mutable Eigen::MatrixXd x_des_mat_;
+  const multibody::SingleRigidBodyPlant& plant_;
 
   // constants
   const double kMaxSolveDuration_ = 1.00;

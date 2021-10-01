@@ -76,9 +76,12 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   /// functions, p_i + v_i*t, for the desired trajectory. We use
   /// FirstOrderHold() to approximately generate the function, so we need to
   /// have the endpoint of the trajectory. We generate the endpoint by
-  /// looking ahead what the position is in 0.1 second with fixed velocity v_i.
+  /// looking ahead what the position is in dt second with fixed velocity v_i.
   /// Note that we construct trajectories in R^4 (quaternion space), so we need
   /// to transform the yaw trajectory into quaternion representation.
+  /// The value of dt changes the trajectory time horizon. As long as it's
+  /// larger than the recompute time, the value doesn't affect the control
+  /// outcome.
   double dt = 10;
   double approx_pelvis_yaw_f = approx_pelvis_yaw_i + des_yaw_vel(0) * dt;
   // We set pitch and roll = 0, because we also use this traj for balance in

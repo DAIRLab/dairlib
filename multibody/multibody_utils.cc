@@ -537,36 +537,6 @@ Eigen::MatrixXd JwrtqdotToJwrtv(
   return ret;
 }
 
-double GetTotalMass(const MultibodyPlant<double>& plant) {
-  // Get all body indices
-  std::vector<ModelInstanceIndex> model_instances;
-  for (ModelInstanceIndex model_instance_index(1);
-       model_instance_index < plant.num_model_instances();
-       ++model_instance_index)
-    model_instances.push_back(model_instance_index);
-  std::vector<BodyIndex> body_indexes;
-  for (auto model_instance : model_instances) {
-    const std::vector<BodyIndex> body_index_in_instance =
-        plant.GetBodyIndices(model_instance);
-    for (BodyIndex body_index : body_index_in_instance)
-      body_indexes.push_back(body_index);
-  }
-
-  // Get total mass
-  double composite_mass = 0;
-  std::unique_ptr<drake::systems::Context<double>> context =
-      plant.CreateDefaultContext();
-  for (BodyIndex body_index : body_indexes) {
-    if (body_index == 0) continue;
-    const drake::multibody::Body<double>& body = plant.get_body(body_index);
-
-    // Calculate composite_mass.
-    const double& body_mass = body.get_mass(*context);
-    // composite_mass = ∑ mᵢ
-    composite_mass += body_mass;
-  }
-  return composite_mass;
-};
 
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT

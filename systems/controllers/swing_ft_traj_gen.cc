@@ -168,6 +168,7 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
       // Testing
       // Heuristic ratio for LIPM dyanmics (because the centroidal angular
       // momentum is not constant
+      // TODO(yminchen): use either this or the one in lipm_traj_gen
       Vector3d toe_left_origin_position;
       plant_.CalcPointsPositions(*context_, left_right_foot_.at(0).second,
                                  Vector3d::Zero(), pelvis_.body_frame(),
@@ -177,8 +178,8 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
                                  Vector3d::Zero(), pelvis_.body_frame(),
                                  &toe_right_origin_position);
       double dist = toe_left_origin_position(1) - toe_right_origin_position(1);
-      // <0.2 meter: ratio 1
-      // >0.5 meter: ratio 0.8  //0.65
+      // <foot_spread_lb_ meter: ratio 1
+      // >foot_spread_ub_ meter: ratio ratio_lb_
       // Linear interpolate in between
       heuristic_ratio_ = 1;
       if (dist > foot_spread_ub_) {
@@ -220,9 +221,6 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   Eigen::MatrixXd rot(2, 2);
   rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw),
       sin(approx_pelvis_yaw), cos(approx_pelvis_yaw);
-  /*cout << "========\n";
-  cout << approx_pelvis_yaw << endl;
-  cout << rot << endl;*/
 
   // Get CoM_pos
   Vector3d CoM_curr = plant_.CalcCenterOfMassPositionInWorld(*context_);
@@ -238,32 +236,6 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
       com_traj_output->get_value<drake::trajectories::Trajectory<double>>();
   CoM_pos_pred = com_traj.value(end_time_of_this_interval);
   CoM_vel_pred = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
-  /*if (robot_output->get_timestamp() != last_timestamp_) {
-    std::ofstream outfile;
-    outfile.open("../debug_predicted_com_pos.txt", std::ios_base::app);
-    outfile << robot_output->get_timestamp() << ", ";
-    for (int i = 0; i < CoM_pos_pred.size(); i++) {
-      outfile << CoM_pos_pred(i);
-      if (i == CoM_pos_pred.size() - 1) {
-        outfile << "\n";
-      } else {
-        outfile << ", ";
-      }
-    }
-  }
-  if (robot_output->get_timestamp() != last_timestamp_) {
-    std::ofstream outfile;
-    outfile.open("../debug_predicted_com_vel.txt", std::ios_base::app);
-    outfile << robot_output->get_timestamp() << ", ";
-    for (int i = 0; i < CoM_vel_pred.size(); i++) {
-      outfile << CoM_vel_pred(i);
-      if (i == CoM_vel_pred.size() - 1) {
-        outfile << "\n";
-      } else {
-        outfile << ", ";
-      }
-    }
-  }*/
 
   // Filter the CoM_vel_pred
   if (robot_output->get_timestamp() != last_timestamp_) {
@@ -306,38 +278,12 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
         omega;
     *x_fs = CoM_pos_pred.head<2>() - com_wrt_foot;
   }
-  /*if (robot_output->get_timestamp() != last_timestamp_) {
-    std::ofstream outfile;
-    outfile.open("../debug_ft_pos_nominal.txt", std::ios_base::app);
-    outfile << robot_output->get_timestamp() << ", ";
-    for (int i = 0; i < x_fs->size(); i++) {
-      outfile << (*x_fs)(i);
-      if (i == x_fs->size() - 1) {
-        outfile << "\n";
-      } else {
-        outfile << ", ";
-      }
-    }
-  }*/
 
   // Walking position control
   // Read in speed regularization term
   auto speed_control_output = (BasicVector<double>*)this->EvalVectorInput(
       context, footstep_adjustment_port_);
   *x_fs += speed_control_output->get_value();
-  /*if (robot_output->get_timestamp() != last_timestamp_) {
-    std::ofstream outfile;
-    outfile.open("../debug_ft_pos_w_speed_control.txt", std::ios_base::app);
-    outfile << robot_output->get_timestamp() << ", ";
-    for (int i = 0; i < x_fs->size(); i++) {
-      outfile << (*x_fs)(i);
-      if (i == x_fs->size() - 1) {
-        outfile << "\n";
-      } else {
-        outfile << ", ";
-      }
-    }
-  }*/
 
   /// Imposing guards
   if (wrt_com_in_local_frame_) {
@@ -390,19 +336,6 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     *x_fs = ImposeStepLengthGuard(*x_fs, CoM_pos_pred.head<2>(),
                                   max_com_to_footstep_dist_);
   }
-  /*if (robot_output->get_timestamp() != last_timestamp_) {
-    std::ofstream outfile;
-    outfile.open("../debug_ft_pos_after_guard.txt", std::ios_base::app);
-    outfile << robot_output->get_timestamp() << ", ";
-    for (int i = 0; i < x_fs->size(); i++) {
-      outfile << (*x_fs)(i);
-      if (i == x_fs->size() - 1) {
-        outfile << "\n";
-      } else {
-        outfile << ", ";
-      }
-    }
-  }*/
 
   /// Assignment for stance foot height
   if (wrt_com_in_local_frame_) {

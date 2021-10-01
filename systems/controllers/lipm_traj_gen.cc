@@ -172,6 +172,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // Testing
     // Heuristic ratio for LIPM dyanmics (because the centroidal angular
     // momentum is not constant
+    // TODO(yminchen): use either this or the one in swing_ft_traj_gen
     Vector3d toe_left_origin_position;
     plant_.CalcPointsPositions(*context_, toe_left_frame_, Vector3d::Zero(),
                                pelvis_frame_, &toe_left_origin_position);
@@ -179,8 +180,8 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     plant_.CalcPointsPositions(*context_, toe_right_frame_, Vector3d::Zero(),
                                pelvis_frame_, &toe_right_origin_position);
     double dist = toe_left_origin_position(1) - toe_right_origin_position(1);
-    // <0.2 meter: ratio 1
-    // >0.5 meter: ratio 0.8  //0.65
+    // <foot_spread_lb_ meter: ratio 1
+    // >foot_spread_ub_ meter: ratio 0.9
     // Linear interpolate in between
     heuristic_ratio_ = 1;
     if (dist > foot_spread_ub_) {
@@ -264,19 +265,11 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   A(2, 2) = omega_y;
   A(3, 3) = -omega_y;
   // TODO: this is in global coordinate. But the ratio change should apply
-  //  locally. I think you just need to get the pos/vel in local frame + apply a
+  //  locally. I think we just need to get the pos/vel in local frame + apply a
   //  rotational matrix in front ( which can be lumped into K matrix). Then the
-  //  output is in global frame. For OSC swing foot tracking, we can simply view
-  //  the desired traj in local frame at the end of current calculation. And
-  //  change the wrt_frame when calling forward kinematic function in OSC
-  //  tracking data.
+  //  output is in global frame.
 
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
-}
-
-void Print3dVector(VectorXd input) {
-  cout << "np.array([" << input(0) << ", " << input(1) << ", " << input(2)
-       << "])\n";
 }
 
 void LIPMTrajGenerator::CalcTrajFromCurrent(
@@ -351,58 +344,6 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
   *exp_pp_traj =
       ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
-
-  /*cout << "start_time = " << start_time << endl;
-  cout << "end_time = " << end_time << endl;
-  cout << "stance_foot_pos = ";
-  Print3dVector(stance_foot_pos);
-  cout << "CoM_wrt_stance_foot_pos = ";
-  Print3dVector((CoM - stance_foot_pos));
-  cout << "dCoM = ";
-  Print3dVector(dCoM);
-  cout << "desired_com_height_ = " << desired_com_height_ << endl;
-  int n = 4;
-  cout << "N = " << n << endl;
-
-  VectorXd times(n);
-  for (int i = 0; i < n; i++) {
-    times(i) = start_time + i * (end_time - start_time) / (n - 1);
-  }
-  cout << "\"\"\"\n";
-  cout << "\ntimes = " << times.transpose() << endl;
-
-  cout << "\ncom along traj = \n";
-  for (int i = 0; i < n; i++) {
-    double t = times(i);
-    VectorXd vec = exp_pp_traj->value(t);
-    cout << vec(0) << ", " << vec(1) << ", " << vec(2) << endl;
-  }
-  cout << "\ncomdot along traj = \n";
-  for (int i = 0; i < n; i++) {
-    double t = times(i);
-    VectorXd vec = exp_pp_traj->MakeDerivative(1)->value(t);
-    cout << vec(0) << ", " << vec(1) << ", " << vec(2) << endl;
-  }
-  cout << "\"\"\"\n";
-  cout << endl;*/
-
-  /// Test centroidal momentum
-  /*drake::Vector3<double> p_WC =
-      plant_.CalcCenterOfMassPositionInWorld(*context_);
-  drake::multibody::SpatialMomentum<double> h_WC_eval =
-      plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, p_WC);
-  auto angular_momentum_wrt_com = h_WC_eval.rotational();
-  std::ofstream outfile;
-  outfile.open("../debug_centroidal_momentum.txt", std::ios_base::app);
-  outfile << robot_output->get_timestamp() << ", ";
-  for (int i = 0; i < angular_momentum_wrt_com.size(); i++) {
-    outfile << angular_momentum_wrt_com(i);
-    if (i == angular_momentum_wrt_com.size() - 1) {
-      outfile << "\n";
-    } else {
-      outfile << ", ";
-    }
-  }*/
 }
 void LIPMTrajGenerator::CalcTrajFromTouchdown(
     const Context<double>& context,

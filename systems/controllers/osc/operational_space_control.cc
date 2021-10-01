@@ -103,10 +103,9 @@ OperationalSpaceControl::OperationalSpaceControl(
       multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
   // Initialize the mapping from spring to no spring
-  map_position_from_spring_to_no_spring_ =
-      PositionMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
-  map_velocity_from_spring_to_no_spring_ =
-      VelocityMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
+  map_state_from_spring_to_no_spring_ =
+      multibody::CreateWithSpringsToWithoutSpringsMapPos(plant_w_spr,
+                                                         plant_wo_spr);
 
   // Get input limits
   VectorXd u_min(n_u_);
@@ -151,6 +150,18 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
+}
+
+// Optional features
+void OperationalSpaceControl::SetUpDoubleSupportPhaseBlending(
+    double ds_duration, int left_support_state, int right_support_state,
+    std::vector<int> ds_states) {
+  DRAKE_DEMAND(ds_duration > 0);
+  DRAKE_DEMAND(!ds_states.empty());
+  ds_duration_ = ds_duration;
+  left_support_state_ = left_support_state;
+  right_support_state_ = right_support_state;
+  ds_states_ = ds_states;
 }
 
 // Cost methods
@@ -681,23 +692,21 @@ VectorXd OperationalSpaceControl::SolveQp(
   joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
   // (Testing) 6. blend contact forces during double support phase
-  // WARNING: we hard coded the finite state machine state here. We also hard
-  // coded the double support duration
-  // Left, right and double support state have to be 0, 1 and 2, resp.
   if (ds_duration_ > 0) {
     MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
-    if ((fsm_state == 2) || (fsm_state == 3) || (fsm_state == 4)) {
+    if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
+        ds_states_.end()) {
       double alpha_left = 0;
       double alpha_right = 0;
-      if (prev_distinct_fsm_state_) {  // We assume right support state is 1
+      if (prev_distinct_fsm_state_ == right_support_state_) {
         // We want left foot force to gradually increase
         alpha_left = -1;
         alpha_right = time_since_last_state_switch /
-            (ds_duration_ - time_since_last_state_switch);
+                      (ds_duration_ - time_since_last_state_switch);
 
-      } else if (!prev_distinct_fsm_state_) {  // Assume left support state is 0
+      } else if (!prev_distinct_fsm_state_ == left_support_state_) {
         alpha_left = time_since_last_state_switch /
-            (ds_duration_ - time_since_last_state_switch);
+                     (ds_duration_ - time_since_last_state_switch);
         alpha_right = -1;
       }
       A(0, 0) = alpha_left / 2;
@@ -719,9 +728,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Solve the QP
-  //  const MathematicalProgramResult result = qp_solver_.Solve(*prog_);
-
-  //  const MathematicalProgramResult result = Solve(*prog_);
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
@@ -969,10 +975,6 @@ void OperationalSpaceControl::CalcOptimalInput(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
-
-  // Testing: Zero out the spring joints (avoid doing feedback with springs)
-  //  for(auto i : knee_ankle_pos_idx_list_) {q_w_spr(i) = 0;}
-  //  for(auto i : knee_ankle_vel_idx_list_) {v_w_spr(i) = 0;}
 
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
                    plant_w_spr_.num_velocities());

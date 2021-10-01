@@ -13,6 +13,11 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
+/// OscViewFrame is used to rotate the frame for translational task space
+/// tracking data (including ComTrackingData, TransTaskSpaceTrackingData,
+/// RelativeTranslationTrackingData).
+/// One use case: we can set the swing foot tracking gains in the local frame
+/// instead of the global frame.
 class OscViewFrame {
  public:
   OscViewFrame(const drake::multibody::Body<double>& body) : body_(body) {}
@@ -198,13 +203,13 @@ class OscTrackingData {
       const Eigen::VectorXd& x_wo_spr,
       drake::systems::Context<double>& context_wo_spr);
 
-  // Testing
+  // Additional feature -- disable feedforward acceleration
   std::set<int> idx_zero_feedforward_accel_ = {};
   void DisableFeedforwardAccel(const std::set<int>& indices) {
     idx_zero_feedforward_accel_ = indices;
   };
 
-  // OscViewFrame
+  // Additional feature -- OscViewFrame
   bool with_view_frame_ = false;
   const OscViewFrame* view_frame_;
   void SetViewFrame(const OscViewFrame& view_frame) {
@@ -507,6 +512,19 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<std::vector<int>> joint_vel_idx_wo_spr_;
 };
 
+/// RelativeTranslationTrackingData is used when we want to track a trajectory
+/// of a relative translational position in the task space.
+/// We built this class on top of two other OscTrackingData's. The user have to
+/// provide `to_frame_data` and `from_frame_data`.
+/// The resulting relative pos/vel/accel are
+///    position(to_frame_data) - position(from_frame_data),
+///    velocity(to_frame_data) - velocity(from_frame_data),
+///    acceleration(to_frame_data) - acceleration(from_frame_data).
+
+/// WARNING: this doesn't work for the rotational position.
+
+/// Developer notes: the current implementation is not the cleanest, since we
+/// have to add a PreUpdate() to make this work.
 class RelativeTranslationTrackingData final : public OscTrackingData {
  public:
   RelativeTranslationTrackingData(

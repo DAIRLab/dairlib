@@ -65,7 +65,7 @@ class TimeVisualizer(object):
 
             rt_ratio = dt / dt_real_time
 
-            #my_text = my_text + ', real time factor: %.2f' % rt_ratio
+            my_text = my_text + ', real time factor: %.2f' % rt_ratio
 
         vis.updateText(my_text, 'text')
 

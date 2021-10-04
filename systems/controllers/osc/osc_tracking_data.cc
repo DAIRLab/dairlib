@@ -339,8 +339,9 @@ void RotTaskSpaceTrackingData::UpdateYdotAndError(
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
   Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
                           ydot_des_(3));
-  Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
-  error_ydot_ = w_des_ - ydot_;
+  Vector3d w_des = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
+  ydot_des_ = w_des;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
+  error_ydot_ = w_des - ydot_;
 }
 
 void RotTaskSpaceTrackingData::UpdateYddotDes() {

@@ -197,6 +197,11 @@ class OscTrackingData {
   // correctly.
   void CheckOscTrackingData(bool no_control_gains = false);
 
+  // For unit test
+  void UpdateJAndJdotVForUnitTest(
+      const Eigen::VectorXd& x_wo_spr,
+      drake::systems::Context<double>& context_wo_spr);
+
   // Testing
   std::set<int> idx_zero_feedforward_accel_ = {};
   void DisableFeedforwardAccel(const std::set<int>& indices) {

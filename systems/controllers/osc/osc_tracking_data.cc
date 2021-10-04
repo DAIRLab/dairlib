@@ -258,6 +258,22 @@ void OscTrackingData::CheckOscTrackingData(bool no_control_gains) {
   DRAKE_DEMAND((W_.rows() == n_ydot_) && (W_.cols() == n_ydot_));
 }
 
+void OscTrackingData::UpdateJAndJdotVForUnitTest(
+    const Eigen::VectorXd& x_wo_spr,
+    drake::systems::Context<double>& context_wo_spr) {
+  auto start = std::chrono::high_resolution_clock::now();
+  UpdateJ(x_wo_spr, context_wo_spr);
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  cout << "Updating J takes " << elapsed.count() << "seconds" << endl;
+
+  start = std::chrono::high_resolution_clock::now();
+  UpdateJdotV(x_wo_spr, context_wo_spr);
+  finish = std::chrono::high_resolution_clock::now();
+  elapsed = finish - start;
+  cout << "Updating JdotV takes " << elapsed.count() << "seconds" << endl;
+}
+
 /**** ComTrackingData ****/
 ComTrackingData::ComTrackingData(const string& name, const MatrixXd& K_p,
                                  const MatrixXd& K_d, const MatrixXd& W,

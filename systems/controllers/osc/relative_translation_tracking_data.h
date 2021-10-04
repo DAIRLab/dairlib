@@ -1,0 +1,53 @@
+
+/// RelativeTranslationTrackingData is used when we want to track a trajectory
+/// of a relative translational position in the task space.
+/// We built this class on top of two other OscTrackingData's. The user have to
+/// provide `to_frame_data` and `from_frame_data`.
+/// The resulting relative pos/vel/accel are
+///    position(to_frame_data) - position(from_frame_data),
+///    velocity(to_frame_data) - velocity(from_frame_data),
+///    acceleration(to_frame_data) - acceleration(from_frame_data).
+
+/// WARNING: this doesn't work for the rotational position.
+
+/// Developer notes: the current implementation is not the cleanest, since we
+/// have to add a PreUpdate() to make this work.
+class RelativeTranslationTrackingData final : public OscTrackingData {
+ public:
+  RelativeTranslationTrackingData(
+      const std::string& name, const Eigen::MatrixXd& K_p,
+      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      OscTrackingData& to_frame_data, OscTrackingData& from_frame_data);
+
+  // PreUpdate updates the kinematics data for to_frame_data and
+  // from_frame_data. E.g. we have to compute the positions of both frames
+  // before we can get the relative position.
+  void PreUpdate(const Eigen::VectorXd& x_w_spr,
+                 const drake::systems::Context<double>& context_w_spr,
+                 const Eigen::VectorXd& x_wo_spr,
+                 const drake::systems::Context<double>& context_wo_spr,
+                 const drake::trajectories::Trajectory<double>& traj, double t,
+                 double t_since_last_state_switch,
+                 int finite_state_machine_state, const Eigen::VectorXd& v_proj,
+                 bool no_desired_traj = false) final;
+
+ private:
+  void UpdateYddotDes() final;
+  void UpdateY(const Eigen::VectorXd& x_wo_spr,
+               const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYError() final;
+  void UpdateYdot(const Eigen::VectorXd& x_wo_spr,
+                  const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateYdotError() final;
+  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
+               const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
+                   const drake::systems::Context<double>& context_wo_spr) final;
+
+  void CheckDerivedOscTrackingData() final;
+
+  OscTrackingData& to_frame_data_;
+  OscTrackingData& from_frame_data_;
+};

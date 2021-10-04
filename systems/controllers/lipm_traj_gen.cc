@@ -183,13 +183,10 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // <foot_spread_lb_ meter: ratio 1
     // >foot_spread_ub_ meter: ratio 0.9
     // Linear interpolate in between
-    heuristic_ratio_ = 1;
-    if (dist > foot_spread_ub_) {
-      heuristic_ratio_ = 0.9;
-    } else if (dist > foot_spread_lb_) {
-      heuristic_ratio_ = 1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
-                                 (dist - foot_spread_lb_);
-    }
+    heuristic_ratio_ = drake::math::saturate(
+        1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
+                (dist - foot_spread_lb_),
+        0.9, 1);
   }
 
   discrete_state->get_mutable_vector(prev_fsm_idx_).GetAtIndex(0) = fsm_state;

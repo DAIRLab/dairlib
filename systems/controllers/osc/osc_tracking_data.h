@@ -190,11 +190,6 @@ class OscTrackingData {
   // TwoFrameTrackingData, since we only need gains for the relative position.
   void CheckOscTrackingData(bool no_control_gains = false);
 
-  // For unit test
-  void UpdateJAndJdotVForUnitTest(
-      const Eigen::VectorXd& x_wo_spr,
-      drake::systems::Context<double>& context_wo_spr);
-
   // Additional feature -- disable feedforward acceleration
   std::set<int> idx_zero_feedforward_accel_ = {};
   void DisableFeedforwardAccel(const std::set<int>& indices) {

@@ -13,6 +13,14 @@ using Eigen::MatrixXd;
 
 namespace dairlib::multibody {
 
+Matrix3d HatOperator3x3(const Vector3d& v){
+  Eigen::Matrix3d v_hat = Eigen::Matrix3d::Zero();
+  v_hat << 0, -v(2), v(1),
+           v(2), 0, -v(0),
+           -v(1), v(0), 0;
+  return v_hat;
+}
+
 SingleRigidBodyPlant::SingleRigidBodyPlant(
     const MultibodyPlant<double>& plant,
     Context<double>* plant_context,
@@ -24,6 +32,7 @@ SingleRigidBodyPlant::SingleRigidBodyPlant(
     plant_context_(plant_context){
   nq_ = plant_.num_positions();
   nv_ = plant_.num_velocities();
+  nu_ = plant.num_actuators();
 }
 
 VectorXd SingleRigidBodyPlant::CalcSRBStateFromPlantState(const VectorXd& x) const {
@@ -100,10 +109,88 @@ void SingleRigidBodyPlant::AddBaseFrame(
 }
 
 void SingleRigidBodyPlant::AddContactPoint(
-    std::pair<Eigen::Vector3d, const drake::multibody::BodyFrame<double>&> pt,
+    const std::pair<
+        Eigen::Vector3d,
+        const drake::multibody::BodyFrame<double>&>& pt,
     BipedStance stance) {
   DRAKE_ASSERT(contact_points_.size() == stance);
   contact_points_.push_back(pt);
+}
+
+void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
+    double m, double yaw, BipedStance stance,
+    const Eigen::MatrixXd &b_I,
+    const Eigen::Vector3d &eq_com_pos,
+    const Eigen::Vector3d &eq_foot_pos,
+    const drake::EigenPtr<MatrixXd> &Ad,
+    const drake::EigenPtr<MatrixXd> &Bd,
+    const drake::EigenPtr<VectorXd> &bd) {
+
+  const Eigen::Vector3d g = {0.0, 0.0, 9.81};
+  drake::math::RollPitchYaw rpy(0.0, 0.0, yaw);
+  Matrix3d R_yaw = rpy.ToMatrix3ViaRotationMatrix();
+  Vector3d tau = {0.0,0.0,1.0};
+  Vector3d mg = {0.0, 0.0, m * 9.81};
+  Matrix3d lambda_hat = HatOperator3x3(mg);
+  Matrix3d g_I_inv = (R_yaw * b_I * R_yaw.transpose()).inverse();
+
+
+  MatrixXd A = MatrixXd::Zero(12,18);
+  MatrixXd B = MatrixXd::Zero(12,4);
+  VectorXd b = VectorXd::Zero(12);
+
+
+  // Continuous A matrix
+  A.block(0, 6, 3, 3) = Matrix3d::Identity();
+  A.block(3, 9, 3, 3) = R_yaw;
+  A.block(9, 0, 3, 3) = g_I_inv * lambda_hat;
+
+  // WARNING! This is not a general prupose function - we add an extra column
+  // to A specifically to account for an extra decision variable based on using
+  // multiple stance modes - one column will be sete to 0 during execution
+  A.block(9, 12, 3, 3) = -g_I_inv * lambda_hat;
+  A.block(9, 15, 3, 3) = -g_I_inv * lambda_hat;
+
+  // Continuous B matrix
+  B.block(6, 6, 3, 3) = (1.0 / m) * Matrix3d::Identity();
+  B.block(9, 6, 3, 3) = g_I_inv *
+      HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos));
+  B.block(9, 9, 3, 1) = g_I_inv * Vector3d(0.0, 0.0, 1.0);
+  B.block(12, 0, 6, 6) = MatrixXd::Identity(6, 6);
+
+  // Continuous Affine portion (b)
+  b.segment(6, 3) = -g;
+  b.segment(9, 3) = g_I_inv *
+      HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos)) * mg;
+
+  *Ad = A;
+  *Bd = B;
+  *bd = b;
+}
+
+void SingleRigidBodyPlant::CopyDiscreteLinearizedSrbDynamicsForMPC(
+    double dt, double m, double yaw, BipedStance stance,
+    const Eigen::MatrixXd &b_I,
+    const Eigen::Vector3d &eq_com_pos,
+    const Eigen::Vector3d &eq_foot_pos,
+    const drake::EigenPtr<MatrixXd> &Ad,
+    const drake::EigenPtr<MatrixXd> &Bd,
+    const drake::EigenPtr<VectorXd> &bd) {
+
+  MatrixXd A = MatrixXd::Zero(12,18);
+  MatrixXd B = MatrixXd::Zero(12,4);
+  VectorXd b = VectorXd::Zero(12);
+
+  CopyContinuousLinearized3dSrbDynamicsForMPC(
+      m, yaw, stance, b_I, eq_com_pos, eq_foot_pos, &A, &B, &b);
+
+  A = MatrixXd::Identity(12, 18) + A*dt;
+  B = B*dt;
+  b = b*dt;
+
+  *Ad = A;
+  *Bd = B;
+  *bd = b;
 }
 
 } // <\dairlib::multibody>

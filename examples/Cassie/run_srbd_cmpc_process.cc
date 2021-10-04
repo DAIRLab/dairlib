@@ -140,8 +140,8 @@ int DoMain(int argc, char* argv[]) {
   SrbdCMPC::CopyContinuous3dSrbDynamics(mass, 0.0, BipedStance::kRight,
       I_rot, des_com_pos, right_neutral_foot_pos, &Ar, &Br, &br);
 
-  SrbdDynamics left_stance_dynamics = {Al, Bl, bl};
-  SrbdDynamics right_stance_dynamics = {Ar, Br, br};
+  LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};
+  LinearSrbdDynamics right_stance_dynamics = {Ar, Br, br};
 
   std::cout << Al << '\n' << Bl << '\n' << bl << std::endl;
 
@@ -162,7 +162,9 @@ int DoMain(int argc, char* argv[]) {
   cmpc->AddContactPoint(left_pt, BipedStance::kLeft);
   cmpc->AddContactPoint(right_pt, BipedStance::kRight);
   std::vector<VectorXd> kin_nom = {des_com_pos - left_safe_nominal_foot_pos, des_com_pos - right_safe_nomonal_foot_pos};
-  cmpc->SetReachabilityLimit(gains.kin_reachability_lim, kin_nom, gains.W_kin_reach);
+  cmpc->SetReachabilityBoundingBox(gains.kin_reachability_lim,
+                                   kin_nom,
+                                   gains.W_kin_reach);
 
   // set mass
   cmpc->SetMass(mass);

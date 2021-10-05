@@ -171,14 +171,14 @@ void SrbdCMPC::MakeTerrainConstraints(
 
 void SrbdCMPC::MakeDynamicsConstraints() {
   for (auto& mode : modes_) {
-    for (int i = 0; i < mode.N; i++) {
+    for (int i = 1; i < mode.N; i++) {
       MatrixXd Aeq = MatrixXd::Zero(2*nx_ + nu_ + kLinearDim_);
       VectorXd beq = VectorXd::Zero(nx_);
       Vector3d pos = Vector3d::Zero();
       CopyDiscreteDynamicsConstraint(mode, false, pos, &Aeq, &beq);
       mode.dynamics_constraints.push_back(
           prog_.AddLinearEqualityConstraint(Aeq, beq,
-              {mode.xx.at(i), mode.pp, mode.uu.at(i), mode.xx.at(i+1)})
+              {mode.xx.at(i), mode.pp, mode.uu.at(i-1), mode.xx.at(i)})
           .evaluator().get());
     }
   }
@@ -368,7 +368,7 @@ void SrbdCMPC::UpdateInitialStateConstraint(
     const double t_since_last_switch) const {
 
   if (!use_fsm_) {
-    modes_.front().init_state_constraint.front()->
+    modes_.at(0).init_state_constraint.at(0)->
     UpdateCoefficients(MatrixXd::Identity(nx_, nx_), x0);
     return;
   }
@@ -383,16 +383,10 @@ void SrbdCMPC::UpdateInitialStateConstraint(
   modes_.at(x0_mode_idx_).init_state_constraint.at(x0_knot_idx_)->
       UpdateCoefficients(MatrixXd::Zero(nx_, nx_),VectorXd::Zero(nx_));
 
-
-  // Re-create current knot constraint if necessary.
-  // Otherwise re-create dynamics constraint
-  if (x0_knot_idx_ == 0) {
-    MatrixXd Aeq = MatrixXd::Identity(nx_, 2 * nx_);
-    Aeq.block(0, nx_, nx_, nx_) = -MatrixXd::Identity(nx_, nx_);
-    state_knot_constraints_.at(x0_mode_idx_)->UpdateCoefficients(Aeq, VectorXd::Zero(nx_));
-  } else {
-    MatrixXd
-  }
+  // Connect previously disjoint knot points before unconnecting the next pair
+  // We also manage some of the dynamics constraints
+  // here to avoid redundant computation
+  RestitchKnots();
 
   // Update the initial state index based on the timestamp
   x0_mode_idx_ = fsm_state;
@@ -403,18 +397,53 @@ void SrbdCMPC::UpdateInitialStateConstraint(
       UpdateCoefficients(MatrixXd::Identity(nx_, nx_), x0);
 
   // remove one constraint to break circular dependency
+  UnstitchKnots();
+
+  // Add terminal cost to new x_f
+  xf_idx = GetTerminalStepIdx();
+  modes_.at(xf_idx.first).terminal_cost.at(xf_idx.second)->
+      UpdateCoefficients(
+          2 * Qf_,
+          -2 * Qf_ * x_des_,
+          x_des_.transpose() * x_des_);
+}
+
+void SrbdCMPC::RestitchKnots() const {
+  // Re-create current knot constraint between modes
+  // or re-create dynamics constraint
+  MatrixXd A = MatrixXd::Zero(2*nx_ + nu_ + kLinearDim_);
+  VectorXd b = VectorXd::Zero(nx_);
+  Vector3d pos = Vector3d::Zero();
+  if (x0_knot_idx_ == 0) {
+    MatrixXd Aeq = MatrixXd::Identity(nx_, 2 * nx_);
+    Aeq.block(0, nx_, nx_, nx_) = -MatrixXd::Identity(nx_, nx_);
+    state_knot_constraints_.at(x0_mode_idx_)->UpdateCoefficients(
+        Aeq,
+        VectorXd::Zero(nx_));
+    CopyDiscreteDynamicsConstraint(
+        modes_.at(1 - x0_mode_idx_),
+        false, pos, &A, &b);
+    modes_.at(1 - x0_mode_idx_).dynamics_constraints.back()
+        ->UpdateCoefficients(A, b);
+  } else {
+    CopyDiscreteDynamicsConstraint(
+        modes_.at(x0_mode_idx_),
+        false, pos, &A, &b);
+    modes_.at(x0_mode_idx_).dynamics_constraints.at(x0_knot_idx_-1)
+        ->UpdateCoefficients(A, b);
+  }
+}
+
+void SrbdCMPC::UnstitchKnots() const {
   if (x0_knot_idx_ == 0) {
     state_knot_constraints_.at(x0_mode_idx_)->UpdateCoefficients(
         MatrixXd::Zero(nx_, 2 * nx_), VectorXd::Zero(nx_));
   } else {
     modes_.at(x0_mode_idx_).dynamics_constraints.at(x0_knot_idx_-1)->
-        UpdateCoefficients(MatrixXd::Zero(nx_, 2*nx_ + 2*nu_), VectorXd::Zero(nx_));
+        UpdateCoefficients(
+        MatrixXd::Zero(nx_, 2*nx_ + kLinearDim_ + nu_),
+        VectorXd::Zero(nx_));
   }
-
-  // Add terminal cost to new x_f
-  xf_idx = GetTerminalStepIdx();
-  modes_.at(xf_idx.first).terminal_cost.at(xf_idx.second)->
-      UpdateCoefficients(2 * Qf_, -2 * Qf_ * x_des_, x_des_.transpose() * x_des_);
 }
 
 lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(

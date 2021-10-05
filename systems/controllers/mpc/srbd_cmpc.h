@@ -98,6 +98,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void SetMu(double mu) { DRAKE_DEMAND(mu > 0);  mu_ = mu; }
 
   std::vector<SrbdMode> get_modes() { return modes_; }
+
   drake::solvers::MathematicalProgramResult solve_problem_as_is() {
     return drake::solvers::Solve(prog_);
   }
@@ -147,6 +148,10 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void UpdateInitialStateConstraint(
       const Eigen::VectorXd& x0,
       int fsm_state, double t_since_last_switch) const;
+
+  void RestitchKnots() const ;
+  void UnstitchKnots() const ;
+  void ModeTransitionConstraintUpdate() const;
 
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
 

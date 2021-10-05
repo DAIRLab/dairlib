@@ -155,6 +155,7 @@ void PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
                   q_perm_.inverse() * GetPositions(context));
 
   *r_com = pinocchio::getComFromCrba(pinocchio_model_, pinocchio_data_);
+  //  *r_com = pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_);
 }
 
 template <>

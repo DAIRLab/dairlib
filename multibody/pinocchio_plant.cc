@@ -25,6 +25,8 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::map;
 using std::string;
+using std::cout;
+using std::endl;
 
 template <typename T>
 PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf) :
@@ -53,6 +55,13 @@ void PinocchioPlant<T>::Finalize() {
 
   x = 0 * x;
 
+  //  x.head(nq) << 0.0195003, -0.0195003, 0, 0, 0.46061, 0.46061, -1.17829,
+  //      -1.17829, -0.0118189, -0.0192588, 1.45555, 1.45425, -0.0466754,
+  //      -1.59953, -0.0319659, -1.59137;
+
+  //  x.head(nq) << 0.0194984, -0.0194984, 0, 0, 0.499801, 0.499801, -1.22315,
+  //      -1.22315, 1.44726, 1.4471, -1.5974, -1.59782;
+
   auto context = createContext<T>(*this, x, u);
   // TODO: need to test actual forces
   drake::multibody::MultibodyForces<T> forces(*this);
@@ -64,8 +73,12 @@ void PinocchioPlant<T>::Finalize() {
   if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
     std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
   }
-  if (!TestCenterOfMass(*context, 1e-6)) {
-    std::cout << "PinocchioPlant TestCenterOfMass FAILED!!" << std::endl;
+  if (isQuaternion(*this)) {
+    // Pinocchio doesn't take the fixed-base body into account when computing
+    // the COM
+    if (!TestCenterOfMass(*context, 1e-6)) {
+      std::cout << "PinocchioPlant TestCenterOfMass FAILED!!" << std::endl;
+    }
   }
 }
 
@@ -154,8 +167,10 @@ void PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
   pinocchio::crba(pinocchio_model_, pinocchio_data_,
                   q_perm_.inverse() * GetPositions(context));
 
-  *r_com = pinocchio::getComFromCrba(pinocchio_model_, pinocchio_data_);
-  //  *r_com = pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_);
+  *r_com = pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_);
+  // *r_com = pinocchio::getComFromCrba(pinocchio_model_, pinocchio_data_);
+  // *r_com = pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_,
+  // q_perm_.inverse() * GetPositions(context));
 }
 
 template <>

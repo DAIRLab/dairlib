@@ -72,18 +72,18 @@ VectorXd SingleRigidBodyPlant::CalcSRBStateFromPlantState(const VectorXd& x) con
 }
 
 std::vector<Vector3d> SingleRigidBodyPlant::CalcFootPositions(const Eigen::VectorXd &x) {
-  SetPositionsIfNew<double>(plant_, x.head(nq_), plant_context_);
-  std::vector<Vector3d> foot_positions;
+  return {CalcFootPosition(x, kLeft), CalcFootPosition(x, kRight)};
+}
 
-  for (int i = 0; i < 2; i++) {
-    Vector3d pos  = Vector3d::Zero();
-    plant_.CalcPointsPositions(
-        *plant_context_,
-        contact_points_.at(i).second,
-        contact_points_.at(i).first, world_frame_, &pos);
-    foot_positions.push_back(pos);
-  }
-  return foot_positions;
+Vector3d SingleRigidBodyPlant::CalcFootPosition(
+    const Eigen::VectorXd &x, BipedStance stance) {
+  SetPositionsIfNew<double>(plant_, x.head(nq_), plant_context_);
+  Vector3d pos  = Vector3d::Zero();
+  plant_.CalcPointsPositions(
+      *plant_context_,
+      contact_points_.at(stance).second,
+      contact_points_.at(stance).first, world_frame_, &pos);
+  return pos;
 }
 
 double SingleRigidBodyPlant::CalcMassFromListOfBodies(

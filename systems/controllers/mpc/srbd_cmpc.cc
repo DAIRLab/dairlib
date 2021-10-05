@@ -42,12 +42,12 @@ SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
                    double swing_ft_height, bool traj,
                    bool used_with_finite_state_machine,
                    bool use_com) :
+    plant_(plant),
     use_fsm_(used_with_finite_state_machine),
     use_com_(use_com),
     traj_tracking_(traj),
     swing_ft_ht_(swing_ft_height),
-    dt_(dt),
-    plant_(plant) {
+    dt_(dt){
 
   // Create Ports
   state_port_ = this->DeclareVectorInputPort(
@@ -98,8 +98,6 @@ void SrbdCMPC::AddMode(
         prog_.NewContinuousVariables(nu_, "u_" + std::to_string(i)));
   }
 
-  mode.reachability_slack =
-      prog_.NewContinuousVariables(kLinearDim_, "reach_slack");
   mode.pp = prog_.NewContinuousVariables(kLinearDim_, "stance_pos");
   modes_.push_back(mode);
   nmodes_ ++;
@@ -139,6 +137,7 @@ void SrbdCMPC::Build() {
   MakeKinematicReachabilityConstraints();
   MakeStateKnotConstraints();
   MakeInitialStateConstraints();
+  MakeTerrainConstraints();
   MakeTrackingCost();
 
   std::cout << "Built SRBD MPC QP - Modes: "
@@ -186,16 +185,39 @@ void SrbdCMPC::MakeDynamicsConstraints() {
 }
 
 void SrbdCMPC::MakeInitialStateConstraints() {
-  for (auto & mode : modes_) {}
+  for (auto & mode : modes_) {
+    for (int i = 0; i < mode.N; i++) {
+      mode.init_state_constraint.push_back(
+          prog_.AddLinearEqualityConstraint(
+              MatrixXd::Zero(nx_, nx_),
+              VectorXd::Zero(nx_),
+              mode.xx.at(i))
+      .evaluator().get());
+    }
+  }
 }
 
 void SrbdCMPC::MakeKinematicReachabilityConstraints() {
+  MatrixXd A = MatrixXd::Zero(kLinearDim_, 2*kLinearDim_);
+  A << Matrix3d::Identity() , -Matrix3d::Identity();
+  for (auto & mode : modes_) {
+    for (int i = 0; i <= mode.N; i++) {
+      mode.reachability_constraints.push_back(
+          prog_.AddLinearConstraint(
+              A,
+              nominal_foot_pos_.at(mode.stance) - kin_bounds_,
+              nominal_foot_pos_.at(mode.stance) + kin_bounds_,
+              {mode.pp, mode.xx.at(i)})
+          .evaluator().get());
+    }
+  }
 }
 
 void SrbdCMPC::MakeFrictionConeConstraints() {
   for (auto &mode : modes_) {
     for (int i = 0; i < mode.N + 1; i++) {
-
+      mode.friction_constraints.push_back(
+          solvers::CreateLinearFrictionConstraint(mu_).get());
     }
   }
 }
@@ -300,9 +322,14 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   double time_since_last_event = timestamp;
 
   if (use_fsm_) {
-    int fsm_state = (int) (discrete_state->get_vector(current_fsm_state_idx_).get_value()(0) + 1e-6);
-    double last_event_time = discrete_state->get_vector(prev_event_time_idx_).get_value()(0);
-    time_since_last_event = (last_event_time <= 0) ? timestamp : timestamp - last_event_time;
+    int fsm_state =
+        (int) (discrete_state->get_vector(current_fsm_state_idx_)
+            .get_value()(0) + 1e-6);
+    double last_event_time =
+        discrete_state->get_vector(prev_event_time_idx_).get_value()(0);
+
+    time_since_last_event = (last_event_time <= 0) ?
+        timestamp : timestamp - last_event_time;
 
     UpdateInitialStateConstraint(plant_.CalcSRBStateFromPlantState(x),
                                  fsm_state, time_since_last_event);
@@ -316,7 +343,7 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   /* Debugging - (not that helpful) */
   if (result_.get_solution_result() == drake::solvers::kInfeasibleConstraints) {
     std::cout << "Infeasible problem! See infeasible constraints below:\n";
-    for (auto name : result_.GetInfeasibleConstraintNames(prog_)) {
+    for (auto & name : result_.GetInfeasibleConstraintNames(prog_)) {
       std::cout << name << std::endl;
     }
   }
@@ -364,8 +391,7 @@ void SrbdCMPC::UpdateInitialStateConstraint(
     Aeq.block(0, nx_, nx_, nx_) = -MatrixXd::Identity(nx_, nx_);
     state_knot_constraints_.at(x0_mode_idx_)->UpdateCoefficients(Aeq, VectorXd::Zero(nx_));
   } else {
-    modes_.at(x0_mode_idx_).dynamics_constraints.at(x0_knot_idx_-1)->
-        UpdateCoefficients();
+    MatrixXd
   }
 
   // Update the initial state index based on the timestamp

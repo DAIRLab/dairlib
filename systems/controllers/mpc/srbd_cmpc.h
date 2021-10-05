@@ -40,15 +40,14 @@ typedef struct SrbdMode {
   int N;
 
   drake::solvers::VectorXDecisionVariable pp;
-  drake::solvers::VectorXDecisionVariable reachability_slack;
-  drake::solvers::LinearConstraint* reachability_constraints;
+
   drake::solvers::LinearConstraint* terrain_constraint;
 
   std::vector<drake::solvers::VectorXDecisionVariable> xx;
   std::vector<drake::solvers::VectorXDecisionVariable> uu;
+  std::vector<drake::solvers::LinearConstraint*> reachability_constraints;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost;
   std::vector<drake::solvers::QuadraticCost*> terminal_cost;
-  std::vector<drake::solvers::QuadraticCost*> input_cost;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints;
   std::vector<drake::solvers::LinearEqualityConstraint*> init_state_constraint;
@@ -96,11 +95,9 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
       const std::vector<Eigen::VectorXd>& nominal_relative_pos,
       const Eigen::MatrixXd& kin_reach_soft_contraint_w);
 
-
   void SetMu(double mu) { DRAKE_DEMAND(mu > 0);  mu_ = mu; }
 
-  std::vector<SrbdMode> get_modes() {return modes_;}
-
+  std::vector<SrbdMode> get_modes() { return modes_; }
   drake::solvers::MathematicalProgramResult solve_problem_as_is() {
     return drake::solvers::Solve(prog_);
   }
@@ -217,8 +214,8 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   drake::solvers::OsqpSolver solver_;
   mutable drake::solvers::MathematicalProgramResult result_;
   mutable drake::solvers::MathematicalProgram prog_;
-  mutable int x0_mode_idx_;
-  mutable int x0_knot_idx_;
+  mutable int x0_mode_idx_ = 0;
+  mutable int x0_knot_idx_ = 0;
   mutable lcmt_saved_traj most_recent_sol_;
 
   // constraints

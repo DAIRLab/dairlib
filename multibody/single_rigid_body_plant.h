@@ -28,6 +28,7 @@ class SingleRigidBodyPlant {
   double SetMassFromListOfBodies(const std::vector<std::string>& bodies);
   Eigen::VectorXd CalcSRBStateFromPlantState(const Eigen::VectorXd& x) const;
   std::vector<Eigen::Vector3d> CalcFootPositions(const Eigen::VectorXd& x);
+  Eigen::Vector3d CalcFootPosition (const Eigen::VectorXd& x, BipedStance stance);
 
   void CopyContinuousLinearized3dSrbDynamicsForMPC(
       double m, double yaw, BipedStance stance,

@@ -33,8 +33,11 @@ class RotTaskSpaceTrackingData final : public ImpactInvariantTrackingData {
       int state, const std::string& body_name,
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
+ protected:
+  const drake::multibody::BodyFrame<double>* body_frame_w_spr_;
+  const drake::multibody::BodyFrame<double>* body_frame_wo_spr_;
+
  private:
-  void UpdateYddotDes() final;
   void UpdateY(const Eigen::VectorXd& x_w_spr,
                const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYError() final;
@@ -50,7 +53,7 @@ class RotTaskSpaceTrackingData final : public ImpactInvariantTrackingData {
 
   // frame_pose_ represents the pose of the frame (w.r.t. the body's frame)
   // which follows the desired rotation.
-  std::vector<Eigen::Isometry3d> frame_pose_;
+  Eigen::Isometry3d frame_pose_;
 };
 
 }  // namespace controllers

@@ -6,7 +6,6 @@
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/osc/osc_utils.h"
 
 using std::cout;
 using std::endl;
@@ -86,7 +85,7 @@ void OscTrackingData::UpdateDesired(
     ydot_des_ = traj.MakeDerivative(1)->value(t);
     yddot_des_ = traj.MakeDerivative(2)->value(t);
   }
-  UpdateYddotDes();
+  UpdateYddotDes(t);
 }
 
 void OscTrackingData::StoreYddotCommandSol(const VectorXd& dv) {

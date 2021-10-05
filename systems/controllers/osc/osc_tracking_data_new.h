@@ -148,7 +148,7 @@ class OscTrackingData {
   virtual void UpdateJdotV(
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) = 0;
-  virtual void UpdateYddotDes() = 0;
+  virtual void UpdateYddotDes(double t) = 0;
 
   // Finalize and ensure that users construct OscTrackingData derived class
   // correctly.

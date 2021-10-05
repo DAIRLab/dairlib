@@ -7,7 +7,7 @@
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/osc/osc_utils.h"
+//#include "systems/controllers/osc/osc_utils.h"
 
 using std::cout;
 using std::endl;

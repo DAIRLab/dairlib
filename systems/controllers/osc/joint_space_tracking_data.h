@@ -1,4 +1,8 @@
+#include "impact_invariant_tracking_data.h"
 
+namespace dairlib {
+namespace systems {
+namespace controllers {
 /// JointSpaceTrackingData is used when we want to track a trajectory
 /// in the joint space.
 
@@ -33,13 +37,10 @@ class JointSpaceTrackingData final : public OscTrackingData {
       const std::vector<std::string>& joint_vel_names);
 
  private:
-  void UpdateYddotDes() final;
   void UpdateY(const Eigen::VectorXd& x_w_spr,
                const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYError() final;
   void UpdateYdot(const Eigen::VectorXd& x_w_spr,
                   const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotError() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -49,8 +50,12 @@ class JointSpaceTrackingData final : public OscTrackingData {
 
   // `joint_pos_idx_wo_spr` is the index of the joint position
   // `joint_vel_idx_wo_spr` is the index of the joint velocity
-  std::vector<std::vector<int>> joint_pos_idx_w_spr_;
-  std::vector<std::vector<int>> joint_vel_idx_w_spr_;
-  std::vector<std::vector<int>> joint_pos_idx_wo_spr_;
-  std::vector<std::vector<int>> joint_vel_idx_wo_spr_;
+  std::vector<int> joint_pos_idx_w_spr_;
+  std::vector<int> joint_vel_idx_w_spr_;
+  std::vector<int> joint_pos_idx_wo_spr_;
+  std::vector<int> joint_vel_idx_wo_spr_;
 };
+
+}  // namespace controllers
+}  // namespace systems
+}  // namespace dairlib

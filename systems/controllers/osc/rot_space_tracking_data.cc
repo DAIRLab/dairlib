@@ -27,13 +27,11 @@ void RotTaskSpaceTrackingData::AddFrameToTrack(const std::string& body_name,
                                                const Isometry3d& frame_pose) {
   DRAKE_DEMAND(plant_w_spr_.HasBodyNamed(body_name));
   DRAKE_DEMAND(plant_wo_spr_.HasBodyNamed(body_name));
-  body_frames_w_spr_.push_back(
-      &plant_w_spr_.GetBodyByName(body_name).body_frame());
-  body_frames_wo_spr_.push_back(
-      &plant_wo_spr_.GetBodyByName(body_name).body_frame());
-  body_index_w_spr_.push_back(plant_w_spr_.GetBodyByName(body_name).index());
-  body_index_wo_spr_.push_back(plant_wo_spr_.GetBodyByName(body_name).index());
-  frame_pose_.push_back(frame_pose);
+  body_frame_w_spr_ =
+      &plant_w_spr_.GetBodyByName(body_name).body_frame();
+  body_frame_wo_spr_ =
+      &plant_wo_spr_.GetBodyByName(body_name).body_frame();
+  frame_pose_ = frame_pose;
 }
 
 void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(
@@ -53,11 +51,13 @@ void RotTaskSpaceTrackingData::UpdateYddotDes() {
 
 void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
                                        const Context<double>& context_w_spr) {
-  auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(
-      context_w_spr,
-      plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
+//  auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(
+//      context_w_spr,
+//      plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
+  auto transform_mat = plant_w_spr_.CalcRelativeTransform(
+      context_w_spr, *body_frame_w_spr_, plant_w_spr_.world_frame());
   Quaterniond y_quat(transform_mat.rotation() *
-                     frame_pose_.at(GetStateIdx()).linear());
+                     frame_pose_.linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
@@ -83,8 +83,8 @@ void RotTaskSpaceTrackingData::UpdateYdot(
   MatrixXd J_spatial(6, plant_w_spr_.num_velocities());
   plant_w_spr_.CalcJacobianSpatialVelocity(
       context_w_spr, JacobianWrtVariable::kV,
-      *body_frames_w_spr_.at(GetStateIdx()),
-      frame_pose_.at(GetStateIdx()).translation(), world_w_spr_, world_w_spr_,
+      *body_frame_w_spr_,
+      frame_pose_.translation(), world_w_spr_, world_w_spr_,
       &J_spatial);
   ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
           x_w_spr.tail(plant_w_spr_.num_velocities());
@@ -107,8 +107,8 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
   MatrixXd J_spatial(6, plant_wo_spr_.num_velocities());
   plant_wo_spr_.CalcJacobianSpatialVelocity(
       context_wo_spr, JacobianWrtVariable::kV,
-      *body_frames_wo_spr_.at(GetStateIdx()),
-      frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_, world_wo_spr_,
+      *body_frame_wo_spr_,
+      frame_pose_.translation(), world_wo_spr_, world_wo_spr_,
       &J_spatial);
   J_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols());
 }
@@ -118,23 +118,15 @@ void RotTaskSpaceTrackingData::UpdateJdotV(
   JdotV_ = plant_wo_spr_
                .CalcBiasSpatialAcceleration(
                    context_wo_spr, JacobianWrtVariable::kV,
-                   *body_frames_wo_spr_.at(GetStateIdx()),
-                   frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
+                   *body_frame_wo_spr_,
+                   frame_pose_.translation(), world_wo_spr_,
                    world_wo_spr_)
                .rotational();
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-  if (body_index_w_spr_.empty()) {
-    body_index_w_spr_ = body_index_wo_spr_;
-  }
-  DRAKE_DEMAND(body_index_w_spr_.size() == frame_pose_.size());
-  DRAKE_DEMAND(body_index_wo_spr_.size() == frame_pose_.size());
-  DRAKE_DEMAND(state_.empty() || (state_.size() == frame_pose_.size()));
-  if (state_.empty()) {
-    DRAKE_DEMAND(body_index_w_spr_.size() == 1);
-    DRAKE_DEMAND(body_index_wo_spr_.size() == 1);
-    DRAKE_DEMAND(frame_pose_.size() == 1);
+  if (body_frame_w_spr_ != nullptr) {
+    body_frame_w_spr_ = body_frame_wo_spr_;
   }
 }
 }

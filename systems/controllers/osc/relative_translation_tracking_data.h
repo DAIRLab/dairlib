@@ -1,4 +1,8 @@
+#include "options_tracking_data.h"
 
+namespace dairlib {
+namespace systems {
+namespace controllers {
 /// RelativeTranslationTrackingData is used when we want to track a trajectory
 /// of a relative translational position in the task space.
 /// We built this class on top of two other OscTrackingData's. The user have to
@@ -51,3 +55,7 @@ class RelativeTranslationTrackingData final : public OscTrackingData {
   OscTrackingData& to_frame_data_;
   OscTrackingData& from_frame_data_;
 };
+
+}  // namespace controllers
+}  // namespace systems
+}  // namespace dairlib

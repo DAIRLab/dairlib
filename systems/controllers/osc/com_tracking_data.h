@@ -15,7 +15,7 @@ class ComTrackingData final : public ImpactInvariantTrackingData {
 //  void AddStateToTrack(int state);
 
  private:
-  void UpdateYddotDes() final;
+  void UpdateYddotDes(double t) final;
   void UpdateY(const Eigen::VectorXd& x_w_spr,
                const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYError() final;

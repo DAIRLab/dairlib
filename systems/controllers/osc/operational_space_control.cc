@@ -4,7 +4,7 @@
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/osc/osc_utils.h"
+//#include "systems/controllers/osc/osc_utils.h"
 
 #include "drake/common/text_logging.h"
 
@@ -42,6 +42,8 @@ using multibody::makeNameToVelocitiesMap;
 using multibody::SetPositionsIfNew;
 using multibody::SetVelocitiesIfNew;
 using multibody::WorldPointEvaluator;
+using multibody::CreateWithSpringsToWithoutSpringsMapPos;
+using multibody::CreateWithSpringsToWithoutSpringsMapVel;
 
 int kSpaceDim = OscTrackingData::kSpaceDim;
 
@@ -104,9 +106,9 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ =
-      PositionMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
+      CreateWithSpringsToWithoutSpringsMapPos(plant_w_spr, plant_wo_spr);
   map_velocity_from_spring_to_no_spring_ =
-      VelocityMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
+      CreateWithSpringsToWithoutSpringsMapVel(plant_w_spr, plant_wo_spr);
 
   // Get input limits
   VectorXd u_min(n_u_);

@@ -1,4 +1,19 @@
+#include "relative_translation_tracking_data.h"
 
+using Eigen::Isometry3d;
+using Eigen::MatrixXd;
+using Eigen::Quaterniond;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+
+using std::string;
+using std::vector;
+
+using drake::multibody::JacobianWrtVariable;
+using drake::multibody::MultibodyPlant;
+using drake::systems::Context;
+
+namespace dairlib::systems::controllers {
 
 void RelativeTranslationTrackingData::PreUpdate(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr,
@@ -48,3 +63,5 @@ void RelativeTranslationTrackingData::CheckDerivedOscTrackingData() {
   to_frame_data_.CheckOscTrackingData(true);
   from_frame_data_.CheckOscTrackingData(true);
 }
+
+}  // namespace dairlib::systems::controllers

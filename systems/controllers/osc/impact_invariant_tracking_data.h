@@ -21,13 +21,14 @@ class ImpactInvariantTrackingData : public OscTrackingData {
     impact_invariant_projection_ = use_impact_invariant_projection;
   }
 
- private:
+ protected:
   void UpdateActual(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) override;
   void UpdateFilters(double t);
   void UpdateYdotError() override;
 
+ private:
   bool impact_invariant_projection_ = false;
   Eigen::VectorXd v_proj_;
 

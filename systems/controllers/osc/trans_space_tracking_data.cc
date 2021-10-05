@@ -34,18 +34,12 @@ void TransTaskSpaceTrackingData::AddStateAndPointToTrack(
   AddPointToTrack(body_name, pt_on_body);
 }
 
-void TransTaskSpaceTrackingData::UpdateYddotDes() {
-  yddot_des_converted_ = yddot_des_;
-}
-
 void TransTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
                                          const Context<double>& context_w_spr) {
   y_ = Vector3d::Zero();
   plant_w_spr_.CalcPointsPositions(context_w_spr, *body_frame_wo_spr_,
                                    pt_on_body_, world_w_spr_, &y_);
 }
-
-void TransTaskSpaceTrackingData::UpdateYError() { error_y_ = y_des_ - y_; }
 
 void TransTaskSpaceTrackingData::UpdateYdot(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
@@ -54,10 +48,6 @@ void TransTaskSpaceTrackingData::UpdateYdot(
       context_w_spr, JacobianWrtVariable::kV, *body_frame_w_spr_, pt_on_body_,
       world_w_spr_, world_w_spr_, &J);
   ydot_ = J * x_w_spr.tail(plant_w_spr_.num_velocities());
-}
-
-void TransTaskSpaceTrackingData::UpdateYdotError() {
-  error_ydot_ = ydot_des_ - ydot_;
 }
 
 void TransTaskSpaceTrackingData::UpdateJ(

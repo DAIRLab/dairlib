@@ -34,6 +34,10 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       const drake::systems::Context<T>& context,
       drake::EigenPtr<drake::VectorX<T>> r_com) const;
 
+  void CalcCenterOfMassTranslationalVelocityInWorld(
+      const drake::systems::Context<T>& context,
+      drake::EigenPtr<drake::VectorX<T>> v_com) const;
+
   //
   // Comparisons against MultibodyPlant
   //
@@ -48,6 +52,9 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       double tol) const;
 
   ::testing::AssertionResult TestCenterOfMass(
+      const drake::systems::Context<T>& context, double tol = 1e-5) const;
+
+  ::testing::AssertionResult TestCenterOfMassVel(
       const drake::systems::Context<T>& context, double tol = 1e-5) const;
 
  private:

@@ -53,7 +53,7 @@ void PinocchioPlant<T>::Finalize() {
   VectorX<T> u = 0*VectorX<T>::Random(nu);
   VectorX<T> vdot =  0*VectorX<T>::Random(nv);
 
-  x = 0 * x;
+//  x = 0 * x;
 
   //  x.head(nq) << 0.0195003, -0.0195003, 0, 0, 0.46061, 0.46061, -1.17829,
   //      -1.17829, -0.0118189, -0.0192588, 1.45555, 1.45425, -0.0466754,
@@ -73,13 +73,16 @@ void PinocchioPlant<T>::Finalize() {
   if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
     std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
   }
-  if (isQuaternion(*this)) {
+//  if (isQuaternion(*this)) {
     // Pinocchio doesn't take the fixed-base body into account when computing
     // the COM
     if (!TestCenterOfMass(*context, 1e-6)) {
       std::cout << "PinocchioPlant TestCenterOfMass FAILED!!" << std::endl;
     }
-  }
+    if (!TestCenterOfMassVel(*context, 1e-6)) {
+      std::cout << "PinocchioPlant TestCenterOfMassVel FAILED!!" << std::endl;
+    }
+//  }
 }
 
 template<typename T>
@@ -164,13 +167,10 @@ template <>
 void PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
     const Context<double>& context,
     drake::EigenPtr<drake::VectorX<double>> r_com) const {
-  pinocchio::crba(pinocchio_model_, pinocchio_data_,
-                  q_perm_.inverse() * GetPositions(context));
+  pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_,
+                          q_perm_.inverse() * GetPositions(context));
 
-  *r_com = pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_);
-  // *r_com = pinocchio::getComFromCrba(pinocchio_model_, pinocchio_data_);
-  // *r_com = pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_,
-  // q_perm_.inverse() * GetPositions(context));
+  *r_com = pinocchio_data_.com[0];
 }
 
 template <>
@@ -179,6 +179,25 @@ void PinocchioPlant<AutoDiffXd>::CalcCenterOfMassPositionInWorld(
     drake::EigenPtr<drake::VectorX<AutoDiffXd>> r_com) const {
   throw std::domain_error(
       "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");
+}
+
+template <>
+void PinocchioPlant<double>::CalcCenterOfMassTranslationalVelocityInWorld(
+    const Context<double>& context,
+    drake::EigenPtr<drake::VectorX<double>> v_com) const {
+  pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_,
+                          q_perm_.inverse() * GetPositions(context),
+                          v_perm_.inverse() * GetVelocities(context));
+  *v_com = pinocchio_data_.vcom[0];
+}
+
+template <>
+void PinocchioPlant<AutoDiffXd>::CalcCenterOfMassTranslationalVelocityInWorld(
+    const Context<AutoDiffXd>& context,
+    drake::EigenPtr<drake::VectorX<AutoDiffXd>> v_com) const {
+  throw std::domain_error(
+      "CalcCenterOfMassTranslationalVelocityInWorld not implemented with "
+      "AutoDiffXd");
 }
 
 template<>
@@ -212,6 +231,22 @@ template<>
   return drake::CompareMatrices(com, pin_com, tol);
 }
 
+template <>
+::testing::AssertionResult PinocchioPlant<double>::TestCenterOfMassVel(
+    const Context<double>& context, double tol) const {
+  Eigen::Vector3d com_vel;
+  Eigen::Vector3d pin_com_vel;
+
+  com_vel =
+      MultibodyPlant<double>::CalcCenterOfMassTranslationalVelocityInWorld(
+          context);
+
+  CalcCenterOfMassTranslationalVelocityInWorld(context, &pin_com_vel);
+  std::cout << "com_vel = " << com_vel.transpose() << std::endl;
+  std::cout << "pin_com_vel = " << pin_com_vel.transpose() << std::endl;
+
+  return drake::CompareMatrices(com_vel, pin_com_vel, tol);
+}
 
 template <>
 ::testing::AssertionResult PinocchioPlant<double>::TestInverseDynamics(
@@ -234,6 +269,13 @@ template<>
 
 template <>
 ::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestCenterOfMass(
+    const Context<AutoDiffXd>& context, double tol) const {
+  throw std::domain_error(
+      "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");
+}
+
+template <>
+::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestCenterOfMassVel(
     const Context<AutoDiffXd>& context, double tol) const {
   throw std::domain_error(
       "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");

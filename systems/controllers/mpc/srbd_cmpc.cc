@@ -4,6 +4,7 @@
 
 #include "srbd_cmpc.h"
 #include "common/file_utils.h"
+#include <numeric>
 
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::BodyFrame;
@@ -86,12 +87,6 @@ void SrbdCMPC::AddMode(
   mode.stance = stance;
   mode.dynamics = dynamics;
   mode.N = N;
-
-  mode.A = dynamics.A;
-  mode.B = dynamics.B;
-  mode.b = dynamics.b;
-
-  mode_knot_counts_.push_back(mode.N);
   total_knots_ += N;
 
   for ( int i = 0; i < N+1; i++) {
@@ -104,9 +99,8 @@ void SrbdCMPC::AddMode(
   }
 
   mode.reachability_slack =
-      prog_.NewContinuousVariables(6, "reach_slack");
-  mode.pp = prog_.NewContinuousVariables(6, "stance_pos");
-
+      prog_.NewContinuousVariables(kLinearDim_, "reach_slack");
+  mode.pp = prog_.NewContinuousVariables(kLinearDim_, "stance_pos");
   modes_.push_back(mode);
   nmodes_ ++;
 }
@@ -161,8 +155,6 @@ void SrbdCMPC::Build() {
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
   prog_.SetSolverOptions(solver_options);
-  std::cout << solver_options << std::endl;
-
 }
 
 void SrbdCMPC::MakeTerrainConstraints(
@@ -173,7 +165,7 @@ void SrbdCMPC::MakeTerrainConstraints(
   for (auto& mode : modes_) {
     mode.terrain_constraint =
         prog_.AddLinearEqualityConstraint(
-            TerrainNormal, TerrainPoint, mode.pp.tail(kLinearDim_))
+            TerrainNormal, TerrainPoint, mode.pp)
         .evaluator().get();
   }
 }
@@ -181,6 +173,14 @@ void SrbdCMPC::MakeTerrainConstraints(
 void SrbdCMPC::MakeDynamicsConstraints() {
   for (auto& mode : modes_) {
     for (int i = 0; i < mode.N; i++) {
+      MatrixXd Aeq = MatrixXd::Zero(2*nx_ + nu_ + kLinearDim_);
+      VectorXd beq = VectorXd::Zero(nx_);
+      Vector3d pos = Vector3d::Zero();
+      CopyDiscreteDynamicsConstraint(mode, false, pos, &Aeq, &beq);
+      mode.dynamics_constraints.push_back(
+          prog_.AddLinearEqualityConstraint(Aeq, beq,
+              {mode.xx.at(i), mode.pp, mode.uu.at(i), mode.xx.at(i+1)})
+          .evaluator().get());
     }
   }
 }
@@ -370,8 +370,7 @@ void SrbdCMPC::UpdateInitialStateConstraint(
 
   // Update the initial state index based on the timestamp
   x0_mode_idx_ = fsm_state;
-  x0_knot_idx_ = (int)(t_since_last_switch / dt_) %
-      (mode_knot_counts_.at(x0_mode_idx_) -1);
+  x0_knot_idx_ = (int)(t_since_last_switch / dt_) % modes_.at(x0_mode_idx_).N;
 
   // Add new initial state constraint
   modes_.at(x0_mode_idx_).init_state_constraint.at(x0_knot_idx_)->
@@ -417,44 +416,38 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
     AngularTraj.datatypes.emplace_back("double");
   }
 
-  /** preallocate Eigen matrices for trajectory blocks **/
-  MatrixXd x = MatrixXd::Zero(nx_ ,  total_knots_);
-  VectorXd x_time_knots = VectorXd::Zero(total_knots_);
 
-  int idx_x0 = x0_mode_idx_ * modes_.front().N + x0_knot_idx_;
-  for (int i = 0; i < nmodes_; i++) {
-    auto& mode = modes_.at(i);
+  /** Allocate Eigen matrices for trajectory blocks **/
+  int n_knot = (x0_knot_idx_ == 0) ? total_knots_ + 1 : total_knots_;
+  MatrixXd com = MatrixXd::Zero(2*kLinearDim_ , n_knot);
+  MatrixXd orientation = MatrixXd::Zero(2*kAngularDim_ , n_knot);
+  VectorXd time_knots = VectorXd::Zero(n_knot);
 
-    for (int j = 0; j < mode.N; j++) {
-      int idx = i * mode.N + j;
-      int col_i = idx - idx_x0;
-      col_i = (col_i < 0) ? (col_i + total_knots_) : col_i;
-
-      x.block(0, col_i, nx_, 1) =
-          result.GetSolution(mode.xx.at(j).head(nx_));
-      x_time_knots(col_i) = time + dt_ * col_i;
-    }
+  auto map = MapDecisionVariablesToKnots();
+  for (int i = 0; i < map.size(); i++) {
+    auto idx = map.at(i);
+    VectorXd xi = result.GetSolution(
+        modes_.at(idx.first).xx.at(idx.second));
+    com.block(0, i, 2*kLinearDim_, 1) << xi.head(kLinearDim_),
+        xi.segment(kLinearDim_ + kAngularDim_, kLinearDim_);
+    orientation.block(0, i, 2*kAngularDim_, 1) <<
+        xi.segment(kLinearDim_, kAngularDim_), xi.tail(kAngularDim_);
+    time_knots(i) = time + dt_ * i;
   }
 
-  MatrixXd x_com_knots(2*kLinearDim_, x.cols());
-  MatrixXd orientation_knots(2*kAngularDim_, x.cols());
-  x_com_knots << x.block(0, 0, kLinearDim_, x.cols()),
-                 x.block(kLinearDim_ + kAngularDim_, 0, kLinearDim_, x.cols());
-  orientation_knots << x.block(kLinearDim_, 0, kAngularDim_, x.cols()),
-                       x.block(2*kLinearDim_ + kAngularDim_, 0, kAngularDim_, x.cols());
-
-  CoMTraj.time_vector = x_time_knots;
-  CoMTraj.datapoints = x_com_knots;
-
-  AngularTraj.time_vector = x_time_knots;
-  AngularTraj.datapoints = orientation_knots;
+  CoMTraj.time_vector = time_knots;
+  CoMTraj.datapoints = com;
+  AngularTraj.time_vector = time_knots;
+  AngularTraj.datapoints = orientation;
 
   double next_touchdown_time = time +
       dt_ * (modes_.front().N + 1 - x0_knot_idx_);
 
-  Vector3d swing_ft_traj_breaks(time, 0.5*(time + next_touchdown_time), next_touchdown_time);
+  Vector3d swing_ft_traj_breaks(
+      time, 0.5*(time + next_touchdown_time), next_touchdown_time);
   SwingFootTraj.time_vector = swing_ft_traj_breaks;
-  SwingFootTraj.datapoints = CalcSwingFootKnotPoints(state, result, time_since_last_touchdown);;
+  SwingFootTraj.datapoints = CalcSwingFootKnotPoints(
+      state, result, time_since_last_touchdown);;
 
   LcmTrajectory lcm_traj;
   lcm_traj.AddTrajectory(CoMTraj.traj_name, CoMTraj);
@@ -471,7 +464,7 @@ MatrixXd SrbdCMPC::CalcSwingFootKnotPoints(const VectorXd& x,
 }
 
 void SrbdCMPC::print_constraint(
-    std::vector<drake::solvers::LinearConstraint*> constraints) const {
+    const std::vector<drake::solvers::LinearConstraint*>& constraints) const {
   for (auto &x0_const : constraints) {
     std::cout << x0_const->get_description() << ":\n A:\n"
               << x0_const->A() << "\nub:\n"
@@ -481,7 +474,7 @@ void SrbdCMPC::print_constraint(
 }
 
 void SrbdCMPC::print_constraint(
-    std::vector<drake::solvers::LinearEqualityConstraint*> constraints) const {
+    const std::vector<drake::solvers::LinearEqualityConstraint*>& constraints) const {
   for (auto &x0_const : constraints) {
     std::cout << x0_const->get_description() << ":\n A:\n"
               << x0_const->A() << "\nb:\n"
@@ -523,6 +516,45 @@ std::pair<int,int> SrbdCMPC::GetTerminalStepIdx() const {
     return std::pair<int,int>(nmodes_ - 1, modes_.back().N);
   }
   return std::pair<int,int>(x0_mode_idx_-1, modes_.at(x0_mode_idx_-1).N);
+}
+
+std::vector<std::pair<int, int>> SrbdCMPC::MapDecisionVariablesToKnots() const {
+  std::vector<std::pair<int, int>> map;
+  int j = x0_knot_idx_;
+  for (int i = x0_mode_idx_; i < nmodes_; i++) {
+    while (j < modes_.at(i).N) {
+      map.push_back({i, j});
+    }
+    j = 0;
+  }
+  for (int i = 0; i <= x0_mode_idx_; i++) {
+    int lim = (i == x0_mode_idx_) ? x0_knot_idx_ : modes_.at(i).N;
+    for (j = 0; j < lim; j++) {
+      map.push_back({i, j});
+    }
+  }
+  return map;
+}
+
+void SrbdCMPC::CopyDiscreteDynamicsConstraint(
+    const SrbdMode& mode, bool current_stance,
+    const Vector3d& foot_pos,
+    const drake::EigenPtr<MatrixXd> &A,
+    const drake::EigenPtr<VectorXd> &b) const {
+  DRAKE_DEMAND(A != nullptr && b != nullptr);
+
+  if (!current_stance) {
+    A->block(0, 0, nx_, nx_ + kLinearDim_) = mode.dynamics.A;
+    *b = -mode.dynamics.b;
+  } else {
+    A->block(0, 0, nx_, nx_) = mode.dynamics.A.block(0, 0, nx_, nx_);
+    A->block(0, nx_, nx_, kLinearDim_) = MatrixXd::Zero(nx_, kLinearDim_);
+    *b = mode.dynamics.A.block(0, nx_, nx_, kLinearDim_)
+             * foot_pos - mode.dynamics.b;
+  }
+  A->block(0, nx_ + kLinearDim_, nx_, nu_) = mode.dynamics.B;
+  A->block(0, nx_ + nu_ + kLinearDim_, nx_, nx_) =
+      -MatrixXd::Identity(nx_, nx_);
 }
 
 MatrixXd SrbdCMPC::MakeCollocationConstraintAMatrix(const MatrixXd& A,

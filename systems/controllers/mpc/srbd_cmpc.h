@@ -1,7 +1,3 @@
-//
-// Created by brian on 3/8/21.
-//
-
 #pragma once
 
 #include <memory>
@@ -9,13 +5,11 @@
 #include <utility>
 #include <vector>
 #include <set>
-#include <drake/multibody/plant/multibody_plant.h>
 #include <dairlib/lcmt_saved_traj.hpp>
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
-
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
@@ -42,11 +36,9 @@ typedef struct LinearSrbdDynamics{
 
 typedef struct SrbdMode {
   LinearSrbdDynamics dynamics;
-  Eigen::MatrixXd A;
-  Eigen::MatrixXd B;
-  Eigen::VectorXd b;
   BipedStance stance;
   int N;
+
   drake::solvers::VectorXDecisionVariable pp;
   drake::solvers::VectorXDecisionVariable reachability_slack;
   drake::solvers::LinearConstraint* reachability_constraints;
@@ -95,10 +87,11 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_x_des_input_port() const {
     return this->get_input_port(x_des_port_);
   }
+  const drake::systems::OutputPort<double>& get_traj_out_port() const {
+    return this->get_output_port(traj_out_port_);
+  }
 
-
-  void SetReachabilityBoundingBox
-  (
+  void SetReachabilityBoundingBox(
       const Eigen::Vector3d& bounds,
       const std::vector<Eigen::VectorXd>& nominal_relative_pos,
       const Eigen::MatrixXd& kin_reach_soft_contraint_w);
@@ -113,18 +106,17 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   }
 
   void print_constraint(
-      std::vector<drake::solvers::LinearConstraint*> ) const;
+      const std::vector<drake::solvers::LinearConstraint*>& constraint) const;
   void print_constraint(
-      std::vector<drake::solvers::LinearEqualityConstraint*>) const;
+      const std::vector<drake::solvers::LinearEqualityConstraint*>& constraint) const;
   void print_initial_state_constraints() const;
   void print_state_knot_constraints() const;
   void print_dynamics_constraints() const;
   void print_current_init_state_constraint() const;
 
-
  private:
 
-  void CheckSquareMatrixDimensions(const MatrixXd& M, const int n) const;
+  void CheckSquareMatrixDimensions(const Eigen::MatrixXd& M, int n) const;
   void GetMostRecentMotionPlan(const drake::systems::Context<double>& context,
                                lcmt_saved_traj* traj_msg) const;
 
@@ -133,8 +125,9 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd MakeSplineSegmentReferenceStateAndInput() const ;
 
   void MakeKinematicReachabilityConstraints();
-  void MakeTerrainConstraints(const Vector3d& normal = {0, 0, 1},
-                              const Vector3d& origin = {0, 0, 0});
+  void MakeTerrainConstraints(
+      const Eigen::Vector3d& normal = {0, 0, 1},
+      const Eigen::Vector3d& origin = {0, 0, 0});
   void MakeDynamicsConstraints();
   void MakeFrictionConeConstraints();
   void MakeStateKnotConstraints();
@@ -145,7 +138,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& x,
       const drake::solvers::MathematicalProgramResult& result,
       double time_since_last_touchdown) const;
-
 
   Eigen::MatrixXd MakeCollocationConstraintAMatrix(
       const Eigen::MatrixXd& A, const Eigen::MatrixXd& B);
@@ -159,8 +151,15 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& x0,
       int fsm_state, double t_since_last_switch) const;
 
-
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
+
+  void CopyDiscreteDynamicsConstraint(
+      const SrbdMode& mode, bool current_stance,
+      const Eigen::Vector3d& foot_pos,
+      const drake::EigenPtr<Eigen::MatrixXd> &A,
+      const drake::EigenPtr<Eigen::VectorXd> &b) const;
+
+  std::vector<std::pair<int, int>> MapDecisionVariablesToKnots() const;
 
   std::pair<int,int> GetTerminalStepIdx() const;
 
@@ -176,6 +175,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
   // plant
   const multibody::SingleRigidBodyPlant& plant_;
+  double mu_ = 0;
 
   // parameters and constants
   const bool use_fsm_;
@@ -189,11 +189,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const double swing_ft_ht_;
   const double dt_;
   const double kMaxSolveDuration_ = 1.00;
-
-
-  double mu_ = 0;
-
-  drake::multibody::RotationalInertia<double> rotational_inertia_;
+  int nmodes_ = 0;
 
   // port indices
   int state_port_;
@@ -210,15 +206,12 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd R_;     // For running cost u^TRu
   Eigen::MatrixXd Qf_;    // For terminal cost x_{T}^{T}Q_{f}x_{T}
   std::vector<SrbdMode> modes_;
-  std::vector<int> mode_knot_counts_;
   int total_knots_ = 0;
   std::vector<Eigen::VectorXd> nominal_foot_pos_;
   Eigen::Vector3d kin_bounds_;
   Eigen::MatrixXd W_kin_reach_;
   mutable Eigen::VectorXd x_des_;
   mutable Eigen::MatrixXd x_des_mat_;
-
-  int nmodes_ = 0;
 
   // Solver
   drake::solvers::OsqpSolver solver_;
@@ -228,9 +221,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   mutable int x0_knot_idx_;
   mutable lcmt_saved_traj most_recent_sol_;
 
-
   // constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> state_knot_constraints_;
-
 };
 } // dairlib

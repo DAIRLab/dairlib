@@ -135,7 +135,7 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
   Matrix3d g_I_inv = (R_yaw * b_I * R_yaw.transpose()).inverse();
 
 
-  MatrixXd A = MatrixXd::Zero(12,18);
+  MatrixXd A = MatrixXd::Zero(12,15);
   MatrixXd B = MatrixXd::Zero(12,4);
   VectorXd b = VectorXd::Zero(12);
 
@@ -144,12 +144,7 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
   A.block(0, 6, 3, 3) = Matrix3d::Identity();
   A.block(3, 9, 3, 3) = R_yaw;
   A.block(9, 0, 3, 3) = g_I_inv * lambda_hat;
-
-  // WARNING! This is not a general prupose function - we add an extra column
-  // to A specifically to account for an extra decision variable based on using
-  // multiple stance modes - one column will be sete to 0 during execution
   A.block(9, 12, 3, 3) = -g_I_inv * lambda_hat;
-  A.block(9, 15, 3, 3) = -g_I_inv * lambda_hat;
 
   // Continuous B matrix
   B.block(6, 6, 3, 3) = (1.0 / m) * Matrix3d::Identity();
@@ -177,14 +172,14 @@ void SingleRigidBodyPlant::CopyDiscreteLinearizedSrbDynamicsForMPC(
     const drake::EigenPtr<MatrixXd> &Bd,
     const drake::EigenPtr<VectorXd> &bd) {
 
-  MatrixXd A = MatrixXd::Zero(12,18);
+  MatrixXd A = MatrixXd::Zero(12,15);
   MatrixXd B = MatrixXd::Zero(12,4);
   VectorXd b = VectorXd::Zero(12);
 
   CopyContinuousLinearized3dSrbDynamicsForMPC(
       m, yaw, stance, b_I, eq_com_pos, eq_foot_pos, &A, &B, &b);
 
-  A = MatrixXd::Identity(12, 18) + A*dt;
+  A = MatrixXd::Identity(12, 15) + A*dt;
   B = B*dt;
   b = b*dt;
 

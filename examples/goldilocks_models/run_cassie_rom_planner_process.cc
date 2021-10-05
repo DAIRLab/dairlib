@@ -263,11 +263,18 @@ int DoMain(int argc, char* argv[]) {
   // Build fix-spring Cassie MBP
   dairlib::multibody::PinocchioPlant<double> plant_control(
       0.0, "examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  //  drake::multibody::MultibodyPlant<double> plant_control(0.0);
-  addCassieMultibody(&plant_control, nullptr, true,
+  addCassieMultibody(&plant_control, nullptr, false,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                     false);
+                     false, false /*add_reflected_inertia*/);
+  //  drake::multibody::MultibodyPlant<double> plant_control(0.0);
+  //  addCassieMultibody(&plant_control, nullptr, true,
+  //                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
+  //                     false, false);
   plant_control.Finalize();
+
+  return 0;  // Currently PinocchioPlant doesn't support floating base joint.
+             // Need to implemtnat this. Also, urdf file doesn't have reflected
+             // inertia
 
   // Build the controller diagram
   DiagramBuilder<double> builder;

@@ -153,6 +153,7 @@ cc_binary(
 
 cc_binary(
     name = "run_cassie_rom_planner_process",
+    testonly = 1,
     srcs = ["run_cassie_rom_planner_process.cc"],
     deps = [
         ":reduced_order_models",

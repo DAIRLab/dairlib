@@ -11,6 +11,8 @@
 #include "pinocchio/multibody/joint/joint-free-flyer.hpp"
 #include "pinocchio/parsers/urdf.hpp"
 
+#include <iostream>
+
 namespace dairlib {
 namespace multibody {
 

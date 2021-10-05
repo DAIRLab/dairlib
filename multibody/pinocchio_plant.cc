@@ -5,6 +5,7 @@
 #include "pinocchio/algorithm/aba-derivatives.hpp"
 #include "pinocchio/algorithm/aba.hpp"
 #include "pinocchio/algorithm/crba.hpp"
+#include "pinocchio/algorithm/center-of-mass.hpp"
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #include "pinocchio/algorithm/rnea-derivatives.hpp"
 #include "pinocchio/algorithm/rnea.hpp"
@@ -56,12 +57,15 @@ void PinocchioPlant<T>::Finalize() {
   // TODO: need to test actual forces
   drake::multibody::MultibodyForces<T> forces(*this);
   this->CalcForceElementsContribution(*context, &forces);
-  
+
   if (!TestMassMatrix(*context, 1e-6)) {
     std::cout << "PinocchioPlant TestMassMatrix FAILED!!" << std::endl;
   }
   if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
     std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
+  }
+  if (!TestCenterOfMass(*context, 1e-6)) {
+    std::cout << "PinocchioPlant TestCenterOfMass FAILED!!" << std::endl;
   }
 }
 
@@ -138,9 +142,27 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
 
 template<>
 void PinocchioPlant<AutoDiffXd>::CalcMassMatrix(
-    const Context<AutoDiffXd>& context, 
+    const Context<AutoDiffXd>& context,
     drake::EigenPtr<drake::MatrixX<AutoDiffXd>> M) const {
   throw std::domain_error("CalcMassMatrix not implemented with AutoDiffXd");
+}
+
+template <>
+void PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
+    const Context<double>& context,
+    drake::EigenPtr<drake::VectorX<double>> r_com) const {
+  pinocchio::crba(pinocchio_model_, pinocchio_data_,
+                  q_perm_.inverse() * GetPositions(context));
+
+  *r_com = pinocchio::getComFromCrba(pinocchio_model_, pinocchio_data_);
+}
+
+template <>
+void PinocchioPlant<AutoDiffXd>::CalcCenterOfMassPositionInWorld(
+    const Context<AutoDiffXd>& context,
+    drake::EigenPtr<drake::VectorX<AutoDiffXd>> r_com) const {
+  throw std::domain_error(
+      "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");
 }
 
 template<>
@@ -157,6 +179,23 @@ template<>
 
   return drake::CompareMatrices(M, pin_M, tol);
 }
+
+template<>
+::testing::AssertionResult PinocchioPlant<double>::TestCenterOfMass(
+    const Context<double>& context, double tol) const {
+
+  Eigen::Vector3d com;
+  Eigen::Vector3d pin_com;
+
+  com = MultibodyPlant<double>::CalcCenterOfMassPositionInWorld(context);
+
+  CalcCenterOfMassPositionInWorld(context, &pin_com);
+  std::cout << "com = " << com.transpose() << std::endl;
+  std::cout << "pin_com = " << pin_com.transpose() << std::endl;
+
+  return drake::CompareMatrices(com, pin_com, tol);
+}
+
 
 template <>
 ::testing::AssertionResult PinocchioPlant<double>::TestInverseDynamics(
@@ -175,6 +214,13 @@ template<>
 ::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestMassMatrix(
     const Context<AutoDiffXd>& context, double tol) const {
   throw std::domain_error("TestMassMatrix not implemented with AutoDiffXd");
+}
+
+template <>
+::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestCenterOfMass(
+    const Context<AutoDiffXd>& context, double tol) const {
+  throw std::domain_error(
+      "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");
 }
 
 }  // namespace multibody

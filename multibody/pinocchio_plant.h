@@ -30,6 +30,10 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       const drake::VectorX<T>& known_vdot,
       const drake::multibody::MultibodyForces<T>& external_forces) const;
 
+  void CalcCenterOfMassPositionInWorld(
+      const drake::systems::Context<T>& context,
+      drake::EigenPtr<drake::VectorX<T>> r_com) const;
+
   //
   // Comparisons against MultibodyPlant
   //
@@ -42,6 +46,9 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       const drake::VectorX<T>& known_vdot,
       const drake::multibody::MultibodyForces<T>& external_forces,
       double tol) const;
+
+  ::testing::AssertionResult TestCenterOfMass(
+      const drake::systems::Context<T>& context, double tol = 1e-5) const;
 
  private:
   pinocchio::Model pinocchio_model_;

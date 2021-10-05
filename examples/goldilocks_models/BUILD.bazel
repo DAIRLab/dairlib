@@ -287,3 +287,17 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "benchmark_pinocchio_plant",
+    testonly = 1,
+    srcs = ["benchmark_pinocchio_plant.cc"],
+    deps = [
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//multibody:pinocchio_plant",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

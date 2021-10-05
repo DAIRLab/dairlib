@@ -73,7 +73,7 @@ void PinocchioPlant<T>::Finalize() {
   if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
     std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
   }
-//  if (isQuaternion(*this)) {
+  if (isQuaternion(*this)) {
     // Pinocchio doesn't take the fixed-base body into account when computing
     // the COM
     if (!TestCenterOfMass(*context, 1e-6)) {
@@ -82,7 +82,7 @@ void PinocchioPlant<T>::Finalize() {
     if (!TestCenterOfMassVel(*context, 1e-6)) {
       std::cout << "PinocchioPlant TestCenterOfMassVel FAILED!!" << std::endl;
     }
-//  }
+  }
 }
 
 template<typename T>

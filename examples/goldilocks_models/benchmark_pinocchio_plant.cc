@@ -46,6 +46,7 @@ using drake::VectorX;
 
 // Simulated robot
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_bool(floating_base, true, "");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -53,24 +54,20 @@ int DoMain(int argc, char* argv[]) {
   std::string urdf = FLAGS_spring_model
                          ? "examples/Cassie/urdf/cassie_v2.urdf"
                          : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-  drake::multibody::MultibodyPlant<double> plant_feedback(0.0);
-  addCassieMultibody(&plant_feedback, nullptr, true /*floating base*/, urdf,
-                     FLAGS_spring_model, false /*loop closure*/);
-  plant_feedback.Finalize();
   // Build fix-spring Cassie MBP
   //  drake::multibody::MultibodyPlant<double> plant(0.0);
-  //  addCassieMultibody(&plant, nullptr, true,
+  //  addCassieMultibody(&plant, nullptr, FLAGS_floating_base,
   //                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
   //                     false, false);
   dairlib::multibody::PinocchioPlant<double> plant_pino(
       0.0, "examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  addCassieMultibody(&plant_pino, nullptr, false,
+  addCassieMultibody(&plant_pino, nullptr, FLAGS_floating_base,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false, false /*add_reflected_inertia*/);
   plant_pino.Finalize();
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant, nullptr, false,
+  addCassieMultibody(&plant, nullptr, FLAGS_floating_base,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false, false);
   plant.Finalize();
@@ -80,19 +77,24 @@ int DoMain(int argc, char* argv[]) {
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nx = nq + nv;
+  VectorXd q = VectorXd::Zero(nq);
+  if (FLAGS_floating_base) q(0) = 1;
+  VectorXd v = VectorXd::Zero(nv);
+  VectorXd x(nx);
+  x << q, v;
 
   // benchmark
   auto context_pino = plant_pino.CreateDefaultContext();
-  plant_pino.SetPositionsAndVelocities(context_pino.get(), VectorXd::Zero(nx));
+  plant_pino.SetPositionsAndVelocities(context_pino.get(), x);
   auto context_drake = plant.CreateDefaultContext();
-  plant.SetPositionsAndVelocities(context_drake.get(), VectorXd::Zero(nx));
+  plant.SetPositionsAndVelocities(context_drake.get(), x);
 
   int n_loop = 1000000;
 
   Eigen::Vector3d r_com;
   auto break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
-    plant_pino.SetPositions(context_pino.get(), VectorXd::Zero(nq));
+    plant_pino.SetPositions(context_pino.get(), q);
     plant_pino.CalcCenterOfMassPositionInWorld(*context_pino, &r_com);
   }
   auto break3 = std::chrono::high_resolution_clock::now();
@@ -101,7 +103,7 @@ int DoMain(int argc, char* argv[]) {
 
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
-    plant.SetPositions(context_drake.get(), VectorXd::Zero(nq));
+    plant.SetPositions(context_drake.get(), q);
     plant.CalcCenterOfMassPositionInWorld(*context_drake);
   }
   break3 = std::chrono::high_resolution_clock::now();
@@ -111,8 +113,7 @@ int DoMain(int argc, char* argv[]) {
   Eigen::Vector3d v_com;
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
-    plant_pino.SetPositionsAndVelocities(context_pino.get(),
-                                         VectorXd::Zero(nx));
+    plant_pino.SetPositionsAndVelocities(context_pino.get(), x);
     plant_pino.CalcCenterOfMassTranslationalVelocityInWorld(*context_pino,
                                                             &v_com);
   }
@@ -122,7 +123,7 @@ int DoMain(int argc, char* argv[]) {
 
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
-    plant.SetPositionsAndVelocities(context_drake.get(), VectorXd::Zero(nx));
+    plant.SetPositionsAndVelocities(context_drake.get(), x);
     plant.CalcCenterOfMassTranslationalVelocityInWorld(*context_drake);
   }
   break3 = std::chrono::high_resolution_clock::now();
@@ -132,7 +133,7 @@ int DoMain(int argc, char* argv[]) {
   Eigen::MatrixXd J_com(3, nv);
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
-    plant_pino.SetPositions(context_pino.get(), VectorXd::Zero(nq));
+    plant_pino.SetPositions(context_pino.get(), q);
     plant_pino.CalcJacobianCenterOfMassTranslationalVelocity(*context_pino,
                                                              &J_com);
   }

@@ -30,16 +30,22 @@ using std::endl;
 
 template <typename T>
 PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf) :
-      MultibodyPlant<T>(time_step) {
-    pinocchio::urdf::buildModel(urdf, pinocchio_model_);
-
-    // Do i need to buildReducedModel? Do What about joints?
-    pinocchio_data_ = pinocchio::Data(pinocchio_model_);
+      MultibodyPlant<T>(time_step), urdf_(urdf) {
 }
 
 template<typename T>
 void PinocchioPlant<T>::Finalize() {
   MultibodyPlant<T>::Finalize();
+
+  if (isQuaternion(*this)) {
+    pinocchio::urdf::buildModel(urdf_, pinocchio::JointModelFreeFlyer(),
+                                pinocchio_model_);
+  } else {
+    pinocchio::urdf::buildModel(urdf_, pinocchio_model_);
+  }
+
+  // Do i need to buildReducedModel? Do What about joints?
+  pinocchio_data_ = pinocchio::Data(pinocchio_model_);
 
   BuildPermutations();
 
@@ -96,29 +102,41 @@ void PinocchioPlant<T>::BuildPermutations() {
   int nv = this->num_velocities();
   Eigen::VectorXi pos_indices(nq);
   Eigen::VectorXi vel_indices(nv);
+  cout << "nq = " << nq << endl;
+  cout << "nv = " << nv << endl;
 
-
-  for (int i = 1; i < pinocchio_model_.names.size(); i++) {
+  int q_idx = 0;
+  int v_idx = 0;
+  for (int name_idx = 1; name_idx < pinocchio_model_.names.size(); name_idx++) {
     // TODO: floating base options
     // Skipping i=0 for the world (TODO--doesn't handle floating base yet)
     // Assumes that URDF root is welded to the world
-    const auto& name = pinocchio_model_.names[i];
+    const auto& name = pinocchio_model_.names[name_idx];
 
-    if (pos_map.count(name) == 0) {
-      throw std::runtime_error("PinocchioPlant::BuildPermutations: " + name +
-                               " was not found in the position map.");
+    if (name == "root_joint") {
+      pos_indices.head<7>() << 4, 5, 6, 0, 1, 2, 3;
+      vel_indices.head<6>() << 3, 4, 5, 0, 1, 2;
+      q_idx += 7;
+      v_idx += 6;
+    } else {
+      if (pos_map.count(name) == 0) {
+        throw std::runtime_error("PinocchioPlant::BuildPermutations: " + name +
+                                 " was not found in the position map.");
+      }
+
+      if (vel_map.count(name + "dot") == 0) {
+        throw std::runtime_error("PinocchioPlant::BuildPermutations: " + name +
+                                 " was not found in the velocity map.");
+      }
+
+      pos_indices(q_idx) = pos_map[name];
+      vel_indices(v_idx) = vel_map[name + "dot"];
+      q_idx++;
+      v_idx++;
     }
-
-    if (vel_map.count(name + "dot") == 0) {
-      throw std::runtime_error("PinocchioPlant::BuildPermutations: " + name +
-                               " was not found in the velocity map.");
-    }
-
-    int pos_ind = pos_map[name];
-    int vel_ind = vel_map[name + "dot"];
-    pos_indices(i - 1) = pos_ind;
-    vel_indices(i - 1) = vel_ind;
   }
+  cout << "pos_indices = \n" << pos_indices << endl;
+  cout << "vel_indices = \n" << vel_indices << endl;
 
   q_perm_.indices() = pos_indices;
   v_perm_.indices() = vel_indices;
@@ -288,6 +306,7 @@ template <>
 
   MatrixXd J(3, nv);
   MatrixXd pin_J(3, nv);
+  //  MatrixXd pin_J(3, num_positions());
 
   MultibodyPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV, this->world_frame(),

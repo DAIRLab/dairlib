@@ -65,6 +65,7 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       const drake::systems::Context<T>& context, double tol = 1e-5) const;
 
  private:
+  std::string urdf_;
   pinocchio::Model pinocchio_model_;
   mutable pinocchio::Data pinocchio_data_;
 

@@ -67,11 +67,11 @@ void PinocchioPlant<T>::Finalize() {
   drake::multibody::MultibodyForces<T> forces(*this);
   this->CalcForceElementsContribution(*context, &forces);
 
-  if (!TestMassMatrix(*context, 1e-6)) {
-    std::cout << "PinocchioPlant TestMassMatrix FAILED!!" << std::endl;
-  }
   if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
     std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
+  }
+  if (!TestMassMatrix(*context, 1e-6)) {
+    std::cout << "PinocchioPlant TestMassMatrix FAILED!!" << std::endl;
   }
   if (isQuaternion(*this)) {
     // Pinocchio doesn't take the fixed-base body into account when computing
@@ -81,6 +81,9 @@ void PinocchioPlant<T>::Finalize() {
     }
     if (!TestCenterOfMassVel(*context, 1e-6)) {
       std::cout << "PinocchioPlant TestCenterOfMassVel FAILED!!" << std::endl;
+    }
+    if (!TestCenterOfMassJ(*context, 1e-6)) {
+      std::cout << "PinocchioPlant TestCenterOfMassJ FAILED!!" << std::endl;
     }
   }
 }
@@ -122,6 +125,24 @@ void PinocchioPlant<T>::BuildPermutations() {
 }
 
 template <>
+VectorXd PinocchioPlant<double>::CalcInverseDynamics(
+    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
+    const drake::multibody::MultibodyForces<double>& external_forces) const {
+
+  // TODO: support body forces
+  if (external_forces.body_forces().size() > 0) {
+    // throw std::runtime_error(
+    // "PinocchioPlant::CalcInverseDynamics: body forces not yet supported");
+  }
+
+  auto f_pin = pinocchio::rnea(pinocchio_model_, pinocchio_data_,
+                               q_perm_.inverse() * GetPositions(context),
+                               v_perm_.inverse() * GetVelocities(context),
+                               v_perm_.inverse() * known_vdot);
+  return v_perm_ * f_pin - external_forces.generalized_forces();
+}
+
+template <>
 void PinocchioPlant<double>::CalcMassMatrix(const Context<double>& context,
     drake::EigenPtr<Eigen::MatrixXd> M) const {
   pinocchio::crba(pinocchio_model_, pinocchio_data_,
@@ -136,24 +157,6 @@ void PinocchioPlant<double>::CalcMassMatrix(const Context<double>& context,
     }
   }
   *M = v_perm_ * (*M) * v_perm_.inverse();
-}
-
-template <>
-VectorXd PinocchioPlant<double>::CalcInverseDynamics(
-    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
-    const drake::multibody::MultibodyForces<double>& external_forces) const {
-
-  // TODO: support body forces
-  if (external_forces.body_forces().size() > 0) {
-    // throw std::runtime_error(
-        // "PinocchioPlant::CalcInverseDynamics: body forces not yet supported");
-  }
-
-  auto f_pin = pinocchio::rnea(pinocchio_model_, pinocchio_data_,
-                               q_perm_.inverse() * GetPositions(context),
-                               v_perm_.inverse() * GetVelocities(context),
-                               v_perm_.inverse() * known_vdot);
-  return v_perm_ * f_pin - external_forces.generalized_forces();
 }
 
 template<>
@@ -198,6 +201,36 @@ void PinocchioPlant<AutoDiffXd>::CalcCenterOfMassTranslationalVelocityInWorld(
   throw std::domain_error(
       "CalcCenterOfMassTranslationalVelocityInWorld not implemented with "
       "AutoDiffXd");
+}
+
+template <>
+void PinocchioPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
+    const Context<double>& context, drake::EigenPtr<Eigen::MatrixXd> J) const {
+  *J = pinocchio::jacobianCenterOfMass(
+           pinocchio_model_, pinocchio_data_,
+           q_perm_.inverse() * GetPositions(context)) *
+       v_perm_.inverse();
+}
+
+template <>
+void PinocchioPlant<AutoDiffXd>::CalcJacobianCenterOfMassTranslationalVelocity(
+    const Context<AutoDiffXd>& context,
+    drake::EigenPtr<drake::MatrixX<AutoDiffXd>> J) const {
+  throw std::domain_error("CalcMassMatrix not implemented with AutoDiffXd");
+}
+
+/// Comparisons against MultibodyPlant
+
+template <>
+::testing::AssertionResult PinocchioPlant<double>::TestInverseDynamics(
+    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
+    const drake::multibody::MultibodyForces<double>& external_forces,
+    double tol) const {
+  auto f = MultibodyPlant<double>::CalcInverseDynamics(context, known_vdot,
+                                                       external_forces);
+  auto pin_f = CalcInverseDynamics(context, known_vdot, external_forces);
+
+  return drake::CompareMatrices(f, pin_f, tol);
 }
 
 template<>
@@ -249,17 +282,24 @@ template <>
 }
 
 template <>
-::testing::AssertionResult PinocchioPlant<double>::TestInverseDynamics(
-    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
-    const drake::multibody::MultibodyForces<double>& external_forces,
-    double tol) const {
-auto f = MultibodyPlant<double>::CalcInverseDynamics(context, known_vdot,
-                                                     external_forces);
-auto pin_f = CalcInverseDynamics(context, known_vdot, external_forces);
+::testing::AssertionResult PinocchioPlant<double>::TestCenterOfMassJ(
+    const Context<double>& context, double tol) const {
+  int nv = num_velocities();
 
-return drake::CompareMatrices(f, pin_f, tol);
+  MatrixXd J(3, nv);
+  MatrixXd pin_J(3, nv);
+
+  MultibodyPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
+      context, drake::multibody::JacobianWrtVariable::kV, this->world_frame(),
+      this->world_frame(), &J);
+
+  CalcJacobianCenterOfMassTranslationalVelocity(context, &pin_J);
+  std::cout << "J = \n" << J << std::endl;
+  std::cout << "pin_J = \n" << pin_J << std::endl;
+  std::cout << "J - pin_J = \n" << J - pin_J << std::endl;
+
+  return drake::CompareMatrices(J, pin_J, tol);
 }
-
 
 template<>
 ::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestMassMatrix(
@@ -279,6 +319,12 @@ template <>
     const Context<AutoDiffXd>& context, double tol) const {
   throw std::domain_error(
       "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");
+}
+
+template <>
+::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestCenterOfMassJ(
+    const Context<AutoDiffXd>& context, double tol) const {
+  throw std::domain_error("TestCenterOfMassJ not implemented with AutoDiffXd");
 }
 
 }  // namespace multibody

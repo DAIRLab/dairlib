@@ -13,6 +13,8 @@ r_com time (Pinocchio):1.09758
 r_com time (Drake):3.59607
 v_com time (Pinocchio):1.63794
 v_com time (Drake):6.92368
+J_com time (Pinocchio):1.29014
+J_com time (Drake):13.6425
 
  */
 
@@ -56,85 +58,99 @@ int DoMain(int argc, char* argv[]) {
                      FLAGS_spring_model, false /*loop closure*/);
   plant_feedback.Finalize();
   // Build fix-spring Cassie MBP
-  //  drake::multibody::MultibodyPlant<double> plant_control(0.0);
-  //  addCassieMultibody(&plant_control, nullptr, true,
+  //  drake::multibody::MultibodyPlant<double> plant(0.0);
+  //  addCassieMultibody(&plant, nullptr, true,
   //                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
   //                     false, false);
-  dairlib::multibody::PinocchioPlant<double> plant_control_pino(
+  dairlib::multibody::PinocchioPlant<double> plant_pino(
       0.0, "examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  addCassieMultibody(&plant_control_pino, nullptr, false,
+  addCassieMultibody(&plant_pino, nullptr, false,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false, false /*add_reflected_inertia*/);
-  plant_control_pino.Finalize();
+  plant_pino.Finalize();
 
-  drake::multibody::MultibodyPlant<double> plant_control(0.0);
-  addCassieMultibody(&plant_control, nullptr, false,
+  drake::multibody::MultibodyPlant<double> plant(0.0);
+  addCassieMultibody(&plant, nullptr, false,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false, false);
-  plant_control.Finalize();
+  plant.Finalize();
+  const auto& world_drake = plant.world_frame();
+
+  //
+  int nq = plant.num_positions();
+  int nv = plant.num_velocities();
+  int nx = nq + nv;
 
   // benchmark
-  auto context_pino = plant_control_pino.CreateDefaultContext();
-  plant_control_pino.SetPositionsAndVelocities(
-      context_pino.get(), VectorXd::Zero(plant_control_pino.num_positions() +
-                                         plant_control_pino.num_velocities()));
-  auto context_drake = plant_control.CreateDefaultContext();
-  plant_control.SetPositionsAndVelocities(
-      context_drake.get(), VectorXd::Zero(plant_control.num_positions() +
-                                          plant_control.num_velocities()));
+  auto context_pino = plant_pino.CreateDefaultContext();
+  plant_pino.SetPositionsAndVelocities(context_pino.get(), VectorXd::Zero(nx));
+  auto context_drake = plant.CreateDefaultContext();
+  plant.SetPositionsAndVelocities(context_drake.get(), VectorXd::Zero(nx));
 
   int n_loop = 1000000;
 
   Eigen::Vector3d r_com;
   auto break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
-    plant_control_pino.SetPositionsAndVelocities(
-        context_pino.get(),
-        VectorXd::Zero(plant_control_pino.num_positions() +
-                       plant_control_pino.num_velocities()));
-    plant_control_pino.CalcCenterOfMassPositionInWorld(*context_pino, &r_com);
+    plant_pino.SetPositions(context_pino.get(), VectorXd::Zero(nq));
+    plant_pino.CalcCenterOfMassPositionInWorld(*context_pino, &r_com);
   }
   auto break3 = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed_trajopt_construct = break3 - break2;
-  cout << "r_com time (Pinocchio):" << elapsed_trajopt_construct.count()
-       << "\n";
+  std::chrono::duration<double> elapsed = break3 - break2;
+  cout << "r_com time (Pinocchio):" << elapsed.count() << "\n";
 
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
-    plant_control.SetPositionsAndVelocities(
-        context_drake.get(), VectorXd::Zero(plant_control.num_positions() +
-                                            plant_control.num_velocities()));
-    plant_control.CalcCenterOfMassPositionInWorld(*context_drake);
+    plant.SetPositions(context_drake.get(), VectorXd::Zero(nq));
+    plant.CalcCenterOfMassPositionInWorld(*context_drake);
   }
   break3 = std::chrono::high_resolution_clock::now();
-  elapsed_trajopt_construct = break3 - break2;
-  cout << "r_com time (Drake):" << elapsed_trajopt_construct.count() << "\n";
+  elapsed = break3 - break2;
+  cout << "r_com time (Drake):" << elapsed.count() << "\n";
 
   Eigen::Vector3d v_com;
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
-    plant_control_pino.SetPositionsAndVelocities(
-        context_pino.get(),
-        VectorXd::Zero(plant_control_pino.num_positions() +
-                       plant_control_pino.num_velocities()));
-    plant_control_pino.CalcCenterOfMassTranslationalVelocityInWorld(
-        *context_pino, &v_com);
+    plant_pino.SetPositionsAndVelocities(context_pino.get(),
+                                         VectorXd::Zero(nx));
+    plant_pino.CalcCenterOfMassTranslationalVelocityInWorld(*context_pino,
+                                                            &v_com);
   }
   break3 = std::chrono::high_resolution_clock::now();
-  elapsed_trajopt_construct = break3 - break2;
-  cout << "v_com time (Pinocchio):" << elapsed_trajopt_construct.count()
-       << "\n";
+  elapsed = break3 - break2;
+  cout << "v_com time (Pinocchio):" << elapsed.count() << "\n";
 
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
-    plant_control.SetPositionsAndVelocities(
-        context_drake.get(), VectorXd::Zero(plant_control.num_positions() +
-                                            plant_control.num_velocities()));
-    plant_control.CalcCenterOfMassTranslationalVelocityInWorld(*context_drake);
+    plant.SetPositionsAndVelocities(context_drake.get(), VectorXd::Zero(nx));
+    plant.CalcCenterOfMassTranslationalVelocityInWorld(*context_drake);
   }
   break3 = std::chrono::high_resolution_clock::now();
-  elapsed_trajopt_construct = break3 - break2;
-  cout << "v_com time (Drake):" << elapsed_trajopt_construct.count() << "\n";
+  elapsed = break3 - break2;
+  cout << "v_com time (Drake):" << elapsed.count() << "\n";
+
+  Eigen::MatrixXd J_com(3, nv);
+  break2 = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i < n_loop; i++) {
+    plant_pino.SetPositions(context_pino.get(), VectorXd::Zero(nq));
+    plant_pino.CalcJacobianCenterOfMassTranslationalVelocity(*context_pino,
+                                                             &J_com);
+  }
+  break3 = std::chrono::high_resolution_clock::now();
+  elapsed = break3 - break2;
+  cout << "J_com time (Pinocchio):" << elapsed.count() << "\n";
+
+  break2 = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i < n_loop; i++) {
+    plant.SetPositions(context_drake.get(),
+                       VectorXd::Zero(plant.num_positions()));
+    plant.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_drake, drake::multibody::JacobianWrtVariable::kV, world_drake,
+        world_drake, &J_com);
+  }
+  break3 = std::chrono::high_resolution_clock::now();
+  elapsed = break3 - break2;
+  cout << "J_com time (Drake):" << elapsed.count() << "\n";
 
   return 0;  // Currently PinocchioPlant doesn't support floating base joint.
              // Need to implemtnat this. Also, urdf file doesn't have reflected

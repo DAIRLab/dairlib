@@ -7,8 +7,8 @@
 
 #include "common/file_utils.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/goldilocks_models/rom_walking_gains.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
+#include "examples/goldilocks_models/rom_walking_gains.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
@@ -92,6 +92,10 @@ void CreateMBPForVisualization(drake::multibody::MultibodyPlant<double>* plant,
                                Eigen::Vector3d ground_normal, int robot_option);
 
 // Create reduced order model
+// For GIP:
+// * Couldn’t optimize well even after I reduced step size and turned off
+// momentum. (and after I turned back the constraint scaling)
+// * I found that the linear solve is not very accurate
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
     const drake::multibody::MultibodyPlant<double>& plant,

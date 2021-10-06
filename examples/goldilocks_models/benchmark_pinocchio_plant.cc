@@ -169,9 +169,7 @@ int DoMain(int argc, char* argv[]) {
   cout << "J_com time (Drake):" << elapsed.count() << "\n";
   cout << elapsed.count()/elapsed_pino.count() << "times faster\n";
 
-  return 0;  // Currently PinocchioPlant doesn't support floating base joint.
-             // Need to implemtnat this. Also, urdf file doesn't have reflected
-             // inertia
+  return 0;
 }
 
 }  // namespace dairlib::goldilocks_models

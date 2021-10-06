@@ -241,6 +241,9 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
     // "PinocchioPlant::CalcInverseDynamics: body forces not yet supported");
   }
 
+  // TODO: currently CalcInverseDynamics doesn't pass the test when the MBP has
+  // floating base
+
   auto f_pin = pinocchio::rnea(
       pinocchio_model_, pinocchio_data_,
       MapPositionFromDrakeToPinocchio(GetPositions(context)),

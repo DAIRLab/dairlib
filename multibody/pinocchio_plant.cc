@@ -50,6 +50,17 @@ void PinocchioPlant<T>::Finalize() {
 
   BuildPermutations();
 
+  // Warnings
+  for (int i = 0; i < this->num_actuators(); ++i) {
+    auto& joint_actuator = this->get_mutable_joint_actuator(
+        drake::multibody::JointActuatorIndex(i));
+    if (joint_actuator.default_rotor_inertia() > 0) {
+      cout << "WARNING: currently PinoccioPlant doesn't have reflected "
+              "inertia!\n";
+      break;
+    }
+  }
+
   // Check that models match
   int nq = this->num_positions();
   int nv = this->num_velocities();

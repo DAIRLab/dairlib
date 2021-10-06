@@ -28,6 +28,8 @@ J_com time (Drake):13.6425
 #include "multibody/multibody_utils.h"
 #include "multibody/pinocchio_plant.h"
 
+#include "drake/multibody/parsing/parser.h"
+
 namespace dairlib::goldilocks_models {
 
 using std::cout;
@@ -46,34 +48,43 @@ using drake::VectorX;
 
 // Simulated robot
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_bool(ball, true, "");
 DEFINE_bool(floating_base, true, "");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  // Build Cassie MBP
-  std::string urdf = FLAGS_spring_model
-                         ? "examples/Cassie/urdf/cassie_v2.urdf"
-                         : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-  // Build fix-spring Cassie MBP
-  //  drake::multibody::MultibodyPlant<double> plant(0.0);
-  //  addCassieMultibody(&plant, nullptr, FLAGS_floating_base,
-  //                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-  //                     false, false);
-  dairlib::multibody::PinocchioPlant<double> plant_pino(
-      0.0, "examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  addCassieMultibody(&plant_pino, nullptr, FLAGS_floating_base,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                     false, false /*add_reflected_inertia*/);
+
+  // Set urdf
+  std::string urdf;
+  if (FLAGS_ball) {
+    urdf = "multibody/ball.urdf";
+  } else {
+    urdf = FLAGS_spring_model
+               ? "examples/Cassie/urdf/cassie_v2.urdf"
+               : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+  }
+
+  // Build MBPs
+  dairlib::multibody::PinocchioPlant<double> plant_pino(0.0, urdf);
+  if (FLAGS_ball) {
+    drake::multibody::Parser parser(&plant_pino);
+    parser.AddModelFromFile(FindResourceOrThrow(urdf));
+  } else {
+    addCassieMultibody(&plant_pino, nullptr, FLAGS_floating_base, urdf, false,
+                       false, false /*add_reflected_inertia*/);
+  }
   plant_pino.Finalize();
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant, nullptr, FLAGS_floating_base,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                     false, false);
+  if (FLAGS_ball) {
+    drake::multibody::Parser parser(&plant);
+    parser.AddModelFromFile(FindResourceOrThrow(urdf));
+  } else {
+    addCassieMultibody(&plant, nullptr, FLAGS_floating_base, urdf, false, false,
+                       false);
+  }
   plant.Finalize();
   const auto& world_drake = plant.world_frame();
-
-  return 0;
 
   //
   int nq = plant.num_positions();

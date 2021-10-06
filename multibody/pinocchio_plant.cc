@@ -54,20 +54,20 @@ void PinocchioPlant<T>::Finalize() {
   int nv = this->num_velocities();
   int nu = this->num_actuators();
 
-  VectorX<T> x =  VectorX<T>::Random(nq + nv);
-  VectorX<T> u = 0*VectorX<T>::Random(nu);
-  VectorX<T> vdot =  0*VectorX<T>::Random(nv);
+  VectorX<T> x = VectorX<T>::Random(nq + nv);
+  VectorX<T> u = 0 * VectorX<T>::Random(nu);
+  VectorX<T> vdot = 0 * VectorX<T>::Random(nv);
   if (isQuaternion(*this)) {
-    // x.head(4) = x.head(4) / x.head(4).norm();
-    x = 0 * x;
-    x(0) = 1;
-  }
-  //  x.head(nq) << 0.0195003, -0.0195003, 0, 0, 0.46061, 0.46061, -1.17829,
-  //      -1.17829, -0.0118189, -0.0192588, 1.45555, 1.45425, -0.0466754,
-  //      -1.59953, -0.0319659, -1.59137;
+    x.head(4) = x.head(4) / x.head(4).norm();
+    //    x = 0 * x;
+    //    x(0) = 1;
 
-  //  x.head(nq) << 0.0194984, -0.0194984, 0, 0, 0.499801, 0.499801, -1.22315,
-  //      -1.22315, 1.44726, 1.4471, -1.5974, -1.59782;
+    x(4) = 1;
+
+    x(nq+3) = 0.5;
+    x(nq+4) = 0.6;
+    x(nq+5) = 0.7;
+  }
 
   auto context = createContext<T>(*this, x, u);
   // TODO: need to test actual forces
@@ -115,7 +115,12 @@ void PinocchioPlant<T>::BuildPermutations() {
     const auto& name = pinocchio_model_.names[name_idx];
 
     if (name == "root_joint") {
-      pos_indices.head<7>() << 4, 5, 6, 0, 1, 2, 3;
+      // Pinocchio's floating base position is (x, y, z, qx,qy,qz,qw)
+      // Pinocchio's floating base velocity is (vx,vy,vz,wx,wy,wz)
+      // Note that
+      // 1. the first element of quaternion is qx instead of qw.
+      // 2. the velocity seems to be expressed in local frame
+      pos_indices.head<7>() << 4, 5, 6, 1, 2, 3, 0;
       vel_indices.head<6>() << 3, 4, 5, 0, 1, 2;
       q_idx += 7;
       v_idx += 6;

@@ -12,7 +12,6 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_data",
-        ":osc_utils",
         "//common:eigen_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
@@ -33,23 +32,8 @@ cc_library(
         "osc_tracking_data.h",
     ],
     deps = [
-        ":osc_utils",
         "//multibody:utils",
         "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "osc_utils",
-    srcs = [
-        "osc_utils.cc",
-    ],
-    hdrs = [
-        "osc_utils.h",
-    ],
-    deps = [
-        "//multibody:utils",
         "@drake//:drake_shared_library",
     ],
 )

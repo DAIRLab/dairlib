@@ -1,6 +1,4 @@
 #pragma once
-#include <gtest/gtest.h>
-
 #include "pinocchio/multibody/data.hpp"
 #include "pinocchio/multibody/model.hpp"
 
@@ -63,23 +61,23 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   // Comparisons against MultibodyPlant
   //
 
-  ::testing::AssertionResult TestInverseDynamics(
+  bool TestInverseDynamics(
       const drake::systems::Context<T>& context,
       const drake::VectorX<T>& known_vdot,
       const drake::multibody::MultibodyForces<T>& external_forces,
       double tol) const;
 
-  ::testing::AssertionResult TestMassMatrix(
-      const drake::systems::Context<T>& context, double tol = 1e-5) const;
+  bool TestMassMatrix(const drake::systems::Context<T>& context,
+                      double tol = 1e-5) const;
 
-  ::testing::AssertionResult TestCenterOfMass(
-      const drake::systems::Context<T>& context, double tol = 1e-5) const;
+  bool TestCenterOfMass(const drake::systems::Context<T>& context,
+                        double tol = 1e-5) const;
 
-  ::testing::AssertionResult TestCenterOfMassVel(
-      const drake::systems::Context<T>& context, double tol = 1e-5) const;
+  bool TestCenterOfMassVel(const drake::systems::Context<T>& context,
+                           double tol = 1e-5) const;
 
-  ::testing::AssertionResult TestCenterOfMassJ(
-      const drake::systems::Context<T>& context, double tol = 1e-5) const;
+  bool TestCenterOfMassJ(const drake::systems::Context<T>& context,
+                         double tol = 1e-5) const;
 
  private:
   std::string urdf_;

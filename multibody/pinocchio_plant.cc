@@ -13,8 +13,6 @@
 #include "pinocchio/multibody/joint/joint-free-flyer.hpp"
 #include "pinocchio/parsers/urdf.hpp"
 
-#include "drake/common/test_utilities/eigen_matrix_compare.h"
-
 namespace dairlib {
 namespace multibody {
 
@@ -354,7 +352,7 @@ void PinocchioPlant<AutoDiffXd>::CalcJacobianCenterOfMassTranslationalVelocity(
 /// Comparisons against MultibodyPlant
 
 template <>
-::testing::AssertionResult PinocchioPlant<double>::TestInverseDynamics(
+bool PinocchioPlant<double>::TestInverseDynamics(
     const drake::systems::Context<double>& context, const VectorXd& known_vdot,
     const drake::multibody::MultibodyForces<double>& external_forces,
     double tol) const {
@@ -362,12 +360,12 @@ template <>
                                                        external_forces);
   auto pin_f = CalcInverseDynamics(context, known_vdot, external_forces);
 
-  return drake::CompareMatrices(f, pin_f, tol);
+  return (f - pin_f).norm() < tol;
 }
 
 template <>
-::testing::AssertionResult PinocchioPlant<double>::TestMassMatrix(
-    const Context<double>& context, double tol) const {
+bool PinocchioPlant<double>::TestMassMatrix(const Context<double>& context,
+                                            double tol) const {
   int nv = num_velocities();
 
   MatrixXd M(nv, nv);
@@ -377,12 +375,12 @@ template <>
 
   CalcMassMatrix(context, &pin_M);
 
-  return drake::CompareMatrices(M, pin_M, tol);
+  return (M - pin_M).norm() < tol;
 }
 
 template <>
-::testing::AssertionResult PinocchioPlant<double>::TestCenterOfMass(
-    const Context<double>& context, double tol) const {
+bool PinocchioPlant<double>::TestCenterOfMass(const Context<double>& context,
+                                              double tol) const {
   Eigen::Vector3d com;
   Eigen::Vector3d pin_com;
 
@@ -392,12 +390,12 @@ template <>
   std::cout << "com = " << com.transpose() << std::endl;
   std::cout << "pin_com = " << pin_com.transpose() << std::endl;
 
-  return drake::CompareMatrices(com, pin_com, tol);
+  return (com - pin_com).norm() < tol;
 }
 
 template <>
-::testing::AssertionResult PinocchioPlant<double>::TestCenterOfMassVel(
-    const Context<double>& context, double tol) const {
+bool PinocchioPlant<double>::TestCenterOfMassVel(const Context<double>& context,
+                                                 double tol) const {
   Eigen::Vector3d com_vel;
   Eigen::Vector3d pin_com_vel;
 
@@ -409,12 +407,12 @@ template <>
   std::cout << "com_vel = " << com_vel.transpose() << std::endl;
   std::cout << "pin_com_vel = " << pin_com_vel.transpose() << std::endl;
 
-  return drake::CompareMatrices(com_vel, pin_com_vel, tol);
+  return (com_vel - pin_com_vel).norm() < tol;
 }
 
 template <>
-::testing::AssertionResult PinocchioPlant<double>::TestCenterOfMassJ(
-    const Context<double>& context, double tol) const {
+bool PinocchioPlant<double>::TestCenterOfMassJ(const Context<double>& context,
+                                               double tol) const {
   int nv = num_velocities();
 
   MatrixXd J(3, nv);
@@ -429,31 +427,31 @@ template <>
   //  std::cout << "pin_J = \n" << pin_J << std::endl;
   //  std::cout << "J - pin_J = \n" << J - pin_J << std::endl;
 
-  return drake::CompareMatrices(J, pin_J, tol);
+  return (J - pin_J).norm() < tol;
 }
 
 template <>
-::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestMassMatrix(
+bool PinocchioPlant<AutoDiffXd>::TestMassMatrix(
     const Context<AutoDiffXd>& context, double tol) const {
   throw std::domain_error("TestMassMatrix not implemented with AutoDiffXd");
 }
 
 template <>
-::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestCenterOfMass(
+bool PinocchioPlant<AutoDiffXd>::TestCenterOfMass(
     const Context<AutoDiffXd>& context, double tol) const {
   throw std::domain_error(
       "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");
 }
 
 template <>
-::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestCenterOfMassVel(
+bool PinocchioPlant<AutoDiffXd>::TestCenterOfMassVel(
     const Context<AutoDiffXd>& context, double tol) const {
   throw std::domain_error(
       "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");
 }
 
 template <>
-::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestCenterOfMassJ(
+bool PinocchioPlant<AutoDiffXd>::TestCenterOfMassJ(
     const Context<AutoDiffXd>& context, double tol) const {
   throw std::domain_error("TestCenterOfMassJ not implemented with AutoDiffXd");
 }

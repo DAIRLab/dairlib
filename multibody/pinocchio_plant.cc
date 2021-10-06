@@ -55,13 +55,13 @@ void PinocchioPlant<T>::Finalize() {
   int nu = this->num_actuators();
 
   VectorX<T> x =  VectorX<T>::Random(nq + nv);
-  x.head(4) = x.head(4) / x.head(4).norm();
   VectorX<T> u = 0*VectorX<T>::Random(nu);
   VectorX<T> vdot =  0*VectorX<T>::Random(nv);
-
-  x = 0 * x;
-  x(0) = 1;
-
+  if (isQuaternion(*this)) {
+    // x.head(4) = x.head(4) / x.head(4).norm();
+    x = 0 * x;
+    x(0) = 1;
+  }
   //  x.head(nq) << 0.0195003, -0.0195003, 0, 0, 0.46061, 0.46061, -1.17829,
   //      -1.17829, -0.0118189, -0.0192588, 1.45555, 1.45425, -0.0466754,
   //      -1.59953, -0.0319659, -1.59137;

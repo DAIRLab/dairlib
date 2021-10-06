@@ -641,31 +641,32 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
-    // When not using the projection, set it equal to zero
 
-    // Check whether or not it is a constant trajectory, and update TrackingData
-    if (fixed_position_vec_.at(i).size() != 0) {
-      // Create constant trajectory and update
-      tracking_data->Update(
-          x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
-          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state,
-          v_proj);
-    } else {
-      // Read in traj from input port
-      const string& traj_name = tracking_data->GetName();
-      int port_index = traj_name_to_port_index_map_.at(traj_name);
-      const drake::AbstractValue* input_traj =
-          this->EvalAbstractInput(context, port_index);
-      DRAKE_DEMAND(input_traj != nullptr);
-      const auto& traj =
-          input_traj->get_value<drake::trajectories::Trajectory<double>>();
-      // Update
-      tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                            *context_wo_spr_, traj, t, fsm_state, v_proj);
-    }
     if (tracking_data->IsActive(fsm_state) &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
+      // Check whether or not it is a constant trajectory, and update
+      // TrackingData
+      if (fixed_position_vec_.at(i).size() != 0) {
+        // Create constant trajectory and update
+        tracking_data->Update(
+            x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
+            PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
+            fsm_state, v_proj);
+      } else {
+        // Read in traj from input port
+        const string& traj_name = tracking_data->GetName();
+        int port_index = traj_name_to_port_index_map_.at(traj_name);
+        const drake::AbstractValue* input_traj =
+            this->EvalAbstractInput(context, port_index);
+        DRAKE_DEMAND(input_traj != nullptr);
+        const auto& traj =
+            input_traj->get_value<drake::trajectories::Trajectory<double>>();
+        // Update
+        tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                              *context_wo_spr_, traj, t, fsm_state, v_proj);
+      }
+
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
       const MatrixXd& W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();

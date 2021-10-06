@@ -1,10 +1,10 @@
 #include "rot_space_tracking_data.h"
 
+using Eigen::Isometry3d;
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using Eigen::Quaterniond;
-using Eigen::Isometry3d;
 
 using std::string;
 using std::vector;
@@ -21,19 +21,19 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W,
-                            plant_w_spr, plant_wo_spr) {
+                          plant_w_spr, plant_wo_spr) {
   use_springs_in_eval_ = true;
 }
 
-void RotTaskSpaceTrackingData::AddFrameToTrack(const std::string& body_name,
-                                               const Eigen::Isometry3d& frame_pose) {
+void RotTaskSpaceTrackingData::AddFrameToTrack(
+    const std::string& body_name, const Eigen::Isometry3d& frame_pose) {
   AddStateAndFrameToTrack(-1, body_name, frame_pose);
 }
 void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(
     int fsm_state, const std::string& body_name,
     const Eigen::Isometry3d& frame_pose) {
   AddFiniteStateToTrack(fsm_state);
-//  AddPointToTrack(body_name, pt_on_body);
+  //  AddPointToTrack(body_name, pt_on_body);
   DRAKE_DEMAND(plant_w_spr_.HasBodyNamed(body_name));
   DRAKE_DEMAND(plant_wo_spr_.HasBodyNamed(body_name));
   body_frames_w_spr_[fsm_state] =
@@ -54,11 +54,12 @@ void RotTaskSpaceTrackingData::UpdateYddotDes(double t) {
 
 void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
                                        const Context<double>& context_w_spr) {
-//  auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(
-//      context_w_spr,
-//      plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
+  //  auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(
+  //      context_w_spr,
+  //      plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
   auto transform_mat = plant_w_spr_.CalcRelativeTransform(
-      context_w_spr, *body_frames_w_spr_[fsm_state_], plant_w_spr_.world_frame());
+      context_w_spr, plant_w_spr_.world_frame(),
+      *body_frames_w_spr_[fsm_state_]);
   Quaterniond y_quat(transform_mat.rotation() *
                      frame_poses_[fsm_state_].linear());
   Eigen::Vector4d y_4d;
@@ -84,8 +85,7 @@ void RotTaskSpaceTrackingData::UpdateYdot(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   MatrixXd J_spatial(6, plant_w_spr_.num_velocities());
   plant_w_spr_.CalcJacobianSpatialVelocity(
-      context_w_spr, JacobianWrtVariable::kV,
-      *body_frames_w_spr_[fsm_state_],
+      context_w_spr, JacobianWrtVariable::kV, *body_frames_w_spr_[fsm_state_],
       frame_poses_[fsm_state_].translation(), world_w_spr_, world_w_spr_,
       &J_spatial);
   ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
@@ -98,20 +98,17 @@ void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
                           ydot_des_(3));
   Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
-  error_ydot_ = w_des_ - ydot_ - GetJ() * v_proj;;
+  error_ydot_ = w_des_ - ydot_ - GetJ() * v_proj;
 
   ydot_des_ =
       w_des_;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
-  std::cout << error_y_.size() << std::endl;
-
 }
 
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                        const Context<double>& context_wo_spr) {
   MatrixXd J_spatial(6, plant_wo_spr_.num_velocities());
   plant_wo_spr_.CalcJacobianSpatialVelocity(
-      context_wo_spr, JacobianWrtVariable::kV,
-      *body_frames_wo_spr_[fsm_state_],
+      context_wo_spr, JacobianWrtVariable::kV, *body_frames_wo_spr_[fsm_state_],
       frame_poses_[fsm_state_].translation(), world_wo_spr_, world_wo_spr_,
       &J_spatial);
   J_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols());
@@ -119,18 +116,18 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 
 void RotTaskSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
-  JdotV_ = plant_wo_spr_
-               .CalcBiasSpatialAcceleration(
-                   context_wo_spr, JacobianWrtVariable::kV,
-                   *body_frames_wo_spr_[fsm_state_],
-                   frame_poses_[fsm_state_].translation(), world_wo_spr_,
-                   world_wo_spr_)
-               .rotational();
+  JdotV_ =
+      plant_wo_spr_
+          .CalcBiasSpatialAcceleration(context_wo_spr, JacobianWrtVariable::kV,
+                                       *body_frames_wo_spr_[fsm_state_],
+                                       frame_poses_[fsm_state_].translation(),
+                                       world_wo_spr_, world_wo_spr_)
+          .rotational();
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-//  if (body_frames_w_spr_ != nullptr) {
-//    body_frames_w_spr_ = body_frames_wo_spr_;
-//  }
+  //  if (body_frames_w_spr_ != nullptr) {
+  //    body_frames_w_spr_ = body_frames_wo_spr_;
+  //  }
 }
-}
+}  // namespace dairlib::systems::controllers

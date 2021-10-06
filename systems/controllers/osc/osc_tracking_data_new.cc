@@ -52,6 +52,9 @@ void OscTrackingData::Update(
     const drake::trajectories::Trajectory<double>& traj, double t,
     const int fsm_state, const VectorXd& v_proj) {
   fsm_state_ = fsm_state;
+  if(state_.count(-1)){
+    fsm_state_ = -1;
+  }
   DRAKE_ASSERT(IsActive(fsm_state));
 
   UpdateActual(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr);

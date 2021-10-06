@@ -54,7 +54,9 @@ class OscTrackingData {
 
   // Add this state to the list of fsm states where this tracking data is active
   void AddFiniteStateToTrack(int state);
-  bool IsActive(int fsm_state) const { return state_.count(fsm_state) || state_.count(-1); }
+  const bool IsActive(int fsm_state) const {
+    return state_.count(fsm_state) || state_.count(-1);
+  }
   void CheckOscTrackingData();
   // Set whether or not to use the impact invariant projection
   void SetImpactInvariantProjection(bool use_impact_invariant_projection) {

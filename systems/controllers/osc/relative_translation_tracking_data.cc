@@ -29,23 +29,22 @@ RelativeTranslationTrackingData::RelativeTranslationTrackingData(
   auto states1 = to_frame_data.GetActiveStates();
   auto states2 = from_frame_data.GetActiveStates();
   DRAKE_DEMAND(states1 == states2);
-//  DRAKE_DEMAND(states1.size() == states2.size());
-//  for (int i = 0; i < states1.size(); i++) {
-//    DRAKE_DEMAND(states1.at(i) == states2.at(i));
-//    AddState(states1.at(i));
-//  }
+  //  DRAKE_DEMAND(states1.size() == states2.size());
+  //  for (int i = 0; i < states1.size(); i++) {
+  //    DRAKE_DEMAND(states1.at(i) == states2.at(i));
+  //    AddState(states1.at(i));
+  //  }
 }
 
-void RelativeTranslationTrackingData::PreUpdate(
-    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
-    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
-    const drake::trajectories::Trajectory<double>& traj, double t,
-    double t_since_last_state_switch, int fsm_state,
-    const Eigen::VectorXd& v_proj, bool no_desired_traj) {
-  to_frame_data_.Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj,
-                        t, fsm_state, v_proj);
-  from_frame_data_.Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr,
-                          traj, t, fsm_state, v_proj);
+void RelativeTranslationTrackingData::UpdateActual(
+    const Eigen::VectorXd& x_w_spr,
+    const drake::systems::Context<double>& context_w_spr,
+    const Eigen::VectorXd& x_wo_spr,
+    const drake::systems::Context<double>& context_wo_spr) {
+  to_frame_data_.UpdateActual(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr);
+  to_frame_data_.UpdateActual(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr);
+  OptionsTrackingData::UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
+                                    context_wo_spr);
 }
 
 void RelativeTranslationTrackingData::UpdateY(

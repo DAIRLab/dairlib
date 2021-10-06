@@ -102,7 +102,7 @@ int DoMain(int argc, char* argv[]) {
   auto context_drake = plant.CreateDefaultContext();
   plant.SetPositionsAndVelocities(context_drake.get(), x);
 
-  int n_loop = 1000000;
+  int n_loop = 100000;
 
   Eigen::Vector3d r_com;
   auto break2 = std::chrono::high_resolution_clock::now();
@@ -111,8 +111,8 @@ int DoMain(int argc, char* argv[]) {
     plant_pino.CalcCenterOfMassPositionInWorld(*context_pino, &r_com);
   }
   auto break3 = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = break3 - break2;
-  cout << "r_com time (Pinocchio):" << elapsed.count() << "\n";
+  std::chrono::duration<double> elapsed_pino = break3 - break2;
+  cout << "r_com time (Pinocchio):" << elapsed_pino.count() << "\n";
 
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
@@ -120,8 +120,9 @@ int DoMain(int argc, char* argv[]) {
     plant.CalcCenterOfMassPositionInWorld(*context_drake);
   }
   break3 = std::chrono::high_resolution_clock::now();
-  elapsed = break3 - break2;
+  std::chrono::duration<double> elapsed = break3 - break2;
   cout << "r_com time (Drake):" << elapsed.count() << "\n";
+  cout << elapsed.count()/elapsed_pino.count() << "times faster\n";
 
   Eigen::Vector3d v_com;
   break2 = std::chrono::high_resolution_clock::now();
@@ -131,8 +132,8 @@ int DoMain(int argc, char* argv[]) {
                                                             &v_com);
   }
   break3 = std::chrono::high_resolution_clock::now();
-  elapsed = break3 - break2;
-  cout << "v_com time (Pinocchio):" << elapsed.count() << "\n";
+  elapsed_pino = break3 - break2;
+  cout << "v_com time (Pinocchio):" << elapsed_pino.count() << "\n";
 
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
@@ -142,6 +143,7 @@ int DoMain(int argc, char* argv[]) {
   break3 = std::chrono::high_resolution_clock::now();
   elapsed = break3 - break2;
   cout << "v_com time (Drake):" << elapsed.count() << "\n";
+  cout << elapsed.count()/elapsed_pino.count() << "times faster\n";
 
   Eigen::MatrixXd J_com(3, nv);
   break2 = std::chrono::high_resolution_clock::now();
@@ -151,8 +153,8 @@ int DoMain(int argc, char* argv[]) {
                                                              &J_com);
   }
   break3 = std::chrono::high_resolution_clock::now();
-  elapsed = break3 - break2;
-  cout << "J_com time (Pinocchio):" << elapsed.count() << "\n";
+  elapsed_pino = break3 - break2;
+  cout << "J_com time (Pinocchio):" << elapsed_pino.count() << "\n";
 
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
@@ -165,6 +167,7 @@ int DoMain(int argc, char* argv[]) {
   break3 = std::chrono::high_resolution_clock::now();
   elapsed = break3 - break2;
   cout << "J_com time (Drake):" << elapsed.count() << "\n";
+  cout << elapsed.count()/elapsed_pino.count() << "times faster\n";
 
   return 0;  // Currently PinocchioPlant doesn't support floating base joint.
              // Need to implemtnat this. Also, urdf file doesn't have reflected

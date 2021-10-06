@@ -35,6 +35,10 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   drake::MatrixX<T> GetVelocityMapFromPinocchioToDrake(
       const drake::VectorX<T>& quat) const;
 
+  void RightMultiplicationFromDrakeToPinocchio(
+      const drake::VectorX<T>& quat,
+      drake::EigenPtr<drake::MatrixX<T>> M) const;
+
   drake::VectorX<T> CalcInverseDynamics(
       const drake::systems::Context<T>& context,
       const drake::VectorX<T>& known_vdot,

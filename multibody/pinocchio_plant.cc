@@ -217,6 +217,20 @@ drake::MatrixX<T> PinocchioPlant<T>::GetVelocityMapFromPinocchioToDrake(
   return v_perm_ * ret;
 }
 
+template <typename T>
+void PinocchioPlant<T>::RightMultiplicationFromDrakeToPinocchio(
+    const drake::VectorX<T>& quat, drake::EigenPtr<drake::MatrixX<T>> M) const {
+  (*M) = (*M) * v_perm_.inverse();
+  if (is_floating_base_) {
+    drake::MatrixX<T> rot =
+        Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
+            .toRotationMatrix()
+            .transpose();
+    M->template leftCols<3>() = M->template leftCols<3>() * rot;
+    M->template middleCols<3>(3) = M->template middleCols<3>(3) * rot;
+  }
+}
+
 template <>
 VectorXd PinocchioPlant<double>::CalcInverseDynamics(
     const drake::systems::Context<double>& context, const VectorXd& known_vdot,
@@ -253,6 +267,8 @@ void PinocchioPlant<double>::CalcMassMatrix(
       (*M)(j, i) = (*M)(i, j);
     }
   }
+  // TODO: we can speed this up by not doing full matrix multiplication here.
+  // Similar to RightMultiplicationFromDrakeToPinocchio
   *M = GetVelocityMapFromPinocchioToDrake(GetPositions(context).head<4>()) *
        (*M) *
        GetVelocityMapFromDrakeToPinocchio(GetPositions(context).head<4>());
@@ -309,9 +325,9 @@ template <>
 void PinocchioPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
     const Context<double>& context, drake::EigenPtr<Eigen::MatrixXd> J) const {
   *J = pinocchio::jacobianCenterOfMass(
-           pinocchio_model_, pinocchio_data_,
-           MapPositionFromDrakeToPinocchio(GetPositions(context))) *
-       GetVelocityMapFromDrakeToPinocchio(GetPositions(context).head<4>());
+      pinocchio_model_, pinocchio_data_,
+      MapPositionFromDrakeToPinocchio(GetPositions(context)));
+  RightMultiplicationFromDrakeToPinocchio(GetPositions(context).head<4>(), J);
 }
 
 template <>

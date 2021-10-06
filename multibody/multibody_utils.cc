@@ -67,7 +67,9 @@ std::unique_ptr<Context<T>> createContext(
   auto context = plant.CreateDefaultContext();
   plant.SetPositionsAndVelocities(context.get(), state);
 
-  plant.get_actuation_input_port().FixValue(context.get(), input);
+  if (plant.num_actuators() > 0) {
+    plant.get_actuation_input_port().FixValue(context.get(), input);
+  }
   return context;
 }
 

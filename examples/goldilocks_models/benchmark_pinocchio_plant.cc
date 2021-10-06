@@ -73,6 +73,8 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   const auto& world_drake = plant.world_frame();
 
+  return 0;
+
   //
   int nq = plant.num_positions();
   int nv = plant.num_velocities();

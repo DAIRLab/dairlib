@@ -615,7 +615,7 @@ void JointSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
   VectorXd ydot(GetYdotDim());
   for (int i = 0; i < GetYdotDim(); i++) {
     ydot(i) = x_w_spr(plant_w_spr_.num_positions() +
-                      joint_pos_idx_w_spr_.at(GetStateIdx()).at(i));
+                      joint_vel_idx_w_spr_.at(GetStateIdx()).at(i));
   }
   ydot_ = ydot;
 }

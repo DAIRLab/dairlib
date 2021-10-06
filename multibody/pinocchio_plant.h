@@ -1,9 +1,10 @@
 #pragma once
 #include <gtest/gtest.h>
 
-#include "drake/multibody/plant/multibody_plant.h"
-#include "pinocchio/multibody/model.hpp"
 #include "pinocchio/multibody/data.hpp"
+#include "pinocchio/multibody/model.hpp"
+
+#include "drake/multibody/plant/multibody_plant.h"
 
 // TODO: Needs a fixed vs. floating base mechanism
 // Move test methods here as self-verification steps
@@ -21,6 +22,18 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   void BuildPermutations();
 
   void Finalize();
+
+  drake::VectorX<T> MapPositionFromDrakeToPinocchio(
+      const drake::VectorX<T>& q) const;
+  drake::VectorX<T> MapVelocityFromDrakeToPinocchio(
+      const drake::VectorX<T>& q, const drake::VectorX<T>& v) const;
+  drake::VectorX<T> MapVelocityFromPinocchioToDrake(
+      const drake::VectorX<T>& q, const drake::VectorX<T>& v) const;
+
+  drake::MatrixX<T> GetVelocityMapFromDrakeToPinocchio(
+      const drake::VectorX<T>& quat) const;
+  drake::MatrixX<T> GetVelocityMapFromPinocchioToDrake(
+      const drake::VectorX<T>& quat) const;
 
   drake::VectorX<T> CalcInverseDynamics(
       const drake::systems::Context<T>& context,
@@ -66,6 +79,8 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
 
  private:
   std::string urdf_;
+  bool is_floating_base_;
+
   pinocchio::Model pinocchio_model_;
   mutable pinocchio::Data pinocchio_data_;
 

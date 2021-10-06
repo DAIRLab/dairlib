@@ -1,18 +1,19 @@
 #include "multibody/pinocchio_plant.h"
-#include "multibody/multibody_utils.h"
-#include "drake/common/test_utilities/eigen_matrix_compare.h"
 
+#include <iostream>
+
+#include "multibody/multibody_utils.h"
 #include "pinocchio/algorithm/aba-derivatives.hpp"
 #include "pinocchio/algorithm/aba.hpp"
-#include "pinocchio/algorithm/crba.hpp"
 #include "pinocchio/algorithm/center-of-mass.hpp"
+#include "pinocchio/algorithm/crba.hpp"
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #include "pinocchio/algorithm/rnea-derivatives.hpp"
 #include "pinocchio/algorithm/rnea.hpp"
 #include "pinocchio/multibody/joint/joint-free-flyer.hpp"
 #include "pinocchio/parsers/urdf.hpp"
 
-#include <iostream>
+#include "drake/common/test_utilities/eigen_matrix_compare.h"
 
 namespace dairlib {
 namespace multibody {
@@ -23,21 +24,21 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
-using std::map;
-using std::string;
 using std::cout;
 using std::endl;
+using std::map;
+using std::string;
 
 template <typename T>
-PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf) :
-      MultibodyPlant<T>(time_step), urdf_(urdf) {
-}
+PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf)
+    : MultibodyPlant<T>(time_step), urdf_(urdf) {}
 
-template<typename T>
+template <typename T>
 void PinocchioPlant<T>::Finalize() {
   MultibodyPlant<T>::Finalize();
 
-  if (isQuaternion(*this)) {
+  is_floating_base_ = isQuaternion(*this);
+  if (is_floating_base_) {
     pinocchio::urdf::buildModel(urdf_, pinocchio::JointModelFreeFlyer(),
                                 pinocchio_model_);
   } else {
@@ -57,16 +58,18 @@ void PinocchioPlant<T>::Finalize() {
   VectorX<T> x = VectorX<T>::Random(nq + nv);
   VectorX<T> u = 0 * VectorX<T>::Random(nu);
   VectorX<T> vdot = 0 * VectorX<T>::Random(nv);
-  if (isQuaternion(*this)) {
+  if (is_floating_base_) {
     x.head(4) = x.head(4) / x.head(4).norm();
-    //    x = 0 * x;
-    //    x(0) = 1;
+    //        x = 0 * x;
+    //        x(0) = 1;
 
-    x(4) = 1;
-
-    x(nq+3) = 0.5;
-    x(nq+4) = 0.6;
-    x(nq+5) = 0.7;
+    //    x.head(4) << 1, 0, 0, 0;
+    //
+    //    x(4) = 1;
+    //
+    //    x(nq + 3) = 0.5;
+    //    x(nq + 4) = 0.6;
+    //    x(nq + 5) = 0.7;
   }
 
   auto context = createContext<T>(*this, x, u);
@@ -80,7 +83,7 @@ void PinocchioPlant<T>::Finalize() {
   if (!TestMassMatrix(*context, 1e-6)) {
     std::cout << "PinocchioPlant TestMassMatrix FAILED!!" << std::endl;
   }
-  if (isQuaternion(*this)) {
+  if (is_floating_base_) {
     // Pinocchio doesn't take the fixed-base body into account when computing
     // the COM
     if (!TestCenterOfMass(*context, 1e-6)) {
@@ -95,7 +98,7 @@ void PinocchioPlant<T>::Finalize() {
   }
 }
 
-template<typename T>
+template <typename T>
 void PinocchioPlant<T>::BuildPermutations() {
   map<string, int> pos_map = makeNameToPositionsMap(*this);
   map<string, int> vel_map = makeNameToVelocitiesMap(*this);
@@ -103,8 +106,6 @@ void PinocchioPlant<T>::BuildPermutations() {
   int nv = this->num_velocities();
   Eigen::VectorXi pos_indices(nq);
   Eigen::VectorXi vel_indices(nv);
-  cout << "nq = " << nq << endl;
-  cout << "nv = " << nv << endl;
 
   int q_idx = 0;
   int v_idx = 0;
@@ -141,38 +142,108 @@ void PinocchioPlant<T>::BuildPermutations() {
       v_idx++;
     }
   }
-  cout << "pos_indices = \n" << pos_indices << endl;
-  cout << "vel_indices = \n" << vel_indices << endl;
 
   q_perm_.indices() = pos_indices;
   v_perm_.indices() = vel_indices;
+}
 
-  cout << "q_perm_ = \n" << q_perm_.toDenseMatrix() << endl;
+template <typename T>
+drake::VectorX<T> PinocchioPlant<T>::MapPositionFromDrakeToPinocchio(
+    const drake::VectorX<T>& q) const {
+  return q_perm_.inverse() * q;
+}
+
+template <typename T>
+drake::VectorX<T> PinocchioPlant<T>::MapVelocityFromDrakeToPinocchio(
+    const drake::VectorX<T>& quat, const drake::VectorX<T>& v) const {
+  if (is_floating_base_) {
+    drake::MatrixX<T> rot =
+        Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
+            .toRotationMatrix()
+            .transpose();
+    drake::VectorX<T> v_rotated = v;
+    v_rotated.template head<3>() = rot * v_rotated.template head<3>();
+    v_rotated.template segment<3>(3) = rot * v_rotated.template segment<3>(3);
+    return v_perm_.inverse() * v_rotated;
+  } else {
+    return v_perm_.inverse() * v;
+  }
+}
+
+template <typename T>
+drake::VectorX<T> PinocchioPlant<T>::MapVelocityFromPinocchioToDrake(
+    const drake::VectorX<T>& quat, const drake::VectorX<T>& v) const {
+  if (is_floating_base_) {
+    drake::MatrixX<T> rot =
+        Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
+            .toRotationMatrix();
+    drake::VectorX<T> v_rotated = v;
+    v_rotated.template head<3>() = rot * v_rotated.template head<3>();
+    v_rotated.template segment<3>(3) = rot * v_rotated.template segment<3>(3);
+    return v_perm_ * v_rotated;
+  } else {
+    return v_perm_ * v;
+  }
+}
+
+template <typename T>
+drake::MatrixX<T> PinocchioPlant<T>::GetVelocityMapFromDrakeToPinocchio(
+    const drake::VectorX<T>& quat) const {
+  drake::MatrixX<T> ret = drake::MatrixX<T>::Identity(this->num_velocities(),
+                                                      this->num_velocities());
+  if (is_floating_base_) {
+    drake::MatrixX<T> rot =
+        Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
+            .toRotationMatrix()
+            .transpose();
+    ret.template block<3, 3>(0, 0) = rot;
+    ret.template block<3, 3>(3, 3) = rot;
+  }
+  return v_perm_.inverse() * ret;
+}
+
+template <typename T>
+drake::MatrixX<T> PinocchioPlant<T>::GetVelocityMapFromPinocchioToDrake(
+    const drake::VectorX<T>& quat) const {
+  drake::MatrixX<T> ret = drake::MatrixX<T>::Identity(this->num_velocities(),
+                                                      this->num_velocities());
+  if (is_floating_base_) {
+    drake::MatrixX<T> rot =
+        Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
+            .toRotationMatrix();
+    ret.template block<3, 3>(0, 0) = rot;
+    ret.template block<3, 3>(3, 3) = rot;
+  }
+  return v_perm_ * ret;
 }
 
 template <>
 VectorXd PinocchioPlant<double>::CalcInverseDynamics(
     const drake::systems::Context<double>& context, const VectorXd& known_vdot,
     const drake::multibody::MultibodyForces<double>& external_forces) const {
-
   // TODO: support body forces
   if (external_forces.body_forces().size() > 0) {
     // throw std::runtime_error(
     // "PinocchioPlant::CalcInverseDynamics: body forces not yet supported");
   }
 
-  auto f_pin = pinocchio::rnea(pinocchio_model_, pinocchio_data_,
-                               q_perm_.inverse() * GetPositions(context),
-                               v_perm_.inverse() * GetVelocities(context),
-                               v_perm_.inverse() * known_vdot);
-  return v_perm_ * f_pin - external_forces.generalized_forces();
+  auto f_pin = pinocchio::rnea(
+      pinocchio_model_, pinocchio_data_,
+      MapPositionFromDrakeToPinocchio(GetPositions(context)),
+      MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
+                                      GetVelocities(context)),
+      MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
+                                      known_vdot));
+  return MapVelocityFromPinocchioToDrake(GetPositions(context).head<4>(),
+                                         f_pin) -
+         external_forces.generalized_forces();
 }
 
 template <>
-void PinocchioPlant<double>::CalcMassMatrix(const Context<double>& context,
-    drake::EigenPtr<Eigen::MatrixXd> M) const {
+void PinocchioPlant<double>::CalcMassMatrix(
+    const Context<double>& context, drake::EigenPtr<Eigen::MatrixXd> M) const {
   pinocchio::crba(pinocchio_model_, pinocchio_data_,
-                  q_perm_.inverse() * GetPositions(context));
+                  MapPositionFromDrakeToPinocchio(GetPositions(context)));
 
   // Pinocchio builds an upper triangular matrix, skipping the parts
   // below the diagonal. Fill those in here.
@@ -182,10 +253,12 @@ void PinocchioPlant<double>::CalcMassMatrix(const Context<double>& context,
       (*M)(j, i) = (*M)(i, j);
     }
   }
-  *M = v_perm_ * (*M) * v_perm_.inverse();
+  *M = GetVelocityMapFromPinocchioToDrake(GetPositions(context).head<4>()) *
+       (*M) *
+       GetVelocityMapFromDrakeToPinocchio(GetPositions(context).head<4>());
 }
 
-template<>
+template <>
 void PinocchioPlant<AutoDiffXd>::CalcMassMatrix(
     const Context<AutoDiffXd>& context,
     drake::EigenPtr<drake::MatrixX<AutoDiffXd>> M) const {
@@ -196,8 +269,9 @@ template <>
 void PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
     const Context<double>& context,
     drake::EigenPtr<drake::VectorX<double>> r_com) const {
-  pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_,
-                          q_perm_.inverse() * GetPositions(context));
+  pinocchio::centerOfMass(
+      pinocchio_model_, pinocchio_data_,
+      MapPositionFromDrakeToPinocchio(GetPositions(context)));
 
   *r_com = pinocchio_data_.com[0];
 }
@@ -214,9 +288,11 @@ template <>
 void PinocchioPlant<double>::CalcCenterOfMassTranslationalVelocityInWorld(
     const Context<double>& context,
     drake::EigenPtr<drake::VectorX<double>> v_com) const {
-  pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_,
-                          q_perm_.inverse() * GetPositions(context),
-                          v_perm_.inverse() * GetVelocities(context));
+  pinocchio::centerOfMass(
+      pinocchio_model_, pinocchio_data_,
+      MapPositionFromDrakeToPinocchio(GetPositions(context)),
+      MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
+                                      GetVelocities(context)));
   *v_com = pinocchio_data_.vcom[0];
 }
 
@@ -234,8 +310,8 @@ void PinocchioPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
     const Context<double>& context, drake::EigenPtr<Eigen::MatrixXd> J) const {
   *J = pinocchio::jacobianCenterOfMass(
            pinocchio_model_, pinocchio_data_,
-           q_perm_.inverse() * GetPositions(context)) *
-       v_perm_.inverse();
+           MapPositionFromDrakeToPinocchio(GetPositions(context))) *
+       GetVelocityMapFromDrakeToPinocchio(GetPositions(context).head<4>());
 }
 
 template <>
@@ -259,7 +335,7 @@ template <>
   return drake::CompareMatrices(f, pin_f, tol);
 }
 
-template<>
+template <>
 ::testing::AssertionResult PinocchioPlant<double>::TestMassMatrix(
     const Context<double>& context, double tol) const {
   int nv = num_velocities();
@@ -274,10 +350,9 @@ template<>
   return drake::CompareMatrices(M, pin_M, tol);
 }
 
-template<>
+template <>
 ::testing::AssertionResult PinocchioPlant<double>::TestCenterOfMass(
     const Context<double>& context, double tol) const {
-
   Eigen::Vector3d com;
   Eigen::Vector3d pin_com;
 
@@ -314,21 +389,20 @@ template <>
 
   MatrixXd J(3, nv);
   MatrixXd pin_J(3, nv);
-  //  MatrixXd pin_J(3, num_positions());
 
   MultibodyPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV, this->world_frame(),
       this->world_frame(), &J);
 
   CalcJacobianCenterOfMassTranslationalVelocity(context, &pin_J);
-  std::cout << "J = \n" << J << std::endl;
-  std::cout << "pin_J = \n" << pin_J << std::endl;
-  std::cout << "J - pin_J = \n" << J - pin_J << std::endl;
+  //  std::cout << "J = \n" << J << std::endl;
+  //  std::cout << "pin_J = \n" << pin_J << std::endl;
+  //  std::cout << "J - pin_J = \n" << J - pin_J << std::endl;
 
   return drake::CompareMatrices(J, pin_J, tol);
 }
 
-template<>
+template <>
 ::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestMassMatrix(
     const Context<AutoDiffXd>& context, double tol) const {
   throw std::domain_error("TestMassMatrix not implemented with AutoDiffXd");
@@ -356,7 +430,6 @@ template <>
 
 }  // namespace multibody
 }  // namespace dairlib
-
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class dairlib::multibody::PinocchioPlant)

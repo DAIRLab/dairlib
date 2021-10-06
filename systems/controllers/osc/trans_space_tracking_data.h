@@ -1,4 +1,6 @@
-#include "impact_invariant_tracking_data.h"
+#pragma once
+
+#include "options_tracking_data.h"
 
 namespace dairlib {
 namespace systems {
@@ -16,7 +18,7 @@ namespace controllers {
 /// pt_on_body_'s if state_ is not empty.
 /// This also means that AddPointToTrack and AddStateAndPointToTrack cannot be
 /// called one after another for the same TrackingData.
-class TransTaskSpaceTrackingData : public ImpactInvariantTrackingData {
+class TransTaskSpaceTrackingData final : public OptionsTrackingData {
  public:
   TransTaskSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
@@ -30,10 +32,11 @@ class TransTaskSpaceTrackingData : public ImpactInvariantTrackingData {
   void AddStateAndPointToTrack(
       int state, const std::string& body_name,
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
+  void CheckOscTrackingData();
 
  protected:
-  const drake::multibody::BodyFrame<double>* body_frame_w_spr_;
-  const drake::multibody::BodyFrame<double>* body_frame_wo_spr_;
+  std::unordered_map<int, const drake::multibody::BodyFrame<double>*> body_frames_w_spr_;
+  std::unordered_map<int, const drake::multibody::BodyFrame<double>*> body_frames_wo_spr_;
 
  private:
 //  void UpdateYddotDes() final;
@@ -51,7 +54,7 @@ class TransTaskSpaceTrackingData : public ImpactInvariantTrackingData {
   void CheckDerivedOscTrackingData() final;
 
   // `pt_on_body` is the position w.r.t. the origin of the body
-  Eigen::Vector3d pt_on_body_;
+  std::unordered_map<int, Eigen::Vector3d> pts_on_body_;
 };
 
 }  // namespace controllers

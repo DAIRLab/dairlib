@@ -1,4 +1,7 @@
-#include "impact_invariant_tracking_data.h"
+#pragma once
+
+
+#include "options_tracking_data.h"
 
 namespace dairlib {
 namespace systems {
@@ -18,7 +21,7 @@ namespace controllers {
 /// frame_pose_'s if state_ is not empty.
 /// This also means that AddFrameToTrack and AddStateAndFrameToTrack cannot be
 /// called one after another for the same TrackingData.
-class RotTaskSpaceTrackingData final : public ImpactInvariantTrackingData {
+class RotTaskSpaceTrackingData final : public OptionsTrackingData {
  public:
   RotTaskSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
@@ -34,8 +37,8 @@ class RotTaskSpaceTrackingData final : public ImpactInvariantTrackingData {
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
  protected:
-  const drake::multibody::BodyFrame<double>* body_frame_w_spr_;
-  const drake::multibody::BodyFrame<double>* body_frame_wo_spr_;
+  std::unordered_map<int, const drake::multibody::BodyFrame<double>*> body_frames_w_spr_;
+  std::unordered_map<int, const drake::multibody::BodyFrame<double>*> body_frames_wo_spr_;
 
  private:
   void UpdateY(const Eigen::VectorXd& x_w_spr,
@@ -43,17 +46,17 @@ class RotTaskSpaceTrackingData final : public ImpactInvariantTrackingData {
   void UpdateYError() final;
   void UpdateYdot(const Eigen::VectorXd& x_w_spr,
                   const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotError() final;
+  void UpdateYdotError(const Eigen::VectorXd& v_proj) final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
                    const drake::systems::Context<double>& context_wo_spr) final;
-
+  void UpdateYddotDes(double t) override;
   void CheckDerivedOscTrackingData() final;
 
   // frame_pose_ represents the pose of the frame (w.r.t. the body's frame)
   // which follows the desired rotation.
-  Eigen::Isometry3d frame_pose_;
+  std::unordered_map<int, Eigen::Isometry3d> frame_poses_;
 };
 
 }  // namespace controllers

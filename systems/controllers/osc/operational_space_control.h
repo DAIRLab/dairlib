@@ -14,7 +14,7 @@
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "solvers/fast_osqp_solver.h"
 #include "systems/controllers/control_utils.h"
-#include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/controllers/osc/osc_tracking_data_new.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"

@@ -1,4 +1,5 @@
 #include "options_tracking_data.h"
+#include "trans_space_tracking_data.h"
 
 namespace dairlib {
 namespace systems {
@@ -16,14 +17,14 @@ namespace controllers {
 
 /// Developer notes: the current implementation is not the cleanest, since we
 /// have to add a PreUpdate() to make this work.
-class RelativeTranslationTrackingData final : public OscTrackingData {
+class RelativeTranslationTrackingData final : public OptionsTrackingData {
  public:
   RelativeTranslationTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      OscTrackingData& to_frame_data, OscTrackingData& from_frame_data);
+      OptionsTrackingData& to_frame_data, OptionsTrackingData& from_frame_data);
 
   // PreUpdate updates the kinematics data for to_frame_data and
   // from_frame_data. E.g. we have to compute the positions of both frames
@@ -35,16 +36,13 @@ class RelativeTranslationTrackingData final : public OscTrackingData {
                  const drake::trajectories::Trajectory<double>& traj, double t,
                  double t_since_last_state_switch,
                  int finite_state_machine_state, const Eigen::VectorXd& v_proj,
-                 bool no_desired_traj = false) final;
+                 bool no_desired_traj = false);
 
  private:
-  void UpdateYddotDes() final;
   void UpdateY(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateYError() final;
   void UpdateYdot(const Eigen::VectorXd& x_wo_spr,
                   const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateYdotError() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -52,8 +50,8 @@ class RelativeTranslationTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  OscTrackingData& to_frame_data_;
-  OscTrackingData& from_frame_data_;
+  OptionsTrackingData& to_frame_data_;
+  OptionsTrackingData& from_frame_data_;
 };
 
 }  // namespace controllers

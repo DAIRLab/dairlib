@@ -1,4 +1,6 @@
-#include "impact_invariant_tracking_data.h"
+#pragma once
+
+#include "options_tracking_data.h"
 
 namespace dairlib {
 namespace systems {
@@ -16,7 +18,7 @@ namespace controllers {
 /// joint_idx's if state_ is not empty.
 /// This also means that AddJointToTrack and AddStateAndJointToTrack cannot be
 /// called one after another for the same TrackingData.
-class JointSpaceTrackingData final : public OscTrackingData {
+class JointSpaceTrackingData final : public OptionsTrackingData {
  public:
   JointSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
@@ -31,7 +33,8 @@ class JointSpaceTrackingData final : public OscTrackingData {
                                const std::string& joint_vel_name);
   // For multi joints
   void AddJointsToTrack(const std::vector<std::string>& joint_pos_names,
-                        const std::vector<std::string>& joint_vel_names);
+                        const std::vector<std::string>& joint_vel_names,
+                        int fsm_state = -1);
   void AddStateAndJointsToTrack(
       int state, const std::vector<std::string>& joint_pos_names,
       const std::vector<std::string>& joint_vel_names);
@@ -50,10 +53,10 @@ class JointSpaceTrackingData final : public OscTrackingData {
 
   // `joint_pos_idx_wo_spr` is the index of the joint position
   // `joint_vel_idx_wo_spr` is the index of the joint velocity
-  std::vector<int> joint_pos_idx_w_spr_;
-  std::vector<int> joint_vel_idx_w_spr_;
-  std::vector<int> joint_pos_idx_wo_spr_;
-  std::vector<int> joint_vel_idx_wo_spr_;
+  std::unordered_map<int, std::vector<int>> joint_pos_idx_w_spr_;
+  std::unordered_map<int, std::vector<int>> joint_vel_idx_w_spr_;
+  std::unordered_map<int, std::vector<int>> joint_pos_idx_wo_spr_;
+  std::unordered_map<int, std::vector<int>> joint_vel_idx_wo_spr_;
 };
 
 }  // namespace controllers

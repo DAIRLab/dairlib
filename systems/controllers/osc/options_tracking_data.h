@@ -1,43 +1,24 @@
-#include "impact_invariant_tracking_data.h"
+#pragma once
+
+#include "osc_tracking_data_new.h"
+#include "osc_view_frame.h"
 
 namespace dairlib {
 namespace systems {
 namespace controllers {
 
-/// OscViewFrame is used to rotate the frame for translational task space
-/// tracking data (including ComTrackingData, TransTaskSpaceTrackingData,
-/// RelativeTranslationTrackingData).
-/// One use case: we can set the swing foot tracking gains in the local frame
-/// instead of the global frame.
-class OscViewFrame {
- public:
-  OscViewFrame(const drake::multibody::Body<double>& body) : body_(body) {}
-  virtual Eigen::Matrix3d CalcRotationalMatrix(
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::systems::Context<double>& context_w_spr) const = 0;
-
- protected:
-  const drake::multibody::Body<double>& body_;
-};
-
-class WorldYawOscViewFrame : public OscViewFrame {
- public:
-  WorldYawOscViewFrame(const drake::multibody::Body<double>& body)
-      : OscViewFrame(body) {}
-
-  Eigen::Matrix3d CalcRotationalMatrix(
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::systems::Context<double>& context_w_spr) const override;
-};
 
 /// OptionsTrackingData
-class OptionsTrackingData : public ImpactInvariantTrackingData {
+class OptionsTrackingData : public OscTrackingData {
  public:
   OptionsTrackingData(
       const std::string& name, int n_y, int n_ydot, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+
+  // enable the low pass filter
+  void SetLowPassFilter(double tau, const std::set<int>& element_idx = {});
 
   // Additional feature -- multipliers for gains and feedforward acceleration
   // TOOD(yminchen): You can make ratio dictionary so that we have one ratio per
@@ -65,13 +46,24 @@ class OptionsTrackingData : public ImpactInvariantTrackingData {
 
  private:
   void UpdateActual(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr,
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) override;
   void UpdateYError() override;
-  void UpdateYdotError() override;
+  void UpdateFilters(double t);
+  void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
   void UpdateYddotDes(double t) override;
 
   bool with_view_frame_ = false;
+
+
+  // Members of low-pass filter
+  Eigen::VectorXd filtered_y_;
+  Eigen::VectorXd filtered_ydot_;
+  double tau_ = -1;
+  std::set<int> low_pass_filter_element_idx_;
+  double last_timestamp_ = -1;
 };
 
 }  // namespace controllers

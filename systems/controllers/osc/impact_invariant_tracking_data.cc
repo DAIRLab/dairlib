@@ -17,7 +17,7 @@ ImpactInvariantTrackingData::ImpactInvariantTrackingData(
     const MatrixXd& K_d, const MatrixXd& W,
     const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
-    : OscTrackingData(name, n_y, n_ydot_, K_p, K_d, W, plant_w_spr,
+    : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant_w_spr,
                       plant_wo_spr) {}
 
 void ImpactInvariantTrackingData::UpdateActual(
@@ -28,22 +28,25 @@ void ImpactInvariantTrackingData::UpdateActual(
 }
 
 void ImpactInvariantTrackingData::UpdateFilters(double t) {
-  double dt = t - last_timestamp_;
-  double alpha = dt / (dt + tau_);
-  filtered_y_ = alpha * y_ + (1 - alpha) * filtered_y_;
-  filtered_ydot_ = alpha * ydot_ + (1 - alpha) * filtered_ydot_;
+  if (tau_ > 0) {
+    double dt = t - last_timestamp_;
+    double alpha = dt / (dt + tau_);
+    filtered_y_ = alpha * y_ + (1 - alpha) * filtered_y_;
+    filtered_ydot_ = alpha * ydot_ + (1 - alpha) * filtered_ydot_;
 
-  // Assign filtered values
-  for (auto idx : low_pass_filter_element_idx_) {
-    y_(idx) = filtered_y_(idx);
-    ydot_(idx) = filtered_ydot_(idx);
+    // Assign filtered values
+    for (auto idx : low_pass_filter_element_idx_) {
+      y_(idx) = filtered_y_(idx);
+      ydot_(idx) = filtered_ydot_(idx);
+    }
   }
 }
 
-void ImpactInvariantTrackingData::UpdateYdotError() {
+void ImpactInvariantTrackingData::UpdateYdotError(
+    const Eigen::VectorXd& v_proj) {
   error_ydot_ = ydot_des_ - ydot_;
   if (impact_invariant_projection_) {
-    error_ydot_ -= GetJ() * v_proj_;
+    error_ydot_ -= GetJ() * v_proj;
   }
 }
 

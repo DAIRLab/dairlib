@@ -15,6 +15,13 @@
 #include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/osc/osc_tracking_data_new.h"
+#include "systems/controllers/osc/options_tracking_data.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/controllers/osc/com_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
+#include "systems/controllers/osc/rot_space_tracking_data.h"
+#include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -475,8 +482,8 @@ int DoMain(int argc, char* argv[]) {
   ComTrackingData com_data("com_data", gains.K_p_swing_foot,
                            gains.K_d_swing_foot, gains.W_swing_foot,
                            plant_w_spr, plant_w_spr);
-  com_data.AddStateToTrack(left_stance_state);
-  com_data.AddStateToTrack(right_stance_state);
+  com_data.AddFiniteStateToTrack(left_stance_state);
+  com_data.AddFiniteStateToTrack(right_stance_state);
   RelativeTranslationTrackingData swing_ft_traj_local(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data, com_data);

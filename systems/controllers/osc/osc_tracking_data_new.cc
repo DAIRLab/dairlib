@@ -49,24 +49,36 @@ OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
 void OscTrackingData::Update(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
-    const drake::trajectories::Trajectory<double>& traj, double t) {
-  UpdateActual(x_wo_spr, context_wo_spr);
+    const drake::trajectories::Trajectory<double>& traj, double t,
+    const int fsm_state, const VectorXd& v_proj) {
+  fsm_state_ = fsm_state;
+  DRAKE_ASSERT(IsActive(fsm_state));
+
+  UpdateActual(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr);
   UpdateDesired(traj, t);
   // 3. Update error
   // Careful: must update y and y_des before calling UpdateYError()
   UpdateYError();
-  UpdateYdotError();
+  UpdateYdotError(v_proj);
 
   yddot_command_ =
       yddot_des_converted_ + (K_p_ * (error_y_) + K_d_ * (error_ydot_));
 }
 
 void OscTrackingData::UpdateActual(
+    const Eigen::VectorXd& x_w_spr,
+    const drake::systems::Context<double>& context_w_spr,
     const Eigen::VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context_wo_spr) {
   // 1. Update actual output
-  UpdateY(x_wo_spr, context_wo_spr);
-  UpdateYdot(x_wo_spr, context_wo_spr);
+  if (use_springs_in_eval_) {
+    UpdateY(x_w_spr, context_w_spr);
+    UpdateYdot(x_w_spr, context_w_spr);
+  } else {
+    UpdateY(x_wo_spr, context_wo_spr);
+    UpdateYdot(x_wo_spr, context_wo_spr);
+  }
+
   UpdateJ(x_wo_spr, context_wo_spr);
   UpdateJdotV(x_wo_spr, context_wo_spr);
 }
@@ -94,10 +106,22 @@ void OscTrackingData::StoreYddotCommandSol(const VectorXd& dv) {
 
 void OscTrackingData::AddFiniteStateToTrack(int state) {
   // Avoid repeated states
-  for (auto const& element : state_) {
-    DRAKE_DEMAND(element != state);
+  if(state_.count(state)){
+    std::cout << "FSM state: " << state << " was already included in " << name_ << std::endl;
   }
+  DRAKE_DEMAND(!state_.count(state));
   state_.insert(state);
+}
+
+// Run this function in OSC constructor to make sure that users constructed
+// OscTrackingData correctly.
+void OscTrackingData::CheckOscTrackingData() {
+  cout << "Checking " << name_ << endl;
+  CheckDerivedOscTrackingData();
+
+  DRAKE_DEMAND((K_p_.rows() == n_ydot_) && (K_p_.cols() == n_ydot_));
+  DRAKE_DEMAND((K_d_.rows() == n_ydot_) && (K_d_.cols() == n_ydot_));
+  DRAKE_DEMAND((W_.rows() == n_ydot_) && (W_.cols() == n_ydot_));
 }
 
 }  // namespace dairlib::systems::controllers

@@ -36,13 +36,17 @@ class OscTrackingData {
   //  - `context_wo_spr`, plant context of the robot (without spring)
   //  - `traj`, desired trajectory
   //  - `t`, current time
+  //  - `v_proj`, impact invariant velocity projection
   void Update(const Eigen::VectorXd& x_w_spr,
               const drake::systems::Context<double>& context_w_spr,
               const Eigen::VectorXd& x_wo_spr,
               const drake::systems::Context<double>& context_wo_spr,
-              const drake::trajectories::Trajectory<double>& traj, double t);
+              const drake::trajectories::Trajectory<double>& traj, double t,
+              const int fsm_state, const Eigen::VectorXd& v_proj);
 
   virtual void UpdateActual(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr,
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr);
   void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
@@ -50,7 +54,15 @@ class OscTrackingData {
 
   // Add this state to the list of fsm states where this tracking data is active
   void AddFiniteStateToTrack(int state);
-  bool IsActive(int fsm_state) const { return state_.count(fsm_state); }
+  bool IsActive(int fsm_state) const { return state_.count(fsm_state) || state_.count(-1); }
+  void CheckOscTrackingData();
+  // Set whether or not to use the impact invariant projection
+  void SetImpactInvariantProjection(bool use_impact_invariant_projection) {
+    impact_invariant_projection_ = use_impact_invariant_projection;
+  }
+
+  // Set whether or not to use the impact invariant projection
+  bool GetImpactInvariantProjection() { return impact_invariant_projection_; }
 
   // Getters for debugging
   const Eigen::VectorXd& GetY() const { return y_; }
@@ -90,6 +102,12 @@ class OscTrackingData {
   // Output dimension
   int n_y_;
   int n_ydot_;
+
+  bool use_springs_in_eval_ = false;
+  bool impact_invariant_projection_ = false;
+
+  // Current fsm state
+  int fsm_state_;
 
   // Feedback output, Jacobian and dJ/dt * v
   Eigen::VectorXd y_;
@@ -141,7 +159,7 @@ class OscTrackingData {
   virtual void UpdateYdot(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) = 0;
-  virtual void UpdateYdotError() = 0;
+  virtual void UpdateYdotError(const Eigen::VectorXd& v_proj) = 0;
   virtual void UpdateJ(
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) = 0;

@@ -261,16 +261,14 @@ int DoMain(int argc, char* argv[]) {
                      FLAGS_spring_model, false /*loop closure*/);
   plant_feedback.Finalize();
   // Build fix-spring Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant_control(0.0);
-  addCassieMultibody(&plant_control, nullptr, true,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+  std::string fixed_spring_urdf =
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+  //  drake::multibody::MultibodyPlant<double> plant_control(0.0);
+  multibody::PinocchioPlant<double> plant_control(0.0, fixed_spring_urdf);
+  addCassieMultibody(&plant_control, nullptr, true, fixed_spring_urdf, false,
                      false);
   plant_control.Finalize();
-
-  return 0;  // Currently PinocchioPlant doesn't support floating base joint.
-             // Need to implemtnat this. Also, urdf file doesn't have reflected
-             // inertia
-
+  
   // Build the controller diagram
   DiagramBuilder<double> builder;
 

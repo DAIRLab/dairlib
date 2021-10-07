@@ -2,32 +2,32 @@ rows: 3
 cols: 3
 
 # High level command gains (with radio)
-vel_scale_rot: -3.5
-vel_scale_trans_sagital: 0.4
+vel_scale_rot: -1.5
+vel_scale_trans_sagital: 0.1
 vel_scale_trans_lateral: -0.1
 
 # High level command gains (without radio)
-global_target_position_x: 0
+global_target_position_x: -15
 global_target_position_y: 0
-yaw_deadband_blur: 5
-yaw_deadband_radius: 1000
+yaw_deadband_blur: 1
+yaw_deadband_radius: 1
 kp_yaw: 1
 kd_yaw: 0.2
 vel_max_yaw: 0.5
 
-kp_pos_sagital: 0  # 0.3
-kd_pos_sagital: 0  # 0.3
-vel_max_sagital: 0  # 0.5
-kp_pos_lateral: 0  # 0.3
-kd_pos_lateral: 0  # 0.3
-vel_max_lateral: 0  # 0.3
+kp_pos_sagital: 0.3  # 0.3
+kd_pos_sagital: 0.3  # 0.3
+vel_max_sagital: 0.5  # 0.5
+kp_pos_lateral: 0.3  # 0.3
+kd_pos_lateral: 0.3  # 0.3
+vel_max_lateral: 0.3  # 0.3
 target_pos_offset: 0  # -0.16
 
 # Speed control gains
 k_ff_sagittal: 0
 k_fb_sagittal: 0.2
 k_ff_lateral: 0
-k_fb_lateral: 0.1
+k_fb_lateral: 0.15
 
 # Finite state machine
 ss_time: 0.30
@@ -38,7 +38,7 @@ max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.0
 center_line_offset: 0.03
 mid_foot_height: 0.05
-final_foot_height: 0.0
+final_foot_height: -0.0  # 0 with feedforward accel
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
@@ -111,6 +111,7 @@ PelvisHeadingKd:
       0,     0,    10]
 period_of_no_heading_control: 0.0
 
+#### With feedforward accel ####
 SwingFootW:
   [ 4,    0,     0,
     0,    4,     0,
@@ -123,3 +124,17 @@ SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,
       0,    0,     1]
+
+#### Without feedforward accel (completely) ####
+#SwingFootW:
+#  [ 4,    0,     0,
+#    0,    4,     0,
+#    0,    0,     4]
+#SwingFootKp:
+#  [ 200,    0,     0,
+#    0,  200,     0,
+#    0,    0,   80]
+#SwingFootKd:
+#  [   1,    0,     0,
+#      0,    1,     0,
+#      0,    0,     5]

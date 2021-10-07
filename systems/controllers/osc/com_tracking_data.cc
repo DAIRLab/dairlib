@@ -19,7 +19,6 @@ ComTrackingData::ComTrackingData(const string& name, const MatrixXd& K_p,
                                  const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr,
                       plant_wo_spr) {
-  use_springs_in_eval_ = true;
 }
 
 void ComTrackingData::UpdateY(const VectorXd& x_w_spr,

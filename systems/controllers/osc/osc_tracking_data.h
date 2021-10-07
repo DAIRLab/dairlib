@@ -171,7 +171,7 @@ class OscTrackingData {
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr() const {
     return plant_wo_spr_;
   };
-  const std::vector<int>& GetStates() { return state_; };
+  const std::vector<int>& GetStates() { return active_fsm_states_; };
 
   void SaveYddotCommandSol(const Eigen::VectorXd& dv);
 
@@ -248,7 +248,7 @@ class OscTrackingData {
 
   // `state_` is the finite state machine state when the tracking is enabled
   // If `state_` is empty, then the tracking is always on.
-  std::vector<int> state_;
+  std::vector<int> active_fsm_states_;
 
   bool impact_invariant_projection_ = false;
 

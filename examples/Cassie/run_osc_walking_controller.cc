@@ -298,7 +298,7 @@ int DoMain(int argc, char* argv[]) {
                   pelvis_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
-  bool wrt_com_in_local_frame = true;
+  bool wrt_com_in_local_frame = gains.relative_swing_ft;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
@@ -486,7 +486,7 @@ int DoMain(int argc, char* argv[]) {
   com_data.AddFiniteStateToTrack(right_stance_state);
   RelativeTranslationTrackingData swing_ft_traj_local(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data, com_data);
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data, &com_data);
   WorldYawOscViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
 

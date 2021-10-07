@@ -24,7 +24,6 @@ JointSpaceTrackingData::JointSpaceTrackingData(
     const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, K_p.rows(), K_p.rows(), K_p, K_d, W,
                           plant_w_spr, plant_wo_spr) {
-  use_springs_in_eval_ = true;
 }
 
 void JointSpaceTrackingData::AddJointToTrack(const std::string& joint_pos_name,
@@ -48,8 +47,7 @@ void JointSpaceTrackingData::AddStateAndJointToTrack(
 
 void JointSpaceTrackingData::AddJointsToTrack(
     const std::vector<std::string>& joint_pos_names,
-    const std::vector<std::string>& joint_vel_names,
-    int fsm_state) {
+    const std::vector<std::string>& joint_vel_names) {
   AddStateAndJointsToTrack(-1, joint_pos_names, joint_vel_names);
 }
 
@@ -119,16 +117,16 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
     DRAKE_DEMAND(joint_vel_idx_w_spr_.at(fsm_joint_pair.first).size() == GetYdotDim());
     DRAKE_DEMAND(joint_vel_idx_wo_spr_.at(fsm_joint_pair.first).size() == GetYdotDim());
   }
-  if (state_.empty()) {
+  if (active_fsm_states_.empty()) {
     DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == 1);
     DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == 1);
     DRAKE_DEMAND(joint_pos_idx_wo_spr_.size() == 1);
     DRAKE_DEMAND(joint_vel_idx_wo_spr_.size() == 1);
   } else {
-    DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == state_.size());
-    DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == state_.size());
-    DRAKE_DEMAND(joint_pos_idx_wo_spr_.size() == state_.size());
-    DRAKE_DEMAND(joint_vel_idx_wo_spr_.size() == state_.size());
+    DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == active_fsm_states_.size());
+    DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == active_fsm_states_.size());
+    DRAKE_DEMAND(joint_pos_idx_wo_spr_.size() == active_fsm_states_.size());
+    DRAKE_DEMAND(joint_vel_idx_wo_spr_.size() == active_fsm_states_.size());
   }
 }
 

@@ -22,7 +22,15 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(
     const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W,
                           plant_w_spr, plant_wo_spr) {
-  use_springs_in_eval_ = true;
+}
+
+void RotTaskSpaceTrackingData::UpdateActual(
+    const Eigen::VectorXd& x_w_spr,
+    const drake::systems::Context<double>& context_w_spr,
+    const Eigen::VectorXd& x_wo_spr,
+    const drake::systems::Context<double>& context_wo_spr) {
+  OptionsTrackingData::UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
+                                    context_wo_spr);
 }
 
 void RotTaskSpaceTrackingData::AddFrameToTrack(
@@ -54,9 +62,6 @@ void RotTaskSpaceTrackingData::UpdateYddotDes(double t) {
 
 void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
                                        const Context<double>& context_w_spr) {
-  //  auto transform_mat = plant_w_spr_.EvalBodyPoseInWorld(
-  //      context_w_spr,
-  //      plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
   auto transform_mat = plant_w_spr_.CalcRelativeTransform(
       context_w_spr, plant_w_spr_.world_frame(),
       *body_frames_w_spr_[fsm_state_]);

@@ -1,5 +1,6 @@
+#pragma once
+
 #include "options_tracking_data.h"
-#include "trans_space_tracking_data.h"
 
 namespace dairlib {
 namespace systems {
@@ -24,14 +25,15 @@ class RelativeTranslationTrackingData final : public OptionsTrackingData {
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      OptionsTrackingData& to_frame_data, OptionsTrackingData& from_frame_data);
-  
+      OptionsTrackingData* to_frame_data, OptionsTrackingData* from_frame_data);
+
+  void UpdateActual(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr,
+      const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context_wo_spr) override;
 
  private:
-  void UpdateActual(const Eigen::VectorXd& x_w_spr,
-                    const drake::systems::Context<double>& context_w_spr,
-                    const Eigen::VectorXd& x_wo_spr,
-                    const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateY(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateYdot(const Eigen::VectorXd& x_wo_spr,
@@ -43,8 +45,8 @@ class RelativeTranslationTrackingData final : public OptionsTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  OptionsTrackingData& to_frame_data_;
-  OptionsTrackingData& from_frame_data_;
+  OptionsTrackingData* to_frame_data_;
+  OptionsTrackingData* from_frame_data_;
 };
 
 }  // namespace controllers

@@ -25,27 +25,27 @@ class TransTaskSpaceTrackingData final : public OptionsTrackingData {
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_sp);
-
   void AddPointToTrack(
       const std::string& body_name,
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
   void AddStateAndPointToTrack(
       int state, const std::string& body_name,
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
-  void CheckOscTrackingData();
 
  protected:
-  std::unordered_map<int, const drake::multibody::BodyFrame<double>*> body_frames_w_spr_;
-  std::unordered_map<int, const drake::multibody::BodyFrame<double>*> body_frames_wo_spr_;
+  std::unordered_map<int, const drake::multibody::BodyFrame<double>*>
+      body_frames_w_spr_;
+  std::unordered_map<int, const drake::multibody::BodyFrame<double>*>
+      body_frames_wo_spr_;
 
  private:
-//  void UpdateYddotDes() final;
+  //  void UpdateYddotDes() final;
   void UpdateY(const Eigen::VectorXd& x_w_spr,
                const drake::systems::Context<double>& context_w_spr) final;
-//  void UpdateYError() final;
+  //  void UpdateYError() final;
   void UpdateYdot(const Eigen::VectorXd& x_w_spr,
                   const drake::systems::Context<double>& context_w_spr) final;
-//  void UpdateYdotError() final;
+  //  void UpdateYdotError() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,

@@ -55,7 +55,7 @@ class OscTrackingData {
   // Add this state to the list of fsm states where this tracking data is active
   void AddFiniteStateToTrack(int state);
   const bool IsActive(int fsm_state) const {
-    return state_.count(fsm_state) || state_.count(-1);
+    return active_fsm_states_.count(fsm_state) || active_fsm_states_.count(-1);
   }
   void CheckOscTrackingData();
   // Set whether or not to use the impact invariant projection
@@ -88,7 +88,7 @@ class OscTrackingData {
 
   // Getters
   const std::string& GetName() const { return name_; };
-  const std::set<int>& GetActiveStates() { return state_; };
+  const std::set<int>& GetActiveStates() { return active_fsm_states_; };
   int GetYDim() const { return n_y_; };
   int GetYdotDim() const { return n_ydot_; };
   const drake::multibody::MultibodyPlant<double>& plant_w_spr() const {
@@ -105,7 +105,7 @@ class OscTrackingData {
   int n_y_;
   int n_ydot_;
 
-  bool use_springs_in_eval_ = false;
+  bool use_springs_in_eval_ = true;
   bool impact_invariant_projection_ = false;
 
   // Current fsm state
@@ -136,7 +136,7 @@ class OscTrackingData {
 
   // `state_` is the finite state machine state when the tracking is enabled
   // If `state_` is empty, then the tracking is always on.
-  std::set<int> state_;
+  std::set<int> active_fsm_states_;
 
   /// OSC calculates feedback positions/velocities from `plant_w_spr_`,
   /// but in the optimization it uses `plant_wo_spr_`. The reason of using
@@ -169,6 +169,7 @@ class OscTrackingData {
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) = 0;
   virtual void UpdateYddotDes(double t) = 0;
+  void UpdateYddotCmd();
 
   // Finalize and ensure that users construct OscTrackingData derived class
   // correctly.

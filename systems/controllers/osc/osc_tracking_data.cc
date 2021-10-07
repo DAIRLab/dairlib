@@ -149,15 +149,15 @@ bool OscTrackingData::Update(
 }
 
 void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
-  if (state_.empty()) {
+  if (active_fsm_states_.empty()) {
     track_at_current_state_ = true;
     state_idx_ = 0;
     return;
   }
 
-  auto it = find(state_.begin(), state_.end(), finite_state_machine_state);
-  state_idx_ = std::distance(state_.begin(), it);
-  track_at_current_state_ = it != state_.end();
+  auto it = find(active_fsm_states_.begin(), active_fsm_states_.end(), finite_state_machine_state);
+  state_idx_ = std::distance(active_fsm_states_.begin(), it);
+  track_at_current_state_ = it != active_fsm_states_.end();
 }
 
 void OscTrackingData::SetTimeVaryingGains(
@@ -236,10 +236,10 @@ void OscTrackingData::SaveYddotCommandSol(const VectorXd& dv) {
 
 void OscTrackingData::AddState(int state) {
   // Avoid repeated states
-  for (auto const& element : state_) {
+  for (auto const& element : active_fsm_states_) {
     DRAKE_DEMAND(element != state);
   }
-  state_.push_back(state);
+  active_fsm_states_.push_back(state);
 }
 
 // Run this function in OSC constructor to make sure that users constructed
@@ -249,8 +249,8 @@ void OscTrackingData::CheckOscTrackingData(bool no_control_gains) {
   CheckDerivedOscTrackingData();
 
   // State_ cannot have repeated state
-  auto it = std::unique(state_.begin(), state_.end());
-  bool all_state_are_different = (it == state_.end());
+  auto it = std::unique(active_fsm_states_.begin(), active_fsm_states_.end());
+  bool all_state_are_different = (it == active_fsm_states_.end());
   DRAKE_DEMAND(all_state_are_different);
 
   if (no_control_gains) return;
@@ -390,8 +390,8 @@ void TransTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
   }
   DRAKE_DEMAND(body_index_w_spr_.size() == pts_on_body_.size());
   DRAKE_DEMAND(body_index_wo_spr_.size() == pts_on_body_.size());
-  DRAKE_DEMAND(state_.empty() || (state_.size() == pts_on_body_.size()));
-  if (state_.empty()) {
+  DRAKE_DEMAND(active_fsm_states_.empty() || (active_fsm_states_.size() == pts_on_body_.size()));
+  if (active_fsm_states_.empty()) {
     DRAKE_DEMAND(body_index_w_spr_.size() == 1);
     DRAKE_DEMAND(body_index_wo_spr_.size() == 1);
     DRAKE_DEMAND(pts_on_body_.size() == 1);

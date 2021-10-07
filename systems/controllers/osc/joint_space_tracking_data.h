@@ -33,8 +33,7 @@ class JointSpaceTrackingData final : public OptionsTrackingData {
                                const std::string& joint_vel_name);
   // For multi joints
   void AddJointsToTrack(const std::vector<std::string>& joint_pos_names,
-                        const std::vector<std::string>& joint_vel_names,
-                        int fsm_state = -1);
+                        const std::vector<std::string>& joint_vel_names);
   void AddStateAndJointsToTrack(
       int state, const std::vector<std::string>& joint_pos_names,
       const std::vector<std::string>& joint_vel_names);

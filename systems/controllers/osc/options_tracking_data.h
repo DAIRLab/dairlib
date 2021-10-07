@@ -55,6 +55,7 @@ class OptionsTrackingData : public OscTrackingData {
   void UpdateFilters(double t);
   void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
   void UpdateYddotDes(double t) override;
+  void UpdateYddotCmd();
 
   bool with_view_frame_ = false;
 

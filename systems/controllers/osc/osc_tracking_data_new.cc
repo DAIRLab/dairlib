@@ -52,7 +52,8 @@ void OscTrackingData::Update(
     const drake::trajectories::Trajectory<double>& traj, double t,
     const int fsm_state, const VectorXd& v_proj) {
   fsm_state_ = fsm_state;
-  if(state_.count(-1)){
+  // If the set of active states contains -1, the tracking data is always active
+  if (active_fsm_states_.count(-1)) {
     fsm_state_ = -1;
   }
   DRAKE_ASSERT(IsActive(fsm_state));
@@ -63,9 +64,7 @@ void OscTrackingData::Update(
   // Careful: must update y and y_des before calling UpdateYError()
   UpdateYError();
   UpdateYdotError(v_proj);
-
-  yddot_command_ =
-      yddot_des_converted_ + (K_p_ * (error_y_) + K_d_ * (error_ydot_));
+  UpdateYddotCmd();
 }
 
 void OscTrackingData::UpdateActual(
@@ -103,17 +102,23 @@ void OscTrackingData::UpdateDesired(
   UpdateYddotDes(t);
 }
 
+void OscTrackingData::UpdateYddotCmd() {
+  yddot_command_ =
+      yddot_des_converted_ + (K_p_ * (error_y_) + K_d_ * (error_ydot_));
+}
+
 void OscTrackingData::StoreYddotCommandSol(const VectorXd& dv) {
   yddot_command_sol_ = J_ * dv + JdotV_;
 }
 
 void OscTrackingData::AddFiniteStateToTrack(int state) {
   // Avoid repeated states
-  if(state_.count(state)){
-    std::cout << "FSM state: " << state << " was already included in " << name_ << std::endl;
+  if (active_fsm_states_.count(state)) {
+    std::cout << "FSM state: " << state << " was already included in " << name_
+              << std::endl;
   }
-  DRAKE_DEMAND(!state_.count(state));
-  state_.insert(state);
+  DRAKE_DEMAND(!active_fsm_states_.count(state));
+  active_fsm_states_.insert(state);
 }
 
 // Run this function in OSC constructor to make sure that users constructed

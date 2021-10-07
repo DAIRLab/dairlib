@@ -19,7 +19,6 @@ TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(
     const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr,
                           plant_wo_spr) {
-  use_springs_in_eval_ = true;
 }
 
 void TransTaskSpaceTrackingData::AddPointToTrack(const std::string& body_name,
@@ -36,10 +35,6 @@ void TransTaskSpaceTrackingData::AddStateAndPointToTrack(
   body_frames_wo_spr_[fsm_state] =
       &plant_wo_spr_.GetBodyByName(body_name).body_frame();
   pts_on_body_[fsm_state] = pt_on_body;
-}
-
-void TransTaskSpaceTrackingData::CheckOscTrackingData() {
-  CheckDerivedOscTrackingData();
 }
 
 void TransTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,

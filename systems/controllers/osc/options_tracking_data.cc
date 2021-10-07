@@ -85,6 +85,20 @@ void OptionsTrackingData::UpdateYddotDes(double t) {
   }
 }
 
+void OptionsTrackingData::UpdateYddotCmd() {
+  // 4. Update command output (desired output with pd control)
+  MatrixXd gain_multiplier;
+  if (gain_multiplier_ != nullptr) {
+    gain_multiplier = gain_multiplier_->value(0);
+  } else {
+    gain_multiplier = MatrixXd::Identity(n_ydot_, n_ydot_);
+  }
+
+  yddot_command_ =
+      yddot_des_converted_ +
+          gain_multiplier * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
+}
+
 void OptionsTrackingData::SetLowPassFilter(double tau,
                                            const std::set<int>& element_idx) {
   DRAKE_DEMAND(tau > 0);

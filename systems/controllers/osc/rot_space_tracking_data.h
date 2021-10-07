@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "options_tracking_data.h"
 
 namespace dairlib {
@@ -29,6 +28,12 @@ class RotTaskSpaceTrackingData final : public OptionsTrackingData {
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
+  void UpdateActual(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr,
+      const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context_wo_spr) override;
+
   void AddFrameToTrack(
       const std::string& body_name,
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
@@ -37,8 +42,10 @@ class RotTaskSpaceTrackingData final : public OptionsTrackingData {
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
  protected:
-  std::unordered_map<int, const drake::multibody::BodyFrame<double>*> body_frames_w_spr_;
-  std::unordered_map<int, const drake::multibody::BodyFrame<double>*> body_frames_wo_spr_;
+  std::unordered_map<int, const drake::multibody::BodyFrame<double>*>
+      body_frames_w_spr_;
+  std::unordered_map<int, const drake::multibody::BodyFrame<double>*>
+      body_frames_wo_spr_;
 
  private:
   void UpdateY(const Eigen::VectorXd& x_w_spr,

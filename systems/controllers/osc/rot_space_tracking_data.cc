@@ -21,8 +21,7 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W,
-                          plant_w_spr, plant_wo_spr) {
-}
+                          plant_w_spr, plant_wo_spr) {}
 
 void RotTaskSpaceTrackingData::UpdateActual(
     const Eigen::VectorXd& x_w_spr,
@@ -51,7 +50,7 @@ void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(
   frame_poses_[fsm_state] = frame_pose;
 }
 
-void RotTaskSpaceTrackingData::UpdateYddotDes(double t) {
+void RotTaskSpaceTrackingData::UpdateYddotDes(double, double) {
   // Convert ddq into angular acceleration
   // See https://physics.stackexchange.com/q/460311
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));

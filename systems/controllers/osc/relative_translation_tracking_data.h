@@ -27,11 +27,13 @@ class RelativeTranslationTrackingData final : public OptionsTrackingData {
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
       OptionsTrackingData* to_frame_data, OptionsTrackingData* from_frame_data);
 
-  void UpdateActual(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr,
-      const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr) override;
+  void Update(const Eigen::VectorXd& x_w_spr,
+              const drake::systems::Context<double>& context_w_spr,
+              const Eigen::VectorXd& x_wo_spr,
+              const drake::systems::Context<double>& context_wo_spr,
+              const drake::trajectories::Trajectory<double>& traj, double t,
+              double t_gait_cycle, int fsm_state,
+              const Eigen::VectorXd& v_proj);
 
  private:
   void UpdateY(const Eigen::VectorXd& x_wo_spr,

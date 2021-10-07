@@ -37,12 +37,13 @@ class OscTrackingData {
   //  - `traj`, desired trajectory
   //  - `t`, current time
   //  - `v_proj`, impact invariant velocity projection
-  void Update(const Eigen::VectorXd& x_w_spr,
+  virtual void Update(const Eigen::VectorXd& x_w_spr,
               const drake::systems::Context<double>& context_w_spr,
               const Eigen::VectorXd& x_wo_spr,
               const drake::systems::Context<double>& context_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
-              const int fsm_state, const Eigen::VectorXd& v_proj);
+              double t_gait_cycle, int fsm_state,
+              const Eigen::VectorXd& v_proj);
 
   virtual void UpdateActual(
       const Eigen::VectorXd& x_w_spr,
@@ -50,7 +51,7 @@ class OscTrackingData {
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr);
   void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
-                     double t);
+                     double t, double t_gait_cycle);
 
   // Add this state to the list of fsm states where this tracking data is active
   void AddFiniteStateToTrack(int state);
@@ -168,8 +169,8 @@ class OscTrackingData {
   virtual void UpdateJdotV(
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) = 0;
-  virtual void UpdateYddotDes(double t) = 0;
-  void UpdateYddotCmd();
+  virtual void UpdateYddotDes(double t, double t_gait_cycle) = 0;
+  void UpdateYddotCmd(double t, double t_gait_cycle);
 
   // Finalize and ensure that users construct OscTrackingData derived class
   // correctly.

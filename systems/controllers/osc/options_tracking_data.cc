@@ -54,6 +54,8 @@ void OptionsTrackingData::UpdateFilters(double t) {
       y_(idx) = filtered_y_(idx);
       ydot_(idx) = filtered_ydot_(idx);
     }
+    // Update timestamp
+    last_timestamp_ = t;
   }
 }
 
@@ -74,22 +76,22 @@ void OptionsTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   }
 }
 
-void OptionsTrackingData::UpdateYddotDes(double t) {
+void OptionsTrackingData::UpdateYddotDes(double t, double t_gait_cycle) {
   yddot_des_converted_ = yddot_des_;
   for (auto idx : idx_zero_feedforward_accel_) {
     yddot_des_converted_(idx) = 0;
   }
   if (ff_accel_multiplier_ != nullptr) {
     yddot_des_converted_ =
-        ff_accel_multiplier_->value(t) * yddot_des_converted_;
+        ff_accel_multiplier_->value(t_gait_cycle) * yddot_des_converted_;
   }
 }
 
-void OptionsTrackingData::UpdateYddotCmd() {
+void OptionsTrackingData::UpdateYddotCmd(double t, double t_gait_cycle) {
   // 4. Update command output (desired output with pd control)
   MatrixXd gain_multiplier;
   if (gain_multiplier_ != nullptr) {
-    gain_multiplier = gain_multiplier_->value(0);
+    gain_multiplier = gain_multiplier_->value(t_gait_cycle);
   } else {
     gain_multiplier = MatrixXd::Identity(n_ydot_, n_ydot_);
   }

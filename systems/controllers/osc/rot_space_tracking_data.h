@@ -28,6 +28,7 @@ class RotTaskSpaceTrackingData final : public OptionsTrackingData {
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
+
   void UpdateActual(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr,
@@ -58,7 +59,7 @@ class RotTaskSpaceTrackingData final : public OptionsTrackingData {
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
                    const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateYddotDes(double t) override;
+  void UpdateYddotDes(double t, double t_gait_cycle) override;
   void CheckDerivedOscTrackingData() final;
 
   // frame_pose_ represents the pose of the frame (w.r.t. the body's frame)

@@ -50,7 +50,7 @@ void OscTrackingData::Update(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
-    const int fsm_state, const VectorXd& v_proj) {
+    double t_gait_cycle, const int fsm_state, const VectorXd& v_proj) {
   fsm_state_ = fsm_state;
   // If the set of active states contains -1, the tracking data is always active
   if (active_fsm_states_.count(-1)) {
@@ -59,12 +59,12 @@ void OscTrackingData::Update(
   DRAKE_ASSERT(IsActive(fsm_state));
 
   UpdateActual(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr);
-  UpdateDesired(traj, t);
+  UpdateDesired(traj, t, t_gait_cycle);
   // 3. Update error
   // Careful: must update y and y_des before calling UpdateYError()
   UpdateYError();
   UpdateYdotError(v_proj);
-  UpdateYddotCmd();
+  UpdateYddotCmd(t, t_gait_cycle);
 }
 
 void OscTrackingData::UpdateActual(
@@ -86,7 +86,8 @@ void OscTrackingData::UpdateActual(
 }
 
 void OscTrackingData::UpdateDesired(
-    const drake::trajectories::Trajectory<double>& traj, double t) {
+    const drake::trajectories::Trajectory<double>& traj, double t,
+    double t_gait_cycle) {
   // 2. Update desired output
   y_des_ = traj.value(t);
   if (traj.has_derivative()) {
@@ -99,10 +100,10 @@ void OscTrackingData::UpdateDesired(
     ydot_des_ = traj.MakeDerivative(1)->value(t);
     yddot_des_ = traj.MakeDerivative(2)->value(t);
   }
-  UpdateYddotDes(t);
+  UpdateYddotDes(t, t_gait_cycle);
 }
 
-void OscTrackingData::UpdateYddotCmd() {
+void OscTrackingData::UpdateYddotCmd(double t, double t_gait_cycle) {
   yddot_command_ =
       yddot_des_converted_ + (K_p_ * (error_y_) + K_d_ * (error_ydot_));
 }

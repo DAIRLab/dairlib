@@ -652,7 +652,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         tracking_data->Update(
             x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-            fsm_state, v_proj);
+            time_since_last_state_switch, fsm_state, v_proj);
       } else {
         // Read in traj from input port
         const string& traj_name = tracking_data->GetName();
@@ -664,7 +664,8 @@ VectorXd OperationalSpaceControl::SolveQp(
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         // Update
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                              *context_wo_spr_, traj, t, fsm_state, v_proj);
+                              *context_wo_spr_, traj, t,
+                              time_since_last_state_switch, fsm_state, v_proj);
       }
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
@@ -855,7 +856,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
         tracking_data->Update(
             x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-            fsm_state, v_proj);
+            t_since_last_state_switch, fsm_state, v_proj);
       } else {
         // Read in traj from input port
         const string& traj_name = tracking_data->GetName();
@@ -865,7 +866,8 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                              *context_wo_spr_, traj, t, fsm_state, v_proj);
+                              *context_wo_spr_, traj, t,
+                              t_since_last_state_switch, fsm_state, v_proj);
       }
     }
   }
@@ -937,6 +939,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;
 
+  output->tracking_data =
+      std::vector<lcmt_osc_tracking_data>(tracking_data_vec_->size());
+  output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
+
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
 
@@ -964,15 +970,16 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommand());
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
-      output->tracking_data.push_back(osc_output);
+      //      output->tracking_data.push_back(osc_output);
+      output->tracking_data[i] = osc_output;
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
       const MatrixXd& W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-      output->tracking_cost.push_back(
+      output->tracking_cost[i] =
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
-           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0));
+           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
     }
   }
 

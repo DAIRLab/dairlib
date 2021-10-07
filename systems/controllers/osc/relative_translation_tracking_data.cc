@@ -32,17 +32,17 @@ RelativeTranslationTrackingData::RelativeTranslationTrackingData(
   DRAKE_DEMAND(states1 == states2);
 }
 
-void RelativeTranslationTrackingData::UpdateActual(
-    const Eigen::VectorXd& x_w_spr,
-    const drake::systems::Context<double>& context_w_spr,
-    const Eigen::VectorXd& x_wo_spr,
-    const drake::systems::Context<double>& context_wo_spr) {
-  to_frame_data_->UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
-                               context_wo_spr);
-  from_frame_data_->UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
-                                 context_wo_spr);
-  OptionsTrackingData::UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
-                                    context_wo_spr);
+void RelativeTranslationTrackingData::Update(
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
+    const drake::trajectories::Trajectory<double>& traj, double t,
+    double t_gait_cycle, const int fsm_state, const VectorXd& v_proj) {
+  to_frame_data_->Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj,
+                         t, t_gait_cycle, fsm_state, v_proj);
+  from_frame_data_->Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr,
+                           traj, t, t_gait_cycle, fsm_state, v_proj);
+  OptionsTrackingData::Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr,
+                              traj, t, t_gait_cycle, fsm_state, v_proj);
 }
 
 void RelativeTranslationTrackingData::UpdateY(

@@ -160,7 +160,7 @@ void CassieFixedPointSolver(
   // Random guess, except for the positions
   Eigen::VectorXd guess = Eigen::VectorXd::Random(program.num_vars());
   guess.head(plant.num_positions()) = q_guess;
-  if (all_sol->size() > 0) {
+  if (all_sol) {
     std::cout << "set initial guess from all_sol\n";
     guess = *all_sol;
   }
@@ -191,7 +191,8 @@ void CassieFixedPointSolver(
   *q_result = result.GetSolution(q);
   *u_result = result.GetSolution(u);
   *lambda_result = result.GetSolution(lambda);
-  *all_sol = result.GetSolution();
+  if(all_sol)
+    *all_sol = result.GetSolution();
 }
 
 void CassieFixedBaseFixedPointSolver(

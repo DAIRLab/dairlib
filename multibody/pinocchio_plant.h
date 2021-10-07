@@ -46,17 +46,17 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
                       drake::EigenPtr<drake::MatrixX<T>> M) const;
 
   drake::Vector3<T> CalcCenterOfMassPositionInWorld(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const override;
 
   drake::Vector3<T> CalcCenterOfMassTranslationalVelocityInWorld(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const override;
 
   void CalcJacobianCenterOfMassTranslationalVelocity(
       const drake::systems::Context<T>& context,
       drake::multibody::JacobianWrtVariable with_respect_to,
       const drake::multibody::Frame<T>& frame_A,
       const drake::multibody::Frame<T>& frame_E,
-      drake::EigenPtr<drake::Matrix3X<T>> J) const;
+      drake::EigenPtr<drake::Matrix3X<T>> J) const override;
 
   //
   // Comparisons against MultibodyPlant

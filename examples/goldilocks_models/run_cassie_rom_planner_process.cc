@@ -269,7 +269,7 @@ int DoMain(int argc, char* argv[]) {
   addCassieMultibody(&plant_control, nullptr, true, fixed_spring_urdf, false,
                      false);
   plant_control.Finalize();
-  
+
   // Build the controller diagram
   DiagramBuilder<double> builder;
 

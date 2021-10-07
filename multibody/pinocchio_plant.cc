@@ -18,6 +18,8 @@ namespace multibody {
 
 using drake::AutoDiffXd;
 using drake::VectorX;
+using drake::multibody::Frame;
+using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::MatrixXd;
@@ -294,40 +296,39 @@ void PinocchioPlant<AutoDiffXd>::CalcMassMatrix(
 }
 
 template <>
-void PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
-    const Context<double>& context,
-    drake::EigenPtr<drake::VectorX<double>> r_com) const {
+drake::Vector3<double> PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
+    const Context<double>& context) const {
   pinocchio::centerOfMass(
       pinocchio_model_, pinocchio_data_,
       MapPositionFromDrakeToPinocchio(GetPositions(context)));
 
-  *r_com = pinocchio_data_.com[0];
+  return pinocchio_data_.com[0];
 }
 
 template <>
-void PinocchioPlant<AutoDiffXd>::CalcCenterOfMassPositionInWorld(
-    const Context<AutoDiffXd>& context,
-    drake::EigenPtr<drake::VectorX<AutoDiffXd>> r_com) const {
+drake::Vector3<AutoDiffXd>
+PinocchioPlant<AutoDiffXd>::CalcCenterOfMassPositionInWorld(
+    const Context<AutoDiffXd>& context) const {
   throw std::domain_error(
       "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");
 }
 
 template <>
-void PinocchioPlant<double>::CalcCenterOfMassTranslationalVelocityInWorld(
-    const Context<double>& context,
-    drake::EigenPtr<drake::VectorX<double>> v_com) const {
+drake::Vector3<double>
+PinocchioPlant<double>::CalcCenterOfMassTranslationalVelocityInWorld(
+    const Context<double>& context) const {
   pinocchio::centerOfMass(
       pinocchio_model_, pinocchio_data_,
       MapPositionFromDrakeToPinocchio(GetPositions(context)),
       MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
                                       GetVelocities(context)));
-  *v_com = pinocchio_data_.vcom[0];
+  return pinocchio_data_.vcom[0];
 }
 
 template <>
-void PinocchioPlant<AutoDiffXd>::CalcCenterOfMassTranslationalVelocityInWorld(
-    const Context<AutoDiffXd>& context,
-    drake::EigenPtr<drake::VectorX<AutoDiffXd>> v_com) const {
+drake::Vector3<AutoDiffXd>
+PinocchioPlant<AutoDiffXd>::CalcCenterOfMassTranslationalVelocityInWorld(
+    const Context<AutoDiffXd>& context) const {
   throw std::domain_error(
       "CalcCenterOfMassTranslationalVelocityInWorld not implemented with "
       "AutoDiffXd");
@@ -335,7 +336,11 @@ void PinocchioPlant<AutoDiffXd>::CalcCenterOfMassTranslationalVelocityInWorld(
 
 template <>
 void PinocchioPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
-    const Context<double>& context, drake::EigenPtr<Eigen::MatrixXd> J) const {
+    const Context<double>& context, JacobianWrtVariable with_respect_to,
+    const Frame<double>& frame_A, const Frame<double>& frame_E,
+    drake::EigenPtr<drake::Matrix3X<double>> J) const {
+  DRAKE_DEMAND(frame_A.is_world_frame());
+  DRAKE_DEMAND(frame_E.is_world_frame());
   *J = pinocchio::jacobianCenterOfMass(
       pinocchio_model_, pinocchio_data_,
       MapPositionFromDrakeToPinocchio(GetPositions(context)));
@@ -344,8 +349,9 @@ void PinocchioPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
 
 template <>
 void PinocchioPlant<AutoDiffXd>::CalcJacobianCenterOfMassTranslationalVelocity(
-    const Context<AutoDiffXd>& context,
-    drake::EigenPtr<drake::MatrixX<AutoDiffXd>> J) const {
+    const Context<AutoDiffXd>& context, JacobianWrtVariable with_respect_to,
+    const Frame<AutoDiffXd>& frame_A, const Frame<AutoDiffXd>& frame_E,
+    drake::EigenPtr<drake::Matrix3X<AutoDiffXd>> J) const {
   throw std::domain_error("CalcMassMatrix not implemented with AutoDiffXd");
 }
 
@@ -381,12 +387,9 @@ bool PinocchioPlant<double>::TestMassMatrix(const Context<double>& context,
 template <>
 bool PinocchioPlant<double>::TestCenterOfMass(const Context<double>& context,
                                               double tol) const {
-  Eigen::Vector3d com;
-  Eigen::Vector3d pin_com;
-
-  com = MultibodyPlant<double>::CalcCenterOfMassPositionInWorld(context);
-
-  CalcCenterOfMassPositionInWorld(context, &pin_com);
+  Eigen::Vector3d com =
+      MultibodyPlant<double>::CalcCenterOfMassPositionInWorld(context);
+  Eigen::Vector3d pin_com = CalcCenterOfMassPositionInWorld(context);
   std::cout << "com = " << com.transpose() << std::endl;
   std::cout << "pin_com = " << pin_com.transpose() << std::endl;
 
@@ -396,14 +399,11 @@ bool PinocchioPlant<double>::TestCenterOfMass(const Context<double>& context,
 template <>
 bool PinocchioPlant<double>::TestCenterOfMassVel(const Context<double>& context,
                                                  double tol) const {
-  Eigen::Vector3d com_vel;
-  Eigen::Vector3d pin_com_vel;
-
-  com_vel =
+  Eigen::Vector3d com_vel =
       MultibodyPlant<double>::CalcCenterOfMassTranslationalVelocityInWorld(
           context);
-
-  CalcCenterOfMassTranslationalVelocityInWorld(context, &pin_com_vel);
+  Eigen::Vector3d pin_com_vel =
+      CalcCenterOfMassTranslationalVelocityInWorld(context);
   std::cout << "com_vel = " << com_vel.transpose() << std::endl;
   std::cout << "pin_com_vel = " << pin_com_vel.transpose() << std::endl;
 
@@ -419,10 +419,12 @@ bool PinocchioPlant<double>::TestCenterOfMassJ(const Context<double>& context,
   MatrixXd pin_J(3, nv);
 
   MultibodyPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
-      context, drake::multibody::JacobianWrtVariable::kV, this->world_frame(),
+      context, JacobianWrtVariable::kV, this->world_frame(),
       this->world_frame(), &J);
 
-  CalcJacobianCenterOfMassTranslationalVelocity(context, &pin_J);
+  CalcJacobianCenterOfMassTranslationalVelocity(
+      context, JacobianWrtVariable::kV, this->world_frame(),
+      this->world_frame(), &pin_J);
   //  std::cout << "J = \n" << J << std::endl;
   //  std::cout << "pin_J = \n" << pin_J << std::endl;
   //  std::cout << "J - pin_J = \n" << J - pin_J << std::endl;

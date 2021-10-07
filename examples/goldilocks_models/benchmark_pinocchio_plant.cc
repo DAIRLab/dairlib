@@ -74,6 +74,7 @@ int DoMain(int argc, char* argv[]) {
                        false, false /*add_reflected_inertia*/);
   }
   plant_pino.Finalize();
+  const auto& world = plant_pino.world_frame();
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
   if (FLAGS_ball) {
@@ -108,7 +109,7 @@ int DoMain(int argc, char* argv[]) {
   auto break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
     plant_pino.SetPositions(context_pino.get(), q);
-    plant_pino.CalcCenterOfMassPositionInWorld(*context_pino, &r_com);
+    plant_pino.CalcCenterOfMassPositionInWorld(*context_pino);
   }
   auto break3 = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed_pino = break3 - break2;
@@ -122,14 +123,13 @@ int DoMain(int argc, char* argv[]) {
   break3 = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = break3 - break2;
   cout << "r_com time (Drake):" << elapsed.count() << "\n";
-  cout << elapsed.count()/elapsed_pino.count() << "times faster\n";
+  cout << elapsed.count() / elapsed_pino.count() << "times faster\n";
 
   Eigen::Vector3d v_com;
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
     plant_pino.SetPositionsAndVelocities(context_pino.get(), x);
-    plant_pino.CalcCenterOfMassTranslationalVelocityInWorld(*context_pino,
-                                                            &v_com);
+    plant_pino.CalcCenterOfMassTranslationalVelocityInWorld(*context_pino);
   }
   break3 = std::chrono::high_resolution_clock::now();
   elapsed_pino = break3 - break2;
@@ -143,14 +143,15 @@ int DoMain(int argc, char* argv[]) {
   break3 = std::chrono::high_resolution_clock::now();
   elapsed = break3 - break2;
   cout << "v_com time (Drake):" << elapsed.count() << "\n";
-  cout << elapsed.count()/elapsed_pino.count() << "times faster\n";
+  cout << elapsed.count() / elapsed_pino.count() << "times faster\n";
 
   Eigen::MatrixXd J_com(3, nv);
   break2 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < n_loop; i++) {
     plant_pino.SetPositions(context_pino.get(), q);
-    plant_pino.CalcJacobianCenterOfMassTranslationalVelocity(*context_pino,
-                                                             &J_com);
+    plant_pino.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_pino, drake::multibody::JacobianWrtVariable::kV, world, world,
+        &J_com);
   }
   break3 = std::chrono::high_resolution_clock::now();
   elapsed_pino = break3 - break2;
@@ -167,7 +168,7 @@ int DoMain(int argc, char* argv[]) {
   break3 = std::chrono::high_resolution_clock::now();
   elapsed = break3 - break2;
   cout << "J_com time (Drake):" << elapsed.count() << "\n";
-  cout << elapsed.count()/elapsed_pino.count() << "times faster\n";
+  cout << elapsed.count() / elapsed_pino.count() << "times faster\n";
 
   return 0;
 }

@@ -24,10 +24,11 @@ void OptionsTrackingData::UpdateActual(
     const Eigen::VectorXd& x_w_spr,
     const drake::systems::Context<double>& context_w_spr,
     const Eigen::VectorXd& x_wo_spr,
-    const drake::systems::Context<double>& context_wo_spr) {
+    const drake::systems::Context<double>& context_wo_spr,
+    double t) {
   OscTrackingData::UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
-                                context_wo_spr);
-  UpdateFilters(context_wo_spr.get_time());
+                                context_wo_spr, t);
+  UpdateFilters(t);
 
   if (with_view_frame_) {
     view_frame_rot_T_ =
@@ -76,29 +77,30 @@ void OptionsTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   }
 }
 
-void OptionsTrackingData::UpdateYddotDes(double t, double t_gait_cycle) {
+void OptionsTrackingData::UpdateYddotDes(double t,
+                                         double t_since_state_switch) {
   yddot_des_converted_ = yddot_des_;
   for (auto idx : idx_zero_feedforward_accel_) {
     yddot_des_converted_(idx) = 0;
   }
   if (ff_accel_multiplier_ != nullptr) {
-    yddot_des_converted_ =
-        ff_accel_multiplier_->value(t_gait_cycle) * yddot_des_converted_;
+    yddot_des_converted_ = ff_accel_multiplier_->value(t_since_state_switch) *
+                           yddot_des_converted_;
   }
 }
 
-void OptionsTrackingData::UpdateYddotCmd(double t, double t_gait_cycle) {
+void OptionsTrackingData::UpdateYddotCmd(double t,
+                                         double t_since_state_switch) {
   // 4. Update command output (desired output with pd control)
   MatrixXd gain_multiplier;
   if (gain_multiplier_ != nullptr) {
-    gain_multiplier = gain_multiplier_->value(t_gait_cycle);
+    gain_multiplier = gain_multiplier_->value(t_since_state_switch);
   } else {
     gain_multiplier = MatrixXd::Identity(n_ydot_, n_ydot_);
   }
 
-  yddot_command_ =
-      yddot_des_converted_ +
-          gain_multiplier * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
+  yddot_command_ = yddot_des_converted_ +
+                   gain_multiplier * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
 }
 
 void OptionsTrackingData::SetLowPassFilter(double tau,
@@ -121,7 +123,6 @@ void OptionsTrackingData::SetTimeVaryingGains(
   DRAKE_DEMAND(gain_multiplier.cols() == n_ydot_);
   DRAKE_DEMAND(gain_multiplier.rows() == n_ydot_);
   DRAKE_DEMAND(gain_multiplier.start_time() == 0);
-  //  DRAKE_DEMAND(gain_multiplier.end_time() == );
   gain_multiplier_ = &gain_multiplier;
 }
 void OptionsTrackingData::SetFeedforwardAccelMultiplier(
@@ -129,7 +130,6 @@ void OptionsTrackingData::SetFeedforwardAccelMultiplier(
   DRAKE_DEMAND(ff_accel_multiplier.cols() == n_ydot_);
   DRAKE_DEMAND(ff_accel_multiplier.rows() == n_ydot_);
   DRAKE_DEMAND(ff_accel_multiplier.start_time() == 0);
-  //  DRAKE_DEMAND(ff_accel_multiplier.end_time() == );
   ff_accel_multiplier_ = &ff_accel_multiplier;
 }
 

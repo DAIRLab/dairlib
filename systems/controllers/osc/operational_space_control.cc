@@ -4,7 +4,6 @@
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
-//#include "systems/controllers/osc/osc_utils.h"
 
 #include "drake/common/text_logging.h"
 
@@ -450,7 +449,7 @@ void OperationalSpaceControl::Build() {
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+//  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);

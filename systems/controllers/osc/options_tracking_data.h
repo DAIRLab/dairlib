@@ -1,6 +1,6 @@
 #pragma once
 
-#include "osc_tracking_data_new.h"
+#include "osc_tracking_data.h"
 #include "osc_view_frame.h"
 
 namespace dairlib {
@@ -21,7 +21,8 @@ class OptionsTrackingData : public OscTrackingData {
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr,
       const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr) override;
+      const drake::systems::Context<double>& context_wo_spr,
+      double t) override;
 
   // enable the low pass filter
   void SetLowPassFilter(double tau, const std::set<int>& element_idx = {});
@@ -54,8 +55,8 @@ class OptionsTrackingData : public OscTrackingData {
   void UpdateYError() override;
   void UpdateFilters(double t);
   void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
-  void UpdateYddotDes(double t, double t_gait_cycle) override;
-  void UpdateYddotCmd(double t, double t_gait_cycle);
+  void UpdateYddotDes(double t, double t_since_state_switch) override;
+  void UpdateYddotCmd(double t, double t_since_state_switch);
 
   bool with_view_frame_ = false;
 

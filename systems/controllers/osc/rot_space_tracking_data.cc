@@ -23,14 +23,6 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(
     : OptionsTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W,
                           plant_w_spr, plant_wo_spr) {}
 
-void RotTaskSpaceTrackingData::UpdateActual(
-    const Eigen::VectorXd& x_w_spr,
-    const drake::systems::Context<double>& context_w_spr,
-    const Eigen::VectorXd& x_wo_spr,
-    const drake::systems::Context<double>& context_wo_spr) {
-  OptionsTrackingData::UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
-                                    context_wo_spr);
-}
 
 void RotTaskSpaceTrackingData::AddFrameToTrack(
     const std::string& body_name, const Eigen::Isometry3d& frame_pose) {

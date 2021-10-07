@@ -44,8 +44,6 @@ using multibody::SetPositionsIfNew;
 using multibody::SetVelocitiesIfNew;
 using multibody::WorldPointEvaluator;
 
-// int kSpaceDim = OscTrackingData::kSpaceDim;
-
 OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr,
@@ -737,10 +735,10 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
-  //  if (!result.is_success()) {
-  //    std::cout << "reverting to old sol" << std::endl;
-  //    return *u_sol_;
-  //  }
+  if (!result.is_success()) {
+    std::cout << "reverting to old sol" << std::endl;
+    return *u_sol_;
+  }
 
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);
@@ -754,64 +752,6 @@ VectorXd OperationalSpaceControl::SolveQp(
       tracking_data->StoreYddotCommandSol(*dv_sol_);
     }
   }
-
-  //  // Print QP result
-  //  if (print_tracking_info_) {
-  //    cout << "\n" << to_string(result.get_solution_result()) << endl;
-  //    cout << "fsm_state = " << fsm_state << endl;
-  //    cout << "**********************\n";
-  //    cout << "u_sol = " << u_sol_->transpose() << endl;
-  //    cout << "lambda_c_sol = " << lambda_c_sol_->transpose() << endl;
-  //    cout << "lambda_h_sol = " << lambda_h_sol_->transpose() << endl;
-  //    cout << "dv_sol = " << dv_sol_->transpose() << endl;
-  //    cout << "epsilon_sol = " << epsilon_sol_->transpose() << endl;
-  //    cout << "**********************\n";
-  //    // 1. input cost
-  //    if (W_input_.size() > 0) {
-  //      cout << "input cost = "
-  //           << 0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_) << endl;
-  //    }
-  //    // 2. acceleration cost
-  //    if (W_joint_accel_.size() > 0) {
-  //      cout << "acceleration cost = "
-  //           << 0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_)
-  //           << endl;
-  //    }
-  //    // 3. Soft constraint cost
-  //    if (w_soft_constraint_ > 0) {
-  //      cout << "soft constraint cost = "
-  //           << 0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
-  //                  (*epsilon_sol_)
-  //           << endl;
-  //    }
-  //    // 4. Tracking cost
-  //    for (auto tracking_data : *tracking_data_vec_) {
-  //      if (tracking_data->IsActive()) {
-  //        const VectorXd& ddy_t = tracking_data->GetYddotCommand();
-  //        const MatrixXd& W = tracking_data->GetWeight();
-  //        const MatrixXd& J_t = tracking_data->GetJ();
-  //        const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-  //        // Note that the following cost also includes the constant term, so
-  //        that
-  //        // the user can differentiate which error norm is bigger. The
-  //        constant
-  //        // term was not added to the QP since it doesn't change the result.
-  //        cout << "Tracking cost (" << tracking_data->GetName() << ") = "
-  //             << 0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
-  //                    (J_t * (*dv_sol_) + JdotV_t - ddy_t)
-  //             << endl;
-  //      }
-  //    }
-  //
-  //    // Target acceleration
-  //    cout << "**********************\n";
-  //    for (auto tracking_data : *tracking_data_vec_) {
-  //      if (tracking_data->IsActive()) {
-  //        tracking_data->PrintFeedbackAndDesiredValues((*dv_sol_));
-  //      }
-  //    }
-  //    cout << "**********************\n\n";
-  //  }
 
   return *u_sol_;
 }

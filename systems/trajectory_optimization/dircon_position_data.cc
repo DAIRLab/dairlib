@@ -2,7 +2,6 @@
 #include <vector>
 
 #include "systems/trajectory_optimization/dircon_position_data.h"
-#include "drake/math/orthonormal_basis.h"
 
 namespace dairlib {
 
@@ -47,8 +46,7 @@ template <typename T>
 void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
   VectorX<T> pt_transform(3);
   MatrixX<T> J3d(3, this->plant_.num_velocities());
-  const auto x = dynamic_cast<const drake::systems::BasicVector<T>&>(
-      context.get_continuous_state_vector()).get_value();
+  const auto x = this->plant_.GetPositionsAndVelocities(context);
   const auto v = x.tail(this->plant_.num_velocities());
 
   VectorX<T> pt_cast = pt_.template cast<T>();

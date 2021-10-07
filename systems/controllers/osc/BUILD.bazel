@@ -17,9 +17,9 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//multibody/kinematic",
+        "//solvers:fast_osqp_solver",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
-        "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
     ],
 )

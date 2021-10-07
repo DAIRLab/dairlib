@@ -184,7 +184,8 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
   //////////// Get desired horizontal vel ////////////
   // Calculate the current-desired yaw angle difference
-  double filtered_heading_error = (1 - weight) * 0 + weight * heading_error;
+  // filtered_heading_error is the convex combination of 0 and heading_error
+  double filtered_heading_error = weight * heading_error;
 
   // Apply walking speed control only when the robot is facing the target
   // position.

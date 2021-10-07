@@ -10,23 +10,21 @@
 
 #include "dairlib/lcmt_osc_output.hpp"
 #include "dairlib/lcmt_osc_qp_output.hpp"
-
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/framework/leaf_system.h"
-
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/osqp_solver.h"
-#include "drake/solvers/solve.h"
-#include "solvers/fast_osqp_solver.h"
-
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
+#include "solvers/fast_osqp_solver.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
+
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/solve.h"
+#include "drake/systems/framework/diagram.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/framework/leaf_system.h"
 
 // Maximum time limit for each QP solve
 static constexpr double kMaxSolveDuration = 0.1;
@@ -167,6 +165,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return tracking_data_vec_->at(index);
   }
 
+  // Optional features
+  void SetUpDoubleSupportPhaseBlending(double ds_duration,
+                                       int left_support_state,
+                                       int right_support_state,
+                                       std::vector<int> ds_states);
+  void SetInputRegularizationWeight(double w) { w_input_reg_ = w; }
+
   // OSC LeafSystem builder
   void Build();
 
@@ -271,7 +276,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool is_quaternion_;
 
   // Solver
-  drake::solvers::OsqpSolver qp_solver_;
+//  drake::solvers::OsqpSolver qp_solver_;
+  std::unique_ptr<solvers::FastOsqpSolver> solver_;
+  drake::solvers::SolverOptions solver_options_;
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
@@ -340,21 +347,20 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Maximum time limit for each QP solve
   const double qp_time_limit_;
 
-  std::unique_ptr<solvers::FastOsqpSolver> solver_;
-  drake::solvers::SolverOptions solver_options_;
-
-  // Testing contact force blend
+  // Optional feature -- contact force blend
   double ds_duration_ = -1;
-  double w_blend_constraint_ = 0.1; //0.1 // for soft constraint
+  int left_support_state_;
+  int right_support_state_;
+  std::vector<int> ds_states_;
+  double w_blend_constraint_ = 0.1;  // for soft constraint
   mutable double prev_distinct_fsm_state_ = -1;
   drake::solvers::LinearEqualityConstraint* blend_constraint_;
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
 
-  // Testing -- regularizing input
+  // Optional feature -- regularizing input
   drake::solvers::QuadraticCost* input_reg_cost_;
-  double w_input_reg_ = 0.0000003;
+  double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
-
 
   // testing
   bool use_new_qp_setting_;

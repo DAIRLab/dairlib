@@ -16,6 +16,24 @@ build_task:
       --local_ram_resources=24000
       --local_cpu_resources=8
       //...
+build_focal_task:
+  timeout_in: 120m
+  container:
+    dockerfile: install/focal/Dockerfile
+    cpu: 8
+    memory: 24
+  test_script:
+    - bazel build
+      --define=WITH_SNOPT=OFF
+      --local_ram_resources=24000
+      --local_cpu_resources=8
+      --jobs=8 
+      //...
+    - bazel test
+      --define=WITH_SNOPT=OFF
+      --local_ram_resources=24000
+      --local_cpu_resources=8
+      //...
 build_with_ros_task:
   timeout_in: 120m
   container:

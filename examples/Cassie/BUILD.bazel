@@ -27,13 +27,13 @@ cc_library(
     srcs = ["cassie_utils.cc"],
     hdrs = ["cassie_utils.h"],
     deps = [
+        ":cassie_encoder",
         ":cassie_urdf",
         ":sim_cassie_sensor_aggregator",
         "//common",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
-        ":cassie_encoder",
         "@drake//:drake_shared_library",
     ],
 )
@@ -226,6 +226,7 @@ cc_binary(
     name = "multibody_sim",
     srcs = ["multibody_sim.cc"],
     deps = [
+        ":cassie_encoder",
         ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
@@ -234,7 +235,6 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/framework:vector",
         "//systems/primitives",
-        ":cassie_encoder",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -250,6 +250,23 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "multibody_sim_w_ground_incline",
+    srcs = ["multibody_sim_w_ground_incline.cc"],
+    deps = [
+        ":cassie_encoder",
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//solvers:optimization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:vector",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

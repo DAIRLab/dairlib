@@ -172,6 +172,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // Testing
     // Heuristic ratio for LIPM dyanmics (because the centroidal angular
     // momentum is not constant
+    // TODO(yminchen): use either this or the one in swing_ft_traj_gen
     Vector3d toe_left_origin_position;
     plant_.CalcPointsPositions(*context_, toe_left_frame_, Vector3d::Zero(),
                                pelvis_frame_, &toe_left_origin_position);
@@ -179,16 +180,13 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     plant_.CalcPointsPositions(*context_, toe_right_frame_, Vector3d::Zero(),
                                pelvis_frame_, &toe_right_origin_position);
     double dist = toe_left_origin_position(1) - toe_right_origin_position(1);
-    // <0.2 meter: ratio 1
-    // >0.5 meter: ratio 0.8  //0.65
+    // <foot_spread_lb_ meter: ratio 1
+    // >foot_spread_ub_ meter: ratio 0.9
     // Linear interpolate in between
-    heuristic_ratio_ = 1;
-    if (dist > foot_spread_ub_) {
-      heuristic_ratio_ = 0.9;
-    } else if (dist > foot_spread_lb_) {
-      heuristic_ratio_ = 1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
-                                 (dist - foot_spread_lb_);
-    }
+    heuristic_ratio_ = drake::math::saturate(
+        1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
+                (dist - foot_spread_lb_),
+        0.9, 1);
   }
 
   discrete_state->get_mutable_vector(prev_fsm_idx_).GetAtIndex(0) = fsm_state;
@@ -264,12 +262,9 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   A(2, 2) = omega_y;
   A(3, 3) = -omega_y;
   // TODO: this is in global coordinate. But the ratio change should apply
-  //  locally. I think you just need to get the pos/vel in local frame + apply a
+  //  locally. I think we just need to get the pos/vel in local frame + apply a
   //  rotational matrix in front ( which can be lumped into K matrix). Then the
-  //  output is in global frame. For OSC swing foot tracking, we can simply view
-  //  the desired traj in local frame at the end of current calculation. And
-  //  change the wrt_frame when calling forward kinematic function in OSC
-  //  tracking data.
+  //  output is in global frame.
 
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
 }

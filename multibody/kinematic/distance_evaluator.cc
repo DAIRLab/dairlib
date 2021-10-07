@@ -1,7 +1,5 @@
 #include "multibody/kinematic/distance_evaluator.h"
 
-#include "drake/math/orthonormal_basis.h"
-
 using drake::MatrixX;
 using drake::Matrix3X;
 using drake::VectorX;

@@ -168,6 +168,7 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
       // Testing
       // Heuristic ratio for LIPM dyanmics (because the centroidal angular
       // momentum is not constant
+      // TODO(yminchen): use either this or the one in lipm_traj_gen
       Vector3d toe_left_origin_position;
       plant_.CalcPointsPositions(*context_, left_right_foot_.at(0).second,
                                  Vector3d::Zero(), pelvis_.body_frame(),
@@ -177,8 +178,8 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
                                  Vector3d::Zero(), pelvis_.body_frame(),
                                  &toe_right_origin_position);
       double dist = toe_left_origin_position(1) - toe_right_origin_position(1);
-      // <0.2 meter: ratio 1
-      // >0.5 meter: ratio 0.8  //0.65
+      // <foot_spread_lb_ meter: ratio 1
+      // >foot_spread_ub_ meter: ratio ratio_lb_
       // Linear interpolate in between
       heuristic_ratio_ = 1;
       if (dist > foot_spread_ub_) {

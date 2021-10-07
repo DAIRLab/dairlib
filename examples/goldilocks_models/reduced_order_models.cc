@@ -1183,7 +1183,9 @@ Gip::Gip(const MultibodyPlant<double>& plant,
   is_quaternion_ = isQuaternion(plant);
 
   // Get total mass of the robot
-  total_mass_ = multibody::GetTotalMass(plant);
+  DRAKE_UNREACHABLE();  // I haven't tested CalcTotalMass(). I didn't initial the state here, becasue it's probably not necessary?
+  auto context = plant.CreateDefaultContext();
+  total_mass_ = plant.CalcTotalMass(*context);
   cout << "total_mass_ = " << total_mass_ << endl;
   DRAKE_DEMAND(total_mass_ > 0);
 

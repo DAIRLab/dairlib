@@ -27,11 +27,11 @@ FlightToeAngleTrajGenerator::FlightToeAngleTrajGenerator(
   DRAKE_DEMAND(feet_contact_points_.size() == 2);
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_port_ = this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;

@@ -27,7 +27,8 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context_feedback,
       const std::vector<BodyPoint>& left_right_foot,
       std::vector<int> left_right_support_fsm_states,
-      double single_support_duration, double double_support_duration);
+      double single_support_duration, double double_support_duration,
+      double desired_mid_foot_height, double desired_final_foot_height);
 
   const drake::systems::InputPort<double>& get_input_port_lcm_traj() const {
     return this->get_input_port(saved_traj_lcm_port_);
@@ -83,6 +84,10 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   // hacks
   double single_support_duration_;
   double double_support_duration_;
+
+  // swing foot traj parameter
+  double desired_mid_foot_height_;
+  double desired_final_foot_height_;
 };
 
 // We have IKTrajReceiver beside SavedTrajReceiver, because it also extracts the

@@ -35,7 +35,8 @@ SavedTrajReceiver::SavedTrajReceiver(
     drake::systems::Context<double>* context_feedback,
     const std::vector<BodyPoint>& left_right_foot,
     std::vector<int> left_right_support_fsm_states,
-    double single_support_duration, double double_support_duration)
+    double single_support_duration, double double_support_duration,
+    double desired_mid_foot_height, double desired_final_foot_height)
     : ny_(rom.n_y()),
       plant_feedback_(plant_feedback),
       plant_control_(plant_control),
@@ -47,7 +48,9 @@ SavedTrajReceiver::SavedTrajReceiver(
       nv_(plant_control.num_velocities()),
       nx_(plant_control.num_positions() + plant_control.num_velocities()),
       single_support_duration_(single_support_duration),
-      double_support_duration_(double_support_duration) {
+      double_support_duration_(double_support_duration),
+      desired_mid_foot_height_(desired_mid_foot_height),
+      desired_final_foot_height_(desired_final_foot_height) {
   saved_traj_lcm_port_ =
       this->DeclareAbstractInputPort(
               "saved_traj_lcm",
@@ -205,61 +208,84 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   const VectorXd& stance_foot = traj_data.get_stance_foot();
   DRAKE_DEMAND(xf_time(0) == x0_time(1));
 
-  // Construct PP
+  // Construct PP (concatenate the PP of each mode)
+  // WARNING: we assume each mode in the planner is "single support" + "double
+  // support"
+  double current_time = context.get_time();
+
   PiecewisePolynomial<double> pp;
   std::vector<double> T_waypoint = std::vector<double>(3, 0);
   std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
   Vector3d foot_pos;
+  bool init_step = true;
   bool left_stance = abs(stance_foot(0)) < 1e-12;
   for (int j = 0; j < n_mode; j++) {
-    if (xf_time(j) - double_support_duration_ > x0_time(j)) {
-      // T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
-      T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
-                                        double_support_duration_
-                                  : x0_time(j);
-      T_waypoint.at(2) = xf_time(j) - double_support_duration_;
-      /*cout << "T_waypoint.at(0) = " << T_waypoint.at(0) << endl;
-      cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
-      cout << "double_support_duration_ = " << double_support_duration_ <<
-      endl;*/
-      T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
-      plant_control_.SetPositionsAndVelocities(context_control_.get(),
-                                               x0.col(j));
-      if (j == 0) {
-        foot_pos =
-            context.get_discrete_state(liftoff_swing_foot_pos_idx_).get_value();
-      } else {
+    // When the current time is bigger than the end time of the mode (this could
+    // happen when the planner starts planning close the end of mode), we skip
+    if (current_time < xf_time(j)) {
+      if (xf_time(j) - double_support_duration_ > x0_time(j)) {
+        // T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
+        T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
+                                          double_support_duration_
+                                    : x0_time(j);
+        T_waypoint.at(2) = xf_time(j) - double_support_duration_;
+        T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
+        plant_control_.SetPositionsAndVelocities(context_control_.get(),
+                                                 x0.col(j));
+        // Start pos
+        if (init_step) {
+          foot_pos = context.get_discrete_state(liftoff_swing_foot_pos_idx_)
+                         .get_value();
+        } else {
+          plant_control_.CalcPointsPositions(
+              *context_control_,
+              left_right_foot_.at(left_stance ? 1 : 0).second,
+              left_right_foot_.at(left_stance ? 1 : 0).first,
+              plant_control_.world_frame(), &foot_pos);
+        }
+        Y.at(0) = foot_pos;
+        double init_foot_pos_height = foot_pos(2);
+        // End pos
+        plant_control_.SetPositionsAndVelocities(context_control_.get(),
+                                                 xf.col(j));
         plant_control_.CalcPointsPositions(
             *context_control_, left_right_foot_.at(left_stance ? 1 : 0).second,
             left_right_foot_.at(left_stance ? 1 : 0).first,
             plant_control_.world_frame(), &foot_pos);
-      }
-      Y.at(0) = foot_pos;
-      plant_control_.SetPositionsAndVelocities(context_control_.get(),
-                                               xf.col(j));
-      plant_control_.CalcPointsPositions(
-          *context_control_, left_right_foot_.at(left_stance ? 1 : 0).second,
-          left_right_foot_.at(left_stance ? 1 : 0).first,
-          plant_control_.world_frame(), &foot_pos);
-      Y.at(2) = foot_pos;
-      Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
-      Y.at(1)(2) += 0.1;
-      // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
-      // make the traj smooth at the mid point
-      pp.ConcatenateInTime(
-          PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-              T_waypoint, Y, VectorXd::Zero(3), VectorXd::Zero(3)));
-    }
+        Y.at(2) = foot_pos;
+        // Mid pos
+        Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
 
-    // Fill in the double support phase with a constant zero traj
-    if (double_support_duration_ > 0) {
-      VectorXd T_double_support(2);
-      T_double_support << T_waypoint.at(2), xf_time(j);
-      /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
-      cout << "xf_time(j) = " << xf_time(j) << endl;*/
-      MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
-      pp.ConcatenateInTime(PiecewisePolynomial<double>::ZeroOrderHold(
-          T_double_support, Y_double_support));
+        // Foot height
+        if (init_step) {
+          Y.at(1)(2) = init_foot_pos_height + desired_mid_foot_height_;
+          Y.at(2)(2) = init_foot_pos_height + desired_final_foot_height_;
+          //          Y.at(1)(2) += desired_mid_foot_height_;
+          //          Y.at(2)(2) += desired_final_foot_height_;
+        } else {
+          Y.at(1)(2) += desired_mid_foot_height_;
+          Y.at(2)(2) += desired_final_foot_height_;
+        }
+
+        // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
+        // make the traj smooth at the mid point
+        pp.ConcatenateInTime(
+            PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+                T_waypoint, Y, VectorXd::Zero(3), VectorXd::Zero(3)));
+      }
+
+      // Fill in the double support phase with a constant zero traj
+      if (double_support_duration_ > 0) {
+        VectorXd T_double_support(2);
+        T_double_support << T_waypoint.at(2), xf_time(j);
+        /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
+        cout << "xf_time(j) = " << xf_time(j) << endl;*/
+        MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
+        pp.ConcatenateInTime(PiecewisePolynomial<double>::ZeroOrderHold(
+            T_double_support, Y_double_support));
+      }
+
+      init_step = false;
     }
 
     left_stance = !left_stance;

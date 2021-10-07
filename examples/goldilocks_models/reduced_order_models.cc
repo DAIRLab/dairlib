@@ -1,7 +1,8 @@
 #include "examples/goldilocks_models/reduced_order_models.h"
-#include "multibody/multibody_utils.h"
 
 #include <algorithm>
+
+#include "multibody/multibody_utils.h"
 
 using drake::MatrixX;
 using drake::VectorX;
@@ -524,22 +525,23 @@ VectorX<double> Lipm::EvalMappingFeatJV(const VectorX<double>& q,
                                         const VectorX<double>& v,
                                         const Context<double>& context) const {
   // Get CoM velocity
-  MatrixX<double> J_com(3, plant_.num_velocities());
+  VectorX<double> JV_CoM(3);
   if (use_pelvis) {
     // testing using pelvis
+    MatrixX<double> J_com(3, plant_.num_velocities());
     plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
                                              pelvis_.second, pelvis_.first,
                                              world_, world_, &J_com);
+    JV_CoM = J_com * v;
   } else {
-    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        context, JacobianWrtVariable::kV, world_, world_, &J_com);
+    JV_CoM = plant_.CalcCenterOfMassTranslationalVelocityInWorld(context);
   }
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable::kV, stance_contact_point_.second,
       stance_contact_point_.first, world_, world_, &J_sf);
-  VectorX<double> JV_st_to_CoM = (J_com - J_sf) * v;
+  VectorX<double> JV_st_to_CoM = JV_CoM - J_sf * v;
 
   // Convert v to qdot
   VectorX<double> qdot(plant_.num_positions());
@@ -728,21 +730,20 @@ VectorX<double> LipmWithSwingFoot::EvalMappingFeatJV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM velocity
-  MatrixX<double> J_com(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  VectorX<double> JV_com(3);
+  JV_com = plant_.CalcCenterOfMassTranslationalVelocityInWorld(context);
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable::kV, stance_contact_point_.second,
       stance_contact_point_.first, world_, world_, &J_sf);
-  VectorX<double> JV_st_to_CoM = (J_com - J_sf) * v;
+  VectorX<double> JV_st_to_CoM = JV_com - J_sf * v;
   // Swing foot velocity
   MatrixX<double> J_sw(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable::kV, swing_contact_point_.second,
       swing_contact_point_.first, world_, world_, &J_sw);
-  VectorX<double> JV_CoM_to_sw = (J_sw - J_com) * v;
+  VectorX<double> JV_CoM_to_sw = J_sw * v - JV_com;
 
   // Convert v to qdot
   VectorX<double> qdot(plant_.num_positions());
@@ -901,9 +902,8 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM velocity
-  MatrixX<double> J_com(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  drake::Vector3<double> JV_CoM =
+      plant_.CalcCenterOfMassTranslationalVelocityInWorld(context);
   // testing using pelvis
   //  MatrixX<double> J_com(3, plant_.num_velocities());
   //  plant_.CalcJacobianTranslationalVelocity(
@@ -914,7 +914,7 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJV(
   plant_.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable::kV, stance_contact_point_.second,
       stance_contact_point_.first, world_, world_, &J_sf);
-  VectorX<double> JV_st_to_CoM = (J_com - J_sf) * v;
+  VectorX<double> JV_st_to_CoM = JV_CoM - J_sf * v;
 
   // Convert v to qdot
   VectorX<double> qdot(plant_.num_positions());
@@ -1056,21 +1056,20 @@ VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJV(
     const VectorX<double>& q, const VectorX<double>& v,
     const Context<double>& context) const {
   // Get CoM velocity
-  MatrixX<double> J_com(3, plant_.num_velocities());
-  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context, JacobianWrtVariable::kV, world_, world_, &J_com);
+  drake::Vector3<double> JV_CoM =
+      plant_.CalcCenterOfMassTranslationalVelocityInWorld(context);
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable::kV, stance_contact_point_.second,
       stance_contact_point_.first, world_, world_, &J_sf);
-  VectorX<double> JV_st_to_CoM = (J_com - J_sf) * v;
+  VectorX<double> JV_st_to_CoM = JV_CoM - J_sf * v;
   // Swing foot velocity
   MatrixX<double> J_sw(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable::kV, swing_contact_point_.second,
       swing_contact_point_.first, world_, world_, &J_sw);
-  VectorX<double> JV_CoM_to_sw = (J_sw - J_com) * v;
+  VectorX<double> JV_CoM_to_sw = J_sw * v - JV_CoM;
 
   // Convert v to qdot
   VectorX<double> qdot(plant_.num_positions());
@@ -1255,22 +1254,23 @@ VectorX<double> Gip::EvalMappingFeatJV(const VectorX<double>& q,
                                        const VectorX<double>& v,
                                        const Context<double>& context) const {
   // Get CoM velocity
-  MatrixX<double> J_com(3, plant_.num_velocities());
+  VectorX<double> JV_CoM(3);
   if (use_pelvis) {
     // testing using pelvis
+    MatrixX<double> J_com(3, plant_.num_velocities());
     plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
                                              pelvis_.second, pelvis_.first,
                                              world_, world_, &J_com);
+    JV_CoM = J_com * v;
   } else {
-    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        context, JacobianWrtVariable::kV, world_, world_, &J_com);
+    JV_CoM = plant_.CalcCenterOfMassTranslationalVelocityInWorld(context);
   }
   // Stance foot velocity
   MatrixX<double> J_sf(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable::kV, stance_contact_point_.second,
       stance_contact_point_.first, world_, world_, &J_sf);
-  VectorX<double> JV_st_to_CoM = (J_com - J_sf) * v;
+  VectorX<double> JV_st_to_CoM = JV_CoM - J_sf * v;
 
   // Convert v to qdot
   VectorX<double> qdot(plant_.num_positions());

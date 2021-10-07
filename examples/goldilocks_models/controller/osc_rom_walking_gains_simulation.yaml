@@ -6,6 +6,7 @@ mu: 0.8
 
 w_accel: 0.00000001  # 0.00001  trying to add back x component
 w_soft_constraint: 80
+w_input_reg: 0.0000003
 
 w_swing_toe: 2
 swing_toe_kp: 1500

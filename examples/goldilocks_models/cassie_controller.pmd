@@ -84,11 +84,11 @@ group "6.attic" {
 
 group "3.drake-simulator" {
     cmd "0.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u=ROM_WALKING --init_height=1.0 --pause_second=0 --target_realtime_rate=1";
+        exec = "bazel-bin/examples/Cassie/multibody_sim_w_ground_incline --floating_base=true --channel_u=ROM_WALKING --init_height=1.0 --pause_second=0 --target_realtime_rate=1";
         host = "localhost";
     }
     cmd "0.simulator(realtime)" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --channel_u=ROM_WALKING --init_height=1 --pause_second=4 --target_realtime_rate=1 --spring_model=true --end_time=10000";
+        exec = "bazel-bin/examples/Cassie/multibody_sim_w_ground_incline --floating_base=true --channel_u=ROM_WALKING --init_height=1 --pause_second=4 --target_realtime_rate=1 --spring_model=true --end_time=10000";
         host = "localhost";
     }
 }

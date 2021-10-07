@@ -612,6 +612,7 @@ int DoMain(int argc, char* argv[]) {
     MatrixXd Q_accel =
         weight_scale * osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
     osc->SetAccelerationCostForAllJoints(Q_accel);
+//    osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
 
     // Constraints in OSC
     osc->AddKinematicConstraint(&evaluators);
@@ -768,7 +769,9 @@ int DoMain(int argc, char* argv[]) {
     osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
 
     // Set double support duration for force blending
-    osc->SetDoubleSupportDurationForBlending(double_support_duration);
+//    osc->SetUpDoubleSupportPhaseBlending(
+//        double_support_duration, left_stance_state, right_stance_state,
+//        {post_left_double_support_state, post_right_double_support_state});
 
     // Build OSC problem
     osc->Build();
@@ -940,6 +943,7 @@ int DoMain(int argc, char* argv[]) {
     int n_v = plant_wo_springs.num_velocities();
     MatrixXd Q_accel = osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
     osc->SetAccelerationCostForAllJoints(Q_accel);
+    osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
 
     // Constraints in OSC
     osc->AddKinematicConstraint(&evaluators);
@@ -996,7 +1000,9 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&right_support_traj);
 
     // Set double support duration for force blending
-    osc->SetDoubleSupportDurationForBlending(double_support_duration);
+    osc->SetUpDoubleSupportPhaseBlending(
+        double_support_duration, left_stance_state, right_stance_state,
+        {post_left_double_support_state, post_right_double_support_state});
 
     // Build OSC problem
     osc->Build();

@@ -120,7 +120,7 @@ def RunSimAndController(sim_end_time, task_value, log_idx, rom_iter_idx,
     '--get_swing_foot_from_planner=%s' % str(foot_step_from_planner).lower(),
   ]
   simulator_cmd = [
-    'bazel-bin/examples/Cassie/multibody_sim',
+    'bazel-bin/examples/Cassie/multibody_sim_w_ground_incline',
     '--channel_u=ROM_WALKING',
     '--end_time=%.3f' % sim_end_time,
     '--pause_second=%.3f' % pause_second,
@@ -273,7 +273,7 @@ def RunSimAndEvalCost(model_indices, log_indices, task_list,
 
   ### Build files just in case forgetting
   BuildFiles('examples/goldilocks_models/...')
-  BuildFiles('examples/Cassie:multibody_sim')
+  BuildFiles('examples/Cassie:multibody_sim_w_ground_incline')
 
   ### Construct sample indices from the task list for simulation
   # `sample_idx` is for planner's initial guess and cost regularization term

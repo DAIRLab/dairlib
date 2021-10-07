@@ -175,10 +175,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC LeafSystem builder
   void Build();
 
-  void SetDoubleSupportDurationForBlending(double ds_duration) {
-    ds_duration_ = ds_duration;
-  }
-
  private:
   // Osc checkers and constructor-related methods
   void CheckCostSettings();

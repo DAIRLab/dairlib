@@ -96,7 +96,8 @@ RomInverseKinematics::RomInverseKinematics(
       this->DeclareAbstractInputPort("rom_traj_lcm",
                                      drake::Value<dairlib::lcmt_saved_traj>{})
           .get_index();
-  this->DeclareAbstractOutputPort(&RomInverseKinematics::CalcIK);
+  this->DeclareAbstractOutputPort("lcmt_saved_traj_ik",
+                                  &RomInverseKinematics::CalcIK);
 
   // Reduced order model
   const int CASSIE_ID = 1;

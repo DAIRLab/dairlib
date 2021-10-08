@@ -53,23 +53,21 @@ LocalLIPMTrajGenerator::LocalLIPMTrajGenerator(
                contact_points_in_each_state.size());
 
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+                    .get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   fsm_switch_time_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("t_start", BasicVector<double>(1))
+          .get_index();
 
   // Provide an instance to allocate the memory first (for the output)
-  PiecewisePolynomial<double> pp_part(VectorXd(0));
-  MatrixXd K = MatrixXd::Ones(0, 0);
-  MatrixXd A = MatrixXd::Identity(0, 0);
-  MatrixXd alpha = MatrixXd::Ones(0, 0);
-  ExponentialPlusPiecewisePolynomial<double> exp(K, A, alpha, pp_part);
+  ExponentialPlusPiecewisePolynomial<double> exp;
   drake::trajectories::Trajectory<double>& traj_inst = exp;
-  this->DeclareAbstractOutputPort("lipm_traj", traj_inst,
+  this->DeclareAbstractOutputPort("local_lipm_traj", traj_inst,
                                   &LocalLIPMTrajGenerator::CalcTraj);
 }
 

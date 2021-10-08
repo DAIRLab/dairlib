@@ -57,12 +57,14 @@ SavedTrajReceiver::SavedTrajReceiver(
               drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
   // Input ports for swing foot
-  state_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(plant_feedback.num_positions(),
-                                             plant_feedback.num_velocities(),
-                                             plant_feedback.num_actuators()))
-                    .get_index();
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(
+              "x, u, t", OutputVector<double>(plant_feedback.num_positions(),
+                                              plant_feedback.num_velocities(),
+                                              plant_feedback.num_actuators()))
+          .get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp;

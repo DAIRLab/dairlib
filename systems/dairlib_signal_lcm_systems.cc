@@ -21,7 +21,8 @@ DairlibSignalReceiver::DairlibSignalReceiver(int signal_size)
     : signal_size_(signal_size) {
   this->DeclareAbstractInputPort("lcmt_dairlib_signal",
                                  drake::Value<dairlib::lcmt_dairlib_signal>{});
-  this->DeclareVectorOutputPort(TimestampedVector<double>(signal_size),
+  this->DeclareVectorOutputPort("data_t",
+                                TimestampedVector<double>(signal_size),
                                 &DairlibSignalReceiver::UnpackLcmIntoVector);
 }
 
@@ -45,8 +46,10 @@ DairlibSignalSender::DairlibSignalSender(
     : signal_names_(signal_names),
       signal_size_(signal_names.size()),
       with_hacks_(false) {
-  this->DeclareVectorInputPort(BasicVector<double>(signal_names.size()));
-  this->DeclareAbstractOutputPort(&DairlibSignalSender::PackVectorIntoLcm);
+  this->DeclareVectorInputPort("data",
+                               BasicVector<double>(signal_names.size()));
+  this->DeclareAbstractOutputPort("lcmt_dairlib_signal",
+                                  &DairlibSignalSender::PackVectorIntoLcm);
 }
 
 DairlibSignalSender::DairlibSignalSender(
@@ -55,8 +58,10 @@ DairlibSignalSender::DairlibSignalSender(
       signal_size_(signal_names.size()),
       stride_period_(stride_period),
       with_hacks_(true) {
-  this->DeclareVectorInputPort(BasicVector<double>(signal_names.size()));
-  this->DeclareAbstractOutputPort(&DairlibSignalSender::PackVectorIntoLcm);
+  this->DeclareVectorInputPort("data",
+                               BasicVector<double>(signal_names.size()));
+  this->DeclareAbstractOutputPort("lcmt_dairlib_signal",
+                                  &DairlibSignalSender::PackVectorIntoLcm);
 }
 
 void DairlibSignalSender::PackVectorIntoLcm(
@@ -141,8 +146,9 @@ void DairlibSignalSender::PackVectorIntoLcm(
 
 TimestampedVectorSender::TimestampedVectorSender(int signal_size)
     : signal_size_(signal_size) {
-  this->DeclareVectorInputPort(BasicVector<double>(signal_size));
-  this->DeclareAbstractOutputPort(&TimestampedVectorSender::PackVectorIntoLcm);
+  this->DeclareVectorInputPort("data", BasicVector<double>(signal_size));
+  this->DeclareAbstractOutputPort("lcmt_timestamped_vector",
+                                  &TimestampedVectorSender::PackVectorIntoLcm);
 }
 
 void TimestampedVectorSender::PackVectorIntoLcm(

@@ -1,6 +1,6 @@
 FROM ros:noetic-ros-base-focal
 WORKDIR /dairlib
-ENV DAIRLIB_DOCKER_VERSION=0.23
+ENV DAIRLIB_DOCKER_VERSION=0.25
 COPY . .
 RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python
 RUN set -eux \

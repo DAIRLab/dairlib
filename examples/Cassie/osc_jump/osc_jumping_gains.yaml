@@ -1,8 +1,8 @@
 w_input: 0.000
 w_accel: 0.00001
 w_soft_constraint: 100
-x_offset: -0.02
-relative_feet: false
+x_offset: -0.03
+relative_feet: true
 
 mu: 0.8
 
@@ -11,7 +11,7 @@ swing_toe_kp: 2000
 swing_toe_kd: 10
 
 w_hip_yaw: 100
-hip_yaw_kp: 50
+hip_yaw_kp: 40
 hip_yaw_kd: 5
 
 impact_threshold: 0.050

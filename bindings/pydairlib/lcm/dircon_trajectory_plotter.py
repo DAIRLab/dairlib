@@ -11,7 +11,7 @@ def main():
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.5h_0.3d")
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_box_0.5h_0.3d_2")
-  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/springs/jumping_box_0.4h_0.3d_1")
+  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_box_0.5h_0.3d_8")
   # filename = "/home/yangwill/Documents/research/projects/cassie/hardware/backup/dair/saved_trajectories/jumping_0.15h_0.3d"
 
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/" + sys.argv[1])
@@ -29,16 +29,6 @@ def main():
   force_datatypes = dircon_traj.GetTrajectory("force_vars1").datatypes
 
   collocation_force_points = dircon_traj.GetCollocationForceSamples(0)
-  # M = reflected_joints()
-  #
-  # mirror_traj = lcm_trajectory.Trajectory()
-  # mirror_traj.traj_name = 'mirror_matrix'
-  # mirror_traj.time_vector = np.zeros(M.shape[0])
-  # mirror_traj.datapoints = M
-  # mirror_traj.datatypes = [''] * M.shape[0]
-  #
-  # dircon_traj.AddTrajectory('mirror_matrix', mirror_traj)
-  # dircon_traj.WriteToFile(filename)
 
   n_points = 500
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
@@ -50,21 +40,31 @@ def main():
     input_samples[i] = input_traj.value(t[i])[:, 0]
     # force_samples[i] = force_traj[0].value(t[i])[:, 0]
 
+
+  pos_indices = slice(0 + 7, 11)
+  vel_indices = slice(23 + 6, 45)
+  # floating base states
+  pos_indices = slice(0, 7)
+  vel_indices = slice(23, 23 + 6)
+  # vel_indices = slice(23 + 6, 23 + 10)
+  # all motor torques
+  u_indices = slice(0, 10)
+
   # reflected_state_samples = state_samples @ M
   # Plotting reconstructed state trajectories
   plt.figure("state trajectory")
-  plt.plot(t, state_samples[:, 7:23])
+  plt.plot(t, state_samples[:, pos_indices])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 0:7])
   # plt.plot(t, state_samples[:, -18:])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 7:13])
   # plt.plot(t, state_samples[:, 25:31])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 25:31])
   # plt.legend(state_datatypes[0:7])
-  plt.legend(state_datatypes[7:13])
+  plt.legend(state_datatypes[pos_indices])
 
   plt.figure("input trajectory")
-  plt.plot(t, input_samples[:, :])
-  plt.legend(input_datatypes[:])
+  plt.plot(t, input_samples[:, u_indices])
+  plt.legend(input_datatypes[u_indices])
 
   plt.figure("force trajectory")
   # plt.plot(t, force_samples[:, :12])

@@ -265,8 +265,6 @@ DirconTrajectory::ReconstructStateTrajectoryWithSprings(
     if (x_[mode]->time_vector.size() < 2) {
       continue;
     }
-    std::cout << "rows: " << spr_to_wo_spr_map.rows() << std::endl;
-    std::cout << "cols: " << spr_to_wo_spr_map.cols() << std::endl;
     state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
         x_[mode]->time_vector, spr_to_wo_spr_map * x_[mode]->datapoints,
         spr_to_wo_spr_map * xdot_[mode]->datapoints));

@@ -68,6 +68,7 @@ DEFINE_string(traj_name, "", "Name of the saved trajectory");
 DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_bool(visualize, true, "Set to true to visualize the platform");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -177,7 +178,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
-  if (FLAGS_platform_height != 0.0) {
+  if (FLAGS_visualize) {
     DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   }
 

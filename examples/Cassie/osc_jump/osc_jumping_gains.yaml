@@ -1,8 +1,8 @@
 w_input: 0.000
 w_accel: 0.00001
 w_soft_constraint: 100
-x_offset: -0.03
-relative_feet: true
+x_offset: -0.02
+relative_feet: false
 
 mu: 0.8
 
@@ -34,7 +34,7 @@ CoMKp:
     0,   50,    0,
     0,    0,  100]
 CoMKd:
-  [ 15,    0,   0,
+  [ 20,    0,   0,
      0,    5,   0,
      0,    0,   5]
 PelvisRotKp:
@@ -52,5 +52,5 @@ FlightFootKp:
 FlightFootKd:
   [ 2.5,   0,    0,
     0,  2.5,   0,
-    0,   0,   2.5]
+    0,   0,    5.0]
 

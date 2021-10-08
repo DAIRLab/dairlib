@@ -205,12 +205,14 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
     print(tracking_cost_map[name])
 
   plt.figure("qp_solve_time:" + filename)
+  plt.title("qp_solve_time:" + filename)
   ps.plot(t_u[t_u_slice], qp_solve_time[t_u_slice])
   # import pdb; pdb.set_trace()
   # ps.plot(t_u[t_u_slice], u_sol[t_u_slice])
   # plt.hist(qp_solve_time[t_u_slice], range=[0, 0.003])
 
   plt.figure("costs")
+  plt.title("costs:" + filename)
   ps.plot(t_u[t_u_slice], input_cost[t_u_slice], color=ps.grey)
   ps.plot(t_u[t_u_slice], acceleration_cost[t_u_slice], color=ps.blue)
   ps.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice], color=ps.red)
@@ -265,11 +267,10 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 1, "pos")
   # plot_osc(osc_debug, osc_traj0, 2, "pos")
 
-
   #
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
 
   #
   # plot_osc(osc_debug, osc_traj0, 0, "acc")
@@ -293,9 +294,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
   # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
-  # plot_osc(osc_debug, osc_traj1, 0, "acc")
-  # plot_osc(osc_debug, osc_traj1, 1, "acc")
-  # plot_osc(osc_debug, osc_traj1, 2, "acc")
+  plot_osc(osc_debug, osc_traj1, 0, "acc")
+  plot_osc(osc_debug, osc_traj1, 1, "acc")
+  plot_osc(osc_debug, osc_traj1, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj2, 0, "acc")
   # plot_osc(osc_debug, osc_traj2, 1, "acc")
@@ -410,6 +411,7 @@ def plot_id_debug(t_u, osc_debug, osc_output):
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):
   fig = plt.figure(osc_traj + " " + derivative + " tracking " + str(dim))
+  plt.title(osc_traj + " " + derivative + " tracking " + str(dim))
   if (derivative == "pos"):
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].y_des[t_u_slice, dim])
     ps.plot(osc_debug[osc_traj].t[t_u_slice], osc_debug[osc_traj].y[t_u_slice, dim])

@@ -433,6 +433,16 @@ bool PinocchioPlant<double>::TestCenterOfMassJ(const Context<double>& context,
 }
 
 template <>
+bool PinocchioPlant<AutoDiffXd>::TestInverseDynamics(
+    const drake::systems::Context<AutoDiffXd>& context,
+    const drake::VectorX<AutoDiffXd>& known_vdot,
+    const drake::multibody::MultibodyForces<AutoDiffXd>& external_forces,
+    double tol) const {
+  throw std::domain_error(
+      "TestInverseDynamics not implemented with AutoDiffXd");
+}
+
+template <>
 bool PinocchioPlant<AutoDiffXd>::TestMassMatrix(
     const Context<AutoDiffXd>& context, double tol) const {
   throw std::domain_error("TestMassMatrix not implemented with AutoDiffXd");

@@ -150,4 +150,5 @@ local_repository(
 )
 
 load("//tools/workspace/pinocchio:repository.bzl", "pinocchio_repository")
+
 pinocchio_repository("pinocchio")

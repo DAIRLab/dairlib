@@ -28,7 +28,8 @@ PYBIND11_MODULE(cassie_utils, m) {
       .def("addCassieMultibody", &dairlib::addCassieMultibody,
            py::arg("plant"), py::arg("scene_graph"), py::arg("floating_base"),
                    py::arg("filename"),
-                   py::arg("add_leaf_springs"), py::arg("add_loop_closure"));
+                   py::arg("add_leaf_springs"), py::arg("add_loop_closure"),
+                   py::arg("add_reflected_inertia"));
 }
 
 }  // namespace pydairlib

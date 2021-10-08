@@ -36,11 +36,11 @@ rm -rf tmp/
 apt install lcm libbot2
 
 # Install Pinocchio
-sudo apt install -qqy lsb-release gnupg2 curl
-echo "deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -cs) robotpkg" | sudo tee /etc/apt/sources.list.d/robotpkg.list
-curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | sudo apt-key add -
-sudo apt-get update
-sudo apt install -qqy robotpkg-py38-pinocchio  # Adapt your desired python version here
+apt install -qqy lsb-release gnupg2 curl
+echo "deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -cs) robotpkg" | tee /etc/apt/sources.list.d/robotpkg.list
+curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | apt-key add -
+apt-get update
+apt install -qqy robotpkg-py38-pinocchio  # Adapt your desired python version here
 
 export PATH=/opt/openrobots/bin:$PATH
 export PKG_CONFIG_PATH=/opt/openrobots/lib/pkgconfig:$PKG_CONFIG_PATH

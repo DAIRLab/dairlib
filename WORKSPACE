@@ -46,6 +46,7 @@ http_archive(
     sha256 = DRAKE_CHECKSUM,
     strip_prefix = "drake-{}".format(DRAKE_COMMIT),
     urls = [x.format(DRAKE_COMMIT) for x in [
+        #"https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
         "https://github.com/yminchen/drake/archive/{}.tar.gz",
     ]],
 )

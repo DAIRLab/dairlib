@@ -77,13 +77,16 @@ DEFINE_double(init_height, .7,
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
-DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO",
-              "LCM channel for virtual radio command");
 DEFINE_double(actuator_delay, 0.0,
               "Duration of actuator delay. Set to 0.0 by default.");
 DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
 
+// Channel name
+DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO",
+              "LCM channel for virtual radio command");
 DEFINE_string(channel_u, "CASSIE_INPUT",
+              "The name of the lcm channel that sends Cassie's state");
+DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "The name of the lcm channel that sends Cassie's state");
 
 // Initial condition
@@ -182,7 +185,7 @@ int do_main(int argc, char* argv[]) {
           plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
+          FLAGS_channel_x, lcm, 1.0 / FLAGS_publish_rate));
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
       plant, FLAGS_publish_efforts);
 

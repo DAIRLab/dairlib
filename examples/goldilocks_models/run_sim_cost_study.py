@@ -19,6 +19,13 @@ import matplotlib.tri as mtri
 import codecs
 import math
 
+# Collection of all channel names
+# TODO: finish this so that you can run multi-thread. Also disable the unnecessary message publishing in the simulation thread.
+class ChannelNames:
+  channel_x = "CASSIE_STATE_SIMULATION"
+  channel_fsm_t = "FSM_T"
+  channel_y = "MPC_OUTPUT"
+  channel_u = "ROM_WALKING"
 
 def BuildFiles(bazel_file_argument):
   build_cmd = ['bazel', 'build', bazel_file_argument, ]
@@ -268,6 +275,7 @@ def RunSimAndEvalCost(model_indices, log_indices, task_list,
   # parameters
   max_n_fail = 0
 
+  ### Logging
   LogSimCostStudySetting()
   SaveLogCorrespondence()
 

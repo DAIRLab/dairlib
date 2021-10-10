@@ -22,10 +22,17 @@ import math
 # Collection of all channel names
 # TODO: finish this so that you can run multi-thread. Also disable the unnecessary message publishing in the simulation thread.
 class ChannelNames:
-  channel_x = "CASSIE_STATE_SIMULATION"
-  channel_fsm_t = "FSM_T"
-  channel_y = "MPC_OUTPUT"
-  channel_u = "ROM_WALKING"
+  def __init__(self, idx = -1):
+    self.channel_x = "CASSIE_STATE_SIMULATION"
+    self.channel_fsm_t = "FSM_T"
+    self.channel_y = "MPC_OUTPUT"
+    self.channel_u = "ROM_WALKING"
+    if idx >= 0:
+      self.channel_x += str(idx)
+      self.channel_fsm_t += str(idx)
+      self.channel_y += str(idx)
+      self.channel_u += str(idx)
+
 
 def BuildFiles(bazel_file_argument):
   build_cmd = ['bazel', 'build', bazel_file_argument, ]
@@ -73,7 +80,7 @@ def LcmlogFilePath(rom_iter_idx, task_idx, extra_layer=""):
 # Set `get_init_file` to True if you want to generate the initial traj for both
 # planner and controller
 # `sample_idx` is used for planner's initial guess and cost regularization term
-def RunSimAndController(sim_end_time, task_value, log_idx, rom_iter_idx,
+def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
     sample_idx, get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
@@ -97,6 +104,9 @@ def RunSimAndController(sim_end_time, task_value, log_idx, rom_iter_idx,
 
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
+    '--channel_x=%s' % ch.channel_x,
+    '--channel_fsm_t=%s' % ch.channel_fsm_t,
+    '--channel_y=%s' % ch.channel_y,
     '--fix_duration=true',
     '--zero_touchdown_impact=true',
     '--log_solver_info=false',
@@ -117,8 +127,11 @@ def RunSimAndController(sim_end_time, task_value, log_idx, rom_iter_idx,
   ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
+    '--channel_x=%s' % ch.channel_x,
+    '--channel_fsm_t=%s' % ch.channel_fsm_t,
+    '--channel_y=%s' % ch.channel_y,
+    '--channel_u=%s' % ch.channel_u,
     '--evalulating_sim_cost=true',
-    '--channel_u=ROM_WALKING',
     '--stride_length=%.3f' % task_value,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--iter=%d' % rom_iter_idx,
@@ -128,7 +141,8 @@ def RunSimAndController(sim_end_time, task_value, log_idx, rom_iter_idx,
   ]
   simulator_cmd = [
     'bazel-bin/examples/Cassie/multibody_sim_w_ground_incline',
-    '--channel_u=ROM_WALKING',
+    '--channel_x=%s' % ch.channel_x,
+    '--channel_u=%s' % ch.channel_u,
     '--end_time=%.3f' % sim_end_time,
     '--pause_second=%.3f' % pause_second,
     '--init_height=%.3f' % 1.0,
@@ -275,6 +289,10 @@ def RunSimAndEvalCost(model_indices, log_indices, task_list,
   # parameters
   max_n_fail = 0
 
+  ### Channel names
+  # TODO: multithread the rollouts
+  ch = ChannelNames()
+
   ### Logging
   LogSimCostStudySetting()
   SaveLogCorrespondence()
@@ -309,10 +327,10 @@ def RunSimAndEvalCost(model_indices, log_indices, task_list,
       # while True:
       while not os.path.exists(path):
         # Get the initial traj
-        RunSimAndController(sim_end_time, task[varying_task_element_idx],
+        RunSimAndController(ch, sim_end_time, task[varying_task_element_idx],
           log_idx, rom_iter, sample_idx, True)
         # Run the simulation
-        RunSimAndController(sim_end_time, task[varying_task_element_idx],
+        RunSimAndController(ch, sim_end_time, task[varying_task_element_idx],
           log_idx, rom_iter, sample_idx, False)
 
         # Evaluate the cost

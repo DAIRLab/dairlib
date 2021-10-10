@@ -111,7 +111,7 @@ def main():
   t_end = t_u[-10]
   # Override here #
   # t_start = 10.35
-  # t_end = 10.4
+  t_end = 2
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -125,13 +125,13 @@ def main():
   # t_osc_debug_slice = slice(0, len(t_osc_debug))
 
   ### All plotting scripts here
-  plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
+  # plot_contact_est(full_log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas)
   # PlotEkfMeasurementError(t_osc_debug, fsm)
   # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (250x)", "pelvis ydot (250x)", "abs_error_per_contact (1000x)"])
 
   # plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
   plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
@@ -145,8 +145,8 @@ def main():
   # plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
   # plt.plot(t_osc_debug, 0.1 * fsm)
   #
-  PlotCenterOfMass(x, t_x, plant_w_spr, world, context, t_osc_debug, fsm)
-  PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
+  # PlotCenterOfMass(x, t_x, plant_w_spr, world, context, t_osc_debug, fsm)
+  # PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
   # PlotVdot(x, t_x, x_datatypes, True)
 
   PlotOscQpSol(t_osc_debug, osc_output, fsm)
@@ -547,7 +547,7 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   osc_traj0 = "swing_ft_traj"
-  # osc_traj0 = "optimal_rom_traj"
+  osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
@@ -572,12 +572,12 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   # plot_osc(osc_debug, osc_traj0, 0, "accel")
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   #
-  plot_osc(osc_debug, osc_traj0, 1, "pos")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 1, "accel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   # # # #
   plot_osc(osc_debug, osc_traj0, 2, "pos")
   plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])

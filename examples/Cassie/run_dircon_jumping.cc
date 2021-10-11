@@ -176,10 +176,7 @@ void DoMain() {
 
   addCassieMultibody(&plant, nullptr, true, file_name, FLAGS_use_springs, false);
 
-//  Parser parser(&plant);
   Parser parser_vis(&plant_vis, &scene_graph);
-
-//  parser.AddModelFromFile(file_name);
   parser_vis.AddModelFromFile(file_name);
 
   plant.Finalize();
@@ -261,7 +258,7 @@ void DoMain() {
   auto crouch_mode = DirconMode<double>(double_stance_constraints,
                                         stance_knotpoints, 0.5, 0.75);
   auto flight_mode = DirconMode<double>(flight_phase_constraints,
-                                        flight_phase_knotpoints, 0.1, 0.5);
+                                        flight_phase_knotpoints, 0.4, 0.6);
   auto land_mode = DirconMode<double>(double_stance_constraints,
                                          stance_knotpoints, 0.5, 0.75);
 
@@ -429,16 +426,12 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   auto x = trajopt->state();
 
   // Duration Bounds
-//  double min_duration = (FLAGS_duration > 0.0) ? FLAGS_duration : 1.0;
-//  double max_duration = (FLAGS_duration > 0.0) ? FLAGS_duration : 2.0;
-//
-//  trajopt->AddDurationBounds(min_duration, max_duration);
 
   // Standing constraints
   double rest_height = FLAGS_start_height;
   double eps = 1e-6;
 
-  double midpoint = 0.03;
+  double midpoint = 0.045;
 
   // position constraints
   trajopt->AddBoundingBoxConstraint(0 - midpoint, 0 - midpoint, x_0(pos_map.at("base_x")));
@@ -464,15 +457,15 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   trajopt->AddBoundingBoxConstraint(0, 0, x_f(pos_map.at("hip_yaw_left")));
   trajopt->AddBoundingBoxConstraint(0, 0, x_f(pos_map.at("hip_yaw_right")));
 
-  trajopt->AddBoundingBoxConstraint(-2.0, -1.7, x_0(pos_map.at("toe_left")));
-  trajopt->AddBoundingBoxConstraint(-2.0, -1.7, x_0(pos_map.at("toe_right")));
-  trajopt->AddBoundingBoxConstraint(-2.0, -1.7, x_f(pos_map.at("toe_left")));
-  trajopt->AddBoundingBoxConstraint(-2.0, -1.7, x_f(pos_map.at("toe_right")));
+  trajopt->AddBoundingBoxConstraint(-2.1, -1.6, x_0(pos_map.at("toe_left")));
+  trajopt->AddBoundingBoxConstraint(-2.1, -1.6, x_0(pos_map.at("toe_right")));
+  trajopt->AddBoundingBoxConstraint(-2.1, -1.6, x_f(pos_map.at("toe_left")));
+  trajopt->AddBoundingBoxConstraint(-2.1, -1.6, x_f(pos_map.at("toe_right")));
 
   // Jumping height constraints
   trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
                                     x_0(pos_map.at("base_z")));
-  trajopt->AddBoundingBoxConstraint(FLAGS_height + rest_height - eps,
+  trajopt->AddBoundingBoxConstraint(0.5 * FLAGS_height + rest_height - eps,
                                     FLAGS_height + rest_height + eps,
                                     x_top(pos_map.at("base_z")));
   trajopt->AddBoundingBoxConstraint(0.8 * FLAGS_height + rest_height - eps,
@@ -571,7 +564,6 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
           -0.15 * VectorXd::Ones(1), -0.1 * VectorXd::Ones(1));
-  //  for (int mode = 2; mode < 3; ++mode) {
   for (int mode : {0, 1, 2}) {
     for (int index = 0; index < mode_lengths[mode]; index++) {
       // Assumes mode_lengths are the same across modes
@@ -662,7 +654,6 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   trajopt->AddConstraint(right_foot_front_z_final_constraint, x_f.head(n_q));
 
   // Only add constraints of lambdas for stance modes
-  vector<int> stance_modes{0, 2};
   // ALL BUT THE LAST SEGMENT (to ensure the feet can leave the ground
   for (int index = 0; index < (mode_lengths[0] - 1); index++) {
     auto lambda = trajopt->force_vars(0, index);
@@ -694,7 +685,6 @@ void AddCosts(Dircon<double>* trajopt,
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
-  int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
 
@@ -737,7 +727,7 @@ void AddCosts(Dircon<double>* trajopt,
     }
   }
 
-  MatrixXd Q = 0.0001 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q = 0.02 * MatrixXd::Identity(n_v, n_v);
   MatrixXd R = 1e-6 * MatrixXd::Identity(n_u, n_u);
   R(act_map["hip_roll_left_motor"], act_map["hip_roll_left_motor"]) = 5e-1;
   R(act_map["hip_roll_right_motor"], act_map["hip_roll_right_motor"]) = 5e-1;
@@ -753,13 +743,13 @@ void AddCosts(Dircon<double>* trajopt,
 
   vector<int> mode_lengths = {FLAGS_knot_points, FLAGS_knot_points,
                               FLAGS_knot_points};
-  MatrixXd W = 1e-6 * MatrixXd::Identity(n_v, n_v);
-  W(vel_map["hip_pitch_leftdot"], vel_map["hip_pitch_leftdot"]) = 1e-5;
-  W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 1e-5;
-  W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 1e-4;
-  W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 1e-4;
-  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-7;
-  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-7;
+  MatrixXd W = 1e-3 * MatrixXd::Identity(n_v, n_v);
+  W(vel_map["hip_pitch_leftdot"], vel_map["hip_pitch_leftdot"]) = 5e-3;
+  W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 5e-3;
+  W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 1e-3;
+  W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 1e-3;
+  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-5;
+  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-5;
   W *= FLAGS_cost_scaling;
   vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
   for (int mode : {0, 1, 2}) {
@@ -788,7 +778,6 @@ void AddCostsSprings(Dircon<double>* trajopt,
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
-  int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
 

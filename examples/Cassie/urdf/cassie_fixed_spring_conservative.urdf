@@ -750,7 +750,7 @@
         <parent link="shin_left" />
         <child link="tarsus_left" />
         <axis xyz="0 0 1" />
-        <limit lower=".8" upper="3"/>
+        <limit lower=".8" upper="2.5"/>
         <dynamics damping="0.1" />
     </joint>
 
@@ -759,7 +759,7 @@
         <parent link="shin_right" />
         <child link="tarsus_right" />
         <axis xyz="0 0 1" />
-        <limit lower=".8" upper="3"/>
+        <limit lower=".8" upper="2.5"/>
         <dynamics damping="0.1" />
     </joint>
 

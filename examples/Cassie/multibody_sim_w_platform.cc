@@ -69,6 +69,8 @@ DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_bool(visualize, true, "Set to true to visualize the platform");
+DEFINE_double(actuator_delay, 0.0,
+              "Duration of actuator delay. Set to 0.0 by default.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -131,7 +133,7 @@ int do_main(int argc, char* argv[]) {
       plant.get_actuation_input_port().size());
   auto discrete_time_delay =
       builder.AddSystem<drake::systems::DiscreteTimeDelay>(
-          1.0 / FLAGS_publish_rate, 0, plant.num_actuators());
+          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay, plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));

@@ -66,9 +66,21 @@ def LogSimCostStudySetting():
   f.close()
 
 
-def LcmlogFilePath(rom_iter_idx, task_idx, extra_layer=""):
-  return eval_dir + extra_layer + 'lcmlog-idx_%d_%d' % (rom_iter_idx, task_idx)
+def LcmlogFilePath(rom_iter_idx, log_idx, extra_layer=""):
+  return eval_dir + extra_layer + 'lcmlog-idx_%d_%d' % (rom_iter_idx, log_idx)
 
+def InitPoseSuccessPath(rom_iter_idx, log_idx):
+  return eval_dir + 'sim_init_sucess_%d_%d' % (rom_iter_idx, log_idx)
+
+def InitPoseSolverFailed(path, enforce_existence = False):
+  if os.path.exists(path):
+    fail = int(np.loadtxt(path)) == 0
+    return fail
+  else:
+    if enforce_existence:
+      return True
+    else:
+      return False
 
 # def get_nominal_task_given_sample_idx(sample_idx, name):
 #   # Get task element index by name
@@ -89,6 +101,7 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
   # simulation arguments
   pause_second = 2.0 if get_init_file else 0
   init_traj_file = '' if get_init_file else '0_rom_trajectory'
+  path_init_pose_success = InitPoseSuccessPath(rom_iter_idx, log_idx)
 
   # planner arguments
   realtime_rate_for_time_limit = target_realtime_rate
@@ -149,6 +162,7 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
     '--pelvis_x_vel=%.3f' % ((task_value / duration) if init_sim_vel else 0),
     '--target_realtime_rate=%.3f' % target_realtime_rate,
     '--spring_model=%s' % str(spring_model).lower(),
+    '--path_init_pose_success=%s' % path_init_pose_success,
   ]
   lcm_logger_cmd = [
     'lcm-logger',
@@ -182,7 +196,8 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
 
   if get_init_file:
     # Wait for planner to end
-    while planner_process.poll() is None:  # while subprocess is alive
+    while planner_process.poll() is None \
+        or not InitPoseSolverFailed(path_init_pose_success):
       time.sleep(0.1)
     # Kill the rest of process
     controller_process.kill()
@@ -195,6 +210,14 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
     planner_process.kill()
     controller_process.kill()
     logger_process.kill()
+
+  # Log sim status
+  if InitPoseSolverFailed(path_init_pose_success, True):
+    msg = "iteration #%d log #%d: init pose solver failed to find a pose\n" % (rom_iter_idx, log_idx)
+    print(msg)
+    f = open(eval_dir + "sim_status.txt", "a")
+    f.write(msg)
+    f.close()
 
 
 # sim_end_time is used to check if the simulation ended early

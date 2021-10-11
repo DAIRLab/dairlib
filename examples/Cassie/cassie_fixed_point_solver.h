@@ -44,7 +44,7 @@ void CassieFixedBaseFixedPointSolver(
 /// Solve for a dynamically feasible state given Cassie's pelvis xy velocity.
 /// This class is similar to CassieFixedPointSolver expect for the target pelvis
 /// velocity.
-void CassieInitStateSolver(
+bool CassieInitStateSolver(
     const drake::multibody::MultibodyPlant<double>& plant,
     const Eigen::VectorXd& pelvis_xy_vel, double height, double mu,
     double min_normal_force, bool linear_friction_cone, double toe_spread,

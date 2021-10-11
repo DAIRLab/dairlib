@@ -111,7 +111,7 @@ def main():
   t_end = t_u[-10]
   # Override here #
   # t_start = 10.35
-  t_end = 2
+  # t_end = 2
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]

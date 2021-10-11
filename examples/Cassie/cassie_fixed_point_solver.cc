@@ -326,7 +326,7 @@ void BodyPointVelConstraint::EvaluateConstraint(
   *y = J * v;
 };
 
-void CassieInitStateSolver(
+bool CassieInitStateSolver(
     const drake::multibody::MultibodyPlant<double>& plant,
     const VectorXd& pelvis_xy_vel, double height, double mu,
     double min_normal_force, bool linear_friction_cone, double toe_spread,
@@ -494,7 +494,7 @@ void CassieInitStateSolver(
   // Snopt settings
   // program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
   //                         "../snopt_test.out");
-  std::cout << "Save log to ../snopt_test.out\n";
+  // std::cout << "Save log to ../snopt_test.out\n";
   program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
   program.SetSolverOption(drake::solvers::SnoptSolver::id(),
                           "Major optimality tolerance", 1e-2);
@@ -539,6 +539,8 @@ void CassieInitStateSolver(
   // //  std::cout << "vdot_cost_binding = "
   // //            << solvers::EvalCostGivenSolution(result, vdot_cost_binding)
   // //            << std::endl;
+
+  return result.is_success();
 }
 
 }  // namespace dairlib

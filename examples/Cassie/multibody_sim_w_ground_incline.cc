@@ -2,6 +2,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <fstream>
 
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
@@ -95,6 +96,9 @@ DEFINE_double(pelvis_y_vel, 0.3, "for stability");
 
 // Terrain
 DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
+
+// Testing
+DEFINE_string(path_init_pose_success, "", "");
 
 class SimTerminator : public drake::systems::LeafSystem<double> {
  public:
@@ -277,12 +281,24 @@ int do_main(int argc, char* argv[]) {
 
     VectorXd pelvis_xy_vel(2);
     pelvis_xy_vel << FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel;
-    CassieInitStateSolver(plant_for_solver, pelvis_xy_vel, FLAGS_init_height,
-                          mu_fp, min_normal_fp, true, toe_spread,
-                          FLAGS_ground_incline, q_init, u_init, lambda_init,
-                          &q_init, &v_init, &u_init, &lambda_init);
+    bool success = CassieInitStateSolver(
+        plant_for_solver, pelvis_xy_vel, FLAGS_init_height, mu_fp,
+        min_normal_fp, true, toe_spread, FLAGS_ground_incline, q_init, u_init,
+        lambda_init, &q_init, &v_init, &u_init, &lambda_init);
     std::cout << "q_init = \n" << q_init.transpose() << std::endl;
     std::cout << "v_init = \n" << v_init.transpose() << std::endl;
+    if (!FLAGS_path_init_pose_success.empty()) {
+      std::string msg = success? "1" : "0";
+
+      std::ofstream outfile;
+      outfile.open(FLAGS_path_init_pose_success, std::ios_base::app);
+      outfile << msg;
+      outfile.close();
+      if (!success) {
+        std::cout << "Sim didn't find a solution for init pose. Terminate.\n";
+        return 0;
+      }
+    }
   } else {
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);

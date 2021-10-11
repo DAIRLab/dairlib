@@ -59,7 +59,7 @@ class OscTrackingData {
   // Add this state to the list of fsm states where this tracking data is active
   void AddFiniteStateToTrack(int state);
   const bool IsActive(int fsm_state) const {
-    return active_fsm_states_.count(fsm_state);
+    return active_fsm_states_.count(fsm_state) || active_fsm_states_.count(-1);
   }
   void CheckOscTrackingData();
 

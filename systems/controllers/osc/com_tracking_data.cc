@@ -28,11 +28,8 @@ void ComTrackingData::UpdateY(const VectorXd& x_w_spr,
 
 void ComTrackingData::UpdateYdot(const VectorXd& x_w_spr,
                                  const Context<double>& context_w_spr) {
-  MatrixXd J_w_spr(kSpaceDim, plant_w_spr_.num_velocities());
-  plant_w_spr_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context_w_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_,
-      &J_w_spr);
-  ydot_ = J_w_spr * x_w_spr.tail(plant_w_spr_.num_velocities());
+  ydot_ = plant_w_spr_.CalcCenterOfMassTranslationalVelocityInWorld(
+      context_w_spr);
 }
 
 void ComTrackingData::UpdateJ(const VectorXd& x_wo_spr,

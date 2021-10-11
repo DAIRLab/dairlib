@@ -23,10 +23,8 @@ using std::vector;
 
 namespace dairlib::systems::controllers {
 
-using multibody::JwrtqdotToJwrtv;
 using multibody::makeNameToPositionsMap;
 using multibody::makeNameToVelocitiesMap;
-using multibody::WToQuatDotMap;
 
 /**** OscTrackingData ****/
 OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,

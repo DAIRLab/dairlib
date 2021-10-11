@@ -52,11 +52,11 @@ class OptionsTrackingData : public OscTrackingData {
   };
 
  private:
-  void UpdateYError() override;
   void UpdateFilters(double t);
+  void UpdateYError() override;
   void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
   void UpdateYddotDes(double t, double t_since_state_switch) override;
-  void UpdateYddotCmd(double t, double t_since_state_switch);
+  void UpdateYddotCmd(double t, double t_since_state_switch) override;
 
   bool with_view_frame_ = false;
 

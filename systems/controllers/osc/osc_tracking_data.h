@@ -25,10 +25,11 @@ class OscTrackingData {
                   const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
   // Update() updates the caches. It does the following things in order:
-  //  - update track_at_current_state_
-  //  - update desired output
-  //  - update feedback output (Calling virtual methods)
-  //  - update command output (desired output with pd control)
+  //  - updates the current fsm state
+  //  - update the actual outputs
+  //  - update the desired outputs
+  //  - update the errors (Calling virtual methods)
+  //  - update commanded accelerations (desired output with pd control)
   // Inputs/Arguments:
   //  - `x_w_spr`, state of the robot (with spring)
   //  - `context_w_spr`, plant context of the robot (without spring)
@@ -36,6 +37,7 @@ class OscTrackingData {
   //  - `context_wo_spr`, plant context of the robot (without spring)
   //  - `traj`, desired trajectory
   //  - `t`, current time
+  //  - `t`, time since the last state switch
   //  - `v_proj`, impact invariant velocity projection
   virtual void Update(const Eigen::VectorXd& x_w_spr,
               const drake::systems::Context<double>& context_w_spr,
@@ -57,9 +59,15 @@ class OscTrackingData {
   // Add this state to the list of fsm states where this tracking data is active
   void AddFiniteStateToTrack(int state);
   const bool IsActive(int fsm_state) const {
-    return active_fsm_states_.count(fsm_state) || active_fsm_states_.count(-1);
+    return active_fsm_states_.count(fsm_state);
   }
   void CheckOscTrackingData();
+
+  // Set whether or not to use springs in the calculation of the actual outputs
+  void SetSpringsInKinematicCalculation(bool use_springs_in_eval){
+    use_springs_in_eval_ = use_springs_in_eval;
+  }
+
   // Set whether or not to use the impact invariant projection
   void SetImpactInvariantProjection(bool use_impact_invariant_projection) {
     impact_invariant_projection_ = use_impact_invariant_projection;
@@ -171,7 +179,7 @@ class OscTrackingData {
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) = 0;
   virtual void UpdateYddotDes(double t, double t_since_state_switch) = 0;
-  void UpdateYddotCmd(double t, double t_since_state_switch);
+  virtual void UpdateYddotCmd(double t, double t_since_state_switch);
 
   // Finalize and ensure that users construct OscTrackingData derived class
   // correctly.

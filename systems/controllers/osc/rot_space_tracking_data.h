@@ -52,7 +52,7 @@ class RotTaskSpaceTrackingData final : public OptionsTrackingData {
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
                    const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateYddotDes(double t, double t_gait_cycle) override;
+  void UpdateYddotDes(double t, double t_since_state_switch) override;
   void CheckDerivedOscTrackingData() final;
 
   // frame_pose_ represents the pose of the frame (w.r.t. the body's frame)

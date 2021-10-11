@@ -24,16 +24,18 @@ void OptionsTrackingData::UpdateActual(
     const Eigen::VectorXd& x_w_spr,
     const drake::systems::Context<double>& context_w_spr,
     const Eigen::VectorXd& x_wo_spr,
-    const drake::systems::Context<double>& context_wo_spr,
-    double t) {
+    const drake::systems::Context<double>& context_wo_spr, double t) {
   OscTrackingData::UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
                                 context_wo_spr, t);
   UpdateFilters(t);
 
   if (with_view_frame_) {
     view_frame_rot_T_ =
-        view_frame_->CalcWorldToFrameRotation(plant_w_spr_, context_wo_spr)
-            .transpose();
+        view_frame_->CalcWorldToFrameRotation(plant_w_spr_, context_wo_spr);
+    y_ = view_frame_rot_T_ * y_;
+    ydot_ = view_frame_rot_T_ * ydot_;
+    J_ = view_frame_rot_T_ * J_;
+    JdotV_ = view_frame_rot_T_ * JdotV_;
   }
 }
 
@@ -60,20 +62,12 @@ void OptionsTrackingData::UpdateFilters(double t) {
   }
 }
 
-void OptionsTrackingData::UpdateYError() {
-  error_y_ = y_des_ - y_;
-  if (with_view_frame_) {
-    error_y_ = view_frame_rot_T_ * error_y_;
-  }
-}
+void OptionsTrackingData::UpdateYError() { error_y_ = y_des_ - y_; }
 
 void OptionsTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   error_ydot_ = ydot_des_ - ydot_;
   if (impact_invariant_projection_) {
     error_ydot_ -= GetJ() * v_proj;
-  }
-  if (with_view_frame_) {
-    error_ydot_ = view_frame_rot_T_ * error_ydot_;
   }
 }
 

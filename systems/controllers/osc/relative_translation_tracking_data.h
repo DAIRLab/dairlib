@@ -33,7 +33,7 @@ class RelativeTranslationTrackingData final : public OptionsTrackingData {
               const drake::systems::Context<double>& context_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
               double t_gait_cycle, int fsm_state,
-              const Eigen::VectorXd& v_proj);
+              const Eigen::VectorXd& v_proj) final;
 
  private:
   void UpdateY(const Eigen::VectorXd& x_wo_spr,

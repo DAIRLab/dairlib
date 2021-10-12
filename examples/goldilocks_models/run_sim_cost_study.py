@@ -197,7 +197,8 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
   f.close()
 
   # Remove file for init pose
-  os.system("rm " + path_init_pose_success)
+  if os.path.exists(path_init_pose_success):
+    os.system("rm " + path_init_pose_success)
 
   # Run all processes
   planner_process = subprocess.Popen(planner_cmd)
@@ -207,30 +208,19 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
   time.sleep(3)
   simulator_process = subprocess.Popen(simulator_cmd)
 
-  if get_init_file:
-    # Wait for planner to end
-    while planner_process.poll() is None \
-        and not InitPoseSolverFailed(path_init_pose_success):
-      time.sleep(0.1)
-    # Kill the rest of process
-    controller_process.kill()
-    simulator_process.kill()
-  else:
-    # Wait for simluation to end
-    while simulator_process.poll() is None:  # while subprocess is alive
-      time.sleep(0.1)
-    # Kill the rest of process
-    planner_process.kill()
-    controller_process.kill()
-    logger_process.kill()
+  # Message to return
+  msg = "iteration #%d log #%d: init pose solver failed to find a pose\n" % (rom_iter_idx, log_idx)
 
-  # Log sim status
-  if InitPoseSolverFailed(path_init_pose_success, True):
-    msg = "iteration #%d log #%d: init pose solver failed to find a pose\n" % (rom_iter_idx, log_idx)
-    print(msg)
-    f = open(eval_dir + "sim_status.txt", "a")
-    f.write(msg)
-    f.close()
+  if get_init_file:
+    return ([planner_process, controller_process, simulator_process],
+            [path_init_pose_success, msg],
+            get_init_file,
+            thread_idx)
+  else:
+    return ([simulator_process, planner_process, controller_process, logger_process],
+            [path_init_pose_success, msg],
+            get_init_file,
+            thread_idx)
 
 
 # sim_end_time is used to check if the simulation ended early
@@ -320,13 +310,54 @@ def SaveLogCorrespondence():
   f.close()
 
 
-def RunSimAndEvalCost(model_indices, log_indices, task_list,
-    do_eval_cost=False):
-  # parameters
-  max_n_fail = 0
-  # TODO: finish multithread
-  thread_idx = 0
+def EndSim(working_threads, idx):
+  # Once we reach the code here, it means one simulation has ended
 
+  # Log sim status
+  if InitPoseSolverFailed(working_threads[idx][1][0], True):
+    print(working_threads[idx][1][1])
+    f = open(eval_dir + "sim_status.txt", "a")
+    f.write(working_threads[idx][1][1])
+    f.close()
+
+  # Kill the rest of processes (necessary)
+  for i in range(1, len(working_threads[idx][0])):
+    working_threads[idx][0][i].kill()
+
+  # add back available thread idx
+  thread_idx_set.add(working_threads[idx][3])
+
+  del working_threads[idx]
+
+
+def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
+                                        finish_up=False):
+  # Wait for threads to finish once is more than n_max_thread
+  while (not finish_up and (len(working_threads) >= n_max_thread)) or \
+      (finish_up and (len(working_threads) > 0)):
+    for j in range(len(working_threads)):
+      get_init_file = working_threads[j][2]
+      if get_init_file:
+        if working_threads[j][0][0].poll() is None and \
+            not InitPoseSolverFailed(working_threads[j][1][0]):
+          time.sleep(0.1)
+        else:
+          print("\n\n Init file. Finish.\n\n")
+          print(len(working_threads))
+          EndSim(working_threads, j)
+          print(len(working_threads))
+          break
+      else:
+        if working_threads[j][0][0].poll() is None:
+          time.sleep(0.1)
+        else:
+          print("\n\n Regular sim. Finish.\n\n")
+          EndSim(working_threads, j)
+          break
+
+
+def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
+    do_eval_cost=False):
   ### Channel names
   global ch
   ch = ChannelNames()
@@ -345,11 +376,22 @@ def RunSimAndEvalCost(model_indices, log_indices, task_list,
     task_list)
   print("sample_indices = \n" + str(sample_indices))
 
+  ### multithreading
+  working_threads = []
+  n_max_thread = 3
+
+  global thread_idx_set
+  thread_idx_set = set()
+  for i in range(n_max_thread):
+    thread_idx_set.add(i)
+
   ### Start simulation
   n_total_sim = len(model_indices) * len(task_list)
-  counter = 0
+  counter = -1
   for i in range(len(model_indices)):
     for j in range(len(task_list)):
+      counter += 1
+
       rom_iter = model_indices[i]
       task = task_list[j]
       sample_idx = sample_indices[i][j]
@@ -361,30 +403,27 @@ def RunSimAndEvalCost(model_indices, log_indices, task_list,
             (rom_iter, task[varying_task_element_idx]))
 
       path = eval_dir + '%d_%d_success.csv' % (rom_iter, log_idx)
-      n_fail = 0
-      # while True:
-      while not os.path.exists(path):
+      if not os.path.exists(path):
         # Get the initial traj
-        RunSimAndController(thread_idx, sim_end_time,
-                            task[varying_task_element_idx], log_idx, rom_iter,
-                            sample_idx, True)
-        # Run the simulation
-        RunSimAndController(thread_idx, sim_end_time,
-                            task[varying_task_element_idx], log_idx, rom_iter,
-                            sample_idx, False)
+        working_threads.append(RunSimAndController(thread_idx_set.pop(), sim_end_time,
+                                                   task[varying_task_element_idx], log_idx, rom_iter,
+                                                   sample_idx, True))
+        CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread)
 
-        # Evaluate the cost
+        # Run the simulation
+        working_threads.append(RunSimAndController(thread_idx_set.pop(), sim_end_time,
+                                                   task[varying_task_element_idx], log_idx, rom_iter,
+                                                   sample_idx, False))
+        CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread)
+
+        # Evaluate the cost (not multithreaded. Will block the main thread)
         if do_eval_cost:
           EvalCost(sim_end_time, rom_iter, log_idx)
 
         # Delete the lcmlog
         # os.remove(LcmlogFilePath(rom_iter_idx, log_idx))
 
-        if not os.path.exists(path):
-          n_fail += 1
-        if n_fail > max_n_fail:
-          break
-      counter += 1
+  CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread, True)
 
   print("Finished evaluating. Current time = " + str(datetime.now()))
 
@@ -985,7 +1024,7 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  # RunSimAndEvalCost(model_indices, log_indices, task_list)
+  # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
 
   # Cost evaluate only
   # EvalCostInMultithread(model_indices, log_indices)

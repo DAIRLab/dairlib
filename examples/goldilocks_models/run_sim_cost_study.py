@@ -197,7 +197,7 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
   if get_init_file:
     # Wait for planner to end
     while planner_process.poll() is None \
-        or not InitPoseSolverFailed(path_init_pose_success):
+        and not InitPoseSolverFailed(path_init_pose_success):
       time.sleep(0.1)
     # Kill the rest of process
     controller_process.kill()

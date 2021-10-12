@@ -70,11 +70,11 @@ def LcmlogFilePath(rom_iter_idx, log_idx, extra_layer=""):
   return eval_dir + extra_layer + 'lcmlog-idx_%d_%d' % (rom_iter_idx, log_idx)
 
 def InitPoseSuccessPath(rom_iter_idx, log_idx):
-  return eval_dir + 'sim_init_sucess_%d_%d' % (rom_iter_idx, log_idx)
+  return eval_dir + 'sim_init_failed_%d_%d' % (rom_iter_idx, log_idx)
 
 def InitPoseSolverFailed(path, enforce_existence = False):
   if os.path.exists(path):
-    fail = int(np.loadtxt(path)) == 0
+    fail = int(np.loadtxt(path)) == 1
     return fail
   else:
     if enforce_existence:
@@ -187,6 +187,10 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
   f.write("---\n")
   f.close()
 
+  # Remove file for init pose
+  os.system("rm " + path_init_pose_success)
+
+  # Run all processes
   planner_process = subprocess.Popen(planner_cmd)
   controller_process = subprocess.Popen(controller_cmd)
   if not get_init_file:

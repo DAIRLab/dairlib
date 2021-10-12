@@ -143,10 +143,6 @@ class SimTerminator : public drake::systems::LeafSystem<double> {
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  if (!FLAGS_path_init_pose_success.empty()) {
-    std::system(("rm " + FLAGS_path_init_pose_success).c_str());
-  }
-
   // Ground direction
   DRAKE_DEMAND(abs(FLAGS_ground_incline) <= 0.3);
   Vector3d ground_normal(sin(FLAGS_ground_incline), 0,

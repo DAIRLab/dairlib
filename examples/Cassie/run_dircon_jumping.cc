@@ -255,12 +255,15 @@ void DoMain() {
   int stance_knotpoints = FLAGS_knot_points;
   int flight_phase_knotpoints = FLAGS_knot_points;
 
+  /****
+   * Mode duration constraints
+   */
   auto crouch_mode = DirconMode<double>(double_stance_constraints,
-                                        stance_knotpoints, 0.5, 0.75);
+                                        stance_knotpoints, 0.75, 0.75);
   auto flight_mode = DirconMode<double>(flight_phase_constraints,
-                                        flight_phase_knotpoints, 0.4, 0.6);
+                                        flight_phase_knotpoints, 0.4, 0.4);
   auto land_mode = DirconMode<double>(double_stance_constraints,
-                                         stance_knotpoints, 0.5, 0.75);
+                                         stance_knotpoints, 0.4, 0.6);
 
   crouch_mode.MakeConstraintRelative(left_toe_eval_ind, 0);
   crouch_mode.MakeConstraintRelative(left_toe_eval_ind, 1);
@@ -589,13 +592,13 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   auto left_foot_x_platform_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", pt_front_contact, Eigen::RowVector3d(1, 0, 0),
-          0.5 * (FLAGS_distance - eps) * VectorXd::Ones(1),
-          0.5 * (FLAGS_distance + eps) * VectorXd::Ones(1));
+          0.4 * (FLAGS_distance - eps) * VectorXd::Ones(1),
+          0.4 * (FLAGS_distance + eps) * VectorXd::Ones(1));
   auto right_foot_x_platform_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", pt_front_contact, Eigen::RowVector3d(1, 0, 0),
-          0.5 * (FLAGS_distance - eps) * VectorXd::Ones(1),
-          0.5 * (FLAGS_distance + eps) * VectorXd::Ones(1));
+          0.4 * (FLAGS_distance - eps) * VectorXd::Ones(1),
+          0.4 * (FLAGS_distance + eps) * VectorXd::Ones(1));
   trajopt->AddConstraint(left_foot_x_platform_constraint, x_top.head(n_q));
   trajopt->AddConstraint(right_foot_x_platform_constraint, x_top.head(n_q));
 
@@ -617,13 +620,13 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   auto left_foot_z_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-          (1.25 * FLAGS_height - eps) * VectorXd::Ones(1),
-          (1.25 * FLAGS_height + eps) * VectorXd::Ones(1));
+          (1.4 * FLAGS_height - eps) * VectorXd::Ones(1),
+          (1.4 * FLAGS_height + eps) * VectorXd::Ones(1));
   auto right_foot_z_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-          (1.25 * FLAGS_height - eps) * VectorXd::Ones(1),
-          (1.25 * FLAGS_height + eps) * VectorXd::Ones(1));
+          (1.4 * FLAGS_height - eps) * VectorXd::Ones(1),
+          (1.4 * FLAGS_height + eps) * VectorXd::Ones(1));
   trajopt->AddConstraint(left_foot_z_constraint, x_top.head(n_q));
   trajopt->AddConstraint(right_foot_z_constraint, x_top.head(n_q));
 
@@ -748,9 +751,9 @@ void AddCosts(Dircon<double>* trajopt,
   W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 5e-3;
   W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 1e-3;
   W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 1e-3;
-  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-5;
-  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-5;
-  W *= FLAGS_cost_scaling;
+  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
+  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
+  W *= 1.2 * FLAGS_cost_scaling;
   vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
   for (int mode : {0, 1, 2}) {
     joint_accel_costs.push_back(

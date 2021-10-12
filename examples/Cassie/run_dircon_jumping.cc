@@ -259,9 +259,9 @@ void DoMain() {
    * Mode duration constraints
    */
   auto crouch_mode = DirconMode<double>(double_stance_constraints,
-                                        stance_knotpoints, 0.75, 0.75);
+                                        stance_knotpoints, 0.5, 0.75);
   auto flight_mode = DirconMode<double>(flight_phase_constraints,
-                                        flight_phase_knotpoints, 0.4, 0.4);
+                                        flight_phase_knotpoints, 0.25, 0.5);
   auto land_mode = DirconMode<double>(double_stance_constraints,
                                          stance_knotpoints, 0.4, 0.6);
 
@@ -718,26 +718,34 @@ void AddCosts(Dircon<double>* trajopt,
   l_r_pairs.pop_back();
 
   double w_symmetry_pos = FLAGS_cost_scaling * 1e5;
-  double w_symmetry_vel = FLAGS_cost_scaling * 1e1;
+  double w_symmetry_vel = FLAGS_cost_scaling * 1e2;
+  double w_symmetry_u = FLAGS_cost_scaling * 1e2;
   for (const auto& l_r_pair : l_r_pairs) {
     for (const auto& sym_joint_name : sym_joint_names) {
-      auto pos_diff = x(pos_map[sym_joint_name + l_r_pair.first]) -
-                      x(pos_map[sym_joint_name + l_r_pair.second]);
-      auto vel_diff = x(vel_map[sym_joint_name + l_r_pair.first + "dot"]) -
-                      x(vel_map[sym_joint_name + l_r_pair.second + "dot"]);
+      auto pos_diff = x(pos_map.at(sym_joint_name + l_r_pair.first)) -
+                      x(pos_map.at(sym_joint_name + l_r_pair.second));
+      auto vel_diff = x(vel_map.at(sym_joint_name + l_r_pair.first + "dot")) -
+                      x(vel_map.at(sym_joint_name + l_r_pair.second + "dot"));
       trajopt->AddRunningCost(w_symmetry_pos * pos_diff * pos_diff);
       trajopt->AddRunningCost(w_symmetry_vel * vel_diff * vel_diff);
+      if (sym_joint_name != "ankle_joint") {
+        auto act_diff =
+            u(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) -
+                u(act_map.at(sym_joint_name + l_r_pair.second + "_motor"));
+        trajopt->AddRunningCost(w_symmetry_u * act_diff * act_diff);
+
+      }
     }
   }
 
   MatrixXd Q = 0.02 * MatrixXd::Identity(n_v, n_v);
-  MatrixXd R = 1e-6 * MatrixXd::Identity(n_u, n_u);
-  R(act_map["hip_roll_left_motor"], act_map["hip_roll_left_motor"]) = 5e-1;
-  R(act_map["hip_roll_right_motor"], act_map["hip_roll_right_motor"]) = 5e-1;
-  R(act_map["hip_yaw_left_motor"], act_map["hip_yaw_left_motor"]) = 5e-1;
-  R(act_map["hip_yaw_right_motor"], act_map["hip_yaw_right_motor"]) = 5e-1;
-  R(act_map["hip_pitch_left_motor"], act_map["hip_pitch_left_motor"]) = 1e-5;
-  R(act_map["hip_pitch_right_motor"], act_map["hip_pitch_right_motor"]) = 1e-5;
+  MatrixXd R = 1e-4 * MatrixXd::Identity(n_u, n_u);
+  R(act_map.at("hip_roll_left_motor"), act_map.at("hip_roll_left_motor")) = 5e-1;
+  R(act_map.at("hip_roll_right_motor"), act_map.at("hip_roll_right_motor")) = 5e-1;
+  R(act_map.at("hip_yaw_left_motor"), act_map.at("hip_yaw_left_motor")) = 5e-1;
+  R(act_map.at("hip_yaw_right_motor"), act_map.at("hip_yaw_right_motor")) = 5e-1;
+  R(act_map.at("hip_pitch_left_motor"), act_map.at("hip_pitch_left_motor")) = 1e-5;
+  R(act_map.at("hip_pitch_right_motor"), act_map.at("hip_pitch_right_motor")) = 1e-5;
 
   Q *= FLAGS_cost_scaling;
   R *= FLAGS_cost_scaling;
@@ -753,7 +761,7 @@ void AddCosts(Dircon<double>* trajopt,
   W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 1e-3;
   W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
   W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
-  W *= 1.2 * FLAGS_cost_scaling;
+  W *= 1.4 * FLAGS_cost_scaling;
   vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
   for (int mode : {0, 1, 2}) {
     joint_accel_costs.push_back(

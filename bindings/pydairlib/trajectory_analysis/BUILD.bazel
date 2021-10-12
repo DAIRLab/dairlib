@@ -22,6 +22,18 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "plot_jumping",
+    srcs = ["plot_jumping.py"],
+    deps = [
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/lcm:lcm",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//bindings/pydairlib/common:plot_styler",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

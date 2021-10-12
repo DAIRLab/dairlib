@@ -338,9 +338,7 @@ bool CassieInitStateSolver(
   Eigen::AngleAxisd yawAngle(0, Eigen::Vector3d::UnitY());
   Eigen::AngleAxisd pitchAngle(0, Eigen::Vector3d::UnitX());
   Eigen::Quaternion<double> quat = rollAngle * yawAngle * pitchAngle;
-  Eigen::Matrix3d rotationMatrix = quat.matrix();
-  // Get normal direction
-  Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
+  Eigen::Matrix3d rotation_mat = quat.matrix();
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
@@ -351,28 +349,30 @@ bool CassieInitStateSolver(
   evaluators.add_evaluator(&right_loop);
 
   // Add contact points
+  std::vector<int> yz_active_idx = {1, 2};
+  std::vector<int> z_active_idx = {2};
   auto left_toe = LeftToeFront(plant);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, left_toe.first, left_toe.second, rotationMatrix,
-      Eigen::Vector3d(0, toe_spread, 1e-4), {1, 2});
+      plant, left_toe.first, left_toe.second, rotation_mat,
+      Eigen::Vector3d(0, toe_spread, 0), yz_active_idx);
   evaluators.add_evaluator(&left_toe_evaluator);
 
   auto left_heel = LeftToeRear(plant);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, left_heel.first, left_heel.second, ground_normal,
-      Eigen::Vector3d(0, 0, 1e-4), false);
+      plant, left_heel.first, left_heel.second, rotation_mat,
+      Eigen::Vector3d::Zero(), z_active_idx);
   evaluators.add_evaluator(&left_heel_evaluator);
 
   auto right_toe = RightToeFront(plant);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, right_toe.first, right_toe.second, rotationMatrix,
-      Eigen::Vector3d(0, -toe_spread, 0), {1, 2});
+      plant, right_toe.first, right_toe.second, rotation_mat,
+      Eigen::Vector3d(0, -toe_spread, 0), yz_active_idx);
   evaluators.add_evaluator(&right_toe_evaluator);
 
   auto right_heel = RightToeRear(plant);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, right_heel.first, right_heel.second, ground_normal,
-      Eigen::Vector3d(0, 0, 1e-4), false);
+      plant, right_heel.first, right_heel.second, rotation_mat,
+      Eigen::Vector3d::Zero(), z_active_idx);
   evaluators.add_evaluator(&right_heel_evaluator);
 
   auto program = multibody::MultibodyProgram(plant);
@@ -395,11 +395,18 @@ bool CassieInitStateSolver(
   program.AddConstraint(constraint, {q, v, u, lambda, vdot});
 
   // Zero velocity on feet
+  std::vector<int> xyz_active_idx = {0,1,2};
+  auto left_heel_evaluator_xyz = multibody::WorldPointEvaluator(
+      plant, left_heel.first, left_heel.second, rotation_mat,
+      Eigen::Vector3d::Zero(), xyz_active_idx);
+  auto right_heel_evaluator_xyz = multibody::WorldPointEvaluator(
+      plant, right_heel.first, right_heel.second, rotation_mat,
+      Eigen::Vector3d::Zero(), xyz_active_idx);
   multibody::KinematicEvaluatorSet<double> contact_evaluators(plant);
   contact_evaluators.add_evaluator(&left_toe_evaluator);
-  contact_evaluators.add_evaluator(&left_heel_evaluator);
+  contact_evaluators.add_evaluator(&left_heel_evaluator_xyz);
   contact_evaluators.add_evaluator(&right_toe_evaluator);
-  contact_evaluators.add_evaluator(&right_heel_evaluator);
+  contact_evaluators.add_evaluator(&right_heel_evaluator_xyz);
   auto contact_vel_constraint =
       std::make_shared<BodyPointVelConstraint>(plant, contact_evaluators);
   program.AddConstraint(contact_vel_constraint, {q, v});
@@ -469,6 +476,11 @@ bool CassieInitStateSolver(
   program.AddLinearConstraint(lambda(7) >= min_normal_force);
   program.AddLinearConstraint(lambda(10) >= min_normal_force);
   program.AddLinearConstraint(lambda(13) >= min_normal_force);
+
+  // More bounding box constraint
+  program.AddBoundingBoxConstraint(-10, 10, v);
+  program.AddBoundingBoxConstraint(-150, 150, u);
+  program.AddBoundingBoxConstraint(-500, 500, lambda);
 
   // Add costs
   double s = 100;

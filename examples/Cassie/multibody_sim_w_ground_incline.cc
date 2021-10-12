@@ -99,6 +99,7 @@ DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
 
 // Testing
 DEFINE_string(path_init_pose_success, "", "");
+DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
 
 class SimTerminator : public drake::systems::LeafSystem<double> {
  public:
@@ -175,7 +176,8 @@ int do_main(int argc, char* argv[]) {
   plant.set_stiction_tolerance(FLAGS_v_stiction);
 
   // Create lcm systems.
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:" + FLAGS_lcm_url_port + "?ttl=0");
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, lcm));

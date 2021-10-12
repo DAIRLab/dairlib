@@ -133,8 +133,15 @@ DEFINE_double(xy_disturbance, 0,
 DEFINE_double(yaw_disturbance, 0,
               "Disturbance to FoM initial state. Range from 0 to 1");
 
+// Testing
+DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  if (FLAGS_broadcast) {
+    DRAKE_DEMAND(FLAGS_lcm_url_port == "7667");
+  }
 
   // Read-in the parameters
   RomWalkingGains gains;
@@ -273,7 +280,8 @@ int DoMain(int argc, char* argv[]) {
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
-  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:" + FLAGS_lcm_url_port +
+                                 "?ttl=0");
   drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
   // We probably cannot have two lcmsubsribers listening to the same channel?

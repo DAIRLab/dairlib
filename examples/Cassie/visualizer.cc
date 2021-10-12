@@ -30,6 +30,9 @@ DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
 // Terrain
 DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
 
+// Testing
+DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
+
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::DrakeVisualizer;
@@ -66,7 +69,8 @@ int do_main(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:" + FLAGS_lcm_url_port + "?ttl=0");
 
   // Create state receiver.
   auto state_sub =

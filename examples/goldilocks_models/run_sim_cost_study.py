@@ -20,7 +20,7 @@ import codecs
 import math
 
 # Collection of all channel names
-# TODO: finish this so that you can run multi-thread. Also disable the unnecessary message publishing in the simulation thread.
+# Currently this class is useless becuase we use different lcm url for different simulation thread
 class ChannelNames:
   def __init__(self, idx = -1):
     self.channel_x = "CASSIE_STATE_SIMULATION"
@@ -92,7 +92,7 @@ def InitPoseSolverFailed(path, enforce_existence = False):
 # Set `get_init_file` to True if you want to generate the initial traj for both
 # planner and controller
 # `sample_idx` is used for planner's initial guess and cost regularization term
-def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
+def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_idx,
     sample_idx, get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
@@ -115,11 +115,15 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
   time_limit = 0.0 if get_init_file else time_limit
   planner_init_file = '' if get_init_file else '0_z.csv'
 
+  # other arguments
+  port_idx = thread_idx + 1024  # Ports below 1024 are considered to be privileged in Linux. https://stackoverflow.com/questions/31899673/bind-returning-permission-denied-c
+
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
     '--channel_x=%s' % ch.channel_x,
     '--channel_fsm_t=%s' % ch.channel_fsm_t,
     '--channel_y=%s' % ch.channel_y,
+    '--lcm_url_port=%d' % port_idx,
     '--fix_duration=true',
     '--zero_touchdown_impact=true',
     '--log_solver_info=false',
@@ -144,6 +148,7 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
     '--channel_fsm_t=%s' % ch.channel_fsm_t,
     '--channel_y=%s' % ch.channel_y,
     '--channel_u=%s' % ch.channel_u,
+    '--lcm_url_port=%d' % port_idx,
     '--evalulating_sim_cost=true',
     '--stride_length=%.3f' % task_value,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
@@ -156,6 +161,7 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
     'bazel-bin/examples/Cassie/multibody_sim_w_ground_incline',
     '--channel_x=%s' % ch.channel_x,
     '--channel_u=%s' % ch.channel_u,
+    '--lcm_url_port=%d' % port_idx,
     '--end_time=%.3f' % sim_end_time,
     '--pause_second=%.3f' % pause_second,
     '--init_height=%.3f' % 1.0,
@@ -166,15 +172,18 @@ def RunSimAndController(ch, sim_end_time, task_value, log_idx, rom_iter_idx,
   ]
   lcm_logger_cmd = [
     'lcm-logger',
+    '--lcm-url=udpm://239.255.76.67:%d' % port_idx,
     '-f',
     LcmlogFilePath(rom_iter_idx, log_idx),
   ]
 
   # Testing code to get command
   # if (rom_iter_idx == 100) and (log_idx == 37) and (not get_init_file):
+  # if not get_init_file:
   #   print(' '.join(planner_cmd))
   #   print(' '.join(controller_cmd))
   #   print(' '.join(simulator_cmd))
+  #   print(' '.join(lcm_logger_cmd))
   #   input("type anything to continue")
   # else:
   #   return
@@ -315,9 +324,11 @@ def RunSimAndEvalCost(model_indices, log_indices, task_list,
     do_eval_cost=False):
   # parameters
   max_n_fail = 0
+  # TODO: finish multithread
+  thread_idx = 0
 
   ### Channel names
-  # TODO: multithread the rollouts
+  global ch
   ch = ChannelNames()
 
   ### Logging
@@ -354,11 +365,13 @@ def RunSimAndEvalCost(model_indices, log_indices, task_list,
       # while True:
       while not os.path.exists(path):
         # Get the initial traj
-        RunSimAndController(ch, sim_end_time, task[varying_task_element_idx],
-          log_idx, rom_iter, sample_idx, True)
+        RunSimAndController(thread_idx, sim_end_time,
+                            task[varying_task_element_idx], log_idx, rom_iter,
+                            sample_idx, True)
         # Run the simulation
-        RunSimAndController(ch, sim_end_time, task[varying_task_element_idx],
-          log_idx, rom_iter, sample_idx, False)
+        RunSimAndController(thread_idx, sim_end_time,
+                            task[varying_task_element_idx], log_idx, rom_iter,
+                            sample_idx, False)
 
         # Evaluate the cost
         if do_eval_cost:

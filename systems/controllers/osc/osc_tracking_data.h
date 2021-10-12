@@ -40,31 +40,22 @@ class OscTrackingData {
   //  - `t`, time since the last state switch
   //  - `v_proj`, impact invariant velocity projection
   virtual void Update(const Eigen::VectorXd& x_w_spr,
-              const drake::systems::Context<double>& context_w_spr,
-              const Eigen::VectorXd& x_wo_spr,
-              const drake::systems::Context<double>& context_wo_spr,
-              const drake::trajectories::Trajectory<double>& traj, double t,
-              double t_since_state_switch, int fsm_state,
-              const Eigen::VectorXd& v_proj);
-
-  virtual void UpdateActual(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr,
-      const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr,
-      double t);
-  void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
-                     double t, double t_since_state_switch);
+                      const drake::systems::Context<double>& context_w_spr,
+                      const Eigen::VectorXd& x_wo_spr,
+                      const drake::systems::Context<double>& context_wo_spr,
+                      const drake::trajectories::Trajectory<double>& traj,
+                      double t, double t_since_state_switch, int fsm_state,
+                      const Eigen::VectorXd& v_proj);
 
   // Add this state to the list of fsm states where this tracking data is active
   void AddFiniteStateToTrack(int state);
-  const bool IsActive(int fsm_state) const {
+  bool IsActive(int fsm_state) const {
     return active_fsm_states_.count(fsm_state) || active_fsm_states_.count(-1);
   }
   void CheckOscTrackingData();
 
   // Set whether or not to use springs in the calculation of the actual outputs
-  void SetSpringsInKinematicCalculation(bool use_springs_in_eval){
+  void SetSpringsInKinematicCalculation(bool use_springs_in_eval) {
     use_springs_in_eval_ = use_springs_in_eval;
   }
 
@@ -111,17 +102,24 @@ class OscTrackingData {
   void StoreYddotCommandSol(const Eigen::VectorXd& dv);
 
  protected:
+  virtual void UpdateActual(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr,
+      const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context_wo_spr, double t);
+
   // Output dimension
   int n_y_;
   int n_ydot_;
 
-  bool use_springs_in_eval_ = true;
-  bool impact_invariant_projection_ = false;
-
   // Current fsm state
   int fsm_state_;
 
-  // Feedback output, Jacobian and dJ/dt * v
+  // Flags
+  bool use_springs_in_eval_ = true;
+  bool impact_invariant_projection_ = false;
+
+  // Actual outputs, Jacobian and dJ/dt * v
   Eigen::VectorXd y_;
   Eigen::VectorXd error_y_;
   Eigen::VectorXd ydot_;
@@ -160,30 +158,34 @@ class OscTrackingData {
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
  private:
-  // Trajectory name
-  std::string name_;
 
-  // Updaters of feedback output, jacobian and dJ/dt * v
+  void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
+                     double t, double t_since_state_switch);
+  // Update actual output methods
   virtual void UpdateY(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) = 0;
-  virtual void UpdateYError() = 0;
   virtual void UpdateYdot(
       const Eigen::VectorXd& x_w_spr,
       const drake::systems::Context<double>& context_w_spr) = 0;
-  virtual void UpdateYdotError(const Eigen::VectorXd& v_proj) = 0;
   virtual void UpdateJ(
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) = 0;
   virtual void UpdateJdotV(
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) = 0;
+  // Update error methods
+  virtual void UpdateYError() = 0;
+  virtual void UpdateYdotError(const Eigen::VectorXd& v_proj) = 0;
   virtual void UpdateYddotDes(double t, double t_since_state_switch) = 0;
   virtual void UpdateYddotCmd(double t, double t_since_state_switch);
 
   // Finalize and ensure that users construct OscTrackingData derived class
   // correctly.
   virtual void CheckDerivedOscTrackingData() = 0;
+
+  // Trajectory name
+  std::string name_;
 
   // Cost weights
   Eigen::MatrixXd W_;

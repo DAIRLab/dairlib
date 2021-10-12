@@ -17,13 +17,6 @@ class OptionsTrackingData : public OscTrackingData {
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
-  void UpdateActual(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr,
-      const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr,
-      double t) override;
-
   // enable the low pass filter
   void SetLowPassFilter(double tau, const std::set<int>& element_idx = {});
 
@@ -52,6 +45,13 @@ class OptionsTrackingData : public OscTrackingData {
   };
 
  private:
+  void UpdateActual(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr,
+      const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context_wo_spr,
+      double t) override;
+
   void UpdateFilters(double t);
   void UpdateYError() override;
   void UpdateYdotError(const Eigen::VectorXd& v_proj) override;

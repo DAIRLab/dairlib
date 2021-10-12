@@ -288,7 +288,7 @@ int do_main(int argc, char* argv[]) {
     std::cout << "q_init = \n" << q_init.transpose() << std::endl;
     std::cout << "v_init = \n" << v_init.transpose() << std::endl;
     if (!FLAGS_path_init_pose_success.empty()) {
-      std::string msg = success? "1" : "0";
+      std::string msg = success? "0" : "1";
 
       std::ofstream outfile;
       outfile.open(FLAGS_path_init_pose_success, std::ios_base::trunc);

@@ -98,6 +98,7 @@ DEFINE_bool(switch_to_snopt_after_first_loop, true,
 DEFINE_bool(log_solver_info, true,
             "Log snopt output to a file or ipopt to terminal");
 DEFINE_bool(log_data, true, "Save the planner data into files");
+DEFINE_int32(print_level, 1, "");
 
 // Flag for debugging
 DEFINE_bool(run_one_loop_to_get_init_file, false, "");
@@ -358,7 +359,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create optimal rom trajectory generator
   auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
-      plant_control, stride_period, param, FLAGS_debug_mode, FLAGS_log_data);
+      plant_control, stride_period, param, FLAGS_debug_mode, FLAGS_log_data,
+      FLAGS_print_level);
   builder.Connect(stance_foot_getter->get_output_port(0),
                   rom_planner->get_input_port_stance_foot());
   builder.Connect(init_phase_calculator->get_output_port(0),

@@ -2,10 +2,10 @@
 
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
-#include "examples/goldilocks_models/rom_walking_gains.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
+#include "examples/goldilocks_models/rom_walking_gains.h"
 #include "lcm/rom_planner_saved_trajectory.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
@@ -41,7 +41,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   CassiePlannerWithMixedRomFom(
       const drake::multibody::MultibodyPlant<double>& plant_control,
       double stride_period, const PlannerSetting& param, bool singel_eval_mode,
-      bool log_data);
+      bool log_data, int print_level = 1);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);
@@ -265,8 +265,12 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   bool single_eval_mode_;
   bool log_data_and_check_solution_;
+  int print_level_ = 1;
+  void PrintEssentialStatus(const std::string& msg) const {
+    if (print_level_ > 0) std::cout << msg << std::endl;
+  };
   void PrintStatus(const std::string& msg) const {
-    if (single_eval_mode_) std::cout << msg << std::endl;
+    if (print_level_ > 1) std::cout << msg << std::endl;
   };
   void SaveTrajIntoLcmBinary(
       const RomTrajOptCassie& trajopt,

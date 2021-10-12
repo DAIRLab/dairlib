@@ -141,6 +141,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
     '--spring_model=%s' % str(spring_model).lower(),
+    '--print_level=0',
   ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
@@ -378,7 +379,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
   ### multithreading
   working_threads = []
-  n_max_thread = 3
+  n_max_thread = 2
 
   global thread_idx_set
   thread_idx_set = set()

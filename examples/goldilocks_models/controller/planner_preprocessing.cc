@@ -504,12 +504,13 @@ EventStatus InitialStateForPlanner::AdjustState(
   CalcFeetVel(plant_feedback_, *context_feedback_, x_w_spr,
               &left_foot_vel_w_spr, &right_foot_vel_w_spr);
 
-  cout << "\n================= Time = " +
-              std::to_string(
-                  static_cast<const TimestampedVector<double>*>(
-                      this->EvalVectorInput(context, controller_signal_port_))
-                      ->get_timestamp()) +
-              " =======================\n\n";
+  //  cout << "\n================= Time = " +
+  //              std::to_string(
+  //                  static_cast<const TimestampedVector<double>*>(
+  //                      this->EvalVectorInput(context,
+  //                      controller_signal_port_))
+  //                      ->get_timestamp()) +
+  //              " =======================\n\n";
   //  cout << "  IK || Time of arrival: " << context.get_time() << "
   //  | ";
   VectorXd x_adjusted1 = x_original;

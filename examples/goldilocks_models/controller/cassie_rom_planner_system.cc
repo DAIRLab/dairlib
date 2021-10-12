@@ -63,7 +63,8 @@ namespace goldilocks_models {
 
 CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const MultibodyPlant<double>& plant_control, double stride_period,
-    const PlannerSetting& param, bool singel_eval_mode, bool log_data)
+    const PlannerSetting& param, bool singel_eval_mode, bool log_data,
+    int print_level)
     : nq_(plant_control.num_positions()),
       nv_(plant_control.num_velocities()),
       nx_(plant_control.num_positions() + plant_control.num_velocities()),
@@ -90,6 +91,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   this->set_name("planner_traj");
 
   DRAKE_DEMAND(param_.knots_per_mode > 0);
+
+  // print level
+  if (single_eval_mode_) print_level_ = 2;
+  print_level_ = print_level;
 
   // Input/Output Setup
   stance_foot_port_ =
@@ -120,7 +125,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   vel_map_ = multibody::makeNameToVelocitiesMap(plant_control);
 
   // Reduced order model
-  cout << "model directory = " << param_.dir_model << endl;
+  PrintEssentialStatus("model directory = " + param_.dir_model);
   rom_ = CreateRom(param_.rom_option, ROBOT, plant_control, false);
   ReadModelParameters(rom_.get(), param_.dir_model, param_.iter);
 
@@ -341,10 +346,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // Pick solver
   drake::solvers::SolverId solver_id("");
   solver_id = drake::solvers::IpoptSolver().id();
-  cout << "Solver: " << solver_id.name() << endl;
+  PrintEssentialStatus("Solver: " + solver_id.name());
   solver_ipopt_ = drake::solvers::MakeSolver(solver_id);
   solver_id = drake::solvers::SnoptSolver().id();
-  cout << "Solver: " << solver_id.name() << endl;
+  PrintEssentialStatus("Solver: " + solver_id.name());
   solver_snopt_ = drake::solvers::MakeSolver(solver_id);
 
   // Set solver option
@@ -438,7 +443,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   DRAKE_DEMAND(pos_map_.at("ankle_joint_right") == 7 + 9);
 
   /// Save data for (offline) debug mode
-  writeCSV(param.dir_data + "rom_option.csv", param.rom_option * VectorXd::Ones(1));
+  writeCSV(param.dir_data + "rom_option.csv",
+           param.rom_option * VectorXd::Ones(1));
   writeCSV(param.dir_data + "model_iter.csv", param.iter * VectorXd::Ones(1));
   writeCSV(param.dir_data + "sample_idx.csv", param.sample * VectorXd::Ones(1));
 }
@@ -446,6 +452,14 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     const Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* traj_msg) const {
+  PrintEssentialStatus(
+      "\n================= Time = " +
+      std::to_string(
+          static_cast<const TimestampedVector<double>*>(
+              this->EvalVectorInput(context, controller_signal_port_))
+              ->get_timestamp()) +
+      " =======================\n\n");
+
   ///
   /// Decide if we need to re-plan (not ideal code. See header file)
   ///
@@ -476,8 +490,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   double msg_time_difference = robot_output->get_timestamp() - current_time;
   if (msg_time_difference > 0.01) {
-    cout << "message time difference is big: " << msg_time_difference << " ms"
-         << endl;
+    PrintEssentialStatus("message time difference is big: " +
+                         to_string(msg_time_difference) + " ms");
   }
 
   // Testing
@@ -638,10 +652,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (n_knots_first_mode == 2) {
     min_dt[0] = 1e-3;
   }
-  cout << "start_with_left_stance  = " << start_with_left_stance << endl;
-  cout << "init_phase = " << init_phase << endl;
-  cout << "n_knots_first_mode = " << n_knots_first_mode << endl;
-  cout << "first_mode_knot_idx = " << first_mode_knot_idx << endl;
+  PrintEssentialStatus("start_with_left_stance  = " +
+                       to_string(start_with_left_stance));
+  PrintEssentialStatus("init_phase  = " + to_string(init_phase));
+  PrintEssentialStatus("n_knots_first_mode  = " +
+                       to_string(n_knots_first_mode));
+  PrintEssentialStatus("first_mode_knot_idx  = " +
+                       to_string(first_mode_knot_idx));
 
   // Maximum swing foot travel distance
   double remaining_time_til_touchdown = first_mode_duration;
@@ -663,8 +680,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   max_swing_distance_[0] =
       std::max(slack_to_avoid_overconstraint,
                max_foot_speed_first_mode * remaining_time_til_touchdown);
-  cout << "remaining_time_til_touchdown = " << remaining_time_til_touchdown
-       << endl;
+  PrintEssentialStatus("remaining_time_til_touchdown  = " +
+                       to_string(remaining_time_til_touchdown));
 
   // Construct
   PrintStatus("\nConstructing optimization problem...");
@@ -673,7 +690,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       left_contacts_, right_contacts_, left_origin_, right_origin_,
       joint_name_lb_ub_, x_init, init_rom_state, max_swing_distance_,
       start_with_left_stance, param_.zero_touchdown_impact, relax_index_,
-      param_, initialize_with_rom_state, single_eval_mode_ /*print_status*/);
+      param_, initialize_with_rom_state, print_level_ > 0 /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints
@@ -710,8 +727,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   } else {
     // TODO: check if adding predicted step is necessary after using
     //  lipm_mpc_and_ik
-    cout << "REMINDER!! check if adding predicted step is necessary after using"
-            " lipm_mpc_and_ik\n";
+    PrintEssentialStatus(
+        "REMINDER!! check if adding predicted step is necessary after using "
+        "lipm_mpc_and_ik");
 
     Vector2d des_predicted_xy_vel;
     if (use_lipm_mpc_and_ik_ && lipm_ik_success) {
@@ -786,19 +804,19 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     // true);
     int n_dec = trajopt.decision_variables().size();
     if (n_dec > z0.rows()) {
-      cout << "dim(initial guess) < dim(decision var). "
-              "Fill the rest with zero's.\n";
+      PrintEssentialStatus(
+          "dim(initial guess) < dim(decision var). Fill the rest with zero's.");
       VectorXd old_z0 = z0;
       z0.resize(n_dec);
       z0 = VectorXd::Zero(n_dec);
       z0.head(old_z0.rows()) = old_z0;
     } else if (n_dec < z0.rows()) {
-      cout << "The init file is longer than the length of decision variable\n";
+      PrintEssentialStatus(
+          "The init file is longer than the length of decision variable");
     }
     trajopt.SetInitialGuessForAllVariables(z0);
   } else {
-    //    PrintStatus("global_fsm_idx = " + to_string(global_fsm_idx));
-    cout << "global_fsm_idx = " + to_string(global_fsm_idx) << endl;
+    PrintEssentialStatus("global_fsm_idx = " + to_string(global_fsm_idx));
     if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
       WarmStartGuess(quat_xyz_shift, reg_x_FOM, global_fsm_idx,
@@ -822,7 +840,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     for (int i = 0; i < n_var; i++) {
       double init_guess = trajopt.GetInitialGuess(all_vars(i));
       if (init_guess == 0 || isnan(init_guess)) {
-        cout << all_vars(i) << " init guess was " << init_guess << endl;
+        if (print_level_ > 0)
+          cout << all_vars(i) << " init guess was " << init_guess << endl;
         trajopt.SetInitialGuess(all_vars(i), rand(i));
       }
     }
@@ -867,46 +886,49 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     }
     time_limit /= param_.realtime_rate_for_time_limit;
     if (time_limit > 0) {
-      cout << "Set the time limit to " << time_limit << endl;
+      PrintEssentialStatus("Set the time limit to " + to_string(time_limit));
       solver_option_ipopt_.SetOption(drake::solvers::IpoptSolver::id(),
                                      "max_cpu_time", time_limit);
       solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                      "Time limit", time_limit);
     } else {
-      cout << "WARNING: Not setting time limit because it's negative.\n";
+      PrintEssentialStatus(
+          "WARNING: Not setting time limit because it's negative.");
     }
   }
 
   auto break3 = std::chrono::high_resolution_clock::now();
 
   // Solve
-  cout << "\nSolving optimization problem... ";
+  PrintEssentialStatus("\nSolving optimization problem... ");
   drake::solvers::MathematicalProgramResult result;
   //  dairlib::solvers::ResetEvalTime();
   if (param_.use_ipopt) {
-    cout << "(ipopt)\n";
+    PrintEssentialStatus("(ipopt)");
     solver_ipopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_ipopt_,
                          &result);
   } else {
-    cout << "(snopt)\n";
+    PrintEssentialStatus("(snopt)");
     solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
                          &result);
   }
   auto finish = std::chrono::high_resolution_clock::now();
 
   std::chrono::duration<double> elapsed_input_reading = break1 - start;
-  cout << "Time for reading input ports:" << elapsed_input_reading.count()
-       << "\n";
   std::chrono::duration<double> elapsed_lipm_mpc_and_ik = break2 - break1;
-  cout << "Time for lipm mpc & IK:" << elapsed_lipm_mpc_and_ik.count() << "\n";
   std::chrono::duration<double> elapsed_trajopt_construct = break3 - break2;
-  cout << "Construction time:" << elapsed_trajopt_construct.count() << "\n";
-
   std::chrono::duration<double> elapsed_solve = finish - break3;
-  cout << "    Time of arrival: " << current_time << " | ";
-  cout << "Solve time:" << elapsed_solve.count() << " | ";
-  cout << result.get_solution_result() << " | ";
-  cout << "Cost:" << result.get_optimal_cost() << "\n";
+  if (print_level_ > 0) {
+    cout << "Time for reading input ports:" << elapsed_input_reading.count()
+         << "\n";
+    cout << "Time for lipm mpc & IK:" << elapsed_lipm_mpc_and_ik.count()
+         << "\n";
+    cout << "Construction time:" << elapsed_trajopt_construct.count() << "\n";
+    cout << "    Time of arrival: " << current_time << " | ";
+    cout << "Solve time:" << elapsed_solve.count() << " | ";
+    cout << result.get_solution_result() << " | ";
+    cout << "Cost:" << result.get_optimal_cost() << "\n";
+  }
 
   // Testing -- use different solver to test the solution quality.
   //  ResolveWithAnotherSolver(trajopt, result, prefix, current_time,
@@ -1063,14 +1085,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // the first loop)
   if (counter_ == 0) {
     if (param_.switch_to_snopt_after_first_loop) {
-      cout << "***\n*** WARNING: switch to snopt solver\n***\n";
+      PrintEssentialStatus("***\n*** WARNING: switch to snopt solver\n***");
       param_.use_ipopt = false;
     }
   }
 
   finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  cout << "Runtime for data saving (for debugging):" << elapsed.count() << endl;
+  PrintEssentialStatus("Runtime for data saving (for debugging):" +
+                       to_string(elapsed.count()));
 
   ///
   counter_++;
@@ -1733,16 +1756,19 @@ void CassiePlannerWithMixedRomFom::BookKeeping(
     total_number_of_first_solve_of_the_mode_++;
     past_is_left_stance_ = start_with_left_stance;
   }
-  cout << "\nsolve time (average, max) = " << total_solve_time_ / (counter_ + 1)
-       << ", " << max_solve_time_ << endl;
-  cout << "solve time of the first solve of the mode (average, max) = "
-       << total_solve_time_of_first_solve_of_the_mode_ /
-              total_number_of_first_solve_of_the_mode_
-       << ", " << max_solve_time_of_first_solve_of_the_mode_ << endl;
-  cout << "num_failed_solve_ = " << num_failed_solve_
-       << " (latest failed index: " << latest_failed_solve_idx_
-       << ", total solves = " << counter_ << ")"
-       << "\n\n";
+  if (print_level_ > 0) {
+    cout << "\nsolve time (average, max) = "
+         << total_solve_time_ / (counter_ + 1) << ", " << max_solve_time_
+         << endl;
+    cout << "solve time of the first solve of the mode (average, max) = "
+         << total_solve_time_of_first_solve_of_the_mode_ /
+                total_number_of_first_solve_of_the_mode_
+         << ", " << max_solve_time_of_first_solve_of_the_mode_ << endl;
+    cout << "num_failed_solve_ = " << num_failed_solve_
+         << " (latest failed index: " << latest_failed_solve_idx_
+         << ", total solves = " << counter_ << ")"
+         << "\n\n";
+  }
 }
 
 void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(

@@ -71,12 +71,13 @@ VectorXd SingleRigidBodyPlant::CalcSRBStateFromPlantState(const VectorXd& x) con
   return x_srbd;
 }
 
-std::vector<Vector3d> SingleRigidBodyPlant::CalcFootPositions(const Eigen::VectorXd &x) {
+std::vector<Vector3d> SingleRigidBodyPlant::CalcFootPositions(
+    const Eigen::VectorXd &x) const {
   return {CalcFootPosition(x, kLeft), CalcFootPosition(x, kRight)};
 }
 
 Vector3d SingleRigidBodyPlant::CalcFootPosition(
-    const Eigen::VectorXd &x, BipedStance stance) {
+    const Eigen::VectorXd &x, const BipedStance& stance) const {
   SetPositionsIfNew<double>(plant_, x.head(nq_), plant_context_);
   Vector3d pos  = Vector3d::Zero();
   plant_.CalcPointsPositions(

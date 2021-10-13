@@ -359,6 +359,9 @@ def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
 
 def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
     do_eval_cost=False):
+  # TODO: We should use separate data folders for different thread.
+  # TODO: I wonder if we break any thing when running ipopt in parallel for the initial pose?
+
   ### Channel names
   global ch
   ch = ChannelNames()

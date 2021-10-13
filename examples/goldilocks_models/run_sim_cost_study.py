@@ -19,6 +19,8 @@ import matplotlib.tri as mtri
 import codecs
 import math
 
+from py_utils import FindVarValueInString
+
 # Collection of all channel names
 # Currently this class is useless becuase we use different lcm url for different simulation thread
 class ChannelNames:
@@ -552,23 +554,6 @@ def DeleteMostLogs(model_indices, log_indices):
   RunCommand(['rm', '-rf', eval_dir + 'temp/'])
 
 
-def FindCostInString(file_string, string_to_search):
-  # We search from the end of the file
-  word_location = file_string.rfind(string_to_search)
-  number_idx_start = 0
-  number_idx_end = 0
-  idx = word_location
-  while True:
-    if file_string[idx] == '=':
-      number_idx_start = idx
-    elif file_string[idx] == '\n':
-      number_idx_end = idx
-      break
-    idx += 1
-  cost_value = float(file_string[number_idx_start + 1: number_idx_end])
-  return cost_value
-
-
 def PlotNominalCost(model_indices, sample_idx):
   filename = '_' + str(sample_idx) + '_trajopt_settings_and_cost_breakdown.txt'
 
@@ -576,9 +561,9 @@ def PlotNominalCost(model_indices, sample_idx):
   for rom_iter_idx in model_indices:
     with open(model_dir + str(rom_iter_idx) + filename, 'rt') as f:
       contents = f.read()
-    cost_x = FindCostInString(contents, "cost_x =")
-    cost_u = FindCostInString(contents, "cost_u =")
-    cost_accel = FindCostInString(contents, "cost_joint_acceleration =")
+    cost_x = FindVarValueInString(contents, "cost_x =")
+    cost_u = FindVarValueInString(contents, "cost_u =")
+    cost_accel = FindVarValueInString(contents, "cost_joint_acceleration =")
     total_cost = cost_x + cost_u + cost_accel
     costs = np.vstack([costs, total_cost])
 

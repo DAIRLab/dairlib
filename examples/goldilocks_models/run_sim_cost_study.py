@@ -19,6 +19,8 @@ import matplotlib.tri as mtri
 import codecs
 import math
 
+from py_utils import FindVarValueInString
+
 # Collection of all channel names
 # Currently this class is useless becuase we use different lcm url for different simulation thread
 class ChannelNames:
@@ -343,16 +345,12 @@ def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
             not InitPoseSolverFailed(working_threads[j][1][0]):
           time.sleep(0.1)
         else:
-          print("\n\n Init file. Finish.\n\n")
-          print(len(working_threads))
           EndSim(working_threads, j)
-          print(len(working_threads))
           break
       else:
         if working_threads[j][0][0].poll() is None:
           time.sleep(0.1)
         else:
-          print("\n\n Regular sim. Finish.\n\n")
           EndSim(working_threads, j)
           break
 
@@ -382,7 +380,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
   ### multithreading
   working_threads = []
-  n_max_thread = 2
+  n_max_thread = 3
 
   global thread_idx_set
   thread_idx_set = set()
@@ -432,6 +430,19 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   print("Finished evaluating. Current time = " + str(datetime.now()))
 
 
+def CheckThreadAndBlockWhenNecessary(working_threads, n_max_thread,
+    finish_up=False):
+  # Wait for threads to finish once is more than n_max_thread
+  while (not finish_up and (len(working_threads) >= n_max_thread)) or \
+      (finish_up and (len(working_threads) > 0)):
+    for j in range(len(working_threads)):
+      if working_threads[j].poll() is None:  # subprocess is alive
+        time.sleep(0.1)
+      else:
+        del working_threads[j]
+        break
+
+
 # This function assumes that simulation has been run and there exist lcm logs
 def EvalCostInMultithread(model_indices, log_indices):
   working_threads = []
@@ -455,22 +466,10 @@ def EvalCostInMultithread(model_indices, log_indices):
       counter += 1
 
       # Wait for threads to finish once is more than n_max_thread
-      while len(working_threads) >= n_max_thread:
-        for j in range(len(working_threads)):
-          if working_threads[j].poll() is None:  # subprocess is alive
-            time.sleep(0.1)
-          else:
-            del working_threads[j]
-            break
+      CheckThreadAndBlockWhenNecessary(working_threads, n_max_thread)
 
   print("Wait for all threads to join")
-  while len(working_threads) > 0:
-    for j in range(len(working_threads)):
-      if working_threads[j].poll() is None:  # subprocess is alive
-        time.sleep(0.1)
-      else:
-        del working_threads[j]
-        break
+  CheckThreadAndBlockWhenNecessary(working_threads, n_max_thread, True)
   print("Finished evaluating. Current time = " + str(datetime.now()))
 
 
@@ -558,23 +557,6 @@ def DeleteMostLogs(model_indices, log_indices):
   RunCommand(['rm', '-rf', eval_dir + 'temp/'])
 
 
-def FindCostInString(file_string, string_to_search):
-  # We search from the end of the file
-  word_location = file_string.rfind(string_to_search)
-  number_idx_start = 0
-  number_idx_end = 0
-  idx = word_location
-  while True:
-    if file_string[idx] == '=':
-      number_idx_start = idx
-    elif file_string[idx] == '\n':
-      number_idx_end = idx
-      break
-    idx += 1
-  cost_value = float(file_string[number_idx_start + 1: number_idx_end])
-  return cost_value
-
-
 def PlotNominalCost(model_indices, sample_idx):
   filename = '_' + str(sample_idx) + '_trajopt_settings_and_cost_breakdown.txt'
 
@@ -582,9 +564,9 @@ def PlotNominalCost(model_indices, sample_idx):
   for rom_iter_idx in model_indices:
     with open(model_dir + str(rom_iter_idx) + filename, 'rt') as f:
       contents = f.read()
-    cost_x = FindCostInString(contents, "cost_x =")
-    cost_u = FindCostInString(contents, "cost_u =")
-    cost_accel = FindCostInString(contents, "cost_joint_acceleration =")
+    cost_x = FindVarValueInString(contents, "cost_x =")
+    cost_u = FindVarValueInString(contents, "cost_u =")
+    cost_accel = FindVarValueInString(contents, "cost_joint_acceleration =")
     total_cost = cost_x + cost_u + cost_accel
     costs = np.vstack([costs, total_cost])
 

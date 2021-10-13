@@ -17,11 +17,26 @@ import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 import pydrake.common as mut
 
+from py_utils import FindVarValueInString
+
+
 def PrintAndLogStatus(msg):
   print(msg)
   f = open(path_status_log, "a")
   f.write(msg)
   f.close()
+
+
+def GetCostWeight():
+  filename = '1_0_trajopt_settings_and_cost_breakdown.txt'
+  with open(parsed_yaml.get('dir_model') + filename, 'rt') as f:
+    contents = f.read()
+
+  w_Q = FindVarValueInString(contents, "w_Q =")
+  w_R = FindVarValueInString(contents, "w_R =")
+  w_accel_multiplier = FindVarValueInString(contents, "w_joint_accel =")
+
+  return w_Q, w_R, w_accel_multiplier * w_Q
 
 
 def IsSimLogGood(x, t_x, desried_sim_end_time):
@@ -212,12 +227,6 @@ def main():
   global n_step
   n_step = 4  # steps to average over
 
-  # Weight used in model optimization
-  # TODO: read the weight from nominal traj log files (you already have the code in a python script). You can create a copy of the file to sim_cost_eval_folder when you evaluate.
-  w_Q = 0.005  # Assume all joints have the same cost weight, though not what trajopt is using. TODO: improve this
-  w_R = 0.0002
-  w_accel = 0.002 * w_Q
-
   # Steady state parameters
   global step_length_variation_tol, pelvis_height_variation_tol
   step_length_variation_tol = 0.05 if is_hardware else 0.02
@@ -381,6 +390,10 @@ def main():
   # Testing (hacks) -- cap the acceleration within 500 to avoid contact spikes
   # max_accel = 750
   # vdot_numerical = np.clip(vdot_numerical, -max_accel, max_accel)
+
+  # Weight used in model optimization
+  # Assume all joints have the same cost weight, though not what trajopt is using. TODO: improve this
+  w_Q, w_R, w_accel = GetCostWeight()
 
   cost_x = 0.0
   for i in range(n_x_data - 1):

@@ -929,7 +929,7 @@ if __name__ == "__main__":
   # stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   ground_incline = 0.0
-  duration = 0.4
+  duration = -1.0  # assign later; this shouldn't be a task for sim evaluation
   turning_rate = 0.0
   pelvis_height = 0.8  # not used in simulation; only used in CollectAllTrajoptSampleIndices
 
@@ -974,6 +974,18 @@ if __name__ == "__main__":
   ### Create task list
   task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str,
     delimiter=',')
+  # Make sure the order is correct
+  if not ((task_names[0] == "stride_length") &
+          (task_names[1] == "ground_incline") &
+          (task_names[2] == "duration") &
+          (task_names[3] == "turning_rate")):
+    raise ValueError("ERROR: unexpected task name or task order")
+  # Get duration from model optimization file
+  path_1_0_task = model_dir + "1_0_task.csv"
+  if os.path.exists(path_1_0_task):
+    duration = np.loadtxt(path_1_0_task)[2]
+  else:
+    raise ValueError("%s doesn't exist" % path_1_0_task)
 
   task_list = np.zeros((n_task, 5))
   task_list[:, 0] = stride_length
@@ -988,12 +1000,6 @@ if __name__ == "__main__":
   if varying_task_element_idx != 0:
     raise ValueError("Currently, the code assume only stride length is varying")
 
-  # Make sure the order is correct
-  if not ((task_names[0] == "stride_length") &
-          (task_names[1] == "ground_incline") &
-          (task_names[2] == "duration") &
-          (task_names[3] == "turning_rate")):
-    raise ValueError("ERROR: unexpected task name or task order")
 
   # Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.

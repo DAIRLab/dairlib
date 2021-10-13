@@ -1,16 +1,13 @@
 //
 // Created by brian on 4/14/21.
 //
-#include<gflags/gflags.h>
+#include <gflags/gflags.h>
 
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/primitives/constant_vector_source.h"
-#include "drake/systems/primitives/demultiplexer.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/lcmt_drake_signal.hpp"
 
 #include "dairlib/lcmt_robot_output.hpp"
 #include "common/find_resource.h"
@@ -37,9 +34,6 @@ using systems::OutputVector;
 using multibody::SingleRigidBodyPlant;
 
 
-using std::cout;
-using std::string;
-
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::Frame;
@@ -50,7 +44,6 @@ using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
-using drake::systems::Demultiplexer;
 using drake::systems::ConstantVectorSource;
 
 using Eigen::Vector2d;
@@ -60,7 +53,7 @@ using Eigen::MatrixXd;
 using Eigen::Matrix3d;
 
 DEFINE_string(gains_filename, "examples/Cassie/mpc/cassie_srbd_cmpc_gains.yaml", "convex mpc gains file");
-DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER", "channel to publish/receive cassie state");
+DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION", "channel to publish/receive cassie state");
 DEFINE_string(channel_plan, "SRBD_MPC_OUT", "channel to publish plan trajectory");
 DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
 DEFINE_double(stance_time, 0.3, "duration of each stance phase");
@@ -74,25 +67,19 @@ DEFINE_double(v_des, 0.4, "desired walking speed");
 DEFINE_double(h_des, 0.75, "Desired pelvis height");
 DEFINE_double(dt, 0.01, "time step for koopman mpc");
 
-// Code-gen of cross product basis
-
 int DoMain(int argc, char* argv[]) {
+  std::cout << "check 0" << std::endl;
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   SrbdMpcGains gains;
   const YAML::Node& root =
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
-
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-
   // mpc parameters
   double dt = FLAGS_dt;
 
   DrakeLcm lcm_local;
-
-
-  // diagram builder
   DiagramBuilder<double> builder;
 
   // Add MBP
@@ -100,13 +87,11 @@ int DoMain(int argc, char* argv[]) {
   addCassieMultibody(&plant, nullptr, true,
       "examples/Cassie/urdf/cassie_v2.urdf", true, false);
   plant.Finalize();
-
-  auto map = multibody::makeNameToPositionsMap(plant);
   auto plant_context = plant.CreateDefaultContext();
   auto x0 = plant.GetPositionsAndVelocities(*plant_context);
-
   auto srb_plant = SingleRigidBodyPlant(plant, plant_context.get(), false);
-  // add base to track position and orientation
+
+  std::cout << "Check 1" << std::endl;
 
   // Cassie SRBD model setup
   Vector3d com_offset = {0, 0, -0.128};
@@ -116,10 +101,9 @@ int DoMain(int argc, char* argv[]) {
   Vector3d left_neutral_foot_pos = {0,  FLAGS_stance_width, 0};
   Vector3d left_safe_nominal_foot_pos = {0, 0.125, 0};
   Vector3d right_neutral_foot_pos = -left_neutral_foot_pos;
-  Vector3d right_safe_nomonal_foot_pos = -left_safe_nominal_foot_pos;
+  Vector3d right_safe_nominal_foot_pos = -left_safe_nominal_foot_pos;
   Matrix3d I_rot;
   I_rot << 0.91, 0.04, 0.09, 0.04, 0.55, -0.001, 0.08, -0.001, 0.89;
-  //I_rot << 0.91, 0.0, 0.0, 0.0, 0.55, 0.0, 0.0, 0.0, 0.89;
 
   double mass = 30.0218;
   srb_plant.AddBaseFrame("pelvis", com_offset);
@@ -129,15 +113,18 @@ int DoMain(int argc, char* argv[]) {
   Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2.0;
 
   // add contact points
-  auto left_pt = std::pair<Eigen::Vector3d, const drake::multibody::BodyFrame<double> &>(
+  std::cout << "here1" << std::endl;
+  auto left_pt = std::pair<Vector3d, const drake::multibody::BodyFrame<double> &>(
       mid_contact_point, plant.GetBodyByName("toe_left").body_frame());
-
-  auto right_pt = std::pair<Eigen::Vector3d, const drake::multibody::BodyFrame<double> &>(
+  std::cout << "here2" << std::endl;
+  auto right_pt = std::pair<Vector3d, const drake::multibody::BodyFrame<double> &>(
       mid_contact_point, plant.GetBodyByName("toe_right").body_frame());
-
+  std::cout << "here3" << std::endl;
   srb_plant.SetMass(mass);
+  std::cout << "before add_contact_point" << std::endl;
   srb_plant.AddContactPoint(left_pt, BipedStance::kLeft);
   srb_plant.AddContactPoint(right_pt, BipedStance::kRight);
+  std::cout << "After add_contact_point" << std::endl;
 
   int nx = 12;
   int nu = 4;
@@ -153,7 +140,7 @@ int DoMain(int argc, char* argv[]) {
       I_rot, des_com_pos, left_neutral_foot_pos, &Al, &Bl, &bl);
   srb_plant.CopyDiscreteLinearizedSrbDynamicsForMPC(
       dt, mass, 0, BipedStance::kRight,
-      I_rot, des_com_pos, left_neutral_foot_pos, &Ar, &Br, &br);
+      I_rot, des_com_pos, right_neutral_foot_pos, &Ar, &Br, &br);
 
   LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};
   LinearSrbdDynamics right_stance_dynamics = {Ar, Br, br};
@@ -163,7 +150,7 @@ int DoMain(int argc, char* argv[]) {
                                           false, true,  FLAGS_use_com);
   std::vector<VectorXd> kin_nom =
       {left_safe_nominal_foot_pos - des_com_pos,
-       right_safe_nomonal_foot_pos - des_com_pos};
+       right_safe_nominal_foot_pos - des_com_pos};
   cmpc->SetReachabilityBoundingBox(gains.kin_reachability_lim,
                                    kin_nom);
 
@@ -176,11 +163,7 @@ int DoMain(int argc, char* argv[]) {
   VectorXd x_des = VectorXd::Zero(nx);
   x_des(2) = des_com_pos(2);
   x_des(3) = FLAGS_v_des;
-
-  std::cout << "x desired:\n" << x_des <<std::endl;
-
   MatrixXd qq = gains.q.asDiagonal();
-  std::cout << "Gains: \n" << qq;
 
   cmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
   cmpc->SetTerminalCost(gains.qf.asDiagonal());
@@ -189,8 +172,8 @@ int DoMain(int argc, char* argv[]) {
   // set friction coeff
   cmpc->SetMu(gains.mu);
   cmpc->Build();
-  std::cout << "Successfully built kmpc" << std::endl;
 
+  std::cout << "Check 3" << std::endl;
   // Wire everything up
   auto xdes_source = builder.AddSystem<ConstantVectorSource<double>>(x_des);
   builder.Connect(xdes_source->get_output_port(), cmpc->get_x_des_input_port());
@@ -209,7 +192,7 @@ int DoMain(int argc, char* argv[]) {
 
   // setup lcm messaging
   auto robot_out = builder.AddSystem<RobotOutputReceiver>(plant);
-  auto koopman_mpc_out_publisher = builder.AddSystem(
+  auto mpc_out_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_plan, &lcm_local));
 
   // fsm connections
@@ -220,9 +203,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(robot_out->get_output_port(), fsm->get_input_port_state());
   builder.Connect(robot_out->get_output_port(),
                   cmpc->get_state_input_port());
-
-  builder.Connect(cmpc->get_output_port(),
-                  koopman_mpc_out_publisher->get_input_port());
+  builder.Connect(cmpc->get_output_port(), mpc_out_publisher->get_input_port());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("MPC");

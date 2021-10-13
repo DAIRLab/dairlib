@@ -112,12 +112,12 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd CalcSwingFootKnotPoints(
       const Eigen::VectorXd& x,
       const drake::solvers::MathematicalProgramResult& result,
-      double time_since_last_touchdown) const;
+      double time_since_last_touchdown, int fsm_state) const;
 
   lcmt_saved_traj MakeLcmTrajFromSol(
       const drake::solvers::MathematicalProgramResult& result,
       double time, double time_since_last_touchdown,
-      const Eigen::VectorXd& state) const;
+      const Eigen::VectorXd& state, int fsm_state) const;
 
   void UpdateConstraints(
       const Eigen::VectorXd& x0,

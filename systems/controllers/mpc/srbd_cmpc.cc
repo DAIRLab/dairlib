@@ -124,7 +124,6 @@ void SrbdCMPC::Build() {
   MakeDynamicsConstraints();
   MakeFrictionConeConstraints();
   MakeKinematicReachabilityConstraints();
-  MakeStateKnotConstraints();
   MakeInitialStateConstraint();
   MakeTerrainConstraints();
   MakeCost();
@@ -158,7 +157,7 @@ void SrbdCMPC::MakeDynamicsConstraints() {
   for (int j = 0; j < nmodes_; j++) {
     auto mode = modes_.at(j);
     for (int i = 0; i < mode.N; i++) {
-      MatrixXd Aeq = MatrixXd::Zero(2*nx_ + nu_ + kLinearDim_, nx_);
+      MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + nu_ + kLinearDim_);
       VectorXd beq = VectorXd::Zero(nx_);
       Vector3d pos = Vector3d::Zero();
       pos(1) = nominal_foot_pos_.at(j)(1);
@@ -353,8 +352,9 @@ EventStatus SrbdCMPC::PeriodicUpdate(
 
   double timestamp = robot_output->get_timestamp();
   double time_since_last_event = timestamp;
+  int fsm_state = 0;
   if (use_fsm_) {
-    int fsm_state =
+    fsm_state =
         (int) (discrete_state->get_vector(current_fsm_state_idx_)
             .get_value()(0) + 1e-6);
     double last_event_time =
@@ -370,7 +370,7 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   }
   solver_.Solve(prog_, {}, {}, &result_);
   most_recent_sol_ = MakeLcmTrajFromSol(
-      result_, timestamp, time_since_last_event,  x);
+      result_, timestamp, time_since_last_event,  x, fsm_state);
   return EventStatus::Succeeded();
 }
 
@@ -397,7 +397,7 @@ void SrbdCMPC::UpdateConstraints(
 lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
     const drake::solvers::MathematicalProgramResult& result,
     double time, double time_since_last_touchdown,
-    const VectorXd& state) const {
+    const VectorXd& state, int fsm_state) const {
 
   DRAKE_DEMAND(result.is_success());
 
@@ -447,7 +447,8 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
       time, 0.5*(time + next_touchdown_time), next_touchdown_time);
   SwingFootTraj.time_vector = swing_ft_traj_breaks;
   SwingFootTraj.datapoints = CalcSwingFootKnotPoints(
-      state, result, time_since_last_touchdown);;
+      state, result,
+      swing_ft_traj_breaks(1), fsm_state);;
 
   LcmTrajectory lcm_traj;
   lcm_traj.AddTrajectory(CoMTraj.traj_name, CoMTraj);
@@ -459,8 +460,20 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
 
 MatrixXd SrbdCMPC::CalcSwingFootKnotPoints(const VectorXd& x,
     const MathematicalProgramResult& result,
-    double time_since_last_touchdown) const {
+    double time_since_last_touchdown, int fsm_state) const {
 
+  double t = time_since_last_touchdown / (modes_.at(fsm_state).N * dt_);
+  Vector3d curr_pos =
+      plant_.CalcFootPosition(x, modes_.at(1-fsm_state).stance);
+  Vector3d next_pos =
+      result.GetSolution(pp.at(1-fsm_state));
+
+  Vector3d mid_pos = swing_ft_ht_* Vector3d(0, 0, 1) *
+      (t - pow(t, 2));
+
+  Matrix3d knots;
+  knots << curr_pos, mid_pos, next_pos;
+  return knots;
 }
 
 void SrbdCMPC::print_constraint(

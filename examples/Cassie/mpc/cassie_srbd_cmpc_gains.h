@@ -33,9 +33,9 @@ struct SrbdMpcGains {
     a->Visit(DRAKE_NVP(KinReachW));
 
     kin_reachability_lim = Eigen::Map<Vector3d>(this->ReachabilityLim.data());
-    q = Eigen::Map<Eigen::VectorXd>(this->StateW.data(), 18);
-    qf = Eigen::Map<Eigen::VectorXd>(this->FinalStateW.data(), 18);
-    r = Eigen::Map<Eigen::VectorXd>(this->InputW.data(), 10);
+    q = Eigen::Map<Eigen::VectorXd>(this->StateW.data(), 12);
+    qf = Eigen::Map<Eigen::VectorXd>(this->FinalStateW.data(), 12);
+    r = Eigen::Map<Eigen::VectorXd>(this->InputW.data(), 4);
     W_flat_ground = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->FlatGroundW.data(), 1,1);

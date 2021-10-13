@@ -34,6 +34,7 @@ using systems::RobotOutputReceiver;
 using systems::TimeBasedFiniteStateMachine;
 using systems::LcmDrivenLoop;
 using systems::OutputVector;
+using multibody::SingleRigidBodyPlant;
 
 
 using std::cout;
@@ -42,7 +43,6 @@ using std::string;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::Frame;
-
 using drake::lcm::DrakeLcm;
 
 using drake::systems::DiagramBuilder;
@@ -105,7 +105,9 @@ int DoMain(int argc, char* argv[]) {
   auto plant_context = plant.CreateDefaultContext();
   auto x0 = plant.GetPositionsAndVelocities(*plant_context);
 
-  Auto srbd_plant = Single
+  auto srb_plant = SingleRigidBodyPlant(plant, plant_context.get(), false);
+  // add base to track position and orientation
+
   // Cassie SRBD model setup
   Vector3d com_offset = {0, 0, -0.128};
   Vector3d des_pelvis_pos = {0, 0, FLAGS_h_des};
@@ -120,58 +122,58 @@ int DoMain(int argc, char* argv[]) {
   //I_rot << 0.91, 0.0, 0.0, 0.0, 0.55, 0.0, 0.0, 0.0, 0.89;
 
   double mass = 30.0218;
-  auto cmpc = builder.AddSystem<SrbdCMPC>(plant, plant_context.get(), dt,
-                                            FLAGS_swing_ft_height,
-                                            false, false, true,  FLAGS_use_com);
-
-  // add base to track position and orientation
-  cmpc->AddBaseFrame("pelvis", com_offset);
-
-  int nxi = 18;
-  int nu = 10;
-  MatrixXd Al = MatrixXd::Zero(nxi, nxi);
-  MatrixXd Bl = MatrixXd::Zero(nxi, nu);
-  VectorXd bl = VectorXd::Zero(nxi);
-  MatrixXd Ar = MatrixXd::Zero(nxi, nxi);
-  MatrixXd Br = MatrixXd::Zero(nxi, nu);
-  VectorXd br = VectorXd::Zero(nxi);
-
-  SrbdCMPC::CopyContinuous3dSrbDynamics(mass, 0.0, BipedStance::kLeft,
-      I_rot, des_com_pos, left_neutral_foot_pos, &Al, &Bl, &bl);
-  SrbdCMPC::CopyContinuous3dSrbDynamics(mass, 0.0, BipedStance::kRight,
-      I_rot, des_com_pos, right_neutral_foot_pos, &Ar, &Br, &br);
-
-  LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};
-  LinearSrbdDynamics right_stance_dynamics = {Ar, Br, br};
-
-  std::cout << Al << '\n' << Bl << '\n' << bl << std::endl;
-
-  cmpc->AddMode(left_stance_dynamics, BipedStance::kLeft, std::round(FLAGS_stance_time / dt));
-  cmpc->AddMode(right_stance_dynamics, BipedStance::kRight, std::round(FLAGS_stance_time / dt));
+  srb_plant.AddBaseFrame("pelvis", com_offset);
 
   auto left_toe = LeftToeFront(plant);
   auto left_heel = LeftToeRear(plant);
   Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2.0;
 
   // add contact points
-  auto left_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
-      plant.GetBodyByName("toe_left").body_frame(), mid_contact_point);
+  auto left_pt = std::pair<Eigen::Vector3d, const drake::multibody::BodyFrame<double> &>(
+      mid_contact_point, plant.GetBodyByName("toe_left").body_frame());
 
-  auto right_pt = std::pair<const drake::multibody::BodyFrame<double> &, Eigen::Vector3d>(
-      plant.GetBodyByName("toe_right").body_frame(), mid_contact_point);
+  auto right_pt = std::pair<Eigen::Vector3d, const drake::multibody::BodyFrame<double> &>(
+      mid_contact_point, plant.GetBodyByName("toe_right").body_frame());
 
-  cmpc->AddContactPoint(left_pt, BipedStance::kLeft);
-  cmpc->AddContactPoint(right_pt, BipedStance::kRight);
-  std::vector<VectorXd> kin_nom = {des_com_pos - left_safe_nominal_foot_pos, des_com_pos - right_safe_nomonal_foot_pos};
+  srb_plant.SetMass(mass);
+  srb_plant.AddContactPoint(left_pt, BipedStance::kLeft);
+  srb_plant.AddContactPoint(right_pt, BipedStance::kRight);
+
+  int nx = 12;
+  int nu = 4;
+  MatrixXd Al = MatrixXd::Zero(nx, nx+3);
+  MatrixXd Bl = MatrixXd::Zero(nx, nu);
+  VectorXd bl = VectorXd::Zero(nx);
+  MatrixXd Ar = MatrixXd::Zero(nx, nx+3);
+  MatrixXd Br = MatrixXd::Zero(nx, nu);
+  VectorXd br = VectorXd::Zero(nx);
+
+  srb_plant.CopyDiscreteLinearizedSrbDynamicsForMPC(
+      dt, mass, 0, BipedStance::kLeft,
+      I_rot, des_com_pos, left_neutral_foot_pos, &Al, &Bl, &bl);
+  srb_plant.CopyDiscreteLinearizedSrbDynamicsForMPC(
+      dt, mass, 0, BipedStance::kRight,
+      I_rot, des_com_pos, left_neutral_foot_pos, &Ar, &Br, &br);
+
+  LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};
+  LinearSrbdDynamics right_stance_dynamics = {Ar, Br, br};
+
+  auto cmpc = builder.AddSystem<SrbdCMPC>(srb_plant, dt,
+                                          FLAGS_swing_ft_height,
+                                          false, true,  FLAGS_use_com);
+  std::vector<VectorXd> kin_nom =
+      {left_safe_nominal_foot_pos - des_com_pos,
+       right_safe_nomonal_foot_pos - des_com_pos};
   cmpc->SetReachabilityBoundingBox(gains.kin_reachability_lim,
-                                   kin_nom,
-                                   gains.W_kin_reach);
+                                   kin_nom);
 
-  // set mass
-  cmpc->SetMass(mass);
+  cmpc->AddMode(left_stance_dynamics, BipedStance::kLeft,
+      MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_time / dt));
+  cmpc->AddMode(right_stance_dynamics, BipedStance::kRight,
+      MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_time / dt));
 
   // add tracking objective
-  VectorXd x_des = VectorXd::Zero(cmpc->num_state_inflated());
+  VectorXd x_des = VectorXd::Zero(nx);
   x_des(2) = des_com_pos(2);
   x_des(3) = FLAGS_v_des;
 
@@ -182,9 +184,6 @@ int DoMain(int argc, char* argv[]) {
 
   cmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
   cmpc->SetTerminalCost(gains.qf.asDiagonal());
-  cmpc->SetFlatGroundSoftConstraint(gains.W_flat_ground);
-
-  // add input cost
   cmpc->AddInputRegularization(gains.r.asDiagonal());
 
   // set friction coeff
@@ -257,10 +256,6 @@ int DoMain(int argc, char* argv[]) {
 
     auto out = cmpc->AllocateOutput();
     cmpc->CalcOutput(kmpc_context, out.get());
-
-    cmpc->print_initial_state_constraints();
-    cmpc->print_dynamics_constraints();
-    cmpc->print_state_knot_constraints();
   }
 
   return 0;

@@ -30,6 +30,7 @@ namespace multibody {
         bool use_com);
     double CalcMassFromListOfBodies(const std::vector<std::string>& bodies);
     double SetMassFromListOfBodies(const std::vector<std::string>& bodies);
+    double SetMass(double mass) {mass_ = mass;}
     Eigen::VectorXd CalcSRBStateFromPlantState(const Eigen::VectorXd& x) const;
     std::vector<Eigen::Vector3d> CalcFootPositions(const Eigen::VectorXd& x) const;
     Eigen::Vector3d CalcFootPosition (const Eigen::VectorXd& x, const BipedStance& stance) const;

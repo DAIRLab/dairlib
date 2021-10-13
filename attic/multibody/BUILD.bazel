@@ -15,6 +15,8 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
 )
 
 cc_library(
@@ -30,6 +32,8 @@ cc_library(
         "//systems/primitives:vector_aggregator",
         "@drake//:drake_shared_library",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
 )
 
 cc_library(
@@ -44,20 +48,8 @@ cc_library(
         "@drake//:drake_shared_library",
         ":utils",
     ],
-)
-
-cc_test(
-    name = "contact_toolkit_test",
-    srcs = [
-        "test/contact_toolkit_test.cc",
-    ],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        ":contact_toolkit",
-        ":utils",
-        "@gtest//:main",
-    ],
-    size = "small",
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
 )
 
 cc_library(
@@ -73,20 +65,8 @@ cc_library(
         ":contact_toolkit",
         ":utils",
     ],
-)
-
-cc_test(
-    name = "multibody_solvers_test",
-    srcs = [
-        "test/multibody_solvers_test.cc",
-    ],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        ":multibody_solvers",
-        ":utils",
-        "@gtest//:main",
-    ],
-    size = "small",
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
 )
 
 cc_library(
@@ -102,4 +82,6 @@ cc_library(
         "//systems:robot_lcm_systems",
         "//examples/Cassie:cassie_utils",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
 )

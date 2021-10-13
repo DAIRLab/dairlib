@@ -195,9 +195,6 @@ optional<string> FindSentinelDir() {
 
 }  // namespace
 
-const char* const kDrakeResourceRootEnvironmentVariableName =
-    "DRAKE_RESOURCE_ROOT";
-
 // Saves search directorys path in a persistent variable.
 // This function is only accessible from this file and should not
 // be used outside of `GetResourceSearchPaths()` and

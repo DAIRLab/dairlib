@@ -1,3 +1,5 @@
+#include "lcm/lcm_trajectory.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -5,7 +7,6 @@
 #include <memory>
 #include <utility>
 
-#include "lcm/lcm_trajectory.h"
 #include "drake/common/value.h"
 
 using drake::AbstractValue;
@@ -59,7 +60,7 @@ LcmTrajectory::LcmTrajectory(const vector<Trajectory>& trajectories,
   for (const string& traj_name : trajectory_names_) {
     trajectories_[traj_name] = trajectories[index++];
   }
-  metadata_ = constructMetadataObject(name, description);
+  ConstructMetadataObject(name, description);
 }
 
 LcmTrajectory::LcmTrajectory(const lcmt_saved_traj& traj) {
@@ -73,7 +74,7 @@ LcmTrajectory::LcmTrajectory(const lcmt_saved_traj& traj) {
   }
 }
 
-lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
+lcmt_saved_traj LcmTrajectory::GenerateLcmObject() const {
   lcmt_saved_traj traj;
   traj.metadata = metadata_;
   traj.num_trajectories = trajectories_.size();
@@ -112,7 +113,7 @@ lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
   return traj;
 }
 
-void LcmTrajectory::writeToFile(const string& filepath) {
+void LcmTrajectory::WriteToFile(const string& filepath) {
   try {
     std::ofstream fout(filepath);
     if (!fout) {
@@ -121,7 +122,7 @@ void LcmTrajectory::writeToFile(const string& filepath) {
 
     std::vector<uint8_t> bytes;
     drake::systems::lcm::Serializer<lcmt_saved_traj> serializer;
-    serializer.Serialize(*AbstractValue::Make(generateLcmObject()), &bytes);
+    serializer.Serialize(*AbstractValue::Make(GenerateLcmObject()), &bytes);
 
     fout.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
     fout.close();
@@ -132,7 +133,7 @@ void LcmTrajectory::writeToFile(const string& filepath) {
   }
 }
 
-void LcmTrajectory::loadFromFile(const std::string& filepath) {
+void LcmTrajectory::LoadFromFile(const std::string& filepath) {
   std::vector<uint8_t> bytes;
   drake::systems::lcm::Serializer<lcmt_saved_traj> serializer;
   try {
@@ -169,19 +170,22 @@ void LcmTrajectory::loadFromFile(const std::string& filepath) {
   }
 }
 
-lcmt_metadata LcmTrajectory::constructMetadataObject(string name,
-                                                     string description) const {
-  lcmt_metadata metadata;
+void LcmTrajectory::AddTrajectory(const std::string& trajectory_name,
+                                  const LcmTrajectory::Trajectory& trajectory) {
+  DRAKE_ASSERT(trajectories_.find(trajectory_name) == trajectories_.end());
+  trajectory_names_.push_back(trajectory_name);
+  trajectories_[trajectory_name] = trajectory;
+}
 
+void LcmTrajectory::ConstructMetadataObject(string name, string description) {
   std::time_t t = std::time(nullptr);  // get time now
 
   // convert now to string form
-  metadata.datetime = asctime(std::localtime(&t));
-  metadata.git_dirty_flag = (!exec("git diff-index HEAD").empty());
-  metadata.name = name;
-  metadata.description = description;
-  metadata.git_commit_hash = exec("git rev-parse HEAD");
-  return metadata;
+  metadata_.datetime = asctime(std::localtime(&t));
+  metadata_.git_dirty_flag = (!exec("git diff-index HEAD").empty());
+  metadata_.name = name;
+  metadata_.description = description;
+  metadata_.git_commit_hash = exec("git rev-parse HEAD");
 }
 
 }  // namespace dairlib

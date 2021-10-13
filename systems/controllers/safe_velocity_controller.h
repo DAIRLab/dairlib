@@ -6,8 +6,6 @@
 #include "drake/systems/framework/basic_vector.h"
 #include "drake/systems/framework/event_status.h"
 #include "drake/systems/framework/discrete_values.h"
-#include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 
 using Eigen::VectorXd;
 using drake::systems::LeafSystem;

@@ -134,10 +134,6 @@ void cassieOutFromLcm(const lcmt_cassie_out& message,
   copy_vector(message.messages,
               cassie_out->messages, 4);
   cassie_out->isCalibrated = message.isCalibrated;
-
-  // Testing
-  // TODO(yminchen): delete this after you resolve the issue of delayed update
-  // cassie_out->pelvis.targetPc.taskExecutionTime = message.utime*1e-6;
 }
 
 void cassieOutToLcm(const cassie_out_t& cassie_out, double time_seconds,

@@ -1,0 +1,42 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "dircon",
+    srcs = [
+        "dircon.cc",
+        "dircon_mode.cc",
+        "dircon_opt_constraints.cc",
+        "dynamics_cache.cc",
+    ],
+    hdrs = [
+        "dircon.h",
+        "dircon_mode.h",
+        "dircon_opt_constraints.h",
+        "dynamics_cache.h",
+    ],
+    deps = [
+        "//multibody:multipose_visualizer",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//multibody/kinematic:constraints",
+        "//solvers:constraints",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "passive_constrained_pendulum_dircon",
+    srcs = ["test/passive_constrained_pendulum_dircon.cc"],
+    data = ["test/acrobot_floating.urdf"],
+    deps = [
+        "//common",
+        "//multibody:visualization_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

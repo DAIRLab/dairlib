@@ -15,12 +15,30 @@ pybind_py_library(
     name = "multibody_py",
     cc_deps = [
         "//multibody:multipose_visualizer",
+        "//multibody:utils",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "multibody",
     cc_srcs = ["multibody_py.cc"],
-    py_deps = ["@drake//bindings/pydrake",
-               ":module_py"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "kinematic_py",
+    cc_deps = [
+        "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "kinematic",
+    cc_srcs = ["kinematic_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
     py_imports = ["."],
 )
 
@@ -28,9 +46,9 @@ py_binary(
     name = "multipose_visualizer_test",
     srcs = ["test/multipose_visualizer_test.py"],
     deps = [
+        ":module_py",
         ":multibody_py",
         "//bindings/pydairlib/common",
-        ":module_py",
     ],
 )
 
@@ -45,12 +63,13 @@ py_library(
     ],
     imports = PACKAGE_INFO.py_imports,
     deps = [
-        "//bindings/pydairlib:module_py"
+        "//bindings/pydairlib:module_py",
     ],
 )
 
 PY_LIBRARIES = [
     ":multibody_py",
+    ":kinematic_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

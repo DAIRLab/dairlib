@@ -1,33 +1,34 @@
-#include <memory>
 #include <limits>
+#include <memory>
 
 #include <gflags/gflags.h>
+
+#include "dairlib/lcmt_controller_switch.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/input_supervisor.h"
+#include "examples/Cassie/networking/cassie_input_translator.h"
+#include "examples/Cassie/networking/cassie_udp_publisher.h"
+#include "multibody/multibody_utils.h"
+#include "systems/framework/lcm_driven_loop.h"
+#include "systems/robot_lcm_systems.h"
+
 #include "drake/lcm/drake_lcm.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
-
-#include "multibody/multibody_utils.h"
-#include "systems/robot_lcm_systems.h"
-#include "examples/Cassie/input_supervisor.h"
-#include "examples/Cassie/networking/cassie_udp_publisher.h"
-#include "examples/Cassie/networking/cassie_input_translator.h"
-#include "examples/Cassie/cassie_utils.h"
-#include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_controller_switch.hpp"
-#include "systems/framework/lcm_driven_loop.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
 
 namespace dairlib {
+using drake::lcm::Subscriber;
+using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
-using drake::systems::Context;
-using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::LcmPublisherSystem;
-using systems::RobotInputReceiver;
-using systems::RobotCommandSender;
 using drake::systems::TriggerType;
-using drake::lcm::Subscriber;
+using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
+using systems::RobotCommandSender;
+using systems::RobotInputReceiver;
 
 using std::map;
 using std::string;
@@ -36,14 +37,16 @@ using std::string;
 DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
 DEFINE_int64(port, 25000, "Port to publish to (UDP).");
 DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
-DEFINE_double(max_joint_velocity, 10,
+DEFINE_string(
+    cassie_out_channel, "CASSIE_OUTPUT_ECHO",
+    "The name of the channel to receive the cassie out structure from.");
+DEFINE_double(max_joint_velocity, 5,
               "Maximum joint velocity before error is triggered");
-DEFINE_double(input_limit,
-              -1,
+DEFINE_double(input_limit, -1,
               "Maximum torque limit. Negative values are inf.");
 DEFINE_int64(supervisor_N, 10,
              "Maximum allowed consecutive failures of velocity limit.");
-DEFINE_string(state_channel_name, "CASSIE_STATE",
+DEFINE_string(state_channel_name, "CASSIE_STATE_DISPATCHER",
               "The name of the lcm channel that sends Cassie's state");
 DEFINE_string(control_channel_name_1, "PD_CONTROL",
               "The name of the lcm channel that sends Cassie's state");
@@ -72,14 +75,26 @@ int do_main(int argc, char* argv[]) {
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();
 
+  // Channel name of the input switch
+  std::string switch_channel = "INPUT_SWITCH";
+
   // Create LCM receiver for commands
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(plant);
 
   // Create state estimate receiver, used for safety checks
-  auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+  auto state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_state_channel_name, &lcm_local));
+  auto controller_switch_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_controller_switch>(switch_channel,
+                                                                 &lcm_local));
+  auto cassie_out_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+          FLAGS_cassie_out_channel, &lcm_local));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
+  auto input_supervisor_status_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_input_supervisor_status>(
+          "INPUT_SUPERVISOR_STATUS", &lcm_local, {TriggerType::kForced}));
   builder.Connect(*state_sub, *state_receiver);
 
   double input_supervisor_update_period = 1.0 / 1000.0;
@@ -88,38 +103,40 @@ int do_main(int argc, char* argv[]) {
     input_limit = std::numeric_limits<double>::max();
   }
 
-  auto input_supervisor =
-      builder.AddSystem<InputSupervisor>(plant,
-                                         FLAGS_max_joint_velocity,
-                                         input_supervisor_update_period,
-                                         FLAGS_supervisor_N,
-                                         input_limit);
+  auto input_supervisor = builder.AddSystem<InputSupervisor>(
+      plant, FLAGS_max_joint_velocity, input_supervisor_update_period,
+      FLAGS_supervisor_N, input_limit);
   builder.Connect(state_receiver->get_output_port(0),
                   input_supervisor->get_input_port_state());
   builder.Connect(command_receiver->get_output_port(0),
                   input_supervisor->get_input_port_command());
+  builder.Connect(controller_switch_sub->get_output_port(),
+                  input_supervisor->get_input_port_controller_switch());
+  builder.Connect(input_supervisor->get_output_port_status(),
+                  input_supervisor_status_pub->get_input_port());
+  builder.Connect(cassie_out_receiver->get_output_port(),
+                  input_supervisor->get_input_port_cassie());
 
   // Create and connect translator
   auto input_translator =
       builder.AddSystem<systems::CassieInputTranslator>(plant);
   builder.Connect(input_supervisor->get_output_port_command(),
-      input_translator->get_input_port(0));
+                  input_translator->get_input_port(0));
 
   // Create and connect input publisher.
-  auto input_pub = builder.AddSystem(
-      systems::CassieUDPPublisher::Make(FLAGS_address, FLAGS_port,
-                                        {TriggerType::kForced}));
+  auto input_pub = builder.AddSystem(systems::CassieUDPPublisher::Make(
+      FLAGS_address, FLAGS_port, {TriggerType::kForced}));
   builder.Connect(*input_translator, *input_pub);
 
   // Create and connect LCM command echo to network
   auto net_command_sender = builder.AddSystem<RobotCommandSender>(plant);
-  auto net_command_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          "NETWORK_CASSIE_INPUT", &lcm_network,
-          {TriggerType::kPeriodic}, FLAGS_pub_rate));
+  auto net_command_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          "NETWORK_CASSIE_INPUT", &lcm_network, {TriggerType::kPeriodic},
+          FLAGS_pub_rate));
 
   builder.Connect(input_supervisor->get_output_port_command(),
-      net_command_sender->get_input_port(0));
+                  net_command_sender->get_input_port(0));
 
   builder.Connect(*net_command_sender, *net_command_pub);
 
@@ -127,8 +144,6 @@ int do_main(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("dispatcher_robot_in");
 
-  // Channel name of the input switch
-  std::string switch_channel = "INPUT_SWITCH";
   // Channel names of the controllers
   std::vector<std::string> input_channels;
   input_channels.push_back(FLAGS_control_channel_name_1);
@@ -137,14 +152,9 @@ int do_main(int argc, char* argv[]) {
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input,
-                         dairlib::lcmt_controller_switch> loop
-      (&lcm_local,
-       std::move(owned_diagram),
-       command_receiver,
-       input_channels,
-       FLAGS_control_channel_name_1,
-       switch_channel,
-       true);
+                         dairlib::lcmt_controller_switch>
+      loop(&lcm_local, std::move(owned_diagram), command_receiver,
+           input_channels, FLAGS_control_channel_name_1, switch_channel, true);
   loop.Simulate();
 
   return 0;
@@ -152,6 +162,4 @@ int do_main(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) {
-  return dairlib::do_main(argc, argv);
-}
+int main(int argc, char* argv[]) { return dairlib::do_main(argc, argv); }

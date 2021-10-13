@@ -76,7 +76,7 @@ TEST_F(KinematicEvaluatorTest, WorldPointEvaluatorTest) {
   auto J = evaluator.EvalFullJacobian(*context);
   MatrixXd J_expected(3, 6);
   J_expected.row(0) << 0, 0, 0, 0, 0, 0;
-  J_expected.row(1) << 1, 0, -1, -1, 0, -.5;
+  J_expected.row(1) << -1, 0, 1, 1, 0, .5;
   J_expected.row(2) << 0, 1, 0, 0, 0, 0;
   EXPECT_TRUE(CompareMatrices(J, J_expected, tolerance));
 
@@ -87,7 +87,7 @@ TEST_F(KinematicEvaluatorTest, WorldPointEvaluatorTest) {
 
   auto phidot = evaluator.EvalFullTimeDerivative(*context);
   VectorXd phidot_expected(3);
-  phidot_expected << 0, -1.5, 1;
+  phidot_expected << 0, 1.5, 1;
   EXPECT_TRUE(CompareMatrices(phidot, phidot_expected, tolerance));
 
   auto phidot_active = evaluator.EvalActiveTimeDerivative(*context);
@@ -112,9 +112,9 @@ TEST_F(KinematicEvaluatorTest, WorldPointEvaluatorTest) {
       frame, Vector3d({1, 0, 0}), Vector3d({1, 2, 3}), true);
 
   auto new_phi = new_evaluator.EvalFull(*context);
-  EXPECT_TRUE(CompareMatrices(Vector3d({-4, 2, -1}), new_phi, tolerance));
+  EXPECT_TRUE(CompareMatrices(Vector3d({-4, -2, 1}), new_phi, tolerance));
   auto new_phi_active = new_evaluator.EvalActive(*context);
-  EXPECT_TRUE(CompareMatrices(Vector3d({-4, 2, -1}), new_phi_active,
+  EXPECT_TRUE(CompareMatrices(Vector3d({-4, -2, 1}), new_phi_active,
       tolerance));  
 }
 

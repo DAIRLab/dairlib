@@ -11,7 +11,6 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/constraint.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/solvers/solve.h"
 
 #include "drake/common/find_resource.h"
@@ -57,9 +56,6 @@ void runDircon() {
   Parser parser(&plant, &scene_graph);
 
   parser.AddModelFromFile(sdf_path);
-
-  plant.mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
 
   plant.WeldFrames(
       plant.world_frame(), plant.GetFrameByName("base_link"),

@@ -1,23 +1,25 @@
 #include "solvers/nonlinear_constraint.h"
+
+#include "drake/common/default_scalars.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
-#include "drake/common/default_scalars.h"
 
 namespace dairlib {
 namespace solvers {
 
-using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
 using drake::VectorX;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 template <typename T>
 NonlinearConstraint<T>::NonlinearConstraint(int num_constraints, int num_vars,
-    const VectorXd& lb, const VectorXd& ub,
-    const std::string& description, double eps)
-    : Constraint(num_constraints, num_vars, lb, ub, description),
-    eps_(eps) {}
+                                            const VectorXd& lb,
+                                            const VectorXd& ub,
+                                            const std::string& description,
+                                            double eps)
+    : Constraint(num_constraints, num_vars, lb, ub, description), eps_(eps) {}
 
 template <typename T>
 void NonlinearConstraint<T>::SetConstraintScaling(
@@ -81,8 +83,15 @@ void NonlinearConstraint<double>::DoEval(
     x_val(i) -= eps_;
     dy.col(i) = (yi - y0) / eps_;
   }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
-                                                     *y);
+
+  // Profiling identified dy * original_grad as a significant runtime event,
+  // even though it is almost always the identity matrix.
+  if (original_grad.isIdentity(1e-16)) {
+    *y = drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy);
+  } else {
+    *y = drake::math::initializeAutoDiffGivenGradientMatrix(y0,
+                                                            dy * original_grad);
+  }
 
   this->ScaleConstraint<AutoDiffXd>(y);
 }

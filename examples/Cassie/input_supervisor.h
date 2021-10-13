@@ -2,8 +2,12 @@
 #include <limits>
 
 #include "systems/framework/timestamped_vector.h"
+#include "dairlib/lcmt_input_supervisor_status.hpp"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
+
+static constexpr double kMaxControllerDelay = 0.1;
+static constexpr double kEStopGain = 5.0;
 
 namespace dairlib {
 
@@ -48,6 +52,14 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_controller_switch() const {
+    return this->get_input_port(controller_switch_input_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_cassie() const {
+    return this->get_input_port(cassie_input_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_command() const {
     return this->get_output_port(command_output_port_);
   }
@@ -56,37 +68,55 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_output_port(status_output_port_);
   }
 
-
   void SetMotorTorques(const drake::systems::Context<double>& context,
                        systems::TimestampedVector<double>* output) const;
   void UpdateErrorFlag(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  // Assign the lcmt_input_supervisor_status output
   // Sets the status bit to the current status
-  // 0b00  if no limits are being applied
-  // 0b01  if velocity has exceeded threshold
-  // 0b10  if actuator limits are being applied
-  // 0b11  if both limits have been exceeded
-  // ob1xx if velocity shutdown has been applied
+  // Starting from the rightmost bit, the bits represent:
+  // 0th: velocity limits exceeded once
+  // 1st: actuator limits
+  // 2nd: velocity triggered shutdown
   void SetStatus(const drake::systems::Context<double>& context,
-                 systems::TimestampedVector<double>* output) const;
+                 dairlib::lcmt_input_supervisor_status* output) const;
+
+  void CheckVelocities(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
+  void CheckRadio(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
   const int num_actuators_;
   const int num_positions_;
   const int num_velocities_;
+  // supervisor settings
   const int min_consecutive_failures_;
   double max_joint_velocity_;
-
   double input_limit_;
-  int n_consecutive_fails_index_;
+  mutable double blend_duration_ = 0.0;
+
+  int soft_estop_trigger_index_;
+  int is_nan_index_;
+
+  int status_vars_index_;
+  int n_fails_index_;
   int status_index_;
+  // for blending controller efforts
+  int switch_time_index_;
+  int prev_efforts_index_;
+  int prev_efforts_time_index_;
+
+  // leafsystem ports
   int state_input_port_;
   int command_input_port_;
+  int controller_switch_input_port_;
+  int cassie_input_port_;
   int command_output_port_;
   int status_output_port_;
+
+  Eigen::MatrixXd K_;
 };
 
 }  // namespace dairlib

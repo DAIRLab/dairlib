@@ -4,7 +4,7 @@
 #include "drake/systems/lcm/lcm_log_playback_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/plant/multibody_plant.h"
 
 #include "systems/primitives/vector_aggregator.h"
 #include "systems/robot_lcm_systems.h"
@@ -22,9 +22,9 @@ namespace dairlib {
 using systems::VectorAggregator;
 
 int ParseLog(string filename) {
-  RigidBodyTree<double> tree;
-  buildCassieTree(tree);
-
+  drake::multibody::MultibodyPlant<double> plant(0.0);
+  addCassieMultibody(&plant);
+  
   drake::lcm::DrakeLcmLog r_log(filename, false);
 
   drake::systems::DiagramBuilder<double> builder;
@@ -35,7 +35,7 @@ int ParseLog(string filename) {
       builder.AddSystem(LcmSubscriberSystem::Make<lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", &r_log));
 
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(tree);
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   builder.Connect(state_sub->get_output_port(),
                     state_receiver->get_input_port(0));
 
@@ -48,7 +48,7 @@ int ParseLog(string filename) {
   auto input_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<lcmt_robot_input>("CASSIE_INPUT", &r_log));
 
-  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(tree);
+  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   builder.Connect(input_sub->get_output_port(),
                     input_receiver->get_input_port(0));
 

@@ -3,19 +3,24 @@
 #include <fstream>
 #include <memory>
 #include <string>
+
 #include <gflags/gflags.h>
+
+#include "common/file_utils.h"
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/dircon_saved_trajectory.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
-#include "drake/geometry/geometry_visualization.h"
+
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/multibody/parsing/parser.h"
@@ -38,13 +43,12 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using dairlib::goldilocks_models::readCSV;
-using dairlib::goldilocks_models::writeCSV;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
 using dairlib::systems::trajectory_optimization::PointPositionConstraint;
 using drake::VectorX;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -62,6 +66,9 @@ using drake::trajectories::PiecewisePolynomial;
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
+DEFINE_string(save_filename, "default_filename",
+              "Filename to save decision "
+              "vars to.");
 DEFINE_bool(store_data, false, "To store solution or not");
 
 // SNOPT parameters
@@ -176,8 +183,6 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
       parser.AddModelFromFile(full_name);
-      plant_ik.mutable_gravity_field().set_gravity_vector(
-          -9.81 * Eigen::Vector3d::UnitZ());
       plant_ik.Finalize();
 
       // Visualize
@@ -270,8 +275,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   string full_name =
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   // Create maps for joints
@@ -903,8 +906,10 @@ void DoMain(double duration, double stride_length, double ground_incline,
     cout << endl;
   }*/
 
+  double alpha = .2;
+  int num_poses = 5;
   trajopt->CreateVisualizationCallback(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf", num_poses, alpha);
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
@@ -1079,6 +1084,14 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   cout << "total_cost = " << total_cost << endl;
 
+  // Save trajectory to file
+  DirconTrajectory saved_traj(plant, *trajopt, result, "walking_trajectory",
+                              "Decision variables and state/input trajectories "
+                              "for walking");
+  saved_traj.WriteToFile(FLAGS_data_directory + FLAGS_save_filename);
+  std::cout << "Wrote to file: " << FLAGS_data_directory + FLAGS_save_filename
+            << std::endl;
+
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =
       trajopt->ReconstructStateTrajectory(result);
@@ -1100,23 +1113,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // *******Add COM visualization**********
   bool plot_com = true;
   bool com_on_ground = true;
-  auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
+  auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
   if (plot_com) {
-    double radius = .02;
-    UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);
-    SpatialInertia<double> M_Bcm(1, Eigen::Vector3d::Zero(), G_Bcm);
-
-    const drake::multibody::RigidBody<double>& ball =
-        ball_plant->AddRigidBody("Ball", M_Bcm);
-
-    ball_plant->RegisterAsSourceForSceneGraph(&scene_graph);
-    // Add visual for the COM.
-    const Eigen::Vector4d orange(1.0, 0.55, 0.0, 1.0);
-    const RigidTransformd X_BS = RigidTransformd::Identity();
-    ball_plant->RegisterVisualGeometry(ball, X_BS, Sphere(radius), "visual",
-                                       orange);
-    ball_plant->Finalize();
-
     // connect
     auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
         plant.num_positions() + plant.num_velocities(), 0,
@@ -1141,7 +1139,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
   // **************************************
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   auto diagram = builder.Build();
 
   while (true) {

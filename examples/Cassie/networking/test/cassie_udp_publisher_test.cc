@@ -50,7 +50,7 @@ int do_main(int argc, char* argv[]) {
   auto& input_pub_context = diagram->GetMutableSubsystemContext(
       *input_pub, &simulator.get_mutable_context());
   input_pub_context.FixInputPort(input_pub->get_input_port().get_index(),
-      std::make_unique<drake::Value<cassie_user_in_t>>(cassie_in));
+      drake::Value<cassie_user_in_t>(cassie_in));
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);

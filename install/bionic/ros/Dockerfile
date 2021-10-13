@@ -1,6 +1,6 @@
 FROM ros:melodic-ros-base-bionic
 WORKDIR /dairlib
-ENV DAIRLIB_DOCKER_VERSION=1
+ENV DAIRLIB_DOCKER_VERSION=0.21
 COPY . .
 RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python
 RUN apt-get install -y python-rosinstall-generator python-catkin-tools
@@ -15,5 +15,5 @@ RUN if type sudo 2>/dev/null; then \
     fi
 RUN set -eux \
   && export DEBIAN_FRONTEND=noninteractive \
-  && yes | install/install_prereqs_ubuntu.sh \
+  && yes | install/install_prereqs_bionic.sh \
   && rm -rf /var/lib/apt/lists/*

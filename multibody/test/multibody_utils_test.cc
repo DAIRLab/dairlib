@@ -49,7 +49,7 @@ TEST_F(MultibodyUtilsTest, ContextTest) {
   u(0) = 2;
   u(3) = -3.1;
 
-  auto context = createContext(plant_, x, u);
+  auto context = createContext<double>(plant_, x, u);
 
   VectorXd x_context = plant_.GetPositionsAndVelocities(*context);
   VectorXd u_context = getInput(plant_, *context);

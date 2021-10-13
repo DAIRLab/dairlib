@@ -39,11 +39,11 @@ group "1.controllers-and-dispatchers" {
 
 group "2.drake-simulator" {
     cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=false";
         host = "localhost";
     }
     cmd "1.simulator for OSC controller" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=true --publish_rate=200";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=200 --init_height=1.0";
         host = "localhost";
     }
 }
@@ -118,8 +118,10 @@ script "run-drake-osc-standing-wo-ekf" {
 script "run-drake-osc-walking-w-ekf" {
     run_script "start-operator-simulation-floating-base";
     start cmd "0.a.dispatcher-robot-out (lcm, floating-base)";
-    start cmd "1.simulator for OSC controller";
+    wait ms 200;
     start cmd "3.osc-walking-controller (dispatched)";
+    wait ms 200;
+    start cmd "1.simulator for OSC controller";
 }
 
 script "run-drake-osc-walking-wo-ekf" {

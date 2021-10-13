@@ -14,68 +14,6 @@ using drake::systems::Context;
 using std::map;
 
 // methods implementation for CassiePDConfigReceiver.
-PDConfigReceiver::PDConfigReceiver(const RigidBodyTree<double>& tree) {
-  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
-
-  num_positions_ = tree.get_num_positions();
-  num_velocities_ = tree.get_num_velocities();
-  num_actuators_ = tree.get_num_actuators();
-
-  MatrixXd B = tree.B;
-  // using all one's because zeros will cause quaternions to NaN
-  // Don't really care about the answer here, just that it has the correct
-  // sparsity pattern
-  VectorXd q_zeros = VectorXd::Constant(tree.get_num_positions(), 1);
-  KinematicsCache<double> cache = tree.doKinematics(q_zeros);
-  MatrixXd vToqdot = tree.GetVelocityToQDotMapping(cache);
-  // Use the tree to build a map from actuators to positions and velocities
-  // Specific to systems where each actuator maps uniquely to a joint with
-  // position and velocity
-  //
-  // Expect the jth column of RBT.B to be all zero except for one positive
-  // element
-  // If B(i,j) > 0, then the jth' actuator maps to the ith velocity coordinate
-  for (int j = 0; j < B.cols(); j++) {
-    int index = -1;
-    for (int i = 0; i < B.rows(); i++) {
-      DRAKE_THROW_UNLESS(B(i, j) >= 0);
-      if (B(i, j) > 0) {
-        DRAKE_THROW_UNLESS(index == -1);
-        index = i;
-      }
-    }
-    DRAKE_THROW_UNLESS(index != -1);
-    actuatorToVelocityIndexMap_[j] = index;
-    // Next use the GetVelocityToQDotMapping to map this velocity to a position
-    // coordinate. The unit vector e_index should map to a single positive
-    // element in qdot. This is not true for some joints (like quaternions),
-    // so these joints will not be added to the map
-    VectorXd e_index = VectorXd::Zero(tree.get_num_velocities());
-    e_index(index) = 1;
-    VectorXd qdot = vToqdot * e_index;
-    int index_q = -1;
-    for (int k = 0; k < qdot.size(); k++) {
-      if (qdot(k) == 1) {
-        DRAKE_THROW_UNLESS(index_q == -1);
-        index_q = k;
-      }
-    }
-    if (index_q != -1)
-      actuatorToPositionIndexMap_[j] = index_q;
-    std::cout << "Map u_ind:" << j << " q_ind: " << index_q << " v_ind: " <<
-                  index << std::endl;
-  }
-
-  // Velocity map:
-  this->DeclareAbstractInputPort(
-      "lcmt_pd_config", drake::Value<dairlib::lcmt_pd_config>{});
-  this->DeclareVectorOutputPort(
-      LinearConfig(tree.get_num_positions() + tree.get_num_velocities(),
-                   tree.get_num_actuators()),
-      &PDConfigReceiver::CopyConfig);
-}
-
-// methods implementation for CassiePDConfigReceiver.
 PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
 
@@ -134,6 +72,7 @@ PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
   this->DeclareAbstractInputPort(
       "lcmt_pd_config", drake::Value<dairlib::lcmt_pd_config>{});
   this->DeclareVectorOutputPort(
+      "pd_config",
       LinearConfig(plant.num_positions() + plant.num_velocities(),
                    plant.num_actuators()),
       &PDConfigReceiver::CopyConfig);

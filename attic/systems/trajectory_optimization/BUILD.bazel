@@ -28,4 +28,6 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
 )

@@ -37,6 +37,21 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "gaussian_noise_pass_through",
+    srcs = ["gaussian_noise_pass_through.cc"],
+    hdrs = [
+        "gaussian_noise_pass_through.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
 cc_test(
     name = "subvector_pass_through_test",
     size = "small",

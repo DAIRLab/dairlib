@@ -1,0 +1,19 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "robot_lcm_systems",
+    srcs = ["robot_lcm_systems.cc"],
+    hdrs = [
+        "robot_lcm_systems.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//attic/multibody:utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
+)

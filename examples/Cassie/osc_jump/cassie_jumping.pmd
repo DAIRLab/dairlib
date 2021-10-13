@@ -1,0 +1,153 @@
+group "0.operator" {
+    cmd "drake-director-clean" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=point_pair_contact --script=examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+    cmd "switch_to_jump" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=\"OSC_JUMPING\"";
+        host = "localhost";
+    }
+    cmd "4.state-visualizer-floating" {
+        exec = "bazel-bin/examples/Cassie/visualizer --channel=CASSIE_STATE_SIMULATION";
+        host = "localhost";
+    }
+    cmd "0.drake-director" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=point_pair_contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+}
+
+group "5.trajectory-optimization" {
+    cmd "dircon_jumping" {
+        exec = "bazel-bin/examples/Cassie/run_dircon_jumping --jump_height=0.2 --knot_points=8 --save_filename=\"trajectory_name\" --load_filename=\"\"";
+        host = "localhost";
+    }
+    cmd "visualize_trajectory" {
+        exec = "bazel-bin/examples/Cassie/visualize_trajectory --folder_path=\"/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/\"  --trajectory_name=\"June_5_jumping_0.2\" --realtime_rate=0.1 --num_poses=0 --visualize_mode=1";
+        host = "localhost";
+    }
+    cmd "convert_traj_for_sim" {
+        exec = "bazel-bin/examples/Cassie/osc_jump/convert_traj_for_sim --folder_path=\"/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/\" --trajectory_name=\"June_5_jumping_0.2\"";
+        host = "localhost";
+    }
+    cmd "convert_traj_for_controller" {
+        exec = "bazel-bin/examples/Cassie/osc_jump/convert_traj_for_controller --folder_path=\"/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/\" --trajectory_name=\"June_5_jumping_0.2\"";
+        host = "localhost";
+    }
+}
+
+group "1.simulated-robot" {
+    cmd "dispatcher-robot-in" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --floating_base=true --max_joint_velocity=60 --control_channel_name_1=\"CASSIE_INPUT\"";
+        host = "localhost";
+    }
+    cmd "mbp_sim" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --time_stepping=true --publish_rate=2000 --end_time=5.0 --init_height=1.0 --target_realtime_rate=0.2";
+        host = "localhost";
+    }
+    cmd "2.b.dispatcher-robot-out (gazebo)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --floating_base=true --test_mode=0";
+        host = "localhost";
+    }
+    cmd "mbp_sim (init)" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --time_stepping=true --publish_rate=4000 --end_time=5.0 --penetration_allowance=5e-3 --dt=5e-5 --target_realtime_rate=0.5 --folder_path=\"/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/\" --file_name=\"June_5_jumping_0.2_for_sim\" --trajectory_name=\"cassie_jumping_trajectory_x\" --start_time=0.6";
+        host = "localhost";
+    }
+    cmd "2.a.dispatcher-robot-out (lcm)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true --floating_base=true --init_imu_height=1.0";
+        host = "localhost";
+    }
+}
+
+group "3.lcm-tools" {
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+}
+
+group "4.other-simulators" {
+    cmd "0.launch-gazebo" {
+        exec = "bash ../cassie-gazebo-sim/cassie/launch_sim.sh";
+        host = "localhost";
+    }
+    cmd "cassie-mujoco" {
+        exec = "/home/yangwill/workspace/cassie-mujoco-sim/test/cassiesim -r -s";
+        host = "localhost";
+    }
+    cmd "1.launch-gazebo-fixed-base" {
+        exec = "bash ../cassie-gazebo-sim/cassie_fixed_base/launch_sim.sh";
+        host = "localhost";
+    }
+}
+
+group "2.controllers" {
+    cmd "osc_standing_controller" {
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller ";
+        host = "localhost";
+    }
+    cmd "pd-controller" {
+        exec = "bazel-bin/examples/Cassie/run_pd_controller";
+        host = "localhost";
+    }
+    cmd "osc_jumping_controller" {
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --channel_u=\"CASSIE_INPUT\" --traj_name=\"June_5_jumping_0.2\" --x_offset=0.1 --delay_time=1.0 --simulator=\"DRAKE\"  ";
+        host = "localhost";
+    }
+    cmd "osc_jumping_controller (mujoco)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --traj_name=\"June_5_jumping_0.2\" --delay_time=1.0 --channel_u=CASSIE_INPUT --simulator=\"MUJOCO\" --x_offset=0.09";
+        host = "localhost";
+    }
+    cmd "osc_jumping_controller (init)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --traj_name=\"June_5_jumping_0.2_processed\" --delay_time=-0.60 --channel_u=CASSIE_INPUT --simulator=\"DRAKE\" --x_offset=0.01 --contact_based_fsm=true --init_fsm_state=2 --transition_delay=0.00";
+        host = "localhost";
+    }
+}
+
+
+script "osc-jumping (mujoco)" {
+    stop cmd "osc_jumping_controller (mujoco)";
+    stop cmd "dispatcher-robot-in";
+    stop cmd "cassie-mujoco" wait "stopped";
+    start cmd "osc_jumping_controller (mujoco)" wait "running";
+    start cmd "dispatcher-robot-in";
+    start cmd "cassie-mujoco";
+}
+
+script "osc-jumping (drake)" {
+    stop cmd "osc_jumping_controller";
+    stop cmd "mbp_sim" wait "stopped";
+    start cmd "osc_jumping_controller" wait "running";
+    start cmd "mbp_sim";
+}
+
+script "osc_standing (mujoco)" {
+    start cmd "cassie-mujoco";
+    start cmd "dispatcher-robot-in";
+    start cmd "osc_standing_controller";
+}
+
+script "run-mujoco-lcm-pd-control" {
+    run_script "start-operator-MBP";
+    start cmd "3.cassie-mujoco-fixed-base";
+    start cmd "2.a.dispatcher-robot-out (lcm)";
+    start cmd "3.dispatcher-robot-in";
+    start cmd "0.pd-controller";
+}
+
+script "run-real-robot-pd-control" {
+    run_script "start-operator-real-robot";
+    start cmd "0.dispatcher-robot-out-real-robot";
+    start cmd "1.dispatcher-robot-in-real-robot";
+    start cmd "2.pd-controller-real-robot";
+}
+
+script "run_gazebo" {
+    start cmd "2.b.dispatcher-robot-out (gazebo)";
+    wait ms 500;
+    start cmd "0.launch-gazebo";
+}

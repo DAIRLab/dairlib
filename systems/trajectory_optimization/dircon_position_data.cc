@@ -2,7 +2,6 @@
 #include <vector>
 
 #include "systems/trajectory_optimization/dircon_position_data.h"
-#include "drake/math/orthonormal_basis.h"
 
 namespace dairlib {
 

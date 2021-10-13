@@ -1,0 +1,16 @@
+package dairlib;
+
+struct lcmt_osc_qp_output
+{
+  int32_t u_dim;
+  int32_t lambda_c_dim;
+  int32_t lambda_h_dim;
+  int32_t v_dim;
+  int32_t epsilon_dim;
+  double solve_time;
+  double u_sol[u_dim];
+  double lambda_c_sol[lambda_c_dim];
+  double lambda_h_sol[lambda_h_dim];
+  double dv_sol[v_dim];
+  double epsilon_sol[epsilon_dim];
+}

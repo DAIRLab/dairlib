@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+
 #include "systems/framework/output_vector.h"
 
 #include "drake/multibody/parsing/parser.h"
@@ -44,11 +45,17 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
+    return this->get_output_port(fsm_port_);
+  }
+
+ protected:
+  int state_port_;
+  int fsm_port_;
+
  private:
   void CalcFiniteState(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* fsm_state) const;
-
-  int state_port_;
 
   std::vector<int> states_;
   std::vector<double> state_durations_;

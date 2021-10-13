@@ -1,29 +1,27 @@
 #include "examples/Cassie/cassie_utils.h"
+
 #include "common/find_resource.h"
+#include "examples/Cassie/cassie_encoder.h"
+
 #include "drake/geometry/scene_graph.h"
 #include "drake/math/rigid_transform.h"
-#include "drake/multibody/joints/revolute_joint.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/tree/linear_spring_damper.h"
-#include "drake/multibody/tree/uniform_gravity_field_element.h"
-#include "drake/solvers/mathematical_program.h"
-
-#include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/tree/revolute_spring.h"
+#include "drake/systems/sensors/accelerometer.h"
+#include "drake/systems/sensors/gyroscope.h"
 
 namespace dairlib {
 
-using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
 using drake::geometry::SceneGraph;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::RevoluteSpring;
-using drake::multibody::joints::FloatingBaseType;
-using drake::solvers::Constraint;
-using drake::solvers::MathematicalProgram;
+using drake::systems::sensors::Accelerometer;
+using drake::systems::sensors::Gyroscope;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
@@ -31,56 +29,56 @@ template <typename T>
 std::pair<const Vector3d, const Frame<T>&> LeftToeFront(
     const MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_left"));
+      Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_left"));
 }
 
 template <typename T>
 std::pair<const Vector3d, const Frame<T>&> RightToeFront(
     const MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_right"));
+      Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_right"));
 }
 
 template <typename T>
 std::pair<const Vector3d, const Frame<T>&> LeftToeRear(
     const MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_left"));
+      Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_left"));
 }
 
 template <typename T>
 std::pair<const Vector3d, const Frame<T>&> RightToeRear(
     const MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_right"));
+      Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_right"));
 }
 
 template <typename T>
 std::pair<const Vector3d, const Frame<T>&> LeftRodOnThigh(
     const drake::multibody::MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(0.0, 0.0, 0.045), plant.GetFrameByName("thigh_left"));
+      Vector3d(0.0, 0.0, 0.045), plant.GetFrameByName("thigh_left"));
 }
 
 template <typename T>
 std::pair<const Vector3d, const Frame<T>&> RightRodOnThigh(
     const drake::multibody::MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(0.0, 0.0, -0.045), plant.GetFrameByName("thigh_right"));
+      Vector3d(0.0, 0.0, -0.045), plant.GetFrameByName("thigh_right"));
 }
 
 template <typename T>
 std::pair<const Vector3d, const Frame<T>&> LeftRodOnHeel(
     const drake::multibody::MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(.11877, -.01, 0.0), plant.GetFrameByName("heel_spring_left"));
+      Vector3d(.11877, -.01, 0.0), plant.GetFrameByName("heel_spring_left"));
 }
 
 template <typename T>
 std::pair<const Vector3d, const Frame<T>&> RightRodOnHeel(
     const drake::multibody::MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(.11877, -.01, 0.0), plant.GetFrameByName("heel_spring_right"));
+      Vector3d(.11877, -.01, 0.0), plant.GetFrameByName("heel_spring_right"));
 }
 
 template <typename T>
@@ -114,8 +112,6 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
 
-  plant->mutable_gravity_field().set_gravity_vector(-9.81 * Vector3d::UnitZ());
-
   if (!floating_base) {
     plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("pelvis"),
                       drake::math::RigidTransform<double>(Vector3d::Zero()));
@@ -145,7 +141,7 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
   if (add_loop_closure) {
     // TOOO(mposa): add loop closures when implemented in Drake
     // Add a spring to represent loop closure
-    double achilles_stiffness = 2e5;
+    double achilles_stiffness = 1e6;
     double achilles_damping = 2e3;
     const auto& heel_spring_left = LeftRodOnHeel(*plant).second.body();
     const auto& thigh_left = LeftRodOnThigh(*plant).second.body();
@@ -165,169 +161,129 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
         heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
         kCassieAchillesLength, achilles_stiffness, achilles_damping);
   }
-}
 
-std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
-    std::string filename, FloatingBaseType base_type, bool is_with_springs) {
-  auto tree = std::make_unique<RigidBodyTree<double>>();
-  buildCassieTree(*tree.get(), filename, base_type, is_with_springs);
-  return tree;
-}
-
-void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
-                     FloatingBaseType base_type, bool is_with_springs) {
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      FindResourceOrThrow(filename), base_type, &tree);
-
-  // Add distance constraints for the two legs
-  int heel_spring_left = tree.FindBodyIndex("heel_spring_left");
-  int thigh_left = tree.FindBodyIndex("thigh_left");
-
-  int heel_spring_right = tree.FindBodyIndex("heel_spring_right");
-  int thigh_right = tree.FindBodyIndex("thigh_right");
-
-  Vector3d rod_on_heel_spring;  // symmetric left and right
-  rod_on_heel_spring << .11877, -.01, 0.0;
-
-  Vector3d rod_on_thigh_left;
-  rod_on_thigh_left << 0.0, 0.0, 0.045;
-
-  Vector3d rod_on_thigh_right;
-  rod_on_thigh_right << 0.0, 0.0, -0.045;
-
-  tree.addDistanceConstraint(heel_spring_left, rod_on_heel_spring, thigh_left,
-                             rod_on_thigh_left, kCassieAchillesLength);
-
-  tree.addDistanceConstraint(heel_spring_right, rod_on_heel_spring, thigh_right,
-                             rod_on_thigh_right, kCassieAchillesLength);
-
-  // Add spring forces
-  if(is_with_springs){
-    int body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_left");
-    auto body = tree.get_mutable_body(body_index);
-    RevoluteJoint& knee_joint_left =
-        dynamic_cast<RevoluteJoint&>(body->get_mutable_joint());
-    // stiffness is 2300 in URDF,these #s from gazebo
-    knee_joint_left.SetSpringDynamics(1500.0, 0.0);
-
-    body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_right");
-    body = tree.get_mutable_body(body_index);
-    RevoluteJoint& knee_joint_right =
-        dynamic_cast<RevoluteJoint&>(body->get_mutable_joint());
-    knee_joint_right.SetSpringDynamics(1500.0, 0.0);  // 2300 in URDF
-
-    body_index = tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_left");
-    body = tree.get_mutable_body(body_index);
-    RevoluteJoint& ankle_spring_joint_left =
-        dynamic_cast<RevoluteJoint&>(body->get_mutable_joint());
-    ankle_spring_joint_left.SetSpringDynamics(1250.0, 0.0);  // 2000 in URDF
-
-    body_index = tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_right");
-    body = tree.get_mutable_body(body_index);
-    RevoluteJoint& ankle_spring_joint_right =
-        dynamic_cast<RevoluteJoint&>(body->get_mutable_joint());
-    ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
+  bool add_reflected_inertia = true;
+  VectorXd rotor_inertias(10);
+  rotor_inertias << 61, 61, 61, 61, 365, 365, 365, 365, 4.9, 4.9;
+  rotor_inertias *= 1e-6;
+  VectorXd gear_ratios(10);
+  gear_ratios << 25, 25, 25, 25, 16, 16, 16, 16, 50, 50;
+  std::vector<std::string> motor_joint_names = {
+      "hip_roll_left_motor", "hip_roll_right_motor", "hip_yaw_left_motor",
+      "hip_yaw_right_motor", "hip_pitch_left_motor", "hip_pitch_right_motor",
+      "knee_left_motor",     "knee_right_motor",     "toe_left_motor",
+      "toe_right_motor"};
+  if (add_reflected_inertia) {
+    for (int i = 0; i < rotor_inertias.size(); ++i) {
+      auto& joint_actuator = plant->get_mutable_joint_actuator(
+          drake::multibody::JointActuatorIndex(i));
+      joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
+      joint_actuator.set_default_gear_ratio(gear_ratios(i));
+      DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
+    }
   }
 }
 
-void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree){
-  // IMU position
-  // source: https://github.com/osudrl/cassie-mujoco-sim/blob/master/model/cassie.xml#L86
-  Eigen::Isometry3d Imu_pos_wrt_pelvis_origin;
-  Imu_pos_wrt_pelvis_origin.linear() = Eigen::Matrix3d::Identity();;
-  Imu_pos_wrt_pelvis_origin.translation() =
-      Vector3d(0.03155, 0, -0.07996);
+const systems::SimCassieSensorAggregator& AddImuAndAggregator(
+    drake::systems::DiagramBuilder<double>* builder,
+    const MultibodyPlant<double>& plant,
+    const drake::systems::OutputPort<double>& actuation_port) {
+  Vector3d imu_in_pelvis(0.03155, 0, -0.07996);
+  const drake::math::RigidTransform<double> X_BS(imu_in_pelvis);
+  const auto& body = plant.GetBodyByName("pelvis");
 
-  std::shared_ptr<RigidBodyFrame<double>> imu_frame =
-           std::allocate_shared<RigidBodyFrame<double>>(
-               Eigen::aligned_allocator<RigidBodyFrame<double>>(),
-               "imu frame",
-               tree->FindBody("pelvis"),
-               Imu_pos_wrt_pelvis_origin);
-  tree->addFrame(imu_frame);
-}
-drake::systems::sensors::Accelerometer * addSimAccelerometer(
-    drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant) {
+  const auto& gyroscope =
+      Gyroscope<double>::AddToDiagram(body, X_BS, plant, builder);
 
-  std::shared_ptr< RigidBodyFrame<double> > imu_frame_ptr =
-      plant->get_rigid_body_tree().findFrame("imu frame");
+  const auto& accelerometer = Accelerometer<double>::AddToDiagram(
+      body, X_BS, plant.gravity_field().gravity_vector(), plant, builder);
 
-  auto accel_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
-                    "Simulated Accelerometer", *imu_frame_ptr,
-                    plant->get_rigid_body_tree(), true);
-  builder.Connect(plant->state_output_port(),
-                  accel_sim->get_plant_state_input_port());
-  builder.Connect(plant->state_derivative_output_port(),
-                  accel_sim->get_plant_state_derivative_input_port());
+  std::vector<int> joint_pos_indices;
+  std::vector<int> joint_vel_indices;
+  std::vector<int> ticks_per_revolution;
+  std::map<std::string, int> joint_encoder_resolutions = {
+      {"hip_roll_left", CASSIE_ENC_RES_LOW},
+      {"hip_roll_right", CASSIE_ENC_RES_LOW},
+      {"hip_yaw_left", CASSIE_ENC_RES_LOW},
+      {"hip_yaw_right", CASSIE_ENC_RES_LOW},
+      {"hip_pitch_left", CASSIE_ENC_RES_LOW},
+      {"hip_pitch_right", CASSIE_ENC_RES_LOW},
+      {"knee_left", CASSIE_ENC_RES_LOW},
+      {"knee_right", CASSIE_ENC_RES_LOW},
+      {"knee_joint_left", CASSIE_ENC_RES_HIGH},
+      {"knee_joint_right", CASSIE_ENC_RES_HIGH},
+      {"ankle_joint_left", CASSIE_ENC_RES_HIGH},
+      {"ankle_joint_right", CASSIE_ENC_RES_HIGH},
+      {"toe_left", CASSIE_ENC_RES_LOW},
+      {"toe_right", CASSIE_ENC_RES_LOW}};
 
-  return accel_sim;
-}
-drake::systems::sensors::Gyroscope * addSimGyroscope(
-    drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant) {
+  auto pos_map = multibody::makeNameToPositionsMap(plant);
+  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+  for (int i = 0; i < plant.num_joints(); ++i) {
+    auto& joint = plant.get_joint(drake::multibody::JointIndex(i));
+    if (joint_encoder_resolutions.find(joint.name()) !=
+        joint_encoder_resolutions.end()) {
+      joint_pos_indices.push_back(pos_map[joint.name()]);
+      joint_vel_indices.push_back(vel_map[joint.name() + "dot"]);
+      ticks_per_revolution.push_back(
+          joint_encoder_resolutions.at(joint.name()));
+    }
+  }
 
-  std::shared_ptr< RigidBodyFrame<double> > imu_frame_ptr =
-      plant->get_rigid_body_tree().findFrame("imu frame");
+  const auto& encoders = builder->AddSystem<CassieEncoder>(
+      plant, joint_pos_indices, joint_vel_indices, ticks_per_revolution);
 
-  auto gyro_sim = builder.AddSystem<drake::systems::sensors::Gyroscope>(
-                    "Simulated Gyroscope",
-                    *imu_frame_ptr, plant->get_rigid_body_tree());
-  builder.Connect(plant->state_output_port(), gyro_sim->get_input_port());
-
-  return gyro_sim;
-}
-systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
-    drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant,
-    SubvectorPassThrough<double> * passthrough,
-    drake::systems::sensors::Accelerometer * accel_sim,
-    drake::systems::sensors::Gyroscope * gyro_sim) {
-  auto cassie_sensor_aggregator =
-    builder.AddSystem<systems::SimCassieSensorAggregator>(
-      plant->get_rigid_body_tree());
-  builder.Connect(passthrough->get_output_port(),
-                  cassie_sensor_aggregator->get_input_port_input());
-  builder.Connect(plant->state_output_port(),
-                  cassie_sensor_aggregator->get_input_port_state());
-  builder.Connect(accel_sim->get_output_port(),
-                  cassie_sensor_aggregator->get_input_port_acce());
-  builder.Connect(gyro_sim->get_output_port(),
-                  cassie_sensor_aggregator->get_input_port_gyro());
-  return cassie_sensor_aggregator;
-}
-systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
-    drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant,
-    SubvectorPassThrough<double> * passthrough) {
-
-  auto accel_sim = addSimAccelerometer(builder, plant);
-  auto gyro_sim = addSimGyroscope(builder, plant);
-  auto cassie_sensor_aggregator = addSimCassieSensorAggregator(
-                                    builder, plant, passthrough,
-                                    accel_sim, gyro_sim);
-
-  return cassie_sensor_aggregator;
+  auto sensor_aggregator =
+      builder->AddSystem<systems::SimCassieSensorAggregator>(plant);
+  builder->Connect(actuation_port, sensor_aggregator->get_input_port_input());
+  builder->Connect(plant.get_state_output_port(), encoders->get_input_port());
+  builder->Connect(encoders->get_output_port(),
+                   sensor_aggregator->get_input_port_state());
+  builder->Connect(accelerometer.get_measurement_output_port(),
+                   sensor_aggregator->get_input_port_acce());
+  builder->Connect(gyroscope.get_measurement_output_port(),
+                   sensor_aggregator->get_input_port_gyro());
+  return *sensor_aggregator;
 }
 
-template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> RightToeFront(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> LeftToeRear(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> RightToeRear(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToeFront(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToeFront(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToeRear(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToeRear(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> LeftRodOnThigh(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> RightRodOnThigh(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> LeftRodOnHeel(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> RightRodOnHeel(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftRodOnThigh(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightRodOnThigh(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftRodOnHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightRodOnHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template multibody::DistanceEvaluator<double> LeftLoopClosureEvaluator(const MultibodyPlant<double>& plant);  // NOLINT
-template multibody::DistanceEvaluator<double> RightLoopClosureEvaluator(const MultibodyPlant<double>& plant);  // NOLINT
-template multibody::DistanceEvaluator<AutoDiffXd> LeftLoopClosureEvaluator(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template multibody::DistanceEvaluator<AutoDiffXd> RightLoopClosureEvaluator(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-} // namespace dairlib
+template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightToeFront(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftToeRear(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightToeRear(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToeFront(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToeFront(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToeRear(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToeRear(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftRodOnThigh(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightRodOnThigh(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftRodOnHeel(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightRodOnHeel(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftRodOnThigh(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightRodOnThigh(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftRodOnHeel(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightRodOnHeel(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template multibody::DistanceEvaluator<double> LeftLoopClosureEvaluator(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template multibody::DistanceEvaluator<double> RightLoopClosureEvaluator(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template multibody::DistanceEvaluator<AutoDiffXd> LeftLoopClosureEvaluator(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template multibody::DistanceEvaluator<AutoDiffXd> RightLoopClosureEvaluator(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+}  // namespace dairlib

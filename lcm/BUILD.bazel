@@ -13,12 +13,35 @@ cc_binary(
 )
 
 cc_library(
+    name = "trajectory_saver",
+    deps = [
+        "//lcm:dircon_trajectory_saver",
+        "//lcm:lcm_trajectory_saver",
+    ],
+)
+
+cc_library(
     name = "lcm_trajectory_saver",
     srcs = ["lcm_trajectory.cc"],
     hdrs = ["lcm_trajectory.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//systems/lcm",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "dircon_trajectory_saver",
+    srcs = ["dircon_saved_trajectory.cc"],
+    hdrs = ["dircon_saved_trajectory.h"],
+    deps = [
+        ":lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/trajectory_optimization/dircon",
+        "@drake//common/trajectories",
         "@lcm",
     ],
 )

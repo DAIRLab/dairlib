@@ -1,5 +1,6 @@
 #pragma once
 
+#include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "solvers/nonlinear_constraint.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -79,28 +80,6 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
   std::unique_ptr<drake::systems::Context<T>> context_;
-};
-
-template <typename T>
-class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
- public:
-  /// This constructor takes a shared_ptr<Context> as an argument to share
-  /// cached kinematic/dynamic computation within the context.
-  /// If a context pointer is not provided, will create a new context.
-  KinematicPositionConstraint(
-      const drake::multibody::MultibodyPlant<T>& plant,
-      const KinematicEvaluatorSet<T>& evaluators,
-      drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "kinematic position");
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-                                  drake::VectorX<T>* y) const;
-
- private:
-  const drake::multibody::MultibodyPlant<T>& plant_;
-  const KinematicEvaluatorSet<T>& evaluators_;
-  drake::systems::Context<T>* context_;
-  std::unique_ptr<drake::systems::Context<T>> owned_context_;
 };
 
 template <typename T>

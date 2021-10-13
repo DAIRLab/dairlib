@@ -21,7 +21,6 @@ cc_library(
     hdrs = ["pd_config_lcm.h"],
     deps = [
         ":controllers",
-        "//attic/multibody:utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
@@ -84,18 +83,6 @@ cc_library(
 )
 
 cc_test(
-    name = "pd_config_lcm_test",
-    size = "small",
-    srcs = ["test/pd_config_lcm_test.cc"],
-    deps = [
-        ":pd_config_lcm",
-        "//examples/Cassie:cassie_urdf",
-        "@drake//:drake_shared_library",
-        "@gtest//:main",
-    ],
-)
-
-cc_test(
     name = "affine_controller_test",
     size = "small",
     srcs = [
@@ -118,6 +105,16 @@ cc_library(
 )
 
 cc_library(
+    name = "fsm_event_time",
+    srcs = ["fsm_event_time.cc"],
+    hdrs = ["fsm_event_time.h"],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "lipm_traj_gen",
     srcs = ["lipm_traj_gen.cc"],
     hdrs = ["lipm_traj_gen.h"],
@@ -130,9 +127,9 @@ cc_library(
 )
 
 cc_library(
-    name = "cp_traj_gen",
-    srcs = ["cp_traj_gen.cc"],
-    hdrs = ["cp_traj_gen.h"],
+    name = "swing_ft_traj_gen",
+    srcs = ["swing_ft_traj_gen.cc"],
+    hdrs = ["swing_ft_traj_gen.h"],
     deps = [
         ":control_utils",
         "//multibody:utils",

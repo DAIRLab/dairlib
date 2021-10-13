@@ -27,14 +27,19 @@ ConstrainedLQRController::ConstrainedLQRController(
       num_forces_(evaluators.count_full()) {
   // Input port that takes in an OutputVector containing the current Cassie
   // state
-  input_port_info_index_ = this->DeclareVectorInputPort(
-      OutputVector<double>(plant_.num_positions(),
-          plant_.num_velocities(), plant_.num_actuators())).get_index();
+  input_port_info_index_ =
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant_.num_positions(),
+                                                        plant_.num_velocities(),
+                                                        plant_.num_actuators()))
+          .get_index();
 
   // Output port that outputs the efforts
-  output_port_efforts_index_ = this->DeclareVectorOutputPort(
-      TimestampedVector<double>(plant_.num_actuators()),
-          &ConstrainedLQRController::CalcControl).get_index();
+  output_port_efforts_index_ =
+      this->DeclareVectorOutputPort(
+              "u, t", TimestampedVector<double>(plant_.num_actuators()),
+              &ConstrainedLQRController::CalcControl)
+          .get_index();
 
   // checking the validity of the dimensions of the parameters
   DRAKE_DEMAND(lambda.size() == num_forces_);
@@ -117,7 +122,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   AutoDiffVecXd u_ad = xu_ad.segment(plant_.num_positions()
       + plant_.num_velocities(), plant_.num_actuators());
 
-  auto context_ad = multibody::createContext(plant_, x_ad, u_ad);
+  auto context_ad = multibody::createContext<AutoDiffXd>(plant_, x_ad, u_ad);
 
   AutoDiffVecXd xdot = evaluators_.CalcTimeDerivatives(*context_ad);
 

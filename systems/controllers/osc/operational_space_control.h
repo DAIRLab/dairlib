@@ -1,12 +1,16 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
+
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "dairlib/lcmt_osc_output.hpp"
+#include "dairlib/lcmt_osc_qp_output.hpp"
+
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram.h"
@@ -14,7 +18,9 @@
 #include "drake/systems/framework/leaf_system.h"
 
 #include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
+#include "solvers/fast_osqp_solver.h"
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
@@ -32,7 +38,9 @@ namespace dairlib::systems::controllers {
 ///    plant does not have spring, then plant_w_spr and plant_wo_spr should
 ///    refer to the same plant.
 ///  - `plant_wo_spr` a MultibodyPlant without springs
-///  - `used_with_finite_state_machine` a flag indicating whehter using osc with
+///  - `context_w_spr` a pointer to Context for plant_w_spr
+///  - `context_wo_spr` a pointer to Context for plant_wo_spr
+///  - `used_with_finite_state_machine` a flag indicating whether using osc with
 ///    finite state machine or not
 /// The springs here refer to the compliant components in the robots.
 
@@ -89,8 +97,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   OperationalSpaceControl(
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      drake::systems::Context<double>* context_w_spr,
+      drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true,
-      bool print_tracking_info = false);
+      bool print_tracking_info = false, double qp_time_limit=0);
 
   const drake::systems::OutputPort<double>& get_osc_output_port() const {
     return this->get_output_port(osc_output_port_);
@@ -106,9 +116,17 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
     return this->get_input_port(fsm_port_);
   }
+  const drake::systems::InputPort<double>& get_near_impact_input_port() const {
+    return this->get_input_port(near_impact_port_);
+  }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
       const std::string& name) const {
-    return this->get_input_port(traj_name_to_port_index_map_.at(name));
+    try {
+      return this->get_input_port(traj_name_to_port_index_map_.at(name));
+    } catch (std::exception& e) {
+      std::cerr << "Cannot find tracking data named: " << name << std::endl;
+    }
+    return this->get_input_port(0);
   }
 
   // Cost methods
@@ -158,7 +176,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           const Eigen::VectorXd& x_wo_spr,
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,
-                          double time_since_last_state_switch) const;
+                          double time_since_last_state_switch, double alpha,
+                          int next_fsm_state) const;
+
+  void UpdateImpactInvariantProjection(
+      const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context, double t, int fsm_state,
+      int next_fsm_state, const Eigen::MatrixXd& M,
+      const Eigen::MatrixXd& J_h) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -177,6 +202,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int osc_output_port_;
   int state_port_;
   int fsm_port_;
+  int near_impact_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;
@@ -193,18 +219,19 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
 
+  // MBP context's
+  drake::systems::Context<double>* context_w_spr_;
+  drake::systems::Context<double>* context_wo_spr_;
+
   // World frames
   const drake::multibody::BodyFrame<double>& world_w_spr_;
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
-
-  // MBP context's
-  std::unique_ptr<drake::systems::Context<double>> context_w_spr_;
-  std::unique_ptr<drake::systems::Context<double>> context_wo_spr_;
 
   // Size of position, velocity and input of the MBP without spring
   int n_q_;
   int n_v_;
   int n_u_;
+  int n_revolute_joints_;
 
   // Size of holonomic constraint and total/active contact constraints
   int n_h_;
@@ -217,6 +244,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // robot input limits
   Eigen::VectorXd u_min_;
   Eigen::VectorXd u_max_;
+
+  // robot joint limits
+  Eigen::VectorXd q_min_;
+  Eigen::VectorXd q_max_;
+
+  // robot joint limits
+  Eigen::MatrixXd K_joint_pos;
+  Eigen::MatrixXd K_joint_vel;
 
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
@@ -241,6 +276,19 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+  std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
+
+  // OSC solution
+  std::unique_ptr<Eigen::VectorXd> dv_sol_;
+  std::unique_ptr<Eigen::VectorXd> u_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
+  std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
+  mutable double solve_time_;
+
+  mutable Eigen::VectorXd ii_lambda_sol_;
+  mutable Eigen::MatrixXd M_Jt_;
+  std::map<int, int> active_contact_dim_ = {};
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user
@@ -254,6 +302,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
+
+  // Joint limit penalty
+  Eigen::VectorXd w_joint_limit_;
 
   // Map finite state machine state to its active contact indices
   std::map<int, std::set<int>> contact_indices_map_ = {};
@@ -274,6 +325,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // We only apply the control when t_s <= t <= t_e
   std::vector<double> t_s_vec_;
   std::vector<double> t_e_vec_;
+
+  // Maximum time limit for each QP solve
+  const double qp_time_limit_;
+
+  std::unique_ptr<solvers::FastOsqpSolver> solver_;
+  drake::solvers::SolverOptions solver_options_;
 };
 
 }  // namespace dairlib::systems::controllers

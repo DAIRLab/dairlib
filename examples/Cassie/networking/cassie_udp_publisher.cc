@@ -21,7 +21,7 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
       double publish_period)
     : address_(address),
       port_(port),
-      serializer_(std::move(std::make_unique<CassieUDPInSerializer>())) {
+      serializer_(std::make_unique<CassieUDPInSerializer>()) {
   DRAKE_DEMAND(publish_period >= 0.0);
   DRAKE_DEMAND(!publish_triggers.empty());
 

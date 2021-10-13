@@ -1,6 +1,7 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 
 #include <math.h>
+
 #include <string>
 
 #include "multibody/multibody_utils.h"
@@ -27,26 +28,26 @@ namespace cassie {
 namespace osc {
 
 HeadingTrajGenerator::HeadingTrajGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant)
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* context)
     : plant_(plant),
+      context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
   des_yaw_port_ =
-      this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("pelvis_yaw", BasicVector<double>(1)).get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
-  this->DeclareAbstractOutputPort("heading_traj", traj_inst,
+  this->DeclareAbstractOutputPort("pelvis_quat", traj_inst,
                                   &HeadingTrajGenerator::CalcHeadingTraj);
-
-  // Create context
-  context_ = plant_.CreateDefaultContext();
 }
 
 void HeadingTrajGenerator::CalcHeadingTraj(
@@ -62,7 +63,7 @@ void HeadingTrajGenerator::CalcHeadingTraj(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q = robotOutput->GetPositions();
 
-  plant_.SetPositions(context_.get(), q);
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   // Get approximated heading angle of pelvis
   Vector3d pelvis_heading_vec =
@@ -91,7 +92,7 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   const auto pp = PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
 
   // Assign traj
-  PiecewisePolynomial<double>* pp_traj =
+  auto* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   *pp_traj = pp;

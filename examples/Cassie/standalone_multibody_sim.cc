@@ -2,8 +2,7 @@
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
-#include "drake/multibody/joints/floating_base_types.h"
-#include "drake/geometry/geometry_visualization.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -15,13 +14,14 @@
 #include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {
-using drake::systems::DiagramBuilder;
-using drake::geometry::SceneGraph;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::HalfSpace;
+using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
-using drake::systems::Simulator;
 using drake::multibody::RevoluteJoint;
+using drake::systems::Context;
+using drake::systems::DiagramBuilder;
+using drake::systems::Simulator;
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -79,7 +79,8 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
 
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+
   auto diagram = builder.Build();
 
 

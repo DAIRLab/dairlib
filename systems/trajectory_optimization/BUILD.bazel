@@ -6,13 +6,11 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "dircon",
     srcs = [
-        #        "dircon.cc",
         "dircon_opt_constraints.cc",
         "dircon_options.cc",
         "hybrid_dircon.cc",
     ],
     hdrs = [
-        #        "dircon.h",
         "dircon_opt_constraints.h",
         "dircon_options.h",
         "hybrid_dircon.h",
@@ -21,7 +19,7 @@ cc_library(
         ":dircon_kinematic_data",
         "//solvers:optimization_utils",
         "//solvers:nonlinear_constraint",
-        "//systems/goldilocks_models",
+        "//common",
         "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",
     ],
@@ -53,6 +51,7 @@ cc_binary(
     data = ["@drake//examples/acrobot:models"],
     deps = [
         "//common",
+        "//multibody:visualization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"
 
 namespace dairlib {
@@ -8,7 +9,7 @@ namespace multibody {
 
 /// Virtual class to represent arbitrary kinematic evaluations
 /// Evaluations are defined by some function phi(q). Implementations
-/// must generate phi(q), J(q) (the Jacboian w.r.t. velocities v), 
+/// must generate phi(q), J(q) (the Jacobian w.r.t. velocities v),
 /// and [d/dt J] * v
 ///
 /// Evaluations call also be classified as "active" or "inactive." Inactive
@@ -28,11 +29,12 @@ template <typename T>
 class KinematicEvaluator {
  public:
   explicit KinematicEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
-      int length);  
+      int length);
+
+  virtual ~KinematicEvaluator() = default;
 
   /// Evaluates phi(q), limited only to active rows
-  drake::VectorX<T> EvalActive(
-      const drake::systems::Context<T>& context) const;
+  drake::VectorX<T> EvalActive(const drake::systems::Context<T>& context) const;
 
   /// Evaluates the time-derivative, d/dt phi(q), limited only to active rows
   drake::VectorX<T> EvalActiveTimeDerivative(
@@ -60,8 +62,12 @@ class KinematicEvaluator {
 
   /// Evaluates the Jacobian w.r.t. velocity v (not qdot)
   /// TODO (posa): could add an option to compute w.r.t. q
-  virtual drake::MatrixX<T> EvalFullJacobian(
-      const drake::systems::Context<T>& context) const = 0;
+  virtual void EvalFullJacobian(const drake::systems::Context<T>& context,
+                                drake::EigenPtr<drake::MatrixX<T>> J) const = 0;
+
+  /// Evaluates the Jacobian w.r.t. velocity v
+  drake::MatrixX<T> EvalFullJacobian(
+      const drake::systems::Context<T>& context) const;
 
   /// Evaluates Jdot * v, useful for computing constraint second derivative,
   ///  which would be d^2 phi/dt^2 = J * vdot + Jdot * v
@@ -72,17 +78,43 @@ class KinematicEvaluator {
 
   const std::vector<int>& active_inds() const;
 
-  int num_full() const {
-    return length_;
-  }
+  int num_full() const { return length_; }
 
-  int num_active() const {
-    return num_active_;
-  }
+  int num_active() const { return num_active_; }
 
-  const drake::multibody::MultibodyPlant<T>& plant() const {
-    return plant_;
-  }
+  const drake::multibody::MultibodyPlant<T>& plant() const { return plant_; }
+
+  const std::vector<int>& active_inds() { return active_inds_; };
+
+  bool is_active(int index) const;
+
+  /// Convert an index, relative to the full index set, to be an active index.
+  /// Returns -1 if the given index is not active
+  int full_index_to_active_index(int full_index) const;
+
+  /// Create friction cone constraints on the force variables (associated with
+  /// the full Jacobian). Subclasses which might be associated with frictional
+  /// contact should implement this method.
+  /// This method returns a vector of constraints, should the friction
+  /// constraint be more naturally represented by mixed constraint types.
+  virtual std::vector<std::shared_ptr<drake::solvers::Constraint>>
+  CreateConicFrictionConstraints() const {
+    return std::vector<std::shared_ptr<drake::solvers::Constraint>>();
+  };
+
+  /// Create friction cone constraints on the force variables (associated with
+  /// the full Jacobian). Subclasses which might be associated with frictional
+  /// contact should implement this method.
+  /// This method returns a vector of constraints, should the friction
+  /// constraint be more naturally represented by mixed constraint types.
+  virtual std::vector<std::shared_ptr<drake::solvers::Constraint>>
+  CreateLinearFrictionConstraints(int num_faces = 8) const {
+    return std::vector<std::shared_ptr<drake::solvers::Constraint>>();
+  };
+
+  void set_mu(double mu) { mu_ = mu; };
+
+  double mu() const { return mu_; };
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
@@ -90,6 +122,7 @@ class KinematicEvaluator {
   int length_;
   std::vector<int> active_inds_;
   bool all_active_default_order_;
+  double mu_ = 0;
 };
 
 }  // namespace multibody

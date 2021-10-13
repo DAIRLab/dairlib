@@ -1,21 +1,25 @@
 #pragma once
 
-#include <string>
-#include <map>
-#include <vector>
 #include <fstream>
+#include <map>
 #include <memory>
+#include <string>
+#include <vector>
 
-#include "drake/multibody/plant/multibody_plant.h"
-#include "drake/systems/framework/leaf_system.h"
-#include "src/InEKF.h"
+#include <drake/lcmt_contact_results_for_viz.hpp>
 
+#include "dairlib/lcmt_contact.hpp"
+#include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/datatypes/cassie_out_t.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
+#include "src/InEKF.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
-#include "examples/Cassie/datatypes/cassie_out_t.h"
-#include "examples/Cassie/cassie_utils.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
+
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -59,47 +63,72 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
       bool test_with_ground_truth_state = false,
-      bool print_info_to_terminal = false, int hardware_test_mode = -1);
+      bool print_info_to_terminal = false, int hardware_test_mode = -1, double contact_force_threshold = 60);
+
+  const drake::systems::OutputPort<double>& get_robot_output_port() const {
+    return this->get_output_port(estimated_state_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_contact_output_port() const {
+    return this->get_output_port(contact_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_gm_contact_output_port() const {
+    return this->get_output_port(contact_forces_output_port_);
+  }
+
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
 
-  /// UpdateContactEstimationCosts() updates the optimal costs of the quadratic
-  /// programs, and EstimateContactForEkf() and EstimateContactForController()
+  /// EstimateContactFromSprings() and EstimateContactForController()
   /// estimate the ground contacts based on the optimal costs and spring
   /// deflections.
-  /// Estimation from EstimateContactForEkf() is more conservative compared to
+  /// Estimation from EstimateContactFromSprings() is more conservative compared to
   /// EstimateContactForController(). See the cc file for more detail.
   /// The methods are set to be public in order to unit test them.
-  void UpdateContactEstimationCosts(
-      const systems::OutputVector<double>& output, const double& dt,
-      drake::systems::DiscreteValues<double>* discrete_state,
-      std::vector<double>* optimal_cost) const;
-  void EstimateContactForEkf(
-      const systems::OutputVector<double>& output,
-      const std::vector<double>&  optimal_cost,
-      int* left_contact, int* right_contact) const;
-  void EstimateContactForController(
-      const systems::OutputVector<double>& output,
-      const std::vector<double>&  optimal_cost,
-      int* left_contact, int* right_contact) const;
 
-  void setPreviousTime(drake::systems::Context<double>* context, double time);
+  void EstimateContactFromSprings(const systems::OutputVector<double>& output,
+                             double* left_contact, double* right_contact) const;
+  void EstimateContactForController(const systems::OutputVector<double>& output,
+                                    int* left_contact,
+                                    int* right_contact) const;
+  void EstimateContactForces(const drake::systems::Context<double>& context,
+                             const systems::OutputVector<double>& output,
+                             Eigen::VectorXd& lambda, double* left_contact,
+                             double* right_contact) const;
+
+  // Setters for initial values
+  void setPreviousTime(drake::systems::Context<double>* context,
+                       double time) const;
   void setInitialPelvisPose(drake::systems::Context<double>* context,
                             Eigen::Vector4d quat,
-                            Eigen::Vector3d position);
+                            Eigen::Vector3d position) const;
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
-                                 const Eigen::VectorXd& imu_value);
+                                 const Eigen::VectorXd& imu_value) const;
+
+  // Copy joint state from cassie_out_t to an OutputVector
+  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
+      systems::OutputVector<double>* output) const;
+
+  // Currently, `DoCalcNextUpdateTime` seems to be the only gateway of adding
+  // kTimed events
+  void DoCalcNextUpdateTime(
+      const drake::systems::Context<double>& context,
+      drake::systems::CompositeEventCollection<double>* events,
+      double* time) const final;
+
+  // Set the time of the next received message. Is used to trigger update
+  // events.
+  // Note that the real trigger/update time is `next_message_time_ - eps`,
+  // because we want the discrete update to happen before Publish
+  void set_next_message_time(double t) { next_message_time_ = t; };
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
   void AssignActuationFeedbackToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
-  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
   void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
       systems::OutputVector<double>* output) const;
-
 
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,
@@ -107,6 +136,11 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
 
   void CopyStateOut(const drake::systems::Context<double>& context,
                     systems::OutputVector<double>* output) const;
+  void CopyContact(const drake::systems::Context<double>& context,
+                   dairlib::lcmt_contact* contact_msg) const;
+  void CopyEstimatedContactForces(
+      const drake::systems::Context<double>& context,
+      drake::lcmt_contact_results_for_viz* contact_msg) const;
 
   int n_q_;
   int n_v_;
@@ -128,10 +162,14 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   std::vector<const drake::multibody::Frame<double>*> toe_frames_;
   const drake::multibody::Frame<double>& pelvis_frame_;
   const drake::multibody::Body<double>& pelvis_;
+  std::vector<Eigen::MatrixXd> joint_selection_matrices;
 
   // Input/output port indices
   int cassie_out_input_port_;
   int state_input_port_;
+  int estimated_state_output_port_;
+  int contact_output_port_;
+  int contact_forces_output_port_;
 
   // Below are indices of system states:
   // A state which stores previous timestamp
@@ -140,15 +178,11 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::AbstractStateIndex ekf_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;
+  drake::systems::DiscreteStateIndex contact_idx_;
+  drake::systems::DiscreteStateIndex contact_forces_idx_;
   // A state related to contact estimation
   // This state store the previous generalized velocity
   drake::systems::DiscreteStateIndex previous_velocity_idx_;
-  // States related to contact estimation
-  // The states stores the filtered difference between predicted acceleration
-  // and measured acceleration (derived by finite differencing)
-  drake::systems::DiscreteStateIndex filtered_residual_double_idx_;
-  drake::systems::DiscreteStateIndex filtered_residual_left_idx_;
-  drake::systems::DiscreteStateIndex filtered_residual_right_idx_;
 
   // Cassie parameters
   std::vector<
@@ -178,51 +212,28 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   //     Heel ~???
   //          https://drive.google.com/file/d/1o7QS4ZksU91EBIpwtNnKpunob93BKiX_
   //          https://drive.google.com/file/d/1mlDzi0fa-YHopeRHaa-z88fPGuI2Aziv
-  const double cost_threshold_ctrl_ = 200;
-  const double cost_threshold_ekf_ = 200;
   const double knee_spring_threshold_ctrl_ = -0.015;
   const double knee_spring_threshold_ekf_ = -0.015;
-  const double heel_spring_threshold_ctrl_ = -0.03;
-  const double heel_spring_threshold_ekf_ = -0.015;
-  const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
+  const double heel_spring_threshold_ctrl_ = -0.01;
+  const double heel_spring_threshold_ekf_ = -0.01;
   const double w_soft_constraint_ = 100;  // Soft constraint cost
-  const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration
-                              // residual. 0 < alpha_ < 1. The bigger alpha_ is,
-                              // the higher the cut-off frequency is.
-  // Contact Estimation - Quadratic Programing
-  // MathematicalProgram
-  std::unique_ptr<drake::solvers::MathematicalProgram> quadprog_;
-  // Variable dimensions
-  int n_b_;
-  int n_cl_;
-  int n_cl_active_;
-  int n_cr_;
-  int n_cr_active_;
-  // Cost and constraints (Bindings)
-  drake::solvers::LinearEqualityConstraint* fourbar_constraint_;
-  drake::solvers::LinearEqualityConstraint* left_contact_constraint_;
-  drake::solvers::LinearEqualityConstraint* right_contact_constraint_;
-  drake::solvers::LinearEqualityConstraint* imu_accel_constraint_;
-  drake::solvers::QuadraticCost* quadcost_eom_;
-  drake::solvers::QuadraticCost* quadcost_eps_cl_;
-  drake::solvers::QuadraticCost* quadcost_eps_cr_;
-  drake::solvers::QuadraticCost* quadcost_eps_imu_;
-  // Decision variables
-  drake::solvers::VectorXDecisionVariable ddq_;
-  drake::solvers::VectorXDecisionVariable lambda_b_;
-  drake::solvers::VectorXDecisionVariable lambda_cl_;
-  drake::solvers::VectorXDecisionVariable lambda_cr_;
-  drake::solvers::VectorXDecisionVariable eps_cl_;
-  drake::solvers::VectorXDecisionVariable eps_cr_;
-  drake::solvers::VectorXDecisionVariable eps_imu_;
+  const double contact_force_threshold_;  // Soft constraint cost
 
   // flag for testing and tuning
   std::unique_ptr<drake::systems::Context<double>> context_gt_;
   bool test_with_ground_truth_state_;
   bool print_info_to_terminal_;
-  int hardware_test_mode_;
+  mutable int hardware_test_mode_ = 0;
   std::unique_ptr<int> counter_for_testing_ =
       std::make_unique<int>(0);
+
+  // Timestamp from unprocessed message
+  double next_message_time_ = -std::numeric_limits<double>::infinity();
+  double eps_ = 1e-12;
+
+  // Contacts
+  const int num_contacts_ = 2;
+  const std::vector<std::string> contact_names_ = {"left", "right"};
 };
 
 }  // namespace systems

@@ -4,9 +4,7 @@
 #include "systems/framework/timestamped_vector.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/basic_vector.h"
-#include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/multibody/tree/multibody_tree.h"
 
 #include <math.h>
 

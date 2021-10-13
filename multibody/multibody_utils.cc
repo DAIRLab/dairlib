@@ -1,29 +1,57 @@
-#include <vector>
-#include <set>
 #include "multibody/multibody_utils.h"
+
+#include <set>
+#include <vector>
+
 #include "drake/common/drake_assert.h"
+#include "drake/math/autodiff_gradient.h"
 
 namespace dairlib {
 namespace multibody {
 
+using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
+using drake::VectorX;
+using drake::geometry::HalfSpace;
+using drake::geometry::SceneGraph;
+using drake::math::autoDiffToGradientMatrix;
+using drake::math::autoDiffToValueMatrix;
+using drake::multibody::JointActuatorIndex;
+using drake::multibody::JointIndex;
+using drake::multibody::MultibodyPlant;
+using drake::systems::Context;
+using Eigen::VectorXd;
 using std::map;
 using std::string;
 using std::vector;
-using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
-using drake::geometry::SceneGraph;
-using drake::geometry::HalfSpace;
-using drake::multibody::JointIndex;
-using drake::multibody::JointActuatorIndex;
-using Eigen::VectorXd;
-using drake::VectorX;
-using drake::AutoDiffXd;
+
+bool AreVectorsEqual(const Eigen::Ref<const AutoDiffVecXd>& a,
+                     const Eigen::Ref<const AutoDiffVecXd>& b) {
+  if (a.rows() != b.rows()) {
+    return false;
+  }
+  if (autoDiffToValueMatrix(a) != autoDiffToValueMatrix(b)) {
+    return false;
+  }
+  const Eigen::MatrixXd a_gradient = autoDiffToGradientMatrix(a);
+  const Eigen::MatrixXd b_gradient = autoDiffToGradientMatrix(b);
+  if (a_gradient.rows() != b_gradient.rows() ||
+      a_gradient.cols() != b_gradient.cols()) {
+    return false;
+  }
+  return a_gradient == b_gradient;
+}
+
+bool AreVectorsEqual(const Eigen::Ref<const VectorXd>& a,
+                     const Eigen::Ref<const VectorXd>& b) {
+  return a == b;
+}
 
 template <typename T>
 VectorX<T> getInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
   if (plant.num_actuators() > 0) {
-    VectorX<T> input = plant.EvalEigenVectorInput(context,
-        plant.get_actuation_input_port().get_index());
+    VectorX<T> input = plant.EvalEigenVectorInput(
+        context, plant.get_actuation_input_port().get_index());
     return input;
   } else {
     return VectorX<T>(0);
@@ -31,28 +59,66 @@ VectorX<T> getInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
 }
 
 template <typename T>
-std::unique_ptr<Context<T>> createContext(const MultibodyPlant<T>& plant,
-    const VectorX<T>& state, const VectorX<T>& input) {
+std::unique_ptr<Context<T>> createContext(
+    const MultibodyPlant<T>& plant, const Eigen::Ref<const VectorX<T>>& state,
+    const Eigen::Ref<const VectorX<T>>& input) {
   auto context = plant.CreateDefaultContext();
   plant.SetPositionsAndVelocities(context.get(), state);
 
-  context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
-
+  plant.get_actuation_input_port().FixValue(context.get(), input);
   return context;
 }
 
 template <typename T>
 void setContext(const MultibodyPlant<T>& plant,
-    const VectorX<T>& state, const VectorX<T>& input, Context<T>* context) {
-  plant.SetPositionsAndVelocities(context, state);
-
-  context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
+                const Eigen::Ref<const VectorX<T>>& state,
+                const Eigen::Ref<const VectorX<T>>& input,
+                Context<T>* context) {
+  SetPositionsIfNew<T>(plant, state.head(plant.num_positions()), context);
+  SetVelocitiesIfNew<T>(plant, state.tail(plant.num_velocities()), context);
+  SetInputsIfNew<T>(plant, input, context);
 }
 
+template <typename T>
+void SetPositionsAndVelocitiesIfNew(const MultibodyPlant<T>& plant,
+                                    const Eigen::Ref<const VectorX<T>>& x,
+                                    Context<T>* context) {
+  SetPositionsIfNew<T>(plant, x.head(plant.num_positions()), context);
+  SetVelocitiesIfNew<T>(plant, x.tail(plant.num_velocities()), context);
+}
+
+template <typename T>
+void SetPositionsIfNew(const MultibodyPlant<T>& plant,
+                       const Eigen::Ref<const VectorX<T>>& q,
+                       Context<T>* context) {
+  if (!AreVectorsEqual(q, plant.GetPositions(*context))) {
+    plant.SetPositions(context, q);
+  }
+}
+
+template <typename T>
+void SetVelocitiesIfNew(const MultibodyPlant<T>& plant,
+                        const Eigen::Ref<const VectorX<T>>& v,
+                        Context<T>* context) {
+  if (!AreVectorsEqual(v, plant.GetVelocities(*context))) {
+    plant.SetVelocities(context, v);
+  }
+}
+
+template <typename T>
+void SetInputsIfNew(const MultibodyPlant<T>& plant,
+                    const Eigen::Ref<const VectorX<T>>& u,
+                    Context<T>* context) {
+  if (!plant.get_actuation_input_port().HasValue(*context) ||
+      !AreVectorsEqual(u, plant.get_actuation_input_port().Eval(*context))) {
+    plant.get_actuation_input_port().FixValue(context, u);
+  }
+}
 
 template <typename T>
 void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
-                double mu_static, double mu_kinetic, Eigen::Vector3d normal_W) {
+                    double mu_static, double mu_kinetic,
+                    Eigen::Vector3d normal_W) {
   if (!plant->geometry_source_is_registered()) {
     plant->RegisterAsSourceForSceneGraph(scene_graph);
   }
@@ -64,12 +130,12 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
   const drake::math::RigidTransformd X_WG(
       HalfSpace::MakePose(normal_W, point_W));
 
-  plant->RegisterCollisionGeometry(
-      plant->world_body(), X_WG, HalfSpace(), "collision", friction);
+  plant->RegisterCollisionGeometry(plant->world_body(), X_WG, HalfSpace(),
+                                   "collision", friction);
 
   // Add visual for the ground.
-  plant->RegisterVisualGeometry(
-      plant->world_body(), X_WG, HalfSpace(), "visual");
+  plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
+                                "visual");
 }
 
 /// Construct a map between joint names and position indices
@@ -86,7 +152,7 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<T>& plant) {
     auto name = joint.name();
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
-      std::vector<JointIndex> index_vector {i};
+      std::vector<JointIndex> index_vector{i};
       auto selectorMatrix = plant.MakeStateSelectorMatrix(index_vector);
       // find index and add
       int selector_index = -1;
@@ -111,13 +177,13 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<T>& plant) {
   // TODO: once RBT fully deprecated, this block can likely be removed, using
   // default coordinate names from Drake.
   auto floating_bodies = plant.GetFloatingBaseBodies();
-  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);  
+  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
     DRAKE_ASSERT(body.has_quaternion_dofs());
     int start = body.floating_positions_start();
     // should be body.name() once RBT is deprecated
-    std::string name = "base";  
+    std::string name = "base";
     name_to_index_map[name + "_qw"] = start;
     name_to_index_map[name + "_qx"] = start + 1;
     name_to_index_map[name + "_qy"] = start + 2;
@@ -158,7 +224,7 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
     auto name = joint.name() + "dot";
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
-      std::vector<JointIndex> index_vector {i};
+      std::vector<JointIndex> index_vector{i};
       auto selectorMatrix = plant.MakeStateSelectorMatrix(index_vector);
       // find index and add
       int selector_index = -1;
@@ -218,9 +284,8 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
 
     if (actuator.joint().num_velocities() == 1 &&
         actuator.joint().num_positions() == 1) {
-      std::vector<JointActuatorIndex> index_vector {i};
-      auto selectorMatrix =
-          plant.MakeActuatorSelectorMatrix(index_vector);
+      std::vector<JointActuatorIndex> index_vector{i};
+      auto selectorMatrix = plant.MakeActuatorSelectorMatrix(index_vector);
 
       // find index and add
       int selector_index = -1;
@@ -243,8 +308,11 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
   return name_to_index_map;
 }
 
+template <typename T>
 vector<string> createStateNameVectorFromMap(
-    const map<string, int>& pos_map, const map<string, int>& vel_map) {
+    const MultibodyPlant<T>& plant) {
+  map<string, int> pos_map = makeNameToPositionsMap(plant);
+  map<string, int> vel_map = makeNameToVelocitiesMap(plant);
   vector<string> state_names(pos_map.size() + vel_map.size());
 
   for (const auto& name_index_pair : pos_map) {
@@ -257,8 +325,10 @@ vector<string> createStateNameVectorFromMap(
   return state_names;
 }
 
+template <typename T>
 vector<string> createActuatorNameVectorFromMap(
-    const map<string, int>& act_map) {
+    const MultibodyPlant<T>& plant) {
+  map<string, int> act_map = makeNameToActuatorsMap(plant);
   vector<string> actuator_names(act_map.size());
 
   for (const auto& name_index_pair : act_map) {
@@ -267,8 +337,134 @@ vector<string> createActuatorNameVectorFromMap(
   return actuator_names;
 }
 
-bool JointsWithinLimits(const MultibodyPlant<double>& plant,
-                        VectorXd positions, double tolerance) {
+
+template <typename T>
+Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(
+    const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<T>& plant_wo_spr) {
+  int nq_wo_spr = plant_wo_spr.num_positions();
+  int nv_wo_spr = plant_wo_spr.num_velocities();
+  int nq_w_spr = plant_w_spr.num_positions();
+  int nv_w_spr = plant_w_spr.num_velocities();
+
+  int nx_wo_spr = nq_wo_spr + nv_wo_spr;
+  int nx_w_spr = nq_w_spr + nv_w_spr;
+
+  const std::map<string, int>& pos_map_w_spr =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  const std::map<string, int>& vel_map_w_spr =
+      multibody::makeNameToVelocitiesMap(plant_w_spr);
+  const std::map<string, int>& pos_map_wo_spr =
+      multibody::makeNameToPositionsMap(plant_wo_spr);
+  const std::map<string, int>& vel_map_wo_spr =
+      multibody::makeNameToVelocitiesMap(plant_wo_spr);
+
+  // Initialize the mapping from states for the plant without springs to the
+  // plant with springs. Note: this is a tall matrix
+  Eigen::MatrixXd map_position_from_no_spring_to_spring =
+      Eigen::MatrixXd::Zero(nq_w_spr, nq_wo_spr);
+  Eigen::MatrixXd map_velocity_from_no_spring_to_spring =
+      Eigen::MatrixXd::Zero(nv_w_spr, nv_wo_spr);
+  Eigen::MatrixXd map_state_from_no_spring_to_spring =
+      Eigen::MatrixXd::Zero(nx_w_spr, nx_wo_spr);
+
+  for (const auto& pos_pair_wo_spr : pos_map_wo_spr) {
+    bool successfully_added = false;
+    for (const auto& pos_pair_w_spr : pos_map_w_spr) {
+      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
+        map_position_from_no_spring_to_spring(pos_pair_w_spr.second,
+                                              pos_pair_wo_spr.second) = 1;
+        successfully_added = true;
+      }
+    }
+    DRAKE_DEMAND(successfully_added);
+  }
+
+  for (const auto& vel_pair_wo_spr : vel_map_wo_spr) {
+    bool successfully_added = false;
+    for (const auto& vel_pair_w_spr : vel_map_w_spr) {
+      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
+        map_velocity_from_no_spring_to_spring(vel_pair_w_spr.second,
+                                              vel_pair_wo_spr.second) = 1;
+        successfully_added = true;
+      }
+    }
+    DRAKE_DEMAND(successfully_added);
+  }
+
+  map_state_from_no_spring_to_spring.block(0, 0, nq_w_spr, nq_wo_spr) =
+      map_position_from_no_spring_to_spring;
+  map_state_from_no_spring_to_spring.block(nq_w_spr, nq_wo_spr, nv_w_spr,
+                                           nv_wo_spr) =
+      map_velocity_from_no_spring_to_spring;
+  return map_state_from_no_spring_to_spring;
+}
+
+
+template <typename T>
+Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(
+    const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<T>& plant_wo_spr) {
+  int nq_wo_spr = plant_wo_spr.num_positions();
+  int nv_wo_spr = plant_wo_spr.num_velocities();
+  int nq_w_spr = plant_w_spr.num_positions();
+  int nv_w_spr = plant_w_spr.num_velocities();
+
+  int nx_wo_spr = nq_wo_spr + nv_wo_spr;
+  int nx_w_spr = nq_w_spr + nv_w_spr;
+
+  const std::map<string, int>& pos_map_w_spr =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  const std::map<string, int>& vel_map_w_spr =
+      multibody::makeNameToVelocitiesMap(plant_w_spr);
+  const std::map<string, int>& pos_map_wo_spr =
+      multibody::makeNameToPositionsMap(plant_wo_spr);
+  const std::map<string, int>& vel_map_wo_spr =
+      multibody::makeNameToVelocitiesMap(plant_wo_spr);
+
+  // Initialize the mapping from states for the plant without springs to the
+  // plant with springs. Note: this is a tall matrix
+  Eigen::MatrixXd map_position_from_no_spring_to_spring =
+      Eigen::MatrixXd::Zero(nq_w_spr, nq_wo_spr);
+  Eigen::MatrixXd map_velocity_from_no_spring_to_spring =
+      Eigen::MatrixXd::Zero(nv_w_spr, nv_wo_spr);
+  Eigen::MatrixXd map_state_from_no_spring_to_spring =
+      Eigen::MatrixXd::Zero(nx_w_spr, nx_wo_spr);
+
+  for (const auto& pos_pair_wo_spr : pos_map_wo_spr) {
+    bool successfully_added = false;
+    for (const auto& pos_pair_w_spr : pos_map_w_spr) {
+      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
+        map_position_from_no_spring_to_spring(pos_pair_w_spr.second,
+                                              pos_pair_wo_spr.second) = 1;
+        successfully_added = true;
+      }
+    }
+    DRAKE_DEMAND(successfully_added);
+  }
+
+  for (const auto& vel_pair_wo_spr : vel_map_wo_spr) {
+    bool successfully_added = false;
+    for (const auto& vel_pair_w_spr : vel_map_w_spr) {
+      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
+        map_velocity_from_no_spring_to_spring(vel_pair_w_spr.second,
+                                              vel_pair_wo_spr.second) = 1;
+        successfully_added = true;
+      }
+    }
+    DRAKE_DEMAND(successfully_added);
+  }
+
+  map_state_from_no_spring_to_spring.block(0, 0, nq_w_spr, nq_wo_spr) =
+      map_position_from_no_spring_to_spring;
+  map_state_from_no_spring_to_spring.block(nq_w_spr, nq_wo_spr, nv_w_spr,
+                                           nv_wo_spr) =
+      map_velocity_from_no_spring_to_spring;
+  return map_state_from_no_spring_to_spring;
+}
+
+bool JointsWithinLimits(const MultibodyPlant<double>& plant, VectorXd positions,
+                        double tolerance) {
   VectorXd joint_min = plant.GetPositionLowerLimits();
   VectorXd joint_max = plant.GetPositionUpperLimits();
 
@@ -299,14 +495,15 @@ template <typename T>
 int QuaternionStartIndex(const MultibodyPlant<T>& plant) {
   std::vector<int> quat_start = QuaternionStartIndices(plant);
   if (quat_start.size() > 1) {
-    throw std::runtime_error("Called QuaternionStartIndex(plant) with "
+    throw std::runtime_error(
+        "Called QuaternionStartIndex(plant) with "
         "multiple quaternion floating bases.");
   } else if (quat_start.size() == 0) {
     return -1;
   } else {
     return quat_start.at(0);
   }
-  DRAKE_UNREACHABLE();  
+  DRAKE_UNREACHABLE();
 }
 
 template <typename T>
@@ -326,12 +523,26 @@ template map<string, int> makeNameToVelocitiesMap<double>(const MultibodyPlant<d
 template map<string, int> makeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template vector<string> createStateNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> createStateNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
+template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
-template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const VectorX<double>& state, const VectorX<double>& input);  // NOLINT
-template std::unique_ptr<Context<AutoDiffXd>> createContext(const MultibodyPlant<AutoDiffXd>& plant, const VectorX<AutoDiffXd>& state, const VectorX<AutoDiffXd>& input);  // NOLINT
-template void setContext(const MultibodyPlant<double>& plant, const VectorX<double>& state, const VectorX<double>& input, Context<double>* context);  // NOLINT
-template void setContext(const MultibodyPlant<AutoDiffXd>& plant, const VectorX<AutoDiffXd>& state, const VectorX<AutoDiffXd>& input, Context<AutoDiffXd>* context);  // NOLINT
+template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>& input);  // NOLINT
+template std::unique_ptr<Context<AutoDiffXd>> createContext(const MultibodyPlant<AutoDiffXd>& plant, const Eigen::Ref<const AutoDiffVecXd>& state, const Eigen::Ref<const AutoDiffVecXd>& input);  // NOLINT
+template void setContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>&, Context<double>* context);  // NOLINT
+template void setContext(const MultibodyPlant<AutoDiffXd>& plant, const Eigen::Ref<const AutoDiffVecXd>& state, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>* context);  // NOLINT
+template void SetPositionsAndVelocitiesIfNew(const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>*);  // NOLINT
+template void SetPositionsAndVelocitiesIfNew(const MultibodyPlant<double>&, const Eigen::Ref<const VectorXd>&, Context<double>*);  // NOLINT
+template void SetPositionsIfNew(const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>*);  // NOLINT
+template void SetPositionsIfNew(const MultibodyPlant<double>&, const Eigen::Ref<const VectorXd>&, Context<double>*);  // NOLINT
+template void SetVelocitiesIfNew(const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>*);  // NOLINT
+template void SetVelocitiesIfNew(const MultibodyPlant<double>&, const Eigen::Ref<const VectorXd>&, Context<double>*);  // NOLINT
+template void SetInputsIfNew(const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>*);  // NOLINT
+template void SetInputsIfNew(const MultibodyPlant<double>&, const Eigen::Ref<const VectorXd>&, Context<double>*);  // NOLINT
 }  // namespace multibody
 }  // namespace dairlib

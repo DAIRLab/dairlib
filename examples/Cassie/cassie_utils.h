@@ -1,38 +1,17 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 #include "common/find_resource.h"
+#include "examples/Cassie/sim_cassie_sensor_aggregator.h"
 #include "multibody/kinematic/distance_evaluator.h"
-#include "drake/math/autodiff_gradient.h"
-#include "drake/multibody/joints/revolute_joint.h"
-#include "drake/multibody/parsers/urdf_parser.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/solvers/constraint.h"
-#include "drake/solvers/mathematical_program.h"
-
-#include "drake/multibody/rigid_body_tree_construction.h"
-
-#include "systems/robot_lcm_systems.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/lcm/drake_lcm.h"
-#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/systems/framework/diagram.h"
-#include "systems/primitives/subvector_pass_through.h"
-
-#include "drake/systems/sensors/accelerometer.h"
-#include "drake/systems/sensors/gyroscope.h"
-#include "systems/sensors/sim_cassie_sensor_aggregator.h"
 
 namespace dairlib {
-
-using dairlib::systems::SubvectorPassThrough;
-using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::LcmPublisherSystem;
 
 static constexpr double kCassieAchillesLength = 0.5012;
 
@@ -94,50 +73,15 @@ void addCassieMultibody(
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
     bool add_leaf_springs = true, bool add_loop_closure = true);
 
-/// Construct and create a unique pointer to a RigidBodyTree<double>
-/// These methods are to be used rather that direct construction of the tree
-/// from the URDF to centralize any modeling changes or additions
-std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
-    std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
-    drake::multibody::joints::FloatingBaseType base_type =
-        drake::multibody::joints::kFixed,
-    bool is_with_springs = true);
+/// Add simulated gyroscope and accelerometer along with sensor aggregator,
+/// which creates and publishes a simulated lcmt_cassie_out LCM message.
+/// @param builder The diagram builder
+/// @param plant The Cassie plant
+/// @param actuation_input_port The vector-valued output port containing the
+/// actuation input "u", which will be aggregated.
+const systems::SimCassieSensorAggregator& AddImuAndAggregator(
+    drake::systems::DiagramBuilder<double>* builder,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::OutputPort<double>& actuation_port);
 
-/// Builds the rigid body tree for any Cassie base type
-/// These methods are to be used rather that direct construction of the tree
-/// from the URDF to centralize any modeling changes or additions
-void buildCassieTree(
-    RigidBodyTree<double>& tree,
-    std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
-    drake::multibody::joints::FloatingBaseType base_type =
-        drake::multibody::joints::kFixed,
-    bool is_with_springs = true);
-
-// Add a frame to the pelvis so that we can use it for accelerometer and
-// gyroscope simulation.
-void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree);
-
-/// Add simulated accelerometer to the diagram
-drake::systems::sensors::Accelerometer * addSimAccelerometer(
-    drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant);
-/// Add simulated gyroscope to the diagram
-drake::systems::sensors::Gyroscope * addSimGyroscope(
-    drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant);
-/// Add sensor aggregator
-systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
-    drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant,
-    SubvectorPassThrough<double> * passthrough,
-    drake::systems::sensors::Accelerometer * accel_sim,
-    drake::systems::sensors::Gyroscope * gyro_sim);
-
-/// Add simulated gyroscope and accelerometer and create/publish an
-/// lcmt_cassie_out LCM message.
-systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
-    drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant,
-    SubvectorPassThrough<double> * passthrough);
-
-} // namespace dairlib
+}  // namespace dairlib

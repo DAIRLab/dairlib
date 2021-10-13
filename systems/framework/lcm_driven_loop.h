@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "dairlib/lcmt_controller_switch.hpp"
+
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
@@ -11,8 +13,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/serializer.h"
-
-#include "dairlib/lcmt_controller_switch.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -142,6 +142,12 @@ class LcmDrivenLoop {
                       std::vector<std::string>(1, input_channel), input_channel,
                       "", is_forced_publish){};
 
+  // Getters for diagram and its context
+  drake::systems::Diagram<double>* get_diagram() { return diagram_ptr_; }
+  drake::systems::Context<double>& get_diagram_mutable_context() {
+    return simulator_->get_mutable_context();
+  }
+
   // Start simulating the diagram
   void Simulate(double end_time = std::numeric_limits<double>::infinity()) {
     // Get mutable contexts
@@ -210,7 +216,8 @@ class LcmDrivenLoop {
         }
 
         // Get message time from the active channel to advance
-        time = name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
+        time =
+            name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
 
         // Check if we are very far ahead or behind
         // (likely due to a restart of the driving clock)
@@ -222,6 +229,7 @@ class LcmDrivenLoop {
           std::cout << "Difference is too large, resetting " + diagram_name_ +
                            " time.\n";
           simulator_->get_mutable_context().SetTime(time);
+          simulator_->Initialize();
         }
 
         simulator_->AdvanceTo(time);
@@ -244,6 +252,18 @@ class LcmDrivenLoop {
           active_channel_ = switch_sub_->message().channel;
         } else {
           std::cout << switch_sub_->message().channel << " doesn't exist\n";
+        }
+
+        // Advancing the simulator here ensure that the switch message is
+        // received in the leaf systems without the encountering a race
+        // condition when constructing a separate LcmSubscriberSystem that
+        // listens to the same channel. Advancing the simulator, ensures that
+        // the LCM message used here successfully arrives at the input port of
+        // the other LcmSubscriberSystem
+        simulator_->AdvanceTo(time);
+        if (is_forced_publish_) {
+          // Force-publish via the diagram
+          diagram_ptr_->Publish(diagram_context);
         }
 
         // Clear messages in the switch channel

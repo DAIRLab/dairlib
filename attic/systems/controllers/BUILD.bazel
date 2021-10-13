@@ -19,6 +19,8 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
 )
 
 cc_library(
@@ -35,4 +37,6 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
 )

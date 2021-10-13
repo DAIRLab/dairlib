@@ -477,6 +477,7 @@ cc_binary(
         ":cassie_utils",
         "//common",
         "//examples/Cassie/mpc",
+        "//multibody:single_rigid_body_plant",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:dairlib_signal_lcm_systems",

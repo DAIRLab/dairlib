@@ -162,7 +162,7 @@ void SrbdCMPC::MakeDynamicsConstraints() {
       VectorXd beq = VectorXd::Zero(nx_);
       Vector3d pos = Vector3d::Zero();
       pos(1) = nominal_foot_pos_.at(j)(1);
-      CopyDiscreteDynamicsConstraint(mode, j==0, pos, &Aeq, &beq);
+      CopyDiscreteDynamicsConstraint(mode, false, pos, &Aeq, &beq);
       dynamics_.push_back(
           prog_.AddLinearEqualityConstraint(Aeq, beq,
               {xx.at(j * mode.N + i),
@@ -173,31 +173,75 @@ void SrbdCMPC::MakeDynamicsConstraints() {
   }
 }
 
+void SrbdCMPC::UpdateKinematicConstraints(
+    int n_until_stance, int fsm_state) const {
+  for (auto & constraint : kinematic_constraint_){
+    prog_.RemoveConstraint(constraint);
+  }
+  kinematic_constraint_.clear();
+
+  MatrixXd A = MatrixXd::Zero(kLinearDim_, 2*kLinearDim_);
+  A << Matrix3d::Identity(), -Matrix3d::Identity();
+  auto curr_mode = modes_.at(fsm_state);
+  auto next_mode = modes_.at(1-fsm_state);
+
+  for (int i = n_until_stance; i < n_until_stance + next_mode.N; i++) {
+    kinematic_constraint_.push_back(
+        prog_.AddLinearConstraint(
+            A,
+            nominal_foot_pos_.at(next_mode.stance) - kin_bounds_,
+            nominal_foot_pos_.at(next_mode.stance) + kin_bounds_,
+            {pp.at(next_mode.stance), xx.at(i).head(kLinearDim_)}));
+  }
+  for (int i = n_until_stance + next_mode.N; i <= total_knots_; i++) {
+    kinematic_constraint_.push_back(
+        prog_.AddLinearConstraint(
+            A,
+            nominal_foot_pos_.at(curr_mode.stance) - kin_bounds_,
+            nominal_foot_pos_.at(curr_mode.stance) + kin_bounds_,
+            {pp.at(curr_mode.stance), xx.at(i).head(kLinearDim_)}));
+  }
+}
+
 void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
     int n_until_next_stance, int fsm_state) const {
-  int idx = n_until_next_stance - 1;
+
   auto& mode = modes_.at(fsm_state);
-  prog_.RemoveConstraint(dynamics_.at(idx));
-
-  MatrixXd Aeq = MatrixXd::Zero(2*nx_ + nu_ + kLinearDim_);
-  VectorXd beq = VectorXd::Zero(nx_);
   Vector3d pos = plant_.CalcFootPosition(x, mode.stance);
-  CopyDiscreteDynamicsConstraint(
-      mode, true, pos, &Aeq, &beq);
-  dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(Aeq, beq,
-      {xx.at(idx), pp.at(mode.stance), uu.at(idx), xx.at(idx+1)});
-  for (int i = 0; i < idx; i++) {
-    dynamics_.at(i).evaluator().get()->UpdateCoefficients(Aeq, beq);
+
+  if (n_until_next_stance == mode.N) {
+    // make current stance dynamics and apply to mode
+    MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + nu_);
+    VectorXd beq = VectorXd::Zero(nx_);
+    CopyDiscreteDynamicsConstraint(mode, true, pos, &Aeq, &beq);
+    for (int i = 0; i < (mode.N-1); i++){
+      prog_.RemoveConstraint(dynamics_.at(i));
+      dynamics_.at(i) = prog_.AddLinearEqualityConstraint(
+          Aeq, beq, {xx.at(i), uu.at(i), xx.at(i+1)});
+    }
+    CopyDiscreteDynamicsConstraint(modes_.at(1-fsm_state),
+        false, pos, &Aeq, &beq);
+    prog_.RemoveConstraint(dynamics_.back());
+    dynamics_.back() = prog_.AddLinearEqualityConstraint(
+        Aeq, beq,
+        {xx.at(total_knots_-1), pp.at(1-fsm_state),
+         uu.at(total_knots_-1), xx.at(total_knots_)});
+  } else {
+    int idx = n_until_next_stance-1;
+    MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + kLinearDim_ + nu_);
+    VectorXd beq = VectorXd::Zero(nx_);
+    CopyDiscreteDynamicsConstraint(modes_.at(1-fsm_state), false, pos, &Aeq, &beq);
+    prog_.RemoveConstraint(dynamics_.at(idx));
+    dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(
+        Aeq, beq,
+        {xx.at(idx), pp.at(1-fsm_state), uu.at(idx), xx.at(idx+1)});
+    CopyDiscreteDynamicsConstraint(mode, false, pos, &Aeq, &beq);
+    prog_.RemoveConstraint(dynamics_.at(idx + mode.N));
+    dynamics_.at(idx+mode.N) = prog_.AddLinearEqualityConstraint(
+        Aeq, beq,
+        {xx.at(idx+mode.N), pp.at(fsm_state),
+         uu.at(idx+mode.N), xx.at(mode.N+idx+1)});
   }
-
-  idx += mode.N;
-  prog_.RemoveConstraint(dynamics_.at(idx);
-  CopyDiscreteDynamicsConstraint(
-      modes_.at(1-fsm_state), false, pos, &Aeq, &beq);
-  dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(Aeq, beq,
-      {xx.at(idx), pp.at(1-mode.stance), uu.at(idx), xx.at(idx+1)});
-
-
 }
 
 void SrbdCMPC::MakeInitialStateConstraint() {
@@ -218,7 +262,7 @@ void SrbdCMPC::MakeKinematicReachabilityConstraints() {
               A,
               nominal_foot_pos_.at(mode.stance) - kin_bounds_,
               nominal_foot_pos_.at(mode.stance) + kin_bounds_,
-              {pp.at(mode.stance), xx.at(i + j * mode.N)}));
+              {pp.at(mode.stance), xx.at(i + j * mode.N).head(kLinearDim_)}));
     }
   }
 }
@@ -345,11 +389,8 @@ void SrbdCMPC::UpdateConstraints(
   if (!use_fsm_) { return; }
 
   int n_until_next_state = modes_.at(fsm_state).N - t_since_last_switch / dt_;
-  // Adjust dynamics constraints
   UpdateDynamicsConstraints(x0, n_until_next_state, fsm_state);
-
-  // Adjust bounding box constraints
-
+  UpdateKinematicConstraints(n_until_next_state, fsm_state);
 }
 
 
@@ -450,16 +491,18 @@ void SrbdCMPC::CopyDiscreteDynamicsConstraint(
 
   if (!current_stance) {
     A->block(0, 0, nx_, nx_ + kLinearDim_) = mode.dynamics.A;
+    A->block(0, nx_ + kLinearDim_, nx_, nu_) = mode.dynamics.B;
+    A->block(0, nx_ + nu_ + kLinearDim_, nx_, nx_) =
+        -MatrixXd::Identity(nx_, nx_);
     *b = -mode.dynamics.b;
   } else {
     A->block(0, 0, nx_, nx_) = mode.dynamics.A.block(0, 0, nx_, nx_);
-    A->block(0, nx_, nx_, kLinearDim_) = MatrixXd::Zero(nx_, kLinearDim_);
+    A->block(0, nx_, nx_, nu_) = mode.dynamics.B;
+    A->block(0, nx_ + nu_, nx_, nx_) = -MatrixXd::Identity(nx_, nx_);
     *b = mode.dynamics.A.block(0, nx_, nx_, kLinearDim_)
              * foot_pos - mode.dynamics.b;
+    return;
   }
-  A->block(0, nx_ + kLinearDim_, nx_, nu_) = mode.dynamics.B;
-  A->block(0, nx_ + nu_ + kLinearDim_, nx_, nx_) =
-      -MatrixXd::Identity(nx_, nx_);
 }
 
 void SrbdCMPC::CheckSquareMatrixDimensions(

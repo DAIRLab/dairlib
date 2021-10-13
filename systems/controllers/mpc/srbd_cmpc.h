@@ -126,7 +126,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
   void UpdateDynamicsConstraints(
       const Eigen::VectorXd& x, int n_until_next_stance, int fsm_state) const;
-
+  void UpdateKinematicConstraints(int n_until_stance, int fsm_state) const;
 
   void CopyDiscreteDynamicsConstraint(
       const SrbdMode& mode, bool current_stance,

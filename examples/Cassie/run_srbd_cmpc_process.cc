@@ -20,9 +20,11 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/dairlib_signal_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/controllers/mpc/srbd_cmpc.h"
+#include "multibody/single_rigid_body_plant.h"
 #include "examples/Cassie/mpc/cassie_srbd_cmpc_gains.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "systems/controllers/mpc/srbd_cmpc.h"
+
 
 namespace dairlib {
 
@@ -103,9 +105,8 @@ int DoMain(int argc, char* argv[]) {
   auto plant_context = plant.CreateDefaultContext();
   auto x0 = plant.GetPositionsAndVelocities(*plant_context);
 
+  Auto srbd_plant = Single
   // Cassie SRBD model setup
-
-
   Vector3d com_offset = {0, 0, -0.128};
   Vector3d des_pelvis_pos = {0, 0, FLAGS_h_des};
   Vector3d des_com_pos = des_pelvis_pos + com_offset;

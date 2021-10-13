@@ -1,6 +1,6 @@
 # Set robot id and model id
 robot=1
-model=4 #2, 4
+model=10 #2, 4
 echo robot_option = $robot, rom_option = $model
 
 # Set sample size

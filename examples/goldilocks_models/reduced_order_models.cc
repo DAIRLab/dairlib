@@ -427,7 +427,8 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
            const BodyPoint& stance_contact_point,
            const MonomialFeatures& mapping_basis,
            const MonomialFeatures& dynamic_basis, int world_dim,
-           const std::set<int>& invariant_elements)
+           const std::set<int>& invariant_elements,
+           bool use_pelvis)
     : ReducedOrderModel(world_dim, 0, MatrixX<double>::Zero(world_dim, 0),
                         world_dim + mapping_basis.length(),
                         (world_dim - 1) + dynamic_basis.length(), mapping_basis,
@@ -438,7 +439,8 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
       stance_contact_point_(stance_contact_point),
       world_dim_(world_dim),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
-          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))) {
+          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))),
+      use_pelvis_(use_pelvis){
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
 
   // Initialize model parameters (dependant on the feature vectors)
@@ -479,7 +481,7 @@ VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q,
                                       const Context<double>& context) const {
   // Get CoM position
   VectorX<double> CoM(3);
-  if (use_pelvis) {
+  if (use_pelvis_) {
     // testing using pelvis
     plant_.CalcPointsPositions(context, pelvis_.second, pelvis_.first,
                                plant_.world_frame(), &CoM);
@@ -526,7 +528,7 @@ VectorX<double> Lipm::EvalMappingFeatJV(const VectorX<double>& q,
                                         const Context<double>& context) const {
   // Get CoM velocity
   VectorX<double> JV_CoM(3);
-  if (use_pelvis) {
+  if (use_pelvis_) {
     // testing using pelvis
     MatrixX<double> J_com(3, plant_.num_velocities());
     plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
@@ -559,7 +561,7 @@ MatrixX<double> Lipm::EvalMappingFeatJ(const VectorX<double>& q,
                                        const Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
-  if (use_pelvis) {
+  if (use_pelvis_) {
     // testing using pelvis
     plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
                                              pelvis_.second, pelvis_.first,
@@ -592,7 +594,7 @@ VectorX<double> Lipm::EvalMappingFeatJdotV(
     const Context<double>& context) const {
   // Get CoM JdotV
   VectorX<double> JdotV_com(3);
-  if (use_pelvis) {
+  if (use_pelvis_) {
     // Testing: use pelvis origin
     JdotV_com = plant_.CalcBiasTranslationalAcceleration(
         context, JacobianWrtVariable::kV, pelvis_.second, pelvis_.first, world_,

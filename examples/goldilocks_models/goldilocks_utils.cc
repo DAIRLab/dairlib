@@ -1,6 +1,7 @@
 #include "examples/goldilocks_models/goldilocks_utils.h"
 
 #include <sys/stat.h>  // Check the existence of a file/folder
+
 #include <cstdlib>  // System call to create folder (and also parent directory)
 #include <fstream>
 #include <iostream>
@@ -124,6 +125,18 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     } else if (rom_option == 9) {
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
+    } else if (rom_option == 10) {
+      std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
+      cout << "Joint skipped in mapping function: ";
+      for (auto& pair : pos_map) {
+        if (pair.first.find("right") != std::string::npos) {
+          cout << pair.first << ", ";
+          skip_inds.push_back(pair.second);
+        }
+      }
+      cout << endl;
+      mapping_basis = std::make_unique<MonomialFeatures>(
+          2, plant.num_positions(), skip_inds, "mapping basis");
     }
   }
   if (print_info) {
@@ -160,6 +173,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3) + 1, empty_inds, "dynamic basis");
   } else if (rom_option == 9) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+  } else if (rom_option == 10) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else {
@@ -234,6 +250,13 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);
+  } else if (rom_option == 10) {
+    // Fix the mapping function of the COM xy part
+    // Use pelvis as a proxy for COM
+    // ROM is only a function of stance leg's joints
+    std::set<int> invariant_idx = {0, 1};
+    rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
+                                 *dynamic_basis, 3, invariant_idx, true);
   } else {
     throw std::runtime_error("Not implemented");
   }

@@ -87,46 +87,51 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     } else if (robot_option == 1) {
       // we can use `rom_scale` to avoid scaling the constraint down too much to
       // have effective accuracy
-      double rom_scale = 100;
+      double rom_scale = 1;
       // clang-format off
       if (rom_option == 0) {
-        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 3200.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 32.0 * rom_scale));
       } else if (rom_option == 1) {
-        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 3200.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(3, constraint_scale * 1.0 / 4000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 32.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(3, constraint_scale * 1.0 / 40.0 * rom_scale));
       } else if (rom_option == 2) {
-        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 3200.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 32.0 * rom_scale));
       } else if (rom_option == 3) {
         // TODO: The scaling hasn't been tuned yet
-        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 3200.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 4000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 32.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 40.0 * rom_scale));
       } else if (rom_option == 4) {
         // TODO: The scaling hasn't been tuned yet. These are just guessings
-        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 3200.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 32.0 * rom_scale));
       } else if ((rom_option == 5) || (rom_option == 6)) {
         // TODO: The scaling hasn't been tuned yet. These are just guessings
-        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 3200.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(3, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(4, constraint_scale * 1.0 / 26000.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(5, constraint_scale * 1.0 / 4000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 32.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(3, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(4, constraint_scale * 1.0 / 260.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(5, constraint_scale * 1.0 / 40.0 * rom_scale));
       } else if (rom_option == 8) {
         // TODO: The scaling hasn't been tuned yet. These are just guessings
-        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 2600.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 2600.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 640.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 6.4 * rom_scale));
       } else if (rom_option == 9) {
         // TODO: The scaling hasn't been tuned yet. These are just guessings
-        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 2600.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 2600.0 * rom_scale));
-        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 640.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 6.4 * rom_scale));
+      } else if (rom_option == 10) {
+        // TODO: The scaling hasn't been tuned yet. These are just guessings
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 6.4 * rom_scale));
       } else {
         // The scaling of others hasn't tuned yet
         DRAKE_DEMAND(false);

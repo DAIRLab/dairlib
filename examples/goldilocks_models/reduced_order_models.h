@@ -214,7 +214,8 @@ class Lipm : public ReducedOrderModel {
        const BodyPoint& stance_contact_point,
        const MonomialFeatures& mapping_basis,
        const MonomialFeatures& dynamic_basis, int world_dim,
-       const std::set<int>& invariant_elements = {});
+       const std::set<int>& invariant_elements = {},
+       bool use_pelvis = false);
 
   // Copy constructor for the Clone() method
   // TODO(yminchen): Do we need to explicitly define the copy constructor here?
@@ -261,6 +262,7 @@ class Lipm : public ReducedOrderModel {
 
   // Testing
   BodyPoint pelvis_;
+  bool use_pelvis_ = false;
 };
 
 /// Linear inverted pendulum model with swing foot (either 2D or 3D, determined

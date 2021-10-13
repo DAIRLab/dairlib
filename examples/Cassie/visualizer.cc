@@ -7,6 +7,7 @@
 #include "multibody/visualization_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
+
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -28,6 +29,8 @@ DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
+// Terrain
+DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
@@ -58,7 +61,10 @@ int do_main(int argc, char* argv[]) {
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8);
+    // Ground direction
+    Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
+                                  cos(FLAGS_ground_incline));
+    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
   }
 
   plant.Finalize();

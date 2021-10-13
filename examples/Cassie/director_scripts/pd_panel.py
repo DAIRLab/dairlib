@@ -38,22 +38,9 @@ position_names = [
     "toe_left",
     "toe_right"]
 
-# joint_default = [0,0,0,0,0,0,0,0,0,0]
-# kp_default = [20,20,20,20,20,20,20,20,2,2]
-# kd_default = [5,5,5,5,5,5,5,5,1,1]
-
-# joint_default = [0,0,0,0,0,0,0,0,0,0]
-# kp_default = [0,0,0,0,0,0,0,0,0,0]
-# kd_default = [0,0,0,0,0,0,0,0,0,0]
-
-# Set of gains with which Cassie can stand:
-# joint_default = [0.2,-.2,0,0,0.35,0.35,-0.9,-0.9,-1.8,-1.8]
-# kp_default = [i for i in [20,20,10,10,20,20,100,100,10,10]]
-# kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
-
 # Set of gains with which COM is within support polygon when we lower the hoist 
-joint_default = [0.07,-.1,0,0,0.35,0.35,-1.5,-1.5,-1.8,-1.8]
-kp_default = [i for i in [20,20,10,10,20,20,50,50,10,10]]
+joint_default = [-0.01,.01,0,0,0.55,0.55,-1.5,-1.5,-1.8,-1.8]
+kp_default = [i for i in [80,80,50,50,50,50,50,50,10,10]]
 kd_default = [i for i in [1,1,1,1,1,1,2,2,1,1]]
 
 
@@ -190,7 +177,7 @@ class ControllerGui(QWidget):
         height_msg.target_height = self.target_height
         self.lc.publish("TARGET_HEIGHT", height_msg.encode())
 
-    #Storing in a file once the move button is clicked 	
+    #Storing in a file once the move button is clicked  
     def publish_clicked(self):
         msg = dairlib.lcmt_pd_config()
         msg.num_joints = 10
@@ -199,26 +186,24 @@ class ControllerGui(QWidget):
 
         first_loop = False
         if len(self.prev_pos_) == 0:
-        	first_loop = True
-	        msg.desired_position = self.values[0:len(joint_names)]
-	        print(msg.desired_position)
-	        # msg.desired_position = [x for x in msg.desired_position]
+            first_loop = True
+            msg.desired_position = self.values[0:len(joint_names)]
+            print(msg.desired_position)
+            # msg.desired_position = [x for x in msg.desired_position]
 
         for i in range(100):
-	        # ramp up the gains for 5 seconds
-	        msg.timestamp = int(time.time() * 1e6)
-	        # msg.kp = list(self.kp_ + i / 99.0 * np.array(self.values[len(joint_names):2*len(joint_names)] - self.kp_))
-	        # msg.kd = list(self.kd_ + i / 99.0 * np.array(self.values[2*len(joint_names):3*len(joint_names)] - self.kd_))
-	        msg.kp = [b + i / 99.0 * (a - b) for a, b in zip(self.values[len(joint_names):2*len(joint_names)], self.kp_)]
-	        msg.kd = [b + i / 99.0 * (a - b) for a, b in zip(self.values[2*len(joint_names):3*len(joint_names)], self.kd_)]
+            # ramp up the gains for 5 seconds
+            msg.timestamp = int(time.time() * 1e6)
+            msg.kp = [b + i / 99.0 * (a - b) for a, b in zip(self.values[len(joint_names):2*len(joint_names)], self.kp_)]
+            msg.kd = [b + i / 99.0 * (a - b) for a, b in zip(self.values[2*len(joint_names):3*len(joint_names)], self.kd_)]
 
-	        # ramp up the desired positions for 5 seconds
-	        if not first_loop:
-		        msg.desired_position = [b + i / 99.0 * (a - b) for a, b in zip(self.values[0:len(joint_names)], self.prev_pos_)]
+            # ramp up the desired positions for 5 seconds
+            if not first_loop:
+                msg.desired_position = [b + i / 99.0 * (a - b) for a, b in zip(self.values[0:len(joint_names)], self.prev_pos_)]
 
-	        self.lc.publish("PD_CONFIG", msg.encode())
-	        time.sleep(self.ramp_up_time / 100.0)
-	    # store previous kp kd gains
+            self.lc.publish("PD_CONFIG", msg.encode())
+            time.sleep(self.ramp_up_time / 100.0)
+        # store previous kp kd gains
         self.kp_ = msg.kp
         self.kd_ = msg.kd
         self.prev_pos_ = msg.desired_position

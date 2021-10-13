@@ -28,8 +28,7 @@ namespace cassie {
 namespace osc {
 
 StandingComTraj::StandingComTraj(
-    const MultibodyPlant<double>& plant,
-    Context<double>* context,
+    const MultibodyPlant<double>& plant, Context<double>* context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
     double height, bool set_target_height_by_radio)
@@ -106,9 +105,26 @@ void StandingComTraj::CalcDesiredTraj(
     contact_pos_sum += position;
   }
   Vector3d feet_center_pos = contact_pos_sum / 4;
-  Vector3d desired_com_pos(0.0 + x_offset,
-                           0.0 + y_offset,
-                           0.0 + target_height);
+
+  // Testing -- filtering feet_center_pos
+  if (filtered_feet_center_pos_.norm() == 0) {
+    // Initialize
+    filtered_feet_center_pos_ = feet_center_pos;
+  }
+  if (robot_output->get_timestamp() != last_timestamp_) {
+    double dt = robot_output->get_timestamp() - last_timestamp_;
+    last_timestamp_ = robot_output->get_timestamp();
+    double alpha =
+        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+    filtered_feet_center_pos_ =
+        alpha * feet_center_pos + (1 - alpha) * filtered_feet_center_pos_;
+  }
+  feet_center_pos = filtered_feet_center_pos_;
+
+  // Desired com pos
+  Vector3d desired_com_pos(feet_center_pos(0) + x_offset,
+                           feet_center_pos(1) + y_offset,
+                           feet_center_pos(2) + target_height);
 
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =

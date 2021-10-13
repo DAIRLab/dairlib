@@ -66,6 +66,12 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
 
   double height_;
   bool set_target_height_by_radio_;
+
+
+  // Testing -- filtering for center of support polygon
+  double cutoff_freq_ = 0.05;  // in Hz.
+  mutable Eigen::Vector3d filtered_feet_center_pos_ = Eigen::Vector3d::Zero();
+  mutable double last_timestamp_ = 0;
 };
 
 }  // namespace osc

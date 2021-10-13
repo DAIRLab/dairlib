@@ -191,10 +191,13 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
   std::vector<drake::solvers::QuadraticCost*> input_cost_;
   std::vector<drake::solvers::LinearConstraint*> friction_cone_;
-  std::vector<drake::solvers::LinearConstraint*> kinematic_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> terrain_angle_;
-  std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_;
   drake::solvers::LinearEqualityConstraint* initial_state_;
+  mutable std::vector<drake::solvers::Binding
+                     <drake::solvers::LinearEqualityConstraint>> dynamics_;
+  mutable std::vector<drake::solvers::Binding
+                     <drake::solvers::LinearConstraint>> kinematic_constraint_;
+
 
   // Decision Variables
   std::vector<drake::solvers::VectorXDecisionVariable> xx;

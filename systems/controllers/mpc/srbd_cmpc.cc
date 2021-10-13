@@ -98,7 +98,7 @@ void SrbdCMPC::AddMode(const LinearSrbdDynamics&  dynamics,
 }
 
 void SrbdCMPC::FinalizeModeSequence(){
-  xx.push_back(prog_.NewContinuousVariables(nx_, "x_f"));
+     xx.push_back(prog_.NewContinuousVariables(nx_, "x_f"));
 }
 
 void SrbdCMPC::SetReachabilityBoundingBox(const Vector3d& bounds,
@@ -167,16 +167,37 @@ void SrbdCMPC::MakeDynamicsConstraints() {
           prog_.AddLinearEqualityConstraint(Aeq, beq,
               {xx.at(j * mode.N + i),
                pp.at(mode.stance),
-               xx.at(j * mode.N + i),
-               xx.at(j * mode.N + i + 1)})
-          .evaluator().get());
+               uu.at(j * mode.N + i),
+               xx.at(j * mode.N + i + 1)}));
     }
   }
 }
 
 void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
     int n_until_next_stance, int fsm_state) const {
-  
+  int idx = n_until_next_stance - 1;
+  auto& mode = modes_.at(fsm_state);
+  prog_.RemoveConstraint(dynamics_.at(idx));
+
+  MatrixXd Aeq = MatrixXd::Zero(2*nx_ + nu_ + kLinearDim_);
+  VectorXd beq = VectorXd::Zero(nx_);
+  Vector3d pos = plant_.CalcFootPosition(x, mode.stance);
+  CopyDiscreteDynamicsConstraint(
+      mode, true, pos, &Aeq, &beq);
+  dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(Aeq, beq,
+      {xx.at(idx), pp.at(mode.stance), uu.at(idx), xx.at(idx+1)});
+  for (int i = 0; i < idx; i++) {
+    dynamics_.at(i).evaluator().get()->UpdateCoefficients(Aeq, beq);
+  }
+
+  idx += mode.N;
+  prog_.RemoveConstraint(dynamics_.at(idx);
+  CopyDiscreteDynamicsConstraint(
+      modes_.at(1-fsm_state), false, pos, &Aeq, &beq);
+  dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(Aeq, beq,
+      {xx.at(idx), pp.at(1-mode.stance), uu.at(idx), xx.at(idx+1)});
+
+
 }
 
 void SrbdCMPC::MakeInitialStateConstraint() {
@@ -197,8 +218,7 @@ void SrbdCMPC::MakeKinematicReachabilityConstraints() {
               A,
               nominal_foot_pos_.at(mode.stance) - kin_bounds_,
               nominal_foot_pos_.at(mode.stance) + kin_bounds_,
-              {pp.at(mode.stance), xx.at(i + j * mode.N)})
-          .evaluator().get());
+              {pp.at(mode.stance), xx.at(i + j * mode.N)}));
     }
   }
 }
@@ -267,9 +287,7 @@ EventStatus SrbdCMPC::DiscreteVariableUpdate(
             .get_mutable_value();
 
     if (fsm_state(0) != current_fsm_state(0)) {
-
       current_fsm_state(0) = fsm_state(0);
-
       discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
           << timestamp;
     }
@@ -326,8 +344,9 @@ void SrbdCMPC::UpdateConstraints(
   initial_state_->UpdateCoefficients(MatrixXd::Identity(nx_, nx_), x0);
   if (!use_fsm_) { return; }
 
+  int n_until_next_state = modes_.at(fsm_state).N - t_since_last_switch / dt_;
   // Adjust dynamics constraints
-  UpdateDynamicsConstraints(x0, 0, fsm_state);
+  UpdateDynamicsConstraints(x0, n_until_next_state, fsm_state);
 
   // Adjust bounding box constraints
 

@@ -21,34 +21,70 @@ def main():
   dircon_traj = lcm_trajectory.DirconTrajectory(dircon_traj_filename)
   output_trajs = lcm_trajectory.LcmTrajectory(outputs_traj_filename)
 
-  plot_foot_trajs(output_trajs)
+  l_foot_traj, r_foot_traj, l_hip_traj, r_hip_traj, l_toe_traj, r_toe_traj, pelvis_traj = construct_all_trajs(output_trajs)
 
-def plot_foot_trajs(output_trajs):
+  l_foot_pos, r_foot_pos = plot_foot_trajs(output_trajs)
+  plot_pelvis_traj(output_trajs, l_foot_pos, r_foot_pos)
+
+def construct_all_trajs(output_trajs):
   l_foot_traj = PiecewisePolynomial()
   r_foot_traj = PiecewisePolynomial()
+  pelvis_traj = PiecewisePolynomial()
+  l_hip_traj = PiecewisePolynomial()
+  r_hip_traj = PiecewisePolynomial()
+  l_toe_traj = PiecewisePolynomial()
+  r_toe_traj = PiecewisePolynomial()
 
   for mode in range(3):
     lcm_l_foot_traj = output_trajs.GetTrajectory('left_foot_trajectory' + str(mode))
-
-    lcm_r_foot_traj = output_trajs.GetTrajectory('left_foot_trajectory' + str(mode))
-
+    lcm_r_foot_traj = output_trajs.GetTrajectory('right_foot_trajectory' + str(mode))
+    lcm_l_hip_traj = output_trajs.GetTrajectory('left_hip_trajectory' + str(mode))
+    lcm_r_hip_traj = output_trajs.GetTrajectory('right_hip_trajectory' + str(mode))
+    lcm_l_toe_traj = output_trajs.GetTrajectory('left_toe_trajectory' + str(mode))
+    lcm_r_toe_traj = output_trajs.GetTrajectory('right_toe_trajectory' + str(mode))
+    lcm_pelvis_traj = output_trajs.GetTrajectory('pelvis_trans_trajectory' + str(mode))
     l_foot_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints[0:3, :], lcm_l_foot_traj.datapoints[3:6, :]))
     r_foot_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints[0:3, :], lcm_r_foot_traj.datapoints[3:6, :]))
+    l_hip_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_l_hip_traj.time_vector, lcm_l_hip_traj.datapoints[0:3, :], lcm_l_hip_traj.datapoints[3:6, :]))
+    r_hip_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_r_hip_traj.time_vector, lcm_r_hip_traj.datapoints[0:3, :], lcm_r_hip_traj.datapoints[3:6, :]))
+    l_toe_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_l_toe_traj.time_vector, lcm_l_toe_traj.datapoints[0:3, :], lcm_l_toe_traj.datapoints[3:6, :]))
+    r_toe_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_r_toe_traj.time_vector, lcm_r_toe_traj.datapoints[0:3, :], lcm_r_toe_traj.datapoints[3:6, :]))
+    pelvis_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_pelvis_traj.time_vector, lcm_pelvis_traj.datapoints[0:3, :], lcm_pelvis_traj.datapoints[3:6, :]))
+  return l_foot_traj, r_foot_traj, l_hip_traj, r_hip_traj, l_toe_traj, r_toe_traj, pelvis_traj
+
+def plot_foot_trajs(l_foot_traj, r_foot_traj):
 
   t_samples = np.arange(l_foot_traj.start_time(), l_foot_traj.end_time(), 1e-2)
   l_foot_pos = np.zeros((t_samples.shape[0], 3))
   l_foot_vel = np.zeros((t_samples.shape[0], 3))
   l_foot_acc = np.zeros((t_samples.shape[0], 3))
+  r_foot_pos = np.zeros((t_samples.shape[0], 3))
+  r_foot_vel = np.zeros((t_samples.shape[0], 3))
+  r_foot_acc = np.zeros((t_samples.shape[0], 3))
   for i in range(t_samples.shape[0]):
     l_foot_pos[i] = l_foot_traj.value(t_samples[i])[:, 0]
     l_foot_vel[i] = l_foot_traj.EvalDerivative(t_samples[i], 1)[:, 0]
     l_foot_acc[i] = l_foot_traj.EvalDerivative(t_samples[i], 2)[:, 0]
+    r_foot_pos[i] = r_foot_traj.value(t_samples[i])[:, 0]
+    r_foot_vel[i] = r_foot_traj.EvalDerivative(t_samples[i], 1)[:, 0]
+    r_foot_acc[i] = r_foot_traj.EvalDerivative(t_samples[i], 2)[:, 0]
+  return l_foot_pos, r_foot_pos
+
+def plot_pelvis_traj(pelvis_traj, l_foot_pos, r_foot_pos):
+  t_samples = np.arange(pelvis_traj.start_time(), pelvis_traj.end_time(), 1e-2)
+  pelvis_pos = np.zeros((t_samples.shape[0], 3))
+  pelvis_vel = np.zeros((t_samples.shape[0], 3))
+  pelvis_acc = np.zeros((t_samples.shape[0], 3))
+  for i in range(t_samples.shape[0]):
+    pelvis_pos[i] = pelvis_traj.value(t_samples[i])[:, 0]
+    pelvis_vel[i] = pelvis_traj.EvalDerivative(t_samples[i], 1)[:, 0]
+    pelvis_acc[i] = pelvis_traj.EvalDerivative(t_samples[i], 2)[:, 0]
   plt.figure('pos')
-  ps.plot(t_samples, l_foot_pos)
+  ps.plot(t_samples, pelvis_pos)
   plt.figure('vel')
-  ps.plot(t_samples, l_foot_vel)
+  ps.plot(t_samples, pelvis_vel)
   plt.figure('acc')
-  ps.plot(t_samples, l_foot_acc)
+  ps.plot(t_samples, pelvis_acc)
   ps.show_fig()
   return
 

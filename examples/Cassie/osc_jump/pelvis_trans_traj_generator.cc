@@ -202,7 +202,7 @@ PelvisTransTrajGenerator::generateLandingTraj(
   MatrixXd offset_matrix = offset.replicate(1, breaks.size());
   VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
   PiecewisePolynomial<double> pelvis_x_offset =
-      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, offset_matrix);
+      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_matrix);
   if (time > crouch_traj_.end_time()) {
     Vector3d final_target_position;
     final_target_position << x_offset[0] + contact_pos_sum[0],

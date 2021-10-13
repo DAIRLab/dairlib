@@ -4,14 +4,19 @@ from pydairlib.lcm import lcm_trajectory
 from pydairlib.common import FindResourceOrThrow
 from pydrake.trajectories import PiecewisePolynomial
 import numpy as np
-
+from pydairlib.common import plot_styler
 
 def main():
+  global ps
+
+  figure_directory = '/home/yangwill/Documents/research/projects/'
+  ps = plot_styler.PlotStyler()
+  ps.set_default_styling(directory=figure_directory)
   # Default filename for the example
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.5h_0.3d")
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_box_0.5h_0.3d_2")
-  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_box_0.4h_0.3d_8")
+  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_box_0.4h_0.3d_3")
   # filename = "/home/yangwill/Documents/research/projects/cassie/hardware/backup/dair/saved_trajectories/jumping_0.15h_0.3d"
 
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/" + sys.argv[1])
@@ -25,8 +30,8 @@ def main():
   force_samples = dircon_traj.GetTrajectory("force_vars0").datapoints
   force_t_samples = dircon_traj.GetStateBreaks(0)
   force_traj = dircon_traj.ReconstructLambdaTrajectory()
-  # force_datatypes = dircon_traj.GetTrajectory("force_vars0").datatypes
-  force_datatypes = dircon_traj.GetTrajectory("force_vars1").datatypes
+  force_datatypes = dircon_traj.GetTrajectory("force_vars0").datatypes
+  # force_datatypes = dircon_traj.GetTrajectory("force_vars1").datatypes
 
   collocation_force_points = dircon_traj.GetCollocationForceSamples(0)
 
@@ -34,11 +39,11 @@ def main():
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
   state_samples = np.zeros((n_points, state_traj.value(0).shape[0]))
   input_samples = np.zeros((n_points, input_traj.value(0).shape[0]))
-  # force_samples = np.zeros((n_points, force_traj[0].value(0).shape[0]))
+  force_samples = np.zeros((n_points, force_traj[2].value(0).shape[0]))
   for i in range(n_points):
     state_samples[i] = state_traj.value(t[i])[:, 0]
     input_samples[i] = input_traj.value(t[i])[:, 0]
-    # force_samples[i] = force_traj[0].value(t[i])[:, 0]
+    force_samples[i] = force_traj[2].value(t[i])[:, 0]
 
 
   pos_indices = slice(0 + 7, 11)
@@ -53,7 +58,7 @@ def main():
   # reflected_state_samples = state_samples @ M
   # Plotting reconstructed state trajectories
   plt.figure("state trajectory")
-  plt.plot(t, state_samples[:, pos_indices])
+  ps.plot(t, state_samples[:, pos_indices])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 0:7])
   # plt.plot(t, state_samples[:, -18:])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 7:13])
@@ -63,12 +68,12 @@ def main():
   plt.legend(state_datatypes[pos_indices])
 
   plt.figure("input trajectory")
-  plt.plot(t, input_samples[:, u_indices])
+  ps.plot(t, input_samples[:, u_indices])
   plt.legend(input_datatypes[u_indices])
 
   plt.figure("force trajectory")
-  # plt.plot(t, force_samples[:, :12])
-  plt.plot(force_t_samples, force_samples.T)
+  # ps.plot(t, force_samples[:, :12])
+  ps.plot(t, force_samples)
   plt.legend(force_datatypes)
 
   plt.show()

@@ -658,20 +658,24 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   // Only add constraints of lambdas for stance modes
   // ALL BUT THE LAST SEGMENT (to ensure the feet can leave the ground
-  for (int index = 0; index < (mode_lengths[0] - 1); index++) {
+  for (int index = 0; index < (mode_lengths[0] - 2); index++) {
     auto lambda = trajopt->force_vars(0, index);
-    trajopt->AddLinearConstraint(lambda(2) >= 50);
-    trajopt->AddLinearConstraint(lambda(5) >= 50);
-    trajopt->AddLinearConstraint(lambda(8) >= 50);
-    trajopt->AddLinearConstraint(lambda(11) >= 50);
+    trajopt->AddLinearConstraint(lambda(2) >= 60);
+    trajopt->AddLinearConstraint(lambda(5) >= 60);
+    trajopt->AddLinearConstraint(lambda(8) >= 60);
+    trajopt->AddLinearConstraint(lambda(11) >= 60);
   }
   // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force_vars(2, index);
-    trajopt->AddLinearConstraint(lambda(2) <= 300);
-    trajopt->AddLinearConstraint(lambda(5) <= 300);
-    trajopt->AddLinearConstraint(lambda(8) <= 300);
-    trajopt->AddLinearConstraint(lambda(11) <= 300);
+    trajopt->AddLinearConstraint(lambda(2) <= 450);
+    trajopt->AddLinearConstraint(lambda(5) <= 450);
+    trajopt->AddLinearConstraint(lambda(8) <= 450);
+    trajopt->AddLinearConstraint(lambda(11) <= 450);
+    trajopt->AddLinearConstraint(lambda(2) >= 50);
+    trajopt->AddLinearConstraint(lambda(5) >= 50);
+    trajopt->AddLinearConstraint(lambda(8) >= 50);
+    trajopt->AddLinearConstraint(lambda(11) >= 50);
   }
 }
 
@@ -737,6 +741,23 @@ void AddCosts(Dircon<double>* trajopt,
       }
     }
   }
+  for (const auto& l_r_pair : l_r_pairs) {
+    for (const auto& asy_joint_name : asy_joint_names) {
+      auto pos_diff = x(pos_map.at(asy_joint_name + l_r_pair.first)) +
+                      x(pos_map.at(asy_joint_name + l_r_pair.second));
+      auto vel_diff = x(vel_map.at(asy_joint_name + l_r_pair.first + "dot")) +
+                      x(vel_map.at(asy_joint_name + l_r_pair.second + "dot"));
+      trajopt->AddRunningCost(w_symmetry_pos * pos_diff * pos_diff);
+      trajopt->AddRunningCost(w_symmetry_vel * vel_diff * vel_diff);
+      if (asy_joint_name != "ankle_joint") {
+        auto act_diff =
+            u(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) +
+                u(act_map.at(asy_joint_name + l_r_pair.second + "_motor"));
+        trajopt->AddRunningCost(w_symmetry_u * act_diff * act_diff);
+
+      }
+    }
+  }
 
   MatrixXd Q = 0.02 * MatrixXd::Identity(n_v, n_v);
   MatrixXd R = 1e-4 * MatrixXd::Identity(n_u, n_u);
@@ -744,8 +765,8 @@ void AddCosts(Dircon<double>* trajopt,
   R(act_map.at("hip_roll_right_motor"), act_map.at("hip_roll_right_motor")) = 5e-1;
   R(act_map.at("hip_yaw_left_motor"), act_map.at("hip_yaw_left_motor")) = 5e-1;
   R(act_map.at("hip_yaw_right_motor"), act_map.at("hip_yaw_right_motor")) = 5e-1;
-  R(act_map.at("hip_pitch_left_motor"), act_map.at("hip_pitch_left_motor")) = 1e-5;
-  R(act_map.at("hip_pitch_right_motor"), act_map.at("hip_pitch_right_motor")) = 1e-5;
+  R(act_map.at("hip_pitch_left_motor"), act_map.at("hip_pitch_left_motor")) = 5e-5;
+  R(act_map.at("hip_pitch_right_motor"), act_map.at("hip_pitch_right_motor")) = 5e-5;
 
   Q *= FLAGS_cost_scaling;
   R *= FLAGS_cost_scaling;
@@ -761,7 +782,7 @@ void AddCosts(Dircon<double>* trajopt,
   W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 1e-3;
   W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
   W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
-  W *= 1.4 * FLAGS_cost_scaling;
+  W *= 2.0 * FLAGS_cost_scaling;
   vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
   for (int mode : {0, 1, 2}) {
     joint_accel_costs.push_back(

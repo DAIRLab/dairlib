@@ -21,7 +21,7 @@ DairlibSignalReceiver::DairlibSignalReceiver(int signal_size)
     : signal_size_(signal_size) {
   this->DeclareAbstractInputPort("lcmt_dairlib_signal",
                                  drake::Value<dairlib::lcmt_dairlib_signal>{});
-  this->DeclareVectorOutputPort(BasicVector<double>(signal_size),
+  this->DeclareVectorOutputPort("signal", BasicVector<double>(signal_size),
                                 &DairlibSignalReceiver::UnpackLcmIntoVector);
 }
 
@@ -44,8 +44,8 @@ DrakeSignalSender::DrakeSignalSender(
     : signal_names_(signal_names),
       signal_size_(signal_names.size()),
       stride_period_(stride_period) {
-  this->DeclareVectorInputPort(BasicVector<double>(signal_names.size()));
-  this->DeclareAbstractOutputPort(&DrakeSignalSender::PackVectorIntoLcm);
+  this->DeclareVectorInputPort("signal", BasicVector<double>(signal_names.size()));
+  this->DeclareAbstractOutputPort("signal", &DrakeSignalSender::PackVectorIntoLcm);
 }
 
 void DrakeSignalSender::PackVectorIntoLcm(

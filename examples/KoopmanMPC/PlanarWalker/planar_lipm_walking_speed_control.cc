@@ -36,15 +36,15 @@ PlanarLipmWalkingSpeedControl::PlanarLipmWalkingSpeedControl(
     k_ff_(k_ff), k_fb_(k_fb) {
 
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(
+      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(
           plant.num_positions(), plant.num_velocities(), plant.num_actuators()))
           .get_index();
 
-  v_des_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  v_des_port_ = this->DeclareVectorInputPort("v_des",BasicVector<double>(1)).get_index();
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
   if (is_using_predicted_com_) {
     fsm_switch_time_port_ =
-        this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+        this->DeclareVectorInputPort("fsm_switch",BasicVector<double>(1)).get_index();
 
     com_port_ =
         this->DeclareAbstractInputPort(
@@ -52,7 +52,7 @@ PlanarLipmWalkingSpeedControl::PlanarLipmWalkingSpeedControl(
                 drake::Value<drake::trajectories::Trajectory<double>>(pp))
             .get_index();
   }
-  this->DeclareVectorOutputPort(BasicVector<double>(2),
+  this->DeclareVectorOutputPort("out", BasicVector<double>(2),
                                 &PlanarLipmWalkingSpeedControl::CalcFootPlacement);
 }
 

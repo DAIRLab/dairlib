@@ -39,18 +39,18 @@ namespace multibody {
         const Eigen::MatrixXd &b_I,
         const Eigen::Vector3d &eq_com_pos,
         const Eigen::Vector3d &eq_foot_pos,
-        const drake::EigenPtr<MatrixXd> &A,
-        const drake::EigenPtr<MatrixXd> &B,
-        const drake::EigenPtr<VectorXd> &b);
+        const drake::EigenPtr<Eigen::MatrixXd> &A,
+        const drake::EigenPtr<Eigen::MatrixXd> &B,
+        const drake::EigenPtr<Eigen::VectorXd> &b);
 
     void CopyDiscreteLinearizedSrbDynamicsForMPC(
         double dt, double m, double yaw, BipedStance stance,
         const Eigen::MatrixXd &b_I,
         const Eigen::Vector3d &eq_com_pos,
         const Eigen::Vector3d &eq_foot_pos,
-        const drake::EigenPtr<MatrixXd> &Ad,
-        const drake::EigenPtr<MatrixXd> &Bd,
-        const drake::EigenPtr<VectorXd> &bd);
+        const drake::EigenPtr<Eigen::MatrixXd> &Ad,
+        const drake::EigenPtr<Eigen::MatrixXd> &Bd,
+        const drake::EigenPtr<Eigen::VectorXd> &bd);
 
     void AddBaseFrame(
         const std::string &body_name,

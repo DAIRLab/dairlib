@@ -158,7 +158,7 @@ void SrbdCMPC::MakeDynamicsConstraints() {
   for (int j = 0; j < nmodes_; j++) {
     auto mode = modes_.at(j);
     for (int i = 0; i < mode.N; i++) {
-      MatrixXd Aeq = MatrixXd::Zero(2*nx_ + nu_ + kLinearDim_);
+      MatrixXd Aeq = MatrixXd::Zero(2*nx_ + nu_ + kLinearDim_, nx_);
       VectorXd beq = VectorXd::Zero(nx_);
       Vector3d pos = Vector3d::Zero();
       pos(1) = nominal_foot_pos_.at(j)(1);

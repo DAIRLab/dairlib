@@ -67,15 +67,15 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
   Q_ = MatrixXd::Zero(nxi_, nxi_);
 
   // Create Ports
-  state_port_ = this->DeclareVectorInputPort(
+  state_port_ = this->DeclareVectorInputPort("x, u, t",
       OutputVector<double>(nq_, nv_, nu_p_)).get_index();
 
   if (!traj_tracking_) {
-    x_des_port_ = this->DeclareVectorInputPort(
+    x_des_port_ = this->DeclareVectorInputPort("x_des",
         BasicVector<double>(nxi_)).get_index();
   }
 
-  traj_out_port_ = this->DeclareAbstractOutputPort(&KoopmanMPC::GetMostRecentMotionPlan).get_index();
+  traj_out_port_ = this->DeclareAbstractOutputPort("y", &KoopmanMPC::GetMostRecentMotionPlan).get_index();
 
   // Discrete update
   DeclarePerStepDiscreteUpdateEvent(&KoopmanMPC::DiscreteVariableUpdate);
@@ -83,6 +83,7 @@ KoopmanMPC::KoopmanMPC(const MultibodyPlant<double>& plant,
 
   if ( use_fsm_ ) {
     fsm_port_ = this->DeclareVectorInputPort(
+        "fsm",
         BasicVector<double>(1)).get_index();
 
     current_fsm_state_idx_ =

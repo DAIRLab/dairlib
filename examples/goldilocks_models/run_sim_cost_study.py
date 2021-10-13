@@ -343,16 +343,12 @@ def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
             not InitPoseSolverFailed(working_threads[j][1][0]):
           time.sleep(0.1)
         else:
-          print("\n\n Init file. Finish.\n\n")
-          print(len(working_threads))
           EndSim(working_threads, j)
-          print(len(working_threads))
           break
       else:
         if working_threads[j][0][0].poll() is None:
           time.sleep(0.1)
         else:
-          print("\n\n Regular sim. Finish.\n\n")
           EndSim(working_threads, j)
           break
 
@@ -379,7 +375,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
   ### multithreading
   working_threads = []
-  n_max_thread = 2
+  n_max_thread = 3
 
   global thread_idx_set
   thread_idx_set = set()
@@ -429,6 +425,19 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   print("Finished evaluating. Current time = " + str(datetime.now()))
 
 
+def CheckThreadAndBlockWhenNecessary(working_threads, n_max_thread,
+    finish_up=False):
+  # Wait for threads to finish once is more than n_max_thread
+  while (not finish_up and (len(working_threads) >= n_max_thread)) or \
+      (finish_up and (len(working_threads) > 0)):
+    for j in range(len(working_threads)):
+      if working_threads[j].poll() is None:  # subprocess is alive
+        time.sleep(0.1)
+      else:
+        del working_threads[j]
+        break
+
+
 # This function assumes that simulation has been run and there exist lcm logs
 def EvalCostInMultithread(model_indices, log_indices):
   working_threads = []
@@ -452,22 +461,10 @@ def EvalCostInMultithread(model_indices, log_indices):
       counter += 1
 
       # Wait for threads to finish once is more than n_max_thread
-      while len(working_threads) >= n_max_thread:
-        for j in range(len(working_threads)):
-          if working_threads[j].poll() is None:  # subprocess is alive
-            time.sleep(0.1)
-          else:
-            del working_threads[j]
-            break
+      CheckThreadAndBlockWhenNecessary(working_threads, n_max_thread)
 
   print("Wait for all threads to join")
-  while len(working_threads) > 0:
-    for j in range(len(working_threads)):
-      if working_threads[j].poll() is None:  # subprocess is alive
-        time.sleep(0.1)
-      else:
-        del working_threads[j]
-        break
+  CheckThreadAndBlockWhenNecessary(working_threads, n_max_thread, True)
   print("Finished evaluating. Current time = " + str(datetime.now()))
 
 

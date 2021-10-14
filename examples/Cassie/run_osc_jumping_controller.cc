@@ -21,6 +21,7 @@
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -54,6 +55,7 @@ using examples::osc_jump::JumpingEventFsm;
 using examples::osc_jump::PelvisTransTrajGenerator;
 using multibody::FixedJointEvaluator;
 using systems::controllers::JointSpaceTrackingData;
+using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
@@ -76,8 +78,7 @@ DEFINE_string(simulator, "DRAKE",
               "contact information. Other options include MUJOCO and soon to "
               "include contact results from the GM contact estimator.");
 DEFINE_int32(init_fsm_state, osc_jump::BALANCE, "Initial state of the FSM");
-DEFINE_string(folder_path,
-              "examples/Cassie/saved_trajectories/",
+DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "jumping_0.15h_0.3d",
               "File to load saved trajectories from");
@@ -241,10 +242,10 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), pelvis_trans_traj, feet_contact_points,
       FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
+      plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory, l_hip_trajectory,
       gains.relative_feet, FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
+      plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory, r_hip_trajectory,
       gains.relative_feet, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<BasicTrajectoryPassthrough>(
@@ -344,13 +345,19 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-  TransTaskSpaceTrackingData com_tracking_data("com_traj", gains.K_p_com,
-                                               gains.K_d_com, gains.W_com,
-                                               plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData pelvis_tracking_data("com_traj", gains.K_p_com,
+                                                  gains.K_d_com, gains.W_com,
+                                                  plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
-    com_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
+    pelvis_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
   }
-  osc->AddTrackingData(&com_tracking_data);
+
+  RotTaskSpaceTrackingData pelvis_rot_tracking_data(
+      "pelvis_rot_tracking_data", gains.K_p_pelvis, gains.K_d_pelvis,
+      gains.W_pelvis, plant_w_spr, plant_w_spr);
+  for (auto mode : stance_modes) {
+    pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
+  }
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
       "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
@@ -362,15 +369,23 @@ int DoMain(int argc, char* argv[]) {
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");
 
-//  Relative
+  TransTaskSpaceTrackingData left_hip_tracking_data(
+      "left_hip_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
+      gains.W_flight_foot, plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData right_hip_tracking_data(
+      "right_hip_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
+      gains.W_flight_foot, plant_w_spr, plant_w_spr);
+  left_hip_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "hip_left");
+  right_hip_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "hip_right");
 
-  RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_tracking_data", gains.K_p_pelvis, gains.K_d_pelvis,
-      gains.W_pelvis, plant_w_spr, plant_w_spr);
-
-  for (auto mode : stance_modes) {
-    pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
-  }
+  RelativeTranslationTrackingData left_foot_rel_tracking_data(
+      "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
+      gains.W_flight_foot, plant_w_spr, plant_w_spr, &left_foot_tracking_data,
+      &left_hip_tracking_data);
+  RelativeTranslationTrackingData right_foot_rel_tracking_data(
+      "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
+      gains.W_flight_foot, plant_w_spr, plant_w_spr, &right_foot_tracking_data,
+      &right_hip_tracking_data);
 
   // Flight phase hip yaw tracking
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
@@ -407,21 +422,24 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), l_toe_trajectory, pos_map["toe_left"],
-          left_foot_points, "left_toe_angle_traj");
+          plant_w_spr, context_w_spr.get(), l_toe_trajectory,
+          pos_map["toe_left"], left_foot_points, "left_toe_angle_traj");
   auto right_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), r_toe_trajectory, pos_map["toe_right"],
-          right_foot_points, "right_toe_angle_traj");
+          plant_w_spr, context_w_spr.get(), r_toe_trajectory,
+          pos_map["toe_right"], right_foot_points, "right_toe_angle_traj");
 
   left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
                                               "toe_leftdot");
   right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
                                                "toe_rightdot");
 
+  osc->AddTrackingData(&pelvis_tracking_data);
   osc->AddTrackingData(&pelvis_rot_tracking_data);
-  osc->AddTrackingData(&left_foot_tracking_data);
-  osc->AddTrackingData(&right_foot_tracking_data);
+//  osc->AddTrackingData(&left_foot_tracking_data);
+//  osc->AddTrackingData(&right_foot_tracking_data);
+  osc->AddTrackingData(&left_foot_rel_tracking_data);
+  osc->AddTrackingData(&right_foot_rel_tracking_data);
   osc->AddTrackingData(&left_toe_angle_traj);
   osc->AddTrackingData(&right_toe_angle_traj);
 
@@ -432,7 +450,7 @@ int DoMain(int argc, char* argv[]) {
   swing_hip_yaw_left_traj.SetImpactInvariantProjection(true);
   swing_hip_yaw_right_traj.SetImpactInvariantProjection(true);
   pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
-  com_tracking_data.SetImpactInvariantProjection(true);
+  pelvis_tracking_data.SetImpactInvariantProjection(true);
 
   // Build OSC problem
   osc->Build();

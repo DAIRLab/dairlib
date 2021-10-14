@@ -1,7 +1,7 @@
 w_input: 0.000
 w_accel: 0.00001
 w_soft_constraint: 100
-x_offset: -0.02
+x_offset: -0.03
 relative_feet: false
 
 mu: 0.8
@@ -14,7 +14,7 @@ w_hip_yaw: 100
 hip_yaw_kp: 40
 hip_yaw_kd: 5
 
-impact_threshold: 0.050
+impact_threshold: 0.075
 landing_delay: 0.000
 
 CoMW:

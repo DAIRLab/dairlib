@@ -376,6 +376,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
+        "//systems/controllers/osc:osc_tracking_datas",
         "//systems/primitives:gaussian_noise_pass_through",
         "@drake//:drake_shared_library",
         "@gflags",

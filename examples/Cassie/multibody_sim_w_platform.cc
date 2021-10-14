@@ -133,7 +133,7 @@ int do_main(int argc, char* argv[]) {
       plant.get_actuation_input_port().size());
   auto discrete_time_delay =
       builder.AddSystem<drake::systems::DiscreteTimeDelay>(
-          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay,
+          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay * FLAGS_publish_rate,
           plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(

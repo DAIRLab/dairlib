@@ -2,6 +2,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <algorithm>
 #include <unordered_map>
 
 #include <gflags/gflags.h>

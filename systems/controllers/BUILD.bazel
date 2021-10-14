@@ -100,6 +100,7 @@ cc_library(
     srcs = ["time_based_fsm.cc"],
     hdrs = ["time_based_fsm.h"],
     deps = [
+        "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

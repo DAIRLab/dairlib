@@ -99,42 +99,16 @@ OperationalSpaceControl::OperationalSpaceControl(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
           .get_index();
 
-  const std::map<string, int>& pos_map_w_spr =
-      multibody::makeNameToPositionsMap(plant_w_spr);
-  const std::map<string, int>& vel_map_w_spr =
-      multibody::makeNameToVelocitiesMap(plant_w_spr);
-  const std::map<string, int>& pos_map_wo_spr =
-      multibody::makeNameToPositionsMap(plant_wo_spr);
   const std::map<string, int>& vel_map_wo_spr =
       multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
   // Initialize the mapping from spring to no spring
-  map_position_from_spring_to_no_spring_ = MatrixXd::Zero(n_q_, n_q_w_spr);
-  map_velocity_from_spring_to_no_spring_ = MatrixXd::Zero(n_v_, n_v_w_spr);
-
-  for (auto pos_pair_wo_spr : pos_map_wo_spr) {
-    bool successfully_added = false;
-    for (auto pos_pair_w_spr : pos_map_w_spr) {
-      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
-        map_position_from_spring_to_no_spring_(pos_pair_wo_spr.second,
-                                               pos_pair_w_spr.second) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
-
-  for (auto vel_pair_wo_spr : vel_map_wo_spr) {
-    bool successfully_added = false;
-    for (auto vel_pair_w_spr : vel_map_w_spr) {
-      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
-        map_velocity_from_spring_to_no_spring_(vel_pair_wo_spr.second,
-                                               vel_pair_w_spr.second) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
+  map_position_from_spring_to_no_spring_ =
+      multibody::CreateWithSpringsToWithoutSpringsMapPos(plant_w_spr,
+                                                         plant_wo_spr);
+  map_velocity_from_spring_to_no_spring_ =
+      multibody::CreateWithSpringsToWithoutSpringsMapVel(plant_w_spr,
+                                                         plant_wo_spr);
 
   // Get input limits
   VectorXd u_min(n_u_);
@@ -179,6 +153,18 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
+}
+
+// Optional features
+void OperationalSpaceControl::SetUpDoubleSupportPhaseBlending(
+    double ds_duration, int left_support_state, int right_support_state,
+    std::vector<int> ds_states) {
+  DRAKE_DEMAND(ds_duration > 0);
+  DRAKE_DEMAND(!ds_states.empty());
+  ds_duration_ = ds_duration;
+  left_support_state_ = left_support_state;
+  right_support_state_ = right_support_state;
+  ds_states_ = ds_states;
 }
 
 // Cost methods
@@ -424,6 +410,39 @@ void OperationalSpaceControl::Build() {
           .evaluator()
           .get());
 
+  // (Testing) 6. contact force blending
+  if (ds_duration_ > 0) {
+    epsilon_blend_ =
+        prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
+    blend_constraint_ =
+        prog_
+            ->AddLinearEqualityConstraint(
+                MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim), VectorXd::Zero(1),
+                {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
+            .evaluator()
+            .get();
+    /// Soft constraint version
+    //  DRAKE_DEMAND(w_blend_constraint_ > 0);
+    //  prog_->AddQuadraticCost(
+    //      w_blend_constraint_ *
+    //          MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
+    //      VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
+    /// hard constraint version
+    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
+  }
+
+  // (Testing) 7. Cost for staying close to the previous input
+  if (w_input_reg_ > 0) {
+    W_input_reg_ = w_input_reg_ * MatrixXd::Identity(n_u_, n_u_);
+    input_reg_cost_ =
+        prog_->AddQuadraticCost(W_input_reg_, VectorXd::Zero(n_u_), u_)
+            .evaluator()
+            .get();
+  }
+
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
@@ -437,7 +456,6 @@ void OperationalSpaceControl::Build() {
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
   std::cout << solver_options << std::endl;
   solver_->InitializeSolver(*prog_, solver_options);
-  // Max solve duration
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -453,6 +471,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
                             .get_mutable_value();
   if (fsm_state(0) != prev_fsm_state(0)) {
+    prev_distinct_fsm_state_ = prev_fsm_state(0);
     prev_fsm_state(0) = fsm_state(0);
 
     discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
@@ -608,7 +627,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   bool near_impact = alpha != 0;
   VectorXd v_proj = VectorXd::Zero(n_v_);
   if (near_impact) {
-    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t, fsm_state,
+    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t,
+                                    time_since_last_state_switch, fsm_state,
                                     next_fsm_state, M, J_h);
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
@@ -672,9 +692,43 @@ VectorXd OperationalSpaceControl::SolveQp(
                         .cwiseMin(0);
   joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
-  // Solve the QP
+  // (Testing) 6. blend contact forces during double support phase
+  if (ds_duration_ > 0) {
+    MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
+    if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
+        ds_states_.end()) {
+      double alpha_left = 0;
+      double alpha_right = 0;
+      if (prev_distinct_fsm_state_ == right_support_state_) {
+        // We want left foot force to gradually increase
+        alpha_left = -1;
+        alpha_right = time_since_last_state_switch /
+                      (ds_duration_ - time_since_last_state_switch);
 
-  //  const MathematicalProgramResult result = Solve(*prog_);
+      } else if (prev_distinct_fsm_state_ == left_support_state_) {
+        alpha_left = time_since_last_state_switch /
+                     (ds_duration_ - time_since_last_state_switch);
+        alpha_right = -1;
+      }
+      A(0, 0) = alpha_left / 2;
+      A(0, 1) = alpha_left / 2;
+      A(0, 2) = alpha_right / 2;
+      A(0, 3) = alpha_right / 2;
+      A(0, 4) = 1;
+      A(0, 5) = 1;
+      A(0, 6) = 1;
+      A(0, 7) = 1;
+    }
+    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
+  }
+
+  // (Testing) 7. Cost for staying close to the previous input
+  if (w_input_reg_ > 0) {
+    input_reg_cost_->UpdateCoefficients(W_input_reg_,
+                                        -W_input_reg_ * (*u_sol_));
+  }
+
+  // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
@@ -750,8 +804,9 @@ VectorXd OperationalSpaceControl::SolveQp(
 }
 void OperationalSpaceControl::UpdateImpactInvariantProjection(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
-    const Context<double>& context, double t, int fsm_state, int next_fsm_state,
-    const MatrixXd& M, const MatrixXd& J_h) const {
+    const Context<double>& context, double t, double t_since_last_state_switch,
+    int fsm_state, int next_fsm_state, const MatrixXd& M,
+    const MatrixXd& J_h) const {
   auto map_iterator = contact_indices_map_.find(next_fsm_state);
   if (map_iterator == contact_indices_map_.end()) {
     throw std::out_of_range("Contact mode: " + std::to_string(next_fsm_state) +
@@ -916,6 +971,7 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
+
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
                    plant_w_spr_.num_velocities());
   x_w_spr << q_w_spr, v_w_spr;

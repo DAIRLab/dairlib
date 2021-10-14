@@ -141,6 +141,7 @@ cc_library(
         "//multibody:multibody_solvers",
         "//multibody:multipose_visualizer",
         "//solvers:constraints",
+        "//solvers:optimization_utils",
         "@drake//:drake_shared_library",
     ],
 )
@@ -255,6 +256,23 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "multibody_sim_w_ground_incline",
+    srcs = ["multibody_sim_w_ground_incline.cc"],
+    deps = [
+        ":cassie_encoder",
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//solvers:optimization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:vector",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

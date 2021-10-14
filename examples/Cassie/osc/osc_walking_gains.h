@@ -10,6 +10,7 @@ struct OSCWalkingGains {
   double mu;
   double w_accel;
   double w_soft_constraint;
+  double w_input_reg;
   std::vector<double> CoMW;
   std::vector<double> CoMKp;
   std::vector<double> CoMKd;
@@ -88,6 +89,7 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));
+    a->Visit(DRAKE_NVP(w_input_reg));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(CoMKp));
     a->Visit(DRAKE_NVP(CoMKd));

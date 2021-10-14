@@ -277,9 +277,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 1, "acc")
   # plot_osc(osc_debug, osc_traj0, 2, "acc")
 
-  # plot_osc(osc_debug, osc_traj1, 0, "pos")
-  # plot_osc(osc_debug, osc_traj1, 1, "pos")
-  # plot_osc(osc_debug, osc_traj1, 2, "pos")
+  plot_osc(osc_debug, osc_traj1, 0, "pos")
+  plot_osc(osc_debug, osc_traj1, 1, "pos")
+  plot_osc(osc_debug, osc_traj1, 2, "pos")
   # #
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
@@ -294,9 +294,9 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
   # plot_osc(osc_debug, osc_traj2, 2, "vel")
 
-  plot_osc(osc_debug, osc_traj1, 0, "acc")
-  plot_osc(osc_debug, osc_traj1, 1, "acc")
-  plot_osc(osc_debug, osc_traj1, 2, "acc")
+  # plot_osc(osc_debug, osc_traj1, 0, "acc")
+  # plot_osc(osc_debug, osc_traj1, 1, "acc")
+  # plot_osc(osc_debug, osc_traj1, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj2, 0, "acc")
   # plot_osc(osc_debug, osc_traj2, 1, "acc")

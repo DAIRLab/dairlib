@@ -23,8 +23,8 @@ def main():
 
   l_foot_traj, r_foot_traj, l_hip_traj, r_hip_traj, l_toe_traj, r_toe_traj, pelvis_traj = construct_all_trajs(output_trajs)
 
-  l_foot_pos, r_foot_pos = plot_foot_trajs(output_trajs)
-  plot_pelvis_traj(output_trajs, l_foot_pos, r_foot_pos)
+  l_foot_pos, r_foot_pos = plot_foot_trajs(l_foot_traj, r_foot_traj)
+  plot_pelvis_traj(pelvis_traj, l_foot_pos, r_foot_pos)
 
 def construct_all_trajs(output_trajs):
   l_foot_traj = PiecewisePolynomial()
@@ -47,8 +47,8 @@ def construct_all_trajs(output_trajs):
     r_foot_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints[0:3, :], lcm_r_foot_traj.datapoints[3:6, :]))
     l_hip_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_l_hip_traj.time_vector, lcm_l_hip_traj.datapoints[0:3, :], lcm_l_hip_traj.datapoints[3:6, :]))
     r_hip_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_r_hip_traj.time_vector, lcm_r_hip_traj.datapoints[0:3, :], lcm_r_hip_traj.datapoints[3:6, :]))
-    l_toe_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_l_toe_traj.time_vector, lcm_l_toe_traj.datapoints[0:3, :], lcm_l_toe_traj.datapoints[3:6, :]))
-    r_toe_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_r_toe_traj.time_vector, lcm_r_toe_traj.datapoints[0:3, :], lcm_r_toe_traj.datapoints[3:6, :]))
+    l_toe_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_l_toe_traj.time_vector, lcm_l_toe_traj.datapoints[0:1, :], lcm_l_toe_traj.datapoints[1:2, :]))
+    r_toe_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_r_toe_traj.time_vector, lcm_r_toe_traj.datapoints[0:1, :], lcm_r_toe_traj.datapoints[1:2, :]))
     pelvis_traj.ConcatenateInTime(PiecewisePolynomial.CubicHermite(lcm_pelvis_traj.time_vector, lcm_pelvis_traj.datapoints[0:3, :], lcm_pelvis_traj.datapoints[3:6, :]))
   return l_foot_traj, r_foot_traj, l_hip_traj, r_hip_traj, l_toe_traj, r_toe_traj, pelvis_traj
 

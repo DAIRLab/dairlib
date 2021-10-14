@@ -824,6 +824,20 @@ def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
   elif stride_length_range_to_average[0] > stride_length_range_to_average[1]:
     raise ValueError("first element should be the lower bound of the range")
 
+  # Correct the range so that it's within the achieveable task space for all model iter
+  viable_min = -math.inf
+  viable_max = math.inf
+  for i in range(len(model_indices)):
+    model_iter = model_indices[i]
+    viable_min = max(viable_min, min(mtcl[mtcl[:, 0] == model_iter, 1]))
+    viable_max = min(viable_max, max(mtcl[mtcl[:, 0] == model_iter, 1]))
+  if viable_min > stride_length_range_to_average[0]:
+    print("Warning: increase the lower bound to %f because it's outside achievable space" % viable_min)
+    stride_length_range_to_average[0] = viable_min
+  if viable_max < stride_length_range_to_average[1]:
+    print("Warning: decrease the upper bound to %f because it's outside achievable space" % viable_max)
+    stride_length_range_to_average[1] = viable_max
+
   ### 2D plot (averaged cost vs iteration)
   n_sample = 500
   averaged_cost = np.zeros(len(model_indices))
@@ -917,21 +931,21 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
 
   ### global parameters
-  sim_end_time = 8.0
+  sim_end_time = 10.0
   spring_model = False
   # Parameters that are modified often
-  target_realtime_rate = 1  # 0.04
+  target_realtime_rate = 0.4  # 0.04
   foot_step_from_planner = False
   init_sim_vel = True
 
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 200
+  model_iter_idx_end = 95
   idx_spacing = 5
 
   # Task list
-  n_task = 60
+  n_task = 30
   stride_length = np.linspace(-0.6, 0.6, n_task)
   # stride_length = np.linspace(0, 0.1, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)

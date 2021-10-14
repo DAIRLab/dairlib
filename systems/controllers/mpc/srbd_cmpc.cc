@@ -124,7 +124,7 @@ void SrbdCMPC::Build() {
   MakeFrictionConeConstraints();
   MakeKinematicReachabilityConstraints();
   MakeInitialStateConstraint();
-  MakeTerrainConstraints();
+//  MakeTerrainConstraints();
   MakeCost();
 
 //  drake::solvers::SolverOptions solver_options;
@@ -369,7 +369,7 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   if (use_fsm_) {
     fsm_state =
         (int) (discrete_state->get_vector(current_fsm_state_idx_)
-            .get_value()(0) + 1e-6);
+            .get_value()(0));
     double last_event_time =
         discrete_state->get_vector(prev_event_time_idx_).get_value()(0);
 
@@ -383,6 +383,15 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   }
   result_ = drake::solvers::Solve(prog_);
   std::cout << "result: " << result_.get_solution_result() << std::endl;
+
+  if (!result_.is_success()) {
+//    std::vector<drake::solvers::Constraint*> constraints;
+//    for(const auto& constraint : result_.GetInfeasibleConstraints(prog_)){
+//     constraints.push_back(constraint.evaluator().get());
+//    }
+//    print_constraint(constraints);
+  }
+
   most_recent_sol_ = MakeLcmTrajFromSol(
       result_, timestamp, time_since_last_event,  x, fsm_state);
   return EventStatus::Succeeded();
@@ -399,11 +408,10 @@ void SrbdCMPC::UpdateConstraints(
     const VectorXd& x0, const int fsm_state,
     const double t_since_last_switch) const {
 
-
   initial_state_->UpdateCoefficients(MatrixXd::Identity(nx_, nx_), x0);
   if (!use_fsm_) { return; }
 
-  int n_until_next_state = modes_.at(fsm_state).N - t_since_last_switch / dt_;
+  int n_until_next_state = (dt_ * modes_.at(fsm_state).N - t_since_last_switch) / dt_;
   UpdateDynamicsConstraints(x0, n_until_next_state, fsm_state);
   UpdateKinematicConstraints(n_until_next_state, fsm_state);
 }
@@ -507,6 +515,16 @@ void SrbdCMPC::print_constraint(
     std::cout << x0_const->get_description() << ":\n A:\n"
               << x0_const->A() << "\nb:\n"
               << x0_const->upper_bound() << std::endl;
+  }
+}
+
+void SrbdCMPC::print_constraint(
+    const std::vector<drake::solvers::Constraint*>& constraints) const {
+  for (auto &constraint : constraints) {
+    auto constr = dynamic_cast<drake::solvers::LinearConstraint*> (constraint);
+    std::cout << constr->get_description() << ":\n A:\n"
+              << constr->A() << "\nb:\n"
+              << constr->upper_bound() << std::endl;
   }
 }
 

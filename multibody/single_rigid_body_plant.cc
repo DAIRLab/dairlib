@@ -148,8 +148,8 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
   A.block(9, 12, 3, 3) = -g_I_inv * lambda_hat;
 
   // Continuous B matrix
-  B.block(6, 6, 3, 3) = (1.0 / m) * Matrix3d::Identity();
-  B.block(9, 6, 3, 3) = g_I_inv *
+  B.block(6, 0, 3, 3) = (1.0 / m) * Matrix3d::Identity();
+  B.block(9, 0, 3, 1) = g_I_inv *
       HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos));
   B.block(9, 9, 3, 1) = g_I_inv * Vector3d(0.0, 0.0, 1.0);
 

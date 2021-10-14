@@ -91,6 +91,8 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void print_constraint(
       const std::vector<drake::solvers::LinearConstraint*>& constraint) const;
   void print_constraint(
+      const std::vector<drake::solvers::Constraint*>& constraint) const;
+  void print_constraint(
       const std::vector<drake::solvers::LinearEqualityConstraint*>& constraint) const;
 
  private:
@@ -105,7 +107,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
       const Eigen::Vector3d& origin = {0, 0, 0});
   void MakeDynamicsConstraints();
   void MakeFrictionConeConstraints();
-  void MakeStateKnotConstraints();
   void MakeInitialStateConstraint();
   void MakeCost();
 

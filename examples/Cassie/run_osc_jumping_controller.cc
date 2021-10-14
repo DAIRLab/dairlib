@@ -359,6 +359,8 @@ int DoMain(int argc, char* argv[]) {
   right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");
 
+//  Relative
+
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
       "pelvis_rot_tracking_data", gains.K_p_pelvis, gains.K_d_pelvis,
       gains.W_pelvis, plant_w_spr, plant_w_spr);

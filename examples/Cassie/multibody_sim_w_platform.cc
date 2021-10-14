@@ -24,6 +24,7 @@
 #include "drake/systems/primitives/discrete_time_delay.h"
 
 using dairlib::systems::SubvectorPassThrough;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
@@ -31,7 +32,6 @@ using drake::multibody::Parser;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
-using drake::geometry::DrakeVisualizer;
 
 using drake::systems::lcm::LcmPublisherSystem;
 
@@ -107,8 +107,8 @@ int do_main(int argc, char* argv[]) {
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf, FLAGS_spring_model,
-                     true);
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+                     FLAGS_spring_model, true);
 
   plant.Finalize();
 
@@ -133,7 +133,8 @@ int do_main(int argc, char* argv[]) {
       plant.get_actuation_input_port().size());
   auto discrete_time_delay =
       builder.AddSystem<drake::systems::DiscreteTimeDelay>(
-          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay, plant.num_actuators());
+          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay,
+          plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
@@ -204,6 +205,8 @@ int do_main(int argc, char* argv[]) {
       multibody::CreateWithSpringsToWithoutSpringsMapPos(plant, plant_wo_spr);
   Eigen::MatrixXd map_no_spring_to_spring_vel =
       multibody::CreateWithSpringsToWithoutSpringsMapVel(plant, plant_wo_spr);
+  map_no_spring_to_spring_pos.transposeInPlace();
+  map_no_spring_to_spring_vel.transposeInPlace();
 
   const DirconTrajectory& dircon_trajectory =
       DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
@@ -214,14 +217,11 @@ int do_main(int argc, char* argv[]) {
   Eigen::VectorXd x_init = Eigen::VectorXd::Zero(nx);
   Eigen::VectorXd x_traj_init = state_traj.value(FLAGS_start_time);
   if (FLAGS_spring_model) {
-    x_init << map_no_spring_to_spring_pos * x_traj_init.head(nq),
-        map_no_spring_to_spring_vel * x_traj_init.tail(nv);
-  }else{
+    x_init << map_no_spring_to_spring_pos * x_traj_init.head(map_no_spring_to_spring_pos.cols()),
+        map_no_spring_to_spring_vel * x_traj_init.tail(map_no_spring_to_spring_vel.cols());
+  } else {
     x_init << x_traj_init;
   }
-//  Eigen::VectorXd x_init_no_spring = state_traj.value(FLAGS_start_time);
-//  x_init << map_no_spring_to_spring_pos * x_init_no_spring.head(plant_wo_spr.num_positions()),
-//      map_no_spring_to_spring_vel * x_init_no_spring.tail(plant_wo_spr.num_velocities());
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 

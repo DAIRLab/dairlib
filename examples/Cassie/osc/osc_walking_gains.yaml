@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # Invariant Impacts
-impact_threshold: 0.1
+impact_threshold: 0.2
 use_traj_opt_feet_traj: false
 
 # High level command gains (with radio)
@@ -35,12 +35,12 @@ k_fb_lateral: 0.23
 
 # Finite state machine
 ss_time: 0.35
-ds_time: 0.075
+ds_time: 0.05
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.5
 footstep_offset: 0.04
-center_line_offset: 0.03
+center_line_offset: 0.02
 mid_foot_height: 0.02
 final_foot_height: 0.0
 final_foot_velocity_z: 0.0
@@ -53,6 +53,7 @@ mu: 0.8
 
 w_accel: 0.0
 w_soft_constraint: 100
+w_input_reg: 0.0
 
 w_swing_toe: 1
 swing_toe_kp: 1500

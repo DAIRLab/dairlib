@@ -196,12 +196,10 @@ void DoMain() {
     spr_map = CreateWithSpringsToWithoutSpringsMapPos(plant, plant_wo_spr);
   }
 
-  std::cout << "nq: " << n_q << " n_v: " << n_v << " n_x: " << n_x << std::endl;
   // Create maps for joints
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
-
 
   // Set up contact/distance constraints
   auto left_toe_pair = LeftToeFront(plant);
@@ -354,7 +352,7 @@ void DoMain() {
   std::cout << "nq: " << n_q << endl;
   std::cout << "nv: " << n_v << endl;
   std::cout << "nu: " << plant.num_actuators() << endl;
-  cout << "N: " << num_knot_points;
+  cout << "N: " << num_knot_points << endl;
   cout << "Num decision vars: " << trajopt.decision_variables().size() << endl;
 
   if (!FLAGS_load_filename.empty()) {
@@ -382,6 +380,8 @@ void DoMain() {
   cout << "Solve time:" << elapsed.count() << std::endl;
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "Solve result: " << result.get_solution_result() << std::endl;
+
+  std::cout << "Lambda sol: " << result.GetSolution(trajopt.impulse_vars(1)) << std::endl;
 
   // Save trajectory to file
   DirconTrajectory saved_traj(plant, trajopt, result, "jumping_trajectory",
@@ -620,13 +620,13 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   auto left_foot_z_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-          (1.4 * FLAGS_height - eps) * VectorXd::Ones(1),
-          (1.4 * FLAGS_height + eps) * VectorXd::Ones(1));
+          (1.25 * FLAGS_height - eps) * VectorXd::Ones(1),
+          (1.25 * FLAGS_height + eps) * VectorXd::Ones(1));
   auto right_foot_z_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-          (1.4 * FLAGS_height - eps) * VectorXd::Ones(1),
-          (1.4 * FLAGS_height + eps) * VectorXd::Ones(1));
+          (1.25 * FLAGS_height - eps) * VectorXd::Ones(1),
+          (1.25 * FLAGS_height + eps) * VectorXd::Ones(1));
   trajopt->AddConstraint(left_foot_z_constraint, x_top.head(n_q));
   trajopt->AddConstraint(right_foot_z_constraint, x_top.head(n_q));
 
@@ -668,15 +668,21 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force_vars(2, index);
-    trajopt->AddLinearConstraint(lambda(2) <= 450);
-    trajopt->AddLinearConstraint(lambda(5) <= 450);
-    trajopt->AddLinearConstraint(lambda(8) <= 450);
-    trajopt->AddLinearConstraint(lambda(11) <= 450);
+    trajopt->AddLinearConstraint(lambda(2) <= 350);
+    trajopt->AddLinearConstraint(lambda(5) <= 350);
+    trajopt->AddLinearConstraint(lambda(8) <= 350);
+    trajopt->AddLinearConstraint(lambda(11) <= 350);
     trajopt->AddLinearConstraint(lambda(2) >= 50);
     trajopt->AddLinearConstraint(lambda(5) >= 50);
     trajopt->AddLinearConstraint(lambda(8) >= 50);
     trajopt->AddLinearConstraint(lambda(11) >= 50);
   }
+  // Limit the ground impulses when landing
+  auto Lambda = trajopt->impulse_vars(1);
+  trajopt->AddLinearConstraint(Lambda(2) <= 2);
+  trajopt->AddLinearConstraint(Lambda(5) <= 2);
+  trajopt->AddLinearConstraint(Lambda(8) <= 2);
+  trajopt->AddLinearConstraint(Lambda(11) <= 2);
 }
 
 /******

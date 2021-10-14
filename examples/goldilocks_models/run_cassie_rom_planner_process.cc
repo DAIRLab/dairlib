@@ -136,6 +136,7 @@ DEFINE_double(yaw_disturbance, 0,
 
 // Testing
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
+DEFINE_string(path_wait_identifier, "", "");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -395,6 +396,10 @@ int DoMain(int argc, char* argv[]) {
                ? 1
                : std::numeric_limits<int>::infinity());
   if (!FLAGS_debug_mode) {
+    // Create the file to indicate that the planner thread is listening
+    if (!FLAGS_path_wait_identifier.empty())
+      std::system(("touch " + FLAGS_path_wait_identifier).c_str());
+
     loop.Simulate();
   } else {
     // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate

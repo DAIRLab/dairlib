@@ -119,6 +119,8 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
 
   # other arguments
   port_idx = thread_idx + 1024  # Ports below 1024 are considered to be privileged in Linux. https://stackoverflow.com/questions/31899673/bind-returning-permission-denied-c
+  planner_wait_identifier = eval_dir + "planner" + str(time.time())
+  control_wait_identifier = eval_dir + "controller" + str(time.time())
 
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
@@ -143,6 +145,8 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
     '--spring_model=%s' % str(spring_model).lower(),
+    '--dir_data=%s' % data_dir[:-1] + str(thread_idx) + "/",
+    '--path_wait_identifier=%s' % planner_wait_identifier,
     '--print_level=0',
   ]
   controller_cmd = [
@@ -159,6 +163,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
     '--init_traj_file_name=%s' % init_traj_file,
     '--spring_model=%s' % str(spring_model).lower(),
     '--get_swing_foot_from_planner=%s' % str(foot_step_from_planner).lower(),
+    '--path_wait_identifier=%s' % control_wait_identifier,
   ]
   simulator_cmd = [
     'bazel-bin/examples/Cassie/multibody_sim_w_ground_incline',
@@ -199,16 +204,21 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
   f.write("---\n")
   f.close()
 
-  # Remove file for init pose
+  # Remove file for init pose success/fail flag
   if os.path.exists(path_init_pose_success):
-    os.system("rm " + path_init_pose_success)
+    RunCommand("rm " + path_init_pose_success, True)
 
   # Run all processes
   planner_process = subprocess.Popen(planner_cmd)
   controller_process = subprocess.Popen(controller_cmd)
   if not get_init_file:
     logger_process = subprocess.Popen(lcm_logger_cmd)
-  time.sleep(3)
+  # We don't run simulation thread until both planner and controller are waiting for simulation's message
+  while not os.path.exists(planner_wait_identifier) or \
+      not os.path.exists(control_wait_identifier):
+    time.sleep(0.1)
+  RunCommand("rm " + planner_wait_identifier, True)
+  RunCommand("rm " + control_wait_identifier, True)
   simulator_process = subprocess.Popen(simulator_cmd)
 
   # Message to return
@@ -313,7 +323,7 @@ def SaveLogCorrespondence():
   f.close()
 
 
-def EndSim(working_threads, idx):
+def EndSim(working_threads, idx, recycle_idx=True):
   # Once we reach the code here, it means one simulation has ended
 
   # Log sim status
@@ -328,9 +338,18 @@ def EndSim(working_threads, idx):
     working_threads[idx][0][i].kill()
 
   # add back available thread idx
-  thread_idx_set.add(working_threads[idx][3])
+  if recycle_idx:
+    thread_idx_set.add(working_threads[idx][3])
 
   del working_threads[idx]
+
+
+def BlockAndDeleteTheLatestThread(working_threads):
+  # It is always the last one in the list because we just appended it.
+  while working_threads[-1][0][0].poll() is None and \
+      not InitPoseSolverFailed(working_threads[-1][1][0]):
+    time.sleep(0.1)
+  EndSim(working_threads, -1, False)
 
 
 def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
@@ -339,26 +358,16 @@ def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
   while (not finish_up and (len(working_threads) >= n_max_thread)) or \
       (finish_up and (len(working_threads) > 0)):
     for j in range(len(working_threads)):
-      get_init_file = working_threads[j][2]
-      if get_init_file:
-        if working_threads[j][0][0].poll() is None and \
-            not InitPoseSolverFailed(working_threads[j][1][0]):
-          time.sleep(0.1)
-        else:
-          EndSim(working_threads, j)
-          break
+      if working_threads[j][0][0].poll() is None:
+        time.sleep(0.1)
       else:
-        if working_threads[j][0][0].poll() is None:
-          time.sleep(0.1)
-        else:
-          EndSim(working_threads, j)
-          break
+        EndSim(working_threads, j)
+        break
 
 
 def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
     do_eval_cost=False):
-  # TODO: We should use separate data folders for different thread.
-  # TODO: I wonder if we break any thing when running ipopt in parallel for the initial pose?
+  # TODO: I wonder if we will break any thing if we run ipopt in parallel for the initial pose? (currently we are not doing this, so we are fine)
 
   ### Channel names
   global ch
@@ -407,15 +416,18 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
       path = eval_dir + '%d_%d_success.csv' % (rom_iter, log_idx)
       if not os.path.exists(path):
         # Get the initial traj
-        working_threads.append(RunSimAndController(thread_idx_set.pop(), sim_end_time,
-                                                   task[varying_task_element_idx], log_idx, rom_iter,
-                                                   sample_idx, True))
-        CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread)
+        thread_idx = thread_idx_set.pop()
+        working_threads.append(
+            RunSimAndController(thread_idx, sim_end_time,
+                                task[varying_task_element_idx], log_idx,
+                                rom_iter, sample_idx, True))
+        BlockAndDeleteTheLatestThread(working_threads)
 
         # Run the simulation
-        working_threads.append(RunSimAndController(thread_idx_set.pop(), sim_end_time,
-                                                   task[varying_task_element_idx], log_idx, rom_iter,
-                                                   sample_idx, False))
+        working_threads.append(
+            RunSimAndController(thread_idx, sim_end_time,
+                                task[varying_task_element_idx], log_idx,
+                                rom_iter, sample_idx, False))
         CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread)
 
         # Evaluate the cost (not multithreaded. Will block the main thread)

@@ -11,7 +11,7 @@ import time
 import sys
 plt.rcParams.update({'font.size': 18})
 
-save_figure = False
+save_figure = True
 
 only_plot_average_cost = True
 normalize_by_nominal_cost = True
@@ -34,7 +34,7 @@ n_sampel_sl = 13  # should be > 0
 n_sampel_gi = 3  # should be > 0
 n_sampel_v = 1  # should be > 0
 n_sampel_tr = 1  # should be > 0
-n_sampel_ph = 5  # should be > 0
+n_sampel_ph = 1  # should be > 0
 N_sample = n_sampel_sl * n_sampel_gi * n_sampel_v * n_sampel_tr * n_sampel_ph
 print('n_sampel_sl = ' + str(n_sampel_sl))
 print('n_sampel_gi = ' + str(n_sampel_gi))
@@ -190,6 +190,6 @@ while 1:
 
     if save_figure:
         plt.savefig("../cost.png")
-    else:
-        plt.pause(10)
-        plt.clf()
+        print("figure saved")
+    plt.pause(10)
+    plt.clf()

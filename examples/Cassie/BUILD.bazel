@@ -491,6 +491,7 @@ cc_binary(
     name = "run_srbd_cmpc_process",
     srcs = ["run_srbd_cmpc_process.cc"],
     deps = [
+        "cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
         "//common",

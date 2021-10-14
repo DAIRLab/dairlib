@@ -160,7 +160,7 @@ void CassieFixedPointSolver(
   // Random guess, except for the positions
   Eigen::VectorXd guess = Eigen::VectorXd::Random(program.num_vars());
   guess.head(plant.num_positions()) = q_guess;
-  if (all_sol->size() > 0) {
+  if (all_sol) {
     std::cout << "set initial guess from all_sol\n";
     guess = *all_sol;
   }
@@ -191,7 +191,8 @@ void CassieFixedPointSolver(
   *q_result = result.GetSolution(q);
   *u_result = result.GetSolution(u);
   *lambda_result = result.GetSolution(lambda);
-  *all_sol = result.GetSolution();
+  if(all_sol)
+    *all_sol = result.GetSolution();
 }
 
 void CassieFixedBaseFixedPointSolver(
@@ -269,12 +270,12 @@ void CassieFixedBaseFixedPointSolver(
 VdotConstraint::VdotConstraint(const MultibodyPlant<double>& plant,
                                const KinematicEvaluatorSet<double>& evaluators)
     : NonlinearConstraint<double>(
-          plant.num_velocities(),
-          plant.num_positions() + plant.num_velocities() +
-              plant.num_actuators() + evaluators.count_full() +
-              plant.num_velocities(),
-          VectorXd::Zero(plant.num_velocities()),
-          VectorXd::Zero(plant.num_velocities()), ""),
+    plant.num_velocities(),
+    plant.num_positions() + plant.num_velocities() +
+        plant.num_actuators() + evaluators.count_full() +
+        plant.num_velocities(),
+    VectorXd::Zero(plant.num_velocities()),
+    VectorXd::Zero(plant.num_velocities()), ""),
       plant_(plant),
       world_(plant.world_frame()),
       context_(plant.CreateDefaultContext()),
@@ -295,17 +296,17 @@ void VdotConstraint::EvaluateConstraint(
   multibody::setContext<double>(plant_, x, u, context_.get());
 
   *y = vdot - evaluators_.EvalActiveSecondTimeDerivative(context_.get(), lambda)
-                  .tail(n_v_);
+      .tail(n_v_);
 };
 
 BodyPointVelConstraint::BodyPointVelConstraint(
     const MultibodyPlant<double>& plant,
     const multibody::KinematicEvaluatorSet<double>& evaluators)
     : NonlinearConstraint<double>(
-          evaluators.count_active(),
-          plant.num_positions() + plant.num_velocities(),
-          VectorXd::Zero(evaluators.count_active()),
-          VectorXd::Zero(evaluators.count_active()), ""),
+    evaluators.count_active(),
+    plant.num_positions() + plant.num_velocities(),
+    VectorXd::Zero(evaluators.count_active()),
+    VectorXd::Zero(evaluators.count_active()), ""),
       plant_(plant),
       world_(plant.world_frame()),
       context_(plant.CreateDefaultContext()),
@@ -429,11 +430,11 @@ void CassieInitStateSolver(
 
   // Add symmetry constraints, and zero roll/pitch on the hip
   program.AddConstraint(q(positions_map.at("knee_left")) ==
-                        q(positions_map.at("knee_right")));
+      q(positions_map.at("knee_right")));
   program.AddConstraint(q(positions_map.at("hip_pitch_left")) ==
-                        q(positions_map.at("hip_pitch_right")));
+      q(positions_map.at("hip_pitch_right")));
   program.AddConstraint(q(positions_map.at("hip_roll_left")) ==
-                        -q(positions_map.at("hip_roll_right")));
+      -q(positions_map.at("hip_roll_right")));
   program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("hip_yaw_right")));
   program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("hip_yaw_left")));
 

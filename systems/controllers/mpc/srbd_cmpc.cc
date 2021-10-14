@@ -17,7 +17,6 @@ using drake::AbstractValue;
 
 using drake::EigenPtr;
 
-using drake::solvers::OsqpSolver;
 using drake::solvers::Solve;
 using drake::solvers::OsqpSolverDetails;
 using drake::solvers::MathematicalProgram;
@@ -128,16 +127,16 @@ void SrbdCMPC::Build() {
   MakeTerrainConstraints();
   MakeCost();
 
-  drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
-  prog_.SetSolverOptions(solver_options);
+//  drake::solvers::SolverOptions solver_options;
+//  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
+//  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+//  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+//  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
+//  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
+//  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
+//  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+//  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
+//  prog_.SetSolverOptions(solver_options);
 }
 
 void SrbdCMPC::MakeTerrainConstraints(
@@ -170,6 +169,9 @@ void SrbdCMPC::MakeDynamicsConstraints() {
                xx.at(j * mode.N + i + 1)}));
     }
   }
+//  for (auto& binding : dynamics_) {
+//    std::cout << binding.to_string() << std::endl;
+//  }
 }
 
 void SrbdCMPC::UpdateKinematicConstraints(
@@ -208,19 +210,30 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
   auto& mode = modes_.at(fsm_state);
   Vector3d pos = plant_.CalcFootPosition(x, mode.stance);
 
+//  for (auto& constraint : dynamics_) {
+//    std::cout <<  constraint.to_string() << std::endl;
+//  }
+
   if (n_until_next_stance == mode.N) {
     // make current stance dynamics and apply to mode
     MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + nu_);
     VectorXd beq = VectorXd::Zero(nx_);
     CopyDiscreteDynamicsConstraint(mode, true, pos, &Aeq, &beq);
+
     for (int i = 0; i < (mode.N-1); i++){
       prog_.RemoveConstraint(dynamics_.at(i));
       dynamics_.at(i) = prog_.AddLinearEqualityConstraint(
           Aeq, beq, {xx.at(i), uu.at(i), xx.at(i+1)});
     }
+
+    Aeq = MatrixXd::Zero(nx_, 2*nx_ + kLinearDim_ + nu_);
+    beq = VectorXd::Zero(nx_);
     CopyDiscreteDynamicsConstraint(modes_.at(1-fsm_state),
         false, pos, &Aeq, &beq);
-    prog_.RemoveConstraint(dynamics_.back());
+    std::cout << "size: " << std::to_string(dynamics_.size()) << std::endl;
+    std::cout << "constraint: " << dynamics_[dynamics_.size() -1].to_string() << std::endl;
+    prog_.RemoveConstraint(dynamics_[dynamics_.size()-1]);
+    std::cout << "removed" << std::endl;
     dynamics_.back() = prog_.AddLinearEqualityConstraint(
         Aeq, beq,
         {xx.at(total_knots_-1), pp.at(1-fsm_state),
@@ -368,7 +381,8 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   } else {
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x), 0, 0);
   }
-  solver_.Solve(prog_, {}, {}, &result_);
+  result_ = drake::solvers::Solve(prog_);
+  std::cout << "result: " << result_.get_solution_result() << std::endl;
   most_recent_sol_ = MakeLcmTrajFromSol(
       result_, timestamp, time_since_last_event,  x, fsm_state);
   return EventStatus::Succeeded();
@@ -384,6 +398,7 @@ void SrbdCMPC::UpdateTrackingObjective(const VectorXd& xdes) const {
 void SrbdCMPC::UpdateConstraints(
     const VectorXd& x0, const int fsm_state,
     const double t_since_last_switch) const {
+
 
   initial_state_->UpdateCoefficients(MatrixXd::Identity(nx_, nx_), x0);
   if (!use_fsm_) { return; }

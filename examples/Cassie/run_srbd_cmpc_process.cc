@@ -21,6 +21,7 @@
 #include "multibody/single_rigid_body_plant.h"
 #include "examples/Cassie/mpc/cassie_srbd_cmpc_gains.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/cassie_fixed_point_solver.h"
 
 
 namespace dairlib {
@@ -88,7 +89,6 @@ int DoMain(int argc, char* argv[]) {
       "examples/Cassie/urdf/cassie_v2.urdf", true, false);
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
-  auto x0 = plant.GetPositionsAndVelocities(*plant_context);
   auto srb_plant = SingleRigidBodyPlant(plant, plant_context.get(), false);
 
   std::cout << "Check 1" << std::endl;
@@ -113,15 +113,11 @@ int DoMain(int argc, char* argv[]) {
   Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2.0;
 
   // add contact points
-  std::cout << "here1" << std::endl;
   auto left_pt = std::pair<Vector3d, const drake::multibody::BodyFrame<double> &>(
       mid_contact_point, plant.GetBodyByName("toe_left").body_frame());
-  std::cout << "here2" << std::endl;
   auto right_pt = std::pair<Vector3d, const drake::multibody::BodyFrame<double> &>(
       mid_contact_point, plant.GetBodyByName("toe_right").body_frame());
-  std::cout << "here3" << std::endl;
   srb_plant.SetMass(mass);
-  std::cout << "before add_contact_point" << std::endl;
   srb_plant.AddContactPoint(left_pt, BipedStance::kLeft);
   srb_plant.AddContactPoint(right_pt, BipedStance::kRight);
   std::cout << "After add_contact_point" << std::endl;
@@ -220,24 +216,32 @@ int DoMain(int argc, char* argv[]) {
   if (!FLAGS_debug_mode) {
     loop.Simulate();
   }  else {
-    OutputVector<double> robot_out(x0.head(plant.num_positions()),
-                                   x0.tail(plant.num_velocities()),
+    drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
+    addCassieMultibody(&plant_for_solver, nullptr, true,
+        "examples/Cassie/urdf/cassie_v2.urdf", true, false);
+    plant_for_solver.Finalize();
+    VectorXd q_init, u_init, lambda_init;
+    CassieFixedPointSolver(plant_for_solver, FLAGS_h_des, gains.mu,
+                             70, true, FLAGS_stance_width, &q_init, &u_init, &lambda_init);
+
+    OutputVector<double> rbt_out_msg(q_init,
+                                   VectorXd::Zero(plant.num_velocities()),
                                    VectorXd::Zero(plant.num_actuators()));
 
-    robot_out.set_timestamp(FLAGS_debug_time);
+    rbt_out_msg.set_timestamp(FLAGS_debug_time);
     auto diagram_ptr = loop.get_diagram();
     auto& diagram_context = loop.get_diagram_mutable_context();
 
     diagram_context.SetTime(FLAGS_debug_time);
 
-    auto& kmpc_context = diagram_ptr->GetMutableSubsystemContext(*cmpc, &diagram_context);
+    auto& cmpc_context = diagram_ptr->GetMutableSubsystemContext(*cmpc, &diagram_context);
+    auto& mpc_pub_context = diagram_ptr->GetMutableSubsystemContext(*mpc_out_publisher, &diagram_context);
 
-    cmpc->get_x_des_input_port().FixValue(&kmpc_context, x_des);
-    cmpc->get_fsm_input_port().FixValue(&kmpc_context, VectorXd::Zero(1));
-    cmpc->get_state_input_port().FixValue(&kmpc_context, robot_out);
+    cmpc->get_x_des_input_port().FixValue(&cmpc_context, x_des);
+    cmpc->get_fsm_input_port().FixValue(&cmpc_context, VectorXd::Zero(1));
+    cmpc->get_state_input_port().FixValue(&cmpc_context, rbt_out_msg);
+    mpc_out_publisher->Publish(mpc_pub_context);
 
-    auto out = cmpc->AllocateOutput();
-    cmpc->CalcOutput(kmpc_context, out.get());
   }
 
   return 0;

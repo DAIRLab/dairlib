@@ -88,7 +88,7 @@ void SrbdCMPC::AddMode(const LinearSrbdDynamics&  dynamics,
     xx.push_back(prog_.NewContinuousVariables(
         nx_, "x_" + std::to_string(i + stance)));
     uu.push_back(prog_.NewContinuousVariables(
-        nx_, "u_" + std::to_string(i + stance)));
+        nu_, "u_" + std::to_string(i + stance)));
   }
   pp.push_back(prog_.NewContinuousVariables(
       kLinearDim_, "p_" + std::to_string(stance)));

@@ -158,6 +158,7 @@ int DoMain(int argc, char* argv[]) {
       MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_time / dt));
   cmpc->AddMode(right_stance_dynamics, BipedStance::kRight,
       MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_time / dt));
+  cmpc->FinalizeModeSequence();
 
   // add tracking objective
   VectorXd x_des = VectorXd::Zero(nx);

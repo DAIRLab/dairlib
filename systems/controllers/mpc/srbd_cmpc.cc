@@ -239,7 +239,7 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
         {xx.at(total_knots_-1), pp.at(1-fsm_state),
          uu.at(total_knots_-1), xx.at(total_knots_)});
   } else {
-    int idx = n_until_next_stance-1;
+    int idx = n_until_next_stance;
     MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + kLinearDim_ + nu_);
     VectorXd beq = VectorXd::Zero(nx_);
     CopyDiscreteDynamicsConstraint(modes_.at(1-fsm_state), false, pos, &Aeq, &beq);
@@ -382,15 +382,6 @@ EventStatus SrbdCMPC::PeriodicUpdate(
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x), 0, 0);
   }
   result_ = drake::solvers::Solve(prog_);
-  std::cout << "result: " << result_.get_solution_result() << std::endl;
-
-  if (!result_.is_success()) {
-//    std::vector<drake::solvers::Constraint*> constraints;
-//    for(const auto& constraint : result_.GetInfeasibleConstraints(prog_)){
-//     constraints.push_back(constraint.evaluator().get());
-//    }
-//    print_constraint(constraints);
-  }
 
   most_recent_sol_ = MakeLcmTrajFromSol(
       result_, timestamp, time_since_last_event,  x, fsm_state);

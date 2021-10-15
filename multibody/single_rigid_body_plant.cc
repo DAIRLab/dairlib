@@ -179,19 +179,16 @@ void SingleRigidBodyPlant::CopyDiscreteLinearizedSrbDynamicsForMPC(
   CopyContinuousLinearized3dSrbDynamicsForMPC(
       m, yaw, stance, b_I, eq_com_pos, eq_foot_pos, &A, &B, &b);
 
-  std::cout << "Check 1" << std::endl;
   MatrixXd A_accel = MatrixXd::Zero(12, 15);
   MatrixXd B_accel = MatrixXd::Zero(12, 4);
   VectorXd b_accel = VectorXd::Zero(12);
-  std::cout << "Check 2" << std::endl;
-  A_accel.block(0, 0, 6, A_accel.cols()) = A.block(6, 0, 6, A_accel.cols());
-  B_accel.block(0, 0, 6, B_accel.cols()) = B.block(6, 0, 6, B_accel.cols());
-  b_accel.head(6) = b.tail(6);
-  std::cout << "Check 3" << std::endl;
+//  A_accel.block(0, 0, 6, A_accel.cols()) = A.block(6, 0, 6, A_accel.cols());
+//  B_accel.block(0, 0, 6, B_accel.cols()) = B.block(6, 0, 6, B_accel.cols());
+//  b_accel.head(6) = b.tail(6);
   A = MatrixXd::Identity(12, 15) + A*dt + (0.5 * dt*dt)*A_accel;
   B = B*dt + 0.5*dt*dt*B_accel;
   b = b*dt + 0.5*dt*dt*b_accel;
-  std::cout << "Check 4" << std::endl;
+
   *Ad = A;
   *Bd = B;
   *bd = b;

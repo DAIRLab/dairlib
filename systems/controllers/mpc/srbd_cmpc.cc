@@ -124,7 +124,7 @@ void SrbdCMPC::Build() {
   MakeFrictionConeConstraints();
   MakeKinematicReachabilityConstraints();
   MakeInitialStateConstraint();
-//  MakeTerrainConstraints();
+  MakeTerrainConstraints();
   MakeCost();
 
 //  drake::solvers::SolverOptions solver_options;

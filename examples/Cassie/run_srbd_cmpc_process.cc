@@ -120,7 +120,6 @@ int DoMain(int argc, char* argv[]) {
   srb_plant.SetMass(mass);
   srb_plant.AddContactPoint(left_pt, BipedStance::kLeft);
   srb_plant.AddContactPoint(right_pt, BipedStance::kRight);
-  std::cout << "After add_contact_point" << std::endl;
 
   int nx = 12;
   int nu = 4;

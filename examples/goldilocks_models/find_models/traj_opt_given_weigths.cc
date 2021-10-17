@@ -2993,7 +2993,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // 0 < q.segment<1>(6) + tan(ground_incline_) * q.segment<1>(4) < max_height
   //  trajopt.AddLinearConstraint(x0(6) + tan(ground_incline) * x0(4) ==
   //      pelvis_height);
-  // simple version
+  // Simple version -- only constraint the starting height
   trajopt.AddBoundingBoxConstraint(pelvis_height, pelvis_height, x0(6));
 
   // Scale decision variable

@@ -820,7 +820,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
       WarmStartGuess(quat_xyz_shift, reg_x_FOM, global_fsm_idx,
-                     first_mode_knot_idx, &trajopt);
+                     first_mode_knot_idx, current_time, &trajopt);
     } else {
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
@@ -1064,7 +1064,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                       trajopt, result, param_.dir_data, prefix);
     // Save trajectory to lcm
     SaveTrajIntoLcmBinary(trajopt, result, global_x0_FOM_, global_xf_FOM_,
-                          param_.dir_data, prefix);
+                          param_.dir_data, prefix, current_time);
 
     // Check the cost
     PrintCost(trajopt, result);
@@ -1578,11 +1578,12 @@ void CassiePlannerWithMixedRomFom::RotatePosBetweenGlobalAndLocalFrame(
 void CassiePlannerWithMixedRomFom::SaveTrajIntoLcmBinary(
     const RomTrajOptCassie& trajopt, const MathematicalProgramResult& result,
     const MatrixXd& global_x0_FOM, const MatrixXd& global_xf_FOM,
-    const string& dir_data, const string& prefix) const {
+    const string& dir_data, const string& prefix, double current_time) const {
   string file_name = prefix + "rom_trajectory";
   RomPlannerTrajectory saved_traj(
       trajopt, result, global_x0_FOM, global_xf_FOM, file_name,
-      drake::solvers::to_string(result.get_solution_result()));
+      drake::solvers::to_string(result.get_solution_result()), false,
+      current_time);
   saved_traj.WriteToFile(dir_data + file_name);
   cout << "Wrote to file: " << dir_data + file_name << endl;
 }
@@ -1817,7 +1818,7 @@ void CassiePlannerWithMixedRomFom::PrintAllCostsAndConstraints(
 
 void CassiePlannerWithMixedRomFom::WarmStartGuess(
     const VectorXd& quat_xyz_shift, const vector<VectorXd>& reg_x_FOM,
-    const int global_fsm_idx, int first_mode_knot_idx,
+    const int global_fsm_idx, int first_mode_knot_idx, double current_time,
     RomTrajOptCassie* trajopt) const {
   int starting_mode_idx_for_heuristic =
       (param_.n_step - 1) - (global_fsm_idx - prev_global_fsm_idx_) + 1;
@@ -1845,6 +1846,30 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_xf_FOM_,
                                      &local_xf_FOM);
 
+    // Get time breaks of current problem (not solved yet so read from guesses)
+    VectorXd times =
+        trajopt->GetSampleTimes(trajopt->GetInitialGuess(trajopt->h_vars()));
+    std::vector<VectorXd> breaks;
+    const std::vector<int>& mode_lengths = trajopt->mode_lengths();
+    const std::vector<int>& mode_start = trajopt->mode_start();
+    for (int i = 0; i < trajopt->num_modes(); i++) {
+      VectorXd times_i(mode_lengths[i]);
+      for (int j = 0; j < mode_lengths[i]; j++) {
+        int k_data = mode_start[i] + j;
+        times_i(j) = times(k_data);
+      }
+      // Shift the timestamps by the current time
+      times_i.array() += current_time;
+
+      // Shift time by eps to ensure we evaluate the right piece of polynomial
+      times_i(0) += 1e-8;
+      times_i(mode_lengths[i] - 1) -= 1e-8;
+
+      breaks.push_back(times_i);
+    }
+    // Construct state traj from previous solution
+    auto prev_state_traj = lightweight_saved_traj_.ReconstructStateTrajectory();
+
     int knot_idx = first_mode_knot_idx;
     for (int i = global_fsm_idx; i < prev_global_fsm_idx_ + param_.n_step;
          i++) {
@@ -1870,10 +1895,16 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
                                    h_solutions_.segment<1>(prev_trajopt_idx));
         }
         // 2. rom state (including both pre and post impact)
-        trajopt->SetInitialGuess(
+        // Version 1: use the closest knot point to initialize
+        /*trajopt->SetInitialGuess(
             trajopt->state_vars_by_mode(local_fsm_idx, local_knot_idx),
             lightweight_saved_traj_.GetStateSamples(prev_local_fsm_idx)
-                .col(prev_local_knot_idx));
+                .col(prev_local_knot_idx));*/
+        // Version 2: reconstruct traj and evalute the traj at the new time
+        trajopt->SetInitialGuess(
+            trajopt->state_vars_by_mode(local_fsm_idx, local_knot_idx),
+            prev_state_traj.value(breaks.at(local_fsm_idx)(local_knot_idx)));
+
         // 3. rom input
         trajopt->SetInitialGuess(trajopt->input(trajopt_idx),
                                  input_at_knots_.col(prev_trajopt_idx));

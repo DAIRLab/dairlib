@@ -48,7 +48,7 @@ class RomPlannerTrajectory : public LcmTrajectory {
   void LoadFromFile(const std::string& filepath, bool lightweight);
   using LcmTrajectory::LoadFromFile;  // get rid of the compiler warning
 
-  int get_utime() const { return utime_;};
+  int get_utime() const { return utime_; };
   int GetNumModes() const { return num_modes_; }
 
   Eigen::MatrixXd GetStateSamples(int mode) const {

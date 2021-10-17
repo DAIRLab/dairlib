@@ -129,16 +129,18 @@ class RomTrajOpt
     return result.GetSolution(h_vars());
   }
 
-  int num_knots() const {
-    return std::accumulate(mode_lengths_.begin(), mode_lengths_.end(), 0) -
-           mode_lengths_.size() + 1;
-  }
+  int num_knots() const { return this->N(); }
   int num_modes() const { return num_modes_; }
+  const std::vector<int>& mode_lengths() const { return mode_lengths_; }
   const std::vector<int>& mode_start() const { return mode_start_; }
 
   int n_lambda() const { return n_lambda_; }
   int n_x_FOM() const { return n_x_; }
   bool start_with_left_stance() const { return start_with_left_stance_; }
+
+  const drake::solvers::VectorXDecisionVariable& h_vars() const {
+    return MultipleShooting::h_vars();
+  };
 
   const ReducedOrderModel& reduced_order_model() const { return rom_; }
 

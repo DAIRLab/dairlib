@@ -810,6 +810,7 @@ void RomTrajOpt::AddTimeStepConstraint(
                 std::to_string(dt_first_mode));
     for (int i = 0; i < mode_lengths_[0] - 1; i++) {
       AddBoundingBoxConstraint(dt_first_mode, dt_first_mode, timestep(i));
+      this->SetInitialGuess(timestep(i)(0), dt_first_mode);
     }
     if (num_modes_ > 1) {
       double dt_rest_of_modes =
@@ -819,6 +820,7 @@ void RomTrajOpt::AddTimeStepConstraint(
       for (int i = mode_lengths_[0] - 1; i < this->N() - 1; i++) {
         AddBoundingBoxConstraint(dt_rest_of_modes, dt_rest_of_modes,
                                  timestep(i));
+        this->SetInitialGuess(timestep(i)(0), dt_rest_of_modes);
       }
     }
   } else {

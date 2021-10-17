@@ -30,8 +30,11 @@ RomPlannerTrajectory& RomPlannerTrajectory::operator=(
   num_modes_ = old.GetNumModes();
 
   x_.clear();
+  xdot_.clear();
   for (int mode = 0; mode < num_modes_; ++mode) {
     x_.push_back(&GetTrajectory("state_traj" + std::to_string(mode)));
+    xdot_.push_back(
+        &GetTrajectory("state_derivative_traj" + std::to_string(mode)));
   }
 
   global_x0_FOM_ = &GetTrajectory("x0_FOM");
@@ -45,11 +48,12 @@ RomPlannerTrajectory& RomPlannerTrajectory::operator=(
   //   decision_vars_;
   //   lambda_;
   //   lambda_c_;
-  //   xdot_;
 
   return *this;
 }
 
+// Even though we don't send xdot to the controller thread, we still save it in
+// the lightweight version, becasue we use xdot in warmstarting
 RomPlannerTrajectory::RomPlannerTrajectory(
     const RomTrajOpt& trajopt,
     const drake::solvers::MathematicalProgramResult& result,
@@ -82,11 +86,11 @@ RomPlannerTrajectory::RomPlannerTrajectory(
   std::vector<Eigen::MatrixXd> x;
   std::vector<Eigen::MatrixXd> xdot;
   std::vector<Eigen::VectorXd> time_breaks;
-  if (lightweight) {
-    trajopt.GetStateSamples(result, &x, &time_breaks);
-  } else {
-    trajopt.GetStateAndDerivativeSamples(result, &x, &xdot, &time_breaks);
-  }
+  //  if (lightweight) {
+  //    trajopt.GetStateSamples(result, &x, &time_breaks);
+  //  } else {
+  trajopt.GetStateAndDerivativeSamples(result, &x, &xdot, &time_breaks);
+  //  }
 
   // Shift the timestamps by the current time
   for (auto& time_break_per_mode : time_breaks) {
@@ -105,16 +109,16 @@ RomPlannerTrajectory::RomPlannerTrajectory(
     x_.push_back(&GetTrajectory(state_traj.traj_name));
 
     // State derivatives
-    if (!lightweight) {
-      LcmTrajectory::Trajectory state_derivative_traj;
-      state_derivative_traj.traj_name =
-          "state_derivative_traj" + std::to_string(mode);
-      state_derivative_traj.datapoints = xdot[mode];
-      state_derivative_traj.time_vector = time_breaks[mode];
-      state_derivative_traj.datatypes = state_names;
-      AddTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
-      xdot_.push_back(&GetTrajectory(state_derivative_traj.traj_name));
-    }
+    //    if (!lightweight) {
+    LcmTrajectory::Trajectory state_derivative_traj;
+    state_derivative_traj.traj_name =
+        "state_derivative_traj" + std::to_string(mode);
+    state_derivative_traj.datapoints = xdot[mode];
+    state_derivative_traj.time_vector = time_breaks[mode];
+    state_derivative_traj.datatypes = state_names;
+    AddTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
+    xdot_.push_back(&GetTrajectory(state_derivative_traj.traj_name));
+    //    }
   }  // end for
 
   // Input trajectory
@@ -240,10 +244,10 @@ void RomPlannerTrajectory::LoadFromFile(const std::string& filepath,
   // State
   for (int mode = 0; mode < num_modes_; ++mode) {
     x_.push_back(&GetTrajectory("state_traj" + std::to_string(mode)));
-    if (!lightweight) {
-      xdot_.push_back(
-          &GetTrajectory("state_derivative_traj" + std::to_string(mode)));
-    }
+    //    if (!lightweight) {
+    xdot_.push_back(
+        &GetTrajectory("state_derivative_traj" + std::to_string(mode)));
+    //    }
   }
 
   // Input and all decision variables

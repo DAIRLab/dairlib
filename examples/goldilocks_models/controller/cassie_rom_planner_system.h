@@ -92,7 +92,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void WarmStartGuess(
       const Eigen::VectorXd& quat_xyz_shift,
       const std::vector<Eigen::VectorXd>& reg_x_FOM, const int global_fsm_idx,
-      int first_mode_knot_idx,
+      int first_mode_knot_idx, double current_time,
       dairlib::goldilocks_models::RomTrajOptCassie* trajopt) const;
 
   // Flags
@@ -277,7 +277,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
       const drake::solvers::MathematicalProgramResult& result,
       const Eigen::MatrixXd& global_x0_FOM,
       const Eigen::MatrixXd& global_xf_FOM, const std::string& dir_data,
-      const std::string& prefix) const;
+      const std::string& prefix, double current_time) const;
   void SaveDataIntoFiles(
       double current_time, int global_fsm_idx, const Eigen::VectorXd& x_init,
       double init_phase, bool is_right_stance,

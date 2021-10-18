@@ -1,7 +1,6 @@
 import dairlib
 import drake
 import numpy as np
-from pydairlib import lcm_trajectory
 from pydrake.trajectories import PiecewisePolynomial
 
 

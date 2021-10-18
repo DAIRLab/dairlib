@@ -1,22 +1,22 @@
 mu: 0.8
 ReachabilityLim: [0.25, 0.1, 0.1]
 StateW:
-  [0, 0, 10000,        # x, y, z
-   100, 100, 100,     # roll, pitch , yaw
-   100, 100, 100,     # vx, vy, vz
-   500, 500, 500]     # omega
+  [0, 0, 10,        # x, y, z
+   10, 10, 10,     # roll, pitch , yaw
+   10, 10, 10,     # vx, vy, vz
+   10, 10, 10]     # omega
 FinalStateW:
-  [0, 0, 200,           # x, y, z
-   0, 0, 0,             # roll, pitch , yaw
-   100, 100, 100,     # vx, vy, vz
-   10, 10, 10]          # Foot position (should always be zero)
+  [0, 0, 100,           # x, y, z
+   10, 10, 10,          # roll, pitch , yaw
+   10, 10, 10,          # vx, vy, vz
+   10, 10, 10]          # omega
 InputW:
   [ .001, .001, .001,  # Contact Force
    .01 ]                     # torque about z axis applied by foot
 # Flat ground soft constraint weight
 FlatGroundW:
-  [100]
+  [10]
 KinReachW:
-   [100, 0, 0,
-    0, 100, 0,
-    0, 0, 100]
+   [10, 0, 0,
+    0, 10, 0,
+    0, 0, 10]

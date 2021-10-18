@@ -182,8 +182,8 @@ void SingleRigidBodyPlant::CopyDiscreteLinearizedSrbDynamicsForMPC(
   MatrixXd A_accel = MatrixXd::Zero(12, 15);
   MatrixXd B_accel = MatrixXd::Zero(12, 4);
   VectorXd b_accel = VectorXd::Zero(12);
-//  A_accel.block(0, 0, 6, A_accel.cols()) = A.block(6, 0, 6, A_accel.cols());
-//  B_accel.block(0, 0, 6, B_accel.cols()) = B.block(6, 0, 6, B_accel.cols());
+  A_accel.block(0, 0, 6, A_accel.cols()) = A.block(6, 0, 6, A_accel.cols());
+  B_accel.block(0, 0, 6, B_accel.cols()) = B.block(6, 0, 6, B_accel.cols());
 //  b_accel.head(6) = b.tail(6);
   A = MatrixXd::Identity(12, 15) + A*dt + (0.5 * dt*dt)*A_accel;
   B = B*dt + 0.5*dt*dt*B_accel;

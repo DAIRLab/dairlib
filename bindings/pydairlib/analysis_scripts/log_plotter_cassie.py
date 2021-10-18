@@ -10,7 +10,6 @@ from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
-import pydairlib.lcm_trajectory
 import pydairlib.multibody
 from pydairlib.common import FindResourceOrThrow
 
@@ -78,19 +77,19 @@ def main():
   osc_output, mpc_output, full_log = process_lcm_log.process_mpc_log(log, pos_map, vel_map, act_map, robot_out_channel,
   mpc_channel, controller_channel, "OSC_DEBUG_WALKING")
 
-  if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
-    compare_ekf(full_log, pos_map, vel_map)
+  # if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
+  #   compare_ekf(full_log, pos_map, vel_map)
 
   n_msgs = len(cassie_out)
-  knee_pos = np.zeros(n_msgs)
+  # knee_pos = np.zeros(n_msgs)
   t_cassie_out = np.zeros(n_msgs)
-  estop_signal = np.zeros(n_msgs)
-  motor_torques = np.zeros(n_msgs)
+  # estop_signal = np.zeros(n_msgs)
+  # motor_torques = np.zeros(n_msgs)
   for i in range(n_msgs):
-    knee_pos[i] = cassie_out[i].leftLeg.kneeDrive.velocity
+  #   knee_pos[i] = cassie_out[i].leftLeg.kneeDrive.velocity
     t_cassie_out[i] = cassie_out[i].utime / 1e6
-    motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
-    estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
+  #   motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
+  #   estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
 
 
   # Default time window values, can override
@@ -108,7 +107,7 @@ def main():
   t_u_slice = slice(start_time_idx, end_time_idx)
 
   ### All plotting scripts here
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes)
 
   # plot_contact_est(full_log)
   # plt.plot(t_u[t_u_slice], fsm[t_u_slice])

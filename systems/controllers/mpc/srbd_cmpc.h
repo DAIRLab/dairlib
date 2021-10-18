@@ -183,7 +183,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   int total_knots_ = 0;
 
   // Solver
-//  drake::solvers::OsqpSolver solver_;
+  drake::solvers::OsqpSolver solver_;
   mutable drake::solvers::MathematicalProgramResult result_;
   mutable drake::solvers::MathematicalProgram prog_;
   mutable lcmt_saved_traj most_recent_sol_;

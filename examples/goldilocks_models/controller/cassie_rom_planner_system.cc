@@ -452,13 +452,15 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     const Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* traj_msg) const {
-  PrintEssentialStatus(
-      "\n================= Time = " +
-      std::to_string(
-          static_cast<const TimestampedVector<double>*>(
-              this->EvalVectorInput(context, controller_signal_port_))
-              ->get_timestamp()) +
-      " =======================\n\n");
+  if (!single_eval_mode_) {
+    PrintEssentialStatus(
+        "\n================= Time = " +
+        std::to_string(
+            static_cast<const TimestampedVector<double>*>(
+                this->EvalVectorInput(context, controller_signal_port_))
+                ->get_timestamp()) +
+        " =======================\n\n");
+  }
 
   ///
   /// Decide if we need to re-plan (not ideal code. See header file)
@@ -1895,6 +1897,8 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
                                    h_solutions_.segment<1>(prev_trajopt_idx));
         }
         // 2. rom state (including both pre and post impact)
+        // The difference between the first and second version is only in the
+        // first mode
         // Version 1: use the closest knot point to initialize
         /*trajopt->SetInitialGuess(
             trajopt->state_vars_by_mode(local_fsm_idx, local_knot_idx),

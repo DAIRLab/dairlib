@@ -29,7 +29,7 @@ target_pos_offset: 0.0
 
 # Speed control gains
 k_ff_sagittal: 0
-k_fb_sagittal: 0.15
+k_fb_sagittal: 0.3
 k_ff_lateral: 0
 k_fb_lateral: 0.23
 
@@ -52,8 +52,8 @@ lipm_height: 0.9
 mu: 0.8
 
 w_accel: 0.0
-w_soft_constraint: 100
-w_input_reg: 0.0
+w_soft_constraint: 10
+w_input_reg: 0
 
 w_swing_toe: 1
 swing_toe_kp: 1500
@@ -96,7 +96,7 @@ PelvisHeadingW:
 PelvisHeadingKp:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,   0.1]
+      0,     0,   5]
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,

@@ -291,6 +291,9 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint on contacts
   double w_contact_relax = gains.w_soft_constraint;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  // Soft constraint on contacts
+  double w_input_reg = gains.w_input_reg;
+  osc->SetInputRegularizationWeight(w_input_reg);
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);
@@ -445,8 +448,10 @@ int DoMain(int argc, char* argv[]) {
 
   left_toe_angle_traj.SetImpactInvariantProjection(true);
   right_toe_angle_traj.SetImpactInvariantProjection(true);
-  left_foot_tracking_data.SetImpactInvariantProjection(true);
-  right_foot_tracking_data.SetImpactInvariantProjection(true);
+//  left_foot_tracking_data.SetImpactInvariantProjection(true);
+//  right_foot_tracking_data.SetImpactInvariantProjection(true);
+  left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
+  right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   swing_hip_yaw_left_traj.SetImpactInvariantProjection(true);
   swing_hip_yaw_right_traj.SetImpactInvariantProjection(true);
   pelvis_rot_tracking_data.SetImpactInvariantProjection(true);

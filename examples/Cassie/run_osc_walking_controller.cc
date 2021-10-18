@@ -299,6 +299,9 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant_w_spr.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
+  // Soft constraint on contacts
+  double w_input_reg = gains.w_input_reg;
+  osc->SetInputRegularizationWeight(w_input_reg);
 
   // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);

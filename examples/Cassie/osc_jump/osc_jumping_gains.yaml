@@ -1,5 +1,6 @@
 w_input: 0.000
 w_accel: 0.00001
+w_input_reg: 0.001
 w_soft_constraint: 100
 x_offset: -0.03
 relative_feet: false

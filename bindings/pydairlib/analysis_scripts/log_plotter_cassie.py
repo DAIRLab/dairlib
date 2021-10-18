@@ -137,7 +137,7 @@ def main():
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
-  if False:
+  if True:
     # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context_w_spr, x, l_toe_frame,
                         front_contact_disp,
@@ -198,7 +198,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
       if osc_output[i].tracking_data_names[j] not in tracking_cost_map:
         tracking_cost_map[name] = num_tracking_cost
         num_tracking_cost += 1
-      tracking_cost[i, tracking_cost_map[name]] = osc_output[i].tracking_cost[j]
+      # tracking_cost[i, tracking_cost_map[name]] = osc_output[i].tracking_cost[j]
 
   for name in tracking_cost_map.keys():
     print(name)
@@ -239,10 +239,12 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
       osc_traj1 = "left_foot_traj"
       osc_traj2 = "right_foot_traj"
       osc_traj5 = "pelvis_balance_traj"
+      osc_traj6 = "pelvis_heading_traj"
     else:
       osc_traj1 = "swing_ft_traj"
       osc_traj2 = "swing_ft_traj"
       osc_traj5 = "pelvis_balance_traj"
+      osc_traj6 = "pelvis_heading_traj"
   elif(controller_channel == 'OSC_RUNNING'):
     # For Walking
     osc_traj0 = "pelvis_trans_traj"
@@ -277,8 +279,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj0, 1, "acc")
   # plot_osc(osc_debug, osc_traj0, 2, "acc")
 
-  plot_osc(osc_debug, osc_traj1, 0, "pos")
-  plot_osc(osc_debug, osc_traj1, 1, "pos")
+  # plot_osc(osc_debug, osc_traj1, 0, "pos")
+  # plot_osc(osc_debug, osc_traj1, 1, "pos")
   plot_osc(osc_debug, osc_traj1, 2, "pos")
   # #
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
@@ -288,7 +290,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj1, 0, "vel")
   # plot_osc(osc_debug, osc_traj1, 1, "vel")
-  # plot_osc(osc_debug, osc_traj1, 2, "vel")
+  plot_osc(osc_debug, osc_traj1, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj2, 0, "vel")
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
@@ -296,7 +298,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj1, 0, "acc")
   # plot_osc(osc_debug, osc_traj1, 1, "acc")
-  # plot_osc(osc_debug, osc_traj1, 2, "acc")
+  plot_osc(osc_debug, osc_traj1, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj2, 0, "acc")
   # plot_osc(osc_debug, osc_traj2, 1, "acc")
@@ -312,11 +314,11 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj5, 0, "pos")
   # plot_osc(osc_debug, osc_traj5, 0, "vel")
   # plot_osc(osc_debug, osc_traj5, 0, "acc")
-  # plot_osc(osc_debug, osc_traj6, 0, "pos")
+  # plot_osc(osc_debug, osc_traj6, 2, "pos")
   # plot_osc(osc_debug, osc_traj5, 0, "vel")
-  # plot_osc(osc_debug, osc_traj6, 0, "vel")
+  # plot_osc(osc_debug, osc_traj6, 2, "vel")
   # plot_osc(osc_debug, osc_traj5, 0, "acc")
-  # plot_osc(osc_debug, osc_traj6, 0, "acc")
+  # plot_osc(osc_debug, osc_traj6, 2, "acc")
   # plot_osc(osc_debug, osc_traj7, 0, "pos")
   # plot_osc(osc_debug, osc_traj8, 0, "pos")
   # plot_osc(osc_debug, osc_traj9, 0, "pos")

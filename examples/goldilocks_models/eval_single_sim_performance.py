@@ -238,7 +238,7 @@ def main():
   # Read the controller parameters
   global parsed_yaml, stride_period
   # tip: change full_load() to safe_load() if there is a yaml version issue
-  parsed_yaml = yaml.full_load(open(
+  parsed_yaml = yaml.safe_load(open(
     "examples/goldilocks_models/rom_walking_gains.yaml"))
   stride_length_x = parsed_yaml.get('constant_step_length_x')
   left_support_duration = parsed_yaml.get('left_support_duration')

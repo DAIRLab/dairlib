@@ -18,19 +18,28 @@ from pydairlib.cassie.cassie_utils import *
 
 
 def main():
+  global filename
   filename = ""
-  # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory_iter0')
-  # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/dircon_trajectory_iter1')
-  # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
-  # filename = abs_path + "/dircon_trajectory"
-  # filename = "../dircon_trajectory"
+  filepath = ""
+  # filepath = FindResourceOrThrow('../dairlib_data/goldilocks_models/find_models/robot_1/dircon_trajectory_iter0')
   if len(sys.argv) >= 2 and sys.argv[1] != "save":
-    filename = sys.argv[1]
+    arg = sys.argv[1]
+    # When the argument includes the directory
+    if (arg[0] == "/") or (arg[:2] == ".."):
+      filepath = arg
+      for i in range(len(arg))[::-1]:
+        if arg[i] == "/":
+          filename = arg[i+1:]
+          break
+    # When the argument is just the file name
+    else:
+      filepath = '../dairlib_data/goldilocks_models/find_models/robot_1/' + arg
+      filename = arg
   else:
-    filename = FindResourceOrThrow(
+    filepath = FindResourceOrThrow(
       '../dairlib_data/goldilocks_models/find_models/robot_1/1_0_dircon_trajectory')
 
-  dircon_traj = pydairlib.lcm.lcm_trajectory.DirconTrajectory(filename)
+  dircon_traj = pydairlib.lcm.lcm_trajectory.DirconTrajectory(filepath)
 
   # For saving figures
   global savefig, figsize, save_path
@@ -45,6 +54,7 @@ def main():
   save_path = "/home/" + username + "/"
 
   print("filename = " + filename)
+  print("filepath = " + filepath)
   print("savefig = " + str(savefig))
 
   # Build MBP
@@ -157,7 +167,7 @@ def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
     state_samples[i] = state_traj.value(t[i])[x_idx_start:x_idx_end, 0]
 
   # Plotting reconstructed state trajectories
-  figname = "state trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
+  figname = filename + " -- state trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
   plt.figure(figname, figsize=figsize)
   plt.plot(t, state_samples)
   plt.gca().set_prop_cycle(None)
@@ -187,7 +197,7 @@ def PlotInput(dircon_traj):
     input_samples[i] = input_traj.value(t[i])[:, 0]
 
   # Plotting reconstructed state trajectories
-  figname = "input trajectory"
+  figname = filename + " -- input trajectory"
   plt.figure(figname, figsize=figsize)
   plt.plot(t, input_samples)
   plt.xlabel('time (s)')
@@ -247,7 +257,7 @@ def PlotForce(dircon_traj):
     t_knot_col[2 * i] = t_knot[i]
     force_knot_col[:, 2 * i - 1] = force_coll[:, i - 1]
     force_knot_col[:, 2 * i] = force_knot[:, i]
-  figname = "force at knots and collocation pts"
+  figname = filename + " -- force at knots and collocation pts"
   plt.figure(figname, figsize=figsize)
   plt.plot(t_knot_col, force_knot_col.T)
   plt.plot(t_coll, force_coll.T, 'ko', markersize=2)
@@ -321,7 +331,7 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
 
   if visualize_only_collocation_point:
     # Plot com at both knot and collocation points
-    figname = "com traj at knot and coll pts"
+    figname = filename + " -- com traj at knot and coll pts"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_knot, com_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
@@ -331,7 +341,7 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
-    figname = "comdot traj at knot and coll pts"
+    figname = filename + " -- comdot traj at knot and coll pts"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_knot, comdot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
@@ -341,7 +351,7 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
-    figname = "comddot traj at knot and coll pts"
+    figname = filename + " -- comddot traj at knot and coll pts"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_knot, comddot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
@@ -353,7 +363,7 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
       plt.savefig(save_path + figname + ".png")
   else:
     # Plot com along the cubic splines
-    figname = "com traj along the traj"
+    figname = filename + " -- com traj along the traj"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_coll, com_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, com_at_knot.T, 'ko', markersize=4)
@@ -363,7 +373,7 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
-    figname = "comdot traj along the traj"
+    figname = filename + " -- comdot traj along the traj"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_coll, comdot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, comdot_at_knot.T, 'ko', markersize=4)
@@ -373,7 +383,7 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
-    figname = "comddot traj along the traj"
+    figname = filename + " -- comddot traj along the traj"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_coll, comddot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, comddot_at_knot.T, 'ko', markersize=4)
@@ -455,7 +465,7 @@ def PlotPelvis(dircon_traj, visualize_only_collocation_point=False):
 
   if visualize_only_collocation_point:
     # Plot base_xyz at both knot and collocation points
-    figname = "base_xyz traj at knot and coll pts"
+    figname = filename + " -- base_xyz traj at knot and coll pts"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_knot, base_xyz_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
@@ -465,7 +475,7 @@ def PlotPelvis(dircon_traj, visualize_only_collocation_point=False):
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
-    figname = "base_xyzdot traj at knot and coll pts"
+    figname = filename + " -- base_xyzdot traj at knot and coll pts"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_knot, base_xyzdot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
@@ -475,7 +485,7 @@ def PlotPelvis(dircon_traj, visualize_only_collocation_point=False):
     plt.legend(['x', 'y', 'z', 'x col', 'y col', 'z col'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
-    figname = "base_xyzddot traj at knot and coll pts"
+    figname = filename + " -- base_xyzddot traj at knot and coll pts"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_knot, base_xyzddot_at_knot.T)
     plt.gca().set_prop_cycle(None)  # reset color cycle
@@ -487,7 +497,7 @@ def PlotPelvis(dircon_traj, visualize_only_collocation_point=False):
       plt.savefig(save_path + figname + ".png")
   else:
     # Plot base_xyz along the cubic splines
-    figname = "base_xyz traj along the traj"
+    figname = filename + " -- base_xyz traj along the traj"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_coll, base_xyz_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, base_xyz_at_knot.T, 'ko', markersize=4)
@@ -495,7 +505,7 @@ def PlotPelvis(dircon_traj, visualize_only_collocation_point=False):
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
-    figname = "base_xyzdot traj along the traj"
+    figname = filename + " -- base_xyzdot traj along the traj"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_coll, base_xyzdot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, base_xyzdot_at_knot.T, 'ko', markersize=4)
@@ -503,7 +513,7 @@ def PlotPelvis(dircon_traj, visualize_only_collocation_point=False):
     plt.legend(['x', 'y', 'z', 'x at knots', 'y at knots', 'z at knots'])
     if savefig:
       plt.savefig(save_path + figname + ".png")
-    figname = "base_xyzddot traj along the traj"
+    figname = filename + " -- base_xyzddot traj along the traj"
     plt.figure(figname, figsize=(6.4, 4.8))
     plt.plot(t_coll, base_xyzddot_at_coll.T, 'o', markersize=2)
     plt.plot(t_knot, base_xyzddot_at_knot.T, 'ko', markersize=4)
@@ -587,7 +597,7 @@ def PlotDynamicError(dircon_traj, x_idx_start=0, x_idx_end=19):
     xdot_from_func[i, nq:] = M_inv @ (-Cv + g + B @ u + J.T @ lamb)
 
   # Plotting reconstructed state trajectories
-  figname = "xdot trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
+  figname = filename + " -- xdot trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
   plt.figure(figname, figsize=figsize)
   # plt.plot(t, (xdot_from_spline)[:, x_idx_start:x_idx_end])
   plt.plot(t, (xdot_from_func)[:, x_idx_start:x_idx_end])
@@ -608,7 +618,7 @@ def PlotStateAtKnots(dircon_traj, x_idx_start=0, x_idx_end=19):
   state_datatypes = dircon_traj.GetTrajectory("state_traj0").datatypes
 
   # Plotting reconstructed state trajectories
-  figname = "state trajectory " + str(x_idx_start) + "-" + str(
+  figname = filename + " -- state trajectory " + str(x_idx_start) + "-" + str(
     x_idx_end) + "(at knots)"
   plt.figure(figname, figsize=figsize)
   plt.plot(t_knot, x_knot.T)

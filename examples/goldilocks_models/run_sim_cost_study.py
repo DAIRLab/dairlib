@@ -966,7 +966,7 @@ if __name__ == "__main__":
   log_indices_for_plot = list(range(log_idx_offset + n_task))
   # log_indices_for_plot = list(range(240))
   save_fig = True
-  plot_nominal = False
+  plot_nominal = True
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
 
   # 2D plot (cost vs model)

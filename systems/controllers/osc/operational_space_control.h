@@ -194,7 +194,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context, double t,
       double t_since_last_state_switch, int fsm_state, int next_fsm_state,
-      const Eigen::MatrixXd& M, const Eigen::MatrixXd& J_h) const;
+      const Eigen::MatrixXd& M) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(

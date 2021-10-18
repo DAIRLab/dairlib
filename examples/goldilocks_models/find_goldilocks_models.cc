@@ -1802,7 +1802,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.max_iter = max_inner_iter;
   inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
   inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;
-  inner_loop_setting.snopt_log = true;
+  inner_loop_setting.snopt_log = false;
   inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
   inner_loop_setting.use_ipopt = FLAGS_ipopt;
   inner_loop_setting.directory = dir;

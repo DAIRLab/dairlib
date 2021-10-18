@@ -692,7 +692,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       left_contacts_, right_contacts_, left_origin_, right_origin_,
       joint_name_lb_ub_, x_init, init_rom_state, max_swing_distance_,
       start_with_left_stance, param_.zero_touchdown_impact, relax_index_,
-      param_, initialize_with_rom_state, print_level_ > 0 /*print_status*/);
+      param_, initialize_with_rom_state, print_level_ > 1 /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints

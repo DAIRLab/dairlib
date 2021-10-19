@@ -95,7 +95,7 @@ group "3.drake-simulator" {
 
 group "0.operator" {
     cmd "1.state-visualizer-floating (from simulation)" {
-        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_SIMULATION";
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_SIMULATION --lcm_url_port=7667";
         host = "localhost";
     }
     cmd "0.drake-director" {

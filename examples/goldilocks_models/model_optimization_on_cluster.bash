@@ -17,12 +17,12 @@
 #SBATCH --nodes=1
 #### commented out. #SSSSBATCH --nodelist=node-2080ti-7
 
-#SBATCH --cpus-per-task=40
+#SBATCH --cpus-per-task=48
 #SBATCH --mem-per-cpu=2G
 
 ##job setting##
 #SBATCH --ntasks=1
-#SBATCH --array=0-75%1
+#SBATCH --array=0-100%1
 
 # This script hasn't been fully tested yet.
 
@@ -99,10 +99,15 @@ if [ $SLURM_ARRAY_TASK_ID = 0 ]; then
    --swing_foot_cublic_spline=true \
    --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log
 
+  echo ===== evaluate \(with snopt scaling\) =====
+  ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=1 --snopt_scaling=true --start_current_iter_as_rerun=true \
+   --swing_foot_cublic_spline=true \
+   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log
+
 else
 
   echo ===== evaluate \(with snopt scaling\) =====
-  ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=$SLURM_ARRAY_TASK_ID --max_outer_iter=$SLURM_ARRAY_TASK_ID --snopt_scaling=true --start_current_iter_as_rerun=true \
+  ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=$SLURM_ARRAY_TASK_ID --max_outer_iter=$SLURM_ARRAY_TASK_ID --snopt_scaling=true --start_current_iter_as_rerun=false \
    --swing_foot_cublic_spline=true \
    --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 | tee -a ../dairlib_data/goldilocks_models/find_models/robot_$robot/terminal_log
 fi

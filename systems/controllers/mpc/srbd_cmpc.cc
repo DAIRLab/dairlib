@@ -479,8 +479,8 @@ MatrixXd SrbdCMPC::CalcSwingFootKnotPoints(const VectorXd& x,
   Vector3d next_pos =
       result.GetSolution(pp.at(1-fsm_state));
 
-  Vector3d mid_pos = swing_ft_ht_* Vector3d(0, 0, 1) *
-      (t - pow(t, 2));
+  Vector3d mid_pos = 0.5 * (curr_pos + next_pos);
+  mid_pos(2) = swing_ft_ht_ * (t - pow(t, 2));
 
   Matrix3d knots;
   knots << curr_pos, mid_pos, next_pos;

@@ -52,7 +52,8 @@ VectorXd SingleRigidBodyPlant::CalcSRBStateFromPlantState(const VectorXd& x) con
     plant_.CalcPointsPositions(
         *plant_context_,
         plant_.GetBodyByName(base_).body_frame(),
-        com_offset_, world_frame_, &com_pos);
+        Vector3d::Zero(), world_frame_, &com_pos);
+    com_pos += com_offset_;
     com_vel = plant_
               .GetBodyByName(base_)
               .EvalSpatialVelocityInWorld(*plant_context_).translational();

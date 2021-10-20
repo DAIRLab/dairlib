@@ -1473,15 +1473,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
   std::time_t current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   cout << "Current time: " << std::ctime(&current_time);
-  cout << "Git commit hash: " << endl;
-  int sys_ret = std::system("git rev-parse HEAD");
-  DRAKE_DEMAND(sys_ret != -1);
-  cout << "\n\n==============================\n";
-  cout << "Result of \"git diff\":" << endl;
-  sys_ret = std::system("git diff");
-  //  sys_ret = std::system("git diff-index HEAD");
-  cout << "\n==============================\n\n";
-  DRAKE_DEMAND(sys_ret != -1);
+  if (!FLAGS_is_debug) {
+    cout << "Git commit hash: " << endl;
+    int sys_ret = std::system("git rev-parse HEAD");
+    DRAKE_DEMAND(sys_ret != -1);
+    cout << "\n\n==============================\n";
+    cout << "Result of \"git diff\":" << endl;
+    sys_ret = std::system("git diff");
+    //  sys_ret = std::system("git diff-index HEAD");
+    cout << "\n==============================\n\n";
+    DRAKE_DEMAND(sys_ret != -1);
+  }
 
   // Create MBP
   drake::logging::set_log_level("err");  // ignore warnings about joint limits
@@ -2193,8 +2195,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
                             task_gen, task, *rom, !is_grid_task,
                             FLAGS_use_database, FLAGS_robot_option);
           } else {
-            init_file_pass_in = to_string(iter) + "_" + to_string(sample_idx) +
-                                string("_w.csv");
+            init_file_pass_in = init_file.empty() ? to_string(iter) + "_" +
+                                                        to_string(sample_idx) +
+                                                        string("_w.csv")
+                                                  : init_file;
           }
 
           // Set up feasibility and optimality tolerance

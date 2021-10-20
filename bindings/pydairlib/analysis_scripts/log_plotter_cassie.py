@@ -132,9 +132,9 @@ def main():
   # plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
   plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
-  # plot_mpc_com_sol(mpc_output[25],0)
-  # plot_mpc_com_sol(mpc_output[25],1)
-  # plot_mpc_com_sol(mpc_output[25],2)
+  plot_mpc_com_sol(mpc_output[25],0)
+  plot_mpc_com_sol(mpc_output[25],1)
+  plot_mpc_com_sol(mpc_output[25],2)
   plot_mpc_swing_sol(mpc_output[25],0)
   plot_mpc_swing_sol(mpc_output[25],1)
   plot_mpc_swing_sol(mpc_output[25],2)

@@ -69,7 +69,6 @@ DEFINE_double(h_des, 0.75, "Desired pelvis height");
 DEFINE_double(dt, 0.01, "time step for koopman mpc");
 
 int DoMain(int argc, char* argv[]) {
-  std::cout << "check 0" << std::endl;
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   SrbdMpcGains gains;
@@ -89,9 +88,7 @@ int DoMain(int argc, char* argv[]) {
       "examples/Cassie/urdf/cassie_v2.urdf", true, false);
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
-  auto srb_plant = SingleRigidBodyPlant(plant, plant_context.get(), false);
-
-  std::cout << "Check 1" << std::endl;
+  auto srb_plant = SingleRigidBodyPlant(plant, plant_context.get(), FLAGS_use_com);
 
   // Cassie SRBD model setup
   Vector3d com_offset = {0, 0, -0.128};
@@ -169,7 +166,6 @@ int DoMain(int argc, char* argv[]) {
   cmpc->SetMu(gains.mu);
   cmpc->Build();
 
-  std::cout << "Check 3" << std::endl;
   // Wire everything up
   auto xdes_source = builder.AddSystem<ConstantVectorSource<double>>(x_des);
   builder.Connect(xdes_source->get_output_port(), cmpc->get_x_des_input_port());
@@ -242,7 +238,6 @@ int DoMain(int argc, char* argv[]) {
     mpc_out_publisher->Publish(mpc_pub_context);
 
   }
-
   return 0;
 }
 

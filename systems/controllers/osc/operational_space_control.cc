@@ -581,6 +581,10 @@ VectorXd OperationalSpaceControl::SolveQp(
     row_idx += contact_i->num_active();
   }
 
+//  if(near_impact){
+//    std::cout << "Jv" << J_c_active * (x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj) << std::endl;
+//  }
+
   // Update constraints
   // 1. Dynamics constraint
   ///    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_h + B*u

@@ -46,7 +46,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "five_link_biped_sim" {
-        exec = "bazel-bin/examples/impact_invariant_control/five_link_biped_sim --folder_path=\"/home/yangwill/Documents/research/projects/five_link_biped/walking/saved_trajs/\" --trajectory_name=\"rabbit_walking\" --sim_time=1.0 --target_realtime_rate=0.25";
+        exec = "bazel-bin/examples/impact_invariant_control/five_link_biped_sim --folder_path=\"/home/yangwill/Documents/research/projects/five_link_biped/walking/saved_trajs/\" --trajectory_name=\"rabbit_walking\" --sim_time=1.0 --target_realtime_rate=0.25 --error=0.1";
         host = "localhost";
     }
 }

@@ -24,14 +24,13 @@
 #SBATCH --ntasks=1
 #SBATCH --array=0-100%1
 
-# This script hasn't been fully tested yet.
+echo Make sure that cpus-per-task is less than total number sample per iter
 
 cd /scratch/$USER/dairlib
 
 # Note that you need to bazel build the binary, because not all machines/nodes have it. (even though it's the same file path...)
 # Build the program
 bazel build examples/goldilocks_models:find_goldilocks_models
-
 
 ###########model optimization setting##########
 # Set robot id and model id

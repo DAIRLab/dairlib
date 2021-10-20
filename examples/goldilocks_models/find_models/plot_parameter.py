@@ -1,3 +1,8 @@
+# When seeing "_tkinter.TclError: no display name and no $DISPLAY environment variable",
+# uncomment the following two lines code (or just restart computer because it has something to do with ssh)
+#import matplotlib
+#matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import csv
 import os
@@ -34,6 +39,7 @@ robot_option = 0;  # 0 is five-link robot. 1 is cassie_fixed_spring
 # directory = 'data/robot_' + str(robot_option) + '/'
 directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/'
 
+save_figure = True
 
 while 1:
     fig1 = plt.figure(1)
@@ -58,6 +64,10 @@ while 1:
     plt.title(name)
     # plt.legend()
     plt.draw()
+
+    if save_figure:
+      plt.savefig("../model_param.png")
+      print("figure saved")
 
     plt.pause(600)
     plt.clf()

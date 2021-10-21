@@ -313,4 +313,20 @@ PiecewisePolynomial<double> RomPlannerTrajectory::ReconstructInputTrajectory()
   return input_traj;
 }
 
+/// ReadRomPlannerTrajectory
+PiecewisePolynomial<double> ReadRomPlannerTrajectory(const std::string& path,
+                                                     bool offset_time_to_zero) {
+  RomPlannerTrajectory traj_obj(path);
+  auto ret = traj_obj.ReconstructStateTrajectory();
+
+  if (offset_time_to_zero) {
+    //    ret.shiftRight(-ret.start_time());
+
+    // Testing
+    ret.shiftRight(-traj_obj.get_x0_time()(1));
+  }
+
+  return ret;
+}
+
 }  // namespace dairlib

@@ -2136,7 +2136,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     asy_joint_names = {"hip_roll"};
     sym_joint_names = {"hip_pitch"};
   }
-  vector<string> joint_names{};
+
+  /*vector<string> joint_names{};
   vector<string> motor_names{};
   for (const auto& l_r_pair : l_r_pairs) {
     for (const auto& asy_joint_name : asy_joint_names) {
@@ -2149,20 +2150,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         motor_names.push_back(sym_joint_names[i] + l_r_pair.first + "_motor");
       }
     }
-  }
-  // We need all joints for the joint limit constraints
-  asy_joint_names = {"hip_roll", "hip_yaw"};
-  sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
-  vector<string> joint_names_for_joint_limit{};
-  for (const auto& l_r_pair : l_r_pairs) {
-    for (const auto& asy_joint_name : asy_joint_names) {
-      joint_names_for_joint_limit.push_back(asy_joint_name + l_r_pair.first);
-    }
-    for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
-      joint_names_for_joint_limit.push_back(sym_joint_names[i] +
-                                            l_r_pair.first);
-    }
-  }
+  }*/
 
   // Create ground normal for the problem
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
@@ -2683,7 +2671,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }  // end for (l_r_pairs)
 
-  // joint limits
+  // Joint limits
+  // We need all joints for the joint limit constraints
+  asy_joint_names = {"hip_roll", "hip_yaw"};
+  sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
+  vector<string> joint_names_for_joint_limit{};
+  for (const auto& l_r_pair : l_r_pairs) {
+    for (const auto& asy_joint_name : asy_joint_names) {
+      joint_names_for_joint_limit.push_back(asy_joint_name + l_r_pair.first);
+    }
+    for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
+      joint_names_for_joint_limit.push_back(sym_joint_names[i] +
+                                            l_r_pair.first);
+    }
+  }
   for (const auto& member : joint_names_for_joint_limit) {
     trajopt.AddConstraintToAllKnotPoints(
         x(pos_map.at(member)) <=
@@ -3336,6 +3337,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                 &result);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
+  // cout << '\a';  // making noise to notify the user the solve is done
 
   // Save trajectory to file
   string file_name = setting.prefix + "dircon_trajectory";

@@ -101,4 +101,9 @@ class RomPlannerTrajectory : public LcmTrajectory {
   Eigen::VectorXd stance_foot_;
   //  const Eigen::MatrixXd* stance_foot_;
 };
+
+/// ReadRomPlannerTrajectory
+drake::trajectories::PiecewisePolynomial<double> ReadRomPlannerTrajectory(
+    const std::string& path, bool offset_time_to_zero = false);
+
 }  // namespace dairlib

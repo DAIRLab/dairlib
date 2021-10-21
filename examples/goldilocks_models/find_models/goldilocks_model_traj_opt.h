@@ -5,6 +5,7 @@
 #include "common/file_utils.h"
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/find_models/dynamics_constraint.h"
+#include "examples/goldilocks_models/find_models/kinematics_constraint.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -63,6 +64,11 @@ class GoldilocksModelTrajOpt
   std::vector<std::shared_ptr<find_models::DynamicsConstraintV2>>
       dynamics_constraint_at_knot;
   std::vector<Binding<Constraint>> dynamics_constraint_at_knot_bindings;
+
+  // Const Kinematics for testing
+  std::vector<std::shared_ptr<ConstKinematicsConstraint>>
+      cosnt_kinematics_constraint;
+  std::vector<Binding<Constraint>> cosnt_kinematics_constraint_bindings;
 
   // Collections of costs
   std::vector<Binding<Cost>> cost_x_bindings_;

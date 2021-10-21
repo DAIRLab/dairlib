@@ -1,5 +1,7 @@
 #include "examples/goldilocks_models/find_models/goldilocks_model_traj_opt.h"
 
+#include "lcm/rom_planner_saved_trajectory.h"
+
 using std::cout;
 using std::endl;
 using std::map;
@@ -65,9 +67,55 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
   tau_post_impact_vars_ =
       NewContinuousVariables(n_tau_ * (num_time_samples.size() - 1), "tau_p");
 
+  // Testing
+  bool testing_mpc_planned_traj = false;
+  if (testing_mpc_planned_traj) {
+    double duration = 0.35;
+
+    bool include_rom_vel = true;
+
+    // Read in a MPC planned trajectory
+    string path = "";
+    path =
+        "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/"
+        "robot_1/data/203_rom_trajectory";
+    auto rom_traj = ReadRomPlannerTrajectory(path, true);
+    cout << "rom_traj.get_segment_times() = \n";
+    for (auto time : rom_traj.get_segment_times()) {
+      cout << time << endl;
+    }
+    // Align 0 to the start of the second mode
+    //    rom_traj.shiftRight(-rom_traj.get_segment_times()[1]);
+    //    cout << "rom_traj.start_time() = " << rom_traj.start_time();
+    //    cout << "rom_traj.end_time() = " << rom_traj.end_time();
+
+    // Constant Kinematics constraint
+    for (int i = 0; i < N; i++) {
+      double t = duration * i / (N - 1);
+      VectorXd const_value = rom_traj.value(t);
+      if (!include_rom_vel) const_value.conservativeResize(rom.n_y());
+      cosnt_kinematics_constraint.push_back(
+          std::make_shared<ConstKinematicsConstraint>(rom, plant, const_value,
+                                                      include_rom_vel));
+      //      cout << const_value.transpose() << endl;
+      cout << rom_traj.value(t).transpose() << endl;
+    }
+    vector<int> j_knot = {0};
+//    vector<int> j_knot = {0, 19};
+//    vector<int> j_knot = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 19};
+    for (int j : j_knot) {
+      //      for (int j = 0; j < num_time_samples[0]; j=j+9) {
+      cout << "j = " << j << endl;
+      auto x_k = state_vars_by_mode(0, j);
+      cosnt_kinematics_constraint_bindings.push_back(AddConstraint(
+          cosnt_kinematics_constraint[j],
+          include_rom_vel ? x_k : x_k.head(plant.num_positions())));
+    }
+  }
+
   // Constraints
-  // clang-format off
-  if (!is_get_nominal) {
+    if (!is_get_nominal) {
+//  if (!is_get_nominal && !testing_mpc_planned_traj) {
     // Create constraint scaling
     // TODO: re-tune this after you remove at_head and at_tail
     std::unordered_map<int, double> constraint_scale_map;
@@ -146,7 +194,6 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       // The scaling of others hasn't tuned yet
       DRAKE_DEMAND(false);
     }
-    // clang-format on
 
     // Create dynamics constraint (pointer) and set the scaling
     if (cubic_spline_in_rom_constraint) {
@@ -161,6 +208,8 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       dynamics_constraint_at_tail->SetConstraintScaling(constraint_scale_map);
     } else {
       for (unsigned int i = 0; i < num_time_samples.size(); i++) {
+        // TODO: there is a bug here. We should use the mirror model for the
+        //  second mode
         dynamics_constraint_at_knot.push_back(
             std::make_shared<find_models::DynamicsConstraintV2>(
                 rom, plant, constraints[i]));
@@ -205,6 +254,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       int N_accum = 0;
       for (unsigned int i = 0; i < num_time_samples.size(); i++) {
         for (int j = 0; j < num_time_samples[i]; j++) {
+          // if (testing_mpc_planned_traj && (i == 0) && (j == 0)) continue;
           int time_index = N_accum + j;
           auto x_k = state_vars_by_mode(i, j);
           auto u_k = pre_and_post_impact_efforts ? input_vars_by_mode(i, j)

@@ -1,10 +1,45 @@
 #include "examples/goldilocks_models/find_models/kinematics_constraint.h"
 
+using std::cout;
+using std::endl;
+using std::isinf;
+using std::isnan;
+using std::list;
+using std::make_shared;
+using std::make_unique;
+using std::map;
+using std::string;
+using std::unique_ptr;
+using std::vector;
+
+using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
+using drake::MatrixX;
+using drake::VectorX;
+using drake::math::autoDiffToGradientMatrix;
+using drake::math::autoDiffToValueMatrix;
+using drake::math::DiscardGradient;
+using drake::math::initializeAutoDiff;
+using drake::multibody::MultibodyPlant;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::to_string;
+using drake::solvers::VariableRefList;
+using drake::solvers::VectorXDecisionVariable;
+using drake::symbolic::Expression;
+using drake::symbolic::Variable;
+using Eigen::AutoDiffScalar;
+using Eigen::Dynamic;
+using Eigen::Matrix;
+using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 namespace dairlib {
 namespace goldilocks_models {
 
-KinematicsConstraint::KinematicsConstraint(
+/*KinematicsConstraint::KinematicsConstraint(
                                  int n_s, int n_feature, VectorXd & theta_s,
                                  const MultibodyPlant<AutoDiffXd> * plant,
                                  int robot_option,
@@ -15,10 +50,8 @@ KinematicsConstraint::KinematicsConstraint(
              VectorXd::Zero(n_s),
              description),
   expression_double(KinematicsExpression<double>(n_s, n_feature, robot_option)),
-  expression_autoDiff(KinematicsExpression<AutoDiffXd>(n_s, n_feature, robot_option)),
-  plant_(plant),
-  n_constraint_(n_s),
-  n_feature_(n_feature),
+  expression_autoDiff(KinematicsExpression<AutoDiffXd>(n_s, n_feature,
+robot_option)), plant_(plant), n_constraint_(n_s), n_feature_(n_feature),
   n_q_(plant->num_positions()),
   theta_s_(theta_s) {
 
@@ -66,16 +99,73 @@ VectorXd KinematicsConstraint::getGradientWrtTheta(const VectorXd & q){
 }
 
 AutoDiffVecXd KinematicsConstraint::getKinematicsConstraint(
-  const AutoDiffVecXd & s, const AutoDiffVecXd & q, const VectorXd & theta) const{
-  return s - expression_autoDiff.getExpression(theta, q);
+  const AutoDiffVecXd & s, const AutoDiffVecXd & q, const VectorXd & theta)
+const{ return s - expression_autoDiff.getExpression(theta, q);
 }
 VectorXd KinematicsConstraint::getKinematicsConstraint(
   const VectorXd & s, const VectorXd & q, const VectorXd & theta) const{
   return s - expression_double.getExpression(theta, q);
+}*/
+
+///
+/// ConstantKinematicsConstraint is for testing
+///
+
+ConstKinematicsConstraint::ConstKinematicsConstraint(
+    const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,
+    const VectorXd& rom_val, bool include_rom_vel,
+    const std::string& description)
+    : NonlinearConstraint<double>(
+          rom_val.size(),
+          include_rom_vel ? plant.num_positions() + plant.num_velocities()
+                          : plant.num_positions(),
+          VectorXd::Zero(rom_val.size()), VectorXd::Zero(rom_val.size()),
+          description),
+      rom_(rom.Clone()),
+      n_q_(plant.num_positions()),
+      n_v_(plant.num_velocities()),
+      n_x_(n_q_ + n_v_),
+      n_y_(rom.n_y()),
+      n_output_(rom_val.size()),
+      plant_(plant),
+      context_(plant.CreateDefaultContext()),
+      rom_val_(rom_val),
+      include_rom_vel_(include_rom_vel) {
+  DRAKE_DEMAND(rom.n_y() == rom.n_yddot());
+
+  if (include_rom_vel_)
+    DRAKE_DEMAND(n_output_ == 2 * rom.n_yddot());
+  else
+    DRAKE_DEMAND(n_output_ == rom.n_yddot());
 }
 
+// Getters
+VectorXd ConstKinematicsConstraint::GetY(
+    const VectorXd& q, const drake::systems::Context<double>& context) const {
+  return rom_->EvalMappingFunc(q, context);
+}
+VectorXd ConstKinematicsConstraint::GetYdot(
+    const VectorXd& x, const drake::systems::Context<double>& context) const {
+  return rom_->EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_), context);
+}
 
+void ConstKinematicsConstraint::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<double>>& x,
+    drake::VectorX<double>* value) const {
+  // Set context
+  if (include_rom_vel_)
+    multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, x,
+                                                      context_.get());
+  else
+    multibody::SetPositionsIfNew<double>(plant_, x, context_.get());
 
+  // Get constraint value
+  *value = VectorX<double>(n_output_);
+
+  value->head(n_y_) = rom_val_.head(n_y_) - GetY(x.head(n_q_), *context_);
+  if (include_rom_vel_)
+    value->tail(n_y_) = rom_val_.tail(n_y_) - GetYdot(x, *context_);
+}
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

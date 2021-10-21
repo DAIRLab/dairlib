@@ -28,6 +28,7 @@ cc_library(
         "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models/find_models:dynamics_constraint",
         "//examples/goldilocks_models/find_models:kinematics_constraint",
+        "//lcm:rom_planner_trajectory_saver",
         "//multibody:visualization_utils",
         "//solvers:optimization_utils",
         "//systems/primitives",
@@ -68,8 +69,9 @@ cc_library(
         "kinematics_constraint.h",
     ],
     deps = [
-        "//examples/goldilocks_models/attic:kinematics_expression",
+        "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
 )

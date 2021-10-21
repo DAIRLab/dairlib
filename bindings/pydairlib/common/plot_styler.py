@@ -1,5 +1,7 @@
 import numpy as np
+import os
 import matplotlib
+# change matplotlib backen to work via ssh
 from matplotlib.collections import LineCollection
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
@@ -18,26 +20,88 @@ class PlotStyler():
     self.grey = '#909090'
     self.orange = '#FE7F0E'
     self.directory = None
+    self.penn_color_wheel = [self.blue, self.red, self.yellow, self.grey, self.orange]
+    self.flag_save_fig = False
     return
 
-  def set_default_styling(self, directory=None):
+  def set_default_styling(self, directory=None, figsize=None):
     self.directory = directory
     matplotlib.rcParams["savefig.directory"] = directory
-    matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
+    matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
+    matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 8, 5
+    # matplotlib.rcParams['figure.figsize'] = 8, 5
+    if (figsize == None):
+      matplotlib.rcParams['figure.figsize'] = 12, 12
+    else:
+      matplotlib.rcParams['figure.figsize'] = figsize[0], figsize[1]
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 18}
+    font = {'size': 24, 'family':'serif', 'serif':['Computer Modern']}
+
+    matplotlib.rc('text', usetex=True)
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 4
+    matplotlib.rcParams['axes.titlesize'] = 30
+    matplotlib.rcParams['xtick.major.size'] = 15
+    matplotlib.rcParams['xtick.major.width'] = 1
+    matplotlib.rcParams['xtick.minor.size'] = 7
+    matplotlib.rcParams['xtick.minor.width'] = 1
     plt.set_cmap('tab20')
     self.directory = directory
+
+  def set_figsize(self, size):
+    matplotlib.rcParams['figure.figsize'] = size
 
   def plot(self, xdata, ydata, xlim=None, ylim=None, color=None, linestyle=None,
            grid=True, xlabel=None, ylabel=None, title=None, legend=None, data_label=None):
 
     plt.plot(xdata, ydata, color=color, linestyle=linestyle, label=data_label)
+    if xlim:
+      plt.xlim(xlim)
+    if ylim:
+      plt.ylim(ylim)
+    if xlabel:
+      # plt.xlabel(xlabel, fontweight="bold")
+      plt.xlabel(xlabel)
+    if ylabel:
+      # plt.ylabel(ylabel, fontweight="bold")
+      plt.ylabel(ylabel)
+    if title:
+      # plt.title(title, fontweight="bold")
+      plt.title(title)
+    if legend:
+      plt.legend(legend)
+
+    plt.grid(grid, which='major')
+
+  def step(self, xdata, ydata, xlim=None, ylim=None, color=None,
+           grid=True, xlabel=None, ylabel=None, title=None, legend=None, data_label=None):
+
+    plt.step(xdata, ydata, color=color, label=data_label)
+
+    if xlim:
+      plt.xlim(xlim)
+    if ylim:
+      plt.ylim(ylim)
+    if xlabel:
+      # plt.xlabel(xlabel, fontweight="bold")
+      plt.xlabel(xlabel)
+    if ylabel:
+      # plt.ylabel(ylabel, fontweight="bold")
+      plt.ylabel(ylabel)
+    if title:
+      # plt.title(title, fontweight="bold")
+      plt.title(title)
+    if legend:
+      plt.legend(legend)
+
+    plt.grid(grid, which='major')
+
+  def scatter(self, xdata, ydata, xlim=None, ylim=None, color=None,
+              grid=True, xlabel=None, ylabel=None, title=None, legend=None, data_label=None):
+
+    plt.scatter(xdata, ydata, color=color, label=data_label)
     if xlim:
       plt.xlim(xlim)
     if ylim:
@@ -71,9 +135,13 @@ class PlotStyler():
     plt.show()
     return
 
-  def save_fig(self, filename):
+  def set_save_fig(self, save_fig_flag):
+    self.flag_save_fig = save_fig_flag
 
-    plt.savefig(self.directory + filename, dpi=200)
+  def save_fig(self, filename):
+    if self.flag_save_fig:
+      plt.savefig(self.directory + filename, dpi=200)
+      plt.close()
     return
 
   def add_legend(self, legend, loc=0):

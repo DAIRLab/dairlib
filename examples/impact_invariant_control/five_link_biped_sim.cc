@@ -65,6 +65,7 @@ DEFINE_double(penetration_allowance, 1e-5,
 DEFINE_double(stiction, 0.001, "Stiction tolerance for the contact model.");
 DEFINE_double(error, 0.0,
               "Initial velocity error of the swing leg in global coordinates.");
+DEFINE_int64(error_idx, -1, "State index of the initial state perturbation.");
 
 VectorXd calcStateOffset(MultibodyPlant<double>& plant,
                          Context<double>& context, VectorXd& x0);
@@ -146,9 +147,14 @@ int do_main(int argc, char* argv[]) {
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
-  Eigen::VectorXd x0 = state_traj.value(0);
-  VectorXd vel_offset = calcStateOffset(plant, plant_context, x0);
-  x0.tail(nv) += vel_offset;
+  Eigen::VectorXd x0 = state_traj.value(FLAGS_start_time);
+  if(FLAGS_error_idx == -1){
+    VectorXd vel_offset = calcStateOffset(plant, plant_context, x0);
+    x0.tail(nv) += vel_offset;
+  }
+  else{
+    x0(FLAGS_error_idx) += FLAGS_error;
+  }
   plant.SetPositionsAndVelocities(&plant_context, x0);
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

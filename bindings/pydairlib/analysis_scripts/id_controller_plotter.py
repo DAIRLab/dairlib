@@ -49,6 +49,7 @@ def main():
   figure_directory = '/home/yangwill/Documents/research/projects/invariant_impacts/journal_version/figures/rabbit/'
   ps = plot_styler.PlotStyler()
   ps.set_default_styling(directory=figure_directory)
+  ps.set_save_fig(True)
 
   plt.close()
 
@@ -74,6 +75,8 @@ def main():
 
 
   nominal_impact_time = dircon_traj.GetStateBreaks(1)[0]
+  # print(dircon_traj.GetStateBreaks(0)[-3])
+  # print(dircon_traj.GetStateBreaks(0)[-4])
   t_impact = nominal_impact_time + 0.01
   t_start = nominal_impact_time - 0.05
   # t_start = nominal_impact_time - 0.1
@@ -81,16 +84,8 @@ def main():
 
   # filename = sys.argv[1]
   # log_dir = '/home/yangwill/Documents/research/projects/five_link_biped/invariant_impacts/logs_for_iros_2021_paper/'
+  # log_dir = '/home/yangwill/Documents/research/projects/five_link_biped/invariant_impacts/logs/'
   log_dir = '/home/yangwill/Documents/research/projects/five_link_biped/invariant_impacts/logs/'
-  # log_files = ['lcmlog-0001', 'lcmlog-050', 'lcmlog-1001']
-  log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
-  # log_files = ['lcmlog-000', 'lcmlog-025']
-  # log_files = ['lcmlog-000_1', 'lcmlog-010', 'lcmlog-010_0KD_1']
-  # log_files = ['lcmlog-0251']
-  # log_files = ['lcmlog-0101']
-  colors = [ps.blue, ps.orange, ps.red]
-  linestyles = ['-', 'dotted', '--', '-.']
-  color_idx = 0
 
   t_samples = np.arange(0, 0.5, 0.00025)
   x_nominal = np.zeros((t_samples.shape[0], 14))
@@ -197,7 +192,12 @@ def plot_soft_constraint():
 
 def plot_ablation_study():
   global log_dir
-  log_dir = log_dir + 'early_impact/'
+
+  # log_type = 'large_disturbances/left_knee_pin/'
+  log_type = 'early_impact/'
+  # log_type = 'late_impact/'
+  # log_type = 'nominal/'
+  log_dir = log_dir + log_type
 
   # log_files = ['lcmlog-000', 'lcmlog-025_0KD', 'lcmlog-025']
 
@@ -233,18 +233,20 @@ def plot_ablation_study():
       'Impact Invariant Projection',
       'Impact Invariant Projection with Projected Soft Constraints']
 
-    error_type = 'actual'
-    # error_type = 'projected'
+    # error_type = 'actual'
+    error_type = 'projected'
 
-    plot_type = 'default'
-    # plot_type = 'L1'
+    # plot_type = 'default'
+    plot_type = 'L1'
     # plot_type = 'absolute'
+
+    plot_suffix = '_' + error_type + '_' + plot_type
 
     t_from_impact = 1e3*(t_u[t_slice] - nominal_impact_time)
 
     plt.figure("inputs")
     for i, linestyle in enumerate(linestyles):
-      ps.plot(t_from_impact, u[t_slice, i], xlabel='Time Since Nominal Impact (ms)', ylabel='Controller Efforts (Nm)', color=colors[color_idx], linestyle=linestyle)
+      ps.plot(t_from_impact, u[t_slice, i], xlabel='Time Since Nominal Impact (ms)', ylabel='Controller Efforts (Nm)', color=colors[color_idx], linestyle=linestyle, title='Motor Efforts')
     # ps.plot(1e3*(t_u[t_slice] - nominal_impact_time), u[t_slice, 3], xlabel='Time Since Impact (ms)', ylabel='Motor Effort (Nm)', color=colors[color_idx])
 
 
@@ -255,8 +257,8 @@ def plot_ablation_study():
       right_knee_pin_error = osc_debug['right_knee_pin_traj'].ydot_des[t_slice] - osc_debug['right_knee_pin_traj'].ydot[t_slice]
       right_hip_pin_error = osc_debug['right_hip_pin_traj'].ydot_des[t_slice] - osc_debug['right_hip_pin_traj'].ydot[t_slice]
     elif error_type == 'projected':
-      right_knee_pin_error = osc_debug['right_knee_pin_traj'].error_ydot
-      right_hip_pin_error = osc_debug['right_hip_pin_traj'].error_ydot
+      right_knee_pin_error = osc_debug['right_knee_pin_traj'].error_ydot[t_slice]
+      right_hip_pin_error = osc_debug['right_hip_pin_traj'].error_ydot[t_slice]
 
     if plot_type == 'default':
       ps.plot(t_from_impact, right_knee_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity Error (rad/s)', color=colors[color_idx], title='Impacting Leg')
@@ -274,8 +276,8 @@ def plot_ablation_study():
       left_knee_pin_error = osc_debug['left_knee_pin_traj'].ydot_des[t_slice] - osc_debug['left_knee_pin_traj'].ydot[t_slice]
       left_hip_pin_error = osc_debug['left_hip_pin_traj'].ydot_des[t_slice] - osc_debug['left_hip_pin_traj'].ydot[t_slice]
     elif error_type == 'projected':
-      left_knee_pin_error = osc_debug['left_knee_pin_traj'].error_ydot
-      left_hip_pin_error = osc_debug['left_hip_pin_traj'].error_ydot
+      left_knee_pin_error = osc_debug['left_knee_pin_traj'].error_ydot[t_slice]
+      left_hip_pin_error = osc_debug['left_hip_pin_traj'].error_ydot[t_slice]
 
     if plot_type == 'default':
       ps.plot(t_from_impact, left_knee_pin_error, xlabel='Time Since Nominal Impact (ms)', ylabel='Joint Velocity Error (rad/s)', color=colors[color_idx], title='Non-Impacting Leg')
@@ -299,18 +301,18 @@ def plot_ablation_study():
   plt.figure("stance_leg_joints")
   ax = plt.gca()
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
-  ax.legend(handles = legend_elements, loc=2, edgecolor='k')
   plt.xlim([-50, 50])
   # plt.ylim([0, 0.5])
-  # ps.save_fig('stance_leg_velocity_error.png')
+  ax.legend(handles = legend_elements, loc=2, edgecolor='k')
+  ps.save_fig(log_type + 'stance_leg_velocity_error' + plot_suffix + '.png')
 
   plt.figure("swing_leg_joints")
   ax = plt.gca()
   ax.axvspan(-25, 25, alpha=0.5, color=ps.grey)
-  ax.legend(handles = legend_elements, loc=2, edgecolor='k')
   plt.xlim([-50, 50])
   # plt.ylim([0, 0.5])
-  # ps.save_fig('swing_leg_velocity_error.png')
+  ax.legend(handles = legend_elements, loc=2, edgecolor='k')
+  ps.save_fig(log_type + 'swing_leg_velocity_error' + plot_suffix + '.png')
 
   plt.figure("inputs")
   ax = plt.gca()
@@ -325,7 +327,7 @@ def plot_ablation_study():
                                                     matplotlib.lines.Line2D([0], [0], color='k', linestyle=linestyles[3], lw=3, label='Knee (Impacting Leg)')]
   line_legend = ax.legend(handles = legend_elements_lines, loc='lower left', ncol=1, edgecolor='k')
   ax.add_artist(line_legend)
-  # ps.save_fig('rabbit_controller_efforts.png')
+  ps.save_fig(log_type + 'rabbit_controller_efforts' + plot_suffix + '.png')
   # ps.save_fig('impacting_knee_controller_effort.png')
 
   # plt.figure("legend")

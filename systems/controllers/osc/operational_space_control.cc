@@ -581,9 +581,10 @@ VectorXd OperationalSpaceControl::SolveQp(
     row_idx += contact_i->num_active();
   }
 
-//  if(near_impact){
-//    std::cout << "Jv" << J_c_active * (x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj) << std::endl;
-//  }
+  //  if(near_impact){
+  //    std::cout << "Jv" << J_c_active *
+  //    (x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj) << std::endl;
+  //  }
 
   // Update constraints
   // 1. Dynamics constraint
@@ -813,6 +814,19 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
       }
     }
   }
+
+  // Solves the optimization problem:
+  // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
+  // s.t. constraints
+  // In the IROS 2021 paper, the problem was unconstrained and could be solved
+  // using the closed form least squares solution
+
+  // By adding constraints on lambda, we can impose scaling on the
+  // impact-invariant projection.
+
+  // The current constraints are lambda \in convex_hull \alpha * [-FC, FC]
+  // defined by the normal impulse from the nominal trajectory
+
   MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_constraint_dim);
   VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
   int start_row = 0;

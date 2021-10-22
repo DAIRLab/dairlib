@@ -49,6 +49,11 @@ int run(int argc, char* argv[]) {
   //  cout << mat << endl;
   //  cout << mat * Eigen::VectorXd::Ones(2) << endl;
 
+  // ReadCSV
+  MatrixXd csv = readCSV("../test.csv");
+  cout << "csv.size() = " << csv.size() << endl;
+  cout << "csv = " << csv << endl;
+
   return 0;
 }  // int run
 

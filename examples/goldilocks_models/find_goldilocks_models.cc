@@ -1521,7 +1521,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
            "pelvis_height"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr, FLAGS_N_sample_ph},
-          {0, 0, 0.35, FLAGS_turning_rate_center, 0.8},
+          {0, 0, 0.35, FLAGS_turning_rate_center, 0.9},
           {0.03, 0.05, 0.05, 0.125, 0.1},
           {(FLAGS_N_sample_sl > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_gi > 1) && FLAGS_is_stochastic,
@@ -2199,6 +2199,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
                                                         to_string(sample_idx) +
                                                         string("_w.csv")
                                                   : init_file;
+            if (n_rerun[sample_idx] > 0) {
+              init_file_pass_in = to_string(iter) + "_" +
+                                  to_string(sample_idx) + string("_w.csv");
+            }
+            cout << "init_file_pass_in = " << init_file_pass_in << endl;
           }
 
           // Set up feasibility and optimality tolerance

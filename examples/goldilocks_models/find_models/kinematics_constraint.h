@@ -60,6 +60,7 @@ class ConstKinematicsConstraint : public solvers::NonlinearConstraint<double> {
       const ReducedOrderModel& rom,
       const drake::multibody::MultibodyPlant<double>& plant,
       const Eigen::VectorXd& rom_val, bool include_rom_vel,
+      const std::vector<int>& active_dim,
       const std::string& description = "const_rom_kin_constraint");
 
   // Getters
@@ -90,6 +91,8 @@ class ConstKinematicsConstraint : public solvers::NonlinearConstraint<double> {
 
   Eigen::VectorXd rom_val_;
   bool include_rom_vel_;
+
+  std::vector<int> active_dim_;
 };
 
 }  // namespace goldilocks_models

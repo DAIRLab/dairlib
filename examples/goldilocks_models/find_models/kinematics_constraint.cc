@@ -114,29 +114,33 @@ VectorXd KinematicsConstraint::getKinematicsConstraint(
 ConstKinematicsConstraint::ConstKinematicsConstraint(
     const ReducedOrderModel& rom, const MultibodyPlant<double>& plant,
     const VectorXd& rom_val, bool include_rom_vel,
-    const std::string& description)
+    const std::vector<int>& active_dim, const std::string& description)
     : NonlinearConstraint<double>(
-          rom_val.size(),
+          include_rom_vel ? 2 * active_dim.size() : active_dim.size(),
           include_rom_vel ? plant.num_positions() + plant.num_velocities()
                           : plant.num_positions(),
-          VectorXd::Zero(rom_val.size()), VectorXd::Zero(rom_val.size()),
+          VectorXd::Zero(include_rom_vel ? 2 * active_dim.size()
+                                         : active_dim.size()),
+          VectorXd::Zero(include_rom_vel ? 2 * active_dim.size()
+                                         : active_dim.size()),
           description),
       rom_(rom.Clone()),
       n_q_(plant.num_positions()),
       n_v_(plant.num_velocities()),
       n_x_(n_q_ + n_v_),
       n_y_(rom.n_y()),
-      n_output_(rom_val.size()),
+      n_output_(include_rom_vel ? 2 * active_dim.size() : active_dim.size()),
       plant_(plant),
       context_(plant.CreateDefaultContext()),
       rom_val_(rom_val),
-      include_rom_vel_(include_rom_vel) {
+      include_rom_vel_(include_rom_vel),
+      active_dim_(active_dim) {
   DRAKE_DEMAND(rom.n_y() == rom.n_yddot());
 
   if (include_rom_vel_)
-    DRAKE_DEMAND(n_output_ == 2 * rom.n_yddot());
+    DRAKE_DEMAND(rom_val.size() == 2 * rom.n_yddot());
   else
-    DRAKE_DEMAND(n_output_ == rom.n_yddot());
+    DRAKE_DEMAND(rom_val.size() == rom.n_yddot());
 }
 
 // Getters
@@ -159,12 +163,20 @@ void ConstKinematicsConstraint::EvaluateConstraint(
   else
     multibody::SetPositionsIfNew<double>(plant_, x, context_.get());
 
+  // Full output
+  VectorX<double> full_output(rom_val_.size());
+  full_output.head(n_y_) = rom_val_.head(n_y_) - GetY(x.head(n_q_), *context_);
+  if (include_rom_vel_)
+    full_output.tail(n_y_) = rom_val_.tail(n_y_) - GetYdot(x, *context_);
+
   // Get constraint value
   *value = VectorX<double>(n_output_);
-
-  value->head(n_y_) = rom_val_.head(n_y_) - GetY(x.head(n_q_), *context_);
-  if (include_rom_vel_)
-    value->tail(n_y_) = rom_val_.tail(n_y_) - GetYdot(x, *context_);
+  for (int i = 0; i < active_dim_.size(); i++) {
+    value->segment<1>(i) = full_output.segment<1>(active_dim_.at(i));
+    if (include_rom_vel_)
+      value->segment<1>(i + active_dim_.size()) =
+          full_output.segment<1>(active_dim_.at(i) + n_y_);
+  }
 }
 
 }  // namespace goldilocks_models

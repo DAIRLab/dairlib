@@ -1,6 +1,8 @@
 #include "common/file_utils.h"
+
 #include <limits>
 #include <vector>
+
 #include "drake/common/drake_assert.h"
 
 using Eigen::Dynamic;
@@ -25,26 +27,26 @@ const static Eigen::IOFormat CSVFormatManuallySpecifiedPrecision(
 
 namespace dairlib {
 
-MatrixXd readCSV(const string & path) {
-    ifstream indata;
-    indata.open(path);
-    string line;
-    std::vector<double> values;
-    uint rows = 0;
-    while (std::getline(indata, line)) {
-        std::stringstream lineStream(line);
-        string cell;
-        while (std::getline(lineStream, cell, ',')) {
-            values.push_back(std::stod(cell));
-        }
-        ++rows;
+MatrixXd readCSV(const string& path) {
+  ifstream indata;
+  indata.open(path);
+  string line;
+  std::vector<double> values;
+  uint rows = 0;
+  while (std::getline(indata, line)) {
+    std::stringstream lineStream(line);
+    string cell;
+    while (std::getline(lineStream, cell, ',')) {
+      values.push_back(std::stod(cell));
     }
-    if (values.size() == 0) {
-      throw std::logic_error(
-          ("Could not read " + path + " to load CSV.").c_str());
-    }
+    ++rows;
+  }
+  if (values.size() == 0) {
+    return MatrixXd(0, 0);
+  } else {
     return Map<const Matrix<double, Dynamic, Dynamic, RowMajor>>(
-        values.data(), rows, values.size()/rows);
+        values.data(), rows, values.size() / rows);
+  }
 }
 
 void writeCSV(const std::string& path, const MatrixXd& M, bool full_precision) {

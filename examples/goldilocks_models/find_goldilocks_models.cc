@@ -5,15 +5,11 @@
 #include <queue>   // First in first out
 #include <thread>  // multi-threading
 #include <tuple>
-#include <utility>        // std::pair, std::make_pair
+#include <utility>  // std::pair, std::make_pair
+
 #include <Eigen/QR>       // CompleteOrthogonalDecomposition
 #include <bits/stdc++.h>  // system call
 #include <gflags/gflags.h>
-
-#include "drake/multibody/parsing/parser.h"
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/solve.h"
 
 #include "common/eigen_utils.h"
 #include "common/file_utils.h"
@@ -24,6 +20,11 @@
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/task.h"
+
+#include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
 
 using Eigen::MatrixXd;
 using Eigen::MatrixXi;
@@ -1654,7 +1655,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   } else if (FLAGS_robot_option == 1) {
     if (is_grid_task) {
-      max_sample_cost_increase_rate = FLAGS_is_stochastic ? 2.0 : 0.01;  //0.5 // 0.3
+      max_sample_cost_increase_rate = FLAGS_is_stochastic ? 2.0 : 0.01;
+      // 0.5 // 0.3
     } else {
       max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
     }

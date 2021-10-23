@@ -323,7 +323,8 @@ PiecewisePolynomial<double> ReadRomPlannerTrajectory(const std::string& path,
     //    ret.shiftRight(-ret.start_time());
 
     // Testing
-    ret.shiftRight(-traj_obj.get_x0_time()(1));
+    ret.shiftRight(-traj_obj.get_x0_time()(0));
+    //    ret.shiftRight(-traj_obj.get_x0_time()(1));
   }
 
   return ret;

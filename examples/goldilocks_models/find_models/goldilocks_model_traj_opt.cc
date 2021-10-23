@@ -41,8 +41,9 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     std::vector<double> maximum_timestep,
     std::vector<DirconKinematicDataSet<double>*> constraints,
     std::vector<DirconOptions> options, const ReducedOrderModel& rom,
-    bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
-    int robot_option, double constraint_scale, bool pre_and_post_impact_efforts)
+    const ReducedOrderModel& mirrored_rom, bool is_get_nominal,
+    const InnerLoopSetting& setting, int rom_option, int robot_option,
+    double constraint_scale, bool pre_and_post_impact_efforts)
     : HybridDircon<double>(plant, num_time_samples, minimum_timestep,
                            maximum_timestep, constraints, options,
                            pre_and_post_impact_efforts),
@@ -67,7 +68,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
   tau_post_impact_vars_ =
       NewContinuousVariables(n_tau_ * (num_time_samples.size() - 1), "tau_p");
 
-  // Testing
+  // Testing -- put a ROM MPC planned traj back into FOM trajopt via constraint
   bool testing_mpc_planned_traj = false;
   if (testing_mpc_planned_traj) {
     double duration = 0.35;
@@ -78,7 +79,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     string path = "";
     path =
         "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/"
-        "robot_1/data/203_rom_trajectory";
+        "robot_1/data/0_rom_trajectory";
     auto rom_traj = ReadRomPlannerTrajectory(path, true);
     cout << "rom_traj.get_segment_times() = \n";
     for (auto time : rom_traj.get_segment_times()) {
@@ -90,22 +91,30 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
     //    cout << "rom_traj.end_time() = " << rom_traj.end_time();
 
     // Constant Kinematics constraint
+    vector<int> active_dim = {0, 1, 2};
     for (int i = 0; i < N; i++) {
+      //      if (i == 1) active_dim = {2};
+
       double t = duration * i / (N - 1);
+      if (t == duration)
+        t -= 1e-8;  // PP evaluates from the right at discontinuity
       VectorXd const_value = rom_traj.value(t);
       if (!include_rom_vel) const_value.conservativeResize(rom.n_y());
       cosnt_kinematics_constraint.push_back(
-          std::make_shared<ConstKinematicsConstraint>(rom, plant, const_value,
-                                                      include_rom_vel));
+          std::make_shared<ConstKinematicsConstraint>(
+              rom, plant, const_value, include_rom_vel, active_dim));
       //      cout << const_value.transpose() << endl;
       cout << rom_traj.value(t).transpose() << endl;
     }
-    vector<int> j_knot = {0};
-//    vector<int> j_knot = {0, 19};
-//    vector<int> j_knot = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 19};
+
+    // vector<int> j_knot = {0};
+    // vector<int> j_knot = {1, 19};
+    // vector<int> j_knot = {0, 6, 12, 19};
+    // vector<int> j_knot = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 19};
+    vector<int> j_knot = {1, 3, 5, 7, 9, 11, 13, 15, 17, 19};
     for (int j : j_knot) {
       //      for (int j = 0; j < num_time_samples[0]; j=j+9) {
-      cout << "j = " << j << endl;
+      cout << "impose ROM state constraint on knot j = " << j << endl;
       auto x_k = state_vars_by_mode(0, j);
       cosnt_kinematics_constraint_bindings.push_back(AddConstraint(
           cosnt_kinematics_constraint[j],
@@ -114,8 +123,11 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
   }
 
   // Constraints
-    if (!is_get_nominal) {
-//  if (!is_get_nominal && !testing_mpc_planned_traj) {
+  if (!is_get_nominal) {
+    //  if (!is_get_nominal && !testing_mpc_planned_traj) {
+    //    if (testing_mpc_planned_traj) cout << "Imposing regular ROM
+    //    constraints\n";
+
     // Create constraint scaling
     // TODO: re-tune this after you remove at_head and at_tail
     std::unordered_map<int, double> constraint_scale_map;
@@ -207,15 +219,15 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       // tuned)
       dynamics_constraint_at_tail->SetConstraintScaling(constraint_scale_map);
     } else {
+      bool use_mirrored = false;
       for (unsigned int i = 0; i < num_time_samples.size(); i++) {
-        // TODO: there is a bug here. We should use the mirror model for the
-        //  second mode
         dynamics_constraint_at_knot.push_back(
             std::make_shared<find_models::DynamicsConstraintV2>(
-                rom, plant, constraints[i]));
+                use_mirrored ? mirrored_rom : rom, plant, constraints[i]));
         // Scaling
         dynamics_constraint_at_knot.at(i)->SetConstraintScaling(
             constraint_scale_map);
+        use_mirrored = !use_mirrored;
       }
     }
 

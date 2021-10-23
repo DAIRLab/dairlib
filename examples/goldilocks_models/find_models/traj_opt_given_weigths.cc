@@ -1526,6 +1526,13 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   double duration = task.get("duration");
   // double walking_vel = stride_length / duration;
 
+  // Get mirrored reduced order model
+  StateMirror state_mirror(MirrorPosIndexMap(plant, robot_option),
+                           MirrorPosSignChangeSet(plant, robot_option),
+                           MirrorVelIndexMap(plant, robot_option),
+                           MirrorVelSignChangeSet(plant, robot_option));
+  MirroredReducedOrderModel mirrored_rom(plant, rom, state_mirror);
+
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> input_map = multibody::makeNameToActuatorsMap(plant);
@@ -1651,9 +1658,10 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double>& plant,
   dataset_list.push_back(&ls_dataset);
   dataset_list.push_back(&rs_dataset);
 
-  GoldilocksModelTrajOpt trajopt(
-      plant, num_time_samples, min_dt, max_dt, dataset_list, options_list, rom,
-      is_get_nominal, setting, rom_option, robot_option, 1 /*temporary*/);
+  GoldilocksModelTrajOpt trajopt(plant, num_time_samples, min_dt, max_dt,
+                                 dataset_list, options_list, rom, mirrored_rom,
+                                 is_get_nominal, setting, rom_option,
+                                 robot_option, 1 /*temporary*/);
 
   // You can comment this out to not put any constraint on the time
   // However, we need it now, since we add the running cost by hand
@@ -2101,6 +2109,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
   W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
 
+  // Get mirrored reduced order model
+  StateMirror state_mirror(MirrorPosIndexMap(plant, robot_option),
+                           MirrorPosSignChangeSet(plant, robot_option),
+                           MirrorVelIndexMap(plant, robot_option),
+                           MirrorVelSignChangeSet(plant, robot_option));
+  MirroredReducedOrderModel mirrored_rom(plant, rom, state_mirror);
+
   // Create maps for joints
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
@@ -2336,7 +2351,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
 
   GoldilocksModelTrajOpt trajopt(plant, num_time_samples, min_dt, max_dt,
-                                 dataset_list, options_list, rom,
+                                 dataset_list, options_list, rom, mirrored_rom,
                                  is_get_nominal, setting, rom_option,
                                  robot_option, s, pre_and_post_impact_efforts);
 
@@ -2414,44 +2429,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   if (only_one_mode) {
     VectorXd x0_val(plant.num_positions() + plant.num_velocities());
     VectorXd xf_val(plant.num_positions() + plant.num_velocities());
-    // The following states come from traj opt with pos/vel periodicity
-    // constraints and without ROM cosntraint.
-    // Note that the velocities don't strictly mirror because the values for
-    // post and pre impact vel are different!
-    //    x0_val << 1, 0, 0, 0, 0, -0.00527375, 1.10066, 0.00686375, 0.0025628,
-    //        0.000573004, -0.000573019, 0.439262, 0.201581, -0.646, -0.795755,
-    //        0.866859, 1.01813, -1.53361, -1.29744, -0.321, 0.198875,
-    //        -0.0342067, 0.67034, 0.363396, -0.0367492, -0.0100005, 0.0120047,
-    //        0.0355722, 0.0585609, 0.26338, -0.584013, -1.45501,
-    //        0.221981, 1.47458, -0.223655, -0.0841209, 0.797712;
-    //    xf_val << 1, 0, 0, 0, 0.3, 0.00527375, 1.10066, -0.0025628,
-    //    -0.00686375,
-    //        0.000573019, -0.000573004, 0.201581, 0.439262, -0.795755, -0.646,
-    //        1.01813, 0.866859, -1.29744, -1.53361, 0.49743, 0.0737923,
-    //        0.0867892, 0.666384, -0.319709, -0.072308, -0.202807, 0.193892,
-    //        -0.0869775, 0.763641, -0.705892, -0.590682, 0.214898, 1.02658,
-    //        -0.216519, -1.04038, 0.780914, -0.269512;
-
-    // This solution is derived with reflected inertia and pos/vel periodicity
-    // constraint of two mode walking
-    // From:
-    // 20200926 try to impose lipm constraint/29 compare 1-mode traj with 2-mode
-    // traj/Cost setting 1
-    //    x0_val << 1, 0, 0, 0, 0, 0.00135545, 1.09939, -0.0768261, 0.0651368,
-    //        0.0339166, -0.0339448, 0.431728, 0.1889, -0.646, -0.785052,
-    //        0.866859, 1.00734, -1.52347, -1.28247, 1.68172E-08,
-    //        -2.93932E-08, 1.30851E-11, 0.618169, 0.135654, -0.0738718,
-    //        -0.10875, -0.110773, -0.000283673, 0.0345027, 0.0339327,
-    //        -0.597203, -1.3188, -0.151959, 1.33654, 0.153149, -0.0479795,
-    //        0.564141;
-    //    xf_val << 1, 0, 0, 0, 0.3, -0.00135545, 1.09939, -0.0651368,
-    //    0.0768261,
-    //        0.0339448, -0.0339166, 0.1889, 0.431728, -0.785052,
-    //        -0.646, 1.00734, 0.866859, -1.28247, -1.52347, 0.542888,
-    //        -0.274931, 0.00598288, 0.601503, -0.146041, -0.140087, -0.387284,
-    //        0.0312489, 0.012249, 0.130986, -0.824682, 0.305998, -0.225036,
-    //        0.293566, 0.226799, -0.297514, 0.543059, -0.727215;
-
     // This solution is derived with reflected inertia and pos/vel periodicity
     // constraint of two mode walking
     // From:
@@ -2491,6 +2468,38 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Fix time duration
   trajopt.AddDurationBounds(duration, duration);
+
+  // Testing
+  /*VectorXd x_init_vel(n_q + n_v);
+  x_init_vel << 9.999700294028639469e-01, -5.479356555104201651e-03,
+      -3.179497022342275153e-04, -5.553215216372390725e-03,
+      2.767726120919607180e-02, -2.094956956770701803e-02,
+      9.844531037019048636e-01, -4.826976245953031042e-02,
+      6.232309743180669548e-02, 2.349538816654274181e-04,
+      4.258664160657029026e-03, 5.275101378033288935e-01,
+      5.373860374145997820e-01, -1.269299582558820916e+00,
+      -1.293523589027216092e+00, 1.499135101296675376e+00,
+      1.517805315675317734e+00, -1.631522917655630955e+00,
+      -1.618831130698812792e+00, -6.651896731340932456e-02,
+      -5.746960701041538971e-02, 1.726979371317831358e-02,
+      -6.826056475264632821e-03, 1.178776910013631801e-01,
+      1.554177228364114240e-02, -5.226080786661640998e-02,
+      -6.824005712733222095e-02, -1.339188990491069729e-02,
+      1.815563619659915900e-03, -1.409431448701467526e-01,
+      5.965141813797845138e-01, 1.099894516933843797e-01,
+      -1.103585105251881471e+00, -2.209419651512652127e-02,
+      1.111830020446663125e+00, -5.027073204922710703e-03,
+      -1.604353370517902777e-01;
+  VectorXd init_pos_relax = 0.03 * VectorXd::Ones(6);
+  VectorXd init_vel_relax = 0.1 * VectorXd::Ones(n_v - 6);
+  trajopt.AddBoundingBoxConstraint(x_init_vel.head(n_q - 6),
+                                   x_init_vel.head(n_q - 6), x0.head(n_q - 6));
+  trajopt.AddBoundingBoxConstraint(
+      x_init_vel.segment<6>(n_q - 6) - init_pos_relax,
+      x_init_vel.segment<6>(n_q - 6) + init_pos_relax, x0.segment<6>(n_q - 6));
+  trajopt.AddBoundingBoxConstraint(x_init_vel.tail(n_v - 6) - init_vel_relax,
+                                   x_init_vel.tail(n_v - 6) + init_vel_relax,
+                                   x0.tail(n_v - 6));*/
 
   double turning_angle = turning_rate * duration;
   if (!periodic_quaternion && !only_one_mode) {
@@ -2834,6 +2843,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt.AddConstraint(right_foot_constraint_z0, x_mid.head(n_q));*/
 
   // testing -- swing foot contact point height constraint
+  //  swing_foot_ground_clearance = true;
   if (swing_foot_ground_clearance) {
     for (int index = 0; index < num_time_samples[0] - 1; index++) {
       double h_min = 0;
@@ -2845,6 +2855,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       if (index == 0) {
         h_max = 0;
       }
+
+      //if (setting.cubic_spline_in_rom_constraint && index == 1) break;
 
       auto x_i = trajopt.state(index);
 
@@ -2996,6 +3008,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //      pelvis_height);
   // Simple version -- only constraint the starting height
   trajopt.AddBoundingBoxConstraint(pelvis_height, pelvis_height, x0(6));
+  //    trajopt.AddBoundingBoxConstraint(1, 1, x0(6));
+  //      trajopt.AddBoundingBoxConstraint(0.98, 0.98, x0(6));
 
   // Scale decision variable
   std::vector<int> idx_list;
@@ -3337,7 +3351,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                 &result);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  // cout << '\a';  // making noise to notify the user the solve is done
+  //cout << '\a';  // making noise to notify the user the solve is done
 
   // Save trajectory to file
   string file_name = setting.prefix + "dircon_trajectory";
@@ -3348,6 +3362,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //  std::cout << "Wrote to file: " << setting.directory + file_name <<
   //  std::endl;
 
+  // Testing
+  //  double tol = setting.major_feasibility_tol;
+  //  solvers::CheckGenericConstraints(trajopt, result, tol);
+
+  // Post processing
   bool is_print_for_debugging = false;
   VectorXd w_sol;
   extractResult(w_sol, trajopt, result, elapsed, num_time_samples, N, plant,

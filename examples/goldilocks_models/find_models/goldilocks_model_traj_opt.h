@@ -39,9 +39,9 @@ class GoldilocksModelTrajOpt
       std::vector<double> maximum_timestep,
       std::vector<DirconKinematicDataSet<double>*> constraints,
       std::vector<DirconOptions> options, const ReducedOrderModel& rom,
-      bool is_get_nominal, const InnerLoopSetting& setting, int rom_option,
-      int robot_option, double constraint_scale,
-      bool pre_and_post_impact_efforts = false);
+      const ReducedOrderModel& mirrored_rom, bool is_get_nominal,
+      const InnerLoopSetting& setting, int rom_option, int robot_option,
+      double constraint_scale, bool pre_and_post_impact_efforts = false);
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
   reduced_model_input(int index) const;

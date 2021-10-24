@@ -1474,17 +1474,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
   std::time_t current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   cout << "Current time: " << std::ctime(&current_time);
-  if (!FLAGS_is_debug) {
-    cout << "Git commit hash: " << endl;
-    int sys_ret = std::system("git rev-parse HEAD");
-    DRAKE_DEMAND(sys_ret != -1);
-    cout << "\n\n==============================\n";
-    cout << "Result of \"git diff\":" << endl;
-    sys_ret = std::system("git diff");
-    //  sys_ret = std::system("git diff-index HEAD");
-    cout << "\n==============================\n\n";
-    DRAKE_DEMAND(sys_ret != -1);
-  }
+  //  if (!FLAGS_is_debug) {
+  cout << "Git commit hash: " << endl;
+  int sys_ret = std::system("git rev-parse HEAD");
+  DRAKE_DEMAND(sys_ret != -1);
+  cout << "\n\n==============================\n";
+  cout << "Result of \"git diff\":" << endl;
+  sys_ret = std::system("git --no-pager diff");
+  //  sys_ret = std::system("git diff-index HEAD");
+  cout << "\n==============================\n\n";
+  DRAKE_DEMAND(sys_ret != -1);
+  //  }
 
   // Create MBP
   drake::logging::set_log_level("err");  // ignore warnings about joint limits

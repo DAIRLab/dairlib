@@ -156,6 +156,12 @@ def main():
 
   # ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_spr)
 
+  # Save a state into csv
+  # t_idx = np.argwhere(np.abs(t_x - 2.135) < 1e-3)[0][0]
+  # print("x[t_idx, :] = ")
+  # print(x[t_idx, :])
+  # np.savetxt("../init_state.csv", x[t_idx, :], delimiter=",")
+
   plt.show()
 
 def PlotOscQpSol(t_osc_debug, osc_output, fsm):

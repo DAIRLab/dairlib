@@ -107,6 +107,9 @@ DEFINE_string(init_traj_file_name, "",
               "This won't be necessary if the simulation is run at a much "
               "slower speed than realtime. "
               "An example file name is 0_rom_trajectory");
+DEFINE_string(init_traj_file_path, "",
+              "This won't be necessary if the simulation is run at a much "
+              "slower speed than realtime. ");
 
 //
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -830,7 +833,11 @@ int DoMain(int argc, char* argv[]) {
 
     // Get init traj from ROM planner result
     dairlib::lcmt_timestamped_saved_traj traj_msg;
-    if (!FLAGS_init_traj_file_name.empty()) {
+    if (!FLAGS_init_traj_file_path.empty()) {
+      RomPlannerTrajectory saved_traj(FLAGS_init_traj_file_path, true);
+      traj_msg = saved_traj.GenerateLcmObject();
+      DRAKE_DEMAND(FLAGS_init_traj_file_name.empty());
+    } else if (!FLAGS_init_traj_file_name.empty()) {
       RomPlannerTrajectory saved_traj(
           gains.dir_data + FLAGS_init_traj_file_name, true);
       traj_msg = saved_traj.GenerateLcmObject();

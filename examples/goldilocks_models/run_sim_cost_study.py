@@ -102,7 +102,6 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
 
   # simulation arguments
   pause_second = 2.0 if get_init_file else 0
-  init_traj_file = '' if get_init_file else '0_rom_trajectory'
   path_init_pose_success = InitPoseSuccessPath(rom_iter_idx, log_idx)
 
   # planner arguments
@@ -116,6 +115,10 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
   time_limit = 0.0 if dynamic_time_limit else 1.0 / target_realtime_rate * 0.2
   time_limit = 0.0 if get_init_file else time_limit
   planner_init_file = '' if get_init_file else '0_z.csv'
+  data_dir_this_thread = data_dir[:-1] + str(thread_idx) + "/"
+
+  # controller arguments
+  init_traj_file_path = '' if get_init_file else data_dir_this_thread + '0_rom_trajectory'
 
   # other arguments
   port_idx = thread_idx + 1024  # Ports below 1024 are considered to be privileged in Linux. https://stackoverflow.com/questions/31899673/bind-returning-permission-denied-c
@@ -145,7 +148,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
     '--spring_model=%s' % str(spring_model).lower(),
-    '--dir_data=%s' % data_dir[:-1] + str(thread_idx) + "/",
+    '--dir_data=%s' % data_dir_this_thread,
     '--path_wait_identifier=%s' % planner_wait_identifier,
     '--print_level=0',
   ]
@@ -160,7 +163,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
     '--stride_length=%.3f' % task_value,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--iter=%d' % rom_iter_idx,
-    '--init_traj_file_name=%s' % init_traj_file,
+    '--init_traj_file_path=%s' % init_traj_file_path,
     '--spring_model=%s' % str(spring_model).lower(),
     '--get_swing_foot_from_planner=%s' % str(foot_step_from_planner).lower(),
     '--path_wait_identifier=%s' % control_wait_identifier,

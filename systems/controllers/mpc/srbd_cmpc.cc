@@ -124,7 +124,7 @@ void SrbdCMPC::Build() {
   MakeCost();
 
   drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
+  solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 5e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-4);
 //  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
@@ -377,7 +377,12 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   }
 
   result_ = solver_.Solve(prog_);
-  std::cout << "result: " << result_.get_solution_result() << std::endl;
+  std::cout << "solve time: " <<
+    std::to_string(result_.get_solver_details<OsqpSolver>().run_time) << std::endl;
+
+  if (!result_.is_success()) {
+    std::cout << "result: " << result_.get_solution_result() << std::endl;
+  }
 
   most_recent_sol_ = MakeLcmTrajFromSol(
       result_, timestamp, time_since_last_event,  x, fsm_state);

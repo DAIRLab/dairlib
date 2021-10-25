@@ -45,7 +45,7 @@ DEFINE_double(max_duration, 1.0, "Maximum trajectory duration (s)");
 // Simulation parameters.
 DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
 DEFINE_string(data_directory,
-              "examples/impact_invariant_control/saved_trajectories",
+              "examples/impact_invariant_control/saved_trajectories/",
               "Directory path to save decision vars to.");
 DEFINE_string(save_filename, "rabbit_walking",
               "Filename to save decision "

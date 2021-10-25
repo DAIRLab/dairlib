@@ -18,7 +18,8 @@ class ImpactTimeBasedFiniteStateMachine
   ImpactTimeBasedFiniteStateMachine(
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::vector<int>& states,
-      const std::vector<double>& state_durations, double t0 = 0,
+      const std::vector<double>& state_durations,
+      const std::vector<double>& normal_impulses, double t0 = 0,
       double near_impact_threshold = 0, BLEND_FUNC blend_func = SIGMOID);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -43,13 +44,17 @@ class ImpactTimeBasedFiniteStateMachine
   int near_impact_port_;
   int clock_port_;
 
+  double t0_;
   std::vector<int> states_;
   std::vector<double> state_durations_;
-  double t0_;
 
   std::vector<double> accu_state_durations_;
   std::vector<int> impact_states_;
   std::vector<double> impact_times_;
+  // TODO(yangwill): figure out how to get predicted normal impulses for LIPM
+  // walking
+  //  std::vector<Eigen::VectorXd> normal_impulses_;
+  std::vector<double> normal_impulses_;
   double period_;
   double tau_ = 0.0025;
   double near_impact_threshold_;

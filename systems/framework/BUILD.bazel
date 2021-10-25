@@ -9,10 +9,12 @@ cc_library(
     srcs = [
         "output_vector.cc",
         "timestamped_vector.cc",
+        "impact_info_vector.cc",
     ],
     hdrs = [
         "output_vector.h",
         "timestamped_vector.h",
+        "impact_info_vector.h",
     ],
     deps = [
         "@drake//:drake_shared_library",

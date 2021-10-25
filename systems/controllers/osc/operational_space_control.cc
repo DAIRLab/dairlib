@@ -80,7 +80,7 @@ OperationalSpaceControl::OperationalSpaceControl(
         this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
     clock_port_ = this->DeclareVectorInputPort("clock", BasicVector<double>(1))
                       .get_index();
-    near_impact_port_ = this->DeclareVectorInputPort("next_fsm, t_to_impact",
+    impact_info_port_ = this->DeclareVectorInputPort("next_fsm, t_to_impact",
                                                      BasicVector<double>(2))
                             .get_index();
 
@@ -275,6 +275,7 @@ void OperationalSpaceControl::Build() {
 
   // Construct QP
   prog_ = std::make_unique<MathematicalProgram>();
+  ii_prog_ = std::make_unique<MathematicalProgram>();
 
   // Size of decision variable
   n_h_ = (kinematic_evaluators_ == nullptr)
@@ -317,6 +318,9 @@ void OperationalSpaceControl::Build() {
   lambda_h_ = prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
   epsilon_ = prog_->NewContinuousVariables(n_c_active_, "epsilon");
 
+  ii_lambda_c_ = ii_prog_->NewContinuousVariables(n_c_, "lambda_contact");
+  ii_lambda_h_ = ii_prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
+
   // Add constraints
   // 1. Dynamics constraint
   dynamics_constraint_ =
@@ -354,10 +358,7 @@ void OperationalSpaceControl::Build() {
     }
   }
   if (!all_contacts_.empty()) {
-    VectorXd mu_neg1(2);
-    VectorXd mu_1(2);
-    VectorXd one(1);
-    MatrixXd A = MatrixXd(5, kSpaceDim);
+    MatrixXd A = MatrixXd(6, kSpaceDim);
     A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
 
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
@@ -371,7 +372,32 @@ void OperationalSpaceControl::Build() {
               .evaluator()
               .get());
     }
+
+    // friction cone constraints on impact invariant projection
+    for (unsigned int j = 0; j < all_contacts_.size(); j++) {
+      ii_friction_constraints_.push_back(
+          ii_prog_
+              ->AddLinearConstraint(
+                  A, VectorXd::Zero(5),
+                  Eigen::VectorXd::Constant(
+                      5, std::numeric_limits<double>::infinity()),
+                  ii_lambda_c_.segment(kSpaceDim * j, 3))
+              .evaluator()
+              .get());
+    }
   }
+
+  // bounding box constraint on holonomic constraint forces impact invariant
+  // projection
+  if (n_h_) {
+    ii_holonomic_constraint_ =
+        ii_prog_
+            ->AddBoundingBoxConstraint(VectorXd::Zero(n_h_),
+                                       VectorXd::Zero(n_h_), ii_lambda_h_)
+            .evaluator()
+            .get();
+  }
+
   // 5. Input constraint
   if (with_input_constraints_) {
     prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
@@ -619,7 +645,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
-  // 4. Friction constraint (approximated firction cone)
+  // 4. Friction constraint (approximated friction cone)
   /// For i = active contact indices
   ///     mu_*lambda_c(3*i+2) >= lambda_c(3*i+0)
   ///    -mu_*lambda_c(3*i+2) <= lambda_c(3*i+0)
@@ -779,6 +805,106 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
       row_start += kSpaceDim;
     }
   }
+  // Holonomic constraints
+  if (n_h_ > 0) {
+    J_next.block(row_start, 0, n_h_, n_v_) =
+        kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
+  }
+  M_Jt_ = M.llt().solve(J_next.transpose());
+
+  int active_tracking_data_dim = 0;
+  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
+    auto tracking_data = tracking_data_vec_->at(i);
+
+    if (tracking_data->IsActive(fsm_state) &&
+        tracking_data->GetImpactInvariantProjection()) {
+      VectorXd v_proj = VectorXd::Zero(n_v_);
+      active_tracking_data_dim += tracking_data->GetYDim();
+      if (fixed_position_vec_.at(i).size() != 0) {
+        // Create constant trajectory and update
+        tracking_data->Update(
+            x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
+            PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
+            t_since_last_state_switch, fsm_state, v_proj);
+      } else {
+        // Read in traj from input port
+        const string& traj_name = tracking_data->GetName();
+        int port_index = traj_name_to_port_index_map_.at(traj_name);
+        const drake::AbstractValue* input_traj =
+            EvalAbstractInput(context, port_index);
+        const auto& traj =
+            input_traj->get_value<drake::trajectories::Trajectory<double>>();
+        tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                              *context_wo_spr_, traj, t,
+                              t_since_last_state_switch, fsm_state, v_proj);
+      }
+    }
+  }
+
+  MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_constraint_dim);
+  VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
+  int start_row = 0;
+  for (auto tracking_data : *tracking_data_vec_) {
+    if (tracking_data->IsActive(fsm_state) &&
+        tracking_data->GetImpactInvariantProjection()) {
+      A.block(start_row, 0, tracking_data->GetYDim(), active_constraint_dim) =
+          tracking_data->GetJ() * M_Jt_;
+      ydot_err_vec.segment(start_row, tracking_data->GetYDim()) =
+          tracking_data->GetErrorYdot();
+      start_row += tracking_data->GetYDim();
+    }
+  }
+
+  ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
+}
+
+void OperationalSpaceControl::UpdateImpactInvariantProjectionQP(
+    const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
+    const Context<double>& context, double t, double t_since_last_state_switch,
+    int fsm_state, int next_fsm_state, const MatrixXd& M) const {
+  auto impact_info = (ImpactInfoVector<double>*)this->EvalVectorInput(
+      context, impact_info_port_);
+  double alpha_pre = impact_info->GetAlphaPre();
+  double alpha_post = impact_info->GetAlphaPost();
+  DRAKE_DEMAND(alpha_pre + alpha_post > 0);
+
+  auto map_iterator = contact_indices_map_.find(next_fsm_state);
+  if (map_iterator == contact_indices_map_.end()) {
+    throw std::out_of_range("Contact mode: " + std::to_string(next_fsm_state) +
+                            " was not found in the OSC");
+  }
+  std::set<int> next_contact_set = map_iterator->second;
+  int active_constraint_dim = active_contact_dim_.at(next_fsm_state) + n_h_;
+  MatrixXd J_next = MatrixXd::Zero(active_constraint_dim, n_v_);
+  int row_start = 0;
+  for (unsigned int i = 0; i < all_contacts_.size(); i++) {
+    //    if (next_contact_set.find(i) != next_contact_set.end()) {
+    if (next_contact_set.count(i)) {
+      J_next.block(row_start, 0, kSpaceDim, n_v_) =
+          all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
+      row_start += kSpaceDim;
+      if(alpha_post){
+        ii_friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
+        VectorXd ub =
+            VectorXd::Constant(5, std::numeric_limits<double>::infinity());
+        ub(4) = impact_info->GetContactImpulseAtContactIndex(i)(2);
+        ii_friction_constraints_.at(i)->UpdateUpperBound(ub);
+      }
+      if(alpha_pre){
+        ii_friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
+        VectorXd ub =
+            VectorXd::Constant(5, std::numeric_limits<double>::infinity());
+        ub(4) = impact_info->GetContactImpulseAtContactIndex(i)(2);
+        ii_friction_constraints_.at(i)->UpdateUpperBound(ub);
+      }
+    } else { // disable friction cone constraints on these lambdas
+      ii_friction_constraints_.at(i)->UpdateLowerBound(
+          VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));
+      ii_friction_constraints_.at(i)->UpdateUpperBound(
+          VectorXd::Constant(5, std::numeric_limits<double>::infinity()));
+    }
+  }
+
   // Holonomic constraints
   if (n_h_ > 0) {
     J_next.block(row_start, 0, n_h_, n_v_) =
@@ -984,7 +1110,7 @@ void OperationalSpaceControl::CalcOptimalInput(
     if (this->get_near_impact_input_port().HasValue(context)) {
       const BasicVector<double>* near_impact =
           (BasicVector<double>*)this->EvalVectorInput(context,
-                                                      near_impact_port_);
+                                                      impact_info_port_);
       alpha = near_impact->get_value()(0);
       next_fsm_state = near_impact->get_value()(1);
     }

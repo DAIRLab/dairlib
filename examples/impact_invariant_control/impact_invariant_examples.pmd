@@ -26,6 +26,10 @@ group "5.trajectory-optimization" {
         exec = "bazel-bin/examples/Cassie/osc_jump/convert_traj_for_controller --folder_path=\"/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/\" --trajectory_name=\"jumping_0.15h_0.3d\" --relative_feet=1";
         host = "localhost";
     }
+    cmd "dircon_walking" {
+        exec = "bazel-bin/examples/impact_invariant_control/run_dircon_walking --save_filename=\"/rabbit_walking\"";
+        host = "localhost";
+    }
 }
 
 group "1.simulated-robot" {
@@ -46,7 +50,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "five_link_biped_sim" {
-        exec = "bazel-bin/examples/impact_invariant_control/five_link_biped_sim --folder_path=\"/home/yangwill/Documents/research/projects/five_link_biped/walking/saved_trajs/\" --trajectory_name=\"rabbit_walking\" --sim_time=1.0 --target_realtime_rate=0.25 --error=0.1";
+        exec = "bazel-bin/examples/impact_invariant_control/five_link_biped_sim --folder_path=\"/home/yangwill/Documents/research/projects/five_link_biped/walking/saved_trajs/\" --trajectory_name=\"rabbit_walking\" --sim_time=1.0 --start_time=0.11440834 --target_realtime_rate=0.5 --error_idx=12 --error=-0.25";
         host = "localhost";
     }
 }
@@ -60,7 +64,7 @@ group "3.lcm-tools" {
 
 group "2.controllers" {
     cmd "osc_jumping_controller" {
-        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --traj_name=\"jumping_0.15h_0.3d\"  --delay_time=2.0 --simulator=DRAKE --channel_x=CASSIE_STATE_SIMULATION --contact_based_fsm=0 --channel_u=CASSIE_INPUT";
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --traj_name=\"jumping_box_0.5h_0.3d_1\"  --delay_time=2.0 --simulator=DRAKE --channel_x=CASSIE_STATE_SIMULATION --contact_based_fsm=0 --channel_u=CASSIE_INPUT";
         host = "localhost";
     }
     cmd "joint_space_walking_controller" {

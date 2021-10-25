@@ -15,10 +15,12 @@ using systems::OutputVector;
 ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::vector<int>& states, const std::vector<double>& state_durations,
+    const std::vector<double>& normal_impulses,
     double t0, double near_impact_threshold, BLEND_FUNC blend_func)
     : TimeBasedFiniteStateMachine(plant, states, state_durations, t0),
       states_(states),
       state_durations_(state_durations),
+      normal_impulses_(normal_impulses),
       t0_(t0),
       near_impact_threshold_(near_impact_threshold),
       blend_func_(blend_func) {

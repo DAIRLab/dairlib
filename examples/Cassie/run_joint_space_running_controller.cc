@@ -17,9 +17,9 @@
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
-#include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -145,7 +145,8 @@ int DoMain(int argc, char* argv[]) {
       air_phase_duration, left_support_duration / 2};
 
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, 0.0, gains.impact_threshold);
+      plant, fsm_states, state_durations, state_durations, 0.0,
+      gains.impact_threshold);
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");

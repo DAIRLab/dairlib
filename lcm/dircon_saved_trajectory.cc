@@ -31,6 +31,7 @@ DirconTrajectory::DirconTrajectory(
     LcmTrajectory::Trajectory state_traj;
     LcmTrajectory::Trajectory state_derivative_traj;
     LcmTrajectory::Trajectory force_traj;
+    LcmTrajectory::Trajectory impulse_traj;
 
     state_traj.traj_name = "state_traj" + std::to_string(mode);
     state_traj.datapoints = x[mode];
@@ -48,10 +49,12 @@ DirconTrajectory::DirconTrajectory(
     force_traj.traj_name = "force_vars" + std::to_string(mode);
     std::vector<std::string> force_names;
     std::vector<std::string> collocation_force_names;
+    std::vector<std::string> impulse_names;
 
     int num_forces = dircon.get_evaluator_set(mode).count_full();
     for (int i = 0; i < num_forces; ++i) {
       force_names.push_back("lambda_" + std::to_string(i));
+      impulse_names.push_back("Lambda_" + std::to_string(i));
       collocation_force_names.push_back("lambda_c_" + std::to_string(i));
     }
     force_traj.datatypes = force_names;
@@ -59,6 +62,13 @@ DirconTrajectory::DirconTrajectory(
     force_traj.datapoints =
         Eigen::Map<MatrixXd>(dircon.GetForceSamplesByMode(result, mode).data(),
                              num_forces, force_traj.time_vector.size());
+
+    // Impulse vars
+    impulse_traj.traj_name = "impulse_vars" + std::to_string(mode);
+    impulse_traj.datatypes = impulse_names;
+    // Get start of mode to get time of impulse
+    impulse_traj.time_vector = state_breaks[mode].segment(0, 1);
+    impulse_traj.datapoints = result.GetSolution(dircon.impulse_vars(mode));
 
     // Collocation force vars
     if (state_breaks[mode].size() > 1) {
@@ -99,10 +109,12 @@ DirconTrajectory::DirconTrajectory(
     AddTrajectory(state_traj.traj_name, state_traj);
     AddTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
     AddTrajectory(force_traj.traj_name, force_traj);
+    AddTrajectory(impulse_traj.traj_name, impulse_traj);
 
     x_.push_back(&state_traj);
     xdot_.push_back(&state_derivative_traj);
     lambda_.push_back(&force_traj);
+    impulse_.push_back(&impulse_traj);
   }
 
   // Input trajectory

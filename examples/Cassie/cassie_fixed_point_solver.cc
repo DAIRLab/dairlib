@@ -136,18 +136,22 @@ void CassieFixedPointSolver(
 
   // Set initial guess/cost for q using a vaguely neutral position
   Eigen::VectorXd q_guess = Eigen::VectorXd::Zero(plant.num_positions());
-  q_guess(0) = 1; //quaternion
-  q_guess(positions_map.at("base_z")) = height;
-  q_guess(positions_map.at("hip_pitch_left")) = 1;
-  q_guess(positions_map.at("knee_left")) = -2;
-  q_guess(positions_map.at("ankle_joint_left")) = 2;
-  q_guess(positions_map.at("toe_left")) = -2;
-  q_guess(positions_map.at("hip_pitch_right")) = 1;
-  q_guess(positions_map.at("knee_right")) = -2;
-  q_guess(positions_map.at("ankle_joint_right")) = 2;
-  q_guess(positions_map.at("toe_right")) = -2;
+  if (fabs((*q_result)[0] - 1) < .001) {
+    q_guess = *q_result;
+  } else {
+    q_guess(0) = 1; //quaternion
+    q_guess(positions_map.at("base_z")) = height;
+    q_guess(positions_map.at("hip_pitch_left")) = 1;
+    q_guess(positions_map.at("knee_left")) = -2;
+    q_guess(positions_map.at("ankle_joint_left")) = 2;
+    q_guess(positions_map.at("toe_left")) = -2;
+    q_guess(positions_map.at("hip_pitch_right")) = 1;
+    q_guess(positions_map.at("knee_right")) = -2;
+    q_guess(positions_map.at("ankle_joint_right")) = 2;
+    q_guess(positions_map.at("toe_right")) = -2;
+    q_guess += .05*Eigen::VectorXd::Random(plant.num_positions());
+  }
 
-  q_guess += .05*Eigen::VectorXd::Random(plant.num_positions());
 
   // Only cost in this program: u^T u
   program.AddQuadraticCost(u.dot(1.0 * u));
@@ -175,10 +179,10 @@ void CassieFixedPointSolver(
   const auto result = drake::solvers::Solve(program, guess);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "Solve time:" << elapsed.count() << std::endl;
+//  std::cout << "Solve time:" << elapsed.count() << std::endl;
 
   std::cout << to_string(result.get_solution_result()) << std::endl;
-  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
+//  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
 
   // Draw final pose
   if (visualize_model_urdf != "") {

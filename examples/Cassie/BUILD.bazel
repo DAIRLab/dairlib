@@ -422,6 +422,20 @@ cc_binary(
 )
 
 cc_binary(
+    name = "generate_random_ics",
+    srcs = ["generate_random_ics.cc"],
+    deps = [
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//common",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_dircon_squatting",
     srcs = ["run_dircon_squatting.cc"],
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),

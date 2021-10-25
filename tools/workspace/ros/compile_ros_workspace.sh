@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Only tested on Ubuntu 18.04
 BASE_DIR="$PWD"
 
 cd $(dirname "$BASH_SOURCE")

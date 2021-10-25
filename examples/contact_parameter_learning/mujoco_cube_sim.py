@@ -14,7 +14,7 @@ def get_model_xml_text(substeps, params=None,):
     if (params is None) : params = default_mujoco_contact_params
     ixx = 0.00081
 
-    return f'<mujoco model=\"Cube\"> <compiler inertiafromgeom=\"true\" angle=\"degree\"/> <option timestep = \"{CUBE_DATA_DT / substeps}\"> \
+    return f'<mujoco model=\"Cube\"> <compiler inertiafromgeom=\"false\" angle=\"degree\"/> <option timestep = \"{CUBE_DATA_DT / substeps}\"> \
 <flag refsafe = \"disable\" /> </option><asset> <texture name=\"grid\" type=\"2d\" builtin=\"checker\" rgb1=\".2 .3 .4\" rgb2=\".1 .15 .2\" \
 width=\"512\" height=\"512\" mark=\"edge\" markrgb=\".8 .8 .8\"/> <material name=\"grid\" texture=\"grid\" texrepeat=\"1 1\" \
 texuniform=\"true\" reflectance=\".3\"/></asset><worldbody><geom name=\"floor\" pos=\"0 0 -1.0\" size=\".0 .0 .01\" type=\"plane\" material=\"grid\"/> \

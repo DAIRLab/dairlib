@@ -1,3 +1,4 @@
+
 # Set xy PD gains so they do not effect  passive LIPM dynamics at capture
 # point, when x = sqrt(l/g) * xdot
 # Passive dynamics: xddot = g/l * x
@@ -9,33 +10,35 @@
 rows: 3
 cols: 3
 w_input: 0
-w_accel: .01
-w_soft_constraint: 20000
+#w_accel: 0.00001
+w_accel: 0.00000001
+w_soft_constraint: 200
 HipYawKp: 10
 HipYawKd: 1
 HipYawW: 0
 CoMW:
-  [2000, 0, 0,
-   0, 2000, 0,
-   0, 0, 200]
+  [20, 0,  0,
+   0, 20,  0,
+   0, 0,  5]
 PelvisW:
-  [200, 0, 0,
-   0, 200, 0,
-   0, 0, 200]
+  [2, 0, 0,
+   0, 2, 0,
+   0, 0, 0]
 CoMKp:
-  [ 22,    0,    0,
-      0,  15,    0,
-      0,    0,  20]
+  [ 20,    0,    0,
+    0,  20,    0,
+    0,    0,  20]
 CoMKd:
-  [ 0.5,   0,   0,
-     0,  0.4,   0,
-     0,   0,   1]
+  [  0.5,    0,    0,
+     0,    0.75,    0,
+     0,    0,    1]
 PelvisRotKp:
-  [10, 0, 0,
-   0, 100, 0,
-   0, 0, 10]
+  [10,  0,   0,
+   0,  30,   0,
+   0,   0,  10]
 PelvisRotKd:
-  [0.5,  0, 0,
-   0,  10, 0,
-   0,  0, 10]
+  [0.5,  0,   0,
+   0,  0.5,   0,
+   0,    0,  0.5]
+
 

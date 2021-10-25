@@ -16,7 +16,7 @@ import sensitivity_analysis as sa
 from pydairlib.common.plot_styler import PlotStyler
 
 
-figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/')
+figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/testing/')
 
 ps = PlotStyler()
 ps.set_default_styling(directory=figure_directory, figsize=(8,6))
@@ -24,8 +24,8 @@ ps.set_default_styling(directory=figure_directory, figsize=(8,6))
 sim_colors = {'Drake' : ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
 
 paper_ids = ['drake_2021_09_11_16_44_10',
-            'mujoco_2021_09_12_10_27_10', 
-           'bullet_2021_09_13_23_26_10']
+             'mujoco_2021_10_18_16_26_10', 
+             'bullet_2021_09_13_23_26_10']
 
 # def plot_damping_ratios(ids):
 #     stiffness = []
@@ -384,13 +384,13 @@ def quick_video():
 
 if __name__ == '__main__':
     # make_estimated_pdf_figure()
-    # make_friction_sensitivity_analysis_figure()
-    # make_damping_sensitivity_analysis_figure()
-    # make_stiffness_sensitivity_analysis_figure()
+    make_friction_sensitivity_analysis_figure()
+    make_damping_sensitivity_analysis_figure()
+    make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
-    # make_contact_impulse_plot()
+    make_contact_impulse_plot()
     # visualize_cube_initial_condition()
     # make_damping_ratio_sensitivity_analysis_figure()
     # make_inelastic_traj_video()
     # make_elastic_traj_video()
-    quick_video()
+    # quick_video()

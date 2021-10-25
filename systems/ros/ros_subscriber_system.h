@@ -63,13 +63,14 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
    */
   RosSubscriberSystem(const std::string& topic, ros::NodeHandle* node_handle)
       : topic_(topic), node_handle_(node_handle) {
-    DRAKE_DEMAND(node_handle_);
+    DRAKE_DEMAND(node_handle_ != nullptr);
 
 
     subscriber_ = node_handle->subscribe(
         topic, 1, &RosSubscriberSystem<RosMessage>::HandleMessage, this);
 
     DeclareAbstractOutputPort(
+        topic,
         [this]() {
           return this->AllocateOutputValue();
         },
@@ -151,8 +152,7 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
     drake::systems::EventCollection<
         drake::systems::UnrestrictedUpdateEvent<double>>&
         uu_events = events->get_mutable_unrestricted_update_events();
-    uu_events.add_event(
-        std::make_unique<drake::systems::UnrestrictedUpdateEvent<double>>(
+    uu_events.AddEvent(drake::systems::UnrestrictedUpdateEvent<double>(
             drake::systems::Event<double>::TriggerType::kTimed));
   }
 

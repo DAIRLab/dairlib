@@ -11,7 +11,7 @@ TrajectoryPlayback::TrajectoryPlayback(const PiecewisePolynomial<double>& traj,
                                        double time_offset)
     : traj_(traj) {
   this->set_name("trajectory_playback");
-  this->DeclareVectorOutputPort(
+  this->DeclareVectorOutputPort("u",
       TimestampedVector<double>(num_inputs),
       &TrajectoryPlayback::CalcEffort);
 

@@ -94,9 +94,9 @@ class ImpactInfoVector : public TimestampedVector<T> {
   const int num_contact_impulses_;
   const int num_holonomic_impulses_;
   const int space_dim_;
+  const int contact_mode_index_;
   const int alpha_pre_index_;
   const int alpha_post_index_;
-  const int contact_mode_index_;
   const int impulse_start_;
   vector<string> impulse_names_;
 };

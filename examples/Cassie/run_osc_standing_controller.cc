@@ -39,9 +39,9 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::TriggerTypeSet;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
@@ -191,7 +191,7 @@ int DoMain(int argc, char* argv[]) {
   // Create command sender.
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+          FLAGS_channel_u, &lcm_local, TriggerTypeSet{TriggerType::kForced}));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
 
@@ -202,7 +202,7 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_STANDING", &lcm_local,
-          TriggerTypeSet({TriggerType::kForced})));
+          TriggerTypeSet{TriggerType::kForced}));
 
   // Create desired center of mass traj
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>

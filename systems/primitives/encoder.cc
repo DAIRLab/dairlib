@@ -15,9 +15,9 @@ Encoder::Encoder(const drake::multibody::MultibodyPlant<double>& plant,
       joint_indices_(joint_indices),
       ticks_per_revolution_(ticks_per_revolution),
       joint_filters_(std::vector<JointFilter>(joint_indices_.size())) {
-  this->DeclareVectorInputPort(
+  this->DeclareVectorInputPort("q, v",
       systems::BasicVector<double>(num_positions_ + num_velocities_));
-  this->DeclareVectorOutputPort(
+  this->DeclareVectorOutputPort("q, v",
       systems::BasicVector<double>(num_positions_ + num_velocities_),
       &Encoder::UpdateFilter);
 }

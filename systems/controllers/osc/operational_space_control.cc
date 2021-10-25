@@ -1075,6 +1075,8 @@ void OperationalSpaceControl::CalcOptimalInput(
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
+
+
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
 
@@ -1108,11 +1110,10 @@ void OperationalSpaceControl::CalcOptimalInput(
     double alpha = 0;
     int next_fsm_state = -1;
     if (this->get_near_impact_input_port().HasValue(context)) {
-      const BasicVector<double>* near_impact =
-          (BasicVector<double>*)this->EvalVectorInput(context,
-                                                      impact_info_port_);
-      alpha = near_impact->get_value()(0);
-      next_fsm_state = near_impact->get_value()(1);
+      const ImpactInfoVector<double>* impact_info =
+          (ImpactInfoVector<double>*)this->EvalVectorInput(context, impact_info_port_);
+      alpha = impact_info->GetAlphaPre();
+      next_fsm_state = impact_info->GetCurrentContactMode();
     }
 
     // Get discrete states

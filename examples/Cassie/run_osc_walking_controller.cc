@@ -45,9 +45,9 @@ using Eigen::VectorXd;
 using drake::multibody::Frame;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::TriggerTypeSet;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;

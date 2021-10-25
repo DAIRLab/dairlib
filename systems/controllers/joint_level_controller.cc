@@ -32,12 +32,12 @@ JointLevelController::JointLevelController(
   DRAKE_ASSERT(K_.rows() == nu_);
   DRAKE_ASSERT(K_.cols() == nq_ + nv_);
   input_port_info_index_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
+      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
           .get_index();
   output_port_efforts_index_ =
-      this->DeclareVectorOutputPort(
+      this->DeclareVectorOutputPort("u, t",
               TimestampedVector<double>(plant.num_actuators()),
               &JointLevelController::CalcControl)
           .get_index();

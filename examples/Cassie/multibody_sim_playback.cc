@@ -123,9 +123,6 @@ int do_main(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  int nq = plant.num_positions();
-  int nv = plant.num_velocities();
-
   // Create maps for joints
   std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   std::map<std::string, int> vel_map =

@@ -77,11 +77,11 @@ void FlightToeAngleTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-//  if(use_traj_){
-  *casted_traj = toe_traj_;
-//  }else{
-//    *casted_traj = CalcToeAngle(robot_output->GetPositions());
-//  }
+  if (use_traj_) {
+    *casted_traj = toe_traj_;
+  } else {
+    *casted_traj = CalcToeAngle(robot_output->GetPositions());
+  }
 }
 
 }  // namespace dairlib::cassie::osc_jump

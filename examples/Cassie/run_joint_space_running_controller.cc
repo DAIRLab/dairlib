@@ -145,7 +145,7 @@ int DoMain(int argc, char* argv[]) {
       air_phase_duration, left_support_duration / 2};
 
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, state_durations, 0.0,
+      plant, fsm_states, state_durations, 0.0,
       gains.impact_threshold);
 
   /**** Initialize all the leaf systems ****/

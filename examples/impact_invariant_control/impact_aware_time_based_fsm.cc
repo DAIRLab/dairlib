@@ -11,22 +11,64 @@ using std::string;
 namespace dairlib {
 
 using systems::OutputVector;
+using systems::ImpactInfoVector;
 
 ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::vector<int>& states, const std::vector<double>& state_durations,
-    const std::vector<double>& normal_impulses,
+    const std::vector<VectorXd>& impulses,
     double t0, double near_impact_threshold, BLEND_FUNC blend_func)
     : TimeBasedFiniteStateMachine(plant, states, state_durations, t0),
       states_(states),
       state_durations_(state_durations),
-      normal_impulses_(normal_impulses),
+      impulses_(impulses),
       t0_(t0),
       near_impact_threshold_(near_impact_threshold),
       blend_func_(blend_func) {
+
   near_impact_port_ =
       this->DeclareVectorOutputPort("near_impact",
-              BasicVector<double>(2),
+              ImpactInfoVector<double>(0, 0, 3),
+              &ImpactTimeBasedFiniteStateMachine::CalcNearImpact)
+          .get_index();
+  clock_port_ = this->DeclareVectorOutputPort("clock",
+                        BasicVector<double>(1),
+                        &ImpactTimeBasedFiniteStateMachine::CalcClock)
+                    .get_index();
+
+  // Accumulate the durations to get timestamps
+  double sum = 0;
+  DRAKE_DEMAND(states.size() == state_durations.size());
+//  impact_times_.push_back(0.0);
+//  impact_states_.push_back(0);
+  for (int i = 0; i < states.size(); ++i) {
+    sum += state_durations[i];
+    accu_state_durations_.push_back(sum);
+//    if (states[i] == 2) {
+    impact_times_.push_back(sum);
+    impact_states_.push_back(states[i+1]);
+    std::cout << sum << std::endl;
+    std::cout << states[i+1] << std::endl;
+//    }
+  }
+
+  period_ = sum;
+}
+
+ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::vector<int>& states, const std::vector<double>& state_durations,
+    double t0, double near_impact_threshold, BLEND_FUNC blend_func)
+    : TimeBasedFiniteStateMachine(plant, states, state_durations, t0),
+      states_(states),
+      state_durations_(state_durations),
+      t0_(t0),
+      near_impact_threshold_(near_impact_threshold),
+      blend_func_(blend_func) {
+
+  near_impact_port_ =
+      this->DeclareVectorOutputPort("near_impact",
+              ImpactInfoVector<double>(0, 0, 0),
               &ImpactTimeBasedFiniteStateMachine::CalcNearImpact)
           .get_index();
   clock_port_ = this->DeclareVectorOutputPort("clock",
@@ -63,7 +105,7 @@ double alpha_exp(double t, double tau, double near_impact_threshold) {
 }
 
 void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
-    const Context<double>& context, BasicVector<double>* near_impact) const {
+    const Context<double>& context, ImpactInfoVector<double>* near_impact) const {
   // Read in lcm message time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -74,7 +116,11 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   // Assign the blending function ptr
   auto alpha_func = blend_func_ == SIGMOID ? &alpha_sigmoid : &alpha_exp;
 
-  VectorXd near_impact_data = VectorXd::Zero(2);
+//  VectorXd near_impact_data = VectorXd::Zero(2);
+  near_impact->set_timestamp(current_time);
+  near_impact->SetCurrentContactMode(0);
+  near_impact->SetAlphaPre(0);
+  near_impact->SetAlphaPost(0);
   // Get current finite state
   if (current_time >= t0_) {
     for (int i = 0; i < impact_states_.size(); ++i) {
@@ -86,18 +132,17 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
                                 : near_impact_threshold_;
       if (abs(remainder - impact_times_[i]) < blend_window) {
         if (remainder < impact_times_[i]) {
-          near_impact_data(0) = alpha_func(remainder - impact_times_[i], tau_,
-                                           near_impact_threshold_);
+          near_impact->SetAlphaPre(alpha_func(remainder - impact_times_[i], tau_,
+                                           near_impact_threshold_));
         } else {
-          near_impact_data(0) = alpha_func(impact_times_[i] - remainder, tau_,
-                                           near_impact_threshold_);
+          near_impact->SetAlphaPost(alpha_func(impact_times_[i] - remainder, tau_,
+                                           near_impact_threshold_));
         }
-        near_impact_data(1) = impact_states_[i];
+        near_impact->SetCurrentContactMode(impact_states_[i]);
         break;
       }
     }
   }
-  near_impact->get_mutable_value() = near_impact_data;
 }
 
 void ImpactTimeBasedFiniteStateMachine::CalcClock(

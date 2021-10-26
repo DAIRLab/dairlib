@@ -101,7 +101,7 @@ class DirconTrajectory : public LcmTrajectory {
   Eigen::MatrixXd GetForceBreaks(int mode) const {
     return lambda_[mode]->time_vector;
   }
-  Eigen::MatrixXd GetImpulseSamples(int mode) const { return impulse_[mode]->datapoints; }
+  Eigen::MatrixXd GetImpulseSamples(int mode) const { return impulse_[mode - 1]->datapoints; }
   Eigen::MatrixXd GetCollocationForceSamples(int mode) const {
     return lambda_c_[mode]->datapoints;
   }

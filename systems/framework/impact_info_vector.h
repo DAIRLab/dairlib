@@ -29,13 +29,10 @@ class ImpactInfoVector : public TimestampedVector<T> {
   /// is NaN when T = double.
   explicit ImpactInfoVector(int num_contact, int num_holonomic, int space_dim)
       : TimestampedVector<T>(3 + num_contact + num_holonomic),
+        has_impulse_info_(num_contact != 0),
         num_contact_impulses_(num_contact),
         num_holonomic_impulses_(num_holonomic),
-        space_dim_(space_dim),
-        contact_mode_index_(0),
-        alpha_pre_index_(1),
-        alpha_post_index_(2),
-        impulse_start_(3) {}
+        space_dim_(space_dim){}
 
   void SetCurrentContactMode(int contact_mode) {
     this->get_mutable_data()(contact_mode_index_) = contact_mode;
@@ -91,13 +88,14 @@ class ImpactInfoVector : public TimestampedVector<T> {
   }
 
  private:
+  bool has_impulse_info_;
   const int num_contact_impulses_;
   const int num_holonomic_impulses_;
   const int space_dim_;
-  const int contact_mode_index_;
-  const int alpha_pre_index_;
-  const int alpha_post_index_;
-  const int impulse_start_;
+  const int contact_mode_index_ = 0;
+  const int alpha_pre_index_ = 1;
+  const int alpha_post_index_ = 2;
+  const int impulse_start_ = 3;
   vector<string> impulse_names_;
 };
 

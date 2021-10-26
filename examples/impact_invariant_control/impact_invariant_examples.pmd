@@ -27,7 +27,7 @@ group "5.trajectory-optimization" {
         host = "localhost";
     }
     cmd "dircon_walking" {
-        exec = "bazel-bin/examples/impact_invariant_control/run_dircon_walking --save_filename=\"/rabbit_walking\"";
+        exec = "bazel-bin/examples/impact_invariant_control/run_dircon_walking --save_filename=\"rabbit_walking\"";
         host = "localhost";
     }
 }
@@ -50,7 +50,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "five_link_biped_sim" {
-        exec = "bazel-bin/examples/impact_invariant_control/five_link_biped_sim --folder_path=\"/home/yangwill/Documents/research/projects/five_link_biped/walking/saved_trajs/\" --trajectory_name=\"rabbit_walking\" --sim_time=1.0 --start_time=0.11440834 --target_realtime_rate=0.5 --error_idx=12 --error=-0.25";
+        exec = "bazel-bin/examples/impact_invariant_control/five_link_biped_sim --folder_path=\"examples/impact_invariant_control/saved_trajectories/\" --trajectory_name=\"rabbit_walking\" --sim_time=1.0 --start_time=0.11440834 --target_realtime_rate=0.5 --error_idx=12 --error=-0.25";
         host = "localhost";
     }
 }

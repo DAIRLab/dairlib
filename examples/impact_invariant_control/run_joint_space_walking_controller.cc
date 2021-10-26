@@ -103,7 +103,7 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
   std::vector<VectorXd> impulses(dircon_trajectory.GetNumModes());
-  for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode){
+  for (int mode = 1; mode < dircon_trajectory.GetNumModes(); ++mode){
     impulses[mode] = dircon_trajectory.GetImpulseSamples(mode);
   }
 
@@ -118,7 +118,7 @@ int DoMain(int argc, char* argv[]) {
                      state_traj.end_time() - dircon_trajectory.GetStateBreaks(2)(0)};
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, state_durations, 0.0, gains.impact_threshold);
+      plant, fsm_states, state_durations, 0.0, gains.impact_threshold);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));

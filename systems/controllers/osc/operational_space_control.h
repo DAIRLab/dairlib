@@ -322,6 +322,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
   std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
+  std::vector<drake::solvers::QuadraticCost*> ii_tracking_cost_;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;

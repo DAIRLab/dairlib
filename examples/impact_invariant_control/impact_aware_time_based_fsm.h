@@ -3,6 +3,7 @@
 #include <string>
 
 #include "systems/controllers/time_based_fsm.h"
+#include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -19,7 +20,13 @@ class ImpactTimeBasedFiniteStateMachine
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::vector<int>& states,
       const std::vector<double>& state_durations,
-      const std::vector<double>& normal_impulses, double t0 = 0,
+      const std::vector<Eigen::VectorXd>& impulses, double t0 = 0,
+      double near_impact_threshold = 0, BLEND_FUNC blend_func = SIGMOID);
+
+  ImpactTimeBasedFiniteStateMachine(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::vector<int>& states,
+      const std::vector<double>& state_durations, double t0 = 0,
       double near_impact_threshold = 0, BLEND_FUNC blend_func = SIGMOID);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -37,7 +44,7 @@ class ImpactTimeBasedFiniteStateMachine
 
  private:
   void CalcNearImpact(const drake::systems::Context<double>& context,
-                      drake::systems::BasicVector<double>* near_impact) const;
+                      systems::ImpactInfoVector<double>* near_impact) const;
   void CalcClock(const drake::systems::Context<double>& context,
                  drake::systems::BasicVector<double>* clock) const;
 
@@ -49,9 +56,7 @@ class ImpactTimeBasedFiniteStateMachine
   std::vector<double> state_durations_;
   // TODO(yangwill): figure out how to get predicted normal impulses for LIPM
   // walking
-  //  std::vector<Eigen::VectorXd> normal_impulses_;
-
-  std::vector<double> normal_impulses_;
+  std::vector<Eigen::VectorXd> impulses_;
   std::vector<double> accu_state_durations_;
   std::vector<int> impact_states_;
   std::vector<double> impact_times_;

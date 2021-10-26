@@ -2,6 +2,7 @@
 
 #include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 #include "systems/framework/output_vector.h"
+#include "systems/framework/impact_info_vector.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -64,7 +65,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
                  drake::systems::BasicVector<double>* clock) const;
 
   void CalcNearImpact(const drake::systems::Context<double>& context,
-                      drake::systems::BasicVector<double>* fsm_state) const;
+                      systems::ImpactInfoVector<double>* fsm_state) const;
 
   int state_port_;
   int contact_port_;

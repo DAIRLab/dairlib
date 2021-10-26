@@ -4,6 +4,7 @@
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 using dairlib::systems::OutputVector;
+using dairlib::systems::ImpactInfoVector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -47,7 +48,7 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                     &JumpingEventFsm::CalcClock)
           .get_index();
   near_impact_output_port =
-      this->DeclareVectorOutputPort("t_to_impact, next_fsm", BasicVector<double>(2),
+      this->DeclareVectorOutputPort("impact_info", ImpactInfoVector<double>(0, 0, 3),
                                     &JumpingEventFsm::CalcNearImpact)
           .get_index();
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);
@@ -152,14 +153,17 @@ double alpha_exp(double t, double tau, double near_impact_threshold) {
 }
 
 void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
-                                     BasicVector<double>* near_impact) const {
+                                     ImpactInfoVector<double>* near_impact) const {
   VectorXd fsm_state = context.get_discrete_state(fsm_idx_).get_value();
   // Read in lcm message time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double timestamp = robot_output->get_timestamp();
 
-  VectorXd is_near_impact = VectorXd::Zero(2);
+  near_impact->set_timestamp(timestamp);
+  near_impact->SetCurrentContactMode(0);
+  near_impact->SetAlphaPre(0);
+  near_impact->SetAlphaPost(0);
   auto alpha_func = blend_func_ == SIGMOID ? &alpha_sigmoid : &alpha_exp;
 
   // Get current finite state
@@ -168,16 +172,17 @@ void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
         blend_func_ == SIGMOID ? 1.5 * impact_threshold_ : impact_threshold_;
     if (abs(timestamp - transition_times_[FLIGHT]) < blend_window) {
       if (timestamp < transition_times_[FLIGHT]) {
-        is_near_impact(0) = alpha_func(timestamp - transition_times_[FLIGHT],
-                                       tau_, impact_threshold_);
+        near_impact->SetAlphaPre(alpha_func(timestamp - transition_times_[FLIGHT],
+                                       tau_, impact_threshold_));
       } else {
-        is_near_impact(0) = alpha_func(transition_times_[FLIGHT] - timestamp,
-                                       tau_, impact_threshold_);
+//        near_impact->SetAlphaPost(alpha_func(transition_times_[FLIGHT] - timestamp,
+//                                       tau_, impact_threshold_));
+        near_impact->SetAlphaPre(alpha_func(transition_times_[FLIGHT] - timestamp,
+                                       tau_, impact_threshold_));
       }
-      is_near_impact(1) = LAND;
+      near_impact->SetCurrentContactMode(LAND);
     }
   }
-  near_impact->get_mutable_value() = is_near_impact;
 }
 
 }  // namespace osc_jump

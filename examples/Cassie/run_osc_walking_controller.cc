@@ -198,7 +198,7 @@ int DoMain(int argc, char* argv[]) {
                        right_support_duration, double_support_duration};
   }
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant_w_spr, fsm_states, state_durations, state_durations, 0.0, gains.impact_threshold);
+      plant_w_spr, fsm_states, state_durations, 0.0, gains.impact_threshold);
 
   // Create leafsystem that record the switching time of the FSM
   std::vector<int> single_support_states = {left_stance_state,

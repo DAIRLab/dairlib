@@ -81,7 +81,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     clock_port_ = this->DeclareVectorInputPort("clock", BasicVector<double>(1))
                       .get_index();
     impact_info_port_ = this->DeclareVectorInputPort("next_fsm, t_to_impact",
-                                                     BasicVector<double>(2))
+                                                     ImpactInfoVector<double>(0, 0, kSpaceDim))
                             .get_index();
 
     // Discrete update to record the last state event time
@@ -358,7 +358,7 @@ void OperationalSpaceControl::Build() {
     }
   }
   if (!all_contacts_.empty()) {
-    MatrixXd A = MatrixXd(6, kSpaceDim);
+    MatrixXd A = MatrixXd(5, kSpaceDim);
     A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
 
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
@@ -374,29 +374,29 @@ void OperationalSpaceControl::Build() {
     }
 
     // friction cone constraints on impact invariant projection
-    for (unsigned int j = 0; j < all_contacts_.size(); j++) {
-      ii_friction_constraints_.push_back(
-          ii_prog_
-              ->AddLinearConstraint(
-                  A, VectorXd::Zero(5),
-                  Eigen::VectorXd::Constant(
-                      5, std::numeric_limits<double>::infinity()),
-                  ii_lambda_c_.segment(kSpaceDim * j, 3))
-              .evaluator()
-              .get());
-    }
+//    for (unsigned int j = 0; j < all_contacts_.size(); j++) {
+//      ii_friction_constraints_.push_back(
+//          ii_prog_
+//              ->AddLinearConstraint(
+//                  A, VectorXd::Zero(5),
+//                  Eigen::VectorXd::Constant(
+//                      5, std::numeric_limits<double>::infinity()),
+//                  ii_lambda_c_.segment(kSpaceDim * j, 3))
+//              .evaluator()
+//              .get());
+//    }
   }
 
   // bounding box constraint on holonomic constraint forces impact invariant
   // projection
-  if (n_h_) {
-    ii_holonomic_constraint_ =
-        ii_prog_
-            ->AddBoundingBoxConstraint(VectorXd::Zero(n_h_),
-                                       VectorXd::Zero(n_h_), ii_lambda_h_)
-            .evaluator()
-            .get();
-  }
+//  if (n_h_) {
+//    ii_holonomic_constraint_ =
+//        ii_prog_
+//            ->AddBoundingBoxConstraint(VectorXd::Zero(n_h_),
+//                                       VectorXd::Zero(n_h_), ii_lambda_h_)
+//            .evaluator()
+//            .get();
+//  }
 
   // 5. Input constraint
   if (with_input_constraints_) {
@@ -427,6 +427,16 @@ void OperationalSpaceControl::Build() {
                                                     VectorXd::Zero(n_v_), dv_)
                                  .evaluator()
                                  .get());
+    ii_tracking_cost_.push_back(
+        ii_prog_
+            ->Add2NormSquaredCost(
+                MatrixXd::Zero(tracking_data_vec_->at(i)->GetYdotDim(),
+                               n_c_ + n_h_),
+                VectorXd::Zero(tracking_data_vec_->at(i)->GetYdotDim()),
+                {ii_lambda_c_, ii_lambda_h_})
+            .evaluator()
+            .get());
+    // TODO(yangwill): update the coefficients correctly
   }
 
   // 5. Joint Limit cost
@@ -883,21 +893,21 @@ void OperationalSpaceControl::UpdateImpactInvariantProjectionQP(
       J_next.block(row_start, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
       row_start += kSpaceDim;
-      if(alpha_post){
+      if (alpha_post) {
         ii_friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
         VectorXd ub =
             VectorXd::Constant(5, std::numeric_limits<double>::infinity());
-        ub(4) = impact_info->GetContactImpulseAtContactIndex(i)(2);
+        ub(4) = alpha_post * impact_info->GetContactImpulseAtContactIndex(i)(2);
         ii_friction_constraints_.at(i)->UpdateUpperBound(ub);
       }
-      if(alpha_pre){
-        ii_friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
-        VectorXd ub =
-            VectorXd::Constant(5, std::numeric_limits<double>::infinity());
-        ub(4) = impact_info->GetContactImpulseAtContactIndex(i)(2);
-        ii_friction_constraints_.at(i)->UpdateUpperBound(ub);
+      if (alpha_pre) {
+        ii_friction_constraints_.at(i)->UpdateUpperBound(VectorXd::Zero(5));
+        VectorXd lb =
+            VectorXd::Constant(5, -std::numeric_limits<double>::infinity());
+        lb(4) = -alpha_pre * impact_info->GetContactImpulseAtContactIndex(i)(2);
+        ii_friction_constraints_.at(i)->UpdateLowerBound(lb);
       }
-    } else { // disable friction cone constraints on these lambdas
+    } else {  // disable friction cone constraints on these lambdas
       ii_friction_constraints_.at(i)->UpdateLowerBound(
           VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));
       ii_friction_constraints_.at(i)->UpdateUpperBound(
@@ -956,7 +966,9 @@ void OperationalSpaceControl::UpdateImpactInvariantProjectionQP(
   MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_constraint_dim);
   VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
   int start_row = 0;
-  for (auto tracking_data : *tracking_data_vec_) {
+//  for (auto tracking_data : *tracking_data_vec_) {
+  for (int i = 0; i < tracking_data_vec_->size(); ++i) {
+    auto tracking_data = tracking_data_vec_->at(i);
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
       A.block(start_row, 0, tracking_data->GetYDim(), active_constraint_dim) =
@@ -964,10 +976,21 @@ void OperationalSpaceControl::UpdateImpactInvariantProjectionQP(
       ydot_err_vec.segment(start_row, tracking_data->GetYDim()) =
           tracking_data->GetErrorYdot();
       start_row += tracking_data->GetYDim();
+      ii_tracking_cost_[i]->UpdateCoefficients(tracking_data->GetJ() * M_Jt_,
+                                    tracking_data->GetErrorYdot());
+    } else {
+      ii_tracking_cost_[i]->UpdateCoefficients(MatrixXd::Zero(tracking_data->GetYdotDim(), n_c_ + n_h_),
+                                               VectorXd::Zero(tracking_data->GetYdotDim()));
     }
   }
 
+  const MathematicalProgramResult result = ii_solver_->Solve(*ii_prog_);
+  auto ii_lambda_sol_constrained = result.GetSolution();
+
   ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
+
+  std::cout << "constrained: " << ii_lambda_sol_constrained << std::endl;
+  std::cout << "lstsq: " << ii_lambda_sol_ << std::endl;
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
@@ -1075,8 +1098,6 @@ void OperationalSpaceControl::CalcOptimalInput(
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
-
-
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
 
@@ -1111,7 +1132,8 @@ void OperationalSpaceControl::CalcOptimalInput(
     int next_fsm_state = -1;
     if (this->get_near_impact_input_port().HasValue(context)) {
       const ImpactInfoVector<double>* impact_info =
-          (ImpactInfoVector<double>*)this->EvalVectorInput(context, impact_info_port_);
+          (ImpactInfoVector<double>*)this->EvalVectorInput(context,
+                                                           impact_info_port_);
       alpha = impact_info->GetAlphaPre();
       next_fsm_state = impact_info->GetCurrentContactMode();
     }

@@ -1,6 +1,10 @@
-#include <drake/systems/primitives/linear_system.h>
+#include "drake/systems/primitives/linear_system.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/trajectory.h"
+
+#include "systems/framework/output_vector.h"
 
 namespace dairlib::systems {
 
@@ -28,6 +32,7 @@ class FiniteHorizonLqrSwingFootTrajGenerator :
  public:
   FiniteHorizonLqrSwingFootTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::systems::LinearSystem<double>& double_integrator,
       const std::vector<int> left_right_support_fsm_states,
       const std::vector<double> left_right_support_durations,
       const std::vector<std::pair<const Eigen::Vector3d,
@@ -44,16 +49,36 @@ class FiniteHorizonLqrSwingFootTrajGenerator :
   const {
     return this->get_input_port(liftoff_time_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_com() const {
-    return this->get_input_port(com_port_);
+  const drake::systems::InputPort<double>& get_input_port_foot_target() const {
+    return this->get_input_port(foot_target_port_);
   }
 
  private:
 
+  Eigen::Vector4d CalcSwingFootState(
+      const Eigen::VectorXd& x,
+      const std::pair<
+      const Eigen::Vector3d, const drake::multibody::Frame<double>&> pt) const;
+
+  drake::trajectories::PiecewisePolynomial<double> CreateSplineForSwingFoot(
+      const double start_time_of_this_interval,
+      const double end_time_of_this_interval,
+      const double timestamp,
+      const Eigen::Vector4d& init_swing_foot_xy_state,
+      const Eigen::Vector2d& u,
+      double stance_foot_height) const;
+
+  double CalcStanceFootHeight(const Eigen::VectorXd& x,
+      const std::pair<
+      const Eigen::Vector3d, const drake::multibody::Frame<double>&> pt) const;
+
+  void CalcTrajs(const drake::systems::Context<double>& context,
+                 drake::trajectories::Trajectory<double>* traj) const;
+
   // MBP parameters
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
-  drake::systems::LinearSystem<double> double_integrator_;
+  const drake::systems::LinearSystem<double>& double_integrator_;
   mutable std::unique_ptr<drake::systems::Context<double>> double_integrator_context_;
 
   // Footstep parameters
@@ -63,11 +88,20 @@ class FiniteHorizonLqrSwingFootTrajGenerator :
   const std::vector<std::pair<const Eigen::Vector3d,
                               const drake::multibody::Frame<double>&>> pts_;
 
+  // maps
+  std::map<int, std::pair<const Eigen::Vector3d,
+                          const drake::multibody::Frame<double>&>>
+      swing_foot_map_;
+  std::map<int, std::pair<const Eigen::Vector3d,
+                          const drake::multibody::Frame<double>&>>
+      stance_foot_map_;
+  std::map<int, double> duration_map_;
+
   // ports
   int state_port_;
   int fsm_port_;
   int liftoff_time_port_;
-  int com_port_;
+  int foot_target_port_;
 
   // LQR parameters
   Eigen::Matrix<double, 4, 4> Q_;

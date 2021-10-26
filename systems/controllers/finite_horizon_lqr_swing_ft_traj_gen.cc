@@ -147,7 +147,13 @@ PiecewisePolynomial<double>
                   end_time_of_this_interval);
 
   double dt = end_time_of_this_interval - start_time_of_this_interval;
-  
+  Vector2d end_pos = init_swing_foot_xy_state.head(2)
+                   + init_swing_foot_xy_state.tail(2) * dt + 0.5 * u * dt*dt;
+  Vector2d end_vel = init_swing_foot_xy_state.tail(2) + u * dt;
+
+  start.head(2) = init_swing_foot_xy_state.head(2);
+  start.segment(3, 2) = init_swing_foot_xy_state.tail(2);
+  start(2) = 4 * opts_.mid_foot_height *
 }
 
 Eigen::Vector4d FiniteHorizonLqrSwingFootTrajGenerator::CalcSwingFootState(
@@ -169,6 +175,9 @@ Eigen::Vector4d FiniteHorizonLqrSwingFootTrajGenerator::CalcSwingFootState(
   x_di << pos.head(2), vel.head((2));
   return x_di;
 }
+
+
+
 
 double FiniteHorizonLqrSwingFootTrajGenerator::CalcStanceFootHeight(
     const Eigen::VectorXd& x,

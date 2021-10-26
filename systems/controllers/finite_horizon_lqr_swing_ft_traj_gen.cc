@@ -30,7 +30,7 @@ using Eigen::Matrix4d;
 using Eigen::MatrixXd;
 using Eigen::Matrix;
 
-using multibody::SetPositionsAndVelocitiesIfNew();
+using multibody::SetPositionsAndVelocitiesIfNew;
 
 FiniteHorizonLqrSwingFootTrajGenerator::FiniteHorizonLqrSwingFootTrajGenerator(
     const MultibodyPlant<double> &plant,
@@ -153,7 +153,18 @@ PiecewisePolynomial<double>
 
   start.head(2) = init_swing_foot_xy_state.head(2);
   start.segment(3, 2) = init_swing_foot_xy_state.tail(2);
-  start(2) = 4 * opts_.mid_foot_height *
+  double t = (timestamp - start_time_of_this_interval) / (end_time_of_this_interval - start_time_of_this_interval);
+  start(2) = 4 * opts_.mid_foot_height * (t - pow(t, 2));
+  start(5) = 4 * opts_.mid_foot_height * (1 - 2 * t);
+
+  end.head(2) = end_pos;
+  end.segment(3,2) = end_vel;
+  end(2) = stance_foot_height;
+  end(5) = 0;
+  Matrix<double, 6, 2> knots;
+  knots << start, end;
+  return PiecewisePolynomial<double>::CubicHermite(
+      breaks, knots.block(0,0,3,2), knots.block(3,0,3,2));
 }
 
 Eigen::Vector4d FiniteHorizonLqrSwingFootTrajGenerator::CalcSwingFootState(

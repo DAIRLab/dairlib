@@ -73,8 +73,8 @@ void TransTaskSpaceTrackingData::UpdateJdotV(
 }
 
 void TransTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-  //  if (body_frames_w_spr_ != nullptr) {
-  //    body_frames_w_spr_ = body_frames_wo_spr_;
-  //  }
+    if (!body_frames_w_spr_.empty()) {
+      body_frames_w_spr_ = body_frames_wo_spr_;
+    }
 }
 }  // namespace dairlib::systems::controllers

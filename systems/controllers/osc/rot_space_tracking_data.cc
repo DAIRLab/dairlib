@@ -42,14 +42,7 @@ void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(
   frame_poses_[fsm_state] = frame_pose;
 }
 
-void RotTaskSpaceTrackingData::UpdateYddotDes(double, double) {
-  // Convert ddq into angular acceleration
-  // See https://physics.stackexchange.com/q/460311
-  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  Quaterniond yddot_quat_des(yddot_des_(0), yddot_des_(1), yddot_des_(2),
-                             yddot_des_(3));
-  yddot_des_converted_ = 2 * (yddot_quat_des * y_quat_des.conjugate()).vec();
-}
+
 
 void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
                                        const Context<double>& context_w_spr) {
@@ -121,9 +114,25 @@ void RotTaskSpaceTrackingData::UpdateJdotV(
           .rotational();
 }
 
+void RotTaskSpaceTrackingData::UpdateYddotDes(double, double) {
+  // Convert ddq into angular acceleration
+  // See https://physics.stackexchange.com/q/460311
+  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
+  Quaterniond yddot_quat_des(yddot_des_(0), yddot_des_(1), yddot_des_(2),
+                             yddot_des_(3));
+  yddot_des_converted_ = 2 * (yddot_quat_des * y_quat_des.conjugate()).vec();
+  if (!idx_zero_feedforward_accel_.empty()) {
+    std::cerr << "RotTaskSpaceTrackingData does not support zero feedforward "
+                 "acceleration";
+  }
+  if (ff_accel_multiplier_ != nullptr) {
+    std::cerr << "RotTaskSpaceTrackingData does not support feedforward multipliers ";
+  }
+}
+
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-  //  if (body_frames_w_spr_ != nullptr) {
-  //    body_frames_w_spr_ = body_frames_wo_spr_;
-  //  }
+    if (!body_frames_w_spr_.empty()) {
+      body_frames_w_spr_ = body_frames_wo_spr_;
+    }
 }
 }  // namespace dairlib::systems::controllers

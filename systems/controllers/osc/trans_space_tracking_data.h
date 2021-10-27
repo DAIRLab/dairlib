@@ -39,13 +39,10 @@ class TransTaskSpaceTrackingData final : public OptionsTrackingData {
       body_frames_wo_spr_;
 
  private:
-  //  void UpdateYddotDes() final;
   void UpdateY(const Eigen::VectorXd& x_w_spr,
                const drake::systems::Context<double>& context_w_spr) final;
-  //  void UpdateYError() final;
   void UpdateYdot(const Eigen::VectorXd& x_w_spr,
                   const drake::systems::Context<double>& context_w_spr) final;
-  //  void UpdateYdotError() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                const drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,

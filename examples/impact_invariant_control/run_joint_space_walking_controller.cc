@@ -11,7 +11,7 @@
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/operational_space_control.h"
-#include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"

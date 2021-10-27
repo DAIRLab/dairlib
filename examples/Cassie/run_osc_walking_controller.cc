@@ -14,7 +14,14 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/lipm_traj_gen.h"
+#include "systems/controllers/osc/com_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/osc/options_tracking_data.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/controllers/osc/relative_translation_tracking_data.h"
+#include "systems/controllers/osc/rot_space_tracking_data.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -46,8 +53,10 @@ using drake::systems::lcm::TriggerTypeSet;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
+using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::WorldYawOscViewFrame;
 
 using multibody::FixedJointEvaluator;
 
@@ -289,7 +298,7 @@ int DoMain(int argc, char* argv[]) {
                   pelvis_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
-  bool wrt_com_in_local_frame = false;
+  bool wrt_com_in_local_frame = gains.relative_swing_ft;
   auto walking_speed_control =
       builder.AddSystem<cassie::osc::WalkingSpeedControl>(
           plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
@@ -445,15 +454,63 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Swing foot tracking
+  std::vector<double> swing_ft_gain_multiplier_breaks{
+      0, left_support_duration / 2, left_support_duration};
+  std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples(
+      3, drake::MatrixX<double>::Identity(3, 3));
+  swing_ft_gain_multiplier_samples[2](2, 2) *= 0.3;
+  PiecewisePolynomial<double> swing_ft_gain_multiplier_gain_multiplier =
+      PiecewisePolynomial<double>::FirstOrderHold(
+          swing_ft_gain_multiplier_breaks, swing_ft_gain_multiplier_samples);
+  std::vector<double> swing_ft_accel_gain_multiplier_breaks{
+      0, left_support_duration / 2, left_support_duration * 3 / 4,
+      left_support_duration};
+  std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples(
+      4, drake::MatrixX<double>::Identity(3, 3));
+  swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0;
+  swing_ft_accel_gain_multiplier_samples[3](2, 2) *= 0;
+  PiecewisePolynomial<double> swing_ft_accel_gain_multiplier_gain_multiplier =
+      PiecewisePolynomial<double>::FirstOrderHold(
+          swing_ft_accel_gain_multiplier_breaks,
+          swing_ft_accel_gain_multiplier_samples);
+
+  TransTaskSpaceTrackingData swing_foot_data(
+      "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
+  swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
+  swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  ComTrackingData com_data("com_data", gains.K_p_swing_foot,
+                           gains.K_d_swing_foot, gains.W_swing_foot,
+                           plant_w_spr, plant_w_spr);
+  com_data.AddFiniteStateToTrack(left_stance_state);
+  com_data.AddFiniteStateToTrack(right_stance_state);
+  RelativeTranslationTrackingData swing_ft_traj_local(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data, &com_data);
+  WorldYawOscViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
+  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
+
   TransTaskSpaceTrackingData swing_ft_traj_global(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
 
+  if (FLAGS_spring_model) {
+    // swing_ft_traj.DisableFeedforwardAccel({2});
+  }
+
   if (wrt_com_in_local_frame) {
-    // TODO(yminchen): add this part back after OscTrackingData is restructured
+    swing_ft_traj_local.SetTimeVaryingGains(
+        swing_ft_gain_multiplier_gain_multiplier);
+    swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+        swing_ft_accel_gain_multiplier_gain_multiplier);
+    osc->AddTrackingData(&swing_ft_traj_local);
   } else {
+    swing_ft_traj_global.SetTimeVaryingGains(
+        swing_ft_gain_multiplier_gain_multiplier);
+    swing_ft_traj_global.SetFeedforwardAccelMultiplier(
+        swing_ft_accel_gain_multiplier_gain_multiplier);
     osc->AddTrackingData(&swing_ft_traj_global);
   }
 

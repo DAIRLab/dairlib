@@ -12,6 +12,7 @@ cc_library(
         "//examples/Cassie/osc_jump:pelvis_trans_traj_generator",
         "//examples/Cassie/osc_jump:toe_angle_traj_generator",
         "//systems/controllers/osc:operational_space_control",
+        "//systems/controllers/osc:osc_tracking_datas",
     ],
 )
 

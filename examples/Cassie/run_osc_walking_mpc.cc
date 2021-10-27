@@ -13,7 +13,11 @@
 
 #include "systems/controllers/mpc/srbd_cmpc.h"
 #include "systems/controllers/osc/operational_space_control.h"
-#include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/controllers/osc/com_tracking_data.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
+#include "systems/controllers/osc/rpy_space_tracking_data.h"
+
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -70,7 +74,6 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
 
 DEFINE_string(mpc_channel, "SRBD_MPC_OUT", "channel to recieve koopman mpc message");
-
 
 DEFINE_string(
     gains_filename,

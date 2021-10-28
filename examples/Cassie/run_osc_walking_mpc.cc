@@ -1,6 +1,10 @@
-#include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
-#include <drake/systems/lcm/lcm_subscriber_system.h>
+
+#include "drake/multibody/parsing/parser.h"
+#include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -9,30 +13,29 @@
 #include "dairlib/lcmt_dairlib_signal.hpp"
 #include "lcm/lcm_trajectory.h"
 
-#include "multibody/multibody_utils.h"
 
 #include "systems/controllers/mpc/srbd_cmpc.h"
+#include "systems/controllers/mpc/mpc_trajectory_reciever.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/rpy_space_tracking_data.h"
-
 #include "systems/controllers/time_based_fsm.h"
+#include "systems/controllers/fsm_event_time.h"
+#include "systems/controllers/finite_horizon_lqr_swing_ft_traj_gen.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
+#include "systems/dairlib_signal_lcm_systems.h"
+
+#include "multibody/kinematic/fixed_joint_evaluator.h"
+#include "multibody/multibody_utils.h"
 
 #include "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.h"
-#include "systems/controllers/mpc/mpc_trajectory_reciever.h"
-#include "systems/system_utils.h"
-
-#include "drake/common/yaml/yaml_read_archive.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "systems/dairlib_signal_lcm_systems.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
-#include "multibody/kinematic/fixed_joint_evaluator.h"
+
 
 namespace dairlib {
 
@@ -53,6 +56,7 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
@@ -62,6 +66,8 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RpyTaskSpaceTrackingData;
+using systems::controllers::FiniteHorizonLqrSwingFootTrajGenerator;
+using systems::controllers::SwingFootTajGenOptions;
 using systems::TimeBasedFiniteStateMachine;
 using systems::DairlibSignalReceiver;
 
@@ -72,20 +78,16 @@ DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
-
 DEFINE_string(mpc_channel, "SRBD_MPC_OUT", "channel to recieve koopman mpc message");
-
 DEFINE_string(
     gains_filename,
     "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.yaml","Filepath containing gains");
-
+DEFINE_double(swing_ft_height, 0.01, "Swing foot height");
+DEFINE_double(stance_duration, 0.25, "stance phase duration");
 DEFINE_bool(track_com, false,
             "use com tracking data (otherwise uses trans space)");
-
 DEFINE_bool(print_osc_debug, false, "print osc_debug to the terminal");
-
 DEFINE_bool(make_srbd_approx, false, "modify plant to closer approximate single rigid body assumption");
-
 DEFINE_bool(print_diagram, false, "whether to print the graphviz diagram");
 
 void print_gains(const CassieMpcOSCWalkingGains& gains);
@@ -151,6 +153,18 @@ int DoMain(int argc, char* argv[]) {
       YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
+  /**** Setup swing foot tracking options ****/
+  SwingFootTajGenOptions swing_foot_taj_gen_options;
+  swing_foot_taj_gen_options.mid_foot_height = FLAGS_swing_ft_height;
+  auto lsys =
+      FiniteHorizonLqrSwingFootTrajGenerator::MakeDoubleIntegratorSystem();
+  std::vector<int> left_right_fsm_states =
+      {BipedStance::kLeft, BipedStance::kRight};
+  std::vector<double> left_right_durations =
+      {FLAGS_stance_duration, FLAGS_stance_duration};
+  std::vector<std::pair<const Eigen::Vector3d,
+                        const drake::multibody::Frame<double>&>>
+                        left_right_pts = {left_toe_mid, right_toe_mid};
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm_local;
@@ -162,29 +176,28 @@ int DoMain(int argc, char* argv[]) {
 
   auto mpc_subscriber = builder.AddSystem(
       LcmSubscriberSystem::Make<lcmt_saved_traj>(FLAGS_mpc_channel, &lcm_local));
-
   auto mpc_reciever = builder.AddSystem<MpcTrajectoryReceiver>(
-      TrajectoryType::kCubicHermite, TrajectoryType::kCubicHermite,
-      TrajectoryType::kCubicHermite, false);
-
+      TrajectoryType::kCubicHermite, TrajectoryType::kCubicHermite, false);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
-
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
-
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_springs, plant_w_springs, plant_context.get(), plant_context.get(), true, FLAGS_print_osc_debug);
-
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_WALKING", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
-
   auto fsm_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_dairlib_signal>(
           FLAGS_channel_fsm, &lcm_local));
-
   auto fsm_receiver = builder.AddSystem<DairlibSignalReceiver>(1);
+  auto liftoff_event_time =
+      builder.AddSystem<systems::FiniteStateMachineEventTime>(
+          plant_w_springs, left_right_fsm_states);
+  auto swing_foot_traj_gen =
+      builder.AddSystem<FiniteHorizonLqrSwingFootTrajGenerator>(
+          plant_w_springs, lsys, left_right_fsm_states, left_right_durations,
+          left_right_pts, swing_foot_taj_gen_options);
 
   /**** OSC setup ****/
   // Cost
@@ -338,7 +351,15 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(mpc_reciever->get_angular_traj_output_port(),
                   osc->get_tracking_data_input_port("orientation_traj"));
 
-  builder.Connect(mpc_reciever->get_swing_ft_traj_output_port(),
+  builder.Connect(mpc_reciever->get_swing_ft_target_output_port(),
+                  swing_foot_traj_gen->get_input_port_foot_target());
+  builder.Connect(fsm_receiver->get_output_port(),
+                  swing_foot_traj_gen->get_input_port_fsm());
+  builder.Connect(liftoff_event_time->get_output_port_event_time(),
+                  swing_foot_traj_gen->get_input_port_fsm_switch_time());
+  builder.Connect(state_receiver->get_output_port(),
+                  swing_foot_traj_gen->get_input_port_state());
+  builder.Connect(swing_foot_traj_gen->get_output_port(),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
 
   //toe angles

@@ -1,6 +1,3 @@
-//
-// Created by brian on 4/16/21.
-//
 #pragma once
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -23,8 +20,7 @@ enum TrajectoryType {
 
 class MpcTrajectoryReceiver : public drake::systems::LeafSystem<double> {
  public:
-  MpcTrajectoryReceiver(TrajectoryType com_type, TrajectoryType swing_ft_type,
-                        TrajectoryType angular_type, bool planar);
+  MpcTrajectoryReceiver(TrajectoryType com_type, TrajectoryType angular_type, bool planar);
 
   const drake::systems::OutputPort<double>& get_com_traj_output_port() {
     return this->get_output_port(com_traj_port_);
@@ -32,7 +28,7 @@ class MpcTrajectoryReceiver : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_angular_traj_output_port() {
     return this->get_output_port(angular_traj_port_);
   }
-  const drake::systems::OutputPort<double>& get_swing_ft_traj_output_port() {
+  const drake::systems::OutputPort<double>& get_swing_ft_target_output_port() {
     return this->get_output_port(swing_ft_traj_port_);
   }
 
@@ -46,12 +42,11 @@ class MpcTrajectoryReceiver : public drake::systems::LeafSystem<double> {
   void MakeAngularTrajFromLcm(const drake::systems::Context<double>& context,
                               drake::trajectories::Trajectory<double>* traj) const;
 
-  void MakeSwingFtTrajFromLcm(const drake::systems::Context<double>& context,
-                              drake::trajectories::Trajectory<double>* traj) const;
+  void MakeSwingFtTargetFromLcm(const drake::systems::Context<double>& context,
+                                drake::systems::BasicVector<double>* target) const;
 
   const TrajectoryType com_type_;
   const TrajectoryType angular_type_;
-  const TrajectoryType swing_ft_type_;
   const bool planar_;
   const int kAngularDim_;
 

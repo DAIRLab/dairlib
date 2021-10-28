@@ -1,7 +1,3 @@
-//
-// Created by brian on 4/16/21.
-//
-
 #include "mpc_trajectory_reciever.h"
 
 
@@ -9,6 +5,8 @@ namespace dairlib {
 
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
+using drake::systems::BasicVector;
+using drake::systems::Context;
 
 using Eigen::VectorXd;
 using Eigen::Vector2d;
@@ -17,10 +15,11 @@ using Eigen::MatrixXd;
 
 
 MpcTrajectoryReceiver::MpcTrajectoryReceiver(
-    TrajectoryType com_type, TrajectoryType swing_ft_type,
+    TrajectoryType com_type,
     TrajectoryType angular_type, bool planar) :
-    com_type_(com_type), angular_type_(angular_type),
-    swing_ft_type_(swing_ft_type), planar_(planar),
+    com_type_(com_type),
+    angular_type_(angular_type),
+    planar_(planar),
     kAngularDim_ (planar ? 1 : 3) {
 
     this->DeclareAbstractInputPort(
@@ -35,13 +34,13 @@ MpcTrajectoryReceiver::MpcTrajectoryReceiver(
     angular_traj_port_ = this->DeclareAbstractOutputPort("orientation_traj",
         traj_inst, &MpcTrajectoryReceiver::MakeAngularTrajFromLcm).get_index();
 
-    swing_ft_traj_port_ = this->DeclareAbstractOutputPort("swing_ft_traj",
-        traj_inst, &MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm).get_index();
+    swing_ft_traj_port_ = this->DeclareVectorOutputPort(
+        "swing_ft_traj", BasicVector<double>(Vector3d::Zero()),
+            &MpcTrajectoryReceiver::MakeSwingFtTargetFromLcm).get_index();
 }
 
 void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
-    const drake::systems::Context<double> &context,
-    drake::trajectories::Trajectory<double> *traj) const {
+    const Context<double> &context, Trajectory<double> *traj) const {
 
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
@@ -57,13 +56,12 @@ void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
   auto* casted_traj =
         (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
             traj);
-  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+  *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
         orientation.time_vector, knots);
 }
 
 void MpcTrajectoryReceiver::MakeComTrajFromLcm(
-    const drake::systems::Context<double> &context,
-    drake::trajectories::Trajectory<double> *traj) const {
+    const Context<double> &context, Trajectory<double> *traj) const {
 
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
@@ -83,13 +81,12 @@ void MpcTrajectoryReceiver::MakeComTrajFromLcm(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+  *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
       com_traj.time_vector, knots);
 }
 
-void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
-    const drake::systems::Context<double> &context,
-    drake::trajectories::Trajectory<double> *traj) const {
+void MpcTrajectoryReceiver::MakeSwingFtTargetFromLcm(
+    const Context<double>& context, BasicVector<double>* target) const {
 
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
@@ -99,20 +96,7 @@ void MpcTrajectoryReceiver::MakeSwingFtTrajFromLcm(
   LcmTrajectory lcm_traj(input_msg);
   LcmTrajectory::Trajectory swing_ft_traj = lcm_traj.GetTrajectory("swing_foot_traj");
 
-  int cols = swing_ft_traj.datapoints.cols();
-  MatrixXd knots = planar_ ? Make3dFromPlanar(
-      swing_ft_traj.datapoints.block(0, 0, 2, cols)) :
-                   swing_ft_traj.datapoints.block(0, 0, 3, cols);
-
-//  MatrixXd knots_dot = planar_ ? Make3dFromPlanar(
-//      swing_ft_traj.datapoints.block(2, 0, 2, cols)) :
-//                       swing_ft_traj.datapoints.block(3, 0, 3, cols);
-  auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          traj);
-
-  *casted_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-      swing_ft_traj.time_vector, knots);
+  target->set_value(swing_ft_traj.datapoints.block(0,0,3,1));
 }
 
 MatrixXd MpcTrajectoryReceiver::Make3dFromPlanar(MatrixXd planar_knots) const {

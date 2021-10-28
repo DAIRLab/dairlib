@@ -4,7 +4,7 @@
 #include "systems/framework/output_vector.h"
 #include "multibody/multibody_utils.h"
 
-namespace dairlib::systems {
+namespace dairlib::systems::controllers {
 
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
@@ -188,8 +188,6 @@ Eigen::Vector4d FiniteHorizonLqrSwingFootTrajGenerator::CalcSwingFootState(
 }
 
 
-
-
 double FiniteHorizonLqrSwingFootTrajGenerator::CalcStanceFootHeight(
     const Eigen::VectorXd& x,
     const std::pair<
@@ -200,6 +198,18 @@ double FiniteHorizonLqrSwingFootTrajGenerator::CalcStanceFootHeight(
       *plant_context_, pt.second, pt.first,
       plant_.world_frame(), &pos);
   return pos(2);
+}
+
+LinearSystem<double> FiniteHorizonLqrSwingFootTrajGenerator::MakeDoubleIntegratorSystem() {
+  Matrix4d A = Matrix4d::Zero();
+  Matrix<double, 4, 2> B = Matrix<double, 4, 2>::Zero();
+  Matrix4d C = Matrix4d::Identity();
+  Matrix<double, 4, 2> D = Matrix<double, 4, 2>::Zero();
+  A.topRightCorner<2, 2>() = Matrix2d::Identity();
+  B.bottomRightCorner<2, 2>() = Matrix2d::Identity();
+
+  return LinearSystem<double>(A, B, C, D);
+
 }
 
 }

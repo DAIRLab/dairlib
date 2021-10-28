@@ -39,8 +39,7 @@ typedef struct SrbdMode {
 class SrbdCMPC : public drake::systems::LeafSystem<double> {
  public:
   SrbdCMPC(const multibody::SingleRigidBodyPlant& plant, double dt,
-           double swing_ft_height, bool traj,
-           bool used_with_finite_state_machine = true,
+           bool traj, bool used_with_finite_state_machine = true,
            bool use_com = false);
 
 
@@ -110,11 +109,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void MakeInitialStateConstraint();
   void MakeCost();
 
-  Eigen::MatrixXd CalcSwingFootKnotPoints(
-      const Eigen::VectorXd& x,
-      const drake::solvers::MathematicalProgramResult& result,
-      double time_since_last_touchdown, int fsm_state) const;
-
   lcmt_saved_traj MakeLcmTrajFromSol(
       const drake::solvers::MathematicalProgramResult& result,
       double time, double time_since_last_touchdown,
@@ -157,7 +151,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const int nu_ = 4;
   const int kLinearDim_ = 3;
   const int kAngularDim_ = 3;
-  const double swing_ft_ht_;
   const double dt_;
   int nmodes_ = 0;
 

@@ -62,7 +62,6 @@ DEFINE_bool(debug_mode, false, "Manually set MPC values to debug");
 DEFINE_bool(use_com, false, "Use center of mass or a point to track CM location");
 DEFINE_bool(print_diagram, false, "print block diagram");
 DEFINE_double(debug_time, 0.00, "time to simulate system at");
-DEFINE_double(swing_ft_height, 0.01, "Swing foot height");
 DEFINE_double(stance_width, 0.0, "stance width to use in dynamics linearization");
 DEFINE_double(v_des, 0.4, "desired walking speed");
 DEFINE_double(h_des, 0.75, "Desired pelvis height");
@@ -137,9 +136,8 @@ int DoMain(int argc, char* argv[]) {
   LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};
   LinearSrbdDynamics right_stance_dynamics = {Ar, Br, br};
 
-  auto cmpc = builder.AddSystem<SrbdCMPC>(srb_plant, dt,
-                                          FLAGS_swing_ft_height,
-                                          false, true,  FLAGS_use_com);
+  auto cmpc = builder.AddSystem<SrbdCMPC>(
+      srb_plant, dt, false, true,  FLAGS_use_com);
   std::vector<VectorXd> kin_nom =
       {left_safe_nominal_foot_pos - des_com_pos,
        right_safe_nominal_foot_pos - des_com_pos};

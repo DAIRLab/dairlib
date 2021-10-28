@@ -541,6 +541,8 @@ cc_binary(
         "//systems:dairlib_signal_lcm_systems",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
+        "//systems/controllers:finite_horizon_lqr_swing_ft_traj_gen",
+        "//systems/controllers:fsm_event_time",
         "//systems/controllers:mpc_trajectory_reciever",
         "//systems/controllers:srbd_cmpc",
         "//systems/controllers/osc:operational_space_control",

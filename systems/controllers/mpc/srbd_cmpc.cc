@@ -34,14 +34,13 @@ using dairlib::LcmTrajectory;
 namespace dairlib{
 
 SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
-                   double swing_ft_height, bool traj,
+                   bool traj,
                    bool used_with_finite_state_machine,
                    bool use_com) :
     plant_(plant),
     use_fsm_(used_with_finite_state_machine),
     use_com_(use_com),
     traj_tracking_(traj),
-    swing_ft_ht_(swing_ft_height),
     dt_(dt){
 
   // Create Ports
@@ -428,11 +427,12 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
   /** need to set datatypes for LcmTrajectory to save properly **/
   for (int i = 0; i < 2*kLinearDim_; i++) {
     CoMTraj.datatypes.emplace_back("double");
-    SwingFootTraj.datatypes.emplace_back("double");
-  }
-  for (int i = 0; i < 2*kAngularDim_; i++) {
     AngularTraj.datatypes.emplace_back("double");
   }
+  for (int i = 0; i < kLinearDim_; i++) {
+    SwingFootTraj.datatypes.emplace_back("double");
+  }
+
 
 
   /** Allocate Eigen matrices for trajectory blocks **/
@@ -456,15 +456,9 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
   AngularTraj.time_vector = time_knots;
   AngularTraj.datapoints = orientation;
 
-  double next_touchdown_time = time +
-      dt_ * (modes_.front().N) - time_since_last_touchdown;
-
-  Vector3d swing_ft_traj_breaks(
-      time, 0.5*(time + next_touchdown_time), next_touchdown_time);
+  VectorXd swing_ft_traj_breaks = VectorXd::Ones(1) * time;
   SwingFootTraj.time_vector = swing_ft_traj_breaks;
-  SwingFootTraj.datapoints = CalcSwingFootKnotPoints(
-      state, result,
-      swing_ft_traj_breaks(1), fsm_state);;
+  SwingFootTraj.datapoints = result.GetSolution(pp.at(1-fsm_state));
 
   LcmTrajectory lcm_traj;
   lcm_traj.AddTrajectory(CoMTraj.traj_name, CoMTraj);
@@ -472,24 +466,6 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
   lcm_traj.AddTrajectory(SwingFootTraj.traj_name, SwingFootTraj);
 
   return lcm_traj.GenerateLcmObject();
-}
-
-MatrixXd SrbdCMPC::CalcSwingFootKnotPoints(const VectorXd& x,
-    const MathematicalProgramResult& result,
-    double time_since_last_touchdown, int fsm_state) const {
-
-  double t = time_since_last_touchdown / (modes_.at(fsm_state).N * dt_);
-  Vector3d curr_pos =
-      plant_.CalcFootPosition(x, modes_.at(1-fsm_state).stance);
-  Vector3d next_pos =
-      result.GetSolution(pp.at(1-fsm_state));
-
-  Vector3d mid_pos = 0.5 * (curr_pos + next_pos);
-  mid_pos(2) = swing_ft_ht_ * (t - pow(t, 2));
-
-  Matrix3d knots;
-  knots << curr_pos, mid_pos, next_pos;
-  return knots;
 }
 
 void SrbdCMPC::print_constraint(

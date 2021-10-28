@@ -50,6 +50,10 @@ group "2.simulators" {
         exec = "bazel-bin/examples/Cassie/multibody_sim --init_height=0.95 --actuator_delay=0.005";
         host = "localhost";
     }
+    cmd "cassie_sim_dispatcher" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --init_height=0.95 --actuator_delay=0.005 --channel_u=NETWORK_CASSIE_INPUT";
+        host = "localhost";
+    }
 }
 
 group "0.operator" {
@@ -152,8 +156,8 @@ script "standing_integration_test" {
     stop cmd "cassie_sim";
     stop cmd "osc_standing_controller (state_est)";
     stop cmd "dispatcher_robot_out";
-    start cmd "dispatcher_robot_out";
-    start cmd "dispatcher_robot_in";
+    restart cmd "dispatcher_robot_out";
+    restart cmd "dispatcher_robot_in";
     start cmd "osc_standing_controller (state_est)";
     start cmd "cassie_mujoco_sim";
     wait ms 10000;

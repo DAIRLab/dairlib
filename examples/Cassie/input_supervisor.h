@@ -60,6 +60,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_input_port(cassie_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_controller_error() const {
+    return this->get_input_port(controller_error_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_command() const {
     return this->get_output_port(command_output_port_);
   }
@@ -97,22 +101,34 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   double input_limit_;
   mutable double blend_duration_ = 0.0;
 
-  int soft_estop_trigger_index_;
-  int is_nan_index_;
 
-  int status_vars_index_;
-  int n_fails_index_;
+
+//  int status_vars_index_;
+
   int status_index_;
+  int n_fails_index_;
   // for blending controller efforts
   int switch_time_index_;
   int prev_efforts_index_;
   int prev_efforts_time_index_;
+
+
+  // All possible error flags
+  int error_shutdown_index_;
+  int controller_msg_delay_index_;
+  int soft_estop_trigger_index_;
+  int is_nan_index_;
+  int consecutive_failures_index_;
+
+  // vector of all error flags that we check
+  std::set<int> error_indices_;
 
   // leafsystem ports
   int state_input_port_;
   int command_input_port_;
   int controller_switch_input_port_;
   int cassie_input_port_;
+  int controller_error_port_;
   int command_output_port_;
   int status_output_port_;
 

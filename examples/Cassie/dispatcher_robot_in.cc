@@ -3,6 +3,7 @@
 
 #include <gflags/gflags.h>
 
+#include "dairlib/lcmt_controller_error.hpp"
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
@@ -91,6 +92,9 @@ int do_main(int argc, char* argv[]) {
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
+  auto controller_error_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_controller_error>(
+          "CONTROLLER_ERROR", &lcm_local));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto input_supervisor_status_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_input_supervisor_status>(
@@ -112,6 +116,8 @@ int do_main(int argc, char* argv[]) {
                   input_supervisor->get_input_port_command());
   builder.Connect(controller_switch_sub->get_output_port(),
                   input_supervisor->get_input_port_controller_switch());
+  builder.Connect(controller_error_sub->get_output_port(),
+                  input_supervisor->get_input_port_controller_error());
   builder.Connect(input_supervisor->get_output_port_status(),
                   input_supervisor_status_pub->get_input_port());
   builder.Connect(cassie_out_receiver->get_output_port(),

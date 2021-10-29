@@ -24,6 +24,8 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210918_3dlipm_fix_xy_part/"                        # rom_option 9
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211013_3dlipm_fix_xy_and_forward_task/"            # rom_option 9
 dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211013_3dlipm_fix_xy_and_only_stance_leg_joints/"   # rom_option 10
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211018_3dlipm_fix_xy_no_height_constraint/"        # rom_option 10
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211020_3dlipm_fix_xyz_and_only_stance_leg_joints/" # rom_option 11
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter

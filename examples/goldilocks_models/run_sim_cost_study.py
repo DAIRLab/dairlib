@@ -3,6 +3,7 @@
 # import matplotlib
 # matplotlib.use('Agg')
 
+import sys
 import subprocess
 import time
 import os
@@ -944,7 +945,7 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 95
+  model_iter_idx_end = 100
   idx_spacing = 5
 
   # Task list
@@ -987,6 +988,9 @@ if __name__ == "__main__":
 
   ### Set up environment
   # Create folder if not exist
+  if len(sys.argv) > 1 and sys.argv[1] == "fresh":
+    input("WARNING: Going to delete lcmlog files! (type anything to continue)")
+    os.system("rm -rf " + eval_dir)
   Path(eval_dir).mkdir(parents=True, exist_ok=True)
   Path(data_dir).mkdir(parents=True, exist_ok=True)  # for MPC's init file
 

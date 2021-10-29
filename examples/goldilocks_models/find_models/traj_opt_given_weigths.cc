@@ -1950,6 +1950,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // TODO: we probably don't need w_v_diff and w_q_diff now, because we have
   //  w_joint_accel. However, I still keep them in case they help with
   //  convergence speed
+  // clang-format off
   double w_Q = setting.Q_double * all_cost_scale;
   double w_R = setting.R_double * all_cost_scale;
   double w_reg = setting.eps_reg * all_cost_scale;
@@ -1984,6 +1985,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double w_v_diff_swing_leg = w_v_diff * 1;
   // Testing
   double w_joint_accel = 0.0001; //0.002;  // The final weight is w_joint_accel * W_Q
+  // clang-format on
 
   // Overwrite gains for faster convergence
   bool fast_convergence_gain = false;
@@ -2856,7 +2858,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         h_max = 0;
       }
 
-      //if (setting.cubic_spline_in_rom_constraint && index == 1) break;
+      // if (setting.cubic_spline_in_rom_constraint && index == 1) break;
 
       auto x_i = trajopt.state(index);
 
@@ -3351,7 +3353,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                 &result);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  //cout << '\a';  // making noise to notify the user the solve is done
+  // cout << '\a';  // making noise to notify the user the solve is done
 
   // Save trajectory to file
   string file_name = setting.prefix + "dircon_trajectory";

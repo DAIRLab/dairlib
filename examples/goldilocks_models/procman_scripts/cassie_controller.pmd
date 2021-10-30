@@ -150,7 +150,7 @@ group "5.lcm-tools" {
         host = "localhost";
     }
     cmd "2. lcm-logger" {
-        exec = "lcm-logger -f /home/yuming/Desktop/temp/log";
+        exec = "lcm-logger --lcm-url=udpm://239.255.76.67:7667 -f /home/yuming/Desktop/temp/log";
         host = "localhost";
     }
 }

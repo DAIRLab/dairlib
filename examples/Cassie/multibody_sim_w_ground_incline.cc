@@ -1,8 +1,8 @@
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <thread>
-#include <fstream>
 
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
@@ -290,7 +290,7 @@ int do_main(int argc, char* argv[]) {
     std::cout << "q_init = \n" << q_init.transpose() << std::endl;
     std::cout << "v_init = \n" << v_init.transpose() << std::endl;
     if (!FLAGS_path_init_pose_success.empty()) {
-      std::string msg = success? "0" : "1";
+      std::string msg = success ? "0" : "1";
 
       std::ofstream outfile;
       outfile.open(FLAGS_path_init_pose_success, std::ios_base::trunc);
@@ -343,6 +343,17 @@ int do_main(int argc, char* argv[]) {
   std::cout << "status.succeeded() = " << status.succeeded() << std::endl;
   std::cout << "status.return_time() = " << status.return_time() << std::endl;
   std::cout << "status.message() = " << status.message() << std::endl;
+
+  if (!status.succeeded()) {
+    std::ofstream outfile;
+    outfile.open(
+        "../dairlib_data/goldilocks_models/sim_cost_eval/sim_status.txt",
+        std::ios_base::app);
+    outfile << "(succeeded, return_time, message) = ";
+    outfile << status.succeeded() << ", " << status.return_time() << ", "
+            << status.message();
+    outfile.close();
+  }
 
   return 0;
 }

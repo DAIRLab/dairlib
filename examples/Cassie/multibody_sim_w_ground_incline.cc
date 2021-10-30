@@ -336,7 +336,10 @@ int do_main(int argc, char* argv[]) {
   std::this_thread::sleep_for(
       std::chrono::milliseconds(int(FLAGS_pause_second * 1000)));
 
-  simulator.AdvanceTo(FLAGS_end_time);
+  auto status = simulator.AdvanceTo(FLAGS_end_time);
+  if (!status.succeeded()) {
+    std::cout << "status.message() = " << status.message() << std::endl;
+  }
 
   return 0;
 }

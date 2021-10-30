@@ -337,9 +337,12 @@ int do_main(int argc, char* argv[]) {
       std::chrono::milliseconds(int(FLAGS_pause_second * 1000)));
 
   auto status = simulator.AdvanceTo(FLAGS_end_time);
-  if (!status.succeeded()) {
+  /*if (!status.succeeded()) {
     std::cout << "status.message() = " << status.message() << std::endl;
-  }
+  }*/
+  std::cout << "status.succeeded() = " << status.succeeded() << std::endl;
+  std::cout << "status.return_time() = " << status.return_time() << std::endl;
+  std::cout << "status.message() = " << status.message() << std::endl;
 
   return 0;
 }

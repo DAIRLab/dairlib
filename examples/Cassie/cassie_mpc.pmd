@@ -1,6 +1,6 @@
 group "1.controllers-and-dispatchers" {
     cmd "2.srbd_mpc" {
-        exec = "bazel-bin/examples/Cassie/run_srbd_cmpc_process --h_des=0.82 --v_des=0 --dt=0.05 --stance_time=0.3 --swing_ft_height=0.03 --channel_x=CASSIE_STATE_SIMULATION";
+        exec = "bazel-bin/examples/Cassie/run_srbd_cmpc_process --h_des=0.82 --v_des=0 --dt=0.05 --channel_x=CASSIE_STATE_SIMULATION";
         host = "localhost";
     }
     cmd "3.osc-mpc-tracking-controller (dispatched)" {

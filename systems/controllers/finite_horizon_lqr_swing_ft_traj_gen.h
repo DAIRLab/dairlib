@@ -107,7 +107,8 @@ class FiniteHorizonLqrSwingFootTrajGenerator :
   int foot_target_port_;
 
   // LQR parameters
-  Eigen::Matrix<double, 4, 4> Q_;
-  Eigen::Matrix<double, 2, 2> R_;
+  Eigen::Matrix<double, 4, 4> Q_ = Eigen::Matrix4d::Identity();
+  Eigen::Matrix<double, 4, 4> Qf_ = 5 * Eigen::Matrix4d::Identity();
+  Eigen::Matrix<double, 2, 2> R_ = 0.1 * Eigen::Matrix2d::Identity();
 };
 }

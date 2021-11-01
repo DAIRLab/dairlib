@@ -57,7 +57,7 @@ DEFINE_string(gains_filename, "examples/Cassie/mpc/cassie_srbd_cmpc_gains.yaml",
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION", "channel to publish/receive cassie state");
 DEFINE_string(channel_plan, "SRBD_MPC_OUT", "channel to publish plan trajectory");
 DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
-DEFINE_double(stance_time, 0.3, "duration of each stance phase");
+DEFINE_double(stance_time, 0.35, "duration of each stance phase");
 DEFINE_bool(debug_mode, false, "Manually set MPC values to debug");
 DEFINE_bool(use_com, false, "Use center of mass or a point to track CM location");
 DEFINE_bool(print_diagram, false, "print block diagram");

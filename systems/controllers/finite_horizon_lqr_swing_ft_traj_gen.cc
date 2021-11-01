@@ -84,15 +84,16 @@ FiniteHorizonLqrSwingFootTrajGenerator::FiniteHorizonLqrSwingFootTrajGenerator(
   stance_foot_map_.insert(
       {left_right_support_fsm_states.at(1), pts.at(1)});
 
+  double_integrator_.get_input_port().FixValue(
+      double_integrator_context_.get(), Vector2d::Zero());
 }
 
 void FiniteHorizonLqrSwingFootTrajGenerator::CalcTrajs(
     const Context<double> &context, Trajectory<double> *traj) const {
   auto *pp_traj =
-      (PiecewisePolynomial<double> *) dynamic_cast<PiecewisePolynomial<double> *>(
+      (PiecewisePolynomial<double> *) dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
 
-  *pp_traj = PiecewisePolynomial<double>(Vector3d::Zero());
   int fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()[0];
 
   // swing phase if current state is in left_right_support_fsm_states_
@@ -100,7 +101,11 @@ void FiniteHorizonLqrSwingFootTrajGenerator::CalcTrajs(
                  left_right_support_fsm_states_.end(), fsm_state);
   bool is_single_support_phase = it != left_right_support_fsm_states_.end();
 
-  if (is_single_support_phase) {
+  std::cout << "Input Value: \n" << this->EvalVectorInput(context, foot_target_port_)->
+      get_value();
+  if (is_single_support_phase &&
+      !this->EvalVectorInput(context, foot_target_port_)->
+      get_value().isApprox(Vector3d::Zero(), 1e-10)) {
     // get current state and time
     const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -119,17 +124,37 @@ void FiniteHorizonLqrSwingFootTrajGenerator::CalcTrajs(
     PiecewisePolynomial<double> xd = PiecewisePolynomial<double>(xd_vec);
     auto opts = FiniteHorizonLinearQuadraticRegulatorOptions();
     opts.xd = &xd;
+    opts.Qf = Qf_;
     auto result = FiniteHorizonLinearQuadraticRegulator(
         double_integrator_, *double_integrator_context_,
         timestamp, end_time, Q_, R_, opts);
 
-    auto u =
+    Vector2d u =
         result.K->value(timestamp) * (x_di - xd_vec) -result.k0->value(timestamp);
+    std::cout << "\nu:\n" << u << std::endl;
+    std::cout << "\nx:\n" << x_di << std::endl;
+    std::cout << "\nlo time: " << std::to_string(liftoff_time) << std::endl;
+    std::cout << "t: " << std::to_string(timestamp) << std::endl;
+    std::cout << "h: " << std::to_string(CalcStanceFootHeight(
+        robot_output->GetState(), stance_foot_map_.at(fsm_state))) << std::endl;
+
     *pp_traj = CreateSplineForSwingFoot(
         liftoff_time, end_time, timestamp, x_di, u,
         CalcStanceFootHeight(
-            robot_output->GetState(),stance_foot_map_.at(fsm_state)));
+            robot_output->GetState(), stance_foot_map_.at(fsm_state)));
+    std::cout << "assigned" << std::endl;
+
+  } else if (is_single_support_phase) {
+    Vector3d pos;
+    plant_.CalcPointsPositions(
+        *plant_context_, swing_foot_map_.at(fsm_state).second,
+        swing_foot_map_.at(fsm_state).first,
+        plant_.world_frame(), &pos);
+    *pp_traj = PiecewisePolynomial<double>(pos);
+  } else {
+    *pp_traj = PiecewisePolynomial<double>(Vector3d::Zero());
   }
+  std::cout << "assigend traj" << std::endl;
 }
 
 PiecewisePolynomial<double>
@@ -140,6 +165,8 @@ PiecewisePolynomial<double>
         const Eigen::Vector4d& init_swing_foot_xy_state,
         const Eigen::Vector2d& u,
         double stance_foot_height) const {
+
+  std::cout << "Creating Spline" << std::endl;
   VectorXd start = VectorXd::Zero(6);
   VectorXd end = VectorXd::Zero(6);
 
@@ -163,8 +190,9 @@ PiecewisePolynomial<double>
   end(5) = 0;
   Matrix<double, 6, 2> knots;
   knots << start, end;
-  return PiecewisePolynomial<double>::CubicHermite(
+  PiecewisePolynomial<double> spline = PiecewisePolynomial<double>::CubicHermite(
       breaks, knots.block(0,0,3,2), knots.block(3,0,3,2));
+  return spline;
 }
 
 Eigen::Vector4d FiniteHorizonLqrSwingFootTrajGenerator::CalcSwingFootState(
@@ -192,6 +220,7 @@ double FiniteHorizonLqrSwingFootTrajGenerator::CalcStanceFootHeight(
     const Eigen::VectorXd& x,
     const std::pair<
     const Eigen::Vector3d, const drake::multibody::Frame<double>&> pt) const {
+  std::cout << "Calculating stance foot height" << std::endl;
   SetPositionsAndVelocitiesIfNew<double>(plant_, x, plant_context_.get());
   Vector3d pos;
   plant_.CalcPointsPositions(

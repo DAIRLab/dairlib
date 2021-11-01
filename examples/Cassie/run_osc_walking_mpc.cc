@@ -83,12 +83,14 @@ DEFINE_string(
     gains_filename,
     "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.yaml","Filepath containing gains");
 DEFINE_double(swing_ft_height, 0.01, "Swing foot height");
-DEFINE_double(stance_duration, 0.25, "stance phase duration");
+DEFINE_double(stance_duration, 0.35, "stance phase duration");
+DEFINE_double(double_stance_duration, 0.075, "double stance phase duration");
 DEFINE_bool(track_com, false,
             "use com tracking data (otherwise uses trans space)");
 DEFINE_bool(print_osc_debug, false, "print osc_debug to the terminal");
 DEFINE_bool(make_srbd_approx, false, "modify plant to closer approximate single rigid body assumption");
 DEFINE_bool(print_diagram, false, "whether to print the graphviz diagram");
+DEFINE_bool(is_double_stance, true, "whether or not to use a double support phase");
 
 void print_gains(const CassieMpcOSCWalkingGains& gains);
 
@@ -126,6 +128,7 @@ int DoMain(int argc, char* argv[]) {
   auto plant_context = plant_w_springs.CreateDefaultContext();
   Vector3d com_offset = {0, 0, -0.128};
 
+
   if (FLAGS_make_srbd_approx) {
     std::vector<std::string> links = {"yaw_left", "yaw_right", "hip_left", "hip_right",
                                       "thigh_left", "thigh_right", "knee_left", "knee_right", "shin_left",
@@ -158,10 +161,8 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_taj_gen_options.mid_foot_height = FLAGS_swing_ft_height;
   auto lsys =
       FiniteHorizonLqrSwingFootTrajGenerator::MakeDoubleIntegratorSystem();
-  std::vector<int> left_right_fsm_states =
-      {BipedStance::kLeft, BipedStance::kRight};
-  std::vector<double> left_right_durations =
-      {FLAGS_stance_duration, FLAGS_stance_duration};
+  auto lsys_context = lsys.CreateDefaultContext();
+
   std::vector<std::pair<const Eigen::Vector3d,
                         const drake::multibody::Frame<double>&>>
                         left_right_pts = {left_toe_mid, right_toe_mid};
@@ -187,16 +188,42 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_WALKING", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
-  auto fsm_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_dairlib_signal>(
-          FLAGS_channel_fsm, &lcm_local));
-  auto fsm_receiver = builder.AddSystem<DairlibSignalReceiver>(1);
+
+
+  /*** FSM setup ***/
+  // Create finite state machine
+  int left_stance_state = BipedStance::kLeft;
+  int right_stance_state = BipedStance::kRight;
+  int post_left_double_support_state = BipedStance::kLeft + 2;
+  int post_right_double_support_state = BipedStance::kRight + 2;
+  double single_support_duration =
+      FLAGS_stance_duration - FLAGS_double_stance_duration;
+
+  vector<int> fsm_states;
+  vector<double> state_durations;
+  if (FLAGS_is_double_stance) {
+    fsm_states = {left_stance_state, post_left_double_support_state,
+                  right_stance_state, post_right_double_support_state};
+    state_durations = {single_support_duration, FLAGS_double_stance_duration,
+                       single_support_duration, FLAGS_double_stance_duration};
+  } else {
+    fsm_states = {left_stance_state, right_stance_state};
+    state_durations = {single_support_duration, single_support_duration};
+  }
+  std::vector<int> single_support_states = {left_stance_state,
+                                            right_stance_state};
+  std::vector<double> single_support_durations = {single_support_duration,
+                                                  single_support_duration};
+
+  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
+      plant_w_springs, fsm_states, state_durations);
+
   auto liftoff_event_time =
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
-          plant_w_springs, left_right_fsm_states);
+          plant_w_springs, single_support_states);
   auto swing_foot_traj_gen =
       builder.AddSystem<FiniteHorizonLqrSwingFootTrajGenerator>(
-          plant_w_springs, lsys, left_right_fsm_states, left_right_durations,
+          plant_w_springs, lsys, single_support_states, single_support_durations,
           left_right_pts, swing_foot_taj_gen_options);
 
   /**** OSC setup ****/
@@ -260,12 +287,31 @@ int DoMain(int argc, char* argv[]) {
   osc->AddStateAndContactPoint(BipedStance::kLeft, &left_heel_evaluator);
   osc->AddStateAndContactPoint(BipedStance::kRight, &right_toe_evaluator);
   osc->AddStateAndContactPoint(BipedStance::kRight, &right_heel_evaluator);
+  if (FLAGS_is_double_stance) {
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &left_toe_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &left_heel_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &right_toe_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &right_heel_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &left_toe_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &left_heel_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &right_toe_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &right_heel_evaluator);
+  }
 
   // Swing toe joint trajectory
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};
   vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
       right_heel, right_toe};
+
   auto left_toe_angle_traj_gen = builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
       plant_w_springs, plant_context.get(), pos_map["toe_left"], left_foot_points,
       "left_toe_angle_traj");
@@ -281,6 +327,7 @@ int DoMain(int argc, char* argv[]) {
   JointSpaceTrackingData swing_toe_traj_right(
       "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
       gains.W_swing_toe, plant_w_springs, plant_w_springs);
+
   swing_toe_traj_right.AddStateAndJointToTrack(BipedStance::kLeft, "toe_right",
                                                "toe_rightdot");
   swing_toe_traj_left.AddStateAndJointToTrack(BipedStance::kRight, "toe_left",
@@ -289,12 +336,14 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&swing_toe_traj_right);
 
   /*** tracking data ***/
-  TransTaskSpaceTrackingData swing_foot_traj("swing_ft_traj",
-                                             gains.K_p_swing_foot, gains.K_d_swing_foot, gains.W_swing_foot, plant_w_springs, plant_w_springs);
+  TransTaskSpaceTrackingData swing_foot_traj(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_springs, plant_w_springs);
 
-  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kLeft, "toe_right", right_toe_mid.first);
-  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kRight, "toe_left", left_toe_mid.first);
-
+  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kLeft,
+      "toe_right", right_toe_mid.first);
+  swing_foot_traj.AddStateAndPointToTrack(BipedStance::kRight,
+      "toe_left", left_toe_mid.first);
   osc->AddTrackingData(&swing_foot_traj);
 
 
@@ -328,6 +377,10 @@ int DoMain(int argc, char* argv[]) {
       BipedStance::kRight, "hip_yaw_left","hip_yaw_leftdot");
   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
 
+  osc->SetUpDoubleSupportPhaseBlending(
+      FLAGS_double_stance_duration, left_stance_state, right_stance_state,
+      {post_left_double_support_state, post_right_double_support_state});
+
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
@@ -335,33 +388,31 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm_sub->get_output_port(), fsm_receiver->get_input_port());
 
-  builder.Connect(fsm_receiver->get_output_port(), osc->get_fsm_input_port());
-
+  builder.Connect(*state_receiver, *fsm);
+  builder.Connect(fsm->get_output_port(), osc->get_fsm_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-
   builder.Connect(mpc_subscriber->get_output_port(),
                   mpc_reciever->get_input_port());
-
   builder.Connect(mpc_reciever->get_com_traj_output_port(),
                   osc->get_tracking_data_input_port("com_traj"));
-
   builder.Connect(mpc_reciever->get_angular_traj_output_port(),
                   osc->get_tracking_data_input_port("orientation_traj"));
-
   builder.Connect(mpc_reciever->get_swing_ft_target_output_port(),
                   swing_foot_traj_gen->get_input_port_foot_target());
-  builder.Connect(fsm_receiver->get_output_port(),
+  builder.Connect(fsm->get_output_port(),
                   swing_foot_traj_gen->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port(),
+                  liftoff_event_time->get_input_port_fsm());
+  builder.Connect(state_receiver->get_output_port(),
+                  liftoff_event_time->get_input_port_state());
   builder.Connect(liftoff_event_time->get_output_port_event_time(),
                   swing_foot_traj_gen->get_input_port_fsm_switch_time());
   builder.Connect(state_receiver->get_output_port(),
                   swing_foot_traj_gen->get_input_port_state());
   builder.Connect(swing_foot_traj_gen->get_output_port(),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
-
   //toe angles
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));

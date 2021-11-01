@@ -30,6 +30,19 @@ RomKd:
   [0, 0, 0,
    0, 0, 0,
    0, 0, 10]
+# Also track x (not tested with high gains)
+#RomW:
+#  [0.1,    0,     0,
+#   0, 0,     0,
+#   0,    0,    10]
+#RomKp:
+#  [  10,    0,     0,
+#     0,    0,     0,
+#     0,    0,    50]
+#RomKd:
+#  [   0.2,    0,     0,
+#      0,    0,     0,
+#      0,    0,     1]
 #RomW:  # Weight for the old qp solver
 #  [0.02,    0,     0,
 #      0, 0.02,     0,

@@ -22,7 +22,7 @@ RpyTaskSpaceTrackingData::RpyTaskSpaceTrackingData(
     const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
-    : OptionsTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W,
+    : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W,
                           plant_w_spr, plant_wo_spr) {}
 
 

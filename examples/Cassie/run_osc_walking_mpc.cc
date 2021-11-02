@@ -349,6 +349,7 @@ int DoMain(int argc, char* argv[]) {
 
   ComTrackingData com_traj("com_traj", gains.K_p_com,
                            gains.K_d_com, gains.W_com, plant_w_springs, plant_w_springs);
+  com_traj.AddFiniteStateToTrack(-1);
 
   TransTaskSpaceTrackingData pelvis_traj("com_traj", gains.K_p_com,
                                         gains.K_d_com, gains.W_com, plant_w_springs, plant_w_springs);
@@ -372,9 +373,10 @@ int DoMain(int argc, char* argv[]) {
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
       gains.W_hip_yaw, plant_w_springs, plant_w_springs);
   swing_hip_yaw_traj.AddStateAndJointToTrack(
-      BipedStance::kLeft, "hip_yaw_right","hip_yaw_rightdot");
+      left_stance_state, "hip_yaw_right","hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(
-      BipedStance::kRight, "hip_yaw_left","hip_yaw_leftdot");
+      right_stance_state, "hip_yaw_left","hip_yaw_leftdot");
+
   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
 
   osc->SetUpDoubleSupportPhaseBlending(
@@ -412,6 +414,7 @@ int DoMain(int argc, char* argv[]) {
                   swing_foot_traj_gen->get_input_port_fsm_switch_time());
   builder.Connect(state_receiver->get_output_port(),
                   swing_foot_traj_gen->get_input_port_state());
+
   builder.Connect(swing_foot_traj_gen->get_output_port(),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
   //toe angles

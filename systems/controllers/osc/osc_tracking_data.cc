@@ -455,10 +455,25 @@ void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
       context_w_spr,
       plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
   Quaterniond y_quat(transform_mat.rotation() *
-      frame_pose_.at(GetStateIdx()).linear());
+                     frame_pose_.at(GetStateIdx()).linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
+}
+
+Quaterniond ShortestError(Quaterniond start, Quaterniond end) {
+  if (start.dot(end) < 0)
+    return end *
+           Quaterniond(start.w(), start.x(), start.y(), start.z()).inverse();
+  else
+    return end * start.inverse();
+}
+
+double ShortestAngleDifference(double source, double target) {
+  double diff = target - source;
+  if (diff > M_PI) diff -= 2 * M_PI;
+  if (diff < -M_PI) diff += 2 * M_PI;
+  return diff;
 }
 
 void RotTaskSpaceTrackingData::UpdateYError() {
@@ -466,14 +481,38 @@ void RotTaskSpaceTrackingData::UpdateYError() {
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
   y_quat_des.normalize();
 
-  Quaterniond y_quat(y_(0), y_(1), y_(2), y_(3));
+//    Quaterniond y_quat = Quaterniond(y_(0), y_(1), y_(2), y_(3));
+  Quaterniond y_quat;
+  if (y_(0) >= 0)
+    y_quat = Quaterniond(y_(0), y_(1), y_(2), y_(3));
+  else
+    y_quat = Quaterniond(-y_(0), -y_(1), -y_(2), -y_(3));
 
   // Get relative quaternion (from current to desired)
   Quaterniond relative_qaut = (y_quat_des * y_quat.inverse()).normalized();
+  //  Quaterniond relative_qaut = ShortestError(y_quat,
+  //    y_quat_des).normalized();
+//    Quaterniond relative_qaut = y_quat.slerp(1, y_quat_des).normalized();
+
   double theta = 2 * acos(relative_qaut.w());
   Vector3d rot_axis = relative_qaut.vec().normalized();
-
   error_y_ = theta * rot_axis;
+
+//  error_y_ = y_quat.toRotationMatrix() * error_y_;
+  error_y_ = y_quat.toRotationMatrix().transpose() * error_y_;
+
+  // Use euler angle
+  /*auto euler_des = y_quat_des.toRotationMatrix().eulerAngles(0, 1, 2);
+  std::cout << "Euler from quaternion in roll, pitch, yaw" << std::endl
+            << euler_des << std::endl;
+  auto euler_act = y_quat.toRotationMatrix().eulerAngles(0, 1, 2);
+  std::cout << "Euler from quaternion in roll, pitch, yaw" << std::endl
+            << euler_act << std::endl;
+
+  error_y_ = VectorXd(3);
+  error_y_ << ShortestAngleDifference(euler_act(0), euler_des(0)),
+      ShortestAngleDifference(euler_act(1), euler_des(1)),
+      ShortestAngleDifference(euler_act(2), euler_des(2));*/
 }
 
 void RotTaskSpaceTrackingData::UpdateYdot(
@@ -496,6 +535,9 @@ void RotTaskSpaceTrackingData::UpdateYdotError() {
   Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
   error_ydot_ = w_des_ - ydot_;
 
+//  Quaterniond y_quat = Quaterniond(y_(0), y_(1), y_(2), y_(3));
+//  error_ydot_ = y_quat.toRotationMatrix() * error_ydot_;
+
   ydot_des_ =
       w_des_;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
 }
@@ -514,12 +556,12 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void RotTaskSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
-      .CalcBiasSpatialAcceleration(
-          context_wo_spr, JacobianWrtVariable::kV,
-          *body_frames_wo_spr_.at(GetStateIdx()),
-          frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
-          world_wo_spr_)
-      .rotational();
+               .CalcBiasSpatialAcceleration(
+                   context_wo_spr, JacobianWrtVariable::kV,
+                   *body_frames_wo_spr_.at(GetStateIdx()),
+                   frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
+                   world_wo_spr_)
+               .rotational();
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {

@@ -393,6 +393,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_output_port(), osc->get_fsm_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
+
   builder.Connect(mpc_subscriber->get_output_port(),
                   mpc_reciever->get_input_port());
   builder.Connect(mpc_reciever->get_com_traj_output_port(),

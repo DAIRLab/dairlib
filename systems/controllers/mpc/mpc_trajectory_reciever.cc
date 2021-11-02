@@ -56,8 +56,8 @@ void MpcTrajectoryReceiver::MakeAngularTrajFromLcm(
   auto* casted_traj =
         (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
             traj);
-  *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
-        orientation.time_vector, knots);
+  *casted_traj = PiecewisePolynomial<double>::CubicHermite(
+        orientation.time_vector, knots, knots_dot);
 }
 
 void MpcTrajectoryReceiver::MakeComTrajFromLcm(
@@ -81,8 +81,8 @@ void MpcTrajectoryReceiver::MakeComTrajFromLcm(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
-      com_traj.time_vector, knots);
+  *casted_traj = PiecewisePolynomial<double>::CubicHermite(
+      com_traj.time_vector, knots, knots_dot);
 }
 
 void MpcTrajectoryReceiver::MakeSwingFtTargetFromLcm(

@@ -63,9 +63,9 @@ DEFINE_bool(use_com, false, "Use center of mass or a point to track CM location"
 DEFINE_bool(print_diagram, false, "print block diagram");
 DEFINE_double(debug_time, 0.00, "time to simulate system at");
 DEFINE_double(stance_width, 0.0, "stance width to use in dynamics linearization");
-DEFINE_double(v_des, 0.4, "desired walking speed");
-DEFINE_double(h_des, 0.75, "Desired pelvis height");
-DEFINE_double(dt, 0.01, "time step for koopman mpc");
+DEFINE_double(v_des, 0.0, "desired walking speed");
+DEFINE_double(h_des, 0.82, "Desired pelvis height");
+DEFINE_double(dt, 0.01, "time step for srbd mpc");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

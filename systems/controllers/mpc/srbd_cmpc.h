@@ -58,6 +58,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& xdes, const Eigen::MatrixXd& Q);
   void SetTerminalCost(const Eigen::MatrixXd& Qf);
   void AddInputRegularization(const Eigen::MatrixXd& R);
+  void AddFootPlacementRegularization(const Eigen::MatrixXd& W);
   void Build();
   void CheckProblemDefinition();
 
@@ -122,6 +123,8 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void UpdateDynamicsConstraints(
       const Eigen::VectorXd& x, int n_until_next_stance, int fsm_state) const;
   void UpdateKinematicConstraints(int n_until_stance, int fsm_state) const;
+  void UpdateFootPlacementCost(
+      const Eigen::VectorXd& x, int n_until_next_stance, int fsm_state) const;
 
   void CopyDiscreteDynamicsConstraint(
       const SrbdMode& mode, bool current_stance,
@@ -167,6 +170,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   // Problem variables
   Eigen::MatrixXd Q_;     // For running cost x^TQx
   Eigen::MatrixXd R_;     // For running cost u^TRu
+  Eigen::MatrixXd Wp_;    // regularizing cost on footstep location
   Eigen::MatrixXd Qf_;    // For terminal cost x_{T}^{T}Q_{f}x_{T}
   Eigen::Vector3d kin_bounds_;
   std::vector<SrbdMode> modes_;

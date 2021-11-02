@@ -876,8 +876,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;
 
-  output->tracking_data =
-      std::vector<lcmt_osc_tracking_data>(tracking_data_vec_->size());
+  output->tracking_data.reserve(tracking_data_vec_->size());
   output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
@@ -907,8 +906,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommand());
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
-      //      output->tracking_data.push_back(osc_output);
-      output->tracking_data[i] = osc_output;
+      output->tracking_data.push_back(osc_output);
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
       const MatrixXd& W = tracking_data->GetWeight();

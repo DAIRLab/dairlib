@@ -87,8 +87,8 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
 //    if (states[i] == 2) {
     impact_times_.push_back(sum);
     impact_states_.push_back(states[i+1]);
-    std::cout << sum << std::endl;
-    std::cout << states[i+1] << std::endl;
+//    std::cout << sum << std::endl;
+//    std::cout << states[i+1] << std::endl;
 //    }
   }
 

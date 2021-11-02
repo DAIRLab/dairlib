@@ -2,7 +2,7 @@ w_input: 0.0
 w_accel: 0.00
 #w_soft_constraint: 1000000
 w_soft_constraint: 1000000
-
+w_input_reg: 0
 impact_threshold: 0.005
 
 # High level command gains (with radio)

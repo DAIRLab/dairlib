@@ -8,5 +8,6 @@ __pycache__/
 attic/multibody/solver_log/
 .clwb/
 .ijwb
+.vscode
 *.csv
 /examples/Cassie/saved_trajectories/

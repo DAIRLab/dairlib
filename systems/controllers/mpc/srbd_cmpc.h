@@ -72,6 +72,12 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_x_des_input_port() const {
     return this->get_input_port(x_des_port_);
   }
+  const drake::systems::InputPort<double>& get_warmstart_input_port() const {
+    return this->get_input_port(srb_warmstart_port_);
+  }
+  const drake::systems::InputPort<double>& get_foot_target_input_port() const {
+    return this->get_input_port(foot_target_port_);
+  }
   const drake::systems::OutputPort<double>& get_traj_out_port() const {
     return this->get_output_port(traj_out_port_);
   }
@@ -162,6 +168,8 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   int fsm_port_;
   int x_des_port_;
   int traj_out_port_;
+  int foot_target_port_;
+  int srb_warmstart_port_;
 
   // discrete update indices
   int current_fsm_state_idx_;

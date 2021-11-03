@@ -44,6 +44,7 @@ center_line_offset: 0.02
 mid_foot_height: 0.02
 final_foot_height: 0.0
 final_foot_velocity_z: 0.0
+relative_swing_ft: true
 
 # LIPM trajectory
 lipm_height: 0.9

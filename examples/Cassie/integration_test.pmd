@@ -28,11 +28,11 @@ group "1.controllers-and-dispatchers" {
         host = "localhost";
     }
     cmd "osc_jumping_controller" {
-        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --channel_u=CASSIE_INPUT --delay_time=2.0 --channel_x=CASSIE_STATE_SIMULATION --traj_name=jumping_0.15h_0.3d";
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --folder_path=examples/impact_invariant_control/saved_trajectories/ --channel_u=CASSIE_INPUT --delay_time=2.0 --channel_x=CASSIE_STATE_SIMULATION --traj_name=jumping_0.15h_0.3d";
         host = "localhost";
     }
     cmd "osc_jumping_controller (state_est)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --channel_u=CASSIE_INPUT --delay_time=2.0 --channel_x=CASSIE_STATE_DISPATCHER --traj_name=jumping_0.15h_0.3d";
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --folder_path=examples/impact_invariant_control/saved_trajectories/ --channel_u=CASSIE_INPUT --delay_time=2.0 --channel_x=CASSIE_STATE_DISPATCHER --traj_name=jumping_0.15h_0.3d";
         host = "localhost";
     }
 }

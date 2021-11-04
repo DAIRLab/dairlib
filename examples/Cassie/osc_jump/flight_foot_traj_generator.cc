@@ -108,8 +108,12 @@ void FlightFootTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  //  *casted_traj = GenerateFlightTraj(robot_output->GetState(), timestamp);
-  *casted_traj = GenerateRelativeTraj();
+  if(relative_feet_){
+    *casted_traj = GenerateRelativeTraj();
+  }
+  else{
+    *casted_traj = GenerateFlightTraj(robot_output->GetState(), timestamp);
+  }
 }
 
 }  // namespace dairlib::examples::osc_jump

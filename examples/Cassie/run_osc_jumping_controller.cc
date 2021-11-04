@@ -242,11 +242,11 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), pelvis_trans_traj, feet_contact_points,
       FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory, l_hip_trajectory,
-      gains.relative_feet, FLAGS_delay_time);
+      plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
+      l_hip_trajectory, gains.relative_feet, FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory, r_hip_trajectory,
-      gains.relative_feet, FLAGS_delay_time);
+      plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
+      r_hip_trajectory, gains.relative_feet, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<BasicTrajectoryPassthrough>(
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
@@ -379,7 +379,8 @@ int DoMain(int argc, char* argv[]) {
       "right_hip_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
       gains.W_flight_foot, plant_w_spr, plant_w_spr);
   left_hip_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "hip_left");
-  right_hip_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "hip_right");
+  right_hip_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
+                                                  "hip_right");
 
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
@@ -439,19 +440,22 @@ int DoMain(int argc, char* argv[]) {
 
   osc->AddTrackingData(&pelvis_tracking_data);
   osc->AddTrackingData(&pelvis_rot_tracking_data);
-//  osc->AddTrackingData(&left_foot_tracking_data);
-//  osc->AddTrackingData(&right_foot_tracking_data);
-  osc->AddTrackingData(&left_foot_rel_tracking_data);
-  osc->AddTrackingData(&right_foot_rel_tracking_data);
+  if (gains.relative_feet) {
+    left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
+    right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
+    osc->AddTrackingData(&left_foot_rel_tracking_data);
+    osc->AddTrackingData(&right_foot_rel_tracking_data);
+  } else {
+    left_foot_tracking_data.SetImpactInvariantProjection(true);
+    right_foot_tracking_data.SetImpactInvariantProjection(true);
+    osc->AddTrackingData(&left_foot_tracking_data);
+    osc->AddTrackingData(&right_foot_tracking_data);
+  }
   osc->AddTrackingData(&left_toe_angle_traj);
   osc->AddTrackingData(&right_toe_angle_traj);
 
   left_toe_angle_traj.SetImpactInvariantProjection(true);
   right_toe_angle_traj.SetImpactInvariantProjection(true);
-//  left_foot_tracking_data.SetImpactInvariantProjection(true);
-//  right_foot_tracking_data.SetImpactInvariantProjection(true);
-  left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-  right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   swing_hip_yaw_left_traj.SetImpactInvariantProjection(true);
   swing_hip_yaw_right_traj.SetImpactInvariantProjection(true);
   pelvis_rot_tracking_data.SetImpactInvariantProjection(true);

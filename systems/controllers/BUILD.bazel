@@ -128,6 +128,18 @@ cc_library(
 )
 
 cc_library(
+    name = "lipm_warmstart_system",
+    srcs = ["mpc/lipm_warmstart_system.cc"],
+    hdrs = ["mpc/lipm_warmstart_system.h"],
+    deps = [
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "srbd_cmpc",
     srcs = ["mpc/srbd_cmpc.cc"],
     hdrs = ["mpc/srbd_cmpc.h"],

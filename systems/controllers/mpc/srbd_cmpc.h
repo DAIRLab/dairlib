@@ -130,7 +130,14 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& x, int n_until_next_stance, int fsm_state) const;
   void UpdateKinematicConstraints(int n_until_stance, int fsm_state) const;
   void UpdateFootPlacementCost(
-      const Eigen::VectorXd& x, int n_until_next_stance, int fsm_state) const;
+      int fsm_state,
+      const Eigen::VectorXd& up_next_stance_target,
+      const Eigen::VectorXd& on_deck_stance_target) const;
+  void SetInitialGuess(
+      int fsm_state, double timestamp,
+      const Eigen::VectorXd& up_next_stance_target,
+      const Eigen::VectorXd& on_deck_stance_target,
+      const drake::trajectories::Trajectory<double>& srb_traj) const;
 
   void CopyDiscreteDynamicsConstraint(
       const SrbdMode& mode, bool current_stance,
@@ -196,6 +203,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   // Constraints
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
   std::vector<drake::solvers::QuadraticCost*> input_cost_;
+  std::vector<drake::solvers::QuadraticCost*> foot_target_cost_;
   std::vector<drake::solvers::LinearConstraint*> friction_cone_;
   std::vector<drake::solvers::LinearEqualityConstraint*> terrain_angle_;
   drake::solvers::LinearEqualityConstraint* initial_state_;

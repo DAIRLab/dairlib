@@ -8,6 +8,7 @@ using drake::systems::Context;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::AbstractValue;
 
 using drake::EigenPtr;
@@ -53,6 +54,14 @@ SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
     x_des_port_ = this->DeclareVectorInputPort("x_des",
         BasicVector<double>(nx_)).get_index();
   }
+
+  foot_target_port_ = this->DeclareVectorInputPort("p_des" ,
+      BasicVector<double>(2*kLinearDim_)).get_index();
+
+  ExponentialPlusPiecewisePolynomial<double> exp;
+  srb_warmstart_port_ = this->DeclareAbstractInputPort(
+      "initial_guess",
+      drake::Value<drake::trajectories::Trajectory<double>>(exp)).get_index();
 
   traj_out_port_ = this->DeclareAbstractOutputPort("y(t)",
       &SrbdCMPC::GetMostRecentMotionPlan).get_index();
@@ -110,7 +119,9 @@ void SrbdCMPC::CheckProblemDefinition() {
   DRAKE_DEMAND(mu_ > 0 );
   DRAKE_DEMAND(x_des_.rows() == nx_);
   CheckSquareMatrixDimensions(Q_, nx_);
+  CheckSquareMatrixDimensions(Qf_, nx_);
   CheckSquareMatrixDimensions(R_, nu_);
+  CheckSquareMatrixDimensions(Wp_, kLinearDim_);
 }
 
 void SrbdCMPC::Build() {
@@ -249,6 +260,16 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
   }
 }
 
+void SrbdCMPC::UpdateFootPlacementCost(
+    int fsm_state,
+    const Eigen::VectorXd& up_next_foot_target,
+    const Eigen::VectorXd& on_deck_foot_target) const  {
+  foot_target_cost_.at(fsm_state)->UpdateCoefficients(
+      2.0 * Wp_, - 2.0 * Wp_ * on_deck_foot_target);
+  foot_target_cost_.at(1-fsm_state)->UpdateCoefficients(
+      2.0 * Wp_, - 2.0 * Wp_ * up_next_foot_target);
+}
+
 void SrbdCMPC::MakeInitialStateConstraint() {
   initial_state_ = prog_.AddLinearEqualityConstraint(
               MatrixXd::Identity(nx_, nx_),
@@ -292,6 +313,12 @@ void SrbdCMPC::MakeCost(){
           prog_.AddQuadraticErrorCost(R_, unom, uu.at(i))
         .evaluator().get());
   }
+  for (int i = 0; i < nmodes_; i++) {
+    foot_target_cost_.push_back(
+        prog_.AddQuadraticErrorCost(
+            Wp_, nominal_foot_pos_.at(i), pp.at(i))
+      .evaluator().get());
+  }
 }
 
 void SrbdCMPC::AddTrackingObjective(const VectorXd &xdes, const MatrixXd &Q) {
@@ -305,6 +332,10 @@ void SrbdCMPC::SetTerminalCost(const MatrixXd& Qf) {
 
 void SrbdCMPC::AddInputRegularization(const Eigen::MatrixXd &R) {
   R_ = R;
+}
+
+void SrbdCMPC::AddFootPlacementRegularization(const Eigen::MatrixXd &W) {
+  Wp_ = W;
 }
 
 void SrbdCMPC::GetMostRecentMotionPlan(const drake::systems::Context<double> &context,
@@ -351,6 +382,12 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
+  const drake::AbstractValue* traj_value =
+      this->EvalAbstractInput(context, srb_warmstart_port_);
+
+  const auto& warmstart_traj =
+      traj_value->get_value<drake::trajectories::Trajectory<double>>();
+
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
   VectorXd x(plant_.nq() + plant_.nv());
@@ -371,9 +408,22 @@ EventStatus SrbdCMPC::PeriodicUpdate(
 
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x),
                                  fsm_state, time_since_last_event);
+
   } else {
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x), 0, 0);
   }
+
+  VectorXd foot_target =
+      this->EvalVectorInput(context, foot_target_port_)->get_value();
+  UpdateFootPlacementCost(
+      fsm_state,
+      foot_target.head(kLinearDim_),
+      foot_target.tail(kLinearDim_));
+
+  SetInitialGuess(fsm_state, timestamp,
+                  foot_target.head(kLinearDim_),
+                  foot_target.tail(kLinearDim_),
+                  warmstart_traj);
 
   result_ = solver_.Solve(prog_);
   std::cout << "solve time: " <<
@@ -407,6 +457,28 @@ void SrbdCMPC::UpdateConstraints(
   UpdateKinematicConstraints(n_until_next_state, fsm_state);
 }
 
+void SrbdCMPC::SetInitialGuess(
+    int fsm_state, double timestamp,
+    const Eigen::VectorXd& up_next_stance_target,
+    const Eigen::VectorXd& on_deck_stance_target,
+    const drake::trajectories::Trajectory<double>& srb_traj) const {
+  prog_.SetInitialGuess(pp.at(fsm_state), on_deck_stance_target);
+  prog_.SetInitialGuess(pp.at(1-fsm_state), up_next_stance_target);
+  VectorXd srb_guess(nx_);
+  for (int i = 0; i < total_knots_; i++) {
+    double t = timestamp + i*dt_;
+
+    Eigen::Vector4d u_guess(0, 0, plant_.mass() * 9.81, 0);
+    srb_guess.head(nx_/2) = srb_traj.value(t);
+    srb_guess.tail(nx_/2) = srb_traj.EvalDerivative(t, 1);
+    prog_.SetInitialGuess(xx.at(i), srb_guess);
+    prog_.SetInitialGuess(uu.at(i), u_guess);
+  }
+  double t = timestamp + total_knots_ * dt_;
+  srb_guess.head(nx_/2) = srb_traj.value(t);
+  srb_guess.tail(nx_/2) = srb_traj.EvalDerivative(t, 1);
+  prog_.SetInitialGuess(xx.back(), srb_guess);
+}
 
 lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
     const drake::solvers::MathematicalProgramResult& result,

@@ -1,4 +1,7 @@
 #include "systems/controllers/mpc/lipm_warmstart_system.h"
+#include "systems/controllers/mpc/lipm_mpc_qp.h"
+#include "drake/solvers/solve.h"
+#include "drake/solvers/mathematical_program_result.h"
 
 #include <math.h>
 
@@ -32,46 +35,39 @@ namespace dairlib {
 namespace systems {
 
 LipmWarmStartSystem::LipmWarmStartSystem(
-    const MultibodyPlant<double>& plant, Context<double>* context,
-    double desired_com_height, const vector<int>& unordered_fsm_states,
-    const vector<double>& unordered_state_durations,
-    const vector<vector<std::pair<const Eigen::Vector3d,
-                                  const drake::multibody::Frame<double>&>>>&
-    contact_points_in_each_state,
-    bool use_CoM)
+    const multibody::SingleRigidBodyPlant &plant,
+    double desired_com_height,
+    const std::vector<int> &unordered_fsm_states,
+    const std::vector<double> &unordered_state_durations,
+    const std::vector<BipedStance> &unordered_state_stances)
     : plant_(plant),
-      context_(context),
       desired_com_height_(desired_com_height),
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_durations_(unordered_state_durations),
-      contact_points_in_each_state_(contact_points_in_each_state),
-      world_(plant_.world_frame()),
-      use_com_(use_CoM),
-      pelvis_frame_(plant.GetFrameByName("pelvis")),
-      toe_left_frame_(plant.GetFrameByName("toe_left")),
-      toe_right_frame_(plant.GetFrameByName("toe_right")) {
-  if (use_CoM) {
-    this->set_name("lipm_traj");
-  } else {
-    this->set_name("pelvis_traj");
-  }
+      unordered_state_stances_(unordered_state_stances)
+      {
 
   // Checking vector dimension
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
-  DRAKE_DEMAND(unordered_fsm_states.size() ==
-      contact_points_in_each_state.size());
+  DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_stances.size());
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-          "x, u, t", OutputVector<double>(plant.num_positions(),
-                                          plant.num_velocities(),
-                                          plant.num_actuators()))
+          "x, u, t", OutputVector<double>(plant.nq(), plant.nv(), plant.nu()))
       .get_index();
   fsm_port_ =
-      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort(
+          "fsm", BasicVector<double>(1)).get_index();
+
   touchdown_time_port_ =
-      this->DeclareVectorInputPort("t_touchdown", BasicVector<double>(1))
+      this->DeclareVectorInputPort(
+          "t_touchdown", BasicVector<double>(1))
           .get_index();
+
+  x_des_input_port_ = this->DeclareVectorInputPort(
+      "srbd x desired",
+      BasicVector<double>(12))
+      .get_index();
 
   // Provide an instance to allocate the memory first (for the output)
   ExponentialPlusPiecewisePolynomial<double> exp;
@@ -83,112 +79,90 @@ LipmWarmStartSystem::LipmWarmStartSystem(
 
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(&LipmWarmStartSystem::DiscreteVariableUpdate);
-  // The last FSM event time
-  prev_touchdown_time_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
-  // The stance foot position in the beginning of the swing phase
-  stance_foot_pos_idx_ = this->DeclareDiscreteState(3);
-  // COM state at touchdown
-  touchdown_com_pos_idx_ = this->DeclareDiscreteState(3);
-  touchdown_com_vel_idx_ = this->DeclareDiscreteState(3);
-  prev_fsm_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
 }
 
 EventStatus LipmWarmStartSystem::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  // Read in previous touchdown time
-  auto prev_touchdown_time =
-      discrete_state->get_mutable_vector(prev_touchdown_time_idx_)
-          .get_mutable_value();
-  double touchdown_time =
+
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double fsm_state =
+      this->EvalVectorInput(context, fsm_port_)->get_value()(0);
+  double prev_event_time = // fsm switch timep
       this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+  VectorXd des_srbd_state =
+      this->EvalVectorInput(context, x_des_input_port_)->get_value();
 
-  // Read in finite state machine
-  auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
+  VectorXd x = robot_output->GetState();
 
-  // when entering a new stance phase
-  if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)) {
-    prev_touchdown_time << touchdown_time;
+  // Find fsm_state in unordered_fsm_states_
+  auto it = find(
+      unordered_fsm_states_.begin(),
+      unordered_fsm_states_.end(), int(fsm_state));
+  int mode_index = std::distance(unordered_fsm_states_.begin(), it);
 
-    // Read in current state
-    const OutputVector<double>* robot_output =
-        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-    VectorXd v = robot_output->GetVelocities();
-    multibody::SetPositionsAndVelocitiesIfNew<double>(
-        plant_, robot_output->GetState(), context_);
+  // Get time
+  double timestamp = robot_output->get_timestamp();
+  double start_time = timestamp;
+  double end_time = prev_event_time +
+      unordered_state_durations_[mode_index];
+  double first_mode_duration = end_time - start_time;
 
-    // Find fsm_state in unordered_fsm_states_
-    auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
-                   fsm_state);
-    int mode_index = std::distance(unordered_fsm_states_.begin(), it);
-    if (it == unordered_fsm_states_.end()) {
-      std::cerr << "WARNING: fsm state number " << fsm_state
-                << " doesn't exist in LIPMTrajGenerator\n";
-      mode_index = 0;
-    }
+      start_time = drake::math::saturate(start_time, -1,end_time - 0.001);
 
-    // Stance foot position (Forward Kinematics)
-    // Take the average of all the points
-    Vector3d stance_foot_pos = Vector3d::Zero();
-    for (const auto& j : contact_points_in_each_state_[mode_index]) {
-      Vector3d position;
-      plant_.CalcPointsPositions(*context_, j.second, j.first, world_,
-                                 &position);
-      stance_foot_pos += position;
-    }
-    stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
+  VectorXd srbd_state = plant_.CalcSRBStateFromPlantState(x);
+  // Get center of mass position and velocity
+  Vector3d CoM = srbd_state.segment<3>(0);
+  Vector3d dCoM = srbd_state.segment<3>(6);
 
-    // Get center of mass position and velocity
-    Vector3d CoM;
-    MatrixXd J(3, plant_.num_velocities());
-    if (use_com_) {
-      CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
-      plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-          *context_, JacobianWrtVariable::kV, world_, world_, &J);
-    } else {
-      plant_.CalcPointsPositions(*context_,
-                                 plant_.GetBodyByName("pelvis").body_frame(),
-                                 VectorXd::Zero(3), world_, &CoM);
-      plant_.CalcJacobianTranslationalVelocity(
-          *context_, JacobianWrtVariable::kV,
-          plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3),
-          world_, world_, &J);
-    }
-    Vector3d dCoM = J * v;
 
-    discrete_state->get_mutable_vector(stance_foot_pos_idx_).get_mutable_value()
-        << stance_foot_pos;
-    discrete_state->get_mutable_vector(touchdown_com_pos_idx_)
-        .get_mutable_value()
-        << CoM;
-    discrete_state->get_mutable_vector(touchdown_com_vel_idx_)
-        .get_mutable_value()
-        << dCoM;
+  Vector3d stance_foot_pos = plant_.CalcFootPosition(
+      x, unordered_state_stances_[mode_index]);
 
-    // Testing
-    // Heuristic ratio for LIPM dyanmics (because the centroidal angular
-    // momentum is not constant
-    // TODO(yminchen): use either this or the one in swing_ft_traj_gen
-    Vector3d toe_left_origin_position;
-    plant_.CalcPointsPositions(*context_, toe_left_frame_, Vector3d::Zero(),
-                               pelvis_frame_, &toe_left_origin_position);
-    Vector3d toe_right_origin_position;
-    plant_.CalcPointsPositions(*context_, toe_right_frame_, Vector3d::Zero(),
-                               pelvis_frame_, &toe_right_origin_position);
-    double dist = toe_left_origin_position(1) - toe_right_origin_position(1);
-    // <foot_spread_lb_ meter: ratio 1
-    // >foot_spread_ub_ meter: ratio 0.9
-    // Linear interpolate in between
-    heuristic_ratio_ = drake::math::saturate(
-        1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
-            (dist - foot_spread_lb_),
-        0.9, 1);
-  }
+  std::vector<std::vector<Eigen::Vector2d>> xy_dxy = MakeDesXYVel(
+      3, first_mode_duration, des_srbd_state, srbd_state);
 
-  discrete_state->get_mutable_vector(prev_fsm_idx_).GetAtIndex(0) = fsm_state;
+  double Q = 10.0;
+  std::vector<double> height_vector = {CoM(2), CoM(2), CoM(2)};
+  LipmMpc mpc(
+      xy_dxy.front(),
+      xy_dxy.back(),
+      Q, Q,
+      CoM.head(2),
+      dCoM.head(2),
+      stance_foot_pos.head(2), 3,
+      first_mode_duration, unordered_state_durations_[mode_index],
+      height_vector,
+      0.55,
+      0.55,
+      0.05,
+      (unordered_state_stances_[mode_index] == BipedStance::kLeft));
+
+  drake::solvers::MathematicalProgramResult result = drake::solvers::Solve(mpc);
+  discrete_state->get_mutable_value(mpc_input_sol_idx_) = result.GetSolution(
+      mpc.u_lipm_vars());
+  discrete_state->get_mutable_value(mpc_state_sol_idx_) = result.GetSolution(
+      mpc.u_lipm_vars());
 
   return EventStatus::Succeeded();
 }
+
+std::vector<std::vector<Eigen::Vector2d>> LipmWarmStartSystem::MakeDesXYVel(
+    int n_step, double first_mode_duration, VectorXd xdes, VectorXd x) const{
+  std::vector<Vector2d> xy;
+  std::vector<Vector2d> dxy;
+  std::vector<std::vector<Vector2d>> ret;
+  for (int i = 0; i < n_step; i++) {
+    double t = (i == 0) ? first_mode_duration : unordered_state_durations_[0];
+    xy.push_back(x.segment<2>(0) + xdes.segment<2>(6) * t);
+    dxy.push_back(xdes.segment<2>(6));
+  }
+  ret.push_back(xy);
+  ret.push_back(dxy);
+  return ret;
+}
+
 
 ExponentialPlusPiecewisePolynomial<double> LipmWarmStartSystem::ConstructLipmTraj(
     const VectorXd& CoM, const VectorXd& dCoM, const VectorXd& stance_foot_pos,
@@ -211,15 +185,8 @@ ExponentialPlusPiecewisePolynomial<double> LipmWarmStartSystem::ConstructLipmTra
   Y[1](0, 0) = stance_foot_pos(0);
   Y[0](1, 0) = stance_foot_pos(1);
   Y[1](1, 0) = stance_foot_pos(1);
-  // We add stance_foot_pos(2) to desired COM height to account for state
-  // drifting
-  double max_height_diff_per_step = 0.05;
-  double final_height = drake::math::saturate(
-      desired_com_height_ + stance_foot_pos(2),
-      CoM(2) - max_height_diff_per_step, CoM(2) + max_height_diff_per_step);
-  //  double final_height = desired_com_height_ + stance_foot_pos(2);
-  Y[0](2, 0) = final_height;
-  Y[1](2, 0) = final_height;
+  Y[0](2, 0) = CoM(2);
+  Y[1](2, 0) = CoM(2);
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
@@ -227,6 +194,8 @@ ExponentialPlusPiecewisePolynomial<double> LipmWarmStartSystem::ConstructLipmTra
   PiecewisePolynomial<double> pp_part =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           T_waypoint_com, Y, Y_dot_start, Y_dot_end);
+
+
 
   // Dynamics of LIPM
   // ddy = 9.81/CoM_wrt_foot_z*y, which has an analytical solution.
@@ -237,11 +206,10 @@ ExponentialPlusPiecewisePolynomial<double> LipmWarmStartSystem::ConstructLipmTra
   //       k_2 = (y0 - dy0/w)/2.
   // double omega = sqrt(9.81 / (final_height - stance_foot_pos(2)));
   double omega = sqrt(9.81 / CoM_wrt_foot_z);
-  double omega_y = omega /* * heuristic_ratio_*/;
   double k1x = 0.5 * (CoM_wrt_foot_x + dCoM_wrt_foot_x / omega);
   double k2x = 0.5 * (CoM_wrt_foot_x - dCoM_wrt_foot_x / omega);
-  double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega_y);
-  double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega_y);
+  double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega);
+  double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega);
 
   //  cout << "omega = " << omega << endl;
 
@@ -255,12 +223,8 @@ ExponentialPlusPiecewisePolynomial<double> LipmWarmStartSystem::ConstructLipmTra
   K(1, 3) = k2y;
   A(0, 0) = omega;
   A(1, 1) = -omega;
-  A(2, 2) = omega_y;
-  A(3, 3) = -omega_y;
-  // TODO: this is in global coordinate. But the ratio change should apply
-  //  locally. I think we just need to get the pos/vel in local frame + apply a
-  //  rotational matrix in front ( which can be lumped into K matrix). Then the
-  //  output is in global frame.
+  A(2, 2) = omega;
+  A(3, 3) = -omega;
 
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
 }
@@ -268,76 +232,14 @@ ExponentialPlusPiecewisePolynomial<double> LipmWarmStartSystem::ConstructLipmTra
 void LipmWarmStartSystem::CalcTrajFromCurrent(
     const Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  // Read in current state
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd v = robot_output->GetVelocities();
-  // Read in finite state machine
-  const BasicVector<double>* fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
-  // Read in finite state machine switch time
-  VectorXd prev_event_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value();
-
-  // Find fsm_state in unordered_fsm_states_
-  auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
-                 int(fsm_state(0)));
-  int mode_index = std::distance(unordered_fsm_states_.begin(), it);
-  if (it == unordered_fsm_states_.end()) {
-    std::cerr << "WARNING: fsm state number " << fsm_state(0)
-              << " doesn't exist in LIPMTrajGenerator\n";
-    mode_index = 0;
-  }
-
-  // Get time
-  double timestamp = robot_output->get_timestamp();
-  double start_time = timestamp;
-
-  double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
-  // Ensure "current_time < end_time" to avoid error in
-  // creating trajectory.
-  start_time = drake::math::saturate(
-      start_time, -std::numeric_limits<double>::infinity(), end_time - 0.001);
-
-  VectorXd q = robot_output->GetPositions();
-  multibody::SetPositionsIfNew<double>(plant_, q, context_);
-
-  // Get center of mass position and velocity
-  Vector3d CoM;
-  MatrixXd J(3, plant_.num_velocities());
-  if (use_com_) {
-    CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
-    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, world_, world_, &J);
-  } else {
-    plant_.CalcPointsPositions(*context_,
-                               plant_.GetBodyByName("pelvis").body_frame(),
-                               VectorXd::Zero(3), world_, &CoM);
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV,
-        plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3), world_,
-        world_, &J);
-  }
-  Vector3d dCoM = J * v;
-
-  // Stance foot position (Forward Kinematics)
-  // Take the average of all the points
-  Vector3d stance_foot_pos = Vector3d::Zero();
-  for (const auto& stance_foot : contact_points_in_each_state_[mode_index]) {
-    Vector3d position;
-    plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
-                               world_, &position);
-    stance_foot_pos += position;
-  }
-  stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  *exp_pp_traj =
-      ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
+//  *exp_pp_traj =
+//      ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 }
+
 
 }  // namespace systems
 }  // namespace dairlib

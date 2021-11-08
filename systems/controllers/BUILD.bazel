@@ -133,8 +133,19 @@ cc_library(
     hdrs = ["mpc/lipm_warmstart_system.h"],
     deps = [
         ":control_utils",
+        ":lipm_mpc",
+        "//multibody:single_rigid_body_plant",
         "//multibody:utils",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "lipm_mpc",
+    srcs = ["mpc/lipm_mpc_qp.cc"],
+    hdrs = ["mpc/lipm_mpc_qp.h"],
+    deps = [
         "@drake//:drake_shared_library",
     ],
 )

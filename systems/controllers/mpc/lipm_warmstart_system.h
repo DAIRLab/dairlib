@@ -53,6 +53,7 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
                            drake::trajectories::Trajectory<double> *traj) const;
 
 
+  const int num_steps_ = 3;
   // Port indices
   int state_port_;
   int fsm_port_;
@@ -88,5 +89,6 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
   const drake::multibody::Frame<double> &pelvis_frame_;
   const drake::multibody::Frame<double> &toe_left_frame_;
   const drake::multibody::Frame<double> &toe_right_frame_;
+
 };
 }

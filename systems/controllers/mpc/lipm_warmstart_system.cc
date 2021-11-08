@@ -338,51 +338,6 @@ void LipmWarmStartSystem::CalcTrajFromCurrent(
   *exp_pp_traj =
       ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 }
-void LipmWarmStartSystem::CalcTrajFromTouchdown(
-    const Context<double>& context,
-    drake::trajectories::Trajectory<double>* traj) const {
-  // Read in finite state machine
-  const BasicVector<double>* fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
-  // Read in finite state machine switch time
-  VectorXd prev_event_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value();
-
-  // TODO(yangwill): move this in a function or make it shorter
-  // Find fsm_state in unordered_fsm_states_
-  auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
-                 int(fsm_state(0)));
-  int mode_index = std::distance(unordered_fsm_states_.begin(), it);
-  if (it == unordered_fsm_states_.end()) {
-    cout << "WARNING: fsm state number " << fsm_state(0)
-         << " doesn't exist in LIPMTrajGenerator\n";
-    mode_index = 0;
-  }
-
-  double end_time_of_this_fsm_state =
-      prev_event_time(0) + unordered_state_durations_[mode_index];
-
-  // Get center of mass position and velocity
-  const auto CoM_at_touchdown =
-      context.get_discrete_state(touchdown_com_pos_idx_).get_value();
-  const auto dCoM_at_touchdown =
-      context.get_discrete_state(touchdown_com_vel_idx_).get_value();
-
-  // Stance foot position
-  const auto stance_foot_pos_at_touchdown =
-      context.get_discrete_state(stance_foot_pos_idx_).get_value();
-
-  double prev_touchdown_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
-
-  // Assign traj
-  auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
-      ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  *exp_pp_traj = ConstructLipmTraj(
-      CoM_at_touchdown, dCoM_at_touchdown, stance_foot_pos_at_touchdown,
-      prev_touchdown_time, end_time_of_this_fsm_state);
-}
 
 }  // namespace systems
 }  // namespace dairlib

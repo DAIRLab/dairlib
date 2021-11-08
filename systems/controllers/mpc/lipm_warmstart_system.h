@@ -17,8 +17,8 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
   LipmWarmStartSystem(
       const multibody::SingleRigidBodyPlant &plant,
       double desired_com_height,
+      double stance_duration,
       const std::vector<int> &unordered_fsm_states,
-      const std::vector<double> &unordered_state_durations,
       const std::vector<BipedStance> &unordered_state_stances);
   // Input port getters
   const drake::systems::InputPort<double> &get_input_port_state() const {
@@ -61,11 +61,21 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
                     double end_time_of_this_fsm_state) const;
 
   void CalcTrajFromCurrent(const drake::systems::Context<double> &context,
-                           drake::trajectories::Trajectory<double> *traj) const;
+                           drake::trajectories::Trajectory<double> *traj) const {
+    CalcTrajFromStep(context, traj, 0);
+  }
   void CalcTrajFromNext(const drake::systems::Context<double> &context,
-                           drake::trajectories::Trajectory<double> *traj) const;
+                           drake::trajectories::Trajectory<double> *traj) const{
+    CalcTrajFromStep(context, traj, 1);
+  }
   void CalcTrajFromFinal(const drake::systems::Context<double> &context,
-                           drake::trajectories::Trajectory<double> *traj) const;
+                           drake::trajectories::Trajectory<double> *traj) const{
+    CalcTrajFromStep(context, traj, 2);
+  }
+
+  void CalcTrajFromStep(const drake::systems::Context<double> &context,
+                           drake::trajectories::Trajectory<double> *traj,
+                           const int idx) const;
 
   std::vector<std::vector<Eigen::Vector2d>> MakeDesXYVel(
       int n_step, double first_mode_duration,
@@ -88,8 +98,8 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double> *context_;
 
   double desired_com_height_;
+  double stance_duration_;
   std::vector<int> unordered_fsm_states_;
-  std::vector<double> unordered_state_durations_;
   std::vector<BipedStance> unordered_state_stances_;
 
 };

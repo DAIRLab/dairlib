@@ -18,6 +18,7 @@ using std::vector;
 using Eigen::MatrixXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
 
 using drake::systems::BasicVector;
@@ -37,18 +38,15 @@ namespace systems {
 LipmWarmStartSystem::LipmWarmStartSystem(
     const multibody::SingleRigidBodyPlant &plant,
     double desired_com_height,
+    double stance_duration,
     const std::vector<int> &unordered_fsm_states,
-    const std::vector<double> &unordered_state_durations,
     const std::vector<BipedStance> &unordered_state_stances)
     : plant_(plant),
       desired_com_height_(desired_com_height),
+      stance_duration_(stance_duration),
       unordered_fsm_states_(unordered_fsm_states),
-      unordered_state_durations_(unordered_state_durations),
-      unordered_state_stances_(unordered_state_stances)
-      {
+      unordered_state_stances_(unordered_state_stances) {
 
-  // Checking vector dimension
-  DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_stances.size());
 
   // Input/Output Setup
@@ -105,8 +103,7 @@ EventStatus LipmWarmStartSystem::DiscreteVariableUpdate(
   // Get time
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
-  double end_time = prev_event_time +
-      unordered_state_durations_[mode_index];
+  double end_time = prev_event_time + stance_duration_;
   double first_mode_duration = end_time - start_time;
 
       start_time = drake::math::saturate(start_time, -1,end_time - 0.001);
@@ -132,7 +129,7 @@ EventStatus LipmWarmStartSystem::DiscreteVariableUpdate(
       CoM.head(2),
       dCoM.head(2),
       stance_foot_pos.head(2), 3,
-      first_mode_duration, unordered_state_durations_[mode_index],
+      first_mode_duration, stance_duration_,
       height_vector,
       0.55,
       0.55,
@@ -154,9 +151,9 @@ std::vector<std::vector<Eigen::Vector2d>> LipmWarmStartSystem::MakeDesXYVel(
   std::vector<Vector2d> dxy;
   std::vector<std::vector<Vector2d>> ret;
   for (int i = 0; i < n_step; i++) {
-    double t = (i == 0) ? first_mode_duration : unordered_state_durations_[0];
-    xy.push_back(x.segment<2>(0) + xdes.segment<2>(6) * t);
-    dxy.push_back(xdes.segment<2>(6));
+    double t = (i == 0) ? first_mode_duration : stance_duration_;
+    xy.emplace_back(x.segment<2>(0) + xdes.segment<2>(6) * t);
+    dxy.emplace_back(xdes.segment<2>(6));
   }
   ret.push_back(xy);
   ret.push_back(dxy);
@@ -229,15 +226,40 @@ ExponentialPlusPiecewisePolynomial<double> LipmWarmStartSystem::ConstructLipmTra
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
 }
 
-void LipmWarmStartSystem::CalcTrajFromCurrent(
+void LipmWarmStartSystem::CalcTrajFromStep(
     const Context<double>& context,
-    drake::trajectories::Trajectory<double>* traj) const {
+    drake::trajectories::Trajectory<double>* traj,
+    int idx) const {
+
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+
+  double prev_event_time = // fsm switch time
+      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+
+  double timestamp = robot_output->get_timestamp();
+  double start_time = timestamp + idx * stance_duration_;
+  double end_time = prev_event_time + stance_duration_ * (idx + 1);
+
+  Vector3d CoM = Vector3d::Zero();
+  Vector3d dCoM = Vector3d::Zero();
+  Vector3d stance_foot_pos = Vector3d::Zero();
+
+  Vector4d state_sol = LipmMpc::GetStateSolutionByIndex(
+      idx, context.get_discrete_state(mpc_state_sol_idx_).get_value());
+
+  CoM.head<2>() = state_sol.head<2>();
+  CoM(2) = desired_com_height_;
+  dCoM.head<2>() = state_sol.tail<2>();
+  stance_foot_pos.head<2>() = LipmMpc::GetInputSolutionByIndex(
+      idx, context.get_discrete_state(mpc_input_sol_idx_).get_value());
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-//  *exp_pp_traj =
-//      ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
+
+  *exp_pp_traj =
+      ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 }
 
 

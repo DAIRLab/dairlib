@@ -109,7 +109,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
   realtime_rate_for_time_limit = target_realtime_rate
   dynamic_time_limit = True
   use_ipopt = False
-  knots_per_mode = 10  # can try smaller number like 3 or 5
+  knots_per_mode = 5  # can try smaller number like 3 or 5
   feas_tol = 1e-2
   n_step = 2
   # time_limit is optional, set = 0 for realtime

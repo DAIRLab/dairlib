@@ -174,12 +174,11 @@ class OneStepAheadVelConstraint : public solvers::NonlinearConstraint<double> {
   std::unique_ptr<drake::systems::Context<double>> context_;
   const std::pair<const Eigen::Vector3d,
                   const drake::multibody::Frame<double>&>& stance_foot_origin_;
-  double sqrt_omega_;
-  double pos_exp_;
-  double neg_exp_;
   int n_q_;
   int n_v_;
   int n_x_;
+  double omega_sinh_;
+  double cosh_;
 };
 
 // The constraint that gives the COM state and stance foot position of the last

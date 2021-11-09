@@ -253,9 +253,9 @@ OneStepAheadVelConstraint::OneStepAheadVelConstraint(
       n_v_(plant.num_velocities()),
       n_x_(plant.num_positions() + plant.num_velocities()) {
   double height = 0.85;  // approximation
-  sqrt_omega_ = std::sqrt(9.81 / height);
-  pos_exp_ = std::exp(sqrt_omega_ * stride_period);
-  neg_exp_ = std::exp(-sqrt_omega_ * stride_period);
+  double omega = std::sqrt(9.81 / height);
+  omega_sinh_ = omega * std::sinh(omega * stride_period);
+  cosh_ = std::cosh(omega * stride_period);
 }
 
 void OneStepAheadVelConstraint::EvaluateConstraint(
@@ -281,10 +281,11 @@ void OneStepAheadVelConstraint::EvaluateConstraint(
   //  CoM = x_and_com_vel.segment<2>(4);
   //  CoM_dot = x_and_com_vel.segment<2>(n_q_ + 3);
 
-  // Velocity at the end of mode after horizon
+  // Velocity at the end of mode after horizon. (Given the initial position and
+  // velocity, we can get the solution to the LIPM dynamics. Hence, the velocity
+  // at the end of step)
   Vector2d v;
-  v = sqrt_omega_ * (CoM.head<2>() - pt.head<2>()) * (pos_exp_ + neg_exp_) / 2 +
-      CoM_dot.head<2>() * (pos_exp_ - neg_exp_) / 2;
+  v = (CoM.head<2>() - pt.head<2>()) * omega_sinh_ + CoM_dot.head<2>() * cosh_;
 
   *y = v - x_and_com_vel.segment<2>(n_x_);
 }

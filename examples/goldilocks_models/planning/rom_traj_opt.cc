@@ -636,11 +636,17 @@ void RomTrajOpt::AddConstraintAndCostForLastFootStep(
   AddConstraint(fom_sw_ft_pos_var_constraint,
                 {x0_vars_by_mode(num_modes_), predicted_com_vel_var_});
 
-  // Cost for tracking velocity
-  PrintStatus("Adding cost -- predicted com vel one step after horizon");
+  // Desired value for predicted velocity
+  // It looks like the constraint version is solved much faster
+  // 1. via cost
+  /*PrintStatus("Adding cost -- predicted com vel one step after horizon");
   predict_lipm_v_bindings_.push_back(
       AddQuadraticErrorCost(w_predict_lipm_v * MatrixXd::Identity(2, 2),
-                            des_predicted_xy_vel, predicted_com_vel_var_));
+                            des_predicted_xy_vel, predicted_com_vel_var_));*/
+  // 2. via constraint
+  PrintStatus("Adding constraint -- predicted com vel one step after horizon");
+  AddBoundingBoxConstraint(des_predicted_xy_vel, des_predicted_xy_vel,
+                           predicted_com_vel_var_);
 }
 
 void RomTrajOpt::AddCascadedLipmMPC(

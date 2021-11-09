@@ -7,6 +7,7 @@
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
+#include "common/file_utils.h"
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -205,8 +206,9 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
-  auto radio_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(FLAGS_radio_channel, lcm));
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          FLAGS_radio_channel, lcm));
   const auto& sensor_aggregator =
       AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
 
@@ -313,6 +315,15 @@ int do_main(int argc, char* argv[]) {
   //  std::cout << "q_init = \n" << q_init.transpose() << std::endl;
   //  std::cout << "v_init = \n" << v_init.transpose() << std::endl;
 
+  // Testing -- read init pose from a file
+  /*VectorXd x_init = readCSV(
+                        "../dairlib_data/goldilocks_models/planning/robot_1/"
+                        "models_20211018_3dlipm_fix_xy_no_height_constraint/"
+                        "1_19_x_samples0.csv")
+                        .col(0);
+  DRAKE_DEMAND(plant.num_positions() + plant.num_velocities() == x_init.size());
+  plant.SetPositionsAndVelocities(&plant_context, x_init);*/
+
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
   // Set the current time for testing
@@ -351,7 +362,7 @@ int do_main(int argc, char* argv[]) {
         std::ios_base::app);
     outfile << "(succeeded, return_time, message) = ";
     outfile << status.succeeded() << ", " << status.return_time() << ", "
-            << status.message();
+            << status.message() << "\n";
     outfile.close();
   }
 

@@ -1,15 +1,15 @@
 mu: 0.8
 ReachabilityLim: [0.25, 0.3, 0.3]
 StateW:
-  [0, 0, 10,    # x, y, z
+  [1, 1, 10,    # x, y, z
    1, 1, 1,     # roll, pitch , yaw
    1, 1, 1,     # vx, vy, vz
    1, 1, 1]     # omega
 FinalStateW:
-  [0, 0, 10,         # x, y, z
-   0, 0, 0,          # roll, pitch , yaw
-   0, 0, 0,          # vx, vy, vz
-   0, 0, 0]          # omega
+  [1, 1, 10,         # x, y, z
+   1, 1, 1,          # roll, pitch , yaw
+   1, 1, 1,          # vx, vy, vz
+   1, 1, 1]          # omega
 InputW:
   [ 0.01, 0.01, 0.01, 0.01 ]
 

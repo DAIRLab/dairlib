@@ -8,7 +8,6 @@ using drake::systems::Context;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
 using drake::trajectories::PiecewisePolynomial;
-using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::AbstractValue;
 
 using drake::EigenPtr;
@@ -58,10 +57,10 @@ SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
   foot_target_port_ = this->DeclareVectorInputPort("p_des" ,
       BasicVector<double>(2*kLinearDim_)).get_index();
 
-  ExponentialPlusPiecewisePolynomial<double> exp;
+ PiecewisePolynomial<double> pp_traj;
   srb_warmstart_port_ = this->DeclareAbstractInputPort(
       "initial_guess",
-      drake::Value<drake::trajectories::Trajectory<double>>(exp)).get_index();
+      drake::Value<drake::trajectories::Trajectory<double>>(pp_traj)).get_index();
 
   traj_out_port_ = this->DeclareAbstractOutputPort("y(t)",
       &SrbdCMPC::GetMostRecentMotionPlan).get_index();
@@ -417,13 +416,14 @@ EventStatus SrbdCMPC::PeriodicUpdate(
       this->EvalVectorInput(context, foot_target_port_)->get_value();
   UpdateFootPlacementCost(
       fsm_state,
-      foot_target.head(kLinearDim_),
-      foot_target.tail(kLinearDim_));
+      Vector3d::Zero(),
+      Vector3d::Zero());
 
-  SetInitialGuess(fsm_state, timestamp,
-                  foot_target.head(kLinearDim_),
-                  foot_target.tail(kLinearDim_),
-                  warmstart_traj);
+//  SetInitialGuess(fsm_state, timestamp,
+//                  foot_target.head(kLinearDim_),
+//                  foot_target.tail(kLinearDim_),
+//                  warmstart_traj);
+
 
   result_ = solver_.Solve(prog_);
   std::cout << "solve time: " <<
@@ -469,8 +469,10 @@ void SrbdCMPC::SetInitialGuess(
     double t = timestamp + i*dt_;
 
     Eigen::Vector4d u_guess(0, 0, plant_.mass() * 9.81, 0);
+    std::cout << "\n\nu_i:\n" << u_guess;
     srb_guess.head(nx_/2) = srb_traj.value(t);
     srb_guess.tail(nx_/2) = srb_traj.EvalDerivative(t, 1);
+    std::cout << "\n\nx_i:\n" << srb_guess;
     prog_.SetInitialGuess(xx.at(i), srb_guess);
     prog_.SetInitialGuess(uu.at(i), u_guess);
   }
@@ -504,8 +506,6 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
   for (int i = 0; i < kLinearDim_; i++) {
     SwingFootTraj.datatypes.emplace_back("double");
   }
-
-
 
   /** Allocate Eigen matrices for trajectory blocks **/
   MatrixXd com = MatrixXd::Zero(2*kLinearDim_ , total_knots_);

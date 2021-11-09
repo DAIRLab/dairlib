@@ -519,6 +519,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers:fsm_event_time",
+        "//systems/controllers:lipm_warmstart_system",
         "//systems/controllers:srbd_cmpc",
         "//systems/controllers:time_based_fsm",
         "//systems/framework:lcm_driven_loop",

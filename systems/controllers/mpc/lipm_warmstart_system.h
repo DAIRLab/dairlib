@@ -18,6 +18,7 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
       const multibody::SingleRigidBodyPlant &plant,
       double desired_com_height,
       double stance_duration,
+      double mpc_dt,
       const std::vector<int> &unordered_fsm_states,
       const std::vector<BipedStance> &unordered_state_stances);
   // Input port getters
@@ -41,15 +42,12 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
   const {
     return this->get_output_port(output_port_lipm_from_current_);
   }
-  const drake::systems::OutputPort<double> &get_output_port_lipm_from_next()
-  const {
-    return this->get_output_port(output_port_lipm_from_next_);
-  }
-  const drake::systems::OutputPort<double> &get_output_port_lipm_from_final()
-  const {
-    return this->get_output_port(output_port_lipm_from_final_);
-  }
 
+  // Output port getters
+  const drake::systems::OutputPort<double> &get_output_port_foot_target()
+  const {
+    return this->get_output_port(output_port_foot_target_);
+  }
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double> &context,
@@ -60,22 +58,20 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
                     const Eigen::VectorXd &stance_foot_pos, double start_time,
                     double end_time_of_this_fsm_state) const;
 
-  void CalcTrajFromCurrent(const drake::systems::Context<double> &context,
-                           drake::trajectories::Trajectory<double> *traj) const {
-    CalcTrajFromStep(context, traj, 0);
-  }
-  void CalcTrajFromNext(const drake::systems::Context<double> &context,
-                           drake::trajectories::Trajectory<double> *traj) const{
-    CalcTrajFromStep(context, traj, 1);
-  }
-  void CalcTrajFromFinal(const drake::systems::Context<double> &context,
-                           drake::trajectories::Trajectory<double> *traj) const{
-    CalcTrajFromStep(context, traj, 2);
-  }
 
-  void CalcTrajFromStep(const drake::systems::Context<double> &context,
-                           drake::trajectories::Trajectory<double> *traj,
-                           const int idx) const;
+  void MakeCubicSrbdApproximationFromExponentials(
+      std::vector<
+          drake::trajectories::ExponentialPlusPiecewisePolynomial<double>> exps,
+      drake::trajectories::Trajectory<double> *output_traj,
+      double prev_touchdown_time) const;
+
+
+  void CalcTrajFromCurrent(const drake::systems::Context<double> &context,
+                           drake::trajectories::Trajectory<double> *traj) const;
+
+  void CalcFootTarget(const drake::systems::Context<double>& context,
+                        drake::systems::BasicVector<double>* output) const;
+
 
   std::vector<std::vector<Eigen::Vector2d>> MakeDesXYVel(
       int n_step, double first_mode_duration,
@@ -88,8 +84,8 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
   int touchdown_time_port_;
   int x_des_input_port_;
   int output_port_lipm_from_current_;
-  int output_port_lipm_from_next_;
-  int output_port_lipm_from_final_;
+  int output_port_foot_target_;
+
 
   int mpc_input_sol_idx_;
   int mpc_state_sol_idx_;
@@ -99,6 +95,7 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
 
   double desired_com_height_;
   double stance_duration_;
+  double mpc_dt_;
   std::vector<int> unordered_fsm_states_;
   std::vector<BipedStance> unordered_state_stances_;
 

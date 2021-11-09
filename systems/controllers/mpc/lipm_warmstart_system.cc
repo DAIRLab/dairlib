@@ -39,11 +39,13 @@ LipmWarmStartSystem::LipmWarmStartSystem(
     const multibody::SingleRigidBodyPlant &plant,
     double desired_com_height,
     double stance_duration,
+    double mpc_dt,
     const std::vector<int> &unordered_fsm_states,
     const std::vector<BipedStance> &unordered_state_stances)
     : plant_(plant),
       desired_com_height_(desired_com_height),
       stance_duration_(stance_duration),
+      mpc_dt_(mpc_dt),
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_stances_(unordered_state_stances) {
 
@@ -67,80 +69,29 @@ LipmWarmStartSystem::LipmWarmStartSystem(
       BasicVector<double>(12))
       .get_index();
 
-  // Provide an instance to allocate the memory first (for the output)
-  ExponentialPlusPiecewisePolynomial<double> exp;
-  drake::trajectories::Trajectory<double>& traj_inst = exp;
+  PiecewisePolynomial<double> pp;
+  drake::trajectories::Trajectory<double>& traj_inst = pp;
+
   output_port_lipm_from_current_ =
-      this->DeclareAbstractOutputPort("lipm_xyz_from_current", traj_inst,
+      this->DeclareAbstractOutputPort("srbd_x_from_current", traj_inst,
                                       &LipmWarmStartSystem::CalcTrajFromCurrent)
           .get_index();
 
-  // State variables inside this controller block
-  DeclarePerStepDiscreteUpdateEvent(&LipmWarmStartSystem::DiscreteVariableUpdate);
+  output_port_foot_target_ =
+      this->DeclareVectorOutputPort("foot_target_out",
+          BasicVector<double>(6), &LipmWarmStartSystem::CalcFootTarget)
+          .get_index();
+
+  // 4 xy state variables per 3 steps
+  mpc_state_sol_idx_ = DeclareDiscreteState(BasicVector<double>(3 * 4));
+  mpc_input_sol_idx_ = DeclareDiscreteState(BasicVector<double>(3 * 2));
+  this->DeclarePerStepDiscreteUpdateEvent(
+      &LipmWarmStartSystem::DiscreteVariableUpdate);
 }
 
 EventStatus LipmWarmStartSystem::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  double fsm_state =
-      this->EvalVectorInput(context, fsm_port_)->get_value()(0);
-  double prev_event_time = // fsm switch timep
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
-  VectorXd des_srbd_state =
-      this->EvalVectorInput(context, x_des_input_port_)->get_value();
-
-  VectorXd x = robot_output->GetState();
-
-  // Find fsm_state in unordered_fsm_states_
-  auto it = find(
-      unordered_fsm_states_.begin(),
-      unordered_fsm_states_.end(), int(fsm_state));
-  int mode_index = std::distance(unordered_fsm_states_.begin(), it);
-
-  // Get time
-  double timestamp = robot_output->get_timestamp();
-  double start_time = timestamp;
-  double end_time = prev_event_time + stance_duration_;
-  double first_mode_duration = end_time - start_time;
-
-      start_time = drake::math::saturate(start_time, -1,end_time - 0.001);
-
-  VectorXd srbd_state = plant_.CalcSRBStateFromPlantState(x);
-  // Get center of mass position and velocity
-  Vector3d CoM = srbd_state.segment<3>(0);
-  Vector3d dCoM = srbd_state.segment<3>(6);
-
-
-  Vector3d stance_foot_pos = plant_.CalcFootPosition(
-      x, unordered_state_stances_[mode_index]);
-
-  std::vector<std::vector<Eigen::Vector2d>> xy_dxy = MakeDesXYVel(
-      3, first_mode_duration, des_srbd_state, srbd_state);
-
-  double Q = 10.0;
-  std::vector<double> height_vector = {CoM(2), CoM(2), CoM(2)};
-  LipmMpc mpc(
-      xy_dxy.front(),
-      xy_dxy.back(),
-      Q, Q,
-      CoM.head(2),
-      dCoM.head(2),
-      stance_foot_pos.head(2), 3,
-      first_mode_duration, stance_duration_,
-      height_vector,
-      0.55,
-      0.55,
-      0.05,
-      (unordered_state_stances_[mode_index] == BipedStance::kLeft));
-
-  drake::solvers::MathematicalProgramResult result = drake::solvers::Solve(mpc);
-  discrete_state->get_mutable_value(mpc_input_sol_idx_) = result.GetSolution(
-      mpc.u_lipm_vars());
-  discrete_state->get_mutable_value(mpc_state_sol_idx_) = result.GetSolution(
-      mpc.u_lipm_vars());
 
   return EventStatus::Succeeded();
 }
@@ -192,8 +143,6 @@ ExponentialPlusPiecewisePolynomial<double> LipmWarmStartSystem::ConstructLipmTra
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           T_waypoint_com, Y, Y_dot_start, Y_dot_end);
 
-
-
   // Dynamics of LIPM
   // ddy = 9.81/CoM_wrt_foot_z*y, which has an analytical solution.
   // Let omega^2 = 9.81/CoM_wrt_foot_z.
@@ -223,45 +172,150 @@ ExponentialPlusPiecewisePolynomial<double> LipmWarmStartSystem::ConstructLipmTra
   A(2, 2) = omega;
   A(3, 3) = -omega;
 
+
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
 }
 
-void LipmWarmStartSystem::CalcTrajFromStep(
+void LipmWarmStartSystem::CalcTrajFromCurrent(
     const Context<double>& context,
-    drake::trajectories::Trajectory<double>* traj,
-    int idx) const {
+    drake::trajectories::Trajectory<double>* traj) const {
 
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-
-  double prev_event_time = // fsm switch time
+  double fsm_state =
+      this->EvalVectorInput(context, fsm_port_)->get_value()(0);
+  double prev_event_time = // fsm switch timep
       this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+  VectorXd des_srbd_state =
+      this->EvalVectorInput(context, x_des_input_port_)->get_value();
 
+  VectorXd x = robot_output->GetState();
+
+  // Find fsm_state in unordered_fsm_states_
+  auto it = find(
+      unordered_fsm_states_.begin(),
+      unordered_fsm_states_.end(), int(fsm_state));
+  int mode_index = std::distance(unordered_fsm_states_.begin(), it);
+
+  // Get time
   double timestamp = robot_output->get_timestamp();
-  double start_time = timestamp + idx * stance_duration_;
-  double end_time = prev_event_time + stance_duration_ * (idx + 1);
+  double start_time = timestamp;
+  double end_time = prev_event_time + stance_duration_;
+  double first_mode_duration = end_time - start_time;
 
-  Vector3d CoM = Vector3d::Zero();
-  Vector3d dCoM = Vector3d::Zero();
-  Vector3d stance_foot_pos = Vector3d::Zero();
+  start_time = drake::math::saturate(start_time, -1,end_time - 0.001);
 
-  Vector4d state_sol = LipmMpc::GetStateSolutionByIndex(
-      idx, context.get_discrete_state(mpc_state_sol_idx_).get_value());
+  VectorXd srbd_state = plant_.CalcSRBStateFromPlantState(x);
+  // Get center of mass position and velocity
+  Vector3d CoM = srbd_state.segment<3>(0);
+  Vector3d dCoM = srbd_state.segment<3>(6);
 
-  CoM.head<2>() = state_sol.head<2>();
-  CoM(2) = desired_com_height_;
-  dCoM.head<2>() = state_sol.tail<2>();
-  stance_foot_pos.head<2>() = LipmMpc::GetInputSolutionByIndex(
-      idx, context.get_discrete_state(mpc_input_sol_idx_).get_value());
 
-  // Assign traj
-  auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
-      ExponentialPlusPiecewisePolynomial<double>*>(traj);
+  Vector3d stance_foot_pos = plant_.CalcFootPosition(
+      x, unordered_state_stances_[mode_index]);
 
-  *exp_pp_traj =
-      ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
+  std::vector<std::vector<Eigen::Vector2d>> xy_dxy = MakeDesXYVel(
+      4, first_mode_duration, des_srbd_state, srbd_state);
+
+  double Q = 10.0;
+  std::vector<double> height_vector = {CoM(2), CoM(2), CoM(2)};
+  LipmMpc mpc(
+      xy_dxy.front(),
+      xy_dxy.back(),
+      Q, Q,
+      CoM.head(2),
+      dCoM.head(2),
+      stance_foot_pos.head(2), 3,
+      first_mode_duration, stance_duration_,
+      height_vector,
+      0.55,
+      0.55,
+      0.05,
+      (unordered_state_stances_[mode_index] == BipedStance::kLeft));
+
+  drake::solvers::MathematicalProgramResult result = drake::solvers::Solve(mpc);
+
+  std::vector< drake::trajectories::ExponentialPlusPiecewisePolynomial<double>>
+      step_trajs;
+
+  for (int idx = 0; idx < 3; idx++) {
+    double start = timestamp + idx * stance_duration_;
+    double end = prev_event_time + stance_duration_ * (idx + 1);
+
+    Vector3d CoM_i = Vector3d::Zero();
+    Vector3d dCoM_i = Vector3d::Zero();
+    Vector3d stance_foot_pos_i = Vector3d::Zero();
+
+    Vector4d state_sol = LipmMpc::GetStateSolutionByIndex(
+        idx,  result.GetSolution(mpc.x_lipm_vars()));
+
+    std::cout << "state_sol:\n" << state_sol << std::endl;
+    CoM_i.head<2>() = state_sol.head<2>();
+    CoM_i(2) = desired_com_height_;
+    dCoM_i.head<2>() = state_sol.tail<2>();
+    stance_foot_pos_i.head<2>() = LipmMpc::GetInputSolutionByIndex(
+        idx, result.GetSolution(mpc.u_lipm_vars()));
+
+    step_trajs.push_back(
+        ConstructLipmTraj(CoM_i, dCoM_i, stance_foot_pos_i, start, end));
+  }
+  MakeCubicSrbdApproximationFromExponentials(step_trajs, traj, prev_event_time);
 }
 
+void LipmWarmStartSystem::MakeCubicSrbdApproximationFromExponentials(
+    std::vector<
+        drake::trajectories::ExponentialPlusPiecewisePolynomial<double>> exps,
+    drake::trajectories::Trajectory<double> *output_traj,
+    double prev_touchdown_time) const {
 
+  std::vector<
+      std::unique_ptr<
+          drake::trajectories::Trajectory<double>>> deriv;
+
+  for (auto & exp : exps) {
+    deriv.push_back(exp.MakeDerivative(1));
+  }
+
+  int n = std::floor(
+      (exps.back().end_time() - exps.front().start_time()) / mpc_dt_);
+
+  MatrixXd state_knots = MatrixXd::Zero(6, n);
+  MatrixXd state_derivs = MatrixXd::Zero(6, n);
+  VectorXd breaks = VectorXd::Zero(n);
+
+  for (int i = 0; i < n; i++) {
+    double t = exps.front().start_time() + i * mpc_dt_;
+    int idx = std::floor((t - prev_touchdown_time) / stance_duration_);
+    state_knots.block(0, i, 3, 1) = exps.at(idx).value(t);
+    state_derivs.block(0, i, 3, 1) = deriv.at(idx)->value(t);
+    breaks(i) = t;
+  }
+
+  std::cout << state_knots << std::endl;
+  std::cout << state_derivs << std::endl;
+  std::cout << breaks << std::endl;
+
+  // Assign traj
+  auto pp_traj = (PiecewisePolynomial<double>*)dynamic_cast<
+      PiecewisePolynomial<double>*>(output_traj);
+
+  *pp_traj = PiecewisePolynomial<double>::CubicHermite(
+      breaks, state_knots, state_derivs);
+
+}
+
+void LipmWarmStartSystem::CalcFootTarget(
+    const drake::systems::Context<double>& context,
+    drake::systems::BasicVector<double>* output) const {
+  Vector2d stance1xy = LipmMpc::GetInputSolutionByIndex(
+      1, context.get_discrete_state(mpc_input_sol_idx_).get_value());
+  Vector2d stance2xy = LipmMpc::GetInputSolutionByIndex(
+      2, context.get_discrete_state(mpc_input_sol_idx_).get_value());
+
+  output->get_mutable_value().segment<2>(0) = stance1xy;
+  output->get_mutable_value().segment<2>(3) = stance2xy;
+  output->get_mutable_value()(2) = 0;
+  output->get_mutable_value()(5) = 0;
+}
 }  // namespace systems
 }  // namespace dairlib

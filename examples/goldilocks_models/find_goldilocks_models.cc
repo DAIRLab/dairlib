@@ -1522,7 +1522,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
            "pelvis_height"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr, FLAGS_N_sample_ph},
-          {0, 0, 0.35, FLAGS_turning_rate_center, 0.9},
+          {0, 0, 0.35, FLAGS_turning_rate_center, 0.95},
           {0.03, 0.05, 0.05, 0.125, 0.1},
           {(FLAGS_N_sample_sl > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_gi > 1) && FLAGS_is_stochastic,
@@ -1623,6 +1623,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
       if (beta_momentum != 0) {
         // haven't tried or tuned this yet.
         h_step = 1e-3;
+      }
+
+      // Set the step size for particular models
+      if (FLAGS_rom_option >= 10 && FLAGS_rom_option <= 13) {
+        h_step = 5e-3;
       }
     }
   }

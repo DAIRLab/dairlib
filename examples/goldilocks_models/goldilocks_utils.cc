@@ -101,6 +101,11 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
     const drake::multibody::MultibodyPlant<double>& plant, bool print_info) {
+  // Whenever you add a new model, remember to update the code in
+  //   find_goldilocks_models.cc
+  //   goldilocks_model_traj_opt.cc
+  //   cassie_rom_planner_system.cc
+
   // Basis for mapping function (dependent on the robot)
   vector<int> empty_inds = {};
   std::unique_ptr<MonomialFeatures> mapping_basis;
@@ -125,7 +130,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     } else if (rom_option == 9) {
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
-    } else if ((rom_option == 10) || (rom_option == 11)) {
+    } else if ((rom_option >= 10) && (rom_option <= 13)) {
       std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
       cout << "Joint skipped in mapping function: ";
       for (auto& pair : pos_map) {
@@ -172,15 +177,13 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 8) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3) + 1, empty_inds, "dynamic basis");
-  } else if (rom_option == 9) {
+  } else if (rom_option == 9 || rom_option == 10 || rom_option == 11) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 10) {
+  } else if (rom_option == 12 || rom_option == 13) {
+    // Highest degree = 4
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 11) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+        4, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else {
     throw std::runtime_error("Not implemented");
   }
@@ -253,14 +256,14 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);
-  } else if (rom_option == 10) {
+  } else if (rom_option == 10 || rom_option == 12) {
     // Fix the mapping function of the COM xy part
     // Use pelvis as a proxy for COM
     // ROM is only a function of stance leg's joints
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx, true);
-  } else if (rom_option == 11) {
+  } else if (rom_option == 11 || rom_option == 13) {
     // Fix the mapping function of LIPM
     // Use pelvis as a proxy for COM
     // ROM is only a function of stance leg's joints

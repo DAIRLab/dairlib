@@ -151,7 +151,6 @@ void LipmWarmStartSystem::CalcWarmstartSolution(
   drake::solvers::MathematicalProgramResult result = drake::solvers::Solve(mpc);
 
   DRAKE_DEMAND(result.is_success());
-  std::cout << "result" << result.GetSolution(mpc.decision_variables()) << std::endl;
 
   solvec->get_mutable_value().head(12) = result.GetSolution(mpc.x_lipm_vars());
   solvec->get_mutable_value().tail(6) = result.GetSolution(mpc.u_lipm_vars());
@@ -265,7 +264,6 @@ void LipmWarmStartSystem::CalcTrajFromCurrent(
     Vector4d state_sol = LipmMpc::GetStateSolutionByIndex(
         idx, mpc_sol.head(12));
 
-    std::cout << "state_sol:\n" << state_sol << std::endl;
     CoM.head<2>() = state_sol.head<2>();
     CoM(2) = desired_com_height_;
     dCoM.head<2>() = state_sol.tail<2>();
@@ -305,10 +303,6 @@ void LipmWarmStartSystem::MakeCubicSrbdApproximationFromExponentials(
     state_derivs.block(0, i, 3, 1) = deriv.at(idx)->value(t);
     breaks(i) = t;
   }
-
-  std::cout << state_knots << std::endl;
-  std::cout << state_derivs << std::endl;
-  std::cout << breaks << std::endl;
 
   // Assign traj
   auto pp_traj = (PiecewisePolynomial<double>*)dynamic_cast<

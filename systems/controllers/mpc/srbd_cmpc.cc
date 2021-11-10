@@ -387,14 +387,12 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   const auto& warmstart_traj =
       traj_value->get_value<drake::trajectories::Trajectory<double>>();
 
-  VectorXd q = robot_output->GetPositions();
-  VectorXd v = robot_output->GetVelocities();
-  VectorXd x(plant_.nq() + plant_.nv());
-  x << q, v;
+  VectorXd x = robot_output->GetState();
 
   double timestamp = robot_output->get_timestamp();
   double time_since_last_event = timestamp;
   int fsm_state = 0;
+
   if (use_fsm_) {
     fsm_state =
         (int) (discrete_state->get_vector(current_fsm_state_idx_)
@@ -407,7 +405,6 @@ EventStatus SrbdCMPC::PeriodicUpdate(
 
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x),
                                  fsm_state, time_since_last_event);
-
   } else {
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x), 0, 0);
   }
@@ -416,13 +413,13 @@ EventStatus SrbdCMPC::PeriodicUpdate(
       this->EvalVectorInput(context, foot_target_port_)->get_value();
   UpdateFootPlacementCost(
       fsm_state,
-      Vector3d::Zero(),
-      Vector3d::Zero());
+      foot_target.head(kLinearDim_),
+      foot_target.tail(kLinearDim_));
 
-//  SetInitialGuess(fsm_state, timestamp,
-//                  foot_target.head(kLinearDim_),
-//                  foot_target.tail(kLinearDim_),
-//                  warmstart_traj);
+  SetInitialGuess(fsm_state, timestamp,
+                  foot_target.head(kLinearDim_),
+                  foot_target.tail(kLinearDim_),
+                  warmstart_traj);
 
 
   result_ = solver_.Solve(prog_);

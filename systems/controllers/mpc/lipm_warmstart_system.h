@@ -49,9 +49,9 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
     return this->get_output_port(output_port_foot_target_);
   }
  private:
-  drake::systems::EventStatus DiscreteVariableUpdate(
+  void CalcWarmstartSolution(
       const drake::systems::Context<double> &context,
-      drake::systems::DiscreteValues<double> *discrete_state) const;
+      drake::systems::BasicVector<double> *solvec) const;
 
   drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
   ConstructLipmTraj(const Eigen::VectorXd &CoM, const Eigen::VectorXd &dCoM,
@@ -87,8 +87,7 @@ class LipmWarmStartSystem : public drake::systems::LeafSystem<double> {
   int output_port_foot_target_;
 
 
-  int mpc_input_sol_idx_;
-  int mpc_state_sol_idx_;
+  const drake::systems::CacheEntry* warmstart_sol_{};
 
   const multibody::SingleRigidBodyPlant &plant_;
   drake::systems::Context<double> *context_;

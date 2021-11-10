@@ -178,6 +178,7 @@ int DoMain(int argc, char* argv[]) {
           "osc_rom_walking_gains_simulation.yaml";
     }
   }
+  cout << "osc_gains_filename = " << osc_gains_filename << endl;
   const YAML::Node& root2 =
       YAML::LoadFile(FindResourceOrThrow(osc_gains_filename));
   drake::yaml::YamlReadArchive(root2).Accept(&osc_gains);

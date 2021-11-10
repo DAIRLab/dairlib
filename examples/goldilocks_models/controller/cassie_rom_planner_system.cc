@@ -622,12 +622,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       } else {
         reg_x_FOM.at(2 * i) = x_guess_left_in_front_pre_;
         reg_x_FOM.at(2 * i + 1) = x_guess_left_in_front_post_;
-
-        reg_x_FOM.at(2 * i).segment<2>(4) = des_xy_pos.at(i + 1);
-        reg_x_FOM.at(2 * i + 1).segment<2>(4) = des_xy_pos.at(i + 1);
-        reg_x_FOM.at(2 * i).segment<2>(nq_ + 3) = des_xy_vel.at(i);
-        reg_x_FOM.at(2 * i + 1).segment<2>(nq_ + 3) = des_xy_vel.at(i);
       }
+      reg_x_FOM.at(2 * i).segment<2>(4) = des_xy_pos.at(i + 1);
+      reg_x_FOM.at(2 * i + 1).segment<2>(4) = des_xy_pos.at(i + 1);
+      reg_x_FOM.at(2 * i).segment<2>(nq_ + 3) = des_xy_vel.at(i);
+      reg_x_FOM.at(2 * i + 1).segment<2>(nq_ + 3) = des_xy_vel.at(i);
+
       left_stance = !left_stance;
     }
   }
@@ -739,8 +739,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
           local_preprocess_x_lipm.col(param_.n_step).tail<2>();
     } else {
       DRAKE_DEMAND(param_.n_step > 1);
-      // des_xy_vel is not long enough for the predicted step
-      // Also, go back 2 steps because velocity is asymmetric in y direction
+      // des_xy_vel is of size n_step.
+      // The predicted step (step after n_step) corresponds to
+      // des_xy_vel.at(n_step), but des_xy_vel's size is not big enough to cover
+      // the predicted step, so we -2. Note that, we go back 2 steps instead of
+      // 1 step because velocity is asymmetric in y direction
       des_predicted_xy_vel = des_xy_vel.at(param_.n_step - 2);
     }
 
@@ -1461,7 +1464,7 @@ void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
     const VectorXd& final_position, vector<VectorXd>* des_xy_pos,
     vector<VectorXd>* des_xy_vel) const {
   // Parameters
-  double y_vel_offset = 0.25;
+  double y_vel_offset = 0.2;
 
   double total_phase_length = n_total_step - init_phase;
 

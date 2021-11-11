@@ -139,7 +139,7 @@ void SrbdCMPC::Build() {
 //  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
 //  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-//  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
 //  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1.0);
   solver_options.SetOption(OsqpSolver::id(), "max_iter", 15000);
   prog_.SetSolverOptions(solver_options);
@@ -220,17 +220,14 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
 //    std::cout <<  constraint.to_string() << std::endl;
 //  }
 
-  std::cout << "Mode: " << std::to_string(mode.stance) << std::endl;
-  std::cout << "N until next stance: " << std::to_string(n_until_next_stance) << std::endl;
 
-
-  if (n_until_next_stance == mode.N) {
+  if (n_until_next_stance == mode.N ) {
     // make current stance dynamics and apply to mode
     MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + nu_);
     VectorXd beq = VectorXd::Zero(nx_);
     CopyDiscreteDynamicsConstraint(mode, true, pos, &Aeq, &beq);
 
-    for (int i = 0; i < (mode.N-1); i++){
+    for (int i = 0; i < (mode.N); i++){
       prog_.RemoveConstraint(dynamics_.at(i));
       dynamics_.at(i) = prog_.AddLinearEqualityConstraint(
           Aeq, beq, {xx.at(i), uu.at(i), xx.at(i+1)});
@@ -428,11 +425,12 @@ EventStatus SrbdCMPC::PeriodicUpdate(
                   foot_target.head(kLinearDim_),
                   foot_target.tail(kLinearDim_),
                   warmstart_traj);
-  std::vector<drake::solvers::LinearConstraint*> lin_con;
-  for (auto& binding : prog_.GetAllLinearConstraints()) {
-    lin_con.push_back(binding.evaluator().get());
-  }
-  print_constraint(lin_con);
+
+//  std::vector<drake::solvers::LinearConstraint*> lin_con;
+//  for (auto& binding : prog_.GetAllLinearConstraints()) {
+//    lin_con.push_back(binding.evaluator().get());
+//  }
+//  print_constraint(lin_con);
 
 
   result_ = solver_.Solve(prog_);
@@ -460,8 +458,10 @@ void SrbdCMPC::UpdateConstraints(
   initial_state_->UpdateCoefficients(MatrixXd::Identity(nx_, nx_), x0);
 
   if (!use_fsm_) { return; }
-
-  int n_until_next_state = modes_.at(fsm_state).N - t_since_last_switch / dt_;
+  std::cout << "Time since last switch: " <<
+      std::to_string(t_since_last_switch) << std::endl;
+  int n_until_next_state = modes_.at(fsm_state).N -
+      std::floor(t_since_last_switch / dt_);
   UpdateDynamicsConstraints(x0, n_until_next_state, fsm_state);
   UpdateKinematicConstraints(n_until_next_state, fsm_state);
 }

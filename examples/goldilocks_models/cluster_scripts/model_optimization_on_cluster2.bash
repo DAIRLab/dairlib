@@ -47,7 +47,7 @@ n_ph=1
 
 # Other parameters
 final_iter=100
-folder_name=20211110_decrease_beta
+folder_name=
 
 # Delete and create a new data folder if specified in the argument
 if [ "$1" = "rm" ]; then

@@ -39,7 +39,7 @@ echo ===== evaluate nomial traj \(with snopt scaling\) =====
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 echo ===== copy files for nomial gaits =====
-cp ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/0_* ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/nominal_no_constraint_traj/
+cp -n ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/0_* ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/nominal_no_constraint_traj/
 
 echo ===== evaluate nomial traj \(without snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
@@ -56,7 +56,7 @@ echo ===== evaluate nomial traj \(with snopt scaling\) =====
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 echo ===== copy files for nomial gaits with cubic swing foot constraint =====
-cp ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/0_* ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/nominal_traj_cubic_swing_foot/
+cp -n ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/0_* ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/nominal_traj_cubic_swing_foot/
 
 echo ===== evaluate nomial traj with com accel constraint  \(without snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \

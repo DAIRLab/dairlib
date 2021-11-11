@@ -216,11 +216,6 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
   auto& mode = modes_.at(fsm_state);
   Vector3d pos = plant_.CalcFootPosition(x, mode.stance);
 
-//  for (auto& constraint : dynamics_) {
-//    std::cout <<  constraint.to_string() << std::endl;
-//  }
-
-
   if (n_until_next_stance == mode.N ) {
     // make current stance dynamics and apply to mode
     MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + nu_);

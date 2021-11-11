@@ -40,9 +40,6 @@ py_binary(
 py_binary(
     name = "log_plotter_cassie",
     srcs = ["analysis_scripts/log_plotter_cassie.py"],
-    data = [
-        "@lcm//:lcm-python",
-    ],
     deps = [
         ":module_py",
         "//bindings/pydairlib/common",
@@ -50,6 +47,7 @@ py_binary(
         "//bindings/pydairlib/lcm:process_lcm_log_py",
         "//bindings/pydairlib/multibody:multibody_py",
         "//lcmtypes:lcmtypes_robot_py",
+        "@lcm//:lcm-python",
     ],
 )
 

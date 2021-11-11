@@ -76,7 +76,7 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
-DEFINE_double(qp_time_limit, 0.1, "maximum qp solve time");
+DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 DEFINE_bool(spring_model, true, "");
 

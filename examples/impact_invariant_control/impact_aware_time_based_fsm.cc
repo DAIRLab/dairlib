@@ -79,17 +79,19 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
   // Accumulate the durations to get timestamps
   double sum = 0;
   DRAKE_DEMAND(states.size() == state_durations.size());
-//  impact_times_.push_back(0.0);
-//  impact_states_.push_back(0);
+  impact_times_.push_back(0.0);
+  impact_states_.push_back(0);
   for (int i = 0; i < states.size(); ++i) {
     sum += state_durations[i];
     accu_state_durations_.push_back(sum);
-//    if (states[i] == 2) {
+    if (states[i] == 2) {
+      impact_times_.push_back(sum);
+      impact_states_.push_back(states[i+1]);
+      std::cout << sum << std::endl;
+      std::cout << states[i+1] << std::endl;
+    }
     impact_times_.push_back(sum);
-    impact_states_.push_back(states[i+1]);
-//    std::cout << sum << std::endl;
-//    std::cout << states[i+1] << std::endl;
-//    }
+    impact_states_.push_back(states[i]);
   }
 
   period_ = sum;

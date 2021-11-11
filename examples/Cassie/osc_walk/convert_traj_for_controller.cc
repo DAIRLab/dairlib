@@ -356,6 +356,20 @@ int DoMain() {
                                   "rfoot_xdot",  "rfoot_ydot",  "rfoot_zdot",
                                   "rfoot_xddot", "rfoot_yddot", "rfoot_zddot"};
 
+    auto lhip_traj_block = LcmTrajectory::Trajectory();
+    lhip_traj_block.traj_name = "left_hip_trajectory" + std::to_string(mode);
+    lhip_traj_block.datapoints = all_l_hip_points[mode];
+    lhip_traj_block.time_vector = all_times[mode];
+    lhip_traj_block.datatypes = {"lhip_x",    "lhip_y",    "lhip_z",
+                                 "lhip_xdot", "lhip_ydot", "lhip_zdot"};
+
+    auto rhip_traj_block = LcmTrajectory::Trajectory();
+    rhip_traj_block.traj_name = "right_hip_trajectory" + std::to_string(mode);
+    rhip_traj_block.datapoints = all_r_hip_points[mode];
+    rhip_traj_block.time_vector = all_times[mode];
+    rhip_traj_block.datatypes = {"rhip_x",    "rhip_y",    "rhip_z",
+                                 "rhip_xdot", "rhip_ydot", "rhip_zdot"};
+
     auto pelvis_traj_block = LcmTrajectory::Trajectory();
     pelvis_traj_block.traj_name =
         "pelvis_trans_trajectory" + std::to_string(mode);
@@ -379,10 +393,14 @@ int DoMain() {
 
     converted_trajectories.push_back(lfoot_traj_block);
     converted_trajectories.push_back(rfoot_traj_block);
+    converted_trajectories.push_back(lhip_traj_block);
+    converted_trajectories.push_back(rhip_traj_block);
     converted_trajectories.push_back(pelvis_traj_block);
     converted_trajectories.push_back(pelvis_orientation_block);
     trajectory_names.push_back(lfoot_traj_block.traj_name);
     trajectory_names.push_back(rfoot_traj_block.traj_name);
+    trajectory_names.push_back(lhip_traj_block.traj_name);
+    trajectory_names.push_back(rhip_traj_block.traj_name);
     trajectory_names.push_back(pelvis_traj_block.traj_name);
     trajectory_names.push_back(pelvis_orientation_block.traj_name);
   }
@@ -393,7 +411,7 @@ int DoMain() {
                                       "for Cassie walking");
 
   processed_traj.WriteToFile(FLAGS_folder_path + FLAGS_trajectory_name +
-                             "_processed");
+                             "_processed_rel");
   return 0;
 }
 

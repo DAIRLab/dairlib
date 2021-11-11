@@ -75,7 +75,7 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GeneratePelvisTraj(
   return traj_;
 }
 
-PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSlipTraj(
+PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
     const VectorXd& x, double t, int fsm_state) const {
   // fsm_state should be unused
   if (fsm_state == 2) {
@@ -96,7 +96,7 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSlipTraj(
       plant_.EvalBodySpatialVelocityInWorld(*context_, pelvis_).translational();
   Vector3d leg_length = pelvis_pos - foot_pos;
 
-  double compression = leg_length.norm() - rest_length;
+  double compression = leg_length.norm() - rest_length_;
   Vector3d f_leg =
       k_leg_ * compression * leg_length.normalized() + b_leg_ * pelvis_vel;
   VectorXd rddot = f_g + f_leg;
@@ -108,6 +108,8 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSlipTraj(
   MatrixXd samples_dot(3, 2);
   samples << pelvis_pos, pelvis_pos + 0.5 * rddot * dt * dt;
   samples_dot << pelvis_vel, pelvis_vel + rddot * dt;
+
+  std::cout << "pelvis_acc: " << rddot << std::endl;
 
   return PiecewisePolynomial<double>::CubicHermite(breaks, samples,
                                                    samples_dot);
@@ -132,6 +134,8 @@ void PelvisTransTrajGenerator::CalcTraj(
   if (fsm_state == 0 || fsm_state == 1) {
     *casted_traj =
         GeneratePelvisTraj(robot_output->GetState(), clock, fsm_state);
+//    *casted_traj =
+//        GenerateSLIPTraj(robot_output->GetState(), clock, fsm_state);
   }
 }
 

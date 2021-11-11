@@ -16,6 +16,7 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context, const std::string& hip_name,
       bool isLeftFoot,
       const drake::trajectories::PiecewisePolynomial<double>& foot_traj,
+      const drake::trajectories::PiecewisePolynomial<double>& hip_traj,
       bool relative_feet = false, double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -53,6 +54,7 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd Kd_ = Eigen::MatrixXd::Zero(2, 2);
 
   drake::trajectories::PiecewisePolynomial<double> foot_traj_;
+  drake::trajectories::PiecewisePolynomial<double> hip_traj_;
 
   bool is_left_foot_;
   bool relative_feet_;

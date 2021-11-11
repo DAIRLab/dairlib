@@ -27,13 +27,16 @@ namespace dairlib::examples::osc_run {
 FootTrajGenerator::FootTrajGenerator(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const string& hip_name, bool isLeftFoot,
-    const PiecewisePolynomial<double>& foot_traj, bool relative_feet,
+    const PiecewisePolynomial<double>& foot_traj,
+    const PiecewisePolynomial<double>& hip_traj,
+    bool relative_feet,
     double time_offset)
     : plant_(plant),
       context_(context),
       world_(plant.world_frame()),
       hip_frame_(plant.GetFrameByName(hip_name)),
       foot_traj_(foot_traj),
+      hip_traj_(hip_traj),
       is_left_foot_(isLeftFoot),
       relative_feet_(relative_feet) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
@@ -61,6 +64,7 @@ FootTrajGenerator::FootTrajGenerator(
 
   // Shift trajectory by time_offset
   foot_traj_.shiftRight(time_offset);
+  hip_traj_.shiftRight(time_offset);
 }
 
 PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
@@ -76,7 +80,11 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   PiecewisePolynomial<double> foot_offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
                                                  foot_offset_points);
-  return foot_traj_ + foot_offset_traj;
+  if(relative_feet_){
+    return foot_traj_ - hip_traj_ + foot_offset_traj;
+  }else{
+    return foot_traj_ + foot_offset_traj;
+  }
 }
 
 void FootTrajGenerator::AddRaibertCorrection(
@@ -98,6 +106,7 @@ void FootTrajGenerator::AddRaibertCorrection(
   std::vector<double> breaks = traj->get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   MatrixXd foot_offset_points = footstep_correction.replicate(1, breaks.size());
+//  std::cout << foot_offset_points << std::endl;
   PiecewisePolynomial<double> foot_offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
                                                  foot_offset_points);

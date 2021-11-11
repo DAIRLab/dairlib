@@ -30,11 +30,17 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(clock_port_);
   }
 
+  void SetSLIPParams(double rest_length, double k_leg, double b_leg){
+    rest_length_ = rest_length;
+    k_leg_ = k_leg;
+    b_leg_ = rest_length;
+  }
+
  private:
   drake::trajectories::PiecewisePolynomial<double> GeneratePelvisTraj(
       const Eigen::VectorXd& x, double t, int fsm_state) const;
 
-  drake::trajectories::PiecewisePolynomial<double> GenerateSlipTraj(
+  drake::trajectories::PiecewisePolynomial<double> GenerateSLIPTraj(
       const Eigen::VectorXd& x, double t, int fsm_state) const;
 
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -66,8 +72,8 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex clock_port_;
 
   // SLIP parameters
-  double rest_length = 0.9;
-  double k_leg_ = 50.0;
+  double rest_length_ = 0.8;
+  double k_leg_ = 100.0;
   double b_leg_ = 5.0;
 };
 

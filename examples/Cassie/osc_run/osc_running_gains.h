@@ -21,6 +21,10 @@ struct OSCRunningGains : OSCGains {
   double vel_scale_rot;
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
+  bool relative_feet;
+  double rest_length;
+  double k_leg;
+  double b_leg;
 
   // swing foot tracking
   std::vector<double> SwingFootW;
@@ -63,6 +67,10 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(impact_threshold));
     a->Visit(DRAKE_NVP(mu));
+    a->Visit(DRAKE_NVP(relative_feet));
+    a->Visit(DRAKE_NVP(rest_length));
+    a->Visit(DRAKE_NVP(k_leg));
+    a->Visit(DRAKE_NVP(b_leg));
 
     a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(PelvisKp));

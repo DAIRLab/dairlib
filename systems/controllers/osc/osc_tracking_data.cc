@@ -455,7 +455,7 @@ void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
       context_w_spr,
       plant_w_spr_.get_body(body_index_w_spr_.at(GetStateIdx())));
   Quaterniond y_quat(transform_mat.rotation() *
-      frame_pose_.at(GetStateIdx()).linear());
+                     frame_pose_.at(GetStateIdx()).linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
@@ -466,13 +466,13 @@ void RotTaskSpaceTrackingData::UpdateYError() {
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
   y_quat_des.normalize();
 
-  Quaterniond y_quat(y_(0), y_(1), y_(2), y_(3));
+  Quaterniond y_quat = Quaterniond(y_(0), y_(1), y_(2), y_(3));
 
   // Get relative quaternion (from current to desired)
   Quaterniond relative_qaut = (y_quat_des * y_quat.inverse()).normalized();
+
   double theta = 2 * acos(relative_qaut.w());
   Vector3d rot_axis = relative_qaut.vec().normalized();
-
   error_y_ = theta * rot_axis;
 }
 
@@ -514,12 +514,12 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void RotTaskSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
-      .CalcBiasSpatialAcceleration(
-          context_wo_spr, JacobianWrtVariable::kV,
-          *body_frames_wo_spr_.at(GetStateIdx()),
-          frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
-          world_wo_spr_)
-      .rotational();
+               .CalcBiasSpatialAcceleration(
+                   context_wo_spr, JacobianWrtVariable::kV,
+                   *body_frames_wo_spr_.at(GetStateIdx()),
+                   frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
+                   world_wo_spr_)
+               .rotational();
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {

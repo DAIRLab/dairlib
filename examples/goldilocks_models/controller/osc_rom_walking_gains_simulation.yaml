@@ -55,7 +55,7 @@ hip_yaw_kd: 0.5
 #  [   0.01,    0,     0,
 #      0,    0,     0,
 #      0,    0,     0.2]
-# Add back x components
+# Add back x components  # This somehow caused stance hip yaw to rotate for simulation with springs
 RomW:
   [0.1,    0,     0,
    0, 0,     0,

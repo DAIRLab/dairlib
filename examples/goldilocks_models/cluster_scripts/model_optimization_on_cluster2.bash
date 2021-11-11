@@ -21,7 +21,7 @@
 
 ##job setting##
 #SBATCH --ntasks=1
-#SBATCH --array=0%1
+#### commented out. #SSSBATCH --array=0%1
 #### commented out. #SSSBATCH --array=0-100%1
 
 echo Make sure that cpus-per-task is less than total number sample per iter

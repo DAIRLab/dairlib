@@ -83,7 +83,7 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
-DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
+DEFINE_double(qp_time_limit, 0.1, "maximum qp solve time");
 
 DEFINE_bool(spring_model, true, "");
 
@@ -533,9 +533,7 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
       gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
-  VectorXd pelvis_desired_quat(4);
-  pelvis_desired_quat << 1, 0, 0, 0;
-  osc->AddConstTrackingData(&pelvis_balance_traj, pelvis_desired_quat);
+  osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
   RotTaskSpaceTrackingData pelvis_heading_traj(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
@@ -591,6 +589,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
+  builder.Connect(head_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),

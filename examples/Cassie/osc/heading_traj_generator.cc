@@ -11,6 +11,7 @@ using std::endl;
 using std::string;
 
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -71,6 +72,12 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   double approx_pelvis_yaw_i =
       atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 
+  // Get quaternion from body rotation matrix instead of state directly, becasue
+  // this is how osc tracking data get the quaternion.
+  Quaterniond quat(
+      plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().matrix());
+  quat.normalize();
+
   // Construct the PiecewisePolynomial.
   /// Given yaw position p_i and velocity v_i, we want to generate affine
   /// functions, p_i + v_i*t, for the desired trajectory. We use
@@ -82,15 +89,20 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   /// The value of dt changes the trajectory time horizon. As long as it's
   /// larger than the recompute time, the value doesn't affect the control
   /// outcome.
-  double dt = 10;
-  double approx_pelvis_yaw_f = approx_pelvis_yaw_i + des_yaw_vel(0) * dt;
+  double dt = 0.1;
+  double des_delta_yaw = des_yaw_vel(0) * dt;
   // We set pitch and roll = 0, because we also use this traj for balance in
   // some controller
-  Eigen::Vector4d pelvis_rotation_i(cos(approx_pelvis_yaw_i / 2), 0, 0,
-                                    sin(approx_pelvis_yaw_i / 2));
-  //  Eigen::Vector4d pelvis_rotation_i(q.head(4));
-  Eigen::Vector4d pelvis_rotation_f(cos(approx_pelvis_yaw_f / 2), 0, 0,
-                                    sin(approx_pelvis_yaw_f / 2));
+  Eigen::Vector4d pelvis_rotation_i;
+  pelvis_rotation_i << quat.w(), 0, 0, quat.z();
+  pelvis_rotation_i.normalize();
+  Quaterniond init_quat = quat;
+  init_quat.normalize();
+  Quaterniond relative_quat(cos(des_delta_yaw / 2), 0, 0,
+                            sin(des_delta_yaw / 2));
+  Quaterniond final_quat = relative_quat * init_quat;
+  Eigen::Vector4d pelvis_rotation_f;
+  pelvis_rotation_f << final_quat.w(), final_quat.vec();
 
   const std::vector<double> breaks = {context.get_time(),
                                       context.get_time() + dt};

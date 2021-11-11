@@ -178,7 +178,9 @@ DEFINE_int32(n_thread_to_use, -1, "# of threads you want to use");
 
 // Others
 DEFINE_string(program_name, "",
-    "The name of the program (to keep a record for future references)");
+              "The name of the program (to keep a record for future references)");
+DEFINE_string(data_folder_name, "",
+              "if non-empty, then we create one extra layer of folder");
 DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 
 // clang-format on
@@ -1496,8 +1498,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << endl;
 
   // Files parameters
-  const string dir = "../dairlib_data/goldilocks_models/find_models/robot_" +
-                     to_string(FLAGS_robot_option) + "/";
+  string folder_name =
+      FLAGS_data_folder_name.empty() ? "" : FLAGS_data_folder_name + "/";
+  const string dir = "../dairlib_data/goldilocks_models/find_models/" +
+                     folder_name + "robot_" + to_string(FLAGS_robot_option) +
+                     "/";
+  cout << "dir = " << dir << endl;
   string init_file = FLAGS_init_file;
   string prefix = "";
   if (!CreateFolderIfNotExist(dir)) return 0;

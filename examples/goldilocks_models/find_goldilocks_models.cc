@@ -1859,6 +1859,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
     VectorXd theta_yddot =
         readCSV(dir + to_string(iter_start) + string("_theta_yddot.csv"))
             .col(0);
+    if (rom->n_theta_y() != theta_y.size()) {
+      cout << "rom->n_theta_y() = " << rom->n_theta_y() << endl;
+      cout << "theta_y.size() = " << theta_y.size() << endl;
+    }
+    if (rom->n_theta_yddot() != theta_yddot.size()) {
+      cout << "rom->n_theta_yddot() = " << rom->n_theta_yddot() << endl;
+      cout << "theta_yddot.size() = " << theta_yddot.size() << endl;
+    }
     rom->SetThetaY(theta_y);
     rom->SetThetaYddot(theta_yddot);
   }

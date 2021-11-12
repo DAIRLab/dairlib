@@ -102,8 +102,9 @@ int DoMain(int argc, char* argv[]) {
   Vector3d left_safe_nominal_foot_pos = {0, 0.125, 0};
   Vector3d right_neutral_foot_pos = -left_neutral_foot_pos;
   Vector3d right_safe_nominal_foot_pos = -left_safe_nominal_foot_pos;
-  Matrix3d I_rot; // = Vector3d(0.91, 0.55, 0.89).asDiagonal();
-  I_rot << 0.91, 0.04, 0.09, 0.04, 0.55, -0.001, 0.08, -0.001, 0.89;
+  Matrix3d I_rot = Vector3d(0.91, 0.55, 0.89).asDiagonal();
+//  I_rot << 0.91, 0.04, 0.09, 0.04, 0.55, -0.001, 0.08, -0.001, 0.89;
+  std::cout << "I:\n" << I_rot <<std::endl;
 
   double mass = 30.0218;
   srb_plant.AddBaseFrame("pelvis", com_offset);

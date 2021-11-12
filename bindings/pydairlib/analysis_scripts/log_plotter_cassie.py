@@ -64,7 +64,6 @@ def main():
   filename = sys.argv[1]
   controller_channel = sys.argv[2]
   log = lcm.EventLog(filename, "r")
-  import pdb; pdb.set_trace()
   path = pathlib.Path(filename).parent
   filename = filename.split("/")[-1]
 
@@ -139,9 +138,9 @@ def main():
   # plot_mpc_swing_sol(mpc_output[25],0)
   # plot_mpc_swing_sol(mpc_output[25],1)
   # plot_mpc_swing_sol(mpc_output[25],2)
-  # plot_mpc_orientation_sol(mpc_output[25],0)
-  # plot_mpc_orientation_sol(mpc_output[25],1)
-  # plot_mpc_orientation_sol(mpc_output[25],2)
+  plot_mpc_orientation_sol(mpc_output[25],0)
+  plot_mpc_orientation_sol(mpc_output[25],1)
+  plot_mpc_orientation_sol(mpc_output[25],2)
 
   plt.show()
 

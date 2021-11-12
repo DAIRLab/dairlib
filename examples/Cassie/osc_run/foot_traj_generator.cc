@@ -72,7 +72,10 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   int n_cycles = t / (foot_traj_.end_time() - foot_traj_.start_time());
   double stride_length = foot_traj_.value(foot_traj_.end_time())(0) -
                          foot_traj_.value(foot_traj_.start_time())(0);
-  Vector3d foot_offset = {n_cycles * stride_length, 0, 0};
+  Vector3d foot_pos_offset = {n_cycles * stride_length, 0, 0};
+  Vector3d foot_vel_offset = {0, 0, 0};
+  VectorXd foot_offset = VectorXd(6);
+  foot_offset << foot_pos_offset, foot_vel_offset;
 
   std::vector<double> breaks = foot_traj_.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
@@ -137,7 +140,7 @@ void FootTrajGenerator::CalcTraj(
           traj);
   //  if (fsm_state[0] == FLIGHT) {
   *casted_traj = GenerateFlightTraj(robot_output->GetState(), timestamp);
-  this->AddRaibertCorrection(context, casted_traj);
+//  this->AddRaibertCorrection(context, casted_traj);
   //  }
 }
 

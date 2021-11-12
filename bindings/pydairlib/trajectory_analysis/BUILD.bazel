@@ -16,7 +16,7 @@ py_binary(
     srcs = ["cost_analysis.py"],
     deps = [
         "//bindings/pydairlib/common",
-        "//bindings/pydairlib/lcm:lcm",
+        "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/multibody:multibody_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],
@@ -27,9 +27,21 @@ py_binary(
     srcs = ["plot_jumping.py"],
     deps = [
         "//bindings/pydairlib/common",
-        "//bindings/pydairlib/lcm:lcm",
-        "//bindings/pydairlib/multibody:multibody_py",
         "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "plot_running",
+    srcs = ["plot_running.py"],
+    deps = [
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/multibody:multibody_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )

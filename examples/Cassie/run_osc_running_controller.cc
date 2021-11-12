@@ -302,28 +302,28 @@ int DoMain(int argc, char* argv[]) {
     pelvis_trans_traj.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_pelvis_trans_trajectory.time_vector,
-            lcm_pelvis_trans_trajectory.datapoints.topRows(3),
-            lcm_pelvis_trans_trajectory.datapoints.topRows(6).bottomRows(3)));
+            lcm_pelvis_trans_trajectory.datapoints.topRows(6),
+            lcm_pelvis_trans_trajectory.datapoints.bottomRows(6)));
     l_foot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_left_foot_traj.time_vector,
-            lcm_left_foot_traj.datapoints.topRows(3),
-            lcm_left_foot_traj.datapoints.topRows(6).bottomRows(3)));
+            lcm_left_foot_traj.datapoints.topRows(6),
+            lcm_left_foot_traj.datapoints.bottomRows(6)));
     r_foot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_right_foot_traj.time_vector,
-            lcm_right_foot_traj.datapoints.topRows(3),
-            lcm_right_foot_traj.datapoints.topRows(6).bottomRows(3)));
+            lcm_right_foot_traj.datapoints.topRows(6),
+            lcm_right_foot_traj.datapoints.bottomRows(6)));
     l_hip_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_left_hip_traj.time_vector,
-            lcm_left_hip_traj.datapoints.topRows(3),
-            lcm_left_hip_traj.datapoints.topRows(6).bottomRows(3)));
+            lcm_left_hip_traj.datapoints.topRows(6),
+            lcm_left_hip_traj.datapoints.bottomRows(6)));
     r_hip_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_right_hip_traj.time_vector,
-            lcm_right_hip_traj.datapoints.topRows(3),
-            lcm_right_hip_traj.datapoints.topRows(6).bottomRows(3)));
+            lcm_right_hip_traj.datapoints.topRows(6),
+            lcm_right_hip_traj.datapoints.bottomRows(6)));
     pelvis_rot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::FirstOrderHold(
             lcm_pelvis_rot_traj.time_vector,

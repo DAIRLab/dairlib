@@ -418,18 +418,20 @@ int DoMain(int argc, char* argv[]) {
   // Friction coefficient
   osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
+  const auto& pelvis = plant_w_spr.GetBodyByName("pelvis");
+  systems::controllers::WorldYawOscViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, left_toe.first, left_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
+      plant_w_spr, left_toe.first, left_toe.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, left_heel.first, left_heel.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
+      plant_w_spr, left_heel.first, left_heel.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, right_toe.first, right_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
+      plant_w_spr, right_toe.first, right_toe.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
+      plant_w_spr, right_heel.first, right_heel.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
   osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
@@ -486,7 +488,8 @@ int DoMain(int argc, char* argv[]) {
   com_data.AddFiniteStateToTrack(right_stance_state);
   RelativeTranslationTrackingData swing_ft_traj_local(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data, &com_data);
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
+      &com_data);
   WorldYawOscViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
 

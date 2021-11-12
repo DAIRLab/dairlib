@@ -31,9 +31,9 @@ class OptionsTrackingData : public OscTrackingData {
   const drake::trajectories::Trajectory<double>* ff_accel_multiplier_ = nullptr;
 
   // Additional feature -- OscViewFrame
-  const OscViewFrame* view_frame_;
+  const OscViewFrame<double>* view_frame_;
   Eigen::Matrix3d view_frame_rot_T_;
-  void SetViewFrame(const OscViewFrame& view_frame) {
+  void SetViewFrame(const OscViewFrame<double>& view_frame) {
     view_frame_ = &view_frame;
     with_view_frame_ = true;
   }

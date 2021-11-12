@@ -107,6 +107,7 @@ int DoMain() {
       VectorXd x_i = state_samples.col(i);
       VectorXd xdot_i = state_traj.derivative(1).value(times[i]);
 
+
       plant.SetPositionsAndVelocities(context.get(), x_i);
       Eigen::Ref<Eigen::MatrixXd> pelvis_pos_block =
           pelvis_points.block(0, i, 3, 1);
@@ -114,8 +115,6 @@ int DoMain() {
           l_foot_points.block(0, i, 3, 1);
       Eigen::Ref<Eigen::MatrixXd> r_foot_pos_block =
           r_foot_points.block(0, i, 3, 1);
-      l_toe_points(0, i) = x_i(pos_map["toe_left"]);
-      r_toe_points(0, i) = x_i(pos_map["toe_right"]);
       Eigen::Ref<Eigen::MatrixXd> l_hip_pos_block =
           l_hip_points.block(0, i, 3, 1);
       Eigen::Ref<Eigen::MatrixXd> r_hip_pos_block =
@@ -130,6 +129,9 @@ int DoMain() {
                                 &l_hip_pos_block);
       plant.CalcPointsPositions(*context, *hip_right_frame, zero_offset, *world,
                                 &r_hip_pos_block);
+
+      l_toe_points(0, i) = x_i(pos_map["toe_left"]);
+      r_toe_points(0, i) = x_i(pos_map["toe_right"]);
 
       pelvis_orientation.block(0, i, 4, 1) = x_i.head(4);
       pelvis_orientation.block(4, i, 4, 1) = xdot_i.head(4);
@@ -149,7 +151,6 @@ int DoMain() {
       plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                               *r_toe_frame, zero_offset, *world,
                                               *world, &J_r_foot);
-
       plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                               *hip_left_frame, zero_offset,
                                               *world, *world, &J_l_hip);
@@ -167,10 +168,10 @@ int DoMain() {
       r_hip_points.block(3, i, 3, 1) = J_r_hip * v_i;
     }
     pelvis_points = pelvis_points - 0.5 * (l_foot_points + r_foot_points);
-    if (FLAGS_relative_feet) {
-      l_foot_points = l_foot_points - l_hip_points;
-      r_foot_points = r_foot_points - r_hip_points;
-    }
+//    if (FLAGS_relative_feet) {
+//      l_foot_points = l_foot_points - l_hip_points;
+//      r_foot_points = r_foot_points - r_hip_points;
+//    }
     all_times.push_back(times);
     all_l_foot_points.push_back(l_foot_points);
     all_r_foot_points.push_back(r_foot_points);

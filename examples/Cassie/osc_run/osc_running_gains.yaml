@@ -1,10 +1,10 @@
 w_input: 0.0
 w_accel: 0.000000001
 #w_soft_constraint: 1000000
-w_soft_constraint: 1000
-w_input_reg: 0
-impact_threshold: 0.005
-relative_feet: false
+w_soft_constraint: 0000
+w_input_reg: 0.00000001
+impact_threshold: 0.000
+relative_feet: true
 
 # High level command gains (with radio)
 vel_scale_rot: -1
@@ -49,13 +49,13 @@ SwingFootW:
    0,    1,    0,
    0,     0,   1]
 SwingFootKp:
-  [50,    0,     0,
+  [50,    0,    0,
    0,    50,    0,
-   0,     0,  100]
+   0,     0,  50]
 SwingFootKd:
-  [ 5,   0,   0,
-    0,   5,   0,
-    0,   0,   5]
+  [ 1,   0,   0,
+    0,   1,   0,
+    0,   0,   1]
 FootstepKp:
     [0.05,    0,
        0,  0.05,

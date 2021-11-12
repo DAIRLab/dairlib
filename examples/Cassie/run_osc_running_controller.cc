@@ -64,9 +64,9 @@ using examples::osc_run::FootTrajGenerator;
 using multibody::FixedJointEvaluator;
 using osc::SwingToeTrajGenerator;
 using systems::controllers::JointSpaceTrackingData;
+using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::RelativeTranslationTrackingData;
 
 namespace examples {
 
@@ -277,20 +277,19 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> r_foot_trajectory;
   PiecewisePolynomial<double> pelvis_rot_trajectory;
 
-  for (auto name: output_trajs.GetTrajectoryNames()){
-    std::cout << name << std::endl;
-
-  }
+//  for (auto name : output_trajs.GetTrajectoryNames()) {
+//    std::cout << name << std::endl;
+//  }
   for (int mode = 0; mode < dircon_trajectory.GetNumModes() * 2; ++mode) {
     const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
         output_trajs.GetTrajectory("pelvis_trans_trajectory" +
                                    std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_hip_traj =
         output_trajs.GetTrajectory("left_hip_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_hip_traj =
         output_trajs.GetTrajectory("right_hip_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_foot_traj =
         output_trajs.GetTrajectory("left_foot_trajectory" +
                                    std::to_string(mode));
@@ -319,12 +318,12 @@ int DoMain(int argc, char* argv[]) {
         PiecewisePolynomial<double>::CubicHermite(
             lcm_left_hip_traj.time_vector,
             lcm_left_hip_traj.datapoints.topRows(3),
-            lcm_left_hip_traj.datapoints.bottomRows(3)));
+            lcm_left_hip_traj.datapoints.topRows(6).bottomRows(3)));
     r_hip_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_right_hip_traj.time_vector,
             lcm_right_hip_traj.datapoints.topRows(3),
-            lcm_right_hip_traj.datapoints.bottomRows(3)));
+            lcm_right_hip_traj.datapoints.topRows(6).bottomRows(3)));
     pelvis_rot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::FirstOrderHold(
             lcm_pelvis_rot_traj.time_vector,
@@ -334,11 +333,14 @@ int DoMain(int argc, char* argv[]) {
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
           plant, plant_context.get(), pelvis_trans_traj, feet_contact_points);
-  pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length, osc_gains.k_leg, osc_gains.b_leg);
+  pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length,
+                                             osc_gains.k_leg, osc_gains.b_leg);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "hip_left", true, l_foot_trajectory, l_hip_trajectory);
+      plant, plant_context.get(), "hip_left", true, l_foot_trajectory,
+      l_hip_trajectory, osc_gains.relative_feet);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "hip_right", false, r_foot_trajectory, r_hip_trajectory);
+      plant, plant_context.get(), "hip_right", false, r_foot_trajectory,
+      r_hip_trajectory, osc_gains.relative_feet);
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_p_footstep,
                                           osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_p_footstep,
@@ -368,12 +370,12 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData right_hip_tracking_data(
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  left_hip_tracking_data.AddStateAndPointToTrack(right_stance_state, "hip_left");
+  left_hip_tracking_data.AddStateAndPointToTrack(right_stance_state,
+                                                 "hip_left");
   right_hip_tracking_data.AddStateAndPointToTrack(left_stance_state,
                                                   "hip_right");
   left_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_left");
-  right_hip_tracking_data.AddStateAndPointToTrack(air_phase,
-                                                  "hip_right");
+  right_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_right");
 
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -397,8 +399,8 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&left_foot_tracking_data);
     osc->AddTrackingData(&right_foot_tracking_data);
   }
-//  osc->AddTrackingData(&left_foot_tracking_data);
-//  osc->AddTrackingData(&right_foot_tracking_data);
+  //  osc->AddTrackingData(&left_foot_tracking_data);
+  //  osc->AddTrackingData(&right_foot_tracking_data);
 
   // Stance hip pitch trajectory
   auto hip_pitch_left_traj = dircon_trajectory.ReconstructJointTrajectory(
@@ -475,10 +477,10 @@ int DoMain(int argc, char* argv[]) {
       left_stance_state, "hip_roll_left", "hip_roll_leftdot");
   hip_roll_right_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "hip_roll_right", "hip_roll_rightdot");
-//  hip_roll_left_tracking_data.AddStateAndJointToTrack(
-//      air_phase, "hip_roll_left", "hip_roll_leftdot");
-//  hip_roll_right_tracking_data.AddStateAndJointToTrack(
-//      air_phase, "hip_roll_right", "hip_roll_rightdot");
+  //  hip_roll_left_tracking_data.AddStateAndJointToTrack(
+  //      air_phase, "hip_roll_left", "hip_roll_leftdot");
+  //  hip_roll_right_tracking_data.AddStateAndJointToTrack(
+  //      air_phase, "hip_roll_right", "hip_roll_rightdot");
   osc->AddTrackingData(&hip_roll_left_tracking_data);
   osc->AddTrackingData(&hip_roll_right_tracking_data);
 

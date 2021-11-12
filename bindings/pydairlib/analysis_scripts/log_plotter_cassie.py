@@ -51,8 +51,8 @@ def main():
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
-                                                   # "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
-                                                   "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+                                                   "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
+                                                   # "examples/Cassie/urdf/cassie_v2.urdf", False, False)
 
 
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
@@ -134,10 +134,10 @@ def main():
   # plot_control_rate(t_u, u)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context_w_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
-  if True:
+  if False:
     # front_contact_disp = np.zeros(3)
     plot_feet_positions(plant_w_spr, context_w_spr, x, l_toe_frame,
                         front_contact_disp,
@@ -281,16 +281,16 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plot_osc(osc_debug, osc_traj1, 1, "pos")
-  plot_osc(osc_debug, osc_traj1, 2, "pos")
+  # plot_osc(osc_debug, osc_traj1, 2, "pos")
   # #
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  # plot_osc(osc_debug, osc_traj2, 2, "pos")
+  plot_osc(osc_debug, osc_traj2, 2, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj1, 0, "vel")
   # plot_osc(osc_debug, osc_traj1, 1, "vel")
-  plot_osc(osc_debug, osc_traj1, 2, "vel")
+  # plot_osc(osc_debug, osc_traj1, 2, "vel")
 
   # plot_osc(osc_debug, osc_traj2, 0, "vel")
   # plot_osc(osc_debug, osc_traj2, 1, "vel")
@@ -298,11 +298,11 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj1, 0, "acc")
   # plot_osc(osc_debug, osc_traj1, 1, "acc")
-  plot_osc(osc_debug, osc_traj1, 2, "acc")
+  # plot_osc(osc_debug, osc_traj1, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj2, 0, "acc")
   # plot_osc(osc_debug, osc_traj2, 1, "acc")
-  # plot_osc(osc_debug, osc_traj2, 2, "acc")
+  plot_osc(osc_debug, osc_traj2, 2, "acc")
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
@@ -311,10 +311,10 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
-  # plot_osc(osc_debug, osc_traj5, 0, "pos")
+  plot_osc(osc_debug, osc_traj5, 0, "pos")
   # plot_osc(osc_debug, osc_traj5, 0, "vel")
   # plot_osc(osc_debug, osc_traj5, 0, "acc")
-  # plot_osc(osc_debug, osc_traj6, 2, "pos")
+  plot_osc(osc_debug, osc_traj6, 0, "pos")
   # plot_osc(osc_debug, osc_traj5, 0, "vel")
   # plot_osc(osc_debug, osc_traj6, 2, "vel")
   # plot_osc(osc_debug, osc_traj5, 0, "acc")

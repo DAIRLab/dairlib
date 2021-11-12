@@ -97,6 +97,7 @@ PiecewisePolynomial<double> PelvisRollTrajGenerator::GeneratePelvisTraj(
                                                  foot_offset_points);
   //  std::cout << "pelvis roll correction: " << correction << std::endl;
   return hip_roll_traj_ + offset_traj;
+//  return offset_traj;
 }
 
 void PelvisRollTrajGenerator::CalcTraj(

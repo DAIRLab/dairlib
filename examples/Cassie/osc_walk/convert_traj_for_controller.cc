@@ -117,6 +117,8 @@ int DoMain() {
 
   auto l_toe_frame = &plant.GetBodyByName("toe_left").body_frame();
   auto r_toe_frame = &plant.GetBodyByName("toe_right").body_frame();
+  auto hip_left_frame = &plant.GetBodyByName("hip_left").body_frame();
+  auto hip_right_frame = &plant.GetBodyByName("hip_right").body_frame();
   auto pelvis_frame = &plant.GetBodyByName("pelvis").body_frame();
   auto world = &plant.world_frame();
 
@@ -164,12 +166,20 @@ int DoMain() {
           l_foot_points.block(0, i, 3, 1);
       Eigen::Ref<Eigen::MatrixXd> r_foot_pos_block =
           r_foot_points.block(0, i, 3, 1);
+      Eigen::Ref<Eigen::MatrixXd> l_hip_pos_block =
+          l_hip_points.block(0, i, 3, 1);
+      Eigen::Ref<Eigen::MatrixXd> r_hip_pos_block =
+          r_hip_points.block(0, i, 3, 1);
       plant.CalcPointsPositions(*context, *pelvis_frame, zero_offset, *world,
                                 &pelvis_pos_block);
       plant.CalcPointsPositions(*context, *l_toe_frame, zero_offset, *world,
                                 &l_foot_pos_block);
       plant.CalcPointsPositions(*context, *r_toe_frame, zero_offset, *world,
                                 &r_foot_pos_block);
+      plant.CalcPointsPositions(*context, *hip_left_frame, zero_offset, *world,
+                                &l_hip_pos_block);
+      plant.CalcPointsPositions(*context, *hip_right_frame, zero_offset, *world,
+                                &r_hip_pos_block);
 
       pelvis_orientation.block(0, i, 4, 1) = x_i.head(4);
       pelvis_orientation.block(4, i, 4, 1) = xdot_i.head(4);
@@ -177,6 +187,8 @@ int DoMain() {
       MatrixXd J_CoM(3, nv);
       MatrixXd J_l_foot(3, nv);
       MatrixXd J_r_foot(3, nv);
+      MatrixXd J_l_hip(3, nv);
+      MatrixXd J_r_hip(3, nv);
       //      MatrixXd J_CoM(3, nq);
       //      MatrixXd J_l_foot(3, nq);
       //      MatrixXd J_r_foot(3, nq);
@@ -189,6 +201,12 @@ int DoMain() {
       plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                               *r_toe_frame, zero_offset, *world,
                                               *world, &J_r_foot);
+      plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
+                                              *hip_left_frame, zero_offset,
+                                              *world, *world, &J_l_hip);
+      plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
+                                              *hip_right_frame, zero_offset,
+                                              *world, *world, &J_r_hip);
       //      plant.CalcJacobianTranslationalVelocity(
       //          *context, JacobianWrtVariable::kQDot, *pelvis_frame,
       //          zero_offset, *world, *world, &J_CoM);
@@ -202,6 +220,8 @@ int DoMain() {
       pelvis_points.block(3, i, 3, 1) = J_CoM * v_i;
       l_foot_points.block(3, i, 3, 1) = J_l_foot * v_i;
       r_foot_points.block(3, i, 3, 1) = J_r_foot * v_i;
+      l_hip_points.block(3, i, 3, 1) = J_l_hip * v_i;
+      r_hip_points.block(3, i, 3, 1) = J_r_hip * v_i;
 
       VectorXd JdotV_CoM = plant.CalcBiasTranslationalAcceleration(
           *context, JacobianWrtVariable::kV, *pelvis_frame, zero_offset, *world,
@@ -212,12 +232,20 @@ int DoMain() {
       VectorXd JdotV_r_foot = plant.CalcBiasTranslationalAcceleration(
           *context, JacobianWrtVariable::kV, *r_toe_frame, zero_offset, *world,
           *world);
+      VectorXd JdotV_l_hip = plant.CalcBiasTranslationalAcceleration(
+          *context, JacobianWrtVariable::kV, *hip_left_frame, zero_offset,
+          *world, *world);
+      VectorXd JdotV_r_hip = plant.CalcBiasTranslationalAcceleration(
+          *context, JacobianWrtVariable::kV, *hip_right_frame, zero_offset,
+          *world, *world);
 
       pelvis_points.block(6, i, 3, 1) = JdotV_CoM + J_CoM * xdot_i.tail(nv);
       l_foot_points.block(6, i, 3, 1) =
           JdotV_l_foot + J_l_foot * xdot_i.tail(nv);
       r_foot_points.block(6, i, 3, 1) =
           JdotV_r_foot + J_r_foot * xdot_i.tail(nv);
+      l_hip_points.block(6, i, 3, 1) = JdotV_l_hip + J_l_hip * xdot_i.tail(nv);
+      r_hip_points.block(6, i, 3, 1) = JdotV_r_hip + J_r_hip * xdot_i.tail(nv);
     }
 
     all_times.push_back(times);
@@ -267,12 +295,20 @@ int DoMain() {
             l_foot_points.block(0, i, 3, 1);
         Eigen::Ref<Eigen::MatrixXd> r_foot_pos_block =
             r_foot_points.block(0, i, 3, 1);
+        Eigen::Ref<Eigen::MatrixXd> l_hip_pos_block =
+            l_hip_points.block(0, i, 3, 1);
+        Eigen::Ref<Eigen::MatrixXd> r_hip_pos_block =
+            r_hip_points.block(0, i, 3, 1);
         plant.CalcPointsPositions(*context, *pelvis_frame, zero_offset, *world,
                                   &pelvis_pos_block);
         plant.CalcPointsPositions(*context, *l_toe_frame, zero_offset, *world,
                                   &l_foot_pos_block);
         plant.CalcPointsPositions(*context, *r_toe_frame, zero_offset, *world,
                                   &r_foot_pos_block);
+        plant.CalcPointsPositions(*context, *hip_left_frame, zero_offset,
+                                  *world, &l_hip_pos_block);
+        plant.CalcPointsPositions(*context, *hip_right_frame, zero_offset,
+                                  *world, &r_hip_pos_block);
 
         pelvis_orientation.block(0, i, 4, 1) = x_i.head(4);
         pelvis_orientation.block(4, i, 4, 1) = xdot_i.head(4);
@@ -280,6 +316,8 @@ int DoMain() {
         MatrixXd J_CoM(3, nv);
         MatrixXd J_l_foot(3, nv);
         MatrixXd J_r_foot(3, nv);
+        MatrixXd J_l_hip(3, nv);
+        MatrixXd J_r_hip(3, nv);
         plant.CalcJacobianTranslationalVelocity(
             *context, JacobianWrtVariable::kV, *pelvis_frame, zero_offset,
             *world, *world, &J_CoM);
@@ -289,10 +327,19 @@ int DoMain() {
         plant.CalcJacobianTranslationalVelocity(
             *context, JacobianWrtVariable::kV, *r_toe_frame, zero_offset,
             *world, *world, &J_r_foot);
+        plant.CalcJacobianTranslationalVelocity(
+            *context, JacobianWrtVariable::kV, *hip_left_frame, zero_offset,
+            *world, *world, &J_l_hip);
+        plant.CalcJacobianTranslationalVelocity(
+            *context, JacobianWrtVariable::kV, *hip_right_frame, zero_offset,
+            *world, *world, &J_r_hip);
+
         VectorXd v_i = x_i.tail(nv);
         pelvis_points.block(3, i, 3, 1) = J_CoM * v_i;
         l_foot_points.block(3, i, 3, 1) = J_l_foot * v_i;
         r_foot_points.block(3, i, 3, 1) = J_r_foot * v_i;
+        l_hip_points.block(3, i, 3, 1) = J_l_hip * v_i;
+        r_hip_points.block(3, i, 3, 1) = J_r_hip * v_i;
 
         VectorXd JdotV_CoM = plant.CalcBiasTranslationalAcceleration(
             *context, JacobianWrtVariable::kV, *pelvis_frame, zero_offset,
@@ -303,12 +350,22 @@ int DoMain() {
         VectorXd JdotV_r_foot = plant.CalcBiasTranslationalAcceleration(
             *context, JacobianWrtVariable::kV, *r_toe_frame, zero_offset,
             *world, *world);
+        VectorXd JdotV_l_hip = plant.CalcBiasTranslationalAcceleration(
+            *context, JacobianWrtVariable::kV, *hip_left_frame, zero_offset,
+            *world, *world);
+        VectorXd JdotV_r_hip = plant.CalcBiasTranslationalAcceleration(
+            *context, JacobianWrtVariable::kV, *hip_right_frame, zero_offset,
+            *world, *world);
 
         pelvis_points.block(6, i, 3, 1) = JdotV_CoM + J_CoM * xdot_i.tail(nv);
         l_foot_points.block(6, i, 3, 1) =
             JdotV_l_foot + J_l_foot * xdot_i.tail(nv);
         r_foot_points.block(6, i, 3, 1) =
             JdotV_r_foot + J_r_foot * xdot_i.tail(nv);
+        l_hip_points.block(6, i, 3, 1) =
+            JdotV_l_hip + J_l_hip * xdot_i.tail(nv);
+        r_hip_points.block(6, i, 3, 1) =
+            JdotV_r_hip + J_r_hip * xdot_i.tail(nv);
       }
 
       all_times.push_back(times);

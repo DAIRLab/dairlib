@@ -31,14 +31,15 @@ cassie_default_channels = \
      'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_RUNNING': dairlib.lcmt_osc_output}
 
-def make_plant_and_context(floating=True, springs=True):
+def make_plant_and_context(floating_base=True, springs=True):
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
     if (springs):
-        addCassieMultibody(plant, scene_graph, floating, cassie_urdf, True, True)
+        addCassieMultibody(plant, scene_graph,
+                           floating_base, cassie_urdf, True, True)
     else:
-        addCassieMultibody(plant, scene_graph, floating, cassie_urdf_no_springs,
-                           False, True)
+        addCassieMultibody(plant, scene_graph,
+                           floating_base, cassie_urdf_no_springs, False, True)
 
     plant.Finalize()
     return plant, plant.CreateDefaultContext()
@@ -69,10 +70,10 @@ def process_state_channel(state_data, plant):
         u.append(u_temp)
         t_x.append(msg.utime / 1e6)
 
-        return {'t_x': np.array(t_x),
-                'q': np.array(q),
-                'v': np.array(v),
-                'u': np.array(u)}
+    return {'t_x': np.array(t_x),
+            'q': np.array(q),
+            'v': np.array(v),
+            'u': np.array(u)}
 
 
 def process_effort_channel(data):
@@ -114,7 +115,6 @@ def process_osc_channel(data):
 
 def load_default_channels(data, plant, state_channel, input_channel,
                           osc_debug_channel):
-
     robot_output = process_state_channel(data[state_channel], plant)
     robot_input = process_effort_channel(data[input_channel])
     osc_debug = process_osc_channel(data[osc_debug_channel])
@@ -122,12 +122,36 @@ def load_default_channels(data, plant, state_channel, input_channel,
     return robot_output, robot_input, osc_debug
 
 
-def make_channel_plot(data_dictionary, time_key, keys_to_plot, legend_entries,
-                      plot_labels, ps=plot_styler.PlotStyler()):
+def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
+              slices_to_plot, legend_entries, plot_labels,
+              ps=plot_styler.PlotStyler()):
+    plt.figure()
     legend = []
     for key in keys_to_plot:
-        ps.plot(data_dictionary[time_key], data_dictionary[key])
+        if key not in slices_to_plot:
+            ps.plot(data_dictionary[time_key][time_slice],
+                    data_dictionary[key][time_slice])
+        else:
+            ps.plot(data_dictionary[time_key][time_slice],
+                    data_dictionary[key][time_slice, slices_to_plot[key]])
         legend.extend(legend_entries[key])
+
+    plt.legend(legend)
+    plt.xlabel(plot_labels['xlabel'])
+    plt.ylabel(plot_labels['ylabel'])
+    plt.title(plot_labels['title'])
+
+
+def make_mixed_data_plot(data_dictionaries, time_keys, keys_to_plot,
+                         legend_entries, plot_labels,
+                         ps=plot_styler.PlotStyler()):
+    plt.figure()
+    legend = []
+    for i, data_dictionary in enumerate(data_dictionaries):
+        time_key = time_keys[i]
+        for key in keys_to_plot[i]:
+            ps.plot(data_dictionary[time_key], data_dictionary[key])
+            legend.extend(legend_entries[key])
 
     plt.legend(legend)
     plt.xlabel(plot_labels['xlabel'])

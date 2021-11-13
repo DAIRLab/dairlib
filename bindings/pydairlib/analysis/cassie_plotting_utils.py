@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import dairlib
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.common import FindResourceOrThrow
-from pydairlib.common import plot_styler
+from pydairlib.common import plot_styler, plotting_utils
 from pydairlib.multibody import makeNameToPositionsMap, makeNameToVelocitiesMap, makeNameToActuatorsMap
 from osc_debug import lcmt_osc_tracking_data_t
 
@@ -122,38 +122,28 @@ def load_default_channels(data, plant, state_channel, input_channel,
     return robot_output, robot_input, osc_debug
 
 
-def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
-              slices_to_plot, legend_entries, plot_labels,
-              ps=plot_styler.PlotStyler()):
-    plt.figure()
-    legend = []
-    for key in keys_to_plot:
-        if key not in slices_to_plot:
-            ps.plot(data_dictionary[time_key][time_slice],
-                    data_dictionary[key][time_slice])
-        else:
-            ps.plot(data_dictionary[time_key][time_slice],
-                    data_dictionary[key][time_slice, slices_to_plot[key]])
-        legend.extend(legend_entries[key])
-
-    plt.legend(legend)
-    plt.xlabel(plot_labels['xlabel'])
-    plt.ylabel(plot_labels['ylabel'])
-    plt.title(plot_labels['title'])
+def plot_floating_base_positions(robot_output, q_names, time_slice):
+    plotting_utils.make_plot(
+        robot_output,                       # data dict
+        't_x',                              # time channel
+        time_slice,
+        ['q'],                              # key to plot
+        {'q': slice(0, 7)},                 # slice of 'q' to plot
+        {'q': q_names[:7]},                 # legend entries
+        {'xlabel': 'Time',
+         'ylabel': 'Position',
+         'title': 'Floating Base Positions'})
 
 
-def make_mixed_data_plot(data_dictionaries, time_keys, keys_to_plot,
-                         legend_entries, plot_labels,
-                         ps=plot_styler.PlotStyler()):
-    plt.figure()
-    legend = []
-    for i, data_dictionary in enumerate(data_dictionaries):
-        time_key = time_keys[i]
-        for key in keys_to_plot[i]:
-            ps.plot(data_dictionary[time_key], data_dictionary[key])
-            legend.extend(legend_entries[key])
-
-    plt.legend(legend)
-    plt.xlabel(plot_labels['xlabel'])
-    plt.ylabel(plot_labels['ylabel'])
-    plt.title(plot_labels['title'])
+def plot_joint_positions(robot_output, q_names, time_slice, floating_base=True):
+    q_slice = slice(7, len(q_names)) if floating_base else slice(len(q_names))
+    plotting_utils.make_plot(
+        robot_output,                       # data dict
+        't_x',                              # time channel
+        time_slice,
+        ['q'],                              # key to plot
+        {'q': q_slice},                     # slice of 'q' to plot
+        {'q': q_names[q_slice]},            # legend entries
+        {'xlabel': 'Time',
+         'ylabel': 'Joint Angle (rad)',
+         'title': 'Joint Positions'})

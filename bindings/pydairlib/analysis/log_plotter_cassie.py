@@ -10,9 +10,13 @@ log = lcm.EventLog(filename, "r")
 
 plant, context = cassie_plotting_utils.make_plant_and_context()
 
-data = get_log_data(log, cassie_plotting_utils.cassie_default_channels,
-                    cassie_plotting_utils.process_default_channels, plant,
-                    'CASSIE_STATE_SIMULATION', 'CASSIE_INPUT',
-                    'OSC_DEBUG_WALKING')
+robot_input, robot_output, osc_debug = \
+    get_log_data(log,
+                 cassie_plotting_utils.cassie_default_channels,
+                 cassie_plotting_utils.load_default_channels,
+                 plant,
+                 'CASSIE_STATE_SIMULATION',
+                 'CASSIE_INPUT',
+                 'OSC_DEBUG_WALKING')
 
 import pdb; pdb.set_trace()

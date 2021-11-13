@@ -13,7 +13,13 @@ load(
 
 py_library(
     name = "process_lcm_log_py",
-    srcs = [":process_lcm_log.py"],
+    srcs = ["process_lcm_log.py"],
+    deps = [],
+)
+
+py_library(
+    name = "osc_debug_py",
+    srcs = ["osc_debug.py"],
     deps = [],
 )
 
@@ -25,6 +31,7 @@ py_library(
         "@lcm//:lcm-python",
     ],
     deps = [
+        ":osc_debug_py",
         "//bindings/pydairlib/cassie:cassie_utils",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/common:plot_styler",

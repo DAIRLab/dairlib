@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import dairlib
-from pydairlib.multibody import createStateNameVectorFromMap
+from pydairlib.multibody import \
+    createStateNameVectorFromMap, createActuatorNameVectorFromMap, \
+    makeNameToPositionsMap, makeNameToVelocitiesMap, makeNameToActuatorsMap
+
 from process_lcm_log import get_log_data, passthrough_callback
 import cassie_plotting_utils
 
@@ -16,7 +19,11 @@ def main():
     plant, context = cassie_plotting_utils.make_plant_and_context(
         floating_base=True, springs=True)
 
+    pos_map = makeNameToPositionsMap(plant)
+    vel_map = makeNameToVelocitiesMap(plant)
+    act_map = makeNameToActuatorsMap(plant)
     x_names = createStateNameVectorFromMap(plant)
+    u_names = createActuatorNameVectorFromMap(plant)
     q_names = x_names[:plant.num_positions()]
     v_names = x_names[plant.num_positions():]
 
@@ -35,6 +42,8 @@ def main():
         robot_output, q_names, t_x_slice)
     cassie_plotting_utils.plot_joint_positions(
         robot_output, q_names, t_x_slice, floating_base=True)
+    cassie_plotting_utils.plot_joint_positions_by_name(
+        robot_output, ['knee_left', 'knee_right'], t_x_slice, pos_map)
 
     plt.show()
 

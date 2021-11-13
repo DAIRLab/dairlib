@@ -147,3 +147,17 @@ def plot_joint_positions(robot_output, q_names, time_slice, floating_base=True):
         {'xlabel': 'Time',
          'ylabel': 'Joint Angle (rad)',
          'title': 'Joint Positions'})
+
+
+def plot_joint_positions_by_name(robot_output, q_names, time_slice, pos_map):
+    q_slice = [pos_map[name] for name in q_names]
+    plotting_utils.make_plot(
+        robot_output,                       # data dict
+        't_x',                              # time channel
+        time_slice,
+        ['q'],                              # key to plot
+        {'q': q_slice},                     # slice of 'q' to plot
+        {'q': q_names},            # legend entries
+        {'xlabel': 'Time',
+         'ylabel': 'Joint Angle (rad)',
+         'title': 'Joint Positions'})

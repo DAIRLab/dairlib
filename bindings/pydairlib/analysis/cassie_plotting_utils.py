@@ -6,7 +6,9 @@ import numpy as np
 import dairlib
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.common import FindResourceOrThrow
-from pydarilib.common import plot_styler
+from pydairlib.common import plot_styler
+from pydairlib.multibody import makeNameToPositionsMap, makeNameToVelocitiesMap, makeNameToActuatorsMap
+
 
 # drake imports
 from pydrake.multibody.parsing import Parser
@@ -89,9 +91,9 @@ def process_state_channel(state_data, plant):
     u = []
     v = []
 
-    pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
-    vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)
-    act_map = pydairlib.multibody.makeNameToActuatorsMap(plant)
+    pos_map = makeNameToPositionsMap(plant)
+    vel_map = makeNameToVelocitiesMap(plant)
+    act_map = makeNameToActuatorsMap(plant)
 
     for msg in state_data:
         q_temp = [[] for i in range(len(msg.position))]

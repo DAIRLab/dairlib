@@ -32,13 +32,7 @@ PYBIND11_MODULE(cassie_utils, m) {
       .def("addCassieMultibody", &dairlib::addCassieMultibody, py::arg("plant"),
            py::arg("scene_graph"), py::arg("floating_base"),
            py::arg("filename"), py::arg("add_leaf_springs"),
-           py::arg("add_loop_closure"))
-      .def("AddImuAndAggregator", &dairlib::AddImuAndAggregator,
-           py::arg("builder"), py::arg("plant"), py::arg("actuation_port"));
-
-  py::class_<systems::SimCassieSensorAggregator,
-             drake::systems::LeafSystem<double>>(m, "SimCassieSensorAggregator")
-      .def(py::init<const MultibodyPlant<double>&>());
+           py::arg("add_loop_closure"));
 }
 
 }  // namespace pydairlib

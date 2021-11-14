@@ -8,7 +8,9 @@ import dairlib
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.common import plot_styler, plotting_utils
-from pydairlib.multibody import makeNameToPositionsMap, makeNameToVelocitiesMap, makeNameToActuatorsMap
+from pydairlib.multibody import makeNameToPositionsMap,\
+    makeNameToVelocitiesMap, makeNameToActuatorsMap, \
+    createStateNameVectorFromMap, createActuatorNameVectorFromMap
 from osc_debug import lcmt_osc_tracking_data_t
 
 # drake imports
@@ -44,6 +46,18 @@ def make_plant_and_context(floating_base=True, springs=True):
     plant.Finalize()
     return plant, plant.CreateDefaultContext()
 
+
+def make_name_to_mbp_maps(plant):
+    return makeNameToPositionsMap(plant), \
+           makeNameToVelocitiesMap(plant), \
+           makeNameToActuatorsMap
+
+def make_mbp_name_vectors(plant):
+    x_names = createStateNameVectorFromMap(plant)
+    u_names = createActuatorNameVectorFromMap(plant)
+    q_names = x_names[:plant.num_positions()]
+    v_names = x_names[plant.num_positions():]
+    return q_names, v_names, u_names
 
 def process_state_channel(state_data, plant):
     t_x = []

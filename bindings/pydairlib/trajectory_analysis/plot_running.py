@@ -57,7 +57,7 @@ def construct_all_trajs(output_trajs):
 
 def plot_foot_trajs(l_foot_traj, r_foot_traj):
 
-  t_samples = np.arange(l_foot_traj.start_time(), l_foot_traj.end_time(), 1e-2)
+  t_samples = np.arange(l_foot_traj.start_time(), l_foot_traj.end_time(), 1e-3)
   l_foot_pos = np.zeros((t_samples.shape[0], 3))
   l_foot_vel = np.zeros((t_samples.shape[0], 3))
   l_foot_acc = np.zeros((t_samples.shape[0], 3))
@@ -72,13 +72,24 @@ def plot_foot_trajs(l_foot_traj, r_foot_traj):
     r_foot_vel[i] = r_foot_traj.EvalDerivative(t_samples[i], 1)[:3, 0]
     r_foot_acc[i] = r_foot_traj.EvalDerivative(t_samples[i], 1)[-3:, 0]
     # import pdb; pdb.set_trace()
-  plt.figure('pos')
-  ps.plot(t_samples, l_foot_pos[:, 2])
-  ps.plot(t_samples, r_foot_pos[:, 2])
+  # plt.figure('pos')
+  # ps.plot(t_samples, l_foot_pos[:, 0])
+  # ps.plot(t_samples, r_foot_pos[:, 0])
+  # ps.plot(t_samples, l_foot_pos[:, 1])
+  # ps.plot(t_samples, r_foot_pos[:, 1])
+  # ps.plot(t_samples, l_foot_pos[:, 2])
+  # ps.plot(t_samples, r_foot_pos[:, 2])
   # plt.figure('vel')
   # ps.plot(t_samples, l_foot_pos)
   # ps.plot(t_samples, r_foot_pos)
-  # plt.figure('acc')
+  plt.figure('acc')
+  ps.plot(t_samples, l_foot_acc[:, 0])
+  ps.plot(t_samples, r_foot_acc[:, 0])
+  ps.plot(t_samples, l_foot_acc[:, 1])
+  ps.plot(t_samples, r_foot_acc[:, 1])
+  ps.plot(t_samples, l_foot_acc[:, 2])
+  ps.plot(t_samples, r_foot_acc[:, 2])
+
   # ps.plot(t_samples, l_foot_acc)
   # ps.plot(t_samples, r_foot_acc)
   ps.show_fig()

@@ -484,8 +484,8 @@ void OperationalSpaceControl::Build() {
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
   //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
@@ -576,9 +576,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
   }
 
-  SetVelocitiesIfNew<double>(
-      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
-      context_wo_spr_);
+//  SetVelocitiesIfNew<double>(
+//      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
+//      context_wo_spr_);
 
   // Get J and JdotV for holonomic constraint
   MatrixXd J_h(n_h_, n_v_);

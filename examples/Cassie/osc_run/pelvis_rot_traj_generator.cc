@@ -89,7 +89,7 @@ PiecewisePolynomial<double> PelvisRollTrajGenerator::GeneratePelvisTraj(
   //                    0.1 * (v(hip_rolldot_idx_) -
   //                           pelvis_roll_traj_.EvalDerivative(t, 1)(0));
   correction << pelvis_roll;
-  if (fsm_state == 1) correction *= -1;
+  if (fsm_state == 0) correction *= -1;
 
   std::vector<double> breaks = hip_roll_traj_.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());

@@ -113,10 +113,12 @@ void FootTrajGenerator::AddRaibertCorrection(
 //  }else{
 //    footstep_correction(1) += 0.05;
 //  }
+  footstep_correction(0) -= 0.02;
   std::vector<double> breaks = traj->get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
-  MatrixXd foot_offset_points = footstep_correction.replicate(1, breaks.size());
-//  std::cout << foot_offset_points << std::endl;
+  VectorXd new_samples = VectorXd(6);
+  new_samples << footstep_correction, Vector3d::Zero();
+  MatrixXd foot_offset_points = new_samples.replicate(1, breaks.size());
   PiecewisePolynomial<double> foot_offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
                                                  foot_offset_points);
@@ -140,7 +142,7 @@ void FootTrajGenerator::CalcTraj(
           traj);
   //  if (fsm_state[0] == FLIGHT) {
   *casted_traj = GenerateFlightTraj(robot_output->GetState(), timestamp);
-//  this->AddRaibertCorrection(context, casted_traj);
+  this->AddRaibertCorrection(context, casted_traj);
   //  }
 }
 

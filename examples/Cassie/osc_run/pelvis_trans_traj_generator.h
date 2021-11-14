@@ -18,7 +18,8 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::unordered_map<
           int, std::vector<std::pair<const Eigen::Vector3d,
                                      const drake::multibody::Frame<double>&>>>&
-          feet_contact_points);
+          feet_contact_points,
+          bool relative_pelvis = false);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -55,6 +56,7 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
   const drake::multibody::BodyFrame<double>& pelvis_frame_;
+  const bool relative_pelvis_;
 
   //  drake::systems::DiscreteStateIndex prev_fsm_idx_;
 

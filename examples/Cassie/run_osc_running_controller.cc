@@ -277,9 +277,9 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> r_foot_trajectory;
   PiecewisePolynomial<double> pelvis_rot_trajectory;
 
-//  for (auto name : output_trajs.GetTrajectoryNames()) {
-//    std::cout << name << std::endl;
-//  }
+  //  for (auto name : output_trajs.GetTrajectoryNames()) {
+  //    std::cout << name << std::endl;
+  //  }
   for (int mode = 0; mode < dircon_trajectory.GetNumModes() * 2; ++mode) {
     const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
         output_trajs.GetTrajectory("pelvis_trans_trajectory" +
@@ -332,7 +332,8 @@ int DoMain(int argc, char* argv[]) {
 
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
-          plant, plant_context.get(), pelvis_trans_traj, feet_contact_points);
+          plant, plant_context.get(), pelvis_trans_traj, feet_contact_points,
+          osc_gains.relative_pelvis);
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length,
                                              osc_gains.k_leg, osc_gains.b_leg);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
@@ -355,12 +356,17 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData right_foot_tracking_data(
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
+  TransTaskSpaceTrackingData stance_foot_tracking_data(
+      "stance_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+      osc_gains.W_swing_foot, plant, plant);
   pelvis_tracking_data.AddStateAndPointToTrack(left_stance_state, "pelvis");
   pelvis_tracking_data.AddStateAndPointToTrack(right_stance_state, "pelvis");
   left_foot_tracking_data.AddStateAndPointToTrack(right_stance_state,
                                                   "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
                                                    "toe_right");
+  stance_foot_tracking_data.AddStateAndPointToTrack(left_stance_state, "toe_left");
+  stance_foot_tracking_data.AddStateAndPointToTrack(right_stance_state, "toe_right");
   left_foot_tracking_data.AddStateAndPointToTrack(air_phase, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(air_phase, "toe_right");
 
@@ -385,8 +391,18 @@ int DoMain(int argc, char* argv[]) {
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant, &right_foot_tracking_data,
       &right_hip_tracking_data);
+  RelativeTranslationTrackingData pelvis_trans_rel_tracking_data(
+      "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
+      osc_gains.W_pelvis, plant, plant, &pelvis_tracking_data,
+      &stance_foot_tracking_data);
+  //  left_foot_rel_tracking_data.DisableFeedforwardAccel({2});
+  //  right_foot_rel_tracking_data.DisableFeedforwardAccel({2});
 
-  osc->AddTrackingData(&pelvis_tracking_data);
+  if (osc_gains.relative_pelvis) {
+    osc->AddTrackingData(&pelvis_trans_rel_tracking_data);
+  } else {
+    osc->AddTrackingData(&pelvis_tracking_data);
+  }
 
   if (osc_gains.relative_feet) {
     left_foot_rel_tracking_data.SetImpactInvariantProjection(true);

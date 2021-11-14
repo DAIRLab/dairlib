@@ -8,16 +8,21 @@ from pydairlib.multibody import \
     createStateNameVectorFromMap, createActuatorNameVectorFromMap, \
     makeNameToPositionsMap, makeNameToVelocitiesMap, makeNameToActuatorsMap
 
-from process_lcm_log import get_log_data, passthrough_callback
-import cassie_plotting_utils
+from process_lcm_log import get_log_data
+import cassie_plotting_utils as cassie_plots
 
 
 def main():
-    filename = sys.argv[1]
-    log = lcm.EventLog(filename, "r")
 
-    plant, context = cassie_plotting_utils.make_plant_and_context(
-        floating_base=True, springs=True)
+    # Global settings for plotting
+    use_floating_base = True
+    use_springs = True
+    channel_x = 'CASSIE_STATE_SIMULATION'
+    channel_u = 'CASSIE_INPUT'
+    channel_osc = 'OSC_DEBUG_STANDING'
+
+    plant, context = cassie_plots.make_plant_and_context(
+        floating_base=use_floating_base, springs=use_springs)
 
     pos_map = makeNameToPositionsMap(plant)
     vel_map = makeNameToVelocitiesMap(plant)
@@ -27,27 +32,51 @@ def main():
     q_names = x_names[:plant.num_positions()]
     v_names = x_names[plant.num_positions():]
 
+    ''' Read the log '''
+    filename = sys.argv[1]
+    log = lcm.EventLog(filename, "r")
     robot_output, robot_input, osc_debug = \
-        get_log_data(log,
-                     cassie_plotting_utils.cassie_default_channels,
-                     cassie_plotting_utils.load_default_channels,
-                     plant,
-                     'CASSIE_STATE_SIMULATION',
-                     'CASSIE_INPUT',
-                     'OSC_DEBUG_STANDING')
+        get_log_data(log,                                               # log
+                     cassie_plots.cassie_default_channels,              # lcm channels
+                     cassie_plots.load_default_channels,                # processing callback
+                     plant, channel_x, channel_u, channel_osc)          # processing callback arguments
 
+    # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
 
-    cassie_plotting_utils.plot_floating_base_positions(
-        robot_output, q_names, t_x_slice)
-    cassie_plotting_utils.plot_joint_positions(
-        robot_output, q_names, t_x_slice, floating_base=True)
-    cassie_plotting_utils.plot_joint_positions_by_name(
-        robot_output, ['knee_left', 'knee_right'], t_x_slice, pos_map)
+    ''' Plot Positions '''
+    # Plot floating base positions if applicable
+    if use_floating_base:
+        cassie_plots.plot_floating_base_positions(
+            robot_output, q_names, t_x_slice)
 
+    # Plot all joint positions
+    cassie_plots.plot_joint_positions(robot_output, q_names, t_x_slice,
+                                      floating_base=use_floating_base)
+    # Plot specific positions
+    cassie_plots.plot_positions_by_name(robot_output,
+                                        ['knee_left', 'knee_right'],
+                                        t_x_slice, pos_map)
+
+    ''' Plot Velocities '''
+    # Plot floating base velocities if applicable
+    if use_floating_base:
+        cassie_plots.plot_floating_base_velocities(
+            robot_output, v_names, t_x_slice)
+
+    # Plot all joint velocities
+    cassie_plots.plot_joint_velocities(robot_output, v_names, t_x_slice,
+                                       floating_base=use_floating_base)
+    # Plot specific velocities
+    cassie_plots.plot_velocities_by_name(robot_output, ['base_vz'], t_x_slice, vel_map)
+
+    ''' Plot Efforts '''
+    cassie_plots.plot_measured_efforts(robot_output, u_names, t_x_slice)
+    cassie_plots.plot_measured_efforts_by_name(robot_output,
+                                               ['knee_left_motor'],
+                                               t_x_slice, act_map)
     plt.show()
 
 
 if __name__ == '__main__':
     main()
-

@@ -122,42 +122,68 @@ def load_default_channels(data, plant, state_channel, input_channel,
     return robot_output, robot_input, osc_debug
 
 
-def plot_floating_base_positions(robot_output, q_names, time_slice):
+def plot_q_or_v_or_u(
+        robot_output, key, x_names, x_slice, time_slice,
+        ylabel=None, title=None):
+
+    if ylabel is None:
+        ylabel = key
+    if title is None:
+        title = key
+
     plotting_utils.make_plot(
         robot_output,                       # data dict
         't_x',                              # time channel
         time_slice,
-        ['q'],                              # key to plot
-        {'q': slice(0, 7)},                 # slice of 'q' to plot
-        {'q': q_names[:7]},                 # legend entries
+        [key],                              # key to plot
+        {key: x_slice},                     # slice of 'q' to plot
+        {key: x_names},                     # legend entries
         {'xlabel': 'Time',
-         'ylabel': 'Position',
-         'title': 'Floating Base Positions'})
+         'ylabel': ylabel,
+         'title': title})
+
+
+def plot_floating_base_positions(robot_output, q_names, time_slice):
+    plot_q_or_v_or_u(robot_output, 'q', q_names[:7], slice(7), time_slice,
+                     ylabel='Position', title='Floating Base Positions')
 
 
 def plot_joint_positions(robot_output, q_names, time_slice, floating_base=True):
     q_slice = slice(7, len(q_names)) if floating_base else slice(len(q_names))
-    plotting_utils.make_plot(
-        robot_output,                       # data dict
-        't_x',                              # time channel
-        time_slice,
-        ['q'],                              # key to plot
-        {'q': q_slice},                     # slice of 'q' to plot
-        {'q': q_names[q_slice]},            # legend entries
-        {'xlabel': 'Time',
-         'ylabel': 'Joint Angle (rad)',
-         'title': 'Joint Positions'})
+    plot_q_or_v_or_u(robot_output, 'q', q_names[q_slice], q_slice, time_slice,
+                     ylabel='Joint Angle (rad)', title='Joint Positions')
 
 
-def plot_joint_positions_by_name(robot_output, q_names, time_slice, pos_map):
+def plot_positions_by_name(robot_output, q_names, time_slice, pos_map):
     q_slice = [pos_map[name] for name in q_names]
-    plotting_utils.make_plot(
-        robot_output,                       # data dict
-        't_x',                              # time channel
-        time_slice,
-        ['q'],                              # key to plot
-        {'q': q_slice},                     # slice of 'q' to plot
-        {'q': q_names},            # legend entries
-        {'xlabel': 'Time',
-         'ylabel': 'Joint Angle (rad)',
-         'title': 'Joint Positions'})
+    plot_q_or_v_or_u(robot_output, 'q', q_names, q_slice, time_slice,
+                     ylabel='Position', title='Select Positions')
+
+
+def plot_floating_base_velocities(robot_output, v_names, time_slice):
+    plot_q_or_v_or_u(robot_output, 'v', v_names[:6], slice(6), time_slice,
+                     ylabel='Velocity', title='Floating Base Velocities')
+
+
+def plot_joint_velocities(robot_output, v_names,
+                          time_slice, floating_base=True):
+    q_slice = slice(6, len(v_names)) if floating_base else slice(len(v_names))
+    plot_q_or_v_or_u(robot_output, 'v', v_names[q_slice], q_slice, time_slice,
+                     ylabel='Joint Vel (rad/s)', title='Joint Velocities')
+
+
+def plot_velocities_by_name(robot_output, v_names, time_slice, vel_map):
+    v_slice = [vel_map[name] for name in v_names]
+    plot_q_or_v_or_u(robot_output, 'v', v_names, v_slice, time_slice,
+                     ylabel='Velocity', title='Select Velocities')
+
+
+def plot_measured_efforts(robot_output, u_names, time_slice):
+    plot_q_or_v_or_u(robot_output, 'u', u_names, slice(len(u_names)),
+                     time_slice, ylabel='Efforts (Nm)', title='Joint Efforts')
+
+
+def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
+    u_slice = [u_map[name] for name in u_names]
+    plot_q_or_v_or_u(robot_output, 'u', u_names, u_slice,
+                     time_slice, ylabel='Efforts (Nm)', title='Select Joint Efforts')

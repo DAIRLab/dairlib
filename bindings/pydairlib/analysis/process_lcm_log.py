@@ -3,12 +3,13 @@
 def get_log_data(lcm_log, lcm_channels, data_processing_callback, *args,
                  **kwargs):
     """
-    Parses an LCM log and returns a dictionary with entries
+    Parses an LCM log and returns a data as specified by callback function
     :param lcm_log: an lcm.EventLog object
-    :param lcm_channels: dictionary of {channel : lcmtype} of channels to be read from the log
+    :param lcm_channels: dictionary with entries {channel : lcmtype} of channels
+    to be read from the log
     :param data_processing_callback: function pointer which takes as arguments
-     (data, args, kwargs) and where data is a dictionary with
-     entries {CHANNEL : [ msg for lcm msg in log with msg.channel == CHANNEL}
+     (data, args, kwargs) where data is a dictionary with
+     entries {CHANNEL : [ msg for lcm msg in log with msg.channel == CHANNEL ] }
     :param args: positional arguments for data_processing_callback
     :param kwargs: keyword arguments for data_processing_callback
     :return: { label : xdata, ydata } returned by data_processing_callback

@@ -4,9 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import dairlib
-from pydairlib.multibody import \
-    createStateNameVectorFromMap, createActuatorNameVectorFromMap,
-
 from process_lcm_log import get_log_data
 import cassie_plotting_utils as cassie_plots
 

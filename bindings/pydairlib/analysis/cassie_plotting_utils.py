@@ -50,7 +50,8 @@ def make_plant_and_context(floating_base=True, springs=True):
 def make_name_to_mbp_maps(plant):
     return makeNameToPositionsMap(plant), \
            makeNameToVelocitiesMap(plant), \
-           makeNameToActuatorsMap
+           makeNameToActuatorsMap(plant)
+
 
 def make_mbp_name_vectors(plant):
     x_names = createStateNameVectorFromMap(plant)

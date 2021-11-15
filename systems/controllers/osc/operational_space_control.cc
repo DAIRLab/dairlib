@@ -1047,6 +1047,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_data =
       std::vector<lcmt_osc_tracking_data>(tracking_data_vec_->size());
   output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
+  output->tracking_data_names = std::vector<std::string>(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -1054,7 +1055,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     if (tracking_data->IsActive(fsm_state) &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
-      output->tracking_data_names.push_back(tracking_data->GetName());
+      output->tracking_data_names[i] = tracking_data->GetName();
       lcmt_osc_tracking_data osc_output;
       osc_output.y_dim = tracking_data->GetYDim();
       osc_output.ydot_dim = tracking_data->GetYdotDim();

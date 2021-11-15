@@ -449,6 +449,8 @@ int DoMain(int argc, char* argv[]) {
       left_stance_state, "hip_pitch_left", "hip_pitch_leftdot");
   hip_pitch_right_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "hip_pitch_right", "hip_pitch_rightdot");
+  hip_pitch_left_tracking_data.DisableFeedforwardAccel({0});
+  hip_pitch_right_tracking_data.DisableFeedforwardAccel({0});
   osc->AddTrackingData(&hip_pitch_left_tracking_data);
   osc->AddTrackingData(&hip_pitch_right_tracking_data);
 
@@ -493,6 +495,8 @@ int DoMain(int argc, char* argv[]) {
       left_stance_state, "hip_roll_left", "hip_roll_leftdot");
   hip_roll_right_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "hip_roll_right", "hip_roll_rightdot");
+  hip_roll_left_tracking_data.DisableFeedforwardAccel({0});
+  hip_roll_right_tracking_data.DisableFeedforwardAccel({0});
   //  hip_roll_left_tracking_data.AddStateAndJointToTrack(
   //      air_phase, "hip_roll_left", "hip_roll_leftdot");
   //  hip_roll_right_tracking_data.AddStateAndJointToTrack(

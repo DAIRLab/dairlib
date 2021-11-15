@@ -181,7 +181,6 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   input_cost = np.zeros(t_u.shape[0])
   acceleration_cost = np.zeros(t_u.shape[0])
   soft_constraint_cost = np.zeros(t_u.shape[0])
-  import pdb; pdb.set_trace()
   tracking_cost = np.zeros((t_u.shape[0], len(osc_debug)))
   tracking_cost_map = dict()
   qp_solve_time = np.zeros(t_u.shape[0])
@@ -217,7 +216,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   ps.plot(t_u[t_u_slice], input_cost[t_u_slice], color=ps.grey)
   ps.plot(t_u[t_u_slice], acceleration_cost[t_u_slice], color=ps.blue)
   ps.plot(t_u[t_u_slice], soft_constraint_cost[t_u_slice], color=ps.red)
-  ps.plot(t_u[t_u_slice], tracking_cost[t_u_slice])
+  ps.plot(t_u[t_u_slice], tracking_cost[t_u_slice], ylim=[0, 100])
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
 
@@ -315,8 +314,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
   plot_osc(osc_debug, osc_traj5, 0, "pos")
-  # plot_osc(osc_debug, osc_traj5, 0, "vel")
-  # plot_osc(osc_debug, osc_traj5, 0, "acc")
+  plot_osc(osc_debug, osc_traj5, 0, "vel")
+  plot_osc(osc_debug, osc_traj5, 0, "acc")
   # plot_osc(osc_debug, osc_traj6, 0, "pos")
   # plot_osc(osc_debug, osc_traj5, 0, "vel")
   # plot_osc(osc_debug, osc_traj6, 2, "vel")

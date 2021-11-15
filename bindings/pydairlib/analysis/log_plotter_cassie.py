@@ -1,6 +1,7 @@
 import sys
 import lcm
 import matplotlib.pyplot as plt
+import code
 import numpy as np
 
 import dairlib
@@ -22,10 +23,8 @@ def main():
     ''' Get the plant '''
     plant, context = cassie_plots.make_plant_and_context(
         floating_base=use_floating_base, springs=use_springs)
-
     pos_map, vel_map, act_map = cassie_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = cassie_plots.make_mbp_name_vectors(plant)
-
 
     ''' Read the log '''
     filename = sys.argv[1]

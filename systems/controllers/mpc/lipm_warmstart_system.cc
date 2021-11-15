@@ -145,7 +145,7 @@ void LipmWarmStartSystem::CalcWarmstartSolution(
       height_vector,
       0.55,
       0.55,
-      0.05,
+      0.00,
       (unordered_state_stances_[mode_index] == BipedStance::kLeft));
 
   drake::solvers::MathematicalProgramResult result = drake::solvers::Solve(mpc);

@@ -165,6 +165,7 @@ cc_library(
         "//solvers:fast_osqp_solver",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+        "@gurobi//:gurobi_c",
     ],
 )
 

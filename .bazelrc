@@ -53,6 +53,7 @@ build --action_env=LD_LIBRARY_PATH=
 
 # build with snopt
 build --define=WITH_SNOPT=ON
+build --define=WITH_GUROBI=ON
 
 # use python3 by default
 build --python_path=python3

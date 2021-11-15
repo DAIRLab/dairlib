@@ -23,6 +23,9 @@ class PlotStyler():
 
     return
 
+  def attach(self):
+    plt.figure(self.fig_id)
+
   def set_default_styling(self, directory=None):
     plt.figure(self.fig_id)
     self.directory = directory

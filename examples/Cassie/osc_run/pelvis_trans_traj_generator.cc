@@ -93,8 +93,9 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   plant_.CalcPointsPositions(*context_,
                              feet_contact_points_.at(fsm_state)[0].second,
                              Vector3d::Zero(), world_, &foot_pos);
-  plant_.CalcPointsPositions(*context_, pelvis_frame_, Vector3d::Zero(), world_,
-                             &pelvis_pos);
+//  plant_.CalcPointsPositions(*context_, pelvis_frame_, Vector3d::Zero(), world_,
+//                             &pelvis_pos);
+  pelvis_pos = plant_.CalcCenterOfMassPositionInWorld(*context_);
   pelvis_vel =
       plant_.EvalBodySpatialVelocityInWorld(*context_, pelvis_).translational();
   Vector3d leg_length = pelvis_pos - foot_pos;

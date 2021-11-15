@@ -226,8 +226,8 @@ void CassieStateEstimator::solveFourbarLinkage(
   double spring_length = rod_on_heel_springs_[0].first.norm();
   // Spring rest angle offset
   double spring_rest_offset =
-      atan(rod_on_heel_springs_[0].first(1) / rod_on_heel_springs_[0].first(0));
-
+      atan2(rod_on_heel_springs_[0].first(1), rod_on_heel_springs_[0].first(0));
+  //  std::cout << spring_rest_offset << std::endl;
   plant_.SetPositions(context_.get(), q);
 
   for (int i = 0; i < 2; i++) {
@@ -298,6 +298,9 @@ void CassieStateEstimator::solveFourbarLinkage(
     else
       *right_heel_spring =
           spring_deflect_sign * heel_spring_angle - spring_rest_offset;
+    std::cout << "terms: " << std::endl;
+    std::cout << r_sol_wrt_heel_base << std::endl;
+    std::cout << spring_rest_dir_wrt_spring_base << std::endl;
   }  // end for
 }
 

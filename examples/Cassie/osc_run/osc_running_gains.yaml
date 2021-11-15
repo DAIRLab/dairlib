@@ -1,5 +1,5 @@
 w_input: 0.0
-w_accel: 0.000000001
+w_accel: 0.000000000
 #w_soft_constraint: 1000000
 w_soft_constraint: 0000
 w_input_reg: 0.00000001
@@ -26,12 +26,12 @@ swing_toe_kd: 10
 w_hip_yaw: 10
 hip_yaw_kp: 100
 hip_yaw_kd: 5
-w_hip_pitch: 10
+w_hip_pitch: 20
 hip_pitch_kp: 500
-hip_pitch_kd: 5
-w_hip_roll: 10
-hip_roll_kp: 1000
-hip_roll_kd: 5
+hip_pitch_kd: 10
+w_hip_roll: 20
+hip_roll_kp: 500
+hip_roll_kd: 10
 
 PelvisW:
   [ 0,     0,    0,
@@ -62,6 +62,6 @@ FootstepKp:
        0,  0.05,
        0,    0]
 FootstepKd:
-  [  -0.1,     0,
+  [  -0.15,     0,
          0,    -0.05,
          0,     0]

@@ -113,7 +113,7 @@ void FootTrajGenerator::AddRaibertCorrection(
 //  }else{
 //    footstep_correction(1) += 0.05;
 //  }
-  footstep_correction(0) -= 0.02;
+  footstep_correction(0) -= 0.03;
   std::vector<double> breaks = traj->get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   VectorXd new_samples = VectorXd(6);

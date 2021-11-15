@@ -51,8 +51,8 @@ def main():
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
-                                                   "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
-                                                   # "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+                                                   # "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
+                                                   "examples/Cassie/urdf/cassie_v2.urdf", False, False)
 
 
   pydairlib.cassie.cassie_utils.addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
@@ -134,7 +134,7 @@ def main():
   # plot_control_rate(t_u, u)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context_w_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
   if False:
@@ -181,6 +181,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   input_cost = np.zeros(t_u.shape[0])
   acceleration_cost = np.zeros(t_u.shape[0])
   soft_constraint_cost = np.zeros(t_u.shape[0])
+  import pdb; pdb.set_trace()
   tracking_cost = np.zeros((t_u.shape[0], len(osc_debug)))
   tracking_cost_map = dict()
   qp_solve_time = np.zeros(t_u.shape[0])
@@ -198,7 +199,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
       if osc_output[i].tracking_data_names[j] not in tracking_cost_map:
         tracking_cost_map[name] = num_tracking_cost
         num_tracking_cost += 1
-      # tracking_cost[i, tracking_cost_map[name]] = osc_output[i].tracking_cost[j]
+      tracking_cost[i, tracking_cost_map[name]] = osc_output[i].tracking_cost[j]
 
   for name in tracking_cost_map.keys():
     print(name)
@@ -285,7 +286,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   # #
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  plot_osc(osc_debug, osc_traj2, 2, "pos")
+  # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 
   # plot_osc(osc_debug, osc_traj1, 0, "vel")
@@ -302,9 +303,11 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   # plot_osc(osc_debug, osc_traj2, 0, "acc")
   # plot_osc(osc_debug, osc_traj2, 1, "acc")
-  plot_osc(osc_debug, osc_traj2, 2, "acc")
+  # plot_osc(osc_debug, osc_traj2, 2, "acc")
 
-  # plot_osc(osc_debug, osc_traj3, 0, "pos")
+  plot_osc(osc_debug, osc_traj3, 0, "pos")
+  plot_osc(osc_debug, osc_traj3, 0, "vel")
+  plot_osc(osc_debug, osc_traj3, 0, "acc")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
@@ -314,7 +317,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   plot_osc(osc_debug, osc_traj5, 0, "pos")
   # plot_osc(osc_debug, osc_traj5, 0, "vel")
   # plot_osc(osc_debug, osc_traj5, 0, "acc")
-  plot_osc(osc_debug, osc_traj6, 0, "pos")
+  # plot_osc(osc_debug, osc_traj6, 0, "pos")
   # plot_osc(osc_debug, osc_traj5, 0, "vel")
   # plot_osc(osc_debug, osc_traj6, 2, "vel")
   # plot_osc(osc_debug, osc_traj5, 0, "acc")
@@ -518,7 +521,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas):
   pos_indices = slice(0 + 7, 11)
   vel_indices = slice(23 + 6, 45)
   # floating base states
-  pos_indices = slice(0, 7)
+  pos_indices = slice(0, 23)
   vel_indices = slice(23, 23 + 6)
   # vel_indices = slice(23 + 6, 23 + 10)
   # all motor torques

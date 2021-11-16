@@ -1481,11 +1481,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int sys_ret = std::system("git rev-parse HEAD");
   DRAKE_DEMAND(sys_ret != -1);
   cout << "\n\n==============================\n";
+  cout << "Result of \"git status\":" << endl;
+  sys_ret = std::system("git status");
+  DRAKE_DEMAND(sys_ret != -1);
+  cout << "\n\n==============================\n";
   cout << "Result of \"git diff\":" << endl;
   sys_ret = std::system("git --no-pager diff");
   //  sys_ret = std::system("git diff-index HEAD");
-  cout << "\n==============================\n\n";
   DRAKE_DEMAND(sys_ret != -1);
+  cout << "\n==============================\n\n";
   //  }
 
   // Create MBP

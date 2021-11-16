@@ -102,6 +102,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
   # stride_length_scaling = 1 + min(rom_iter_idx / 30.0, 1) * 0.15
 
   # simulation arguments
+  init_x_vel_reduction_ratio = 0.66  # since the starting configuration is standing pose, setting the task velocity would throw the MPC off. Cassie couldn't catch itself.
   pause_second = 2.0 if get_init_file else 0
   path_init_pose_success = InitPoseSuccessPath(rom_iter_idx, log_idx)
 
@@ -177,7 +178,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
     '--end_time=%.3f' % sim_end_time,
     '--pause_second=%.3f' % pause_second,
     '--init_height=%.3f' % 1.0,
-    '--pelvis_x_vel=%.3f' % ((task_value / duration) if init_sim_vel else 0),
+    '--pelvis_x_vel=%.3f' % ((init_x_vel_reduction_ratio * task_value / duration) if init_sim_vel else 0),
     '--target_realtime_rate=%.3f' % target_realtime_rate,
     '--spring_model=%s' % str(spring_model).lower(),
     '--path_init_pose_success=%s' % path_init_pose_success,

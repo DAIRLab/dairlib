@@ -132,17 +132,17 @@ void SrbdCMPC::Build() {
   MakeTerrainConstraints();
   MakeCost();
 
-  drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 5e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-4);
-//  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
-//  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
-  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-//  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1.0);
-  solver_options.SetOption(OsqpSolver::id(), "max_iter", 15000);
-  prog_.SetSolverOptions(solver_options);
+//  drake::solvers::SolverOptions solver_options;
+//  solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
+//  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 5e-5);
+//  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-4);
+////  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
+////  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
+//  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
+//  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+////  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1.0);
+//  solver_options.SetOption(OsqpSolver::id(), "max_iter", 15000);
+//  prog_.SetSolverOptions(solver_options);
 }
 
 void SrbdCMPC::MakeTerrainConstraints(

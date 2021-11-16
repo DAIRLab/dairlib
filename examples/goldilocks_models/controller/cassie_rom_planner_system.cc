@@ -1464,7 +1464,7 @@ void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
     const VectorXd& final_position, vector<VectorXd>* des_xy_pos,
     vector<VectorXd>* des_xy_vel) const {
   // Parameters
-  double y_vel_offset = 0.2;
+  double y_vel_offset = 0.1;
 
   double total_phase_length = n_total_step - init_phase;
 

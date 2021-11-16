@@ -6,6 +6,7 @@ cc_binary(
     name = "tmp",
     srcs = ["tmp.cc"],
     deps = [
-        "@gurobi//:gurobi_c",
+        "@gurobi//:gurobi_cxx",
+        "@drake//:drake_shared_library",
     ],
 )

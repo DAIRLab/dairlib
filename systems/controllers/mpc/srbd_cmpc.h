@@ -40,8 +40,7 @@ typedef struct SrbdMode {
 class SrbdCMPC : public drake::systems::LeafSystem<double> {
  public:
   SrbdCMPC(const multibody::SingleRigidBodyPlant& plant, double dt,
-           bool traj, bool used_with_finite_state_machine = true,
-           bool use_com = false);
+           bool traj, bool used_with_finite_state_machine = true);
 
 
   /// Currently SrbdCMPC only supports the contact sequence
@@ -162,7 +161,6 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
   // parameters and constants
   const bool use_fsm_;
-  const bool use_com_;
   const bool traj_tracking_;
   const int nx_ = 12;
   const int nu_ = 4;

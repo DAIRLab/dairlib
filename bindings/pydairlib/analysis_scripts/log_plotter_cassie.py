@@ -141,6 +141,7 @@ def main():
   plot_mpc_orientation_sol(mpc_output[25],0)
   plot_mpc_orientation_sol(mpc_output[25],1)
   plot_mpc_orientation_sol(mpc_output[25],2)
+  plot_mpc_input_sol(mpc_output[25])
 
   plt.show()
 
@@ -155,15 +156,22 @@ def plot_mpc_swing_sol(mpc_sol, dim):
   fig_swing_ft = plt.figure("mpc swing ft traj " + str(dim))
   swing_ft_traj = mpc_sol.trajectories["swing_foot_traj"]
   plt.plot(swing_ft_traj.time_vec, swing_ft_traj.datapoints[dim, :])
-  t, r = mpc_sol.traj_as_cubic_with_continuous_second_derivatives("swing_foot_traj",100)
+  t, r = mpc_sol.traj_as_cubic_hermite("swing_foot_traj",100)
   plt.plot(t, r[:,dim])
 
 def plot_mpc_orientation_sol(mpc_sol, dim):
   fig_orientation = plt.figure("mpc orientation" + str(dim))
   orientation_traj = mpc_sol.trajectories["orientation"]
   plt.plot(orientation_traj.time_vec, orientation_traj.datapoints[dim, :])
-  t, r = mpc_sol.traj_as_cubic_with_continuous_second_derivatives("orientation",100)
+  t, r = mpc_sol.traj_as_cubic_hermite("orientation",100)
   plt.plot(t, r[:,dim])
+
+def plot_mpc_input_sol(mpc_sol):
+  fig_input = plt.figure("mpc input")
+  input_traj = mpc_sol.trajectories["input_traj"]
+  plt.step(input_traj.time_vec, input_traj.datapoints.T)
+  plt.legend(["fx", "fy", "fz", "Tz"])
+
 
 def investigate_ekf(context, front_contact_disp, fsm, full_log, l_toe_frame,
                     plant_w_spr, r_toe_frame, rear_contact_disp, t_slice, t_u,

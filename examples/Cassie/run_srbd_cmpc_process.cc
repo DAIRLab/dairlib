@@ -141,9 +141,8 @@ int DoMain(int argc, char* argv[]) {
   LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};
   LinearSrbdDynamics right_stance_dynamics = {Ar, Br, br};
 
-
   auto cmpc = builder.AddSystem<SrbdCMPC>(
-      srb_plant, dt, false, true,  FLAGS_use_com);
+      srb_plant, dt, false, true);
   std::vector<VectorXd> kin_nom =
       {left_safe_nominal_foot_pos - des_com_pos,
        right_safe_nominal_foot_pos - des_com_pos};
@@ -161,12 +160,11 @@ int DoMain(int argc, char* argv[]) {
   x_des(2) = des_com_pos(2);
   x_des(6) = FLAGS_v_des;
   std::cout << "xd:\n" << x_des << std::endl;
-  MatrixXd qq = gains.q.asDiagonal();
 
   cmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
   cmpc->SetTerminalCost(gains.qf.asDiagonal());
   cmpc->AddInputRegularization(gains.r.asDiagonal());
-  cmpc->AddFootPlacementRegularization(Eigen::Matrix3d::Identity());
+  cmpc->AddFootPlacementRegularization(Eigen::Matrix3d::Zero());
 
   // set friction coeff
   cmpc->SetMu(gains.mu);

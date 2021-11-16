@@ -35,11 +35,9 @@ namespace dairlib{
 
 SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
                    bool traj,
-                   bool used_with_finite_state_machine,
-                   bool use_com) :
+                   bool used_with_finite_state_machine):
     plant_(plant),
     use_fsm_(used_with_finite_state_machine),
-    use_com_(use_com),
     traj_tracking_(traj),
     dt_(dt){
 
@@ -88,9 +86,9 @@ void SrbdCMPC::AddMode(const LinearSrbdDynamics&  dynamics,
   SrbdMode mode = {dynamics, reset, stance, N};
   for (int i = 0; i < N; i++) {
     xx.push_back(prog_.NewContinuousVariables(
-        nx_, "x_" + std::to_string(i + stance)));
+        nx_, "x_" + std::to_string(stance) + std::to_string(i)));
     uu.push_back(prog_.NewContinuousVariables(
-        nu_, "u_" + std::to_string(i + stance)));
+        nu_, "u_" + std::to_string(stance) + std::to_string(i)));
   }
   pp.push_back(prog_.NewContinuousVariables(
       kLinearDim_, "p_" + std::to_string(stance)));
@@ -127,20 +125,20 @@ void SrbdCMPC::Build() {
   CheckProblemDefinition();
   MakeDynamicsConstraints();
   MakeFrictionConeConstraints();
-//  MakeKinematicReachabilityConstraints();
+  MakeKinematicReachabilityConstraints();
   MakeInitialStateConstraint();
   MakeTerrainConstraints();
   MakeCost();
 
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 5e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-4);
-//  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
-//  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 5e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 5e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 5e-5);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-//  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1.0);
+  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1.0);
   solver_options.SetOption(OsqpSolver::id(), "max_iter", 15000);
   prog_.SetSolverOptions(solver_options);
 }
@@ -185,6 +183,7 @@ void SrbdCMPC::UpdateKinematicConstraints(
   for (auto & constraint : kinematic_constraint_){
     prog_.RemoveConstraint(constraint);
   }
+
   kinematic_constraint_.clear();
 
   MatrixXd A = MatrixXd::Zero(kLinearDim_, 2*kLinearDim_);

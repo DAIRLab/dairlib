@@ -155,9 +155,9 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
 
   // Continuous B matrix
   B.block(6, 0, 3, 3) = (1.0 / m) * Matrix3d::Identity();
-  B.block(9, 0, 3, 1) = g_I_inv *
+  B.block(9, 0, 3, 3) = g_I_inv *
       HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos));
-  B.block(9, 9, 3, 1) = g_I_inv * Vector3d(0.0, 0.0, 1.0);
+  B.block(9, 3, 3, 1) = g_I_inv * Vector3d(0.0, 0.0, 1.0);
 
   // Continuous Affine portion (b)
   b.segment(6, 3) = -g;
@@ -185,9 +185,20 @@ void SingleRigidBodyPlant::CopyDiscreteLinearizedSrbDynamicsForMPC(
   CopyContinuousLinearized3dSrbDynamicsForMPC(
       m, yaw, stance, b_I, eq_com_pos, eq_foot_pos, &A, &B, &b);
 
-  A = MatrixXd::Identity(12, 15) + A*dt;
-  B = B*dt;
-  b = b*dt;
+
+  MatrixXd A_accel = MatrixXd::Zero(12, 15);
+  MatrixXd B_accel = MatrixXd::Zero(12, 4);
+  VectorXd b_accel = VectorXd::Zero(12);
+  A_accel.block(0, 0, 6, A_accel.cols()) = A.block(6, 0, 6, A_accel.cols());
+  B_accel.block(0, 0, 6, B_accel.cols()) = B.block(6, 0, 6, B_accel.cols());
+  b_accel.head(6) = b.tail(6);
+  A = MatrixXd::Identity(12, 15) + A*dt + (0.5 * dt*dt)*A_accel;
+  B = B*dt + 0.5*dt*dt*B_accel;
+  b = b*dt + 0.5*dt*dt*b_accel;
+
+//  A = MatrixXd::Identity(12, 15) + A*dt;
+//  B = B*dt;
+//  b = b*dt;
 
   *Ad = A;
   *Bd = B;

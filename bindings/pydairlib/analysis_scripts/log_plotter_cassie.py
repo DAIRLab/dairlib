@@ -169,7 +169,7 @@ def plot_mpc_orientation_sol(mpc_sol, dim):
 def plot_mpc_input_sol(mpc_sol):
   fig_input = plt.figure("mpc input")
   input_traj = mpc_sol.trajectories["input_traj"]
-  plt.step(input_traj.time_vec, input_traj.datapoints.T)
+  plt.step(input_traj.time_vec, input_traj.datapoints.T, where='post')
   plt.legend(["fx", "fy", "fz", "Tz"])
 
 

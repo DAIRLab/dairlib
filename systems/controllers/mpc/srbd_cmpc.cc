@@ -127,22 +127,22 @@ void SrbdCMPC::Build() {
   CheckProblemDefinition();
   MakeDynamicsConstraints();
   MakeFrictionConeConstraints();
-  MakeKinematicReachabilityConstraints();
+//  MakeKinematicReachabilityConstraints();
   MakeInitialStateConstraint();
   MakeTerrainConstraints();
   MakeCost();
 
-//  drake::solvers::SolverOptions solver_options;
-//  solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
-//  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 5e-5);
-//  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-4);
-////  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
-////  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
-//  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-//  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-////  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1.0);
-//  solver_options.SetOption(OsqpSolver::id(), "max_iter", 15000);
-//  prog_.SetSolverOptions(solver_options);
+  drake::solvers::SolverOptions solver_options;
+  solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 5e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-4);
+//  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
+//  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
+  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
+  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+//  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1.0);
+  solver_options.SetOption(OsqpSolver::id(), "max_iter", 15000);
+  prog_.SetSolverOptions(solver_options);
 }
 
 void SrbdCMPC::MakeTerrainConstraints(
@@ -421,10 +421,10 @@ EventStatus SrbdCMPC::PeriodicUpdate(
                   foot_target.tail(kLinearDim_),
                   warmstart_traj);
 
-//  std::vector<drake::solvers::LinearConstraint*> lin_con;
-//  for (auto& binding : prog_.GetAllLinearConstraints()) {
-//    lin_con.push_back(binding.evaluator().get());
-//  }
+  auto lin_con = prog_.GetAllLinearConstraints();
+  for (auto& binding : lin_con) {
+    std::cout << "Next Binding:\n" << binding << std::endl;
+  }
 //  print_constraint(lin_con);
 
 
@@ -494,10 +494,12 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
   LcmTrajectory::Trajectory CoMTraj;
   LcmTrajectory::Trajectory AngularTraj;
   LcmTrajectory::Trajectory SwingFootTraj;
+  LcmTrajectory::Trajectory InputTraj;
 
   CoMTraj.traj_name = "com_traj";
   AngularTraj.traj_name = "orientation";
   SwingFootTraj.traj_name = "swing_foot_traj";
+  InputTraj.traj_name = "input_traj";
 
 
   /** need to set datatypes for LcmTrajectory to save properly **/
@@ -507,24 +509,32 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
   }
   for (int i = 0; i < kLinearDim_; i++) {
     SwingFootTraj.datatypes.emplace_back("double");
+    InputTraj.datatypes.emplace_back("double");
   }
+  InputTraj.datatypes.emplace_back("double");
 
   /** Allocate Eigen matrices for trajectory blocks **/
   MatrixXd com = MatrixXd::Zero(2*kLinearDim_ , total_knots_);
   MatrixXd orientation = MatrixXd::Zero(2*kAngularDim_ , total_knots_);
+  MatrixXd input = MatrixXd::Zero(nu_, total_knots_);
   VectorXd time_knots = VectorXd::Zero(total_knots_);
 
 
 
   for (int i = 0; i < total_knots_; i++) {
+    VectorXd ui = result.GetSolution(uu.at(i));
     VectorXd xi = result.GetSolution(xx.at(i));
+    input.col(i) = ui;
     com.block(0, i, 2*kLinearDim_, 1) << xi.head(kLinearDim_),
         xi.segment(kLinearDim_ + kAngularDim_, kLinearDim_);
     orientation.block(0, i, 2*kAngularDim_, 1) <<
         xi.segment(kLinearDim_, kAngularDim_), xi.tail(kAngularDim_);
+
     time_knots(i) = time + dt_ * i;
   }
 
+  InputTraj.time_vector = time_knots;
+  InputTraj.datapoints = input;
   CoMTraj.time_vector = time_knots;
   CoMTraj.datapoints = com;
   AngularTraj.time_vector = time_knots;
@@ -538,6 +548,7 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
   lcm_traj.AddTrajectory(CoMTraj.traj_name, CoMTraj);
   lcm_traj.AddTrajectory(AngularTraj.traj_name, AngularTraj);
   lcm_traj.AddTrajectory(SwingFootTraj.traj_name, SwingFootTraj);
+  lcm_traj.AddTrajectory(InputTraj.traj_name, InputTraj);
 
   return lcm_traj.GenerateLcmObject();
 }

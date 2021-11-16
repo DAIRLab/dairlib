@@ -128,9 +128,14 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
     const drake::EigenPtr<MatrixXd> &Bd,
     const drake::EigenPtr<VectorXd> &bd) {
 
+
   const Eigen::Vector3d g = {0.0, 0.0, 9.81};
   drake::math::RollPitchYaw rpy(0.0, 0.0, yaw);
   Matrix3d R_yaw = rpy.ToMatrix3ViaRotationMatrix();
+
+  std::cout << "nominal lever arm x-product:\n" <<
+    HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos)) << std::endl;
+
   Vector3d tau = {0.0,0.0,1.0};
   Vector3d mg = {0.0, 0.0, m * 9.81};
   Matrix3d lambda_hat = HatOperator3x3(mg);
@@ -180,15 +185,9 @@ void SingleRigidBodyPlant::CopyDiscreteLinearizedSrbDynamicsForMPC(
   CopyContinuousLinearized3dSrbDynamicsForMPC(
       m, yaw, stance, b_I, eq_com_pos, eq_foot_pos, &A, &B, &b);
 
-  MatrixXd A_accel = MatrixXd::Zero(12, 15);
-  MatrixXd B_accel = MatrixXd::Zero(12, 4);
-  VectorXd b_accel = VectorXd::Zero(12);
-  A_accel.block(0, 0, 6, A_accel.cols()) = A.block(6, 0, 6, A_accel.cols());
-  B_accel.block(0, 0, 6, B_accel.cols()) = B.block(6, 0, 6, B_accel.cols());
-  b_accel.head(6) = b.tail(6);
-  A = MatrixXd::Identity(12, 15) + A*dt + (0.5 * dt*dt)*A_accel;
-  B = B*dt + 0.5*dt*dt*B_accel;
-  b = b*dt + 0.5*dt*dt*b_accel;
+  A = MatrixXd::Identity(12, 15) + A*dt;
+  B = B*dt;
+  b = b*dt;
 
   *Ad = A;
   *Bd = B;

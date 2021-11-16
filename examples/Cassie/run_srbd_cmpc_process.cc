@@ -159,13 +159,14 @@ int DoMain(int argc, char* argv[]) {
   // add tracking objective
   VectorXd x_des = VectorXd::Zero(nx);
   x_des(2) = des_com_pos(2);
-  x_des(3) = FLAGS_v_des;
+  x_des(6) = FLAGS_v_des;
+  std::cout << "xd:\n" << x_des << std::endl;
   MatrixXd qq = gains.q.asDiagonal();
 
   cmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
   cmpc->SetTerminalCost(gains.qf.asDiagonal());
   cmpc->AddInputRegularization(gains.r.asDiagonal());
-  cmpc->AddFootPlacementRegularization(0 * Eigen::Matrix3d::Identity());
+  cmpc->AddFootPlacementRegularization(Eigen::Matrix3d::Identity());
 
   // set friction coeff
   cmpc->SetMu(gains.mu);

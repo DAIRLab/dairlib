@@ -421,10 +421,10 @@ EventStatus SrbdCMPC::PeriodicUpdate(
                   foot_target.tail(kLinearDim_),
                   warmstart_traj);
 
-  auto lin_con = prog_.GetAllLinearConstraints();
-  for (auto& binding : lin_con) {
-    std::cout << "Next Binding:\n" << binding << std::endl;
-  }
+//  auto lin_con = prog_.GetAllLinearConstraints();
+//  for (auto& binding : lin_con) {
+//    std::cout << "Next Binding:\n" << binding << std::endl;
+//  }
 //  print_constraint(lin_con);
 
 
@@ -599,8 +599,8 @@ void SrbdCMPC::CopyDiscreteDynamicsConstraint(
     A->block(0, 0, nx_, nx_) = mode.dynamics.A.block(0, 0, nx_, nx_);
     A->block(0, nx_, nx_, nu_) = mode.dynamics.B;
     A->block(0, nx_ + nu_, nx_, nx_) = -MatrixXd::Identity(nx_, nx_);
-    *b = mode.dynamics.A.block(0, nx_, nx_, kLinearDim_)
-             * foot_pos - mode.dynamics.b;
+    *b = -(mode.dynamics.A.block(0, nx_, nx_, kLinearDim_)
+             * foot_pos + mode.dynamics.b);
     return;
   }
 }

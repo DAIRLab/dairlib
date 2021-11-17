@@ -80,6 +80,23 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "pinocchio_plant",
+    testonly = 1,
+    srcs = [
+        "pinocchio_plant.cc",
+    ],
+    hdrs = [
+        "pinocchio_plant.h",
+    ],
+    deps = [
+        ":utils",
+        "@drake//:drake_shared_library",
+        "@drake//common/test_utilities:eigen_matrix_compare",
+        "@pinocchio",
+    ],
+)
+
 cc_binary(
     name = "multipose_visualizer_test",
     srcs = ["test/multipose_visualizer_test.cc"],
@@ -98,6 +115,20 @@ cc_test(
         "//common",
         "//examples/Cassie:cassie_urdf",
         "@drake//:drake_shared_library",
+        "@gtest//:main",
+    ],
+)
+
+cc_test(
+    name = "pinocchio_plant_test",
+    size = "small",
+    srcs = ["test/pinocchio_plant_test.cc"],
+    deps = [
+        ":pinocchio_plant",
+        ":utils",
+        "//common",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//common/test_utilities",
         "@gtest//:main",
     ],
 )

@@ -420,6 +420,27 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
+        "@pinocchio"
+    ],
+)
+
+cc_binary(
+    name = "pinocchio_plant_benchmark",
+    srcs = ["test/pinocchio_plant_benchmark.cc"],
+    tags = ["manual"],
+    testonly = 1,
+    deps = [
+        ":cassie_urdf",
+        "//examples/PlanarWalker:urdf",
+        ":sim_cassie_sensor_aggregator",
+        "//common",
+        "//multibody:utils",
+        "//multibody:pinocchio_plant",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+        "@pinocchio"
     ],
 )
 

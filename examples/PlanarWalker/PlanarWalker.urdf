@@ -1,9 +1,6 @@
 <?xml version="1.0" ?>
 <robot name="KneedCompassGait">
   
-  <link name="base"/>
-  <link name="base_x"/>
-  <link name="base_xz"/>
   <link name="hip">
     <inertial>
       <mass value="10"/>
@@ -150,21 +147,6 @@
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
   </link>
-  <joint name="planar_x" type="prismatic">
-    <parent link="base"/>
-    <child link="base_x"/>
-    <axis xyz="1 0 0"/>
-  </joint>
-  <joint name="planar_z" type="prismatic">
-    <parent link="base_x"/>
-    <child link="base_xz"/>
-    <axis xyz="0 0 1"/>
-  </joint>  
-  <joint name="planar_roty" type="continuous">
-    <parent link="base_xz"/>
-    <child link="hip"/>
-    <axis xyz="0 1 0"/>
-  </joint>
   <joint name="right_lower_leg_mass_weld" type="fixed">
     <parent link="right_lower_leg"/>
     <child link="right_lower_leg_mass"/>
@@ -173,24 +155,25 @@
     <parent link="hip"/>
     <child link="left_upper_leg"/>
   </joint>
-  <joint name="hip_pin" type="continuous">
+  <joint name="hip_pin" type="revolute">
     <parent link="hip"/>
     <child link="right_upper_leg"/>
     <axis xyz="0 1 0"/>
+    <limit upper="2" lower="-2" effort="1e6" velocity="100"/>
   </joint>
-  <joint name="left_knee_pin" type="continuous">
+  <joint name="left_knee_pin" type="revolute">
     <parent link="left_upper_leg"/>
     <child link="left_lower_leg"/>
     <axis xyz="0 1 0"/>
     <origin xyz="0 0 -0.5"/>
-    <limit effort="100"/>
+    <limit upper="2" lower="-2" effort="1e6" velocity="100"/>
   </joint>
   <joint name="right_knee_pin" type="revolute">
     <parent link="right_upper_leg"/>
     <child link="right_lower_leg"/>
     <axis xyz="0 1 0"/>
     <origin xyz="0 0 -0.5"/>
-    <limit effort="100"/>
+    <limit upper="2" lower="-2" effort="1e6" velocity="100"/>
   </joint>
   <transmission name="hip_trans" type="SimpleTransmission">
     <actuator name="hip_torque"/>

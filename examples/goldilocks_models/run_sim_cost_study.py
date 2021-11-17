@@ -675,6 +675,23 @@ def GetNominalSamplesToPlot(model_indices):
 
   return nominal_mtc
 
+def AdjustSlices(model_slices):
+  max_model_iter = model_indices[-1]
+  for i in range(len(model_indices)):
+    model_iter = model_indices[i]
+    if len(mtcl[mtcl[:, 0] == model_iter, 1]) == 0:
+      max_model_iter = model_indices[max(1, i - 1)]
+      break
+
+  if len(model_slices) == 0:
+    n_slice = 5
+    model_slices = list(range(1, max_model_iter, int(max_model_iter/n_slice)))
+  elif model_slices[-1] > max_model_iter:
+    model_slices = list(range(1, max_model_iter, int(max_model_iter/len(model_slices))))
+
+  return model_slices
+
+
 def Generate3dPlots(model_indices, mtcl, nominal_mtc):
   app = "_w_nom" if plot_nominal else ""
   ### scatter plot
@@ -987,8 +1004,10 @@ if __name__ == "__main__":
   # task_slice_value_list = [-0.4, -0.2, 0, 0.2, 0.4]
 
   # 2D plot (cost vs task)
+  # model_slices = []
   model_slices = [1, 50, 100, 150]
-  # model_slices = list(range(1, 55, 5))
+  # model_slices = [1, 25, 50, 75, 100]
+  # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1090,6 +1109,9 @@ if __name__ == "__main__":
   nominal_mtc = GetNominalSamplesToPlot(model_indices)
   if len(nominal_mtc) == 0:
     plot_nominal = False
+
+  # Adjust slices value (for 2D plots)
+  model_slices = AdjustSlices(model_slices)
 
   # Plot
   Generate3dPlots(model_indices, mtcl, nominal_mtc)

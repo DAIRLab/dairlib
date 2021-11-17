@@ -51,12 +51,12 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 
+using multibody::WorldYawViewFrame;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::WorldYawOscViewFrame;
 
 using multibody::FixedJointEvaluator;
 
@@ -419,7 +419,7 @@ int DoMain(int argc, char* argv[]) {
   osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
   const auto& pelvis = plant_w_spr.GetBodyByName("pelvis");
-  systems::controllers::WorldYawOscViewFrame view_frame(pelvis);
+  multibody::WorldYawViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, left_toe.first, left_toe.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
@@ -490,7 +490,7 @@ int DoMain(int argc, char* argv[]) {
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
       &com_data);
-  WorldYawOscViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
+  WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
 
   TransTaskSpaceTrackingData swing_ft_traj_global(

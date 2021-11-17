@@ -36,7 +36,7 @@ WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
 template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(
     const MultibodyPlant<T>& plant, Vector3d pt_A, const Frame<T>& frame_A,
-    const systems::controllers::OscViewFrame<T>& view_frame,
+    const multibody::ViewFrame<T>& view_frame,
     const Matrix3d rotation, const Vector3d offset,
     std::vector<int> active_directions)
     : KinematicEvaluator<T>(plant, 3),

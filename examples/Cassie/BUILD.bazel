@@ -379,6 +379,7 @@ cc_binary(
         ":simulator_drift",
         "//examples/Cassie/osc",
         "//multibody:utils",
+        "//multibody:view_frame",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",

@@ -1,13 +1,13 @@
-#include "osc_view_frame.h"
+#include "multibody/view_frame.h"
 
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 
-namespace dairlib::systems::controllers {
+namespace dairlib::multibody {
 
-/**** WorldYawOscViewFrame ****/
+/**** WorldYawViewFrame ****/
 template <>
-drake::Matrix3X<double> WorldYawOscViewFrame<double>::CalcWorldToFrameRotation(
+drake::Matrix3X<double> WorldYawViewFrame<double>::CalcWorldToFrameRotation(
     const drake::multibody::MultibodyPlant<double>& plant_w_spr,
     const drake::systems::Context<double>& context_w_spr) const {
   // Get approximated heading angle of pelvis and rotational matrix
@@ -20,7 +20,7 @@ drake::Matrix3X<double> WorldYawOscViewFrame<double>::CalcWorldToFrameRotation(
   return rot.transpose();
 }
 
-/**** WorldYawOscViewFrame ****/
+/**** WorldYawViewFrame ****/
 template <>
 drake::Matrix3X<double> IdentityViewFrame<double>::CalcWorldToFrameRotation(
     const drake::multibody::MultibodyPlant<double>& plant_w_spr,
@@ -28,4 +28,4 @@ drake::Matrix3X<double> IdentityViewFrame<double>::CalcWorldToFrameRotation(
   return Eigen::MatrixXd::Identity(3, 3);
 }
 
-}  // namespace dairlib::systems::controllers
+}  // namespace dairlib::multibody

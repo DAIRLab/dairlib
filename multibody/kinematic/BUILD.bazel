@@ -22,7 +22,7 @@ cc_library(
     ],
     deps = [
         "//solvers:constraint_factory",
-        "//systems/controllers/osc:osc_view_frame",
+        "//multibody:view_frame",
         "@drake//:drake_shared_library",
     ],
 )

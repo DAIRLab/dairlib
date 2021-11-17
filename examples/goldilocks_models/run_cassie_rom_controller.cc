@@ -707,7 +707,13 @@ int DoMain(int argc, char* argv[]) {
         PiecewisePolynomial<double>::FirstOrderHold(rom_ratio_breaks,
                                                     rom_ratio_samples);
     optimal_rom_traj.SetTimeVaryingGains(rom_gain_ratio);
-    osc->AddTrackingData(&optimal_rom_traj);
+    if (FLAGS_is_two_phase) {
+      // With high gains, the initial error could throw Cassie into the air
+      // TODO: Try time varying gains instead of turning it off completely in the beginning
+      osc->AddTrackingData(&optimal_rom_traj, 0.02);
+    } else {
+      osc->AddTrackingData(&optimal_rom_traj);
+    }
     // Pelvis rotation tracking (pitch and roll)
     bool constant_pelvis_balance = false;
     RotTaskSpaceTrackingData pelvis_balance_traj(

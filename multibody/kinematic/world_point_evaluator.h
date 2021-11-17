@@ -33,8 +33,9 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
       std::vector<int> active_directions = {0, 1, 2});
 
   /// The same constructor as the above one except for the argument
-  /// `view_frame` which is the frame which the Jacobian and JdotV are
-  /// expressed in.
+  /// `view_frame`. 
+  /// `WorldPointEvaluator` computes position, Jacobian and JdotV in the world
+  /// frame, and `ViewFrame` is used to rotate this vector or matrix. 
 
   WorldPointEvaluator(
       const drake::multibody::MultibodyPlant<T>& plant,

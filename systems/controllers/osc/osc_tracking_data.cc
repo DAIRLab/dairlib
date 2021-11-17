@@ -91,7 +91,7 @@ void OscTrackingData::UpdateDesired(
   if (traj.has_derivative()) {
     ydot_des_ = traj.EvalDerivative(t, 1);
     yddot_des_ = traj.EvalDerivative(t, 1).bottomRows(n_ydot_);
-//    yddot_des_ = traj.EvalDerivative(t, 2);
+    //    yddot_des_ = traj.EvalDerivative(t, 2);
   }
   // TODO (yangwill): Remove this edge case after EvalDerivative has been
   // implemented for ExponentialPlusPiecewisePolynomial

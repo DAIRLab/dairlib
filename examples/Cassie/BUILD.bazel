@@ -356,6 +356,7 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
+        "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "//systems/primitives:gaussian_noise_pass_through",

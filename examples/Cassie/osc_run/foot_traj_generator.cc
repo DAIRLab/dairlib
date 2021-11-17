@@ -103,16 +103,16 @@ void FootTrajGenerator::AddRaibertCorrection(
   Vector2d desired_pelvis_pos = {0.0, 0};
   VectorXd pelvis_pos = robot_output->GetPositions().segment(4, 2);
   VectorXd pelvis_vel = robot_output->GetVelocities().segment(3, 2);
-  VectorXd pelvis_pos_err = desired_pelvis_pos - pelvis_pos;
-  VectorXd pelvis_vel_err = desired_pelvis_vel - pelvis_vel;
+  VectorXd pelvis_pos_err = pelvis_pos - desired_pelvis_pos;
+  VectorXd pelvis_vel_err = pelvis_vel - desired_pelvis_vel;
   VectorXd footstep_correction =
       Kp_ * (pelvis_pos_err) +
       Kd_ * (pelvis_vel_err);
-//  if(is_left_foot_){
-//    footstep_correction(1) -= 0.05;
-//  }else{
-//    footstep_correction(1) += 0.05;
-//  }
+  if(is_left_foot_){
+    footstep_correction(1) -= 0.02;
+  }else{
+    footstep_correction(1) += 0.02;
+  }
   footstep_correction(0) -= 0.03;
   std::vector<double> breaks = traj->get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());

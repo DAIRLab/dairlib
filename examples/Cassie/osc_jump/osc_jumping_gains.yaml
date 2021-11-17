@@ -1,9 +1,9 @@
 w_input: 0.000
-w_accel: 0.00001
-w_input_reg: 0.001
+w_accel: 0.0000001
+w_input_reg: 0.00
 w_soft_constraint: 100
-x_offset: -0.03
-relative_feet: false
+x_offset: -0.025
+relative_feet: true
 
 mu: 0.8
 
@@ -15,7 +15,7 @@ w_hip_yaw: 100
 hip_yaw_kp: 40
 hip_yaw_kd: 5
 
-impact_threshold: 0.000
+impact_threshold: 0.050
 landing_delay: 0.000
 
 CoMW:
@@ -31,11 +31,11 @@ FlightFootW:
    0,   1,    0,
    0,   0,   1]
 CoMKp:
-  [ 50,   0,    0,
+  [10,   0,    0,
     0,   50,    0,
     0,    0,  50]
 CoMKd:
-  [ 50,    0,   0,
+  [  5,    0,   0,
      0,    5,   0,
      0,    0,   5]
 PelvisRotKp:
@@ -49,7 +49,7 @@ PelvisRotKd:
 FlightFootKp:
   [150,   0,    0,
    0,   100,    0,
-   0,     0,  200]
+   0,     0,  100]
 FlightFootKd:
   [ 5,   0,    0,
     0,  5,   0,

@@ -134,7 +134,7 @@ def main():
   # plot_control_rate(t_u, u)
   # plot_ii_projection(ps, t_x, x, plant_w_spr, context_w_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
   # plot_ii_projection(ps, t_x, x, plant_wo_spr, context_wo_spr, t_slice, pos_map_spr_to_wo_spr, vel_map_spr_to_wo_spr, '-', log_num, u_meas)
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, u_meas)
   # plot_contact_est(full_log)
 
   if False:
@@ -306,8 +306,8 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
 
   plot_osc(osc_debug, osc_traj3, 0, "pos")
   plot_osc(osc_debug, osc_traj3, 0, "vel")
+  ps.plot(osc_debug[osc_traj9].t[t_u_slice], fsm[t_u_slice])
   plot_osc(osc_debug, osc_traj3, 0, "acc")
-  # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
   # plot_osc(osc_debug, osc_traj4, 0, "pos")
   # ps.plot(osc_debug[osc_traj0].t[t_u_slice], fsm[t_u_slice])
 

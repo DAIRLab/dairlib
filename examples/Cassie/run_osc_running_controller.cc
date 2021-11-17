@@ -67,6 +67,7 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::WorldYawOscViewFrame;
 
 namespace examples {
 
@@ -161,6 +162,9 @@ int DoMain(int argc, char* argv[]) {
                               dircon_trajectory.GetStateBreaks(1)(0);
   vector<int> fsm_states = {left_stance_state, air_phase, right_stance_state,
                             air_phase, left_stance_state};
+  std::cout << "left support duration: " << left_support_duration << std::endl;
+  std::cout << "flight duration: " << air_phase_duration << std::endl;
+  std::cout << "right support duration: " << right_support_duration << std::endl;
   vector<double> state_durations = {
       left_support_duration / 2, air_phase_duration, right_support_duration,
       air_phase_duration, left_support_duration / 2};
@@ -365,8 +369,10 @@ int DoMain(int argc, char* argv[]) {
                                                   "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
                                                    "toe_right");
-  stance_foot_tracking_data.AddStateAndPointToTrack(left_stance_state, "toe_left");
-  stance_foot_tracking_data.AddStateAndPointToTrack(right_stance_state, "toe_right");
+  stance_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
+                                                    "toe_left");
+  stance_foot_tracking_data.AddStateAndPointToTrack(right_stance_state,
+                                                    "toe_right");
   left_foot_tracking_data.AddStateAndPointToTrack(air_phase, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(air_phase, "toe_right");
 
@@ -383,6 +389,7 @@ int DoMain(int argc, char* argv[]) {
   left_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_left");
   right_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_right");
 
+  WorldYawOscViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant, &left_foot_tracking_data,
@@ -395,6 +402,13 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
       osc_gains.W_pelvis, plant, plant, &pelvis_tracking_data,
       &stance_foot_tracking_data);
+  left_foot_rel_tracking_data.SetViewFrame(pelvis_view_frame);
+  right_foot_rel_tracking_data.SetViewFrame(pelvis_view_frame);
+  pelvis_trans_rel_tracking_data.SetViewFrame(pelvis_view_frame);
+  left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
+  right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
+  pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);
+
   //  left_foot_rel_tracking_data.DisableFeedforwardAccel({2});
   //  right_foot_rel_tracking_data.DisableFeedforwardAccel({2});
 
@@ -440,17 +454,21 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<BasicTrajectoryPassthrough>(
           hip_pitch_right_traj, "hip_pitch_right_traj_generator");
   JointSpaceTrackingData hip_pitch_left_tracking_data(
-      "hip_pitch_left_traj", osc_gains.W_hip_pitch, osc_gains.K_p_hip_pitch,
-      osc_gains.K_d_hip_pitch, plant, plant);
+      "hip_pitch_left_traj", osc_gains.K_p_hip_pitch, osc_gains.K_d_hip_pitch,
+      osc_gains.W_hip_pitch, plant, plant);
   JointSpaceTrackingData hip_pitch_right_tracking_data(
-      "hip_pitch_right_traj", osc_gains.W_hip_pitch, osc_gains.K_p_hip_pitch,
-      osc_gains.K_d_hip_pitch, plant, plant);
+      "hip_pitch_right_traj", osc_gains.K_p_hip_pitch, osc_gains.K_d_hip_pitch,
+      osc_gains.W_hip_pitch, plant, plant);
+  std::cout << "Hip Pitch KD: " << osc_gains.K_d_hip_pitch << std::endl;
+  std::cout << "Hip Roll KD: " << osc_gains.K_d_hip_roll << std::endl;
   hip_pitch_left_tracking_data.AddStateAndJointToTrack(
       left_stance_state, "hip_pitch_left", "hip_pitch_leftdot");
   hip_pitch_right_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "hip_pitch_right", "hip_pitch_rightdot");
   hip_pitch_left_tracking_data.DisableFeedforwardAccel({0});
   hip_pitch_right_tracking_data.DisableFeedforwardAccel({0});
+  hip_pitch_left_tracking_data.SetImpactInvariantProjection(true);
+  hip_pitch_right_tracking_data.SetImpactInvariantProjection(true);
   osc->AddTrackingData(&hip_pitch_left_tracking_data);
   osc->AddTrackingData(&hip_pitch_right_tracking_data);
 
@@ -486,17 +504,19 @@ int DoMain(int argc, char* argv[]) {
           plant, plant_context.get(), hip_roll_right_traj, pelvis_roll_traj, 1,
           "hip_roll_right_traj_generator");
   JointSpaceTrackingData hip_roll_left_tracking_data(
-      "hip_roll_left_traj", osc_gains.W_hip_roll, osc_gains.K_p_hip_roll,
-      osc_gains.K_d_hip_roll, plant, plant);
+      "hip_roll_left_traj", osc_gains.K_p_hip_roll, osc_gains.K_d_hip_roll,
+      osc_gains.W_hip_roll, plant, plant);
   JointSpaceTrackingData hip_roll_right_tracking_data(
-      "hip_roll_right_traj", osc_gains.W_hip_roll, osc_gains.K_p_hip_roll,
-      osc_gains.K_d_hip_roll, plant, plant);
+      "hip_roll_right_traj", osc_gains.K_p_hip_roll, osc_gains.K_d_hip_roll,
+      osc_gains.W_hip_roll, plant, plant);
   hip_roll_left_tracking_data.AddStateAndJointToTrack(
       left_stance_state, "hip_roll_left", "hip_roll_leftdot");
   hip_roll_right_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "hip_roll_right", "hip_roll_rightdot");
   hip_roll_left_tracking_data.DisableFeedforwardAccel({0});
   hip_roll_right_tracking_data.DisableFeedforwardAccel({0});
+  hip_roll_left_tracking_data.SetImpactInvariantProjection(true);
+  hip_roll_right_tracking_data.SetImpactInvariantProjection(true);
   //  hip_roll_left_tracking_data.AddStateAndJointToTrack(
   //      air_phase, "hip_roll_left", "hip_roll_leftdot");
   //  hip_roll_right_tracking_data.AddStateAndJointToTrack(
@@ -531,6 +551,8 @@ int DoMain(int argc, char* argv[]) {
                                                "toe_rightdot");
   swing_toe_left_traj.AddStateAndJointToTrack(air_phase, "toe_left",
                                               "toe_leftdot");
+  swing_toe_left_traj.SetImpactInvariantProjection(true);
+  swing_toe_right_traj.SetImpactInvariantProjection(true);
   osc->AddTrackingData(&swing_toe_left_traj);
   osc->AddTrackingData(&swing_toe_right_traj);
 
@@ -541,18 +563,10 @@ int DoMain(int argc, char* argv[]) {
   JointSpaceTrackingData hip_yaw_right_traj(
       "hip_yaw_right_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
       osc_gains.W_hip_yaw, plant, plant);
-  //  hip_yaw_left_traj.AddStateAndJointToTrack(right_stance_state,
-  //  "hip_yaw_left",
-  //                                             "hip_yaw_leftdot");
-  //  hip_yaw_right_traj.AddStateAndJointToTrack(left_stance_state,
-  //  "hip_yaw_right",
-  //                                             "hip_yaw_rightdot");
-  //  hip_yaw_left_traj.AddStateAndJointToTrack(air_phase, "hip_yaw_left",
-  //                                             "hip_yaw_leftdot");
-  //  hip_yaw_right_traj.AddStateAndJointToTrack(air_phase, "hip_yaw_left",
-  //                                             "hip_yaw_leftdot");
   hip_yaw_left_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   hip_yaw_right_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+//  hip_yaw_left_traj.SetImpactInvariantProjection(true);
+//  hip_yaw_right_traj.SetImpactInvariantProjection(true);
   osc->AddConstTrackingData(&hip_yaw_left_traj, VectorXd::Zero(1));
   osc->AddConstTrackingData(&hip_yaw_right_traj, VectorXd::Zero(1));
 

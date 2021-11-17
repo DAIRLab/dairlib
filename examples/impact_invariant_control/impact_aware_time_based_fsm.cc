@@ -79,19 +79,24 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
   // Accumulate the durations to get timestamps
   double sum = 0;
   DRAKE_DEMAND(states.size() == state_durations.size());
-  impact_times_.push_back(0.0);
-  impact_states_.push_back(0);
+//  impact_times_.push_back(0.0);
+//  impact_states_.push_back(0);
   for (int i = 0; i < states.size(); ++i) {
     sum += state_durations[i];
+    std::cout << "i: " << i << std::endl;
+    std::cout << "sum: " << sum << std::endl;
     accu_state_durations_.push_back(sum);
     if (states[i] == 2) {
       impact_times_.push_back(sum);
       impact_states_.push_back(states[i+1]);
-      std::cout << sum << std::endl;
-      std::cout << states[i+1] << std::endl;
+    } else{
+//      impact_times_.push_back(sum);
+//      impact_states_.push_back(states[i]);
     }
-    impact_times_.push_back(sum);
-    impact_states_.push_back(states[i]);
+  }
+  for(int i = 0; i < impact_times_.size(); ++i){
+    std::cout << "time : " << impact_times_[i] << std::endl;
+    std::cout << "fsm state: " << impact_states_[i] << std::endl;
   }
 
   period_ = sum;
@@ -133,13 +138,15 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
                                 ? 1.5 * near_impact_threshold_
                                 : near_impact_threshold_;
       if (abs(remainder - impact_times_[i]) < blend_window) {
+//        std::cout << "In impact window" << std::endl;
         if (remainder < impact_times_[i]) {
           near_impact->SetAlphaPre(alpha_func(remainder - impact_times_[i], tau_,
                                            near_impact_threshold_));
         } else {
-          near_impact->SetAlphaPost(alpha_func(impact_times_[i] - remainder, tau_,
+          near_impact->SetAlphaPre(alpha_func(impact_times_[i] - remainder, tau_,
                                            near_impact_threshold_));
         }
+//        std::cout << "alpha: " << near_impact->GetAlphaPre() << std::endl;
         near_impact->SetCurrentContactMode(impact_states_[i]);
         break;
       }

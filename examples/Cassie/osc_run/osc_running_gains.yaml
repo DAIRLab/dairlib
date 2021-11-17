@@ -1,7 +1,7 @@
-w_input: 0.0
-w_accel: 0.000000000
+w_input: 0.0000000000
+w_accel: 0.0001
 #w_soft_constraint: 1000000
-w_soft_constraint: 0000
+w_soft_constraint: 0.00000000
 w_input_reg: 0.00000001
 impact_threshold: 0.050
 relative_feet: true
@@ -27,11 +27,11 @@ w_hip_yaw: 10
 hip_yaw_kp: 100
 hip_yaw_kd: 5
 w_hip_pitch: 20
-hip_pitch_kp: 250
-hip_pitch_kd: 0.1
-w_hip_roll: 20
-hip_roll_kp: 250
-hip_roll_kd: 1
+hip_pitch_kp: 100
+hip_pitch_kd: 10
+w_hip_roll: 100
+hip_roll_kp: 100
+hip_roll_kd: 20
 
 PelvisW:
   [ 0,     0,    0,
@@ -44,7 +44,7 @@ PelvisKp:
 PelvisKd:
   [  0,    0,   0,
      0,    0,   0,
-     0,    0,   5]
+     0,    0,  5]
 SwingFootW:
   [1,    0,    0,
    0,    1,    0,
@@ -58,10 +58,10 @@ SwingFootKd:
     0,   1,   0,
     0,   0,   1]
 FootstepKp:
-    [0.1,    0,
-       0,  0.05,
+    [0.0,    0,
+       0,  0.0,
        0,    0]
 FootstepKd:
-  [  -0.2,     0,
-         0,    -0.05,
-         0,     0]
+  [  0.2,      0,
+       0,   0.04,
+       0,     0]

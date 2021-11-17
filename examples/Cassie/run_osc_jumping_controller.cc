@@ -26,6 +26,7 @@
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 namespace dairlib {
 
@@ -526,11 +527,12 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc jumping controller"));
+  owned_diagram->set_name(("osc_jumping_controller"));
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
+  DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 
   return 0;

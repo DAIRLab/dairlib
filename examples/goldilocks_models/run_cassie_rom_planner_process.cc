@@ -20,7 +20,7 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
 #include "multibody/pinocchio_plant.h"
-#include "systems/controllers/osc/osc_utils.h"
+#include "multibody/multibody_utils.h"
 #include "systems/dairlib_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"

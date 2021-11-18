@@ -18,7 +18,7 @@
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_solvers.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/osc/osc_utils.h"
+#include "multibody/multibody_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -299,10 +299,10 @@ int do_main(int argc, char* argv[]) {
 
   // Map state of plant_wo_springs to plant_w_springs
   Eigen::MatrixXd map_position_from_spring_to_no_spring =
-      systems::controllers::PositionMapFromSpringToNoSpring(plant,
+      multibody::CreateWithSpringsToWithoutSpringsMapPos(plant,
                                                             plant_wo_springs);
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring =
-      systems::controllers::VelocityMapFromSpringToNoSpring(plant,
+      multibody::CreateWithSpringsToWithoutSpringsMapVel(plant,
                                                             plant_wo_springs);
   VectorXd init_robot_state_w_springs(plant.num_positions() +
                                       plant.num_velocities());

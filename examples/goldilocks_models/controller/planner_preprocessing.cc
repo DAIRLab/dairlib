@@ -2,7 +2,7 @@
 
 #include "examples/Cassie/cassie_utils.h"
 #include "solvers/nonlinear_constraint.h"
-#include "systems/controllers/osc/osc_utils.h"
+#include "multibody/multibody_utils.h"
 
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/solvers/snopt_solver.h"
@@ -417,10 +417,10 @@ InitialStateForPlanner::InitialStateForPlanner(
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ =
-      systems::controllers::PositionMapFromSpringToNoSpring(plant_feedback,
+      multibody::CreateWithSpringsToWithoutSpringsMapPos(plant_feedback,
                                                             plant_control);
   map_velocity_from_spring_to_no_spring_ =
-      systems::controllers::VelocityMapFromSpringToNoSpring(plant_feedback,
+      multibody::CreateWithSpringsToWithoutSpringsMapVel(plant_feedback,
                                                             plant_control);
 
   // Create index maps

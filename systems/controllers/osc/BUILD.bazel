@@ -12,7 +12,6 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_datas",
-        ":osc_utils",
         "//common:eigen_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
@@ -67,7 +66,6 @@ cc_library(
     hdrs = ["optimal_rom_tracking_data.h"],
     deps = [
         ":options_tracking_data",
-        ":osc_utils",
         "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
@@ -133,20 +131,6 @@ cc_library(
         ":trans_space_tracking_data",
         "//multibody:utils",
         "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "osc_utils",
-    srcs = [
-        "osc_utils.cc",
-    ],
-    hdrs = [
-        "osc_utils.h",
-    ],
-    deps = [
-        "//multibody:utils",
         "@drake//:drake_shared_library",
     ],
 )

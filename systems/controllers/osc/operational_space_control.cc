@@ -4,7 +4,7 @@
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/osc/osc_utils.h"
+#include "multibody/multibody_utils.h"
 
 #include "drake/common/text_logging.h"
 

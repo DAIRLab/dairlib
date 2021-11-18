@@ -133,8 +133,6 @@ class OscTrackingData {
   Eigen::VectorXd error_ydot_;
   Eigen::MatrixXd J_;
   Eigen::VectorXd JdotV_;
-  Eigen::VectorXd filtered_y_;
-  Eigen::VectorXd filtered_ydot_;
 
   // PD control gains
   Eigen::MatrixXd K_p_;

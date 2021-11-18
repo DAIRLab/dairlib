@@ -14,7 +14,7 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/multibody_solvers.h"
 #include "solvers/optimization_utils.h"
-#include "systems/controllers/osc/osc_utils.h"
+#include "multibody/multibody_utils.h"
 
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/solvers/choose_best_solver.h"

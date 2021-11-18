@@ -208,7 +208,7 @@ int do_main(int argc, char* argv[]) {
                                       "shin_right"};
     Vector3d com_offset = {0, 0, -0.128};
     drake::multibody::RotationalInertia I_rot(
-        0.91, 0.55, 0.89, 0.04, 0.09, -.001);
+        0.91, 0.55, 0.89, 0.0, 0.0, 0.0);
     double mass = 30.0218;
 
     multibody::MakePlantApproximateRigidBody(&plant_context, plant,

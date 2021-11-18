@@ -14,8 +14,8 @@ hip_yaw_kp: 10
 hip_yaw_kd: 2
 
 CoMW:
-  [10, 0, 0,
-   0, 10, 0,
+  [0, 0, 0,
+   0, 0, 0,
    0, 0, 10]
 OrientationW:
   [10, 0, 0,
@@ -45,8 +45,8 @@ OrientationKd:
 SwingFootKp:
   [1000, 0,  0,
     0, 1000, 0,
-    0,   0, 1000]
+    0,   0, 10]
 SwingFootKd:
   [ 5,  0,  0,
     0,  5,  0,
-    0,  0,  5]
+    0,  0,  10]

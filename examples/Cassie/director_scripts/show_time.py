@@ -15,20 +15,14 @@ class TimeVisualizer(object):
         self._subscriber = None
         # Number of messages used to average for real time factor.
         self._num_msg_for_average = 50
-
+        print("running show_time")
         self.set_enabled(True)
 
     def add_subscriber(self):
         if (self._subscriber is not None):
             return
 
-        if 'pd_panel_state_channel' in globals():
-            channel = pd_panel_state_channel
-        elif "CASSIE_STATE_SIMULATION" in globals():
-            channel = "CASSIE_STATE_SIMULATION"
-        else:
-            channel = "PLANAR_STATE"
-
+        channel = 'CASSIE_STATE_SIMULATION'
 
         self._subscriber = lcmUtils.addSubscriber(
             channel,

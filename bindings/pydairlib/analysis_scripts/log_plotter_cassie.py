@@ -111,10 +111,10 @@ def main():
 
   # plot_contact_est(full_log)
   # plt.plot(t_u[t_u_slice], fsm[t_u_slice])
-  # if True:
-  #   plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
-  #                       front_contact_disp,
-  #                       world, t_x, t_slice, "left_", "_front")
+  if True:
+    plot_feet_positions(plant_w_spr, context, x, l_toe_frame,
+                        front_contact_disp,
+                        world, t_x, t_slice, "left_", "_front")
   #   plot_feet_positions(plant_w_spr, context, x, r_toe_frame,
   #                       front_contact_disp,
   #                       world, t_x, t_slice, "right_", "_front")
@@ -135,9 +135,6 @@ def main():
   plot_mpc_com_sol(mpc_output[25],0)
   plot_mpc_com_sol(mpc_output[25],1)
   plot_mpc_com_sol(mpc_output[25],2)
-  # plot_mpc_swing_sol(mpc_output[25],0)
-  # plot_mpc_swing_sol(mpc_output[25],1)
-  # plot_mpc_swing_sol(mpc_output[25],2)
   plot_mpc_orientation_sol(mpc_output[25],0)
   plot_mpc_orientation_sol(mpc_output[25],1)
   plot_mpc_orientation_sol(mpc_output[25],2)
@@ -278,26 +275,26 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   osc_traj1 = "com_traj"
   osc_traj2 = "orientation_traj"
 
-
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plot_osc(osc_debug, osc_traj0, 1, "pos")
+  #
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  # plot_osc(osc_debug, osc_traj0, 1, "pos")
   plot_osc(osc_debug, osc_traj0, 2, "pos")
-  #
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # #
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plot_osc(osc_debug, osc_traj0, 1, "vel")
   plot_osc(osc_debug, osc_traj0, 2, "vel")
-  #
-  plot_osc(osc_debug, osc_traj0, 0, "accel")
-  plot_osc(osc_debug, osc_traj0, 1, "accel")
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # #
+  # plot_osc(osc_debug, osc_traj0, 0, "accel")
+  # plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
 
   # plot_osc(osc_debug, osc_traj1, 0, "pos")
   # plot_osc(osc_debug, osc_traj1, 1, "pos")
-  # plot_osc(osc_debug, osc_traj1, 2, "pos")
-  #
+  plot_osc(osc_debug, osc_traj1, 2, "pos")
+
   # plot_osc(osc_debug, osc_traj1, 0, "vel")
   # plot_osc(osc_debug, osc_traj1, 1, "vel")
-  # plot_osc(osc_debug, osc_traj1, 2, "vel")
+  plot_osc(osc_debug, osc_traj1, 2, "vel")
   #
   # plot_osc(osc_debug, osc_traj2, 0, "pos")
   # plot_osc(osc_debug, osc_traj2, 1, "pos")
@@ -313,7 +310,7 @@ def plot_osc_debug(t_u, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
   #
   # plot_osc(osc_debug, osc_traj2, 0, "accel")
   # plot_osc(osc_debug, osc_traj2, 1, "accel")
-  # plot_osc(osc_debug, osc_traj2, 2, "accel")
+  plot_osc(osc_debug, osc_traj2, 2, "accel")
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):

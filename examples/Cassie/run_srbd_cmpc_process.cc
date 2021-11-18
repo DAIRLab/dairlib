@@ -181,12 +181,12 @@ int DoMain(int argc, char* argv[]) {
   auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations);
 
-  auto warmstarter = builder.AddSystem<LipmWarmStartSystem>(
-      srb_plant, FLAGS_h_des, FLAGS_stance_time,
-      FLAGS_dt, fsm_states, fsm_stances);
-
-  auto liftoff_event_time =
-      builder.AddSystem<FiniteStateMachineEventTime>(plant, fsm_states);
+//  auto warmstarter = builder.AddSystem<LipmWarmStartSystem>(
+//      srb_plant, FLAGS_h_des, FLAGS_stance_time,
+//      FLAGS_dt, fsm_states, fsm_stances);
+//
+//  auto liftoff_event_time =
+//      builder.AddSystem<FiniteStateMachineEventTime>(plant, fsm_states);
 
   std::vector<std::string> signals = {"fsm"};
 //  auto fsm_send = builder.AddSystem<DrakeSignalSender>(signals, FLAGS_stance_time * 2);
@@ -204,23 +204,23 @@ int DoMain(int argc, char* argv[]) {
   //  builder.Connect(fsm_send->get_output_port(), fsm_pub->get_input_port());
 
   builder.Connect(fsm->get_output_port(), cmpc->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port(), warmstarter->get_input_port_fsm());
-  builder.Connect(fsm->get_output_port(),
-                  liftoff_event_time->get_input_port_fsm());
-  builder.Connect(robot_out->get_output_port(),
-                  liftoff_event_time->get_input_port_state());
+//  builder.Connect(fsm->get_output_port(), warmstarter->get_input_port_fsm());
+//  builder.Connect(fsm->get_output_port(),
+//                  liftoff_event_time->get_input_port_fsm());
+//  builder.Connect(robot_out->get_output_port(),
+//                  liftoff_event_time->get_input_port_state());
   builder.Connect(robot_out->get_output_port(), fsm->get_input_port_state());
-  builder.Connect(robot_out->get_output_port(), warmstarter->get_input_port_state());
+//  builder.Connect(robot_out->get_output_port(), warmstarter->get_input_port_state());
   builder.Connect(robot_out->get_output_port(),
                   cmpc->get_state_input_port());
-  builder.Connect(liftoff_event_time->get_output_port_event_time(),
-                  warmstarter->get_input_port_touchdown_time());
-  builder.Connect(xdes_source->get_output_port(),
-                  warmstarter->get_xdes_input_port());
-  builder.Connect(warmstarter->get_output_port_lipm_from_current(),
-                  cmpc->get_warmstart_input_port());
-  builder.Connect(warmstarter->get_output_port_foot_target(),
-                  cmpc->get_foot_target_input_port());
+//  builder.Connect(liftoff_event_time->get_output_port_event_time(),
+//                  warmstarter->get_input_port_touchdown_time());
+//  builder.Connect(xdes_source->get_output_port(),
+//                  warmstarter->get_xdes_input_port());
+//  builder.Connect(warmstarter->get_output_port_lipm_from_current(),
+//                  cmpc->get_warmstart_input_port());
+//  builder.Connect(warmstarter->get_output_port_foot_target(),
+//                  cmpc->get_foot_target_input_port());
 
   builder.Connect(cmpc->get_output_port(), mpc_out_publisher->get_input_port());
 

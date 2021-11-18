@@ -52,13 +52,13 @@ SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
         BasicVector<double>(nx_)).get_index();
   }
 
-  foot_target_port_ = this->DeclareVectorInputPort("p_des" ,
-      BasicVector<double>(2*kLinearDim_)).get_index();
-
- PiecewisePolynomial<double> pp_traj;
-  srb_warmstart_port_ = this->DeclareAbstractInputPort(
-      "initial_guess",
-      drake::Value<drake::trajectories::Trajectory<double>>(pp_traj)).get_index();
+//  foot_target_port_ = this->DeclareVectorInputPort("p_des" ,
+//      BasicVector<double>(2*kLinearDim_)).get_index();
+//
+// PiecewisePolynomial<double> pp_traj;
+//  srb_warmstart_port_ = this->DeclareAbstractInputPort(
+//      "initial_guess",
+//      drake::Value<drake::trajectories::Trajectory<double>>(pp_traj)).get_index();
 
   traj_out_port_ = this->DeclareAbstractOutputPort("y(t)",
       &SrbdCMPC::GetMostRecentMotionPlan).get_index();
@@ -380,11 +380,11 @@ EventStatus SrbdCMPC::PeriodicUpdate(
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
-  const drake::AbstractValue* traj_value =
-      this->EvalAbstractInput(context, srb_warmstart_port_);
-
-  const auto& warmstart_traj =
-      traj_value->get_value<drake::trajectories::Trajectory<double>>();
+//  const drake::AbstractValue* traj_value =
+//      this->EvalAbstractInput(context, srb_warmstart_port_);
+//
+//  const auto& warmstart_traj =
+//      traj_value->get_value<drake::trajectories::Trajectory<double>>();
 
   VectorXd x = robot_output->GetState();
 
@@ -408,17 +408,17 @@ EventStatus SrbdCMPC::PeriodicUpdate(
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x), 0, 0);
   }
 
-  VectorXd foot_target =
-      this->EvalVectorInput(context, foot_target_port_)->get_value();
+//  VectorXd foot_target =
+//      this->EvalVectorInput(context, foot_target_port_)->get_value();
   UpdateFootPlacementCost(
       fsm_state,
-      foot_target.head(kLinearDim_),
-      foot_target.tail(kLinearDim_));
-
-  SetInitialGuess(fsm_state, timestamp,
-                  foot_target.head(kLinearDim_),
-                  foot_target.tail(kLinearDim_),
-                  warmstart_traj);
+      Vector3d::Zero(),
+      Vector3d::Zero());
+//
+//  SetInitialGuess(fsm_state, timestamp,
+//                  foot_target.head(kLinearDim_),
+//                  foot_target.tail(kLinearDim_),
+//                  warmstart_traj);
 
 //  auto lin_con = prog_.GetAllLinearConstraints();
 //  for (auto& binding : lin_con) {

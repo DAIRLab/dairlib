@@ -82,7 +82,7 @@ DEFINE_string(mpc_channel, "SRBD_MPC_OUT", "channel to recieve koopman mpc messa
 DEFINE_string(
     gains_filename,
     "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.yaml","Filepath containing gains");
-DEFINE_double(swing_ft_height, 0.01, "Swing foot height");
+DEFINE_double(swing_ft_height, 0.05, "Swing foot height");
 DEFINE_double(stance_duration, 0.35, "stance phase duration");
 DEFINE_double(double_stance_duration, 0.075, "double stance phase duration");
 DEFINE_bool(track_com, false,
@@ -133,8 +133,7 @@ int DoMain(int argc, char* argv[]) {
     std::vector<std::string> links = {"yaw_left", "yaw_right", "hip_left", "hip_right",
                                       "thigh_left", "thigh_right", "knee_left", "knee_right", "shin_left",
                                       "shin_right"};
-    drake::multibody::RotationalInertia I_rot(
-        0.91, 0.55, 0.89, 0.04, 0.09, -.001);
+    drake::multibody::RotationalInertia I_rot(0.91, 0.55, 0.89, 0.0, 0.0, 0.0);
     double mass = 30.0218;
 
     multibody::MakePlantApproximateRigidBody(plant_context.get(), plant_w_springs,
@@ -196,11 +195,13 @@ int DoMain(int argc, char* argv[]) {
   int right_stance_state = BipedStance::kRight;
   int post_left_double_support_state = BipedStance::kLeft + 2;
   int post_right_double_support_state = BipedStance::kRight + 2;
-  double single_support_duration =
-      FLAGS_stance_duration - FLAGS_double_stance_duration;
+  double single_support_duration = FLAGS_is_double_stance ?
+      FLAGS_stance_duration - FLAGS_double_stance_duration :
+      FLAGS_stance_duration;
 
   vector<int> fsm_states;
   vector<double> state_durations;
+
   if (FLAGS_is_double_stance) {
     fsm_states = {left_stance_state, post_left_double_support_state,
                   right_stance_state, post_right_double_support_state};

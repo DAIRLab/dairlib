@@ -138,17 +138,17 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
 template<>
 void PinocchioPlant<double>::CalcCentroidalMomentumAndDerivatives(
     const drake::systems::Context<double> &context,
-    drake::EigenPtr<Eigen::VectorXd> h,
-    drake::EigenPtr<Eigen::MatrixXd> A,
-    drake::EigenPtr<Eigen::MatrixXd> hdot,
-    drake::EigenPtr<Eigen::MatrixXd> Adot,
-    drake::EigenPtr<Eigen::MatrixXd> J,
-    drake::EigenPtr<Eigen::MatrixXd> Jdot) const {
+    const drake::EigenPtr<Eigen::VectorXd>& h,
+    const drake::EigenPtr<Eigen::VectorXd>& A,
+    const drake::EigenPtr<Eigen::VectorXd>& Adot) const {
 
-  auto cdata = pinocchio::dccrba(pinocchio_model_, pinocchio_data_,
+  auto dAg = pinocchio::dccrba(pinocchio_model_, pinocchio_data_,
                                  q_perm_.inverse() * GetPositions(context),
                                  v_perm_.inverse() * GetVelocities(context));
 
+  *A = v_perm_ *  pinocchio_data_.Ag;
+  *h = (*A) * GetVelocities(context);
+  *Adot = v_perm_ * dAg;
 }
 
 

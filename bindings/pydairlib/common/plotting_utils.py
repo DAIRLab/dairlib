@@ -15,7 +15,7 @@ def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
                     data_dictionary[key][time_slice, slices_to_plot[key]])
         legend.extend(legend_entries[key])
 
-    ps.add_legend(legend)
+    plt.legend(legend)
     plt.xlabel(plot_labels['xlabel'])
     plt.ylabel(plot_labels['ylabel'])
     plt.title(plot_labels['title'])

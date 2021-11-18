@@ -11,7 +11,7 @@ from pydairlib.common import plot_styler, plotting_utils
 from pydairlib.multibody import makeNameToPositionsMap,\
     makeNameToVelocitiesMap, makeNameToActuatorsMap, \
     createStateNameVectorFromMap, createActuatorNameVectorFromMap
-from osc_debug import lcmt_osc_tracking_data_t
+from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost
 
 # drake imports
 from pydrake.multibody.parsing import Parser
@@ -103,29 +103,50 @@ def process_effort_channel(data):
 
 def process_osc_channel(data):
     t_osc = []
+    input_cost = []
+    accel_cost = []
+    soft_constraint_cost = []
+    qp_solve_time = []
+    u_sol = []
     osc_output = []
-    osc_debug_tracking_datas = {}
     fsm = []
+    osc_debug_tracking_datas = {}
 
     for msg in data:
         t_osc.append(msg.utime / 1e6)
+        input_cost.append(msg.input_cost)
+        accel_cost.append(msg.acceleration_cost)
+        soft_constraint_cost.append(msg.soft_constraint_cost)
+        qp_solve_time.append(msg.qp_output.solve_time)
+        u_sol.append(msg.qp_output.u_sol)
         osc_output.append(msg)
-        num_osc_tracking_data = len(msg.tracking_data)
-        for i in range(num_osc_tracking_data):
-            if msg.tracking_data[i].name not in osc_debug_tracking_datas:
-                osc_debug_tracking_datas[msg.tracking_data[i].name] = \
+        for tracking_data in msg.tracking_data:
+            if tracking_data.name not in osc_debug_tracking_datas:
+                osc_debug_tracking_datas[tracking_data.name] = \
                     lcmt_osc_tracking_data_t()
-            osc_debug_tracking_datas[msg.tracking_data[i].name].append(
-                msg.tracking_data[i], msg.utime / 1e6)
+            osc_debug_tracking_datas[tracking_data.name].append(
+                tracking_data, msg.utime / 1e6)
+
         fsm.append(msg.fsm_state)
 
-    for name in osc_debug_tracking_datas.keys():
+    tracking_cost_handler = osc_tracking_cost(osc_debug_tracking_datas.keys())
+    for msg in data:
+        tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_cost)
+    tracking_cost = tracking_cost_handler.convertToNP()
+
+    for name in osc_debug_tracking_datas:
         osc_debug_tracking_datas[name] = \
             osc_debug_tracking_datas[name].convertToNP()
 
-    return {'t_osc': t_osc,
+    return {'t_osc': np.array(t_osc),
+            'input_cost': np.array(input_cost),
+            'acceleration_cost': np.array(accel_cost),
+            'soft_constraint_cost': np.array(soft_constraint_cost),
+            'qp_solve_time': np.array(qp_solve_time),
             'osc_output': osc_output,
-            'osc_debug_tracking_datas': osc_debug_tracking_datas}
+            'tracking_cost': tracking_cost,
+            'osc_debug_tracking_datas': osc_debug_tracking_datas,
+            'fsm': np.array(fsm)}
 
 
 def load_default_channels(data, plant, state_channel, input_channel,
@@ -155,7 +176,7 @@ def plot_q_or_v_or_u(
         't_x',                              # time channel
         time_slice,
         [key],                              # key to plot
-        {key: x_slice},                     # slice of 'q' to plot
+        {key: x_slice},                     # slice of key to plot
         {key: x_names},                     # legend entries
         {'xlabel': 'Time',
          'ylabel': ylabel,
@@ -213,3 +234,25 @@ def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
     return plot_q_or_v_or_u(robot_output, 'u', u_names, u_slice,
                             time_slice, ylabel='Efforts (Nm)',
                             title='Select Joint Efforts')
+
+
+def plot_tracking_costs(osc_debug, time_slice):
+    ps = plot_styler.PlotStyler()
+    data_dict = osc_debug['tracking_cost']
+    data_dict['t_osc'] = osc_debug['t_osc']
+    import pdb; pdb.set_trace()
+    plotting_utils.make_plot(
+        data_dict,
+        't_osc',
+        time_slice,
+        osc_debug['tracking_cost'].keys(),
+        {},
+        {key: [key] for key in osc_debug['tracking_cost'].keys()},
+        {'xlabel': 'Time',
+         'ylabel': 'Cost',
+         'title': 'tracking_costs'}, ps)
+    return ps
+
+
+def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
+    ps.plot(fsm_time, scale*fsm_signal)

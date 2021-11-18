@@ -43,3 +43,25 @@ class lcmt_osc_tracking_data_t:
         self.yddot_des = np.array(self.yddot_des)
         self.yddot_command = np.array(self.yddot_command)
         self.yddot_command_sol = np.array(self.yddot_command_sol)
+
+
+class osc_tracking_cost():
+
+    def __init__(self, tracking_data_names):
+
+        self.tracking_costs = {}
+        for name in tracking_data_names:
+            self.tracking_costs[name] = []
+
+    def append(self, tracking_data_list, tracking_cost_list):
+        for name, cost in zip(tracking_data_list, tracking_cost_list):
+            self.tracking_costs[name].append(cost)
+
+        for name in self.tracking_costs:
+            if name not in tracking_cost_list:
+                self.tracking_costs[name].append(0.0)
+
+    def convertToNP(self):
+        for name in self.tracking_costs:
+            self.tracking_costs[name] = np.array(self.tracking_costs[name])
+        return self.tracking_costs

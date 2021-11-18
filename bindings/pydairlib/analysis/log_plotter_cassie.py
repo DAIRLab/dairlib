@@ -18,7 +18,7 @@ def main():
     # TODO: get these channels automatically from reading the log
     channel_x = 'CASSIE_STATE_SIMULATION'
     channel_u = 'CASSIE_INPUT'
-    channel_osc = 'OSC_DEBUG_STANDING'
+    channel_osc = 'OSC_DEBUG_WALKING'
 
     ''' Get the plant '''
     plant, context = cassie_plots.make_plant_and_context(
@@ -37,6 +37,7 @@ def main():
 
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
+    t_osc_slice = slice(osc_debug['t_osc'].size)
 
     ''' Plot Positions '''
     # Plot floating base positions if applicable
@@ -69,6 +70,8 @@ def main():
     cassie_plots.plot_measured_efforts_by_name(robot_output,
                                                ['knee_left_motor'],
                                                t_x_slice, act_map)
+
+    cassie_plots.plot_tracking_costs(osc_debug, t_osc_slice)
     plt.show()
 
 

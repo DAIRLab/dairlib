@@ -25,6 +25,7 @@
 //   max: 0.33 ms
 
 #include <string>
+
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -38,7 +39,15 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/lipm_traj_gen.h"
+#include "systems/controllers/osc/com_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/osc/optimal_rom_tracking_data.h"
+#include "systems/controllers/osc/options_tracking_data.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/controllers/osc/relative_translation_tracking_data.h"
+#include "systems/controllers/osc/rot_space_tracking_data.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"

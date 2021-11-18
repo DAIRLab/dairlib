@@ -57,7 +57,6 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::WorldYawOscViewFrame;
 
 using multibody::FixedJointEvaluator;
 

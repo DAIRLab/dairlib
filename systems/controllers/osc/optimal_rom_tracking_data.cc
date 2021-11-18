@@ -31,7 +31,7 @@ void OptimalRomTrackingData::AddRom(
 void OptimalRomTrackingData::AddStateAndRom(
     int state, const goldilocks_models::ReducedOrderModel& rom) {
   AddFiniteStateToTrack(state);
-  AddRom(rom);
+  rom_[state] = &rom;
 }
 
 void OptimalRomTrackingData::UpdateY(const VectorXd& x_wo_spr,

@@ -637,6 +637,9 @@ def GetSamplesToPlot(model_indices, log_indices):
     if mem[2] > cost_threshold:
       print("(iter, log) = (%.0f, %.0f) has high cost %.3f" %
             (mem[0], mem[3], mem[2]))
+    if mem[2] < 0.4:
+      print("(iter, log) = (%.0f, %.0f) has low cost %.3f" %
+            (mem[0], mem[3], mem[2]))
 
   return mtcl
 

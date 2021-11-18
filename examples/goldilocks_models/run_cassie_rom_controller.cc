@@ -305,10 +305,11 @@ int DoMain(int argc, char* argv[]) {
   double left_support_duration = gains.left_support_duration;
   double right_support_duration = gains.right_support_duration;
   double double_support_duration = gains.double_support_duration;
+  bool is_two_phase = FLAGS_is_two_phase || (double_support_duration == 0);
   vector<int> fsm_states;
   vector<double> state_durations;
   double stride_period = left_support_duration + double_support_duration;
-  if (FLAGS_is_two_phase) {
+  if (is_two_phase) {
     if (!FLAGS_start_with_left_stance) {
       fsm_states = {right_stance_state, left_stance_state};
       state_durations = {right_support_duration, left_support_duration};
@@ -495,7 +496,7 @@ int DoMain(int argc, char* argv[]) {
     vector<double> unordered_state_durations;
     vector<vector<std::pair<const Vector3d, const Frame<double>&>>>
         contact_points_in_each_state;
-    if (FLAGS_is_two_phase) {
+    if (is_two_phase) {
       unordered_fsm_states = {left_stance_state, right_stance_state};
       unordered_state_durations = {left_support_duration,
                                    right_support_duration};
@@ -585,7 +586,7 @@ int DoMain(int argc, char* argv[]) {
 
     /*// lipm traj for ROM (com wrt to stance foot)
     vector<bool> flip_in_y;
-    if (FLAGS_is_two_phase) {
+    if (is_two_phase) {
       flip_in_y = {false, true};
     } else {
       flip_in_y = {false, true, false, true};
@@ -642,7 +643,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
     osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
     osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
-    if (!FLAGS_is_two_phase) {
+    if (!is_two_phase) {
       osc->AddStateAndContactPoint(post_left_double_support_state,
                                    &left_toe_evaluator);
       osc->AddStateAndContactPoint(post_left_double_support_state,
@@ -707,7 +708,7 @@ int DoMain(int argc, char* argv[]) {
         PiecewisePolynomial<double>::FirstOrderHold(rom_ratio_breaks,
                                                     rom_ratio_samples);
     optimal_rom_traj.SetTimeVaryingGains(rom_gain_ratio);
-    if (FLAGS_is_two_phase) {
+    if (is_two_phase) {
       // With high gains, the initial error could throw Cassie into the air
       // TODO: Try time varying gains instead of turning it off completely in the beginning
       osc->AddTrackingData(&optimal_rom_traj, 0.02);
@@ -986,7 +987,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
     osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
     osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
-    if (!FLAGS_is_two_phase) {
+    if (!is_two_phase) {
       osc->AddStateAndContactPoint(post_left_double_support_state,
                                    &left_toe_evaluator);
       osc->AddStateAndContactPoint(post_left_double_support_state,

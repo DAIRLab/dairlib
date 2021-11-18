@@ -8,7 +8,7 @@ cc_library(
     deps = [
         ":constraint_factory",
         ":nonlinear_constraint",
-    ]
+    ],
 )
 
 cc_library(
@@ -78,13 +78,29 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "cost_function_utils",
+    srcs = [
+        "cost_function_utils.cc",
+    ],
+    hdrs = [
+        "cost_function_utils.h",
+    ],
+    deps = [
+        "nonlinear_cost",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/trajectory_optimization/dircon",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_test(
     name = "cost_constraint_approximation_test",
     size = "small",
     srcs = ["test/cost_constraint_approximation_test.cc"],
     deps = [
-        "@drake//common/test_utilities:eigen_matrix_compare",
         ":optimization_utils",
+        "@drake//common/test_utilities:eigen_matrix_compare",
         "@gtest//:main",
     ],
 )

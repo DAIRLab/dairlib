@@ -45,6 +45,7 @@ LcmTrajectory::Trajectory::Trajectory(string traj_name,
   this->time_vector = VectorXd::Map(traj_block.time_vec.data(), num_points);
   this->datapoints = MatrixXd(num_datatypes, num_points);
 
+  DRAKE_ASSERT(traj_block.datatypes.size() == traj_block.datapoints.size());
   // Convert vector<vector<double>> to EigenMatrix
   for (int i = 0; i < num_datatypes; ++i) {
     this->datapoints.row(i) =

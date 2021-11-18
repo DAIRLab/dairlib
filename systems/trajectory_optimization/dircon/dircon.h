@@ -188,7 +188,7 @@ class Dircon
 
   using drake::systems::trajectory_optimization::MultipleShooting::N;
   using drake::systems::trajectory_optimization::MultipleShooting::
-  SubstitutePlaceholderVariables;
+      SubstitutePlaceholderVariables;
 
   int num_modes() const;
 
@@ -202,6 +202,8 @@ class Dircon
   const DirconMode<T>& get_mode(int mode) const {
     return mode_sequence_.mode(mode);
   }
+
+  const int get_mode_start(int index) { return mode_start_[index]; }
 
   const drake::systems::Context<T>& get_context(int mode, int knotpoint_index) {
     return *contexts_.at(mode).at(knotpoint_index);

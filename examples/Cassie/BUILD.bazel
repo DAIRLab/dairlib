@@ -44,6 +44,9 @@ cc_library(
         "//examples/Cassie:dispatcher_robot_in",
         "//examples/Cassie:dispatcher_robot_out",
         "//examples/Cassie:multibody_sim",
+        "//examples/Cassie:run_controller_switch",
+        "//examples/Cassie:run_osc_jumping_controller",
+        "//examples/Cassie:run_osc_running_controller",
         "//examples/Cassie:run_osc_standing_controller",
         "//examples/Cassie:run_osc_walking_controller",
         "//examples/Cassie/osc",
@@ -196,14 +199,13 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_simple_sim",
-    srcs = ["run_simple_sim.cc"],
-    deprecation = "Attic/RigidBodyTree is deprecated.",
-    tags = ["manual"],
+    name = "multibody_sim",
+    srcs = ["multibody_sim.cc"],
     deps = [
+        ":cassie_encoder",
+        ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -212,24 +214,14 @@ cc_binary(
 )
 
 cc_binary(
-    name = "standalone_multibody_sim",
-    srcs = ["standalone_multibody_sim.cc"],
+    name = "multibody_sim_init",
+    srcs = ["multibody_sim_init.cc"],
     deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "multibody_sim",
-    srcs = ["multibody_sim.cc"],
-    deps = [
-        ":cassie_encoder",
         ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
         "//solvers:optimization_utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:vector",
@@ -249,23 +241,6 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "multibody_sim_w_ground_incline",
-    srcs = ["multibody_sim_w_ground_incline.cc"],
-    deps = [
-        ":cassie_encoder",
-        ":cassie_fixed_point_solver",
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//solvers:optimization_utils",
-        "//systems:robot_lcm_systems",
-        "//systems/framework:vector",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -362,6 +337,29 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "//systems/primitives:gaussian_noise_pass_through",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_running_controller",
+    srcs = ["run_osc_running_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/osc",
+        "//examples/Cassie/osc_jump",
+        "//examples/Cassie/osc_run",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/osc:osc_tracking_datas",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "//systems/primitives:gaussian_noise_pass_through",
@@ -378,6 +376,7 @@ cc_binary(
         ":cassie_utils",
         ":simulator_drift",
         "//examples/Cassie/osc",
+        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
@@ -446,13 +445,14 @@ cc_binary(
 cc_binary(
     name = "run_dircon_jumping",
     srcs = ["run_dircon_jumping.cc"],
-    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    data = glob(["examples/Cassie/urdf/*.urdf"]),
     deps = [
         ":cassie_utils",
         "//common",
         "//lcm:dircon_trajectory_saver",
         "//lcm:lcm_trajectory_saver",
         "//multibody:visualization_utils",
+        "//solvers:nonlinear_cost",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
@@ -470,6 +470,24 @@ cc_binary(
         "//common",
         "//lcm:dircon_trajectory_saver",
         "//multibody:visualization_utils",
+        "//solvers:optimization_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_dircon_running",
+    srcs = ["run_dircon_running.cc"],
+    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    deps = [
+        ":cassie_utils",
+        "//common",
+        "//lcm:dircon_trajectory_saver",
+        "//multibody:visualization_utils",
+        "//solvers:cost_function_utils",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",

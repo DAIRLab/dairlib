@@ -63,7 +63,13 @@ class LcmTrajectory {
   lcmt_metadata GetMetadata() const { return metadata_; }
 
   const Trajectory& GetTrajectory(const std::string& trajectory_name) const {
-    return trajectories_.at(trajectory_name);
+    try {
+      return trajectories_.at(trajectory_name);
+    } catch (std::exception& e) {
+      std::cerr << "Trajectory: " << trajectory_name << " does not exist."
+                << std::endl;
+      throw std::out_of_range("");
+    }
   }
 
   /// Add additional LcmTrajectory::Trajectory objects
@@ -74,7 +80,6 @@ class LcmTrajectory {
   const std::vector<std::string>& GetTrajectoryNames() const {
     return trajectory_names_;
   }
-
   lcmt_saved_traj GenerateLcmObject() const;
  protected:
   /// Constructs a lcmt_metadata object with a specified name and description

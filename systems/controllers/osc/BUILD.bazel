@@ -130,3 +130,11 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "osc_gains",
+    hdrs = ["osc_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

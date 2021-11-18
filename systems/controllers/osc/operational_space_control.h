@@ -16,6 +16,7 @@
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
+#include "systems/framework/impact_info_vector.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -117,8 +118,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
     return this->get_input_port(fsm_port_);
   }
+  const drake::systems::InputPort<double>& get_clock_input_port() const {
+    return this->get_input_port(clock_port_);
+  }
   const drake::systems::InputPort<double>& get_near_impact_input_port() const {
-    return this->get_input_port(near_impact_port_);
+    return this->get_input_port(impact_info_port_);
   }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
       const std::string& name) const {
@@ -187,11 +191,29 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           double time_since_last_state_switch, double alpha,
                           int next_fsm_state) const;
 
+  // Solves the optimization problem:
+  // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
+  // s.t. constraints
+  // In the IROS 2021 paper, the problem was unconstrained and could be solved
+  // using the closed form least squares solution
   void UpdateImpactInvariantProjection(
       const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context, double t,
       double t_since_last_state_switch, int fsm_state, int next_fsm_state,
-      const Eigen::MatrixXd& M, const Eigen::MatrixXd& J_h) const;
+      const Eigen::MatrixXd& M) const;
+
+  // Solves the optimization problem:
+  // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
+  // s.t. constraints
+  // By adding constraints on lambda, we can impose scaling on the
+  // impact-invariant projection.
+  // The current constraints are lambda \in convex_hull \alpha * [-FC, FC]
+  // defined by the normal impulse from the nominal trajectory
+  void UpdateImpactInvariantProjectionQP(
+      const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context, double t,
+      double t_since_last_state_switch, int fsm_state, int next_fsm_state,
+      const Eigen::MatrixXd& M) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -209,8 +231,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int osc_debug_port_;
   int osc_output_port_;
   int state_port_;
+  int clock_port_;
   int fsm_port_;
-  int near_impact_port_;
+  int impact_info_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;
@@ -272,10 +295,20 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Solver
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
+  std::unique_ptr<solvers::FastOsqpSolver> ii_solver_;
   drake::solvers::SolverOptions solver_options_;
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
+  std::unique_ptr<drake::solvers::MathematicalProgram> ii_prog_;
+
+  // Decision variables/constraints for impact invariant QP
+  drake::solvers::VectorXDecisionVariable ii_lambda_c_;
+  drake::solvers::VectorXDecisionVariable ii_lambda_h_;
+  std::vector<drake::solvers::LinearConstraint*> ii_friction_constraints_;
+  std::vector<drake::solvers::LinearConstraint*> ii_normal_constraints_;
+  drake::solvers::BoundingBoxConstraint* ii_holonomic_constraint_;
+
   // Decision variables
   drake::solvers::VectorXDecisionVariable dv_;
   drake::solvers::VectorXDecisionVariable u_;
@@ -289,6 +322,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
   std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
+  std::vector<drake::solvers::QuadraticCost*> ii_tracking_cost_;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;

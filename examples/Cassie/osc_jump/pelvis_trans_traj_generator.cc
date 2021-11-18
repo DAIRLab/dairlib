@@ -32,7 +32,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     PiecewisePolynomial<double>& crouch_traj,
     const std::vector<std::pair<const Eigen::Vector3d,
                                 const drake::multibody::Frame<double>&>>&
-    feet_contact_points,
+        feet_contact_points,
     double time_offset, FSM_STATE init_fsm_state)
     : plant_(plant),
       context_(context),
@@ -42,12 +42,13 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
       time_offset_(time_offset) {
   this->set_name("com_traj");
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant_.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
-          .get_index();
-  fsm_port_ = this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
+                    .get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
@@ -144,7 +145,6 @@ PelvisTransTrajGenerator::generateBalanceTraj(
 
   VectorXd breaks_vector(2);
   breaks_vector << switch_time, switch_time + time_offset_;
-
   return PiecewisePolynomial<double>::CubicHermite(
       breaks_vector, pelvis_traj_points, MatrixXd::Zero(3, 2));
 }
@@ -187,12 +187,14 @@ PelvisTransTrajGenerator::generateLandingTraj(
     contact_pos_sum += position;
   }
 
+  contact_pos_sum *= (1.0/feet_contact_points_.size());
+
   const auto& x_offset =
       context.get_discrete_state().get_vector(pelvis_x_offset_idx_);
 
   // Only offset the x-position
   Vector3d offset(x_offset[0], 0, 0);
-  offset += 0.5 * contact_pos_sum;
+  offset += contact_pos_sum;
 
   auto traj_segment =
       crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);
@@ -200,7 +202,13 @@ PelvisTransTrajGenerator::generateLandingTraj(
   MatrixXd offset_matrix = offset.replicate(1, breaks.size());
   VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
   PiecewisePolynomial<double> pelvis_x_offset =
-      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, offset_matrix);
+      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_matrix);
+  if (time > crouch_traj_.end_time()) {
+    Vector3d final_target_position;
+    final_target_position << x_offset[0] + contact_pos_sum[0],
+        contact_pos_sum[1], contact_pos_sum[2] + crouch_traj_.value(time)(2);
+    return PiecewisePolynomial<double>(final_target_position);
+  }
   return traj_segment + pelvis_x_offset;
 }
 

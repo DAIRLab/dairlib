@@ -25,9 +25,9 @@ namespace dairlib {
 
 /// DirconTrajectory by default contains four Trajectory objects: the state
 /// trajectory, the input trajectory, the force trajectory, the contact force
-/// trajectory, the collocation force trajectory, the collocation slack trajectory
-/// and the decision variables. Additional trajectories can be added using
-/// the AddTrajectory() function
+/// trajectory, the collocation force trajectory, the collocation slack
+/// trajectory and the decision variables. Additional trajectories can be added
+/// using the AddTrajectory() function
 
 class DirconTrajectory : public LcmTrajectory {
  public:
@@ -46,26 +46,33 @@ class DirconTrajectory : public LcmTrajectory {
       const std::string& name, const std::string& description);
 
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
-  const;
+      const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
-  const;
-  drake::trajectories::PiecewisePolynomial<double> ReconstructJointTrajectory(int joint_idx)
-  const;
+      const;
+  drake::trajectories::PiecewisePolynomial<double>
+  ReconstructStateTrajectoryWithSprings(
+      Eigen::MatrixXd&) const;
+  drake::trajectories::PiecewisePolynomial<double>
+  ReconstructMirrorStateTrajectory(double t_offset) const;
+  drake::trajectories::PiecewisePolynomial<double> ReconstructJointTrajectory(
+      int joint_idx) const;
+  drake::trajectories::PiecewisePolynomial<double>
+  ReconstructMirrorJointTrajectory(int joint_idx) const;
 
-  /// Returns a vector of polynomials describing the contact forces for each mode. For use when
-  /// adding knot points to the initial guess
-  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaTrajectory()
-  const;
+  /// Returns a vector of polynomials describing the contact forces for each
+  /// mode. For use when adding knot points to the initial guess
+  std::vector<drake::trajectories::PiecewisePolynomial<double>>
+  ReconstructLambdaTrajectory() const;
 
-  /// Returns a vector of polynomials describing the collocation forces for each mode. For use
-  /// when adding knot points to the initial guess
-  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaCTrajectory()
-  const;
+  /// Returns a vector of polynomials describing the collocation forces for each
+  /// mode. For use when adding knot points to the initial guess
+  std::vector<drake::trajectories::PiecewisePolynomial<double>>
+  ReconstructLambdaCTrajectory() const;
 
-  /// Returns a vector of polynomials describing the collocation slack vars. For use when adding
-  /// knot points to the initial guess
-  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructGammaCTrajectory()
-  const;
+  /// Returns a vector of polynomials describing the collocation slack vars. For
+  /// use when adding knot points to the initial guess
+  std::vector<drake::trajectories::PiecewisePolynomial<double>>
+  ReconstructGammaCTrajectory() const;
 
   /// Loads the saved state and input trajectory as well as the decision
   /// variables
@@ -94,6 +101,7 @@ class DirconTrajectory : public LcmTrajectory {
   Eigen::MatrixXd GetForceBreaks(int mode) const {
     return lambda_[mode]->time_vector;
   }
+  Eigen::MatrixXd GetImpulseSamples(int mode) const { return impulse_[mode - 1]->datapoints; }
   Eigen::MatrixXd GetCollocationForceSamples(int mode) const {
     return lambda_c_[mode]->datapoints;
   }
@@ -113,6 +121,7 @@ class DirconTrajectory : public LcmTrajectory {
 
   const Trajectory* decision_vars_;
   const Trajectory* u_;
+  std::vector<const Trajectory*> impulse_;
   std::vector<const Trajectory*> lambda_;
   std::vector<const Trajectory*> lambda_c_;
   std::vector<const Trajectory*> gamma_c_;

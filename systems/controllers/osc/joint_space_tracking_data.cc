@@ -22,7 +22,7 @@ JointSpaceTrackingData::JointSpaceTrackingData(
     const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
-    : OptionsTrackingData(name, K_p.rows(), K_p.rows(), K_p, K_d, W,
+    : OptionsTrackingData(name, K_p.rows(), K_d.rows(), K_p, K_d, W,
                           plant_w_spr, plant_wo_spr) {
 }
 

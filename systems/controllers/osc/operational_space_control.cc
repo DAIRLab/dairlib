@@ -78,8 +78,10 @@ OperationalSpaceControl::OperationalSpaceControl(
   if (used_with_finite_state_machine) {
     fsm_port_ =
         this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
-    near_impact_port_ = this->DeclareVectorInputPort("next_fsm, t_to_impact",
-                                                     BasicVector<double>(2))
+    clock_port_ = this->DeclareVectorInputPort("clock", BasicVector<double>(1))
+                      .get_index();
+    impact_info_port_ = this->DeclareVectorInputPort("next_fsm, t_to_impact",
+                                                     ImpactInfoVector<double>(0, 0, kSpaceDim))
                             .get_index();
 
     // Discrete update to record the last state event time
@@ -273,6 +275,7 @@ void OperationalSpaceControl::Build() {
 
   // Construct QP
   prog_ = std::make_unique<MathematicalProgram>();
+  ii_prog_ = std::make_unique<MathematicalProgram>();
 
   // Size of decision variable
   n_h_ = (kinematic_evaluators_ == nullptr)
@@ -315,6 +318,9 @@ void OperationalSpaceControl::Build() {
   lambda_h_ = prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
   epsilon_ = prog_->NewContinuousVariables(n_c_active_, "epsilon");
 
+  ii_lambda_c_ = ii_prog_->NewContinuousVariables(n_c_, "lambda_contact");
+  ii_lambda_h_ = ii_prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
+
   // Add constraints
   // 1. Dynamics constraint
   dynamics_constraint_ =
@@ -352,9 +358,6 @@ void OperationalSpaceControl::Build() {
     }
   }
   if (!all_contacts_.empty()) {
-    VectorXd mu_neg1(2);
-    VectorXd mu_1(2);
-    VectorXd one(1);
     MatrixXd A = MatrixXd(5, kSpaceDim);
     A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
 
@@ -369,7 +372,32 @@ void OperationalSpaceControl::Build() {
               .evaluator()
               .get());
     }
+
+    // friction cone constraints on impact invariant projection
+//    for (unsigned int j = 0; j < all_contacts_.size(); j++) {
+//      ii_friction_constraints_.push_back(
+//          ii_prog_
+//              ->AddLinearConstraint(
+//                  A, VectorXd::Zero(5),
+//                  Eigen::VectorXd::Constant(
+//                      5, std::numeric_limits<double>::infinity()),
+//                  ii_lambda_c_.segment(kSpaceDim * j, 3))
+//              .evaluator()
+//              .get());
+//    }
   }
+
+  // bounding box constraint on holonomic constraint forces impact invariant
+  // projection
+//  if (n_h_) {
+//    ii_holonomic_constraint_ =
+//        ii_prog_
+//            ->AddBoundingBoxConstraint(VectorXd::Zero(n_h_),
+//                                       VectorXd::Zero(n_h_), ii_lambda_h_)
+//            .evaluator()
+//            .get();
+//  }
+
   // 5. Input constraint
   if (with_input_constraints_) {
     prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
@@ -399,11 +427,21 @@ void OperationalSpaceControl::Build() {
                                                     VectorXd::Zero(n_v_), dv_)
                                  .evaluator()
                                  .get());
+    ii_tracking_cost_.push_back(
+        ii_prog_
+            ->Add2NormSquaredCost(
+                MatrixXd::Zero(tracking_data_vec_->at(i)->GetYdotDim(),
+                               n_c_ + n_h_),
+                VectorXd::Zero(tracking_data_vec_->at(i)->GetYdotDim()),
+                {ii_lambda_c_, ii_lambda_h_})
+            .evaluator()
+            .get());
+    // TODO(yangwill): update the coefficients correctly
   }
 
   // 5. Joint Limit cost
   w_joint_limit_ = VectorXd::Zero(n_revolute_joints_);
-  K_joint_pos = MatrixXd::Identity(n_revolute_joints_, n_revolute_joints_);
+  K_joint_pos = 50 * MatrixXd::Identity(n_revolute_joints_, n_revolute_joints_);
   joint_limit_cost_.push_back(
       prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_revolute_joints_))
           .evaluator()
@@ -445,9 +483,9 @@ void OperationalSpaceControl::Build() {
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-//  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+  //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
@@ -526,6 +564,22 @@ VectorXd OperationalSpaceControl::SolveQp(
   // TODO (yangwill): Characterize damping in cassie model
   //  bias = bias - f_app.generalized_forces();
 
+  //  Invariant Impacts
+  //  Only update when near an impact
+  bool near_impact = alpha != 0;
+  VectorXd v_proj = VectorXd::Zero(n_v_);
+  if (near_impact) {
+    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t,
+                                    time_since_last_state_switch, fsm_state,
+                                    next_fsm_state, M);
+    // Need to call Update before this to get the updated jacobian
+    v_proj = alpha * M_Jt_ * ii_lambda_sol_;
+  }
+
+//  SetVelocitiesIfNew<double>(
+//      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
+//      context_wo_spr_);
+
   // Get J and JdotV for holonomic constraint
   MatrixXd J_h(n_h_, n_v_);
   VectorXd JdotV_h(n_h_);
@@ -563,6 +617,11 @@ VectorXd OperationalSpaceControl::SolveQp(
     row_idx += contact_i->num_active();
   }
 
+  //  if(near_impact){
+  //    std::cout << "Jv" << J_c_active *
+  //    (x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj) << std::endl;
+  //  }
+
   // Update constraints
   // 1. Dynamics constraint
   ///    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_h + B*u
@@ -596,7 +655,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
-  // 4. Friction constraint (approximated firction cone)
+  // 4. Friction constraint (approximated friction cone)
   /// For i = active contact indices
   ///     mu_*lambda_c(3*i+2) >= lambda_c(3*i+0)
   ///    -mu_*lambda_c(3*i+2) <= lambda_c(3*i+0)
@@ -618,18 +677,6 @@ VectorXd OperationalSpaceControl::SolveQp(
             VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));
       }
     }
-  }
-
-  //  Invariant Impacts
-  //  Only update when near an impact
-  bool near_impact = alpha != 0;
-  VectorXd v_proj = VectorXd::Zero(n_v_);
-  if (near_impact) {
-    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t,
-                                    time_since_last_state_switch, fsm_state,
-                                    next_fsm_state, M, J_h);
-    // Need to call Update before this to get the updated jacobian
-    v_proj = alpha * M_Jt_ * ii_lambda_sol_;
   }
 
   // Update costs
@@ -733,11 +780,6 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
-  if (!result.is_success()) {
-    std::cout << "reverting to old sol" << std::endl;
-    return *u_sol_;
-  }
-
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);
   *u_sol_ = result.GetSolution(u_);
@@ -756,29 +798,29 @@ VectorXd OperationalSpaceControl::SolveQp(
 void OperationalSpaceControl::UpdateImpactInvariantProjection(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const Context<double>& context, double t, double t_since_last_state_switch,
-    int fsm_state, int next_fsm_state, const MatrixXd& M,
-    const MatrixXd& J_h) const {
+    int fsm_state, int next_fsm_state, const MatrixXd& M) const {
   auto map_iterator = contact_indices_map_.find(next_fsm_state);
   if (map_iterator == contact_indices_map_.end()) {
     throw std::out_of_range("Contact mode: " + std::to_string(next_fsm_state) +
                             " was not found in the OSC");
   }
   std::set<int> next_contact_set = map_iterator->second;
-  int active_contact_dim = active_contact_dim_.at(next_fsm_state) + n_h_;
-  MatrixXd J_c_next = MatrixXd::Zero(active_contact_dim, n_v_);
+  int active_constraint_dim = active_contact_dim_.at(next_fsm_state) + n_h_;
+  MatrixXd J_next = MatrixXd::Zero(active_constraint_dim, n_v_);
   int row_start = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
     if (next_contact_set.find(i) != next_contact_set.end()) {
-      J_c_next.block(row_start, 0, kSpaceDim, n_v_) =
+      J_next.block(row_start, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
       row_start += kSpaceDim;
     }
   }
   // Holonomic constraints
   if (n_h_ > 0) {
-    J_c_next.block(row_start, 0, n_h_, n_v_) = J_h;
+    J_next.block(row_start, 0, n_h_, n_v_) =
+        kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
   }
-  M_Jt_ = M.llt().solve(J_c_next.transpose());
+  M_Jt_ = M.llt().solve(J_next.transpose());
 
   int active_tracking_data_dim = 0;
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
@@ -808,13 +850,14 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
       }
     }
   }
-  MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_contact_dim);
+
+  MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_constraint_dim);
   VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
   int start_row = 0;
   for (auto tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
-      A.block(start_row, 0, tracking_data->GetYDim(), active_contact_dim) =
+      A.block(start_row, 0, tracking_data->GetYDim(), active_constraint_dim) =
           tracking_data->GetJ() * M_Jt_;
       ydot_err_vec.segment(start_row, tracking_data->GetYDim()) =
           tracking_data->GetErrorYdot();
@@ -876,8 +919,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;
 
-  output->tracking_data.reserve(tracking_data_vec_->size());
+  output->tracking_data =
+      std::vector<lcmt_osc_tracking_data>(tracking_data_vec_->size());
   output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
+  output->tracking_data_names = std::vector<std::string>(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -885,7 +930,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     if (tracking_data->IsActive(fsm_state) &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
-      output->tracking_data_names.push_back(tracking_data->GetName());
+      output->tracking_data_names[i] = tracking_data->GetName();
       lcmt_osc_tracking_data osc_output;
       osc_output.y_dim = tracking_data->GetYDim();
       osc_output.ydot_dim = tracking_data->GetYdotDim();
@@ -906,7 +951,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommand());
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
-      output->tracking_data.push_back(osc_output);
+      //      output->tracking_data.push_back(osc_output);
+      output->tracking_data[i] = osc_output;
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
       const MatrixXd& W = tracking_data->GetWeight();
@@ -927,6 +973,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Read in current state and time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
 
@@ -949,23 +996,28 @@ void OperationalSpaceControl::CalcOptimalInput(
     // Read in finite state machine
     const BasicVector<double>* fsm_output =
         (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+    double clock_time = current_time;
+    if (this->get_input_port(clock_port_).HasValue(context)) {
+      const BasicVector<double>* clock =
+          (BasicVector<double>*)this->EvalVectorInput(context, clock_port_);
+      clock_time = clock->get_value()(0);
+    }
     VectorXd fsm_state = fsm_output->get_value();
 
     double alpha = 0;
     int next_fsm_state = -1;
     if (this->get_near_impact_input_port().HasValue(context)) {
-      const BasicVector<double>* near_impact =
-          (BasicVector<double>*)this->EvalVectorInput(context,
-                                                      near_impact_port_);
-      alpha = near_impact->get_value()(0);
-      next_fsm_state = near_impact->get_value()(1);
+      const ImpactInfoVector<double>* impact_info =
+          (ImpactInfoVector<double>*)this->EvalVectorInput(context,
+                                                           impact_info_port_);
+      alpha = impact_info->GetAlpha();
+      next_fsm_state = impact_info->GetCurrentContactMode();
     }
 
     // Get discrete states
     const auto prev_event_time =
         context.get_discrete_state(prev_event_time_idx_).get_value();
-
-    u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, fsm_state(0),
+    u_sol = SolveQp(x_w_spr, x_wo_spr, context, clock_time, fsm_state(0),
                     current_time - prev_event_time(0), alpha, next_fsm_state);
   } else {
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time,

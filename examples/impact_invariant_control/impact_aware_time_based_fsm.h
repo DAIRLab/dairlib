@@ -3,6 +3,7 @@
 #include <string>
 
 #include "systems/controllers/time_based_fsm.h"
+#include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -27,20 +28,25 @@ class ImpactTimeBasedFiniteStateMachine
   const drake::systems::OutputPort<double>& get_output_port_fsm() const {
     return this->get_output_port(fsm_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_clock() const {
+    return this->get_output_port(clock_port_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_impact() const {
     return this->get_output_port(near_impact_port_);
   }
 
  private:
   void CalcNearImpact(const drake::systems::Context<double>& context,
-                      drake::systems::BasicVector<double>* near_impact) const;
+                      systems::ImpactInfoVector<double>* near_impact) const;
+  void CalcClock(const drake::systems::Context<double>& context,
+                 drake::systems::BasicVector<double>* clock) const;
 
   int near_impact_port_;
+  int clock_port_;
 
+  double t0_;
   std::vector<int> states_;
   std::vector<double> state_durations_;
-  double t0_;
-
   std::vector<double> accu_state_durations_;
   std::vector<int> impact_states_;
   std::vector<double> impact_times_;

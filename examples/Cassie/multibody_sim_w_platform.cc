@@ -24,6 +24,7 @@
 #include "drake/systems/primitives/discrete_time_delay.h"
 
 using dairlib::systems::SubvectorPassThrough;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
@@ -31,7 +32,6 @@ using drake::multibody::Parser;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
-using drake::geometry::DrakeVisualizer;
 
 using drake::systems::lcm::LcmPublisherSystem;
 
@@ -59,13 +59,18 @@ DEFINE_double(publish_rate, 2000, "Publish rate for simulator");
 DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
-DEFINE_double(terrain_height, 0.0, "Height of the landing terrain");
+DEFINE_double(platform_height, 0.0, "Height of the platform");
+DEFINE_double(platform_x, 0.0, "x location of the  platform");
 DEFINE_double(start_time, 0.0,
               "Starting time of the simulator, useful for initializing the "
               "state at a particular configuration");
 DEFINE_string(traj_name, "", "Name of the saved trajectory");
 DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
+DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_bool(visualize, true, "Set to true to visualize the platform");
+DEFINE_double(actuator_delay, 0.0,
+              "Duration of actuator delay. Set to 0.0 by default.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -82,15 +87,19 @@ int do_main(int argc, char* argv[]) {
   }
 
   std::string urdf;
-  urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+  if (FLAGS_spring_model) {
+    urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+  } else {
+    urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+  }
 
-  if (FLAGS_terrain_height != 0) {
+  if (FLAGS_platform_height != 0) {
     Parser parser(&plant, &scene_graph);
     std::string terrain_name =
-        FindResourceOrThrow("examples/impact_invaraint_control/platform.urdf");
+        FindResourceOrThrow("examples/impact_invariant_control/platform.urdf");
     parser.AddModelFromFile(terrain_name);
     Eigen::Vector3d offset;
-    offset << 0.15, 0, FLAGS_terrain_height;
+    offset << FLAGS_platform_x, 0, FLAGS_platform_height;
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                      drake::math::RigidTransform<double>(offset));
   }
@@ -98,8 +107,8 @@ int do_main(int argc, char* argv[]) {
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf, true,
-                     true);
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+                     FLAGS_spring_model, true);
 
   plant.Finalize();
 
@@ -124,7 +133,8 @@ int do_main(int argc, char* argv[]) {
       plant.get_actuation_input_port().size());
   auto discrete_time_delay =
       builder.AddSystem<drake::systems::DiscreteTimeDelay>(
-          1.0 / FLAGS_publish_rate, 0, plant.num_actuators());
+          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay * FLAGS_publish_rate,
+          plant.num_actuators());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
@@ -171,7 +181,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
 
-  if (FLAGS_terrain_height != 0.0) {
+  if (FLAGS_visualize) {
     DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   }
 
@@ -195,6 +205,8 @@ int do_main(int argc, char* argv[]) {
       multibody::CreateWithSpringsToWithoutSpringsMapPos(plant, plant_wo_spr);
   Eigen::MatrixXd map_no_spring_to_spring_vel =
       multibody::CreateWithSpringsToWithoutSpringsMapVel(plant, plant_wo_spr);
+  map_no_spring_to_spring_pos.transposeInPlace();
+  map_no_spring_to_spring_vel.transposeInPlace();
 
   const DirconTrajectory& dircon_trajectory =
       DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
@@ -202,10 +214,14 @@ int do_main(int argc, char* argv[]) {
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
 
-  Eigen::VectorXd x_init(nx);
-  Eigen::VectorXd x_init_no_spring = state_traj.value(FLAGS_start_time);
-  x_init << map_no_spring_to_spring_pos * x_init_no_spring.head(plant_wo_spr.num_positions()),
-      map_no_spring_to_spring_vel * x_init_no_spring.tail(plant_wo_spr.num_velocities());
+  Eigen::VectorXd x_init = Eigen::VectorXd::Zero(nx);
+  Eigen::VectorXd x_traj_init = state_traj.value(FLAGS_start_time);
+  if (FLAGS_spring_model) {
+    x_init << map_no_spring_to_spring_pos * x_traj_init.head(map_no_spring_to_spring_pos.cols()),
+        map_no_spring_to_spring_vel * x_traj_init.tail(map_no_spring_to_spring_vel.cols());
+  } else {
+    x_init << x_traj_init;
+  }
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
 

@@ -4,6 +4,7 @@
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 using dairlib::systems::OutputVector;
+using dairlib::systems::ImpactInfoVector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -28,8 +29,7 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
       init_state_(init_state),
       blend_func_(blend_func) {
   state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
@@ -43,8 +43,12 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
       this->DeclareVectorOutputPort("fsm", BasicVector<double>(1),
                                     &JumpingEventFsm::CalcFiniteState)
           .get_index();
+  clock_output_port_ =
+      this->DeclareVectorOutputPort("t_clock", BasicVector<double>(1),
+                                    &JumpingEventFsm::CalcClock)
+          .get_index();
   near_impact_output_port =
-      this->DeclareVectorOutputPort("fsm, t_to_impact", BasicVector<double>(2),
+      this->DeclareVectorOutputPort("impact_info", ImpactInfoVector<double>(0, 0, 3),
                                     &JumpingEventFsm::CalcNearImpact)
           .get_index();
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);
@@ -90,7 +94,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   prev_time << timestamp;
 
   if (abs(transition_times_[BALANCE] - timestamp -
-          round(transition_times_[BALANCE] - timestamp)) < 1e-3) {
+          round(transition_times_[BALANCE] - timestamp)) < 1e-4) {
     std::cout << "Time until crouch: "
               << round(transition_times_[BALANCE] - timestamp) << std::endl;
   }
@@ -133,6 +137,12 @@ void JumpingEventFsm::CalcFiniteState(const Context<double>& context,
       context.get_discrete_state().get_vector(fsm_idx_).get_value();
 }
 
+void JumpingEventFsm::CalcClock(const Context<double>& context,
+                                BasicVector<double>* clock) const {
+  clock->get_mutable_value()
+      << context.get_discrete_state(prev_time_idx_).get_value();
+}
+
 double alpha_sigmoid(double t, double tau, double near_impact_threshold) {
   double x = (t + near_impact_threshold) / tau;
   return exp(x) / (1 + exp(x));
@@ -143,14 +153,16 @@ double alpha_exp(double t, double tau, double near_impact_threshold) {
 }
 
 void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
-                                     BasicVector<double>* near_impact) const {
+                                     ImpactInfoVector<double>* near_impact) const {
   VectorXd fsm_state = context.get_discrete_state(fsm_idx_).get_value();
   // Read in lcm message time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double timestamp = robot_output->get_timestamp();
 
-  VectorXd is_near_impact = VectorXd::Zero(2);
+  near_impact->set_timestamp(timestamp);
+  near_impact->SetCurrentContactMode(0);
+  near_impact->SetAlpha(0);
   auto alpha_func = blend_func_ == SIGMOID ? &alpha_sigmoid : &alpha_exp;
 
   // Get current finite state
@@ -159,16 +171,15 @@ void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
         blend_func_ == SIGMOID ? 1.5 * impact_threshold_ : impact_threshold_;
     if (abs(timestamp - transition_times_[FLIGHT]) < blend_window) {
       if (timestamp < transition_times_[FLIGHT]) {
-        is_near_impact(0) = alpha_func(timestamp - transition_times_[FLIGHT],
-                                       tau_, impact_threshold_);
+        near_impact->SetAlpha(alpha_func(timestamp - transition_times_[FLIGHT],
+                                       tau_, impact_threshold_));
       } else {
-        is_near_impact(0) = alpha_func(transition_times_[FLIGHT] - timestamp,
-                                       tau_, impact_threshold_);
+        near_impact->SetAlpha(alpha_func(transition_times_[FLIGHT] - timestamp,
+                                       tau_, impact_threshold_));
       }
-      is_near_impact(1) = LAND;
+      near_impact->SetCurrentContactMode(LAND);
     }
   }
-  near_impact->get_mutable_value() = is_near_impact;
 }
 
 }  // namespace osc_jump

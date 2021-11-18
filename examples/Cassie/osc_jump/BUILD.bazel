@@ -35,7 +35,6 @@ cc_library(
     deps = [
         ":jumping_event_based_fsm",
         "//multibody:utils",
-        "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -48,7 +47,6 @@ cc_library(
     deps = [
         ":jumping_event_based_fsm",
         "//multibody:utils",
-        "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -61,7 +59,6 @@ cc_library(
     deps = [
         ":jumping_event_based_fsm",
         "//multibody:utils",
-        "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -74,7 +71,6 @@ cc_library(
     deps = [
         "//examples/impact_invariant_control:impact_aware_time_based_fsm",
         "//lcmtypes:lcmt_robot",
-        "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -84,6 +80,7 @@ cc_library(
     name = "osc_jumping_gains",
     hdrs = ["osc_jumping_gains.h"],
     deps = [
+        "//systems/controllers/osc:osc_gains",
         "@drake//:drake_shared_library",
     ],
 )

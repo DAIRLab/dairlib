@@ -13,6 +13,11 @@
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "systems/controllers/osc/options_tracking_data.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/controllers/osc/com_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
+#include "systems/controllers/osc/rot_space_tracking_data.h"
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -289,7 +294,7 @@ int DoMain(int argc, char* argv[]) {
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
       plant_w_springs, plant_wo_springs);
   JointSpaceTrackingData right_hip_yaw_traj(
-      "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
+      "right_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
       plant_w_springs, plant_wo_springs);
   left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");

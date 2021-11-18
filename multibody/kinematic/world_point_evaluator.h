@@ -1,5 +1,6 @@
 #pragma once
 #include "multibody/kinematic/kinematic_evaluator.h"
+#include "multibody/view_frame.h"
 
 #include "drake/math/rotation_matrix.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -27,6 +28,20 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
   WorldPointEvaluator(
       const drake::multibody::MultibodyPlant<T>& plant,
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
+      const Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity(),
+      const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
+      std::vector<int> active_directions = {0, 1, 2});
+
+  /// The same constructor as the above one except for the argument
+  /// `view_frame`. 
+  /// `WorldPointEvaluator` computes position, Jacobian and JdotV in the world
+  /// frame, and expresses them in `ViewFrame` (i.e. rotates the vectors and
+  /// matrix). 
+
+  WorldPointEvaluator(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
+      const multibody::ViewFrame<T>& view_frame,
       const Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
       std::vector<int> active_directions = {0, 1, 2});
@@ -82,6 +97,7 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
   const drake::multibody::Frame<T>& frame_A_;
   const Eigen::Vector3d offset_;
   const drake::math::RotationMatrix<double> rotation_;
+  const multibody::ViewFrame<T>* view_frame_ = nullptr;
   bool is_frictional_ = false;
 };
 

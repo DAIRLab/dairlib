@@ -10,5 +10,6 @@ attic/multibody/solver_log/
 
 fort.*
 .ijwb
+.vscode
 *.csv
 /examples/Cassie/saved_trajectories/

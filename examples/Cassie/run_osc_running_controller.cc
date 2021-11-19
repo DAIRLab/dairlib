@@ -47,6 +47,7 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+using cassie::osc::SwingToeTrajGenerator;
 using drake::geometry::SceneGraph;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
@@ -62,12 +63,11 @@ using examples::osc::PelvisTransTrajGenerator;
 using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_run::FootTrajGenerator;
 using multibody::FixedJointEvaluator;
-using cassie::osc::SwingToeTrajGenerator;
+using multibody::WorldYawViewFrame;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::WorldYawOscViewFrame;
 
 namespace examples {
 
@@ -164,7 +164,8 @@ int DoMain(int argc, char* argv[]) {
                             air_phase, left_stance_state};
   std::cout << "left support duration: " << left_support_duration << std::endl;
   std::cout << "flight duration: " << air_phase_duration << std::endl;
-  std::cout << "right support duration: " << right_support_duration << std::endl;
+  std::cout << "right support duration: " << right_support_duration
+            << std::endl;
   vector<double> state_durations = {
       left_support_duration / 2, air_phase_duration, right_support_duration,
       air_phase_duration, left_support_duration / 2};
@@ -391,7 +392,7 @@ int DoMain(int argc, char* argv[]) {
   left_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_left");
   right_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_right");
 
-  WorldYawOscViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
+  WorldYawViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant, &left_foot_tracking_data,
@@ -469,10 +470,12 @@ int DoMain(int argc, char* argv[]) {
   hip_pitch_right_tracking_data.DisableFeedforwardAccel({0});
   hip_pitch_left_tracking_data.SetImpactInvariantProjection(true);
   hip_pitch_right_tracking_data.SetImpactInvariantProjection(true);
-  osc->AddConstTrackingData(&hip_pitch_left_tracking_data, 0.6 * VectorXd::Ones(1));
-  osc->AddConstTrackingData(&hip_pitch_right_tracking_data, 0.6 * VectorXd::Ones(1));
-//  osc->AddTrackingData(&hip_pitch_left_tracking_data);
-//  osc->AddTrackingData(&hip_pitch_right_tracking_data);
+  //  osc->AddConstTrackingData(&hip_pitch_left_tracking_data,
+  //                            0.6 * VectorXd::Ones(1));
+  //  osc->AddConstTrackingData(&hip_pitch_right_tracking_data,
+  //                            0.6 * VectorXd::Ones(1));
+  osc->AddTrackingData(&hip_pitch_left_tracking_data);
+  osc->AddTrackingData(&hip_pitch_right_tracking_data);
 
   // Stance hip roll trajectory
   auto hip_roll_left_traj = dircon_trajectory.ReconstructJointTrajectory(
@@ -561,8 +564,8 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.W_hip_yaw, plant, plant);
   hip_yaw_left_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   hip_yaw_right_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-//  hip_yaw_left_traj.SetImpactInvariantProjection(true);
-//  hip_yaw_right_traj.SetImpactInvariantProjection(true);
+  //  hip_yaw_left_traj.SetImpactInvariantProjection(true);
+  //  hip_yaw_right_traj.SetImpactInvariantProjection(true);
   osc->AddConstTrackingData(&hip_yaw_left_traj, VectorXd::Zero(1));
   osc->AddConstTrackingData(&hip_yaw_right_traj, VectorXd::Zero(1));
 
@@ -606,10 +609,10 @@ int DoMain(int argc, char* argv[]) {
                   left_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
-//  builder.Connect(hip_pitch_left_traj_generator->get_output_port(),
-//                  osc->get_tracking_data_input_port("hip_pitch_left_traj"));
-//  builder.Connect(hip_pitch_right_traj_generator->get_output_port(),
-//                  osc->get_tracking_data_input_port("hip_pitch_right_traj"));
+  builder.Connect(hip_pitch_left_traj_generator->get_output_port(),
+                  osc->get_tracking_data_input_port("hip_pitch_left_traj"));
+  builder.Connect(hip_pitch_right_traj_generator->get_output_port(),
+                  osc->get_tracking_data_input_port("hip_pitch_right_traj"));
   builder.Connect(hip_roll_left_traj_generator->get_output_port(),
                   osc->get_tracking_data_input_port("hip_roll_left_traj"));
   builder.Connect(hip_roll_right_traj_generator->get_output_port(),

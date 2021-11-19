@@ -257,7 +257,7 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
         data['yddot_command_sol'] = tracking_data.yddot_command_sol[:, dim]
 
     return plot_general_osc_tracking_data(traj, deriv, dim, data,
-                                          osc_debug['t_osc'], time_slice)
+                                          osc_debug['osc_debug_tracking_datas'][traj].t, time_slice)
 
 
 def plot_qp_costs(osc_debug, time_slice):

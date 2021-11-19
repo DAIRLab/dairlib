@@ -222,18 +222,16 @@ def plot_tracking_costs(osc_debug, time_slice):
     return ps
 
 
-def plot_general_osc_tracking_data(traj_name, deriv, dim, data,
-                                   t_osc, time_slice):
+def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
     ps = plot_styler.PlotStyler()
-    data_dict = {key: val for key, val in data.items()}
-    data_dict['t_osc'] = t_osc
+    keys = [key for key in data.keys() if key != 't']
     plotting_utils.make_plot(
-        data_dict,
-        't_osc',
+        data,
+        't',
         time_slice,
-        data.keys(),
+        keys,
         {},
-        {key: [key] for key in data.keys()},
+        {key: [key] for key in keys},
         {'xlabel': 'Time',
          'ylabel': '',
          'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
@@ -256,8 +254,8 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
         data['yddot_command'] = tracking_data.yddot_command[:, dim]
         data['yddot_command_sol'] = tracking_data.yddot_command_sol[:, dim]
 
-    return plot_general_osc_tracking_data(traj, deriv, dim, data,
-                                          osc_debug['t_osc'], time_slice)
+    data['t'] = tracking_data.t
+    return plot_general_osc_tracking_data(traj, deriv, dim, data, time_slice)
 
 
 def plot_qp_costs(osc_debug, time_slice):

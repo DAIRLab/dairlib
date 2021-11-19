@@ -50,12 +50,13 @@ def main():
             robot_output, pos_names, 7, t_x_slice)
 
     # Plot joint positions
-    mbp_plots.plot_joint_positions(robot_output, pos_names,
-                                   7 if use_floating_base else 0, t_x_slice)
+    if plot_config.plot_joint_positions:
+        mbp_plots.plot_joint_positions(robot_output, pos_names,
+                                       7 if use_floating_base else 0, t_x_slice)
     # Plot specific positions
-    mbp_plots.plot_positions_by_name(robot_output,
-                                     ['knee_left', 'knee_right'],
-                                     t_x_slice, pos_map)
+    if plot_config.pos_names:
+        mbp_plots.plot_positions_by_name(robot_output, plot_config.pos_names,
+                                         t_x_slice, pos_map)
 
     ''' Plot Velocities '''
     # Plot floating base velocities if applicable
@@ -64,18 +65,22 @@ def main():
             robot_output, vel_names, 6, t_x_slice)
 
     # Plot all joint velocities
-    mbp_plots.plot_joint_velocities(robot_output, vel_names,
-                                    6 if use_floating_base else 0,
-                                    t_x_slice)
+    if plot_config.plot_joint_positions:
+        mbp_plots.plot_joint_velocities(robot_output, vel_names,
+                                        6 if use_floating_base else 0,
+                                        t_x_slice)
     # Plot specific velocities
-    mbp_plots.plot_velocities_by_name(robot_output, ['base_vz'],
-                                      t_x_slice, vel_map)
+    if plot_config.vel_names:
+        mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
+                                          t_x_slice, vel_map)
 
     ''' Plot Efforts '''
-    mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
-    mbp_plots.plot_measured_efforts_by_name(robot_output,
-                                               ['knee_left_motor'],
-                                               t_x_slice, act_map)
+    if plot_config.plot_measured_efforts:
+        mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
+    if plot_config.act_names:
+        mbp_plots.plot_measured_efforts_by_name(robot_output,
+                                                plot_config.act_names,
+                                                t_x_slice, act_map)
 
     mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
     plt.show()

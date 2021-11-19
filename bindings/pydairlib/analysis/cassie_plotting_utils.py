@@ -7,11 +7,8 @@ import matplotlib.pyplot as plt
 import dairlib
 from pydairlib.cassie.cassie_utils import addCassieMultibody
 
-
 # drake imports
-from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
-from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
 
 cassie_urdf = "examples/Cassie/urdf/cassie_v2.urdf"

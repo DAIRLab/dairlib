@@ -146,6 +146,14 @@ def load_state_channel(data, plant, state_channel):
     return process_state_channel(data[state_channel], plant)
 
 
+def load_input_channel(data, input_channel):
+    return process_effort_channel(data[input_channel])
+
+
+def load_osc_channel(data, osc_debug_channel):
+    return process_osc_channel(data[osc_debug_channel])
+
+
 def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):
     return plot_q_or_v_or_u(robot_output, 'q', q_names[:fb_dim], slice(fb_dim),
                             time_slice, ylabel='Position',

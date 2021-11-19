@@ -36,14 +36,14 @@ HeadingTrajGenerator::HeadingTrajGenerator(
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
+                    .get_index();
   des_yaw_port_ =
-      this->DeclareVectorInputPort("pelvis_yaw", BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("pelvis_yaw", BasicVector<double>(1))
+          .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
@@ -96,7 +96,8 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   Eigen::Vector4d pelvis_rotation_i;
   pelvis_rotation_i << quat.w(), 0, 0, quat.z();
   pelvis_rotation_i.normalize();
-  Quaterniond init_quat = quat;
+  Quaterniond init_quat(pelvis_rotation_i(0), pelvis_rotation_i(1),
+                        pelvis_rotation_i(2), pelvis_rotation_i(3));
   init_quat.normalize();
   Quaterniond relative_quat(cos(des_delta_yaw / 2), 0, 0,
                             sin(des_delta_yaw / 2));

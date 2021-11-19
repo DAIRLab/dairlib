@@ -1,0 +1,18 @@
+# LCM channels to read data from
+channel_x: "CASSIE_STATE_SIMULATION"
+channel_u: "CASSIE_INPUT"
+channel_osc: "OSC_DEBUG_STANDING"
+
+# Plant properties
+use_springs: true
+use_floating_base: true
+
+# Desired plots
+plot_floating_base_positions: true
+plot_floating_base_velocities: true
+plot_joint_positions: false
+plot_joint_velocities: false
+plot_measured_efforts: false
+special_positions_to_plot: ["knee_left"]
+special_velocities_to_plot: ["base_vz"]
+special_efots_to_plot: ["knee_left_motor"]

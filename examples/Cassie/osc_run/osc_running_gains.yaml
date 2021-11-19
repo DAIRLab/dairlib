@@ -1,0 +1,67 @@
+w_input: 0.0000000000
+w_accel: 0.00001
+#w_soft_constraint: 1000000
+w_soft_constraint: 0.00000000
+w_input_reg: 0.0001
+impact_threshold: 0.050
+relative_feet: true
+relative_pelvis: true
+
+# High level command gains (with radio)
+vel_scale_rot: -1
+vel_scale_trans_sagital: 0.25
+vel_scale_trans_lateral: -0.15
+
+# SLIP parameters
+rest_length: 0.9
+k_leg: -750
+b_leg: 1
+
+mu: 0.8
+
+w_swing_toe: 1
+swing_toe_kp: 1500
+swing_toe_kd: 10
+
+w_hip_yaw: 10
+hip_yaw_kp: 100
+hip_yaw_kd: 5
+w_hip_pitch: 5
+hip_pitch_kp: 50
+hip_pitch_kd: 20
+w_hip_roll: 10
+hip_roll_kp: 100
+hip_roll_kd: 20
+
+PelvisW:
+  [ 0,     0,    0,
+    0,     0,    0,
+    0,     0,    1]
+PelvisKp:
+  [ 0,    0,    0,
+    0,    0,    0,
+    0,    0,   100]
+PelvisKd:
+  [  0,    0,   0,
+     0,    0,   0,
+     0,    0,  5]
+SwingFootW:
+  [1,    0,    0,
+   0,    1,    0,
+   0,     0,   1]
+SwingFootKp:
+  [50,    0,    0,
+   0,    50,    0,
+   0,     0,   50]
+SwingFootKd:
+  [ 1,   0,   0,
+    0,   1,   0,
+    0,   0,   1]
+FootstepKp:
+    [0.0,    0,
+       0,  0.0,
+       0,    0]
+FootstepKd:
+  [  0.15,      0,
+       0,   0.03,
+       0,     0]

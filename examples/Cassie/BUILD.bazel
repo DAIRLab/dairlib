@@ -214,24 +214,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "multibody_sim_init",
-    srcs = ["multibody_sim_init.cc"],
-    deps = [
-        ":cassie_fixed_point_solver",
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//lcm:trajectory_saver",
-        "//multibody:utils",
-        "//solvers:optimization_utils",
-        "//systems:robot_lcm_systems",
-        "//systems/framework:vector",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "multibody_sim_w_platform",
     srcs = ["multibody_sim_w_platform.cc"],
     deps = [

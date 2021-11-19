@@ -35,6 +35,10 @@ group "1.controllers-and-dispatchers" {
         exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --channel_u=CASSIE_INPUT --delay_time=2.0 --channel_x=CASSIE_STATE_DISPATCHER --traj_name=jumping_0.15h_0.3d";
         host = "localhost";
     }
+    cmd "osc_walking_controller (w_radio)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --use_radio=1 --cassie_out_channel=CASSIE_OUTPUT";
+        host = "localhost";
+    }
 }
 
 group "2.simulators" {

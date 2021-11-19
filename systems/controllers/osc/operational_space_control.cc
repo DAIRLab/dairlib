@@ -80,9 +80,10 @@ OperationalSpaceControl::OperationalSpaceControl(
         this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
     clock_port_ = this->DeclareVectorInputPort("clock", BasicVector<double>(1))
                       .get_index();
-    impact_info_port_ = this->DeclareVectorInputPort("next_fsm, t_to_impact",
-                                                     ImpactInfoVector<double>(0, 0, kSpaceDim))
-                            .get_index();
+    impact_info_port_ =
+        this->DeclareVectorInputPort("next_fsm, t_to_impact",
+                                     ImpactInfoVector<double>(0, 0, kSpaceDim))
+            .get_index();
 
     // Discrete update to record the last state event time
     DeclarePerStepDiscreteUpdateEvent(
@@ -372,31 +373,7 @@ void OperationalSpaceControl::Build() {
               .evaluator()
               .get());
     }
-
-    // friction cone constraints on impact invariant projection
-//    for (unsigned int j = 0; j < all_contacts_.size(); j++) {
-//      ii_friction_constraints_.push_back(
-//          ii_prog_
-//              ->AddLinearConstraint(
-//                  A, VectorXd::Zero(5),
-//                  Eigen::VectorXd::Constant(
-//                      5, std::numeric_limits<double>::infinity()),
-//                  ii_lambda_c_.segment(kSpaceDim * j, 3))
-//              .evaluator()
-//              .get());
-//    }
   }
-
-  // bounding box constraint on holonomic constraint forces impact invariant
-  // projection
-//  if (n_h_) {
-//    ii_holonomic_constraint_ =
-//        ii_prog_
-//            ->AddBoundingBoxConstraint(VectorXd::Zero(n_h_),
-//                                       VectorXd::Zero(n_h_), ii_lambda_h_)
-//            .evaluator()
-//            .get();
-//  }
 
   // 5. Input constraint
   if (with_input_constraints_) {
@@ -922,7 +899,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_data =
       std::vector<lcmt_osc_tracking_data>(tracking_data_vec_->size());
   output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
-  output->tracking_data_names = std::vector<std::string>(tracking_data_vec_->size());
+  output->tracking_data_names =
+      std::vector<std::string>(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);

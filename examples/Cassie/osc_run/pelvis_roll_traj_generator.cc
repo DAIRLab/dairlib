@@ -88,10 +88,12 @@ PiecewisePolynomial<double> PelvisRollTrajGenerator::GeneratePelvisTraj(
   correction << pelvis_roll;
   std::vector<double> breaks = hip_roll_traj_.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
-  MatrixXd foot_offset_points = correction.replicate(1, breaks.size());
+  MatrixXd offset_angles = correction.replicate(1, breaks.size());
+  for (int i = 0; i < breaks_vector.size(); ++i){
+    offset_angles.col(i) = i * offset_angles.col(i) / breaks_vector.size();
+  }
   PiecewisePolynomial<double> offset_traj =
-      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
-                                                 foot_offset_points);
+      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, offset_angles);
   return hip_roll_traj_ + offset_traj;
 }
 

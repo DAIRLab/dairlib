@@ -239,7 +239,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
   // This actually outputs the target position of the pelvis not the true
   // center of mass
-  auto com_traj_generator = builder.AddSystem<PelvisTransTrajGenerator>(
+  auto pelvis_trans_traj_generator = builder.AddSystem<PelvisTransTrajGenerator>(
       plant_w_spr, context_w_spr.get(), pelvis_trans_traj, feet_contact_points,
       FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
@@ -349,7 +349,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-  TransTaskSpaceTrackingData pelvis_tracking_data("com_traj", gains.K_p_com,
+  TransTaskSpaceTrackingData pelvis_tracking_data("pelvis_trans_traj", gains.K_p_com,
                                                   gains.K_d_com, gains.W_com,
                                                   plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
@@ -396,27 +396,27 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_hip_yaw = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_hip_yaw_left_traj(
+  JointSpaceTrackingData left_hip_yaw_tracking_data(
       "swing_hip_yaw_left_traj", K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw,
       plant_w_spr, plant_w_spr);
-  JointSpaceTrackingData swing_hip_yaw_right_traj(
+  JointSpaceTrackingData right_hip_yaw_tracking_data(
       "swing_hip_yaw_right_traj", K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw,
       plant_w_spr, plant_w_spr);
-  swing_hip_yaw_left_traj.AddStateAndJointToTrack(
+  left_hip_yaw_tracking_data.AddStateAndJointToTrack(
       osc_jump::FLIGHT, "hip_yaw_left", "hip_yaw_leftdot");
-  swing_hip_yaw_right_traj.AddStateAndJointToTrack(
+  right_hip_yaw_tracking_data.AddStateAndJointToTrack(
       osc_jump::FLIGHT, "hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&swing_hip_yaw_left_traj, VectorXd::Zero(1));
-  osc->AddConstTrackingData(&swing_hip_yaw_right_traj, VectorXd::Zero(1));
+  osc->AddConstTrackingData(&left_hip_yaw_tracking_data, VectorXd::Zero(1));
+  osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
 
   // Flight phase toe pitch tracking
   MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData left_toe_angle_traj(
+  JointSpaceTrackingData left_toe_angle_tracking_data(
       "left_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
       plant_w_spr, plant_w_spr);
-  JointSpaceTrackingData right_toe_angle_traj(
+  JointSpaceTrackingData right_toe_angle_tracking_data(
       "right_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
       plant_w_spr, plant_w_spr);
 
@@ -434,9 +434,9 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), r_toe_trajectory,
           pos_map["toe_right"], right_foot_points, "right_toe_angle_traj");
 
-  left_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
+  left_toe_angle_tracking_data.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
                                               "toe_leftdot");
-  right_toe_angle_traj.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
+  right_toe_angle_tracking_data.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
                                                "toe_rightdot");
 
   osc->AddTrackingData(&pelvis_tracking_data);
@@ -452,13 +452,13 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&left_foot_tracking_data);
     osc->AddTrackingData(&right_foot_tracking_data);
   }
-  osc->AddTrackingData(&left_toe_angle_traj);
-  osc->AddTrackingData(&right_toe_angle_traj);
+  osc->AddTrackingData(&left_toe_angle_tracking_data);
+  osc->AddTrackingData(&right_toe_angle_tracking_data);
 
-  left_toe_angle_traj.SetImpactInvariantProjection(true);
-  right_toe_angle_traj.SetImpactInvariantProjection(true);
-  swing_hip_yaw_left_traj.SetImpactInvariantProjection(true);
-  swing_hip_yaw_right_traj.SetImpactInvariantProjection(true);
+  left_toe_angle_tracking_data.SetImpactInvariantProjection(true);
+  right_toe_angle_tracking_data.SetImpactInvariantProjection(true);
+//  swing_hip_yaw_left_traj.SetImpactInvariantProjection(true);
+//  swing_hip_yaw_right_traj.SetImpactInvariantProjection(true);
   pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
   pelvis_tracking_data.SetImpactInvariantProjection(true);
 
@@ -475,8 +475,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_near_impact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(com_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("com_traj"));
+  builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_trans_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
@@ -497,7 +497,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Trajectory generator connections
   builder.Connect(state_receiver->get_output_port(0),
-                  com_traj_generator->get_state_input_port());
+                  pelvis_trans_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
@@ -507,7 +507,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
-                  com_traj_generator->get_fsm_input_port());
+                  pelvis_trans_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
                   l_foot_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),

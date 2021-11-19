@@ -22,28 +22,6 @@ def make_mbp_name_vectors(plant):
     return q_names, v_names, u_names
 
 
-def plot_q_or_v_or_u(
-        robot_output, key, x_names, x_slice, time_slice,
-        ylabel=None, title=None):
-    ps = plot_styler.PlotStyler()
-    if ylabel is None:
-        ylabel = key
-    if title is None:
-        title = key
-
-    plotting_utils.make_plot(
-        robot_output,                       # data dict
-        't_x',                              # time channel
-        time_slice,
-        [key],                              # key to plot
-        {key: x_slice},                     # slice of key to plot
-        {key: x_names},                     # legend entries
-        {'xlabel': 'Time',
-         'ylabel': ylabel,
-         'title': title}, ps)
-    return ps
-
-
 def process_state_channel(state_data, plant):
     t_x = []
     q = []
@@ -151,6 +129,28 @@ def load_input_channel(data, input_channel):
 
 def load_osc_channel(data, osc_debug_channel):
     return process_osc_channel(data[osc_debug_channel])
+
+
+def plot_q_or_v_or_u(
+        robot_output, key, x_names, x_slice, time_slice,
+        ylabel=None, title=None):
+    ps = plot_styler.PlotStyler()
+    if ylabel is None:
+        ylabel = key
+    if title is None:
+        title = key
+
+    plotting_utils.make_plot(
+        robot_output,                       # data dict
+        't_x',                              # time channel
+        time_slice,
+        [key],                              # key to plot
+        {key: x_slice},                     # slice of key to plot
+        {key: x_names},                     # legend entries
+        {'xlabel': 'Time',
+         'ylabel': ylabel,
+         'title': title}, ps)
+    return ps
 
 
 def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):

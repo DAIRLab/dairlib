@@ -119,8 +119,7 @@ def process_osc_channel(data):
     tracking_cost = tracking_cost_handler.convertToNP()
 
     for name in osc_debug_tracking_datas:
-        osc_debug_tracking_datas[name] = \
-            osc_debug_tracking_datas[name].convertToNP()
+        osc_debug_tracking_datas[name].convertToNP()
 
     return {'t_osc': np.array(t_osc),
             'input_cost': np.array(input_cost),
@@ -206,8 +205,10 @@ def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
 
 def plot_tracking_costs(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()
-    data_dict = osc_debug['tracking_cost']
+    data_dict = \
+        {key: val for key, val in osc_debug['tracking_cost'].items()}
     data_dict['t_osc'] = osc_debug['t_osc']
+
     plotting_utils.make_plot(
         data_dict,
         't_osc',
@@ -218,6 +219,61 @@ def plot_tracking_costs(osc_debug, time_slice):
         {'xlabel': 'Time',
          'ylabel': 'Cost',
          'title': 'tracking_costs'}, ps)
+    return ps
+
+
+def plot_general_osc_tracking_data(traj_name, deriv, dim, data,
+                                   t_osc, time_slice):
+    ps = plot_styler.PlotStyler()
+    data_dict = {key: val for key, val in data.items()}
+    data_dict['t_osc'] = t_osc
+    plotting_utils.make_plot(
+        data_dict,
+        't_osc',
+        time_slice,
+        data.keys(),
+        {},
+        {key: [key] for key in data.keys()},
+        {'xlabel': 'Time',
+         'ylabel': '',
+         'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
+    return ps
+
+
+def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
+    tracking_data = osc_debug['osc_debug_tracking_datas'][traj]
+    data = {}
+    if deriv == 'pos':
+        data['y_des'] = tracking_data.y_des[:, dim]
+        data['y'] = tracking_data.y[:, dim]
+        data['error_y'] = tracking_data.error_y[:, dim]
+    elif deriv == 'vel':
+        data['ydot_des'] = tracking_data.ydot_des[:, dim]
+        data['ydot'] = tracking_data.ydot[:, dim]
+        data['error_ydot'] = tracking_data.error_ydot[:, dim]
+    elif deriv == 'accel':
+        data['yddot_des'] = tracking_data.yddot_des[:, dim]
+        data['yddot_command'] = tracking_data.yddot_command[:, dim]
+        data['yddot_command_sol'] = tracking_data.yddot_command_sol[:, dim]
+
+    return plot_general_osc_tracking_data(traj, deriv, dim, data,
+                                          osc_debug['t_osc'], time_slice)
+
+
+def plot_qp_costs(osc_debug, time_slice):
+    cost_keys = ['input_cost', 'acceleration_cost',
+                 'soft_constraint_cost']
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        cost_keys,
+        {},
+        {key: [key] for key in cost_keys},
+        {'xlabel': 'Time',
+         'ylabel': 'Cost',
+         'title': 'OSC QP Costs'}, ps)
     return ps
 
 

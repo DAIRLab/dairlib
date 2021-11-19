@@ -12,7 +12,6 @@ import mbp_plotting_utils as mbp_plots
 
 
 def main():
-    # Global settings for plotting
     config_file = \
         'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
@@ -82,7 +81,17 @@ def main():
                                                 plot_config.act_names,
                                                 t_x_slice, act_map)
 
-    mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
+    if plot_config.plot_qp_costs:
+        mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
+    if plot_config.plot_tracking_costs:
+        mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
+
+    for traj_name, config in plot_config.tracking_datas_to_plot.items():
+        for deriv in config['derivs']:
+            for dim in config['dims']:
+                mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
+                                                 deriv, t_osc_slice)
+
     plt.show()
 
 

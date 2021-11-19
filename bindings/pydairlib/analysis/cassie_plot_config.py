@@ -15,6 +15,7 @@ class CassiePlotConfig():
         self.channel_osc = data['channel_osc']
         self.use_floating_base = data['use_floating_base']
         self.use_springs = data['use_springs']
+
         self.plot_floating_base_positions = data['plot_floating_base_positions']
         self.plot_floating_base_velocities = \
             data['plot_floating_base_velocities']
@@ -30,3 +31,7 @@ class CassiePlotConfig():
             self.vel_names = data['special_velocities_to_plot']
         if data['special_efforts_to_plot']:
             self.act_names = data['special_efforts_to_plot']
+
+        self.plot_qp_costs = data['plot_qp_costs']
+        self.plot_tracking_costs = data['plot_tracking_costs']
+        self.tracking_datas_to_plot = data['tracking_datas_to_plot']

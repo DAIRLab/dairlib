@@ -341,7 +341,10 @@ def EndSim(working_threads, idx, recycle_idx=True):
   for i in range(1, len(working_threads[idx][0])):
     working_threads[idx][0][i].kill()
 
-  # add back available thread idx
+  # Add back available thread idx.
+  # We don't add back avaible thread idx when the sim is used to initialize the
+  # MPC first solution, because we need the same thread index (used in folder
+  # name) to store the files
   if recycle_idx:
     thread_idx_set.add(working_threads[idx][3])
 
@@ -365,6 +368,7 @@ def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
       if working_threads[j][0][0].poll() is None:
         time.sleep(0.1)
       else:
+        #time.sleep(1)  # Testing. Maybe lcm-logger needs time to log.
         EndSim(working_threads, j)
         break
 
@@ -989,7 +993,7 @@ if __name__ == "__main__":
   ground_incline = 0.0
   duration = -1.0  # assign later; this shouldn't be a task for sim evaluation
   turning_rate = 0.0
-  pelvis_height = 0.8  # not used in simulation; only used in CollectAllTrajoptSampleIndices
+  pelvis_height = 0.95  # not used in simulation; only used in CollectAllTrajoptSampleIndices
 
   # log indices
   log_idx_offset = 0  # 0

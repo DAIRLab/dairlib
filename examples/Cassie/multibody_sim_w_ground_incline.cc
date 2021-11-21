@@ -366,6 +366,10 @@ int do_main(int argc, char* argv[]) {
     outfile.close();
   }
 
+  // pause a second for lcm-logger to finish logging (when running
+  // run_sim_cost_study)
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
   return 0;
 }
 

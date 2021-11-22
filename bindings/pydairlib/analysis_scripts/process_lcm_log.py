@@ -192,6 +192,14 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
       msg = dairlib.lcmt_cassie_out.decode(event.data)
       cassie_out.append(msg)
     if event.channel == osc_debug_channel_name:
+      # If there is an decode error in the line below, it's probably from the
+      # dimension change in the lcmtypes from one of the commits. Specifically,
+      # you should change
+      #     double error_y [ydot_dim];
+      # to
+      #     double error_y [y_dim];
+      # in lcmtypes/lcmt_osc_tracking_data.lcm,
+      # and then rebuild the plotting script.
       msg = dairlib.lcmt_osc_output.decode(event.data)
       osc_output.append(msg)
       num_osc_tracking_data = len(msg.tracking_data)

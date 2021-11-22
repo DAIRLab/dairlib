@@ -24,14 +24,14 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210918_3dlipm_fix_xy_part/"                        # rom_option 9
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211013_3dlipm_fix_xy_and_forward_task/"            # rom_option 9
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211013_3dlipm_fix_xy_and_only_stance_leg_joints/"  # rom_option 10
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211018_3dlipm_fix_xy_no_height_constraint/"         # rom_option 10
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211018_3dlipm_fix_xy_no_height_constraint/"         # rom_option 10
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211020_3dlipm_fix_xyz_and_only_stance_leg_joints/" # rom_option 11
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211109_3dlipm_fix_xy_and_degree_4_dyn/"            # rom_option 12
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211109_3dlipm_fix_xy_and_degree_4_dyn/"            # rom_option 12
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_2021xxxx_3dlipm_fix_xyz_and_degree_4_dyn/"           # rom_option 13
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
-rom_option: 10  # 4, 9
+rom_option: 12  # 4, 9
 #The iteration number of the theta that you use.has to be >= 1
 model_iter: 1 #150  #1 #30
 #The sample that we use to initialize planner
@@ -67,7 +67,7 @@ post_right_double_support: 4
 # Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
 left_support_duration: 0.35 #0.3   # 0.23 # 0.35 # 0.4
 right_support_duration: 0.35 #0.3  # 0.23 # 0.35 # 0.4
-double_support_duration: 0.05 #0.02
+double_support_duration: 0.0 #0.02
 
 
 ### For planner only
@@ -173,7 +173,7 @@ max_CoM_to_footstep_dist: 0.4
 footstep_offset: 0.03
 center_line_offset: 0.03
 mid_foot_height: 0.03  #0.03
-final_foot_height: 0.01
+final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 
 #LIPM trajectory

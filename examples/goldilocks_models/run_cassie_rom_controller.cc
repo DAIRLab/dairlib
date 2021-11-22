@@ -671,12 +671,25 @@ int DoMain(int argc, char* argv[]) {
     }
 
     // Gain scheduling
-    std::vector<double> breaks{0, left_support_duration / 2,
-                               left_support_duration};
-    std::vector<MatrixX<double>> samples(3, MatrixX<double>::Identity(3, 3));
-    samples[0] *= 0;
-    PiecewisePolynomial<double> gain_ratio =
-        PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
+    std::vector<double> swing_ft_gain_multiplier_breaks{
+        0, left_support_duration / 2, left_support_duration};
+    std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples(
+        3, drake::MatrixX<double>::Identity(3, 3));
+    swing_ft_gain_multiplier_samples[2](2, 2) *= 0.3;
+    PiecewisePolynomial<double> swing_ft_gain_multiplier =
+        PiecewisePolynomial<double>::FirstOrderHold(
+            swing_ft_gain_multiplier_breaks, swing_ft_gain_multiplier_samples);
+    std::vector<double> swing_ft_accel_gain_multiplier_breaks{
+        0, left_support_duration / 2, left_support_duration * 3 / 4,
+        left_support_duration};
+    std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples(
+        4, drake::MatrixX<double>::Identity(3, 3));
+    swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0;
+    swing_ft_accel_gain_multiplier_samples[3](2, 2) *= 0;
+    PiecewisePolynomial<double> swing_ft_accel_gain_multiplier =
+        PiecewisePolynomial<double>::FirstOrderHold(
+            swing_ft_accel_gain_multiplier_breaks,
+            swing_ft_accel_gain_multiplier_samples);
 
     // Swing foot tracking
     TransTaskSpaceTrackingData swing_foot_traj(
@@ -686,17 +699,13 @@ int DoMain(int argc, char* argv[]) {
     swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
     std::vector<double> swing_ft_ratio_breaks{0, left_support_duration / 2,
                                               left_support_duration};
-    std::vector<MatrixX<double>> swing_ft_ratio_samples(
-        3, MatrixX<double>::Identity(3, 3));
-    //    swing_ft_ratio_samples[1](1, 1) *= 1.2;
-    //    swing_ft_ratio_samples[2](1, 1) *= 1.2;
-    PiecewisePolynomial<double> swing_ft_ratio_gain_ratio =
-        PiecewisePolynomial<double>::FirstOrderHold(swing_ft_ratio_breaks,
-                                                    swing_ft_ratio_samples);
-    swing_foot_traj.SetTimeVaryingGains(swing_ft_ratio_gain_ratio);
+
+    swing_foot_traj.SetTimeVaryingGains(swing_ft_gain_multiplier);
+    swing_foot_traj.SetFeedforwardAccelMultiplier(
+        swing_ft_accel_gain_multiplier);
     //    swing_foot_traj.DisableFeedforwardAccel({2});
-    //    swing_foot_traj.SetFeedforwardAccelRatio(gain_ratio);
     osc->AddTrackingData(&swing_foot_traj);
+
     // "Center of mass" tracking (Using RomTrackingData with initial ROM being
     // COM)
     OptimalRomTrackingData optimal_rom_traj(
@@ -718,8 +727,14 @@ int DoMain(int argc, char* argv[]) {
     optimal_rom_traj.SetTimeVaryingGains(rom_gain_ratio);
     if (is_two_phase) {
       // With high gains, the initial error could throw Cassie into the air
-      // TODO: Try time varying gains instead of turning it off completely in the beginning
-      osc->AddTrackingData(&optimal_rom_traj, 0.02);
+      // If the new stance foot in the beginning of stance phase is not on the
+      // ground, the error combining with high gains can throw Cassie into air
+      // with optimaized ROM.
+      // One solution is to soften the ROM tracking gains in the beginning of
+      // stance, and the other solution is to make sure the swing foot is on the
+      // ground before switch.
+      //      osc->AddTrackingData(&optimal_rom_traj, 0.02);
+      osc->AddTrackingData(&optimal_rom_traj);
     } else {
       osc->AddTrackingData(&optimal_rom_traj);
     }

@@ -75,8 +75,6 @@ PiecewisePolynomial<double> PelvisRollTrajGenerator::GeneratePelvisTraj(
   VectorXd v = robot_output->GetVelocities();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
-  //  int hip_roll_idx_ = 1;
-  //  int hip_rolldot_idx_ = 3;
   VectorXd correction = VectorXd::Zero(1);
 
   drake::math::RotationMatrix pelvis_rot =
@@ -89,11 +87,11 @@ PiecewisePolynomial<double> PelvisRollTrajGenerator::GeneratePelvisTraj(
   std::vector<double> breaks = hip_roll_traj_.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   MatrixXd offset_angles = correction.replicate(1, breaks.size());
-  for (int i = 0; i < breaks_vector.size(); ++i){
-    offset_angles.col(i) = i * offset_angles.col(i) / breaks_vector.size();
-  }
+//  for (int i = 0; i < breaks_vector.size(); ++i){
+//    offset_angles.col(i) = i * offset_angles.col(i) / breaks_vector.size();
+//  }
   PiecewisePolynomial<double> offset_traj =
-      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, offset_angles);
+      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_angles);
   return hip_roll_traj_ + offset_traj;
 }
 

@@ -200,17 +200,19 @@ int DoMain(int argc, char* argv[]) {
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);
 
+  const auto& pelvis = plant.GetBodyByName("pelvis");
+  multibody::WorldYawViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      plant, left_toe.first, left_toe.second, view_frame, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      plant, left_heel.first, left_heel.second, view_frame, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      plant, right_toe.first, right_toe.second, view_frame, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, right_heel.first, right_heel.second, Matrix3d::Identity(),
+      plant, right_heel.first, right_heel.second, view_frame, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
 
   osc->AddStateAndContactPoint(0, &left_toe_evaluator);
@@ -392,7 +394,7 @@ int DoMain(int argc, char* argv[]) {
   left_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_left");
   right_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_right");
 
-  WorldYawViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
+//  WorldYawViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant, &left_foot_tracking_data,
@@ -405,9 +407,9 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
       osc_gains.W_pelvis, plant, plant, &pelvis_tracking_data,
       &stance_foot_tracking_data);
-  left_foot_rel_tracking_data.SetViewFrame(pelvis_view_frame);
-  right_foot_rel_tracking_data.SetViewFrame(pelvis_view_frame);
-  pelvis_trans_rel_tracking_data.SetViewFrame(pelvis_view_frame);
+  left_foot_rel_tracking_data.SetViewFrame(view_frame);
+  right_foot_rel_tracking_data.SetViewFrame(view_frame);
+  pelvis_trans_rel_tracking_data.SetViewFrame(view_frame);
   left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);

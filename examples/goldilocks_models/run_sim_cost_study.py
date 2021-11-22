@@ -368,7 +368,9 @@ def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
       if working_threads[j][0][0].poll() is None:
         time.sleep(0.1)
       else:
-        #time.sleep(1)  # Testing. Maybe lcm-logger needs time to log.
+        # I paused a second in sim script to give lcm-logger time to finish
+        # logging, so I don't need to pause here again. That is, no need to run
+        # `time.sleep(1)` here.
         EndSim(working_threads, j)
         break
 

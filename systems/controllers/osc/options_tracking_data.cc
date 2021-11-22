@@ -27,7 +27,6 @@ void OptionsTrackingData::UpdateActual(
     const drake::systems::Context<double>& context_wo_spr, double t) {
   OscTrackingData::UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
                                 context_wo_spr, t);
-  UpdateFilters(t);
 
   if (with_view_frame_) {
     view_frame_rot_T_ =
@@ -37,6 +36,8 @@ void OptionsTrackingData::UpdateActual(
     J_ = view_frame_rot_T_ * J_;
     JdotV_ = view_frame_rot_T_ * JdotV_;
   }
+
+  UpdateFilters(t);
 }
 
 void OptionsTrackingData::UpdateFilters(double t) {

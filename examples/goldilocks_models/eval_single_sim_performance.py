@@ -2,6 +2,8 @@ import sys
 
 import yaml
 import lcm
+import scipy
+from scipy.interpolate import interp1d
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,18 +27,6 @@ def PrintAndLogStatus(msg):
   f = open(path_status_log, "a")
   f.write(msg)
   f.close()
-
-
-def GetCostWeight():
-  filename = '1_0_trajopt_settings_and_cost_breakdown.txt'
-  with open(parsed_yaml.get('dir_model') + filename, 'rt') as f:
-    contents = f.read()
-
-  w_Q = FindVarValueInString(contents, "w_Q =")
-  w_R = FindVarValueInString(contents, "w_R =")
-  w_accel_multiplier = FindVarValueInString(contents, "w_joint_accel =")
-
-  return w_Q, w_R, w_accel_multiplier * w_Q
 
 
 def IsSimLogGood(x, t_x, desried_sim_end_time):
@@ -158,7 +148,7 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
             start_end_time_list.append([td_times[0], td_times[-1]])
       prev_state = state
 
-    # start_end_time_list would be non-empty when there is a window with steady state
+    # start_end_time_list would be non-empty when there is a steady state window
     is_steady_state = len(start_end_time_list) > 0
     if is_steady_state:
       idx = np.argmin(max_diff_list).item()
@@ -191,15 +181,251 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
   else:
     return -1, -1
 
+
 # cutoff_freq is in Hz
 def ApplyLowPassFilter(x, t, cutoff_freq):
   dt = np.diff(t)
   x_filtered = x[0, :]
   for i in range(len(dt)):
-    alpha = 2 * np.pi * dt[i] * cutoff_freq / (2 * np.pi * dt[i] * cutoff_freq + 1)
+    alpha = 2 * np.pi * dt[i] * cutoff_freq / (
+        2 * np.pi * dt[i] * cutoff_freq + 1)
     x_filtered = alpha * x[i + 1, :] + (1 - alpha) * x_filtered
     x[i + 1, :] = x_filtered
   return x
+
+
+def GetCostWeight(nq, nv, nu):
+  filename = '1_0_trajopt_settings_and_cost_breakdown.txt'
+  with open(parsed_yaml.get('dir_model') + filename, 'rt') as f:
+    contents = f.read()
+
+  w_Q = FindVarValueInString(contents, "w_Q =")
+  w_Q_vy = FindVarValueInString(contents, "w_Q_vy =")
+  w_Q_vz = FindVarValueInString(contents, "w_Q_vz =")
+  w_Q_v_swing_hip_roll = w_Q * 1
+  w_Q_v_swing_toe = FindVarValueInString(contents, "w_Q_v_swing_toe =")
+  w_R = FindVarValueInString(contents, "w_R =")
+  w_R_swing_toe = FindVarValueInString(contents, "w_R_swing_toe =")
+  w_lambda = FindVarValueInString(contents, "w_lambda =")
+  w_lambda_diff = FindVarValueInString(contents, "w_lambda_diff =")
+  w_q_diff = FindVarValueInString(contents, "w_q_diff =")
+  w_q_diff_swing_toe = FindVarValueInString(contents, "w_q_diff_swing_toe =")
+  w_v_diff = FindVarValueInString(contents, "w_v_diff =")
+  w_v_diff_swing_leg = FindVarValueInString(contents, "w_v_diff_swing_leg =")
+  w_u_diff = FindVarValueInString(contents, "w_u_diff =")
+  w_q_hip_roll = FindVarValueInString(contents, "w_q_hip_roll =")
+  w_q_hip_yaw = FindVarValueInString(contents, "w_q_hip_yaw =")
+  w_q_quat = FindVarValueInString(contents, "w_q_quat =")
+  w_joint_accel = FindVarValueInString(contents, "w_joint_accel =")
+  w_reg = FindVarValueInString(contents, "w_reg =")
+
+  W_Q_ls = w_Q * np.identity(nv)
+  W_Q_ls[4, 4] = w_Q_vy
+  W_Q_ls[5, 5] = w_Q_vz
+  W_Q_ls[7, 7] = w_Q_v_swing_hip_roll
+  W_Q_ls[vel_map["toe_rightdot"], vel_map["toe_rightdot"]] = w_Q_v_swing_toe
+  W_Q_rs = w_Q * np.identity(nv)
+  W_Q_rs[4, 4] = w_Q_vy
+  W_Q_rs[5, 5] = w_Q_vz
+  W_Q_rs[6, 6] = w_Q_v_swing_hip_roll
+  W_Q_rs[vel_map["toe_leftdot"], vel_map["toe_leftdot"]] = w_Q_v_swing_toe
+
+  W_R_ls = w_R * np.identity(nu)
+  W_R_ls[act_map["toe_right_motor"], act_map["toe_right_motor"]] = w_R_swing_toe
+  W_R_rs = w_R * np.identity(nu)
+  W_R_rs[act_map["toe_left_motor"], act_map["toe_left_motor"]] = w_R_swing_toe
+
+  W_joint_accel_ls = w_joint_accel * W_Q_ls
+  W_joint_accel_rs = w_joint_accel * W_Q_rs
+
+  W_q_diff_ls = w_q_diff * np.identity(nq)
+  W_q_diff_ls[pos_map["toe_right"], pos_map["toe_right"]] = w_q_diff_swing_toe
+  W_q_diff_rs = w_q_diff * np.identity(nq)
+  W_q_diff_rs[pos_map["toe_left"], pos_map["toe_left"]] = w_q_diff_swing_toe
+
+  W_v_diff_ls = w_v_diff * np.identity(nv)
+  W_v_diff_ls[vel_map["toe_rightdot"], vel_map["toe_rightdot"]] = w_v_diff_swing_leg
+  W_v_diff_rs = w_v_diff * np.identity(nv)
+  W_v_diff_rs[vel_map["toe_leftdot"], vel_map["toe_leftdot"]] = w_v_diff_swing_leg
+
+  w_lambda = w_lambda ** 2
+
+  # Creat cost dictionary
+  weight_dict = {"W_Q_ls": W_Q_ls,
+                 "W_Q_rs": W_Q_rs,
+                 "W_R_ls": W_R_ls,
+                 "W_R_rs": W_R_rs,
+                 "W_joint_accel_ls": W_joint_accel_ls,
+                 "W_joint_accel_rs": W_joint_accel_rs,
+                 "w_lambda": w_lambda,
+                 "w_lambda_diff": w_lambda_diff,
+                 "W_q_diff_ls": W_q_diff_ls,
+                 "W_q_diff_rs": W_q_diff_rs,
+                 "W_v_diff_ls": W_v_diff_ls,
+                 "W_v_diff_rs": W_v_diff_rs,
+                 "w_u_diff": w_u_diff,
+                 "w_q_hip_roll": w_q_hip_roll,
+                 "w_q_hip_yaw": w_q_hip_yaw,
+                 "w_q_quat": w_q_quat,
+                 "w_reg": w_reg}
+
+  return weight_dict
+
+
+def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
+    u_extracted, vdot_numerical, fsm_tx_extracted, fsm_tu_extracted, weight_dict):
+  cost_dict = {}
+
+  # Get indices at virtual nodes
+  # TODO: n_node could be extracted automatically. I think the right approach is to integrate every reg cost over time in trajopt, so it's easier for us here.
+  n_node = 20
+  x_data_knot_idx = np.linspace(0, n_x_data - 2, n_node * n_step)  # use -2 for vdot
+  u_data_knot_idx = np.linspace(0, n_u_data - 1, n_node * n_step)
+
+  # Create left right stance array
+  ls_tx = (fsm_tx_extracted == 0) + (fsm_tx_extracted == 3)
+  rs_tx = (fsm_tx_extracted == 1) + (fsm_tx_extracted == 4)
+  if np.sum(ls_tx) + np.sum(rs_tx) != n_x_data:
+    raise ValueError("Left/right stance identification has error")
+  ls_tu = (fsm_tu_extracted == 0) + (fsm_tu_extracted == 3)
+
+  cost_x = 0.0
+  for i in range(n_x_data - 1):
+    v_i = x_extracted[i, nq:]
+    if ls_tx[i]:
+      cost_x += (v_i.T @ weight_dict["W_Q_ls"] @ v_i) * dt_x[i]
+    else:
+      cost_x += (v_i.T @ weight_dict["W_Q_rs"] @ v_i) * dt_x[i]
+  cost_dict["cost_x"] = cost_x
+
+  cost_u = 0.0
+  for i in range(n_u_data - 1):
+    u_i = u_extracted[i, :]
+    if ls_tu[i]:
+      cost_u += (u_i.T @ weight_dict["W_R_ls"] @ u_i) * dt_u[i]
+    else:
+      cost_u += (u_i.T @ weight_dict["W_R_rs"] @ u_i) * dt_u[i]
+  cost_dict["cost_u"] = cost_u
+
+  cost_accel = 0.0
+  for k in range(len(x_data_knot_idx)):
+    i = int(x_data_knot_idx[k])
+    vdot_i = vdot_numerical[i, :]
+    if ls_tx[i]:
+      cost_accel += (vdot_i.T @ weight_dict["W_joint_accel_ls"] @ vdot_i)
+    else:
+      cost_accel += (vdot_i.T @ weight_dict["W_joint_accel_rs"] @ vdot_i)
+  cost_dict["cost_accel"] = cost_accel
+
+  cost_pos_diff = 0.0
+  if np.linalg.norm(weight_dict["W_q_diff_ls"]) != 0:
+    for k in range(len(x_data_knot_idx) - 1):
+      i = int(x_data_knot_idx[k])
+      j = int(x_data_knot_idx[k+1])
+      delta_q = x_extracted[j, :nq] - x_extracted[i, :nq]
+      if ls_tx[i]:  # TODO: this is a very rough estimate, you can improve this. (but maybe it doesn't matter too much)
+        cost_pos_diff += (delta_q.T @ weight_dict["W_q_diff_ls"] @ delta_q)
+      else:
+        cost_pos_diff += (delta_q.T @ weight_dict["W_q_diff_rs"] @ delta_q)
+  cost_dict["cost_pos_diff"] = cost_pos_diff
+
+  cost_vel_diff = 0.0
+  if np.linalg.norm(weight_dict["W_v_diff_ls"]) != 0:
+    for k in range(len(x_data_knot_idx) - 1):
+      i = int(x_data_knot_idx[k])
+      j = int(x_data_knot_idx[k+1])
+      delta_v = x_extracted[j, nq:] - x_extracted[i, nq:]
+      if ls_tx[i]:  # TODO: this is a very rough estimate, you can improve this. (but maybe it doesn't matter too much)
+        cost_vel_diff += (delta_v.T @ weight_dict["W_v_diff_ls"] @ delta_v)
+      else:
+        cost_vel_diff += (delta_v.T @ weight_dict["W_v_diff_rs"] @ delta_v)
+  cost_dict["cost_vel_diff"] = cost_vel_diff
+
+  cost_u_diff = 0.0
+  if np.linalg.norm(weight_dict["w_u_diff"]) != 0:
+    for k in range(len(u_data_knot_idx) - 1):
+      i = int(u_data_knot_idx[k])
+      j = int(u_data_knot_idx[k+1])
+      delta_u = u_extracted[j, :] - u_extracted[i, :]
+      cost_u_diff += (delta_u.T @ delta_u)
+    cost_u_diff *= weight_dict["w_u_diff"]
+  cost_dict["cost_u_diff"] = cost_u_diff
+
+  cost_q_hip_roll = 0.0
+  cost_q_hip_yaw = 0.0
+  for k in range(len(x_data_knot_idx)):
+    i = int(x_data_knot_idx[k])
+    q_hip_roll = x_extracted[i, 7:9]
+    q_hip_yaw = x_extracted[i, 9:11]
+    cost_q_hip_roll += (q_hip_roll.T @ q_hip_roll)
+    cost_q_hip_yaw += (q_hip_yaw.T @ q_hip_yaw)
+  cost_q_hip_roll *= weight_dict["w_q_hip_roll"]
+  cost_q_hip_yaw *= weight_dict["w_q_hip_yaw"]
+  cost_dict["cost_q_hip_roll"] = cost_q_hip_roll
+  cost_dict["cost_q_hip_yaw"] = cost_q_hip_yaw
+
+  # TODO: improve this
+  print("WARNING: currently we can only compute cost for zero turning rate")
+  cost_q_quat_xyz = 0.0
+  unit_quat = np.array([1, 0, 0, 0])
+  for k in range(len(x_data_knot_idx)):
+    i = int(x_data_knot_idx[k])
+    q_quat = x_extracted[i, :4]
+    quat_error = unit_quat - q_quat
+    cost_q_quat_xyz += (quat_error.T @ quat_error)
+  cost_q_quat_xyz *= weight_dict["w_q_quat"]
+  cost_dict["cost_q_quat_xyz"] = cost_q_quat_xyz
+
+  # TODO: currently the regularzation cost doesn't include force.
+  cost_regularization = 0.0
+  for frac_i in x_data_knot_idx:
+    i = int(frac_i)
+    x_i = x_extracted[i, :]
+    cost_regularization += (x_i.T @ x_i)
+  for frac_i in u_data_knot_idx:
+    i = int(frac_i)
+    u_i = u_extracted[i, :]
+    cost_regularization += (u_i.T @ u_i)
+  cost_regularization *= weight_dict["w_reg"]
+  cost_dict["cost_regularization"] = cost_regularization
+
+  # TODO: finish implementing this part
+  cost_lambda_x_diff = 0.0
+  cost_lambda_diff = 0.0
+  cost_lambda = 0.0
+  cost_collocation_lambda = 0.0
+  cost_tau = 0.0
+
+  # Get main total cost (excluding regularization cost)
+  total_main_cost = cost_x + cost_u + cost_accel
+  cost_dict["total_main_cost"] = total_main_cost
+
+  # Get total cost
+  total_cost = 0.0
+  for key in cost_dict:
+    total_cost += cost_dict[key]
+  cost_dict["total_cost"] = total_cost
+
+  # Get total reg cost
+  total_reg_cost = total_cost - total_main_cost
+  cost_dict["total_reg_cost"] = total_reg_cost
+
+  # Divide every cost by n_step at the end
+  for key in cost_dict:
+    cost_dict[key] /= n_step
+
+  print("t_start = " + str(t_start))
+  print("t_end = " + str(t_end))
+  print("n_x_data = " + str(n_x_data))
+  print("n_u_data = " + str(n_u_data))
+  print("cost_x = " + str(cost_x))
+  print("cost_u = " + str(cost_u))
+  print("cost_accel = " + str(cost_accel))
+  print("total_main_cost = " + str(total_main_cost))
+  print("total_reg_cost = " + str(total_reg_cost))
+  print("total_cost = " + str(total_cost))
+
+  return cost_dict
 
 
 # TODO: maybe we should use pelvis height wrt stance foot in CheckSteadyState()
@@ -347,9 +573,12 @@ def main():
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
   t_slice = slice(t_start_idx, t_end_idx)
-  start_time_idx = np.argwhere(np.abs(t_u - t_start) < 3e-3)[0][0]
-  end_time_idx = np.argwhere(np.abs(t_u - t_end) < 3e-3)[0][0]
-  t_u_slice = slice(start_time_idx, end_time_idx)
+  t_start_idx = np.argwhere(np.abs(t_u - t_start) < 3e-3)[0][0]
+  t_end_idx = np.argwhere(np.abs(t_u - t_end) < 3e-3)[0][0]
+  t_u_slice = slice(t_start_idx, t_end_idx)
+  t_start_idx = np.argwhere(np.abs(t_osc_debug - t_start) < 3e-3)[0][0]
+  t_end_idx = np.argwhere(np.abs(t_osc_debug - t_end) < 3e-3)[0][0]
+  t_fsm_slice = slice(t_start_idx, t_end_idx)
 
   # Extract the trajectories that we use to calculate the cost
   t_x_extracted = t_x[t_slice]
@@ -358,6 +587,10 @@ def main():
   u_extracted = u[t_u_slice, :]
   n_x_data = x_extracted.shape[0]
   n_u_data = u_extracted.shape[0]
+
+  f = interp1d(t_osc_debug, fsm, kind='zero', fill_value="extrapolate")
+  fsm_tx_extracted = f(t_x_extracted)
+  fsm_tu_extracted = f(t_u_extracted)
 
   # ave_dt_x = (t_end - t_start) / n_x_data
   # ave_dt_u = (t_end - t_start) / n_u_data
@@ -373,7 +606,8 @@ def main():
 
   # Apply low pass filter to vel
   if low_pass_filter:
-    x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted, 100)
+    x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted,
+      100)
 
   # Get joint acceleration
   dx = np.diff(x_extracted, axis=0)
@@ -392,37 +626,11 @@ def main():
   # vdot_numerical = np.clip(vdot_numerical, -max_accel, max_accel)
 
   # Weight used in model optimization
-  # Assume all joints have the same cost weight, though not what trajopt is using. TODO: improve this
-  w_Q, w_R, w_accel = GetCostWeight()
+  weight_dict = GetCostWeight(nq, nv, nu)
 
-  cost_x = 0.0
-  for i in range(n_x_data - 1):
-    v_i = x_extracted[i, nq:]
-    cost_x += (v_i.T @ v_i) * dt_x[i]
-  cost_x *= (w_Q / n_step)
-
-  cost_u = 0.0
-  for i in range(n_u_data - 1):
-    u_i = u_extracted[i, :]
-    cost_u += (u_i.T @ u_i) * dt_u[i]
-  cost_u *= (w_R / n_step)
-
-  cost_accel = 0.0
-  for i in range(n_x_data - 1):
-    vdot_i = vdot_numerical[i, :]
-    cost_accel += (vdot_i.T @ vdot_i) * dt_x[i]
-  cost_accel *= (w_accel / n_step)
-
-  total_cost = cost_x + cost_u + cost_accel
-  print("t_start = " + str(t_start))
-  print("t_end = " + str(t_end))
-  print("n_x_data = " + str(n_x_data))
-  print("n_u_data = " + str(n_u_data))
-  print("cost_x = " + str(cost_x))
-  print("cost_u = " + str(cost_u))
-  print("cost_accel = " + str(cost_accel))
-  print("total_cost = " + str(total_cost))
-  # import pdb; pdb.set_trace()
+  # Compute all costs
+  cost_dict = CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
+    u_extracted, vdot_numerical, fsm_tx_extracted, fsm_tu_extracted, weight_dict)
 
   # # Testing ankle and toe accleration
   # vdot_numerical_copy1 = np.copy(vdot_numerical)
@@ -448,12 +656,14 @@ def main():
   names = ['cost_x',
            'cost_u',
            'cost_accel',
+           'total_reg_cost',
            'total_cost']
   names = ', '.join(names)
-  values = [str(cost_x),
-            str(cost_u),
-            str(cost_accel),
-            str(total_cost)]
+  values = [str(cost_dict["cost_x"]),
+            str(cost_dict["cost_u"]),
+            str(cost_dict["cost_accel"]),
+            str(cost_dict["total_reg_cost"]),
+            str(cost_dict["total_cost"])]
   values = ', '.join(values)
 
   path = directory + "cost_names.csv"

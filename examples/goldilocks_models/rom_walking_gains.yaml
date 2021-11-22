@@ -39,7 +39,7 @@ sample_idx: 19 #21 works for iter150
 
 
 ### High-level command (for both planner and controller)
-global_target_position_x: 1000
+global_target_position_x: 10000
 global_target_position_y: 0
 
 set_constant_walking_speed: true

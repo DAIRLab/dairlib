@@ -9,6 +9,7 @@ import time
 import os
 from pathlib import Path
 from datetime import datetime
+import psutil
 
 import yaml
 import csv
@@ -399,7 +400,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
   ### multithreading
   working_threads = []
-  n_max_thread = 3
+  n_max_thread = min(int(psutil.cpu_count() / 3) - 1, len(task_list))  # TODO: check if the min is necessary
 
   global thread_idx_set
   thread_idx_set = set()
@@ -468,7 +469,7 @@ def CheckThreadAndBlockWhenNecessary(working_threads, n_max_thread,
 # This function assumes that simulation has been run and there exist lcm logs
 def EvalCostInMultithread(model_indices, log_indices):
   working_threads = []
-  n_max_thread = 12
+  n_max_thread = psutil.cpu_count()
 
   ### Build files just in case forgetting
   BuildFiles('examples/goldilocks_models:eval_single_sim_performance')
@@ -1039,6 +1040,7 @@ if __name__ == "__main__":
   if model_indices[0] == 0:
     model_indices[0] += 1
   # example list: [1, 5, 10, 15]
+  # model_indices = [1]  # Overwrite
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list

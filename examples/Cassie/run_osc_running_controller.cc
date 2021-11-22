@@ -96,7 +96,7 @@ int DoMain(int argc, char* argv[]) {
   // Built the Cassie MBPs
   drake::multibody::MultibodyPlant<double> plant(0.0);
   addCassieMultibody(&plant, nullptr, true,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      false /*spring model*/, false /*loop closure*/);
   drake::multibody::MultibodyPlant<double> plant_wo_spr(0.0);
   addCassieMultibody(&plant_wo_spr, nullptr, true,
@@ -357,25 +357,25 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData pelvis_tracking_data(
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
       osc_gains.W_pelvis, plant, plant);
+  TransTaskSpaceTrackingData stance_foot_tracking_data(
+      "stance_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+      osc_gains.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData left_foot_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData right_foot_tracking_data(
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  TransTaskSpaceTrackingData stance_foot_tracking_data(
-      "stance_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
   pelvis_tracking_data.AddStateAndPointToTrack(left_stance_state, "pelvis");
   pelvis_tracking_data.AddStateAndPointToTrack(right_stance_state, "pelvis");
-  left_foot_tracking_data.AddStateAndPointToTrack(right_stance_state,
-                                                  "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
-                                                   "toe_right");
   stance_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
                                                     "toe_left");
   stance_foot_tracking_data.AddStateAndPointToTrack(right_stance_state,
                                                     "toe_right");
+  left_foot_tracking_data.AddStateAndPointToTrack(right_stance_state,
+                                                  "toe_left");
+  right_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
+                                                   "toe_right");
   left_foot_tracking_data.AddStateAndPointToTrack(air_phase, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(air_phase, "toe_right");
 
@@ -516,10 +516,6 @@ int DoMain(int argc, char* argv[]) {
   right_hip_roll_tracking_data.DisableFeedforwardAccel({0});
   left_hip_roll_tracking_data.SetImpactInvariantProjection(true);
   right_hip_roll_tracking_data.SetImpactInvariantProjection(true);
-  //  hip_roll_left_tracking_data.AddStateAndJointToTrack(
-  //      air_phase, "hip_roll_left", "hip_roll_leftdot");
-  //  hip_roll_right_tracking_data.AddStateAndJointToTrack(
-  //      air_phase, "hip_roll_right", "hip_roll_rightdot");
   osc->AddTrackingData(&left_hip_roll_tracking_data);
   osc->AddTrackingData(&right_hip_roll_tracking_data);
 

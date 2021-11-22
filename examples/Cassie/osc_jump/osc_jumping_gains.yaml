@@ -11,7 +11,7 @@ w_swing_toe: 1
 swing_toe_kp: 2000
 swing_toe_kd: 10
 
-w_hip_yaw: 100
+w_hip_yaw: 1
 hip_yaw_kp: 40
 hip_yaw_kd: 5
 
@@ -51,7 +51,7 @@ FlightFootKp:
    0,   100,    0,
    0,     0,  100]
 FlightFootKd:
-  [ 5,   0,    0,
-    0,  5,   0,
-    0,   0,    5.0]
+  [ 0,   0,    0,
+    0,  0,     0,
+    0,   0,    0]
 

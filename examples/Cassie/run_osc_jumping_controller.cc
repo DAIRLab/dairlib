@@ -178,23 +178,23 @@ int DoMain(int argc, char* argv[]) {
     l_foot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_left_foot_traj.time_vector,
-            lcm_left_foot_traj.datapoints.topRows(3),
-            lcm_left_foot_traj.datapoints.bottomRows(3)));
+            lcm_left_foot_traj.datapoints.topRows(6),
+            lcm_left_foot_traj.datapoints.bottomRows(6)));
     r_foot_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_right_foot_traj.time_vector,
-            lcm_right_foot_traj.datapoints.topRows(3),
-            lcm_right_foot_traj.datapoints.bottomRows(3)));
+            lcm_right_foot_traj.datapoints.topRows(6),
+            lcm_right_foot_traj.datapoints.bottomRows(6)));
     l_hip_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_left_hip_traj.time_vector,
-            lcm_left_hip_traj.datapoints.topRows(3),
-            lcm_left_hip_traj.datapoints.bottomRows(3)));
+            lcm_left_hip_traj.datapoints.topRows(6),
+            lcm_left_hip_traj.datapoints.bottomRows(6)));
     r_hip_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_right_hip_traj.time_vector,
-            lcm_right_hip_traj.datapoints.topRows(3),
-            lcm_right_hip_traj.datapoints.bottomRows(3)));
+            lcm_right_hip_traj.datapoints.topRows(6),
+            lcm_right_hip_traj.datapoints.bottomRows(6)));
     l_toe_trajectory.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_left_toe_traj.time_vector,
@@ -229,8 +229,6 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
   pelvis_trans_traj = pelvis_trans_traj + offset_traj;
-  l_foot_trajectory = l_foot_trajectory + offset_traj;
-  r_foot_trajectory = r_foot_trajectory + offset_traj;
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
@@ -239,9 +237,10 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
   // This actually outputs the target position of the pelvis not the true
   // center of mass
-  auto pelvis_trans_traj_generator = builder.AddSystem<PelvisTransTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), pelvis_trans_traj, feet_contact_points,
-      FLAGS_delay_time);
+  auto pelvis_trans_traj_generator =
+      builder.AddSystem<PelvisTransTrajGenerator>(
+          plant_w_spr, context_w_spr.get(), pelvis_trans_traj,
+          feet_contact_points, FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
       l_hip_trajectory, gains.relative_feet, FLAGS_delay_time);
@@ -349,9 +348,9 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-  TransTaskSpaceTrackingData pelvis_tracking_data("pelvis_trans_traj", gains.K_p_com,
-                                                  gains.K_d_com, gains.W_com,
-                                                  plant_w_spr, plant_w_spr);
+  TransTaskSpaceTrackingData pelvis_tracking_data(
+      "pelvis_trans_traj", gains.K_p_com, gains.K_d_com, gains.W_com,
+      plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
     pelvis_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
   }
@@ -393,15 +392,12 @@ int DoMain(int argc, char* argv[]) {
       &right_hip_tracking_data);
 
   // Flight phase hip yaw tracking
-  MatrixXd W_hip_yaw = gains.w_hip_yaw * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = gains.hip_yaw_kp * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = gains.hip_yaw_kd * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData left_hip_yaw_tracking_data(
-      "swing_hip_yaw_left_traj", K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw,
-      plant_w_spr, plant_w_spr);
+      "swing_hip_yaw_left_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
+      gains.W_hip_yaw, plant_w_spr, plant_w_spr);
   JointSpaceTrackingData right_hip_yaw_tracking_data(
-      "swing_hip_yaw_right_traj", K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw,
-      plant_w_spr, plant_w_spr);
+      "swing_hip_yaw_right_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
+      gains.W_hip_yaw, plant_w_spr, plant_w_spr);
   left_hip_yaw_tracking_data.AddStateAndJointToTrack(
       osc_jump::FLIGHT, "hip_yaw_left", "hip_yaw_leftdot");
   right_hip_yaw_tracking_data.AddStateAndJointToTrack(
@@ -434,10 +430,10 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), r_toe_trajectory,
           pos_map["toe_right"], right_foot_points, "right_toe_angle_traj");
 
-  left_toe_angle_tracking_data.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_left",
-                                              "toe_leftdot");
-  right_toe_angle_tracking_data.AddStateAndJointToTrack(osc_jump::FLIGHT, "toe_right",
-                                               "toe_rightdot");
+  left_toe_angle_tracking_data.AddStateAndJointToTrack(
+      osc_jump::FLIGHT, "toe_left", "toe_leftdot");
+  right_toe_angle_tracking_data.AddStateAndJointToTrack(
+      osc_jump::FLIGHT, "toe_right", "toe_rightdot");
 
   osc->AddTrackingData(&pelvis_tracking_data);
   osc->AddTrackingData(&pelvis_rot_tracking_data);
@@ -457,8 +453,8 @@ int DoMain(int argc, char* argv[]) {
 
   left_toe_angle_tracking_data.SetImpactInvariantProjection(true);
   right_toe_angle_tracking_data.SetImpactInvariantProjection(true);
-//  swing_hip_yaw_left_traj.SetImpactInvariantProjection(true);
-//  swing_hip_yaw_right_traj.SetImpactInvariantProjection(true);
+  left_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
+  right_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
   pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
   pelvis_tracking_data.SetImpactInvariantProjection(true);
 

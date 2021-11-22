@@ -12,8 +12,10 @@ import mbp_plotting_utils as mbp_plots
 
 
 def main():
+    # config_file = \
+    #     'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
     config_file = \
-        'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
+        'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
     use_floating_base = plot_config.use_floating_base
@@ -86,6 +88,7 @@ def main():
     if plot_config.plot_tracking_costs:
         mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
 
+    import pdb; pdb.set_trace()
     for traj_name, config in plot_config.tracking_datas_to_plot.items():
         for deriv in config['derivs']:
             for dim in config['dims']:

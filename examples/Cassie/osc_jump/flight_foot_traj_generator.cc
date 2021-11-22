@@ -28,7 +28,8 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const string& hip_name, bool isLeftFoot,
     const PiecewisePolynomial<double>& foot_traj,
-    const PiecewisePolynomial<double>& hip_traj, bool relative_feet,
+    const PiecewisePolynomial<double>& hip_traj,
+    bool relative_feet,
     double time_offset)
     : plant_(plant),
       context_(context),
@@ -112,7 +113,7 @@ void FlightFootTrajGenerator::CalcTraj(
     *casted_traj = GenerateRelativeTraj();
   }
   else{
-    *casted_traj = GenerateFlightTraj(robot_output->GetState(), timestamp);
+//    *casted_traj = GenerateFlightTraj(robot_output->GetState(), timestamp);
   }
 }
 

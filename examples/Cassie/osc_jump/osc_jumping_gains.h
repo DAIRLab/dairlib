@@ -40,6 +40,9 @@ struct OSCJumpingGains : OSCGains {
   MatrixXd W_flight_foot;
   MatrixXd K_p_flight_foot;
   MatrixXd K_d_flight_foot;
+  MatrixXd W_hip_yaw;
+  MatrixXd K_p_hip_yaw;
+  MatrixXd K_d_hip_yaw;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -90,6 +93,8 @@ struct OSCJumpingGains : OSCGains {
     K_d_flight_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->FlightFootKd.data(), 3, 3);
-
+    W_hip_yaw = w_hip_yaw * MatrixXd::Identity(1, 1);
+    K_p_hip_yaw = hip_yaw_kp * MatrixXd::Identity(1, 1);
+    K_d_hip_yaw = hip_yaw_kd * MatrixXd::Identity(1, 1);
   }
 };

@@ -69,26 +69,24 @@ FootTrajGenerator::FootTrajGenerator(
 
 PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
     const VectorXd& x, double t) const {
-  int n_cycles = t / (foot_traj_.end_time() - foot_traj_.start_time());
-  double stride_length = foot_traj_.value(foot_traj_.end_time())(0) -
-                         foot_traj_.value(foot_traj_.start_time())(0);
-  Vector3d foot_pos_offset = {n_cycles * stride_length, 0, 0};
-  Vector3d foot_vel_offset = {0, 0, 0};
-  VectorXd foot_offset = VectorXd(6);
-  foot_offset << foot_pos_offset, foot_vel_offset;
+//  int n_cycles = t / (foot_traj_.end_time() - foot_traj_.start_time());
+//  double stride_length = foot_traj_.value(foot_traj_.end_time())(0) -
+//                         foot_traj_.value(foot_traj_.start_time())(0);
+//  Vector3d foot_pos_offset = {n_cycles * stride_length, 0, 0};
+//  Vector3d foot_vel_offset = {0, 0, 0};
+//  VectorXd foot_offset = VectorXd(6);
+//  foot_offset << foot_pos_offset, foot_vel_offset;
 
   std::vector<double> breaks = foot_traj_.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
-  MatrixXd foot_offset_points = foot_offset.replicate(1, breaks.size());
-  PiecewisePolynomial<double> foot_offset_traj =
-      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
-                                                 foot_offset_points);
+//  MatrixXd foot_offset_points = foot_offset.replicate(1, breaks.size());
+//  PiecewisePolynomial<double> foot_offset_traj =
+//      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
+//                                                 foot_offset_points);
   if(relative_feet_){
-//    std::cout << foot_traj_.value(t) << std::endl;
-//    std::cout << hip_traj_.value(t) << std::endl;
-    return foot_traj_ - hip_traj_ + foot_offset_traj;
+    return foot_traj_ - hip_traj_;
   }else{
-    return foot_traj_ + foot_offset_traj;
+    return foot_traj_;
   }
 }
 

@@ -185,14 +185,13 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
 # cutoff_freq is in Hz
 def ApplyLowPassFilter(x, t, cutoff_freq):
   dt = np.diff(t)
-  x_filtered = x[0, :]
+  x_filtered = x[0]
   for i in range(len(dt)):
     alpha = 2 * np.pi * dt[i] * cutoff_freq / (
         2 * np.pi * dt[i] * cutoff_freq + 1)
-    x_filtered = alpha * x[i + 1, :] + (1 - alpha) * x_filtered
-    x[i + 1, :] = x_filtered
+    x_filtered = alpha * x[i + 1] + (1 - alpha) * x_filtered
+    x[i + 1] = x_filtered
   return x
-
 
 def GetCostWeight(nq, nv, nu):
   filename = '1_0_trajopt_settings_and_cost_breakdown.txt'

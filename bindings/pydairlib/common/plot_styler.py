@@ -30,7 +30,7 @@ class PlotStyler():
     plt.figure(self.fig_id)
     self.directory = directory
     matplotlib.rcParams["savefig.directory"] = directory
-    matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
+    matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     matplotlib.rcParams['figure.figsize'] = 8, 5

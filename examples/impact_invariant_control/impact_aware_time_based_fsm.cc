@@ -39,8 +39,6 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
   DRAKE_DEMAND(states.size() == state_durations.size());
   for (int i = 0; i < states.size(); ++i) {
     sum += state_durations[i];
-    std::cout << "i: " << i << std::endl;
-    std::cout << "sum: " << sum << std::endl;
     accu_state_durations_.push_back(sum);
     if (states[i] == 2) {
       impact_times_.push_back(sum);

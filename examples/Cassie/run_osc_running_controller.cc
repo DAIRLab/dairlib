@@ -264,13 +264,6 @@ int DoMain(int argc, char* argv[]) {
         osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
     builder.Connect(cassie_out_receiver->get_output_port(),
                     high_level_command->get_cassie_output_port());
-  } else {
-    //    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-    //        plant, plant_context.get(), gains.kp_yaw, gains.kd_yaw,
-    //        gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
-    //        gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
-    //        gains.vel_max_lateral, gains.target_pos_offset,
-    //        global_target_position, params_of_no_turning);
   }
 
   string output_traj_path = FLAGS_folder_path + FLAGS_traj_name + "_processed";
@@ -413,7 +406,6 @@ int DoMain(int argc, char* argv[]) {
   left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);
-
   //  left_foot_rel_tracking_data.DisableFeedforwardAccel({2});
   //  right_foot_rel_tracking_data.DisableFeedforwardAccel({2});
 

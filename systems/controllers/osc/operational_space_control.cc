@@ -904,11 +904,11 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
+    output->tracking_data_names[i] = tracking_data->GetName();
 
     if (tracking_data->IsActive(fsm_state) &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
-      output->tracking_data_names[i] = tracking_data->GetName();
       lcmt_osc_tracking_data osc_output;
       osc_output.y_dim = tracking_data->GetYDim();
       osc_output.ydot_dim = tracking_data->GetYdotDim();
@@ -929,7 +929,6 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommand());
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
-      //      output->tracking_data.push_back(osc_output);
       output->tracking_data[i] = osc_output;
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();

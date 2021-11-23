@@ -28,8 +28,7 @@ FootTrajGenerator::FootTrajGenerator(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const string& hip_name, bool isLeftFoot,
     const PiecewisePolynomial<double>& foot_traj,
-    const PiecewisePolynomial<double>& hip_traj,
-    bool relative_feet,
+    const PiecewisePolynomial<double>& hip_traj, bool relative_feet,
     double time_offset)
     : plant_(plant),
       context_(context),
@@ -53,14 +52,15 @@ FootTrajGenerator::FootTrajGenerator(
   }
 
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort("x", OutputVector<double>(plant_.num_positions(),
-                                                        plant_.num_velocities(),
-                                                        plant_.num_actuators()))
-          .get_index();
+  state_port_ = this->DeclareVectorInputPort(
+                        "x", OutputVector<double>(plant_.num_positions(),
+                                                  plant_.num_velocities(),
+                                                  plant_.num_actuators()))
+                    .get_index();
   target_vel_port_ =
-      this->DeclareVectorInputPort("v_des",BasicVector<double>(2)).get_index();
-  fsm_port_ = this->DeclareVectorInputPort("fsm",BasicVector<double>(1)).get_index();
+      this->DeclareVectorInputPort("v_des", BasicVector<double>(2)).get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
   // Shift trajectory by time_offset
   foot_traj_.shiftRight(time_offset);
@@ -69,23 +69,9 @@ FootTrajGenerator::FootTrajGenerator(
 
 PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
     const VectorXd& x, double t) const {
-//  int n_cycles = t / (foot_traj_.end_time() - foot_traj_.start_time());
-//  double stride_length = foot_traj_.value(foot_traj_.end_time())(0) -
-//                         foot_traj_.value(foot_traj_.start_time())(0);
-//  Vector3d foot_pos_offset = {n_cycles * stride_length, 0, 0};
-//  Vector3d foot_vel_offset = {0, 0, 0};
-//  VectorXd foot_offset = VectorXd(6);
-//  foot_offset << foot_pos_offset, foot_vel_offset;
-
-  std::vector<double> breaks = foot_traj_.get_segment_times();
-  VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
-//  MatrixXd foot_offset_points = foot_offset.replicate(1, breaks.size());
-//  PiecewisePolynomial<double> foot_offset_traj =
-//      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,
-//                                                 foot_offset_points);
-  if(relative_feet_){
+  if (relative_feet_) {
     return foot_traj_ - hip_traj_;
-  }else{
+  } else {
     return foot_traj_;
   }
 }
@@ -93,29 +79,41 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
 void FootTrajGenerator::AddRaibertCorrection(
     const drake::systems::Context<double>& context,
     drake::trajectories::PiecewisePolynomial<double>* traj) const {
-
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
   const auto desired_pelvis_vel =
       this->EvalVectorInput(context, target_vel_port_)->get_value();
+
+  VectorXd q = robot_output->GetPositions();
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
+
   Vector2d desired_pelvis_pos = {0.0, 0};
   VectorXd pelvis_pos = robot_output->GetPositions().segment(4, 2);
   VectorXd pelvis_vel = robot_output->GetVelocities().segment(3, 2);
   VectorXd pelvis_pos_err = pelvis_pos - desired_pelvis_pos;
   VectorXd pelvis_vel_err = pelvis_vel - desired_pelvis_vel;
   VectorXd footstep_correction =
-      Kp_ * (pelvis_pos_err) +
-      Kd_ * (pelvis_vel_err);
-  if(is_left_foot_){
+      Kp_ * (pelvis_pos_err) + Kd_ * (pelvis_vel_err);
+  if (is_left_foot_) {
     footstep_correction(1) -= 0.02;
-  }else{
+  } else {
     footstep_correction(1) += 0.02;
   }
   footstep_correction(0) -= 0.03;
+  Vector3d pelvis_heading_vec =
+      plant_.EvalBodyPoseInWorld(*context_, plant_.GetBodyByName("pelvis"))
+          .rotation()
+          .col(0);
+  double approx_pelvis_yaw =
+      atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
+  Eigen::Matrix3d rot;
+  rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw), 0,
+      sin(approx_pelvis_yaw), cos(approx_pelvis_yaw), 0, 0, 0, 1;
+
   std::vector<double> breaks = traj->get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   VectorXd new_samples = VectorXd(6);
-  new_samples << footstep_correction, Vector3d::Zero();
+  new_samples << rot.transpose() * footstep_correction, Vector3d::Zero();
   MatrixXd foot_offset_points = new_samples.replicate(1, breaks.size());
   PiecewisePolynomial<double> foot_offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector,

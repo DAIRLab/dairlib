@@ -404,15 +404,15 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
   cost_collocation_lambda = 0.0
   cost_tau = 0.0
 
-  # Get main total cost (excluding regularization cost)
-  total_main_cost = cost_x + cost_u + cost_accel
-  cost_dict["total_main_cost"] = total_main_cost
-
   # Get total cost
   total_cost = 0.0
   for key in cost_dict:
     total_cost += cost_dict[key]
   cost_dict["total_cost"] = total_cost
+
+  # Get main total cost (excluding regularization cost)
+  total_main_cost = cost_x + cost_u + cost_accel
+  cost_dict["total_main_cost"] = total_main_cost
 
   # Get total reg cost
   total_reg_cost = total_cost - total_main_cost

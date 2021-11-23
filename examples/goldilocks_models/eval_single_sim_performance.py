@@ -623,8 +623,8 @@ def main():
     vdot_numerical[i, :] /= dt_x[i]
   if low_pass_filter:
     vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x_extracted[1:], 100)
-    vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x_extracted, 50)
-    vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted, 50)
+    vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x_extracted[1:], 50)
+    vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted[1:], 50)
 
   # Testing -- set the toe acceleration to 0
   # vdot_numerical[:, vel_map["toe_leftdot"]] = 0

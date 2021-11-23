@@ -283,7 +283,9 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
   u_data_knot_idx = np.linspace(0, n_u_data - 1, n_node * n_step)
 
   # Create left right stance array
+  # is left stance
   ls_tx = (fsm_tx_extracted == 0) + (fsm_tx_extracted == 3)
+  # is right stance
   rs_tx = (fsm_tx_extracted == 1) + (fsm_tx_extracted == 4)
   if np.sum(ls_tx) + np.sum(rs_tx) != n_x_data:
     raise ValueError("Left/right stance identification has error")
@@ -323,6 +325,8 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
       i = int(x_data_knot_idx[k])
       j = int(x_data_knot_idx[k+1])
       delta_q = x_extracted[j, :nq] - x_extracted[i, :nq]
+      if ls_tx[i] != ls_tx[j]:  # Rough approximation. We don't need to count between steps because we added one more node each mode
+        continue
       if ls_tx[i]:  # TODO: this is a very rough estimate, you can improve this. (but maybe it doesn't matter too much)
         cost_pos_diff += (delta_q.T @ weight_dict["W_q_diff_ls"] @ delta_q)
       else:
@@ -335,6 +339,8 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
       i = int(x_data_knot_idx[k])
       j = int(x_data_knot_idx[k+1])
       delta_v = x_extracted[j, nq:] - x_extracted[i, nq:]
+      if ls_tx[i] != ls_tx[j]:  # Rough approximation. We don't need to count between steps because we added one more node each mode
+        continue
       if ls_tx[i]:  # TODO: this is a very rough estimate, you can improve this. (but maybe it doesn't matter too much)
         cost_vel_diff += (delta_v.T @ weight_dict["W_v_diff_ls"] @ delta_v)
       else:
@@ -346,6 +352,8 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
     for k in range(len(u_data_knot_idx) - 1):
       i = int(u_data_knot_idx[k])
       j = int(u_data_knot_idx[k+1])
+      if ls_tu[i] != ls_tu[j]:  # Rough approximation. We don't need to count between steps because we added one more node each mode
+        continue
       delta_u = u_extracted[j, :] - u_extracted[i, :]
       cost_u_diff += (delta_u.T @ delta_u)
     cost_u_diff *= weight_dict["w_u_diff"]
@@ -656,12 +664,14 @@ def main():
   names = ['cost_x',
            'cost_u',
            'cost_accel',
+           'total_main_cost',
            'total_reg_cost',
            'total_cost']
   names = ', '.join(names)
   values = [str(cost_dict["cost_x"]),
             str(cost_dict["cost_u"]),
             str(cost_dict["cost_accel"]),
+            str(cost_dict["total_main_cost"]),
             str(cost_dict["total_reg_cost"]),
             str(cost_dict["total_cost"])]
   values = ', '.join(values)

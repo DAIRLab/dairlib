@@ -664,6 +664,13 @@ def main():
   names = ['cost_x',
            'cost_u',
            'cost_accel',
+           'cost_pos_diff',
+           'cost_vel_diff',
+           'cost_u_diff',
+           'cost_q_hip_roll',
+           'cost_q_hip_yaw',
+           'cost_q_quat_xyz',
+           'cost_regularization',
            'total_main_cost',
            'total_reg_cost',
            'total_cost']
@@ -671,9 +678,17 @@ def main():
   values = [str(cost_dict["cost_x"]),
             str(cost_dict["cost_u"]),
             str(cost_dict["cost_accel"]),
+            str(cost_dict["cost_pos_diff"]),
+            str(cost_dict["cost_vel_diff"]),
+            str(cost_dict["cost_u_diff"]),
+            str(cost_dict["cost_q_hip_roll"]),
+            str(cost_dict["cost_q_hip_yaw"]),
+            str(cost_dict["cost_q_quat_xyz"]),
+            str(cost_dict["cost_regularization"]),
             str(cost_dict["total_main_cost"]),
             str(cost_dict["total_reg_cost"]),
             str(cost_dict["total_cost"])]
+
   values = ', '.join(values)
 
   path = directory + "cost_names.csv"

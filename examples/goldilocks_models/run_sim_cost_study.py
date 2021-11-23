@@ -690,7 +690,7 @@ def AdjustSlices(model_slices):
   for i in range(len(model_indices)):
     model_iter = model_indices[i]
     if len(mtcl[mtcl[:, 0] == model_iter, 1]) == 0:
-      max_model_iter = model_indices[max(1, i - 1)]
+      max_model_iter = model_indices[i - 1]  # this is general to 1-element case
       break
 
   if len(model_slices) == 0:

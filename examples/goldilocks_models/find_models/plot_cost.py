@@ -191,5 +191,6 @@ while 1:
     if save_figure:
         plt.savefig("../cost.png")
         print("figure saved")
+        break
     plt.pause(10)
     plt.clf()

@@ -33,10 +33,10 @@ def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
     robot_output, robot_input, osc_debug = \
-        get_log_data(log,  # log
-                     cassie_plots.cassie_default_channels,          # lcm channels
-                     mbp_plots.load_default_channels,               # processing callback
-                     plant, channel_x, channel_u, channel_osc)      # processing callback arguments
+        get_log_data(log,                                       # log
+                     cassie_plots.cassie_default_channels,      # lcm channels
+                     mbp_plots.load_default_channels,           # processing callback
+                     plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
@@ -86,11 +86,12 @@ def main():
     if plot_config.plot_tracking_costs:
         mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
 
-    for traj_name, config in plot_config.tracking_datas_to_plot.items():
-        for deriv in config['derivs']:
-            for dim in config['dims']:
-                mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
-                                                 deriv, t_osc_slice)
+    if plot_config.tracking_datas_to_plot:
+        for traj_name, config in plot_config.tracking_datas_to_plot.items():
+            for deriv in config['derivs']:
+                for dim in config['dims']:
+                    mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
+                                                     deriv, t_osc_slice)
 
     plt.show()
 

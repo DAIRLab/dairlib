@@ -158,10 +158,10 @@ int DoMain(int argc, char* argv[]) {
   int right_stance_state = 1;
   int right_touchdown_air_phase = 2;
   int left_touchdown_air_phase = 3;
-  double left_support_duration = dircon_trajectory.GetStateBreaks(1)(0) * 2;
+  double left_support_duration = dircon_trajectory.GetStateBreaks(1)(0) * 2 - 0.030;
   double right_support_duration = left_support_duration;
   double air_phase_duration = dircon_trajectory.GetStateBreaks(2)(0) -
-                              dircon_trajectory.GetStateBreaks(1)(0);
+                              dircon_trajectory.GetStateBreaks(1)(0) + 0.030;
   vector<int> fsm_states = {left_stance_state, right_touchdown_air_phase,
                             right_stance_state, left_touchdown_air_phase,
                             left_stance_state};

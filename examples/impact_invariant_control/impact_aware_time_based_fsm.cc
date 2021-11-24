@@ -40,7 +40,7 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
   for (int i = 0; i < states.size(); ++i) {
     sum += state_durations[i];
     accu_state_durations_.push_back(sum);
-    if (states[i] == 2) {
+    if (states[i] >= 2) {
       impact_times_.push_back(sum);
       impact_states_.push_back(states[i+1]);
     }

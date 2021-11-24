@@ -12,8 +12,8 @@
 #include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
 #include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_run/foot_traj_generator.h"
-//#include "examples/Cassie/osc_run/joint_space_running_gains.h"
 #include "examples/Cassie/osc_run/osc_running_gains.h"
+#include "examples/Cassie/osc_run/pelvis_pitch_traj_generator.h"
 #include "examples/Cassie/osc_run/pelvis_roll_traj_generator.h"
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
 #include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
@@ -58,6 +58,7 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
+using examples::osc::PelvisPitchTrajGenerator;
 using examples::osc::PelvisRollTrajGenerator;
 using examples::osc::PelvisTransTrajGenerator;
 using examples::osc_jump::BasicTrajectoryPassthrough;
@@ -155,13 +156,15 @@ int DoMain(int argc, char* argv[]) {
   /**** FSM and contact mode configuration ****/
   int left_stance_state = 0;
   int right_stance_state = 1;
-  int air_phase = 2;
+  int right_touchdown_air_phase = 2;
+  int left_touchdown_air_phase = 3;
   double left_support_duration = dircon_trajectory.GetStateBreaks(1)(0) * 2;
   double right_support_duration = left_support_duration;
   double air_phase_duration = dircon_trajectory.GetStateBreaks(2)(0) -
                               dircon_trajectory.GetStateBreaks(1)(0);
-  vector<int> fsm_states = {left_stance_state, air_phase, right_stance_state,
-                            air_phase, left_stance_state};
+  vector<int> fsm_states = {left_stance_state, right_touchdown_air_phase,
+                            right_stance_state, left_touchdown_air_phase,
+                            left_stance_state};
   std::cout << "left support duration: " << left_support_duration << std::endl;
   std::cout << "flight duration: " << air_phase_duration << std::endl;
   std::cout << "right support duration: " << right_support_duration
@@ -206,19 +209,19 @@ int DoMain(int argc, char* argv[]) {
       plant, left_toe.first, left_toe.second, view_frame, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, left_heel.first, left_heel.second, view_frame, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
+      plant, left_heel.first, left_heel.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, right_toe.first, right_toe.second, view_frame, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
+      plant, right_toe.first, right_toe.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, right_heel.first, right_heel.second, view_frame, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
+      plant, right_heel.first, right_heel.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
 
-  osc->AddStateAndContactPoint(0, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(0, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(1, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(1, &right_heel_evaluator);
+  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
+  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
+  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
+  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
   auto left_loop = LeftLoopClosureEvaluator(plant);
@@ -371,8 +374,21 @@ int DoMain(int argc, char* argv[]) {
                                                   "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
                                                    "toe_right");
-  left_foot_tracking_data.AddStateAndPointToTrack(air_phase, "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(air_phase, "toe_right");
+  left_foot_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
+                                                  "toe_left");
+  right_foot_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
+                                                   "toe_right");
+
+  TransTaskSpaceTrackingData left_foot_yz_tracking_data(
+      "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+      osc_gains.W_swing_foot, plant, plant);
+  TransTaskSpaceTrackingData right_foot_yz_tracking_data(
+      "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+      osc_gains.W_swing_foot, plant, plant);
+  left_foot_yz_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
+                                                     "toe_left");
+  right_foot_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
+                                                      "toe_right");
 
   TransTaskSpaceTrackingData left_hip_tracking_data(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -384,10 +400,22 @@ int DoMain(int argc, char* argv[]) {
                                                  "hip_left");
   right_hip_tracking_data.AddStateAndPointToTrack(left_stance_state,
                                                   "hip_right");
-  left_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_left");
-  right_hip_tracking_data.AddStateAndPointToTrack(air_phase, "hip_right");
+  right_hip_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
+                                                  "hip_right");
+  left_hip_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
+                                                 "hip_left");
 
-//  WorldYawViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
+  TransTaskSpaceTrackingData left_hip_yz_tracking_data(
+      "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+      osc_gains.W_swing_foot, plant, plant);
+  TransTaskSpaceTrackingData right_hip_yz_tracking_data(
+      "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+      osc_gains.W_swing_foot, plant, plant);
+  left_hip_yz_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
+                                                    "hip_left");
+  right_hip_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
+                                                     "hip_right");
+
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant, &left_foot_tracking_data,
@@ -396,18 +424,28 @@ int DoMain(int argc, char* argv[]) {
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant, &right_foot_tracking_data,
       &right_hip_tracking_data);
+  RelativeTranslationTrackingData left_foot_yz_rel_tracking_data(
+      "left_ft_z_traj", osc_gains.K_p_liftoff_swing_foot,
+      osc_gains.K_d_liftoff_swing_foot, osc_gains.W_liftoff_swing_foot, plant,
+      plant, &left_foot_yz_tracking_data, &left_hip_yz_tracking_data);
+  RelativeTranslationTrackingData right_foot_yz_rel_tracking_data(
+      "right_ft_z_traj", osc_gains.K_p_liftoff_swing_foot,
+      osc_gains.K_d_liftoff_swing_foot, osc_gains.W_liftoff_swing_foot, plant,
+      plant, &right_foot_yz_tracking_data, &right_hip_yz_tracking_data);
   RelativeTranslationTrackingData pelvis_trans_rel_tracking_data(
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
       osc_gains.W_pelvis, plant, plant, &pelvis_tracking_data,
       &stance_foot_tracking_data);
   left_foot_rel_tracking_data.SetViewFrame(view_frame);
   right_foot_rel_tracking_data.SetViewFrame(view_frame);
+  left_foot_yz_rel_tracking_data.SetViewFrame(view_frame);
+  right_foot_yz_rel_tracking_data.SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data.SetViewFrame(view_frame);
   left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);
-  //  left_foot_rel_tracking_data.DisableFeedforwardAccel({2});
-  //  right_foot_rel_tracking_data.DisableFeedforwardAccel({2});
+  left_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
+  right_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
 
   if (osc_gains.relative_pelvis) {
     osc->AddTrackingData(&pelvis_trans_rel_tracking_data);
@@ -420,6 +458,10 @@ int DoMain(int argc, char* argv[]) {
     right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
     osc->AddTrackingData(&left_foot_rel_tracking_data);
     osc->AddTrackingData(&right_foot_rel_tracking_data);
+//    left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+//    right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+    osc->AddTrackingData(&left_foot_yz_rel_tracking_data);
+    osc->AddTrackingData(&right_foot_yz_rel_tracking_data);
   } else {
     left_foot_tracking_data.SetImpactInvariantProjection(true);
     right_foot_tracking_data.SetImpactInvariantProjection(true);
@@ -438,28 +480,41 @@ int DoMain(int argc, char* argv[]) {
   auto hip_pitch_right_traj_mir =
       dircon_trajectory.ReconstructMirrorJointTrajectory(
           pos_map_wo_spr["hip_pitch_right"]);
+  PiecewisePolynomial<double> pelvis_pitch_traj =
+      PiecewisePolynomial<double>(VectorXd::Zero(1));
   hip_pitch_left_traj_mir.shiftRight(hip_pitch_left_traj.end_time());
   hip_pitch_right_traj_mir.shiftRight(hip_pitch_right_traj.end_time());
   hip_pitch_left_traj.ConcatenateInTime(hip_pitch_left_traj_mir);
   hip_pitch_right_traj.ConcatenateInTime(hip_pitch_right_traj_mir);
+  //  auto hip_pitch_left_traj_generator =
+  //      builder.AddSystem<BasicTrajectoryPassthrough>(
+  //          hip_pitch_left_traj, "hip_pitch_left_traj_generator");
+  //  auto hip_pitch_right_traj_generator =
+  //      builder.AddSystem<BasicTrajectoryPassthrough>(
+  //          hip_pitch_right_traj, "hip_pitch_right_traj_generator");
   auto hip_pitch_left_traj_generator =
-      builder.AddSystem<BasicTrajectoryPassthrough>(
-          hip_pitch_left_traj, "hip_pitch_left_traj_generator");
+      builder.AddSystem<PelvisPitchTrajGenerator>(
+          plant, plant_context.get(), hip_pitch_left_traj, pelvis_pitch_traj, 1,
+          "hip_pitch_left_traj_generator");
   auto hip_pitch_right_traj_generator =
-      builder.AddSystem<BasicTrajectoryPassthrough>(
-          hip_pitch_right_traj, "hip_pitch_right_traj_generator");
+      builder.AddSystem<PelvisPitchTrajGenerator>(
+          plant, plant_context.get(), hip_pitch_right_traj, pelvis_pitch_traj,
+          1, "hip_pitch_right_traj_generator");
+
   JointSpaceTrackingData left_hip_pitch_tracking_data(
       "hip_pitch_left_traj", osc_gains.K_p_hip_pitch, osc_gains.K_d_hip_pitch,
       osc_gains.W_hip_pitch, plant, plant);
   JointSpaceTrackingData right_hip_pitch_tracking_data(
       "hip_pitch_right_traj", osc_gains.K_p_hip_pitch, osc_gains.K_d_hip_pitch,
       osc_gains.W_hip_pitch, plant, plant);
-  std::cout << "Hip Pitch KD: " << osc_gains.K_d_hip_pitch << std::endl;
-  std::cout << "Hip Roll KD: " << osc_gains.K_d_hip_roll << std::endl;
   left_hip_pitch_tracking_data.AddStateAndJointToTrack(
       left_stance_state, "hip_pitch_left", "hip_pitch_leftdot");
+  left_hip_pitch_tracking_data.AddStateAndJointToTrack(
+      right_touchdown_air_phase, "hip_pitch_left", "hip_pitch_leftdot");
   right_hip_pitch_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "hip_pitch_right", "hip_pitch_rightdot");
+  right_hip_pitch_tracking_data.AddStateAndJointToTrack(
+      left_touchdown_air_phase, "hip_pitch_right", "hip_pitch_rightdot");
   left_hip_pitch_tracking_data.DisableFeedforwardAccel({0});
   right_hip_pitch_tracking_data.DisableFeedforwardAccel({0});
   left_hip_pitch_tracking_data.SetImpactInvariantProjection(true);
@@ -504,8 +559,12 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.W_hip_roll, plant, plant);
   left_hip_roll_tracking_data.AddStateAndJointToTrack(
       left_stance_state, "hip_roll_left", "hip_roll_leftdot");
+  left_hip_roll_tracking_data.AddStateAndJointToTrack(
+      right_touchdown_air_phase, "hip_roll_left", "hip_roll_leftdot");
   right_hip_roll_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "hip_roll_right", "hip_roll_rightdot");
+  right_hip_roll_tracking_data.AddStateAndJointToTrack(
+      left_touchdown_air_phase, "hip_roll_right", "hip_roll_rightdot");
   left_hip_roll_tracking_data.DisableFeedforwardAccel({0});
   right_hip_roll_tracking_data.DisableFeedforwardAccel({0});
   left_hip_roll_tracking_data.SetImpactInvariantProjection(true);
@@ -536,10 +595,14 @@ int DoMain(int argc, char* argv[]) {
       left_stance_state, "toe_right", "toe_rightdot");
   left_toe_angle_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "toe_left", "toe_leftdot");
-  right_toe_angle_tracking_data.AddStateAndJointToTrack(air_phase, "toe_right",
-                                                        "toe_rightdot");
-  left_toe_angle_tracking_data.AddStateAndJointToTrack(air_phase, "toe_left",
-                                                       "toe_leftdot");
+  right_toe_angle_tracking_data.AddStateAndJointToTrack(
+      right_touchdown_air_phase, "toe_right", "toe_rightdot");
+  right_toe_angle_tracking_data.AddStateAndJointToTrack(
+      left_touchdown_air_phase, "toe_right", "toe_rightdot");
+  left_toe_angle_tracking_data.AddStateAndJointToTrack(
+      right_touchdown_air_phase, "toe_left", "toe_leftdot");
+  left_toe_angle_tracking_data.AddStateAndJointToTrack(
+      left_touchdown_air_phase, "toe_left", "toe_leftdot");
   left_toe_angle_tracking_data.SetImpactInvariantProjection(true);
   right_toe_angle_tracking_data.SetImpactInvariantProjection(true);
   osc->AddTrackingData(&left_toe_angle_tracking_data);
@@ -555,8 +618,8 @@ int DoMain(int argc, char* argv[]) {
   left_hip_yaw_tracking_data.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   right_hip_yaw_tracking_data.AddJointToTrack("hip_yaw_right",
                                               "hip_yaw_rightdot");
-//  left_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
-//  right_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
+  //  left_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
+  //  right_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
   osc->AddConstTrackingData(&left_hip_yaw_tracking_data, VectorXd::Zero(1));
   osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
 
@@ -623,10 +686,26 @@ int DoMain(int argc, char* argv[]) {
                   hip_roll_left_traj_generator->get_clock_input_port());
   builder.Connect(fsm->get_output_port_clock(),
                   hip_roll_right_traj_generator->get_clock_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  hip_pitch_left_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  hip_pitch_right_traj_generator->get_state_input_port());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  hip_pitch_left_traj_generator->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  hip_pitch_right_traj_generator->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_clock(),
+                  hip_pitch_left_traj_generator->get_clock_input_port());
+  builder.Connect(fsm->get_output_port_clock(),
+                  hip_pitch_right_traj_generator->get_clock_input_port());
   builder.Connect(l_foot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("right_ft_traj"));
+  builder.Connect(l_foot_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("left_ft_z_traj"));
+  builder.Connect(r_foot_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("right_ft_z_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),

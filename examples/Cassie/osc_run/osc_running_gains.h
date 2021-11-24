@@ -31,6 +31,10 @@ struct OSCRunningGains : OSCGains {
   std::vector<double> SwingFootW;
   std::vector<double> SwingFootKp;
   std::vector<double> SwingFootKd;
+  // swing foot tracking for the non-touchdown foot
+  std::vector<double> LiftoffSwingFootW;
+  std::vector<double> LiftoffSwingFootKp;
+  std::vector<double> LiftoffSwingFootKd;
   // pelvis tracking
   std::vector<double> PelvisW;
   std::vector<double> PelvisKp;
@@ -47,6 +51,9 @@ struct OSCRunningGains : OSCGains {
   MatrixXd W_swing_foot;
   MatrixXd K_p_swing_foot;
   MatrixXd K_d_swing_foot;
+  MatrixXd W_liftoff_swing_foot;
+  MatrixXd K_p_liftoff_swing_foot;
+  MatrixXd K_d_liftoff_swing_foot;
   MatrixXd W_swing_toe;
   MatrixXd K_p_swing_toe;
   MatrixXd K_d_swing_toe;
@@ -82,6 +89,9 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(SwingFootW));
     a->Visit(DRAKE_NVP(SwingFootKp));
     a->Visit(DRAKE_NVP(SwingFootKd));
+    a->Visit(DRAKE_NVP(LiftoffSwingFootW));
+    a->Visit(DRAKE_NVP(LiftoffSwingFootKp));
+    a->Visit(DRAKE_NVP(LiftoffSwingFootKd));
     a->Visit(DRAKE_NVP(w_swing_toe));
     a->Visit(DRAKE_NVP(swing_toe_kp));
     a->Visit(DRAKE_NVP(swing_toe_kd));
@@ -108,6 +118,15 @@ struct OSCRunningGains : OSCGains {
     K_d_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->SwingFootKd.data(), 3, 3);
+     W_liftoff_swing_foot = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->LiftoffSwingFootW.data(), 3, 3);
+    K_p_liftoff_swing_foot = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->LiftoffSwingFootKp.data(), 3, 3);
+    K_d_liftoff_swing_foot = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->LiftoffSwingFootKd.data(), 3, 3);
     W_pelvis = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->PelvisW.data(), 3, 3);

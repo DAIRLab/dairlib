@@ -91,8 +91,9 @@ def main():
     for traj_name, config in plot_config.tracking_datas_to_plot.items():
         for deriv in config['derivs']:
             for dim in config['dims']:
-                mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
+                ps = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
                                                  deriv, t_osc_slice)
+                mbp_plots.add_fsm_to_plot(ps, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
 
     plt.show()
 

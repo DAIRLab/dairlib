@@ -57,9 +57,9 @@ class osc_tracking_cost():
     for name, cost in zip(tracking_data_list, tracking_cost_list):
       self.tracking_costs[name].append(cost)
 
-    for name in self.tracking_costs:
-      if name not in tracking_data_list:
-        self.tracking_costs[name].append(0.0)
+    # for name in self.tracking_costs:
+      # if name not in tracking_data_list:
+      #   self.tracking_costs[name].append(0.0)
 
   def convertToNP(self):
     for name in self.tracking_costs:

@@ -1,9 +1,7 @@
 #include "examples/Cassie/input_supervisor.h"
 
-#include <dairlib/lcmt_cassie_out.hpp>
-
 #include "dairlib/lcmt_controller_switch.hpp"
-#include "systems/framework/output_vector.h"
+#include "multibody/multibody_utils.h"
 
 using drake::multibody::JointActuatorIndex;
 using drake::systems::Context;
@@ -30,15 +28,15 @@ InputSupervisor::InputSupervisor(
   }
 
   // Create input ports
-  command_input_port_ = this->DeclareVectorInputPort(
-                                "u, t", TimestampedVector<double>(num_actuators_))
-                            .get_index();
+  command_input_port_ =
+      this->DeclareVectorInputPort("u, t",
+                                   TimestampedVector<double>(num_actuators_))
+          .get_index();
   ;
   state_input_port_ =
       this->DeclareVectorInputPort(
-              "x, u, t",
-              OutputVector<double>(num_positions_, num_velocities_,
-                                   num_actuators_))
+              "x, u, t", OutputVector<double>(num_positions_, num_velocities_,
+                                              num_actuators_))
           .get_index();
   controller_switch_input_port_ =
       this->DeclareAbstractInputPort(
@@ -72,13 +70,24 @@ InputSupervisor::InputSupervisor(
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
   soft_estop_trigger_index_ = DeclareDiscreteState(1);
   is_nan_index_ = DeclareDiscreteState(1);
+  is_critical_falling_index_ = DeclareDiscreteState(1);
 
   K_ = plant_.MakeActuationMatrix().transpose();
   K_ *= kEStopGain;
+  K_critical_falling_ =
+      kCriticalFallingGain * plant_.MakeActuationMatrix().transpose();
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
                                      &InputSupervisor::UpdateErrorFlag);
+
+  // Get indices
+  auto position_idx_map = multibody::makeNameToPositionsMap(plant);
+  auto velocity_idx_map = multibody::makeNameToVelocitiesMap(plant);
+  left_ankle_pos_idx_ = position_idx_map.at("ankle_joint_left");
+  right_ankle_pos_idx_ = position_idx_map.at("ankle_joint_right");
+  left_ankle_vel_idx_ = velocity_idx_map.at("ankle_joint_leftdot");
+  right_ankle_vel_idx_ = velocity_idx_map.at("ankle_joint_rightdot");
 }
 
 void InputSupervisor::SetMotorTorques(const Context<double>& context,
@@ -89,6 +98,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   const OutputVector<double>* state =
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
 
+  // Be aware that the publish rate of lcmt_cassie_out is low.
   const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
       context, cassie_input_port_);
 
@@ -111,6 +121,23 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
 
   bool is_nan = command->get_data().array().isNaN().any();
 
+  if (context.get_discrete_state(is_critical_falling_index_)[0]) {
+    Eigen::VectorXd u = -K_ * state->GetVelocities();
+
+    // Version 1 - Damp knee joints
+    //    Eigen::VectorXd u_big = -K_critical_falling_ * state->GetVelocities();
+    //    u.segment<2>(6) = u_big.segment<2>(6);
+    // Version 2 - Damp pelvis vel
+    u.segment<2>(6) = -kCriticalFallingGain * state->GetVelocities()(5) *
+                      Eigen::VectorXd::Ones(2);
+
+    // TODO: for some reason, mujoco doesn't always track the torque command. It went to zero sometimes.
+
+    //    std::cout << state->get_timestamp() <<  ": u = " << u.transpose() <<
+    //    std::endl;
+    output->SetDataVector(u);
+    return;
+  }
   // If the soft estop signal is triggered, applying only damping regardless of
   // any other controller signal
   if (cassie_out->pelvis.radio.channel[15] == -1 || is_nan) {
@@ -139,6 +166,10 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
       // Can copy entire raw vector
       output->SetDataVector(command->get_value());
     }
+    if (command->get_timestamp() > 7) {
+      output->SetDataVector(Eigen::VectorXd::Zero(10));
+    }
+
   } else {
     output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
   }
@@ -200,6 +231,10 @@ void InputSupervisor::SetStatus(
     output->act_delay = true;
     output->shutdown = true;
   }
+
+  if (context.get_discrete_state(is_critical_falling_index_)[0]) {
+    output->status += 8;
+  }
 }
 
 void InputSupervisor::UpdateErrorFlag(
@@ -211,6 +246,8 @@ void InputSupervisor::UpdateErrorFlag(
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
+  const OutputVector<double>* state =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
 
   if (command->get_timestamp() -
           discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] >
@@ -223,6 +260,18 @@ void InputSupervisor::UpdateErrorFlag(
 
   CheckRadio(context, discrete_state);
   CheckVelocities(context, discrete_state);
+
+  if (!(discrete_state->get_mutable_vector(is_critical_falling_index_)[0])) {
+    if (IsInCriticalFailure(state)) {
+      discrete_state->get_mutable_vector(is_critical_falling_index_)[0] = true;
+    }
+  } else {
+    //    if (HasLeftCriticalFailure(state)) {
+    //      discrete_state->get_mutable_vector(is_critical_falling_index_)[0] =
+    //      false;
+    //    }
+  }
+
   // Only update if it's setting the error flag to true
   discrete_state->get_mutable_vector(is_nan_index_)[0] =
       discrete_state->get_mutable_vector(is_nan_index_)[0] ||
@@ -292,6 +341,39 @@ void InputSupervisor::CheckRadio(
   if (cassie_out->pelvis.radio.channel[15] == -1) {
     discrete_state->get_mutable_vector(soft_estop_trigger_index_)[0] = 1;
   }
+}
+
+bool InputSupervisor::IsInCriticalFailure(
+    const OutputVector<double>* state) const {
+  //  const double* imu_d = cassie_out->pelvis.vectorNav.linearAcceleration;
+  //  Eigen::Vector3d imu_aceel(imu_d[0], imu_d[1], imu_d[2]);
+  Eigen::Vector3d imu_aceel = state->GetIMUAccelerations();
+
+  double ankle_pos_threshold = 2.1;  // 2.3;
+  double ankle_vel_threshold = 2;
+  double imu_magnitude_threshold = 0.3 * 9.8;
+
+  bool is_leg_crouching =
+      (state->GetPositions()(left_ankle_pos_idx_) > ankle_pos_threshold) &&
+      (state->GetPositions()(right_ankle_pos_idx_) > ankle_pos_threshold) &&
+      (state->GetVelocities()(left_ankle_vel_idx_) > ankle_vel_threshold) &&
+      (state->GetVelocities()(right_ankle_vel_idx_) > ankle_vel_threshold);
+  bool is_pelvis_falling = imu_aceel.norm() < imu_magnitude_threshold;
+
+  // bool is_pelvis_roll_pitch_small =
+
+  //  std::cout << state->get_timestamp() << ", " << is_leg_crouching << ", "
+  //            << is_pelvis_falling << std::endl;
+
+  return is_leg_crouching && is_pelvis_falling;
+}
+
+bool InputSupervisor::HasLeftCriticalFailure(
+    const OutputVector<double>* state) const {
+  double pelvis_vel_threshould = -0.3;
+  // double max_duration =
+
+  return state->GetVelocities()(5) > pelvis_vel_threshould;
 }
 
 }  // namespace dairlib

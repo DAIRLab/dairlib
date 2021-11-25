@@ -97,6 +97,7 @@ cc_library(
     hdrs = ["input_supervisor.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],

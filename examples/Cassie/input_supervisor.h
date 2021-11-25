@@ -5,9 +5,12 @@
 #include "dairlib/lcmt_input_supervisor_status.hpp"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
+#include <dairlib/lcmt_cassie_out.hpp>
+#include "systems/framework/output_vector.h"
 
 static constexpr double kMaxControllerDelay = 0.1;
 static constexpr double kEStopGain = 5.0;
+static constexpr double kCriticalFallingGain = 100.0;
 
 namespace dairlib {
 
@@ -80,11 +83,18 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // 0th: velocity limits exceeded once
   // 1st: actuator limits
   // 2nd: velocity triggered shutdown
+  // 3rd: critical failure mode
   void SetStatus(const drake::systems::Context<double>& context,
                  dairlib::lcmt_input_supervisor_status* output) const;
 
-  void CheckVelocities(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
-  void CheckRadio(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
+  void CheckVelocities(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+  void CheckRadio(const drake::systems::Context<double>& context,
+                  drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  bool IsInCriticalFailure(const systems::OutputVector<double>* state) const;
+  bool HasLeftCriticalFailure(const systems::OutputVector<double>* state) const;
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -99,6 +109,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
 
   int soft_estop_trigger_index_;
   int is_nan_index_;
+  int is_critical_falling_index_;
 
   int status_vars_index_;
   int n_fails_index_;
@@ -117,6 +128,12 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   int status_output_port_;
 
   Eigen::MatrixXd K_;
+  Eigen::MatrixXd K_critical_falling_;
+
+  int left_ankle_pos_idx_;
+  int right_ankle_pos_idx_;
+  int left_ankle_vel_idx_;
+  int right_ankle_vel_idx_;
 };
 
 }  // namespace dairlib

@@ -954,6 +954,7 @@ def GetVaryingTaskElementIdx(task_list):
         found_varying_task = True
   return task_element_idx
 
+# Grid tasks
 class Tasks:
   # Constructor and builders
   def __init__(self):
@@ -1020,7 +1021,6 @@ class Tasks:
     for name in self.names:
       output += "%s ranges from %.3f to %.3f\n" % (name, self.task_data[name][0], self.task_data[name][-1])
     return output
-
   def get_task_dim(self):
     return self.n_dim
   def get_n_task(self):
@@ -1160,6 +1160,9 @@ if __name__ == "__main__":
   varying_task_element_idx = GetVaryingTaskElementIdx(task_list)
   if varying_task_element_idx != 0:
     raise ValueError("Currently, the code assume only stride length is varying")
+
+  # TODO: two things to do. One is to get the sim evaluation part done, and the other is how to interpolate 4D data. (A 4d graph).
+  # Looks like LinearNDInterpolator could help. (https://stackoverflow.com/questions/47900969/4d-interpolation-for-irregular-x-y-z-grids-by-python)
 
   # Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.

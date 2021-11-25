@@ -20,7 +20,6 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
 #include "multibody/pinocchio_plant.h"
-#include "multibody/multibody_utils.h"
 #include "systems/dairlib_signal_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -122,6 +121,9 @@ DEFINE_string(channel_y, "MPC_OUTPUT",
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
 // (for non debug mode)
+DEFINE_string(dir_and_prefex_FOM, "",
+              "file location and prefix for FOM poses (used in planner's "
+              "regularization cost)");
 DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
 DEFINE_double(init_phase, 0,
               "The phase where the initial FOM pose is throughout the single "
@@ -246,6 +248,7 @@ int DoMain(int argc, char* argv[]) {
   param.dir_model = gains.dir_model;
   param.dir_data = gains.dir_data;
   param.init_file = FLAGS_init_file;
+  param.dir_and_prefex_FOM = FLAGS_dir_and_prefex_FOM;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
   if (FLAGS_solve_idx_for_read_from_file >= 0) {

@@ -13,8 +13,8 @@
 #include "examples/goldilocks_models/planning/rom_traj_opt.h"
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/multibody_solvers.h"
-#include "solvers/optimization_utils.h"
 #include "multibody/multibody_utils.h"
+#include "solvers/optimization_utils.h"
 
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -201,10 +201,13 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       x_guess_left_in_front_post_ = x_standing_fixed_spring_;
       x_guess_right_in_front_post_ = x_standing_fixed_spring_;
     } else {
+      string dir_and_prefex_FOM = param_.dir_and_prefex_FOM.empty()
+                                      ? model_dir_n_pref
+                                      : param_.dir_and_prefex_FOM;
       VectorXd x_guess_right_in_front_pre =
-          readCSV(model_dir_n_pref + string("x_samples0.csv")).rightCols(1);
+          readCSV(dir_and_prefex_FOM + string("x_samples0.csv")).rightCols(1);
       VectorXd x_guess_right_in_front_post =
-          readCSV(model_dir_n_pref + string("x_samples1.csv")).col(0);
+          readCSV(dir_and_prefex_FOM + string("x_samples1.csv")).col(0);
       VectorXd x_guess_left_in_front_pre(nx_);
       x_guess_left_in_front_pre
           << state_mirror_.MirrorPos(x_guess_right_in_front_pre.head(nq_)),

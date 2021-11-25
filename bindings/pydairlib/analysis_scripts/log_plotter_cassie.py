@@ -88,20 +88,22 @@ def main():
 
   matplotlib.rcParams["savefig.directory"] = path
 
-  x, u_meas, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
+  x, u_meas, imu_aceel, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
+  osc_output, input_supervisor_status, t_input_supervisor, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
     compare_ekf(full_log, pos_map, vel_map)
 
   n_msgs = len(cassie_out)
   knee_pos = np.zeros(n_msgs)
+  imu_cassie_out = np.zeros((n_msgs, 3))
   t_cassie_out = np.zeros(n_msgs)
   estop_signal = np.zeros(n_msgs)
   motor_torques = np.zeros(n_msgs)
   for i in range(n_msgs):
     knee_pos[i] = cassie_out[i].leftLeg.kneeDrive.velocity
+    imu_cassie_out[i] = cassie_out[i].pelvis.vectorNav.linearAcceleration
     t_cassie_out[i] = cassie_out[i].utime / 1e6
     motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
     estop_signal[i] = cassie_out[i].pelvis.radio.channel[8]
@@ -129,11 +131,14 @@ def main():
   # PlotEkfMeasurementError(t_osc_debug, fsm)
   # plt.legend(["Left Foot force", "Right Foot force", "l_contact", "r_contact", "fsm", "pelvis y (250x)", "pelvis ydot (250x)", "abs_error_per_contact (1000x)"])
 
+  # PlotImu(imu_aceel, t_x)
+
   # plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
+  # plt.plot(t_input_supervisor, 10 * input_supervisor_status)
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot", True)
@@ -147,7 +152,7 @@ def main():
   #
   # PlotCenterOfMass(x, t_x, plant_w_spr, world, context, t_osc_debug, fsm)
   # PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
-  # PlotVdot(x, t_x, x_datatypes, True)
+  PlotVdot(x, t_x, x_datatypes, True)
 
   PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
@@ -163,6 +168,15 @@ def main():
   # np.savetxt("../init_state.csv", x[t_idx, :], delimiter=",")
 
   plt.show()
+
+def PlotImu(imu_aceel, t):
+  imu_aceel_norm = np.zeros(len(imu_aceel))
+  for i in range(len(imu_aceel)):
+    imu_aceel_norm[i] = np.linalg.norm(imu_aceel[i])
+  plt.figure("Imu accel" + filename)
+  plt.plot(t, imu_aceel)
+  plt.plot(t, imu_aceel_norm)
+
 
 def PlotOscQpSol(t_osc_debug, osc_output, fsm):
   if len(osc_output) == 0:
@@ -553,7 +567,7 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   osc_traj0 = "swing_ft_traj"
-  osc_traj0 = "optimal_rom_traj"
+  # osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
@@ -763,6 +777,7 @@ def plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm):
   # vel_indices = slice(23 + 6, 45, 2)
   pos_indices = slice(0,7)
   pos_indices2 = slice(7,7 + 8)
+  # pos_indices2 = slice(7 + 10,7 + 12)
   vel_indices = slice(nq, nq + 6)
   u_indices = slice(6, 8)
   # overwrite
@@ -825,9 +840,9 @@ def plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm):
   plt.figure("efforts meas-- " + filename)
   plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
   plt.legend(u_datatypes[u_indices])
-  plt.plot(t_u[t_u_slice], u[t_u_slice])
+  # plt.plot(t_u[t_u_slice], u[t_u_slice])
   # plt.plot(t_u[t_u_slice], 30 * fsm[t_u_slice])
-  plt.plot(t_osc_debug[t_osc_debug_slice], 30 * fsm[t_osc_debug_slice])
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 30 * fsm[t_osc_debug_slice])
 
 def PlotCenterOfMass(x, t_x, plant, world, context, t_osc_debug, fsm):
   # Compute COM and Comdot

@@ -111,6 +111,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   v = []
   vdot = []
   u_meas = []
+  imu_aceel = []
   u = []
   kp = []
   kd = []
@@ -126,13 +127,15 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   t_u_pd = []
   contact_switch = []
   t_contact_switch = []
+  input_supervisor_status = []
+  t_input_supervisor = []
 
   full_log = dict()
   channel_to_type_map = dict()
   unknown_types = set()
   known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
-                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact]
+                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_input_supervisor_status]
 
   cassie_state_channel_name = get_state_channel_name(log)
   print("cassie_state_channel_name = " + cassie_state_channel_name)
@@ -160,15 +163,19 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
       q_temp = [[] for i in range(len(msg.position))]
       v_temp = [[] for i in range(len(msg.velocity))]
       u_temp = [[] for i in range(len(msg.effort))]
+      imu_accel_temp = [[] for i in range(3)]
       for i in range(len(q_temp)):
         q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
       for i in range(len(v_temp)):
         v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
       for i in range(len(u_temp)):
         u_temp[act_map[msg.effort_names[i]]] = msg.effort[i]
+      for i in range(3):
+        imu_accel_temp[i] = msg.imu_accel[i]
       q.append(q_temp)
       v.append(v_temp)
       u_meas.append(u_temp)
+      imu_aceel.append(imu_accel_temp)
       t_x.append(msg.utime / 1e6)
     # if event.channel == "CASSIE_INPUT" or event.channel == "PD_CONTROL":
     if event.channel == controller_channel_name:
@@ -217,6 +224,10 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
       msg = dairlib.lcmt_contact.decode(event.data)
       contact_switch.append(msg.contact)
       t_contact_switch.append(msg.utime / 1e6)
+    if event.channel == "INPUT_SUPERVISOR_STATUS":
+      msg = dairlib.lcmt_input_supervisor_status.decode(event.data)
+      input_supervisor_status.append(msg.status)
+      t_input_supervisor.append(msg.utime / 1e6)
     if event.channel == "CASSIE_CONTACT_DRAKE" or event.channel == "CASSIE_CONTACT_MUJOCO":
       # Need to distinguish between front and rear contact forces
       # Best way is to track the contact location and group by proximity
@@ -265,6 +276,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   v = np.array(v)
   vdot = np.array(vdot)
   u_meas = np.array(u_meas)
+  imu_aceel = np.array(imu_aceel)
   u = np.array(u)
   u_pd = np.array(u_pd)
   kp = np.array(kp)
@@ -275,6 +287,8 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   contact_info_locs = np.array(contact_info_locs)
   contact_switch = np.array(contact_switch)
   t_contact_switch = np.array(t_contact_switch)
+  input_supervisor_status = np.array(input_supervisor_status)
+  t_input_supervisor = np.array(t_input_supervisor)
 
   for i in range(contact_info_locs.shape[1]):
     # Swap front and rear contacts if necessary
@@ -291,7 +305,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
 
   x = np.hstack((q, v))  # combine into state vector
 
-  return x, u_meas, t_x, u, t_u, contact_switch, t_contact_switch, contact_forces, contact_info_locs, \
+  return x, u_meas, imu_aceel, t_x, u, t_u, contact_switch, t_contact_switch, contact_forces, contact_info_locs, \
          t_contact_info, osc_debug, t_osc_debug, fsm, estop_signal, \
          switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
-         t_u_pd, osc_output, full_log
+         t_u_pd, osc_output, input_supervisor_status, t_input_supervisor, full_log

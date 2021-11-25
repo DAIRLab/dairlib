@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 import psutil
+import copy  # for deepcopying a list
 
 import yaml
 import csv
@@ -96,7 +97,7 @@ def InitPoseSolverFailed(path, enforce_existence = False):
 # Set `get_init_file` to True if you want to generate the initial traj for both
 # planner and controller
 # `trajopt_sample_idx` is used for planner's initial guess and cost regularization term
-def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_idx,
+def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     trajopt_sample_idx, get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
@@ -128,6 +129,9 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
   planner_wait_identifier = eval_dir + "planner" + str(time.time())
   control_wait_identifier = eval_dir + "controller" + str(time.time())
 
+  # Extract tasks
+  task_sl = task[tasks.GetDimIdxByName("stride_length")]
+
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
     '--channel_x=%s' % ch.channel_x,
@@ -142,7 +146,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
     '--knots_per_mode=%d' % knots_per_mode,
     '--n_step=%d' % n_step,
     '--feas_tol=%.6f' % feas_tol,
-    '--stride_length=%.3f' % task_value,
+    '--stride_length=%.3f' % task_sl,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--time_limit=%.3f' % time_limit,
     '--realtime_rate_for_time_limit=%.3f' % realtime_rate_for_time_limit,
@@ -163,7 +167,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
     '--channel_u=%s' % ch.channel_u,
     '--lcm_url_port=%d' % port_idx,
     '--evalulating_sim_cost=true',
-    '--stride_length=%.3f' % task_value,
+    '--stride_length=%.3f' % task_sl,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--iter=%d' % rom_iter_idx,
     '--init_traj_file_path=%s' % init_traj_file_path,
@@ -179,7 +183,7 @@ def RunSimAndController(thread_idx, sim_end_time, task_value, log_idx, rom_iter_
     '--end_time=%.3f' % sim_end_time,
     '--pause_second=%.3f' % pause_second,
     '--init_height=%.3f' % 1.0,
-    '--pelvis_x_vel=%.3f' % ((init_x_vel_reduction_ratio * task_value / duration) if init_sim_vel else 0),
+    '--pelvis_x_vel=%.3f' % ((init_x_vel_reduction_ratio * task_sl / duration) if init_sim_vel else 0),
     '--target_realtime_rate=%.3f' % target_realtime_rate,
     '--spring_model=%s' % str(spring_model).lower(),
     '--path_init_pose_success=%s' % path_init_pose_success,
@@ -318,10 +322,8 @@ def GetTrajoptSampleIndexGivenTask(rom_iter, task):
 
 
 def SaveLogCorrespondence():
-  msg = "log #%d to #%d: %s ranges from %.3f to %.3f\n" % (
-    log_indices[0], log_indices[-1], task_names[varying_task_element_idx],
-    task_list[0, varying_task_element_idx],
-    task_list[-1, varying_task_element_idx])
+  msg = "log #%d to #%d: \n" % (log_indices[0], log_indices[-1])
+  msg += tasks.tasks_info()
   print(msg)
   f = open(eval_dir + "task_log_correspondence.txt", "a")
   f.write(msg)
@@ -421,23 +423,20 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
       print("\n===========\n")
       print("progress %.1f%%" % (float(counter) / n_total_sim * 100))
-      print("run sim for model %d and task %.3f" % \
-            (rom_iter, task[varying_task_element_idx]))
+      print("run sim for model %d and task %d" % (rom_iter, j))
 
       path = eval_dir + '%d_%d_success.csv' % (rom_iter, log_idx)
       if not os.path.exists(path):
         # Get the initial traj
         thread_idx = thread_idx_set.pop()
         working_threads.append(
-            RunSimAndController(thread_idx, sim_end_time,
-                                task[varying_task_element_idx], log_idx,
+            RunSimAndController(thread_idx, sim_end_time, task, log_idx,
                                 rom_iter, trajopt_sample_idx, True))
         BlockAndDeleteTheLatestThread(working_threads)
 
         # Run the simulation
         working_threads.append(
-            RunSimAndController(thread_idx, sim_end_time,
-                                task[varying_task_element_idx], log_idx,
+            RunSimAndController(thread_idx, sim_end_time, task, log_idx,
                                 rom_iter, trajopt_sample_idx, False))
         CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread)
 
@@ -604,51 +603,51 @@ def PlotNominalCost(model_indices, trajopt_sample_indices_for_viz):
 
 
 def GetSamplesToPlot(model_indices, log_indices):
-  # mtcl stores model index, task value, cost, and log index
-  mtcl = np.zeros((0, 4))
+  # cmtl stores cost, model index, task value, and log index
+  cmtl = np.zeros((0, 4))
   for rom_iter in model_indices:
     for idx in log_indices:
       path0 = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)
       path1 = eval_dir + '%d_%d_cost_values.csv' % (rom_iter, idx)
       path2 = eval_dir + '%d_%d_ave_stride_length.csv' % (rom_iter, idx)
       if os.path.exists(path0):
-        current_mtcl = np.zeros((1, 4))
+        current_cmtl = np.zeros((1, 4))
         ### Read cost
         cost = np.loadtxt(path1, delimiter=',')
-        current_mtcl[0, 2] = cost[-1]
+        current_cmtl[0, 0] = cost[-1]
         if cost[-1] > max_cost_to_ignore:
           continue
         ### Read actual task
         task = np.loadtxt(path2, delimiter=',').item()  # 0-dim scalar
-        current_mtcl[0, 1] = task
+        current_cmtl[0, 2] = task
         if (task > max_sl) or (task < min_sl):
           continue
         ### model iteration
-        current_mtcl[0, 0] = rom_iter
+        current_cmtl[0, 1] = rom_iter
         ### log index
-        current_mtcl[0, 3] = idx
+        current_cmtl[0, 3] = idx
         ### Assign values
         # if (cost[-1] > 2.25) & (task < 0.3):
         #   continue
         # print('Add (iter,idx) = (%d,%d)' % (rom_iter, idx))
-        mtcl = np.vstack([mtcl, current_mtcl])
+        cmtl = np.vstack([cmtl, current_cmtl])
         ### For debugging
         # if (cost[-1] > 2.25) & (task < 0.3):
         #   print("(iter, log) = (%.0f, %.0f) has cost %.3f (outlier)" %
-        #         (current_mtcl[0, 0], current_mtcl[0, 3], current_mtcl[0, 2]))
-  print("mtcl.shape = " + str(mtcl.shape))
+        #         (current_cmtl[0, 0], current_cmtl[0, 3], current_cmtl[0, 2]))
+  print("cmtl.shape = " + str(cmtl.shape))
 
   ### Testing -- find the log idx with high cost
   cost_threshold = 3
-  for mem in mtcl:
-    if mem[2] > cost_threshold:
+  for mem in cmtl:
+    if mem[0] > cost_threshold:
       print("(iter, log) = (%.0f, %.0f) has high cost %.3f" %
-            (mem[0], mem[3], mem[2]))
-    if mem[2] < 0.4:
+            (mem[1], mem[3], mem[0]))
+    if mem[0] < 0.4:
       print("(iter, log) = (%.0f, %.0f) has low cost %.3f" %
-            (mem[0], mem[3], mem[2]))
+            (mem[1], mem[3], mem[0]))
 
-  return mtcl
+  return cmtl
 
 
 def GetNominalSamplesToPlot(model_indices):
@@ -658,38 +657,38 @@ def GetNominalSamplesToPlot(model_indices):
   print("sample_indices (trajopt) for nominal cost visualization = \n" + str(trajopt_sample_indices_for_viz))
 
   ### Get the samples to plot
-  # nominal_mtc stores model index, task value, and cost from trajopt
-  nominal_mtc = np.zeros((0, 3))
+  # nominal_cmt stores cost from trajopt, model index, and task value
+  nominal_cmt = np.zeros((0, 3))
   for rom_iter in model_indices:
     for i in range(len(trajopt_sample_indices_for_viz)):
-      sub_mtc = np.zeros((1, 3))
+      sub_cmt = np.zeros((1, 3))
       ### Read cost
       cost = PlotNominalCost([rom_iter], trajopt_sample_indices_for_viz[i])[0][0]
-      sub_mtc[0, 2] = cost
+      sub_cmt[0, 0] = cost
       if cost.item() > max_cost_to_ignore:
         continue
       ### Read nominal task
       path = model_dir + "%d_%d_task.csv" % (rom_iter, trajopt_sample_indices_for_viz[i])
       if os.path.exists(path):
         task = np.loadtxt(path)[varying_task_element_idx]
-        sub_mtc[0, 1] = task
+        sub_cmt[0, 2] = task
       else:
         continue
       if (task > max_sl) or (task < min_sl):
         continue
       ### Read model iteration
-      sub_mtc[0, 0] = rom_iter
+      sub_cmt[0, 1] = rom_iter
       ### Assign values
-      nominal_mtc = np.vstack([nominal_mtc, sub_mtc])
-  print("nominal_mtc.shape = " + str(nominal_mtc.shape))
+      nominal_cmt = np.vstack([nominal_cmt, sub_cmt])
+  print("nominal_cmt.shape = " + str(nominal_cmt.shape))
 
-  return nominal_mtc
+  return nominal_cmt
 
 def AdjustSlices(model_slices):
   max_model_iter = model_indices[-1]
   for i in range(len(model_indices)):
     model_iter = model_indices[i]
-    if len(mtcl[mtcl[:, 0] == model_iter, 1]) == 0:
+    if len(cmtl[cmtl[:, 1] == model_iter, 2]) == 0:
       max_model_iter = model_indices[i - 1]  # this is general to 1-element case
       break
 
@@ -702,14 +701,14 @@ def AdjustSlices(model_slices):
   return model_slices
 
 
-def Generate3dPlots(model_indices, mtcl, nominal_mtc):
+def Generate3dPlots(model_indices, cmtl, nominal_cmt):
   app = "_w_nom" if plot_nominal else ""
   ### scatter plot
   fig = plt.figure(figsize=(10, 7))
   ax = plt.axes(projection="3d")
-  ax.scatter3D(mtcl[:, 0], mtcl[:, 1], mtcl[:, 2], color="green")
+  ax.scatter3D(cmtl[:, 1], cmtl[:, 2], cmtl[:, 0], color="green")
   if plot_nominal:
-    ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1], nominal_mtc[:, 2], "b")
+    ax.scatter3D(nominal_cmt[:, 1], nominal_cmt[:, 2], nominal_cmt[:, 0], "b")
   ax.set_xlabel('model iterations')
   ax.set_ylabel('stride length (m)')
   ax.set_zlabel('total cost')
@@ -727,13 +726,13 @@ def Generate3dPlots(model_indices, mtcl, nominal_mtc):
   fig = plt.figure(figsize=(10, 7))
   ax = plt.axes(projection="3d")
   if plot_nominal:
-    # tcf = ax.tricontour(nominal_mtc[:, 0], nominal_mtc[:, 1],
-    #   nominal_mtc[:, 2], zdir='y', cmap=cm.coolwarm)
-    ax.scatter3D(nominal_mtc[:, 0], nominal_mtc[:, 1], nominal_mtc[:, 2], "b")
-    # tcf = ax.plot_trisurf(nominal_mtc[:, 0], nominal_mtc[:, 1],
-    #   nominal_mtc[:, 2], cmap=cm.coolwarm)
+    # tcf = ax.tricontour(nominal_cmt[:, 0], nominal_cmt[:, 1],
+    #   nominal_cmt[:, 2], zdir='y', cmap=cm.coolwarm)
+    ax.scatter3D(nominal_cmt[:, 1], nominal_cmt[:, 2], nominal_cmt[:, 0], "b")
+    # tcf = ax.plot_trisurf(nominal_cmt[:, 0], nominal_cmt[:, 1],
+    #   nominal_cmt[:, 2], cmap=cm.coolwarm)
     pass
-  tcf = ax.tricontour(mtcl[:, 0], mtcl[:, 1], mtcl[:, 2], zdir='y',
+  tcf = ax.tricontour(cmtl[:, 1], cmtl[:, 2], cmtl[:, 0], zdir='y',
     cmap=cm.coolwarm)
   fig.colorbar(tcf)
   ax.set_xlabel('model iterations')
@@ -744,7 +743,7 @@ def Generate3dPlots(model_indices, mtcl, nominal_mtc):
     plt.savefig("%scost_vs_model_iter_contour%s.png" % (eval_dir, app))
 
 
-def Generate2dPlots(model_indices, mtcl, nominal_mtc):
+def Generate2dPlots(model_indices, cmtl, nominal_cmt):
   app = "_w_nom" if plot_nominal else ""
   ### 2D plot (cost vs iteration)
   # The line along which we evaluate the cost (using interpolation)
@@ -753,8 +752,8 @@ def Generate2dPlots(model_indices, mtcl, nominal_mtc):
 
   plt.figure(figsize=(6.4, 4.8))
   plt.rcParams.update({'font.size': 14})
-  triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
-  interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
+  triang = mtri.Triangulation(cmtl[:, 1], cmtl[:, 2])
+  interpolator = mtri.LinearTriInterpolator(triang, cmtl[:, 0])
 
   for task_slice_value in task_slice_value_list:
     y = task_slice_value * np.ones(n_model_iter + 1)
@@ -765,8 +764,8 @@ def Generate2dPlots(model_indices, mtcl, nominal_mtc):
 
   if plot_nominal:
     plt.gca().set_prop_cycle(None)  # reset color cycle
-    triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
-    interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
+    triang = mtri.Triangulation(nominal_cmt[:, 1], nominal_cmt[:, 2])
+    interpolator = mtri.LinearTriInterpolator(triang, nominal_cmt[:, 0])
     for task_slice_value in task_slice_value_list:
       y = task_slice_value * np.ones(n_model_iter + 1)
       z = interpolator(x, y)
@@ -796,14 +795,14 @@ def Generate2dPlots(model_indices, mtcl, nominal_mtc):
     x = model_iter * np.ones(500)
     y = np.linspace(-0.8, 0.8, 500)
 
-    triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
-    interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
+    triang = mtri.Triangulation(cmtl[:, 1], cmtl[:, 2])
+    interpolator = mtri.LinearTriInterpolator(triang, cmtl[:, 0])
     z = interpolator(x, y)
     plt.plot(y, z, '-',  # color=color_names[i],
              linewidth=3, label="iter " + str(model_iter))
     # if plot_nominal:
-    #   triang = mtri.Triangulation(nominal_mtc[:, 0], nominal_mtc[:, 1])
-    #   interpolator = mtri.LinearTriInterpolator(triang, nominal_mtc[:, 2])
+    #   triang = mtri.Triangulation(nominal_cmt[:, 1], nominal_cmt[:, 2])
+    #   interpolator = mtri.LinearTriInterpolator(triang, nominal_cmt[:, 0])
     #   z = interpolator(x, y)
     #   plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
 
@@ -816,7 +815,7 @@ def Generate2dPlots(model_indices, mtcl, nominal_mtc):
     plt.savefig("%scost_vs_task.png" % eval_dir)
 
   ### 2D plot (iter vs tasks)
-  data_list = [mtcl, nominal_mtc]
+  data_list = [cmtl, nominal_cmt]
   title_list = ["(Drake sim)", "(traj opt)"]
   app_list = ["", "_nom"]
   for i in range(2 if plot_nominal else 1):
@@ -826,14 +825,14 @@ def Generate2dPlots(model_indices, mtcl, nominal_mtc):
     data = data_list[i]
     n_levels = 50
     levels = list(set(
-      np.linspace(min(data[:, 2]), max(data[:, 2]), n_levels).round(
+      np.linspace(min(data[:, 0]), max(data[:, 0]), n_levels).round(
         decimals=2)))  # set() is used to get rid of duplicates
     levels.sort()
     levels[0] -= 0.01
     levels[-1] += 0.01
     # levels = list(set(np.linspace(0.4, 3, n_levels)))
     # levels.sort()
-    surf = ax.tricontourf(data[:, 0], data[:, 1], data[:, 2], levels=levels, cmap='coolwarm')
+    surf = ax.tricontourf(data[:, 1], data[:, 2], data[:, 0], levels=levels, cmap='coolwarm')
     fig.colorbar(surf, shrink=0.9, aspect=15)
 
     # plt.xlim([0, 135])
@@ -846,7 +845,7 @@ def Generate2dPlots(model_indices, mtcl, nominal_mtc):
       plt.savefig("%scost_landscape_iter%s.png" % (eval_dir, app_list[i]))
 
 
-def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
+def ComputeExpectedCostOverTask(cmtl, stride_length_range_to_average):
   if len(stride_length_range_to_average) == 0:
     return
   elif len(stride_length_range_to_average) != 2:
@@ -861,8 +860,8 @@ def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
   for i in range(len(model_indices)):
     model_iter = model_indices[i]
     try:
-      viable_min = max(viable_min, min(mtcl[mtcl[:, 0] == model_iter, 1]))
-      viable_max = min(viable_max, max(mtcl[mtcl[:, 0] == model_iter, 1]))
+      viable_min = max(viable_min, min(cmtl[cmtl[:, 1] == model_iter, 2]))
+      viable_max = min(viable_max, max(cmtl[cmtl[:, 1] == model_iter, 2]))
     except ValueError:
       effective_length = i + 1
       print("Iteration %d doesn't have successful sample, so we stop plotting expected cost after this iter" % model_iter)
@@ -883,20 +882,20 @@ def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
     x = model_iter * np.ones(n_sample)
     y = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
 
-    triang = mtri.Triangulation(mtcl[:, 0], mtcl[:, 1])
-    interpolator = mtri.LinearTriInterpolator(triang, mtcl[:, 2])
+    triang = mtri.Triangulation(cmtl[:, 1], cmtl[:, 2])
+    interpolator = mtri.LinearTriInterpolator(triang, cmtl[:, 0])
     z = interpolator(x, y)
 
     # Make sure the averaged range is within the achievable task space
     # Method 1
-    # if min(mtcl[mtcl[:, 0] == model_iter, 1]) > stride_length_range_to_average[0]:
+    # if min(cmtl[cmtl[:, 0] == model_iter, 1]) > stride_length_range_to_average[0]:
     #   raise ValueError("iter %d: the range we average over is bigger than the achievable task space. Increase the range's lower bound" % model_iter)
-    # elif max(mtcl[mtcl[:, 0] == model_iter, 1]) < stride_length_range_to_average[1]:
+    # elif max(cmtl[cmtl[:, 0] == model_iter, 1]) < stride_length_range_to_average[1]:
     #   raise ValueError("the range we average over is bigger than the achievable task space. Decrease the range's upper bound" % model_iter)
     # Method 2
     if z.mask.sum() > 0:
-      viable_min = min(mtcl[mtcl[:, 0] == model_iter, 1])
-      viable_max = max(mtcl[mtcl[:, 0] == model_iter, 1])
+      viable_min = min(cmtl[cmtl[:, 1] == model_iter, 2])
+      viable_max = max(cmtl[cmtl[:, 1] == model_iter, 2])
       raise ValueError("iter %d: the range we average over is larger than the achievable task space. "
                        "We should either increase the range's lower bound or decrease the range's upper bound. "
                        "Viable (min, max) is (%f, %f)" % (model_iter, viable_min, viable_max))
@@ -914,13 +913,13 @@ def ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average):
     plt.savefig("%saveraged_cost_vs_model_iter.png" % eval_dir)
 
 
-def ComputeAchievableTaskRangeOverIter(mtcl):
+def ComputeAchievableTaskRangeOverIter(cmtl):
   ### 2D plot (task range vs iteration)
   task_range = np.zeros(len(model_indices))
   for i in range(len(model_indices)):
     model_iter = model_indices[i]
     try:
-      tasks = mtcl[mtcl[:, 0] == model_iter, 1]
+      tasks = cmtl[cmtl[:, 1] == model_iter, 2]
       task_range[i] = max(tasks) - min(tasks)
     except ValueError:
       task_range[i] = 0
@@ -955,6 +954,86 @@ def GetVaryingTaskElementIdx(task_list):
         found_varying_task = True
   return task_element_idx
 
+class Tasks:
+  # Constructor and builders
+  def __init__(self):
+    self.constructed = False
+    self.task_data = {}
+
+  def AddTaskDim(self, array, name, overwrite_existing=False):
+    if self.constructed:
+      raise ValueError("Cannot call this function after building the task obj")
+    if not isinstance(array, (list, np.ndarray)):
+      raise TypeError("array should be a list or numpy array")
+    if not isinstance(name, str):
+      raise TypeError("name should be a string")
+    if not overwrite_existing:
+      if name in self.task_data:
+        raise ValueError("%s is already a key in task_data" % name)
+    self.task_data[name] = np.array(array)
+
+  def CreateTasklistViaDfs(self, level, indices_tuple):
+    if level == self.n_dim - 1:
+      task = []
+      print("indices_tuple = " + str(indices_tuple))
+      for i_dim in range(self.n_dim):
+        task_idx = indices_tuple[i_dim]
+        task.append(self.task_data[self.names[i_dim]][task_idx])
+      self.task_list.append(task)
+    else:
+      for _ in self.task_data[self.names[level]]:
+        print("before " + str(indices_tuple))
+        self.CreateTasklistViaDfs(level + 1,  copy.deepcopy(indices_tuple))
+        print("after " + str(indices_tuple))
+        indices_tuple[level] += 1
+
+  def Construct(self):
+    self.constructed = True
+
+    self.n_dim = len(self.task_data)
+
+    # Compute n_task
+    self.n_task = 1
+    for key in self.task_data:
+      self.n_task *= len(self.task_data[key])
+
+    # Create ordered names
+    self.names = []
+    for key in self.task_data:
+      self.names.append(key)
+
+    # Create task list
+    # self.task_list = np.zeros((self.n_task, self.n_dim))
+    self.task_list = []
+    level = 0
+    indices_tuple = [0] * self.n_dim
+    self.CreateTasklistViaDfs(level, copy.deepcopy(indices_tuple))
+    self.task_arr = np.array(self.task_list)
+    if self.task_arr.shape != (self.n_task, self.n_dim):
+      raise ValueError("self.task_list.shape = " + str(self.task_arr.shape) + ", but we expect (" + str(self.n_task) + ", " + str(self.n_dim) + ")")
+
+    print("task_list = \n" + str(self.task_arr))
+
+  # Getters
+  def tasks_info(self):
+    output = ""
+    for name in self.names:
+      output += "%s ranges from %.3f to %.3f\n" % (name, self.task_data[name][0], self.task_data[name][-1])
+    return output
+
+  def get_task_dim(self):
+    return self.n_dim
+  def get_n_task(self):
+    return self.n_task
+  def GetDimIdxByName(self, name):
+    if not (name in self.names):
+      raise ValueError("%s doesn't exist in the tasks" % name)
+    return self.names.index(name)
+  def GetTask(self, task_idx):
+    return self.task_arr[task_idx]
+  def GetTaskList(self):
+    return self.task_arr
+
 
 if __name__ == "__main__":
   # Read the controller parameters
@@ -976,6 +1055,7 @@ if __name__ == "__main__":
   target_realtime_rate = 0.1  # 0.04
   foot_step_from_planner = True
   init_sim_vel = True
+  use_nominal_traj_pool = True
 
   ### parameters for model, task, and log indices
   # Model iteration list
@@ -984,8 +1064,10 @@ if __name__ == "__main__":
   idx_spacing = 5
 
   # Task list
-  n_task = 30
-  stride_length = np.linspace(-0.6, 0.6, n_task)
+  n_task_sl = 60
+  n_task_ph = 1
+  tasks = Tasks()
+  tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
   # stride_length = np.linspace(0, 0.1, n_task)
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
@@ -993,16 +1075,19 @@ if __name__ == "__main__":
   # stride_length = np.linspace(0, 0, n_task)
   # stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
-  ground_incline = 0.0
-  duration = -1.0  # assign later; this shouldn't be a task for sim evaluation
-  turning_rate = 0.0
-  pelvis_height = 0.95  # not used in simulation; only used in CollectAllTrajoptSampleIndices
+  tasks.AddTaskDim([0.0], "ground_incline")
+  tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
+  tasks.AddTaskDim([0.0], "turning_rate")
+  # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
+  # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
+  tasks.AddTaskDim([0.95], "pelvis_height")
 
   # log indices
   log_idx_offset = 0  # 0
 
   ### Parameters for plotting
-  log_indices_for_plot = list(range(log_idx_offset + n_task))
+  log_indices_for_plot = []
+  # log_indices_for_plot = list(range(log_idx_offset + tasks.get_n_task()))
   # log_indices_for_plot = list(range(240))
   save_fig = True
   plot_nominal = True
@@ -1050,7 +1135,8 @@ if __name__ == "__main__":
   if not ((task_names[0] == "stride_length") &
           (task_names[1] == "ground_incline") &
           (task_names[2] == "duration") &
-          (task_names[3] == "turning_rate")):
+          (task_names[3] == "turning_rate") &
+          (task_names[4] == "pelvis_height")):
     raise ValueError("ERROR: unexpected task name or task order")
   # Get duration from model optimization file
   path_1_0_task = model_dir + "1_0_task.csv"
@@ -1058,20 +1144,22 @@ if __name__ == "__main__":
     duration = np.loadtxt(path_1_0_task)[2]
   else:
     raise ValueError("%s doesn't exist" % path_1_0_task)
+  tasks.AddTaskDim([duration], "duration", True)
+  # Construct task object
+  tasks.Construct()
+  task_list = tasks.GetTaskList()
 
-  task_list = np.zeros((n_task, 5))
-  task_list[:, 0] = stride_length
-  task_list[:, 1] = ground_incline
-  task_list[:, 2] = duration
-  task_list[:, 3] = turning_rate
-  task_list[:, 4] = pelvis_height
-  print("task_list = \n" + str(task_list))
+  # Make sure the dimension is correct
+  if len(task_names) != tasks.get_task_dim():
+    raise ValueError("sim eval task dimension is different from trajopt dim. "
+                     "We want them to be the same becasue we use the same code "
+                     "to plot sim cost and trajopt cost")
 
+  # TODO: remove this restriction and generalize the plotting script to multidimensional task
   # index of task vector where we sweep through
   varying_task_element_idx = GetVaryingTaskElementIdx(task_list)
   if varying_task_element_idx != 0:
     raise ValueError("Currently, the code assume only stride length is varying")
-
 
   # Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.
@@ -1115,23 +1203,23 @@ if __name__ == "__main__":
   print("log_indices for plotting = " + str(log_indices))
 
   # Get samples to plot
-  # mtcl is a list of (model index, task value, cost, and log index)
-  mtcl = GetSamplesToPlot(model_indices, log_indices)
-  nominal_mtc = GetNominalSamplesToPlot(model_indices)
-  if len(nominal_mtc) == 0:
+  # cmtl is a list of (model index, task value, cost, and log index)
+  cmtl = GetSamplesToPlot(model_indices, log_indices)
+  nominal_cmt = GetNominalSamplesToPlot(model_indices)
+  if len(nominal_cmt) == 0:
     plot_nominal = False
 
   # Adjust slices value (for 2D plots)
   model_slices = AdjustSlices(model_slices)
 
   # Plot
-  Generate3dPlots(model_indices, mtcl, nominal_mtc)
-  Generate2dPlots(model_indices, mtcl, nominal_mtc)
+  Generate3dPlots(model_indices, cmtl, nominal_cmt)
+  Generate2dPlots(model_indices, cmtl, nominal_cmt)
 
   ### Compute expected (averaged) cost
-  ComputeExpectedCostOverTask(mtcl, stride_length_range_to_average)
+  ComputeExpectedCostOverTask(cmtl, stride_length_range_to_average)
 
   ### Compute task range over iteration
-  ComputeAchievableTaskRangeOverIter(mtcl)
+  ComputeAchievableTaskRangeOverIter(cmtl)
 
   plt.show()

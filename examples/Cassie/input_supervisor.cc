@@ -370,6 +370,7 @@ bool InputSupervisor::IsInCriticalFailure(
 
 bool InputSupervisor::HasLeftCriticalFailure(
     const OutputVector<double>* state) const {
+  double ankle_pos_threshold = 2.1; // I think we need this to prevent overextension
   double pelvis_vel_threshould = -0.3;
   // double max_duration =
 

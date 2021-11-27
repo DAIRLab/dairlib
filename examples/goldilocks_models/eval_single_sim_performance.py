@@ -451,8 +451,8 @@ def main():
   if is_hardware:
     spring_model = True
   else:
-    rom_iter_idx = int(sys.argv[3])
-    log_idx = int(sys.argv[4])
+    rom_iter_idx = int(sys.argv[3])  # doesn't affect cost calculation
+    log_idx = int(sys.argv[4])       # doesn't affect cost calculation
     desried_sim_end_time = float(sys.argv[5])
     spring_model = (sys.argv[6].lower() == "true")
 
@@ -536,10 +536,9 @@ def main():
   matplotlib.rcParams["savefig.directory"] = pathlib.Path(file_path).parent
 
   # Read the log file
-  x, u_meas, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
+  x, u_meas, imu_aceel, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
-  osc_output, full_log = process_lcm_log.process_log(log, pos_map, vel_map,
-    act_map, controller_channel)
+  osc_output, input_supervisor_status, t_input_supervisor, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   n_msgs = len(cassie_out)
   knee_pos = np.zeros(n_msgs)

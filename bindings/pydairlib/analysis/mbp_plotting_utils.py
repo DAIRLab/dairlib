@@ -63,6 +63,21 @@ def process_effort_channel(data):
     return {'t_u': np.array(t), 'u': np.array(u)}
 
 
+def make_point_positions_from_q(
+        q, plant, context, frame, pt_on_frame, frame_to_calc_position_in=None):
+
+    if frame_to_calc_position_in is None:
+        frame_to_calc_position_in = plant.world_frame()
+
+    pos = np.zeros((q.shape[0], 3))
+    for i, generalized_pos in enumerate(q):
+        plant.SetPositions(context, generalized_pos)
+        pos[i] = plant.CalcPointsPositions(context, frame, pt_on_frame,
+                                           frame_to_calc_position_in).ravel()
+
+    return pos
+
+
 def process_osc_channel(data):
     t_osc = []
     input_cost = []
@@ -201,6 +216,33 @@ def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
     u_slice = [u_map[name] for name in u_names]
     return plot_q_or_v_or_u(robot_output, 'u', u_names, u_slice, time_slice,
                             ylabel='Efforts (Nm)', title='Select Joint Efforts')
+
+
+def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
+                          pts, dims):
+
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': robot_output['t_x']}
+    legend_entries = {}
+    for name in frame_names:
+        frame = plant.GetBodyByName(name).body_frame()
+        pt = pts[name]
+        data_dict[name] = make_point_positions_from_q(robot_output['q'],
+                                                      plant, context, frame, pt)
+        legend_entries[name] = [name + dim_map[dim] for dim in dims[name]]
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        frame_names,
+        dims,
+        legend_entries,
+        {'title': 'Point Positions',
+         'xlabel': 'time (s)',
+         'ylabel': 'pos (m)'}, ps)
+
+    return ps
 
 
 def plot_tracking_costs(osc_debug, time_slice):

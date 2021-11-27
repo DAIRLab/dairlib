@@ -31,7 +31,10 @@ class CassiePlotConfig():
             self.vel_names = data['special_velocities_to_plot']
         if data['special_efforts_to_plot']:
             self.act_names = data['special_efforts_to_plot']
-
+        if data['foot_positions_to_plot']:
+            self.foot_positions_to_plot = data['foot_positions_to_plot']
+            self.foot_xyz_to_plot = data['foot_xyz_to_plot']
+            self.pt_on_foot_to_plot = data['pt_on_foot_to_plot']
         self.plot_qp_costs = data['plot_qp_costs']
         self.plot_tracking_costs = data['plot_tracking_costs']
         self.tracking_datas_to_plot = data['tracking_datas_to_plot']

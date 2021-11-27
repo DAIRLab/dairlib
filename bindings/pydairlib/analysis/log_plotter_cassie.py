@@ -81,6 +81,7 @@ def main():
                                                 plot_config.act_names,
                                                 t_x_slice, act_map)
 
+    ''' Plot OSC '''
     if plot_config.plot_qp_costs:
         mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
     if plot_config.plot_tracking_costs:
@@ -93,6 +94,18 @@ def main():
                     mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
                                                      deriv, t_osc_slice)
 
+    if plot_config.foot_positions_to_plot:
+        _, pts_map = cassie_plots.get_toe_frames_and_points(plant)
+        foot_frames = []
+        dims = {}
+        pts = {}
+        for pos in plot_config.foot_positions_to_plot:
+            foot_frames.append('toe_' + pos)
+            dims['toe_' + pos] = plot_config.foot_xyz_to_plot[pos]
+            pts['toe_' + pos] = pts_map[plot_config.pt_on_foot_to_plot]
+
+        mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
+                                        foot_frames, pts, dims)
     plt.show()
 
 

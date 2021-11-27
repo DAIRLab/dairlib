@@ -38,3 +38,18 @@ def make_plant_and_context(floating_base=True, springs=True):
 
     plant.Finalize()
     return plant, plant.CreateDefaultContext()
+
+
+def get_toe_frames_and_points(plant):
+    front_contact_pt = np.array((-0.0457, 0.112, 0))
+    rear_contact_pt = np.array((0.088, 0, 0))
+    mid_contact_pt = 0.5 * (front_contact_pt + rear_contact_pt)
+
+    left_frame = plant.GetBodyByName("toe_left")
+    right_frame = plant.GetBodyByName("toe_right")
+
+    frames = {"left": left_frame, "right": right_frame}
+    pts = {"rear": rear_contact_pt, "mid": mid_contact_pt,
+           "front": front_contact_pt}
+
+    return frames, pts

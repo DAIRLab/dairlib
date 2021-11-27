@@ -94,6 +94,7 @@ def main():
                     mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
                                                      deriv, t_osc_slice)
 
+    ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:
         _, pts_map = cassie_plots.get_toe_frames_and_points(plant)
         foot_frames = []

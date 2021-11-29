@@ -46,15 +46,6 @@ py_binary(
     ],
 )
 
-py_library(
-    name = "process_lcm_log_py",
-    srcs = ["process_lcm_log.py"],
-    deps = [
-        ":module_py",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -74,7 +65,6 @@ PY_LIBRARIES = [
     ":dircon_trajectory_plotter",
     ":lcm_trajectory_plotter",
     ":lcm_trajectory_py",
-    ":process_lcm_log_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

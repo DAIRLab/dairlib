@@ -9,6 +9,7 @@ from process_lcm_log import get_log_data
 from cassie_plot_config import CassiePlotConfig
 import cassie_plotting_utils as cassie_plots
 import mbp_plotting_utils as mbp_plots
+import mpc_debug as mpc
 
 
 def main():
@@ -22,6 +23,7 @@ def main():
     channel_x = plot_config.channel_x
     channel_u = plot_config.channel_u
     channel_osc = plot_config.channel_osc
+    channel_mpc = plot_config.channel_mpc
 
     ''' Get the plant '''
     plant, context = cassie_plots.make_plant_and_context(
@@ -37,6 +39,9 @@ def main():
                      cassie_plots.cassie_default_channels,      # lcm channels
                      mbp_plots.load_default_channels,           # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
+    mpc_data = get_log_data(log,
+                            {channel_mpc: dairlib.lcmt_saved_traj},
+                            mpc.process_mpc_channel, channel_mpc)
 
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
@@ -107,6 +112,12 @@ def main():
 
         mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
                                         foot_frames, pts, dims)
+
+    ''' Plot MPC solutions '''
+    for traj, config in plot_config.mpc_trajs_to_plot.items():
+        for dim in config['dims']:
+            mpc.plot_mpc_traj(mpc_data, traj, dim)
+
     plt.show()
 
 

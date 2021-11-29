@@ -30,6 +30,15 @@ py_library(
 )
 
 py_library(
+    name = "mpc_debug_py",
+    srcs = ["mpc_debug.py"],
+    deps = [
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/common:plotting_utils",
+    ],
+)
+
+py_library(
     name = "mbp_plotting_utils",
     srcs = ["mbp_plotting_utils.py"],
     data = ["@lcm//:lcm-python"],

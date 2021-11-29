@@ -19,6 +19,7 @@ def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
     plt.xlabel(plot_labels['xlabel'])
     plt.ylabel(plot_labels['ylabel'])
     plt.title(plot_labels['title'])
+    ps.set_default_styling()
 
 
 def make_mixed_data_plot(data_dictionaries, time_keys, time_slices,
@@ -43,3 +44,4 @@ def make_mixed_data_plot(data_dictionaries, time_keys, time_slices,
     plt.xlabel(plot_labels['xlabel'])
     plt.ylabel(plot_labels['ylabel'])
     plt.title(plot_labels['title'])
+    ps.set_default_styling()

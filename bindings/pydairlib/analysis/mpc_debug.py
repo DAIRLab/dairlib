@@ -102,7 +102,7 @@ def plot_mpc_traj(mpc_solutions, traj_name, dim):
         keys_to_plot,
         slices_to_plot,
         legend_entries,
-        {'title': traj_name + "mpc sol " + str(dim),
+        {'title': traj_name + " mpc sol " + str(dim),
          'xlabel': 't(s)',
          'ylabel': 'y'}, ps)
 

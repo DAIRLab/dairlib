@@ -318,4 +318,5 @@ def plot_qp_costs(osc_debug, time_slice):
 
 
 def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
-    ps.plot(fsm_time, scale*fsm_signal)
+    ps.attach()
+    plt.plot(fsm_time, scale*fsm_signal)

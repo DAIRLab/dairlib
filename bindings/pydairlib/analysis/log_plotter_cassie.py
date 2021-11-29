@@ -118,6 +118,8 @@ def main():
         for dim in config['dims']:
             mpc.plot_mpc_traj(mpc_data, traj, dim)
 
+    ''' Custom Plots '''
+
     plt.show()
 
 

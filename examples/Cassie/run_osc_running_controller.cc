@@ -87,6 +87,7 @@ DEFINE_bool(use_radio, false,
 DEFINE_string(
     channel_cassie_out, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
+DEFINE_double(fsm_time_offset, 0.0, "Time (s) in the fsm to move from the stance phase to the flight phase");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -158,10 +159,10 @@ int DoMain(int argc, char* argv[]) {
   int right_stance_state = 1;
   int right_touchdown_air_phase = 2;
   int left_touchdown_air_phase = 3;
-  double left_support_duration = dircon_trajectory.GetStateBreaks(1)(0) * 2 - 0.030;
+  double left_support_duration = dircon_trajectory.GetStateBreaks(1)(0) * 2 - FLAGS_fsm_time_offset;
   double right_support_duration = left_support_duration;
   double air_phase_duration = dircon_trajectory.GetStateBreaks(2)(0) -
-                              dircon_trajectory.GetStateBreaks(1)(0) + 0.030;
+                              dircon_trajectory.GetStateBreaks(1)(0) + FLAGS_fsm_time_offset;
   vector<int> fsm_states = {left_stance_state, right_touchdown_air_phase,
                             right_stance_state, left_touchdown_air_phase,
                             left_stance_state};
@@ -351,6 +352,10 @@ int DoMain(int argc, char* argv[]) {
                                           osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_p_footstep,
                                           osc_gains.K_d_footstep);
+  l_foot_traj_generator->SetFootPlacementOffsets(osc_gains.center_line_offset,
+                                                 osc_gains.footstep_offset);
+  r_foot_traj_generator->SetFootPlacementOffsets(osc_gains.center_line_offset,
+                                                 osc_gains.footstep_offset);
 
   TransTaskSpaceTrackingData pelvis_tracking_data(
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,

@@ -12,14 +12,15 @@ plot_floating_base_positions: false
 plot_floating_base_velocities: false
 plot_joint_positions: false
 plot_joint_velocities: false
-plot_measured_efforts: false
+plot_measured_efforts: true
 special_positions_to_plot: []
 special_velocities_to_plot: []
 special_efforts_to_plot: []
 
 # Desired osc plots
 plot_qp_costs: false
-plot_tracking_costs: false
+plot_tracking_costs: true
 tracking_datas_to_plot:
-  left_ft_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+  left_ft_traj: {'dims': [0], 'derivs': ['pos', 'vel', 'accel']}
+  right_ft_traj: {'dims': [0], 'derivs': ['pos', 'vel', 'accel']}
 #  swing_ft_traj: {'dims': [2], 'derivs': ['pos', 'accel']}

@@ -1,7 +1,7 @@
 w_input: 0.0000000000
 w_accel: 0.0000
 #w_soft_constraint: 1000000
-w_soft_constraint: 100.0
+w_soft_constraint: 10000.0
 w_input_reg: 0.001
 impact_threshold: 0.050
 relative_feet: true
@@ -9,7 +9,7 @@ relative_pelvis: true
 
 # High level command gains (with radio)
 vel_scale_rot: -0.5
-vel_scale_trans_sagital: 0.125
+vel_scale_trans_sagital: 1.0
 vel_scale_trans_lateral: -0.15
 
 # SLIP parameters
@@ -23,23 +23,26 @@ w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 0.05
+w_hip_yaw: 200
 hip_yaw_kp: 100
 hip_yaw_kd: 15
 w_hip_pitch: 5
 hip_pitch_kp: 100
-hip_pitch_kd: 20
+hip_pitch_kd: 10
 w_hip_roll: 5
 hip_roll_kp: 100
-hip_roll_kd: 20
+hip_roll_kd: 10
 
+# Foot placement parameters
+footstep_offset: -0.025
+center_line_offset: 0.05
 FootstepKp:
   [0.00,    0,
    0,    0.00,
    0,       0]
 FootstepKd:
   [  0.06,     0,
-     0,     0.04,
+     0,     0.03,
      0,        0]
 
 PelvisW:
@@ -64,15 +67,15 @@ SwingFootKp:
    0,     0,  50]
 SwingFootKd:
   [ 1,   0,   0,
-    0,  1,   0,
+    0,   1,   0,
     0,   0,   1]
 LiftoffSwingFootW:
-  [1,    0,    0,
-   0,    1,    0,
+  [0.1,    0,    0,
+   0,    0.5,    0,
    0,    0,    1]
 LiftoffSwingFootKp:
   [50,    0,    0,
-    0,   50,    0,
+    0,   25,    0,
     0,    0,   50]
 LiftoffSwingFootKd:
   [ 1,   0,   0,

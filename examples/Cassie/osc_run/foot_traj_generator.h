@@ -34,6 +34,11 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
     Kd_ = Kd;
   };
 
+  void SetFootPlacementOffsets(double center_line_offset, double footstep_offset){
+    center_line_offset_ = center_line_offset;
+    footstep_offset_ = footstep_offset;
+  }
+
  private:
   drake::trajectories::PiecewisePolynomial<double> GenerateFlightTraj(
       const Eigen::VectorXd& x, double t) const;
@@ -48,6 +53,10 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::Frame<double>& world_;
   const drake::multibody::Frame<double>& hip_frame_;
+
+  // Foot placement constants
+  double center_line_offset_;
+  double footstep_offset_;
 
   // Raibert Footstep Gains
   Eigen::MatrixXd Kp_ = Eigen::MatrixXd::Zero(2, 2);

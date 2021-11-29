@@ -95,11 +95,11 @@ void FootTrajGenerator::AddRaibertCorrection(
   VectorXd footstep_correction =
       Kp_ * (pelvis_pos_err) + Kd_ * (pelvis_vel_err);
   if (is_left_foot_) {
-    footstep_correction(1) -= 0.03;
+    footstep_correction(1) -= center_line_offset_;
   } else {
-    footstep_correction(1) += 0.03;
+    footstep_correction(1) += center_line_offset_;
   }
-  footstep_correction(0) -= 0.02;
+  footstep_correction(0) += footstep_offset_;
   Vector3d pelvis_heading_vec =
       plant_.EvalBodyPoseInWorld(*context_, plant_.GetBodyByName("pelvis"))
           .rotation()

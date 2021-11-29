@@ -27,6 +27,9 @@ struct OSCRunningGains : OSCGains {
   double k_leg;
   double b_leg;
 
+  double center_line_offset;
+  double footstep_offset;
+
   // swing foot tracking
   std::vector<double> SwingFootW;
   std::vector<double> SwingFootKp;
@@ -80,6 +83,8 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(rest_length));
     a->Visit(DRAKE_NVP(k_leg));
     a->Visit(DRAKE_NVP(b_leg));
+    a->Visit(DRAKE_NVP(center_line_offset));
+    a->Visit(DRAKE_NVP(footstep_offset));
 
     a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(PelvisKp));

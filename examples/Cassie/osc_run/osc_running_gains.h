@@ -143,10 +143,10 @@ struct OSCRunningGains : OSCGains {
         this->PelvisKd.data(), 3, 3);
     K_p_footstep = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->FootstepKp.data(), 3, 2);
+        this->FootstepKp.data(), 3, 3);
     K_d_footstep = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->FootstepKd.data(), 3, 2);
+        this->FootstepKd.data(), 3, 3);
 
     W_swing_toe = this->w_swing_toe * MatrixXd::Identity(1, 1);
     K_p_swing_toe = this->swing_toe_kp * MatrixXd::Identity(1, 1);

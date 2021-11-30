@@ -363,7 +363,7 @@ int do_main(int argc, char* argv[]) {
 
       // Hacks -- for some reason, sometimes the lcm from Mujoco is not in order
       if (prev_time > time) {
-        std::cout << time << std::endl;
+        std::cout << "time: " << time << std::endl;
         continue;
       }
 

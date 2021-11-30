@@ -4,9 +4,7 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/trajectory.h"
-
 #include "systems/framework/output_vector.h"
-#include "target_swing_ft_traj_gen.h"
 
 namespace dairlib::systems::controllers {
 
@@ -17,16 +15,27 @@ namespace dairlib::systems::controllers {
 /// of the next stance foot location. A cubic spline is used for the swing foot
 /// z coordinate
 
-class FiniteHorizonLqrSwingFootTrajGenerator :
-     public drake::systems::LeafSystem<double> {
+typedef struct SwingFootTajGenOptions {
+  std::string floating_base_body_name = "";
+  double mid_foot_height;
+  double desired_final_foot_height ;
+  double desired_final_vertical_foot_velocity;
+  double max_com_to_x_footstep_dist;
+  double footstep_offset;
+  double center_line_offset;
+  bool wrt_com_in_local_frame = false;
+} SwingFootTajGenOptions;
+
+
+class TargetSwingFtTrajGen :
+    public drake::systems::LeafSystem<double> {
  public:
-  FiniteHorizonLqrSwingFootTrajGenerator(
+  TargetSwingFtTrajGen(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const drake::systems::LinearSystem<double>& double_integrator,
-      const std::vector<int> left_right_support_fsm_states,
-      const std::vector<double> left_right_support_durations,
+      const std::vector<int>& left_right_support_fsm_states,
+      const std::vector<double>&  left_right_support_durations,
       const std::vector<std::pair<const Eigen::Vector3d,
-                            const drake::multibody::Frame<double>&>> pts,
+                                  const drake::multibody::Frame<double>&>> pts,
       const SwingFootTajGenOptions opts);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -43,35 +52,29 @@ class FiniteHorizonLqrSwingFootTrajGenerator :
     return this->get_input_port(foot_target_port_);
   }
 
-  static drake::systems::LinearSystem<double> MakeDoubleIntegratorSystem();
-
  private:
-
-  Eigen::Vector4d CalcSwingFootState(
-      const Eigen::VectorXd& x,
-      const std::pair<
-      const Eigen::Vector3d, const drake::multibody::Frame<double>&> pt) const;
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
   drake::trajectories::PiecewisePolynomial<double> CreateSplineForSwingFoot(
       const double start_time_of_this_interval,
       const double end_time_of_this_interval,
-      const double timestamp,
-      const Eigen::Vector4d& init_swing_foot_xy_state,
-      const Eigen::Vector2d& u,
+      const Eigen::Vector3d& init_foot_pos,
+      const Eigen::Vector3d& target_foot_pos,
       double stance_foot_height) const;
 
   double CalcStanceFootHeight(const Eigen::VectorXd& x,
-      const std::pair<
-      const Eigen::Vector3d, const drake::multibody::Frame<double>&> pt) const;
+                              const std::pair<
+                                  const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&> pt) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;
 
   // MBP parameters
   const drake::multibody::MultibodyPlant<double>& plant_;
-  std::unique_ptr<drake::systems::Context<double>> plant_context_;
-  const drake::systems::LinearSystem<double>& double_integrator_;
-  mutable std::unique_ptr<drake::systems::Context<double>> double_integrator_context_;
+  const std::unique_ptr<drake::systems::Context<double>> plant_context_;
 
   // Footstep parameters
   const SwingFootTajGenOptions opts_;
@@ -94,9 +97,9 @@ class FiniteHorizonLqrSwingFootTrajGenerator :
   int liftoff_time_port_;
   int foot_target_port_;
 
-  // LQR parameters
-  Eigen::Matrix<double, 4, 4> Q_ =  Eigen::Matrix4d::Identity();
-  Eigen::Matrix<double, 4, 4> Qf_ = 5 * Eigen::Matrix4d::Identity();
-  Eigen::Matrix<double, 2, 2> R_ = 0.1 * Eigen::Matrix2d::Identity();
+  // states
+  int starting_foot_pos_idx_;
+  int prev_fsm_idx_;
+
 };
 }

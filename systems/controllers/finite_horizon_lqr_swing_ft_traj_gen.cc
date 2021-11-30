@@ -1,5 +1,6 @@
-#include <drake/common/trajectories/exponential_plus_piecewise_polynomial.h>
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/systems/controllers/finite_horizon_linear_quadratic_regulator.h"
+#include "drake/math/saturate.h"
 #include "systems/controllers/finite_horizon_lqr_swing_ft_traj_gen.h"
 #include "systems/framework/output_vector.h"
 #include "multibody/multibody_utils.h"
@@ -46,7 +47,6 @@ FiniteHorizonLqrSwingFootTrajGenerator::FiniteHorizonLqrSwingFootTrajGenerator(
     double_integrator_context_(double_integrator_.CreateDefaultContext()),
     opts_(opts),
     left_right_support_fsm_states_(left_right_support_fsm_states),
-    left_right_support_durations_(left_right_support_durations),
     pts_(pts) {
 
   state_port_ = this->DeclareVectorInputPort(
@@ -132,10 +132,12 @@ void FiniteHorizonLqrSwingFootTrajGenerator::CalcTrajs(
         - result.K->value(timestamp) * (x_di - result.x0->value(timestamp))
         - result.k0->value(timestamp) + result.u0->value(timestamp);
 
+    for (int i = 0; i < u.size(); i++) {
+      u[i] = drake::math::saturate(u[i], -30.0, 30.0);
+    }
+
     *pp_traj = CreateSplineForSwingFoot(
-        liftoff_time, end_time, timestamp, x_di, u,
-        CalcStanceFootHeight(
-            robot_output->GetState(), stance_foot_map_.at(fsm_state)));
+        liftoff_time, end_time, timestamp, x_di, u, 0);
 
   } else if (is_single_support_phase) {
     Vector3d pos;
@@ -144,6 +146,7 @@ void FiniteHorizonLqrSwingFootTrajGenerator::CalcTrajs(
         swing_foot_map_.at(fsm_state).first,
         plant_.world_frame(), &pos);
     *pp_traj = PiecewisePolynomial<double>(pos);
+    std::cout << "constant position" << std::endl;
   } else {
     *pp_traj = PiecewisePolynomial<double>(Vector3d::Zero());
   }
@@ -167,6 +170,7 @@ PiecewisePolynomial<double>
   Vector2d end_pos = init_swing_foot_xy_state.head(2)
                    + init_swing_foot_xy_state.tail(2) * dt + 0.5 * u * dt*dt;
   Vector2d end_vel = init_swing_foot_xy_state.tail(2) + u * dt;
+
 
   start.head(2) = init_swing_foot_xy_state.head(2);
   start.segment(3, 2) = init_swing_foot_xy_state.tail(2);

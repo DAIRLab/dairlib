@@ -23,7 +23,7 @@
 #include "systems/controllers/osc/rpy_space_tracking_data.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/controllers/fsm_event_time.h"
-#include "systems/controllers/finite_horizon_lqr_swing_ft_traj_gen.h"
+#include "systems/controllers/target_swing_ft_traj_gen.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -66,7 +66,7 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RpyTaskSpaceTrackingData;
-using systems::controllers::FiniteHorizonLqrSwingFootTrajGenerator;
+using systems::controllers::TargetSwingFtTrajGen;
 using systems::controllers::SwingFootTajGenOptions;
 using systems::TimeBasedFiniteStateMachine;
 using systems::DairlibSignalReceiver;
@@ -158,9 +158,7 @@ int DoMain(int argc, char* argv[]) {
   /**** Setup swing foot tracking options ****/
   SwingFootTajGenOptions swing_foot_taj_gen_options;
   swing_foot_taj_gen_options.mid_foot_height = FLAGS_swing_ft_height;
-  auto lsys =
-      FiniteHorizonLqrSwingFootTrajGenerator::MakeDoubleIntegratorSystem();
-  auto lsys_context = lsys.CreateDefaultContext();
+  swing_foot_taj_gen_options.desired_final_vertical_foot_velocity = -0.1;
 
   std::vector<std::pair<const Eigen::Vector3d,
                         const drake::multibody::Frame<double>&>>
@@ -223,8 +221,8 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
           plant_w_springs, single_support_states);
   auto swing_foot_traj_gen =
-      builder.AddSystem<FiniteHorizonLqrSwingFootTrajGenerator>(
-          plant_w_springs, lsys, single_support_states, single_support_durations,
+      builder.AddSystem<TargetSwingFtTrajGen>(
+          plant_w_springs, single_support_states, single_support_durations,
           left_right_pts, swing_foot_taj_gen_options);
 
   /**** OSC setup ****/
@@ -363,7 +361,8 @@ int DoMain(int argc, char* argv[]) {
   }
 
   RpyTaskSpaceTrackingData angular_traj("orientation_traj", gains.K_p_orientation,
-                                      gains.K_d_orientation, gains.W_orientation, plant_w_springs, plant_w_springs);
+                                      gains.K_d_orientation, gains.W_orientation,
+                                      plant_w_springs, plant_w_springs);
 
   angular_traj.AddFrameToTrack("pelvis");
 

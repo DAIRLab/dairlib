@@ -193,11 +193,24 @@ cc_library(
 )
 
 cc_library(
+    name = "target_swing_ft_traj_gen",
+    srcs = ["target_swing_ft_traj_gen.cc"],
+    hdrs = ["target_swing_ft_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "finite_horizon_lqr_swing_ft_traj_gen",
     srcs = ["finite_horizon_lqr_swing_ft_traj_gen.cc"],
     hdrs = ["finite_horizon_lqr_swing_ft_traj_gen.h"],
     deps = [
         ":control_utils",
+        ":target_swing_ft_traj_gen",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

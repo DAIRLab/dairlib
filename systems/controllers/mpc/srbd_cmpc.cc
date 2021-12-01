@@ -132,8 +132,8 @@ void SrbdCMPC::Build() {
 
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-4);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-4);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
@@ -232,8 +232,8 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
     beq = VectorXd::Zero(nx_);
     CopyDiscreteDynamicsConstraint(modes_.at(1-fsm_state),
         false, pos, &Aeq, &beq);
-    prog_.RemoveConstraint(dynamics_.back());
-    dynamics_.back() = prog_.AddLinearEqualityConstraint(
+    prog_.RemoveConstraint(dynamics_.at(mode.N));
+    dynamics_.at(mode.N) = prog_.AddLinearEqualityConstraint(
         Aeq, beq,
         {xx.at(total_knots_-1), pp.at(1-fsm_state),
          uu.at(total_knots_-1), xx.at(total_knots_)});

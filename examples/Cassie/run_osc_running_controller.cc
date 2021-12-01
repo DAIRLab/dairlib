@@ -340,8 +340,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<PelvisTransTrajGenerator>(
           plant, plant_context.get(), pelvis_trans_traj, feet_contact_points,
           osc_gains.relative_pelvis);
-  pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length,
-                                             osc_gains.k_leg, osc_gains.b_leg);
+  pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length);
+  //                                             osc_gains.k_leg,
+  //                                             osc_gains.b_leg);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "hip_left", true, l_foot_trajectory,
       l_hip_trajectory, osc_gains.relative_feet);

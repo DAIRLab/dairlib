@@ -31,11 +31,7 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(clock_port_);
   }
 
-  void SetSLIPParams(double rest_length, double k_leg, double b_leg){
-    rest_length_ = rest_length;
-    k_leg_ = k_leg;
-    b_leg_ = rest_length;
-  }
+  void SetSLIPParams(double rest_length) { rest_length_ = rest_length; }
 
  private:
   drake::trajectories::PiecewisePolynomial<double> GeneratePelvisTraj(

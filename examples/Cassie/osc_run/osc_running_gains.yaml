@@ -14,8 +14,6 @@ vel_scale_trans_lateral: -0.15
 
 # SLIP parameters
 rest_length: 0.9
-k_leg: -750
-b_leg: 1
 
 mu: 0.8
 
@@ -34,7 +32,7 @@ hip_roll_kp: 50
 hip_roll_kd: 10
 
 # Foot placement parameters
-footstep_offset: -0.033
+footstep_offset: -0.045
 center_line_offset: 0.06
 FootstepKp:
   [0.00,    0,    0,
@@ -42,7 +40,7 @@ FootstepKp:
    0,       0,    0]
 FootstepKd:
   [  0.02,     0,  0,
-     0,     0.031, 0,
+     0,     0.041, 0,
      0,        0,  0]
 
 PelvisW:
@@ -67,7 +65,7 @@ SwingFootKp:
    0,     0,  50]
 SwingFootKd:
   [ 1,   0,   0,
-    0,   1,   0,
+    0,   3,   0,
     0,   0,   1]
 LiftoffSwingFootW:
   [0.1,    0,    0,

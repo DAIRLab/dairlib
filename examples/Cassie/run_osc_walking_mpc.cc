@@ -5,6 +5,8 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/primitives/trajectory_source.h"
+#include "drake/systems/primitives/constant_value_source.h"
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -49,8 +51,7 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using multibody::FixedJointEvaluator;
-
+using drake::Value;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -60,7 +61,8 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
-using drake::trajectories::PiecewisePolynomial;
+using drake::systems::TrajectorySource;
+using drake::systems::ConstantValueSource;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
@@ -70,6 +72,7 @@ using systems::controllers::TargetSwingFtTrajGen;
 using systems::controllers::SwingFootTajGenOptions;
 using systems::TimeBasedFiniteStateMachine;
 using systems::DairlibSignalReceiver;
+using multibody::FixedJointEvaluator;
 
 namespace examples {
 
@@ -224,6 +227,11 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<TargetSwingFtTrajGen>(
           plant_w_springs, single_support_states, single_support_durations,
           left_right_pts, swing_foot_taj_gen_options);
+
+  auto zero_rot_traj_source = builder.AddSystem(
+      std::make_unique<ConstantValueSource<double>>(
+          Value<drake::trajectories::Trajectory<double>>(
+              drake::trajectories::PiecewisePolynomial<double>(VectorXd::Zero(3)))));
 
   /**** OSC setup ****/
   // Cost
@@ -400,8 +408,10 @@ int DoMain(int argc, char* argv[]) {
                   mpc_reciever->get_input_port());
   builder.Connect(mpc_reciever->get_com_traj_output_port(),
                   osc->get_tracking_data_input_port("com_traj"));
-  builder.Connect(mpc_reciever->get_angular_traj_output_port(),
+  builder.Connect(zero_rot_traj_source->get_output_port(),
                   osc->get_tracking_data_input_port("orientation_traj"));
+//  builder.Connect(mpc_reciever->get_angular_traj_output_port(),
+//                  osc->get_tracking_data_input_port("orientation_traj"));
   builder.Connect(mpc_reciever->get_swing_ft_target_output_port(),
                   swing_foot_traj_gen->get_input_port_foot_target());
   builder.Connect(fsm->get_output_port(),

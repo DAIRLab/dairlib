@@ -235,8 +235,8 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
     prog_.RemoveConstraint(dynamics_.at(mode.N));
     dynamics_.at(mode.N) = prog_.AddLinearEqualityConstraint(
         Aeq, beq,
-        {xx.at(total_knots_-1), pp.at(1-fsm_state),
-         uu.at(total_knots_-1), xx.at(total_knots_)});
+        {xx.at(mode.N), pp.at(1-fsm_state),
+         uu.at(mode.N), xx.at(mode.N+1)});
   } else {
     int idx = n_until_next_stance;
     MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + kLinearDim_ + nu_);
@@ -420,10 +420,10 @@ EventStatus SrbdCMPC::PeriodicUpdate(
 //                  foot_target.tail(kLinearDim_),
 //                  warmstart_traj);
 
-//  auto lin_con = prog_.GetAllLinearConstraints();
-//  for (auto& binding : lin_con) {
-//    std::cout << "Next Binding:\n" << binding << std::endl;
-//  }
+  auto lin_con = prog_.GetAllLinearConstraints();
+  for (auto& binding : lin_con) {
+    std::cout << "Next Binding:\n" << binding << std::endl;
+  }
 //  print_constraint(lin_con);
 
 

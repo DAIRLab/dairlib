@@ -164,7 +164,7 @@ int DoMain(int argc, char* argv[]) {
   cmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
   cmpc->SetTerminalCost(gains.qf.asDiagonal());
   cmpc->AddInputRegularization(gains.r.asDiagonal());
-  cmpc->AddFootPlacementRegularization(Eigen::Matrix3d::Zero());
+  cmpc->AddFootPlacementRegularization(0.1*Eigen::Matrix3d::Identity());
 
   // set friction coeff
   cmpc->SetMu(gains.mu);

@@ -35,9 +35,9 @@ def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
     robot_output, robot_input, osc_debug = \
-        get_log_data(log,  # log
-                     cassie_plots.cassie_default_channels,  # lcm channels
-                     mbp_plots.load_default_channels,  # processing callback
+        get_log_data(log,                                       # log
+                     cassie_plots.cassie_default_channels,      # lcm channels
+                     mbp_plots.load_default_channels,           # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
     # Define x time slice
@@ -83,18 +83,33 @@ def main():
                                                 plot_config.act_names,
                                                 t_x_slice, act_map)
 
+    ''' Plot OSC '''
     if plot_config.plot_qp_costs:
         mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
     if plot_config.plot_tracking_costs:
         mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
 
-    for traj_name, config in plot_config.tracking_datas_to_plot.items():
-        for deriv in config['derivs']:
-            for dim in config['dims']:
-                ps = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
-                                                 deriv, t_osc_slice)
-                mbp_plots.add_fsm_to_plot(ps, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
+    if plot_config.tracking_datas_to_plot:
+        for traj_name, config in plot_config.tracking_datas_to_plot.items():
+            for deriv in config['derivs']:
+                for dim in config['dims']:
+                    ps = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
+                                                     deriv, t_osc_slice)
+                    mbp_plots.add_fsm_to_plot(ps, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
 
+    ''' Plot Foot Positions '''
+    if plot_config.foot_positions_to_plot:
+        _, pts_map = cassie_plots.get_toe_frames_and_points(plant)
+        foot_frames = []
+        dims = {}
+        pts = {}
+        for pos in plot_config.foot_positions_to_plot:
+            foot_frames.append('toe_' + pos)
+            dims['toe_' + pos] = plot_config.foot_xyz_to_plot[pos]
+            pts['toe_' + pos] = pts_map[plot_config.pt_on_foot_to_plot]
+
+        mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
+                                        foot_frames, pts, dims)
     plt.show()
 
 

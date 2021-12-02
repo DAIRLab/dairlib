@@ -63,6 +63,21 @@ def process_effort_channel(data):
     return {'t_u': np.array(t), 'u': np.array(u)}
 
 
+def make_point_positions_from_q(
+        q, plant, context, frame, pt_on_frame, frame_to_calc_position_in=None):
+
+    if frame_to_calc_position_in is None:
+        frame_to_calc_position_in = plant.world_frame()
+
+    pos = np.zeros((q.shape[0], 3))
+    for i, generalized_pos in enumerate(q):
+        plant.SetPositions(context, generalized_pos)
+        pos[i] = plant.CalcPointsPositions(context, frame, pt_on_frame,
+                                           frame_to_calc_position_in).ravel()
+
+    return pos
+
+
 def process_osc_channel(data):
     t_osc = []
     input_cost = []
@@ -132,8 +147,8 @@ def load_osc_channel(data, osc_debug_channel):
 
 
 def plot_q_or_v_or_u(
-    robot_output, key, x_names, x_slice, time_slice,
-    ylabel=None, title=None):
+        robot_output, key, x_names, x_slice, time_slice,
+        ylabel=None, title=None):
     ps = plot_styler.PlotStyler()
     ps.set_default_styling()
     if ylabel is None:
@@ -142,12 +157,12 @@ def plot_q_or_v_or_u(
         title = key
 
     plotting_utils.make_plot(
-        robot_output,  # data dict
-        't_x',  # time channel
+        robot_output,                       # data dict
+        't_x',                              # time channel
         time_slice,
-        [key],  # key to plot
-        {key: x_slice},  # slice of key to plot
-        {key: x_names},  # legend entries
+        [key],                              # key to plot
+        {key: x_slice},                     # slice of key to plot
+        {key: x_names},                     # legend entries
         {'xlabel': 'Time',
          'ylabel': ylabel,
          'title': title}, ps)
@@ -204,6 +219,33 @@ def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
                             ylabel='Efforts (Nm)', title='Select Joint Efforts')
 
 
+def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
+                          pts, dims):
+
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': robot_output['t_x']}
+    legend_entries = {}
+    for name in frame_names:
+        frame = plant.GetBodyByName(name).body_frame()
+        pt = pts[name]
+        data_dict[name] = make_point_positions_from_q(robot_output['q'],
+                                                      plant, context, frame, pt)
+        legend_entries[name] = [name + dim_map[dim] for dim in dims[name]]
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        frame_names,
+        dims,
+        legend_entries,
+        {'title': 'Point Positions',
+         'xlabel': 'time (s)',
+         'ylabel': 'pos (m)'}, ps)
+
+    return ps
+
+
 def plot_tracking_costs(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()
     ps.set_default_styling()
@@ -223,19 +265,17 @@ def plot_tracking_costs(osc_debug, time_slice):
     return ps
 
 
-def plot_general_osc_tracking_data(traj_name, deriv, dim, data,
-                                   t_osc, time_slice):
+def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
     ps = plot_styler.PlotStyler()
     ps.set_default_styling()
-    data_dict = {key: val for key, val in data.items()}
-    data_dict['t_osc'] = t_osc
+    keys = [key for key in data.keys() if key != 't']
     plotting_utils.make_plot(
-        data_dict,
-        't_osc',
+        data,
+        't',
         time_slice,
-        data.keys(),
+        keys,
         {},
-        {key: [key] for key in data.keys()},
+        {key: [key] for key in keys},
         {'xlabel': 'Time',
          'ylabel': '',
          'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
@@ -259,8 +299,8 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
         data['yddot_command'] = tracking_data.yddot_command[:, dim]
         data['yddot_command_sol'] = tracking_data.yddot_command_sol[:, dim]
 
-    return plot_general_osc_tracking_data(traj, deriv, dim, data,
-                                          osc_debug['osc_debug_tracking_datas'][traj].t, time_slice)
+    data['t'] = tracking_data.t
+    return plot_general_osc_tracking_data(traj, deriv, dim, data, time_slice)
 
 
 def plot_qp_costs(osc_debug, time_slice):

@@ -1,5 +1,5 @@
 #pragma once
-#include "options_tracking_data.h"
+#include "systems/controllers/osc/options_tracking_data.h"
 
 namespace dairlib {
 namespace systems {

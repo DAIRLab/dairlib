@@ -1,9 +1,10 @@
 import numpy as np
-
+from math import nan
 
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 class lcmt_osc_tracking_data_t:
-    def __init__(self):
+    def __init__(self, gap_threshold=0.01):
+        self.t_thresh=gap_threshold
         self.t = []
         self.y_dim = 0
         self.name = ""
@@ -19,6 +20,22 @@ class lcmt_osc_tracking_data_t:
         self.yddot_command_sol = []
 
     def append(self, msg, t):
+        self.y_dim = len(msg.y)
+        self.ydot_dim = len(msg.ydot)
+
+        if self.t and (t - self.t[-1]) > self.t_thresh:
+            self.t.append(nan)
+            self.is_active.append(nan)
+            self.y.append([nan for _ in range(self.y_dim)])
+            self.y_des.append([nan for _ in range(self.y_dim)])
+            self.error_y.append([nan for _ in range(self.ydot_dim)])
+            self.ydot.append([nan for _ in range(self.ydot_dim)])
+            self.ydot_des.append([nan for _ in range(self.ydot_dim)])
+            self.error_ydot.append([nan for _ in range(self.ydot_dim)])
+            self.yddot_des.append([nan for _ in range(self.ydot_dim)])
+            self.yddot_command.append([nan for _ in range(self.ydot_dim)])
+            self.yddot_command_sol.append([nan for _ in range(self.ydot_dim)])
+
         self.t.append(t)
         self.is_active.append(msg.is_active)
         self.y.append(msg.y)

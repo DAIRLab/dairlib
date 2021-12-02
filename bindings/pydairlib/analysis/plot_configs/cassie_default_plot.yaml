@@ -27,13 +27,13 @@ pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 plot_qp_costs: true
 plot_tracking_costs: true
 tracking_datas_to_plot:
-  com_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+#  com_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
 #  swing_ft_traj: {'dims': [0, 1, 2], 'derivs': ['pos']}
-#  orientation_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
-#
+  orientation_traj: {'dims': [0, 1, 2], 'derivs': ['vel']}
+
 # desired mpc plots
 mpc_trajs_to_plot:
-  com_traj: {'dims': [0]}
+#  com_traj: {'dims': [0]}
 #  swing_foot_traj: {'dims': [0, 1]}
 #  orientation: {'dims': [0, 1, 2]}
 #  input_traj: {'dims': [0, 1, 2]}

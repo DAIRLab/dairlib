@@ -1,3 +1,5 @@
+import pdb
+
 import sys
 import lcm
 import matplotlib.pyplot as plt
@@ -30,6 +32,7 @@ def main():
         floating_base=use_floating_base, springs=use_springs)
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
+    I_srbd = np.diag([0.91, 0.55, 0.89])
 
     ''' Read the log '''
     filename = sys.argv[1]
@@ -119,7 +122,23 @@ def main():
             mpc.plot_mpc_traj(mpc_data, traj, dim)
 
     ''' Custom Plots '''
+    mbp_plots.plot_angular_momentum(robot_output, t_x_slice, plant, context,
+                                    [0, 1, 2])
 
+    mbp_plots.plot_angular_momentum_srbd(
+        osc_debug['osc_debug_tracking_datas']['orientation_traj'].ydot,
+        osc_debug['osc_debug_tracking_datas']['orientation_traj'].t,
+        t_osc_slice,
+        I_srbd, [0, 1, 2])
+
+    mbp_plots.plot_planned_linear_momentum(
+        osc_debug['osc_debug_tracking_datas']['com_traj'].ydot_des,
+        osc_debug['osc_debug_tracking_datas']['com_traj'].t,
+        t_osc_slice,
+        30.0218, [0, 1, 2])
+
+    mbp_plots.plot_linear_momentum(robot_output, t_x_slice, plant, context,
+                                   [0, 1, 2])
     plt.show()
 
 

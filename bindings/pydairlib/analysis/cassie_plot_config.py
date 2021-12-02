@@ -39,5 +39,11 @@ class CassiePlotConfig():
             self.foot_positions_to_plot = []
         self.plot_qp_costs = data['plot_qp_costs']
         self.plot_tracking_costs = data['plot_tracking_costs']
-        self.tracking_datas_to_plot = data['tracking_datas_to_plot']
-        self.mpc_trajs_to_plot = data['mpc_trajs_to_plot']
+        if data['tracking_datas_to_plot']:
+            self.tracking_datas_to_plot = data['tracking_datas_to_plot']
+        else:
+            self.tracking_datas_to_plot = {}
+        if data['mpc_trajs_to_plot']:
+            self.mpc_trajs_to_plot = data['mpc_trajs_to_plot']
+        else:
+            self.mpc_trajs_to_plot = {}

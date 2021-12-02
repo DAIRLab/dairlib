@@ -78,6 +78,22 @@ def make_point_positions_from_q(
     return pos
 
 
+def make_centroidal_momentum_from_q(robot_output, plant, context):
+    q = robot_output['q']
+    v = robot_output['v']
+    k = np.zeros((q.shape[0], 3))
+    l = np.zeros((q.shape[0], 3))
+    for i, qv in enumerate(zip(q, v)):
+        plant.SetPositions(context, qv[0])
+        plant.SetVelocities(context, qv[1])
+        com_pos = plant.CalcCenterOfMassPositionInWorld(context)
+        h = plant.CalcSpatialMomentumInWorldAboutPoint(context, com_pos)
+        k[i] = h.rotational()
+        l[i] = h.translational()
+
+    return {'angular': k, 'linear': l}
+
+
 def process_osc_channel(data):
     t_osc = []
     input_cost = []
@@ -242,6 +258,87 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
          'xlabel': 'time (s)',
          'ylabel': 'pos (m)'}, ps)
 
+    return ps
+
+
+def plot_planned_linear_momentum(v_plan, t, time_slice, mass, dims):
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': t, 'l': mass * v_plan}
+    legend_entries = {'l': ['l_' + dim_map[i] for i in dims]}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['l'],
+        {'l': dims},
+        legend_entries,
+        {'title': 'SRBD Planned Linear Momentum',
+         'xlabel': 'time (s)',
+         'ylabel': 'l'}, ps)
+
+    return ps
+
+
+def plot_angular_momentum_srbd(omega, t, time_slice, inertia, dims):
+    h = (inertia @ omega.T).T
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': t, 'h': h}
+    legend_entries = {'h': ['h_' + dim_map[i] for i in dims]}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['h'],
+        {'h': dims},
+        legend_entries,
+        {'title': 'SRBD Angular Momentum',
+         'xlabel': 'time (s)',
+         'ylabel': 'h'}, ps)
+
+    return ps
+
+
+def plot_angular_momentum(robot_output, time_slice, plant, context, dims):
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': robot_output['t_x'],
+                 'h': make_centroidal_momentum_from_q(robot_output,
+                                                      plant,
+                                                      context)['angular']}
+    legend_entries = {'h': ['h_' + dim_map[i] for i in dims]}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['h'],
+        {'h': dims},
+        legend_entries,
+        {'title': 'Centroidal Angular Momentum',
+         'xlabel': 'time (s)',
+         'ylabel': 'h'}, ps)
+    return ps
+
+
+def plot_linear_momentum(robot_output, time_slice, plant, context, dims):
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': robot_output['t_x'],
+                 'l': make_centroidal_momentum_from_q(robot_output,
+                                                      plant,
+                                                      context)['linear']}
+    legend_entries = {'l': ['l_' + dim_map[i] for i in dims]}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['l'],
+        {'l': dims},
+        legend_entries,
+        {'title': 'Centroidal linear Momentum',
+         'xlabel': 'time (s)',
+         'ylabel': 'l'}, ps)
     return ps
 
 

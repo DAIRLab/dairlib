@@ -27,18 +27,17 @@ class CentroidalMomentumTrackingData final : public OptionsTrackingData {
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_sp,
       const std::string& urdf_w_spr, const std::string& urdf_wo_spr,
-      bool angular_only=true);
+      bool angular_only);
 
  private:
 
-  void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
-                     double t, double t_since_state_switch)) override;
   void UpdateY(const Eigen::VectorXd& x_w_spr,
               const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYError() final;
   void UpdateYdot(const Eigen::VectorXd& x_w_spr,
                   const drake::systems::Context<double>& context_w_spr) final;
   void UpdateYdotError(const Eigen::VectorXd& v_proj) final;
+  void UpdateYddotDes(double, double);
   void UpdateJ(const Eigen::VectorXd& x_w_spr,
                const drake::systems::Context<double>& context_w_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_w_spr,
@@ -46,11 +45,11 @@ class CentroidalMomentumTrackingData final : public OptionsTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  const multibody::PinocchioPlant<double> pinocchio_plant_w_spings_;
-  const multibody::PinocchioPlant<double> pinocchio_plant_wo_springs_;
+  multibody::PinocchioPlant<double> pinocchio_plant_w_spings_;
+  multibody::PinocchioPlant<double> pinocchio_plant_wo_springs_;
   bool angular_only_;
-  drake::systems::Context<double>* pin_context_w_springs_;
-  drake::systems::Context<double>* pin_context_wo_springs_;
+  std::unique_ptr<drake::systems::Context<double>> pin_context_w_springs_;
+  std::unique_ptr<drake::systems::Context<double>>  pin_context_wo_springs_;
 };
 
 }  // namespace controllers

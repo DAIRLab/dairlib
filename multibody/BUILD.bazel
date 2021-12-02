@@ -82,7 +82,6 @@ cc_library(
 
 cc_library(
     name = "pinocchio_plant",
-    testonly = 1,
     srcs = [
         "pinocchio_plant.cc",
     ],
@@ -92,7 +91,6 @@ cc_library(
     deps = [
         ":utils",
         "@drake//:drake_shared_library",
-        "@drake//common/test_utilities:eigen_matrix_compare",
         "@pinocchio",
     ],
 )

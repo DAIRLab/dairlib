@@ -139,8 +139,8 @@ template<>
 void PinocchioPlant<double>::CalcCentroidalMomentumAndDerivatives(
     const drake::systems::Context<double> &context,
     const drake::EigenPtr<Eigen::VectorXd>& h,
-    const drake::EigenPtr<Eigen::VectorXd>& A,
-    const drake::EigenPtr<Eigen::VectorXd>& Adot) const {
+    const drake::EigenPtr<Eigen::MatrixXd>& A,
+    const drake::EigenPtr<Eigen::MatrixXd>& Adot) const {
 
   auto dAg = pinocchio::dccrba(pinocchio_model_, pinocchio_data_,
                                  q_perm_.inverse() * GetPositions(context),

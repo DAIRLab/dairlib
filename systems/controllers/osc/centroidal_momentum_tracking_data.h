@@ -23,7 +23,7 @@ class CentroidalMomentumTrackingData final : public OptionsTrackingData {
  public:
   CentroidalMomentumTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
+      const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_sp,
       const std::string& urdf_w_spr, const std::string& urdf_wo_spr,
@@ -31,13 +31,21 @@ class CentroidalMomentumTrackingData final : public OptionsTrackingData {
 
  private:
 
+  void UpdateActual(
+      const Eigen::VectorXd& x_w_spr,
+      const drake::systems::Context<double>& context_w_spr,
+      const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context_wo_spr,
+      double t) override;
+
+  void UpdateYError() final;
+  void UpdateYdotError(const Eigen::VectorXd& v_proj) final;
+  void UpdateYddotDes(double t, double t_since_state_switch) final;
+  void UpdateYddotCmd(double t, double t_since_state_switch) final;
   void UpdateY(const Eigen::VectorXd& x_w_spr,
               const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYError() final;
   void UpdateYdot(const Eigen::VectorXd& x_w_spr,
                   const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotError(const Eigen::VectorXd& v_proj) final;
-  void UpdateYddotDes(double, double);
   void UpdateJ(const Eigen::VectorXd& x_w_spr,
                const drake::systems::Context<double>& context_w_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_w_spr,

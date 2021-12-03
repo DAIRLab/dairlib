@@ -33,8 +33,8 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   void CalcCentroidalMomentumAndDerivatives(
       const drake::systems::Context<double> &context,
       const drake::EigenPtr<Eigen::VectorXd>& h,
-      const drake::EigenPtr<Eigen::VectorXd>& A,
-      const drake::EigenPtr<Eigen::VectorXd>& Adot) const;
+      const drake::EigenPtr<Eigen::MatrixXd>& A,
+      const drake::EigenPtr<Eigen::MatrixXd>& Adot) const;
 
   //
   // Comparisons against MultibodyPlant

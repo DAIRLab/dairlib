@@ -17,12 +17,13 @@ using systems::TimestampedVector;
 
 InputSupervisor::InputSupervisor(
     const drake::multibody::MultibodyPlant<double>& plant,
-    double max_joint_velocity, double update_period,
-    int min_consecutive_failures, double input_limit)
+    const std::string initial_channel, double max_joint_velocity,
+    double update_period, int min_consecutive_failures, double input_limit)
     : plant_(plant),
       num_actuators_(plant_.num_actuators()),
       num_positions_(plant_.num_positions()),
       num_velocities_(plant_.num_velocities()),
+      current_channel_(initial_channel),
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
@@ -70,20 +71,19 @@ InputSupervisor::InputSupervisor(
 
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
+  error_indices_["controller_delay"] = 0;
+  error_indices_["soft_estop"] = 1;
+  error_indices_["is_nan"] = 2;
+  error_indices_["consecutive_failures"] = 3;
+  error_indices_["controller_flag"] = 4;
+
   // Create error flags as discrete state
   n_fails_index_ = DeclareDiscreteState(1);
-  status_index_ = DeclareDiscreteState(1);
   switch_time_index_ = DeclareDiscreteState(1);
   prev_efforts_time_index_ = DeclareDiscreteState(1);
-  error_shutdown_index_ = DeclareDiscreteState(1);
-  controller_msg_delay_index_ = DeclareDiscreteState(1);
-  soft_estop_trigger_index_ = DeclareDiscreteState(1);
-  is_nan_index_ = DeclareDiscreteState(1);
-  consecutive_failures_index_ = DeclareDiscreteState(1);
+  shutdown_index_ = DeclareDiscreteState(1);
 
-  error_indices_ = {error_shutdown_index_, controller_msg_delay_index_,
-                    soft_estop_trigger_index_, is_nan_index_,
-                    consecutive_failures_index_};
+  error_indices_index_ = DeclareDiscreteState(error_indices_.size());
 
   K_ = plant_.MakeActuationMatrix().transpose();
   K_ *= kEStopGain;
@@ -104,28 +104,11 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
       context, cassie_input_port_);
 
-  //  bool is_error = context.get_discrete_state(n_fails_index_)[0] >=
-  //                  min_consecutive_failures_;
-  //  is_error =
-  //      is_error || (command->get_timestamp() -
-  //                       context.get_discrete_state(prev_efforts_time_index_)[0]
-  //                       >
-  //                   kMaxControllerDelay);
-  //  is_error =
-  //      is_error || context.get_discrete_state(soft_estop_trigger_index_)[0];
-  //  is_error = is_error || context.get_discrete_state(is_nan_index_)[0];
-  //  if ((command->get_timestamp() -
-  //           context.get_discrete_state(prev_efforts_time_index_)[0] >
-  //       kMaxControllerDelay)) {
-  //    std::cout << "Delay between controller commands is too long, shutting
-  //    down"
-  //              << std::endl;
-  //  }
-
   // iterate through all the possible error flags
   bool is_error = false;
-  for (int error_flag_index_ : error_indices_) {
-    is_error = is_error || context.get_discrete_state(error_flag_index_)[0];
+  for (const auto& error_flags : error_indices_) {
+    is_error = is_error || context.get_discrete_state().get_value(
+                               error_indices_index_)[error_flags.second];
   }
 
   // If the soft estop signal is triggered, applying only damping regardless of
@@ -184,35 +167,16 @@ void InputSupervisor::SetStatus(
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
-  output->status = int(context.get_discrete_state(status_index_)[0]);
   output->utime = command->get_timestamp() * 1e6;
-  output->vel_limit = bool(context.get_discrete_state(status_index_)[0]);
-
-  if (input_limit_ != std::numeric_limits<double>::max()) {
-    for (int i = 0; i < command->get_data().size(); i++) {
-      double command_value = command->get_data()(i);
-      if (command_value > input_limit_ || command_value < -input_limit_) {
-        output->status += 2;
-        output->act_limit = true;
-        break;
-      }
-    }
-  }
-
-  // Shutdown is/will soon be active (the status flag is set in a separate loop
-  // from the actual motor torques so the update of the status bit could be
-  // slightly off
-  if (context.get_discrete_state(n_fails_index_)[0] >=
-      min_consecutive_failures_) {
-    output->status += 4;
-    output->shutdown = true;
-  }
-
-  if ((command->get_timestamp() -
-           context.get_discrete_state(prev_efforts_time_index_)[0] >
-       kMaxControllerDelay)) {
-    output->act_delay = true;
-    output->shutdown = true;
+  output->shutdown = context.get_discrete_state().get_value(shutdown_index_)[0];
+  output->num_status = error_indices_.size();
+  output->status_names = std::vector<std::string>(error_indices_.size());
+  output->status_states = std::vector<int8_t>(error_indices_.size());
+  for (const auto& error_flags : error_indices_) {
+    output->status_names[error_flags.second] = error_flags.first;
+    output->status_states[error_flags.second] =
+        context.get_discrete_state().get_value(
+            error_indices_index_)[error_flags.second];
   }
 }
 
@@ -231,37 +195,47 @@ void InputSupervisor::UpdateErrorFlag(
 
   // Note the += operator works as an or operator because we only check if the
   // error flag != 0
-  discrete_state->get_mutable_vector(error_shutdown_index_)[0] +=
+  discrete_state->get_mutable_value(
+      error_indices_index_)[error_indices_.at("controller_flag")] =
       controller_error->error_code != 0;
-  //      &&
-  //       controller_error->controller_channel == current_channel_);
-  discrete_state->get_mutable_vector(controller_msg_delay_index_)[0] +=
+  discrete_state->get_mutable_value(
+      error_indices_index_)[error_indices_.at("controller_delay")] =
       (command->get_timestamp() -
            context.get_discrete_state(prev_efforts_time_index_)[0] >
        kMaxControllerDelay);
-  discrete_state->get_mutable_vector(is_nan_index_)[0] +=
+  discrete_state->get_mutable_value(
+      error_indices_index_)[error_indices_.at("is_nan")] =
       command->get_data().array().isNaN().any();
-  discrete_state->get_mutable_vector(consecutive_failures_index_)[0] +=
+  discrete_state->get_mutable_value(
+      error_indices_index_)[error_indices_.at("consecutive_failures")] =
       context.get_discrete_state(n_fails_index_)[0] >=
       min_consecutive_failures_;
   CheckRadio(context, discrete_state);
   CheckVelocities(context, discrete_state);
 
+  bool is_error = false;
+  for (const auto& error_flags : error_indices_) {
+    is_error = is_error || context.get_discrete_state().get_value(
+                               error_indices_index_)[error_flags.second];
+  }
+  discrete_state->get_mutable_value(shutdown_index_)[0] = is_error;
+
   // When receiving a new controller switch message, record the time
-  if (discrete_state->get_mutable_vector(switch_time_index_)[0] <
+  if (discrete_state->get_mutable_value(switch_time_index_)[0] <
       controller_switch->utime * 1e-6) {
     std::cout << "Got new switch message" << std::endl;
-    discrete_state->get_mutable_vector(switch_time_index_)[0] =
+    current_channel_ = controller_switch->channel;
+    discrete_state->get_mutable_value(switch_time_index_)[0] =
         controller_switch->utime * 1e-6;
     blend_duration_ = controller_switch->blend_duration;
   }
 
   if (command->get_timestamp() -
-          discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] >
+          discrete_state->get_mutable_value(prev_efforts_time_index_)[0] >
       kMaxControllerDelay) {
-    discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] = 0.0;
+    discrete_state->get_mutable_value(prev_efforts_time_index_)[0] = 0.0;
   } else {
-    discrete_state->get_mutable_vector(prev_efforts_time_index_)[0] =
+    discrete_state->get_mutable_value(prev_efforts_time_index_)[0] =
         command->get_timestamp();
   }
 
@@ -269,8 +243,8 @@ void InputSupervisor::UpdateErrorFlag(
   // efforts
   if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
       blend_duration_) {
-    discrete_state->get_mutable_vector(prev_efforts_index_)
-        .get_mutable_value() = command->get_value();
+    discrete_state->get_mutable_value(prev_efforts_index_) =
+        command->get_value();
   }
 }
 
@@ -281,28 +255,25 @@ void InputSupervisor::CheckVelocities(
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
-  if (discrete_state->get_vector(n_fails_index_)[0] <
+  if (discrete_state->get_value(n_fails_index_)[0] <
       min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
                              (velocities.array() < -max_joint_velocity_).any();
     if (is_velocity_error) {
       // Increment counter
-      discrete_state->get_mutable_vector(n_fails_index_)[0] += 1;
-      // Using the discrete state which is a vector of doubles to store a bool
-      discrete_state->get_mutable_vector(status_index_)[0] = double(true);
+      discrete_state->get_mutable_value(n_fails_index_)[0] += 1;
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
       std::cout << "Consecutive error "
-                << discrete_state->get_vector(n_fails_index_)[0] << " of "
+                << discrete_state->get_value(n_fails_index_)[0] << " of "
                 << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl
                 << std::endl;
     } else {
       // Reset counter
-      discrete_state->get_mutable_vector(n_fails_index_)[0] = 0;
-      discrete_state->get_mutable_vector(status_index_)[0] = double(false);
+      discrete_state->get_mutable_value(n_fails_index_)[0] = 0;
     }
   }
 }
@@ -313,7 +284,8 @@ void InputSupervisor::CheckRadio(
   const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
       context, cassie_input_port_);
   if (cassie_out->pelvis.radio.channel[15] == -1) {
-    discrete_state->get_mutable_vector(soft_estop_trigger_index_)[0] = 1;
+    discrete_state->get_mutable_value(
+        error_indices_index_)[error_indices_.at("soft_estop")] = 1;
   }
 }
 

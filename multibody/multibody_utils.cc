@@ -136,8 +136,8 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
                                    "collision", friction);
 
   // Add visual for the ground.
-  plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
-                                "visual");
+//  plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
+//                                "visual");
 }
 
 /// Construct a map between joint names and position indices

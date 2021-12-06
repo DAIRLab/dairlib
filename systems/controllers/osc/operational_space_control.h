@@ -109,6 +109,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_osc_debug_port() const {
     return this->get_output_port(osc_debug_port_);
   }
+  const drake::systems::OutputPort<double>& get_failure_output_port() const {
+    return this->get_output_port(failure_port_);
+  }
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -201,6 +204,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AssignOscLcmOutput(const drake::systems::Context<double>& context,
                           dairlib::lcmt_osc_output* output) const;
 
+  void CheckTracking(const drake::systems::Context<double>& context,
+                     TimestampedVector<double>* output) const;
+
   // Output function
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
@@ -211,6 +217,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int state_port_;
   int fsm_port_;
   int near_impact_port_;
+  int failure_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;

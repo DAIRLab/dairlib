@@ -40,7 +40,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // replaced with a joint-specific vectors.
   explicit InputSupervisor(
       const drake::multibody::MultibodyPlant<double>& plant,
-      std::string initial_channel,
+      const std::string& initial_channel,
       double max_joint_velocity, double update_period,
       int min_consecutive_failures = 1,
       double input_limit = std::numeric_limits<double>::max());

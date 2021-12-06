@@ -17,7 +17,7 @@ using systems::TimestampedVector;
 
 InputSupervisor::InputSupervisor(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const std::string initial_channel, double max_joint_velocity,
+    const std::string& initial_channel, double max_joint_velocity,
     double update_period, int min_consecutive_failures, double input_limit)
     : plant_(plant),
       num_actuators_(plant_.num_actuators()),
@@ -201,9 +201,11 @@ void InputSupervisor::UpdateErrorFlag(
 
   // Note the += operator works as an or operator because we only check if the
   // error flag != 0
-  discrete_state->get_mutable_value(
-      error_indices_index_)[error_indices_.at("controller_failure_flag")] =
-      controller_error->error_code != 0;
+  if(controller_error->controller_channel == active_channel_){
+    discrete_state->get_mutable_value(
+        error_indices_index_)[error_indices_.at("controller_failure_flag")] =
+        controller_error->error_code != 0;
+  }
   discrete_state->get_mutable_value(
       error_indices_index_)[error_indices_.at("controller_delay")] =
       (command->get_timestamp() -

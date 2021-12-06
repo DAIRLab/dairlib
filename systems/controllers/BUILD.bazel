@@ -106,6 +106,17 @@ cc_library(
 )
 
 cc_library(
+    name = "controller_failure_signal",
+    srcs = ["controller_failure_signal.cc"],
+    hdrs = ["controller_failure_signal.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "fsm_event_time",
     srcs = ["fsm_event_time.cc"],
     hdrs = ["fsm_event_time.h"],

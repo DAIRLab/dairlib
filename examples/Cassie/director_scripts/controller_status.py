@@ -15,6 +15,10 @@ class InputSupervisorVisualizer(object):
         self._subscriber = None
         self._current_channel_ = ""
 
+        self.text_box = vis.TextItem('safety_info', 'safety_info', view)
+        self.text_box.setProperty('Font Size', 18)
+        self.text_box.setProperty('Position', [1600, 10])
+
         self.set_enabled(True)
 
     def add_subscriber(self):
@@ -52,7 +56,8 @@ class InputSupervisorVisualizer(object):
         for error_flag_idx in range(msg.num_status):
             status_list.append(msg.status_names[error_flag_idx] + ': ' + str(msg.status_states[error_flag_idx]))
 
-        vis.updateText("\n".join(status_list), 'contact_text')
+        # vis.updateText("\n".join(status_list), 'safety_info')
+        self.text_box.setProperty('Text', "\n".join(status_list))
 
 def init_visualizer():
     viz = InputSupervisorVisualizer()

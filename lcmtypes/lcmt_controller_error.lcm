@@ -1,8 +1,0 @@
-package dairlib;
-
-struct lcmt_controller_error
-{
-  int64_t utime;
-  int32_t error_code;
-  string controller_channel;
-}

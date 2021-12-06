@@ -2,26 +2,33 @@
 
 #include <limits>
 
+#include <dairlib/lcmt_controller_failure.hpp>
+
 #include "systems/framework/output_vector.h"
-#include "drake/multibody/parsing/parser.h"
+
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
 
-/// ControllerFailureSignal
-class ControllerFailureSignal : public drake::systems::LeafSystem<double> {
+/// ControllerFailureSignal compiles all the failure possiblities and outputs a
+/// lcmt_controller_failure whenever a single failure occurs
+class ControllerFailureAggregator : public drake::systems::LeafSystem<double> {
  public:
-  ControllerFailureSignal(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      std::vector<int> fsm_states_of_interest = {},
-      int prev_fsm_state = -std::numeric_limits<int>::infinity(),
-      bool set_current_time_until_first_state_switch = false);
+  ControllerFailureAggregator(std::string controller_channel_name,
+                              int num_input_ports);
 
+  int AddFailureSignalPort() {
+    input_ports_.push_back(input_ports_.size());
+    return input_ports_.back();
+  }
 
  private:
+  void AggregateFailureSignals(const drake::systems::Context<double>& context,
+                               dairlib::lcmt_controller_failure* output) const;
 
-
+  std::vector<int> input_ports_;
+  int output_port_;
 };
 
 }  // namespace systems

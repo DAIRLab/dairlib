@@ -1,7 +1,7 @@
 #include "examples/Cassie/input_supervisor.h"
 
 #include <dairlib/lcmt_cassie_out.hpp>
-#include <dairlib/lcmt_controller_error.hpp>
+#include <dairlib/lcmt_controller_failure.hpp>
 
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "systems/framework/output_vector.h"
@@ -54,7 +54,7 @@ InputSupervisor::InputSupervisor(
   controller_error_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_controller_error",
-              drake::Value<dairlib::lcmt_controller_error>{})
+              drake::Value<dairlib::lcmt_controller_failure>{})
           .get_index();
 
   // Create output port for commands
@@ -193,7 +193,7 @@ void InputSupervisor::UpdateErrorFlag(
       this->EvalInputValue<dairlib::lcmt_controller_switch>(
           context, controller_switch_input_port_);
   const auto* controller_error =
-      this->EvalInputValue<dairlib::lcmt_controller_error>(
+      this->EvalInputValue<dairlib::lcmt_controller_failure>(
           context, controller_error_port_);
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,

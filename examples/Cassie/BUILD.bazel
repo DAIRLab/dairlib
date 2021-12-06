@@ -102,20 +102,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "input_supervisor_test",
-    size = "small",
-    srcs = ["test/input_supervisor_test.cc"],
-    deps = [
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie:input_supervisor",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gtest//:main",
-    ],
-)
-
 cc_library(
     name = "sim_cassie_sensor_aggregator",
     srcs = ["sim_cassie_sensor_aggregator.cc"],

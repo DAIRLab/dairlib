@@ -62,7 +62,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "drake_director" {
-        exec = "bazel-bin/director/drake-director  --script=examples/Cassie/director_scripts/show_time_hardware.py --script=examples/Cassie/director_scripts/controller_status.py --use_builtin_scripts=point_pair_contact,frame";
+        exec = "bazel-bin/director/drake-director  --script=examples/Cassie/director_scripts/show_time_hardware.py --script=examples/Cassie/director_scripts/controller_status.py --use_builtin_scripts=point_pair_contact";
         host = "localhost";
     }
     cmd "state_visualizer (dispatcher)" {

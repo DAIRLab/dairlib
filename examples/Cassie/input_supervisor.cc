@@ -23,7 +23,7 @@ InputSupervisor::InputSupervisor(
       num_actuators_(plant_.num_actuators()),
       num_positions_(plant_.num_positions()),
       num_velocities_(plant_.num_velocities()),
-      current_channel_(initial_channel),
+      active_channel_(initial_channel),
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
@@ -71,11 +71,16 @@ InputSupervisor::InputSupervisor(
 
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
+  /// controller_delay: triggers when there is too long between consecutive controller messages
+  /// soft_estop: (operator_triggered) triggers when the soft-estop is engaged by the operator
+  /// is_nan: triggers whenever a NaN is received by the dispatcher to prevent sending bad motor commands
+  /// consecutive_failures: triggers whenever the velocity or actuator limits are reached
+  /// controller_failure_delay: triggers whenever the active controller channel sends a failure message
   error_indices_["controller_delay"] = 0;
   error_indices_["soft_estop"] = 1;
   error_indices_["is_nan"] = 2;
   error_indices_["consecutive_failures"] = 3;
-  error_indices_["controller_flag"] = 4;
+  error_indices_["controller_failure_flag"] = 4;
 
   // Create error flags as discrete state
   n_fails_index_ = DeclareDiscreteState(1);
@@ -168,6 +173,7 @@ void InputSupervisor::SetStatus(
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
   output->utime = command->get_timestamp() * 1e6;
+  output->active_channel = active_channel_;
   output->shutdown = context.get_discrete_state().get_value(shutdown_index_)[0];
   output->num_status = error_indices_.size();
   output->status_names = std::vector<std::string>(error_indices_.size());
@@ -196,7 +202,7 @@ void InputSupervisor::UpdateErrorFlag(
   // Note the += operator works as an or operator because we only check if the
   // error flag != 0
   discrete_state->get_mutable_value(
-      error_indices_index_)[error_indices_.at("controller_flag")] =
+      error_indices_index_)[error_indices_.at("controller_failure_flag")] =
       controller_error->error_code != 0;
   discrete_state->get_mutable_value(
       error_indices_index_)[error_indices_.at("controller_delay")] =
@@ -224,7 +230,7 @@ void InputSupervisor::UpdateErrorFlag(
   if (discrete_state->get_mutable_value(switch_time_index_)[0] <
       controller_switch->utime * 1e-6) {
     std::cout << "Got new switch message" << std::endl;
-    current_channel_ = controller_switch->channel;
+    active_channel_ = controller_switch->channel;
     discrete_state->get_mutable_value(switch_time_index_)[0] =
         controller_switch->utime * 1e-6;
     blend_duration_ = controller_switch->blend_duration;

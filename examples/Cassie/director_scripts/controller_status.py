@@ -48,7 +48,7 @@ class InputSupervisorVisualizer(object):
     def handle_message(self, msg):
         shutdown = msg.shutdown
 
-        status_list = ["shutdown: %i" % shutdown]
+        status_list = ["active channel: " + msg.active_channel, "shutdown: %i" % shutdown]
         for error_flag_idx in range(msg.num_status):
             status_list.append(msg.status_names[error_flag_idx] + ': ' + str(msg.status_states[error_flag_idx]))
 

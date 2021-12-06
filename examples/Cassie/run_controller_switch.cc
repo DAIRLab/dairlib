@@ -25,7 +25,7 @@ DEFINE_string(switch_channel, "INPUT_SWITCH",
 DEFINE_string(new_channel, "PD_CONTROL",
               "The name of the new lcm channel that dispatcher_in listens to "
               "after switch");
-DEFINE_int32(n_publishes, 10,
+DEFINE_int32(n_publishes, 1,
              "The simulation gets updated until it publishes the channel name "
              "n_publishes times");
 DEFINE_int32(n_period_delay, -1,

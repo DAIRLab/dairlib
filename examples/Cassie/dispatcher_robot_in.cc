@@ -49,12 +49,10 @@ DEFINE_int64(supervisor_N, 10,
              "Maximum allowed consecutive failures of velocity limit.");
 DEFINE_string(state_channel_name, "CASSIE_STATE_DISPATCHER",
               "The name of the lcm channel that sends Cassie's state");
-DEFINE_string(control_channel_name_1, "PD_CONTROL",
-              "The name of the lcm channel that sends Cassie's state");
-DEFINE_string(control_channel_name_2, "OSC_STANDING",
-              "The name of the lcm channel that sends Cassie's state");
-DEFINE_string(control_channel_name_3, "OSC_WALKING",
-              "The name of the lcm channel that sends Cassie's state");
+DEFINE_string(control_channel_name_initial, "",
+              "The initial LCM channel to listen for motor commands from");
+DEFINE_string(control_channel_name_additional, "",
+              "An additional LCM channel to listen for motor commands from");
 DEFINE_bool(
     sim, false,
     "Whether or not this dispatcher is being used with the simulated robot");
@@ -79,9 +77,10 @@ int do_main(int argc, char* argv[]) {
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();
 
-  std::cout << "channel_1: " << FLAGS_control_channel_name_1 << std::endl;
-  std::cout << "channel_2: " << FLAGS_control_channel_name_2 << std::endl;
-  std::cout << "channel_3: " << FLAGS_control_channel_name_3 << std::endl;
+  std::cout << "initial channel: " << FLAGS_control_channel_name_initial
+            << std::endl;
+  std::cout << "additional channel: " << FLAGS_control_channel_name_additional
+            << std::endl;
 
   // Channel name of the input switch
   std::string switch_channel = "INPUT_SWITCH";
@@ -115,7 +114,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   auto input_supervisor = builder.AddSystem<InputSupervisor>(
-      plant, FLAGS_control_channel_name_1, FLAGS_max_joint_velocity,
+      plant, FLAGS_control_channel_name_initial, FLAGS_max_joint_velocity,
       input_supervisor_update_period, FLAGS_supervisor_N, input_limit);
   builder.Connect(state_receiver->get_output_port(0),
                   input_supervisor->get_input_port_state());
@@ -166,16 +165,18 @@ int do_main(int argc, char* argv[]) {
   owned_diagram->set_name("dispatcher_robot_in");
 
   // Channel names of the controllers
-  std::vector<std::string> input_channels;
-  input_channels.push_back(FLAGS_control_channel_name_1);
-  input_channels.push_back(FLAGS_control_channel_name_2);
-  input_channels.push_back(FLAGS_control_channel_name_3);
+  std::vector<std::string> input_channels = {"PD_CONTROL", "OSC_STANDING",
+                                             "OSC_WALKING", "OSC_JUMPING",
+                                             "OSC_RUNNING"};
+  if (!FLAGS_control_channel_name_additional.empty()) {
+    input_channels.push_back(FLAGS_control_channel_name_additional);
+  }
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input,
                          dairlib::lcmt_controller_switch>
       loop(&lcm_local, std::move(owned_diagram), command_receiver,
-           input_channels, FLAGS_control_channel_name_1, switch_channel, true);
+           input_channels, FLAGS_control_channel_name_initial, switch_channel, true);
   loop.Simulate();
 
   return 0;

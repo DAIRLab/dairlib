@@ -99,8 +99,8 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   const int num_positions_;
   const int num_velocities_;
 
-  //
-  mutable std::string current_channel_;
+  // active controller channel
+  mutable std::string active_channel_;
 
   // supervisor settings
   const int min_consecutive_failures_;
@@ -119,11 +119,6 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // for keeping track of all sources of error
   int shutdown_index_;
   int error_indices_index_;
-
-//  int controller_msg_delay_index_;
-//  int soft_estop_trigger_index_;
-//  int is_nan_index_;
-//  int consecutive_failures_index_;
 
   // map of all possible error flags that we check
   // string: name of error to check

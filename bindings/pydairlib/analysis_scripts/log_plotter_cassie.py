@@ -162,10 +162,14 @@ def main():
   # ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_spr)
 
   # Save a state into csv
-  # t_idx = np.argwhere(np.abs(t_x - 2.135) < 1e-3)[0][0]
+  # t_idx = np.argwhere(np.abs(t_x - 8.425) < 1e-3)[0][0]
   # print("x[t_idx, :] = ")
   # print(x[t_idx, :])
   # np.savetxt("../init_state.csv", x[t_idx, :], delimiter=",")
+  # t_idx = np.argwhere(np.abs(t_x - 8.825) < 1e-3)[0][0]
+  # print("x[t_idx, :] = ")
+  # print(x[t_idx, :])
+  # np.savetxt("../init_state_next_mode.csv", x[t_idx, :], delimiter=",")
 
   plt.show()
 

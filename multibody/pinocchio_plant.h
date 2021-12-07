@@ -1,6 +1,4 @@
 #pragma once
-#include <gtest/gtest.h>
-
 #include "drake/multibody/plant/multibody_plant.h"
 #include "pinocchio/multibody/model.hpp"
 #include "pinocchio/multibody/data.hpp"
@@ -40,14 +38,14 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   // Comparisons against MultibodyPlant
   //
 
-  ::testing::AssertionResult TestMassMatrix(
-      const drake::systems::Context<T>& context, double tol = 1e-5) const;
-
-  ::testing::AssertionResult TestInverseDynamics(
-      const drake::systems::Context<T>& context,
-      const drake::VectorX<T>& known_vdot,
-      const drake::multibody::MultibodyForces<T>& external_forces,
-      double tol) const;
+//  ::testing::AssertionResult TestMassMatrix(
+//      const drake::systems::Context<T>& context, double tol = 1e-5) const;
+//
+//  ::testing::AssertionResult TestInverseDynamics(
+//      const drake::systems::Context<T>& context,
+//      const drake::VectorX<T>& known_vdot,
+//      const drake::multibody::MultibodyForces<T>& external_forces,
+//      double tol) const;
 
  private:
   pinocchio::Model pinocchio_model_;

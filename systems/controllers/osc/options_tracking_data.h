@@ -44,6 +44,9 @@ class OptionsTrackingData : public OscTrackingData {
     idx_zero_feedforward_accel_ = indices;
   };
 
+ protected:
+  bool with_view_frame_ = false;
+
  private:
   void UpdateActual(
       const Eigen::VectorXd& x_w_spr,
@@ -57,8 +60,6 @@ class OptionsTrackingData : public OscTrackingData {
   void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
   void UpdateYddotDes(double t, double t_since_state_switch) override;
   void UpdateYddotCmd(double t, double t_since_state_switch) override;
-
-  bool with_view_frame_ = false;
 
 
   // Members of low-pass filter

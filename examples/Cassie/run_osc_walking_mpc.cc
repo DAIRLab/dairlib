@@ -87,7 +87,7 @@ DEFINE_string(
     "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.yaml","Filepath containing gains");
 DEFINE_double(swing_ft_height, 0.05, "Swing foot height");
 DEFINE_double(stance_duration, 0.35, "stance phase duration");
-DEFINE_double(double_stance_duration, 0.075, "double stance phase duration");
+DEFINE_double(double_stance_duration, 0.1, "double stance phase duration");
 DEFINE_bool(track_com, false,
             "use com tracking data (otherwise uses trans space)");
 DEFINE_bool(print_osc_debug, false, "print osc_debug to the terminal");
@@ -408,10 +408,10 @@ int DoMain(int argc, char* argv[]) {
                   mpc_reciever->get_input_port());
   builder.Connect(mpc_reciever->get_com_traj_output_port(),
                   osc->get_tracking_data_input_port("com_traj"));
-  builder.Connect(zero_rot_traj_source->get_output_port(),
-                  osc->get_tracking_data_input_port("orientation_traj"));
-//  builder.Connect(mpc_reciever->get_angular_traj_output_port(),
+//  builder.Connect(zero_rot_traj_source->get_output_port(),
 //                  osc->get_tracking_data_input_port("orientation_traj"));
+  builder.Connect(mpc_reciever->get_angular_traj_output_port(),
+                  osc->get_tracking_data_input_port("orientation_traj"));
   builder.Connect(mpc_reciever->get_swing_ft_target_output_port(),
                   swing_foot_traj_gen->get_input_port_foot_target());
   builder.Connect(fsm->get_output_port(),

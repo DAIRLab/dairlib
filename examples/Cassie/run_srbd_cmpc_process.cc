@@ -24,7 +24,8 @@
 #include "examples/Cassie/mpc/cassie_srbd_cmpc_gains.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
-
+#include "systems/srbd_residual_estimator.h"
+#include "systems/controllers/mpc/mpc_trajectory_reciever.h"
 
 namespace dairlib {
 
@@ -36,6 +37,7 @@ using systems::LcmDrivenLoop;
 using systems::OutputVector;
 using systems::LipmWarmStartSystem;
 using systems::FiniteStateMachineEventTime;
+using systems::SRBDResidualEstimator;
 using multibody::SingleRigidBodyPlant;
 
 
@@ -193,12 +195,20 @@ int DoMain(int argc, char* argv[]) {
 //  auto fsm_pub = builder.AddSystem(
 //      LcmPublisherSystem::Make<lcmt_dairlib_signal>(FLAGS_channel_fsm, &lcm_local));
 
-
   // setup lcm messaging
   auto robot_out = builder.AddSystem<RobotOutputReceiver>(plant);
   auto mpc_out_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_plan, &lcm_local));
 
+  auto lstsq_sys = builder.AddSystem<SRBDResidualEstimator>(srb_plant, 0.01, 50, true);
+  lstsq_sys->AddMode(left_stance_dynamics, BipedStance::kLeft,
+                     MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_time / dt));
+  lstsq_sys->AddMode(right_stance_dynamics, BipedStance::kRight,
+                     MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_time / dt));
+
+  builder.Connect(fsm->get_output_port(), lstsq_sys->get_fsm_input_port());
+  builder.Connect(robot_out->get_output_port(), lstsq_sys->get_state_input_port());
+  builder.Connect(cmpc->get_output_port(), lstsq_sys->get_mpc_input_port());
   // fsm connections
   //  builder.Connect(fsm->get_output_port(), fsm_send->get_input_port());
   //  builder.Connect(fsm_send->get_output_port(), fsm_pub->get_input_port());

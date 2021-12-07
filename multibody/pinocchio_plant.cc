@@ -1,6 +1,6 @@
 #include "multibody/pinocchio_plant.h"
 #include "multibody/multibody_utils.h"
-#include "drake/common/test_utilities/eigen_matrix_compare.h"
+//#include "drake/common/test_utilities/eigen_matrix_compare.h"
 
 #include "pinocchio/algorithm/aba-derivatives.hpp"
 #include "pinocchio/algorithm/aba.hpp"
@@ -56,12 +56,12 @@ void PinocchioPlant<T>::Finalize() {
   drake::multibody::MultibodyForces<T> forces(*this);
   this->CalcForceElementsContribution(*context, &forces);
   
-  if (!TestMassMatrix(*context, 1e-6)) {
-    std::cout << "PinocchioPlant TestMassMatrix FAILED!!" << std::endl;
-  }
-  if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
-    std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
-  }
+//  if (!TestMassMatrix(*context, 1e-6)) {
+//    std::cout << "PinocchioPlant TestMassMatrix FAILED!!" << std::endl;
+//  }
+//  if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
+//    std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
+//  }
 }
 
 template<typename T>
@@ -159,39 +159,39 @@ void PinocchioPlant<AutoDiffXd>::CalcMassMatrix(
   throw std::domain_error("CalcMassMatrix not implemented with AutoDiffXd");
 }
 
-template<>
-::testing::AssertionResult PinocchioPlant<double>::TestMassMatrix(
-    const Context<double>& context, double tol) const {
-  int nv = num_velocities();
-
-  MatrixXd M(nv, nv);
-  MatrixXd pin_M(nv, nv);
-
-  MultibodyPlant<double>::CalcMassMatrix(context, &M);
-
-  CalcMassMatrix(context, &pin_M);
-
-  return drake::CompareMatrices(M, pin_M, tol);
-}
-
-template <>
-::testing::AssertionResult PinocchioPlant<double>::TestInverseDynamics(
-    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
-    const drake::multibody::MultibodyForces<double>& external_forces,
-    double tol) const {
-auto f = MultibodyPlant<double>::CalcInverseDynamics(context, known_vdot,
-                                                     external_forces);
-auto pin_f = CalcInverseDynamics(context, known_vdot, external_forces);
-
-return drake::CompareMatrices(f, pin_f, tol);
-}
-
-
-template<>
-::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestMassMatrix(
-    const Context<AutoDiffXd>& context, double tol) const {
-  throw std::domain_error("TestMassMatrix not implemented with AutoDiffXd");
-}
+//template<>
+//::testing::AssertionResult PinocchioPlant<double>::TestMassMatrix(
+//    const Context<double>& context, double tol) const {
+//  int nv = num_velocities();
+//
+//  MatrixXd M(nv, nv);
+//  MatrixXd pin_M(nv, nv);
+//
+//  MultibodyPlant<double>::CalcMassMatrix(context, &M);
+//
+//  CalcMassMatrix(context, &pin_M);
+//
+//  return drake::CompareMatrices(M, pin_M, tol);
+//}
+//
+//template <>
+//::testing::AssertionResult PinocchioPlant<double>::TestInverseDynamics(
+//    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
+//    const drake::multibody::MultibodyForces<double>& external_forces,
+//    double tol) const {
+//auto f = MultibodyPlant<double>::CalcInverseDynamics(context, known_vdot,
+//                                                     external_forces);
+//auto pin_f = CalcInverseDynamics(context, known_vdot, external_forces);
+//
+//return drake::CompareMatrices(f, pin_f, tol);
+//}
+//
+//
+//template<>
+//::testing::AssertionResult PinocchioPlant<AutoDiffXd>::TestMassMatrix(
+//    const Context<AutoDiffXd>& context, double tol) const {
+//  throw std::domain_error("TestMassMatrix not implemented with AutoDiffXd");
+//}
 
 }  // namespace multibody
 }  // namespace dairlib

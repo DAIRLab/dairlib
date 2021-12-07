@@ -41,6 +41,27 @@ CentroidalMomentumTrackingData::CentroidalMomentumTrackingData(
   yddot_des_converted_ = VectorXd::Zero(n_y_);
 }
 
+void CentroidalMomentumTrackingData::UpdateActual(
+    const Eigen::VectorXd& x_w_spr,
+    const drake::systems::Context<double>& context_w_spr,
+    const Eigen::VectorXd& x_wo_spr,
+    const drake::systems::Context<double>& context_wo_spr, double t) {
+  // 1. Update actual output
+  if (use_springs_in_eval_) {
+    UpdateY(x_w_spr, context_w_spr);
+  } else {
+    UpdateY(x_wo_spr, context_wo_spr);
+  }
+    if (with_view_frame_) {
+    view_frame_rot_T_ =
+        view_frame_->CalcWorldToFrameRotation(plant_w_spr_, context_wo_spr);
+    y_ = view_frame_rot_T_ * y_;
+    J_ = view_frame_rot_T_ * J_;
+    JdotV_ = view_frame_rot_T_ * JdotV_;
+  }
+}
+
+
 void CentroidalMomentumTrackingData::UpdateYddotDes(double, double) {}
 
 void CentroidalMomentumTrackingData::UpdateYddotCmd(

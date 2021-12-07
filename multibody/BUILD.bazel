@@ -121,6 +121,7 @@ cc_test(
     name = "pinocchio_plant_test",
     size = "small",
     srcs = ["test/pinocchio_plant_test.cc"],
+    tags = ["manual"],
     deps = [
         ":pinocchio_plant",
         ":utils",

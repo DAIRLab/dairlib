@@ -1,6 +1,7 @@
 import pygame
 import dairlib.lcmt_radio_out
 import lcm
+import numpy as np
 
 # colors
 cassie_blue = (6, 61, 128)
@@ -101,6 +102,8 @@ def main():
         radio_msg.channel[2] = -joystick.get_axis(4)
         radio_msg.channel[3] = joystick.get_axis(3)
         radio_msg.channel[6] = radio_channel_6_pos
+
+        radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 
         publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())

@@ -270,6 +270,8 @@ cc_binary(
         "//examples/Cassie/networking:cassie_udp_pub_sub",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
+        "//systems/controllers:linear_controller",
+        "//systems/controllers:pd_config_lcm",
         "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
         "@gflags",

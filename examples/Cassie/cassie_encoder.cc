@@ -14,8 +14,10 @@ CassieEncoder::CassieEncoder(const drake::multibody::MultibodyPlant<double>& pla
       num_velocities_(plant.num_velocities()),
       joint_pos_indices_(joint_pos_indices),
       joint_vel_indices_(joint_vel_indices),
-      ticks_per_revolution_(ticks_per_revolution),
-      joint_filters_(std::vector<JointFilter>(ticks_per_revolution_.size())) {
+      ticks_per_revolution_(ticks_per_revolution){
+  for (int i = 0; i < ticks_per_revolution_.size(); ++i){
+    joint_filters_.push_back(std::make_unique<JointFilter>());
+  }
   this->DeclareVectorInputPort("robot_state",
       systems::BasicVector<double>(num_positions_ + num_velocities_));
   this->DeclareVectorOutputPort("filtered_state",
@@ -29,7 +31,7 @@ void CassieEncoder::UpdateFilter(const drake::systems::Context<double>& context,
       *this->template EvalVectorInput<systems::BasicVector>(context, 0);
 
   VectorXd q = input.get_value().head(num_positions_);
-  VectorXd v = input.get_value().head(num_velocities_);
+  VectorXd v = input.get_value().tail(num_velocities_);
 
   VectorXd q_filtered = q;
   VectorXd v_filtered = v;
@@ -37,7 +39,7 @@ void CassieEncoder::UpdateFilter(const drake::systems::Context<double>& context,
   // joint_encoders
   for (int joint_index = 0; joint_index < joint_pos_indices_.size();
        ++joint_index) {
-    JointFilter filter = joint_filters_[joint_index];
+    auto filter = joint_filters_[joint_index].get();
 
     // Position
     using std::floor;
@@ -51,38 +53,39 @@ void CassieEncoder::UpdateFilter(const drake::systems::Context<double>& context,
     // Initialize unfiltered signal array to prevent bad transients
     bool allzero = true;
     for (int i = 0; i < CASSIE_JOINT_FILTER_NB; ++i) {
-      allzero &= filter.x[i] == 0;
+      allzero &= filter->x[i] == 0;
     }
     if (allzero) {
       // If all filter values are zero, initialize the signal array
       // with the current encoder value
       for (int i = 0; i < CASSIE_JOINT_FILTER_NB; ++i) {
-        filter.x[i] = q_filtered[joint_pos_indices_[joint_index]];
+        filter->x[i] = q_filtered[joint_pos_indices_[joint_index]];
       }
     }
 
     // Shift and update signal arrays
     for (int i = CASSIE_JOINT_FILTER_NB - 1; i > 0; --i) {
-      filter.x[i] = filter.x[i - 1];
+      filter->x[i] = filter->x[i - 1];
     }
-    filter.x[0] = q[joint_pos_indices_[joint_index]];
+    filter->x[0] = q[joint_pos_indices_[joint_index]];
     for (int i = CASSIE_JOINT_FILTER_NA - 1; i > 0; --i) {
-      filter.y[i] = filter.y[i - 1];
+      filter->y[i] = filter->y[i - 1];
     }
 
     // Compute filter value
-    filter.y[0] = 0;
+    filter->y[0] = 0;
     for (int i = 0; i < CASSIE_JOINT_FILTER_NB; ++i) {
-      filter.y[0] += filter.x[i] * joint_filter_b[i];
+      filter->y[0] += filter->x[i] * joint_filter_b[i];
     }
     for (int i = 1; i < CASSIE_JOINT_FILTER_NA; ++i) {
-      filter.y[0] -= filter.y[i] * joint_filter_a[i];
+      filter->y[0] -= filter->y[i] * joint_filter_a[i];
     }
-    v_filtered[joint_vel_indices_[joint_index]] = filter.y[0];
+    v_filtered[joint_vel_indices_[joint_index]] = filter->y[0];
   }
 
   VectorXd x_filtered = VectorXd::Zero(num_positions_ + num_velocities_);
-  x_filtered << q_filtered, v_filtered;
+  x_filtered << q_filtered, v;
+//  x_filtered << q, v;
   output->set_value(x_filtered);
 }
 

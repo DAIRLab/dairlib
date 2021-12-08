@@ -22,13 +22,12 @@ DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
 DEFINE_string(switch_channel, "INPUT_SWITCH",
               "The name of the channel which sends the channel name that "
               "dispatcher_in listens to");
-DEFINE_string(new_channel, "PD_CONTROLLER",
+DEFINE_string(new_channel, "PD_CONTROL",
               "The name of the new lcm channel that dispatcher_in listens to "
               "after switch");
-DEFINE_int32(n_publishes, 10,
+DEFINE_int32(n_publishes, 1,
              "The simulation gets updated until it publishes the channel name "
              "n_publishes times");
-
 DEFINE_int32(n_period_delay, -1,
              "the number of periods before we start publishing the new channel "
              "name. If the value is non-positive, the channel name is published"

@@ -101,6 +101,11 @@ OperationalSpaceControl::OperationalSpaceControl(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
           .get_index();
 
+  failure_port_ =
+      this->DeclareVectorOutputPort("failure_signal", TimestampedVector<double>(1),
+                                    &OperationalSpaceControl::CheckTracking)
+          .get_index();
+
   const std::map<string, int>& vel_map_wo_spr =
       multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
@@ -1004,6 +1009,18 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());
+}
+
+void OperationalSpaceControl::CheckTracking(
+    const drake::systems::Context<double>& context,
+    TimestampedVector<double>* output) const {
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  output->set_timestamp(robot_output->get_timestamp());
+  output->get_mutable_value()(0) = 0.0;
+  if (abs(robot_output->get_timestamp() - 15.0) < 5e-3) {
+    output->get_mutable_value()(0) = 1.0;
+  }
 }
 
 }  // namespace dairlib::systems::controllers

@@ -3,9 +3,9 @@ package dairlib;
 struct lcmt_input_supervisor_status
 {
   int64_t utime;        // timestamp in microseconds
-  int64_t status;
+  string active_channel;
   boolean shutdown;
-  boolean vel_limit;
-  boolean act_limit;
-  boolean act_delay;
+  int32_t num_status;
+  string status_names[num_status];
+  boolean status_states[num_status];
 }

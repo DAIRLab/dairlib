@@ -24,7 +24,7 @@ group "1.controllers-and-dispatchers" {
         host = "localhost";
     }
     cmd "dispatcher_robot_in" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_1=CASSIE_INPUT";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_initial=CASSIE_INPUT";
         host = "localhost";
     }
     cmd "osc_jumping_controller" {
@@ -43,7 +43,7 @@ group "1.controllers-and-dispatchers" {
 
 group "2.simulators" {
     cmd "cassie_sim" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --init_height=0.95";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --init_height=0.9";
         host = "localhost";
     }
     cmd "cassie_mujoco_sim" {
@@ -54,6 +54,10 @@ group "2.simulators" {
         exec = "bazel-bin/examples/Cassie/multibody_sim --init_height=0.95 --actuator_delay=0.005";
         host = "localhost";
     }
+    cmd "cassie_sim_dispatcher" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --init_height=0.95 --actuator_delay=0.005 --channel_u=NETWORK_CASSIE_INPUT";
+        host = "localhost";
+    }
 }
 
 group "0.operator" {
@@ -62,7 +66,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "drake_director" {
-        exec = "bazel-bin/director/drake-director  --script=examples/Cassie/director_scripts/show_time.py --use_builtin_scripts=point_pair_contact";
+        exec = "bazel-bin/director/drake-director  --script=examples/Cassie/director_scripts/show_time_hardware.py --script=examples/Cassie/director_scripts/controller_status.py --use_builtin_scripts=point_pair_contact";
         host = "localhost";
     }
     cmd "state_visualizer (dispatcher)" {
@@ -70,7 +74,15 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "switch_to_standing" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --switch_channel=PD_CONTROLLER --new_channel=OSC_STANDING";
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --channel_x=CASSIE_STATE_SIMULATION --new_channel=OSC_STANDING";
+        host = "localhost";
+    }
+    cmd "switch_to_walking" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --channel_x=CASSIE_STATE_SIMULATION --new_channel=OSC_WALKING --blend_duration=0.25 --fsm_offset=0.7";
+        host = "localhost";
+    }
+    cmd "switch_to_jumping" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --channel_x=CASSIE_STATE_SIMULATION --new_channel=OSC_JUMPING --blend_duration=1.0";
         host = "localhost";
     }
 }
@@ -82,6 +94,29 @@ group "3.lcm-tools" {
     }
     cmd "0.lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "4.controllers_with_different_channels" {
+    cmd "osc_standing_controller (dispatchers)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller  --height=.85 --channel_u=OSC_STANDING";
+        host = "localhost";
+    }
+    cmd "dispatcher_robot_in_sim" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_initial=OSC_STANDING --sim=1";
+        host = "localhost";
+    }
+    cmd "osc_walking_controller (dispatchers)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_u=OSC_WALKING --cassie_out_channel=CASSIE_OUTPUT --use_radio=1 --channel_x=CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+    cmd "dispatcher_robot_out_sim" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
+        host = "localhost";
+    }
+    cmd "osc_jumping_controller (dispatchers)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --channel_u=CASSIE_INPUT --delay_time=5.0 --channel_x=CASSIE_STATE_DISPATCHER --traj_name=jumping_0.15h_0.3d --channel_u=OSC_JUMPING";
         host = "localhost";
     }
 }
@@ -156,8 +191,8 @@ script "standing_integration_test" {
     stop cmd "cassie_sim";
     stop cmd "osc_standing_controller (state_est)";
     stop cmd "dispatcher_robot_out";
-    start cmd "dispatcher_robot_out";
-    start cmd "dispatcher_robot_in";
+    restart cmd "dispatcher_robot_out";
+    restart cmd "dispatcher_robot_in";
     start cmd "osc_standing_controller (state_est)";
     start cmd "cassie_mujoco_sim";
     wait ms 10000;

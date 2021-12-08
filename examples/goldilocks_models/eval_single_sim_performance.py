@@ -213,6 +213,7 @@ def GetCostWeight(nq, nv, nu):
   w_v_diff_swing_leg = FindVarValueInString(contents, "w_v_diff_swing_leg =")
   w_u_diff = FindVarValueInString(contents, "w_u_diff =")
   w_q_hip_roll = FindVarValueInString(contents, "w_q_hip_roll =")
+  # w_q_hip_roll = 0.1
   w_q_hip_yaw = FindVarValueInString(contents, "w_q_hip_yaw =")
   w_q_quat = FindVarValueInString(contents, "w_q_quat =")
   w_joint_accel = FindVarValueInString(contents, "w_joint_accel =")
@@ -269,8 +270,8 @@ def GetCostWeight(nq, nv, nu):
                  "w_reg": w_reg}
 
   # Printing
-  # for key in weight_dict:
-  #   print(key, " = \n", weight_dict[key])
+  for key in weight_dict:
+    print(key, " = \n", weight_dict[key])
 
   return weight_dict
 
@@ -314,6 +315,10 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
 
   cost_accel = 0.0
   for k in range(len(x_data_knot_idx)):
+    # Testing code
+    # if k == 0 or k == 1:
+    #   continue  # dt = 0
+    
     i = int(x_data_knot_idx[k])
     vdot_i = vdot_numerical[i, :]
     if ls_tx[i]:
@@ -455,7 +460,7 @@ def main():
 
   # Parameters
   global n_step
-  n_step = 4  # steps to average over
+  n_step = 4  #1  # steps to average over
 
   # Steady state parameters
   global step_length_variation_tol, pelvis_height_variation_tol
@@ -571,6 +576,9 @@ def main():
   if t_start < 0:
     return
 
+  # Set start and end time manually
+  # t_start, t_end = 0.001, 0.35
+
   ### Get indices from time
   global t_slice, t_u_slice
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
@@ -622,6 +630,7 @@ def main():
     vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x_extracted[1:], 50)
     vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted[1:], 50)
 
+  # import pdb; pdb.set_trace()
   # Testing -- set the toe acceleration to 0
   # vdot_numerical[:, vel_map["toe_leftdot"]] = 0
   # vdot_numerical[:, vel_map["toe_rightdot"]] = 0

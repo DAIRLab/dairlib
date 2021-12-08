@@ -104,6 +104,9 @@ def CheckSteadyState(x, t_x, td_times, Print=True,
             "tolerance is " + str(pelvis_height_variation_tol) + "\n"
       PrintAndLogStatus(msg)
 
+  global ave_pelvis_height
+  ave_pelvis_height = np.average(pelvis_z_at_td)
+
   return is_steady_state, max_step_diff + max_pelvis_height_diff
 
 
@@ -470,6 +473,9 @@ def main():
   # Some parameters
   low_pass_filter = True
 
+  #
+  global ave_pelvis_height
+
   # Read the controller parameters
   global parsed_yaml, stride_period
   # tip: change full_load() to safe_load() if there is a yaml version issue
@@ -713,6 +719,12 @@ def main():
   # print("writing to " + path)
   f = open(path, "w")
   f.write(str((x_extracted[-1, 4] - x_extracted[0, 4]) / n_step))
+  f.close()
+
+  path = directory + "%s_ave_pelvis_height.csv" % file_prefix
+  # print("writing to " + path)
+  f = open(path, "w")
+  f.write(str(ave_pelvis_height))
   f.close()
 
   path = directory + "%s_success.csv" % file_prefix

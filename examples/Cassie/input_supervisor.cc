@@ -255,13 +255,6 @@ void InputSupervisor::UpdateErrorFlag(
     blend_duration_ = controller_switch->blend_duration;
   }
 
-  //  if (command->get_timestamp() -
-  //          discrete_state->get_mutable_value(prev_efforts_time_index_)[0] >
-  //      kMaxControllerDelay) {
-  //    discrete_state->get_mutable_value(prev_efforts_time_index_)[0] = 0.0;
-  //  } else {
-  //
-  //  }
   discrete_state->get_mutable_value(prev_efforts_time_index_)[0] =
       command->get_timestamp();
 

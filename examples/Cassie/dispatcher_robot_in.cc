@@ -204,10 +204,10 @@ int do_main(int argc, char* argv[]) {
                      "hip_pitch_left_motor", "hip_pitch_right_motor",
                      "knee_left_motor",      "knee_right_motor",
                      "toe_left_motor",       "toe_right_motor"};
-  msg.desired_position = {-0.01, .01, 0, 0, 0.55, 0.55, -1.5, -1.5, -1.8, -1.8};
+  msg.desired_position = {-0.01, .01, 0, 0, 0.55, 0.55, -1.7, -1.7, -1.8, -1.8};
   msg.desired_velocity = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  msg.kp = {80,80,50,50,50,50,100,100,10,10};
-  msg.kd = {1, 1, 1, 1, 1, 1, 10, 10, 1, 1};
+  msg.kp = {50, 50, 50, 50, 50, 50, 50, 50, 20, 20};
+  msg.kd = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
   config_receiver->get_input_port().FixValue(
     &(loop.get_diagram()->GetMutableSubsystemContext(*config_receiver,
                                                 &loop.get_diagram_mutable_context())),

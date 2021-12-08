@@ -98,7 +98,7 @@ def InitPoseSolverFailed(path, enforce_existence = False):
 # planner and controller
 # `trajopt_sample_idx` is used for planner's initial guess and cost regularization term
 def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
-    trajopt_sample_idx, get_init_file):
+                        trajopt_sample_idx, get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
   # stride_length_scaling = 1 + min(rom_iter_idx / 30.0, 1) * 0.15
@@ -158,7 +158,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--dir_data=%s' % data_dir_this_thread,
     '--path_wait_identifier=%s' % planner_wait_identifier,
     '--print_level=0',
-  ]
+    ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
     '--channel_x=%s' % ch.channel_x,
@@ -174,7 +174,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--spring_model=%s' % str(spring_model).lower(),
     '--get_swing_foot_from_planner=%s' % str(foot_step_from_planner).lower(),
     '--path_wait_identifier=%s' % control_wait_identifier,
-  ]
+    ]
   simulator_cmd = [
     'bazel-bin/examples/Cassie/multibody_sim_w_ground_incline',
     '--channel_x=%s' % ch.channel_x,
@@ -187,13 +187,13 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--target_realtime_rate=%.3f' % target_realtime_rate,
     '--spring_model=%s' % str(spring_model).lower(),
     '--path_init_pose_success=%s' % path_init_pose_success,
-  ]
+    ]
   lcm_logger_cmd = [
     'lcm-logger',
     '--lcm-url=udpm://239.255.76.67:%d' % port_idx,
     '-f',
     LcmlogFilePath(rom_iter_idx, log_idx),
-  ]
+    ]
 
   # Testing code to get command
   # if (rom_iter_idx == 100) and (log_idx == 37) and (not get_init_file):
@@ -269,24 +269,20 @@ def EvalCost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
 
 
 # trajopt_sample_indices for visualization
-def CollectAllTrajoptSampleIndices(task, task_tolerance):
+def CollectAllTrajoptSampleIndices():
   # We pick iter 0 since we assume we are using grid tasks (index will be the same across different model iteration)
   # TODO: change this if not using grid task anymore
   rom_iter = 0
 
+  # Collect all samples
   n_sample_trajopt = int(np.loadtxt(model_dir + "n_sample.csv"))
   trajopt_sample_indices_for_viz = []
+
   for j in range(n_sample_trajopt):
     path = model_dir + "%d_%d_task.csv" % (rom_iter, j)
     if os.path.exists(path):
-      trajopt_task = np.loadtxt(path)
-      task_diff = trajopt_task - task
-      task_diff[varying_task_element_idx] = 0
-      if np.linalg.norm(task_diff) < task_tolerance:
-        trajopt_sample_indices_for_viz.append(j)
-
-  if len(trajopt_sample_indices_for_viz) == 0:
-    print("ERROR: no such task in trajopt. Will not plot nominal cost")
+      # trajopt_task = np.loadtxt(path)
+      trajopt_sample_indices_for_viz.append(j)
 
   return trajopt_sample_indices_for_viz
 
@@ -294,11 +290,11 @@ def CollectAllTrajoptSampleIndices(task, task_tolerance):
 # trajopt_sample_indices for planner (find the most similar tasks)
 def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list):
   trajopt_sample_indices = np.zeros((len(model_indices), len(task_list)),
-    dtype=np.dtype(int))
+                                    dtype=np.dtype(int))
   for i in range(len(model_indices)):
     for j in range(len(task_list)):
       trajopt_sample_indices[i, j] = GetTrajoptSampleIndexGivenTask(model_indices[i],
-        task_list[j])
+                                                                    task_list[j])
   return trajopt_sample_indices
 
 
@@ -306,6 +302,7 @@ def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list):
 def GetTrajoptSampleIndexGivenTask(rom_iter, task):
   n_sample_trajopt = int(np.loadtxt(model_dir + "n_sample.csv"))
   dist_list = []
+  path = ""
   for j in range(n_sample_trajopt):
     path = model_dir + "%d_%d_task.csv" % (rom_iter, j)
     # print("try " + path)
@@ -379,7 +376,7 @@ def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
 
 
 def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
-    do_eval_cost=False):
+                                   do_eval_cost=False):
   # TODO: I wonder if we will break any thing if we run ipopt in parallel for the initial pose? (currently we are not doing this, so we are fine)
 
   ### Channel names
@@ -397,7 +394,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   ### Construct sample indices from the task list for simulation
   # `trajopt_sample_idx` is for planner's initial guess and cost regularization term
   trajopt_sample_indices = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices,
-    task_list)
+                                                                          task_list)
   print("trajopt_sample_indices = \n" + str(trajopt_sample_indices))
 
   ### multithreading
@@ -430,14 +427,14 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
         # Get the initial traj
         thread_idx = thread_idx_set.pop()
         working_threads.append(
-            RunSimAndController(thread_idx, sim_end_time, task, log_idx,
-                                rom_iter, trajopt_sample_idx, True))
+          RunSimAndController(thread_idx, sim_end_time, task, log_idx,
+                              rom_iter, trajopt_sample_idx, True))
         BlockAndDeleteTheLatestThread(working_threads)
 
         # Run the simulation
         working_threads.append(
-            RunSimAndController(thread_idx, sim_end_time, task, log_idx,
-                                rom_iter, trajopt_sample_idx, False))
+          RunSimAndController(thread_idx, sim_end_time, task, log_idx,
+                              rom_iter, trajopt_sample_idx, False))
         CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread)
 
         # Evaluate the cost (not multithreaded. Will block the main thread)
@@ -453,7 +450,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
 
 def CheckThreadAndBlockWhenNecessary(working_threads, n_max_thread,
-    finish_up=False):
+                                     finish_up=False):
   # Wait for threads to finish once is more than n_max_thread
   while (not finish_up and (len(working_threads) >= n_max_thread)) or \
       (finish_up and (len(working_threads) > 0)):
@@ -603,62 +600,69 @@ def PlotNominalCost(model_indices, trajopt_sample_indices_for_viz):
 
 
 def GetSamplesToPlot(model_indices, log_indices):
-  # cmtl stores cost, model index, task value, and log index
-  cmtl = np.zeros((0, 4))
+  # cmt_l stores cost, model index, task value, and log index
+  cmt = np.zeros((0, 2 + len(varying_task_element_indices)))
+  log = np.zeros((0, 1))
   for rom_iter in model_indices:
     for idx in log_indices:
       path0 = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)
       path1 = eval_dir + '%d_%d_cost_values.csv' % (rom_iter, idx)
-      path2 = eval_dir + '%d_%d_ave_stride_length.csv' % (rom_iter, idx)
       if os.path.exists(path0):
-        current_cmtl = np.zeros((1, 4))
+        current_cmt = np.zeros((1, 2 + len(varying_task_element_indices)))
         ### Read cost
         cost = np.loadtxt(path1, delimiter=',')
-        current_cmtl[0, 0] = cost[-1]
+        current_cmt[0, 0] = cost[-1]
         if cost[-1] > max_cost_to_ignore:
           continue
-        ### Read actual task
-        task = np.loadtxt(path2, delimiter=',').item()  # 0-dim scalar
-        current_cmtl[0, 2] = task
-        if (task > max_sl) or (task < min_sl):
-          continue
         ### model iteration
-        current_cmtl[0, 1] = rom_iter
-        ### log index
-        current_cmtl[0, 3] = idx
-        ### Assign values
-        # if (cost[-1] > 2.25) & (task < 0.3):
+        current_cmt[0, 1] = rom_iter
+        ### Read actual task
+        add_this_element = True
+        col = 2
+        for key in varying_task_element_indices:
+          path_task = eval_dir + '%d_%d_ave_%s.csv' % (rom_iter, idx, key)
+          task = np.loadtxt(path_task, delimiter=',').item()  # 0-dim scalar
+          current_cmt[0, col] = task
+          if (task < min_max_task_filter_for_viz[key][0]) or (task > min_max_task_filter_for_viz[key][1]):
+            add_this_element = False
+          col += 1
+        if not add_this_element:
+          continue
+        ### Assign values -- cmt
+        # if (cost[-1] > 2.25) & (current_cmt[0, 2] < 0.3):
         #   continue
         # print('Add (iter,idx) = (%d,%d)' % (rom_iter, idx))
-        cmtl = np.vstack([cmtl, current_cmtl])
+        cmt = np.vstack([cmt, current_cmt])
+        ### Assign values -- log index
+        log = np.vstack([log, idx])
         ### For debugging
-        # if (cost[-1] > 2.25) & (task < 0.3):
+        # if (cost[-1] > 2.25) & (current_cmt[0, 2] < 0.3):
         #   print("(iter, log) = (%.0f, %.0f) has cost %.3f (outlier)" %
-        #         (current_cmtl[0, 0], current_cmtl[0, 3], current_cmtl[0, 2]))
-  print("cmtl.shape = " + str(cmtl.shape))
+        #         (current_cmt[0, 0], idx, current_cmt[0, 2]))
+  print("cmt.shape = " + str(cmt.shape))
 
   ### Testing -- find the log idx with high cost
   cost_threshold = 3
-  for mem in cmtl:
+  for i in range(len(cmt)):
+    mem = cmt[i]
     if mem[0] > cost_threshold:
       print("(iter, log) = (%.0f, %.0f) has high cost %.3f" %
-            (mem[1], mem[3], mem[0]))
+            (mem[1], log[i], mem[0]))
     if mem[0] < 0.4:
       print("(iter, log) = (%.0f, %.0f) has low cost %.3f" %
-            (mem[1], mem[3], mem[0]))
+            (mem[1], log[i], mem[0]))
 
-  return cmtl
+  return cmt
 
 
 def GetNominalSamplesToPlot(model_indices):
   ### Get all samples from trajopt for nominal cost
-  trajopt_sample_indices_for_viz = CollectAllTrajoptSampleIndices(task_list[0],
-    task_tolerance) if plot_nominal else []
+  trajopt_sample_indices_for_viz = CollectAllTrajoptSampleIndices() if plot_nominal else []
   print("sample_indices (trajopt) for nominal cost visualization = \n" + str(trajopt_sample_indices_for_viz))
 
   ### Get the samples to plot
   # nominal_cmt stores cost from trajopt, model index, and task value
-  nominal_cmt = np.zeros((0, 3))
+  nominal_cmt = np.zeros((0, 2 + len(varying_task_element_indices)))
   for rom_iter in model_indices:
     for i in range(len(trajopt_sample_indices_for_viz)):
       sub_cmt = np.zeros((1, 3))
@@ -667,17 +671,23 @@ def GetNominalSamplesToPlot(model_indices):
       sub_cmt[0, 0] = cost
       if cost.item() > max_cost_to_ignore:
         continue
-      ### Read nominal task
-      path = model_dir + "%d_%d_task.csv" % (rom_iter, trajopt_sample_indices_for_viz[i])
-      if os.path.exists(path):
-        task = np.loadtxt(path)[varying_task_element_idx]
-        sub_cmt[0, 2] = task
-      else:
-        continue
-      if (task > max_sl) or (task < min_sl):
-        continue
       ### Read model iteration
       sub_cmt[0, 1] = rom_iter
+      ### Read nominal task
+      col = 2
+      add_this_sample = True
+      for key in varying_task_element_indices:
+        path = model_dir + "%d_%d_task.csv" % (rom_iter, trajopt_sample_indices_for_viz[i])
+        if os.path.exists(path):
+          task = np.loadtxt(path)[varying_task_element_indices[key]]
+          sub_cmt[0, col] = task
+          if (task < min_max_task_filter_for_viz[key][0]) or (task > min_max_task_filter_for_viz[key][1]):
+            add_this_sample = False
+        else:
+          add_this_sample = False
+        col += 1
+      if not add_this_sample:
+        continue
       ### Assign values
       nominal_cmt = np.vstack([nominal_cmt, sub_cmt])
   print("nominal_cmt.shape = " + str(nominal_cmt.shape))
@@ -733,7 +743,7 @@ def Generate3dPlots(model_indices, cmtl, nominal_cmt):
     #   nominal_cmt[:, 2], cmap=cm.coolwarm)
     pass
   tcf = ax.tricontour(cmtl[:, 1], cmtl[:, 2], cmtl[:, 0], zdir='y',
-    cmap=cm.coolwarm)
+                      cmap=cm.coolwarm)
   fig.colorbar(tcf)
   ax.set_xlabel('model iterations')
   ax.set_ylabel('stride length (m)')
@@ -936,23 +946,13 @@ def ComputeAchievableTaskRangeOverIter(cmtl):
     plt.savefig("%stask_space_vs_model_iter.png" % eval_dir)
 
 
-def GetVaryingTaskElementIdx(task_list):
-  task_list_copy_for_test = np.copy(task_list)
-  # Default to the first element in case all task element are fixed
-  task_element_idx = 0
+def GetVaryingTaskElementIdx(tasks, nominal_task_names):
+  indices = {}
+  names = tasks.GetVaryingTaskElementName()
+  for name in names:
+    indices[name] = nominal_task_names.index(name)
+  return indices
 
-  found_varying_task = False
-  for i in range(len(task_names)):
-    task_list_copy_for_test[:, i] -= task_list_copy_for_test[0, i]
-    if np.linalg.norm(task_list_copy_for_test[:, i]) == 0:
-      continue
-    else:
-      if found_varying_task:
-        raise ValueError("ERROR: task element #%d is not fixed" % i)
-      else:
-        task_element_idx = i
-        found_varying_task = True
-  return task_element_idx
 
 # Grid tasks
 class Tasks:
@@ -1033,6 +1033,13 @@ class Tasks:
     return self.task_arr[task_idx]
   def GetTaskList(self):
     return self.task_arr
+  def GetVaryingTaskElementName(self):
+    name_list = []
+    for key in self.task_data:
+      if len(self.task_data[key]) > 1:
+        name_list.append(key)
+    return name_list
+
 
 
 if __name__ == "__main__":
@@ -1129,14 +1136,13 @@ if __name__ == "__main__":
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
-  task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str,
-    delimiter=',')
+  nominal_task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str, delimiter=',')
   # Make sure the order is correct
-  if not ((task_names[0] == "stride_length") &
-          (task_names[1] == "ground_incline") &
-          (task_names[2] == "duration") &
-          (task_names[3] == "turning_rate") &
-          (task_names[4] == "pelvis_height")):
+  if not ((nominal_task_names[0] == "stride_length") &
+          (nominal_task_names[1] == "ground_incline") &
+          (nominal_task_names[2] == "duration") &
+          (nominal_task_names[3] == "turning_rate") &
+          (nominal_task_names[4] == "pelvis_height")):
     raise ValueError("ERROR: unexpected task name or task order")
   # Get duration from model optimization file
   path_1_0_task = model_dir + "1_0_task.csv"
@@ -1150,19 +1156,16 @@ if __name__ == "__main__":
   task_list = tasks.GetTaskList()
 
   # Make sure the dimension is correct
-  if len(task_names) != tasks.get_task_dim():
+  if len(nominal_task_names) != tasks.get_task_dim():
     raise ValueError("sim eval task dimension is different from trajopt dim. "
                      "We want them to be the same becasue we use the same code "
                      "to plot sim cost and trajopt cost")
 
-  # TODO: remove this restriction and generalize the plotting script to multidimensional task
-  # index of task vector where we sweep through
-  varying_task_element_idx = GetVaryingTaskElementIdx(task_list)
-  if varying_task_element_idx != 0:
-    raise ValueError("Currently, the code assume only stride length is varying")
+  # Index of task vector where we sweep through
+  varying_task_element_indices = GetVaryingTaskElementIdx(tasks, list(nominal_task_names))
 
-  # TODO: two things to do. One is to get the sim evaluation part done, and the other is how to interpolate 4D data. (A 4d graph).
-  # Looks like LinearNDInterpolator could help. (https://stackoverflow.com/questions/47900969/4d-interpolation-for-irregular-x-y-z-grids-by-python)
+  # TODO: interpolate 4D data. (A 4d graph).
+  #  Looks like LinearNDInterpolator could help. (https://stackoverflow.com/questions/47900969/4d-interpolation-for-irregular-x-y-z-grids-by-python)
 
   # Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.
@@ -1199,6 +1202,9 @@ if __name__ == "__main__":
   # max_sl = mean_sl + delta_sl
   min_sl = -100
   max_sl = 100
+  min_max_task_filter_for_viz = {}
+  min_max_task_filter_for_viz['stride_length'] = (min_sl, max_sl)
+  min_max_task_filter_for_viz['pelvis_height'] = (0, 2)
 
   # Manual overwrite log_indices for plotting
   if len(log_indices_for_plot) != 0:

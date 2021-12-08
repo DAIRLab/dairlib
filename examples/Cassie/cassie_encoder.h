@@ -56,7 +56,7 @@ class CassieEncoder final : public drake::systems::LeafSystem<double> {
   std::vector<int> joint_pos_indices_;
   std::vector<int> joint_vel_indices_;
   std::vector<int> ticks_per_revolution_;
-  std::vector<JointFilter> joint_filters_;
+  std::vector<std::unique_ptr<JointFilter>> joint_filters_;
 };
 
 }  // namespace dairlib

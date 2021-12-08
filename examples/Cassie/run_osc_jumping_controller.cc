@@ -94,7 +94,7 @@ int DoMain(int argc, char* argv[]) {
   // Built the Cassie MBPs
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   addCassieMultibody(&plant_w_spr, nullptr, true,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      false /*spring model*/, false /*loop closure*/);
   plant_w_spr.Finalize();
 

@@ -36,7 +36,10 @@ InputSupervisor::InputSupervisor(
       this->DeclareVectorInputPort("u, t",
                                    TimestampedVector<double>(num_actuators_))
           .get_index();
-  ;
+  safety_command_input_port_ =
+      this->DeclareVectorInputPort("safety: u, t",
+                                   TimestampedVector<double>(num_actuators_))
+          .get_index();
   state_input_port_ =
       this->DeclareVectorInputPort(
               "x, u, t", OutputVector<double>(num_positions_, num_velocities_,
@@ -71,11 +74,16 @@ InputSupervisor::InputSupervisor(
 
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
-  /// controller_delay: triggers when there is too long between consecutive controller messages
-  /// soft_estop: (operator_triggered) triggers when the soft-estop is engaged by the operator
-  /// is_nan: triggers whenever a NaN is received by the dispatcher to prevent sending bad motor commands
-  /// consecutive_failures: triggers whenever the velocity or actuator limits are reached
-  /// controller_failure_delay: triggers whenever the active controller channel sends a failure message
+  /// controller_delay: triggers when there is too long between consecutive
+  /// controller messages
+  /// soft_estop: (operator_triggered) triggers when the soft-estop is engaged
+  /// by the operator.
+  /// is_nan: triggers whenever a NaN is received by the dispatcher to prevent
+  /// sending bad motor commands.
+  /// consecutive_failures: triggers whenever the velocity or actuator limits
+  /// are reached.
+  /// controller_failure_flag: triggers whenever the active
+  /// controller channel sends a failure message.
   error_indices_["controller_delay"] = 0;
   error_indices_["soft_estop"] = 1;
   error_indices_["is_nan"] = 2;
@@ -103,6 +111,9 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
+  const TimestampedVector<double>* safety_command =
+      (TimestampedVector<double>*)this->EvalVectorInput(
+          context, safety_command_input_port_);
   const OutputVector<double>* state =
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
 
@@ -145,7 +156,8 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
       output->SetDataVector(command->get_value());
     }
   } else {
-    output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
+    output->SetDataVector(safety_command->get_value());
+    return;
   }
 
   // Blend the efforts between the previous controller effort and the current
@@ -156,7 +168,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
 
   if (alpha <= 1.0) {
     Eigen::VectorXd blended_effort =
-        alpha * command->get_value() +
+        alpha * output->get_data() +
         (1 - alpha) *
             context.get_discrete_state(prev_efforts_index_).get_value();
     output->SetDataVector(blended_effort);
@@ -192,6 +204,8 @@ void InputSupervisor::UpdateErrorFlag(
   const auto* controller_switch =
       this->EvalInputValue<dairlib::lcmt_controller_switch>(
           context, controller_switch_input_port_);
+  const OutputVector<double>* robot_state =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   const auto* controller_error =
       this->EvalInputValue<dairlib::lcmt_controller_failure>(
           context, controller_error_port_);
@@ -201,23 +215,26 @@ void InputSupervisor::UpdateErrorFlag(
 
   // Note the += operator works as an or operator because we only check if the
   // error flag != 0
-  if(controller_error->controller_channel == active_channel_){
+  if (controller_error->controller_channel == active_channel_ &&
+      controller_error->error_code != 0) {
     discrete_state->get_mutable_value(
-        error_indices_index_)[error_indices_.at("controller_failure_flag")] =
-        controller_error->error_code != 0;
+        error_indices_index_)[error_indices_.at("controller_failure_flag")] = 1;
   }
-  discrete_state->get_mutable_value(
-      error_indices_index_)[error_indices_.at("controller_delay")] =
-      (command->get_timestamp() -
+  if ((robot_state->get_timestamp() -
            context.get_discrete_state(prev_efforts_time_index_)[0] >
-       kMaxControllerDelay);
-  discrete_state->get_mutable_value(
-      error_indices_index_)[error_indices_.at("is_nan")] =
-      command->get_data().array().isNaN().any();
-  discrete_state->get_mutable_value(
-      error_indices_index_)[error_indices_.at("consecutive_failures")] =
-      context.get_discrete_state(n_fails_index_)[0] >=
-      min_consecutive_failures_;
+       kMaxControllerDelay)) {
+    discrete_state->get_mutable_value(
+        error_indices_index_)[error_indices_.at("controller_delay")] = 1;
+  }
+  if (command->get_data().array().isNaN().any()){
+    discrete_state->get_mutable_value(
+        error_indices_index_)[error_indices_.at("is_nan")] = 0;
+  }
+  if (  context.get_discrete_state(n_fails_index_)[0] >=
+        min_consecutive_failures_){
+    discrete_state->get_mutable_value(
+        error_indices_index_)[error_indices_.at("consecutive_failures")] = 1;
+  }
   CheckRadio(context, discrete_state);
   CheckVelocities(context, discrete_state);
 
@@ -238,14 +255,15 @@ void InputSupervisor::UpdateErrorFlag(
     blend_duration_ = controller_switch->blend_duration;
   }
 
-  if (command->get_timestamp() -
-          discrete_state->get_mutable_value(prev_efforts_time_index_)[0] >
-      kMaxControllerDelay) {
-    discrete_state->get_mutable_value(prev_efforts_time_index_)[0] = 0.0;
-  } else {
-    discrete_state->get_mutable_value(prev_efforts_time_index_)[0] =
-        command->get_timestamp();
-  }
+  //  if (command->get_timestamp() -
+  //          discrete_state->get_mutable_value(prev_efforts_time_index_)[0] >
+  //      kMaxControllerDelay) {
+  //    discrete_state->get_mutable_value(prev_efforts_time_index_)[0] = 0.0;
+  //  } else {
+  //
+  //  }
+  discrete_state->get_mutable_value(prev_efforts_time_index_)[0] =
+      command->get_timestamp();
 
   // Update the previous commanded switch message unless currently blending
   // efforts

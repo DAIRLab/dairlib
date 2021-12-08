@@ -11,6 +11,8 @@
 #include "examples/Cassie/networking/cassie_input_translator.h"
 #include "examples/Cassie/networking/cassie_udp_publisher.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/linear_controller.h"
+#include "systems/controllers/pd_config_lcm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -83,10 +85,17 @@ int do_main(int argc, char* argv[]) {
             << std::endl;
 
   // Channel name of the input switch
-  std::string switch_channel = "INPUT_SWITCH";
+  const std::string switch_channel = "INPUT_SWITCH";
+  const std::string channel_config = "PD_CONFIG";
 
   // Create LCM receiver for commands
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(plant);
+
+  // Safety Controller
+  auto controller = builder.AddSystem<systems::LinearController>(
+      plant.num_positions(), plant.num_velocities(), plant.num_actuators());
+  // Create config receiver.
+  auto config_receiver = builder.AddSystem<systems::PDConfigReceiver>(plant);
 
   // Create state estimate receiver, used for safety checks
   auto state_sub =
@@ -128,6 +137,12 @@ int do_main(int argc, char* argv[]) {
                   input_supervisor_status_pub->get_input_port());
   builder.Connect(cassie_out_receiver->get_output_port(),
                   input_supervisor->get_input_port_cassie());
+  builder.Connect(state_receiver->get_output_port(0),
+                  controller->get_input_port_output());
+  builder.Connect(config_receiver->get_output_port(0),
+                  controller->get_input_port_config());
+  builder.Connect(controller->get_output_port(0),
+                  input_supervisor->get_input_port_safety_controller());
 
   // Create and connect translator
   auto input_translator =
@@ -172,11 +187,32 @@ int do_main(int argc, char* argv[]) {
     input_channels.push_back(FLAGS_control_channel_name_additional);
   }
 
+
+
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input,
                          dairlib::lcmt_controller_switch>
       loop(&lcm_local, std::move(owned_diagram), command_receiver,
-           input_channels, FLAGS_control_channel_name_initial, switch_channel, true);
+           input_channels, FLAGS_control_channel_name_initial, switch_channel,
+           true);
+
+  auto msg = dairlib::lcmt_pd_config();
+  msg.timestamp = 0;
+  msg.num_joints = 10;
+  msg.joint_names = {"hip_roll_left_motor",  "hip_roll_right_motor",
+                     "hip_yaw_left_motor",   "hip_yaw_right_motor",
+                     "hip_pitch_left_motor", "hip_pitch_right_motor",
+                     "knee_left_motor",      "knee_right_motor",
+                     "toe_left_motor",       "toe_right_motor"};
+  msg.desired_position = {-0.01, .01, 0, 0, 0.55, 0.55, -1.5, -1.5, -1.8, -1.8};
+  msg.desired_velocity = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  msg.kp = {80,80,50,50,50,50,100,100,10,10};
+  msg.kd = {1, 1, 1, 1, 1, 1, 10, 10, 1, 1};
+  config_receiver->get_input_port().FixValue(
+    &(loop.get_diagram()->GetMutableSubsystemContext(*config_receiver,
+                                                &loop.get_diagram_mutable_context())),
+    msg);
+
   loop.Simulate();
 
   return 0;

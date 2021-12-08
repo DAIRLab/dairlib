@@ -1,8 +1,9 @@
 #pragma once
 #include <limits>
 
-#include "systems/framework/timestamped_vector.h"
 #include "dairlib/lcmt_input_supervisor_status.hpp"
+#include "systems/framework/timestamped_vector.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -40,20 +41,25 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // replaced with a joint-specific vectors.
   explicit InputSupervisor(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const std::string& initial_channel,
-      double max_joint_velocity, double update_period,
-      int min_consecutive_failures = 1,
+      const std::string& initial_channel, double max_joint_velocity,
+      double update_period, int min_consecutive_failures = 1,
       double input_limit = std::numeric_limits<double>::max());
 
   const drake::systems::InputPort<double>& get_input_port_command() const {
     return this->get_input_port(command_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_safety_controller()
+      const {
+    return this->get_input_port(safety_command_input_port_);
+  }
+
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_controller_switch() const {
+  const drake::systems::InputPort<double>& get_input_port_controller_switch()
+      const {
     return this->get_input_port(controller_switch_input_port_);
   }
 
@@ -61,7 +67,8 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_input_port(cassie_input_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_controller_error() const {
+  const drake::systems::InputPort<double>& get_input_port_controller_error()
+      const {
     return this->get_input_port(controller_error_port_);
   }
 
@@ -88,10 +95,11 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   void SetStatus(const drake::systems::Context<double>& context,
                  dairlib::lcmt_input_supervisor_status* output) const;
 
-
-
-  void CheckVelocities(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
-  void CheckRadio(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
+  void CheckVelocities(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+  void CheckRadio(const drake::systems::Context<double>& context,
+                  drake::systems::DiscreteValues<double>* discrete_state) const;
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -128,6 +136,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // leafsystem ports
   int state_input_port_;
   int command_input_port_;
+  int safety_command_input_port_;
   int controller_switch_input_port_;
   int cassie_input_port_;
   int controller_error_port_;

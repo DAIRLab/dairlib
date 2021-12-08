@@ -988,7 +988,8 @@ void OperationalSpaceControl::CheckTracking(
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
-  if (context.get_time() > 5.0) {
+  output->get_mutable_value()(0) = 0.0;
+  if (abs(robot_output->get_timestamp() - 5.0) < 5e-3) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

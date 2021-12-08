@@ -24,7 +24,7 @@ group "1.controllers-and-dispatchers" {
         host = "localhost";
     }
     cmd "dispatcher_robot_in" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_1=CASSIE_INPUT";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_initial=CASSIE_INPUT";
         host = "localhost";
     }
     cmd "osc_jumping_controller" {
@@ -62,7 +62,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "drake_director" {
-        exec = "bazel-bin/director/drake-director  --script=examples/Cassie/director_scripts/show_time_hardware.py --script=examples/Cassie/director_scripts/controller_status.py --script=examples/Cassie/director_scripts/pd_panel.py --use_builtin_scripts=point_pair_contact";
+        exec = "bazel-bin/director/drake-director  --script=examples/Cassie/director_scripts/show_time_hardware.py --script=examples/Cassie/director_scripts/controller_status.py --use_builtin_scripts=point_pair_contact";
         host = "localhost";
     }
     cmd "state_visualizer (dispatcher)" {
@@ -78,7 +78,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "switch_to_jumping" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --channel_x=CASSIE_STATE_SIMULATION --new_channel=OSC_JUMPING";
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --channel_x=CASSIE_STATE_SIMULATION --new_channel=OSC_JUMPING --blend_duration=1.0";
         host = "localhost";
     }
 }
@@ -104,7 +104,7 @@ group "4.controllers_with_different_channels" {
         host = "localhost";
     }
     cmd "osc_walking_controller (dispatchers)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_u=OSC_WALKING --cassie_out_channel=CASSIE_OUTPUT --use_radio=1";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_u=OSC_WALKING --cassie_out_channel=CASSIE_OUTPUT --use_radio=1 --channel_x=CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
     cmd "dispatcher_robot_out_sim" {
@@ -112,7 +112,7 @@ group "4.controllers_with_different_channels" {
         host = "localhost";
     }
     cmd "osc_jumping_controller (dispatchers)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --channel_u=CASSIE_INPUT --delay_time=15.0 --channel_x=CASSIE_STATE_DISPATCHER --traj_name=jumping_0.15h_0.3d --channel_u=OSC_JUMPING";
+        exec = "bazel-bin/examples/Cassie/run_osc_jumping_controller --channel_u=CASSIE_INPUT --delay_time=5.0 --channel_x=CASSIE_STATE_DISPATCHER --traj_name=jumping_0.15h_0.3d --channel_u=OSC_JUMPING";
         host = "localhost";
     }
 }

@@ -149,8 +149,10 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   if (cassie_out->pelvis.radio.channel[15] == -1) {
     Eigen::VectorXd u = -K_ * state->GetVelocities();
     input_limit_ = 20;
+    output->set_timestamp(state->get_timestamp());
     output->SetDataVector(u);
   } else if (is_error) {
+    output->set_timestamp(safety_command->get_timestamp());
     output->SetDataVector(safety_command->get_value());
   } else if (alpha < 1.0) {
     Eigen::VectorXd blended_effort =
@@ -218,12 +220,12 @@ void InputSupervisor::UpdateErrorFlag(
     discrete_state->get_mutable_value(
         error_indices_index_)[error_indices_.at("controller_failure_flag")] = 1;
   }
-  //  if ((robot_state->get_timestamp() -
-  //           context.get_discrete_state(prev_efforts_time_index_)[0] >
-  //       kMaxControllerDelay)) {
-  //    discrete_state->get_mutable_value(
-  //        error_indices_index_)[error_indices_.at("controller_delay")] = 1;
-  //  }
+  if ((robot_state->get_timestamp() -
+           context.get_discrete_state(prev_efforts_time_index_)[0] >
+       kMaxControllerDelay)) {
+    discrete_state->get_mutable_value(
+        error_indices_index_)[error_indices_.at("controller_delay")] = 1;
+  }
   if (command->get_data().array().isNaN().any()) {
     discrete_state->get_mutable_value(
         error_indices_index_)[error_indices_.at("is_nan")] = 0;

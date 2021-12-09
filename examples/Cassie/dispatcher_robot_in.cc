@@ -195,7 +195,7 @@ int do_main(int argc, char* argv[]) {
                          dairlib::lcmt_controller_switch>
       loop(&lcm_local, std::move(owned_diagram), command_receiver,
            input_channels, FLAGS_control_channel_name_initial, switch_channel,
-           true);
+           true, FLAGS_state_channel_name);
 
   auto msg = dairlib::lcmt_pd_config();
   msg.timestamp = 0;

@@ -698,7 +698,7 @@ def AdjustSlices(model_slices):
   max_model_iter = model_indices[-1]
   for i in range(len(model_indices)):
     model_iter = model_indices[i]
-    if len(cmtl[cmtl[:, 1] == model_iter, 2]) == 0:
+    if len(cmt[cmt[:, 1] == model_iter, 2]) == 0:
       max_model_iter = model_indices[i - 1]  # this is general to 1-element case
       break
 
@@ -711,12 +711,12 @@ def AdjustSlices(model_slices):
   return model_slices
 
 
-def Generate3dPlots(model_indices, cmtl, nominal_cmt):
+def Generate3dPlots(model_indices, cmt, nominal_cmt):
   app = "_w_nom" if plot_nominal else ""
   ### scatter plot
   fig = plt.figure(figsize=(10, 7))
   ax = plt.axes(projection="3d")
-  ax.scatter3D(cmtl[:, 1], cmtl[:, 2], cmtl[:, 0], color="green")
+  ax.scatter3D(cmt[:, 1], cmt[:, 2], cmt[:, 0], color="green")
   if plot_nominal:
     ax.scatter3D(nominal_cmt[:, 1], nominal_cmt[:, 2], nominal_cmt[:, 0], "b")
   ax.set_xlabel('model iterations')
@@ -742,7 +742,7 @@ def Generate3dPlots(model_indices, cmtl, nominal_cmt):
     # tcf = ax.plot_trisurf(nominal_cmt[:, 0], nominal_cmt[:, 1],
     #   nominal_cmt[:, 2], cmap=cm.coolwarm)
     pass
-  tcf = ax.tricontour(cmtl[:, 1], cmtl[:, 2], cmtl[:, 0], zdir='y',
+  tcf = ax.tricontour(cmt[:, 1], cmt[:, 2], cmt[:, 0], zdir='y',
                       cmap=cm.coolwarm)
   fig.colorbar(tcf)
   ax.set_xlabel('model iterations')
@@ -753,7 +753,7 @@ def Generate3dPlots(model_indices, cmtl, nominal_cmt):
     plt.savefig("%scost_vs_model_iter_contour%s.png" % (eval_dir, app))
 
 
-def Generate2dPlots(model_indices, cmtl, nominal_cmt):
+def Generate2dPlots(model_indices, cmt, nominal_cmt):
   app = "_w_nom" if plot_nominal else ""
   ### 2D plot (cost vs iteration)
   # The line along which we evaluate the cost (using interpolation)
@@ -762,8 +762,8 @@ def Generate2dPlots(model_indices, cmtl, nominal_cmt):
 
   plt.figure(figsize=(6.4, 4.8))
   plt.rcParams.update({'font.size': 14})
-  triang = mtri.Triangulation(cmtl[:, 1], cmtl[:, 2])
-  interpolator = mtri.LinearTriInterpolator(triang, cmtl[:, 0])
+  triang = mtri.Triangulation(cmt[:, 1], cmt[:, 2])
+  interpolator = mtri.LinearTriInterpolator(triang, cmt[:, 0])
 
   for task_slice_value in task_slice_value_list:
     y = task_slice_value * np.ones(n_model_iter + 1)
@@ -805,8 +805,8 @@ def Generate2dPlots(model_indices, cmtl, nominal_cmt):
     x = model_iter * np.ones(500)
     y = np.linspace(-0.8, 0.8, 500)
 
-    triang = mtri.Triangulation(cmtl[:, 1], cmtl[:, 2])
-    interpolator = mtri.LinearTriInterpolator(triang, cmtl[:, 0])
+    triang = mtri.Triangulation(cmt[:, 1], cmt[:, 2])
+    interpolator = mtri.LinearTriInterpolator(triang, cmt[:, 0])
     z = interpolator(x, y)
     plt.plot(y, z, '-',  # color=color_names[i],
              linewidth=3, label="iter " + str(model_iter))
@@ -825,7 +825,7 @@ def Generate2dPlots(model_indices, cmtl, nominal_cmt):
     plt.savefig("%scost_vs_task.png" % eval_dir)
 
   ### 2D plot (iter vs tasks)
-  data_list = [cmtl, nominal_cmt]
+  data_list = [cmt, nominal_cmt]
   title_list = ["(Drake sim)", "(traj opt)"]
   app_list = ["", "_nom"]
   for i in range(2 if plot_nominal else 1):
@@ -855,7 +855,7 @@ def Generate2dPlots(model_indices, cmtl, nominal_cmt):
       plt.savefig("%scost_landscape_iter%s.png" % (eval_dir, app_list[i]))
 
 
-def ComputeExpectedCostOverTask(cmtl, stride_length_range_to_average):
+def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
   if len(stride_length_range_to_average) == 0:
     return
   elif len(stride_length_range_to_average) != 2:
@@ -870,8 +870,8 @@ def ComputeExpectedCostOverTask(cmtl, stride_length_range_to_average):
   for i in range(len(model_indices)):
     model_iter = model_indices[i]
     try:
-      viable_min = max(viable_min, min(cmtl[cmtl[:, 1] == model_iter, 2]))
-      viable_max = min(viable_max, max(cmtl[cmtl[:, 1] == model_iter, 2]))
+      viable_min = max(viable_min, min(cmt[cmt[:, 1] == model_iter, 2]))
+      viable_max = min(viable_max, max(cmt[cmt[:, 1] == model_iter, 2]))
     except ValueError:
       effective_length = i + 1
       print("Iteration %d doesn't have successful sample, so we stop plotting expected cost after this iter" % model_iter)
@@ -892,20 +892,20 @@ def ComputeExpectedCostOverTask(cmtl, stride_length_range_to_average):
     x = model_iter * np.ones(n_sample)
     y = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
 
-    triang = mtri.Triangulation(cmtl[:, 1], cmtl[:, 2])
-    interpolator = mtri.LinearTriInterpolator(triang, cmtl[:, 0])
+    triang = mtri.Triangulation(cmt[:, 1], cmt[:, 2])
+    interpolator = mtri.LinearTriInterpolator(triang, cmt[:, 0])
     z = interpolator(x, y)
 
     # Make sure the averaged range is within the achievable task space
     # Method 1
-    # if min(cmtl[cmtl[:, 0] == model_iter, 1]) > stride_length_range_to_average[0]:
+    # if min(cmt[cmt[:, 0] == model_iter, 1]) > stride_length_range_to_average[0]:
     #   raise ValueError("iter %d: the range we average over is bigger than the achievable task space. Increase the range's lower bound" % model_iter)
-    # elif max(cmtl[cmtl[:, 0] == model_iter, 1]) < stride_length_range_to_average[1]:
+    # elif max(cmt[cmt[:, 0] == model_iter, 1]) < stride_length_range_to_average[1]:
     #   raise ValueError("the range we average over is bigger than the achievable task space. Decrease the range's upper bound" % model_iter)
     # Method 2
     if z.mask.sum() > 0:
-      viable_min = min(cmtl[cmtl[:, 1] == model_iter, 2])
-      viable_max = max(cmtl[cmtl[:, 1] == model_iter, 2])
+      viable_min = min(cmt[cmt[:, 1] == model_iter, 2])
+      viable_max = max(cmt[cmt[:, 1] == model_iter, 2])
       raise ValueError("iter %d: the range we average over is larger than the achievable task space. "
                        "We should either increase the range's lower bound or decrease the range's upper bound. "
                        "Viable (min, max) is (%f, %f)" % (model_iter, viable_min, viable_max))
@@ -923,13 +923,13 @@ def ComputeExpectedCostOverTask(cmtl, stride_length_range_to_average):
     plt.savefig("%saveraged_cost_vs_model_iter.png" % eval_dir)
 
 
-def ComputeAchievableTaskRangeOverIter(cmtl):
+def ComputeAchievableTaskRangeOverIter(cmt):
   ### 2D plot (task range vs iteration)
   task_range = np.zeros(len(model_indices))
   for i in range(len(model_indices)):
     model_iter = model_indices[i]
     try:
-      tasks = cmtl[cmtl[:, 1] == model_iter, 2]
+      tasks = cmt[cmt[:, 1] == model_iter, 2]
       task_range[i] = max(tasks) - min(tasks)
     except ValueError:
       task_range[i] = 0
@@ -1212,8 +1212,8 @@ if __name__ == "__main__":
   print("log_indices for plotting = " + str(log_indices))
 
   # Get samples to plot
-  # cmtl is a list of (model index, task value, cost, and log index)
-  cmtl = GetSamplesToPlot(model_indices, log_indices)
+  # cmt is a list of (model index, task value, and cost)
+  cmt = GetSamplesToPlot(model_indices, log_indices)
   nominal_cmt = GetNominalSamplesToPlot(model_indices)
   if len(nominal_cmt) == 0:
     plot_nominal = False
@@ -1222,13 +1222,13 @@ if __name__ == "__main__":
   model_slices = AdjustSlices(model_slices)
 
   # Plot
-  Generate3dPlots(model_indices, cmtl, nominal_cmt)
-  Generate2dPlots(model_indices, cmtl, nominal_cmt)
+  Generate3dPlots(model_indices, cmt, nominal_cmt)
+  Generate2dPlots(model_indices, cmt, nominal_cmt)
 
   ### Compute expected (averaged) cost
-  ComputeExpectedCostOverTask(cmtl, stride_length_range_to_average)
+  ComputeExpectedCostOverTask(cmt, stride_length_range_to_average)
 
   ### Compute task range over iteration
-  ComputeAchievableTaskRangeOverIter(cmtl)
+  ComputeAchievableTaskRangeOverIter(cmt)
 
   plt.show()

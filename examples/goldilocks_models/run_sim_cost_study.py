@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import matplotlib.tri as mtri
+from scipy.interpolate import LinearNDInterpolator
 import codecs
 import math
 
@@ -762,23 +763,21 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt):
 
   plt.figure(figsize=(6.4, 4.8))
   plt.rcParams.update({'font.size': 14})
-  triang = mtri.Triangulation(cmt[:, 1], cmt[:, 2])
-  interpolator = mtri.LinearTriInterpolator(triang, cmt[:, 0])
 
+  interpolator = LinearNDInterpolator(cmt[:, 1:3], cmt[:, 0])
   for task_slice_value in task_slice_value_list:
     y = task_slice_value * np.ones(n_model_iter + 1)
-    z = interpolator(x, y)
+    z = interpolator(np.vstack((x, y)).T)
     # plt.plot(x, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m (Drake sim)")
     plt.plot(x, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m")
     # plt.plot(x, z, 'k-', linewidth=3, label="Drake simulation")
 
   if plot_nominal:
     plt.gca().set_prop_cycle(None)  # reset color cycle
-    triang = mtri.Triangulation(nominal_cmt[:, 1], nominal_cmt[:, 2])
-    interpolator = mtri.LinearTriInterpolator(triang, nominal_cmt[:, 0])
+    interpolator = LinearNDInterpolator(nominal_cmt[:, 1:3], nominal_cmt[:, 0])
     for task_slice_value in task_slice_value_list:
       y = task_slice_value * np.ones(n_model_iter + 1)
-      z = interpolator(x, y)
+      z = interpolator(np.vstack((x, y)).T)
       plt.plot(x, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m (traj opt)")
       # plt.plot(x, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m")
       # plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
@@ -805,15 +804,13 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt):
     x = model_iter * np.ones(500)
     y = np.linspace(-0.8, 0.8, 500)
 
-    triang = mtri.Triangulation(cmt[:, 1], cmt[:, 2])
-    interpolator = mtri.LinearTriInterpolator(triang, cmt[:, 0])
-    z = interpolator(x, y)
+    interpolator = LinearNDInterpolator(cmt[:, 1:3], cmt[:, 0])
+    z = interpolator(np.vstack((x, y)).T)
     plt.plot(y, z, '-',  # color=color_names[i],
              linewidth=3, label="iter " + str(model_iter))
     # if plot_nominal:
-    #   triang = mtri.Triangulation(nominal_cmt[:, 1], nominal_cmt[:, 2])
-    #   interpolator = mtri.LinearTriInterpolator(triang, nominal_cmt[:, 0])
-    #   z = interpolator(x, y)
+    #   interpolator = LinearNDInterpolator(nominal_cmt[:, 1:3], nominal_cmt[:, 0])
+    #   z = interpolator(np.vstack((x, y)).T)
     #   plt.plot(x, z, 'k--', linewidth=3, label="trajectory optimization")
 
   plt.xlabel('stride length (m)')
@@ -825,34 +822,35 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt):
     plt.savefig("%scost_vs_task.png" % eval_dir)
 
   ### 2D plot (iter vs tasks)
-  data_list = [cmt, nominal_cmt]
-  title_list = ["(Drake sim)", "(traj opt)"]
-  app_list = ["", "_nom"]
-  for i in range(2 if plot_nominal else 1):
-    plt.rcParams.update({'font.size': 14})
-    fig, ax = plt.subplots()
-
-    data = data_list[i]
-    n_levels = 50
-    levels = list(set(
-      np.linspace(min(data[:, 0]), max(data[:, 0]), n_levels).round(
-        decimals=2)))  # set() is used to get rid of duplicates
-    levels.sort()
-    levels[0] -= 0.01
-    levels[-1] += 0.01
-    # levels = list(set(np.linspace(0.4, 3, n_levels)))
-    # levels.sort()
-    surf = ax.tricontourf(data[:, 1], data[:, 2], data[:, 0], levels=levels, cmap='coolwarm')
-    fig.colorbar(surf, shrink=0.9, aspect=15)
-
-    # plt.xlim([0, 135])
-    plt.xlabel('model iterations')
-    plt.ylabel('stride length (m)')
-    plt.title('Cost landscape ' + title_list[i])
-    plt.gcf().subplots_adjust(bottom=0.15)
-    plt.gcf().subplots_adjust(left=0.15)
-    if save_fig:
-      plt.savefig("%scost_landscape_iter%s.png" % (eval_dir, app_list[i]))
+  # TODO: the code below is not ready for multi-dimensional task visualization
+  # data_list = [cmt, nominal_cmt]
+  # title_list = ["(Drake sim)", "(traj opt)"]
+  # app_list = ["", "_nom"]
+  # for i in range(2 if plot_nominal else 1):
+  #   plt.rcParams.update({'font.size': 14})
+  #   fig, ax = plt.subplots()
+  #
+  #   data = data_list[i]
+  #   n_levels = 50
+  #   levels = list(set(
+  #     np.linspace(min(data[:, 0]), max(data[:, 0]), n_levels).round(
+  #       decimals=2)))  # set() is used to get rid of duplicates
+  #   levels.sort()
+  #   levels[0] -= 0.01
+  #   levels[-1] += 0.01
+  #   # levels = list(set(np.linspace(0.4, 3, n_levels)))
+  #   # levels.sort()
+  #   surf = ax.tricontourf(data[:, 1], data[:, 2], data[:, 0], levels=levels, cmap='coolwarm')
+  #   fig.colorbar(surf, shrink=0.9, aspect=15)
+  #
+  #   # plt.xlim([0, 135])
+  #   plt.xlabel('model iterations')
+  #   plt.ylabel('stride length (m)')
+  #   plt.title('Cost landscape ' + title_list[i])
+  #   plt.gcf().subplots_adjust(bottom=0.15)
+  #   plt.gcf().subplots_adjust(left=0.15)
+  #   if save_fig:
+  #     plt.savefig("%scost_landscape_iter%s.png" % (eval_dir, app_list[i]))
 
 
 def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):

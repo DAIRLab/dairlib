@@ -712,8 +712,21 @@ def AdjustSlices(model_slices):
   return model_slices
 
 
-def Generate3dPlots(cmt, nominal_cmt):
-  print("WARNING: currently Generate3dPlots() is not generalized to > 1D task space visualization")
+def Generate3dPlots(cmt, nominal_cmt, plot_nominal):
+  plot_nominal = False  # nominal cost plot not implemented yet
+  print("WARNING: currently Generate3dPlots() has not been generalized to > 1D task space for the nominal data")
+
+  cmt = copy.deepcopy(cmt)
+  nominal_cmt = copy.deepcopy(nominal_cmt)
+
+  # Project tasks to the specified walking height and get the corresponding cost
+  interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
+  z = interpolator(np.vstack((cmt[:, 1], cmt[:, 2], task_slice_value_ph * np.ones(len(cmt[:, 2])))).T)
+  # Remove the rows corresponding to nan cost (from interpolation outside the region)
+  cmt = cmt[~np.isnan(z), :]
+  z = z[~np.isnan(z)]
+  # Assign interpolated cost
+  cmt[:, 0] = z
 
   app = "_w_nom" if plot_nominal else ""
   ### scatter plot
@@ -756,8 +769,21 @@ def Generate3dPlots(cmt, nominal_cmt):
     plt.savefig("%scost_vs_model_iter_contour%s.png" % (eval_dir, app))
 
 
-def Generate2dPlots(model_indices, cmt, nominal_cmt):
+def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   app = "_w_nom" if plot_nominal else ""
+
+  if len(nominal_cmt[0]) != 4:
+    raise ValueError("The code assumes cmt is 4D (two dimensinoal task)")
+
+  # Some set up for plotting nominal costs
+  num_task_dim = 2
+  if plot_nominal:
+    if np.sum(nominal_cmt[:, -1] != nominal_cmt[0, -1]) == 0:  # pelvis task is fixed in nominal traj
+      if np.sum(np.array(task_slice_value_list)[:, 1] != nominal_cmt[0, -1]) == 0:  # The task slice has to be the same as the trajopt task
+        num_task_dim = 1
+      else:
+        plot_nominal = False
+
   ### 2D plot (cost vs iteration)
   # The line along which we evaluate the cost (using interpolation)
   n_model_iter = model_indices[-1] - model_indices[0]  # number of iterations between iter_start and iter_end
@@ -768,36 +794,23 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt):
 
   interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
   for task_slice_value in task_slice_value_list:
-    t_sl = task_slice_value[0] * np.ones(n_model_iter + 1)
-    t_ph = task_slice_value[1] * np.ones(n_model_iter + 1)
+    t = np.array(task_slice_value).reshape(2, 1) * np.ones(n_model_iter + 1)
     print("task_slice_value = " + str(task_slice_value))
-    # import pdb; pdb.set_trace()
-    z = interpolator(np.vstack((m, t_sl, t_ph)).T)
-    # plt.plot(m, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m (Drake sim)")
+    z = interpolator(np.vstack((m, t)).T)
     plt.plot(m, z, linewidth=3, label='(sl, ph) = (%.2f, %.2f) m' % task_slice_value)
+    # plt.plot(m, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m (Drake sim)")
     # plt.plot(m, z, 'k-', linewidth=3, label="Drake simulation")
 
   if plot_nominal:
     plt.gca().set_prop_cycle(None)  # reset color cycle
 
-    pelvis_task_is_fixed_in_nominal_traj = (np.sum(nominal_cmt[:, -1] != nominal_cmt[0, -1]) == 0)
-    if pelvis_task_is_fixed_in_nominal_traj:
-      if np.sum(np.array(task_slice_value_list)[:, 1] != nominal_cmt[0, -1]) == 0:  # The task slice has to be the same as the trajopt task
-        triang = mtri.Triangulation(nominal_cmt[:, 1], nominal_cmt[:, 2])
-        interpolator = mtri.LinearTriInterpolator(triang, nominal_cmt[:, 0])
-        for task_slice_value in task_slice_value_list:
-          t_sl = task_slice_value[0] * np.ones(n_model_iter + 1)
-          z = interpolator(m, t_sl)
-          plt.plot(m, z, '--', linewidth=3, label='(sl, ph) = (%.2f, %.2f) m (trajopt)' % task_slice_value)
-    else:
-      interpolator = LinearNDInterpolator(nominal_cmt[:, 1:], nominal_cmt[:, 0])
-      for task_slice_value in task_slice_value_list:
-        t_sl = task_slice_value[0] * np.ones(n_model_iter + 1)
-        t_ph = task_slice_value[1] * np.ones(n_model_iter + 1)
-        z = interpolator(np.vstack((m, t_sl, t_ph)).T)
-        plt.plot(m, z, '--', linewidth=3, label='(sl, ph) = (%.2f, %.2f) m (trajopt)' % task_slice_value)
-        # plt.plot(m, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m")
-        # plt.plot(m, z, 'k--', linewidth=3, label="trajectory optimization")
+    interpolator = LinearNDInterpolator(nominal_cmt[:, 1:2+num_task_dim], nominal_cmt[:, 0])
+    for task_slice_value in task_slice_value_list:
+      t = np.array(task_slice_value[:num_task_dim]).reshape(num_task_dim, 1) * np.ones(n_model_iter + 1)
+      z = interpolator(np.vstack((m, t)).T)
+      plt.plot(m, z, '--', linewidth=3, label='(sl, ph) = (%.2f, %.2f) m (trajopt)' % task_slice_value)
+      # plt.plot(m, z, '--', linewidth=3, label='stride length ' + str(task_slice_value) + " m")
+      # plt.plot(m, z, 'k--', linewidth=3, label="trajectory optimization")
 
   # plt.xlim([0, 135])
   # plt.ylim([0.53, 1])
@@ -820,7 +833,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt):
     # The line along which we evaluate the cost (using interpolation)
     m = model_iter * np.ones(500)
     t_sl = np.linspace(-0.8, 0.8, 500)
-    t_ph = pelvis_slice_viz * np.ones(500)
+    t_ph = task_slice_value_ph * np.ones(500)
 
     interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
     z = interpolator(np.vstack((m, t_sl, t_ph)).T)
@@ -840,35 +853,43 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt):
     plt.savefig("%scost_vs_task.png" % eval_dir)
 
   ### 2D plot (iter vs tasks)
-  # TODO: the code below is not ready for multi-dimensional task visualization, we need to slice at a specific walking height
-  # data_list = [cmt, nominal_cmt]
-  # title_list = ["(Drake sim)", "(traj opt)"]
-  # app_list = ["", "_nom"]
-  # for i in range(2 if plot_nominal else 1):
-  #   plt.rcParams.update({'font.size': 14})
-  #   fig, ax = plt.subplots()
-  #
-  #   data = data_list[i]
-  #   n_levels = 50
-  #   levels = list(set(
-  #     np.linspace(min(data[:, 0]), max(data[:, 0]), n_levels).round(
-  #       decimals=2)))  # set() is used to get rid of duplicates
-  #   levels.sort()
-  #   levels[0] -= 0.01
-  #   levels[-1] += 0.01
-  #   # levels = list(set(np.linspace(0.4, 3, n_levels)))
-  #   # levels.sort()
-  #   surf = ax.tricontourf(data[:, 1], data[:, 2], data[:, 0], levels=levels, cmap='coolwarm')
-  #   fig.colorbar(surf, shrink=0.9, aspect=15)
-  #
-  #   # plt.xlim([0, 135])
-  #   plt.xlabel('model iterations')
-  #   plt.ylabel('stride length (m)')
-  #   plt.title('Cost landscape ' + title_list[i])
-  #   plt.gcf().subplots_adjust(bottom=0.15)
-  #   plt.gcf().subplots_adjust(left=0.15)
-  #   if save_fig:
-  #     plt.savefig("%scost_landscape_iter%s.png" % (eval_dir, app_list[i]))
+  data_list = [cmt, nominal_cmt]
+  title_list = ["(Drake sim)", "(traj opt)"]
+  app_list = ["", "_nom"]
+  for i in range(2 if plot_nominal else 1):
+    plt.rcParams.update({'font.size': 14})
+    fig, ax = plt.subplots()
+
+    data = copy.deepcopy(data_list[i])
+
+    # Interpolate to get the cost at specific pelvis height
+    interpolator = LinearNDInterpolator(data[:, 1:], data[:, 0]) if i == 0 else LinearNDInterpolator(data[:, 1:2+num_task_dim], data[:, 0])
+    z = interpolator(np.vstack((data[:, 1], data[:, 2], task_slice_value_ph * np.ones(len(data[:, 2])))).T) if i == 0 else interpolator(np.vstack((data[:, 1], data[:, 2])).T)
+
+    # Remove the rows correponding to nan cost (from interpolation outside the region)
+    data = data[~np.isnan(z), :]
+    z = z[~np.isnan(z)]
+
+    n_levels = 50
+    levels = list(set(
+      np.linspace(min(z), max(z), n_levels).round(
+        decimals=2)))  # set() is used to get rid of duplicates
+    levels.sort()
+    levels[0] -= 0.01
+    levels[-1] += 0.01
+    # levels = list(set(np.linspace(0.4, 3, n_levels)))
+    # levels.sort()
+    surf = ax.tricontourf(data[:, 1], data[:, 2], z, levels=levels, cmap='coolwarm')
+    fig.colorbar(surf, shrink=0.9, aspect=15)
+
+    # plt.xlim([0, 135])
+    plt.xlabel('model iterations')
+    plt.ylabel('stride length (m)')
+    plt.title('Cost landscape ' + title_list[i])
+    plt.gcf().subplots_adjust(bottom=0.15)
+    plt.gcf().subplots_adjust(left=0.15)
+    if save_fig:
+      plt.savefig("%scost_landscape_iter%s.png" % (eval_dir, app_list[i]))
 
 
 def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
@@ -879,6 +900,8 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
   elif stride_length_range_to_average[0] > stride_length_range_to_average[1]:
     raise ValueError("first element should be the lower bound of the range")
 
+  interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
+
   # Correct the range so that it's within the achieveable task space for all model iter
   viable_min = -math.inf
   viable_max = math.inf
@@ -886,8 +909,15 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
   for i in range(len(model_indices)):
     model_iter = model_indices[i]
     try:
-      viable_min = max(viable_min, min(cmt[cmt[:, 1] == model_iter, 2]))
-      viable_max = min(viable_max, max(cmt[cmt[:, 1] == model_iter, 2]))
+      n_sample = 1000
+      m = model_iter * np.ones(n_sample)
+      t_sl = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
+      t_ph = task_slice_value_ph * np.ones(n_sample)
+      z = interpolator(np.vstack((m, t_sl, t_ph)).T)
+      t_sl_masked = t_sl[~np.isnan(z)]
+
+      viable_min = max(viable_min, min(t_sl_masked))
+      viable_max = min(viable_max, max(t_sl_masked))
     except ValueError:
       effective_length = i + 1
       print("Iteration %d doesn't have successful sample, so we stop plotting expected cost after this iter" % model_iter)
@@ -905,26 +935,10 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
   for i in range(effective_length):
     model_iter = model_indices[i]
     # The line along which we evaluate the cost (using interpolation)
-    x = model_iter * np.ones(n_sample)
-    y = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
-
-    triang = mtri.Triangulation(cmt[:, 1], cmt[:, 2])
-    interpolator = mtri.LinearTriInterpolator(triang, cmt[:, 0])
-    z = interpolator(x, y)
-
-    # Make sure the averaged range is within the achievable task space
-    # Method 1
-    # if min(cmt[cmt[:, 0] == model_iter, 1]) > stride_length_range_to_average[0]:
-    #   raise ValueError("iter %d: the range we average over is bigger than the achievable task space. Increase the range's lower bound" % model_iter)
-    # elif max(cmt[cmt[:, 0] == model_iter, 1]) < stride_length_range_to_average[1]:
-    #   raise ValueError("the range we average over is bigger than the achievable task space. Decrease the range's upper bound" % model_iter)
-    # Method 2
-    if z.mask.sum() > 0:
-      viable_min = min(cmt[cmt[:, 1] == model_iter, 2])
-      viable_max = max(cmt[cmt[:, 1] == model_iter, 2])
-      raise ValueError("iter %d: the range we average over is larger than the achievable task space. "
-                       "We should either increase the range's lower bound or decrease the range's upper bound. "
-                       "Viable (min, max) is (%f, %f)" % (model_iter, viable_min, viable_max))
+    m = model_iter * np.ones(n_sample)
+    t_sl = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
+    t_ph = task_slice_value_ph * np.ones(n_sample)
+    z = interpolator(np.vstack((m, t_sl, t_ph)).T)
 
     averaged_cost[i] = z.sum() / n_sample
 
@@ -932,7 +946,7 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
   plt.plot(model_indices[:effective_length], averaged_cost, 'k-', linewidth=3)
   plt.xlabel('model iteration')
   plt.ylabel('averaged cost')
-  plt.title("Cost averaged over stride length [" + str(stride_length_range_to_average[0]) + ", " + str(stride_length_range_to_average[1]) + "] m")
+  plt.title("Cost averaged over stride length [%.3f, %.3f] m" % tuple(stride_length_range_to_average))
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
@@ -940,13 +954,39 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
 
 
 def ComputeAchievableTaskRangeOverIter(cmt):
+  interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
+  n_sample = 1000
+
   ### 2D plot (task range vs iteration)
-  task_range = np.zeros(len(model_indices))
+  # Get max range
+  min_sl_across_iter = 1
+  max_sl_across_iter = 0
   for i in range(len(model_indices)):
     model_iter = model_indices[i]
     try:
-      tasks = cmt[cmt[:, 1] == model_iter, 2]
-      task_range[i] = max(tasks) - min(tasks)
+      m = model_iter * np.ones(n_sample)
+      t_sl = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
+      t_ph = task_slice_value_ph * np.ones(n_sample)
+      z = interpolator(np.vstack((m, t_sl, t_ph)).T)
+      t_sl_masked = t_sl[~np.isnan(z)]
+
+      min_sl_across_iter = min(min_sl_across_iter, min(t_sl_masked))
+      max_sl_across_iter = max(max_sl_across_iter, max(t_sl_masked))
+    except ValueError:
+      continue
+
+  # Get range
+  task_range = np.zeros(len(model_indices))
+  t_sl = np.linspace(min_sl_across_iter, max_sl_across_iter, n_sample)
+  t_ph = task_slice_value_ph * np.ones(n_sample)
+  for i in range(len(model_indices)):
+    model_iter = model_indices[i]
+    try:
+      m = model_iter * np.ones(n_sample)
+      z = interpolator(np.vstack((m, t_sl, t_ph)).T)
+      t_sl_masked = t_sl[~np.isnan(z)]
+
+      task_range[i] = max(t_sl_masked) - min(t_sl_masked)
     except ValueError:
       task_range[i] = 0
       print("Iteration %d doesn't have successful sample. Set achievable task range to 0" % model_iter)
@@ -1126,7 +1166,7 @@ if __name__ == "__main__":
   model_slices = [1, 50, 100, 150]
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
-  pelvis_slice_viz = 0.95
+  task_slice_value_ph = 0.95
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1181,9 +1221,6 @@ if __name__ == "__main__":
   # Index of task vector where we sweep through
   varying_task_element_indices = GetVaryingTaskElementIdx(tasks, list(nominal_task_names))
   print("varying_task_element_indices = " + str(varying_task_element_indices))
-
-  # TODO: interpolate 4D data. (A 4d graph).
-  #  Looks like LinearNDInterpolator could help. (https://stackoverflow.com/questions/47900969/4d-interpolation-for-irregular-x-y-z-grids-by-python)
 
   # Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.
@@ -1240,8 +1277,8 @@ if __name__ == "__main__":
   model_slices = AdjustSlices(model_slices)
 
   # Plot
-  Generate3dPlots(cmt, nominal_cmt)
-  Generate2dPlots(model_indices, cmt, nominal_cmt)
+  Generate3dPlots(cmt, nominal_cmt, plot_nominal)
+  Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal)
 
   ### Compute expected (averaged) cost
   ComputeExpectedCostOverTask(cmt, stride_length_range_to_average)

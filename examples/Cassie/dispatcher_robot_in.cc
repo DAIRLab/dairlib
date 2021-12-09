@@ -45,7 +45,7 @@ DEFINE_string(
     "The name of the channel to receive the cassie out structure from.");
 DEFINE_double(max_joint_velocity, 20,
               "Maximum joint velocity before error is triggered");
-DEFINE_double(input_limit, -1,
+DEFINE_double(input_limit, 300,
               "Maximum torque limit. Negative values are inf.");
 DEFINE_int64(supervisor_N, 10,
              "Maximum allowed consecutive failures of velocity limit.");
@@ -180,14 +180,15 @@ int do_main(int argc, char* argv[]) {
   owned_diagram->set_name("dispatcher_robot_in");
 
   // Channel names of the controllers
-  std::vector<std::string> input_channels = {"PD_CONTROL", "OSC_STANDING",
-                                             "OSC_WALKING", "OSC_JUMPING",
+  std::vector<std::string> input_channels = {FLAGS_control_channel_name_initial,
+                                             "PD_CONTROL",
+                                             "OSC_STANDING",
+                                             "OSC_WALKING",
+                                             "OSC_JUMPING",
                                              "OSC_RUNNING"};
   if (!FLAGS_control_channel_name_additional.empty()) {
     input_channels.push_back(FLAGS_control_channel_name_additional);
   }
-
-
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input,
@@ -209,9 +210,9 @@ int do_main(int argc, char* argv[]) {
   msg.kp = {50, 50, 50, 50, 50, 50, 50, 50, 20, 20};
   msg.kd = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
   config_receiver->get_input_port().FixValue(
-    &(loop.get_diagram()->GetMutableSubsystemContext(*config_receiver,
-                                                &loop.get_diagram_mutable_context())),
-    msg);
+      &(loop.get_diagram()->GetMutableSubsystemContext(
+          *config_receiver, &loop.get_diagram_mutable_context())),
+      msg);
 
   loop.Simulate();
 

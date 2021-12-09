@@ -113,7 +113,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // supervisor settings
   const int min_consecutive_failures_;
   double max_joint_velocity_;
-  double input_limit_;
+  mutable double input_limit_;
   mutable double blend_duration_ = 0.0;
 
   // For keeping track of things that require multiple failures

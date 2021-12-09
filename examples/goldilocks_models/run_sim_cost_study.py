@@ -1031,16 +1031,19 @@ class Tasks:
     self.task_data[name] = np.array(array)
 
   def CreateTasklistViaDfs(self, level, indices_tuple):
-    if level == self.n_dim - 1:
+    if level == self.n_dim:
       task = []
+      # print("indices_tuple = " + str(indices_tuple))
       for i_dim in range(self.n_dim):
         task_idx = indices_tuple[i_dim]
         task.append(self.task_data[self.names[i_dim]][task_idx])
       self.task_list.append(task)
     else:
       for _ in self.task_data[self.names[level]]:
+        # print("before " + str(indices_tuple))
         self.CreateTasklistViaDfs(level + 1,  copy.deepcopy(indices_tuple))
         indices_tuple[level] += 1
+        # print("after " + str(indices_tuple))
 
   def Construct(self):
     self.constructed = True
@@ -1064,10 +1067,12 @@ class Tasks:
     indices_tuple = [0] * self.n_dim
     self.CreateTasklistViaDfs(level, copy.deepcopy(indices_tuple))
     self.task_arr = np.array(self.task_list)
+
+    print("task_list = \n" + str(self.task_arr))
+
     if self.task_arr.shape != (self.n_task, self.n_dim):
       raise ValueError("self.task_list.shape = " + str(self.task_arr.shape) + ", but we expect (" + str(self.n_task) + ", " + str(self.n_dim) + ")")
 
-    print("task_list = \n" + str(self.task_arr))
 
   # Getters
   def tasks_info(self):

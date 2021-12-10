@@ -1314,7 +1314,7 @@ if __name__ == "__main__":
   # Manual overwrite log_indices for plotting
   if len(log_indices_for_plot) != 0:
     log_indices = log_indices_for_plot
-  print("log_indices for plotting = " + str(log_indices))
+  print("log_indices for plotting = " + str(log_indices) + "\n")
 
   # Get samples to plot
   # cmt is a list of (model index, task value, and cost)

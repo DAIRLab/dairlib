@@ -713,7 +713,8 @@ def AdjustSlices(model_slices):
 
 
 def Generate4dPlots(cmt, nominal_cmt, plot_nominal):
-  # Generate 4D plots (cost, model, task1, task2)
+  ### Generate 4D plots (cost, model, task1, task2)
+  print("\nPlotting 4D scatter plots...")
 
   fig = plt.figure(figsize=(10, 7))
   ax = fig.add_subplot(111, projection='3d')
@@ -993,9 +994,16 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
 def ComputeAchievableTaskRangeOverIter(cmt):
   print("\nPlotting achievable task range over iter...")
   interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
-  n_sample = 1000
 
   ### 2D plot (task range vs iteration)
+  n_sample = 1000
+  max_task_value = 1
+  min_task_value = -1
+
+  delta_task = (max_task_value - min_task_value) / n_sample
+  t_sl = np.linspace(min_task_value, max_task_value, n_sample)
+  t_ph = task_slice_value_ph * np.ones(n_sample)
+
   # Get max range
   min_sl_across_iter = 1
   max_sl_across_iter = 0
@@ -1003,8 +1011,6 @@ def ComputeAchievableTaskRangeOverIter(cmt):
     model_iter = model_indices[i]
     try:
       m = model_iter * np.ones(n_sample)
-      t_sl = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
-      t_ph = task_slice_value_ph * np.ones(n_sample)
       z = interpolator(np.vstack((m, t_sl, t_ph)).T)
       t_sl_masked = t_sl[~np.isnan(z)]
 
@@ -1012,6 +1018,8 @@ def ComputeAchievableTaskRangeOverIter(cmt):
       max_sl_across_iter = max(max_sl_across_iter, max(t_sl_masked))
     except ValueError:
       continue
+  min_sl_across_iter -= delta_task
+  max_sl_across_iter += delta_task
 
   # Get range
   task_range = np.zeros(len(model_indices))

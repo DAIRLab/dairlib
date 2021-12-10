@@ -71,6 +71,11 @@ InputSupervisor::InputSupervisor(
   status_output_port_ =
       this->DeclareAbstractOutputPort("status", &InputSupervisor::SetStatus)
           .get_index();
+  // Create output port for status
+  failure_output_port_ =
+      this->DeclareAbstractOutputPort("failure_status",
+                                      &InputSupervisor::SetFailureStatus)
+          .get_index();
 
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
@@ -148,7 +153,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   // any other controller signal
   if (cassie_out->pelvis.radio.channel[15] == -1) {
     Eigen::VectorXd u = -K_ * state->GetVelocities();
-    input_limit_ = 20;
+    input_limit_ = 100;
     output->set_timestamp(state->get_timestamp());
     output->SetDataVector(u);
   } else if (is_error) {
@@ -196,6 +201,16 @@ void InputSupervisor::SetStatus(
         context.get_discrete_state().get_value(
             error_indices_index_)[error_flags.second];
   }
+}
+
+void InputSupervisor::SetFailureStatus(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_controller_failure* output) const {
+  output->utime = context.get_time() * 1e6;
+  output->error_code =
+      context.get_discrete_state().get_value(shutdown_index_)[0];
+  output->controller_channel = "GLOBAL_ERROR";
+  output->error_name = "";
 }
 
 void InputSupervisor::UpdateErrorFlag(

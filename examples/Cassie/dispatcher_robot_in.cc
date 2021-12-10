@@ -13,7 +13,7 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
-#include "systems/framework/lcm_driven_loop.h"
+#include "examples/Cassie/cassie_lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/lcm/drake_lcm.h"
@@ -110,6 +110,9 @@ int do_main(int argc, char* argv[]) {
   auto controller_error_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_controller_failure>(
           "CONTROLLER_ERROR", &lcm_local));
+  auto controller_error_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
+          "CONTROLLER_ERROR", &lcm_local));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto input_supervisor_status_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_input_supervisor_status>(
@@ -143,6 +146,8 @@ int do_main(int argc, char* argv[]) {
                   controller->get_input_port_config());
   builder.Connect(controller->get_output_port(0),
                   input_supervisor->get_input_port_safety_controller());
+  builder.Connect(input_supervisor->get_output_port_failure(),
+                  controller_error_pub->get_input_port());
 
   // Create and connect translator
   auto input_translator =
@@ -191,7 +196,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_input,
+  CassieLcmDrivenLoop<dairlib::lcmt_robot_input,
                          dairlib::lcmt_controller_switch>
       loop(&lcm_local, std::move(owned_diagram), command_receiver,
            input_channels, FLAGS_control_channel_name_initial, switch_channel,

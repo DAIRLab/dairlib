@@ -712,6 +712,29 @@ def AdjustSlices(model_slices):
   return model_slices
 
 
+def Generate4dPlots(cmt, nominal_cmt, plot_nominal):
+  # Generate 4D plots (cost, model, task1, task2)
+
+  fig = plt.figure(figsize=(10, 7))
+  ax = fig.add_subplot(111, projection='3d')
+
+  img = ax.scatter(cmt[:,1], cmt[:,2], cmt[:,3], c=cmt[:,0], cmap=plt.hot())
+  fig.colorbar(img)
+
+  ax.set_xlabel('model iterations')
+  ax.set_ylabel('stride length (m)')
+  ax.set_zlabel('pelvis height (m)')
+
+  if save_fig:
+    ax.view_init(90, -90)  # look from +z axis. model iter vs task
+    plt.savefig("%smodel_ter_vs_task1_4Dscatterplot.png" % (eval_dir))
+    ax.view_init(0, 0)  # look from x axis. cost vs task
+    plt.savefig("%stask2_vs_task1_4Dscatterplot.png" % (eval_dir))
+    ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
+    plt.savefig("%stask2_vs_model_iter_4Dscatterplot.png" % (eval_dir))
+  ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
+
+
 def Generate3dPlots(cmt, nominal_cmt, plot_nominal):
   plot_nominal = False  # nominal cost plot not implemented yet
   print("WARNING: currently Generate3dPlots() has not been generalized to > 1D task space for the nominal data")
@@ -731,6 +754,8 @@ def Generate3dPlots(cmt, nominal_cmt, plot_nominal):
 
   app = "_w_nom" if plot_nominal else ""
   ### scatter plot
+  print("\nPlotting 3D scatter plots...")
+
   fig = plt.figure(figsize=(10, 7))
   ax = plt.axes(projection="3d")
   ax.scatter3D(cmt[:, 1], cmt[:, 2], cmt[:, 0], color="green")
@@ -750,6 +775,8 @@ def Generate3dPlots(cmt, nominal_cmt, plot_nominal):
   ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
 
   ### level set plot
+  print("\nPlotting 3D level set plots...")
+
   fig = plt.figure(figsize=(10, 7))
   ax = plt.axes(projection="3d")
   if plot_nominal:
@@ -759,6 +786,7 @@ def Generate3dPlots(cmt, nominal_cmt, plot_nominal):
     # tcf = ax.plot_trisurf(nominal_cmt[:, 0], nominal_cmt[:, 1],
     #   nominal_cmt[:, 2], cmap=cm.coolwarm)
     pass
+  print("If a deprecation warning comes up here, it's from within tricontour()")
   tcf = ax.tricontour(cmt[:, 1], cmt[:, 2], cmt[:, 0], zdir='y',
                       cmap=cm.coolwarm)
   fig.colorbar(tcf)
@@ -786,6 +814,8 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
         plot_nominal = False
 
   ### 2D plot (cost vs iteration)
+  print("\nPlotting cost vs iterations...")
+
   # The line along which we evaluate the cost (using interpolation)
   n_model_iter = model_indices[-1] - model_indices[0]  # number of iterations between iter_start and iter_end
   m = np.linspace(0, n_model_iter, n_model_iter + 1)
@@ -827,6 +857,8 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     plt.savefig("%scost_vs_model_iter%s_ph%.2f.png" % (eval_dir, app, task_slice_value_ph))
 
   ### 2D plot (cost vs tasks)
+  print("\nPlotting cost vs task...")
+
   plt.figure(figsize=(6.4, 4.8))
   plt.rcParams.update({'font.size': 14})
   for i in range(len(model_slices)):
@@ -854,6 +886,8 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     plt.savefig("%scost_vs_task_ph%.2f.png" % (eval_dir, task_slice_value_ph))
 
   ### 2D plot (iter vs tasks)
+  print("\nPlotting iterations vs task...")
+
   data_list = [cmt, nominal_cmt]
   title_list = ["(Drake sim)", "(traj opt)"]
   app_list = ["", "_nom"]
@@ -900,6 +934,8 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
     raise ValueError("the range list has to be 2 dimensional")
   elif stride_length_range_to_average[0] > stride_length_range_to_average[1]:
     raise ValueError("first element should be the lower bound of the range")
+
+  print("\nPlotting expected cost over task...")
 
   interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
 
@@ -955,6 +991,7 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
 
 
 def ComputeAchievableTaskRangeOverIter(cmt):
+  print("\nPlotting achievable task range over iter...")
   interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
   n_sample = 1000
 
@@ -1282,6 +1319,7 @@ if __name__ == "__main__":
   model_slices = AdjustSlices(model_slices)
 
   # Plot
+  Generate4dPlots(cmt, nominal_cmt, plot_nominal)
   Generate3dPlots(cmt, nominal_cmt, plot_nominal)
   Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal)
 

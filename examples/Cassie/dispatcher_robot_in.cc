@@ -116,7 +116,7 @@ int do_main(int argc, char* argv[]) {
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto input_supervisor_status_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_input_supervisor_status>(
-          "INPUT_SUPERVISOR_STATUS", &lcm_local, {TriggerType::kForced}));
+          "INPUT_SUPERVISOR_STATUS", &lcm_network, {TriggerType::kPeriodic}, FLAGS_pub_rate));
   builder.Connect(*state_sub, *state_receiver);
 
   double input_supervisor_update_period = 1.0 / 1000.0;

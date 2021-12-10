@@ -2,6 +2,7 @@
 #include <limits>
 
 #include "dairlib/lcmt_input_supervisor_status.hpp"
+#include "dairlib/lcmt_controller_failure.hpp"
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -80,6 +81,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_output_port(status_output_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_failure() const {
+    return this->get_output_port(failure_output_port_);
+  }
+
   void SetMotorTorques(const drake::systems::Context<double>& context,
                        systems::TimestampedVector<double>* output) const;
   void UpdateErrorFlag(
@@ -94,6 +99,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // 2nd: velocity triggered shutdown
   void SetStatus(const drake::systems::Context<double>& context,
                  dairlib::lcmt_input_supervisor_status* output) const;
+
+  // Output a failure message when any error is triggered
+  void SetFailureStatus(const drake::systems::Context<double>& context,
+                 dairlib::lcmt_controller_failure* output) const;
 
   void CheckVelocities(
       const drake::systems::Context<double>& context,
@@ -113,7 +122,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // supervisor settings
   const int min_consecutive_failures_;
   double max_joint_velocity_;
-  double input_limit_;
+  mutable double input_limit_;
   mutable double blend_duration_ = 0.0;
 
   // For keeping track of things that require multiple failures
@@ -142,6 +151,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   int controller_error_port_;
   int command_output_port_;
   int status_output_port_;
+  int failure_output_port_;
 
   Eigen::MatrixXd K_;
 };

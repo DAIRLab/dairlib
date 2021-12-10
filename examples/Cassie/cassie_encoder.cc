@@ -84,7 +84,7 @@ void CassieEncoder::UpdateFilter(const drake::systems::Context<double>& context,
   }
 
   VectorXd x_filtered = VectorXd::Zero(num_positions_ + num_velocities_);
-  x_filtered << q_filtered, v;
+  x_filtered << q_filtered, v_filtered;
 //  x_filtered << q, v;
   output->set_value(x_filtered);
 }

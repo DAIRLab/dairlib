@@ -13,7 +13,7 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
-#include "systems/framework/lcm_driven_loop.h"
+#include "examples/Cassie/cassie_lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/lcm/drake_lcm.h"
@@ -45,7 +45,7 @@ DEFINE_string(
     "The name of the channel to receive the cassie out structure from.");
 DEFINE_double(max_joint_velocity, 20,
               "Maximum joint velocity before error is triggered");
-DEFINE_double(input_limit, -1,
+DEFINE_double(input_limit, 300,
               "Maximum torque limit. Negative values are inf.");
 DEFINE_int64(supervisor_N, 10,
              "Maximum allowed consecutive failures of velocity limit.");
@@ -110,10 +110,13 @@ int do_main(int argc, char* argv[]) {
   auto controller_error_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_controller_failure>(
           "CONTROLLER_ERROR", &lcm_local));
+  auto controller_error_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
+          "CONTROLLER_ERROR", &lcm_local));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto input_supervisor_status_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_input_supervisor_status>(
-          "INPUT_SUPERVISOR_STATUS", &lcm_local, {TriggerType::kForced}));
+          "INPUT_SUPERVISOR_STATUS", &lcm_network, {TriggerType::kPeriodic}, FLAGS_pub_rate));
   builder.Connect(*state_sub, *state_receiver);
 
   double input_supervisor_update_period = 1.0 / 1000.0;
@@ -143,6 +146,8 @@ int do_main(int argc, char* argv[]) {
                   controller->get_input_port_config());
   builder.Connect(controller->get_output_port(0),
                   input_supervisor->get_input_port_safety_controller());
+  builder.Connect(input_supervisor->get_output_port_failure(),
+                  controller_error_pub->get_input_port());
 
   // Create and connect translator
   auto input_translator =
@@ -180,21 +185,22 @@ int do_main(int argc, char* argv[]) {
   owned_diagram->set_name("dispatcher_robot_in");
 
   // Channel names of the controllers
-  std::vector<std::string> input_channels = {"PD_CONTROL", "OSC_STANDING",
-                                             "OSC_WALKING", "OSC_JUMPING",
+  std::vector<std::string> input_channels = {FLAGS_control_channel_name_initial,
+                                             "PD_CONTROL",
+                                             "OSC_STANDING",
+                                             "OSC_WALKING",
+                                             "OSC_JUMPING",
                                              "OSC_RUNNING"};
   if (!FLAGS_control_channel_name_additional.empty()) {
     input_channels.push_back(FLAGS_control_channel_name_additional);
   }
 
-
-
   // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_input,
+  CassieLcmDrivenLoop<dairlib::lcmt_robot_input,
                          dairlib::lcmt_controller_switch>
       loop(&lcm_local, std::move(owned_diagram), command_receiver,
            input_channels, FLAGS_control_channel_name_initial, switch_channel,
-           true);
+           true, FLAGS_state_channel_name);
 
   auto msg = dairlib::lcmt_pd_config();
   msg.timestamp = 0;
@@ -209,9 +215,9 @@ int do_main(int argc, char* argv[]) {
   msg.kp = {50, 50, 50, 50, 50, 50, 50, 50, 20, 20};
   msg.kd = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
   config_receiver->get_input_port().FixValue(
-    &(loop.get_diagram()->GetMutableSubsystemContext(*config_receiver,
-                                                &loop.get_diagram_mutable_context())),
-    msg);
+      &(loop.get_diagram()->GetMutableSubsystemContext(
+          *config_receiver, &loop.get_diagram_mutable_context())),
+      msg);
 
   loop.Simulate();
 

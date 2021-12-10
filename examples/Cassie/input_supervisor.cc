@@ -71,6 +71,11 @@ InputSupervisor::InputSupervisor(
   status_output_port_ =
       this->DeclareAbstractOutputPort("status", &InputSupervisor::SetStatus)
           .get_index();
+  // Create output port for status
+  failure_output_port_ =
+      this->DeclareAbstractOutputPort("failure_status",
+                                      &InputSupervisor::SetFailureStatus)
+          .get_index();
 
   prev_efforts_index_ = DeclareDiscreteState(num_actuators_);
 
@@ -127,38 +132,8 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
                                error_indices_index_)[error_flags.second];
   }
 
-  // If the soft estop signal is triggered, applying only damping regardless of
-  // any other controller signal
-  if (cassie_out->pelvis.radio.channel[15] == -1) {
-    Eigen::VectorXd u = -K_ * state->GetVelocities();
-    output->SetDataVector(u);
-    return;
-  }
-
-  // If there has not been an error, copy over the command.
-  // If there has been an error, set the command to all zeros
+  // always set the timestamp of the output message
   output->set_timestamp(command->get_timestamp());
-  if (!is_error) {
-    // If input_limit_ has been set, limit inputs to
-    // [-input_limit_, input_limit_]
-    if (input_limit_ != std::numeric_limits<double>::max()) {
-      for (int i = 0; i < command->get_data().size(); i++) {
-        double command_value = command->get_data()(i);
-        if (command_value > input_limit_) {
-          command_value = input_limit_;
-        } else if (command_value < -input_limit_) {
-          command_value = -input_limit_;
-        }
-        output->get_mutable_data()(i) = command_value;
-      }
-    } else {
-      // Can copy entire raw vector
-      output->SetDataVector(command->get_value());
-    }
-  } else {
-    output->SetDataVector(safety_command->get_value());
-    return;
-  }
 
   // Blend the efforts between the previous controller effort and the current
   // commanded effort using linear interpolation
@@ -166,14 +141,44 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
                   context.get_discrete_state(switch_time_index_)[0]) /
                  blend_duration_;
 
-  if (alpha <= 1.0) {
+  /// Hierarchy in controllers goes:
+  /// Note: 1-4 are all limited by the specified input limits
+  /// 0. Manual estop (outside of input supervisor)
+  /// 1. soft-estop (also sets more conservative input limits)
+  /// 2. safety_pd_controller
+  /// 3. blended efforts from switching control signals
+  /// 4. command from controller
+
+  // If the soft estop signal is triggered, applying only damping regardless of
+  // any other controller signal
+  if (cassie_out->pelvis.radio.channel[15] == -1) {
+    Eigen::VectorXd u = -K_ * state->GetVelocities();
+    input_limit_ = 100;
+    output->set_timestamp(state->get_timestamp());
+    output->SetDataVector(u);
+  } else if (is_error) {
+    output->set_timestamp(safety_command->get_timestamp());
+    output->SetDataVector(safety_command->get_value());
+  } else if (alpha < 1.0) {
     Eigen::VectorXd blended_effort =
-        alpha * output->get_data() +
+        alpha * command->get_value() +
         (1 - alpha) *
             context.get_discrete_state(prev_efforts_index_).get_value();
     output->SetDataVector(blended_effort);
-    if (fmod(command->get_timestamp(), 0.5) < 1e-4) {
-      std::cout << "Blending efforts" << std::endl;
+  } else {
+    output->get_mutable_data() = command->get_data();
+  }
+
+  // Apply input_limits
+  if (input_limit_ != std::numeric_limits<double>::max()) {
+    for (int i = 0; i < command->get_data().size(); i++) {
+      double command_value = output->get_data()(i);
+      if (command_value > input_limit_) {
+        command_value = input_limit_;
+      } else if (command_value < -input_limit_) {
+        command_value = -input_limit_;
+      }
+      output->get_mutable_data()(i) = command_value;
     }
   }
 }
@@ -196,6 +201,16 @@ void InputSupervisor::SetStatus(
         context.get_discrete_state().get_value(
             error_indices_index_)[error_flags.second];
   }
+}
+
+void InputSupervisor::SetFailureStatus(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_controller_failure* output) const {
+  output->utime = context.get_time() * 1e6;
+  output->error_code =
+      context.get_discrete_state().get_value(shutdown_index_)[0];
+  output->controller_channel = "GLOBAL_ERROR";
+  output->error_name = "";
 }
 
 void InputSupervisor::UpdateErrorFlag(
@@ -226,12 +241,12 @@ void InputSupervisor::UpdateErrorFlag(
     discrete_state->get_mutable_value(
         error_indices_index_)[error_indices_.at("controller_delay")] = 1;
   }
-  if (command->get_data().array().isNaN().any()){
+  if (command->get_data().array().isNaN().any()) {
     discrete_state->get_mutable_value(
         error_indices_index_)[error_indices_.at("is_nan")] = 0;
   }
-  if (  context.get_discrete_state(n_fails_index_)[0] >=
-        min_consecutive_failures_){
+  if (context.get_discrete_state(n_fails_index_)[0] >=
+      min_consecutive_failures_) {
     discrete_state->get_mutable_value(
         error_indices_index_)[error_indices_.at("consecutive_failures")] = 1;
   }

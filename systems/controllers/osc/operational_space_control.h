@@ -110,6 +110,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_osc_debug_port() const {
     return this->get_output_port(osc_debug_port_);
   }
+  const drake::systems::OutputPort<double>& get_failure_output_port() const {
+    return this->get_output_port(failure_port_);
+  }
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -226,6 +229,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Output function
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
+  // Safety function that triggers when the tracking cost is too high
+  void CheckTracking(
+      const drake::systems::Context<double>& context,
+      TimestampedVector<double>* output) const;
 
   // Input/Output ports
   int osc_debug_port_;
@@ -234,6 +241,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int clock_port_;
   int fsm_port_;
   int impact_info_port_;
+  int failure_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;
@@ -389,6 +397,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* input_reg_cost_;
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
+
+  mutable double total_cost_ = 0;
 };
 
 }  // namespace dairlib::systems::controllers

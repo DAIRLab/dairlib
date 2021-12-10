@@ -854,6 +854,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     const Context<double>& context, dairlib::lcmt_osc_output* output) const {
   auto state =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  total_cost_ = 0;
   int fsm_state = -1;
   if (used_with_finite_state_machine_) {
     auto fsm_output =
@@ -907,6 +908,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_data_names =
       std::vector<std::string>(tracking_data_vec_->size());
 
+  total_cost_ += output->acceleration_cost;
+  total_cost_ += output->input_cost;
+  total_cost_ += output->soft_constraint_cost;
+
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
     output->tracking_data_names[i] = tracking_data->GetName();
@@ -943,6 +948,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       output->tracking_cost[i] =
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
            (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
+      total_cost_ += output->tracking_cost[i];
     }
   }
 
@@ -1018,7 +1024,8 @@ void OperationalSpaceControl::CheckTracking(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
-  if (abs(robot_output->get_timestamp() - 5.0) < 5e-3) {
+  std::cout << "total cost: " << total_cost_ << std::endl;
+  if (total_cost_ > 5e4 || isnan(total_cost_)) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

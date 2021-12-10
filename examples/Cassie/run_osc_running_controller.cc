@@ -21,6 +21,7 @@
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
@@ -87,7 +88,9 @@ DEFINE_bool(use_radio, false,
 DEFINE_string(
     channel_cassie_out, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
-DEFINE_double(fsm_time_offset, 0.0, "Time (s) in the fsm to move from the stance phase to the flight phase");
+DEFINE_double(
+    fsm_time_offset, 0.0,
+    "Time (s) in the fsm to move from the stance phase to the flight phase");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -159,10 +162,12 @@ int DoMain(int argc, char* argv[]) {
   int right_stance_state = 1;
   int right_touchdown_air_phase = 2;
   int left_touchdown_air_phase = 3;
-  double left_support_duration = dircon_trajectory.GetStateBreaks(1)(0) * 2 - FLAGS_fsm_time_offset;
+  double left_support_duration =
+      dircon_trajectory.GetStateBreaks(1)(0) * 2 - FLAGS_fsm_time_offset;
   double right_support_duration = left_support_duration;
   double air_phase_duration = dircon_trajectory.GetStateBreaks(2)(0) -
-                              dircon_trajectory.GetStateBreaks(1)(0) + FLAGS_fsm_time_offset;
+                              dircon_trajectory.GetStateBreaks(1)(0) +
+                              FLAGS_fsm_time_offset;
   vector<int> fsm_states = {left_stance_state, right_touchdown_air_phase,
                             right_stance_state, left_touchdown_air_phase,
                             left_stance_state};
@@ -190,6 +195,12 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_RUNNING", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  auto failure_aggregator =
+      builder.AddSystem<systems::ControllerFailureAggregator>(FLAGS_channel_u,
+                                                              1);
+  auto controller_failure_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
+          "CONTROLLER_ERROR", &lcm, TriggerTypeSet({TriggerType::kForced})));
 
   /**** OSC setup ****/
   // Cost
@@ -464,8 +475,8 @@ int DoMain(int argc, char* argv[]) {
     right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
     osc->AddTrackingData(&left_foot_rel_tracking_data);
     osc->AddTrackingData(&right_foot_rel_tracking_data);
-//    left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
-//    right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+    //    left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+    //    right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
     osc->AddTrackingData(&left_foot_yz_rel_tracking_data);
     osc->AddTrackingData(&right_foot_yz_rel_tracking_data);
   } else {
@@ -723,6 +734,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_failure_output_port(),
+                  failure_aggregator->get_input_port(0));
+  builder.Connect(failure_aggregator->get_status_output_port(),
+                  controller_failure_pub->get_input_port());
 
   // Run lcm-driven simulation
   // Create the diagram

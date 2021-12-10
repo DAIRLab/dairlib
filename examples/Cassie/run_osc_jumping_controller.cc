@@ -18,6 +18,7 @@
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
+#include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -263,6 +264,12 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  auto failure_aggregator =
+      builder.AddSystem<systems::ControllerFailureAggregator>(FLAGS_channel_u,
+                                                              1);
+  auto controller_failure_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
+          "CONTROLLER_ERROR", &lcm, TriggerTypeSet({TriggerType::kForced})));
 
   // For contact-based fsm
   LcmSubscriberSystem* contact_results_sub = nullptr;
@@ -519,6 +526,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_failure_output_port(),
+                  failure_aggregator->get_input_port(0));
+  builder.Connect(failure_aggregator->get_status_output_port(),
+                  controller_failure_pub->get_input_port());
 
   // Run lcm-driven simulation
   // Create the diagram

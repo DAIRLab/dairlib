@@ -53,6 +53,8 @@ int do_main() {
   int nv = multibody_plant.num_velocities();
   int nu = multibody_plant.num_actuators();
 
+  std::cout << "nx: " << nq + nv << std::endl;
+
   VectorXd x = VectorXd::Zero(nq + nv);
   VectorXd u = VectorXd::Zero(nu);
 
@@ -149,8 +151,7 @@ int do_main() {
   for (int i = 0; i < num_reps; i++) {
     x = VectorXd::Constant(nq + nv, i);
     u = VectorXd::Constant(nu, i);
-    multibody_context->FixInputPort(
-        multibody_plant.get_actuation_input_port().get_index(), u);
+    multibody_plant.get_actuation_input_port().FixValue(multibody_context.get(), u);
     multibody_plant.SetPositionsAndVelocities(multibody_context.get(), x);
     multibody_plant.CalcTimeDerivatives(*multibody_context, derivatives.get());
   }
@@ -169,9 +170,8 @@ int do_main() {
     x = VectorXd::Constant(2 * nq, i);
     u = VectorXd::Constant(nu, i);
 
-    multibody_context_autodiff->FixInputPort(
-        multibody_plant_autodiff->get_actuation_input_port().get_index(),
-        math::initializeAutoDiff(u));
+    multibody_plant_autodiff->get_actuation_input_port().FixValue(
+        multibody_context_autodiff.get(), math::initializeAutoDiff(u));
     multibody_plant_autodiff->SetPositionsAndVelocities(
         multibody_context_autodiff.get(), math::initializeAutoDiff(x));
     multibody_plant_autodiff->CalcTimeDerivatives(*multibody_context_autodiff,
@@ -303,8 +303,7 @@ int do_main() {
 
   // Forward dynamics
   //   MBP
-  multibody_context->FixInputPort(
-      multibody_plant.get_actuation_input_port().get_index(), u);
+  multibody_plant.get_actuation_input_port().FixValue(multibody_context.get(), u);
   multibody_plant.SetPositionsAndVelocities(multibody_context.get(), x);
   multibody_plant.CalcTimeDerivatives(*multibody_context, derivatives.get());
   VectorXd xdot_mbp = derivatives->CopyToVector();
@@ -332,8 +331,8 @@ int do_main() {
 
   // Forward dynamics gradients
 
-  multibody_context_autodiff->FixInputPort(
-      multibody_plant_autodiff->get_actuation_input_port().get_index(), u_ad);
+  multibody_plant_autodiff->get_actuation_input_port().FixValue(
+        multibody_context_autodiff.get(), u_ad);
   multibody_plant_autodiff->SetPositionsAndVelocities(
       multibody_context_autodiff.get(), x_ad);
   multibody_plant_autodiff->CalcTimeDerivatives(*multibody_context_autodiff,

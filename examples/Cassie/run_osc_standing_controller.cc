@@ -13,6 +13,11 @@
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "systems/controllers/osc/options_tracking_data.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/controllers/osc/com_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
+#include "systems/controllers/osc/rot_space_tracking_data.h"
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -57,6 +62,7 @@ DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
 DEFINE_bool(use_radio, false, "use the radio to set height or not");
+DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -218,7 +224,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_springs, plant_wo_springs, context_w_spr.get(),
-      context_wo_spr.get(), false, FLAGS_print_osc);
+      context_wo_spr.get(), false, FLAGS_print_osc, FLAGS_qp_time_limit);
 
   // Distance constraint
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
@@ -255,10 +261,6 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
-  Q_accel(6, 6) = 0.1;
-  Q_accel(7, 7) = 0.1;
-  Q_accel(8, 8) = 0.1;
-  Q_accel(9, 9) = 0.1;
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
@@ -269,6 +271,9 @@ int DoMain(int argc, char* argv[]) {
       "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
       plant_w_springs, plant_wo_springs);
   center_of_mass_traj.AddPointToTrack("pelvis");
+  double cutoff_freq = 5; // in Hz
+  double tau = 1 / (2 * M_PI * cutoff_freq);
+  center_of_mass_traj.SetLowPassFilter(tau, {1});
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   RotTaskSpaceTrackingData pelvis_rot_traj(
@@ -278,18 +283,24 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_rot_traj);
 
-  JointSpaceTrackingData hip_yaw_left_tracking(
-      "hip_yaw_left_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
-      plant_wo_springs);
-  JointSpaceTrackingData hip_yaw_right_tracking(
-      "hip_yaw_right_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, plant_w_springs,
-      plant_wo_springs);
-  hip_yaw_left_tracking.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
-  hip_yaw_right_tracking.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&hip_yaw_left_tracking, 0.0 * VectorXd::Ones(1));
-  osc->AddConstTrackingData(&hip_yaw_right_tracking, 0.0 * VectorXd::Ones(1));
+  // Hip yaw joint tracking
+  // We use hip yaw joint tracking instead of pelvis yaw tracking because the
+  // foot sometimes rotates about yaw, and we need hip yaw joint to go back to 0.
+  double w_hip_yaw = 0.5;
+  double hip_yaw_kp = 40;
+  double hip_yaw_kd = 0.5;
+  JointSpaceTrackingData left_hip_yaw_traj(
+      "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
+      hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
+      plant_w_springs, plant_wo_springs);
+  JointSpaceTrackingData right_hip_yaw_traj(
+      "right_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
+      hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
+      plant_w_springs, plant_wo_springs);
+  left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+  osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
+  right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
 
   // Build OSC problem
   osc->Build();

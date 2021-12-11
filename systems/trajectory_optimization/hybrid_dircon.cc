@@ -237,7 +237,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       auto b = MatrixXd::Zero(num_kinematic_constraints_wo_skipping(i), 1);
       for (int j = 0; j < mode_lengths_[i]; j++) {
         // Add || Ax - b ||^2
-        AddL2NormCost(A, b, force(i, j));
+        Add2NormSquaredCost(A, b, force(i, j));
       }
     }
 

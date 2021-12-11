@@ -31,16 +31,17 @@ StandingComTraj::StandingComTraj(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const std::vector<std::pair<const Vector3d, const Frame<double>&>>&
         feet_contact_points,
-    double height, bool use_radio)
+    double height, bool set_target_height_by_radio)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       feet_contact_points_(feet_contact_points),
       height_(height),
-      use_radio_(use_radio){
+      set_target_height_by_radio_(set_target_height_by_radio){
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
@@ -50,13 +51,13 @@ StandingComTraj::StandingComTraj(
               drake::Value<dairlib::lcmt_target_standing_height>{})
           .get_index();
   radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_cassie_output",
+      this->DeclareAbstractInputPort("lcmt_cassie_out",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
-  this->DeclareAbstractOutputPort("com_traj", traj_inst,
+  this->DeclareAbstractOutputPort("com_xyz", traj_inst,
                                   &StandingComTraj::CalcDesiredTraj);
 }
 
@@ -73,7 +74,7 @@ void StandingComTraj::CalcDesiredTraj(
   double target_height = height_;
 
   // Get target height from radio or lcm
-  if (use_radio_) {
+  if (set_target_height_by_radio_) {
     target_height = kTargetHeightMean + kTargetHeightScale * cassie_out->pelvis.radio.channel[6];
   } else {
     if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(
@@ -104,6 +105,23 @@ void StandingComTraj::CalcDesiredTraj(
     contact_pos_sum += position;
   }
   Vector3d feet_center_pos = contact_pos_sum / 4;
+
+  // Testing -- filtering feet_center_pos
+  if (filtered_feet_center_pos_.norm() == 0) {
+    // Initialize
+    filtered_feet_center_pos_ = feet_center_pos;
+  }
+  if (robot_output->get_timestamp() != last_timestamp_) {
+    double dt = robot_output->get_timestamp() - last_timestamp_;
+    last_timestamp_ = robot_output->get_timestamp();
+    double alpha =
+        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+    filtered_feet_center_pos_ =
+        alpha * feet_center_pos + (1 - alpha) * filtered_feet_center_pos_;
+  }
+  feet_center_pos = filtered_feet_center_pos_;
+
+  // Desired com pos
   Vector3d desired_com_pos(feet_center_pos(0) + x_offset,
                            feet_center_pos(1) + y_offset,
                            feet_center_pos(2) + target_height);

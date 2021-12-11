@@ -1,0 +1,69 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+pybind_py_library(
+    name = "robot_lcm_systems_py",
+    cc_deps = [
+        "//systems:robot_lcm_systems",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "robot_lcm_systems",
+    cc_srcs = ["robot_lcm_systems_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "primitives_py",
+    cc_deps = [
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "primitives",
+    cc_srcs = ["primitives_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":robot_lcm_systems_py",
+    ":primitives_py",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "systems",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

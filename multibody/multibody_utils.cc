@@ -16,8 +16,10 @@ using drake::geometry::HalfSpace;
 using drake::geometry::SceneGraph;
 using drake::math::autoDiffToGradientMatrix;
 using drake::math::autoDiffToValueMatrix;
+using drake::multibody::BodyIndex;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
+using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::VectorXd;
@@ -337,6 +339,58 @@ vector<string> createActuatorNameVectorFromMap(
   return actuator_names;
 }
 
+template <typename T>
+Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(
+    const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<T>& plant_wo_spr) {
+  const std::map<string, int>& pos_map_w_spr =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  const std::map<string, int>& pos_map_wo_spr =
+      multibody::makeNameToPositionsMap(plant_wo_spr);
+
+  // Initialize the mapping from spring to no spring
+  Eigen::MatrixXd ret = Eigen::MatrixXd::Zero(plant_wo_spr.num_positions(),
+                                              plant_w_spr.num_positions());
+  for (auto pos_pair_wo_spr : pos_map_wo_spr) {
+    bool successfully_added = false;
+    for (auto pos_pair_w_spr : pos_map_w_spr) {
+      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
+        ret(pos_pair_wo_spr.second, pos_pair_w_spr.second) = 1;
+        successfully_added = true;
+      }
+    }
+    DRAKE_DEMAND(successfully_added);
+  }
+
+  return ret;
+}
+
+template <typename T>
+Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(
+    const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<T>& plant_wo_spr) {
+  const std::map<string, int>& vel_map_w_spr =
+      multibody::makeNameToVelocitiesMap(plant_w_spr);
+  const std::map<string, int>& vel_map_wo_spr =
+      multibody::makeNameToVelocitiesMap(plant_wo_spr);
+
+  // Initialize the mapping from spring to no spring
+  Eigen::MatrixXd ret = Eigen::MatrixXd::Zero(plant_wo_spr.num_velocities(),
+                                              plant_w_spr.num_velocities());
+  for (auto vel_pair_wo_spr : vel_map_wo_spr) {
+    bool successfully_added = false;
+    for (auto vel_pair_w_spr : vel_map_w_spr) {
+      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
+        ret(vel_pair_wo_spr.second, vel_pair_w_spr.second) = 1;
+        successfully_added = true;
+      }
+    }
+    DRAKE_DEMAND(successfully_added);
+  }
+
+  return ret;
+}
+
 bool JointsWithinLimits(const MultibodyPlant<double>& plant, VectorXd positions,
                         double tolerance) {
   VectorXd joint_min = plant.GetPositionLowerLimits();
@@ -385,6 +439,31 @@ bool isQuaternion(const MultibodyPlant<T>& plant) {
   return QuaternionStartIndex(plant) != -1;
 }
 
+Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
+  // clang-format off
+  Eigen::MatrixXd ret(4,3);
+  ret <<  -q(1), -q(2), -q(3),
+           q(0),  q(3), -q(2),
+          -q(3),  q(0),  q(1),
+           q(2), -q(1),  q(0);
+  ret *= 0.5;
+  // clang-format on
+  return ret;
+}
+
+Eigen::MatrixXd JwrtqdotToJwrtv(
+    const Eigen::VectorXd& q, const Eigen::MatrixXd& Jwrtqdot) {
+  //[J_1:4, J_5:end] * [WToQuatDotMap, 0] = [J_1:4 * WToQuatDotMap, J_5:end]
+  //                   [      0      , I]
+  DRAKE_DEMAND(Jwrtqdot.cols() == q.size());
+
+  Eigen::MatrixXd ret(Jwrtqdot.rows(), q.size() -1);
+  ret << Jwrtqdot.leftCols<4>() * WToQuatDotMap(q.head<4>()),
+      Jwrtqdot.rightCols(q.size() - 4);
+  return ret;
+}
+
+
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT
@@ -401,6 +480,8 @@ template vector<string> createStateNameVectorFromMap(const MultibodyPlant<double
 template vector<string> createStateNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
 template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
 template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT

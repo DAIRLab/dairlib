@@ -13,7 +13,6 @@
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/solvers/solve.h"
 
 #include "common/find_resource.h"

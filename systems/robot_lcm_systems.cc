@@ -27,6 +27,7 @@ RobotOutputReceiver::RobotOutputReceiver(
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(
+      "x, u, t",
       OutputVector<double>(plant.num_positions(), plant.num_velocities(),
                            plant.num_actuators()),
       &RobotOutputReceiver::CopyOutput);
@@ -113,19 +114,21 @@ RobotOutputSender::RobotOutputSender(
 
   state_input_port_ =
       this->DeclareVectorInputPort(
-              BasicVector<double>(num_positions_ + num_velocities_))
+              "x", BasicVector<double>(num_positions_ + num_velocities_))
           .get_index();
   if (publish_efforts_) {
     effort_input_port_ =
-        this->DeclareVectorInputPort(BasicVector<double>(num_efforts_))
+        this->DeclareVectorInputPort("u", BasicVector<double>(num_efforts_))
             .get_index();
   }
   if (publish_imu_) {
     imu_input_port_ =
-        this->DeclareVectorInputPort(BasicVector<double>(3)).get_index();
+        this->DeclareVectorInputPort("imu_acceleration", BasicVector<double>(3))
+            .get_index();
   }
 
-  this->DeclareAbstractOutputPort(&RobotOutputSender::Output);
+  this->DeclareAbstractOutputPort("lcmt_robot_output",
+                                  &RobotOutputSender::Output);
 }
 
 /// Populate a state message with all states
@@ -182,7 +185,7 @@ RobotInputReceiver::RobotInputReceiver(
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_input",
                                  drake::Value<dairlib::lcmt_robot_input>{});
-  this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
+  this->DeclareVectorOutputPort("u, t", TimestampedVector<double>(num_actuators_),
                                 &RobotInputReceiver::CopyInputOut);
 }
 
@@ -214,8 +217,9 @@ RobotCommandSender::RobotCommandSender(
     ordered_actuator_names_.push_back(plant.get_joint_actuator(i).name());
   }
 
-  this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_));
-  this->DeclareAbstractOutputPort(&RobotCommandSender::OutputCommand);
+  this->DeclareVectorInputPort("u, t", TimestampedVector<double>(num_actuators_));
+  this->DeclareAbstractOutputPort("lcmt_robot_input",
+                                  &RobotCommandSender::OutputCommand);
 }
 
 void RobotCommandSender::OutputCommand(
@@ -230,8 +234,12 @@ void RobotCommandSender::OutputCommand(
   input_msg->efforts.resize(num_actuators_);
   for (int i = 0; i < num_actuators_; i++) {
     input_msg->effort_names[i] = ordered_actuator_names_[i];
-    input_msg->efforts[i] = command->GetAtIndex(i);
-  }
+    if(std::isnan(command->GetAtIndex(i))){
+      input_msg->efforts[i] = 0;
+    }
+    else{
+      input_msg->efforts[i] = command->GetAtIndex(i);
+    }  }
 }
 
 }  // namespace systems

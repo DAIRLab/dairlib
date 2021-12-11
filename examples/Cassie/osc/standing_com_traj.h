@@ -31,7 +31,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
                                   const drake::multibody::Frame<double>&>>&
           feet_contact_points,
       double height = 0.9,
-      bool use_radio = false);
+      bool set_target_height_by_radio = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -65,7 +65,13 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
       feet_contact_points_;
 
   double height_;
-  bool use_radio_;
+  bool set_target_height_by_radio_;
+
+
+  // Testing -- filtering for center of support polygon
+  double cutoff_freq_ = 0.05;  // in Hz.
+  mutable Eigen::Vector3d filtered_feet_center_pos_ = Eigen::Vector3d::Zero();
+  mutable double last_timestamp_ = 0;
 };
 
 }  // namespace osc

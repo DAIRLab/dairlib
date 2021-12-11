@@ -1,0 +1,22 @@
+<robot name="platform">
+    <link name="base">
+        <inertial>
+            <mass value="1.0"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <box size="0.5 1.0 0.1"/>
+            </geometry>
+            <material name="blue">
+                <color rgba="0 0 1 1"/>
+            </material>
+            <origin xyz="0.25 0 -0.05" rpy="0 0 0"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.5 1.0 0.1"/>
+            </geometry>
+            <origin xyz="0.25 0 -0.05" rpy="0 0 0"/>
+        </collision>
+    </link>
+</robot>

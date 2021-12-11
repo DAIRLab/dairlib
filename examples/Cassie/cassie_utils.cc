@@ -1,14 +1,15 @@
 #include "examples/Cassie/cassie_utils.h"
 
 #include "common/find_resource.h"
+#include "examples/Cassie/cassie_encoder.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/math/rigid_transform.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/tree/linear_spring_damper.h"
 #include "drake/multibody/tree/revolute_spring.h"
-#include "drake/systems/sensors/accelerometer_sensor.h"
-#include "drake/systems/sensors/gyroscope_sensor.h"
+#include "drake/systems/sensors/accelerometer.h"
+#include "drake/systems/sensors/gyroscope.h"
 
 namespace dairlib {
 
@@ -197,11 +198,46 @@ const systems::SimCassieSensorAggregator& AddImuAndAggregator(
   const auto& accelerometer = Accelerometer<double>::AddToDiagram(
       body, X_BS, plant.gravity_field().gravity_vector(), plant, builder);
 
+  std::vector<int> joint_pos_indices;
+  std::vector<int> joint_vel_indices;
+  std::vector<int> ticks_per_revolution;
+  std::map<std::string, int> joint_encoder_resolutions = {
+      {"hip_roll_left", CASSIE_ENC_RES_LOW},
+      {"hip_roll_right", CASSIE_ENC_RES_LOW},
+      {"hip_yaw_left", CASSIE_ENC_RES_LOW},
+      {"hip_yaw_right", CASSIE_ENC_RES_LOW},
+      {"hip_pitch_left", CASSIE_ENC_RES_LOW},
+      {"hip_pitch_right", CASSIE_ENC_RES_LOW},
+      {"knee_left", CASSIE_ENC_RES_LOW},
+      {"knee_right", CASSIE_ENC_RES_LOW},
+      {"knee_joint_left", CASSIE_ENC_RES_HIGH},
+      {"knee_joint_right", CASSIE_ENC_RES_HIGH},
+      {"ankle_joint_left", CASSIE_ENC_RES_HIGH},
+      {"ankle_joint_right", CASSIE_ENC_RES_HIGH},
+      {"toe_left", CASSIE_ENC_RES_LOW},
+      {"toe_right", CASSIE_ENC_RES_LOW}};
+
+  auto pos_map = multibody::makeNameToPositionsMap(plant);
+  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+  for (int i = 0; i < plant.num_joints(); ++i) {
+    auto& joint = plant.get_joint(drake::multibody::JointIndex(i));
+    if (joint_encoder_resolutions.find(joint.name()) !=
+        joint_encoder_resolutions.end()) {
+      joint_pos_indices.push_back(pos_map[joint.name()]);
+      joint_vel_indices.push_back(vel_map[joint.name() + "dot"]);
+      ticks_per_revolution.push_back(
+          joint_encoder_resolutions.at(joint.name()));
+    }
+  }
+
+  const auto& encoders = builder->AddSystem<CassieEncoder>(
+      plant, joint_pos_indices, joint_vel_indices, ticks_per_revolution);
+
   auto sensor_aggregator =
       builder->AddSystem<systems::SimCassieSensorAggregator>(plant);
-  builder->Connect(actuation_port,
-                   sensor_aggregator->get_input_port_input());
-  builder->Connect(plant.get_state_output_port(),
+  builder->Connect(actuation_port, sensor_aggregator->get_input_port_input());
+  builder->Connect(plant.get_state_output_port(), encoders->get_input_port());
+  builder->Connect(encoders->get_output_port(),
                    sensor_aggregator->get_input_port_state());
   builder->Connect(accelerometer.get_measurement_output_port(),
                    sensor_aggregator->get_input_port_acce());

@@ -32,7 +32,6 @@ cc_library(
         "multibody_utils.h",
     ],
     deps = [
-        ":visualization_utils",
         "@drake//multibody/plant",
     ],
 )
@@ -46,6 +45,8 @@ cc_library(
         "visualization_utils.h",
     ],
     deps = [
+        "//common:find_resource",
+        "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
@@ -60,6 +61,17 @@ cc_library(
         "multipose_visualizer.h",
     ],
     deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "view_frame",
+    srcs = ["view_frame.cc"],
+    hdrs = ["view_frame.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )
@@ -103,6 +115,10 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "ball_urdf",
+    data = glob(["multibody/ball.urdf"]),
+)
 
 cc_test(
     name = "pinocchio_plant_test",

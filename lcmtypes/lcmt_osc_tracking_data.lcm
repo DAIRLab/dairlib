@@ -9,7 +9,7 @@ struct lcmt_osc_tracking_data
 
   double y [y_dim];
   double y_des [y_dim];
-  double error_y [y_dim];
+  double error_y [ydot_dim];
   double ydot [ydot_dim];
   double ydot_des [ydot_dim];
   double error_ydot [ydot_dim];

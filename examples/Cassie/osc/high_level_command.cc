@@ -87,16 +87,17 @@ HighLevelCommand::HighLevelCommand(
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
 
-  yaw_port_ = this->DeclareVectorOutputPort(BasicVector<double>(1),
+  yaw_port_ = this->DeclareVectorOutputPort("pelvis_yaw", BasicVector<double>(1),
                                             &HighLevelCommand::CopyHeadingAngle)
                   .get_index();
   xy_port_ =
-      this->DeclareVectorOutputPort(BasicVector<double>(2),
+      this->DeclareVectorOutputPort("pelvis_xy", BasicVector<double>(2),
                                     &HighLevelCommand::CopyDesiredHorizontalVel)
           .get_index();
   // Declare update event
@@ -140,7 +141,7 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   plant_.SetPositions(context_, q);
 
   // Get center of mass position and velocity
-  Vector3d com_pos = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d com_pos = plant_.CalcCenterOfMassPositionInWorld(*context_);
   MatrixXd J(3, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
       *context_, JacobianWrtVariable::kV, world_, world_, &J);
@@ -162,10 +163,18 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   // Get current yaw velocity
   double yaw_vel = v(2);
 
+  // yaw error
+  double heading_error =
+      std::remainder(desired_yaw - approx_pelvis_yaw, 2 * M_PI);
+
   // PD position control
-  double des_yaw_vel =
-      kp_yaw_ * (desired_yaw - approx_pelvis_yaw) + kd_yaw_ * (-yaw_vel);
+  double des_yaw_vel = kp_yaw_ * heading_error + kd_yaw_ * (-yaw_vel);
   des_yaw_vel = drake::math::saturate(des_yaw_vel, -vel_max_yaw_, vel_max_yaw_);
+  /*cout << "desired_yaw= " << desired_yaw << endl;
+  cout << "approx_pelvis_yaw= " << approx_pelvis_yaw << endl;
+  cout << "heading_error= " << heading_error << endl;
+  cout << "des_yaw_vel= " << des_yaw_vel << endl;
+  cout << "\n";*/
 
   // Convex combination of 0 and desired yaw velocity
   double weight = 1 / (1 + exp(-params_of_no_turning_(0) *
@@ -175,15 +184,14 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
   //////////// Get desired horizontal vel ////////////
   // Calculate the current-desired yaw angle difference
-  double desired_filtered_yaw =
-      (1 - weight) * approx_pelvis_yaw + weight * desired_yaw;
-  double heading_error = desired_filtered_yaw - approx_pelvis_yaw;
+  // filtered_heading_error is the convex combination of 0 and heading_error
+  double filtered_heading_error = weight * heading_error;
 
   // Apply walking speed control only when the robot is facing the target
   // position.
   double des_sagital_vel = 0;
   double des_lateral_vel = 0;
-  if (heading_error < M_PI / 2 && heading_error > -M_PI / 2) {
+  if (abs(filtered_heading_error) < M_PI / 2) {
     // Extract quaternion from floating base position
     Quaterniond Quat(q(0), q(1), q(2), q(3));
     Quaterniond Quat_conj = Quat.conjugate();

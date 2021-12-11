@@ -34,7 +34,8 @@ namespace osc {
 WalkingSpeedControl::WalkingSpeedControl(
     const drake::multibody::MultibodyPlant<double>& plant,
     Context<double>* context, double k_ff_lateral, double k_fb_lateral,
-    double k_ff_sagittal, double k_fb_sagittal, double swing_phase_duration)
+    double k_ff_sagittal, double k_fb_sagittal, double swing_phase_duration,
+    double speed_control_offset_sagittal, bool expressed_in_local_frame)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
@@ -44,25 +45,29 @@ WalkingSpeedControl::WalkingSpeedControl(
       k_fp_ff_lateral_(k_ff_lateral),
       k_fp_fb_lateral_(k_fb_lateral),
       k_fp_ff_sagittal_(k_ff_sagittal),
-      k_fp_fb_sagittal_(k_fb_sagittal) {
+      k_fp_fb_sagittal_(k_fb_sagittal),
+      speed_control_offset_sagittal_(speed_control_offset_sagittal),
+      expressed_in_local_frame_(expressed_in_local_frame) {
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
-  xy_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
-  this->DeclareVectorOutputPort(BasicVector<double>(2),
+                    .get_index();
+  xy_port_ = this->DeclareVectorInputPort("pelvis_xy", BasicVector<double>(2))
+                 .get_index();
+  this->DeclareVectorOutputPort("foot_xy", BasicVector<double>(2),
                                 &WalkingSpeedControl::CalcFootPlacement);
 
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
   if (is_using_predicted_com_) {
     fsm_switch_time_port_ =
-        this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+        this->DeclareVectorInputPort("t_fsm_switch", BasicVector<double>(1))
+            .get_index();
 
     com_port_ =
         this->DeclareAbstractInputPort(
-                "com_traj",
+                "com_xyz",
                 drake::Value<drake::trajectories::Trajectory<double>>(pp))
             .get_index();
   }
@@ -116,14 +121,25 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
   com_vel = filterred_com_vel_;
 
   // Extract quaternion from floating base position
-  Quaterniond Quat(q(0), q(1), q(2), q(3));
+  /*Quaterniond Quat(q(0), q(1), q(2), q(3));
   Quaterniond Quat_conj = Quat.conjugate();
   Vector4d quat(q.head(4));
   Vector4d quad_conj(Quat_conj.w(), Quat_conj.x(), Quat_conj.y(),
-                     Quat_conj.z());
+                     Quat_conj.z());*/
+
+  // Get approximated heading angle of pelvis and rotational matrix (rotate
+  // about world's z)
+  Vector3d pelvis_heading_vec =
+      plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
+  double approx_pelvis_yaw =
+      atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
+  Eigen::Matrix3d rot;
+  rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw), 0,
+      sin(approx_pelvis_yaw), cos(approx_pelvis_yaw), 0, 0, 0, 1;
 
   // Calculate local velocity
-  Vector3d local_com_vel = drake::math::quatRotateVec(quad_conj, com_vel);
+  //  Vector3d local_com_vel = drake::math::quatRotateVec(quad_conj, com_vel);
+  Vector3d local_com_vel = rot.transpose() * com_vel;
 
   //////////////////// Sagital ////////////////////
   Vector3d delta_x_fs_sagital_3D_global(0, 0, 0);
@@ -135,12 +151,10 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
   // Velocity control
   double delta_x_fs_sagital =
       -k_fp_ff_sagittal_ * des_sagital_vel -
-      k_fp_fb_sagittal_ * (des_sagital_vel - com_vel_sagital);
-  Vector3d delta_x_fs_sagital_3D_local(delta_x_fs_sagital, 0, 0);
-  delta_x_fs_sagital_3D_global =
-      drake::math::quatRotateVec(quat, delta_x_fs_sagital_3D_local);
+      k_fp_fb_sagittal_ * (des_sagital_vel - com_vel_sagital) +
+      speed_control_offset_sagittal_;
 
-  //////////////////// Lateral ////////////////////  TODO(yminchen): tune this
+  //////////////////// Lateral ////////////////////
   Vector3d delta_x_fs_lateral_3D_global(0, 0, 0);
 
   // Position Control
@@ -151,13 +165,19 @@ void WalkingSpeedControl::CalcFootPlacement(const Context<double>& context,
   double delta_x_fs_lateral =
       -k_fp_ff_lateral_ * des_lateral_vel -
       k_fp_fb_lateral_ * (des_lateral_vel - com_vel_lateral);
-  Vector3d delta_x_fs_lateral_3D_local(0, delta_x_fs_lateral, 0);
-  delta_x_fs_lateral_3D_global =
-      drake::math::quatRotateVec(quat, delta_x_fs_lateral_3D_local);
 
-  // Assign foot placement
-  output->get_mutable_value() =
-      (delta_x_fs_sagital_3D_global + delta_x_fs_lateral_3D_global).head(2);
+  /// Assign foot placement
+  if (expressed_in_local_frame_) {
+    output->get_mutable_value() =
+        Vector2d(delta_x_fs_sagital, delta_x_fs_lateral);
+  } else {
+    Vector3d delta_x_fs_sagital_3D_local(delta_x_fs_sagital, 0, 0);
+    Vector3d delta_x_fs_lateral_3D_local(0, delta_x_fs_lateral, 0);
+    delta_x_fs_sagital_3D_global = rot * delta_x_fs_sagital_3D_local;
+    delta_x_fs_lateral_3D_global = rot * delta_x_fs_lateral_3D_local;
+    output->get_mutable_value() =
+        (delta_x_fs_sagital_3D_global + delta_x_fs_lateral_3D_global).head(2);
+  }
 }
 
 }  // namespace osc

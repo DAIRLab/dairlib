@@ -1,4 +1,4 @@
-#include <drake/common/yaml/yaml_read_archive.h>
+#include <drake/common/yaml/yaml_io.h>
 #include <drake/lcmt_contact_results_for_viz.hpp>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/framework/diagram_builder.h>
@@ -46,7 +46,7 @@ using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::TriggerTypeSet;
+using drake::systems::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
 using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_jump::FlightFootTrajGenerator;
@@ -116,10 +116,7 @@ int DoMain(int argc, char* argv[]) {
       feet_contact_points = {left_toe, right_toe};
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  OSCJumpingGains gains;
-  const YAML::Node& root =
-      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
-  drake::yaml::YamlReadArchive(root).Accept(&gains);
+  auto gains = drake::yaml::LoadYamlFile<OSCJumpingGains>(FLAGS_gains_filename);
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(

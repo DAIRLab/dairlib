@@ -14,8 +14,8 @@ using drake::AutoDiffXd;
 using drake::VectorX;
 using drake::geometry::HalfSpace;
 using drake::geometry::SceneGraph;
-using drake::math::autoDiffToGradientMatrix;
-using drake::math::autoDiffToValueMatrix;
+using drake::math::ExtractGradient;
+using drake::math::ExtractValue;
 using drake::multibody::BodyIndex;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
@@ -32,11 +32,11 @@ bool AreVectorsEqual(const Eigen::Ref<const AutoDiffVecXd>& a,
   if (a.rows() != b.rows()) {
     return false;
   }
-  if (autoDiffToValueMatrix(a) != autoDiffToValueMatrix(b)) {
+  if (ExtractValue(a) != ExtractValue(b)) {
     return false;
   }
-  const Eigen::MatrixXd a_gradient = autoDiffToGradientMatrix(a);
-  const Eigen::MatrixXd b_gradient = autoDiffToGradientMatrix(b);
+  const Eigen::MatrixXd a_gradient = ExtractGradient(a);
+  const Eigen::MatrixXd b_gradient = ExtractGradient(b);
   if (a_gradient.rows() != b_gradient.rows() ||
       a_gradient.cols() != b_gradient.cols()) {
     return false;
@@ -52,8 +52,7 @@ bool AreVectorsEqual(const Eigen::Ref<const VectorXd>& a,
 template <typename T>
 VectorX<T> getInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
   if (plant.num_actuators() > 0) {
-    VectorX<T> input = plant.EvalEigenVectorInput(
-        context, plant.get_actuation_input_port().get_index());
+    VectorX<T> input = plant.get_actuation_input_port().Eval(context);
     return input;
   } else {
     return VectorX<T>(0);

@@ -83,8 +83,6 @@ DEFINE_string(traj_name, "running_0.00",
               "File to load saved trajectories from");
 DEFINE_string(gains_filename, "examples/Cassie/osc_run/osc_running_gains.yaml",
               "Filepath containing gains");
-DEFINE_bool(use_radio, false,
-            "Set to true if sending high level commands from radio controller");
 DEFINE_string(
     channel_cassie_out, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
@@ -273,13 +271,11 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_channel_cassie_out, &lcm));
   cassie::osc::HighLevelCommand* high_level_command;
-  if (FLAGS_use_radio) {
-    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-        plant, plant_context.get(), osc_gains.vel_scale_rot,
-        osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
-    builder.Connect(cassie_out_receiver->get_output_port(),
-                    high_level_command->get_cassie_output_port());
-  }
+  high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+      plant, plant_context.get(), osc_gains.vel_scale_rot,
+      osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
+  builder.Connect(cassie_out_receiver->get_output_port(),
+                  high_level_command->get_cassie_output_port());
 
   string output_traj_path = FLAGS_folder_path + FLAGS_traj_name + "_processed";
   if (osc_gains.relative_feet) {

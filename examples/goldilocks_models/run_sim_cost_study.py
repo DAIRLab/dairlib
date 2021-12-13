@@ -133,7 +133,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   # Extract tasks
   task_sl = task[tasks.GetDimIdxByName("stride_length")]
 
-  dir_and_prefex_FOM = "" if len(FOM_model_dir) == 0 else "%s/0_%d_" % (FOM_model_dir, trajopt_sample_idx)
+  dir_and_prefex_FOM = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx)
 
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',

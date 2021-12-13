@@ -164,6 +164,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     }
 
     double duration = y_traj.end_time();
+    DRAKE_DEMAND(duration == stride_period);
     for (int i = 0; i < param_.knots_per_mode; i++) {
       h_guess_(i) = duration / (param_.knots_per_mode - 1) * i;
       y_guess_.col(i) = y_traj.value(h_guess_(i));
@@ -171,6 +172,30 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       if (n_tau_ != 0) {
         tau_guess_.col(i) = tau_traj.value(h_guess_(i));
       }
+    }
+  } else {
+    DRAKE_DEMAND(rom_->n_tau() == 0);
+
+    PiecewisePolynomial<double> x_traj =
+        PiecewisePolynomial<double>::CubicHermite(
+            readCSV(model_dir_n_pref + string("t_breaks0.csv")).col(0),
+            readCSV(model_dir_n_pref + string("x_samples0.csv")),
+            readCSV(model_dir_n_pref + string("xdot_samples0.csv")));
+    double duration = x_traj.end_time();
+    DRAKE_DEMAND(duration == stride_period);
+    DRAKE_DEMAND(x_traj.cols() == 1);
+    DRAKE_DEMAND(x_traj.rows() == nx_);
+
+    auto context = plant_control.CreateDefaultContext();
+    for (int i = 0; i < param_.knots_per_mode; i++) {
+      VectorXd x_sample =
+          x_traj.value(duration / (param_.knots_per_mode - 1) * i);
+      plant_control.SetPositionsAndVelocities(context.get(), x_sample);
+
+      // I don't initialize h_guess_ here because we are not using it anyway
+      y_guess_.col(i) = rom_->EvalMappingFunc(x_sample.head(nq_), *context);
+      dy_guess_.col(i) = rom_->EvalMappingFuncJV(x_sample.head(nq_),
+                                                 x_sample.tail(nv_), *context);
     }
   }
 
@@ -229,19 +254,19 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     x_guess_left_in_front_post_ = x_guess_left_in_front_post;
   }
 
-  // cout << "initial guess duration ~ " << duration << endl;
-  // cout << "h_guess = " << h_guess << endl;
-  // cout << "y_guess = " << y_guess << endl;
-  // cout << "dy_guess = " << dy_guess << endl;
-  // cout << "tau_guess = " << tau_guess << endl;
-  //  cout << "x_guess_right_in_front_pre_ = "
-  //       << x_guess_right_in_front_pre_.transpose() << endl;
-  //  cout << "x_guess_right_in_front_post_ = "
-  //       << x_guess_right_in_front_post_.transpose() << endl;
-  //  cout << "x_guess_left_in_front_pre_ = "
-  //       << x_guess_left_in_front_pre_.transpose() << endl;
-  //  cout << "x_guess_left_in_front_post_ = "
-  //       << x_guess_left_in_front_post_.transpose() << endl;
+  //   cout << "initial guess duration ~ " << duration << endl;
+  //   cout << "h_guess = " << h_guess_ << endl;
+  //   cout << "y_guess = " << y_guess_ << endl;
+  //   cout << "dy_guess = " << dy_guess_ << endl;
+  //   cout << "tau_guess = " << tau_guess_ << endl;
+  //    cout << "x_guess_right_in_front_pre_ = "
+  //         << x_guess_right_in_front_pre_.transpose() << endl;
+  //    cout << "x_guess_right_in_front_post_ = "
+  //         << x_guess_right_in_front_post_.transpose() << endl;
+  //    cout << "x_guess_left_in_front_pre_ = "
+  //         << x_guess_left_in_front_pre_.transpose() << endl;
+  //    cout << "x_guess_left_in_front_post_ = "
+  //         << x_guess_left_in_front_post_.transpose() << endl;
 
   /// Inverse kinematics
   auto left_toe = LeftToeFront(plant_control_);

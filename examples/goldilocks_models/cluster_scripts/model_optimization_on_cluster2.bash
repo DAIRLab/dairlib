@@ -2,7 +2,7 @@
 
 ##basic parameters##
 #SBATCH --job-name=run_model_opt
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=/scratch/yminchen/output/slurm-%A_%a.out  ##manually specify this directory
 
 ##email setting##
@@ -40,10 +40,10 @@ echo robot_option = $robot, rom_option = $model
 
 # Set sample size
 n_sl=13
-n_gi=3
+n_gi=1
 n_du=1
 n_tr=1
-n_ph=1
+n_ph=3
 
 # Other parameters
 final_iter=100

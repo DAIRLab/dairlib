@@ -92,7 +92,7 @@ PelvisHeadingKp:  # We are not using kp for pelvis yaw
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    20]
+      0,     0,    5]
 period_of_no_heading_control: 0.0
 
 SwingFootW:

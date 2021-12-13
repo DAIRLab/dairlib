@@ -24,16 +24,8 @@ class SRBDResidualEstimator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   };
 
-  const drake::systems::OutputPort<double> &get_A_hat_output_port() const {
-    return this->get_output_port(A_hat_port_);
-  };
-
-  const drake::systems::OutputPort<double> &get_B_hat_output_port() const {
-    return this->get_output_port(B_hat_port_);
-  };
-
-  const drake::systems::OutputPort<double> &get_b_hat_output_port() const {
-    return this->get_output_port(b_hat_port_);
+  const drake::systems::OutputPort<double> &get_residual_output_port() const {
+    return this->get_output_port(residual_out_port_);
   };
 
   void AddMode(
@@ -58,9 +50,7 @@ class SRBDResidualEstimator : public drake::systems::LeafSystem<double> {
   mutable Eigen::MatrixXd cur_A_hat_, cur_B_hat_, cur_b_hat_;
 
   int state_in_port_,
-      A_hat_port_,
-      B_hat_port_,
-      b_hat_port_,
+      residual_out_port_,
       fsm_port_,
       mpc_in_port_;
 
@@ -101,14 +91,8 @@ class SRBDResidualEstimator : public drake::systems::LeafSystem<double> {
   // Solve the least squares equation periodically
   void SolveLstSq() const;
 
-  void GetAHat(const drake::systems::Context<double> &context,
-               Eigen::MatrixXd *A_msg) const;
-
-  void GetBHat(const drake::systems::Context<double> &context,
-               Eigen::MatrixXd *B_msg) const;
-
-  void GetbHat(const drake::systems::Context<double> &context,
-               Eigen::MatrixXd *b_msg) const;
+  void GetDynamics(const drake::systems::Context<double>& context,
+                   residual_dynamics* dyn) const;
 
 };
 }

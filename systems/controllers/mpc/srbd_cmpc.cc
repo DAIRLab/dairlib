@@ -30,21 +30,25 @@ using dairlib::multibody::makeNameToVelocitiesMap;
 using dairlib::multibody::SetPositionsAndVelocitiesIfNew;
 using dairlib::systems::OutputVector;
 using dairlib::LcmTrajectory;
+using dairlib::systems::residual_dynamics;
 
 namespace dairlib{
 
 SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
                    bool traj,
-                   bool used_with_finite_state_machine):
+                   bool used_with_finite_state_machine,
+                   bool used_with_residual_estimator):
     plant_(plant),
     use_fsm_(used_with_finite_state_machine),
+    use_residuals_(used_with_residual_estimator),
     traj_tracking_(traj),
     dt_(dt){
 
   // Create Ports
   state_port_ = this->DeclareVectorInputPort(
       "x, u, t",
-      OutputVector<double>(plant_.nq(), plant_.nv(), plant_.nu()))
+      OutputVector<double>(
+          plant_.nq(), plant_.nv(), plant_.nu()))
   .get_index();
 
   if (!traj_tracking_) {
@@ -52,6 +56,14 @@ SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
         BasicVector<double>(nx_)).get_index();
   }
 
+  if (use_residuals_) {
+    srbd_residual_port_ = this->DeclareAbstractInputPort(
+          "residual_input_port",
+        drake::Value<residual_dynamics>(
+            {MatrixXd::Zero(0, 0),
+             MatrixXd::Zero(0, 0),
+             VectorXd::Zero(0)})).get_index();
+  }
 //  foot_target_port_ = this->DeclareVectorInputPort("p_des" ,
 //      BasicVector<double>(2*kLinearDim_)).get_index();
 //
@@ -99,6 +111,14 @@ void SrbdCMPC::AddMode(const LinearSrbdDynamics&  dynamics,
 
 void SrbdCMPC::FinalizeModeSequence(){
      xx.push_back(prog_.NewContinuousVariables(nx_, "x_f"));
+     if (use_residuals_) {
+       residual_manager_ =
+           std::make_unique<systems::MpcPeriodicResidualManager>(
+               total_knots_,
+               modes_.front().dynamics.A,
+               modes_.front().dynamics.B,
+               modes_.front().dynamics.b);
+     }
 }
 
 void SrbdCMPC::SetReachabilityBoundingBox(const Vector3d& bounds,

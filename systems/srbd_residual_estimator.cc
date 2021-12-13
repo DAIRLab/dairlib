@@ -7,15 +7,18 @@
 #include "systems/framework/output_vector.h"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
+#include "systems/controllers/mpc/mpc_periodic_residual_manager.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using drake::systems::BasicVector;
 using dairlib::systems::OutputVector;
+using dairlib::systems::residual_dynamics;
 
 namespace dairlib::systems {
-SRBDResidualEstimator::SRBDResidualEstimator(const multibody::SingleRigidBodyPlant &plant, double rate,
-                                             unsigned int buffer_len, bool use_fsm) :
+SRBDResidualEstimator::SRBDResidualEstimator(
+    const multibody::SingleRigidBodyPlant &plant, double rate,
+    unsigned int buffer_len, bool use_fsm) :
     plant_(plant),
     rate_(rate),
     buffer_len_(buffer_len),
@@ -30,18 +33,20 @@ SRBDResidualEstimator::SRBDResidualEstimator(const multibody::SingleRigidBodyPla
   // Declare all ports
   state_in_port_ = this->DeclareVectorInputPort(
           "x, u, t",
-          OutputVector<double>(plant_.nq(), plant_.nv(), plant_.nu()))
-      .get_index();
+          OutputVector<double>(
+              plant_.nq(),plant_.nv(),plant_.nu()))
+          .get_index();
 
-  mpc_in_port_ = this->DeclareAbstractInputPort("mpc_traj_input", drake::Value<lcmt_saved_traj>{}).get_index();
+  mpc_in_port_ = this->DeclareAbstractInputPort(
+      "mpc_traj_input",
+      drake::Value<lcmt_saved_traj>{}).get_index();
 
-  A_hat_port_ = this->DeclareAbstractOutputPort("A_hat",
-                                                &SRBDResidualEstimator::GetAHat).get_index();
-  B_hat_port_ = this->DeclareAbstractOutputPort("B_hat",
-                                                &SRBDResidualEstimator::GetBHat).get_index();
-  b_hat_port_ = this->DeclareAbstractOutputPort("b_hat",
-                                                &SRBDResidualEstimator::GetbHat).get_index();
-
+  residual_out_port_ = this->DeclareAbstractOutputPort(
+      "residuals_out",
+      residual_dynamics{MatrixXd::Zero(0,0),
+                                MatrixXd::Zero(0,0),
+                                VectorXd::Zero(0)},
+      &SRBDResidualEstimator::GetDynamics).get_index();
 
   if (use_fsm_) {
     fsm_port_ = this->DeclareVectorInputPort(
@@ -63,18 +68,6 @@ SRBDResidualEstimator::SRBDResidualEstimator(const multibody::SingleRigidBodyPla
   }
 }
 
-void SRBDResidualEstimator::GetAHat(const drake::systems::Context<double> &context, Eigen::MatrixXd *A_msg) const {
-  *A_msg = cur_A_hat_;
-}
-
-void SRBDResidualEstimator::GetBHat(const drake::systems::Context<double> &context, Eigen::MatrixXd *B_msg) const {
-  *B_msg = cur_B_hat_;
-}
-
-void SRBDResidualEstimator::GetbHat(const drake::systems::Context<double> &context, Eigen::MatrixXd *b_msg) const {
-  *b_msg = cur_b_hat_;
-}
-
 void SRBDResidualEstimator::AddMode(const LinearSrbdDynamics &dynamics,
                                     BipedStance stance, const MatrixXd &reset, int N) {
   DRAKE_DEMAND(stance == nmodes_);
@@ -92,6 +85,11 @@ drake::systems::EventStatus SRBDResidualEstimator::PeriodicUpdate(
     SolveLstSq();
   }
   return drake::systems::EventStatus::Succeeded();
+}
+
+void SRBDResidualEstimator::GetDynamics(const drake::systems::Context<double> &context,
+                                        residual_dynamics *dyn) const {
+  *dyn = residual_dynamics { cur_A_hat_, cur_B_hat_, cur_b_hat_ };
 }
 
 // For now, calling this as a discrete variable update though it doesn't have to be.

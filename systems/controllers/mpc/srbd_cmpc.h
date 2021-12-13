@@ -21,6 +21,7 @@
 #include "solvers/constraint_factory.h"
 #include "systems/framework/output_vector.h"
 #include "solvers/fast_osqp_solver.h"
+#include "mpc_periodic_residual_manager.h"
 
 namespace dairlib {
 
@@ -40,7 +41,8 @@ typedef struct SrbdMode {
 class SrbdCMPC : public drake::systems::LeafSystem<double> {
  public:
   SrbdCMPC(const multibody::SingleRigidBodyPlant& plant, double dt,
-           bool traj, bool used_with_finite_state_machine = true);
+           bool traj, bool used_with_finite_state_machine = true,
+           bool used_with_residual_estimator = false);
 
 
   /// Currently SrbdCMPC only supports the contact sequence
@@ -71,6 +73,9 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_x_des_input_port() const {
     return this->get_input_port(x_des_port_);
+  }
+  const drake::systems::InputPort<double>& get_residual_input_port() const {
+    return this->get_input_port(srbd_residual_port_);
   }
   const drake::systems::InputPort<double>& get_warmstart_input_port() const {
     return this->get_input_port(srb_warmstart_port_);
@@ -128,6 +133,9 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
   void UpdateDynamicsConstraints(
       const Eigen::VectorXd& x, int n_until_next_stance, int fsm_state) const;
+  void UpdateDynamicsConstraintsResidual(
+      const Eigen::VectorXd& x, int n_until_next_stance, int fsm_state) const;
+
   void UpdateKinematicConstraints(int n_until_stance, int fsm_state) const;
   void UpdateFootPlacementCost(
       int fsm_state,
@@ -161,6 +169,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
 
   // parameters and constants
   const bool use_fsm_;
+  const bool use_residuals_;
   const bool traj_tracking_;
   const int nx_ = 12;
   const int nu_ = 4;
@@ -173,6 +182,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   int state_port_;
   int fsm_port_;
   int x_des_port_;
+  int srbd_residual_port_;
   int traj_out_port_;
   int foot_target_port_;
   int srb_warmstart_port_;
@@ -211,6 +221,9 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   mutable std::vector<drake::solvers::Binding
                      <drake::solvers::LinearConstraint>> kinematic_constraint_;
 
+
+  // dynamics residuals
+  std::unique_ptr<systems::MpcPeriodicResidualManager> residual_manager_;
 
   // Decision Variables
   std::vector<drake::solvers::VectorXDecisionVariable> xx;

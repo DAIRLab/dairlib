@@ -47,6 +47,7 @@ cc_library(
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:single_rigid_body_plant",
+        "//systems/controllers:mpc_periodic_residual_manager",
         "//systems/controllers:mpc_trajectory_reciever",
         "//systems/controllers:srbd_cmpc",
         "@drake//:drake_shared_library",

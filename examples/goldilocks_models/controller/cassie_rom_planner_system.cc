@@ -141,10 +141,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   string model_dir_n_pref = param_.dir_model + to_string(param_.iter) +
                             string("_") + to_string(param_.sample) +
                             string("_");
-  h_guess_ = VectorXd::Zero(param_.knots_per_mode);
-  y_guess_ = MatrixXd::Zero(n_y_, param_.knots_per_mode);
-  dy_guess_ = MatrixXd::Zero(n_y_, param_.knots_per_mode);
-  tau_guess_ = MatrixXd::Zero(n_tau_, param_.knots_per_mode);
+  h_guess_ = 1e-4 * VectorXd::Random(param_.knots_per_mode);
+  y_guess_ = 1e-4 * MatrixXd::Random(n_y_, param_.knots_per_mode);
+  dy_guess_ = 1e-4 * MatrixXd::Random(n_y_, param_.knots_per_mode);
+  tau_guess_ = 1e-4 * MatrixXd::Random(n_tau_, param_.knots_per_mode);
   if (param_.dir_and_prefex_FOM.empty()) {
     // Construct cubic spline from y and ydot and resample, and construct
     // first-order hold from tau and resample.

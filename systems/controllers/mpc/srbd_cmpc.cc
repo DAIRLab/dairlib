@@ -191,7 +191,7 @@ void SrbdCMPC::UpdateKinematicConstraints(
   auto curr_mode = modes_.at(fsm_state);
   auto next_mode = modes_.at(1-fsm_state);
 
-  for (int i = n_until_stance; i < n_until_stance + next_mode.N; i++) {
+  for (int i = n_until_stance; i <= n_until_stance + next_mode.N; i++) {
     kinematic_constraint_.push_back(
         prog_.AddLinearConstraint(
             A,

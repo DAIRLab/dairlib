@@ -133,6 +133,8 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   # Extract tasks
   task_sl = task[tasks.GetDimIdxByName("stride_length")]
 
+  dir_and_prefex_FOM = "" if len(FOM_model_dir) == 0 else "%s/0_%d_" % (FOM_model_dir, trajopt_sample_idx)
+
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
     '--channel_x=%s' % ch.channel_x,
@@ -156,6 +158,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
     '--spring_model=%s' % str(spring_model).lower(),
+    '--dir_and_prefex_FOM=%s' % dir_and_prefex_FOM,
     '--dir_data=%s' % data_dir_this_thread,
     '--path_wait_identifier=%s' % planner_wait_identifier,
     '--print_level=0',
@@ -301,11 +304,13 @@ def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list):
 
 # Get trajopt sample idx with the most similar task
 def GetTrajoptSampleIndexGivenTask(rom_iter, task):
-  n_sample_trajopt = int(np.loadtxt(model_dir + "n_sample.csv"))
+  dir = model_dir if len(FOM_model_dir) == 0 else FOM_model_dir
+
+  n_sample_trajopt = int(np.loadtxt(dir + "n_sample.csv"))
   dist_list = []
   path = ""
   for j in range(n_sample_trajopt):
-    path = model_dir + "%d_%d_task.csv" % (rom_iter, j)
+    path = dir + "%d_%d_task.csv" % (rom_iter, j)
     # print("try " + path)
     if os.path.exists(path):
       trajopt_task = np.loadtxt(path)
@@ -1155,6 +1160,8 @@ if __name__ == "__main__":
   model_dir = parsed_yaml_file.get('dir_model')
   data_dir = parsed_yaml_file.get('dir_data')
 
+  FOM_model_dir = ""
+
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
@@ -1206,10 +1213,11 @@ if __name__ == "__main__":
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
 
   # 2D plot (cost vs model)
-  task_slice_value_sl = [-0.16, 0, 0.16]
+  # task_slice_value_sl = [-0.16, 0, 0.16]
   # task_slice_value_sl = [-0.2, -0.1, 0, 0.1, 0.2]
   # task_slice_value_sl = [-0.4, -0.2, 0, 0.2, 0.4]
-  task_slice_value_ph = 0.97
+  task_slice_value_sl = [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3]
+  task_slice_value_ph = 0.95
   task_slice_value_list = [[sl, task_slice_value_ph] for sl in task_slice_value_sl]
 
   # 2D plot (cost vs task)
@@ -1221,7 +1229,8 @@ if __name__ == "__main__":
   # color_names = ["k", "maroon"]
 
   # Expected (averaged) cost over a task range
-  stride_length_range_to_average = [-0.2, 0.1897]
+  stride_length_range_to_average = [-0.2, 0.2]
+  # stride_length_range_to_average = [0.2, 0.3]
 
   ### Set up environment
   # Create folder if not exist

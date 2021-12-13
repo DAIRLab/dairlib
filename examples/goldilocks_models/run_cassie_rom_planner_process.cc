@@ -64,7 +64,9 @@ DEFINE_bool(broadcast, false,
 // Planner settings
 DEFINE_int32(rom_option, -1, "See find_goldilocks_models.cc");
 DEFINE_int32(iter, -1, "The iteration # of the theta that you use");
-DEFINE_int32(sample, -1, "The sample # of the initial condition that you use");
+DEFINE_int32(sample, -1,
+             "The sample # of the trajopt file that we used for 1) the "
+             "regularization terms of both ROM and FOM, and 2) initial guess");
 
 DEFINE_int32(n_step, 3, "Number of foot steps in rom traj opt");
 DEFINE_int32(n_step_lipm, 0, "Number of foot steps of lipm cascased");
@@ -177,6 +179,11 @@ int DoMain(int argc, char* argv[]) {
     gains.constant_step_length_x = FLAGS_stride_length;
   }
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
+
+  if (!FLAGS_dir_and_prefex_FOM.empty()) {
+    cout << "dir_and_prefex_FOM is specified, so we won't have any target ROM "
+            "traj in the regularization term\n";
+  }
 
   // We only create new data folders for hardware experiment (broadcast case)
   /*if (FLAGS_broadcast) {

@@ -165,6 +165,12 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd y_guess_;
   Eigen::MatrixXd dy_guess_;
   Eigen::MatrixXd tau_guess_;
+  // Regularization terms
+  Eigen::VectorXd h_reg_;
+  Eigen::MatrixXd y_reg_;
+  Eigen::MatrixXd dy_reg_;
+  Eigen::MatrixXd tau_reg_;
+  // Both initial guess and regularization
   Eigen::VectorXd x_guess_left_in_front_pre_;
   Eigen::VectorXd x_guess_right_in_front_pre_;
   Eigen::VectorXd x_guess_left_in_front_post_;

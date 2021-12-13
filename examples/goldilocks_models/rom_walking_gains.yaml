@@ -95,7 +95,7 @@ use_lipm_mpc_and_ik: false
 # Without LIPM MPC and IK
 w_Q: 0.01
 w_R: 2e-6
-w_rom_reg: 0  #1e-6  # reminder: should have at least a little bit of reg cost
+w_rom_reg: 1e-6  # reminder: should have at least a little bit of reg cost
 w_reg_quat: 1
 w_reg_xy: 0.1  #0.1 for not using IK; maybe 10 for using IK?
 w_reg_z: 50  # 10

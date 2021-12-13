@@ -136,17 +136,16 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
                               MirrorVelSignChangeSet(plant_control, ROBOT));
 
   /// Provide initial guess
-  bool with_init_guess = true;
   n_y_ = rom_->n_y();
   n_tau_ = rom_->n_tau();
   string model_dir_n_pref = param_.dir_model + to_string(param_.iter) +
                             string("_") + to_string(param_.sample) +
                             string("_");
-  h_guess_ = VectorXd(param_.knots_per_mode);
-  y_guess_ = MatrixXd(n_y_, param_.knots_per_mode);
-  dy_guess_ = MatrixXd(n_y_, param_.knots_per_mode);
-  tau_guess_ = MatrixXd(n_tau_, param_.knots_per_mode);
-  if (with_init_guess) {
+  h_guess_ = VectorXd::Zero(param_.knots_per_mode);
+  y_guess_ = MatrixXd::Zero(n_y_, param_.knots_per_mode);
+  dy_guess_ = MatrixXd::Zero(n_y_, param_.knots_per_mode);
+  tau_guess_ = MatrixXd::Zero(n_tau_, param_.knots_per_mode);
+  if (param_.dir_and_prefex_FOM.empty()) {
     // Construct cubic spline from y and ydot and resample, and construct
     // first-order hold from tau and resample.
     // Note that this is an approximation. In the model optimization stage, we
@@ -173,70 +172,76 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
         tau_guess_.col(i) = tau_traj.value(h_guess_(i));
       }
     }
-
-    if (use_standing_pose_as_init_FOM_guess_) {
-      // Use standing pose for FOM guess
-      // Note that it's dangerous to hard-code the state here because the MBP
-      // joint order might change depending on upstream (Drake)
-      /*VectorXd x_standing_with_springs(45);
-      x_standing_with_springs << 1, 0, -2.21802e-13, 0, 0, 0, 1, 0.0194984,
-          -0.0194984, 0, 0, 0.479605, 0.479605, -1.1579, -1.1579, -0.0369181,
-          -0.0368807, 1.45305, 1.45306, -0.0253012, -1.61133, -0.0253716,
-          -1.61137, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0;*/
-      x_standing_fixed_spring_ = VectorXd(37);
-      x_standing_fixed_spring_ << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
-          0.0194983, -0.0194983, 0, 0, 0.510891, 0.510891, -1.22176, -1.22176,
-          1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0;
-      // A different height
-      /*x_standing_fixed_spring_ << 1, 0, 0, 0, 0, 0, 0.9, 0.0216645,
-         -0.0216645, 0, 0, 0.665022, 0.665022, -1.53461, -1.53461,
-         1.75905, 1.75905, -1.76295, -1.76295, 0, 0, 0, 0, 0, 0,
-         0.000343939, 7.9638e-05, -0.00224901, -0.00052079, -0.000889046,
-         0.00115963, -7.96077e-05, 0.000149216, 6.91934e-05, -9.6974e-05,
-         0.000948192, -0.00122315;*/
-      x_guess_left_in_front_pre_ = x_standing_fixed_spring_;
-      x_guess_right_in_front_pre_ = x_standing_fixed_spring_;
-      x_guess_left_in_front_post_ = x_standing_fixed_spring_;
-      x_guess_right_in_front_post_ = x_standing_fixed_spring_;
-    } else {
-      string dir_and_prefex_FOM = param_.dir_and_prefex_FOM.empty()
-                                      ? model_dir_n_pref
-                                      : param_.dir_and_prefex_FOM;
-      VectorXd x_guess_right_in_front_pre =
-          readCSV(dir_and_prefex_FOM + string("x_samples0.csv")).rightCols(1);
-      VectorXd x_guess_right_in_front_post =
-          readCSV(dir_and_prefex_FOM + string("x_samples1.csv")).col(0);
-      VectorXd x_guess_left_in_front_pre(nx_);
-      x_guess_left_in_front_pre
-          << state_mirror_.MirrorPos(x_guess_right_in_front_pre.head(nq_)),
-          state_mirror_.MirrorVel(x_guess_right_in_front_pre.tail(nv_));
-      VectorXd x_guess_left_in_front_post(nx_);
-      x_guess_left_in_front_post
-          << state_mirror_.MirrorPos(x_guess_right_in_front_post.head(nq_)),
-          state_mirror_.MirrorVel(x_guess_right_in_front_post.tail(nv_));
-
-      x_guess_right_in_front_pre_ = x_guess_right_in_front_pre;
-      x_guess_right_in_front_post_ = x_guess_right_in_front_post;
-      x_guess_left_in_front_pre_ = x_guess_left_in_front_pre;
-      x_guess_left_in_front_post_ = x_guess_left_in_front_post;
-    }
-
-    // cout << "initial guess duration ~ " << duration << endl;
-    // cout << "h_guess = " << h_guess << endl;
-    // cout << "y_guess = " << y_guess << endl;
-    // cout << "dy_guess = " << dy_guess << endl;
-    // cout << "tau_guess = " << tau_guess << endl;
-    //  cout << "x_guess_right_in_front_pre_ = "
-    //       << x_guess_right_in_front_pre_.transpose() << endl;
-    //  cout << "x_guess_right_in_front_post_ = "
-    //       << x_guess_right_in_front_post_.transpose() << endl;
-    //  cout << "x_guess_left_in_front_pre_ = "
-    //       << x_guess_left_in_front_pre_.transpose() << endl;
-    //  cout << "x_guess_left_in_front_post_ = "
-    //       << x_guess_left_in_front_post_.transpose() << endl;
   }
+
+  // Regularization terms
+  h_reg_ = h_guess_;
+  y_reg_ = y_guess_;
+  dy_reg_ = dy_guess_;
+  tau_reg_ = tau_guess_;
+
+  if (use_standing_pose_as_init_FOM_guess_) {
+    // Use standing pose for FOM guess
+    // Note that it's dangerous to hard-code the state here because the MBP
+    // joint order might change depending on upstream (Drake)
+    /*VectorXd x_standing_with_springs(45);
+    x_standing_with_springs << 1, 0, -2.21802e-13, 0, 0, 0, 1, 0.0194984,
+        -0.0194984, 0, 0, 0.479605, 0.479605, -1.1579, -1.1579, -0.0369181,
+        -0.0368807, 1.45305, 1.45306, -0.0253012, -1.61133, -0.0253716,
+        -1.61137, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0;*/
+    x_standing_fixed_spring_ = VectorXd(37);
+    x_standing_fixed_spring_ << 1, -2.06879e-13, -2.9985e-13, 0, 0, 0, 1,
+        0.0194983, -0.0194983, 0, 0, 0.510891, 0.510891, -1.22176, -1.22176,
+        1.44587, 1.44587, -1.60849, -1.60849, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0;
+    // A different height
+    /*x_standing_fixed_spring_ << 1, 0, 0, 0, 0, 0, 0.9, 0.0216645,
+       -0.0216645, 0, 0, 0.665022, 0.665022, -1.53461, -1.53461,
+       1.75905, 1.75905, -1.76295, -1.76295, 0, 0, 0, 0, 0, 0,
+       0.000343939, 7.9638e-05, -0.00224901, -0.00052079, -0.000889046,
+       0.00115963, -7.96077e-05, 0.000149216, 6.91934e-05, -9.6974e-05,
+       0.000948192, -0.00122315;*/
+    x_guess_left_in_front_pre_ = x_standing_fixed_spring_;
+    x_guess_right_in_front_pre_ = x_standing_fixed_spring_;
+    x_guess_left_in_front_post_ = x_standing_fixed_spring_;
+    x_guess_right_in_front_post_ = x_standing_fixed_spring_;
+  } else {
+    string dir_and_prefex_FOM = param_.dir_and_prefex_FOM.empty()
+                                    ? model_dir_n_pref
+                                    : param_.dir_and_prefex_FOM;
+    VectorXd x_guess_right_in_front_pre =
+        readCSV(dir_and_prefex_FOM + string("x_samples0.csv")).rightCols(1);
+    VectorXd x_guess_right_in_front_post =
+        readCSV(dir_and_prefex_FOM + string("x_samples1.csv")).col(0);
+    VectorXd x_guess_left_in_front_pre(nx_);
+    x_guess_left_in_front_pre
+        << state_mirror_.MirrorPos(x_guess_right_in_front_pre.head(nq_)),
+        state_mirror_.MirrorVel(x_guess_right_in_front_pre.tail(nv_));
+    VectorXd x_guess_left_in_front_post(nx_);
+    x_guess_left_in_front_post
+        << state_mirror_.MirrorPos(x_guess_right_in_front_post.head(nq_)),
+        state_mirror_.MirrorVel(x_guess_right_in_front_post.tail(nv_));
+
+    x_guess_right_in_front_pre_ = x_guess_right_in_front_pre;
+    x_guess_right_in_front_post_ = x_guess_right_in_front_post;
+    x_guess_left_in_front_pre_ = x_guess_left_in_front_pre;
+    x_guess_left_in_front_post_ = x_guess_left_in_front_post;
+  }
+
+  // cout << "initial guess duration ~ " << duration << endl;
+  // cout << "h_guess = " << h_guess << endl;
+  // cout << "y_guess = " << y_guess << endl;
+  // cout << "dy_guess = " << dy_guess << endl;
+  // cout << "tau_guess = " << tau_guess << endl;
+  //  cout << "x_guess_right_in_front_pre_ = "
+  //       << x_guess_right_in_front_pre_.transpose() << endl;
+  //  cout << "x_guess_right_in_front_post_ = "
+  //       << x_guess_right_in_front_post_.transpose() << endl;
+  //  cout << "x_guess_left_in_front_pre_ = "
+  //       << x_guess_left_in_front_pre_.transpose() << endl;
+  //  cout << "x_guess_left_in_front_post_ = "
+  //       << x_guess_left_in_front_post_.transpose() << endl;
 
   /// Inverse kinematics
   auto left_toe = LeftToeFront(plant_control_);
@@ -837,7 +842,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Add rom state in cost
   bool add_rom_regularization = true;
   if (add_rom_regularization) {
-    trajopt.AddRomRegularizationCost(h_guess_, y_guess_, dy_guess_, tau_guess_,
+    trajopt.AddRomRegularizationCost(h_reg_, y_reg_, dy_reg_, tau_reg_,
                                      first_mode_knot_idx,
                                      param_.gains.w_rom_reg);
   }

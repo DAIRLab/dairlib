@@ -505,6 +505,7 @@ cc_binary(
         "//common",
         "//lcm:dircon_trajectory_saver",
         "//multibody:visualization_utils",
+        "//solvers:nonlinear_cost",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",

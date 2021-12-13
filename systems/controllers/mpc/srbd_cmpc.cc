@@ -131,7 +131,7 @@ void SrbdCMPC::Build() {
   MakeCost();
 
   drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
+  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
@@ -191,6 +191,7 @@ void SrbdCMPC::UpdateKinematicConstraints(
   auto curr_mode = modes_.at(fsm_state);
   auto next_mode = modes_.at(1-fsm_state);
 
+  std::cout << "Next stance: ";
   for (int i = n_until_stance; i <= n_until_stance + next_mode.N; i++) {
     kinematic_constraint_.push_back(
         prog_.AddLinearConstraint(
@@ -198,7 +199,10 @@ void SrbdCMPC::UpdateKinematicConstraints(
             nominal_foot_pos_.at(next_mode.stance) - kin_bounds_,
             nominal_foot_pos_.at(next_mode.stance) + kin_bounds_,
             {pp.at(next_mode.stance), xx.at(i).head(kLinearDim_)}));
+    std::cout << std::to_string(i) << " ";
   }
+  std::cout << std::endl;
+  std::cout << "Next next stance: ";
   for (int i = n_until_stance + next_mode.N; i <= total_knots_; i++) {
     kinematic_constraint_.push_back(
         prog_.AddLinearConstraint(
@@ -206,7 +210,9 @@ void SrbdCMPC::UpdateKinematicConstraints(
             nominal_foot_pos_.at(curr_mode.stance) - kin_bounds_,
             nominal_foot_pos_.at(curr_mode.stance) + kin_bounds_,
             {pp.at(curr_mode.stance), xx.at(i).head(kLinearDim_)}));
+    std::cout << std::to_string(i) << " ";
   }
+  std::cout << std::endl;
 }
 
 void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,

@@ -40,10 +40,10 @@ echo robot_option = $robot, rom_option = $model
 
 # Set sample size
 n_sl=13
-n_gi=3
+n_gi=1
 n_du=1
 n_tr=1
-n_ph=1
+n_ph=3
 
 # Other parameters
 final_iter=100

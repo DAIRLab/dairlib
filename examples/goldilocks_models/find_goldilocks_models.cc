@@ -1533,7 +1533,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr, FLAGS_N_sample_ph},
           {0, 0, 0.35, FLAGS_turning_rate_center, 0.95},
-          {0.03, 0.05, 0.05, 0.125, 0.1},
+          {0.03, 0.05, 0.05, 0.125, 0.05},
           {(FLAGS_N_sample_sl > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_gi > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_du > 1) && FLAGS_is_stochastic,

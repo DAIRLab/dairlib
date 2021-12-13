@@ -558,9 +558,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
   }
 
-//  SetVelocitiesIfNew<double>(
-//      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
-//      context_wo_spr_);
+  //  SetVelocitiesIfNew<double>(
+  //      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
+  //      context_wo_spr_);
 
   // Get J and JdotV for holonomic constraint
   MatrixXd J_h(n_h_, n_v_);
@@ -761,6 +761,11 @@ VectorXd OperationalSpaceControl::SolveQp(
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+
+  //  if (result.get_optimal_cost() < -1e6) {
+  //    std::cout << "qp cost: " << result.get_optimal_cost() << std::endl;
+  //    return VectorXd::Zero(n_u_);
+  //  }
 
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);
@@ -1024,7 +1029,7 @@ void OperationalSpaceControl::CheckTracking(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
-  std::cout << "total cost: " << total_cost_ << std::endl;
+  //  std::cout << "total cost: " << total_cost_ << std::endl;
   if (total_cost_ > 5e4 || isnan(total_cost_)) {
     output->get_mutable_value()(0) = 1.0;
   }

@@ -38,7 +38,7 @@ bool CheckGenericConstraints(const MathematicalProgram& prog,
 }
 
 double SecondOrderCost(const MathematicalProgram& prog, const VectorXd& x_nom,
-    MatrixXd* Q, VectorXd* w, double eps) {
+    MatrixXd* Q, VectorXd* w, double eps, std::string name) {
 
   int num_vars = prog.num_vars();
   *Q = Eigen::MatrixXd::Zero(num_vars, num_vars);
@@ -47,6 +47,13 @@ double SecondOrderCost(const MathematicalProgram& prog, const VectorXd& x_nom,
   double c = 0;
 
   for (auto const& binding : prog.GetAllCosts()) {
+    // If name is specified, we only evaluate the cost with the name `name`
+    if (!name.empty()) {
+      if (binding.evaluator()->get_description() != name) {
+        continue;  // Skip this loop
+      }
+    }
+
     // evaluate cost
     auto variables = binding.variables();
     if (variables.size() == 0)

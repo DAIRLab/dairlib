@@ -65,6 +65,9 @@ class SubQpData {
   std::vector<std::shared_ptr<Eigen::VectorXd>> w_sol_vec;
   std::vector<std::shared_ptr<Eigen::MatrixXd>> H_vec;
   std::vector<std::shared_ptr<Eigen::VectorXd>> b_vec;
+  // b_main is for the gradient of cost that we only consider optimizing (e.g.
+  // excluding all the regularization cost)
+  std::vector<std::shared_ptr<Eigen::VectorXd>> b_main_vec;
   std::vector<std::shared_ptr<Eigen::VectorXd>> c_vec;
   std::vector<std::shared_ptr<Eigen::MatrixXd>> A_vec;
   std::vector<std::shared_ptr<Eigen::VectorXd>> lb_vec;

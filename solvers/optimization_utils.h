@@ -53,7 +53,7 @@ void LinearizeConstraints(const drake::solvers::MathematicalProgram& prog,
 /// @return Returns the constant part of the cost
 double SecondOrderCost(const drake::solvers::MathematicalProgram& prog,
     const Eigen::VectorXd& x_nom, Eigen::MatrixXd* Q, Eigen::VectorXd* w,
-    double eps = 1e-8);
+    double eps = 1e-8, std::string name = "");
 
 /// Count the total number of constraint rows, if lb <= f(x) <= ub, this is
 /// the dimension of f(x)

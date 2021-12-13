@@ -191,6 +191,8 @@ DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
 DEFINE_bool(swing_foot_cublic_spline, false, "");
 DEFINE_double(turning_rate_center, 0.0, "The step size for outer loop");
 
+DEFINE_bool(only_update_wrt_main_cost, false, "");
+
 void setCostWeight(double* Q, double* R, double* all_cost_scale,
                    int robot_option) {
   if (robot_option == 0) {
@@ -2717,9 +2719,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Assumption: H_vec[sample] are symmetric
       VectorXd gradient_cost(rom->n_theta());
       double norm_grad_cost;
-      CalcCostGradientAndNorm(successful_idx_list, QPs.P_vec, QPs.q_vec,
-                              QPs.b_vec, dir, prefix, &gradient_cost,
-                              &norm_grad_cost);
+      CalcCostGradientAndNorm(
+          successful_idx_list, QPs.P_vec, QPs.q_vec,
+          FLAGS_only_update_wrt_main_cost ? QPs.b_main_vec : QPs.b_vec, dir,
+          prefix, &gradient_cost, &norm_grad_cost);
 
       // Calculate Newton step and the decrement
       VectorXd newton_step(rom->n_theta());

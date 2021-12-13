@@ -2,7 +2,7 @@
 
 ##basic parameters##
 #SBATCH --job-name=run_model_opt
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=/scratch/yminchen/output/slurm-%A_%a.out  ##manually specify this directory
 
 ##email setting##

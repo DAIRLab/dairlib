@@ -133,11 +133,11 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd Br = MatrixXd::Zero(nx, nu);
   VectorXd br = VectorXd::Zero(nx);
 
-  srb_plant.CopyDiscreteLinearizedSrbDynamicsForMPC(
-      dt, mass, 0, BipedStance::kLeft,
+  srb_plant.CopyContinuousLinearized3dSrbDynamicsForMPC(
+      mass, 0, BipedStance::kLeft,
       I_rot, des_com_pos, left_neutral_foot_pos, &Al, &Bl, &bl);
-  srb_plant.CopyDiscreteLinearizedSrbDynamicsForMPC(
-      dt, mass, 0, BipedStance::kRight,
+  srb_plant.CopyContinuousLinearized3dSrbDynamicsForMPC(
+      mass, 0, BipedStance::kRight,
       I_rot, des_com_pos, right_neutral_foot_pos, &Ar, &Br, &br);
 
   LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};

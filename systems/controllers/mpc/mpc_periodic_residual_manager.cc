@@ -18,16 +18,9 @@ MpcPeriodicResidualManager::MpcPeriodicResidualManager(
 
 void MpcPeriodicResidualManager::AddResidualToDynamics(
     const residual_dynamics &res, drake::EigenPtr<MatrixXd> A,
-    drake::EigenPtr<MatrixXd> B, drake::EigenPtr<MatrixXd> b,
-    bool stance, const Vector3d& pos = Vector3d::Zero()) {
-
-  if (stance) {
-    *A = *A + res.A.block(0, 0, res.A.rows(), res.A.cols() - 3);
-    *b = *b + res.b + res.A.block(0, res.A.cols() - 3, res.A.rows(), 3) * pos;
-  } else {
-    *A = *A + res.A;
-    *b = *b + res.b;
-  }
+    drake::EigenPtr<MatrixXd> B, drake::EigenPtr<MatrixXd> b) {
+  *A = *A + res.A;
+  *b = *b + res.b;
   *B = *B + res.B;
 }
 

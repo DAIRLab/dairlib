@@ -111,6 +111,7 @@ void SrbdCMPC::AddMode(const LinearSrbdDynamics&  dynamics,
 
 void SrbdCMPC::FinalizeModeSequence(){
      xx.push_back(prog_.NewContinuousVariables(nx_, "x_f"));
+     uu.push_back(prog_.NewContinuousVariables(nu_, "u_f"));
      if (use_residuals_) {
        residual_manager_ =
            std::make_unique<systems::MpcPeriodicResidualManager>(
@@ -151,7 +152,7 @@ void SrbdCMPC::Build() {
   MakeCost();
 
   drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
+  solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
@@ -180,17 +181,18 @@ void SrbdCMPC::MakeDynamicsConstraints() {
   for (int j = 0; j < nmodes_; j++) {
     auto mode = modes_.at(j);
     for (int i = 0; i < mode.N; i++) {
-      MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + nu_ + kLinearDim_);
+      MatrixXd Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
       VectorXd beq = VectorXd::Zero(nx_);
       Vector3d pos = Vector3d::Zero();
       pos(1) = nominal_foot_pos_.at(j)(1);
-      CopyDiscreteDynamicsConstraint(mode, false, pos, &Aeq, &beq);
+      CopyCollocationDynamicsConstraint(mode, false, pos, &Aeq, &beq);
       dynamics_.push_back(
           prog_.AddLinearEqualityConstraint(Aeq, beq,
               {xx.at(j * mode.N + i),
-               pp.at(mode.stance),
+               xx.at(j * mode.N + i + 1),
                uu.at(j * mode.N + i),
-               xx.at(j * mode.N + i + 1)}));
+               uu.at(j * mode.N + i + 1),
+               pp.at(mode.stance)}));
     }
   }
 //  for (auto& binding : dynamics_) {
@@ -243,43 +245,48 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
 
   if (n_until_next_stance == mode.N ) {
     // make current stance dynamics and apply to mode
-    MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + nu_);
+    MatrixXd Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_));
     VectorXd beq = VectorXd::Zero(nx_);
-    CopyDiscreteDynamicsConstraint(mode, true, pos, &Aeq, &beq);
+    CopyCollocationDynamicsConstraint(
+        mode, true, pos, &Aeq, &beq);
 
     for (int i = 0; i < (mode.N); i++){
       prog_.RemoveConstraint(dynamics_.at(i));
       dynamics_.at(i) = prog_.AddLinearEqualityConstraint(
-          Aeq, beq, {xx.at(i), uu.at(i), xx.at(i+1)});
-      std::cout << "Replacing dynamics constraint " << std::to_string(i) << std::endl;
+          Aeq, beq,
+          {xx.at(i), xx.at(i+1), uu.at(i), uu.at(i+1)});
     }
 
-    Aeq = MatrixXd::Zero(nx_, 2*nx_ + kLinearDim_ + nu_);
+    Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
     beq = VectorXd::Zero(nx_);
-    CopyDiscreteDynamicsConstraint(modes_.at(1-fsm_state),
+    CopyCollocationDynamicsConstraint(modes_.at(1-fsm_state),
         false, pos, &Aeq, &beq);
     prog_.RemoveConstraint(dynamics_.at(mode.N));
     dynamics_.at(mode.N) = prog_.AddLinearEqualityConstraint(
         Aeq, beq,
-        {xx.at(mode.N), pp.at(1-fsm_state),
-         uu.at(mode.N), xx.at(mode.N+1)});
+        {xx.at(mode.N), xx.at(mode.N+1),
+          uu.at(mode.N), uu.at(mode.N+1),
+          pp.at(1-fsm_state)});
   } else {
     int idx = n_until_next_stance;
-    MatrixXd Aeq = MatrixXd::Zero(nx_, 2*nx_ + kLinearDim_ + nu_);
+    MatrixXd Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
     VectorXd beq = VectorXd::Zero(nx_);
-    CopyDiscreteDynamicsConstraint(modes_.at(1-fsm_state), false, pos, &Aeq, &beq);
-    std::cout << "Replacing dynamics constraint " << std::to_string(idx) << std::endl;
+    CopyCollocationDynamicsConstraint(
+        modes_.at(1-fsm_state), false, pos, &Aeq, &beq);
+//    std::cout << "Replacing dynamics constraint "
+//              << std::to_string(idx) << std::endl;
     prog_.RemoveConstraint(dynamics_.at(idx));
     dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(
         Aeq, beq,
-        {xx.at(idx), pp.at(1-fsm_state), uu.at(idx), xx.at(idx+1)});
-    CopyDiscreteDynamicsConstraint(mode, false, pos, &Aeq, &beq);
-    std::cout << "Replacing dynamics constraint " << std::to_string(idx + mode.N) << std::endl;
+        {xx.at(idx), xx.at(idx+1),
+         uu.at(idx), uu.at(idx+1), pp.at(1-fsm_state)});
+    CopyCollocationDynamicsConstraint(mode, false, pos, &Aeq, &beq);
+//    std::cout << "Replacing dynamics constraint " << std::to_string(idx + mode.N) << std::endl;
     prog_.RemoveConstraint(dynamics_.at(idx + mode.N));
     dynamics_.at(idx+mode.N) = prog_.AddLinearEqualityConstraint(
         Aeq, beq,
-        {xx.at(idx+mode.N), pp.at(fsm_state),
-         uu.at(idx+mode.N), xx.at(mode.N+idx+1)});
+        {xx.at(idx+mode.N), xx.at(idx+mode.N+1),
+         uu.at(idx+mode.N), uu.at(idx+mode.N+1), pp.at(fsm_state)});
   }
   std::cout << "\n";
 }
@@ -318,7 +325,7 @@ void SrbdCMPC::MakeKinematicReachabilityConstraints() {
 }
 
 void SrbdCMPC::MakeFrictionConeConstraints() {
-  for (int i = 0; i < total_knots_; i++) {
+  for (int i = 0; i <= total_knots_; i++) {
       friction_cone_.push_back(
           prog_.AddConstraint(
           solvers::CreateLinearFrictionConstraint(mu_),
@@ -329,9 +336,9 @@ void SrbdCMPC::MakeFrictionConeConstraints() {
 void SrbdCMPC::MakeCost(){
   VectorXd unom = VectorXd::Zero(nu_);
   unom(2) = 9.81 * plant_.mass();
-  for (int i = 0; i < total_knots_; i++) {
+  for (int i = 0; i <= total_knots_; i++) {
       tracking_cost_.push_back(
-          prog_.AddQuadraticErrorCost(Q_, x_des_, xx.at(i+1))
+          prog_.AddQuadraticErrorCost(Q_, x_des_, xx.at(i))
         .evaluator().get());
       input_cost_.push_back(
           prog_.AddQuadraticErrorCost(R_, unom, uu.at(i))
@@ -544,8 +551,6 @@ lcmt_saved_traj SrbdCMPC::MakeLcmTrajFromSol(
   MatrixXd input = MatrixXd::Zero(nu_, total_knots_);
   VectorXd time_knots = VectorXd::Zero(total_knots_);
 
-
-
   for (int i = 0; i < total_knots_; i++) {
     VectorXd ui = result.GetSolution(uu.at(i));
     VectorXd xi = result.GetSolution(xx.at(i));
@@ -626,7 +631,36 @@ void SrbdCMPC::CopyDiscreteDynamicsConstraint(
     A->block(0, nx_ + nu_, nx_, nx_) = -MatrixXd::Identity(nx_, nx_);
     *b = -(mode.dynamics.A.block(0, nx_, nx_, kLinearDim_)
              * foot_pos + mode.dynamics.b);
-    return;
+  }
+}
+
+void SrbdCMPC::CopyCollocationDynamicsConstraint(
+    const SrbdMode &mode, bool current_stance,
+    const Eigen::Vector3d &foot_pos,
+    const drake::EigenPtr<Eigen::MatrixXd> &A,
+    const drake::EigenPtr<Eigen::VectorXd> &b) const {
+  DRAKE_DEMAND(A != nullptr && b != nullptr);
+  if (current_stance) {
+    DRAKE_DEMAND(A->cols() == 2*(nx_+nu_));
+  } else {
+    DRAKE_DEMAND(A->cols() == 2*(nx_+nu_)+3);
+  }
+  MatrixXd Ax = mode.dynamics.A.block(0, 0, nx_, nx_);
+  MatrixXd Ap = mode.dynamics.A.block(0, nx_, nx_, nx_+kLinearDim_);
+  double h = dt_;
+  A->block(0, 0, nx_, nx_) =
+      (0.125*h)*Ax*Ax - 0.75*Ax - (1.5/h) * MatrixXd::Identity(nx_, nx_);
+  A->block(0, nx_, nx_, nx_) =
+      -(0.125*h)*Ax*Ax - 0.75*Ax + (1.5/h) * MatrixXd::Identity(nx_, nx_);
+  A->block(0, 2*nx_, nx_, nu_) =
+      (0.125 * h * Ax - 0.75 * MatrixXd::Identity(nx_, nx_)) * mode.dynamics.B;
+  A->block(0, 2*nx_ + nu_, nx_, nu_) =
+      (-0.125 * h * Ax - 0.75 * MatrixXd::Identity(nx_, nx_)) * mode.dynamics.B;
+  if (current_stance) {
+    *b = 1.5 * mode.dynamics.b + 1.5 * Ap * foot_pos;
+  } else {
+    A->block(0, 2*(nx_ + nu_), nx_, kLinearDim_) = -1.5*Ap;
+    *b = 1.5 * mode.dynamics.b;
   }
 }
 

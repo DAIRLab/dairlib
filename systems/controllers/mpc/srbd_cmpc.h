@@ -153,6 +153,12 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
       const drake::EigenPtr<Eigen::MatrixXd> &A,
       const drake::EigenPtr<Eigen::VectorXd> &b) const;
 
+  void CopyCollocationDynamicsConstraint(
+      const SrbdMode& mode, bool current_stance,
+      const Eigen::Vector3d& foot_pos,
+      const drake::EigenPtr<Eigen::MatrixXd> &A,
+      const drake::EigenPtr<Eigen::VectorXd> &b) const;
+
   // discrete update
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,

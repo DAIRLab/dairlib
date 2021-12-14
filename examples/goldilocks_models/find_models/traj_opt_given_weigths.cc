@@ -600,6 +600,10 @@ void extractResult(VectorXd& w_sol, const GoldilocksModelTrajOpt& trajopt,
                    bool is_print_for_debugging) {
   string dir_pref = setting.directory + setting.prefix;
 
+  bool this_sample_has_not_found_an_optimal_sol =
+      cost_threshold_for_update == std::numeric_limits<double>::infinity();
+  bool too_many_reruns = n_rerun > N_rerun;
+
   // Extract solution
   SolutionResult solution_result = result.get_solution_result();
   double tau_cost =
@@ -623,14 +627,18 @@ void extractResult(VectorXd& w_sol, const GoldilocksModelTrajOpt& trajopt,
   // to change the one in postProcessing
   cout << "(sample_idx, n_rerun, N_rerun, is_success) = (" << sample_idx << ", "
        << n_rerun << ", " << N_rerun << ", " << result.is_success() << ")\n";
-  if (n_rerun > N_rerun) {
-    if ((cost_threshold_for_update ==
-         std::numeric_limits<double>::infinity()) &&
+  if (too_many_reruns) {
+    if (this_sample_has_not_found_an_optimal_sol &&
         (to_string(solution_result) == "IterationLimit")) {
       // Do nothing. Continue to store the result
       cout << "#" << sample_idx
            << " hit iteration limit, and hasn't found a solution in this "
-              "iteration yet. Will continue solving\n";
+              "iteration yet. ";
+      //      cout << "Will continue solving\n";
+
+      // We move on because snopt probably makes very small incremental change
+      // each major iteration.
+      cout << "Will assume this sample is successful and move on\n";
     } else if (!result.is_success()) {
       cout << "the rerun of idx #" << sample_idx
            << " was not successful, skip\n";
@@ -646,6 +654,9 @@ void extractResult(VectorXd& w_sol, const GoldilocksModelTrajOpt& trajopt,
 
   VectorXd is_success(1);
   if (result.is_success())
+    is_success << SAMPLE_STATUS_CODE::SUCCESS;
+  else if (to_string(solution_result) == "IterationLimit" && too_many_reruns &&
+           this_sample_has_not_found_an_optimal_sol)
     is_success << SAMPLE_STATUS_CODE::SUCCESS;
   else if (to_string(solution_result) == "IterationLimit")
     is_success << SAMPLE_STATUS_CODE::ITERATION_LIMIT;

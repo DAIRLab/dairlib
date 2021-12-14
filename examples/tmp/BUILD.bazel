@@ -6,6 +6,7 @@ cc_binary(
     name = "tmp",
     srcs = ["tmp.cc"],
     deps = [
+	"//solvers:fast_osqp_solver",
         "@gurobi//:gurobi_cxx",
         "@drake//:drake_shared_library",
     ],

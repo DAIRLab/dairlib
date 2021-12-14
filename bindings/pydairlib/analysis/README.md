@@ -18,3 +18,10 @@ Dict keys: `'t_u', 'u'`
 
 ### `osc_debug`
 This contains the osc debug timestamps, the osc debug lcm messages, and a list of osc tracking datas in the same conveniece class we have been using for Cassie logs (see `osc_debug.py`). 
+
+Dict keys :
+```
+'t_osc', 'input_cost', 'acceleration_cost', 'soft_constraint_cost',
+'qp_solve_time', 'u_sol', 'lambda_c_sol, 'lambda_h_sol', 'dv_sol', 
+'epsilon_sol', 'osc_output', 'tracking_cost', 'osc_debug_tracking_datas', 'fsm'
+```

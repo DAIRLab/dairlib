@@ -33,6 +33,7 @@ SubQpData::SubQpData(int N_sample) {
     w_sol_vec.push_back(std::make_shared<VectorXd>());
     H_vec.push_back(std::make_shared<MatrixXd>());
     b_vec.push_back(std::make_shared<VectorXd>());
+    b_main_vec.push_back(std::make_shared<VectorXd>());
     c_vec.push_back(std::make_shared<VectorXd>());
     A_vec.push_back(std::make_shared<MatrixXd>());
     lb_vec.push_back(std::make_shared<VectorXd>());

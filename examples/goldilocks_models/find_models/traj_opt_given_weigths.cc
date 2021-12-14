@@ -508,6 +508,16 @@ class SwingFootCubicSplineConstraint
   int n_x_;
 };
 
+bool IsMainCost(
+    const std::vector<drake::solvers::Binding<drake::solvers::Cost>>& c) {
+  if (c.size() > 0) {
+    if (c.at(0).evaluator()->get_description() == "main_cost") {
+      return true;
+    }
+  }
+  return false;
+}
+
 void addRegularization(bool is_get_nominal, double eps_reg,
                        GoldilocksModelTrajOpt* trajopt) {
   // Add regularization term here so that hessian is pd (for outer loop), so
@@ -3453,77 +3463,77 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     double cost_x = solvers::EvalCostGivenSolution(result, trajopt.cost_x_bindings_);
     myfile << "cost_x = " << cost_x << endl;
     sub_total_cost += cost_x;
-    if (trajopt.cost_x_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_x;
+    if (IsMainCost(trajopt.cost_x_bindings_)) total_main_cost += cost_x;
 
     double cost_u = solvers::EvalCostGivenSolution(result, trajopt.cost_u_bindings_);
     myfile << "cost_u = " << cost_u << endl;
     sub_total_cost += cost_u;
-    if (trajopt.cost_u_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_u;
+    if (IsMainCost(trajopt.cost_u_bindings_)) total_main_cost += cost_u;
 
     double cost_lambda_x_diff = solvers::EvalCostGivenSolution(result, trajopt.cost_lambda_x_diff_bindings_);
     myfile << "cost_lambda_x_diff = " << cost_lambda_x_diff << endl;
     sub_total_cost += cost_lambda_x_diff;
-    if (trajopt.cost_lambda_x_diff_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_lambda_x_diff;
+    if (IsMainCost(trajopt.cost_lambda_x_diff_bindings_)) total_main_cost += cost_lambda_x_diff;
 
     double cost_lambda_diff = solvers::EvalCostGivenSolution(result, trajopt.cost_lambda_diff_bindings_);
     myfile << "cost_lambda_diff = " << cost_lambda_diff << endl;
     sub_total_cost += cost_lambda_diff;
-    if (trajopt.cost_lambda_diff_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_lambda_diff;
+    if (IsMainCost(trajopt.cost_lambda_diff_bindings_)) total_main_cost += cost_lambda_diff;
 
     double cost_pos_diff = solvers::EvalCostGivenSolution(result, trajopt.cost_pos_diff_bindings_);
     myfile << "cost_pos_diff = " << cost_pos_diff << endl;
     sub_total_cost += cost_pos_diff;
-    if (trajopt.cost_pos_diff_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_pos_diff;
+    if (IsMainCost(trajopt.cost_pos_diff_bindings_)) total_main_cost += cost_pos_diff;
 
     double cost_vel_diff = solvers::EvalCostGivenSolution(result, trajopt.cost_vel_diff_bindings_);
     myfile << "cost_vel_diff = " << cost_vel_diff << endl;
     sub_total_cost += cost_vel_diff;
-    if (trajopt.cost_vel_diff_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_vel_diff;
+    if (IsMainCost(trajopt.cost_vel_diff_bindings_)) total_main_cost += cost_vel_diff;
 
     double cost_u_diff = solvers::EvalCostGivenSolution(result, trajopt.cost_u_diff_bindings_);
     myfile << "cost_u_diff = " << cost_u_diff << endl;
     sub_total_cost += cost_u_diff;
-    if (trajopt.cost_u_diff_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_u_diff;
+    if (IsMainCost(trajopt.cost_u_diff_bindings_)) total_main_cost += cost_u_diff;
 
     double cost_q_hip_roll = solvers::EvalCostGivenSolution(result, trajopt.cost_q_hip_roll_bindings_);
     myfile << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
     sub_total_cost += cost_q_hip_roll;
-    if (trajopt.cost_q_hip_roll_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_q_hip_roll;
+    if (IsMainCost(trajopt.cost_q_hip_roll_bindings_)) total_main_cost += cost_q_hip_roll;
 
     double cost_q_hip_yaw = solvers::EvalCostGivenSolution(result, trajopt.cost_q_hip_yaw_bindings_);
     myfile << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
     sub_total_cost += cost_q_hip_yaw;
-    if (trajopt.cost_q_hip_yaw_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_q_hip_yaw;
+    if (IsMainCost(trajopt.cost_q_hip_yaw_bindings_)) total_main_cost += cost_q_hip_yaw;
 
     double cost_q_quat_xyz = solvers::EvalCostGivenSolution(result, trajopt.cost_q_quat_xyz_bindings_);
     myfile << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
     sub_total_cost += cost_q_quat_xyz;
-    if (trajopt.cost_q_quat_xyz_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_q_quat_xyz;
+    if (IsMainCost(trajopt.cost_q_quat_xyz_bindings_)) total_main_cost += cost_q_quat_xyz;
 
     double cost_lambda = solvers::EvalCostGivenSolution(result, trajopt.cost_lambda_bindings_);
     myfile << "cost_lambda = " << cost_lambda << endl;
     sub_total_cost += cost_lambda;
-    if (trajopt.cost_lambda_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_lambda;
+    if (IsMainCost(trajopt.cost_lambda_bindings_)) total_main_cost += cost_lambda;
 
     double cost_collocation_lambda = solvers::EvalCostGivenSolution(result, trajopt.cost_collocation_lambda_bindings_);
     myfile << "cost_collocation_lambda = " << cost_collocation_lambda << endl;
     sub_total_cost += cost_collocation_lambda;
-    if (trajopt.cost_collocation_lambda_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_collocation_lambda;
+    if (IsMainCost(trajopt.cost_collocation_lambda_bindings_)) total_main_cost += cost_collocation_lambda;
 
     double cost_joint_acceleration = solvers::EvalCostGivenSolution(result, trajopt.cost_joint_acceleration_bindings_);
     myfile << "cost_joint_acceleration = " << cost_joint_acceleration << endl;
     sub_total_cost += cost_joint_acceleration;
-    if (trajopt.cost_joint_acceleration_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_joint_acceleration;
+    if (IsMainCost(trajopt.cost_joint_acceleration_bindings_)) total_main_cost += cost_joint_acceleration;
 
     double cost_tau = solvers::EvalCostGivenSolution(result, trajopt.cost_tau_bindings_);
     myfile << "cost_tau = " << cost_tau << endl;
     sub_total_cost += cost_tau;
-    if (trajopt.cost_tau_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_tau;
+    if (IsMainCost(trajopt.cost_tau_bindings_)) total_main_cost += cost_tau;
 
     double cost_regularization = solvers::EvalCostGivenSolution(result, trajopt.cost_regularization_bindings_);
     myfile << "cost_regularization = " << cost_regularization << endl;
     sub_total_cost += cost_regularization;
-    if (trajopt.cost_regularization_bindings_.at(0).evaluator()->get_description() == "main_cost") total_main_cost += cost_regularization;
+    if (IsMainCost(trajopt.cost_regularization_bindings_)) total_main_cost += cost_regularization;
 
     // clang-format on
 

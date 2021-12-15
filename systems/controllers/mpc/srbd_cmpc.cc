@@ -273,15 +273,14 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
     VectorXd beq = VectorXd::Zero(nx_);
     CopyCollocationDynamicsConstraint(
         modes_.at(1-fsm_state), false, pos, &Aeq, &beq);
-//    std::cout << "Replacing dynamics constraint "
-//              << std::to_string(idx) << std::endl;
+
     prog_.RemoveConstraint(dynamics_.at(idx));
     dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(
         Aeq, beq,
         {xx.at(idx), xx.at(idx+1),
          uu.at(idx), uu.at(idx+1), pp.at(1-fsm_state)});
     CopyCollocationDynamicsConstraint(mode, false, pos, &Aeq, &beq);
-//    std::cout << "Replacing dynamics constraint " << std::to_string(idx + mode.N) << std::endl;
+
     prog_.RemoveConstraint(dynamics_.at(idx + mode.N));
     dynamics_.at(idx+mode.N) = prog_.AddLinearEqualityConstraint(
         Aeq, beq,
@@ -453,10 +452,10 @@ EventStatus SrbdCMPC::PeriodicUpdate(
 //                  foot_target.tail(kLinearDim_),
 //                  warmstart_traj);
 
-  auto lin_con = prog_.GetAllLinearConstraints();
-  for (auto& binding : lin_con) {
-    std::cout << "Next Binding:\n" << binding << std::endl;
-  }
+//  auto lin_con = prog_.GetAllLinearConstraints();
+//  for (auto& binding : lin_con) {
+//    std::cout << "Next Binding:\n" << binding << std::endl;
+//  }
 //  print_constraint(lin_con);
 
 

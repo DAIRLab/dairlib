@@ -174,8 +174,10 @@ RomTrajOpt::RomTrajOpt(
   // Initial state relaxation (both ROM and FOM init use this)
   int n_eps = relax_index.size();
   eps_rom_var_ = NewContinuousVariables(n_eps, "eps_rom");
-  init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
-      MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps), eps_rom_var_));
+  if (!relax_index.empty()) {
+    init_rom_relax_cost_bindings_.push_back(AddQuadraticCost(
+        MatrixXd::Identity(n_eps, n_eps), VectorXd::Zero(n_eps), eps_rom_var_));
+  }
   /* // "linear cost + lower bound" version
   if (relax_index.size() == 1 && *(relax_index.begin()) == 5) {
     init_rom_relax_cost_bindings_.push_back(AddLinearCost(eps_rom_var_(0)));

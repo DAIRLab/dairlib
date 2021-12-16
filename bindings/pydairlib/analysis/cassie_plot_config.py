@@ -47,3 +47,5 @@ class CassiePlotConfig():
             self.mpc_trajs_to_plot = data['mpc_trajs_to_plot']
         else:
             self.mpc_trajs_to_plot = {}
+
+        self.plot_momentum = data['plot_momentum']

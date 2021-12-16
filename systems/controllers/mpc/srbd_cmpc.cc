@@ -34,7 +34,8 @@ using dairlib::systems::residual_dynamics;
 
 namespace dairlib{
 
-SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
+SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant,
+                   double dt,
                    bool traj,
                    bool used_with_finite_state_machine,
                    bool used_with_residual_estimator):
@@ -63,7 +64,9 @@ SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
             {MatrixXd::Zero(0, 0),
              MatrixXd::Zero(0, 0),
              VectorXd::Zero(0)})).get_index();
+    std::cout << "declared residual port!\n";
   }
+  std::cout << "state port: " << state_port_ << "\nresidual_port: " << srbd_residual_port_ << std::endl;
 //  foot_target_port_ = this->DeclareVectorInputPort("p_des" ,
 //      BasicVector<double>(2*kLinearDim_)).get_index();
 //
@@ -73,7 +76,8 @@ SrbdCMPC::SrbdCMPC(const SingleRigidBodyPlant& plant, double dt,
 //      drake::Value<drake::trajectories::Trajectory<double>>(pp_traj)).get_index();
 
   traj_out_port_ = this->DeclareAbstractOutputPort("y(t)",
-      &SrbdCMPC::GetMostRecentMotionPlan).get_index();
+      &SrbdCMPC::GetMostRecentMotionPlan,
+      {this->all_state_ticket()}).get_index();
 
   // Discrete update
   DeclarePerStepDiscreteUpdateEvent(&SrbdCMPC::DiscreteVariableUpdate);

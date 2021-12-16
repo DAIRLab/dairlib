@@ -18,11 +18,13 @@ using dairlib::systems::residual_dynamics;
 namespace dairlib::systems {
 SRBDResidualEstimator::SRBDResidualEstimator(
     const multibody::SingleRigidBodyPlant &plant, double rate,
-    unsigned int buffer_len, bool use_fsm) :
+    unsigned int buffer_len, bool use_fsm, double dt, bool continuous) :
     plant_(plant),
     rate_(rate),
     buffer_len_(buffer_len),
-    use_fsm_(use_fsm) {
+    use_fsm_(use_fsm),
+    dt_(dt),
+    continuous_(continuous) {
 
   // Initialize data matrices
   X_ = MatrixXd::Zero(buffer_len_, num_X_cols);
@@ -80,7 +82,6 @@ drake::systems::EventStatus SRBDResidualEstimator::PeriodicUpdate(
     const drake::systems::Context<double> &context,
     drake::systems::DiscreteValues<double> *discrete_state) const {
   // Solve least squares only if it's ready.
-  std::cout << "CALLING LEAST SQUARES SOLVE with ticks = " << ticks_ << std::endl;
   if (ticks_ >= buffer_len_) {
     SolveLstSq();
   }
@@ -151,21 +152,31 @@ SRBDResidualEstimator::DiscreteVariableUpdate(const drake::systems::Context<doub
   return drake::systems::EventStatus::Succeeded();
 }
 
+Eigen::VectorXd SRBDResidualEstimator::ComputeYDot(Eigen::MatrixXd state_history) const {
+  if (state_history.cols() < 2) {
+    std::cout << "Error! Need at least 2 states to compute velocity" << std::endl;
+  }
+  Eigen::VectorXd diff = 1/dt_ * (state_history.col(1) - state_history.col(0));
+  return diff;
+}
+
+
 void SRBDResidualEstimator::UpdateLstSqEquation(Eigen::VectorXd state,
                                                 Eigen::VectorXd input,
                                                 Eigen::Vector3d stance_foot_loc,
                                                 BipedStance stance_mode) const {
   VectorXd vec_joined(nx_ + 3);
   vec_joined << state, stance_foot_loc;
-
   // Rotate X and y up by a row.
-  X_.block(0, 0, buffer_len_ - 2, num_X_cols) = X_.block(1, 0, buffer_len_ - 1, num_X_cols);
-  y_.block(0, 0, buffer_len_ - 2, nx_) = y_.block(1, 0, buffer_len_ - 1, nx_);
+  X_.block(0, 0, buffer_len_ - 1, num_X_cols) = X_.block(1, 0, buffer_len_ - 1, num_X_cols);
+  y_.block(0, 0, buffer_len_ - 1, nx_) = y_.block(1, 0, buffer_len_ - 1, nx_);
 
   // set the last row of X to the current state and input, and ones
-  X_.row(buffer_len_ -1) << state, stance_foot_loc, input, Eigen::VectorXd::Ones(1);
+  VectorXd alls(num_X_cols);
+  alls << state, stance_foot_loc, input, Eigen::VectorXd::Ones(1);
+//  std::cout << "alls \n" << alls << std::endl;
+  X_.row(buffer_len_ - 1) = alls;
 
-  /*
   if (ofs_ && ticks_ == 0) {
     ofs_ << "#" << std::endl;
     ofs_ << modes_.at(stance_mode).dynamics.A << std::endl;
@@ -173,6 +184,10 @@ void SRBDResidualEstimator::UpdateLstSqEquation(Eigen::VectorXd state,
     ofs_ << modes_.at(stance_mode).dynamics.B << std::endl;
     ofs_ << "#" << std::endl;
     ofs_ << modes_.at(stance_mode).dynamics.b << std::endl;
+
+    //std::cout << "A matrix \n" << modes_.at(stance_mode).dynamics.A << std::endl;
+    //std::cout << "B matrix \n" << modes_.at(stance_mode).dynamics.B << std::endl;
+    //std::cout << "B matrix \n" << modes_.at(stance_mode).dynamics.b << std::endl;
   }
 
   if (ofs_) {
@@ -181,33 +196,48 @@ void SRBDResidualEstimator::UpdateLstSqEquation(Eigen::VectorXd state,
     ofs_ << "#" << std::endl;
     ofs_ << vec_row << std::endl;
   }
-  */
 
-  // Set the 2nd to last row of Y to be the cur_state -A * prev_state - B * prev_input - b (based on the stance mode)
-  // the last row isn't ready to use yet since the next state needs to be added to it.
-  y_.row(buffer_len_ - 2) = state - modes_.at(stance_mode).dynamics.A * prev_state_ - modes_.at(stance_mode).dynamics.B * prev_input_ -
+  Eigen::MatrixXd states(nx_, 2);
+  states.col(0) = prev_state_.head(nx_);
+  states.col(1) = state;
+  // Eventually can do some filtering in this step.
+  Eigen::VectorXd ydot = ComputeYDot(states);
+  // std::cout << "ydot \n" << ydot << std::endl;
+  Eigen::VectorXd nominal_deriv = modes_.at(stance_mode).dynamics.A * prev_state_ + modes_.at(stance_mode).dynamics.B * prev_input_ +
       modes_.at(stance_mode).dynamics.b;
+  // std::cout << "prev_state:" << prev_state_ << std::endl;
+  // std::cout << "prev_input:" << prev_input_ << std::endl;
+  // std::cout << "nominal derivative: " << nominal_deriv << std::endl;
+  if (continuous_) {
+    y_.row(buffer_len_ - 2) = ydot - nominal_deriv;
+  } else {
+    y_.row(buffer_len_ - 2) =
+        state - nominal_deriv;
+  }
+  // std::cout << "last row of y:" << std::endl << y_.row(buffer_len_ - 2)<< std::endl;
+  if (ofs_) {
+    ofs_ << "#" << std::endl;
+    ofs_ << X_ << std::endl;
+    ofs_ << "#" << std::endl;
+    ofs_ << y_ << std::endl;
+  }
 
-//  if (ofs_) {
-//    ofs_ << "#" << std::endl;
-//    ofs_ << X_ << std::endl;
-//    ofs_ << "#" << std::endl;
-//    ofs_ << y_ << std::endl;
-//  }
-  /*
   if (ticks_ >= buffer_len_) {
     // debugging step: check if the dynamics of the past state + residual dynamics of past state are close to this state.
-    Eigen::VectorXd exp_state = modes_.at(stance_mode).dynamics.A * prev_state_ + modes_.at(stance_mode).dynamics.B * prev_input_ +
-            modes_.at(stance_mode).dynamics.b;
+
+    Eigen::VectorXd exp_deriv = modes_.at(stance_mode).dynamics.A * prev_state_ + modes_.at(stance_mode).dynamics.B * prev_input_ +
+        modes_.at(stance_mode).dynamics.b;
     Eigen::VectorXd res_state = cur_A_hat_ * prev_state_ + cur_B_hat_ * prev_input_ + cur_b_hat_;
-    std::cout << "-----------------" << std::endl;
-    std::cout << "nominal next state: " << exp_state << std::endl;
-    std::cout << "residual: " << res_state << std::endl;
-    std::cout << "actual next state: " << state << std::endl;
-    std::cout << "nominal + residual: " << exp_state + res_state << std::endl;
-    std::cout << "-----------------" << std::endl;
+//    std::cout << "-----------------" << std::endl;
+//    std::cout << "prev_state:" << prev_state_ << std::endl;
+//    std::cout << "prev_input:" << prev_input_ << std::endl;
+//    std::cout << "nominal derivative: " << exp_deriv << std::endl;
+//    std::cout << "residual: " << res_state << std::endl;
+//    std::cout << "actual next deriv: " << ydot << std::endl;
+//    std::cout << "nominal + residual: " << exp_deriv + res_state << std::endl;
+//    std::cout << "-----------------" << std::endl;
   }
-  */
+
   prev_state_ = vec_joined;
   prev_input_ = input;
 }

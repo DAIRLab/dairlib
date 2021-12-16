@@ -122,23 +122,24 @@ def main():
             mpc.plot_mpc_traj(mpc_data, traj, dim)
 
     ''' Custom Plots '''
-    mbp_plots.plot_angular_momentum(robot_output, t_x_slice, plant, context,
-                                    [0, 1, 2])
+    if plot_config.plot_momentum:
+        mbp_plots.plot_angular_momentum(robot_output, t_x_slice, plant, context,
+                                        [0, 1, 2])
 
-    mbp_plots.plot_angular_momentum_srbd(
-        osc_debug['osc_debug_tracking_datas']['orientation_traj'].ydot,
-        osc_debug['osc_debug_tracking_datas']['orientation_traj'].t,
-        t_osc_slice,
-        I_srbd, [0, 1, 2])
+        mbp_plots.plot_angular_momentum_srbd(
+            osc_debug['osc_debug_tracking_datas']['orientation_traj'].ydot,
+            osc_debug['osc_debug_tracking_datas']['orientation_traj'].t,
+            t_osc_slice,
+            I_srbd, [0, 1, 2])
 
-    mbp_plots.plot_planned_linear_momentum(
-        osc_debug['osc_debug_tracking_datas']['com_traj'].ydot_des,
-        osc_debug['osc_debug_tracking_datas']['com_traj'].t,
-        t_osc_slice,
-        30.0218, [0, 1, 2])
+        mbp_plots.plot_planned_linear_momentum(
+            osc_debug['osc_debug_tracking_datas']['com_traj'].ydot_des,
+            osc_debug['osc_debug_tracking_datas']['com_traj'].t,
+            t_osc_slice,
+            30.0218, [0, 1, 2])
 
-    mbp_plots.plot_linear_momentum(robot_output, t_x_slice, plant, context,
-                                   [0, 1, 2])
+        mbp_plots.plot_linear_momentum(robot_output, t_x_slice, plant, context,
+                                       [0, 1, 2])
     plt.show()
 
 

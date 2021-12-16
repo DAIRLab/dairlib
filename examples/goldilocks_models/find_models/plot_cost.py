@@ -136,8 +136,9 @@ while 1:
             length = len(cost)
             t = range(iter_start,length+iter_start)
             if not only_plot_average_cost:
-                ax.plot(t,cost, label='sample_idx = '+str(sample_i))
-                # TODO: not very important, but you can read the task value and use it as a label
+                if file_name == 'c_main.csv':
+                    ax.plot(t,cost, label='sample_idx = '+str(sample_i))
+                    # TODO: not very important, but you can read the task value and use it as a label
 
             # Read in is_success
             is_success = []

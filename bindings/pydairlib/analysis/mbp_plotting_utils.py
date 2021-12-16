@@ -331,5 +331,52 @@ def plot_qp_costs(osc_debug, time_slice):
     return ps
 
 
+def plot_qp_solve_time(osc_debug, time_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['qp_solve_time'],
+        {},
+        {},
+        {'xlabel': 'Timestamp',
+         'ylabel': 'Solve Time ',
+         'title': 'OSC QP Solve Time'}, ps)
+    return ps
+
+
+def plot_lambda_c_sol(osc_debug, time_slice, lambda_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['lambda_c_sol'],
+        {'lambda_c_sol': lambda_slice},
+        {'lambda_c_sol': ['lambda_c_' + i for i in
+                          plotting_utils.slice_to_string_list(lambda_slice)]},
+        {'xlabel': 'time',
+         'ylabel': 'lambda',
+         'title': 'OSC contact force solution'}, ps)
+    return ps
+
+
+def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['epsilon_sol'],
+        {'epsilon_sol': epsilon_slice},
+        {'epsilon_sol': ['epsilon_sol' + i for i in
+                         plotting_utils.slice_to_string_list(epsilon_slice)]},
+        {'xlabel': 'time',
+         'ylabel': 'epsilon',
+         'title': 'OSC soft constraint epsilon sol'}, ps)
+    return ps
+
+
 def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
     ps.plot(fsm_time, scale*fsm_signal)

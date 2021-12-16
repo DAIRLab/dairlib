@@ -107,6 +107,10 @@ def main():
 
         mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
                                         foot_frames, pts, dims)
+
+    if plot_config.plot_qp_solve_time:
+        mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+
     plt.show()
 
 

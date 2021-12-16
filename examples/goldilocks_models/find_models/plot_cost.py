@@ -171,7 +171,9 @@ while 1:
         plt.ylabel('Averaged task cost')
     if not only_plot_average_cost:
         plt.title('Cost over iterations')
-        # plt.legend()
+
+    if len(file_name_list) > 1 or not only_plot_average_cost:
+        plt.legend()
 
     # Change the ticks
     # ax1.set_yticks(np.arange(1.05,1.301,0.05))

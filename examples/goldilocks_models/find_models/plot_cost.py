@@ -55,7 +55,7 @@ directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_o
 # file_name = 'c.csv'
 # file_name = 'c_without_tau.csv'
 file_name1 = 'c_main.csv'
-file_name2 = 'c_all.csv'
+file_name2 = 'c.csv'
 file_name_nominal_cost = file_name1
 
 file_name_list = [file_name1, file_name2]
@@ -86,7 +86,7 @@ if normalize_by_nominal_cost:
         matrix = np.genfromtxt (directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
         cost.append(matrix)
 
-        nominal_cost += cost[0] / N_sample;
+        nominal_cost += cost[0] / N_sample
 else:
     nominal_cost = 1.0;
 print('nominal_cost = '+str(nominal_cost))
@@ -95,7 +95,7 @@ print('nominal_cost = '+str(nominal_cost))
 while 1:
     # fig1 = plt.figure(1)
     fig1 = plt.figure(num=1, figsize=(6.4, 4.8))
-    ax1 = fig1.gca()
+    ax = fig1.gca()
 
     for file_name in file_name_list:
         # Get the length of the cost first (in case the lengths of different samples are the not the same). This is for plotting the average cost
@@ -135,13 +135,9 @@ while 1:
             # plot cost for each sample
             length = len(cost)
             t = range(iter_start,length+iter_start)
-            # if not only_plot_average_cost:
-            #     if (n_sampel_gi == 1) & (n_sampel_tr == 1):
-            #         ax1.plot(t,cost, label='sl = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m)')
-            #     elif n_sampel_tr == 1:
-            #         ax1.plot(t,cost, label='sl = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m), gi = '+str(min_incline+(sample_i/n_sampel_sl)*delta_incline)+' (rad)')
-            #     else:
-            #         ax1.plot(t,cost, label='sl = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m), gi = '+str(min_incline+(sample_i/n_sampel_sl)*delta_incline)+' (rad), turning rate = '+str(min_turning+(sample_i/(n_sampel_sl*n_sampel_gi))*delta_turning)+' (rad/s)')
+            if not only_plot_average_cost:
+                ax.plot(t,cost, label='sample_idx = '+str(sample_i))
+                # TODO: not very important, but you can read the task value and use it as a label
 
             # Read in is_success
             is_success = []
@@ -161,7 +157,7 @@ while 1:
 
         # 2. Plot average cost
         average_cost = [x / y for x, y in zip(total_cost, n_successful_sample_each_iter)]
-        ax1.plot(t[0:len_total_cost],average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
+        ax.plot(t[0:len_total_cost],average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
 
     # labels
     plt.xlabel('Iteration')
@@ -176,10 +172,10 @@ while 1:
         plt.legend()
 
     # Change the ticks
-    # ax1.set_yticks(np.arange(1.05,1.301,0.05))
+    # ax.set_yticks(np.arange(1.05,1.301,0.05))
 
     # Set limit
-    # ax1.set_ylim(0, 6)
+    # ax.set_ylim(0, 6)
     
     plt.title("Traj opt cost over model iteration")
 

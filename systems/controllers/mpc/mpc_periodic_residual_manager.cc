@@ -1,6 +1,7 @@
 #include "mpc_periodic_residual_manager.h"
 
 using Eigen::MatrixXd;
+using Eigen::Matrix;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 
@@ -10,18 +11,20 @@ MpcPeriodicResidualManager::MpcPeriodicResidualManager(
     int nknots, const Eigen::MatrixXd &Aref, const Eigen::MatrixXd &Bref,
     const Eigen::VectorXd &bref) {
   for (int i = 0; i < nknots; i++) {
-    buf_.push_back({MatrixXd::Zero(Aref.rows(), Aref.cols()),
-                    MatrixXd::Zero(Bref.rows(), Bref.cols()),
-                    VectorXd::Zero(bref.size())});
+    buf_.push_back({Matrix<double, 12, 15>::Zero(),
+                    Matrix<double, 12, 4>::Zero(),
+                    Matrix<double, 12, 1>::Zero()});
   }
+  n_ = nknots;
 }
 
 void MpcPeriodicResidualManager::AddResidualToDynamics(
-    const residual_dynamics &res, drake::EigenPtr<MatrixXd> A,
+    const residual_dynamics &res1, const residual_dynamics& res2,
+    drake::EigenPtr<MatrixXd> A,
     drake::EigenPtr<MatrixXd> B, drake::EigenPtr<MatrixXd> b) {
-  *A = *A + res.A;
-  *b = *b + res.b;
-  *B = *B + res.B;
+  *A = res1.A + res2.A;
+  *B = res1.B + res2.B;
+  *b = res1.b + res2.b;
 }
 
 void MpcPeriodicResidualManager::SetResidualForCurrentKnot(
@@ -32,7 +35,7 @@ void MpcPeriodicResidualManager::SetResidualForCurrentKnot(
 }
 
 residual_dynamics MpcPeriodicResidualManager::GetResidualForKnotFromCurrent(int i) {
-  int idx = (idx_ + i) % i;
+  int idx = (idx_ + i) % (n_ - idx_);
   return GetResidualForKnot(idx);
 }
 

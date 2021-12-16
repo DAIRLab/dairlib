@@ -15,7 +15,6 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/dairlib_signal_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/controllers/mpc/srbd_cmpc.h"
 #include "systems/controllers/mpc/lipm_warmstart_system.h"

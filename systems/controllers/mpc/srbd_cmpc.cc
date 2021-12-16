@@ -2,6 +2,10 @@
 #include "common/file_utils.h"
 #include <numeric>
 
+#define A_matrix_t Eigen::Matrix<double, nx_, nx_ + kLinearDim_>
+#define B_matrix_t Eigen::Matrix<double, nx_, nu_>
+#define b_vector_t Eigen::Matrix<double, nx_, 1>
+
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::BodyFrame;
 using drake::systems::Context;
@@ -23,6 +27,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3d;
+using Eigen::Matrix;
 
 using dairlib::multibody::SingleRigidBodyPlant;
 using dairlib::multibody::makeNameToPositionsMap;
@@ -189,7 +194,7 @@ void SrbdCMPC::MakeDynamicsConstraints() {
       VectorXd beq = VectorXd::Zero(nx_);
       Vector3d pos = Vector3d::Zero();
       pos(1) = nominal_foot_pos_.at(j)(1);
-      CopyCollocationDynamicsConstraint(mode, false, pos, &Aeq, &beq);
+      CopyCollocationDynamicsConstraint(mode.dynamics, false, pos, &Aeq, &beq);
       dynamics_.push_back(
           prog_.AddLinearEqualityConstraint(Aeq, beq,
               {xx.at(j * mode.N + i),
@@ -252,7 +257,7 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
     MatrixXd Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_));
     VectorXd beq = VectorXd::Zero(nx_);
     CopyCollocationDynamicsConstraint(
-        mode, true, pos, &Aeq, &beq);
+        mode.dynamics, true, pos, &Aeq, &beq);
 
     for (int i = 0; i < (mode.N); i++){
       prog_.RemoveConstraint(dynamics_.at(i));
@@ -263,7 +268,7 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
 
     Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
     beq = VectorXd::Zero(nx_);
-    CopyCollocationDynamicsConstraint(modes_.at(1-fsm_state),
+    CopyCollocationDynamicsConstraint(modes_.at(1-fsm_state).dynamics,
         false, pos, &Aeq, &beq);
     prog_.RemoveConstraint(dynamics_.at(mode.N));
     dynamics_.at(mode.N) = prog_.AddLinearEqualityConstraint(
@@ -276,14 +281,99 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
     MatrixXd Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
     VectorXd beq = VectorXd::Zero(nx_);
     CopyCollocationDynamicsConstraint(
-        modes_.at(1-fsm_state), false, pos, &Aeq, &beq);
+        modes_.at(1-fsm_state).dynamics, false, pos, &Aeq, &beq);
 
     prog_.RemoveConstraint(dynamics_.at(idx));
     dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(
         Aeq, beq,
         {xx.at(idx), xx.at(idx+1),
          uu.at(idx), uu.at(idx+1), pp.at(1-fsm_state)});
-    CopyCollocationDynamicsConstraint(mode, false, pos, &Aeq, &beq);
+    CopyCollocationDynamicsConstraint(mode.dynamics, false, pos, &Aeq, &beq);
+
+    prog_.RemoveConstraint(dynamics_.at(idx + mode.N));
+    dynamics_.at(idx+mode.N) = prog_.AddLinearEqualityConstraint(
+        Aeq, beq,
+        {xx.at(idx+mode.N), xx.at(idx+mode.N+1),
+         uu.at(idx+mode.N), uu.at(idx+mode.N+1), pp.at(fsm_state)});
+  }
+  std::cout << "\n";
+}
+
+void SrbdCMPC::UpdateResidualDynamicsConstraints(const Eigen::VectorXd& x,
+                                         int n_until_next_stance, int fsm_state) const {
+
+  auto& mode = modes_.at(fsm_state);
+  Vector3d pos = plant_.CalcFootPosition(x, mode.stance);
+
+  if (n_until_next_stance == mode.N ) {
+    // make current stance dynamics and apply to mode after
+    // adding current residual estimate
+    MatrixXd Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_));
+    VectorXd beq = VectorXd::Zero(nx_);
+
+    for (int i = 0; i < (mode.N); i++){
+      LinearSrbdDynamics dyn_i = {A_matrix_t::Zero(), B_matrix_t::Zero(),
+                                  b_vector_t::Zero()};
+      residual_manager_->AddResidualToDynamics(
+          residual_dynamics{mode.dynamics.A, mode.dynamics.B, mode.dynamics.b},
+          residual_manager_->GetResidualForKnotFromCurrent(i),
+          &dyn_i.A, &dyn_i.B, &dyn_i.b);
+      CopyCollocationDynamicsConstraint(
+          dyn_i, true, pos, &Aeq, &beq);
+
+      prog_.RemoveConstraint(dynamics_.at(i));
+      dynamics_.at(i) = prog_.AddLinearEqualityConstraint(
+          Aeq, beq,
+          {xx.at(i), xx.at(i+1), uu.at(i), uu.at(i+1)});
+
+    }
+
+    Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
+    beq = VectorXd::Zero(nx_);
+    LinearSrbdDynamics dyn_f = {A_matrix_t::Zero(), B_matrix_t::Zero(), b_vector_t::Zero()};
+    residual_manager_->AddResidualToDynamics(
+        residual_dynamics{modes_.at(1-fsm_state).dynamics.A,
+                          modes_.at(1-fsm_state).dynamics.B,
+                          modes_.at(1-fsm_state).dynamics.b},
+        residual_manager_->GetResidualForKnotFromCurrent(mode.N),
+        &dyn_f.A, &dyn_f.B, &dyn_f.b);
+    CopyCollocationDynamicsConstraint(
+        dyn_f,false, pos, &Aeq, &beq);
+    prog_.RemoveConstraint(dynamics_.at(mode.N));
+    dynamics_.at(mode.N) = prog_.AddLinearEqualityConstraint(
+        Aeq, beq,
+        {xx.at(mode.N), xx.at(mode.N+1),
+         uu.at(mode.N), uu.at(mode.N+1),
+         pp.at(1-fsm_state)});
+  } else {
+    int idx = n_until_next_stance;
+
+    LinearSrbdDynamics dyn_f = {A_matrix_t::Zero(), B_matrix_t::Zero(), b_vector_t::Zero()};
+    residual_manager_->AddResidualToDynamics(
+        residual_dynamics{modes_.at(1-fsm_state).dynamics.A,
+                          modes_.at(1-fsm_state).dynamics.B,
+                          modes_.at(1-fsm_state).dynamics.b},
+        residual_manager_->GetResidualForKnotFromCurrent(mode.N),
+        &dyn_f.A, &dyn_f.B, &dyn_f.b);
+
+    MatrixXd Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
+    VectorXd beq = VectorXd::Zero(nx_);
+    CopyCollocationDynamicsConstraint(
+        dyn_f, false, pos, &Aeq, &beq);
+
+    prog_.RemoveConstraint(dynamics_.at(idx));
+    dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(
+        Aeq, beq,
+        {xx.at(idx), xx.at(idx+1),
+         uu.at(idx), uu.at(idx+1), pp.at(1-fsm_state)});
+
+    residual_manager_->AddResidualToDynamics(
+        residual_dynamics{mode.dynamics.A,
+                          mode.dynamics.B,
+                          mode.dynamics.b},
+        residual_manager_->GetResidualForKnotFromCurrent(mode.N),
+        &dyn_f.A, &dyn_f.B, &dyn_f.b);
+    CopyCollocationDynamicsConstraint(dyn_f, false, pos, &Aeq, &beq);
 
     prog_.RemoveConstraint(dynamics_.at(idx + mode.N));
     dynamics_.at(idx+mode.N) = prog_.AddLinearEqualityConstraint(
@@ -440,6 +530,13 @@ EventStatus SrbdCMPC::PeriodicUpdate(
 
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x),
                                  fsm_state, time_since_last_event);
+
+    residual_dynamics res = this->EvalAbstractInput(context, srbd_residual_port_)->
+        get_value<residual_dynamics>();
+    DRAKE_DEMAND(res.A.cols() == nx_+kLinearDim_);
+    DRAKE_DEMAND(res.B.cols() == nu_);
+    DRAKE_DEMAND(res.b.rows() == nx_);
+    residual_manager_->SetResidualForCurrentKnot(res);
   } else {
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x), 0, 0);
   }
@@ -492,7 +589,12 @@ void SrbdCMPC::UpdateConstraints(
       std::to_string(t_since_last_switch) << std::endl;
   int n_until_next_state = modes_.at(fsm_state).N -
       std::floor(t_since_last_switch / dt_);
-  UpdateDynamicsConstraints(x0, n_until_next_state, fsm_state);
+  if (use_residuals_) {
+    UpdateResidualDynamicsConstraints(x0, n_until_next_state, fsm_state);
+    residual_manager_->CycleCurrentKnot();
+  } else {
+    UpdateDynamicsConstraints(x0, n_until_next_state, fsm_state);
+  }
   UpdateKinematicConstraints(n_until_next_state, fsm_state);
 }
 
@@ -638,7 +740,7 @@ void SrbdCMPC::CopyDiscreteDynamicsConstraint(
 }
 
 void SrbdCMPC::CopyCollocationDynamicsConstraint(
-    const SrbdMode &mode, bool current_stance,
+    const LinearSrbdDynamics& dyn, bool current_stance,
     const Eigen::Vector3d &foot_pos,
     const drake::EigenPtr<Eigen::MatrixXd> &A,
     const drake::EigenPtr<Eigen::VectorXd> &b) const {
@@ -648,22 +750,23 @@ void SrbdCMPC::CopyCollocationDynamicsConstraint(
   } else {
     DRAKE_DEMAND(A->cols() == 2*(nx_+nu_)+3);
   }
-  MatrixXd Ax = mode.dynamics.A.block(0, 0, nx_, nx_);
-  MatrixXd Ap = mode.dynamics.A.block(0, nx_, nx_, nx_+kLinearDim_);
+
+  Matrix<double, nx_, nx_> Ax = dyn.A.block(0, 0, nx_, nx_);
+  Matrix<double, nx_, 3> Ap = dyn.A.block(0, nx_, nx_, nx_+kLinearDim_);
   double h = dt_;
   A->block(0, 0, nx_, nx_) =
       (0.125*h)*Ax*Ax - 0.75*Ax - (1.5/h) * MatrixXd::Identity(nx_, nx_);
   A->block(0, nx_, nx_, nx_) =
       -(0.125*h)*Ax*Ax - 0.75*Ax + (1.5/h) * MatrixXd::Identity(nx_, nx_);
   A->block(0, 2*nx_, nx_, nu_) =
-      (0.125 * h * Ax - 0.75 * MatrixXd::Identity(nx_, nx_)) * mode.dynamics.B;
+      (0.125 * h * Ax - 0.75 * MatrixXd::Identity(nx_, nx_)) * dyn.B;
   A->block(0, 2*nx_ + nu_, nx_, nu_) =
-      (-0.125 * h * Ax - 0.75 * MatrixXd::Identity(nx_, nx_)) * mode.dynamics.B;
+      (-0.125 * h * Ax - 0.75 * MatrixXd::Identity(nx_, nx_)) * dyn.B;
   if (current_stance) {
-    *b = 1.5 * mode.dynamics.b + 1.5 * Ap * foot_pos;
+    *b = 1.5 * dyn.b + 1.5 * Ap * foot_pos;
   } else {
     A->block(0, 2*(nx_ + nu_), nx_, kLinearDim_) = -1.5*Ap;
-    *b = 1.5 * mode.dynamics.b;
+    *b = 1.5 * dyn.b;
   }
 }
 

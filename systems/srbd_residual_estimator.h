@@ -47,7 +47,9 @@ class SRBDResidualEstimator : public drake::systems::LeafSystem<double> {
 
 
   // Output matrices
-  mutable Eigen::MatrixXd cur_A_hat_, cur_B_hat_, cur_b_hat_;
+  mutable Eigen::Matrix<double, 12, 15> cur_A_hat_;
+  mutable Eigen::Matrix<double, 12, 4> cur_B_hat_;
+  mutable Eigen::Matrix<double, 12, 1> cur_b_hat_;
 
   int state_in_port_,
       residual_out_port_,

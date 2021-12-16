@@ -17,7 +17,8 @@ class MpcPeriodicResidualManager {
 
   residual_dynamics GetResidualForKnotFromCurrent(int i);
 
-  void AddResidualToDynamics(const residual_dynamics& res,
+  void AddResidualToDynamics(const residual_dynamics& res1,
+                             const residual_dynamics& res2,
                              drake::EigenPtr<Eigen::MatrixXd> A,
                              drake::EigenPtr<Eigen::MatrixXd> B,
                              drake::EigenPtr<Eigen::MatrixXd> b);

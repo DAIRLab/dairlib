@@ -23,6 +23,7 @@
 #include "solvers/fast_osqp_solver.h"
 #include "mpc_periodic_residual_manager.h"
 
+
 namespace dairlib {
 
 typedef struct LinearSrbdDynamics{
@@ -133,9 +134,8 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   void UpdateTrackingObjective(const Eigen::VectorXd& xdes) const;
   void UpdateDynamicsConstraints(
       const Eigen::VectorXd& x, int n_until_next_stance, int fsm_state) const;
-  void UpdateDynamicsConstraintsResidual(
+  void UpdateResidualDynamicsConstraints(
       const Eigen::VectorXd& x, int n_until_next_stance, int fsm_state) const;
-
   void UpdateKinematicConstraints(int n_until_stance, int fsm_state) const;
   void UpdateFootPlacementCost(
       int fsm_state,
@@ -154,7 +154,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
       const drake::EigenPtr<Eigen::VectorXd> &b) const;
 
   void CopyCollocationDynamicsConstraint(
-      const SrbdMode& mode, bool current_stance,
+      const LinearSrbdDynamics& dyn, bool current_stance,
       const Eigen::Vector3d& foot_pos,
       const drake::EigenPtr<Eigen::MatrixXd> &A,
       const drake::EigenPtr<Eigen::VectorXd> &b) const;
@@ -177,10 +177,10 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const bool use_fsm_;
   const bool use_residuals_;
   const bool traj_tracking_;
-  const int nx_ = 12;
-  const int nu_ = 4;
-  const int kLinearDim_ = 3;
-  const int kAngularDim_ = 3;
+  static constexpr int nx_ = 12;
+  static constexpr int nu_ = 4;
+  static constexpr int kLinearDim_ = 3;
+  static constexpr int kAngularDim_ = 3;
   const double dt_;
   int nmodes_ = 0;
 

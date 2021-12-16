@@ -20,7 +20,7 @@ only_add_successful_samples_to_average_cost = False
 iter_start = 1
 iter_end = 11
 is_iter_end = 0
-robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
+robot_option = 1  # 0 is five-link robot. 1 is cassie_fixed_spring
 if len(sys.argv) >= 2:
     iter_start = int(sys.argv[1])
 if len(sys.argv) >= 3:
@@ -73,9 +73,9 @@ else:
     ave_cost_prop = "k--"
 ave_cost_label = ""
 if only_add_successful_samples_to_average_cost:
-    ave_cost_label = "Averaged cost (excluding failed samples)";
+    ave_cost_label = "Averaged cost (excluding failed samples)"
 else:
-    ave_cost_label = "Averaged cost";
+    ave_cost_label = "Averaged cost"
 
 # get nomial cost
 nominal_cost = 0.0
@@ -83,19 +83,20 @@ if normalize_by_nominal_cost:
     for sample_i in range(N_sample):
         cost = []
         assert os.path.isfile(directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
-        matrix = np.genfromtxt (directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
+        matrix = np.genfromtxt(directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
         cost.append(matrix)
 
         nominal_cost += cost[0] / N_sample
 else:
-    nominal_cost = 1.0;
+    nominal_cost = 1.0
 print('nominal_cost = '+str(nominal_cost))
 
 # plot
 while 1:
-    # fig1 = plt.figure(1)
-    fig1 = plt.figure(num=1, figsize=(6.4, 4.8))
-    ax = fig1.gca()
+    # fig = plt.figure(1)
+    fig_size = (6.4, 4.8)  if only_plot_average_cost else (12.8, 9.6)
+    fig = plt.figure(num=1, figsize=fig_size)
+    ax = fig.gca()
 
     for file_name in file_name_list:
         # Get the length of the cost first (in case the lengths of different samples are the not the same). This is for plotting the average cost
@@ -104,7 +105,7 @@ while 1:
             cost = []
             iteration = iter_start
             while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
-                matrix = np.genfromtxt (directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
+                matrix = np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
                 cost.append(matrix)
                 if is_iter_end & (iteration == iter_end):
                     break;
@@ -118,7 +119,7 @@ while 1:
         total_cost = [0] * len_total_cost
 
         #
-        n_successful_sample_each_iter = [0] * len_total_cost;
+        n_successful_sample_each_iter = [0] * len_total_cost
 
         # 1. Plot each sample
         for sample_i in range(N_sample):
@@ -126,7 +127,7 @@ while 1:
             cost = []
             iteration = iter_start
             while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
-                matrix = np.genfromtxt (directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
+                matrix = np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
                 cost.append(matrix)
                 if is_iter_end & (iteration == iter_end):
                     break
@@ -134,17 +135,18 @@ while 1:
 
             # plot cost for each sample
             length = len(cost)
-            t = range(iter_start,length+iter_start)
+            t = range(iter_start, length+iter_start)
             if not only_plot_average_cost:
                 if file_name == 'c_main.csv':
-                    ax.plot(t,cost, label='sample_idx = '+str(sample_i))
+                    ax.plot(t, cost)
+                    # ax.plot(t,cost, label='sample_idx = '+str(sample_i))
                     # TODO: not very important, but you can read the task value and use it as a label
 
             # Read in is_success
             is_success = []
             if only_add_successful_samples_to_average_cost:
                 for iter_i in range(iter_start, iter_start + len_total_cost):
-                    matrix = np.genfromtxt (directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=",")
+                    matrix = np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=",")
                     is_success.append(matrix)
             else:
                 is_success = [1] * len_total_cost
@@ -158,7 +160,7 @@ while 1:
 
         # 2. Plot average cost
         average_cost = [x / y for x, y in zip(total_cost, n_successful_sample_each_iter)]
-        ax.plot(t[0:len_total_cost],average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
+        ax.plot(t[0:len_total_cost], average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
 
     # labels
     plt.xlabel('Iteration')

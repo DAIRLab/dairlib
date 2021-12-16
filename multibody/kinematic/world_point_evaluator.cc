@@ -34,6 +34,21 @@ WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
 }
 
 template <typename T>
+WorldPointEvaluator<T>::WorldPointEvaluator(
+    const MultibodyPlant<T>& plant, Vector3d pt_A, const Frame<T>& frame_A,
+    const multibody::ViewFrame<T>& view_frame,
+    const Matrix3d rotation, const Vector3d offset,
+    std::vector<int> active_directions)
+    : KinematicEvaluator<T>(plant, 3),
+      pt_A_(pt_A),
+      frame_A_(frame_A),
+      offset_(offset),
+      rotation_(rotation),
+      view_frame_(&view_frame) {
+  this->set_active_inds(active_directions);
+}
+
+template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
                                             const Vector3d pt_A,
                                             const Frame<T>& frame_A,
@@ -70,7 +85,13 @@ void WorldPointEvaluator<T>::EvalFullJacobian(
   plant().CalcJacobianTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
       pt_A_.template cast<T>(), world, world, J);
-  *J = rotation_ * (*J);
+
+  if (view_frame_ == nullptr) {
+    *J = rotation_ * (*J);
+  } else {
+    *J = view_frame_->CalcWorldToFrameRotation(plant(), context) *
+         (rotation_ * (*J));
+  }
 }
 
 template <typename T>
@@ -82,7 +103,12 @@ VectorX<T> WorldPointEvaluator<T>::EvalFullJacobianDotTimesV(
       context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
       pt_A_.template cast<T>(), world, world);
 
-  return rotation_ * Jdot_times_V;
+  if (view_frame_ == nullptr) {
+    return rotation_ * Jdot_times_V;
+  } else {
+    return view_frame_->CalcWorldToFrameRotation(plant(), context) *
+           (rotation_ * Jdot_times_V);
+  }
 }
 
 template <typename T>

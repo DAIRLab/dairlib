@@ -25,3 +25,8 @@ Dict keys :
 'qp_solve_time', 'u_sol', 'lambda_c_sol, 'lambda_h_sol', 'dv_sol', 
 'epsilon_sol', 'osc_output', 'tracking_cost', 'osc_debug_tracking_datas', 'fsm'
 ```
+
+# Ongoing Progress:
+As of Dec. 16 2021, plotting for `lambda_c_sol` and `epsilon_sol` in `osc_debug`
+have been implemented but not added to `cassie_plot_config` or the default yaml 
+file

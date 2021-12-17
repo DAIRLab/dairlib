@@ -3,6 +3,30 @@
 
 package(default_visibility = ["//visibility:public"])
 
+cc_binary(
+    name = "c3_test",
+    srcs = ["test/c3_test.cc"],
+    deps = [
+        ":c3"
+    ]
+)
+
+cc_library(
+    name = "c3",
+    srcs = [
+        "c3.cc",
+        "c3_miqp.cc"
+    ],
+    hdrs = [
+        "c3.h",
+        "c3_miqp.h",
+        "c3_options.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library"
+    ]
+)
+
 cc_library(
     name = "constraints",
     deps = [

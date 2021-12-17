@@ -6,7 +6,7 @@ DRAKE_COMMIT=$(grep -oP '(?<=DRAKE_COMMIT = ")(.*)(?=")' $(dirname "$0")/../WORK
 ubuntu_codename=$(lsb_release -sc)
 
 # Add drake apt repository for lcm and libbot2
-wget -O - https://drake-apt.csail.mit.edu/drake.pub.gpg | apt-key add
+wget -O - https://drake-apt.csail.mit.edu/drake.asc | apt-key add
 echo "deb [arch=amd64] https://drake-apt.csail.mit.edu/bionic bionic main" > /etc/apt/sources.list.d/drake.list
 apt-get update
 

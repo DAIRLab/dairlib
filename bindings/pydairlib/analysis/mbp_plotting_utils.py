@@ -85,6 +85,10 @@ def process_osc_channel(data):
     soft_constraint_cost = []
     qp_solve_time = []
     u_sol = []
+    lambda_c_sol = []
+    lambda_h_sol = []
+    dv_sol = []
+    epsilon_sol = []
     osc_output = []
     fsm = []
     osc_debug_tracking_datas = {}
@@ -96,6 +100,11 @@ def process_osc_channel(data):
         soft_constraint_cost.append(msg.soft_constraint_cost)
         qp_solve_time.append(msg.qp_output.solve_time)
         u_sol.append(msg.qp_output.u_sol)
+        lambda_c_sol.append(msg.qp_output.lambda_c_sol)
+        lambda_h_sol.append(msg.qp_output.lambda_h_sol)
+        dv_sol.append(msg.qp_output.dv_sol)
+        epsilon_sol.append(msg.qp_output.epsilon_sol)
+
         osc_output.append(msg)
         for tracking_data in msg.tracking_data:
             if tracking_data.name != '':
@@ -119,10 +128,15 @@ def process_osc_channel(data):
             'acceleration_cost': np.array(accel_cost),
             'soft_constraint_cost': np.array(soft_constraint_cost),
             'qp_solve_time': np.array(qp_solve_time),
-            'osc_output': osc_output,
+            'u_sol': np.array(u_sol),
+            'lambda_c_sol': np.array(lambda_c_sol),
+            'lambda_h_sol': np.array(lambda_h_sol),
+            'dv_sol': np.array(dv_sol),
+            'epsilon_sol': np.array(epsilon_sol),
             'tracking_cost': tracking_cost,
             'osc_debug_tracking_datas': osc_debug_tracking_datas,
-            'fsm': np.array(fsm)}
+            'fsm': np.array(fsm),
+            'osc_output': osc_output}
 
 
 def load_default_channels(data, plant, state_channel, input_channel,
@@ -317,6 +331,53 @@ def plot_qp_costs(osc_debug, time_slice):
         {'xlabel': 'Time',
          'ylabel': 'Cost',
          'title': 'OSC QP Costs'}, ps)
+    return ps
+
+
+def plot_qp_solve_time(osc_debug, time_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['qp_solve_time'],
+        {},
+        {},
+        {'xlabel': 'Timestamp',
+         'ylabel': 'Solve Time ',
+         'title': 'OSC QP Solve Time'}, ps)
+    return ps
+
+
+def plot_lambda_c_sol(osc_debug, time_slice, lambda_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['lambda_c_sol'],
+        {'lambda_c_sol': lambda_slice},
+        {'lambda_c_sol': ['lambda_c_' + i for i in
+                          plotting_utils.slice_to_string_list(lambda_slice)]},
+        {'xlabel': 'time',
+         'ylabel': 'lambda',
+         'title': 'OSC contact force solution'}, ps)
+    return ps
+
+
+def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['epsilon_sol'],
+        {'epsilon_sol': epsilon_slice},
+        {'epsilon_sol': ['epsilon_sol' + i for i in
+                         plotting_utils.slice_to_string_list(epsilon_slice)]},
+        {'xlabel': 'time',
+         'ylabel': 'epsilon',
+         'title': 'OSC soft constraint epsilon sol'}, ps)
     return ps
 
 

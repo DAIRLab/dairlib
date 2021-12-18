@@ -763,7 +763,14 @@ void postProcessing(const VectorXd& w_sol,
   const string& prefix = setting.prefix;
   const string& dir_pref = setting.directory + setting.prefix;
 
-  if (is_get_nominal || !result.is_success()) {
+  bool this_sample_has_not_found_an_optimal_sol =
+      cost_threshold_for_update == std::numeric_limits<double>::infinity();
+  bool too_many_reruns = n_rerun > N_rerun;
+  bool is_special_case =
+      too_many_reruns && this_sample_has_not_found_an_optimal_sol &&
+      (to_string(result.get_solution_result()) == "IterationLimit");
+
+  if (is_get_nominal || (!result.is_success() && !is_special_case)) {
     // Do nothing.
   } else if (extend_model && (n_rerun == N_rerun)) {  // Extending the model
     VectorXd theta_y_append =

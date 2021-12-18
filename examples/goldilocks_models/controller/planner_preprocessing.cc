@@ -580,7 +580,7 @@ EventStatus InitialStateForPlanner::AdjustState(
 
   // Shift pelvis in x, y direction
   // TODO: WARNING: if you are going to shift it to non-zero position, you need
-  // to check if RotateBetweenGlobalAndLocalFrame() still works.
+  //  to check if RotateBetweenGlobalAndLocalFrame() still works.
   x_adjusted3(pos_map_wo_spr_.at("base_x")) = 0;
   x_adjusted3(pos_map_wo_spr_.at("base_y")) = 0;
 

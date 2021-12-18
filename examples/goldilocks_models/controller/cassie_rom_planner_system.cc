@@ -145,12 +145,21 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   y_guess_ = 1e-4 * MatrixXd::Random(n_y_, param_.knots_per_mode);
   dy_guess_ = 1e-4 * MatrixXd::Random(n_y_, param_.knots_per_mode);
   tau_guess_ = 1e-4 * MatrixXd::Random(n_tau_, param_.knots_per_mode);
-  if (param_.dir_and_prefex_FOM.empty()) {
+  if (param_.dir_and_prefex_FOM.empty() &&
+      file_exist(model_dir_n_pref + "y_samples0.csv")) {
+    // y_samples0 might not always exist, becasue sometimes I didn't enforce
+    // that all samples have to be successful before I proceed to the next
+    // iteration in model optimization.
+
     // Construct cubic spline from y and ydot and resample, and construct
     // first-order hold from tau and resample.
     // Note that this is an approximation. In the model optimization stage, we
     // do not construct cubic spline (for the version where we impose
     // constraint at the knot points)
+    DRAKE_DEMAND(file_exist(model_dir_n_pref + "t_breaks0.csv"));
+    DRAKE_DEMAND(file_exist(model_dir_n_pref + "y_samples0.csv"));
+    DRAKE_DEMAND(file_exist(model_dir_n_pref + "ydot_samples0.csv"));
+
     PiecewisePolynomial<double> y_traj =
         PiecewisePolynomial<double>::CubicHermite(
             readCSV(model_dir_n_pref + string("t_breaks0.csv")).col(0),
@@ -175,6 +184,9 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     }
   } else {
     DRAKE_DEMAND(rom_->n_tau() == 0);
+    DRAKE_DEMAND(file_exist(model_dir_n_pref + "t_breaks0.csv"));
+    DRAKE_DEMAND(file_exist(model_dir_n_pref + "x_samples0.csv"));
+    DRAKE_DEMAND(file_exist(model_dir_n_pref + "xdot_samples0.csv"));
 
     PiecewisePolynomial<double> x_traj =
         PiecewisePolynomial<double>::CubicHermite(

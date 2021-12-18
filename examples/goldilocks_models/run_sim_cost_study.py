@@ -344,7 +344,7 @@ def EndSim(working_threads, idx, recycle_idx=True):
     f.close()
 
   # Kill the rest of processes (necessary)
-  for i in range(1, len(working_threads[idx][0])):
+  for i in range(0, len(working_threads[idx][0])):
     working_threads[idx][0][i].kill()
 
   # Add back available thread idx.
@@ -415,9 +415,16 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   ### Start simulation
   n_total_sim = len(model_indices) * len(task_list)
   counter = -1
+  # skip_this_iter = True
   for i in range(len(model_indices)):
     for j in range(len(task_list)):
       counter += 1
+
+      # # Testing
+      # if i == 1 and j == 45:  #42
+      #   skip_this_iter = False
+      # if skip_this_iter:
+      #   continue
 
       rom_iter = model_indices[i]
       task = task_list[j]
@@ -431,17 +438,31 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
       path = eval_dir + '%d_%d_success.csv' % (rom_iter, log_idx)
       if not os.path.exists(path):
         # Get the initial traj
+        # print("1 thread_idx_set = " + str(thread_idx_set))
+        # print("len(working_threads) = " + str(len(working_threads)))
         thread_idx = thread_idx_set.pop()
         working_threads.append(
           RunSimAndController(thread_idx, sim_end_time, task, log_idx,
                               rom_iter, trajopt_sample_idx, True))
+        # print("2 thread_idx_set = " + str(thread_idx_set))
+        # print("len(working_threads) = " + str(len(working_threads)))
+        # print("BlockAndDeleteTheLatestThread")
         BlockAndDeleteTheLatestThread(working_threads)
+        # print("BlockAndDeleteTheLatestThread")
 
         # Run the simulation
+        # print("3 thread_idx_set = " + str(thread_idx_set))
+        # print("len(working_threads) = " + str(len(working_threads)))
         working_threads.append(
           RunSimAndController(thread_idx, sim_end_time, task, log_idx,
                               rom_iter, trajopt_sample_idx, False))
+        # print("4 thread_idx_set = " + str(thread_idx_set))
+        # print("len(working_threads) = " + str(len(working_threads)))
+        # print("CheckSimThreadAndBlockWhenNecessary")
         CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread)
+        # print("CheckSimThreadAndBlockWhenNecessary")
+        # print("5 thread_idx_set = " + str(thread_idx_set))
+        # print("len(working_threads) = " + str(len(working_threads)))
 
         # Evaluate the cost (not multithreaded. Will block the main thread)
         if do_eval_cost:
@@ -1179,7 +1200,7 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 100
+  model_iter_idx_end = 150
   idx_spacing = 5
 
   # Task list

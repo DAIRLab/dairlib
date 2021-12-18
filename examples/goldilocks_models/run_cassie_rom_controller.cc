@@ -919,8 +919,10 @@ int DoMain(int argc, char* argv[]) {
     }
 
     // Create the file to indicate that the planner thread is listening
-    if (!FLAGS_path_wait_identifier.empty())
+    if (!FLAGS_path_wait_identifier.empty()) {
       std::system(("touch " + FLAGS_path_wait_identifier).c_str());
+      cout << "Created " << FLAGS_path_wait_identifier << endl;
+    }
 
     loop.Simulate();
   } else {

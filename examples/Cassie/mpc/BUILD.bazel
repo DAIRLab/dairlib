@@ -5,8 +5,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "mpc",
     deps = [
-        "//examples/Cassie/mpc:cassie_mpc_osc_walking_gains",
-        "//examples/Cassie/mpc:cassie_srbd_cmpc_gains",
+        ":angular_momentum_traj_gen",
+        ":cassie_mpc_osc_walking_gains",
+        ":cassie_srbd_cmpc_gains",
     ],
 )
 
@@ -14,6 +15,18 @@ cc_library(
     name = "cassie_mpc_osc_walking_gains",
     hdrs = ["cassie_mpc_osc_walking_gains.h"],
     deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "angular_momentum_traj_gen",
+    srcs = ["angular_momentum_traj_gen.cc"],
+    hdrs = ["angular_momentum_traj_gen.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:single_rigid_body_plant",
         "@drake//:drake_shared_library",
     ],
 )

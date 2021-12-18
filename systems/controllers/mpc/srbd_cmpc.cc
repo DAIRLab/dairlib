@@ -530,13 +530,15 @@ EventStatus SrbdCMPC::PeriodicUpdate(
 
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x),
                                  fsm_state, time_since_last_event);
+    if (use_residuals_) {
+      residual_dynamics res = this->EvalAbstractInput(context, srbd_residual_port_)->
+          get_value<residual_dynamics>();
+      DRAKE_DEMAND(res.A.cols() == nx_+kLinearDim_);
+      DRAKE_DEMAND(res.B.cols() == nu_);
+      DRAKE_DEMAND(res.b.rows() == nx_);
+      residual_manager_->SetResidualForCurrentKnot(res);
+    }
 
-    residual_dynamics res = this->EvalAbstractInput(context, srbd_residual_port_)->
-        get_value<residual_dynamics>();
-    DRAKE_DEMAND(res.A.cols() == nx_+kLinearDim_);
-    DRAKE_DEMAND(res.B.cols() == nu_);
-    DRAKE_DEMAND(res.b.rows() == nx_);
-    residual_manager_->SetResidualForCurrentKnot(res);
   } else {
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x), 0, 0);
   }

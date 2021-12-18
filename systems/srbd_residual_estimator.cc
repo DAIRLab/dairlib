@@ -228,14 +228,14 @@ void SRBDResidualEstimator::UpdateLstSqEquation(Eigen::VectorXd state,
     Eigen::VectorXd exp_deriv = modes_.at(stance_mode).dynamics.A * prev_state_ + modes_.at(stance_mode).dynamics.B * prev_input_ +
         modes_.at(stance_mode).dynamics.b;
     Eigen::VectorXd res_state = cur_A_hat_ * prev_state_ + cur_B_hat_ * prev_input_ + cur_b_hat_;
-//    std::cout << "-----------------" << std::endl;
-//    std::cout << "prev_state:" << prev_state_ << std::endl;
-//    std::cout << "prev_input:" << prev_input_ << std::endl;
-//    std::cout << "nominal derivative: " << exp_deriv << std::endl;
-//    std::cout << "residual: " << res_state << std::endl;
-//    std::cout << "actual next deriv: " << ydot << std::endl;
-//    std::cout << "nominal + residual: " << exp_deriv + res_state << std::endl;
-//    std::cout << "-----------------" << std::endl;
+    std::cout << "-----------------" << std::endl;
+    std::cout << "prev_state:" << prev_state_ << std::endl;
+    std::cout << "prev_input:" << prev_input_ << std::endl;
+    std::cout << "nominal derivative: " << exp_deriv << std::endl;
+    std::cout << "residual: " << res_state << std::endl;
+    std::cout << "actual next deriv: " << ydot << std::endl;
+    std::cout << "nominal + residual: " << exp_deriv + res_state << std::endl;
+    std::cout << "-----------------" << std::endl;
   }
 
   prev_state_ = vec_joined;

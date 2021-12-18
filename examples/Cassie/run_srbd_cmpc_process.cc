@@ -140,7 +140,7 @@ int DoMain(int argc, char* argv[]) {
   LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};
   LinearSrbdDynamics right_stance_dynamics = {Ar, Br, br};
 
-  auto cmpc = builder.AddSystem<SrbdCMPC>(srb_plant, dt, false, true);
+  auto cmpc = builder.AddSystem<SrbdCMPC>(srb_plant, dt, false);
   std::vector<VectorXd> kin_nom =
       {left_safe_nominal_foot_pos - des_com_pos,
        right_safe_nominal_foot_pos - des_com_pos};
@@ -186,19 +186,10 @@ int DoMain(int argc, char* argv[]) {
 //  auto liftoff_event_time =
 //      builder.AddSystem<FiniteStateMachineEventTime>(plant, fsm_states);
 
-  std::vector<std::string> signals = {"fsm"};
-//  auto fsm_send = builder.AddSystem<DrakeSignalSender>(signals, FLAGS_stance_duration * 2);
-//  auto fsm_pub = builder.AddSystem(
-//      LcmPublisherSystem::Make<lcmt_dairlib_signal>(FLAGS_channel_fsm, &lcm_local));
-
   // setup lcm messaging
   auto robot_out = builder.AddSystem<RobotOutputReceiver>(plant);
   auto mpc_out_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_plan, &lcm_local));
-
-  // fsm connections
-  //  builder.Connect(fsm->get_output_port(), fsm_send->get_input_port());
-  //  builder.Connect(fsm_send->get_output_port(), fsm_pub->get_input_port());
 
   builder.Connect(fsm->get_output_port(), cmpc->get_fsm_input_port());
 //  builder.Connect(fsm->get_output_port(), warmstarter->get_input_port_fsm());

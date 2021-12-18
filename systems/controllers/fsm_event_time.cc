@@ -22,26 +22,31 @@ namespace systems {
 
 FiniteStateMachineEventTime::FiniteStateMachineEventTime(
     const drake::multibody::MultibodyPlant<double>& plant,
-    std::vector<int> fsm_states_of_interest)
-    : fsm_states_of_interest_(fsm_states_of_interest) {
+    std::vector<int> fsm_states_of_interest, int prev_fsm_state,
+    bool set_current_time_until_first_state_switch)
+    : fsm_states_of_interest_(fsm_states_of_interest),
+      set_current_time_until_first_state_switch_(
+          set_current_time_until_first_state_switch) {
   this->set_name("fsm_event_time");
 
   // Input/Output Setup
-  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   robot_output_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
   start_time_port_ =
       this->DeclareVectorOutputPort(
-              BasicVector<double>(1),
+              "t_start", BasicVector<double>(1),
               &FiniteStateMachineEventTime::AssignStartTimeOfCurrentState)
           .get_index();
   if (!fsm_states_of_interest.empty()) {
     start_time_of_interest_port_ =
         this->DeclareVectorOutputPort(
-                BasicVector<double>(1),
+                "t_start_state_of_interest", BasicVector<double>(1),
                 &FiniteStateMachineEventTime::AssignStartTimeOfStateOfInterest)
             .get_index();
   }
@@ -54,8 +59,8 @@ FiniteStateMachineEventTime::FiniteStateMachineEventTime(
   // The start time of the most recent fsm state that we are interested
   prev_time_of_state_of_interest_idx_ = this->DeclareDiscreteState(1);
   // The last state of FSM
-  prev_fsm_state_idx_ = this->DeclareDiscreteState(
-      -std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
+  prev_fsm_state_idx_ =
+      this->DeclareDiscreteState(prev_fsm_state * VectorXd::Ones(1));
 }
 
 EventStatus FiniteStateMachineEventTime::DiscreteVariableUpdate(
@@ -70,6 +75,7 @@ EventStatus FiniteStateMachineEventTime::DiscreteVariableUpdate(
   // when entering a new state which is in fsm_states_of_interest
   if (fsm_state(0) != prev_fsm_state(0)) {
     prev_fsm_state(0) = fsm_state(0);
+    state_has_changed_ = true;
 
     // Record time
     const OutputVector<double>* robot_output =
@@ -88,6 +94,21 @@ EventStatus FiniteStateMachineEventTime::DiscreteVariableUpdate(
               .get_mutable_value()
           << robot_output->get_timestamp();
     }
+  }
+
+  // Set the switch time to be the current time if the state hasn't switched yet
+  if (set_current_time_until_first_state_switch_ && !state_has_changed_) {
+    const OutputVector<double>* robot_output =
+        (OutputVector<double>*)this->EvalVectorInput(context,
+                                                     robot_output_port_);
+    discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value()
+        << robot_output->get_timestamp();
+    if (!fsm_states_of_interest_.empty()) {
+      discrete_state->get_mutable_vector(prev_time_of_state_of_interest_idx_)
+              .get_mutable_value()
+          << robot_output->get_timestamp();
+    }
+    return EventStatus::Succeeded();
   }
 
   return EventStatus::Succeeded();

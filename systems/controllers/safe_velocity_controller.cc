@@ -14,9 +14,11 @@ SafeVelocityController::SafeVelocityController(
   joint_torques_input_port_ = this->DeclareVectorInputPort(
       "joint_torques_input", BasicVector<double>(num_joints)).get_index();
   joint_velocities_input_port_ = this->DeclareVectorInputPort(
-      "joint_velociites_input", BasicVector<double>(num_joints)).get_index();
-  joint_torques_output_port_ = this->DeclareVectorOutputPort(
-      BasicVector<double>(7), &SafeVelocityController::CalcOutputTorques).get_index();
+      "joint_velocites_input", BasicVector<double>(num_joints)).get_index();
+  joint_torques_output_port_ =
+      this->DeclareVectorOutputPort("u", BasicVector<double>(7),
+                                    &SafeVelocityController::CalcOutputTorques)
+          .get_index();
 
   this->DeclareDiscreteState(1);
   this->DeclarePerStepDiscreteUpdateEvent(

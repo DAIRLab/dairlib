@@ -21,7 +21,9 @@ class FiniteStateMachineEventTime : public drake::systems::LeafSystem<double> {
  public:
   FiniteStateMachineEventTime(
       const drake::multibody::MultibodyPlant<double>& plant,
-      std::vector<int> fsm_states_of_interest = {});
+      std::vector<int> fsm_states_of_interest = {},
+      int prev_fsm_state = -std::numeric_limits<int>::infinity(),
+      bool set_current_time_until_first_state_switch = false);
 
   const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
@@ -60,6 +62,8 @@ class FiniteStateMachineEventTime : public drake::systems::LeafSystem<double> {
   int prev_time_of_state_of_interest_idx_;
 
   std::vector<int> fsm_states_of_interest_;
+  bool set_current_time_until_first_state_switch_;
+  mutable bool state_has_changed_ = false;
 };
 
 }  // namespace systems

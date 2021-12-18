@@ -11,41 +11,6 @@ load(
     "pybind_py_library",
 )
 
-pybind_py_library(
-    name = "lcm_trajectory_py",
-    cc_deps = [
-        "//lcm:dircon_trajectory_saver",
-        "//lcm:lcm_trajectory_saver",
-        "@drake//:drake_shared_library",
-    ],
-    cc_so_name = "lcm_trajectory",
-    cc_srcs = ["lcm_trajectory_py.cc"],
-    py_deps = ["@drake//bindings/pydrake"],
-    py_imports = ["."],
-)
-
-py_binary(
-    name = "lcm_trajectory_plotter",
-    srcs = ["lcm_trajectory_plotter.py"],
-    deps = [
-        ":lcm_trajectory_py",
-        ":module_py",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-py_binary(
-    name = "dircon_trajectory_plotter",
-    srcs = ["dircon_trajectory_plotter.py"],
-    deps = [
-        ":lcm_trajectory_py",
-        ":module_py",
-        "//bindings/pydairlib/common",
-        "//bindings/pydairlib/multibody:multibody_py",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -62,8 +27,8 @@ py_library(
 
 PY_LIBRARIES = [
     ":module_py",
-    ":lcm_trajectory_py",
     "//bindings/pydairlib/common",
+    "//bindings/pydairlib/lcm",
     "//bindings/pydairlib/multibody",
 ]
 

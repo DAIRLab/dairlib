@@ -11,7 +11,6 @@
 #include <unordered_set>
 
 #include "drake/common/drake_copyable.h"
-#include "drake/common/drake_deprecated.h"
 #include "drake/common/drake_throw.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "examples/Cassie/networking/udp_serializer.h"

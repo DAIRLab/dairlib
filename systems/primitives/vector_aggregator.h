@@ -10,6 +10,8 @@
 namespace dairlib {
 namespace systems {
 
+using drake::systems::kUseDefaultName;
+
 /// VectorAggregator collects a list of TimeStampedVector objects
 /// Assumes that the vectors come in order, and adds them to a std::vector
 /// Uses the timestamp field to determine uniqueness--this will reject
@@ -21,7 +23,7 @@ class VectorAggregator : public drake::systems::LeafSystem<double> {
 
   /// @param vector_length is the length of the input TimestampedVector
   VectorAggregator(int vector_length) {
-    DeclareVectorInputPort(
+    DeclareVectorInputPort(kUseDefaultName,
       TimestampedVector<double>(vector_length));
     DeclarePerStepEvent<drake::systems::PublishEvent<double>>(
         drake::systems::PublishEvent<double>(

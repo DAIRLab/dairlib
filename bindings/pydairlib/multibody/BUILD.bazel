@@ -27,6 +27,21 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "kinematic_py",
+    cc_deps = [
+        "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "kinematic",
+    cc_srcs = ["kinematic_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 py_binary(
     name = "multipose_visualizer_test",
     srcs = ["test/multipose_visualizer_test.py"],
@@ -54,6 +69,7 @@ py_library(
 
 PY_LIBRARIES = [
     ":multibody_py",
+    ":kinematic_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

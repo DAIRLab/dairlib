@@ -19,9 +19,25 @@ pybind_py_library(
     ],
     cc_so_name = "common",
     cc_srcs = ["common_py.cc"],
-    py_deps = ["@drake//bindings/pydrake",
-               ":module_py"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
     py_imports = ["."],
+)
+
+py_library(
+    name = "plot_styler",
+    srcs = ["plot_styler.py"],
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_library(
+    name = "plotting_utils",
+    srcs = ["plotting_utils.py"],
+    deps = [],
 )
 
 # This determines how `PYTHONPATH` is configured, and how to install the
@@ -35,12 +51,14 @@ py_library(
     ],
     imports = PACKAGE_INFO.py_imports,
     deps = [
-        "//bindings/pydairlib:module_py"
+        "//bindings/pydairlib:module_py",
     ],
 )
 
 PY_LIBRARIES = [
     ":common_py",
+    ":plot_styler",
+    ":plotting_utils",
 ]
 
 # Package roll-up (for Bazel dependencies).

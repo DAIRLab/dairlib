@@ -40,7 +40,8 @@ StandingComTraj::StandingComTraj(
       set_target_height_by_radio_(set_target_height_by_radio){
   // Input/Output Setup
   state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+      this->DeclareVectorInputPort("x, u, t",
+                                   OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
@@ -50,13 +51,13 @@ StandingComTraj::StandingComTraj(
               drake::Value<dairlib::lcmt_target_standing_height>{})
           .get_index();
   radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_cassie_output",
+      this->DeclareAbstractInputPort("lcmt_cassie_out",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
-  this->DeclareAbstractOutputPort("com_traj", traj_inst,
+  this->DeclareAbstractOutputPort("com_xyz", traj_inst,
                                   &StandingComTraj::CalcDesiredTraj);
 }
 
@@ -104,6 +105,23 @@ void StandingComTraj::CalcDesiredTraj(
     contact_pos_sum += position;
   }
   Vector3d feet_center_pos = contact_pos_sum / 4;
+
+  // Testing -- filtering feet_center_pos
+  if (filtered_feet_center_pos_.norm() == 0) {
+    // Initialize
+    filtered_feet_center_pos_ = feet_center_pos;
+  }
+  if (robot_output->get_timestamp() != last_timestamp_) {
+    double dt = robot_output->get_timestamp() - last_timestamp_;
+    last_timestamp_ = robot_output->get_timestamp();
+    double alpha =
+        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+    filtered_feet_center_pos_ =
+        alpha * feet_center_pos + (1 - alpha) * filtered_feet_center_pos_;
+  }
+  feet_center_pos = filtered_feet_center_pos_;
+
+  // Desired com pos
   Vector3d desired_com_pos(feet_center_pos(0) + x_offset,
                            feet_center_pos(1) + y_offset,
                            feet_center_pos(2) + target_height);

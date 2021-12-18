@@ -1,33 +1,33 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
+
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "dairlib/lcmt_osc_output.hpp"
 #include "dairlib/lcmt_osc_qp_output.hpp"
-
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/framework/leaf_system.h"
-
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/osqp_solver.h"
-#include "drake/solvers/solve.h"
-#include "solvers/fast_osqp_solver.h"
-
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
+#include "solvers/fast_osqp_solver.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
 
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/solve.h"
+#include "drake/systems/framework/diagram.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/framework/leaf_system.h"
+
 // Maximum time limit for each QP solve
-static constexpr double kMaxSolveDuration = 0.002;
+static constexpr double kMaxSolveDuration = 0.1;
 
 namespace dairlib::systems::controllers {
 
@@ -101,7 +101,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context_w_spr,
       drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true,
-      bool print_tracking_info = false);
+      bool print_tracking_info = false, double qp_time_limit = 0);
 
   const drake::systems::OutputPort<double>& get_osc_output_port() const {
     return this->get_output_port(osc_output_port_);
@@ -117,11 +117,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
     return this->get_input_port(fsm_port_);
   }
+  const drake::systems::InputPort<double>& get_near_impact_input_port() const {
+    return this->get_input_port(near_impact_port_);
+  }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
       const std::string& name) const {
-    try{
+    try {
       return this->get_input_port(traj_name_to_port_index_map_.at(name));
-    }catch(std::exception& e){
+    } catch (std::exception& e) {
       std::cerr << "Cannot find tracking data named: " << name << std::endl;
     }
     return this->get_input_port(0);
@@ -161,6 +164,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return tracking_data_vec_->at(index);
   }
 
+  // Optional features
+  void SetUpDoubleSupportPhaseBlending(double ds_duration,
+                                       int left_support_state,
+                                       int right_support_state,
+                                       std::vector<int> ds_states);
+  void SetInputRegularizationWeight(double w) { w_input_reg_ = w; }
+
   // OSC LeafSystem builder
   void Build();
 
@@ -174,7 +184,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           const Eigen::VectorXd& x_wo_spr,
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,
-                          double time_since_last_state_switch) const;
+                          double time_since_last_state_switch, double alpha,
+                          int next_fsm_state) const;
+
+  void UpdateImpactInvariantProjection(
+      const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
+      const drake::systems::Context<double>& context, double t,
+      double t_since_last_state_switch, int fsm_state, int next_fsm_state,
+      const Eigen::MatrixXd& M, const Eigen::MatrixXd& J_h) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -193,6 +210,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int osc_output_port_;
   int state_port_;
   int fsm_port_;
+  int near_impact_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;
@@ -221,7 +239,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_q_;
   int n_v_;
   int n_u_;
-  int n_joints_;
+  int n_revolute_joints_;
 
   // Size of holonomic constraint and total/active contact constraints
   int n_h_;
@@ -252,6 +270,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // floating base model flag
   bool is_quaternion_;
 
+  // Solver
+  std::unique_ptr<solvers::FastOsqpSolver> solver_;
+  drake::solvers::SolverOptions solver_options_;
+
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
   // Decision variables
@@ -276,6 +298,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   mutable double solve_time_;
 
+  mutable Eigen::VectorXd ii_lambda_sol_;
+  mutable Eigen::MatrixXd M_Jt_;
   std::map<int, int> active_contact_dim_ = {};
 
   // OSC cost members
@@ -314,8 +338,23 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<double> t_s_vec_;
   std::vector<double> t_e_vec_;
 
-  std::unique_ptr<solvers::FastOsqpSolver> solver_;
-  drake::solvers::SolverOptions solver_options_;
+  // Maximum time limit for each QP solve
+  const double qp_time_limit_;
+
+  // Optional feature -- contact force blend
+  double ds_duration_ = -1;
+  int left_support_state_;
+  int right_support_state_;
+  std::vector<int> ds_states_;
+  double w_blend_constraint_ = 0.1;  // for soft constraint
+  mutable double prev_distinct_fsm_state_ = -1;
+  drake::solvers::LinearEqualityConstraint* blend_constraint_;
+  drake::solvers::VectorXDecisionVariable epsilon_blend_;
+
+  // Optional feature -- regularizing input
+  drake::solvers::QuadraticCost* input_reg_cost_;
+  double w_input_reg_ = -1;
+  Eigen::MatrixXd W_input_reg_;
 };
 
 }  // namespace dairlib::systems::controllers

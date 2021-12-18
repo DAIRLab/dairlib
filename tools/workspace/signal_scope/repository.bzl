@@ -20,6 +20,10 @@ def _impl(repository_ctx):
         urls = ["https://www.seas.upenn.edu/~posa/files/signal-scope/signal-scope-18.04.zip"]
         sha256 = "b9dd567bde8f4a1043ae9f13194b7a2cf9c8c716f8e7373f11a98a770c404d54"
         prefix = "signal-scope-18.04"
+    elif os_result.ubuntu_release == "20.04":
+        urls = ["https://www.seas.upenn.edu/~posa/files/signal-scope/signal-scope-20.04.zip"]
+        sha256 = "6bb42fdec9767984d21cd07ab0eb13e11189c3a1b5931a5fabef4c23de247fa6"
+        prefix = "signal-scope-20.04"
     else:
         fail("Operating system is NOT supported", attr = os_result)
 

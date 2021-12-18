@@ -26,7 +26,8 @@ class CentroidalMomentumTrackingData final : public OptionsTrackingData {
       const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_sp,
-      const std::string& urdf_w_spr, const std::string& urdf_wo_spr,
+      const multibody::PinocchioPlant<double>& pin_plant_w_spr,
+      const multibody::PinocchioPlant<double>& pin_plant_wo_spr,
       bool angular_only);
 
  private:
@@ -52,9 +53,8 @@ class CentroidalMomentumTrackingData final : public OptionsTrackingData {
                    const drake::systems::Context<double>& context_w_spr) final;
 
   void CheckDerivedOscTrackingData() final;
-
-  multibody::PinocchioPlant<double> pinocchio_plant_w_spings_;
-  multibody::PinocchioPlant<double> pinocchio_plant_wo_springs_;
+  const multibody::PinocchioPlant<double>& pinocchio_plant_w_spings_;
+  const multibody::PinocchioPlant<double>& pinocchio_plant_wo_springs_;
   bool angular_only_;
   std::unique_ptr<drake::systems::Context<double>> pin_context_w_springs_;
   std::unique_ptr<drake::systems::Context<double>>  pin_context_wo_springs_;

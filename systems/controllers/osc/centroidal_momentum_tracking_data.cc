@@ -20,25 +20,24 @@ CentroidalMomentumTrackingData::CentroidalMomentumTrackingData(
     const std::string &name, const MatrixXd &K_p, const MatrixXd &W,
     const drake::multibody::MultibodyPlant<double> &plant_w_spr,
     const drake::multibody::MultibodyPlant<double> &plant_wo_sp,
-    const std::string &urdf_w_spr, const std::string &urdf_wo_spr,
+    const multibody::PinocchioPlant<double>& pin_plant_w_spr,
+    const multibody::PinocchioPlant<double>& pin_plant_wo_spr,
     bool angular_only = true) :
     OptionsTrackingData(name,
                         angular_only ? 3 : 6, angular_only ? 3 : 6,
                         K_p,
-                        MatrixXd::Zero(n_y_, n_y_),
+                        MatrixXd::Zero(angular_only ? 3 : 6, angular_only ? 3 : 6),
                         W, plant_w_spr, plant_wo_sp),
-    pinocchio_plant_w_spings_(PinocchioPlant<double>(0.0, urdf_w_spr)),
-    pinocchio_plant_wo_springs_(PinocchioPlant<double>(0.0, urdf_wo_spr)) {
+    pinocchio_plant_w_spings_(pin_plant_w_spr),
+    pinocchio_plant_wo_springs_(pin_plant_wo_spr) {
 
   angular_only_ = angular_only;
-  pinocchio_plant_w_spings_.Finalize();
-  pinocchio_plant_wo_springs_.Finalize();
   pin_context_w_springs_ = pinocchio_plant_w_spings_.CreateDefaultContext();
   pin_context_wo_springs_ = pinocchio_plant_wo_springs_.CreateDefaultContext();
   ydot_ = VectorXd::Zero(n_y_);
-  error_ydot_ = VectorXd::Zero(n_y_);
-  yddot_des_ = VectorXd::Zero(n_y_);
-  yddot_des_converted_ = VectorXd::Zero(n_y_);
+  error_ydot_ = VectorXd::Zero(n_ydot_);
+  yddot_des_ = VectorXd::Zero(n_ydot_);
+  yddot_des_converted_ = VectorXd::Zero(n_ydot_);
 }
 
 void CentroidalMomentumTrackingData::UpdateActual(
@@ -117,4 +116,6 @@ void CentroidalMomentumTrackingData::UpdateJ(const VectorXd &x_wo_spr,
 void CentroidalMomentumTrackingData::UpdateJdotV(
     const VectorXd &x_wo_spr, const Context<double> &context_wo_spr) {}
 
+void CentroidalMomentumTrackingData::CheckDerivedOscTrackingData(){}
 }
+

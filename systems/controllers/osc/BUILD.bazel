@@ -37,6 +37,7 @@ cc_library(
 cc_library(
     name = "osc_tracking_datas",
     deps = [
+        ":centroidal_momentum_tracking_data",
         ":com_tracking_data",
         ":joint_space_tracking_data",
         ":osc_tracking_data",

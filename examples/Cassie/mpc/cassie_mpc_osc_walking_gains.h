@@ -23,6 +23,8 @@ struct CassieMpcOSCWalkingGains {
   std::vector<double> OrientationW;
   std::vector<double> OrientationKp;
   std::vector<double> OrientationKd;
+  std::vector<double> AngMomentumW;
+  std::vector<double> AngMomentumKp;
   std::vector<double> SwingFootW;
   std::vector<double> SwingFootKp;
   std::vector<double> SwingFootKd;
@@ -33,6 +35,8 @@ struct CassieMpcOSCWalkingGains {
   MatrixXd W_orientation;
   MatrixXd K_p_orientation;
   MatrixXd K_d_orientation;
+  MatrixXd W_ang_momentum;
+  MatrixXd K_p_ang_momentum;
   MatrixXd W_swing_foot;
   MatrixXd K_p_swing_foot;
   MatrixXd K_d_swing_foot;
@@ -62,6 +66,8 @@ struct CassieMpcOSCWalkingGains {
     a->Visit(DRAKE_NVP(OrientationW));
     a->Visit(DRAKE_NVP(OrientationKp));
     a->Visit(DRAKE_NVP(OrientationKd));
+    a->Visit(DRAKE_NVP(AngMomentumW));
+    a->Visit(DRAKE_NVP(AngMomentumKp));
     a->Visit(DRAKE_NVP(SwingFootW));
     a->Visit(DRAKE_NVP(SwingFootKp));
     a->Visit(DRAKE_NVP(SwingFootKd));
@@ -85,6 +91,12 @@ struct CassieMpcOSCWalkingGains {
     K_d_orientation = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->OrientationKd.data(), this->rows, this->cols);
+    W_ang_momentum = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->AngMomentumW.data(), this->rows, this->cols);
+    K_p_ang_momentum = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->AngMomentumKp.data(),this->rows, this->cols);
     W_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->SwingFootW.data(), this->rows, this->cols);

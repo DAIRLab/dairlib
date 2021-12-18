@@ -278,21 +278,23 @@ void SrbdCMPC::UpdateDynamicsConstraints(const Eigen::VectorXd& x,
           pp.at(1-fsm_state)});
   } else {
     int idx = n_until_next_stance;
-    MatrixXd Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
-    VectorXd beq = VectorXd::Zero(nx_);
+    MatrixXd Aeq1 = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
+    MatrixXd Aeq2 = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
+    VectorXd beq1 = VectorXd::Zero(nx_);
+    VectorXd beq2 = VectorXd::Zero(nx_);
     CopyCollocationDynamicsConstraint(
-        modes_.at(1-fsm_state).dynamics, false, pos, &Aeq, &beq);
+        modes_.at(1-fsm_state).dynamics, false, pos, &Aeq1, &beq1);
 
     prog_.RemoveConstraint(dynamics_.at(idx));
     dynamics_.at(idx) = prog_.AddLinearEqualityConstraint(
-        Aeq, beq,
+        Aeq1, beq1,
         {xx.at(idx), xx.at(idx+1),
          uu.at(idx), uu.at(idx+1), pp.at(1-fsm_state)});
-    CopyCollocationDynamicsConstraint(mode.dynamics, false, pos, &Aeq, &beq);
 
+    CopyCollocationDynamicsConstraint(mode.dynamics, false, pos, &Aeq2, &beq2);
     prog_.RemoveConstraint(dynamics_.at(idx + mode.N));
     dynamics_.at(idx+mode.N) = prog_.AddLinearEqualityConstraint(
-        Aeq, beq,
+        Aeq2, beq2,
         {xx.at(idx+mode.N), xx.at(idx+mode.N+1),
          uu.at(idx+mode.N), uu.at(idx+mode.N+1), pp.at(fsm_state)});
   }

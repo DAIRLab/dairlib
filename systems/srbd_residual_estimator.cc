@@ -6,8 +6,10 @@
 #include "srbd_residual_estimator.h"
 #include "systems/framework/output_vector.h"
 #include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_residual_dynamics.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/mpc/mpc_periodic_residual_manager.h"
+#include "common/eigen_utils.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -50,6 +52,9 @@ SRBDResidualEstimator::SRBDResidualEstimator(
                                 VectorXd::Zero(0)},
       &SRBDResidualEstimator::GetDynamics).get_index();
 
+  residual_debug_out_port_ = this->DeclareAbstractOutputPort(
+      "residual_lcm_out", &SRBDResidualEstimator::GetDynamicsLcm).get_index();
+
   if (use_fsm_) {
     fsm_port_ = this->DeclareVectorInputPort(
             "fsm",
@@ -91,6 +96,23 @@ drake::systems::EventStatus SRBDResidualEstimator::PeriodicUpdate(
 void SRBDResidualEstimator::GetDynamics(const drake::systems::Context<double> &context,
                                         residual_dynamics *dyn) const {
   *dyn = residual_dynamics { cur_A_hat_, cur_B_hat_, cur_b_hat_ };
+}
+
+void SRBDResidualEstimator::GetDynamicsLcm(
+    const drake::systems::Context<double> &context,
+    lcmt_residual_dynamics *dyn_lcm) const {
+  int nx = cur_A_hat_.rows();
+  int nu = cur_B_hat_.cols();
+  int npx = cur_A_hat_.cols();
+  dyn_lcm->utime = context.get_time() * 1e6;
+  dyn_lcm->nx = nx;
+  dyn_lcm->nu = nu;
+  dyn_lcm->npx = npx;
+  for (int i = 0; i < nx; i++){
+    dyn_lcm->A.at(i) = CopyVectorXdToStdVector(cur_A_hat_.row(i).transpose());
+    dyn_lcm->B.at(i) = CopyVectorXdToStdVector(cur_B_hat_.row(i).transpose());
+  }
+  dyn_lcm->b = CopyVectorXdToStdVector(cur_b_hat_);
 }
 
 // For now, calling this as a discrete variable update though it doesn't have to be.

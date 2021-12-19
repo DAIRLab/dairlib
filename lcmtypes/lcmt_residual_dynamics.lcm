@@ -1,0 +1,13 @@
+package dairlib;
+
+struct lcmt_residual_dynamics
+{
+  int64_t utime;
+  int32_t nx;
+  int32_t npx;
+  int32_t nu;
+
+  double A [nx][npx];
+  double B [nx][nu];
+  double b [nx];
+}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drake/systems/framework/leaf_system.h"
+#include "dairlib/lcmt_residual_dynamics.hpp"
 #include "systems/controllers/mpc/srbd_cmpc.h"
 #include "multibody/single_rigid_body_plant.h"
 #include <fstream>
@@ -29,6 +30,9 @@ class SRBDResidualEstimator : public drake::systems::LeafSystem<double> {
     return this->get_output_port(residual_out_port_);
   };
 
+  const drake::systems::OutputPort<double> &get_residual_debug_port() const {
+    return this->get_output_port(residual_debug_out_port_);
+  }
   void AddMode(
       const LinearSrbdDynamics &dynamics,
       BipedStance stance, const Eigen::MatrixXd &reset, int N);
@@ -48,16 +52,17 @@ class SRBDResidualEstimator : public drake::systems::LeafSystem<double> {
 
   // Output matrices
   mutable Eigen::Matrix<double, 12, 15> cur_A_hat_;
-  mutable Eigen::Matrix<double, 12, 4> cur_B_hat_;
+  mutable Eigen::Matrix<double, 12, 5> cur_B_hat_;
   mutable Eigen::Matrix<double, 12, 1> cur_b_hat_;
 
   int state_in_port_,
       residual_out_port_,
+      residual_debug_out_port_,
       fsm_port_,
       mpc_in_port_;
 
   int nx_ = 12;
-  int nu_ = 4;
+  int nu_ = 5;
   // state + foot + force + b
   int num_X_cols = nx_ + 3 + nu_ + 1;
 
@@ -101,6 +106,9 @@ class SRBDResidualEstimator : public drake::systems::LeafSystem<double> {
 
   void GetDynamics(const drake::systems::Context<double>& context,
                    residual_dynamics* dyn) const;
+
+  void GetDynamicsLcm(const drake::systems::Context<double>& context,
+                   lcmt_residual_dynamics* dyn_lcm) const;
 
 };
 }

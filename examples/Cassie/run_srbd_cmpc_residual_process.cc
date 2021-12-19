@@ -190,6 +190,9 @@ int DoMain(int argc, char* argv[]) {
   auto robot_out = builder.AddSystem<RobotOutputReceiver>(plant);
   auto mpc_out_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_plan, &lcm_local));
+  auto residual_debug_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_residual_dynamics>(
+          "CASSIE_SRBD_RESIDUAL_DYNAMICS", &lcm_local));
 
   auto lstsq_sys = builder.AddSystem<SRBDResidualEstimator>(
       srb_plant, 0.01, 200, true, 1.0/2000.0, true);
@@ -203,6 +206,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(cmpc->get_output_port(), lstsq_sys->get_mpc_input_port());
   builder.Connect(lstsq_sys->get_residual_output_port(),
                   cmpc->get_residual_input_port());
+  builder.Connect(lstsq_sys->get_residual_debug_port(),
+                  residual_debug_publisher->get_input_port());
   builder.Connect(fsm->get_output_port(), cmpc->get_fsm_input_port());
 //  builder.Connect(fsm->get_output_port(), warmstarter->get_input_port_fsm());
 //  builder.Connect(fsm->get_output_port(),

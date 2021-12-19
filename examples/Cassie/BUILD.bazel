@@ -566,6 +566,7 @@ cc_binary(
         "//systems:dairlib_signal_lcm_systems",
         "//systems:robot_lcm_systems",
         "//systems:srbd_residual_estimator",
+        "//systems:srbd_sparse_residual_estimator",
         "//systems:system_utils",
         "//systems/controllers:fsm_event_time",
         "//systems/controllers:lipm_warmstart_system",

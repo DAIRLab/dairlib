@@ -328,8 +328,8 @@ void SRBDSparseResidualEstimator::SolveLstSq() const {
   MatrixXd b2 = soln4.block(0, 11, 3, 1);
 
   // Set the hat matrices with the appropriate blocks matrices.
-  cur_A_hat_.block(0, 6, 3, 3) = A1;
-  cur_A_hat_.block(3, 9, 3, 3) = A2;
+//  cur_A_hat_.block(0, 6, 3, 3) = A1;
+//  cur_A_hat_.block(3, 9, 3, 3) = A2;
   cur_A_hat_.block(9, 0, 3, 3) = A3;
   cur_A_hat_.block(9, 12, 3, 3) = A4;
 
@@ -341,9 +341,9 @@ void SRBDSparseResidualEstimator::SolveLstSq() const {
   cur_b_hat_.segment(6, 3) = b1;
   cur_b_hat_.segment(9, 3) = b2;
 
-  std::cout << "cur A hat: \n" << cur_A_hat_ << std::endl;
-  std::cout << "cur B hat: \n" << cur_B_hat_ << std::endl;
-  std::cout << "cur b hat: \n" << cur_b_hat_ << std::endl;
+//  std::cout << "cur A hat: \n" << cur_A_hat_ << std::endl;
+//  std::cout << "cur B hat: \n" << cur_B_hat_ << std::endl;
+//  std::cout << "cur b hat: \n" << cur_b_hat_ << std::endl;
 
 //  cur_b_hat_ = soln.block(0, nx_ + nu_ + 3, nx_, nx_).diagonal();
 //  std::cout << "#################################" << std::endl;

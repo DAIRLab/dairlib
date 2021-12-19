@@ -16,6 +16,7 @@ class MpcPeriodicResidualManager {
                      const Eigen::MatrixXd& Bref, const Eigen::VectorXd& bref);
 
   residual_dynamics GetResidualForKnotFromCurrent(int i);
+  residual_dynamics GetAverageResidualForNextTwoKnots(int i);
 
   void AddResidualToDynamics(const residual_dynamics& res1,
                              const residual_dynamics& res2,
@@ -25,6 +26,7 @@ class MpcPeriodicResidualManager {
 
   void SetResidualForCurrentKnot(const residual_dynamics& dyn);
   void CycleCurrentKnot() {idx_ = (idx_ + 1) % n_;}
+  int idx() const {return idx_;}
 
  private:
   residual_dynamics GetResidualForKnot(int i) {return buf_.at(i);}

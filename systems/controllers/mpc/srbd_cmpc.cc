@@ -124,7 +124,7 @@ void SrbdCMPC::FinalizeModeSequence(){
      if (use_residuals_) {
        residual_manager_ =
            std::make_unique<systems::MpcPeriodicResidualManager>(
-               total_knots_,
+               total_knots_+1,
                modes_.front().dynamics.A,
                modes_.front().dynamics.B,
                modes_.front().dynamics.b);
@@ -318,7 +318,7 @@ void SrbdCMPC::UpdateResidualDynamicsConstraints(const Eigen::VectorXd& x,
                                   b_vector_t::Zero()};
       residual_manager_->AddResidualToDynamics(
           residual_dynamics{mode.dynamics.A, mode.dynamics.B, mode.dynamics.b},
-          residual_manager_->GetResidualForKnotFromCurrent(i),
+          residual_manager_->GetAverageResidualForNextTwoKnots(i),
           &dyn_i.A, &dyn_i.B, &dyn_i.b);
       CopyCollocationDynamicsConstraint(
           dyn_i, true, pos, &Aeq, &beq);
@@ -337,7 +337,7 @@ void SrbdCMPC::UpdateResidualDynamicsConstraints(const Eigen::VectorXd& x,
         residual_dynamics{modes_.at(1-fsm_state).dynamics.A,
                           modes_.at(1-fsm_state).dynamics.B,
                           modes_.at(1-fsm_state).dynamics.b},
-        residual_manager_->GetResidualForKnotFromCurrent(mode.N),
+        residual_manager_->GetAverageResidualForNextTwoKnots(mode.N),
         &dyn_f.A, &dyn_f.B, &dyn_f.b);
     CopyCollocationDynamicsConstraint(
         dyn_f,false, pos, &Aeq, &beq);
@@ -355,7 +355,7 @@ void SrbdCMPC::UpdateResidualDynamicsConstraints(const Eigen::VectorXd& x,
         residual_dynamics{modes_.at(1-fsm_state).dynamics.A,
                           modes_.at(1-fsm_state).dynamics.B,
                           modes_.at(1-fsm_state).dynamics.b},
-        residual_manager_->GetResidualForKnotFromCurrent(mode.N),
+        residual_manager_->GetAverageResidualForNextTwoKnots(mode.N),
         &dyn_f.A, &dyn_f.B, &dyn_f.b);
 
     MatrixXd Aeq = MatrixXd::Zero(nx_, 2*(nx_ + nu_) + kLinearDim_);
@@ -373,7 +373,7 @@ void SrbdCMPC::UpdateResidualDynamicsConstraints(const Eigen::VectorXd& x,
         residual_dynamics{mode.dynamics.A,
                           mode.dynamics.B,
                           mode.dynamics.b},
-        residual_manager_->GetResidualForKnotFromCurrent(mode.N),
+        residual_manager_->GetAverageResidualForNextTwoKnots(mode.N),
         &dyn_f.A, &dyn_f.B, &dyn_f.b);
     CopyCollocationDynamicsConstraint(dyn_f, false, pos, &Aeq, &beq);
 
@@ -530,8 +530,6 @@ EventStatus SrbdCMPC::PeriodicUpdate(
     time_since_last_event = (last_event_time <= 0) ?
         timestamp : timestamp - last_event_time;
 
-    UpdateConstraints(plant_.CalcSRBStateFromPlantState(x),
-                                 fsm_state, time_since_last_event);
     if (use_residuals_) {
       residual_dynamics res = this->EvalAbstractInput(context, srbd_residual_port_)->
           get_value<residual_dynamics>();
@@ -541,6 +539,8 @@ EventStatus SrbdCMPC::PeriodicUpdate(
       residual_manager_->SetResidualForCurrentKnot(res);
     }
 
+    UpdateConstraints(plant_.CalcSRBStateFromPlantState(x),
+                                 fsm_state, time_since_last_event);
   } else {
     UpdateConstraints(plant_.CalcSRBStateFromPlantState(x), 0, 0);
   }

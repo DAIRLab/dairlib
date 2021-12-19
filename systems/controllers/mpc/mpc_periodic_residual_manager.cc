@@ -1,3 +1,4 @@
+#include <iostream>
 #include "mpc_periodic_residual_manager.h"
 
 using Eigen::MatrixXd;
@@ -32,10 +33,20 @@ void MpcPeriodicResidualManager::SetResidualForCurrentKnot(
   buf_.at(idx_).A = dyn.A;
   buf_.at(idx_).B = dyn.B;
   buf_.at(idx_).b = dyn.b;
+  std::cout << "Setting residual " << std::to_string(idx_) << "\n";
+}
+
+residual_dynamics MpcPeriodicResidualManager::GetAverageResidualForNextTwoKnots(
+    int i) {
+  residual_dynamics r1 = GetResidualForKnotFromCurrent(i);
+  residual_dynamics r2 = GetResidualForKnotFromCurrent(i+1);
+  return residual_dynamics {0.5*(r1.A + r2.A), 0.5*(r1.B + r2.B),
+                            0.5*(r1.b+r2.b)};
 }
 
 residual_dynamics MpcPeriodicResidualManager::GetResidualForKnotFromCurrent(int i) {
   int idx = (idx_ + i) % (n_ - idx_);
+  std::cout << "returning residual " << std::to_string(idx) << "\n";
   return GetResidualForKnot(idx);
 }
 

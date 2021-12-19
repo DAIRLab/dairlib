@@ -40,8 +40,8 @@ OrientationKd:
    0,  0,  5]
 
 AngMomentumW:
-  [0, 0,  0,
-   0,  0, 0,
+  [10, 0,  0,
+   0,  10, 0,
    0,  0,  0]
 AngMomentumKp:
   [10, 0, 0,

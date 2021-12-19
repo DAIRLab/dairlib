@@ -1,5 +1,5 @@
 mu: 0.8
-ReachabilityLim: [0.3, 0.3, 0.3]
+ReachabilityLim: [0.3, 0.3, 0.4]
 StateW:
   [ 0, 0, 10,    # x, y, z
    1000, 1000, 10,     # roll, pitch , yaw

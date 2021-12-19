@@ -122,7 +122,7 @@ int DoMain(int argc, char* argv[]) {
   srb_plant.AddContactPoint(right_pt, BipedStance::kRight);
 
   int nx = 12;
-  int nu = 4;
+  int nu = 5;
   MatrixXd Al = MatrixXd::Zero(nx, nx+3);
   MatrixXd Bl = MatrixXd::Zero(nx, nu);
   VectorXd bl = VectorXd::Zero(nx);

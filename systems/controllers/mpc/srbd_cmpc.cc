@@ -557,10 +557,10 @@ EventStatus SrbdCMPC::PeriodicUpdate(
 //                  foot_target.tail(kLinearDim_),
 //                  warmstart_traj);
 
-  auto lin_con = prog_.GetAllLinearConstraints();
-  for (auto& binding : lin_con) {
-    std::cout << "Next Binding:\n" << binding << std::endl;
-  }
+//  auto lin_con = prog_.GetAllLinearConstraints();
+//  for (auto& binding : lin_con) {
+//    std::cout << "Next Binding:\n" << binding << std::endl;
+//  }
 //  print_constraint(lin_con);
 
 

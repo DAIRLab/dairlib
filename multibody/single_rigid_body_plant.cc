@@ -128,6 +128,11 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
     const drake::EigenPtr<MatrixXd> &Bd,
     const drake::EigenPtr<VectorXd> &bd) {
 
+  DRAKE_DEMAND(Ad->rows() == 12);
+  DRAKE_DEMAND(Ad->cols() == 15);
+  DRAKE_DEMAND(Bd->rows() == 12);
+  DRAKE_DEMAND(Bd->cols() == 5);
+  DRAKE_DEMAND(bd->rows() == 12);
 
   const Eigen::Vector3d g = {0.0, 0.0, 9.81};
   drake::math::RollPitchYaw rpy(0.0, 0.0, yaw);
@@ -136,7 +141,7 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
   std::cout << "nominal lever arm x-product:\n" <<
     HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos)) << std::endl;
 
-  Vector3d tau = {0.0,0.0,1.0};
+  Vector3d tau = {0.0, 0.0, 1.0};
   Vector3d mg = {0.0, 0.0, m * 9.81};
   Matrix3d lambda_hat = HatOperator3x3(mg);
   Matrix3d g_I_inv = (R_yaw * b_I * R_yaw.transpose()).inverse();
@@ -158,12 +163,14 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
   B.block(9, 0, 3, 3) = g_I_inv *
       HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos));
   B.block(9, 3, 3, 1) = g_I_inv * Vector3d(0.0, 0.0, 1.0);
-  B.block(9, 3, 4, 1) =  g_I_inv * Vector3d(0.0, 1.0, 0.0);
+  B.block(9, 4, 3, 1) =  g_I_inv * Vector3d(0.0, 1.0, 0.0);
 
   // Continuous Affine portion (b)
   b.segment(6, 3) = -g;
   b.segment(9, 3) = g_I_inv *
       HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos)) * mg;
+
+  std::cout << "A:\n" << A << "\nB:\n" << B <<"\nb:\n"<< b << std::endl;
 
   *Ad = A;
   *Bd = B;

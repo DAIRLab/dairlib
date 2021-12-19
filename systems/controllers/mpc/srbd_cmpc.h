@@ -178,7 +178,7 @@ class SrbdCMPC : public drake::systems::LeafSystem<double> {
   const bool use_residuals_;
   const bool traj_tracking_;
   static constexpr int nx_ = 12;
-  static constexpr int nu_ = 4;
+  static constexpr int nu_ = 5;
   static constexpr int kLinearDim_ = 3;
   static constexpr int kAngularDim_ = 3;
   const double dt_;

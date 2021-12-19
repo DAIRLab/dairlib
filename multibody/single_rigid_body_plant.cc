@@ -143,7 +143,7 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
 
 
   MatrixXd A = MatrixXd::Zero(12,15);
-  MatrixXd B = MatrixXd::Zero(12,4);
+  MatrixXd B = MatrixXd::Zero(12,5);
   VectorXd b = VectorXd::Zero(12);
 
 
@@ -158,6 +158,7 @@ void SingleRigidBodyPlant::CopyContinuousLinearized3dSrbDynamicsForMPC(
   B.block(9, 0, 3, 3) = g_I_inv *
       HatOperator3x3(R_yaw * (eq_foot_pos - eq_com_pos));
   B.block(9, 3, 3, 1) = g_I_inv * Vector3d(0.0, 0.0, 1.0);
+  B.block(9, 3, 4, 1) =  g_I_inv * Vector3d(0.0, 1.0, 0.0);
 
   // Continuous Affine portion (b)
   b.segment(6, 3) = -g;

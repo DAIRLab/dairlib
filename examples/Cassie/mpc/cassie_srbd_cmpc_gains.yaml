@@ -1,17 +1,17 @@
 mu: 0.8
 ReachabilityLim: [0.3, 0.3, 0.3]
 StateW:
-  [ 0, 0, 100,    # x, y, z
-   10000, 1000, 100,     # roll, pitch , yaw
-   100, 10, 10,     # vx, vy, vz
-   1000, 100, 10]     # omega
+  [ 0, 0, 10,    # x, y, z
+   1000, 1000, 10,     # roll, pitch , yaw
+   100, 100, 10,     # vx, vy, vz
+   10, 10, 10]     # omega
 FinalStateW:
   [ 0, 0, 100,         # x, y, z
-    1000, 1000, 1000,          # roll, pitch , yaw
-    1000, 100, 100,          # vx, vy, vz
-    100,  100, 100]          # omega
+    100, 100, 100,          # roll, pitch , yaw
+    100, 100, 100,          # vx, vy, vz
+    100, 100, 100]          # omega
 InputW:
-  [ .01, .01, .01, 0.1 ]
+  [ .001, .001, .001, .001, .001]
 
 # below here currently unused
 FlatGroundW:

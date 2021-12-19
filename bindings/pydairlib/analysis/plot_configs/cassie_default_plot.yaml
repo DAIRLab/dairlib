@@ -9,7 +9,7 @@ use_springs: true
 use_floating_base: true
 
 # Desired RobotOutput plots
-plot_floating_base_positions: false
+plot_floating_base_positions: true
 plot_floating_base_velocities: false
 plot_joint_positions: false
 plot_joint_velocities: false
@@ -27,17 +27,17 @@ pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 plot_qp_costs: false
 plot_tracking_costs: true
 tracking_datas_to_plot:
-  com_traj: {'dims': [0, 1], 'derivs': ['pos', 'vel', 'accel']}
-  swing_ft_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
-  orientation_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
-  ang_momentum_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'accel']}
+  com_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+#  swing_ft_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+#  orientation_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+#  ang_momentum_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'accel']}
 
 # desired mpc plots
 mpc_trajs_to_plot:
   com_traj: {'dims': [0, 1, 2]}
-  swing_foot_traj: {'dims': [0, 1]}
-  orientation: {'dims': [0]}
-  input_traj: {'dims': [0, 1]}
+#  swing_foot_traj: {'dims': [0, 1]}
+#  orientation: {'dims': [0]}
+  input_traj: {'dims': [0, 1, 2]}
 
 # custom plots
 plot_momentum: false

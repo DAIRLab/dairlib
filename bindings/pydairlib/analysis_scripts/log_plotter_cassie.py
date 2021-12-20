@@ -152,14 +152,17 @@ def main():
   #
   # PlotCenterOfMass(x, t_x, plant_w_spr, world, context, t_osc_debug, fsm)
   # PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
-  PlotVdot(x, t_x, x_datatypes, True)
+  # PlotVdot(x, t_x, x_datatypes, True)
 
-  PlotOscQpSol(t_osc_debug, osc_output, fsm)
+  # PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
   # PlotSwingFootData(t_osc_debug, fsm)
   # PlotCentroidalAngularMomentum(t_osc_debug, fsm)
 
   # ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_spr)
+
+  # PlotJointPosVelTorque(x, t_x, u_meas, x_datatypes, u_datatypes)
+
 
   # Save a state into csv
   # t_idx = np.argwhere(np.abs(t_x - 8.425) < 1e-3)[0][0]
@@ -172,6 +175,25 @@ def main():
   # np.savetxt("../init_state_next_mode.csv", x[t_idx, :], delimiter=",")
 
   plt.show()
+
+def PlotJointPosVelTorque(x, t_x, u_meas, x_datatypes, u_datatypes):
+
+  # pos_indices = slice(7 + 7, 7 + 8)
+  # vel_indices = slice(nq + 6 + 7, nq + 6 + 8)
+  # u_indices = slice(7, 8)
+  pos_indices = 7 + 7
+  vel_indices = nq + 6 + 7
+  u_indices = 7
+
+  plt.figure("joint pos vel torque-- " + filename)
+
+  scale = 100
+  plt.plot(t_x[t_slice], scale * x[t_slice, pos_indices])
+  plt.plot(t_x[t_slice], x[t_slice, vel_indices])
+  plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
+
+  plt.legend([x_datatypes[pos_indices] + " (" + str(scale) + "x)", x_datatypes[vel_indices], u_datatypes[u_indices]])
+
 
 def PlotImu(imu_aceel, t):
   imu_aceel_norm = np.zeros(len(imu_aceel))

@@ -134,6 +134,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   task_sl = task[tasks.GetDimIdxByName("stride_length")]
 
   dir_and_prefex_FOM = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx)
+  path_init_state = "%s0_%d_x_samples0.csv" % (model_dir, trajopt_sample_idx) if set_sim_init_state_from_trajopt else ""
 
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
@@ -190,6 +191,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--pelvis_x_vel=%.3f' % ((init_x_vel_reduction_ratio * task_sl / duration) if init_sim_vel else 0),
     '--target_realtime_rate=%.3f' % target_realtime_rate,
     '--spring_model=%s' % str(spring_model).lower(),
+    '--path_init_state=%s' % path_init_state,
     '--path_init_pose_success=%s' % path_init_pose_success,
     ]
   lcm_logger_cmd = [
@@ -1196,11 +1198,12 @@ if __name__ == "__main__":
   foot_step_from_planner = True
   init_sim_vel = True
   use_nominal_traj_pool = True
+  set_sim_init_state_from_trajopt = True
 
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 150
+  model_iter_idx_end = 100
   idx_spacing = 5
 
   # Task list

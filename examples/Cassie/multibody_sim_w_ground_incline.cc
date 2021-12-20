@@ -98,9 +98,12 @@ DEFINE_double(pelvis_y_vel, 0.3, "for stability");
 // Terrain
 DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
 
+// Others
+DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
+DEFINE_string(path_init_state, "", "");
+
 // Testing
 DEFINE_string(path_init_pose_success, "", "");
-DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
 
 class SimTerminator : public drake::systems::LeafSystem<double> {
  public:
@@ -323,19 +326,22 @@ int do_main(int argc, char* argv[]) {
       -0.182275, 0.136925, 0.182466, 0.872048, 0.629534;*/
   // iter 60
 
-  plant.SetPositions(&plant_context, q_init);
-  plant.SetVelocities(&plant_context, v_init);
-  //  std::cout << "q_init = \n" << q_init.transpose() << std::endl;
-  //  std::cout << "v_init = \n" << v_init.transpose() << std::endl;
+  VectorXd x_init(plant.num_positions() + plant.num_velocities());
+  x_init << q_init, v_init;
 
-  // Testing -- read init pose from a file
-  /*VectorXd x_init = readCSV(
-                        "../dairlib_data/goldilocks_models/planning/robot_1/"
-                        "models_20211018_3dlipm_fix_xy_no_height_constraint/"
-                        "1_19_x_samples0.csv")
-                        .col(0);
-  DRAKE_DEMAND(plant.num_positions() + plant.num_velocities() == x_init.size());
-  plant.SetPositionsAndVelocities(&plant_context, x_init);*/
+  // set init state from file
+  if (!FLAGS_path_init_state.empty()) {
+    std::cout << "Set init state form a file\n";
+    x_init = readCSV(FLAGS_path_init_state).col(0);
+    DRAKE_DEMAND(plant.num_positions() + plant.num_velocities() ==
+                 x_init.size());
+  }
+
+  std::cout << "q_init = \n"
+            << x_init.head(plant.num_positions()).transpose() << std::endl;
+  std::cout << "v_init = \n"
+            << x_init.tail(plant.num_velocities()).transpose() << std::endl;
+  plant.SetPositionsAndVelocities(&plant_context, x_init);
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

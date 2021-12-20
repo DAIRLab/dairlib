@@ -432,11 +432,14 @@ void SrbdCMPC::MakeCost(){
   VectorXd unom = VectorXd::Zero(nu_);
   unom(2) = 9.81 * plant_.mass();
   for (int i = 0; i <= total_knots_; i++) {
-      tracking_cost_.push_back(
-          prog_.AddQuadraticErrorCost(Q_, x_des_, xx.at(i))
+
+    Matrix<double, nx_, nx_> Q = (i == 0 || i == total_knots_) ? 0.5*Q_ : Q_;
+    Matrix<double, nu_, nu_> R = (i == 0 || i == total_knots_) ? 0.5*R_ : R_;
+    tracking_cost_.push_back(
+        prog_.AddQuadraticErrorCost(Q, x_des_, xx.at(i))
         .evaluator().get());
-      input_cost_.push_back(
-          prog_.AddQuadraticErrorCost(R_, unom, uu.at(i))
+    input_cost_.push_back(
+        prog_.AddQuadraticErrorCost(R, unom, uu.at(i))
         .evaluator().get());
   }
   for (int i = 0; i < nmodes_; i++) {

@@ -23,6 +23,9 @@ class lcmt_osc_tracking_data_t:
         self.y_dim = len(msg.y)
         self.ydot_dim = len(msg.ydot)
 
+        # If there is a large gap between tracking datas, append
+        # NaNs as a mask for plotting to avoid fictitious lines
+        # appearing in plots
         if self.t and (t - self.t[-1]) > self.t_thresh:
             self.t.append(nan)
             self.is_active.append(nan)
@@ -62,6 +65,8 @@ class lcmt_osc_tracking_data_t:
         self.yddot_command_sol = np.array(self.yddot_command_sol)
 
 
+# Helper class to easily get a list of acceleration tracking costs,
+# Setting the cost to zero when a tracking data is not active
 class osc_tracking_cost():
 
     def __init__(self, tracking_data_names):

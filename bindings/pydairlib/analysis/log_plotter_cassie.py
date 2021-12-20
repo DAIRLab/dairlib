@@ -1,5 +1,3 @@
-import pdb
-
 import sys
 import lcm
 import matplotlib.pyplot as plt
@@ -94,6 +92,8 @@ def main():
         mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
     if plot_config.plot_tracking_costs:
         mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
+    if plot_config.plot_qp_solve_time:
+        mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
 
     if plot_config.tracking_datas_to_plot:
         for traj_name, config in plot_config.tracking_datas_to_plot.items():
@@ -140,6 +140,7 @@ def main():
 
         mbp_plots.plot_linear_momentum(robot_output, t_x_slice, plant, context,
                                        [0, 1, 2])
+
     plt.show()
 
 

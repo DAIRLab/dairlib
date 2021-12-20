@@ -9,7 +9,7 @@ use_springs: true
 use_floating_base: true
 
 # Desired RobotOutput plots
-plot_floating_base_positions: true
+plot_floating_base_positions: false
 plot_floating_base_velocities: false
 plot_joint_positions: false
 plot_joint_velocities: false

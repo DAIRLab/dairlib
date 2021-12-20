@@ -24,17 +24,6 @@ cc_library(
 )
 
 cc_library(
-    name = "osc_view_frame",
-    srcs = ["osc_view_frame.cc"],
-    hdrs = ["osc_view_frame.h"],
-    deps = [
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "osc_tracking_datas",
     deps = [
         ":centroidal_momentum_tracking_data",
@@ -65,7 +54,7 @@ cc_library(
     hdrs = ["options_tracking_data.h"],
     deps = [
         ":osc_tracking_data",
-        ":osc_view_frame",
+        "//multibody:view_frame",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

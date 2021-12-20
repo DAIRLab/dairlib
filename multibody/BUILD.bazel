@@ -95,6 +95,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "view_frame",
+    srcs = ["view_frame.cc"],
+    hdrs = ["view_frame.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "multipose_visualizer_test",
     srcs = ["test/multipose_visualizer_test.cc"],

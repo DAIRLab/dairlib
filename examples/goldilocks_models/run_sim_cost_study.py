@@ -53,6 +53,9 @@ def RunCommand(cmd, use_shell=False):
   while process.poll() is None:  # while subprocess is alive
     time.sleep(0.1)
 
+def EnforceSlashEnding(dir):
+  if len(dir) > 0 and dir[-1] != "/":
+    raise ValueError("Directory path name should end with slash")
 
 def LogSimCostStudySetting():
   f = open(eval_dir + "sim_cost_study_log.txt", "a")
@@ -1186,7 +1189,7 @@ if __name__ == "__main__":
   FOM_model_dir = ""
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
-  # eval_dir = "/home/yuming/Desktop/temp/"
+  # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
   # eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
 
@@ -1211,7 +1214,7 @@ if __name__ == "__main__":
   n_task_ph = 3
   tasks = Tasks()
   tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
-  # stride_length = np.linspace(0, 0.1, n_task)
+  # tasks.AddTaskDim(np.linspace(0, 0.2, n_task_sl), "stride_length")
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
   # stride_length = np.linspace(0.4, 0.5, n_task)
@@ -1257,6 +1260,13 @@ if __name__ == "__main__":
   # stride_length_range_to_average = [0.2, 0.3]
 
   ### Set up environment
+
+  # Check directory names
+  EnforceSlashEnding(model_dir)
+  EnforceSlashEnding(data_dir)
+  EnforceSlashEnding(FOM_model_dir)
+  EnforceSlashEnding(eval_dir)
+
   # Create folder if not exist
   if len(sys.argv) > 1 and sys.argv[1] == "fresh":
     input("WARNING: Going to delete lcmlog files! (type anything to continue)")

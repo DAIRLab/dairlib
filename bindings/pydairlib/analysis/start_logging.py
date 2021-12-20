@@ -10,7 +10,8 @@ if __name__ == '__main__':
     mpc_controller = sys.argv[1]
 
     log_folder_map = {'srbd': 'cmpc_debug',
-                      'residual': 'cmpc_debug_residual'}
+                      'residual': 'cmpc_debug_residual',
+                      'osc': 'osc_walking'}
 
     curr_date = date.today().strftime("%m_%d_%y")
 

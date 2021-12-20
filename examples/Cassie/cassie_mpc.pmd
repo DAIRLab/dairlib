@@ -16,7 +16,7 @@ group "1.controllers-and-dispatchers" {
         host = "localhost";
     }
     cmd "3.osc-walking-controller (dispatched)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_SIMULATION";
         host = "localhost";
     }
     cmd "0.dispatcher-robot-out (lcm, floating-base)" {
@@ -72,6 +72,10 @@ group "0.operator" {
         exec = "python3 bindings/pydairlib/analysis/start_logging.py residual";
         host = "localhost";
     }
+    cmd "1.start-logging (osc)" {
+        exec = "python3 bindings/pydairlib/analysis/start_logging.py osc";
+        host = "localhost";
+    }
     cmd "2.state-visualizer-floating (from dispatcher)" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true";
         host = "localhost";
@@ -115,3 +119,17 @@ script "cassie_walking (residual)" {
     wait ms 250;
     start cmd "1.simulator-floating";
 }
+
+script "cassie_walking (osc)" {
+    stop cmd "1.start-logging (osc)" wait "stopped";
+    stop cmd "1.simulator-floating" wait "stopped";
+    stop cmd "2.srbd_mpc" wait "stopped";
+    stop cmd "2.srbd_mpc (residual)" wait "stopped";
+    stop cmd "3.osc-mpc-tracking-controller (dispatched)" wait "stopped";
+    stop cmd "3.osc-walking-controller (dispatched)" wait "stopped";
+    restart cmd "3.osc-walking-controller (dispatched)" wait "running";
+    restart cmd "1.start-logging (osc)" wait "running";
+    wait ms 250;
+    start cmd "1.simulator-floating";
+}
+

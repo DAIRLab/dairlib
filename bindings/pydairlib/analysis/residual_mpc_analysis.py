@@ -7,11 +7,84 @@ import code
 import numpy as np
 
 import dairlib
+import drake
 from process_lcm_log import get_log_data
 from cassie_plot_config import CassiePlotConfig
 import cassie_plotting_utils as cassie_plots
 import mbp_plotting_utils as mbp_plots
 import mpc_debug as mpc
+
+from pydairlib.multibody.kinematic import DistanceEvaluator
+from pydairlib.cassie.cassie_utils import LeftLoopClosureEvaluator, RightLoopClosureEvaluator
+from pydrake.multibody.tree import JacobianWrtVariable
+from pydrake.math import RollPitchYaw as RPY
+
+
+def get_x_and_xdot_from_plant_data(robot_output, vdot, plant, context):
+    nx = 12
+    x = np.zeros((robot_output['t_x'].shape[0], nx))
+    xdot = np.zeros(x.shape)
+    world = plant.world_frame()
+    pelvis = plant.GetBodyByName("pelvis")
+    for i in range(robot_output['t_x'].size):
+        plant.SetPositions(context, robot_output['q'][i])
+        plant.SetVelocities(context, robot_output['v'][i])
+        p_com = plant.CalcCenterOfMassPositionInWorld(context)
+        theta_pelvis = RPY(
+            plant.EvalBodyPoseInWorld(context, pelvis).rotation()).vector()
+        omega_pelvis = plant.EvalBodySpatialVelocityInWorld(context,
+                                                            pelvis).rotational()
+        J_com = plant.CalcJacobianCenterOfMassTranslationalVelocity(
+            context, JacobianWrtVariable.kV, world, world)
+        v_com = J_com @ robot_output['v'][i]
+        Jdot_v_com = plant.CalcBiasCenterOfMassTranslationalAcceleration(
+            context, JacobianWrtVariable.kV, world, world)
+        J_pelvis = plant.CalcJacobianSpatialVelocity(
+            context, JacobianWrtVariable.kV, pelvis.body_frame(),
+            np.zeros((3,)), world, world)[:3, :]
+        Jdot_v_pelvis = plant.CalcBiasSpatialAcceleration(
+            context, JacobianWrtVariable.kV, pelvis.body_frame(),
+            np.zeros((3,)), world, world).rotational()
+        a_com = Jdot_v_com + J_com @ vdot['vdot'][i]
+        a_pelvis = Jdot_v_pelvis + J_pelvis @ vdot['vdot'][i]
+
+        x[i] = np.vstack((p_com, theta_pelvis, v_com, omega_pelvis)).ravel()
+        xdot[i] = np.vstack((v_com, omega_pelvis, a_com, a_pelvis)).ravel()
+
+    return {'t_x': robot_output['t_x'], 'x': x, 'xdot': xdot}
+
+
+def process_vdot_channel(data, vdot_channel):
+    t = []
+    vd = []
+    for msg in data[vdot_channel]:
+        t.append(msg.utime / 1e6)
+        vd.append(msg.value)
+    return {'t_vdot': np.array(t), 'vdot': np.array(vd)}
+
+
+def process_lambda_channel(data, contact_channel):
+    tl = []
+    lambdas = {'toe_left': ([], []), 'toe_right': ([], [])}
+
+    for msg in data[contact_channel]:
+        tl.append(msg.timestamp / 1e6)
+        force_count = {'toe_left': 0, 'toe_right': 0}
+        for pp_info in msg.point_pair_contact_info:
+            toe_name = pp_info.body2_name.split('(')[0]
+            lambdas[toe_name][force_count[toe_name]].append(pp_info.contact_force)
+            force_count[toe_name] = force_count[toe_name] + 1
+        for key in lambdas:
+            while force_count[key] < 2:
+                lambdas[key][force_count[key]].append([0.0 for _ in range(3)])
+                force_count[key] = force_count[key] + 1
+    for key in lambdas:
+        for forces in lambdas[key]:
+            lambdas[key] = np.array(forces)
+    lambda_l = np.hstack(lambdas["toe_left"])
+    lambda_r = np.hstack(lambdas["toe_right"])
+    return {'t_lambda': np.array(tl),
+            'lambda_toe_left': lambda_l, 'lambda_toe_right': lambda_r}
 
 
 def main():
@@ -25,7 +98,12 @@ def main():
     channel_x = plot_config.channel_x
     channel_u = plot_config.channel_u
     channel_osc = plot_config.channel_osc
-    channel_mpc = plot_config.channel_mpc
+    # channel_mpc = plot_config.channel_mpc
+    channel_lambda = {"CASSIE_CONTACT_DRAKE":
+                      drake.lcmt_contact_results_for_viz}
+    channel_vdot = {"CASSIE_VDOT":
+                    drake.lcmt_scope}
+
 
     ''' Get the plant '''
     plant, context = cassie_plots.make_plant_and_context(
@@ -42,105 +120,21 @@ def main():
                      cassie_plots.cassie_default_channels,      # lcm channels
                      mbp_plots.load_default_channels,           # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
-    mpc_data = get_log_data(log,
-                            {channel_mpc: dairlib.lcmt_saved_traj},
-                            mpc.process_mpc_channel, channel_mpc)
+    # mpc_data = get_log_data(log,
+    #                         {channel_mpc: dairlib.lcmt_saved_traj},
+    #                         mpc.process_mpc_channel, channel_mpc)
 
+    toe_forces = get_log_data(log, channel_lambda,
+                              process_lambda_channel, "CASSIE_CONTACT_DRAKE")
+    vdot = get_log_data(log, channel_vdot,
+                        process_vdot_channel, "CASSIE_VDOT")
+
+    srbd_data = get_x_and_xdot_from_plant_data(robot_output, vdot, plant, context)
+
+    plt.show()
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
-
-    ''' Plot Positions '''
-    # Plot floating base positions if applicable
-    if use_floating_base and plot_config.plot_floating_base_positions:
-        mbp_plots.plot_floating_base_positions(
-            robot_output, pos_names, 7, t_x_slice)
-
-    # Plot joint positions
-    if plot_config.plot_joint_positions:
-        mbp_plots.plot_joint_positions(robot_output, pos_names,
-                                       7 if use_floating_base else 0, t_x_slice)
-    # Plot specific positions
-    if plot_config.pos_names:
-        mbp_plots.plot_positions_by_name(robot_output, plot_config.pos_names,
-                                         t_x_slice, pos_map)
-
-    ''' Plot Velocities '''
-    # Plot floating base velocities if applicable
-    if use_floating_base and plot_config.plot_floating_base_velocities:
-        mbp_plots.plot_floating_base_velocities(
-            robot_output, vel_names, 6, t_x_slice)
-
-    # Plot all joint velocities
-    if plot_config.plot_joint_positions:
-        mbp_plots.plot_joint_velocities(robot_output, vel_names,
-                                        6 if use_floating_base else 0,
-                                        t_x_slice)
-    # Plot specific velocities
-    if plot_config.vel_names:
-        mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
-                                          t_x_slice, vel_map)
-
-    ''' Plot Efforts '''
-    if plot_config.plot_measured_efforts:
-        mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
-    if plot_config.act_names:
-        mbp_plots.plot_measured_efforts_by_name(robot_output,
-                                                plot_config.act_names,
-                                                t_x_slice, act_map)
-
-    ''' Plot OSC '''
-    if plot_config.plot_qp_costs:
-        mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
-    if plot_config.plot_tracking_costs:
-        mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
-
-    if plot_config.tracking_datas_to_plot:
-        for traj_name, config in plot_config.tracking_datas_to_plot.items():
-            for deriv in config['derivs']:
-                for dim in config['dims']:
-                    mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
-                                                     deriv, t_osc_slice)
-
-    ''' Plot Foot Positions '''
-    if plot_config.foot_positions_to_plot:
-        _, pts_map = cassie_plots.get_toe_frames_and_points(plant)
-        foot_frames = []
-        dims = {}
-        pts = {}
-        for pos in plot_config.foot_positions_to_plot:
-            foot_frames.append('toe_' + pos)
-            dims['toe_' + pos] = plot_config.foot_xyz_to_plot[pos]
-            pts['toe_' + pos] = pts_map[plot_config.pt_on_foot_to_plot]
-
-        mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
-                                        foot_frames, pts, dims)
-
-    ''' Plot MPC solutions '''
-    for traj, config in plot_config.mpc_trajs_to_plot.items():
-        for dim in config['dims']:
-            mpc.plot_mpc_traj(mpc_data, traj, dim)
-
-    ''' Custom Plots '''
-    if plot_config.plot_momentum:
-        mbp_plots.plot_angular_momentum(robot_output, t_x_slice, plant, context,
-                                        [0, 1, 2])
-
-        mbp_plots.plot_angular_momentum_srbd(
-            osc_debug['osc_debug_tracking_datas']['orientation_traj'].ydot,
-            osc_debug['osc_debug_tracking_datas']['orientation_traj'].t,
-            t_osc_slice,
-            I_srbd, [0, 1, 2])
-
-        mbp_plots.plot_planned_linear_momentum(
-            osc_debug['osc_debug_tracking_datas']['com_traj'].ydot_des,
-            osc_debug['osc_debug_tracking_datas']['com_traj'].t,
-            t_osc_slice,
-            30.0218, [0, 1, 2])
-
-        mbp_plots.plot_linear_momentum(robot_output, t_x_slice, plant, context,
-                                       [0, 1, 2])
-    plt.show()
 
 
 if __name__ == '__main__':

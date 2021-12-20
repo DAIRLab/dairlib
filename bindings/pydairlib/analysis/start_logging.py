@@ -28,7 +28,7 @@ if __name__ == '__main__':
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
 
     os.chdir(logdir)
-    current_logs = glob.glob('lcmlog-*')
+    current_logs = sorted(glob.glob('lcmlog-*'))
     if current_logs:
         last_log = int(current_logs[-1].split('-')[-1])
         log_num = f'{last_log+1:02}'

@@ -94,6 +94,7 @@ script "cassie_walking" {
     stop cmd "1.start-logging" wait "stopped";
     stop cmd "1.simulator-floating" wait "stopped";
     stop cmd "2.srbd_mpc" wait "stopped";
+    stop cmd "2.srbd_mpc (residual)" wait "stopped";
     stop cmd "3.osc-mpc-tracking-controller (dispatched)" wait "stopped";
     restart cmd "2.srbd_mpc" wait "running";
     restart cmd "3.osc-mpc-tracking-controller (dispatched)" wait "running";
@@ -106,8 +107,9 @@ script "cassie_walking (residual)" {
     stop cmd "1.start-logging (residual)" wait "stopped";
     stop cmd "1.simulator-floating" wait "stopped";
     stop cmd "2.srbd_mpc" wait "stopped";
+    stop cmd "2.srbd_mpc (residual)" wait "stopped";
     stop cmd "3.osc-mpc-tracking-controller (dispatched)" wait "stopped";
-    restart cmd "2.srbd_mpc" wait "running";
+    restart cmd "2.srbd_mpc (residual)" wait "running";
     restart cmd "3.osc-mpc-tracking-controller (dispatched)" wait "running";
     restart cmd "1.start-logging (residual)" wait "running";
     wait ms 250;

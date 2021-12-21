@@ -18,7 +18,7 @@ from pydairlib.multibody.kinematic import DistanceEvaluator
 from pydairlib.cassie.cassie_utils import LeftLoopClosureEvaluator, RightLoopClosureEvaluator
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.math import RollPitchYaw as RPY
-import examples.Cassie.lstsq_srb_estimator
+import examples.Cassie.lstsq_srb_estimator as lstsq
 
 
 def get_x_and_xdot_from_plant_data(robot_output, vdot, plant, context):
@@ -107,6 +107,13 @@ def get_srb_input_traj(lambda_c, osc_debug):
     return {'t_u': lambda_c['t_lambda'], 'u': u}
 
 
+def get_srbd_modes(robot_output, osc_debug):
+    fsm_values = np.interp(robot_output['t_x'],
+                           osc_debug['t_osc'], osc_debug['fsm'])
+    modes = [ 0 if (mode == 0 or mode == 3)  else 1 for mode in fsm_values]
+    return {'t': robot_output['t_x'], 'mode': modes}
+
+
 def get_srb_stance_locations(robot_output, osc_debug, plant, context):
     frames, pts = cassie_plots.get_toe_frames_and_points(plant)
     mid = pts['mid']
@@ -125,6 +132,41 @@ def get_srb_stance_locations(robot_output, osc_debug, plant, context):
         else:
             p[i] = right_foot_pos[i]
     return {'t_p': robot_output['t_x'],  'p': p}
+
+
+def calc_error_norms(srb_data, srb_input, srb_stance, modes, dynamics, T, N):
+    states_and_steps = np.hstack((srb_data['x'], srb_stance['p']))
+    error_norm_nominal = []
+    error_norm_sparse_residual = []
+    error_norm_dense_residual = []
+
+    # TODO: calculate and store the norm of the (un)correctwd dynamics ad return
+    for i in range(0, N-T):
+        sparse_residual_dynamics = lstsq.sparse_residual_estimator(
+            states_and_steps[i:i+T],
+            srb_input['u'][i:i+T],
+            srb_data['xdot'][i:i+T],
+            modes['mode'][i:i+T],
+            dynamics
+        )
+        dense_residual_dynamics = lstsq.dense_residual_estimator(
+            states_and_steps[i:i+T],
+            srb_input['u'][i:i+T],
+            srb_data['xdot'][i:i+T],
+            modes['mode'][i:i+T],
+            dynamics
+        )
+
+
+def load_srb_dynamics():
+    dirname = "/home/brian/workspace/srb_dynamics/"
+    Al = np.loadtxt(dirname + "Al.csv", delimiter=',')
+    Bl = np.loadtxt(dirname + "Bl.csv", delimiter=',')
+    bl = np.loadtxt(dirname + "bl.csv", delimiter=',')
+    Ar = np.loadtxt(dirname + "Ar.csv", delimiter=',')
+    Br = np.loadtxt(dirname + "Br.csv", delimiter=',')
+    br = np.loadtxt(dirname + "br.csv", delimiter=',')
+    return [lstsq.LinearDynamics(Al, Bl, bl), lstsq.LinearDynamics(Ar, Br, br)]
 
 
 def main():
@@ -174,8 +216,10 @@ def main():
     srbd_stance = get_srb_stance_locations(robot_output, osc_debug,
                                            plant, context)
 
-    plt.plot(srbd_stance['t_p'], srbd_stance['p'])
-    plt.show()
+    dynamics = load_srb_dynamics()
+    calc_error_norms(srbd_data, srbd_input, srbd_stance,
+                     get_srbd_modes(robot_output, osc_debug),
+                     dynamics, 50, 2000)
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)

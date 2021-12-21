@@ -12,6 +12,15 @@ import mbp_plotting_utils as mbp_plots
 import mpc_debug as mpc
 
 
+def save_poses_to_csv(robot_output, dt,  filename):
+    t_vis = np.argwhere(np.isclose(np.fmod(robot_output['t_x'], dt),
+                                   np.zeros((robot_output['t_x'].size,)),
+                                   atol=.0001))
+    t_vis = np.ravel(t_vis)
+    q = robot_output['q'][t_vis, :]
+    np.savetxt(filename, q.T, delimiter=",")
+
+
 def main():
     config_file = \
         'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
@@ -44,6 +53,8 @@ def main():
                             {channel_mpc: dairlib.lcmt_saved_traj},
                             mpc.process_mpc_channel, channel_mpc)
 
+    save_poses_to_csv(robot_output, .35, "cassie_mpc_poses.csv")
+    quit()
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)

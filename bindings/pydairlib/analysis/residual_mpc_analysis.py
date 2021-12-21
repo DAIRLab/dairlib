@@ -12,6 +12,7 @@ import cassie_plotting_utils as cassie_plots
 import mbp_plotting_utils as mbp_plots
 import mpc_debug as mpc
 
+from pydairlib.common import plot_styler, plotting_utils
 from pydairlib.multibody.kinematic import DistanceEvaluator
 from pydairlib.cassie.cassie_utils import LeftLoopClosureEvaluator, RightLoopClosureEvaluator
 from pydrake.multibody.tree import JacobianWrtVariable
@@ -187,6 +188,39 @@ def calc_residual_smoothness(srb_data, srb_input, srb_stance,
             'dense': res_norm_dense}
 
 
+def calc_residual_norms(srb_data, srb_input, srb_stance,
+                        modes, dynamics, T, N):
+    states_and_steps = np.hstack((srb_data['x'], srb_stance['p']))
+    res_norm_sparse = {'A': [], 'B': [], 'b': []}
+    res_norm_dense = {'A': [], 'B': [], 'b': []}
+    for i in range(N-T):
+        if not i % 10:
+            print(i)
+        sparse_residual_dynamics = lstsq.sparse_residual_estimator(
+            states_and_steps[i:i+T],
+            srb_input['u'][i:i+T],
+            srb_data['xdot'][i:i+T],
+            modes[i:i+T],
+            dynamics
+        )
+        dense_residual_dynamics = lstsq.dense_residual_estimator(
+            states_and_steps[i:i+T],
+            srb_input['u'][i:i+T],
+            srb_data['xdot'][i:i+T],
+            modes[i:i+T],
+            dynamics
+        )
+        res_norm_sparse['A'].append(np.linalg.norm(sparse_residual_dynamics.A, ord="fro"))
+        res_norm_sparse['B'].append(np.linalg.norm(sparse_residual_dynamics.B, ord="fro"))
+        res_norm_sparse['b'].append(np.linalg.norm(sparse_residual_dynamics.b))
+        res_norm_dense['A'].append(np.linalg.norm(dense_residual_dynamics.A, ord="fro"))
+        res_norm_dense['B'].append(np.linalg.norm(dense_residual_dynamics.B, ord="fro"))
+        res_norm_dense['b'].append(np.linalg.norm(dense_residual_dynamics.b))
+
+    return {'sparse': res_norm_sparse,
+            'dense': res_norm_dense}
+
+
 def calc_error_norms(srb_data, srb_input, srb_stance, modes, dynamics, T, N):
     states_and_steps = np.hstack((srb_data['x'], srb_stance['p']))
     error_norm_nominal = []
@@ -213,14 +247,14 @@ def calc_error_norms(srb_data, srb_input, srb_stance, modes, dynamics, T, N):
             srb_input['u'][i:i+T],
             srb_data['xdot'][i:i+T],
             modes[i:i+T],
-            dynamics
+            dynamics, reg=0.2
         )
         dense_residual_dynamics = lstsq.dense_residual_estimator(
             states_and_steps[i:i+T],
             srb_input['u'][i:i+T],
             srb_data['xdot'][i:i+T],
             modes[i:i+T],
-            dynamics
+            dynamics, reg=0.2
         )
         actual_deriv = srb_data['xdot'][i+T]
         nominal_deriv = dynamics[modes[i+T]].forward(
@@ -301,23 +335,30 @@ def main():
     srbd_stance = get_srb_stance_locations(robot_output, osc_debug,
                                            plant, context)
 
-    T = 140
-    N = 2500
+    T = 210
+    N = 2800
     dynamics = load_srb_dynamics()
     modes = get_srbd_modes(robot_output, osc_debug)
     error_norms = calc_error_norms(srbd_data, srbd_input, srbd_stance,
                                    modes['mode'], dynamics, T, N)
-    delta_norms = calc_residual_smoothness(srbd_data, srbd_input, srbd_stance,
-                                           modes['mode'], dynamics, T, N)
-    normkeys = ['nominal', 'sparse', 'dense']
-    for key in normkeys:
-        plt.plot(error_norms['t'], error_norms[key])
-    plt.xlabel('Time (s)')
-    plt.ylabel('Norm of derivative error')
-    plt.legend(normkeys)
+    # delta_norms = calc_residual_smoothness(srbd_data, srbd_input, srbd_stance,
+    #                                        modes['mode'], dynamics, T, N)
+    # res_norms = calc_residual_norms(srbd_data, srbd_input, srbd_stance,
+    #                                 modes['mode'], dynamics, T, N)
 
-    plt.figure()
-    plt.plot(delta_norms['dense']['A'])
+    error_norm_keys = ['nominal', 'sparse', 'dense']
+    error_norm_legend = ['Nominal', 'Sparse Residual', 'Dense Residual']
+    ps1 = plot_styler.PlotStyler()
+    ps1.set_default_styling('/home/brian/classes/ese618hw/')
+    for key in error_norm_keys:
+        ps1.plot(error_norms['t'], error_norms[key])
+    ps1.add_legend(error_norm_legend)
+    plt.xlabel('Time (s)')
+    plt.ylabel('$|| \dot{x} - \dot{x}_{model} ||_{2}$')
+    plt.title('Dynamics error over 4 steps under closed loop MPC control')
+
+    res_norm_keys = ['sparse', 'dense']
+
     plt.show()
 
 if __name__ == '__main__':

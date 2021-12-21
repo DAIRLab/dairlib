@@ -618,6 +618,19 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "visualize_positions_csv",
+    srcs = ["visualize_positions_csv.cc"],
+    deps = [
+        "//common",
+        "//multibody:multipose_visualizer",
+        "//multibody:visualization_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
 cc_library(
     name = "cassie_encoder",
     srcs = ["cassie_encoder.cc"],

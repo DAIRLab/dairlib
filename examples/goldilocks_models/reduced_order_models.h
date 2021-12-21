@@ -251,6 +251,7 @@ class Lipm : public ReducedOrderModel {
   const drake::multibody::BodyFrame<double>& world() const { return world_; };
   const BodyPoint& stance_foot() const { return stance_contact_point_; };
   int world_dim() const { return world_dim_; };
+  int use_pelvis() const { return use_pelvis_; };
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -262,7 +263,7 @@ class Lipm : public ReducedOrderModel {
 
   // Testing
   BodyPoint pelvis_;
-  bool use_pelvis_ = false;
+  bool use_pelvis_;
 };
 
 /// Linear inverted pendulum model with swing foot (either 2D or 3D, determined

@@ -30,7 +30,7 @@ namespace dairlib {
 namespace goldilocks_models {
 
 // Testing flag
-bool use_pelvis = false;
+bool use_pelvis_global_var = false;
 // torso for five-link robot, and pelvis for Cassie
 std::string pelvis_body_name = "pelvis";  // "torso";
 
@@ -427,8 +427,7 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
            const BodyPoint& stance_contact_point,
            const MonomialFeatures& mapping_basis,
            const MonomialFeatures& dynamic_basis, int world_dim,
-           const std::set<int>& invariant_elements,
-           bool use_pelvis)
+           const std::set<int>& invariant_elements, bool use_pelvis)
     : ReducedOrderModel(world_dim, 0, MatrixX<double>::Zero(world_dim, 0),
                         world_dim + mapping_basis.length(),
                         (world_dim - 1) + dynamic_basis.length(), mapping_basis,
@@ -475,7 +474,8 @@ Lipm::Lipm(const Lipm& old_obj)
       is_quaternion_(isQuaternion(old_obj.plant())),
       world_dim_(old_obj.world_dim()),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
-          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))) {}
+          Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))),
+      use_pelvis_(old_obj.use_pelvis()) {}
 
 VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q,
                                       const Context<double>& context) const {
@@ -1185,7 +1185,8 @@ Gip::Gip(const MultibodyPlant<double>& plant,
   is_quaternion_ = isQuaternion(plant);
 
   // Get total mass of the robot
-  DRAKE_UNREACHABLE();  // I haven't tested CalcTotalMass(). I didn't initial the state here, becasue it's probably not necessary?
+  DRAKE_UNREACHABLE();  // I haven't tested CalcTotalMass(). I didn't initial
+                        // the state here, becasue it's probably not necessary?
   auto context = plant.CreateDefaultContext();
   total_mass_ = plant.CalcTotalMass(*context);
   cout << "total_mass_ = " << total_mass_ << endl;
@@ -1211,7 +1212,7 @@ VectorX<double> Gip::EvalMappingFeat(const VectorX<double>& q,
                                      const Context<double>& context) const {
   // Get CoM position
   VectorX<double> CoM(3);
-  if (use_pelvis) {
+  if (use_pelvis_global_var) {
     // testing using pelvis
     plant_.CalcPointsPositions(context, pelvis_.second, pelvis_.first,
                                plant_.world_frame(), &CoM);
@@ -1259,7 +1260,7 @@ VectorX<double> Gip::EvalMappingFeatJV(const VectorX<double>& q,
                                        const Context<double>& context) const {
   // Get CoM velocity
   VectorX<double> JV_CoM(3);
-  if (use_pelvis) {
+  if (use_pelvis_global_var) {
     // testing using pelvis
     MatrixX<double> J_com(3, plant_.num_velocities());
     plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
@@ -1292,7 +1293,7 @@ MatrixX<double> Gip::EvalMappingFeatJ(const VectorX<double>& q,
                                       const Context<double>& context) const {
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
-  if (use_pelvis) {
+  if (use_pelvis_global_var) {
     // testing using pelvis
     plant_.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable::kV,
                                              pelvis_.second, pelvis_.first,
@@ -1325,7 +1326,7 @@ VectorX<double> Gip::EvalMappingFeatJdotV(
     const Context<double>& context) const {
   // Get CoM JdotV
   VectorX<double> JdotV_com(3);
-  if (use_pelvis) {
+  if (use_pelvis_global_var) {
     // Testing: use pelvis origin
     JdotV_com = plant_.CalcBiasTranslationalAcceleration(
         context, JacobianWrtVariable::kV, pelvis_.second, pelvis_.first, world_,

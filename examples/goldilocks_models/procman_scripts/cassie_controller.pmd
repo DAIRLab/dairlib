@@ -115,7 +115,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame (1 solve)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=22";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=0";
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame (multiple solves)" {
@@ -123,7 +123,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.4. cassie planner pose (multi-pose); regularization poses" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --regularization_pose=true --only_start_and_end_poses=false --view_multipose_at_once=true --global=true --solve_idx=23";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --regularization_pose=true --only_start_and_end_poses=false --view_multipose_at_once=true --global=true --solve_idx=0";
         host = "localhost";
     }
     cmd "2.3. lipm state and input (need to run outside procman)" {

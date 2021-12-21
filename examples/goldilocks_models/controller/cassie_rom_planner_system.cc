@@ -247,6 +247,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     string dir_and_prefex_FOM = param_.dir_and_prefex_FOM.empty()
                                     ? model_dir_n_pref
                                     : param_.dir_and_prefex_FOM;
+    cout << "dir_and_prefex_FOM = " << dir_and_prefex_FOM << endl;
     VectorXd x_guess_right_in_front_pre =
         readCSV(dir_and_prefex_FOM + string("x_samples0.csv")).rightCols(1);
     VectorXd x_guess_right_in_front_post =

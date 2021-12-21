@@ -3,6 +3,9 @@
 #include <Eigen/Dense>
 
 #include "solvers/c3_options.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/solve.h"
 
 namespace dairlib {
 namespace solvers {
@@ -58,7 +61,7 @@ class C3 {
   						  Eigen::VectorXd* delta_n, Eigen::VectorXd* w_n);
 
   /// TODO: determine inputs/outputs
-  void SolveQP();
+  void SolveQP(const Eigen::MatrixXd& A,const Eigen::MatrixXd& B, const Eigen::MatrixXd& D, const Eigen::VectorXd& d, const int& n, const int& m,const int& k,const int& N, const Eigen::VectorXd& x0, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R, const Eigen::MatrixXd& G, const Eigen::MatrixXd& WD);
 
   /// TODO: determine inputs/outputs
   void SolveProjection();

@@ -1,4 +1,7 @@
 #include "solvers/c3.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/solve.h"
 
 namespace dairlib {
 namespace solvers {
@@ -54,13 +57,13 @@ VectorXd C3::Solve(const VectorXd& x0, const VectorXd& z0,
 void C3::ADMMStep(const VectorXd& z, const VectorXd& delta, const VectorXd& w, 
 								  VectorXd* z_n, VectorXd* delta_n, VectorXd* w_n) {
 	// TODO: SolveQP and SolveProjection are going to need the proper arguments
-	SolveQP();
+	//SolveQP();
 	SolveProjection();
 	// Update dual variables
 	// w_n* = ...
 }
 
-void C3::SolveQP() {
+void C3::SolveQP(const MatrixXd& A,const MatrixXd& B, const MatrixXd& D, const VectorXd& d, const int& n, const int& m,const int& k,const int& N, const VectorXd& x0, const MatrixXd& Q, const MatrixXd& R, const MatrixXd& G, const MatrixXd& WD ) {
 
     // TODO: fill this in, along with the arguments
     MathematicalProgram prog;
@@ -77,7 +80,7 @@ void C3::SolveQP() {
     MatrixXd DynEq3(n,TOT);
     DynEq3 << DynEq1, DynEq2;
 
-    //set up for dynamics constraints (A x_k + D \lambda_k + B u_k + z_k = x_{k+1})
+    //set up for dynamics constraints (A x_k + D \lambda_k + B u_k + d_k = x_{k+1})
     MatrixXd DynEq4;
     DynEq4 = MatrixXd::Zero(N*n,TOT);
     //Matrix to fill in
@@ -100,7 +103,7 @@ void C3::SolveQP() {
 
     for (int i = 0; i < N; i++) {
         //Matrix to fill in
-        beq.block(n*(i+1),0,n,1) = z[i];
+        beq.block(n*(i+1),0,n,1) = d[i];
         //beq.block(1,1,1,1) = 1;
     }
 

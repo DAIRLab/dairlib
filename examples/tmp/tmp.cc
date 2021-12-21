@@ -18,7 +18,6 @@ using drake::solvers::SolutionResult;
 using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
 using drake::solvers::Solve;
-//
 
 class C3 {
   public:

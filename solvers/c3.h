@@ -9,7 +9,8 @@ namespace solvers {
 class C3 {
  public:
 	/// Default constructor for time-varying LCS
-  /// TODO: add documentation
+  /// @param A, B, D, d Dynamics constraints x_{k+1} = A_k x_k + B_k u_k + D_k \lambda_k + d_k
+  /// @param E, F, H, c Complementarity constraints  0 <= \lambda_k \perp E_k x_k + F_k \lambda_k  + H_k u_k + c_k
 	C3(const std::vector<Eigen::MatrixXd>& A, const std::vector<Eigen::MatrixXd>& B,
 		 const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::VectorXd>& d,
 		 const std::vector<Eigen::MatrixXd>& E, const std::vector<Eigen::MatrixXd>& F,
@@ -65,7 +66,7 @@ class C3 {
 	/// TODO: determine inputs/outputs
 	/// I just include one argument here as an example
 	/// Virtual method, to be implemented by subclasses
-  virtual void SolveSingleProjection(const Eigen::MatrixXd& E);
+  virtual void SolveSingleProjection(const Eigen::MatrixXd& U, const Eigen::MatrixXd& delta_c, const Eigen::MatrixXd& E, const Eigen::MatrixXd& F, const Eigen::MatrixXd& c, const Eigen::MatrixXd& H);
 
  private:
  	const std::vector<Eigen::MatrixXd> A_;

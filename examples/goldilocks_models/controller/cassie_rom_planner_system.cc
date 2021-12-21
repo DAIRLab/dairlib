@@ -1154,14 +1154,16 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (log_data_and_check_solution_) {
     // Rotate from local to global
     MatrixXd global_regularization_state(nx_, param_.n_step + 1);
-    if (use_lipm_mpc_and_ik_) {
-      MatrixXd local_regu_state_augmented(nx_, param_.n_step + 1);
-      local_regu_state_augmented << x_init, local_regularization_state;
-      global_regularization_state = local_regu_state_augmented;
-      RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift,
-                                       local_regu_state_augmented,
-                                       &global_regularization_state);
+    MatrixXd local_regu_state_augmented(nx_, param_.n_step + 1);
+    local_regu_state_augmented.leftCols<1>() = x_init;
+    for (int i = 0; i < param_.n_step; i++) {
+      // We only save preimpact (since we assume 0 impact anyway)
+      local_regu_state_augmented.middleCols<1>(1 + i) = reg_x_FOM.at(2 * i);
     }
+    global_regularization_state = local_regu_state_augmented;
+    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift,
+                                     local_regu_state_augmented,
+                                     &global_regularization_state);
 
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, global_fsm_idx, x_init, init_phase,
@@ -1721,6 +1723,8 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
   writeCSV(dir_pref + "local_xf_FOM.csv", local_xf_FOM);
   writeCSV(dir_pref + "global_x0_FOM.csv", lightweight_saved_traj_.get_x0());
   writeCSV(dir_pref + "global_xf_FOM.csv", lightweight_saved_traj_.get_xf());
+  writeCSV(dir_pref + "global_regularization_x_FOM.csv",
+           global_regularization_x_FOM);
   writeCSV(dir_pref + "global_x_lipm.csv", global_x_lipm_);
   writeCSV(dir_pref + "global_u_lipm.csv", global_u_lipm_);
   if (use_lipm_mpc_and_ik_) {
@@ -1728,8 +1732,6 @@ void CassiePlannerWithMixedRomFom::SaveDataIntoFiles(
              global_preprocess_x_lipm_);
     writeCSV(dir_pref + "global_preprocess_u_lipm.csv",
              global_preprocess_u_lipm_);
-    writeCSV(dir_pref + "global_regularization_x_FOM.csv",
-             global_regularization_x_FOM);
   }
 
   /// Save files for reproducing the same result

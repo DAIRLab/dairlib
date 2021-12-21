@@ -120,8 +120,7 @@ def main():
 
 
 def PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end,
-    feet_pos_vec, feet_vel_vec, feet_vel_end,
-    start_with_left_stance=True):
+    feet_pos_vec, feet_vel_vec, feet_vel_end, start_with_left_stance=True):
   com_wrt_stance_foot_vec = np.zeros(com_vec.shape)
   comdot_wrt_stance_foot_vec = np.zeros(comdot_vec.shape)
   comdot_wrt_stance_foot_end = np.zeros(3)

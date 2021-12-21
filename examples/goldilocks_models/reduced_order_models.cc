@@ -440,7 +440,7 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
       world_dim_(world_dim),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
           Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))),
-      use_pelvis_(use_pelvis){
+      use_pelvis_(use_pelvis) {
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
 
   // Initialize model parameters (dependant on the feature vectors)

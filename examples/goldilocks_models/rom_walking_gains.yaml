@@ -88,7 +88,7 @@ max_lipm_step_length: 0.8
 
 back_limit_wrt_pelvis: -0.5
 front_limit_wrt_pelvis: 0.5
-right_limit_wrt_pelvis: 0.06
+right_limit_wrt_pelvis: 0.02  # 0.06  # This cannot be too big if we want to get desired pose as close to FOM trajopt's as possible (used in planner's regularization cost)
 left_limit_wrt_pelvis: 0.4
 
 ### Planner cost weight

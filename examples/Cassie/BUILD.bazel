@@ -654,6 +654,12 @@ py_binary(
     ],
 )
 
+py_library(
+    name = "lstsq_srb_estimator",
+    srcs = ["lstsq_srb_estimator.py"],
+    deps = [],
+)
+
 load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
 
 drake_runfiles_binary(

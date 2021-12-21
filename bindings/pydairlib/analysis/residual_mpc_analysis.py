@@ -18,6 +18,7 @@ from pydairlib.multibody.kinematic import DistanceEvaluator
 from pydairlib.cassie.cassie_utils import LeftLoopClosureEvaluator, RightLoopClosureEvaluator
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.math import RollPitchYaw as RPY
+import examples.Cassie.lstsq_srb_estimator
 
 
 def get_x_and_xdot_from_plant_data(robot_output, vdot, plant, context):
@@ -79,12 +80,51 @@ def process_lambda_channel(data, contact_channel):
                 lambdas[key][force_count[key]].append([0.0 for _ in range(3)])
                 force_count[key] = force_count[key] + 1
     for key in lambdas:
-        for forces in lambdas[key]:
-            lambdas[key] = np.array(forces)
-    lambda_l = np.hstack(lambdas["toe_left"])
-    lambda_r = np.hstack(lambdas["toe_right"])
+        lambdas[key] = np.hstack(
+            (np.array(lambdas[key][0]), np.array(lambdas[key][1])))
+
     return {'t_lambda': np.array(tl),
-            'lambda_toe_left': lambda_l, 'lambda_toe_right': lambda_r}
+            'lambda_toe_left': lambdas['toe_left'],
+            'lambda_toe_right': lambdas['toe_right']}
+
+
+def get_srb_input_traj(lambda_c, osc_debug):
+    fsm_values = np.interp(lambda_c['t_lambda'],
+                           osc_debug['t_osc'],
+                           osc_debug['fsm'])
+    l = 0.112/2.0
+    u = np.zeros((lambda_c['t_lambda'].size, 5))
+    for i in range(u.shape[0]):
+        if fsm_values[i] == 0 or fsm_values[i] == 3:
+            key = 'lambda_toe_left'
+        else:
+            key = 'lambda_toe_right'
+
+        u[i, :3] = lambda_c[key][i, :3] + lambda_c[key][i, 3:]
+        u[i, 3] = l * (lambda_c[key][i, 1] - lambda_c[key][i, 4])
+        u[i, 4] = l * (lambda_c[key][i, 5] - lambda_c[key][i, 2])
+
+    return {'t_u': lambda_c['t_lambda'], 'u': u}
+
+
+def get_srb_stance_locations(robot_output, osc_debug, plant, context):
+    frames, pts = cassie_plots.get_toe_frames_and_points(plant)
+    mid = pts['mid']
+    fsm_values = np.interp(robot_output['t_x'],
+                           osc_debug['t_osc'],
+                           osc_debug['fsm'])
+    p = np.zeros((robot_output['t_x'].size, 3))
+    left_foot_pos = mbp_plots.make_point_positions_from_q(
+        robot_output['q'], plant, context, frames['left'].body_frame(), mid)
+    right_foot_pos = mbp_plots.make_point_positions_from_q(
+        robot_output['q'], plant, context, frames['right'].body_frame(), mid)
+
+    for i in range(p.shape[0]):
+        if fsm_values[i] == 0 or fsm_values[i] == 3:
+            p[i] = left_foot_pos[i]
+        else:
+            p[i] = right_foot_pos[i]
+    return {'t_p': robot_output['t_x'],  'p': p}
 
 
 def main():
@@ -103,7 +143,6 @@ def main():
                       drake.lcmt_contact_results_for_viz}
     channel_vdot = {"CASSIE_VDOT":
                     drake.lcmt_scope}
-
 
     ''' Get the plant '''
     plant, context = cassie_plots.make_plant_and_context(
@@ -129,8 +168,13 @@ def main():
     vdot = get_log_data(log, channel_vdot,
                         process_vdot_channel, "CASSIE_VDOT")
 
-    srbd_data = get_x_and_xdot_from_plant_data(robot_output, vdot, plant, context)
+    srbd_data = get_x_and_xdot_from_plant_data(robot_output, vdot,
+                                               plant, context)
+    srbd_input = get_srb_input_traj(toe_forces, osc_debug)
+    srbd_stance = get_srb_stance_locations(robot_output, osc_debug,
+                                           plant, context)
 
+    plt.plot(srbd_stance['t_p'], srbd_stance['p'])
     plt.show()
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)

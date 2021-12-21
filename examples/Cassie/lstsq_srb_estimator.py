@@ -18,7 +18,7 @@ Estimates the residual dynamics in a dense way
 - stance_mode array(T, 1): which stance mode we are in
 - dt (double): the time between states x
 """
-def dense_residual_estimator(x, u, xdot, stance_modes, dynamics, dt = 1/2000.0):
+def dense_residual_estimator(x, u, xdot, stance_modes, dynamics, reg=0, dt = 1/2000.0):
     x = np.array(x)
     u = np.array(u)
     xdot = np.array(xdot)
@@ -39,7 +39,7 @@ def dense_residual_estimator(x, u, xdot, stance_modes, dynamics, dt = 1/2000.0):
 
     X_c = X[:-1,:]
     y_c = y[:-1,:]
-    soln = (np.linalg.pinv(X_c.T @ X_c + 0.1 * np.eye(X_c.shape[1])) @ X_c.T @ y_c).T
+    soln = (np.linalg.pinv(X_c.T @ X_c + reg * np.eye(X_c.shape[1])) @ X_c.T @ y_c).T
     A_hat = soln[:,:x.shape[1]]
     B_hat = soln[:,x.shape[1]:x.shape[1] + u.shape[1]]
     b_hat = soln[:,-1]
@@ -55,7 +55,7 @@ Requires the states to be ordered in a particular way.
 - stance_mode array(T, 1): which stance mode we are in
 - dt (double): the time between states x
 """
-def sparse_residual_estimator(x, u, xdot, stance_modes, dynamics, dt = 1/2000.0):
+def sparse_residual_estimator(x, u, xdot, stance_modes, dynamics, reg=0, dt = 1/2000.0):
     x = np.array(x)
     u = np.array(u)
     xdot = np.array(xdot)
@@ -98,10 +98,10 @@ def sparse_residual_estimator(x, u, xdot, stance_modes, dynamics, dt = 1/2000.0)
     y3_c = y3[:-1,:]
     y4_c = y4[:-1,:]
 
-    soln1 = (np.linalg.pinv(X1_c.T @ X1_c) @ X1_c.T @ y1_c).T
-    soln2 = (np.linalg.pinv(X2_c.T @ X2_c) @ X2_c.T @ y2_c).T
-    soln3 = (np.linalg.pinv(X3_c.T @ X3_c) @ X3_c.T @ y3_c).T
-    soln4 = (np.linalg.pinv(X4_c.T @ X4_c) @ X4_c.T @ y4_c).T
+    soln1 = (np.linalg.pinv(X1_c.T @ X1_c + reg * np.eye(X1_c.shape[1])) @ X1_c.T @ y1_c).T
+    soln2 = (np.linalg.pinv(X2_c.T @ X2_c + reg * np.eye(X2_c.shape[1])) @ X2_c.T @ y2_c).T
+    soln3 = (np.linalg.pinv(X3_c.T @ X3_c + reg * np.eye(X3_c.shape[1])) @ X3_c.T @ y3_c).T
+    soln4 = (np.linalg.pinv(X4_c.T @ X4_c + reg * np.eye(X4_c.shape[1])) @ X4_c.T @ y4_c).T
 
     A = np.zeros((12, 15))
     B = np.zeros((12, 5))

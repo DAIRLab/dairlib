@@ -137,12 +137,12 @@ int DoMain(int argc, char* argv[]) {
       mass, 0, BipedStance::kRight,
       I_rot, des_com_pos, right_neutral_foot_pos, &Ar, &Br, &br);
 
-//  writeCSV("/home/brian/workspace/srb_dynamics/Al.csv", Al);
-//  writeCSV("/home/brian/workspace/srb_dynamics/Bl.csv", Bl);
-//  writeCSV("/home/brian/workspace/srb_dynamics/bl.csv", bl);
-//  writeCSV("/home/brian/workspace/srb_dynamics/Ar.csv", Ar);
-//  writeCSV("/home/brian/workspace/srb_dynamics/Br.csv", Br);
-//  writeCSV("/home/brian/workspace/srb_dynamics/br.csv", br);
+  writeCSV("/home/brian/workspace/srb_dynamics/Al.csv", Al);
+  writeCSV("/home/brian/workspace/srb_dynamics/Bl.csv", Bl);
+  writeCSV("/home/brian/workspace/srb_dynamics/bl.csv", bl);
+  writeCSV("/home/brian/workspace/srb_dynamics/Ar.csv", Ar);
+  writeCSV("/home/brian/workspace/srb_dynamics/Br.csv", Br);
+  writeCSV("/home/brian/workspace/srb_dynamics/br.csv", br);
 
   LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};
   LinearSrbdDynamics right_stance_dynamics = {Ar, Br, br};

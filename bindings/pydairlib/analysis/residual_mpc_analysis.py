@@ -1,5 +1,3 @@
-import pdb
-
 import sys
 import lcm
 import matplotlib.pyplot as plt
@@ -134,28 +132,115 @@ def get_srb_stance_locations(robot_output, osc_debug, plant, context):
     return {'t_p': robot_output['t_x'],  'p': p}
 
 
-def calc_error_norms(srb_data, srb_input, srb_stance, modes, dynamics, T, N):
+def calc_residual_smoothness(srb_data, srb_input, srb_stance,
+                             modes, dynamics, T, N):
     states_and_steps = np.hstack((srb_data['x'], srb_stance['p']))
-    error_norm_nominal = []
-    error_norm_sparse_residual = []
-    error_norm_dense_residual = []
-
-    # TODO: calculate and store the norm of the (un)correctwd dynamics ad return
-    for i in range(0, N-T):
+    res_norm_sparse = {'A': [], 'B': [], 'b': []}
+    res_norm_dense = {'A': [], 'B': [], 'b': []}
+    prev_sparse = lstsq.sparse_residual_estimator(
+        states_and_steps[:T],
+        srb_input['u'][:T],
+        srb_data['xdot'][:T],
+        modes[:T],
+        dynamics
+    )
+    prev_dense = lstsq.dense_residual_estimator(
+        states_and_steps[:T],
+        srb_input['u'][:T],
+        srb_data['xdot'][:T],
+        modes[:T],
+        dynamics
+    )
+    for i in range(1, N-T):
+        if not i % 10:
+            print(i)
         sparse_residual_dynamics = lstsq.sparse_residual_estimator(
             states_and_steps[i:i+T],
             srb_input['u'][i:i+T],
             srb_data['xdot'][i:i+T],
-            modes['mode'][i:i+T],
+            modes[i:i+T],
             dynamics
         )
         dense_residual_dynamics = lstsq.dense_residual_estimator(
             states_and_steps[i:i+T],
             srb_input['u'][i:i+T],
             srb_data['xdot'][i:i+T],
-            modes['mode'][i:i+T],
+            modes[i:i+T],
             dynamics
         )
+        res_norm_sparse['A'].append(np.linalg.norm(sparse_residual_dynamics.A -
+                                                   prev_sparse.A, ord="fro"))
+        res_norm_sparse['B'].append(np.linalg.norm(sparse_residual_dynamics.B -
+                                                   prev_sparse.B, ord="fro"))
+        res_norm_sparse['b'].append(np.linalg.norm(sparse_residual_dynamics.b -
+                                                   prev_sparse.b))
+        res_norm_dense['A'].append(np.linalg.norm(dense_residual_dynamics.A -
+                                                  prev_dense.A, ord="fro"))
+        res_norm_dense['B'].append(np.linalg.norm(dense_residual_dynamics.B -
+                                                  prev_dense.B, ord="fro"))
+        res_norm_dense['b'].append(np.linalg.norm(dense_residual_dynamics.b -
+                                                  prev_dense.b))
+        prev_sparse = sparse_residual_dynamics
+        prev_dense = dense_residual_dynamics
+
+    return {'sparse': res_norm_sparse,
+            'dense': res_norm_dense}
+
+
+def calc_error_norms(srb_data, srb_input, srb_stance, modes, dynamics, T, N):
+    states_and_steps = np.hstack((srb_data['x'], srb_stance['p']))
+    error_norm_nominal = []
+    error_norm_sparse_residual = []
+    error_norm_dense_residual = []
+    timestamps = []
+    for i in range(T):
+        nominal_dynamics = dynamics[modes[i+T]].forward(states_and_steps[i],
+                                                        srb_input['u'][i])
+        actual_dynamics = srb_data['xdot'][i]
+        error_norm_sparse_residual.append(
+            np.linalg.norm(nominal_dynamics - actual_dynamics))
+        error_norm_dense_residual.append(
+            np.linalg.norm(nominal_dynamics - actual_dynamics))
+        error_norm_nominal.append(
+            np.linalg.norm(nominal_dynamics - actual_dynamics))
+        timestamps.append(srb_data['t_x'][i])
+
+    for i in range(N-T):
+        if not i % 10:
+            print(i)
+        sparse_residual_dynamics = lstsq.sparse_residual_estimator(
+            states_and_steps[i:i+T],
+            srb_input['u'][i:i+T],
+            srb_data['xdot'][i:i+T],
+            modes[i:i+T],
+            dynamics
+        )
+        dense_residual_dynamics = lstsq.dense_residual_estimator(
+            states_and_steps[i:i+T],
+            srb_input['u'][i:i+T],
+            srb_data['xdot'][i:i+T],
+            modes[i:i+T],
+            dynamics
+        )
+        actual_deriv = srb_data['xdot'][i+T]
+        nominal_deriv = dynamics[modes[i+T]].forward(
+            states_and_steps[i+T], srb_input['u'][i+T])
+        sparse_residual_deriv = sparse_residual_dynamics.forward(
+            states_and_steps[i+T], srb_input['u'][i+T])
+        dense_residual_deriv = dense_residual_dynamics.forward(
+            states_and_steps[i+T], srb_input['u'][i+T])
+
+        error_norm_nominal.append(np.linalg.norm(nominal_deriv - actual_deriv))
+        error_norm_dense_residual.append(
+            np.linalg.norm((nominal_deriv+dense_residual_deriv) - actual_deriv))
+        error_norm_sparse_residual.append(
+            np.linalg.norm((nominal_deriv + sparse_residual_deriv) - actual_deriv))
+        timestamps.append(srb_data['t_x'][i+T])
+
+    return {'t': timestamps,
+            'nominal': np.array(error_norm_nominal),
+            'sparse':  np.array(error_norm_sparse_residual),
+            'dense':  np.array(error_norm_dense_residual)}
 
 
 def load_srb_dynamics():
@@ -216,14 +301,24 @@ def main():
     srbd_stance = get_srb_stance_locations(robot_output, osc_debug,
                                            plant, context)
 
+    T = 140
+    N = 2500
     dynamics = load_srb_dynamics()
-    calc_error_norms(srbd_data, srbd_input, srbd_stance,
-                     get_srbd_modes(robot_output, osc_debug),
-                     dynamics, 50, 2000)
-    # Define x time slice
-    t_x_slice = slice(robot_output['t_x'].size)
-    t_osc_slice = slice(osc_debug['t_osc'].size)
+    modes = get_srbd_modes(robot_output, osc_debug)
+    error_norms = calc_error_norms(srbd_data, srbd_input, srbd_stance,
+                                   modes['mode'], dynamics, T, N)
+    delta_norms = calc_residual_smoothness(srbd_data, srbd_input, srbd_stance,
+                                           modes['mode'], dynamics, T, N)
+    normkeys = ['nominal', 'sparse', 'dense']
+    for key in normkeys:
+        plt.plot(error_norms['t'], error_norms[key])
+    plt.xlabel('Time (s)')
+    plt.ylabel('Norm of derivative error')
+    plt.legend(normkeys)
 
+    plt.figure()
+    plt.plot(delta_norms['dense']['A'])
+    plt.show()
 
 if __name__ == '__main__':
     main()

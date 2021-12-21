@@ -959,7 +959,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
       plt.savefig("%scost_landscape_iter%s_ph%.2f.png" % (eval_dir, app_list[i], task_slice_value_ph))
 
 
-def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
+def ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_average):
   if len(stride_length_range_to_average) == 0:
     return
   elif len(stride_length_range_to_average) != 2:
@@ -971,12 +971,15 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
 
   interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
 
+  # Trim model iteration list with final_iter_ave_cost
+  model_indices_cp = [i for i in model_indices if i <= final_iter_ave_cost]
+
   # Correct the range so that it's within the achieveable task space for all model iter
   viable_min = -math.inf
   viable_max = math.inf
-  effective_length = len(model_indices)
-  for i in range(len(model_indices)):
-    model_iter = model_indices[i]
+  effective_length = len(model_indices_cp)
+  for i in range(len(model_indices_cp)):
+    model_iter = model_indices_cp[i]
     try:
       n_sample = 1000
       m = model_iter * np.ones(n_sample)
@@ -1002,7 +1005,7 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
   n_sample = 500
   averaged_cost = np.zeros(effective_length)
   for i in range(effective_length):
-    model_iter = model_indices[i]
+    model_iter = model_indices_cp[i]
     # The line along which we evaluate the cost (using interpolation)
     m = model_iter * np.ones(n_sample)
     t_sl = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
@@ -1012,14 +1015,14 @@ def ComputeExpectedCostOverTask(cmt, stride_length_range_to_average):
     averaged_cost[i] = z.sum() / n_sample
 
   plt.figure(figsize=(6.4, 4.8))
-  plt.plot(model_indices[:effective_length], averaged_cost, 'k-', linewidth=3)
+  plt.plot(model_indices_cp[:effective_length], averaged_cost, 'k-', linewidth=3)
   plt.xlabel('model iteration')
   plt.ylabel('averaged cost')
   plt.title("Cost averaged over stride length [%.3f, %.3f] m" % tuple(stride_length_range_to_average))
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%saveraged_cost_vs_model_iter_ph%.2f.png" % (eval_dir, task_slice_value_ph))
+    plt.savefig("%save_cost_vs_model_iter_range_%.2fto%.2f_ph%.2f.png" % (eval_dir, stride_length_range_to_average[0], stride_length_range_to_average[1], task_slice_value_ph))
 
 
 def ComputeAchievableTaskRangeOverIter(cmt):
@@ -1256,8 +1259,9 @@ if __name__ == "__main__":
   # color_names = ["k", "maroon"]
 
   # Expected (averaged) cost over a task range
-  stride_length_range_to_average = [-0.2, 0.2]
-  # stride_length_range_to_average = [0.2, 0.3]
+  stride_length_range_to_average = [-0.4, 0.4]
+  # stride_length_range_to_average = [0.2, 0.4]
+  final_iter_ave_cost = 30
 
   ### Set up environment
 
@@ -1375,7 +1379,7 @@ if __name__ == "__main__":
   Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal)
 
   ### Compute expected (averaged) cost
-  ComputeExpectedCostOverTask(cmt, stride_length_range_to_average)
+  ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_average)
 
   ### Compute task range over iteration
   ComputeAchievableTaskRangeOverIter(cmt)

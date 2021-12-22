@@ -193,6 +193,7 @@ def calc_residual_norms(srb_data, srb_input, srb_stance,
     states_and_steps = np.hstack((srb_data['x'], srb_stance['p']))
     res_norm_sparse = {'A': [], 'B': [], 'b': []}
     res_norm_dense = {'A': [], 'B': [], 'b': []}
+    timestamps = []
     for i in range(N-T):
         if not i % 10:
             print(i)
@@ -201,14 +202,14 @@ def calc_residual_norms(srb_data, srb_input, srb_stance,
             srb_input['u'][i:i+T],
             srb_data['xdot'][i:i+T],
             modes[i:i+T],
-            dynamics
+            dynamics, reg=0.2
         )
         dense_residual_dynamics = lstsq.dense_residual_estimator(
             states_and_steps[i:i+T],
             srb_input['u'][i:i+T],
             srb_data['xdot'][i:i+T],
             modes[i:i+T],
-            dynamics
+            dynamics, reg=0.2
         )
         res_norm_sparse['A'].append(np.linalg.norm(sparse_residual_dynamics.A, ord="fro"))
         res_norm_sparse['B'].append(np.linalg.norm(sparse_residual_dynamics.B, ord="fro"))
@@ -216,8 +217,10 @@ def calc_residual_norms(srb_data, srb_input, srb_stance,
         res_norm_dense['A'].append(np.linalg.norm(dense_residual_dynamics.A, ord="fro"))
         res_norm_dense['B'].append(np.linalg.norm(dense_residual_dynamics.B, ord="fro"))
         res_norm_dense['b'].append(np.linalg.norm(dense_residual_dynamics.b))
+        timestamps.append(srb_data['t_x'][i+T])
 
-    return {'sparse': res_norm_sparse,
+    return {'t': timestamps,
+            'sparse': res_norm_sparse,
             'dense': res_norm_dense}
 
 
@@ -335,30 +338,45 @@ def main():
     srbd_stance = get_srb_stance_locations(robot_output, osc_debug,
                                            plant, context)
 
-    T = 210
+    T = 140
     N = 2800
     dynamics = load_srb_dynamics()
     modes = get_srbd_modes(robot_output, osc_debug)
-    error_norms = calc_error_norms(srbd_data, srbd_input, srbd_stance,
-                                   modes['mode'], dynamics, T, N)
+    # error_norms = calc_error_norms(srbd_data, srbd_input, srbd_stance,
+    #                                modes['mode'], dynamics, T, N)
     # delta_norms = calc_residual_smoothness(srbd_data, srbd_input, srbd_stance,
     #                                        modes['mode'], dynamics, T, N)
-    # res_norms = calc_residual_norms(srbd_data, srbd_input, srbd_stance,
-    #                                 modes['mode'], dynamics, T, N)
+    res_norms = calc_residual_norms(srbd_data, srbd_input, srbd_stance,
+                                    modes['mode'], dynamics, T, N)
 
-    error_norm_keys = ['nominal', 'sparse', 'dense']
-    error_norm_legend = ['Nominal', 'Sparse Residual', 'Dense Residual']
-    ps1 = plot_styler.PlotStyler()
-    ps1.set_default_styling('/home/brian/classes/ese618hw/')
-    for key in error_norm_keys:
-        ps1.plot(error_norms['t'], error_norms[key])
-    ps1.add_legend(error_norm_legend)
-    plt.xlabel('Time (s)')
-    plt.ylabel('$|| \dot{x} - \dot{x}_{model} ||_{2}$')
-    plt.title('Dynamics error over 4 steps under closed loop MPC control')
+    # error_norm_keys = ['nominal', 'sparse', 'dense']
+    # error_norm_legend = ['Nominal', 'Sparse Residual', 'Dense Residual']
+    # ps1 = plot_styler.PlotStyler()
+    # ps1.set_default_styling('/home/brian/classes/ese618hw/')
+    # for key in error_norm_keys:
+    #     ps1.plot(error_norms['t'], error_norms[key])
+    # ps1.add_legend(error_norm_legend, loc=2)
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('$|| \dot{x} - \dot{x}_{model} ||_{2}$')
+    # plt.title('Dynamics error over 4 steps under\nclosed loop MPC control')
 
     res_norm_keys = ['sparse', 'dense']
+    res_norm_legends = {'A': ['$||\hat{A}_{sparse}||_{F}$',
+                              '$||\hat{A}_{dense}||_{F}$'],
+                        'B': ['$||\hat{B}_{sparse}||_{F}$',
+                              '$||\hat{B}_{dense}||_{F}$'],
+                        'b': ['$||\hat{b}_{sparse}||_{2}$',
+                              '$||\hat{b}_{dense}||_{2}$']}
 
+    res_norm_stylers = {}
+    for mat in ['A', 'B', 'b']:
+        res_norm_stylers[mat] = plot_styler.PlotStyler()
+        for key in res_norm_keys:
+            res_norm_stylers[mat].plot(res_norms['t'], res_norms[key][mat])
+        plt.xlabel('Time (s)')
+        plt.ylabel(f'$||\hat{{{mat}}}||$')
+        plt.title(f'$\hat{{{mat}}}$ Norm Over 4 Steps')
+        res_norm_stylers[mat].add_legend(res_norm_legends[mat], loc=0)
     plt.show()
 
 if __name__ == '__main__':

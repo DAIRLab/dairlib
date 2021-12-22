@@ -101,6 +101,7 @@ int DoMain(int argc, char* argv[]) {
   Vector3d left_safe_nominal_foot_pos = {0, 0.125, 0};
   Vector3d right_neutral_foot_pos = -left_neutral_foot_pos;
   Vector3d right_safe_nominal_foot_pos = -left_safe_nominal_foot_pos;
+
   Matrix3d I_rot = Vector3d(0.91, 0.55, 0.89).asDiagonal();
 //  I_rot << 0.91, 0.04, 0.09, 0.04, 0.55, -0.001, 0.08, -0.001, 0.89;
   std::cout << "I:\n" << I_rot <<std::endl;
@@ -130,12 +131,18 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd Br = MatrixXd::Zero(nx, nu);
   VectorXd br = VectorXd::Zero(nx);
 
+  Vector3d left_lambda_eq = (des_com_pos - left_neutral_foot_pos).normalized();
+  left_lambda_eq *= ((mass * 9.81) / left_lambda_eq(2));
+  Vector3d right_lambda_eq = (des_com_pos - right_neutral_foot_pos).normalized();
+  right_lambda_eq *= ((mass * 9.81) / right_lambda_eq(2));
+  Eigen::Vector2d tq_eq = Eigen::Vector2d::Zero();
+
   srb_plant.CopyContinuousLinearized3dSrbDynamicsForMPC(
-      mass, 0, BipedStance::kLeft,
-      I_rot, des_com_pos, left_neutral_foot_pos, &Al, &Bl, &bl);
+      mass, 0, BipedStance::kLeft, I_rot, des_com_pos,
+      left_neutral_foot_pos, left_lambda_eq, tq_eq, &Al, &Bl, &bl);
   srb_plant.CopyContinuousLinearized3dSrbDynamicsForMPC(
-      mass, 0, BipedStance::kRight,
-      I_rot, des_com_pos, right_neutral_foot_pos, &Ar, &Br, &br);
+      mass, 0, BipedStance::kRight, I_rot, des_com_pos,
+      right_neutral_foot_pos, right_lambda_eq, tq_eq, &Ar, &Br, &br);
 
   writeCSV("/home/brian/workspace/srb_dynamics/Al.csv", Al);
   writeCSV("/home/brian/workspace/srb_dynamics/Bl.csv", Bl);

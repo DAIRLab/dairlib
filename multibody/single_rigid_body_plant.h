@@ -40,6 +40,8 @@ namespace multibody {
         const Eigen::MatrixXd &b_I,
         const Eigen::Vector3d &eq_com_pos,
         const Eigen::Vector3d &eq_foot_pos,
+        const Eigen::Vector3d &eq_lambda,
+        const Eigen::Vector2d &eq_tq_yaw_pitch,
         const drake::EigenPtr<Eigen::MatrixXd> &A,
         const drake::EigenPtr<Eigen::MatrixXd> &B,
         const drake::EigenPtr<Eigen::VectorXd> &b);
@@ -49,6 +51,8 @@ namespace multibody {
         const Eigen::MatrixXd &b_I,
         const Eigen::Vector3d &eq_com_pos,
         const Eigen::Vector3d &eq_foot_pos,
+        const Eigen::Vector3d &eq_lambda,
+        const Eigen::Vector2d &eq_tq_yaw_pitch,
         const drake::EigenPtr<Eigen::MatrixXd> &Ad,
         const drake::EigenPtr<Eigen::MatrixXd> &Bd,
         const drake::EigenPtr<Eigen::VectorXd> &bd);

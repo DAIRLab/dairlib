@@ -2520,6 +2520,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // number of successful sample
       int n_succ_sample = successful_idx_list.size();
 
+      // Ensure that the QP approximations are all assigned (added checks here
+      // so that we can debug in the future faster)
+      for (auto idx : successful_idx_list) {
+        // We only checked B matrix.
+        // The number of cols (n_theta) should never be 0 if B was assigned.
+        DRAKE_DEMAND(QPs.B_vec[idx]->cols() > 0);
+      }
+
       // TODO: we only consider successful samples here. double check if the
       //  following implementation is correct
 

@@ -20,7 +20,7 @@ from pydrake.math import RollPitchYaw as RPY
 import examples.Cassie.lstsq_srb_estimator as lstsq
 
 
-def get_x_and_xdot_from_plant_data(robot_output, vdot, plant, context):
+def get_x_and_xdot_from_plant_data(robot_output, vdot, plant, context, sigma):
     nx = 12
     x = np.zeros((robot_output['t_x'].shape[0], nx))
     xdot = np.zeros(x.shape)
@@ -50,6 +50,8 @@ def get_x_and_xdot_from_plant_data(robot_output, vdot, plant, context):
 
         x[i] = np.vstack((p_com, theta_pelvis, v_com, omega_pelvis)).ravel()
         xdot[i] = np.vstack((v_com, omega_pelvis, a_com, a_pelvis)).ravel()
+
+    xdot = xdot + np.random.normal(0, sigma, xdot.shape)
 
     return {'t_x': robot_output['t_x'], 'x': x, 'xdot': xdot}
 
@@ -109,7 +111,7 @@ def get_srb_input_traj(lambda_c, osc_debug):
 def get_srbd_modes(robot_output, osc_debug):
     fsm_values = np.interp(robot_output['t_x'],
                            osc_debug['t_osc'], osc_debug['fsm'])
-    modes = [ 0 if (mode == 0 or mode == 3)  else 1 for mode in fsm_values]
+    modes = [ 0 if (mode == 0 or mode == 3) else 1 for mode in fsm_values]
     return {'t': robot_output['t_x'], 'mode': modes}
 
 
@@ -333,21 +335,47 @@ def main():
                         process_vdot_channel, "CASSIE_VDOT")
 
     srbd_data = get_x_and_xdot_from_plant_data(robot_output, vdot,
-                                               plant, context)
+                                               plant, context, 0)
     srbd_input = get_srb_input_traj(toe_forces, osc_debug)
     srbd_stance = get_srb_stance_locations(robot_output, osc_debug,
                                            plant, context)
 
-    T = 140
-    N = 2800
     dynamics = load_srb_dynamics()
     modes = get_srbd_modes(robot_output, osc_debug)
+
+    N = 1400
+    error_norm_list =[]
+    Ts = [25, 50, 100, 200]
+    for T in Ts:
+        error_norms = calc_error_norms(srbd_data, srbd_input, srbd_stance,
+                                       modes['mode'], dynamics, T, N)
+        error_norm_list.append(error_norms)
+
+    fig, axs = plt.subplots(2, 2)
+    ps = plot_styler.PlotStyler(fig)
+    ps.set_default_styling('/home/brian/classes/ese618hw/')
+    for i, err in enumerate(error_norm_list):
+        y = min(max(i-1, 0), 1)
+        x = i % 2
+        axs[y, x].plot(err['t'], err['nominal'])
+        axs[y, x].plot(err['t'], err['sparse'])
+        axs[y, x].plot(err['t'], err['dense'])
+        axs[y, x].set_ylim([-10, 100])
+        axs[y, x].title.set_text(f'$T$ = {Ts[i]} Steps')
+
+    axs[0, 0].set_ylabel('$|| \dot{x} - \dot{x}_{model} ||_{2}$')
+    axs[1, 0].set_ylabel('$|| \dot{x} - \dot{x}_{model} ||_{2}$')
+    axs[1, 0].set_xlabel('Time (s)')
+    axs[1, 1].set_xlabel('Time (s)')
+    axs[0, 0].xaxis.set_ticklabels([])
+    axs[0, 1].xaxis.set_ticklabels([])
+    # T = 140
     # error_norms = calc_error_norms(srbd_data, srbd_input, srbd_stance,
     #                                modes['mode'], dynamics, T, N)
     # delta_norms = calc_residual_smoothness(srbd_data, srbd_input, srbd_stance,
     #                                        modes['mode'], dynamics, T, N)
-    res_norms = calc_residual_norms(srbd_data, srbd_input, srbd_stance,
-                                    modes['mode'], dynamics, T, N)
+    # res_norms = calc_residual_norms(srbd_data, srbd_input, srbd_stance,
+    #                                 modes['mode'], dynamics, T, N)
 
     # error_norm_keys = ['nominal', 'sparse', 'dense']
     # error_norm_legend = ['Nominal', 'Sparse Residual', 'Dense Residual']
@@ -360,23 +388,23 @@ def main():
     # plt.ylabel('$|| \dot{x} - \dot{x}_{model} ||_{2}$')
     # plt.title('Dynamics error over 4 steps under\nclosed loop MPC control')
 
-    res_norm_keys = ['sparse', 'dense']
-    res_norm_legends = {'A': ['$||\hat{A}_{sparse}||_{F}$',
-                              '$||\hat{A}_{dense}||_{F}$'],
-                        'B': ['$||\hat{B}_{sparse}||_{F}$',
-                              '$||\hat{B}_{dense}||_{F}$'],
-                        'b': ['$||\hat{b}_{sparse}||_{2}$',
-                              '$||\hat{b}_{dense}||_{2}$']}
-
-    res_norm_stylers = {}
-    for mat in ['A', 'B', 'b']:
-        res_norm_stylers[mat] = plot_styler.PlotStyler()
-        for key in res_norm_keys:
-            res_norm_stylers[mat].plot(res_norms['t'], res_norms[key][mat])
-        plt.xlabel('Time (s)')
-        plt.ylabel(f'$||\hat{{{mat}}}||$')
-        plt.title(f'$\hat{{{mat}}}$ Norm Over 4 Steps')
-        res_norm_stylers[mat].add_legend(res_norm_legends[mat], loc=0)
+    # res_norm_keys = ['sparse', 'dense']
+    # res_norm_legends = {'A': ['$||\hat{A}_{sparse}||_{F}$',
+    #                           '$||\hat{A}_{dense}||_{F}$'],
+    #                     'B': ['$||\hat{B}_{sparse}||_{F}$',
+    #                           '$||\hat{B}_{dense}||_{F}$'],
+    #                     'b': ['$||\hat{b}_{sparse}||_{2}$',
+    #                           '$||\hat{b}_{dense}||_{2}$']}
+    #
+    # res_norm_stylers = {}
+    # for mat in ['A', 'B', 'b']:
+    #     res_norm_stylers[mat] = plot_styler.PlotStyler()
+    #     for key in res_norm_keys:
+    #         res_norm_stylers[mat].plot(res_norms['t'], res_norms[key][mat])
+    #     plt.xlabel('Time (s)')
+    #     plt.ylabel(f'$||\hat{{{mat}}}||$')
+    #     plt.title(f'$\hat{{{mat}}}$ Norm Over 4 Steps')
+    #     res_norm_stylers[mat].add_legend(res_norm_legends[mat], loc=0)
     plt.show()
 
 if __name__ == '__main__':

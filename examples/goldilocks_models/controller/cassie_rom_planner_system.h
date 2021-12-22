@@ -65,6 +65,11 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
     return this->get_input_port(planner_final_pos_port_);
   }
 
+  // Testing
+  void completely_use_trajs_from_model_opt_as_target() {
+    completely_use_trajs_from_model_opt_as_target_ = true;
+  }
+
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
@@ -111,6 +116,9 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // not able to find the optimal solution from time to time
   bool warm_start_with_previous_solution_ = true;
   bool use_lipm_mpc_and_ik_;
+
+  // For sim eval (to remove trajopt-sim gap as much as possible)
+  bool completely_use_trajs_from_model_opt_as_target_ = false;
 
   // Since sometimes the planner replan every 1ms in the beginning of the
   // simulation (e.g. at 0, 1, 2 ms), we use

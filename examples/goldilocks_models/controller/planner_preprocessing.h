@@ -141,6 +141,15 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
     return this->get_output_port(adjustment_port_);
   }
 
+  // Testing
+  void completely_use_trajs_from_model_opt_as_target(
+      const drake::trajectories::PiecewisePolynomial<double>& x_traj) {
+    completely_use_trajs_from_model_opt_as_target_ = true;
+    x_traj_ = &x_traj;
+  }
+  bool completely_use_trajs_from_model_opt_as_target_ = false;
+  const drake::trajectories::PiecewisePolynomial<double>* x_traj_;
+
  private:
   void CopyAdjustedState(const drake::systems::Context<double>& context,
                          systems::OutputVector<double>* output) const;

@@ -142,6 +142,8 @@ DEFINE_double(yaw_disturbance, 0,
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
 DEFINE_string(path_wait_identifier, "", "");
 
+DEFINE_bool(completely_use_trajs_from_model_opt_as_target, false, "");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -180,6 +182,9 @@ int DoMain(int argc, char* argv[]) {
   }
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 
+  if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
+    DRAKE_DEMAND(FLAGS_dir_and_prefex_FOM.empty());
+  }
   if (!FLAGS_dir_and_prefex_FOM.empty()) {
     cout << "dir_and_prefex_FOM is specified, so we won't have any target ROM "
             "traj in the regularization term\n";
@@ -272,6 +277,23 @@ int DoMain(int argc, char* argv[]) {
   writeCSV(param.dir_data + string("nodes_per_step.csv"),
            param.knots_per_mode * VectorXd::Ones(1));
 
+  //
+  PiecewisePolynomial<double> x_traj;
+  MatrixXd x_samples0;
+  if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
+    std::string model_dir_n_pref = param.dir_model + to_string(param.iter) +
+                                   string("_") + to_string(param.sample) +
+                                   string("_");
+    DRAKE_DEMAND(file_exist(model_dir_n_pref + "t_breaks0.csv"));
+    DRAKE_DEMAND(file_exist(model_dir_n_pref + "x_samples0.csv"));
+    DRAKE_DEMAND(file_exist(model_dir_n_pref + "xdot_samples0.csv"));
+    x_traj = PiecewisePolynomial<double>::CubicHermite(
+        readCSV(model_dir_n_pref + string("t_breaks0.csv")).col(0),
+        readCSV(model_dir_n_pref + string("x_samples0.csv")),
+        readCSV(model_dir_n_pref + string("xdot_samples0.csv")));
+    x_samples0 = readCSV(model_dir_n_pref + string("x_samples0.csv"));
+  }
+
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model
                          ? "examples/Cassie/urdf/cassie_v2.urdf"
@@ -340,6 +362,16 @@ int DoMain(int argc, char* argv[]) {
         plant_feedback, stride_period, param.n_step);
     builder.Connect(controller_signal_receiver->get_output_port(0),
                     planner_final_pos->get_input_port_fsm_and_lo_time());
+  } else if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
+    // The implementation currently assume y is close to 0
+    if (!(abs(x_samples0(5, 0) - 0) < 1e-3)) {
+      cout << "x_samples0(5, 0) = " << x_samples0(5, 0) << endl;
+    }
+    DRAKE_DEMAND(abs(x_samples0(5, 0) - 0) < 1e-3);
+
+    planner_final_pos = builder.AddSystem<PlannerFinalPosition>(
+        plant_feedback, Eigen::Vector2d(x_samples0.rightCols(1)(4), 0),
+        param.n_step);
   } else {
     planner_final_pos = gains.set_constant_walking_speed
                             ? builder.AddSystem<PlannerFinalPosition>(
@@ -359,6 +391,9 @@ int DoMain(int argc, char* argv[]) {
   auto x_init_calculator = builder.AddSystem<InitialStateForPlanner>(
       plant_feedback, plant_control, param.n_step, stride_period,
       FLAGS_spring_model);
+  if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
+    x_init_calculator->completely_use_trajs_from_model_opt_as_target(x_traj);
+  }
   builder.Connect(stance_foot_getter->get_output_port(0),
                   x_init_calculator->get_input_port_stance_foot());
   builder.Connect(state_receiver->get_output_port(0),
@@ -372,6 +407,8 @@ int DoMain(int argc, char* argv[]) {
   auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
       plant_control, stride_period, param, FLAGS_debug_mode, FLAGS_log_data,
       FLAGS_print_level);
+  if (FLAGS_completely_use_trajs_from_model_opt_as_target)
+    rom_planner->completely_use_trajs_from_model_opt_as_target();
   builder.Connect(stance_foot_getter->get_output_port(0),
                   rom_planner->get_input_port_stance_foot());
   builder.Connect(init_phase_calculator->get_output_port(0),

@@ -1,8 +1,8 @@
 #include "examples/goldilocks_models/controller/planner_preprocessing.h"
 
 #include "examples/Cassie/cassie_utils.h"
-#include "solvers/nonlinear_constraint.h"
 #include "multibody/multibody_utils.h"
+#include "solvers/nonlinear_constraint.h"
 
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/solvers/snopt_solver.h"
@@ -418,10 +418,10 @@ InitialStateForPlanner::InitialStateForPlanner(
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ =
       multibody::CreateWithSpringsToWithoutSpringsMapPos(plant_feedback,
-                                                            plant_control);
+                                                         plant_control);
   map_velocity_from_spring_to_no_spring_ =
       multibody::CreateWithSpringsToWithoutSpringsMapVel(plant_feedback,
-                                                            plant_control);
+                                                         plant_control);
 
   // Create index maps
   pos_map_w_spr_ = multibody::makeNameToPositionsMap(plant_feedback);
@@ -492,6 +492,9 @@ EventStatus InitialStateForPlanner::AdjustState(
   // velocity match well with the real robot's.
   // The max vel error after the adjustment seems to be always below 0.045 m/s.
 
+  // TODO: I think we only need to run this part when feedback_is_spring_model_
+  // = true?
+
   VectorXd x_w_spr = robot_output->GetState();
   plant_feedback_.SetPositions(context_feedback_.get(),
                                x_w_spr.head(plant_feedback_.num_positions()));
@@ -540,7 +543,7 @@ EventStatus InitialStateForPlanner::AdjustState(
   }
 
   ///
-  /// Heuristic -- zero stance toe joint in the beginning of stance
+  /// Heuristic -- zero stance toe joint vel in the beginning of stance
   ///
   // We need this because the ROM uses mid_contact_point (we want this to be 0),
   // and the toe joint vel is sometimes big in the beginning of stance.
@@ -568,10 +571,18 @@ EventStatus InitialStateForPlanner::AdjustState(
   VectorXd x_adjusted3 = x_adjusted2;
   Quaterniond quat(x_adjusted3(0), x_adjusted3(1), x_adjusted3(2),
                    x_adjusted3(3));
-  Vector3d pelvis_x = quat.toRotationMatrix().col(0);
-  pelvis_x(2) = 0;
-  Vector3d world_x(1, 0, 0);
-  Quaterniond relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x);
+  Quaterniond relative_qaut;
+  if (completely_use_trajs_from_model_opt_as_target_) {
+    VectorXd interp_x = x_traj_->value(init_phase * stride_period_);
+    Quaterniond local_quat(interp_x(0), interp_x(1), interp_x(2), interp_x(3));
+    local_quat.normalize();
+    relative_qaut = local_quat * quat.inverse();
+  } else {
+    Vector3d pelvis_x = quat.toRotationMatrix().col(0);
+    pelvis_x(2) = 0;
+    Vector3d world_x(1, 0, 0);
+    relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x);
+  }
   Quaterniond rotated_quat = relative_qaut * quat;
   x_adjusted3.head(4) << rotated_quat.w(), rotated_quat.vec();
   // cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
@@ -586,8 +597,8 @@ EventStatus InitialStateForPlanner::AdjustState(
 
   // Shift pelvis in z direction
   if (prev_is_left_stance_ != is_left_stance) {
-    prev_is_left_stance_ = is_left_stance;
     // Get stance foot height in the beginning of the fsm
+    prev_is_left_stance_ = is_left_stance;
     plant_control_.SetPositions(context_control_.get(), x_adjusted3.head(nq_));
     stance_foot_height_ = GetStanceFootHeight(
         is_left_stance ? toe_mid_left_ : toe_mid_right_, *context_control_);

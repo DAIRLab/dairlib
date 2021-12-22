@@ -770,7 +770,13 @@ void postProcessing(const VectorXd& w_sol,
       too_many_reruns && this_sample_has_not_found_an_optimal_sol &&
       (to_string(result.get_solution_result()) == "IterationLimit");
 
-  if (is_get_nominal || (!result.is_success() && !is_special_case)) {
+  bool extra_rerun_is_not_better =
+      (n_rerun > N_rerun) &&
+      (!result.is_success() ||
+       (result.get_optimal_cost() > cost_threshold_for_update));
+
+  if (!is_special_case &&
+      (is_get_nominal || !result.is_success() || extra_rerun_is_not_better)) {
     // Do nothing.
   } else if (extend_model && (n_rerun == N_rerun)) {  // Extending the model
     VectorXd theta_y_append =
@@ -853,14 +859,6 @@ void postProcessing(const VectorXd& w_sol,
     writeCSV(directory + string("theta_yddot_new_index.csv"), new_idx);
 
   } else {
-    if (n_rerun > N_rerun) {
-      if (!result.is_success()) {
-        return;
-      } else if (result.get_optimal_cost() > cost_threshold_for_update) {
-        return;
-      }
-    }
-
     // Assume theta is fixed. Get the linear approximation of
     //      // the cosntraints and second order approximation of the cost.
     // cout << "\nGetting A, H, y, lb, ub, b.\n";

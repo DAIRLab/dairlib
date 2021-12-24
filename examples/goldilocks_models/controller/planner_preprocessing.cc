@@ -548,11 +548,16 @@ EventStatus InitialStateForPlanner::AdjustState(
   // We need this because the ROM uses mid_contact_point (we want this to be 0),
   // and the toe joint vel is sometimes big in the beginning of stance.
   // See folder: 20210912_bad_solve/2_reproduce_same_type_of_bad_solve
-  if (init_phase * stride_period_ < window_) {
-    if (is_left_stance) {
-      x_adjusted2(nq_ + idx_toe_leftdot_) = 0;
-    } else {
-      x_adjusted2(nq_ + idx_toe_rightdot_) = 0;
+  // TODO: You can do the same thing as you did in ZeroOutStanceFootVel().
+  //  Zero out the contact point vel in task space by adjusting the toe joint
+  //  vel.
+  if (!completely_use_trajs_from_model_opt_as_target_) {
+    if (init_phase * stride_period_ < window_) {
+      if (is_left_stance) {
+        x_adjusted2(nq_ + idx_toe_leftdot_) = 0;
+      } else {
+        x_adjusted2(nq_ + idx_toe_rightdot_) = 0;
+      }
     }
   }
 
@@ -626,6 +631,20 @@ EventStatus InitialStateForPlanner::AdjustState(
       << relative_qaut.w(),
       relative_qaut.vec(),
       x_adjusted3.segment<3>(4) - x_adjusted2.segment<3>(4);
+
+  //  cout << "quat_xyz-shift = \n"
+  //       << discrete_state->get_mutable_vector(quat_xyz_shift_idx_)
+  //              .get_mutable_value()
+  //       << endl;
+  //  cout << "x_original = \n" << x_original << endl;
+  //  cout << "x_adjusted3 - x_original = \n" << x_adjusted3 - x_original <<
+  //  endl;
+
+  //  // Testing
+  //  discrete_state->get_mutable_vector(adjusted_state_idx_).get_mutable_value()
+  //      << x_original;
+  //  discrete_state->get_mutable_vector(quat_xyz_shift_idx_).get_mutable_value()
+  //      << 1, 0, 0, 0, 0, 0, 0;
 
   return EventStatus::Succeeded();
 }

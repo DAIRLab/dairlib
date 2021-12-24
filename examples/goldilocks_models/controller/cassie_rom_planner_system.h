@@ -69,9 +69,19 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
 
+  void CreateDesiredPelvisPosAndVel(
+      int n_total_step, bool start_with_left_stance, double init_phase,
+      const Eigen::VectorXd& final_position,
+      std::vector<Eigen::VectorXd>* des_xy_pos,
+      std::vector<Eigen::VectorXd>* des_xy_vel) const;
   void CreateDesiredComPosAndVel(
       int n_total_step, bool start_with_left_stance, double init_phase,
       const Eigen::VectorXd& final_position,
+      std::vector<Eigen::VectorXd>* des_xy_pos,
+      std::vector<Eigen::VectorXd>* des_xy_vel) const;
+  void CreateDesiredBodyPosAndVel(
+      bool pelvis_or_com, int n_total_step, bool start_with_left_stance,
+      double init_phase, const Eigen::VectorXd& final_position,
       std::vector<Eigen::VectorXd>* des_xy_pos,
       std::vector<Eigen::VectorXd>* des_xy_vel) const;
 

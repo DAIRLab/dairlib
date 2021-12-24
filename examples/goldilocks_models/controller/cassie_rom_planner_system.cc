@@ -665,9 +665,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // 2 final_position is transformed from global coordinates
   vector<VectorXd> des_xy_pos;
   vector<VectorXd> des_xy_vel;
+  CreateDesiredPelvisPosAndVel(param_.n_step + param_.n_step_lipm,
+                               start_with_left_stance, init_phase,
+                               final_position, &des_xy_pos, &des_xy_vel);
+  vector<VectorXd> des_xy_pos_com;
+  vector<VectorXd> des_xy_vel_com;
   CreateDesiredComPosAndVel(param_.n_step + param_.n_step_lipm,
                             start_with_left_stance, init_phase, final_position,
-                            &des_xy_pos, &des_xy_vel);
+                            &des_xy_pos_com, &des_xy_vel_com);
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
@@ -821,11 +826,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Future steps
   if (param_.n_step_lipm > 1) {
-    trajopt.AddCascadedLipmMPC(param_.gains.w_predict_lipm_p,
-                               param_.gains.w_predict_lipm_v, des_xy_pos,
-                               des_xy_vel, param_.n_step_lipm, stride_period_,
-                               param_.gains.max_lipm_step_length / 2,
-                               param_.gains.right_limit_wrt_pelvis);
+    trajopt.AddCascadedLipmMPC(
+        param_.gains.w_predict_lipm_p, param_.gains.w_predict_lipm_v,
+        des_xy_pos, des_xy_vel_com, param_.n_step_lipm, stride_period_,
+        param_.gains.max_lipm_step_length / 2,
+        param_.gains.right_limit_wrt_pelvis);
   } else {
     // TODO: check if adding predicted step is necessary after using
     //  lipm_mpc_and_ik
@@ -844,7 +849,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       // des_xy_vel.at(n_step), but des_xy_vel's size is not big enough to cover
       // the predicted step, so we -2. Note that, we go back 2 steps instead of
       // 1 step because velocity is asymmetric in y direction
-      des_predicted_xy_vel = des_xy_vel.at(param_.n_step - 2);
+      des_predicted_xy_vel = des_xy_vel_com.at(param_.n_step - 2);
     }
 
     // Constraint and cost for the last foot step location
@@ -936,7 +941,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                                        first_mode_knot_idx, 0);
     }
     trajopt.SetHeuristicInitialGuessForCascadedLipm(param_, des_xy_pos,
-                                                    des_xy_vel);
+                                                    des_xy_vel_com);
     trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
 
     // Avoid zero-value initial guess!
@@ -1255,10 +1260,10 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   int n_step = std::max(minimum_n_step, param_.n_step + 1);
 
   // Get des_xy_pos, des_xy_vel
-  vector<VectorXd> des_xy_pos;
-  vector<VectorXd> des_xy_vel;
+  vector<VectorXd> des_xy_pos_com;
+  vector<VectorXd> des_xy_vel_com;
   CreateDesiredComPosAndVel(n_step, start_with_left_stance, init_phase,
-                            final_position, &des_xy_pos, &des_xy_vel);
+                            final_position, &des_xy_pos_com, &des_xy_vel_com);
 
   // Get initial COM position, velocity and stance foot position
   plant_control_.SetPositions(context_plant_control_.get(), x_init.head(nq_));
@@ -1292,7 +1297,7 @@ bool CassiePlannerWithMixedRomFom::RunLipmMPC(
   //  first mode
   cout << "Reminder here.\n";
   LipmMpc mpc_qp(
-      des_xy_pos, des_xy_vel, param_.gains.w_p_lipm_mpc,
+      des_xy_pos_com, des_xy_vel_com, param_.gains.w_p_lipm_mpc,
       param_.gains.w_v_lipm_mpc, com_pos.head<2>(), com_vel,
       stance_foot_pos.head<2>(), n_step, first_mode_duration_lipm,
       stride_period_lipm, height_vec,
@@ -1561,12 +1566,28 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
   return success;
 }
 
+void CassiePlannerWithMixedRomFom::CreateDesiredPelvisPosAndVel(
+    int n_total_step, bool start_with_left_stance, double init_phase,
+    const VectorXd& final_position, vector<VectorXd>* des_xy_pos,
+    vector<VectorXd>* des_xy_vel) const {
+  CreateDesiredBodyPosAndVel(true, n_total_step, start_with_left_stance,
+                             init_phase, final_position, des_xy_pos,
+                             des_xy_vel);
+}
 void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
     int n_total_step, bool start_with_left_stance, double init_phase,
     const VectorXd& final_position, vector<VectorXd>* des_xy_pos,
     vector<VectorXd>* des_xy_vel) const {
+  CreateDesiredBodyPosAndVel(false, n_total_step, start_with_left_stance,
+                             init_phase, final_position, des_xy_pos,
+                             des_xy_vel);
+}
+void CassiePlannerWithMixedRomFom::CreateDesiredBodyPosAndVel(
+    bool pelvis_or_com, int n_total_step, bool start_with_left_stance,
+    double init_phase, const VectorXd& final_position,
+    vector<VectorXd>* des_xy_pos, vector<VectorXd>* des_xy_vel) const {
   // Parameters
-  double y_vel_offset = 0.1;
+  double y_vel_offset = 0.1;  // This affects the foot spread
 
   double total_phase_length = n_total_step - init_phase;
 
@@ -1589,8 +1610,26 @@ void CassiePlannerWithMixedRomFom::CreateDesiredComPosAndVel(
   }
 
   // Get the desired xy velocities for the FOM states
-  *des_xy_vel = vector<VectorXd>(
-      n_total_step, adjusted_final_pos / (stride_period_ * total_phase_length));
+  if (completely_use_trajs_from_model_opt_as_target_) {
+    if (pelvis_or_com) {
+      *des_xy_vel = vector<VectorXd>(
+          n_total_step, Vector2d(x_guess_left_in_front_post_(nq_ + 3), 0));
+      y_vel_offset = x_guess_left_in_front_post_(nq_ + 4);
+    } else {
+      plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
+                                               x_guess_left_in_front_post_);
+      Vector3d com_vel =
+          plant_control_.CalcCenterOfMassTranslationalVelocityInWorld(
+              *context_plant_control_);
+      *des_xy_vel = vector<VectorXd>(n_total_step, Vector2d(com_vel(0), 0));
+      y_vel_offset = com_vel(1);
+    }
+  } else {
+    // Use the average vel for the vel at hybrid event (which underestimates)
+    *des_xy_vel = vector<VectorXd>(
+        n_total_step,
+        adjusted_final_pos / (stride_period_ * total_phase_length));
+  }
   // Heuristically shift the desired velocity in y direction
   bool dummy_bool = start_with_left_stance;
   for (int i = 0; i < n_total_step; i++) {

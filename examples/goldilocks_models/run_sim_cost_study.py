@@ -166,6 +166,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--dir_data=%s' % data_dir_this_thread,
     '--path_wait_identifier=%s' % planner_wait_identifier,
     '--print_level=0',
+    '--completely_use_trajs_from_model_opt_as_target=%s' % str(completely_use_trajs_from_model_opt_as_target).lower(),
     ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
@@ -1205,6 +1206,7 @@ if __name__ == "__main__":
   init_sim_vel = True
   use_nominal_traj_pool = True
   set_sim_init_state_from_trajopt = True
+  completely_use_trajs_from_model_opt_as_target = True
 
   ### parameters for model, task, and log indices
   # Model iteration list

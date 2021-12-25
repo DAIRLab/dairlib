@@ -534,31 +534,22 @@ EventStatus InitialStateForPlanner::AdjustState(
   ZeroOutStanceFootVel(is_left_stance, &x_adjusted2);
 
   ///
+  /// Zero out the contact point velocity
+  ///
+  // We need this because the ROM uses mid_contact_point (we want this to be 0),
+  // and the toe joint vel is sometimes big in the beginning of stance.
+  // See folder: 20210912_bad_solve/2_reproduce_same_type_of_bad_solve
+  if (init_phase * stride_period_ < window_) {
+    ZeroOutContactPtVel(is_left_stance, &x_adjusted2);
+  }
+
+  ///
   /// Check IK results
   ///
   if (feedback_is_spring_model_) {
     CheckAdjustemnt(x_w_spr, x_original, x_adjusted2, left_foot_pos_w_spr,
                     right_foot_pos_w_spr, left_foot_vel_w_spr,
                     right_foot_vel_w_spr, is_left_stance);
-  }
-
-  ///
-  /// Heuristic -- zero stance toe joint vel in the beginning of stance
-  ///
-  // We need this because the ROM uses mid_contact_point (we want this to be 0),
-  // and the toe joint vel is sometimes big in the beginning of stance.
-  // See folder: 20210912_bad_solve/2_reproduce_same_type_of_bad_solve
-  // TODO: You can do the same thing as you did in ZeroOutStanceFootVel().
-  //  Zero out the contact point vel in task space by adjusting the toe joint
-  //  vel.
-  if (!completely_use_trajs_from_model_opt_as_target_) {
-    if (init_phase * stride_period_ < window_) {
-      if (is_left_stance) {
-        x_adjusted2(nq_ + idx_toe_leftdot_) = 0;
-      } else {
-        x_adjusted2(nq_ + idx_toe_rightdot_) = 0;
-      }
-    }
   }
 
   ///
@@ -808,28 +799,34 @@ void InitialStateForPlanner::ZeroOutStanceFootVel(bool is_left_stance,
       toe_origin.first, plant_control_.world_frame(),
       plant_control_.world_frame(), &J);
 
+  // Goal is to have J * v_modified = 0, where v_modified = v_init + v_delta.
+  // Let v_delta be the decision variable.
+  //    J * v_modified = J * (v_init + v_delta) = 0
+  // => J * v_delta = - J * v_init
+  // So A = J, and b = - J * v_init.
+
   // Construct MP
   MathematicalProgram ik;
-  int n_eps = 6;
-  auto v_eps = ik.NewContinuousVariables(n_eps, "v_eps");
+  int n_delta = 6;
+  auto v_delta = ik.NewContinuousVariables(n_delta, "v_delta");
 
   // Get matrix A
-  MatrixXd A(3, n_eps);
-  for (int i = 0; i < n_eps; i++) {
+  MatrixXd A(3, n_delta);
+  for (int i = 0; i < n_delta; i++) {
     A.col(i) = J.col(idx_list.at(i));
   }
   // Get vector b
   VectorXd b(3);
   b = -J * x_init->tail(nv_);
 
-  ik.AddLinearEqualityConstraint(A, b, v_eps);
-  ik.AddQuadraticErrorCost(MatrixXd::Identity(n_eps, n_eps),
-                           VectorXd::Zero(n_eps), v_eps);
-  //  ik.Add2NormSquaredCost(A, b, v_eps);
+  ik.AddLinearEqualityConstraint(A, b, v_delta);
+  ik.AddQuadraticErrorCost(MatrixXd::Identity(n_delta, n_delta),
+                           VectorXd::Zero(n_delta), v_delta);
+  //  ik.Add2NormSquaredCost(A, b, v_delta);
 
   // Initial guess
   // Solved analytically. We don't need to give a initial guess
-  //  ik.SetInitialGuess(v_eps, 0.01 * VectorXd::Random(n_eps));
+  //  ik.SetInitialGuess(v_delta, 0.01 * VectorXd::Random(n_delta));
 
   /// Solve
   // auto start_solve = std::chrono::high_resolution_clock::now();
@@ -846,10 +843,61 @@ void InitialStateForPlanner::ZeroOutStanceFootVel(bool is_left_stance,
   cout << "Cost:" << result.get_optimal_cost() << "\n";*/
 
   /// Assign
-  auto v_eps_sol = result.GetSolution(v_eps);
-  for (int i = 0; i < n_eps; i++) {
-    x_init->segment<1>(nq_ + idx_list[i]) += v_eps_sol.segment<1>(i);
+  auto v_delta_sol = result.GetSolution(v_delta);
+  for (int i = 0; i < n_delta; i++) {
+    x_init->segment<1>(nq_ + idx_list[i]) += v_delta_sol.segment<1>(i);
   }
+}
+
+void InitialStateForPlanner::ZeroOutContactPtVel(bool is_left_stance,
+                                                 VectorXd* x_init) const {
+  // auto start_build = std::chrono::high_resolution_clock::now();
+
+  // TODO: Clean up code to have only one bodypoint, one context
+
+  const BodyPoint& toe_mid = is_left_stance ? toe_mid_left_ : toe_mid_right_;
+  const int idx = is_left_stance ? idx_toe_leftdot_ : idx_toe_rightdot_;
+
+  // Get Jacobian for the feet
+  plant_control_.SetPositions(context_control_.get(), x_init->head(nq_));
+  Eigen::MatrixXd J(3, nv_);
+  plant_control_.CalcJacobianTranslationalVelocity(
+      *context_control_, JacobianWrtVariable::kV, toe_mid.second, toe_mid.first,
+      plant_control_.world_frame(), plant_control_.world_frame(), &J);
+
+  // Goal is to have J * v_modified = 0, where v_modified = v_init + v_delta.
+  // Let v_delta be the decision variable.
+  //    J * v_modified = J * (v_init + v_delta) = 0
+  // => J * v_delta = - J * v_init
+  // So A = J, and b = - J * v_init.
+
+  // Construct MP
+  MathematicalProgram ik;
+  int n_delta = 1;
+  auto v_delta = ik.NewContinuousVariables(n_delta, "v_delta");
+
+  // Get matrix A
+  MatrixXd A(3, n_delta);
+  A.col(0) = J.col(idx);
+  // Get vector b
+  VectorXd b(3);
+  b = -J * x_init->tail(nv_);
+
+  ik.AddLinearEqualityConstraint(A, b, v_delta);
+  ik.AddQuadraticErrorCost(MatrixXd::Identity(n_delta, n_delta),
+                           VectorXd::Zero(n_delta), v_delta);
+
+  // Initial guess
+  // Solved analytically. We don't need to give a initial guess
+
+  /// Solve
+  // auto start_solve = std::chrono::high_resolution_clock::now();
+  const auto result = qp_solver_.Solve(ik, ik.initial_guess());
+  // auto finish = std::chrono::high_resolution_clock::now();
+
+  /// Assign
+  auto v_delta_sol = result.GetSolution(v_delta);
+  x_init->segment<1>(nq_ + idx) += v_delta_sol.segment<1>(0);
 }
 
 void InitialStateForPlanner::CheckAdjustemnt(

@@ -231,6 +231,7 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
                              const Eigen::VectorXd& x_init_original,
                              Eigen::VectorXd* x_init) const;
   void ZeroOutStanceFootVel(bool is_left_stance, Eigen::VectorXd* x_init) const;
+  void ZeroOutContactPtVel(bool is_left_stance, Eigen::VectorXd* x_init) const;
   void CheckAdjustemnt(const Eigen::VectorXd& x_w_spr,
                        const Eigen::VectorXd& x_original,
                        const Eigen::VectorXd& x_adjusted2,

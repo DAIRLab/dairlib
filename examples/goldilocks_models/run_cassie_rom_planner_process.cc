@@ -365,9 +365,9 @@ int DoMain(int argc, char* argv[]) {
   } else if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
     // The implementation currently assume y is close to 0
     if (!(abs(x_samples0(5, 0) - 0) < 1e-3)) {
-      cout << "x_samples0(5, 0) = " << x_samples0(5, 0) << endl;
+      cout << "WARNING!! x_samples0(5, 0) = " << x_samples0(5, 0) << endl;
     }
-    DRAKE_DEMAND(abs(x_samples0(5, 0) - 0) < 1e-3);
+    // DRAKE_DEMAND(abs(x_samples0(5, 0) - 0) < 1e-3);
 
     planner_final_pos = builder.AddSystem<PlannerFinalPosition>(
         plant_feedback, Eigen::Vector2d(x_samples0.rightCols(1)(4), 0),

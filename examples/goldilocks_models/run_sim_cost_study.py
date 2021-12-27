@@ -136,8 +136,8 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   # Extract tasks
   task_sl = task[tasks.GetDimIdxByName("stride_length")]
 
-  dir_and_prefex_FOM = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx)
-  path_init_state = "%s0_%d_x_samples0.csv" % (model_dir, trajopt_sample_idx) if set_sim_init_state_from_trajopt else ""
+  dir_and_prefex_FOM_reg = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx)
+  path_init_state = "%s%d_%d_x_samples0.csv" % (model_dir, rom_iter_idx, trajopt_sample_idx) if set_sim_init_state_from_trajopt else ""
 
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
@@ -162,7 +162,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
     '--spring_model=%s' % str(spring_model).lower(),
-    '--dir_and_prefex_FOM=%s' % dir_and_prefex_FOM,
+    '--dir_and_prefex_FOM=%s' % dir_and_prefex_FOM_reg,
     '--dir_data=%s' % data_dir_this_thread,
     '--path_wait_identifier=%s' % planner_wait_identifier,
     '--print_level=0',
@@ -1220,10 +1220,10 @@ if __name__ == "__main__":
   tasks = Tasks()
   tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0.2, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
   # stride_length = np.linspace(0.4, 0.5, n_task)
-  # stride_length = np.linspace(0, 0, n_task)
   # stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   tasks.AddTaskDim([0.0], "ground_incline")

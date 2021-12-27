@@ -562,22 +562,26 @@ EventStatus InitialStateForPlanner::AdjustState(
   //  But right now we move the current state (instead of touchdown state) to
   //  the corresponding x-y position based on init phase and desired traj
 
-  // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
-  // frame is in the world’s x-z plane and toward world’s x axis.
+  // Rotate Cassie about the world’s z axis
   VectorXd x_adjusted3 = x_adjusted2;
   Quaterniond quat(x_adjusted3(0), x_adjusted3(1), x_adjusted3(2),
                    x_adjusted3(3));
   Quaterniond relative_qaut;
   if (completely_use_trajs_from_model_opt_as_target_) {
+    // Note that we only want to rotate about z axis and not the x and y!
     VectorXd interp_x = x_traj_->value(init_phase * stride_period_);
     Quaterniond local_quat(interp_x(0), interp_x(1), interp_x(2), interp_x(3));
     local_quat.normalize();
-    relative_qaut = local_quat * quat.inverse();
+    Vector3d des_pelvis_x = local_quat.toRotationMatrix().col(0);
+    des_pelvis_x(2) = 0;
+    relative_qaut = Quaterniond::FromTwoVectors(des_pelvis_x, world_x_);
+    // Wrong version: relative_qaut = local_quat * quat.inverse();
   } else {
+    // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
+    // frame is in the world’s x-z plane and toward world’s x axis.
     Vector3d pelvis_x = quat.toRotationMatrix().col(0);
     pelvis_x(2) = 0;
-    Vector3d world_x(1, 0, 0);
-    relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x);
+    relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x_);
   }
   Quaterniond rotated_quat = relative_qaut * quat;
   x_adjusted3.head(4) << rotated_quat.w(), rotated_quat.vec();

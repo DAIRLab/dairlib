@@ -208,6 +208,9 @@ class InitialStateForPlanner : public drake::systems::LeafSystem<double> {
   int idx_toe_leftdot_;
   int idx_toe_rightdot_;
 
+  // Rotate about global z axis
+  Eigen::Vector3d world_x_ = Eigen::Vector3d(1, 0, 0);
+
   // IK
   drake::solvers::EqualityConstrainedQPSolver qp_solver_;
   std::vector<int> spring_pos_idx_list_w_spr_;

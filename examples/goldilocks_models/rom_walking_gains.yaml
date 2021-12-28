@@ -73,9 +73,9 @@ post_left_double_support: 3
 post_right_double_support: 4
 
 # Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
-left_support_duration: 0.35 #0.3   # 0.23 # 0.35 # 0.4
-right_support_duration: 0.35 #0.3  # 0.23 # 0.35 # 0.4
-double_support_duration: 0.0 #0.02
+left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
+right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4
+double_support_duration: 0.05 #0.02
 
 
 ### For planner only
@@ -84,10 +84,10 @@ double_support_duration: 0.0 #0.02
 max_foot_speed: 3  # used to restrict swing foot travel distance
 # max_step_length restricts the distance between stance and swing foot (not from pelvis to swing foot!).
 # It cannot be too big. Otherwise, the ROM is not a good approximation to FOM
-max_step_length: 0.6  # 0.7
+max_step_length: 0.9  # 0.7
 # (step length is measured from stance foot to swing foot)
 # desired body speed = desired_step_length / one stride duration
-max_desired_step_length: 0.4  # 0.4
+max_desired_step_length: 0.5  # 0.4
 max_lipm_step_length: 0.8
 #n_step : 2 #TODO : add this later for convenience
 
@@ -106,7 +106,7 @@ w_rom_reg: 1e-6  # reminder: should have at least a little bit of reg cost
 w_reg_quat: 1
 w_reg_xy: 0.1  #0.1 for not using IK; maybe 10 for using IK?
 w_reg_z: 50  # 10
-w_reg_joints: 0.1
+w_reg_joints: 0.02
 w_reg_hip_yaw: 1  # should use 1? 5?
 w_reg_xy_vel: 0.1
 w_reg_vel: 1e-6
@@ -177,11 +177,11 @@ ss_time: 0.
 ds_time: 0.
 
 #Swing foot trajectory
-max_CoM_to_footstep_dist: 0.4
+max_CoM_to_footstep_dist: 0.5
 footstep_offset: 0.03
 center_line_offset: 0.03
 mid_foot_height: 0.03  #0.03
-final_foot_height: -0.01
+final_foot_height: -0.0
 final_foot_velocity_z: 0.0
 
 #LIPM trajectory

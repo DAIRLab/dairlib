@@ -637,9 +637,12 @@ def main():
     vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted[1:], 50)
 
   # import pdb; pdb.set_trace()
+  # Testing -- set the toe vel to 0
+  # x_extracted[:, nq + vel_map["toe_leftdot"]] = 0
+  # x_extracted[:, nq + vel_map["toe_rightdot"]] = 0
   # Testing -- set the toe acceleration to 0
-  # vdot_numerical[:, vel_map["toe_leftdot"]] = 0
-  # vdot_numerical[:, vel_map["toe_rightdot"]] = 0
+  vdot_numerical[:, vel_map["toe_leftdot"]] = 0
+  vdot_numerical[:, vel_map["toe_rightdot"]] = 0
 
   # Testing (hacks) -- cap the acceleration within 500 to avoid contact spikes
   # max_accel = 750

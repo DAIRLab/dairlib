@@ -261,60 +261,70 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   // Set initial conditions of the simulation
-  VectorXd q_init, v_init, u_init, lambda_init;
-  v_init = VectorXd::Zero(plant.num_velocities());
-  double mu_fp = 0.5;         // 0
-  double min_normal_fp = 10;  // 70
-  double toe_spread = .15;
-  // Create a plant for CassieFixedPointSolver.
-  // Note that we cannot use the plant from the above diagram, because after the
-  // diagram is built, plant.get_actuation_input_port().HasValue(*context)
-  // throws a segfault error
-  drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
-  addCassieMultibody(&plant_for_solver, nullptr,
-                     FLAGS_floating_base /*floating base*/, urdf,
-                     FLAGS_spring_model, true);
-  plant_for_solver.Finalize();
-  if (FLAGS_floating_base) {
-    VectorXd all_sol;
-    CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
-                           min_normal_fp, true, toe_spread, &q_init, &u_init,
-                           &lambda_init, "", 0, &all_sol);
-    CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
-                           min_normal_fp, true, toe_spread, &q_init, &u_init,
-                           &lambda_init, "", FLAGS_ground_incline, &all_sol);
-    // std::cout << "q_init = \n" << q_init.transpose() << std::endl;
-    // std::cout << "v_init = \n" << v_init.transpose() << std::endl;
-
-    VectorXd pelvis_xy_vel(2);
-    pelvis_xy_vel << FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel;
-    bool success = CassieInitStateSolver(
-        plant_for_solver, pelvis_xy_vel, FLAGS_init_height, mu_fp,
-        min_normal_fp, true, toe_spread, FLAGS_ground_incline, q_init, u_init,
-        lambda_init, &q_init, &v_init, &u_init, &lambda_init);
-    std::cout << "q_init = \n" << q_init.transpose() << std::endl;
-    std::cout << "v_init = \n" << v_init.transpose() << std::endl;
-    if (!FLAGS_path_init_pose_success.empty()) {
-      std::string msg = success ? "0" : "1";
-
-      std::ofstream outfile;
-      outfile.open(FLAGS_path_init_pose_success, std::ios_base::trunc);
-      outfile << msg;
-      outfile.close();
-      if (!success) {
-        std::cout << "Sim didn't find a solution for init pose. Terminate.\n";
-        return 0;
-      }
-    }
+  VectorXd x_init(plant.num_positions() + plant.num_velocities());
+  if (!FLAGS_path_init_state.empty()) {
+    // set init state from file
+    std::cout << "Set init state form a file\n";
+    x_init = readCSV(FLAGS_path_init_state).col(0);
+    DRAKE_DEMAND(plant.num_positions() + plant.num_velocities() ==
+                 x_init.size());
   } else {
-    CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
-                                    &lambda_init);
+    VectorXd q_init, v_init, u_init, lambda_init;
     v_init = VectorXd::Zero(plant.num_velocities());
-  }
-  double theta = 0.0 / 180.0 * M_PI;
-  q_init.head<4>() << cos(theta / 2), 0, 0, sin(theta / 2);
+    double mu_fp = 0.5;         // 0
+    double min_normal_fp = 10;  // 70
+    double toe_spread = .15;
+    // Create a plant for CassieFixedPointSolver.
+    // Note that we cannot use the plant from the above diagram, because after
+    // the diagram is built, plant.get_actuation_input_port().HasValue(*context)
+    // throws a segfault error
+    drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
+    addCassieMultibody(&plant_for_solver, nullptr,
+                       FLAGS_floating_base /*floating base*/, urdf,
+                       FLAGS_spring_model, true);
+    plant_for_solver.Finalize();
+    if (FLAGS_floating_base) {
+      VectorXd all_sol;
+      CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
+                             min_normal_fp, true, toe_spread, &q_init, &u_init,
+                             &lambda_init, "", 0, &all_sol);
+      CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
+                             min_normal_fp, true, toe_spread, &q_init, &u_init,
+                             &lambda_init, "", FLAGS_ground_incline, &all_sol);
+      // std::cout << "q_init = \n" << q_init.transpose() << std::endl;
+      // std::cout << "v_init = \n" << v_init.transpose() << std::endl;
 
-  //
+      VectorXd pelvis_xy_vel(2);
+      pelvis_xy_vel << FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel;
+      bool success = CassieInitStateSolver(
+          plant_for_solver, pelvis_xy_vel, FLAGS_init_height, mu_fp,
+          min_normal_fp, true, toe_spread, FLAGS_ground_incline, q_init, u_init,
+          lambda_init, &q_init, &v_init, &u_init, &lambda_init);
+      std::cout << "q_init = \n" << q_init.transpose() << std::endl;
+      std::cout << "v_init = \n" << v_init.transpose() << std::endl;
+      if (!FLAGS_path_init_pose_success.empty()) {
+        std::string msg = success ? "0" : "1";
+
+        std::ofstream outfile;
+        outfile.open(FLAGS_path_init_pose_success, std::ios_base::trunc);
+        outfile << msg;
+        outfile.close();
+        if (!success) {
+          std::cout << "Sim didn't find a solution for init pose. Terminate.\n";
+          return 0;
+        }
+      }
+    } else {
+      CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
+                                      &lambda_init);
+      v_init = VectorXd::Zero(plant.num_velocities());
+    }
+
+    double theta = 0.0 / 180.0 * M_PI;
+    q_init.head<4>() << cos(theta / 2), 0, 0, sin(theta / 2);
+
+    x_init << q_init, v_init;
+  }
 
   // new way of finding gaps (initialize sim state from trajopt)
   // iter 1
@@ -325,17 +335,6 @@ int do_main(int argc, char* argv[]) {
       -0.881045, -0.756373, 0.733154, 0.66983, -1.55633, -1.33871, -0.136774,
       -0.182275, 0.136925, 0.182466, 0.872048, 0.629534;*/
   // iter 60
-
-  VectorXd x_init(plant.num_positions() + plant.num_velocities());
-  x_init << q_init, v_init;
-
-  // set init state from file
-  if (!FLAGS_path_init_state.empty()) {
-    std::cout << "Set init state form a file\n";
-    x_init = readCSV(FLAGS_path_init_state).col(0);
-    DRAKE_DEMAND(plant.num_positions() + plant.num_velocities() ==
-                 x_init.size());
-  }
 
   std::cout << "q_init = \n"
             << x_init.head(plant.num_positions()).transpose() << std::endl;

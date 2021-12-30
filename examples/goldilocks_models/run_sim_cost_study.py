@@ -1193,6 +1193,7 @@ if __name__ == "__main__":
   FOM_model_dir = ""
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  # eval_dir = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
   # eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
@@ -1218,7 +1219,8 @@ if __name__ == "__main__":
   n_task_sl = 30
   n_task_ph = 3
   tasks = Tasks()
-  tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
+  tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0.2, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
   # stride_length = np.linspace(-0.2, -0.1, n_task)
@@ -1263,7 +1265,8 @@ if __name__ == "__main__":
   # Expected (averaged) cost over a task range
   stride_length_range_to_average = [-0.4, 0.4]
   # stride_length_range_to_average = [0.2, 0.4]
-  final_iter_ave_cost = 30
+  final_iter_ave_cost = model_iter_idx_end
+  # final_iter_ave_cost = 30
 
   ### Set up environment
 

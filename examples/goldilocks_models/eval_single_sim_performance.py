@@ -491,6 +491,7 @@ def main():
   global directory, path_status_log
   directory = "../dairlib_data/goldilocks_models/hardware_cost_eval/" \
     if is_hardware else "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  # directory = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   Path(directory).mkdir(parents=True, exist_ok=True)
   path_status_log = directory + (
     "hardware_status.txt" if is_hardware else "sim_status.txt")
@@ -633,8 +634,10 @@ def main():
     vdot_numerical[i, :] /= dt_x[i]
   if low_pass_filter:
     vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x_extracted[1:], 100)
-    vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x_extracted[1:], 50)
-    vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted[1:], 50)
+    vdot_numerical[:, vel_map["ankle_joint_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_rightdot"]], t_x_extracted[1:], 100)
+    vdot_numerical[:, vel_map["ankle_joint_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_leftdot"]], t_x_extracted[1:], 100)
+    vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x_extracted[1:], 100)
+    vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted[1:], 100)
 
   # import pdb; pdb.set_trace()
   # Testing -- set the toe vel to 0

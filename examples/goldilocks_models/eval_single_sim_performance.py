@@ -31,7 +31,7 @@ def PrintAndLogStatus(msg):
 
 def IsSimLogGood(x, t_x, desried_sim_end_time):
   # Check if the simulation ended early
-  sim_time_tolerance = 0.1
+  sim_time_tolerance = 0.5  # Sometimes the script stopped the logger too early
   if desried_sim_end_time > 0:
     if abs(t_x[-1] - desried_sim_end_time) > sim_time_tolerance:
       msg = msg_first_column + ": sim end time (" + str(
@@ -641,8 +641,8 @@ def main():
   # x_extracted[:, nq + vel_map["toe_leftdot"]] = 0
   # x_extracted[:, nq + vel_map["toe_rightdot"]] = 0
   # Testing -- set the toe acceleration to 0
-  vdot_numerical[:, vel_map["toe_leftdot"]] = 0
-  vdot_numerical[:, vel_map["toe_rightdot"]] = 0
+  # vdot_numerical[:, vel_map["toe_leftdot"]] = 0
+  # vdot_numerical[:, vel_map["toe_rightdot"]] = 0
 
   # Testing (hacks) -- cap the acceleration within 500 to avoid contact spikes
   # max_accel = 750

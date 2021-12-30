@@ -412,6 +412,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   ### multithreading
   working_threads = []
   n_max_thread = min(int(psutil.cpu_count() / 3) - 1, len(task_list))  # TODO: check if the min is necessary
+  n_max_thread = min(int(psutil.cpu_count() / 2), len(task_list)) if target_realtime_rate == 0.1 else n_max_thread
 
   global thread_idx_set
   thread_idx_set = set()

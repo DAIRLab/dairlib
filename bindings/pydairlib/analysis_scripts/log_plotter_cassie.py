@@ -434,14 +434,14 @@ def PlotEkfMeasurementError(t_osc_debug, fsm):
 
 # cutoff_freq is in Hz
 def ApplyLowPassFilter(x, t, cutoff_freq):
-  x_copy = np.copy(x)
   dt = np.diff(t)
-  x_filtered = x_copy[0, :]
+  x_filtered = x[0]
   for i in range(len(dt)):
-    alpha = 2 * np.pi * dt[i] * cutoff_freq / (2 * np.pi * dt[i] * cutoff_freq + 1)
-    x_filtered = alpha * x_copy[i + 1, :] + (1 - alpha) * x_filtered
-    x_copy[i + 1, :] = x_filtered
-  return x_copy
+    alpha = 2 * np.pi * dt[i] * cutoff_freq / (
+        2 * np.pi * dt[i] * cutoff_freq + 1)
+    x_filtered = alpha * x[i + 1] + (1 - alpha) * x_filtered
+    x[i + 1] = x_filtered
+  return x
 
 def CompareVdot(x, t_x, vdot, t_vdot):
   # Finite differencing seems accurate enough
@@ -485,6 +485,11 @@ def PlotVdot(x, t_x, x_datatypes, low_pass_filter = True):
   # Testing -- Apply low pass filter to vdot as well
   if low_pass_filter:
     vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x[1:], 100)
+    # vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x[1:], 25)
+    # vdot_numerical[:, vel_map["ankle_joint_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_rightdot"]], t_x[1:], 50)
+    # vdot_numerical[:, vel_map["ankle_joint_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_leftdot"]], t_x[1:], 50)
+    # vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x[1:], 50)
+    # vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x[1:], 50)
 
   # Testing -- plot squared accleration
   # vdot_numerical = np.square(vdot_numerical)

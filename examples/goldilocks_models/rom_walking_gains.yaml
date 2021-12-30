@@ -35,7 +35,9 @@ cols: 3
 #########################################################################################################################################################
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211221_3dlipm_fix_xy_big_w_vel_and_grad_main_cost/"                # rom_option 10
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211221_3dlipm_fix_xy_big_w_accel_and_grad_main_cost/"              # rom_option 10
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211227_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range/"    # rom_option 10
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211227_3dlipm_fix_xy_big_w_accel_and_grad_main_cost_and_big_range/"    # rom_option 10
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range/"    # rom_option 10
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range_partial/"    # rom_option 10
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter

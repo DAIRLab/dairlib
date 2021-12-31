@@ -689,30 +689,17 @@ def main():
            'cost_q_hip_yaw',
            'cost_q_quat_xyz',
            'cost_regularization',
-           'total_main_cost',
            'total_reg_cost',
+           'total_main_cost',
            'total_cost']
-  names = ', '.join(names)
-  values = [str(cost_dict["cost_x"]),
-            str(cost_dict["cost_u"]),
-            str(cost_dict["cost_accel"]),
-            str(cost_dict["cost_pos_diff"]),
-            str(cost_dict["cost_vel_diff"]),
-            str(cost_dict["cost_u_diff"]),
-            str(cost_dict["cost_q_hip_roll"]),
-            str(cost_dict["cost_q_hip_yaw"]),
-            str(cost_dict["cost_q_quat_xyz"]),
-            str(cost_dict["cost_regularization"]),
-            str(cost_dict["total_main_cost"]),
-            str(cost_dict["total_reg_cost"]),
-            str(cost_dict["total_cost"])]
+  values = [str(cost_dict[name]) for name in names]
 
   values = ', '.join(values)
 
   path = directory + "cost_names.csv"
   # print("writing to " + path)
   f = open(path, "w")
-  f.write(names)
+  f.write(', '.join(names))
   f.close()
 
   path = directory + "%s_cost_values.csv" % file_prefix

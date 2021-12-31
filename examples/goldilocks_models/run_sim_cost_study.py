@@ -644,9 +644,9 @@ def GetSamplesToPlot(model_indices, log_indices):
       if os.path.exists(path0):
         current_cmt = np.zeros((1, 2 + len(varying_task_element_indices)))
         ### Read cost
-        cost = np.loadtxt(path1, delimiter=',')
-        current_cmt[0, 0] = cost[-1]
-        if cost[-1] > max_cost_to_ignore:
+        cost = np.loadtxt(path1, delimiter=',')[idx_sim_cost_element]
+        current_cmt[0, 0] = cost
+        if cost > max_cost_to_ignore:
           continue
         ### model iteration
         current_cmt[0, 1] = rom_iter
@@ -663,14 +663,14 @@ def GetSamplesToPlot(model_indices, log_indices):
         if not add_this_element:
           continue
         ### Assign values -- cmt
-        # if (cost[-1] > 2.25) & (current_cmt[0, 2] < 0.3):
+        # if (cost > 2.25) & (current_cmt[0, 2] < 0.3):
         #   continue
         # print('Add (iter,idx) = (%d,%d)' % (rom_iter, idx))
         cmt = np.vstack([cmt, current_cmt])
         ### Assign values -- log index
         log = np.vstack([log, idx])
         ### For debugging
-        # if (cost[-1] > 2.25) & (current_cmt[0, 2] < 0.3):
+        # if (cost > 2.25) & (current_cmt[0, 2] < 0.3):
         #   print("(iter, log) = (%.0f, %.0f) has cost %.3f (outlier)" %
         #         (current_cmt[0, 0], idx, current_cmt[0, 2]))
   print("cmt.shape = " + str(cmt.shape))
@@ -1246,6 +1246,7 @@ if __name__ == "__main__":
   save_fig = True
   plot_nominal = False
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
+  plot_main_cost = True  # main cost is the cost of which we take gradient during model optimization
 
   # 2D plot (cost vs model)
   # task_slice_value_sl = [-0.16, 0, 0.16]
@@ -1324,6 +1325,9 @@ if __name__ == "__main__":
   # Index of task vector where we sweep through
   varying_task_element_indices = GetVaryingTaskElementIdx(tasks, list(nominal_task_names))
   print("varying_task_element_indices = " + str(varying_task_element_indices))
+
+  # Plotting setups
+  idx_sim_cost_element = -2 if plot_main_cost else -1
 
   # Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.

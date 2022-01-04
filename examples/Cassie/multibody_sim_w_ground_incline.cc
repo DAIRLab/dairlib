@@ -265,9 +265,28 @@ int do_main(int argc, char* argv[]) {
   if (!FLAGS_path_init_state.empty()) {
     // set init state from file
     std::cout << "Set init state form a file\n";
-    x_init = readCSV(FLAGS_path_init_state).col(0);
-    DRAKE_DEMAND(plant.num_positions() + plant.num_velocities() ==
-                 x_init.size());
+    VectorXd x_init_wo_spr = readCSV(FLAGS_path_init_state).col(0);
+
+    if (FLAGS_spring_model) {
+      drake::multibody::MultibodyPlant<double> plant_wo_spr(0.0);
+      addCassieMultibody(
+          &plant_wo_spr, nullptr, FLAGS_floating_base /*floating base*/,
+          "examples/Cassie/urdf/cassie_fixed_springs.urdf", false, true);
+      plant_wo_spr.Finalize();
+
+      MatrixXd pos_map = multibody::CreateWithSpringsToWithoutSpringsMapPos(
+                             plant, plant_wo_spr)
+                             .transpose();
+      MatrixXd vel_map = multibody::CreateWithSpringsToWithoutSpringsMapVel(
+                             plant, plant_wo_spr)
+                             .transpose();
+
+      x_init << pos_map * x_init_wo_spr.head(plant_wo_spr.num_positions()),
+          vel_map * x_init_wo_spr.tail(plant_wo_spr.num_velocities());
+    } else {
+      DRAKE_DEMAND(x_init.size() == x_init_wo_spr.size());
+      x_init = x_init_wo_spr;
+    }
   } else {
     VectorXd q_init, v_init, u_init, lambda_init;
     v_init = VectorXd::Zero(plant.num_velocities());

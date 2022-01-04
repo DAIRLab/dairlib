@@ -1209,6 +1209,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   PrintEssentialStatus("Runtime for data saving (for debugging):" +
                        to_string(elapsed.count()));
 
+  /// Some checks
+  if (counter_ == 0 && completely_use_trajs_from_model_opt_as_target_) {
+    // The cost shouldn't be too big in the first solve
+    if (result.get_optimal_cost() > 5e-3) {
+      cout << "\n\nWARNING: Cost shouldn't be too big in the first solve\n\n";
+    }
+    //    DRAKE_DEMAND(result.get_optimal_cost() < 1e-2);
+  }
+
   ///
   counter_++;
 }

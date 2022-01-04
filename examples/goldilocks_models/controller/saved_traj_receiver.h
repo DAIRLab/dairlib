@@ -3,6 +3,7 @@
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/goldilocks_models/reduced_order_models.h"
+#include "examples/goldilocks_models/rom_walking_gains.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -28,7 +29,9 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
       const std::vector<BodyPoint>& left_right_foot,
       std::vector<int> left_right_support_fsm_states,
       double single_support_duration, double double_support_duration,
-      double desired_mid_foot_height, double desired_final_foot_height);
+      double desired_mid_foot_height, double desired_final_foot_height,
+      const RomWalkingGains& gains /*Only use for sim gap testing*/,
+      const StateMirror& state_mirror /*Only use for sim gap testing*/);
 
   const drake::systems::InputPort<double>& get_input_port_lcm_traj() const {
     return this->get_input_port(saved_traj_lcm_port_);
@@ -88,6 +91,15 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   // swing foot traj parameter
   double desired_mid_foot_height_;
   double desired_final_foot_height_;
+
+  // [Test sim gap] -- use trajopt's traj directly in OSC
+  drake::trajectories::PiecewisePolynomial<double> rom_pp_;
+  int n_mode_;
+  Eigen::MatrixXd x0_;
+  Eigen::VectorXd x0_time_;
+  Eigen::MatrixXd xf_;
+  Eigen::VectorXd xf_time_;
+  Eigen::VectorXd stance_foot_;
 };
 
 // We have IKTrajReceiver beside SavedTrajReceiver, because it also extracts the

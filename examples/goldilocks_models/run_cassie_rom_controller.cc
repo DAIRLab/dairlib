@@ -146,13 +146,13 @@ DEFINE_bool(is_two_phase, false,
 
 DEFINE_bool(use_IK, false, "use the IK approach or not");
 
+DEFINE_bool(get_swing_foot_from_planner, false, "");
+
 // Simulated robot
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
 // For testing
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
-
-DEFINE_bool(get_swing_foot_from_planner, false, "");
 
 // Testing
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
@@ -214,6 +214,7 @@ int DoMain(int argc, char* argv[]) {
 
   // TODO: (low priority) Check why it can only turn 180 degree with constant
   //  walking turning rate.
+  //  20220103 Update: There were two causes. Fixed in master.
   // DRAKE_DEMAND(!gains.set_constant_turning_rate);
 
   // Build Cassie MBP
@@ -479,8 +480,8 @@ int DoMain(int argc, char* argv[]) {
     auto optimal_rom_traj_gen = builder.AddSystem<SavedTrajReceiver>(
         *rom, plant_w_spr, plant_wo_springs, context_w_spr.get(),
         left_right_foot, left_right_support_fsm_states, left_support_duration,
-        double_support_duration, gains.mid_foot_height,
-        gains.final_foot_height);
+        double_support_duration, gains.mid_foot_height, gains.final_foot_height,
+        gains, state_mirror);
     builder.Connect(planner_output_subscriber->get_output_port(),
                     optimal_rom_traj_gen->get_input_port_lcm_traj());
     builder.Connect(fsm->get_output_port(0),

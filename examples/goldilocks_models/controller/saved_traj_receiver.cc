@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "common/file_utils.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
 #include "lcm/rom_planner_saved_trajectory.h"
 #include "multibody/multipose_visualizer.h"
@@ -36,7 +37,9 @@ SavedTrajReceiver::SavedTrajReceiver(
     const std::vector<BodyPoint>& left_right_foot,
     std::vector<int> left_right_support_fsm_states,
     double single_support_duration, double double_support_duration,
-    double desired_mid_foot_height, double desired_final_foot_height)
+    double desired_mid_foot_height, double desired_final_foot_height,
+    const RomWalkingGains& gains /*Only use for sim gap testing*/,
+    const StateMirror& state_mirror /*Only use for sim gap testing*/)
     : ny_(rom.n_y()),
       plant_feedback_(plant_feedback),
       plant_control_(plant_control),
@@ -90,6 +93,35 @@ SavedTrajReceiver::SavedTrajReceiver(
       {left_right_support_fsm_states.at(0), left_right_foot.at(1)});
   swing_foot_map_.insert(
       {left_right_support_fsm_states.at(1), left_right_foot.at(0)});
+
+  // // [Test sim gap] -- use trajopt's traj directly in OSC
+  //  std::string dir = gains.dir_model + std::to_string(gains.model_iter) + "_"
+  //  +
+  //                    std::to_string(gains.sample_idx) + "_";
+  //  cout << "dir = " << dir << endl;
+  //  rom_pp_ = PiecewisePolynomial<double>::CubicHermite(
+  //      readCSV(dir + "t_breaks0.csv").col(0), readCSV(dir +
+  //      "y_samples0.csv"), readCSV(dir + "ydot_samples0.csv"));
+  //
+  //  n_mode_ = 2;
+  //  x0_ = MatrixXd(nx_, n_mode_ + 1);
+  //  x0_time_ = VectorXd(n_mode_ + 1);
+  //  xf_ = MatrixXd(nx_, n_mode_);
+  //  xf_time_ = VectorXd(n_mode_);
+  //  stance_foot_ = VectorXd(n_mode_);
+  //  VectorXd xpost = readCSV(dir + "x_samples1.csv").leftCols<1>();
+  //  VectorXd xpre = readCSV(dir + "x_samples0.csv").rightCols<1>();
+  //  double t_end = readCSV(dir + "t_breaks1.csv")(0, 0);
+  //  x0_.col(0) = readCSV(dir + "x_samples0.csv").leftCols<1>();
+  //  x0_.col(1) = xpost;
+  //  x0_.col(2) << state_mirror.MirrorPos(xpost.head(nq_)),
+  //      state_mirror.MirrorVel(xpost.tail(nv_));
+  //  x0_time_ << 0, t_end, 2 * t_end;
+  //  xf_.col(0) = xpre;
+  //  xf_.col(1) << state_mirror.MirrorPos(xpre.head(nq_)),
+  //      state_mirror.MirrorVel(xpre.tail(nv_));
+  //  xf_time_ << t_end, 2 * t_end;
+  //  stance_foot_ << 0, 1;  // left is 0, right is 1
 }
 
 void SavedTrajReceiver::CalcRomTraj(
@@ -116,6 +148,8 @@ void SavedTrajReceiver::CalcRomTraj(
 
   // Construct cubic splines
   PiecewisePolynomial<double> pp = traj_data.ConstructPositionTrajectory();
+  // // [Test sim gap] -- use trajopt's traj directly in OSC
+  //  PiecewisePolynomial<double> pp = rom_pp_;
 
   if (context.get_time() > pp.end_time()) {
     cout << "WARNING: exceeded trajectory's end time! ";
@@ -209,6 +243,14 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   const VectorXd& xf_time = traj_data.get_xf_time();
   const VectorXd& stance_foot = traj_data.get_stance_foot();
   DRAKE_DEMAND(xf_time(0) == x0_time(1));
+
+  // // [Test sim gap] -- use trajopt's traj directly in OSC
+  //  int n_mode = 2;
+  //  const MatrixXd& x0 = x0_;
+  //  const VectorXd& x0_time = x0_time_;
+  //  const MatrixXd& xf = xf_;
+  //  const VectorXd& xf_time = xf_time_;
+  //  const VectorXd& stance_foot = stance_foot_;
 
   // Construct PP (concatenate the PP of each mode)
   // WARNING: we assume each mode in the planner is "single support" + "double

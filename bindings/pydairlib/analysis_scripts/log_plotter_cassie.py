@@ -138,7 +138,7 @@ def main():
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot", True)
@@ -598,6 +598,7 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   osc_traj00 = "swing_ft_traj"
+  osc_traj00 = "stance_hip_rpy_traj"
   # osc_traj0 = "swing_ft_traj"
   osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller

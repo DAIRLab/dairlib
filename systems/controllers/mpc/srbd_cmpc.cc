@@ -431,13 +431,35 @@ void SrbdCMPC::MakeFrictionConeConstraints() {
 void SrbdCMPC::MakeCost(){
   VectorXd unom = VectorXd::Zero(nu_);
   unom(2) = 9.81 * plant_.mass();
-  for (int i = 0; i <= total_knots_; i++) {
+  VectorXd zdes  = VectorXd::Zero(2*nx_ + 2*nu_);
+  zdes << x_des_, x_des_, VectorXd::Zero(2*nu_);
 
-    Matrix<double, nx_, nx_> Q = (i == 0 || i == total_knots_) ? 0.5*Q_ : Q_;
+  Matrix<double, nx_, 2*(nx_+nu_)> G = Matrix<double, nx_, 2*(nx_+nu_)>::Zero();
+  G << Matrix<double, nx_, nx_>::Identity(), Matrix<double, nx_, nx_>::Identity();
+  std::cout << "G:\n" << G << std::endl;
+  for (int j = 0; j < nmodes_; j++) {
+  auto& mode = modes_.at(j);
+    Matrix<double, nx_, 2*(nx_+nu_)> M;
+    M << mode.dynamics.A.block(0, 0, nx_, nx_),
+         -mode.dynamics.A.block(0, 0, nx_, nx_),
+         mode.dynamics.B, -mode.dynamics.B;
+    std::cout << "M:\n" << M << std::endl;
+    Matrix<double, 2*(nx_+nu_), 2*(nx_+nu_)> Q =
+        (2*G-(dt_/4)*M).transpose() * Q_ * (2*G-(dt_/4)*M);
+
+    writeCSV("/home/brian/workspace/srb_dynamics/Q" + std::to_string(j) + ".csv", Q);
+
+    std::cout << "Q:\n" << Q << std::endl;
+    for (int i = 0; i < mode.N; i++) {
+      int idx = j * mode.N + i;
+      tracking_cost_.push_back(prog_.AddQuadraticErrorCost(
+          Q, zdes,
+          {xx.at(idx), xx.at(idx+1), uu.at(idx), uu.at(idx+1)}).
+          evaluator().get());
+    }
+  }
+  for (int i = 0; i <= total_knots_; i++) {
     Matrix<double, nu_, nu_> R = (i == 0 || i == total_knots_) ? 0.5*R_ : R_;
-    tracking_cost_.push_back(
-        prog_.AddQuadraticErrorCost(Q, x_des_, xx.at(i))
-        .evaluator().get());
     input_cost_.push_back(
         prog_.AddQuadraticErrorCost(R, unom, uu.at(i))
         .evaluator().get());

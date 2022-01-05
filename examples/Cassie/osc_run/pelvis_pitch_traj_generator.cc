@@ -85,16 +85,17 @@ PiecewisePolynomial<double> PelvisPitchTrajGenerator::GeneratePelvisTraj(
 
   //  correction << pelvis_pitch + q(7);
   correction << pelvis_pitch;
+//  std::cout << correction << std::endl;
   std::vector<double> breaks = hip_pitch_traj_.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   MatrixXd offset_angles = correction.replicate(1, breaks.size());
-  for (int i = 0; i < breaks_vector.size(); ++i) {
-    offset_angles.col(i) = i * offset_angles.col(i) / breaks_vector.size();
-  }
+//  for (int i = 0; i < breaks_vector.size(); ++i) {
+//    offset_angles.col(i) = i * offset_angles.col(i) / breaks_vector.size();
+//  }
   PiecewisePolynomial<double> offset_traj =
       PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, offset_angles);
   return hip_pitch_traj_ - offset_traj;
-  //  return offset_traj;
+  //  return -offset_traj;
 }
 
 void PelvisPitchTrajGenerator::CalcTraj(
@@ -112,9 +113,9 @@ void PelvisPitchTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  if (fsm_state == 0 || fsm_state == 1) {
-    *casted_traj = GeneratePelvisTraj(robot_output, clock, fsm_state);
-  }
+  //  if (fsm_state == 0 || fsm_state == 1) {
+  *casted_traj = GeneratePelvisTraj(robot_output, clock, fsm_state);
+  //  }
 }
 
 }  // namespace dairlib::examples::osc

@@ -24,12 +24,14 @@ pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
 plot_qp_costs: true
+plot_qp_solve_time: true
 plot_tracking_costs: true
 tracking_datas_to_plot:
-#  pelvis_trans_traj: {'dims': [2], 'derivs': ['accel']}
-  #  hip_yaw_left_traj: {'dims': [0], 'derivs': ['pos', 'vel', 'accel']}
-  #  hip_roll_left_traj: {'dims': [0], 'derivs': ['pos', 'vel', 'accel']}
-  left_ft_traj: {'dims': [0, 2], 'derivs': ['pos']}
-  right_ft_traj: {'dims': [0, 2], 'derivs': ['pos', 'accel']}
-  left_ft_z_traj: {'dims': [2], 'derivs': ['pos']}
-  right_ft_z_traj: {'dims': [2], 'derivs': ['pos']}
+#  pelvis_trans_traj: {'dims': [2], 'derivs': ['pos']}
+#  hip_yaw_left_traj: {'dims': [0], 'derivs': ['pos']}
+#  hip_roll_left_traj: {'dims': [0], 'derivs': ['pos']}
+  hip_pitch_left_traj: {'dims': [0], 'derivs': ['pos', 'vel', 'acc']}
+#  left_ft_traj: {'dims': [2], 'derivs': ['pos']}
+#  right_ft_traj: {'dims': [2], 'derivs': ['pos']}
+#  left_ft_z_traj: {'dims': [2], 'derivs': ['pos']}
+#  right_ft_z_traj: {'dims': [2], 'derivs': ['pos']}

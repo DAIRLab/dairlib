@@ -63,12 +63,16 @@ DEFINE_double(init_height, .7,
               "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
-DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO" ,"LCM channel for virtual radio command");
+DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO",
+              "LCM channel for virtual radio command");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "LCM channel to receive controller inputs on");
 DEFINE_double(actuator_delay, 0.0,
               "Duration of actuator delay. Set to 0.0 by default.");
 DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
+DEFINE_double(start_time, 0.0,
+              "Starting time of the simulator, useful for initializing the "
+              "state at a particular configuration");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -196,7 +200,7 @@ int do_main(int argc, char* argv[]) {
   }
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
-
+  diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
   if (!FLAGS_time_stepping) {

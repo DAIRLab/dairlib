@@ -14,9 +14,13 @@ class PelvisRollTrajGenerator : public drake::systems::LeafSystem<double> {
   PelvisRollTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
-      drake::trajectories::PiecewisePolynomial<double>& hip_roll_traj,
-      drake::trajectories::PiecewisePolynomial<double>& pelvis_roll_traj,
-      int axis, const std::string& system_name);
+      drake::trajectories::PiecewisePolynomial<double>& hip_roll_traj, int axis,
+      const std::string& system_name);
+
+  PelvisRollTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+                          drake::systems::Context<double>* context,
+                          double offset, int axis,
+                          const std::string& system_name);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -30,7 +34,8 @@ class PelvisRollTrajGenerator : public drake::systems::LeafSystem<double> {
 
  private:
   drake::trajectories::PiecewisePolynomial<double> GeneratePelvisTraj(
-      const systems::OutputVector<double>* robot_output, double t, int fsm_state) const;
+      const systems::OutputVector<double>* robot_output, double t,
+      int fsm_state) const;
 
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -43,11 +48,9 @@ class PelvisRollTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
 
-  //  drake::systems::DiscreteStateIndex prev_fsm_idx_;
-
   // pelvis trajectory
   drake::trajectories::PiecewisePolynomial<double> hip_roll_traj_;
-  drake::trajectories::PiecewisePolynomial<double> pelvis_roll_traj_;
+  double neutral_offset_;
 
   // A list of pairs of contact body frame and contact point
   int axis_;

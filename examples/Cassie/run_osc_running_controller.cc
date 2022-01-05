@@ -155,27 +155,45 @@ int DoMain(int argc, char* argv[]) {
   yaml_options.allow_yaml_with_no_cpp = true;
   drake::yaml::YamlReadArchive(root, yaml_options).Accept(&gains);
 
+  OSCRunningGains osc_gains;
+  drake::yaml::YamlReadArchive(root).Accept(&osc_gains);
+
   /**** FSM and contact mode configuration ****/
   int left_stance_state = 0;
   int right_stance_state = 1;
   int right_touchdown_air_phase = 2;
   int left_touchdown_air_phase = 3;
-  double left_support_duration =
-      dircon_trajectory.GetStateBreaks(1)(0) * 2 - FLAGS_fsm_time_offset;
-  double right_support_duration = left_support_duration;
-  double air_phase_duration = dircon_trajectory.GetStateBreaks(2)(0) -
-                              dircon_trajectory.GetStateBreaks(1)(0) +
-                              FLAGS_fsm_time_offset;
+  //  double left_support_duration =
+  //      dircon_trajectory.GetStateBreaks(1)(0) * 2 - FLAGS_fsm_time_offset;
+  //  double right_support_duration = left_support_duration;
+  //  double air_phase_duration = dircon_trajectory.GetStateBreaks(2)(0) -
+  //                              dircon_trajectory.GetStateBreaks(1)(0) +
+  //                              FLAGS_fsm_time_offset;
   vector<int> fsm_states = {left_stance_state, right_touchdown_air_phase,
                             right_stance_state, left_touchdown_air_phase,
                             left_stance_state};
-  std::cout << "left support duration: " << left_support_duration << std::endl;
-  std::cout << "flight duration: " << air_phase_duration << std::endl;
-  std::cout << "right support duration: " << right_support_duration
-            << std::endl;
+  //  std::cout << "left support duration: " << left_support_duration <<
+  //  std::endl; std::cout << "flight duration: " << air_phase_duration <<
+  //  std::endl; std::cout << "right support duration: " <<
+  //  right_support_duration
+  //            << std::endl;
   vector<double> state_durations = {
-      left_support_duration / 2, air_phase_duration, right_support_duration,
-      air_phase_duration, left_support_duration / 2};
+      osc_gains.stance_duration, osc_gains.flight_duration,
+      osc_gains.stance_duration, osc_gains.flight_duration, 0.0};
+  vector<double> accumulated_state_durations;
+  accumulated_state_durations.push_back(0);
+  std::cout << accumulated_state_durations.back() << std::endl;
+  for (double state_duration : state_durations) {
+    accumulated_state_durations.push_back(accumulated_state_durations.back() +
+                                          state_duration);
+    std::cout << accumulated_state_durations.back() << std::endl;
+  }
+  accumulated_state_durations.pop_back();
+//  std::cout << accumulated_state_durations.back() << std::endl;
+  //  VectorXd left_leg_active_duration(2);
+  //  left_leg_active_duration << accumulated_state_durations[0],
+  //  accumulated_state_durations VectorXd right_leg_active_duration =
+  //  VectorXd{accumulated_state_durations[0]};
 
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations, 0.0, gains.impact_threshold);
@@ -264,8 +282,6 @@ int DoMain(int argc, char* argv[]) {
   /**** Tracking Data *****/
 
   std::cout << "Creating tracking data. " << std::endl;
-  OSCRunningGains osc_gains;
-  drake::yaml::YamlReadArchive(root).Accept(&osc_gains);
 
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
@@ -281,6 +297,7 @@ int DoMain(int argc, char* argv[]) {
   if (osc_gains.relative_feet) {
     output_traj_path += "_rel";
   }
+  std::cout << "trajectory name: " << output_traj_path << std::endl;
   const LcmTrajectory& output_trajs =
       LcmTrajectory(FindResourceOrThrow(output_traj_path));
   PiecewisePolynomial<double> pelvis_trans_traj;
@@ -290,9 +307,6 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> r_foot_trajectory;
   PiecewisePolynomial<double> pelvis_rot_trajectory;
 
-  //  for (auto name : output_trajs.GetTrajectoryNames()) {
-  //    std::cout << name << std::endl;
-  //  }
   for (int mode = 0; mode < dircon_trajectory.GetNumModes() * 2; ++mode) {
     const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
         output_trajs.GetTrajectory("pelvis_trans_trajectory" +
@@ -343,6 +357,11 @@ int DoMain(int argc, char* argv[]) {
             lcm_pelvis_rot_traj.datapoints.topRows(4)));
   }
 
+  //  std::cout << "left_foot_trajectory" << std::endl;
+  //  for (auto t : l_foot_trajectory.get_segment_times()) {
+  //    std::cout << t << std::endl;
+  //  }
+
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
           plant, plant_context.get(), pelvis_trans_traj, feet_contact_points,
@@ -351,15 +370,13 @@ int DoMain(int argc, char* argv[]) {
   //                                             osc_gains.k_leg,
   //                                             osc_gains.b_leg);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "hip_left", true, l_foot_trajectory,
-      l_hip_trajectory, osc_gains.relative_feet);
+      plant, plant_context.get(), "toe_left", "hip_left",
+      osc_gains.relative_feet, accumulated_state_durations);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "hip_right", false, r_foot_trajectory,
-      r_hip_trajectory, osc_gains.relative_feet);
-  l_foot_traj_generator->SetFootstepGains(osc_gains.K_p_footstep,
-                                          osc_gains.K_d_footstep);
-  r_foot_traj_generator->SetFootstepGains(osc_gains.K_p_footstep,
-                                          osc_gains.K_d_footstep);
+      plant, plant_context.get(), "toe_right", "hip_right",
+      osc_gains.relative_feet, accumulated_state_durations);
+  l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
+  r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(osc_gains.center_line_offset,
                                                  osc_gains.footstep_offset);
   r_foot_traj_generator->SetFootPlacementOffsets(osc_gains.center_line_offset,
@@ -505,13 +522,27 @@ int DoMain(int argc, char* argv[]) {
   //  auto hip_pitch_right_traj_generator =
   //      builder.AddSystem<BasicTrajectoryPassthrough>(
   //          hip_pitch_right_traj, "hip_pitch_right_traj_generator");
+  MatrixXd left_hip_pitch_neutral_angle(1, 2);
+  left_hip_pitch_neutral_angle << 0.055, 0.055;
+  MatrixXd right_hip_pitch_neutral_angle(1, 2);
+  right_hip_pitch_neutral_angle << 0.055, 0.055;
+  VectorXd full_trajectory_breaks(2);
+  full_trajectory_breaks << 0, accumulated_state_durations.back();
+  PiecewisePolynomial<double> left_hip_pitch_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(full_trajectory_breaks,
+                                                 left_hip_pitch_neutral_angle);
+  PiecewisePolynomial<double> right_hip_pitch_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(full_trajectory_breaks,
+                                                 right_hip_pitch_neutral_angle);
+
+  // TODO(yangwil): generate pitch trajectory
   auto hip_pitch_left_traj_generator =
       builder.AddSystem<PelvisPitchTrajGenerator>(
-          plant, plant_context.get(), hip_pitch_left_traj, pelvis_pitch_traj, 1,
+          plant, plant_context.get(), left_hip_pitch_traj, pelvis_pitch_traj, 1,
           "hip_pitch_left_traj_generator");
   auto hip_pitch_right_traj_generator =
       builder.AddSystem<PelvisPitchTrajGenerator>(
-          plant, plant_context.get(), hip_pitch_right_traj, pelvis_pitch_traj,
+          plant, plant_context.get(), right_hip_pitch_traj, pelvis_pitch_traj,
           1, "hip_pitch_right_traj_generator");
 
   JointSpaceTrackingData left_hip_pitch_tracking_data(
@@ -554,15 +585,27 @@ int DoMain(int argc, char* argv[]) {
   hip_roll_right_traj_mir.shiftRight(hip_roll_right_traj.end_time());
   hip_roll_left_traj.ConcatenateInTime(hip_roll_left_traj_mir);
   hip_roll_right_traj.ConcatenateInTime(hip_roll_right_traj_mir);
-  PiecewisePolynomial<double> pelvis_roll_traj =
-      PiecewisePolynomial<double>(VectorXd::Zero(1));
+  MatrixXd left_hip_roll_neutral_angle(1, 2);
+  left_hip_roll_neutral_angle << 0.02, 0.02;
+  MatrixXd right_hip_roll_neutral_angle(1, 2);
+  right_hip_roll_neutral_angle << -0.02, -0.02;
+//  VectorXd full_trajectory_breaks(2);
+  full_trajectory_breaks << 0, accumulated_state_durations.back();
+  PiecewisePolynomial<double> left_hip_roll_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(full_trajectory_breaks,
+                                                 left_hip_roll_neutral_angle);
+  PiecewisePolynomial<double> right_hip_roll_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(full_trajectory_breaks,
+                                                 right_hip_roll_neutral_angle);
+
+  // TODO(yangwil): generate roll trajectory
   auto hip_roll_left_traj_generator =
       builder.AddSystem<PelvisRollTrajGenerator>(
-          plant, plant_context.get(), hip_roll_left_traj, pelvis_roll_traj, 1,
+          plant, plant_context.get(), left_hip_roll_traj, 1,
           "hip_roll_left_traj_generator");
   auto hip_roll_right_traj_generator =
       builder.AddSystem<PelvisRollTrajGenerator>(
-          plant, plant_context.get(), hip_roll_right_traj, pelvis_roll_traj, 1,
+          plant, plant_context.get(), right_hip_roll_traj, 1,
           "hip_roll_right_traj_generator");
   JointSpaceTrackingData left_hip_roll_tracking_data(
       "hip_roll_left_traj", osc_gains.K_p_hip_roll, osc_gains.K_d_hip_roll,

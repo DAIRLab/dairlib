@@ -31,14 +31,12 @@ namespace dairlib::examples::osc {
 PelvisRollTrajGenerator::PelvisRollTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
-    drake::trajectories::PiecewisePolynomial<double>& hip_roll_traj,
-    drake::trajectories::PiecewisePolynomial<double>& pelvis_roll_traj,
-    int axis, const std::string& system_name)
+    drake::trajectories::PiecewisePolynomial<double>& hip_roll_traj, int axis,
+    const std::string& system_name)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       hip_roll_traj_(hip_roll_traj),
-      pelvis_roll_traj_(pelvis_roll_traj),
       axis_(axis) {
   this->set_name(system_name);
   // Input/Output Setup
@@ -87,12 +85,14 @@ PiecewisePolynomial<double> PelvisRollTrajGenerator::GeneratePelvisTraj(
   std::vector<double> breaks = hip_roll_traj_.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   MatrixXd offset_angles = correction.replicate(1, breaks.size());
-//  for (int i = 0; i < breaks_vector.size(); ++i){
-//    offset_angles.col(i) = i * offset_angles.col(i) / breaks_vector.size();
-//  }
+  //  for (int i = 0; i < breaks_vector.size(); ++i) {
+  //    offset_angles.col(i) = i * offset_angles.col(i) / breaks_vector.size();
+  //  }
+  //  std::cout << "breaks vector: " << breaks_vector << std::endl;
   PiecewisePolynomial<double> offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_angles);
   return hip_roll_traj_ + offset_traj;
+  //  return offset_traj;
 }
 
 void PelvisRollTrajGenerator::CalcTraj(
@@ -110,9 +110,7 @@ void PelvisRollTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  if (fsm_state == 0 || fsm_state == 1) {
-    *casted_traj = GeneratePelvisTraj(robot_output, clock, fsm_state);
-  }
+  *casted_traj = GeneratePelvisTraj(robot_output, clock, fsm_state);
 }
 
 }  // namespace dairlib::examples::osc

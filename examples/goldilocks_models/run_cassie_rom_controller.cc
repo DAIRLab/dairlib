@@ -147,6 +147,7 @@ DEFINE_bool(is_two_phase, false,
 DEFINE_bool(use_IK, false, "use the IK approach or not");
 
 DEFINE_bool(get_swing_foot_from_planner, false, "");
+DEFINE_bool(get_stance_hip_angles_from_planner, false, "");
 
 // Simulated robot
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
@@ -477,17 +478,17 @@ int DoMain(int argc, char* argv[]) {
         left_toe_origin, right_toe_origin};
     vector<int> left_right_support_fsm_states = {left_stance_state,
                                                  right_stance_state};
-    auto optimal_rom_traj_gen = builder.AddSystem<SavedTrajReceiver>(
+    auto planner_traj_receiver = builder.AddSystem<SavedTrajReceiver>(
         *rom, plant_w_spr, plant_wo_springs, context_w_spr.get(),
         left_right_foot, left_right_support_fsm_states, left_support_duration,
         double_support_duration, gains.mid_foot_height, gains.final_foot_height,
         gains, state_mirror);
     builder.Connect(planner_output_subscriber->get_output_port(),
-                    optimal_rom_traj_gen->get_input_port_lcm_traj());
+                    planner_traj_receiver->get_input_port_lcm_traj());
     builder.Connect(fsm->get_output_port(0),
-                    optimal_rom_traj_gen->get_input_port_fsm());
+                    planner_traj_receiver->get_input_port_fsm());
     builder.Connect(simulator_drift->get_output_port(0),
-                    optimal_rom_traj_gen->get_input_port_state());
+                    planner_traj_receiver->get_input_port_state());
 
     // Create heading traj generator
     auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
@@ -616,7 +617,7 @@ int DoMain(int argc, char* argv[]) {
     auto optimal_traj_planner_guard =
         builder.AddSystem<goldilocks_models::PlannedTrajGuard>();
     builder.Connect(
-        optimal_rom_traj_gen->get_output_port(0),
+        planner_traj_receiver->get_output_port(0),
         optimal_traj_planner_guard->get_input_port_optimal_rom_traj());
     builder.Connect(local_lipm_traj_generator->get_output_port(0),
                     optimal_traj_planner_guard->get_input_port_lipm_traj());*/
@@ -739,6 +740,33 @@ int DoMain(int argc, char* argv[]) {
     } else {
       osc->AddTrackingData(&optimal_rom_traj);
     }
+
+    // Stance hip roll, pitch and yaw
+    MatrixXd W_stance_hip_rpy = MatrixXd::Identity(3, 3);
+    MatrixXd K_p_stance_hip_rpy = 500 * MatrixXd::Identity(3, 3);
+    MatrixXd K_d_stance_hip_rpy = 5 * MatrixXd::Identity(3, 3);
+    JointSpaceTrackingData stance_hip_rpy_traj(
+        "stance_hip_rpy_traj", K_p_stance_hip_rpy, K_d_stance_hip_rpy,
+        weight_scale * W_stance_hip_rpy, plant_w_spr, plant_wo_springs);
+    stance_hip_rpy_traj.AddStateAndJointsToTrack(
+        left_stance_state, {"hip_roll_left", "hip_pitch_left", "hip_yaw_left"},
+        {"hip_roll_leftdot", "hip_pitch_leftdot", "hip_yaw_leftdot"});
+    stance_hip_rpy_traj.AddStateAndJointsToTrack(
+        post_left_double_support_state,
+        {"hip_roll_left", "hip_pitch_left", "hip_yaw_left"},
+        {"hip_roll_leftdot", "hip_pitch_leftdot", "hip_yaw_leftdot"});
+    stance_hip_rpy_traj.AddStateAndJointsToTrack(
+        right_stance_state,
+        {"hip_roll_right", "hip_pitch_right", "hip_yaw_right"},
+        {"hip_roll_rightdot", "hip_pitch_rightdot", "hip_yaw_rightdot"});
+    stance_hip_rpy_traj.AddStateAndJointsToTrack(
+        post_right_double_support_state,
+        {"hip_roll_right", "hip_pitch_right", "hip_yaw_right"},
+        {"hip_roll_rightdot", "hip_pitch_rightdot", "hip_yaw_rightdot"});
+    if (FLAGS_get_stance_hip_angles_from_planner) {
+      osc->AddTrackingData(&stance_hip_rpy_traj);
+    }
+
     // Pelvis rotation tracking (pitch and roll)
     RotTaskSpaceTrackingData pelvis_balance_traj(
         "pelvis_balance_traj", osc_gains.K_p_pelvis_balance,
@@ -754,7 +782,10 @@ int DoMain(int argc, char* argv[]) {
         PiecewisePolynomial<double>::FirstOrderHold(balance_ratio_breaks,
                                                     balance_ratio_samples);
     pelvis_balance_traj.SetTimeVaryingGains(balance_gain_ratio);
-    osc->AddTrackingData(&pelvis_balance_traj);
+    if (!FLAGS_get_stance_hip_angles_from_planner) {
+      osc->AddTrackingData(&pelvis_balance_traj);
+    }
+
     // Pelvis rotation tracking (yaw)
     RotTaskSpaceTrackingData pelvis_heading_traj(
         "pelvis_heading_traj", osc_gains.K_p_pelvis_heading,
@@ -770,22 +801,11 @@ int DoMain(int argc, char* argv[]) {
         PiecewisePolynomial<double>::FirstOrderHold(heading_breaks,
                                                     heading_samples);
     pelvis_heading_traj.SetTimeVaryingGains(heading_gain_ratio);*/
-    osc->AddTrackingData(&pelvis_heading_traj,
-                         osc_gains.period_of_no_heading_control);
-    // Swing toe joint tracking
-    JointSpaceTrackingData swing_toe_traj_left(
-        "left_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
-        weight_scale * osc_gains.W_swing_toe, plant_w_spr, plant_wo_springs);
-    JointSpaceTrackingData swing_toe_traj_right(
-        "right_toe_angle_traj", osc_gains.K_p_swing_toe,
-        osc_gains.K_d_swing_toe, weight_scale * osc_gains.W_swing_toe,
-        plant_w_spr, plant_wo_springs);
-    swing_toe_traj_right.AddStateAndJointToTrack(left_stance_state, "toe_right",
-                                                 "toe_rightdot");
-    swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
-                                                "toe_leftdot");
-    osc->AddTrackingData(&swing_toe_traj_left);
-    osc->AddTrackingData(&swing_toe_traj_right);
+    if (!FLAGS_get_stance_hip_angles_from_planner) {
+      osc->AddTrackingData(&pelvis_heading_traj,
+                           osc_gains.period_of_no_heading_control);
+    }
+
     // Swing hip yaw joint tracking
     JointSpaceTrackingData swing_hip_yaw_traj(
         "swing_hip_yaw_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
@@ -805,6 +825,21 @@ int DoMain(int argc, char* argv[]) {
     swing_hip_yaw_traj.SetTimeVaryingGains(hip_yaw_gain_ratio);
     osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
 
+    // Swing toe joint tracking
+    JointSpaceTrackingData swing_toe_traj_left(
+        "left_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
+        weight_scale * osc_gains.W_swing_toe, plant_w_spr, plant_wo_springs);
+    JointSpaceTrackingData swing_toe_traj_right(
+        "right_toe_angle_traj", osc_gains.K_p_swing_toe,
+        osc_gains.K_d_swing_toe, weight_scale * osc_gains.W_swing_toe,
+        plant_w_spr, plant_wo_springs);
+    swing_toe_traj_right.AddStateAndJointToTrack(left_stance_state, "toe_right",
+                                                 "toe_rightdot");
+    swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
+                                                "toe_leftdot");
+    osc->AddTrackingData(&swing_toe_traj_left);
+    osc->AddTrackingData(&swing_toe_traj_right);
+
     // Set double support duration for force blending
 //    osc->SetUpDoubleSupportPhaseBlending(
 //        double_support_duration, left_stance_state, right_stance_state,
@@ -816,23 +851,32 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(simulator_drift->get_output_port(0),
                     osc->get_robot_output_input_port());
     builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-    builder.Connect(optimal_rom_traj_gen->get_output_port_rom(),
+
+    builder.Connect(planner_traj_receiver->get_output_port_rom(),
                     osc->get_tracking_data_input_port("optimal_rom_traj"));
     if (FLAGS_get_swing_foot_from_planner) {
-      builder.Connect(optimal_rom_traj_gen->get_output_port_swing_foot(),
+      builder.Connect(planner_traj_receiver->get_output_port_swing_foot(),
                       osc->get_tracking_data_input_port("swing_ft_traj"));
     } else {
       builder.Connect(swing_ft_traj_generator->get_output_port(0),
                       osc->get_tracking_data_input_port("swing_ft_traj"));
     }
-    builder.Connect(head_traj_gen->get_output_port(0),
-                    osc->get_tracking_data_input_port("pelvis_balance_traj"));
-    builder.Connect(head_traj_gen->get_output_port(0),
-                    osc->get_tracking_data_input_port("pelvis_heading_traj"));
+
+    if (FLAGS_get_stance_hip_angles_from_planner) {
+      builder.Connect(planner_traj_receiver->get_output_port_hip_rpy(),
+                      osc->get_tracking_data_input_port("stance_hip_rpy_traj"));
+    } else {
+      builder.Connect(head_traj_gen->get_output_port(0),
+                      osc->get_tracking_data_input_port("pelvis_balance_traj"));
+      builder.Connect(head_traj_gen->get_output_port(0),
+                      osc->get_tracking_data_input_port("pelvis_heading_traj"));
+    }
+
     builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                     osc->get_tracking_data_input_port("left_toe_angle_traj"));
     builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                     osc->get_tracking_data_input_port("right_toe_angle_traj"));
+
     builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
     if (FLAGS_publish_osc_data) {
       // Create osc debug sender.

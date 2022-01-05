@@ -30,7 +30,7 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
       std::vector<int> left_right_support_fsm_states,
       double single_support_duration, double double_support_duration,
       double desired_mid_foot_height, double desired_final_foot_height,
-      const RomWalkingGains& gains /*Only use for sim gap testing*/,
+      const RomWalkingGains& gains,
       const StateMirror& state_mirror /*Only use for sim gap testing*/);
 
   const drake::systems::InputPort<double>& get_input_port_lcm_traj() const {
@@ -43,11 +43,15 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
 
+  // Desired trajs ports
   const drake::systems::OutputPort<double>& get_output_port_rom() const {
     return this->get_output_port(rom_traj_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_swing_foot() const {
     return this->get_output_port(swing_foot_traj_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_hip_rpy() const {
+    return this->get_output_port(hip_rpy_traj_port_);
   }
 
  private:
@@ -55,6 +59,10 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
                    drake::trajectories::Trajectory<double>* traj) const;
   void CalcSwingFootTraj(const drake::systems::Context<double>& context,
                          drake::trajectories::Trajectory<double>* traj) const;
+  void CalcStanceHipTraj(
+      const drake::systems::Context<double>& context,
+      drake::trajectories::Trajectory<double>* traj) const;
+
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -65,9 +73,13 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
 
   int rom_traj_port_;
   int swing_foot_traj_port_;
+  int hip_rpy_traj_port_;
 
   int liftoff_swing_foot_pos_idx_;
-  mutable double prev_fsm_state_ = -1;
+  int liftoff_stance_hip_pos_idx_;
+  int liftoff_stance_hip_vel_idx_;
+
+  mutable int prev_fsm_state_ = -1;
   mutable double lift_off_time_ = 0;
 
   int ny_;
@@ -82,7 +94,19 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   int nv_;
   int nx_;
 
-  std::map<int, BodyPoint> swing_foot_map_;
+  std::map<int, BodyPoint> swing_foot_map1_;
+  std::map<int, int> stance_hip_roll_pos_map1_;
+  std::map<int, int> stance_hip_pitch_pos_map1_;
+  std::map<int, int> stance_hip_yaw_pos_map1_;
+  std::map<int, int> stance_hip_roll_vel_map1_;
+  std::map<int, int> stance_hip_pitch_vel_map1_;
+  std::map<int, int> stance_hip_yaw_vel_map1_;
+  std::map<bool, int> stance_hip_roll_pos_map2_;
+  std::map<bool, int> stance_hip_pitch_pos_map2_;
+  std::map<bool, int> stance_hip_yaw_pos_map2_;
+  std::map<bool, int> stance_hip_roll_vel_map2_;
+  std::map<bool, int> stance_hip_pitch_vel_map2_;
+  std::map<bool, int> stance_hip_yaw_vel_map2_;
 
   // hacks
   double single_support_duration_;

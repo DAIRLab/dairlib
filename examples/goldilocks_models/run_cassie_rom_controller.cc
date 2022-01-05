@@ -740,7 +740,6 @@ int DoMain(int argc, char* argv[]) {
       osc->AddTrackingData(&optimal_rom_traj);
     }
     // Pelvis rotation tracking (pitch and roll)
-    bool constant_pelvis_balance = false;
     RotTaskSpaceTrackingData pelvis_balance_traj(
         "pelvis_balance_traj", osc_gains.K_p_pelvis_balance,
         osc_gains.K_d_pelvis_balance, weight_scale * osc_gains.W_pelvis_balance,
@@ -755,13 +754,7 @@ int DoMain(int argc, char* argv[]) {
         PiecewisePolynomial<double>::FirstOrderHold(balance_ratio_breaks,
                                                     balance_ratio_samples);
     pelvis_balance_traj.SetTimeVaryingGains(balance_gain_ratio);
-    if (constant_pelvis_balance) {
-      VectorXd pelvis_desired_quat(4);
-      pelvis_desired_quat << 1, 0, 0, 0;
-      osc->AddConstTrackingData(&pelvis_balance_traj, pelvis_desired_quat);
-    } else {
-      osc->AddTrackingData(&pelvis_balance_traj);
-    }
+    osc->AddTrackingData(&pelvis_balance_traj);
     // Pelvis rotation tracking (yaw)
     RotTaskSpaceTrackingData pelvis_heading_traj(
         "pelvis_heading_traj", osc_gains.K_p_pelvis_heading,
@@ -832,10 +825,8 @@ int DoMain(int argc, char* argv[]) {
       builder.Connect(swing_ft_traj_generator->get_output_port(0),
                       osc->get_tracking_data_input_port("swing_ft_traj"));
     }
-    if (!constant_pelvis_balance) {
-      builder.Connect(head_traj_gen->get_output_port(0),
-                      osc->get_tracking_data_input_port("pelvis_balance_traj"));
-    }
+    builder.Connect(head_traj_gen->get_output_port(0),
+                    osc->get_tracking_data_input_port("pelvis_balance_traj"));
     builder.Connect(head_traj_gen->get_output_port(0),
                     osc->get_tracking_data_input_port("pelvis_heading_traj"));
     builder.Connect(left_toe_angle_traj_gen->get_output_port(0),

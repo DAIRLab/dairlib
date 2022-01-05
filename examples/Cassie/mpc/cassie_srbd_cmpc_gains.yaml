@@ -1,8 +1,8 @@
 mu: 0.8
 ReachabilityLim: [0.4, 0.3, 0.4]
 StateW:
-  [ 10, 10, 10,    # x, y, z
-   1000, 1000, 10,     # roll, pitch , yaw
+  [0, 10, 10,    # x, y, z
+   1000, 100, 10,     # roll, pitch , yaw
    100, 100, 10,     # vx, vy, vz
    100, 10, 10]     # omega
 FinalStateW:

@@ -128,7 +128,7 @@ hip_yaw_kd: 0.5
 #   0, 0, 0,
 #   0, 0, 10]
 # Also track x (not tested with high gains)
-#RomW:
+RomW:
   [0.1,    0,     0,
    0, 0,     0,
    0,    0,    10]

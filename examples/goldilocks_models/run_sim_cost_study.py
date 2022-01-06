@@ -65,7 +65,7 @@ def LogSimCostStudySetting():
   f.write("spring_model = %s\n" % spring_model)
   f.write("target_realtime_rate = %s\n" % target_realtime_rate)
   f.write("foot_step_from_planner = %s\n" % foot_step_from_planner)
-  f.write("stnace_hip_joint_from_planner = %s\n" % stnace_hip_joint_from_planner)
+  f.write("stance_hip_angles_from_planner = %s\n" % stance_hip_angles_from_planner)
   f.write("init_sim_vel = %s\n" % init_sim_vel)
   f.write("use_nominal_traj_pool = %s\n" % use_nominal_traj_pool)
   f.write("set_sim_init_state_from_trajopt = %s\n" % set_sim_init_state_from_trajopt)
@@ -187,7 +187,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--init_traj_file_path=%s' % init_traj_file_path,
     '--spring_model=%s' % str(spring_model).lower(),
     '--get_swing_foot_from_planner=%s' % str(foot_step_from_planner).lower(),
-    '--stnace_hip_joint_from_planner=%s' % str(stnace_hip_joint_from_planner).lower(),
+    '--get_stance_hip_angles_from_planner=%s' % str(stance_hip_angles_from_planner).lower(),
     '--path_wait_identifier=%s' % control_wait_identifier,
     ]
   simulator_cmd = [
@@ -1211,7 +1211,7 @@ if __name__ == "__main__":
   # Parameters that are modified often
   target_realtime_rate = 0.1  # 0.04
   foot_step_from_planner = True
-  stnace_hip_joint_from_planner = True
+  stance_hip_angles_from_planner = True
   init_sim_vel = True
   use_nominal_traj_pool = True
   set_sim_init_state_from_trajopt = True

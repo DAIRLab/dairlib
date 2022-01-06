@@ -191,6 +191,7 @@ while 1:
 
     if save_figure:
         plt.savefig("../cost.png")
+        plt.savefig(directory + "cost.png")
         print("figure saved")
         break
 

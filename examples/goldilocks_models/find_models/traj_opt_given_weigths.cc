@@ -2456,6 +2456,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                       num_time_samples.size() - 1,
                       num_time_samples[num_time_samples.size() - 1] - 1);
   auto x_mid = trajopt.state(int(num_time_samples[0] / 2));
+  auto x_pre = trajopt.final_state(); // pre-impact
 
   // Testing
   if (only_one_mode) {
@@ -2592,6 +2593,15 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                       xf(n_q + vel_map.at("base_vz")));
         }
       }
+
+      // Testing -- set the end pelvis angular vel to be 0 (OSC heuristics)
+      /*trajopt.AddBoundingBoxConstraint(0, 0,
+                                       x_pre(n_q + vel_map.at("base_wx")));
+      trajopt.AddBoundingBoxConstraint(0, 0,
+                                       x_pre(n_q + vel_map.at("base_wy")));
+      trajopt.AddBoundingBoxConstraint(0, 0,
+                                       x_pre(n_q + vel_map.at("base_wz")));
+      */
     } else {
       // z position constraint
       // We don't need to impose this constraint when turning rate is 0, because

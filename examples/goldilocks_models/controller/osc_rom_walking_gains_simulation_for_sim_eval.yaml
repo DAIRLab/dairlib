@@ -12,11 +12,11 @@ w_swing_toe: 2
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 0.5
-hip_yaw_kp: 40
-hip_yaw_kd: 0.5
-
 ################## Modified from gains for mujoco sim ###################
+
+#w_hip_yaw: 0.5
+#hip_yaw_kp: 40
+#hip_yaw_kd: 0.5
 
 ##RomW:
 ##[0, 0, 0,
@@ -114,6 +114,10 @@ hip_yaw_kd: 0.5
 ###########################################################################################################
 
 ############### For Drake simulation evaluation (fixed spring) #################
+w_hip_yaw: 0.5
+hip_yaw_kp: 100
+hip_yaw_kd: 2
+
 #
 #RomW:
 #  [0, 0, 0,

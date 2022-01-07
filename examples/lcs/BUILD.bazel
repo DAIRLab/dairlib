@@ -1,0 +1,19 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+	name = "lcs",
+	srcs = ["lcs.py"]
+)
+
+py_binary(
+	name = "test_lcs",
+	srcs = ["test_lcs.py"],
+	deps = [
+		":lcs",
+		"//bindings/pydairlib",
+		"@drake//bindings/pydrake",
+	]
+)

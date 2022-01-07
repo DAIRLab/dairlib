@@ -11,6 +11,19 @@ load(
     "pybind_py_library",
 )
 
+pybind_py_library(
+    name = "pathlcp_py",
+    cc_deps = [
+        "//solvers/path",
+    ],
+    cc_so_name = "pathlcp",
+    cc_srcs = ["pathlcp.cc"],
+    py_deps = [
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -22,20 +35,17 @@ py_library(
     ],
     imports = PACKAGE_INFO.py_imports,
     deps = [
+        "//bindings/pydairlib:module_py",
     ],
 )
 
 PY_LIBRARIES = [
-    ":module_py",
-    "//bindings/pydairlib/common",
-    "//bindings/pydairlib/lcm",
-    "//bindings/pydairlib/multibody",
-    "//bindings/pydairlib/solvers",
+    ":pathlcp_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "pydairlib",
-    visibility = ["//visibility:public"],
+    name = "solvers",
+    imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

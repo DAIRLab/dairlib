@@ -602,6 +602,7 @@ void SavedTrajReceiver::CalcSwingHipTraj(
       T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
                                         double_support_duration_
                                   : x0_time(j);
+      // TODO (yminchen): the end time should actually be `xf_time(j) - double_support_duration_`
       T_waypoint.at(1) = xf_time(j);
 
       // Start

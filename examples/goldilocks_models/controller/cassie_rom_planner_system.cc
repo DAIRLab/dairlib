@@ -173,7 +173,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     }
 
     double duration = y_traj.end_time();
-    DRAKE_DEMAND(duration == stride_period);
+    DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
     for (int i = 0; i < param_.knots_per_mode; i++) {
       h_guess_(i) = duration / (param_.knots_per_mode - 1) * i;
       y_guess_.col(i) = y_traj.value(h_guess_(i));
@@ -194,7 +194,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
             readCSV(model_dir_n_pref + string("x_samples0.csv")),
             readCSV(model_dir_n_pref + string("xdot_samples0.csv")));
     double duration = x_traj.end_time();
-    DRAKE_DEMAND(duration == stride_period);
+    DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
     DRAKE_DEMAND(x_traj.cols() == 1);
     DRAKE_DEMAND(x_traj.rows() == nx_);
 

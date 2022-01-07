@@ -148,6 +148,7 @@ DEFINE_bool(use_IK, false, "use the IK approach or not");
 
 DEFINE_bool(get_swing_foot_from_planner, false, "");
 DEFINE_bool(get_stance_hip_angles_from_planner, false, "");
+DEFINE_bool(get_swing_hip_angle_from_planner, false, "");
 
 // Simulated robot
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
@@ -743,7 +744,9 @@ int DoMain(int argc, char* argv[]) {
 
     // Stance hip roll, pitch and yaw
     MatrixXd W_stance_hip_rpy = MatrixXd::Identity(3, 3);
-    MatrixXd K_p_stance_hip_rpy = 500 * MatrixXd::Identity(3, 3);
+    MatrixXd K_p_stance_hip_rpy = (osc_gains.K_p_swing_foot(2, 2) > 400)
+                                      ? 500 * MatrixXd::Identity(3, 3)
+                                      : 200 * MatrixXd::Identity(3, 3);
     MatrixXd K_d_stance_hip_rpy = 5 * MatrixXd::Identity(3, 3);
     JointSpaceTrackingData stance_hip_rpy_traj(
         "stance_hip_rpy_traj", K_p_stance_hip_rpy, K_d_stance_hip_rpy,
@@ -767,7 +770,7 @@ int DoMain(int argc, char* argv[]) {
       osc->AddTrackingData(&stance_hip_rpy_traj);
     }
 
-    // Pelvis rotation tracking (pitch and roll)
+    // Heuristics -- Pelvis rotation tracking (pitch and roll)
     RotTaskSpaceTrackingData pelvis_balance_traj(
         "pelvis_balance_traj", osc_gains.K_p_pelvis_balance,
         osc_gains.K_d_pelvis_balance, weight_scale * osc_gains.W_pelvis_balance,
@@ -786,7 +789,7 @@ int DoMain(int argc, char* argv[]) {
       osc->AddTrackingData(&pelvis_balance_traj);
     }
 
-    // Pelvis rotation tracking (yaw)
+    // Heuristics -- Pelvis rotation tracking (yaw)
     RotTaskSpaceTrackingData pelvis_heading_traj(
         "pelvis_heading_traj", osc_gains.K_p_pelvis_heading,
         osc_gains.K_d_pelvis_heading, weight_scale * osc_gains.W_pelvis_heading,
@@ -818,12 +821,18 @@ int DoMain(int argc, char* argv[]) {
                                              left_support_duration};
     std::vector<MatrixX<double>> hip_yaw_ratio_samples(
         3, MatrixX<double>::Identity(1, 1));
-    hip_yaw_ratio_samples[0] *= 0;
+    if (!FLAGS_get_swing_hip_angle_from_planner) {
+      hip_yaw_ratio_samples[0] *= 0;
+    }
     PiecewisePolynomial<double> hip_yaw_gain_ratio =
         PiecewisePolynomial<double>::FirstOrderHold(hip_yaw_ratio_breaks,
                                                     hip_yaw_ratio_samples);
     swing_hip_yaw_traj.SetTimeVaryingGains(hip_yaw_gain_ratio);
-    osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+    if (!FLAGS_get_swing_hip_angle_from_planner) {
+      osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+    } else {
+      osc->AddTrackingData(&swing_hip_yaw_traj);
+    }
 
     // Swing toe joint tracking
     JointSpaceTrackingData swing_toe_traj_left(
@@ -870,6 +879,11 @@ int DoMain(int argc, char* argv[]) {
                       osc->get_tracking_data_input_port("pelvis_balance_traj"));
       builder.Connect(head_traj_gen->get_output_port(0),
                       osc->get_tracking_data_input_port("pelvis_heading_traj"));
+    }
+
+    if (FLAGS_get_swing_hip_angle_from_planner) {
+      builder.Connect(planner_traj_receiver->get_output_port_swing_hip(),
+                      osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
     }
 
     builder.Connect(left_toe_angle_traj_gen->get_output_port(0),

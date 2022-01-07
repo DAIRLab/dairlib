@@ -88,6 +88,12 @@ SavedTrajReceiver::SavedTrajReceiver(
       this->DeclareAbstractOutputPort("stance_hip_rpy_traj", traj_inst3,
                                       &SavedTrajReceiver::CalcStanceHipTraj)
           .get_index();
+  PiecewisePolynomial<double> pp4;
+  drake::trajectories::Trajectory<double>& traj_inst4 = pp4;
+  swing_hip_yaw_traj_port_ =
+      this->DeclareAbstractOutputPort("swing_hip_yaw_traj", traj_inst4,
+                                      &SavedTrajReceiver::CalcSwingHipTraj)
+          .get_index();
 
   // Discrete update for the swing foot at touchdown
   DeclarePerStepDiscreteUpdateEvent(&SavedTrajReceiver::DiscreteVariableUpdate);
@@ -96,6 +102,8 @@ SavedTrajReceiver::SavedTrajReceiver(
   // pos and vel index
   liftoff_stance_hip_pos_idx_ = this->DeclareDiscreteState(Vector3d::Zero());
   liftoff_stance_hip_vel_idx_ = this->DeclareDiscreteState(Vector3d::Zero());
+  liftoff_swing_hip_pos_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+  liftoff_swing_hip_vel_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
 
   // Construct body maps
   swing_foot_map1_.insert(
@@ -121,6 +129,10 @@ SavedTrajReceiver::SavedTrajReceiver(
       {left_right_support_fsm_states.at(0), pos_idx_map.at("hip_yaw_left")});
   stance_hip_yaw_pos_map1_.insert(
       {left_right_support_fsm_states.at(1), pos_idx_map.at("hip_yaw_right")});
+  swing_hip_yaw_pos_map1_.insert(
+      {left_right_support_fsm_states.at(0), pos_idx_map.at("hip_yaw_right")});
+  swing_hip_yaw_pos_map1_.insert(
+      {left_right_support_fsm_states.at(1), pos_idx_map.at("hip_yaw_left")});
   // Construct velocity index map
   stance_hip_roll_vel_map1_.insert({left_right_support_fsm_states.at(0),
                                     vel_idx_map.at("hip_roll_leftdot")});
@@ -134,6 +146,10 @@ SavedTrajReceiver::SavedTrajReceiver(
       {left_right_support_fsm_states.at(0), vel_idx_map.at("hip_yaw_leftdot")});
   stance_hip_yaw_vel_map1_.insert({left_right_support_fsm_states.at(1),
                                    vel_idx_map.at("hip_yaw_rightdot")});
+  swing_hip_yaw_vel_map1_.insert({left_right_support_fsm_states.at(0),
+                                  vel_idx_map.at("hip_yaw_rightdot")});
+  swing_hip_yaw_vel_map1_.insert(
+      {left_right_support_fsm_states.at(1), vel_idx_map.at("hip_yaw_leftdot")});
 
   // Construct position index map
   stance_hip_roll_pos_map2_.insert({true, pos_idx_map.at("hip_roll_left")});
@@ -142,6 +158,8 @@ SavedTrajReceiver::SavedTrajReceiver(
   stance_hip_pitch_pos_map2_.insert({false, pos_idx_map.at("hip_pitch_right")});
   stance_hip_yaw_pos_map2_.insert({true, pos_idx_map.at("hip_yaw_left")});
   stance_hip_yaw_pos_map2_.insert({false, pos_idx_map.at("hip_yaw_right")});
+  swing_hip_yaw_pos_map2_.insert({true, pos_idx_map.at("hip_yaw_right")});
+  swing_hip_yaw_pos_map2_.insert({false, pos_idx_map.at("hip_yaw_left")});
   // Construct velocity index map
   stance_hip_roll_vel_map2_.insert(
       {true, nq_ + vel_idx_map.at("hip_roll_leftdot")});
@@ -155,6 +173,10 @@ SavedTrajReceiver::SavedTrajReceiver(
       {true, nq_ + vel_idx_map.at("hip_yaw_leftdot")});
   stance_hip_yaw_vel_map2_.insert(
       {false, nq_ + vel_idx_map.at("hip_yaw_rightdot")});
+  swing_hip_yaw_vel_map2_.insert(
+      {true, nq_ + vel_idx_map.at("hip_yaw_rightdot")});
+  swing_hip_yaw_vel_map2_.insert(
+      {false, nq_ + vel_idx_map.at("hip_yaw_leftdot")});
 
   // // [Test sim gap] -- use trajopt's traj directly in OSC
   //  std::string dir = gains.dir_model + std::to_string(gains.model_iter) + "_"
@@ -270,6 +292,14 @@ EventStatus SavedTrajReceiver::DiscreteVariableUpdate(
                stance_hip_roll_vel_map1_.at(fsm_state)),
         robot_output->GetVelocities()(stance_hip_pitch_vel_map1_.at(fsm_state)),
         robot_output->GetVelocities()(stance_hip_yaw_vel_map1_.at(fsm_state));
+
+    // Swing hip yaw joint
+    discrete_state->get_mutable_vector(liftoff_swing_hip_pos_idx_)
+            .get_mutable_value()
+        << robot_output->GetPositions()(swing_hip_yaw_pos_map1_.at(fsm_state));
+    discrete_state->get_mutable_vector(liftoff_swing_hip_vel_idx_)
+            .get_mutable_value()
+        << robot_output->GetVelocities()(swing_hip_yaw_vel_map1_.at(fsm_state));
 
     lift_off_time_ = robot_output->get_timestamp();
   }
@@ -464,8 +494,6 @@ void SavedTrajReceiver::CalcStanceHipTraj(
   bool init_step = true;
   bool left_stance = abs(stance_foot(0)) < 1e-12;
   for (int j = 0; j < n_mode; j++) {
-    std::string suffix = left_stance ? "_left" : "_right";
-
     // When the current time is bigger than the end time of the mode (this could
     // happen when the planner starts planning close the end of mode), we skip
     if (current_time < xf_time(j)) {
@@ -499,6 +527,99 @@ void SavedTrajReceiver::CalcStanceHipTraj(
       hip_vel << xf.col(j)(stance_hip_roll_vel_map2_.at(left_stance)),
           xf.col(j)(stance_hip_pitch_vel_map2_.at(left_stance)),
           xf.col(j)(stance_hip_yaw_vel_map2_.at(left_stance));
+      Y.at(1) = hip_pos;
+      Ydot.at(1) = hip_vel;
+
+      // Create segment
+      pp.ConcatenateInTime(
+          PiecewisePolynomial<double>::CubicHermite(T_waypoint, Y, Ydot));
+
+      init_step = false;
+    }
+
+    left_stance = !left_stance;
+  }
+
+  // Assign traj
+  *traj_casted = pp;
+};
+
+void SavedTrajReceiver::CalcSwingHipTraj(
+    const drake::systems::Context<double>& context,
+    drake::trajectories::Trajectory<double>* traj) const {
+  // Cast traj
+  auto* traj_casted = dynamic_cast<PiecewisePolynomial<double>*>(traj);
+
+  // Read the lcm message
+  auto lcm_traj = this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+      context, saved_traj_lcm_port_);
+
+  // Check if traj is empty (if it's empty, it means we are haven't gotten the
+  // traj from the planner yet)
+  if (lcm_traj->saved_traj.num_trajectories == 0) {
+    cout << "WARNING (CalcSwingHipTraj): trajectory size is 0!\n";
+    *traj_casted = PiecewisePolynomial<double>(VectorXd::Zero(1));
+    return;
+  }
+
+  // Construct rom planner data from lcm message
+  RomPlannerTrajectory traj_data(*lcm_traj);
+  int n_mode = traj_data.GetNumModes();
+
+  // Get states (in global frame) and stance_foot
+  const MatrixXd& x0 = traj_data.get_x0();
+  const VectorXd& x0_time = traj_data.get_x0_time();
+  const MatrixXd& xf = traj_data.get_xf();
+  const VectorXd& xf_time = traj_data.get_xf_time();
+  const VectorXd& stance_foot = traj_data.get_stance_foot();
+
+  //  // [Test sim gap] -- use trajopt's traj directly in OSC
+  //  int n_mode = 2;
+  //  const MatrixXd& x0 = x0_;
+  //  const VectorXd& x0_time = x0_time_;
+  //  const MatrixXd& xf = xf_;
+  //  const VectorXd& xf_time = xf_time_;
+  //  const VectorXd& stance_foot = stance_foot_;
+
+  // Construct PP (concatenate the PP of each mode)
+  // WARNING: we assume each mode in the planner is "single support" + "double
+  // support"
+  double current_time = context.get_time();
+
+  PiecewisePolynomial<double> pp;
+  std::vector<double> T_waypoint = std::vector<double>(2, 0);
+  std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(1, 1));
+  std::vector<MatrixXd> Ydot(T_waypoint.size(), MatrixXd::Zero(1, 1));
+  VectorXd hip_pos(1);
+  VectorXd hip_vel(1);
+  bool init_step = true;
+  bool left_stance = abs(stance_foot(0)) < 1e-12;
+  for (int j = 0; j < n_mode; j++) {
+    // When the current time is bigger than the end time of the mode (this could
+    // happen when the planner starts planning close the end of mode), we skip
+    if (current_time < xf_time(j)) {
+      //   T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
+      T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
+                                        double_support_duration_
+                                  : x0_time(j);
+      T_waypoint.at(1) = xf_time(j);
+
+      // Start
+      if (init_step) {
+        // TODO: should I add a bound for the vel?
+        hip_pos =
+            context.get_discrete_state(liftoff_swing_hip_pos_idx_).get_value();
+        hip_vel =
+            context.get_discrete_state(liftoff_swing_hip_vel_idx_).get_value();
+      } else {
+        hip_pos << x0.col(j)(swing_hip_yaw_pos_map2_.at(left_stance));
+        hip_vel << x0.col(j)(swing_hip_yaw_vel_map2_.at(left_stance));
+      }
+      Y.at(0) = hip_pos;
+      Ydot.at(0) = hip_vel;
+      // End
+      hip_pos << xf.col(j)(swing_hip_yaw_pos_map2_.at(left_stance));
+      hip_vel << xf.col(j)(swing_hip_yaw_vel_map2_.at(left_stance));
       Y.at(1) = hip_pos;
       Ydot.at(1) = hip_vel;
 

@@ -93,7 +93,8 @@ def main():
   PlotState(dircon_traj, 0, 7)
   PlotState(dircon_traj, 7, nq)
   PlotState(dircon_traj, nq, nq + 6)
-  PlotState(dircon_traj, nq + 6, nx)
+  PlotState(dircon_traj, nq + 6, nq + 6 + 8)
+  PlotState(dircon_traj, nq + 6 + 8, nx)
 
   PlotInput(dircon_traj)
   PlotForce(dircon_traj)

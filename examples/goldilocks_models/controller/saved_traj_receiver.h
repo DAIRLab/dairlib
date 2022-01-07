@@ -53,6 +53,9 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_hip_rpy() const {
     return this->get_output_port(hip_rpy_traj_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_swing_hip() const {
+    return this->get_output_port(swing_hip_yaw_traj_port_);
+  }
 
  private:
   void CalcRomTraj(const drake::systems::Context<double>& context,
@@ -60,6 +63,9 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   void CalcSwingFootTraj(const drake::systems::Context<double>& context,
                          drake::trajectories::Trajectory<double>* traj) const;
   void CalcStanceHipTraj(
+      const drake::systems::Context<double>& context,
+      drake::trajectories::Trajectory<double>* traj) const;
+  void CalcSwingHipTraj(
       const drake::systems::Context<double>& context,
       drake::trajectories::Trajectory<double>* traj) const;
 
@@ -74,10 +80,13 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   int rom_traj_port_;
   int swing_foot_traj_port_;
   int hip_rpy_traj_port_;
+  int swing_hip_yaw_traj_port_;
 
   int liftoff_swing_foot_pos_idx_;
   int liftoff_stance_hip_pos_idx_;
   int liftoff_stance_hip_vel_idx_;
+  int liftoff_swing_hip_pos_idx_;
+  int liftoff_swing_hip_vel_idx_;
 
   mutable int prev_fsm_state_ = -1;
   mutable double lift_off_time_ = 0;
@@ -98,15 +107,19 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   std::map<int, int> stance_hip_roll_pos_map1_;
   std::map<int, int> stance_hip_pitch_pos_map1_;
   std::map<int, int> stance_hip_yaw_pos_map1_;
+  std::map<int, int> swing_hip_yaw_pos_map1_;
   std::map<int, int> stance_hip_roll_vel_map1_;
   std::map<int, int> stance_hip_pitch_vel_map1_;
   std::map<int, int> stance_hip_yaw_vel_map1_;
+  std::map<int, int> swing_hip_yaw_vel_map1_;
   std::map<bool, int> stance_hip_roll_pos_map2_;
   std::map<bool, int> stance_hip_pitch_pos_map2_;
   std::map<bool, int> stance_hip_yaw_pos_map2_;
+  std::map<bool, int> swing_hip_yaw_pos_map2_;
   std::map<bool, int> stance_hip_roll_vel_map2_;
   std::map<bool, int> stance_hip_pitch_vel_map2_;
   std::map<bool, int> stance_hip_yaw_vel_map2_;
+  std::map<bool, int> swing_hip_yaw_vel_map2_;
 
   // hacks
   double single_support_duration_;

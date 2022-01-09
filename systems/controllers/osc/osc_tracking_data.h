@@ -74,7 +74,7 @@ class OscTrackingData {
   const Eigen::VectorXd& GetYdot() const { return ydot_; }
   const Eigen::VectorXd& GetYdotDes() const { return ydot_des_; }
   const Eigen::VectorXd& GetErrorYdot() const { return error_ydot_; }
-  const Eigen::VectorXd& GetYddotDes() const { return yddot_des_; }
+  const Eigen::VectorXd& GetYddotDes() const { return yddot_des_converted_; }
   const Eigen::VectorXd& GetYddotCommandSol() const {
     return yddot_command_sol_;
   }

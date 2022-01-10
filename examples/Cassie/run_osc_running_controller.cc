@@ -472,33 +472,20 @@ int DoMain(int argc, char* argv[]) {
   left_foot_yz_rel_tracking_data.SetViewFrame(view_frame);
   right_foot_yz_rel_tracking_data.SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data.SetViewFrame(view_frame);
+
   left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
+  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);
-  left_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
-  right_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
+//  left_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
+//  right_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
 
-  if (osc_gains.relative_pelvis) {
-    osc->AddTrackingData(&pelvis_trans_rel_tracking_data);
-  } else {
-    osc->AddTrackingData(&pelvis_tracking_data);
-  }
-
-  if (osc_gains.relative_feet) {
-    left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-    right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-    osc->AddTrackingData(&left_foot_rel_tracking_data);
-    osc->AddTrackingData(&right_foot_rel_tracking_data);
-    //    left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
-    //    right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
-    osc->AddTrackingData(&left_foot_yz_rel_tracking_data);
-    osc->AddTrackingData(&right_foot_yz_rel_tracking_data);
-  } else {
-    left_foot_tracking_data.SetImpactInvariantProjection(true);
-    right_foot_tracking_data.SetImpactInvariantProjection(true);
-    osc->AddTrackingData(&left_foot_tracking_data);
-    osc->AddTrackingData(&right_foot_tracking_data);
-  }
+  osc->AddTrackingData(&pelvis_trans_rel_tracking_data);
+  osc->AddTrackingData(&left_foot_rel_tracking_data);
+  osc->AddTrackingData(&right_foot_rel_tracking_data);
+  osc->AddTrackingData(&left_foot_yz_rel_tracking_data);
+  osc->AddTrackingData(&right_foot_yz_rel_tracking_data);
 
   // Stance hip pitch trajectory
   auto hip_pitch_left_traj = dircon_trajectory.ReconstructJointTrajectory(
@@ -517,12 +504,6 @@ int DoMain(int argc, char* argv[]) {
   hip_pitch_right_traj_mir.shiftRight(hip_pitch_right_traj.end_time());
   hip_pitch_left_traj.ConcatenateInTime(hip_pitch_left_traj_mir);
   hip_pitch_right_traj.ConcatenateInTime(hip_pitch_right_traj_mir);
-  //  auto hip_pitch_left_traj_generator =
-  //      builder.AddSystem<BasicTrajectoryPassthrough>(
-  //          hip_pitch_left_traj, "hip_pitch_left_traj_generator");
-  //  auto hip_pitch_right_traj_generator =
-  //      builder.AddSystem<BasicTrajectoryPassthrough>(
-  //          hip_pitch_right_traj, "hip_pitch_right_traj_generator");
   MatrixXd left_hip_pitch_neutral_angle(1, 2);
   left_hip_pitch_neutral_angle << 0.055, 0.055;
   MatrixXd right_hip_pitch_neutral_angle(1, 2);
@@ -536,110 +517,18 @@ int DoMain(int argc, char* argv[]) {
       PiecewisePolynomial<double>::ZeroOrderHold(full_trajectory_breaks,
                                                  right_hip_pitch_neutral_angle);
 
-  //  // TODO(yangwil): generate pitch trajectory
-  //  auto hip_pitch_left_traj_generator =
-  //      builder.AddSystem<PelvisPitchTrajGenerator>(
-  //          plant, plant_context.get(), left_hip_pitch_traj,
-  //          pelvis_pitch_traj, 1, "hip_pitch_left_traj_generator");
-  //  auto hip_pitch_right_traj_generator =
-  //      builder.AddSystem<PelvisPitchTrajGenerator>(
-  //          plant, plant_context.get(), right_hip_pitch_traj,
-  //          pelvis_pitch_traj, 1, "hip_pitch_right_traj_generator");
-  //
-  //  JointSpaceTrackingData left_hip_pitch_tracking_data(
-  //      "hip_pitch_left_traj", osc_gains.K_p_hip_pitch,
-  //      osc_gains.K_d_hip_pitch, osc_gains.W_hip_pitch, plant, plant);
-  //  JointSpaceTrackingData right_hip_pitch_tracking_data(
-  //      "hip_pitch_right_traj", osc_gains.K_p_hip_pitch,
-  //      osc_gains.K_d_hip_pitch, osc_gains.W_hip_pitch, plant, plant);
-  //  left_hip_pitch_tracking_data.AddStateAndJointToTrack(
-  //      left_stance_state, "hip_pitch_left", "hip_pitch_leftdot");
-  //  left_hip_pitch_tracking_data.AddStateAndJointToTrack(
-  //      right_touchdown_air_phase, "hip_pitch_left", "hip_pitch_leftdot");
-  //  right_hip_pitch_tracking_data.AddStateAndJointToTrack(
-  //      right_stance_state, "hip_pitch_right", "hip_pitch_rightdot");
-  //  right_hip_pitch_tracking_data.AddStateAndJointToTrack(
-  //      left_touchdown_air_phase, "hip_pitch_right", "hip_pitch_rightdot");
-  //  left_hip_pitch_tracking_data.DisableFeedforwardAccel({0});
-  //  right_hip_pitch_tracking_data.DisableFeedforwardAccel({0});
-  //  left_hip_pitch_tracking_data.SetImpactInvariantProjection(true);
-  //  right_hip_pitch_tracking_data.SetImpactInvariantProjection(true);
-  //  //  osc->AddConstTrackingData(&hip_pitch_left_tracking_data,
-  //  //                            0.6 * VectorXd::Ones(1));
-  //  //  osc->AddConstTrackingData(&hip_pitch_right_tracking_data,
-  //  //                            0.6 * VectorXd::Ones(1));
-  //  osc->AddTrackingData(&left_hip_pitch_tracking_data);
-  //  osc->AddTrackingData(&right_hip_pitch_tracking_data);
-  //
-  //  // Stance hip roll trajectory
-  //  auto hip_roll_left_traj = dircon_trajectory.ReconstructJointTrajectory(
-  //      pos_map_wo_spr["hip_roll_left"]);
-  //  auto hip_roll_left_traj_mir =
-  //      dircon_trajectory.ReconstructMirrorJointTrajectory(
-  //          pos_map_wo_spr["hip_roll_left"]);
-  //  auto hip_roll_right_traj = dircon_trajectory.ReconstructJointTrajectory(
-  //      pos_map_wo_spr["hip_roll_right"]);
-  //  auto hip_roll_right_traj_mir =
-  //      dircon_trajectory.ReconstructMirrorJointTrajectory(
-  //          pos_map_wo_spr["hip_roll_right"]);
-  //  hip_roll_left_traj_mir.shiftRight(hip_roll_left_traj.end_time());
-  //  hip_roll_right_traj_mir.shiftRight(hip_roll_right_traj.end_time());
-  //  hip_roll_left_traj.ConcatenateInTime(hip_roll_left_traj_mir);
-  //  hip_roll_right_traj.ConcatenateInTime(hip_roll_right_traj_mir);
-  //  MatrixXd left_hip_roll_neutral_angle(1, 2);
-  //  left_hip_roll_neutral_angle << 0.02, 0.02;
-  //  MatrixXd right_hip_roll_neutral_angle(1, 2);
-  //  right_hip_roll_neutral_angle << -0.02, -0.02;
-  //  VectorXd full_trajectory_breaks(2);
-  //  full_trajectory_breaks << 0, accumulated_state_durations.back();
-  //  PiecewisePolynomial<double> left_hip_roll_traj =
-  //      PiecewisePolynomial<double>::ZeroOrderHold(full_trajectory_breaks,
-  //                                                 left_hip_roll_neutral_angle);
-  //  PiecewisePolynomial<double> right_hip_roll_traj =
-  //      PiecewisePolynomial<double>::ZeroOrderHold(full_trajectory_breaks,
-  //                                                 right_hip_roll_neutral_angle);
-  //
-  //  // TODO(yangwil): generate roll trajectory
-  //  auto hip_roll_left_traj_generator =
-  //      builder.AddSystem<PelvisRollTrajGenerator>(
-  //          plant, plant_context.get(), left_hip_roll_traj, 1,
-  //          "hip_roll_left_traj_generator");
-  //  auto hip_roll_right_traj_generator =
-  //      builder.AddSystem<PelvisRollTrajGenerator>(
-  //          plant, plant_context.get(), right_hip_roll_traj, 1,
-  //          "hip_roll_right_traj_generator");
-  //  JointSpaceTrackingData left_hip_roll_tracking_data(
-  //      "hip_roll_left_traj", osc_gains.K_p_hip_roll, osc_gains.K_d_hip_roll,
-  //      osc_gains.W_hip_roll, plant, plant);
-  //  JointSpaceTrackingData right_hip_roll_tracking_data(
-  //      "hip_roll_right_traj", osc_gains.K_p_hip_roll, osc_gains.K_d_hip_roll,
-  //      osc_gains.W_hip_roll, plant, plant);
-  //  left_hip_roll_tracking_data.AddStateAndJointToTrack(
-  //      left_stance_state, "hip_roll_left", "hip_roll_leftdot");
-  //  left_hip_roll_tracking_data.AddStateAndJointToTrack(
-  //      right_touchdown_air_phase, "hip_roll_left", "hip_roll_leftdot");
-  //  right_hip_roll_tracking_data.AddStateAndJointToTrack(
-  //      right_stance_state, "hip_roll_right", "hip_roll_rightdot");
-  //  right_hip_roll_tracking_data.AddStateAndJointToTrack(
-  //      left_touchdown_air_phase, "hip_roll_right", "hip_roll_rightdot");
-  //  left_hip_roll_tracking_data.DisableFeedforwardAccel({0});
-  //  right_hip_roll_tracking_data.DisableFeedforwardAccel({0});
-  //  left_hip_roll_tracking_data.SetImpactInvariantProjection(true);
-  //  right_hip_roll_tracking_data.SetImpactInvariantProjection(true);
-  //  osc->AddTrackingData(&left_hip_roll_tracking_data);
-  //  osc->AddTrackingData(&right_hip_roll_tracking_data);
-
-  auto heading_traj_generator = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
-      plant, plant_context.get());
-
+  auto heading_traj_generator =
+      builder.AddSystem<cassie::osc::HeadingTrajGenerator>(plant,
+                                                           plant_context.get());
 
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_traj", osc_gains.K_p_pelvis_rot,
-      osc_gains.K_d_pelvis_rot, osc_gains.W_pelvis_rot, plant, plant);
+      "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
+      osc_gains.W_pelvis_rot, plant, plant);
   pelvis_rot_tracking_data.AddStateAndFrameToTrack(left_stance_state, "pelvis");
   pelvis_rot_tracking_data.AddStateAndFrameToTrack(right_stance_state,
                                                    "pelvis");
-  pelvis_rot_tracking_data.AddStateAndFrameToTrack(left_touchdown_air_phase, "pelvis");
+  pelvis_rot_tracking_data.AddStateAndFrameToTrack(left_touchdown_air_phase,
+                                                   "pelvis");
   pelvis_rot_tracking_data.AddStateAndFrameToTrack(right_touchdown_air_phase,
                                                    "pelvis");
   pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
@@ -751,9 +640,8 @@ int DoMain(int argc, char* argv[]) {
                   heading_traj_generator->get_state_input_port());
   builder.Connect(high_level_command->get_yaw_output_port(),
                   heading_traj_generator->get_yaw_input_port());
-  builder.Connect(
-      heading_traj_generator->get_output_port(0),
-      osc->get_tracking_data_input_port("pelvis_rot_traj"));
+  builder.Connect(heading_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_rot_traj"));
   //  builder.Connect(state_receiver->get_output_port(0),
   //                  hip_roll_left_traj_generator->get_state_input_port());
   //  builder.Connect(state_receiver->get_output_port(0),

@@ -111,7 +111,7 @@ def get_srb_input_traj(lambda_c, osc_debug):
 def get_srbd_modes(robot_output, osc_debug):
     fsm_values = np.interp(robot_output['t_x'],
                            osc_debug['t_osc'], osc_debug['fsm'])
-    modes = [ 0 if (mode == 0 or mode == 3) else 1 for mode in fsm_values]
+    modes = [0 if (mode == 0 or mode == 3) else 1 for mode in fsm_values]
     return {'t': robot_output['t_x'], 'mode': modes}
 
 

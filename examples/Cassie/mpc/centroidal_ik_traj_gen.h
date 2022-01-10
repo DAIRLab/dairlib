@@ -14,8 +14,7 @@ class CentroidalIKTrajGen : public drake::systems::LeafSystem<double> {
   CentroidalIKTrajGen(
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       const drake::multibody::MultibodyPlant<double>& plant,
-      const multibody::SingleRigidBodyPlant& srb_plant,
-      const Eigen::Matrix3d& I, double dt, double stance_duration);
+      const Eigen::Matrix3d& I, double mass, double dt, double stance_duration);
 
   // Input port getters
   const drake::systems::InputPort<double> &get_input_port_fsm() const {
@@ -48,6 +47,7 @@ class CentroidalIKTrajGen : public drake::systems::LeafSystem<double> {
                         drake::trajectories::Trajectory<double> *output_traj);
 
   const Eigen::Matrix3d& I_b_;
+  const double mass_;
   const std::vector<std::string> toe_frames_ = {"toe_left", "toe_right"};
   const Eigen::Vector3d toe_mid_ = Eigen::Vector3d(0.023715, 0.056, 0);
   const drake::Vector3<drake::AutoDiffXd> toe_mid_ad_ =
@@ -69,7 +69,6 @@ class CentroidalIKTrajGen : public drake::systems::LeafSystem<double> {
   double stance_duration_;
   const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   const drake::multibody::MultibodyPlant<double>& plant_;
-  const multibody::SingleRigidBodyPlant& srb_plant_;
   drake::systems::Context<drake::AutoDiffXd>* context_ad_;
   drake::systems::Context<double>* context_;
 

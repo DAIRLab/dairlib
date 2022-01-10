@@ -8,6 +8,7 @@ cc_library(
         ":angular_momentum_traj_gen",
         ":cassie_mpc_osc_walking_gains",
         ":cassie_srbd_cmpc_gains",
+        ":centroidal_ik_traj_gen",
     ],
 )
 

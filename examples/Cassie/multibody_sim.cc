@@ -76,6 +76,7 @@ DEFINE_double(actuator_delay, 0.0,
               "Duration of actuator delay. Set to 0.0 by default.");
 DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
 DEFINE_bool(make_srbd_approx, false, "modify plant to closer approximate single rigid body assumption");
+DEFINE_bool(publish_vdot, false, "to publish the acceleration state to LCM or not");
 DEFINE_string(vdot_channel, "CASSIE_VDOT", "lcm channel to get generalized accelerations");
 
 
@@ -134,9 +135,12 @@ int do_main(int argc, char* argv[]) {
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CASSIE_CONTACT_DRAKE", lcm, 1.0 / FLAGS_publish_rate));
-  auto [vdot_scope, vdot_publisher] = LcmScopeSystem::AddToBuilder(&builder,
-      lcm, plant.get_generalized_acceleration_output_port(),
-      FLAGS_vdot_channel, 1.0 / FLAGS_publish_rate);
+
+  if (FLAGS_publish_vdot) {
+    auto [vdot_scope, vdot_publisher] = LcmScopeSystem::AddToBuilder(&builder,
+        lcm, plant.get_generalized_acceleration_output_port(),
+        FLAGS_vdot_channel, 1.0 / FLAGS_publish_rate);
+  }
 
   contact_results_publisher.set_name("contact_results_publisher");
 

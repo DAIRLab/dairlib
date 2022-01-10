@@ -35,6 +35,7 @@
 #include "multibody/multibody_utils.h"
 
 #include "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.h"
+#include "examples/Cassie/mpc/centroidal_ik_traj_gen.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 
@@ -52,6 +53,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::Value;
+using drake::AutoDiffXd;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -109,6 +111,8 @@ int DoMain(int argc, char* argv[]) {
                      "examples/Cassie/urdf/cassie_v2.urdf", true, false);
   plant_w_springs.Finalize();
 
+  auto plant_ad = std::make_unique<MultibodyPlant<AutoDiffXd>>(plant_w_springs);
+
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_spr or plant_wo_spr because the contact frames exit in both
   // plants)
@@ -131,13 +135,12 @@ int DoMain(int argc, char* argv[]) {
   auto plant_context = plant_w_springs.CreateDefaultContext();
   Vector3d com_offset = {0, 0, -0.128};
 
-
+  drake::multibody::RotationalInertia I_rot(0.91, 0.55, 0.89, 0.0, 0.0, 0.0);
+  double mass = 30.0218;
   if (FLAGS_make_srbd_approx) {
     std::vector<std::string> links = {"yaw_left", "yaw_right", "hip_left", "hip_right",
                                       "thigh_left", "thigh_right", "knee_left", "knee_right", "shin_left",
                                       "shin_right"};
-    drake::multibody::RotationalInertia I_rot(0.91, 0.55, 0.89, 0.0, 0.0, 0.0);
-    double mass = 30.0218;
 
     multibody::MakePlantApproximateRigidBody(plant_context.get(), plant_w_springs,
                                              "pelvis", links, com_offset, I_rot, mass, 0.02);
@@ -227,6 +230,10 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<TargetSwingFtTrajGen>(
           plant_w_springs, single_support_states, single_support_durations,
           left_right_pts, swing_foot_taj_gen_options);
+
+  auto ik_solver = builder.AddSystem<mpc::CentroidalIKTrajGen>(
+      *plant_ad, plant_w_springs, I_rot.CopyToFullMatrix3(),
+      mass, 0.07, FLAGS_stance_duration);
 
   auto zero_rot_traj_source = builder.AddSystem(
       std::make_unique<ConstantValueSource<double>>(
@@ -436,6 +443,15 @@ int DoMain(int argc, char* argv[]) {
                   left_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
+
+  // IK
+  builder.Connect(fsm->get_output_port_fsm(), ik_solver->get_input_port_fsm());
+  builder.Connect(liftoff_event_time->get_output_port_event_time(),
+                  ik_solver->get_input_port_touchdown_time());
+  builder.Connect(state_receiver->get_output_port(),
+                  ik_solver->get_input_port_state());
+  builder.Connect(mpc_subscriber->get_output_port(),
+                  ik_solver->get_input_port_mpc_traj());
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),

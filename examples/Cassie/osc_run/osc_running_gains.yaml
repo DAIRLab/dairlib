@@ -26,17 +26,17 @@ swing_toe_kd: 10
 w_hip_yaw: 100
 hip_yaw_kp: 100
 hip_yaw_kd: 15
-w_hip_pitch: 5
-hip_pitch_kp: 100
-hip_pitch_kd: 10
-w_hip_roll: 5
-hip_roll_kp: 50
-hip_roll_kd: 10
+#w_hip_pitch: 5
+#hip_pitch_kp: 100
+#hip_pitch_kd: 10
+#w_hip_roll: 5
+#hip_roll_kp: 50
+#hip_roll_kd: 10
 # Foot placement parameters
-footstep_offset: -0.000
+footstep_offset: 0.01
 center_line_offset: -0.05
 FootstepKd:
-  [  0.1,     0,  0,
+  [  0.2,     0,  0,
      0,     0.1, 0,
      0,        0,  0]
 PelvisW:

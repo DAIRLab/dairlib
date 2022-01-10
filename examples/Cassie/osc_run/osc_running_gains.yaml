@@ -33,10 +33,10 @@ w_hip_roll: 5
 hip_roll_kp: 50
 hip_roll_kd: 10
 # Foot placement parameters
-footstep_offset: -0.0075
+footstep_offset: -0.000
 center_line_offset: -0.05
 FootstepKd:
-  [  0.15,     0,  0,
+  [  0.1,     0,  0,
      0,     0.1, 0,
      0,        0,  0]
 PelvisW:
@@ -61,10 +61,10 @@ PelvisRotKp:
    0,    0,   0]
 PelvisRotKd:
   [10,   0,  0,
-   0,   1,  0,
+   0,    1,  0,
    0,    0,  0]
 SwingFootW:
-  [1,    0,    0,
+  [25,    0,    0,
    0,   25,    0,
    0,    0,   1]
 SwingFootKp:

@@ -5,10 +5,8 @@ import glob
 import codecs
 from datetime import date
 
-if __name__ == '__main__':
 
-    mpc_controller = sys.argv[1]
-
+def main(mpc_controller):
     log_folder_map = {'srbd': 'cmpc_debug',
                       'residual': 'cmpc_debug_residual',
                       'osc': 'osc_walking'}
@@ -44,3 +42,8 @@ if __name__ == '__main__':
     subprocess.run(['cp', mpc_gains_file, 'mpc_gains_%s.yaml' % log_num])
     subprocess.run(['cp', osc_gains_file, 'osc_gains_%s.yaml' % log_num])
     subprocess.run(['lcm-logger', '-f', 'lcmlog-%s' % log_num])
+
+
+if __name__ == '__main__':
+    controller = sys.argv[1]
+    main(controller)

@@ -5,6 +5,8 @@
 #include "dairlib/lcmt_saved_traj.hpp"
 
 #include "drake/solvers/solve.h"
+#include "drake/math/roll_pitch_yaw.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/optimization/centroidal_momentum_constraint.h"
 #include "drake/multibody/inverse_kinematics/unit_quaternion_constraint.h"
 #include "drake/multibody/inverse_kinematics/position_constraint.h"
@@ -17,12 +19,16 @@ using dairlib::multibody::SetPositionsAndVelocitiesIfNew;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::Matrix3d;
+using Eigen::MatrixXd;
 
 using drake::AutoDiffXd;
 using drake::math::ExtractValue;
-using drake::multibody::MultibodyPlant;
+using drake::math::RollPitchYaw;
+using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::Trajectory;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
+using drake::multibody::MultibodyPlant;
 using drake::multibody::CentroidalMomentumConstraint;
 using drake::multibody::UnitQuaternionConstraint;
 using drake::multibody::PositionConstraint;
@@ -36,10 +42,14 @@ namespace dairlib::mpc{
 
 CentroidalIKTrajGen::CentroidalIKTrajGen(
     const MultibodyPlant<AutoDiffXd>& plant_ad,
+    Context<AutoDiffXd>* context_ad,
     const MultibodyPlant<double>& plant,
+    Context<double>* context,
     const Matrix3d& I, double mass, double dt, double stance_duration) :
     plant_ad_(plant_ad),
+    context_ad_(context_ad),
     plant_(plant),
+    context_(context),
     I_b_(I),
     mass_(mass),
     dt_(dt),
@@ -56,6 +66,12 @@ CentroidalIKTrajGen::CentroidalIKTrajGen(
   mpc_traj_port_ = this->DeclareAbstractInputPort(
           "lcmt_saved_trajectory",
           drake::Value<dairlib::lcmt_saved_traj>{}).get_index();
+
+  PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
+  Trajectory<double>& traj_inst = empty_pp_traj;
+  pelvis_traj_port_ = this->DeclareAbstractOutputPort(
+      "orientation_traj", traj_inst, &CentroidalIKTrajGen::AssignPelvisTraj)
+          .get_index();
 
   BasicVector<double> model_solution_vec(
       2 * plant.num_positions() + 2* plant.num_velocities());
@@ -75,6 +91,7 @@ void CentroidalIKTrajGen::CalcTraj(
   DRAKE_ASSERT(input != nullptr);
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  VectorXd state = robot_output->GetState();
   double fsm_state =
       this->EvalVectorInput(context, fsm_port_)->get_value()(0);
   int stance_mode = ((int) fsm_state == 0 || (int) fsm_state == 3) ? 0 : 1;
@@ -121,7 +138,7 @@ void CentroidalIKTrajGen::CalcTraj(
   }
 
   // Initial state constraint
-  SetPositionsAndVelocitiesIfNew<double>(plant_, robot_output->GetState(), context_);
+  SetPositionsAndVelocitiesIfNew<double>(plant_, state, context_);
   auto CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
   auto spatial_momentum = plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, CoM);
   VectorXd h_i = VectorXd::Zero(6);
@@ -146,7 +163,7 @@ void CentroidalIKTrajGen::CalcTraj(
       mpc_traj.GetTrajectory("swing_foot_traj").datapoints;
   auto centroidal_constraint_ptr =
       std::make_shared<CentroidalMomentumConstraint>(
-          &plant_ad_,std::vector<drake::multibody::ModelInstanceIndex>(),
+          &plant_ad_,std::nullopt,
           context_ad_, false);
   auto quat_norm_constraint = std::make_shared<UnitQuaternionConstraint>();
   auto stance_foot_pos_contraint = std::make_shared<PositionConstraint>(
@@ -166,7 +183,7 @@ void CentroidalIKTrajGen::CalcTraj(
       toe_mid_, context_ad_);
 
   auto com_pos_constraint = std::make_shared<ComPositionConstraint>(
-      &plant_, std::vector<drake::multibody::ModelInstanceIndex>(),
+      &plant_, std::nullopt,
           plant_.world_frame(), context_);
 
   for (int i = 1; i < N; i++) {
@@ -184,7 +201,63 @@ void CentroidalIKTrajGen::CalcTraj(
   if (!result.is_success()) {
     throw std::runtime_error(
         "Error, IK did not solve, exited with status " +
-        std::to_string(result.get_solution_result()));
+        drake::solvers::to_string(result.get_solution_result()));
   }
+
+  solvec->get_mutable_value().head(plant_.num_positions()) =
+      result.GetSolution(qq.at(0));
+  solvec->get_mutable_value().segment(
+      plant_.num_positions(), plant_.num_velocities()) =
+      result.GetSolution(vv.at(0));
+  solvec->get_mutable_value().segment(
+      plant_.num_positions() + plant_.num_velocities(), plant_.num_positions()) =
+      result.GetSolution(qq.at(1));
+  solvec->get_mutable_value().tail(plant_.num_velocities()) =
+      result.GetSolution(vv.at(1));
+  prev_ik_sol_ = solvec->value();
+  breaks_ = Eigen::Vector2d(start_time, start_time + dt_);
 }
+
+void CentroidalIKTrajGen::AssignPelvisTraj(
+    const drake::systems::Context<double> &context,
+    drake::trajectories::Trajectory<double> *output_traj) const {
+  const VectorXd& x = ik_sol_cache_entry_->
+      Eval<BasicVector<double>>(context).get_value();
+  const VectorXd& x0 = x.head(plant_.num_positions() + plant_.num_velocities());
+  const VectorXd& x1 = x.tail(plant_.num_positions() + plant_.num_velocities());
+
+  MatrixXd knots = MatrixXd::Zero(3,2);
+  MatrixXd knots_dot = MatrixXd::Zero(3,2);
+
+  SetPositionsAndVelocitiesIfNew<double>(plant_, x0, context_);
+  knots.col(0) = RollPitchYaw<double>(plant_.EvalBodyPoseInWorld(
+      *context_, plant_.GetBodyByName("pelvis"))
+      .rotation()).vector();
+  knots_dot.col(0) =
+      plant_.EvalBodySpatialVelocityInWorld(
+          *context_,
+          plant_.GetBodyByName("pelvis")).rotational();
+
+  SetPositionsAndVelocitiesIfNew<double>(plant_, x1, context_);
+  knots.col(1) = RollPitchYaw<double>(plant_.EvalBodyPoseInWorld(
+              *context_, plant_.GetBodyByName("pelvis"))
+          .rotation()).vector();
+  knots_dot.col(1) =
+      plant_.EvalBodySpatialVelocityInWorld(
+          *context_,
+          plant_.GetBodyByName("pelvis")).rotational();
+  auto* casted_traj =
+  (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+      output_traj);
+  *casted_traj = PiecewisePolynomial<double>::CubicHermite(
+      breaks_, knots, knots_dot);
+}
+
+
+void CentroidalIKTrajGen::AssignSwingFootTraj(
+    const drake::systems::Context<double> &context,
+    drake::trajectories::Trajectory<double> *output_traj) const {
+
+}
+
 }

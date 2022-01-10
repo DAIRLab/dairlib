@@ -13,7 +13,9 @@ class CentroidalIKTrajGen : public drake::systems::LeafSystem<double> {
  public:
   CentroidalIKTrajGen(
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      drake::systems::Context<drake::AutoDiffXd>* context_ad,
       const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context,
       const Eigen::Matrix3d& I, double mass, double dt, double stance_duration);
 
   // Input port getters
@@ -40,11 +42,11 @@ class CentroidalIKTrajGen : public drake::systems::LeafSystem<double> {
   void CalcTraj(const drake::systems::Context<double> &context,
                 drake::systems::BasicVector<double> *solvec) const;
 
-  void AssignPelvisTraj(const drake::systems::Context<double> & context,
-                        drake::trajectories::Trajectory<double> *output_traj);
+  void AssignPelvisTraj(const drake::systems::Context<double> &context,
+                        drake::trajectories::Trajectory<double> *output_traj) const;
 
   void AssignSwingFootTraj(const drake::systems::Context<double> & context,
-                        drake::trajectories::Trajectory<double> *output_traj);
+                        drake::trajectories::Trajectory<double> *output_traj) const;
 
   const Eigen::Matrix3d& I_b_;
   const double mass_;
@@ -64,6 +66,7 @@ class CentroidalIKTrajGen : public drake::systems::LeafSystem<double> {
 
   mutable double mpc_timestamp_ = -1.0;
   mutable Eigen::VectorXd prev_ik_sol_;
+  mutable Eigen::Vector2d breaks_;
 
   double dt_;
   double stance_duration_;

@@ -176,6 +176,15 @@ def load_osc_channel(data, osc_debug_channel):
     return process_osc_channel(data[osc_debug_channel])
 
 
+def save_poses_to_csv(robot_output, dt,  filename):
+    t_vis = np.argwhere(np.isclose(np.fmod(robot_output['t_x'], dt),
+                                   np.zeros((robot_output['t_x'].size,)),
+                                   atol=.0001))
+    t_vis = np.ravel(t_vis)
+    q = robot_output['q'][t_vis, :]
+    np.savetxt(filename, q.T, delimiter=",")
+
+
 def plot_q_or_v_or_u(
         robot_output, key, x_names, x_slice, time_slice,
         ylabel=None, title=None):

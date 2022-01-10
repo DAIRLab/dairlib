@@ -133,6 +133,7 @@ int DoMain(int argc, char* argv[]) {
       Vector3d::Zero(), plant_w_springs.GetFrameByName("toe_right"));
 
   auto plant_context = plant_w_springs.CreateDefaultContext();
+  auto plant_context_ad = plant_ad->CreateDefaultContext();
   Vector3d com_offset = {0, 0, -0.128};
 
   drake::multibody::RotationalInertia I_rot(0.91, 0.55, 0.89, 0.0, 0.0, 0.0);
@@ -232,7 +233,7 @@ int DoMain(int argc, char* argv[]) {
           left_right_pts, swing_foot_taj_gen_options);
 
   auto ik_solver = builder.AddSystem<mpc::CentroidalIKTrajGen>(
-      *plant_ad, plant_w_springs, I_rot.CopyToFullMatrix3(),
+      *plant_ad, plant_context_ad.get(), plant_w_springs, plant_context.get(), I_rot.CopyToFullMatrix3(),
       mass, 0.07, FLAGS_stance_duration);
 
   auto zero_rot_traj_source = builder.AddSystem(
@@ -417,7 +418,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("com_traj"));
 //  builder.Connect(zero_rot_traj_source->get_output_port(),
 //                  osc->get_tracking_data_input_port("orientation_traj"));
-  builder.Connect(mpc_reciever->get_angular_traj_output_port(),
+  builder.Connect(ik_solver->get_output_port_pelvis_orientation_traj(),
                   osc->get_tracking_data_input_port("orientation_traj"));
   builder.Connect(mpc_reciever->get_swing_ft_target_output_port(),
                   swing_foot_traj_gen->get_input_port_foot_target());

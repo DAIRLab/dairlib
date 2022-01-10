@@ -27,10 +27,9 @@ plot_qp_costs: true
 plot_qp_solve_time: true
 plot_tracking_costs: true
 tracking_datas_to_plot:
-#  pelvis_trans_traj: {'dims': [2], 'derivs': ['pos']}
+  pelvis_trans_traj: {'dims': [2], 'derivs': ['pos']}
+  pelvis_rot_traj: {'dims': [0, 1], 'derivs': ['pos', 'vel']}
 #  hip_yaw_left_traj: {'dims': [0], 'derivs': ['pos']}
-#  hip_roll_left_traj: {'dims': [0], 'derivs': ['pos']}
-  hip_pitch_left_traj: {'dims': [0], 'derivs': ['pos', 'vel', 'acc']}
 #  left_ft_traj: {'dims': [2], 'derivs': ['pos']}
 #  right_ft_traj: {'dims': [2], 'derivs': ['pos']}
 #  left_ft_z_traj: {'dims': [2], 'derivs': ['pos']}

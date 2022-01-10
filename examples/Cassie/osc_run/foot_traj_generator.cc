@@ -176,8 +176,15 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   VectorXd start_pos = foot_pos - hip_pos;
   Y[0] = start_pos;
   Y[0](2) = -0.86;
+
   Y[1] = start_pos + 0.85 * footstep_correction;
-  Y[1](2) = -0.83;
+  if (is_left_foot_) {
+    Y[1](1) += 0.5 * center_line_offset_;
+  } else {
+    Y[1](1) -= 0.5 * center_line_offset_;
+  }
+  Y[1](2) = -0.845;
+
   Y[2] = start_pos + footstep_correction;
   Y[2](2) = -0.86;
 

@@ -634,7 +634,7 @@ int DoMain(int argc, char* argv[]) {
 
 
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_tracking_data", osc_gains.K_p_pelvis_rot,
+      "pelvis_rot_traj", osc_gains.K_p_pelvis_rot,
       osc_gains.K_d_pelvis_rot, osc_gains.W_pelvis_rot, plant, plant);
   pelvis_rot_tracking_data.AddStateAndFrameToTrack(left_stance_state, "pelvis");
   pelvis_rot_tracking_data.AddStateAndFrameToTrack(right_stance_state,
@@ -753,7 +753,7 @@ int DoMain(int argc, char* argv[]) {
                   heading_traj_generator->get_yaw_input_port());
   builder.Connect(
       heading_traj_generator->get_output_port(0),
-      osc->get_tracking_data_input_port("pelvis_rot_tracking_data"));
+      osc->get_tracking_data_input_port("pelvis_rot_traj"));
   //  builder.Connect(state_receiver->get_output_port(0),
   //                  hip_roll_left_traj_generator->get_state_input_port());
   //  builder.Connect(state_receiver->get_output_port(0),

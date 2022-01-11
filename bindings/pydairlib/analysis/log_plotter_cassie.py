@@ -44,7 +44,6 @@ def main():
                             {channel_mpc: dairlib.lcmt_saved_traj},
                             mpc.process_mpc_channel, channel_mpc)
 
-    quit()
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)

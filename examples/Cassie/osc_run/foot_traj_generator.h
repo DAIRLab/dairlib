@@ -7,6 +7,8 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
+const double REST_LENGTH = 0.75;
+
 namespace dairlib::examples::osc_run {
 
 class FootTrajGenerator : public drake::systems::LeafSystem<double> {
@@ -70,6 +72,7 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   int initial_foot_pos_idx_;
   int initial_hip_pos_idx_;
   int pelvis_yaw_idx_;
+  int pelvis_vel_est_idx_;
 };
 
 }  // namespace dairlib::examples::osc_run

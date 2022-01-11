@@ -70,6 +70,7 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
   initial_foot_pos_idx_ = this->DeclareDiscreteState(3);
   initial_hip_pos_idx_ = this->DeclareDiscreteState(3);
   pelvis_yaw_idx_ = this->DeclareDiscreteState(1);
+  pelvis_vel_est_idx_ = this->DeclareDiscreteState(3);
 
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(&FootTrajGenerator::DiscreteVariableUpdate);
@@ -85,6 +86,7 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
   VectorXd fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
 
   VectorXd q = robot_output->GetPositions();
+  VectorXd v = robot_output->GetVelocities();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
   Vector3d pelvis_heading_vec =
@@ -112,7 +114,14 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
                                &hip_pos);
     foot_pos = rot.transpose() * foot_pos;
     hip_pos = rot.transpose() * hip_pos;
+    auto pelvis_vel = discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
+        .get_mutable_value();
+    pelvis_vel = 0.9 * v.segment(3, 3) + 0.1 * pelvis_vel;
+    std::cout << "stance state: " << stance_state_ << std::endl;
+//    pelvis_vel = Vector3d::Zero();
   }
+//  if (fsm_state(0) != stance_state_) {
+//  }
 
   return EventStatus::Succeeded();
 }
@@ -144,6 +153,7 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   Vector3d desired_pelvis_vel;
   desired_pelvis_vel << desired_pelvis_vel_xy, 0;
   VectorXd pelvis_vel = v.segment(3, 3);
+  pelvis_vel(0) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(0);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
   VectorXd footstep_correction = Kd_ * (pelvis_vel_err);
   if (is_left_foot_) {
@@ -175,7 +185,8 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   std::vector<MatrixXd> Y(T_waypoints.size(), VectorXd::Zero(3));
   VectorXd start_pos = foot_pos - hip_pos;
   Y[0] = start_pos;
-  Y[0](2) = -0.86;
+
+  Y[0](2) = -REST_LENGTH;
 
   Y[1] = start_pos + 0.85 * footstep_correction;
   if (is_left_foot_) {
@@ -183,10 +194,10 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   } else {
     Y[1](1) -= 0.5 * center_line_offset_;
   }
-  Y[1](2) = -0.845;
+  Y[1](2) = -REST_LENGTH + 0.01;
 
   Y[2] = start_pos + footstep_correction;
-  Y[2](2) = -0.86;
+  Y[2](2) = -REST_LENGTH;
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
@@ -196,14 +207,14 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           T_waypoints, Y, Y_dot_start, Y_dot_end);
 
-//  std::cout << "state durations" << std::endl;
-//  for(auto t : state_durations_){
-//    std::cout << t << std::endl;
-//  }
-//  std::cout << "break points" << std::endl;
-//  for(auto t : T_waypoints){
-//    std::cout << t << std::endl;
-//  }
+  //  std::cout << "state durations" << std::endl;
+  //  for(auto t : state_durations_){
+  //    std::cout << t << std::endl;
+  //  }
+  //  std::cout << "break points" << std::endl;
+  //  for(auto t : T_waypoints){
+  //    std::cout << t << std::endl;
+  //  }
 
   if (is_left_foot_) {
     return swing_foot_spline;
@@ -232,9 +243,9 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
         PiecewisePolynomial<double>::ZeroOrderHold(T_waypoints_1, Y2));
     offset_swing_foot_spline.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(T_waypoints_2, Y2, Ydot2));
-//    for (auto t : offset_swing_foot_spline.get_segment_times()){
-//      std::cout << t << std::endl;
-//    }
+    //    for (auto t : offset_swing_foot_spline.get_segment_times()){
+    //      std::cout << t << std::endl;
+    //    }
     return offset_swing_foot_spline;
   }
   //  return swing_foot_spline;

@@ -170,20 +170,20 @@ void CentroidalIKTrajGen::CalcTraj(
           context_ad_, false);
   auto quat_norm_constraint = std::make_shared<UnitQuaternionConstraint>();
   auto stance_foot_pos_contraint = std::make_shared<PositionConstraint>(
-      &plant_ad_, plant_ad_.world_frame(),
+      &plant_, plant_.world_frame(),
       stance_foot_pos, stance_foot_pos,
-      plant_ad_.GetBodyByName(toe_frames_.at(stance_mode)).body_frame(),
-      toe_mid_, context_ad_);
+      plant_.GetBodyByName(toe_frames_.at(stance_mode)).body_frame(),
+      toe_mid_, context_);
   auto swing_foot_init_pos_constraint = std::make_shared<PositionConstraint>(
-      &plant_ad_, plant_ad_.world_frame(),
+      &plant_, plant_.world_frame(),
       swing_foot_pos_i, swing_foot_pos_i,
-      plant_ad_.GetBodyByName(toe_frames_.at(1-stance_mode)).body_frame(),
-      toe_mid_, context_ad_);
+      plant_.GetBodyByName(toe_frames_.at(1-stance_mode)).body_frame(),
+      toe_mid_, context_);
   auto swing_foot_final_pos_constraint = std::make_shared<PositionConstraint>(
-      &plant_ad_, plant_ad_.world_frame(),
+      &plant_, plant_.world_frame(),
       swing_foot_pos_f, swing_foot_pos_f,
-      plant_ad_.GetBodyByName(toe_frames_.at(1-stance_mode)).body_frame(),
-      toe_mid_, context_ad_);
+      plant_.GetBodyByName(toe_frames_.at(1-stance_mode)).body_frame(),
+      toe_mid_, context_);
   auto com_pos_constraint = std::make_shared<ComPositionConstraint>(
       &plant_, std::nullopt,
           plant_.world_frame(), context_);

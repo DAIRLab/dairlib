@@ -75,8 +75,9 @@ class VisualizationGui(QWidget):
 
         # use dialog box to get JSON directory
         mainWindow = director.applogic.getMainWindow()
-        fileFilters = "Data Files (*.json)";
-        filename = QtGui.QFileDialog.getOpenFileName(mainWindow, "Open...", os.getcwd(), fileFilters, "", QtGui.QFileDialog.DontUseNativeDialog)
+        fileFilters = "Data Files (*.json)"
+        print(os.getcwd() + 'director/scripts/')
+        filename = QtGui.QFileDialog.getOpenFileName(mainWindow, "Open...", os.getcwd() + '/director/scripts/', fileFilters, '', QtGui.QFileDialog.DontUseNativeDialog)
 
         if not filename:
           return
@@ -328,9 +329,6 @@ class VisualizationGui(QWidget):
                         self.plant.GetFrameByName(currShape.frame),
                         currShape.point, self.plant.world_frame())
                     next_loc = pt_world.transpose()[0]
-
-                elif (currShape.category == "com"):
-                    next_loc = self.plant.CalcCenterOfMassPosition(context = self.context)
 
                 elif (currShape.category == "lcm"):
                     # in the case of an lcm message do not do anything as this is

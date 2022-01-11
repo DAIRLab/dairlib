@@ -28,6 +28,7 @@ using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::SnoptSolver;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::CentroidalMomentumConstraint;
 using drake::multibody::UnitQuaternionConstraint;
@@ -67,11 +68,17 @@ CentroidalIKTrajGen::CentroidalIKTrajGen(
           "lcmt_saved_trajectory",
           drake::Value<dairlib::lcmt_saved_traj>{}).get_index();
 
+
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   pelvis_traj_port_ = this->DeclareAbstractOutputPort(
       "orientation_traj", traj_inst, &CentroidalIKTrajGen::AssignPelvisTraj)
           .get_index();
+
+  swing_foot_traj_port_ = this->DeclareAbstractInputPort(
+      "swing_foot_xyz",
+      drake::Value<drake::trajectories::Trajectory<double>>(empty_pp_traj))
+      .get_index();
 
   BasicVector<double> model_solution_vec(
       2 * plant.num_positions() + 2* plant.num_velocities());
@@ -79,6 +86,9 @@ CentroidalIKTrajGen::CentroidalIKTrajGen(
       "ik_sol", model_solution_vec,
       &CentroidalIKTrajGen::CalcTraj,
       {input_port_ticket(TypeSafeIndex(mpc_traj_port_))});
+
+  solver_options_.SetOption(SnoptSolver::id(), "Print file", "../snopt.out");
+
 }
 
 void CentroidalIKTrajGen::CalcTraj(
@@ -89,6 +99,13 @@ void CentroidalIKTrajGen::CalcTraj(
   const drake::AbstractValue* input =
       this->EvalAbstractInput(context, mpc_traj_port_);
   DRAKE_ASSERT(input != nullptr);
+
+  const drake::AbstractValue* swing_ft_traj_value =
+      this->EvalAbstractInput(context, swing_foot_traj_port_);
+  DRAKE_DEMAND(swing_ft_traj_value != nullptr);
+  const auto& swing_ft_traj =
+      swing_ft_traj_value->get_value<drake::trajectories::Trajectory<double>>();
+
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd state = robot_output->GetState();
@@ -109,11 +126,15 @@ void CentroidalIKTrajGen::CalcTraj(
   }
   mpc_timestamp_ = mpc_timestamp;
   LcmTrajectory mpc_traj(input_msg);
+
+  SetPositionsAndVelocitiesIfNew<double>(plant_, state, context_);
+
   Eigen::MatrixXd angular_momentum = I_b_ *
       mpc_traj.GetTrajectory("orientation").datapoints.bottomRows(3);
   Eigen::MatrixXd linear_momentum = mass_ *
       mpc_traj.GetTrajectory("com_traj").datapoints.bottomRows(3);
-
+  Eigen::MatrixXd com_position =
+      mpc_traj.GetTrajectory("com_traj").datapoints.topRows(3);
 
   // Solve the IK problem
   double timestamp = robot_output->get_timestamp();
@@ -125,10 +146,8 @@ void CentroidalIKTrajGen::CalcTraj(
   MathematicalProgram prog;
   std::vector<VectorXDecisionVariable> qq, vv, hh, rr;
 
-  int N = round(mode_duration / dt_) + 1;
-
   // Make decision variables
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < 2; i++) {
     qq.push_back(prog.NewContinuousVariables(
       plant_.num_positions(), "q" + std::to_string(i)));
     vv.push_back(prog.NewContinuousVariables(
@@ -137,33 +156,17 @@ void CentroidalIKTrajGen::CalcTraj(
     rr.push_back(prog.NewContinuousVariables(3));
   }
 
-  // Initial state constraint
-  SetPositionsAndVelocitiesIfNew<double>(plant_, state, context_);
-  auto CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
-  auto spatial_momentum = plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, CoM);
-  VectorXd h_i = VectorXd::Zero(6);
-  h_i.head(3) = spatial_momentum.rotational();
-  h_i.tail(3) = spatial_momentum.translational();
-  prog.AddLinearEqualityConstraint(qq.front() == robot_output->GetPositions());
-  prog.AddLinearEqualityConstraint(vv.front() == robot_output->GetVelocities());
-  prog.AddLinearEqualityConstraint(hh.front() == h_i);
-
-  // knot point constraints
-  Vector3d stance_foot_pos, swing_foot_pos_i, swing_foot_pos_f;
-
+  Vector3d stance_foot_pos;
+  Vector3d swing_foot_pos_i = swing_ft_traj.value(start_time);
+  Vector3d swing_foot_pos_f = swing_ft_traj.value(start_time + dt_);
   plant_.CalcPointsPositions(
       *context_,
       plant_.GetBodyByName(toe_frames_.at(stance_mode)).body_frame(),
       toe_mid_, plant_.world_frame(), &stance_foot_pos);
-  plant_.CalcPointsPositions(
-      *context_,
-      plant_.GetBodyByName(toe_frames_.at(1-stance_mode)).body_frame(),
-      toe_mid_, plant_.world_frame(), &swing_foot_pos_i);
-  swing_foot_pos_f =
-      mpc_traj.GetTrajectory("swing_foot_traj").datapoints;
+
   auto centroidal_constraint_ptr =
       std::make_shared<CentroidalMomentumConstraint>(
-          &plant_ad_,std::nullopt,
+          &plant_ad_, std::nullopt,
           context_ad_, false);
   auto quat_norm_constraint = std::make_shared<UnitQuaternionConstraint>();
   auto stance_foot_pos_contraint = std::make_shared<PositionConstraint>(
@@ -181,24 +184,33 @@ void CentroidalIKTrajGen::CalcTraj(
       swing_foot_pos_f, swing_foot_pos_f,
       plant_ad_.GetBodyByName(toe_frames_.at(1-stance_mode)).body_frame(),
       toe_mid_, context_ad_);
-
   auto com_pos_constraint = std::make_shared<ComPositionConstraint>(
       &plant_, std::nullopt,
           plant_.world_frame(), context_);
 
-  for (int i = 1; i < N; i++) {
+  for (int i = 0; i < 2; i++) {
     prog.AddConstraint(centroidal_constraint_ptr, {qq.at(i), vv.at(i), hh.at(i)});
     prog.AddConstraint(stance_foot_pos_contraint, qq.at(i));
     prog.AddConstraint(quat_norm_constraint, qq.at(i).head(4));
     prog.AddConstraint(com_pos_constraint, {qq.at(i), rr.at(i)});
     prog.AddLinearEqualityConstraint(hh.at(i).head(3) == angular_momentum.col(i));
     prog.AddLinearEqualityConstraint(hh.at(i).tail(3) == linear_momentum.col(i));
-    prog.AddQuadraticCost((vv.at(i) - vv.at(i-1)).transpose() * (vv.at(i) - vv.at(i-1)));
+    prog.AddLinearEqualityConstraint(rr.at(i) == com_position.col(i));
+    prog.AddCost(vv.at(i).transpose() * vv.at(i));
+  }
+  for (int i = 0; i < 2; i++) {
+    prog.SetInitialGuess(qq.at(i), state.head(plant_.num_positions()));
+    prog.SetInitialGuess(vv.at(i), state.tail(plant_.num_velocities()));
+    prog.SetInitialGuess(hh.at(i).head(3), angular_momentum.col(i));
+    prog.SetInitialGuess(hh.at(i).tail(3), linear_momentum.col(i));
+    prog.SetInitialGuess(rr.at(i), com_position.col(i));
   }
 
-  auto result = drake::solvers::Solve(prog);
-
+  auto result = solver_.Solve(prog,
+                              prog.initial_guess(),
+                              solver_options_);
   if (!result.is_success()) {
+    std::cout << "Attempted IK solve with " << result.get_solver_id() << "\n";
     throw std::runtime_error(
         "Error, IK did not solve, exited with status " +
         drake::solvers::to_string(result.get_solution_result()));

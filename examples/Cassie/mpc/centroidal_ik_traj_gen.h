@@ -4,6 +4,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/basic_vector.h"
 #include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/snopt_solver.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/common/trajectories/trajectory.h"
 #include "drake/math/autodiff.h"
@@ -31,12 +32,13 @@ class CentroidalIKTrajGen : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_swing_foot_traj() const {
+    return this->get_input_port(swing_foot_traj_port_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_pelvis_orientation_traj() const {
     return this->get_output_port(pelvis_traj_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_swing_foot_traj() const {
-    return this->get_output_port(swing_foot_traj_port_);
-  }
+
  private:
 
   void CalcTraj(const drake::systems::Context<double> &context,
@@ -74,6 +76,8 @@ class CentroidalIKTrajGen : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<drake::AutoDiffXd>* context_ad_;
   drake::systems::Context<double>* context_;
+  drake::solvers::SnoptSolver solver_;
+  drake::solvers::SolverOptions solver_options_;
 
 };
 }

@@ -232,8 +232,9 @@ int DoMain(int argc, char* argv[]) {
           plant_w_springs, single_support_states, single_support_durations,
           left_right_pts, swing_foot_taj_gen_options);
 
+  Matrix3d I_mat = I_rot.CopyToFullMatrix3();
   auto ik_solver = builder.AddSystem<mpc::CentroidalIKTrajGen>(
-      *plant_ad, plant_context_ad.get(), plant_w_springs, plant_context.get(), I_rot.CopyToFullMatrix3(),
+      *plant_ad, plant_context_ad.get(), plant_w_springs, plant_context.get(), I_mat,
       mass, 0.07, FLAGS_stance_duration);
 
   auto zero_rot_traj_source = builder.AddSystem(
@@ -453,6 +454,8 @@ int DoMain(int argc, char* argv[]) {
                   ik_solver->get_input_port_state());
   builder.Connect(mpc_subscriber->get_output_port(),
                   ik_solver->get_input_port_mpc_traj());
+  builder.Connect(swing_foot_traj_gen->get_output_port(),
+                  ik_solver->get_input_port_swing_foot_traj());
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),

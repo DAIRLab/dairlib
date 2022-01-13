@@ -46,7 +46,7 @@ rom_option: 10  # 4, 9
 #The iteration number of the theta that you use.has to be >= 1
 model_iter: 1 #150  #1 #30
 #The sample that we use to initialize planner
-sample_idx: 19 #58 #40
+sample_idx: 40 #19 #58 #40
 
 
 ### High-level command (for both planner and controller)
@@ -78,7 +78,7 @@ post_right_double_support: 4
 # Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
 left_support_duration: 0.25 #0.3   # 0.23 # 0.35 # 0.4
 right_support_duration: 0.25 #0.3  # 0.23 # 0.35 # 0.4
-double_support_duration: 0.05 #0.02
+double_support_duration: 0.1 #0.02
 
 
 ### For planner only

@@ -173,7 +173,11 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     }
 
     double duration = y_traj.end_time();
-    DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
+    if (std::abs(duration - stride_period) > 1e-15) {
+      cout << "duration = " << duration << endl;
+      cout << "stride_period = " << stride_period << endl;
+      DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
+    }
     for (int i = 0; i < param_.knots_per_mode; i++) {
       h_guess_(i) = duration / (param_.knots_per_mode - 1) * i;
       y_guess_.col(i) = y_traj.value(h_guess_(i));

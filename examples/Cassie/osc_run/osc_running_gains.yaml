@@ -13,7 +13,7 @@ vel_scale_trans_sagital: 0.5
 vel_scale_trans_lateral: -0.15
 
 # SLIP parameters
-rest_length: 0.8
+rest_length: 0.80
 stance_duration: 0.30
 flight_duration: 0.08
 
@@ -33,35 +33,35 @@ hip_yaw_kd: 15
 #hip_roll_kp: 50
 #hip_roll_kd: 10
 # Foot placement parameters
-footstep_offset: -0.045
-center_line_offset: 0.045
+footstep_offset: -0.05
+center_line_offset: 0.06
 FootstepKd:
-  [  0.15,     0,  0,
-     0,     0.32, 0,
+  [  0.4,     0,  0,
+     0,     0.425, 0,
      0,        0,  0]
 PelvisW:
-  [ 0,     0,    0,
-    0,     0,    0,
+  [0.1,     0,    0,
+    0,    0.1,    0,
     0,     0,    5]
 PelvisKp:
-  [ 0,    0,    0,
+  [0,    0,    0,
     0,    0,    0,
-    0,    0,   125]
+    0,    0,   110]
 PelvisKd:
-  [  0,    0,   0,
-     0,    0,   0,
+  [  5,    0,   0,
+     0,    5,   0,
      0,    0,  5]
 PelvisRotW:
-  [1,  0,   0,
+  [0.1,  0,   0,
    0,  0.1,   0,
    0,   0,  0]
 PelvisRotKp:
   [100,   0,   0,
-   0,  100,   0,
+   0,  50,   0,
    0,    0,   0]
 PelvisRotKd:
   [10,   0,  0,
-   0,   10,  0,
+   0,   2.5,  0,
    0,    0,  0]
 SwingFootW:
   [5,    0,    0,

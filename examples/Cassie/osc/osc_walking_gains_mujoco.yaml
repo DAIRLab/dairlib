@@ -1,6 +1,9 @@
 rows: 3
 cols: 3
 
+# TrackingDataSettings
+relative_swing_ft: true
+
 # High level command gains (with radio)
 vel_scale_rot: -1.5
 vel_scale_trans_sagital: 0.1

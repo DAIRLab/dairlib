@@ -13,9 +13,7 @@ import mbp_plotting_utils as mbp_plots
 
 def main():
     config_file = \
-        'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
-    # config_file = \
-    #     'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
+        'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
     use_floating_base = plot_config.use_floating_base
@@ -93,9 +91,8 @@ def main():
         for traj_name, config in plot_config.tracking_datas_to_plot.items():
             for deriv in config['derivs']:
                 for dim in config['dims']:
-                    ps = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
+                    mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
                                                      deriv, t_osc_slice)
-                    mbp_plots.add_fsm_to_plot(ps, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
 
     ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:

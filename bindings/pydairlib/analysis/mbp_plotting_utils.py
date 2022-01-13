@@ -107,12 +107,12 @@ def process_osc_channel(data):
 
         osc_output.append(msg)
         for tracking_data in msg.tracking_data:
-            if tracking_data.name != '':
-                if tracking_data.name not in osc_debug_tracking_datas:
-                    osc_debug_tracking_datas[tracking_data.name] = \
-                        lcmt_osc_tracking_data_t()
-                osc_debug_tracking_datas[tracking_data.name].append(
-                    tracking_data, msg.utime / 1e6)
+            if tracking_data.name not in osc_debug_tracking_datas:
+                osc_debug_tracking_datas[tracking_data.name] = \
+                    lcmt_osc_tracking_data_t()
+            osc_debug_tracking_datas[tracking_data.name].append(
+                tracking_data, msg.utime / 1e6)
+
         fsm.append(msg.fsm_state)
 
     tracking_cost_handler = osc_tracking_cost(osc_debug_tracking_datas.keys())
@@ -164,7 +164,6 @@ def plot_q_or_v_or_u(
         robot_output, key, x_names, x_slice, time_slice,
         ylabel=None, title=None):
     ps = plot_styler.PlotStyler()
-    ps.set_default_styling()
     if ylabel is None:
         ylabel = key
     if title is None:
@@ -262,10 +261,10 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
 
 def plot_tracking_costs(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()
-    ps.set_default_styling()
     data_dict = \
         {key: val for key, val in osc_debug['tracking_cost'].items()}
     data_dict['t_osc'] = osc_debug['t_osc']
+
     plotting_utils.make_plot(
         data_dict,
         't_osc',
@@ -281,7 +280,6 @@ def plot_tracking_costs(osc_debug, time_slice):
 
 def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
     ps = plot_styler.PlotStyler()
-    ps.set_default_styling()
     keys = [key for key in data.keys() if key != 't']
     plotting_utils.make_plot(
         data,
@@ -306,8 +304,7 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
     elif deriv == 'vel':
         data['ydot_des'] = tracking_data.ydot_des[:, dim]
         data['ydot'] = tracking_data.ydot[:, dim]
-        data['error_ydot'] = tracking_data.ydot_des[:, dim] - tracking_data.ydot[:, dim]
-        data['projected_error_ydot'] = tracking_data.error_ydot[:, dim]
+        data['error_ydot'] = tracking_data.error_ydot[:, dim]
     elif deriv == 'accel':
         data['yddot_des'] = tracking_data.yddot_des[:, dim]
         data['yddot_command'] = tracking_data.yddot_command[:, dim]
@@ -382,4 +379,4 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
 
 
 def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
-    ps.plot(fsm_time, scale * fsm_signal)
+    ps.plot(fsm_time, scale*fsm_signal)

@@ -295,7 +295,7 @@ void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
   }
 
   cout << "reading model parameter "
-       << dir + to_string(model_iter) + "_theta_y.csv\n";
+       << dir + to_string(model_iter) + "_theta_y.csv\n\n";
 
   // Update the ROM parameters from file
   VectorXd theta_y =

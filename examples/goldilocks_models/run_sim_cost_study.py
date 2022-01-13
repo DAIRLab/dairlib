@@ -141,7 +141,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   # Extract tasks
   task_sl = task[tasks.GetDimIdxByName("stride_length")]
 
-  dir_and_prefex_FOM_reg = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx)
+  dir_and_prefix_FOM_reg = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx)
   path_init_state = "%s%d_%d_x_samples0.csv" % (model_dir, rom_iter_idx, trajopt_sample_idx) if set_sim_init_state_from_trajopt else ""
 
   planner_cmd = [
@@ -167,7 +167,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
     '--spring_model=%s' % str(spring_model).lower(),
-    '--dir_and_prefex_FOM=%s' % dir_and_prefex_FOM_reg,
+    '--dir_and_prefix_FOM=%s' % dir_and_prefix_FOM_reg,
     '--dir_data=%s' % data_dir_this_thread,
     '--path_wait_identifier=%s' % planner_wait_identifier,
     '--print_level=0',

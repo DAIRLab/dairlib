@@ -156,7 +156,7 @@ PlannerFinalPosition::PlannerFinalPosition(
     const Eigen::VectorXd& global_target_pos)
     : PlannerFinalPosition(plant_feedback, 0) {
   global_target_pos_ = global_target_pos;
-  cout << "  global_target_pos = " << global_target_pos << endl;
+  cout << "  global_target_pos = " << global_target_pos.transpose() << "\n\n";
 }
 
 // Constructor for constant step length
@@ -166,8 +166,8 @@ PlannerFinalPosition::PlannerFinalPosition(
     : PlannerFinalPosition(plant_feedback, 1) {
   const_step_length_ = const_step_length;
   n_step_ = n_step;
-  cout << "  const_step_length = " << const_step_length << endl;
-  cout << "  n_step = " << n_step << endl;
+  cout << "  const_step_length = " << const_step_length.transpose() << endl;
+  cout << "  n_step = " << n_step << "\n\n";
 }
 
 // Constructor for radio speed command
@@ -178,7 +178,7 @@ PlannerFinalPosition::PlannerFinalPosition(
   stride_period_ = stride_period;
   n_step_ = n_step;
   cout << "  stride_period = " << stride_period << endl;
-  cout << "  n_step = " << n_step << endl;
+  cout << "  n_step = " << n_step << "\n\n";
 
   controller_signal_port_ =
       this->DeclareVectorInputPort("ctrl_thread", TimestampedVector<double>(5))
@@ -199,7 +199,6 @@ PlannerFinalPosition::PlannerFinalPosition(
   } else {
     cout << "  getting vel command from remote control\n";
   }
-  cout << endl;
 
   // Input/Output Setup
   state_port_ =

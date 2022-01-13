@@ -15,9 +15,9 @@ vel_scale_trans_lateral: -0.15
 # SLIP parameters
 rest_length: 0.8
 stance_duration: 0.3
-flight_duration: 0.12
+flight_duration: 0.1
 
-mu: 0.8
+mu: 0.6
 
 w_swing_toe: 1
 swing_toe_kp: 1500
@@ -37,7 +37,7 @@ footstep_offset: -0.000
 center_line_offset: -0.04
 FootstepKd:
   [  0.27,     0,  0,
-     0,     0.06, 0,
+     0,     0.04, 0,
      0,        0,  0]
 PelvisW:
   [ 0,     0,    0,

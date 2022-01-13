@@ -374,7 +374,7 @@ void DoMain() {
 
   cout << "Solving DIRCON\n\n";
   auto start = std::chrono::high_resolution_clock::now();
-  const auto result = Solve(trajopt, trajopt.initial_guess());
+  const auto result = drake::solvers::Solve(trajopt, trajopt.initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Solve time:" << elapsed.count() << std::endl;
@@ -798,7 +798,7 @@ void AddCosts(Dircon<double>* trajopt,
       auto x_i = trajopt->state_vars(mode, index);
       auto u_i = trajopt->input_vars(mode, index);
       auto l_i = trajopt->force_vars(mode, index);
-      trajopt->AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
+      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
     }
   }
 }
@@ -889,7 +889,7 @@ void AddCostsSprings(Dircon<double>* trajopt,
       auto x_i = trajopt->state_vars(mode, index);
       auto u_i = trajopt->input_vars(mode, index);
       auto l_i = trajopt->force_vars(mode, index);
-      trajopt->AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
+      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
     }
   }
 }

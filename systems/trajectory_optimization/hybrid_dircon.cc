@@ -144,7 +144,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         options[i].getDynConstraintScaling());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
-      AddConstraint(
+      this->prog().AddConstraint(
           dynamic_constraint,
           {h_vars().segment(time_index, 1), state_vars_by_mode(i, j),
            state_vars_by_mode(i, j + 1),
@@ -168,7 +168,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         options[i].getKinConstraintScaling());
     for (int j = 1; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
-      AddConstraint(
+      this->prog().AddConstraint(
           kinematic_constraint,
           {state_vars_by_mode(i, j),
            u_vars().segment(time_index * num_inputs(), num_inputs()),
@@ -184,7 +184,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
             options[i].getStartType());
     kinematic_constraint_start->SetConstraintScaling(
         options[i].getKinConstraintScalingStart());
-    AddConstraint(
+    this->prog().AddConstraint(
         kinematic_constraint_start,
         {state_vars_by_mode(i, 0),
          u_vars().segment(mode_start_[i] * num_inputs(), num_inputs()),
@@ -202,7 +202,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
               options[i].getEndType());
       kinematic_constraint_end->SetConstraintScaling(
           options[i].getKinConstraintScalingEnd());
-      AddConstraint(
+      this->prog().AddConstraint(
           kinematic_constraint_end,
           {state_vars_by_mode(i, mode_lengths_[i] - 1),
            u_vars().segment(
@@ -221,7 +221,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         DirconKinematicData<T>* constraint_j =
             constraints_[i]->getConstraint(j);
         for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
-          AddConstraint(
+          this->prog().AddConstraint(
               constraint_j->getForceConstraint(k),
               force_vars(i).segment(start_index, constraint_j->getLength()));
         }
@@ -247,7 +247,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
             plant_, *constraints_[i]);
         impact_constraint->SetConstraintScaling(
             options[i].getImpConstraintScaling());
-        AddConstraint(impact_constraint,
+        this->prog().AddConstraint(impact_constraint,
                       {state_vars_by_mode(i - 1, mode_lengths_[i - 1] - 1),
                        impulse_vars(i - 1), v_post_impact_vars_by_mode(i - 1)});
 
@@ -257,7 +257,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           DirconKinematicData<T>* constraint_j =
               constraints_[i]->getConstraint(j);
           for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
-            AddConstraint(constraint_j->getForceConstraint(k),
+            this->prog().AddConstraint(constraint_j->getForceConstraint(k),
                           impulse_vars(i - 1).segment(
                               start_index, constraint_j->getLength()));
           }
@@ -266,7 +266,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
 
       } else {
         auto x_vars_prev = state_vars_by_mode(i - 1, mode_lengths_[i - 1] - 1);
-        AddConstraint(v_post_impact_vars_by_mode(i - 1) ==
+        this->prog().AddConstraint(v_post_impact_vars_by_mode(i - 1) ==
             x_vars_prev.tail(plant.num_velocities()));
       }
     }

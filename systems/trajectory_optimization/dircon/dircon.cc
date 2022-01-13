@@ -152,7 +152,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
           plant_, mode.evaluators(), contexts_[i_mode].at(j).get(),
           contexts_[i_mode].at(j + 1).get(), i_mode, j, cache_[i_mode].get());
       constraint->SetConstraintScaling(mode.GetDynamicsScale());
-      AddConstraint(
+      this->prog().AddConstraint(
           constraint,
           {timestep(mode_start_[i_mode] + j), state_vars(i_mode, j),
            state_vars(i_mode, j + 1), input_vars(i_mode, j),
@@ -192,7 +192,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
             "kinematic_position[" + std::to_string(i_mode) + "][" +
                 std::to_string(j) + "]");
         pos_constraint->SetConstraintScaling(mode.GetKinPositionScale());
-        AddConstraint(pos_constraint,
+        this->prog().AddConstraint(pos_constraint,
                       {state_vars(i_mode, j).head(plant_.num_positions()),
                        offset_vars(i_mode)});
       }
@@ -211,7 +211,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
                   "kinematic_velocity[" + std::to_string(i_mode) + "][" +
                       std::to_string(j) + "]");
           vel_constraint->SetConstraintScaling(mode.GetKinVelocityScale());
-          AddConstraint(vel_constraint, state_vars(i_mode, j));
+          this->prog().AddConstraint(vel_constraint, state_vars(i_mode, j));
         }
       }
 
@@ -222,7 +222,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
               std::to_string(j) + "]",
           cache_[i_mode].get());
       accel_constraint->SetConstraintScaling(mode.GetKinAccelerationScale());
-      AddConstraint(accel_constraint,
+      this->prog().AddConstraint(accel_constraint,
                     {state_vars(i_mode, j), input_vars(i_mode, j),
                      force_vars(i_mode, j)});
     }
@@ -243,7 +243,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
             "impact[" + std::to_string(i_mode) + "]");
         impact_constraint->SetConstraintScaling(mode.GetImpactScale());
 
-        AddConstraint(
+        this->prog().AddConstraint(
             impact_constraint,
             {state_vars(i_mode - 1, pre_impact_index), impulse_vars(i_mode - 1),
              post_impact_velocity_vars(i_mode - 1)});

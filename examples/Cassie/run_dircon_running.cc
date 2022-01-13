@@ -296,7 +296,7 @@ void DoMain() {
 
   cout << "Solving DIRCON\n\n";
   auto start = std::chrono::high_resolution_clock::now();
-  const auto result = Solve(trajopt, trajopt.initial_guess());
+  const auto result = drake::solvers::Solve(trajopt, trajopt.initial_guess());
   //  SolutionResult solution_result = result.get_solution_result();
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;

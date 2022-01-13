@@ -72,7 +72,7 @@
       }
     },
     {
-      "name": "desired_foot_position",
+      "name": "left_ft_traj_des",
       "source_data": {
         "category": "lcm",
         "abstract_channel": "OSC_DEBUG_RUNNING",
@@ -91,7 +91,7 @@
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.01,
-        "history": -1
+        "history": 2
       }
     }
   ]

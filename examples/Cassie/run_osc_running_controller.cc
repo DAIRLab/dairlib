@@ -325,6 +325,12 @@ int DoMain(int argc, char* argv[]) {
   right_foot_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
                                                       "toe_right");
 
+//  TransTaskSpaceTrackingData left_hip_tracking_data(
+//      "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+//      osc_gains.W_swing_foot, plant, plant);
+//  TransTaskSpaceTrackingData right_hip_tracking_data(
+//      "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+//      osc_gains.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData left_hip_tracking_data(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
@@ -332,13 +338,13 @@ int DoMain(int argc, char* argv[]) {
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
   left_hip_tracking_data.AddStateAndPointToTrack(right_stance_state,
-                                                 "hip_left");
+                                                 "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(left_stance_state,
-                                                  "hip_right");
+                                                  "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                  "hip_right");
+                                                  "pelvis");
   left_hip_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                 "hip_left");
+                                                 "pelvis");
 
   TransTaskSpaceTrackingData left_hip_yz_tracking_data(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,

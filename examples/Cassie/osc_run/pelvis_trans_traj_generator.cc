@@ -120,7 +120,14 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
 
 //  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
 //      breaks, samples, pelvis_vel, pelvis_vel + rddot * dt);
-    return PiecewisePolynomial<double>(Vector3d{0, 0, rest_length_});
+  double y_dist_des = 0;
+  if(fsm_state == 0){
+    y_dist_des = -0.2;
+  }
+  else if (fsm_state == 1){
+    y_dist_des = 0.2;
+  }
+  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
 }
 
 void PelvisTransTrajGenerator::CalcTraj(

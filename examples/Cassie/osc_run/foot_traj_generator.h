@@ -7,7 +7,7 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
-const double REST_LENGTH = 0.75;
+const double REST_LENGTH = 0.8;
 
 namespace dairlib::examples::osc_run {
 

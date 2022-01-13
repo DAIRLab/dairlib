@@ -598,7 +598,7 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   osc_traj00 = "swing_ft_traj"
-  osc_traj00 = "stance_hip_rpy_traj"
+  # osc_traj00 = "stance_hip_rpy_traj"
   # osc_traj0 = "swing_ft_traj"
   osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller

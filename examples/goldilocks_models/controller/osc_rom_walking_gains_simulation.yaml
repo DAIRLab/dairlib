@@ -18,18 +18,18 @@ hip_yaw_kd: 0.5
 
 ################## Tuned with dispatchers in both simulation ###################
 
-#RomW:
-#[0, 0, 0,
-# 0, 0, 0,
-# 0, 0, 10]
-#RomKp:
-#[0, 0, 0,
-# 0, 0, 0,
-# 0, 0, 50]
-#RomKd:
-#[0, 0, 0,
-# 0, 0, 0,
-# 0, 0, 1]
+RomW:
+[0, 0, 0,
+ 0, 0, 0,
+ 0, 0, 10]
+RomKp:
+[0, 0, 0,
+ 0, 0, 0,
+ 0, 0, 50]
+RomKd:
+[0, 0, 0,
+ 0, 0, 0,
+ 0, 0, 1]
 #RomW:  # Weight for the old qp solver
 #  [0.02,    0,     0,
 #      0, 0.02,     0,
@@ -56,18 +56,18 @@ hip_yaw_kd: 0.5
 #      0,    0,     0,
 #      0,    0,     0.2]
 # Add back x components  # This somehow caused stance hip yaw to rotate for simulation with springs
-RomW:
-  [0.1,    0,     0,
-   0, 0,     0,
-   0,    0,    10]
-RomKp:
-  [  10,    0,     0,
-     0,    0,     0,
-     0,    0,    50]
-RomKd:
-  [   0.2,    0,     0,
-      0,    0,     0,
-      0,    0,     1]
+#RomW:
+#  [0.1,    0,     0,
+#   0, 0,     0,
+#   0,    0,    10]
+#RomKp:
+#  [  10,    0,     0,
+#     0,    0,     0,
+#     0,    0,    50]
+#RomKd:
+#  [   0.2,    0,     0,
+#      0,    0,     0,
+#      0,    0,     1]
 
 PelvisBalanceW:
   [ 2,    0,     0,

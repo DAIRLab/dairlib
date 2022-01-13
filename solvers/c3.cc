@@ -10,9 +10,17 @@ using std::vector;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+using drake::solvers::MathematicalProgram;
+using drake::solvers::MathematicalProgramResult;
+using drake::solvers::SolutionResult;
+
+using drake::solvers::OsqpSolver;
+using drake::solvers::OsqpSolverDetails;
+using drake::solvers::Solve;
+
 
 C3::C3(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
-			 const vector<MatrixXd>& D, const vector<VectorXd>& d,
+			 const vector<MatrixXd>& D, const vector<MatrixXd>& d,
 			 const vector<MatrixXd>& E, const vector<MatrixXd>& F,
 			 const vector<MatrixXd>& H, const vector<VectorXd>& c,
 			 const C3Options& options)
@@ -35,11 +43,11 @@ C3::C3(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
 /// Call the time-varying constructor using copies of the time-invariant
 /// description
 C3::C3(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
-			 const VectorXd& d, const MatrixXd& E, const MatrixXd& F,
+			 const MatrixXd& d, const MatrixXd& E, const MatrixXd& F,
 			 const MatrixXd& H, const VectorXd& c, const int& N,
 			 const C3Options& options)
 		: C3(vector<MatrixXd>(N, A), vector<MatrixXd>(N, B), vector<MatrixXd>(N, D),
-				 vector<VectorXd>(N, d), vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
+				 vector<MatrixXd>(N, d), vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
 				 vector<MatrixXd>(N, H), vector<VectorXd>(N, c), options) {}
 		
 
@@ -63,10 +71,10 @@ void C3::ADMMStep(const VectorXd& z, const VectorXd& delta, const VectorXd& w,
 	// w_n* = ...
 }
 
-void C3::SolveQP(const MatrixXd& A,const MatrixXd& B, const MatrixXd& D, const VectorXd& d, const int& n, const int& m,const int& k,const int& N, const VectorXd& x0, const MatrixXd& Q, const MatrixXd& R, const MatrixXd& G, const MatrixXd& WD ) {
+void C3::SolveQP(const vector<MatrixXd>& A,const vector<MatrixXd>& B, const vector<MatrixXd>& D, const vector<MatrixXd>& d, const int& n, const int& m,const int& k,const int& N, const VectorXd& x0, const vector<MatrixXd>& Q, const vector<MatrixXd>& R, const vector<MatrixXd>& G, const vector<MatrixXd>& WD ) {
 
     // TODO: fill this in, along with the arguments
-    MathematicalProgram prog;
+    drake::solvers::MathematicalProgram prog;
     const int TOT = N*(n+m+k) + n;
     const int num_var = TOT;
     drake::solvers::VectorXDecisionVariable dv;

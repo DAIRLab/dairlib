@@ -12,7 +12,7 @@ class C3MIQP:C3 {
 	/// Default constructor for time-varying LCS
   /// TODO: add documentation
 	C3MIQP(const std::vector<Eigen::MatrixXd>& A, const std::vector<Eigen::MatrixXd>& B,
-		     const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::VectorXd>& d,
+		     const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::MatrixXd>& d,
 		     const std::vector<Eigen::MatrixXd>& E, const std::vector<Eigen::MatrixXd>& F,
          const std::vector<Eigen::MatrixXd>& H, const std::vector<Eigen::VectorXd>& c,
          const C3Options& options);
@@ -20,7 +20,7 @@ class C3MIQP:C3 {
 	/// Constructor for time-invariant LCS
 	/// TODO: add documentation
   C3MIQP(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
-  	     const Eigen::MatrixXd& D, const Eigen::VectorXd& d,
+  	     const Eigen::MatrixXd& D, const Eigen::MatrixXd& d,
   	     const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
   	     const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
   	     const C3Options& options);

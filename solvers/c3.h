@@ -15,7 +15,7 @@ class C3 {
   /// @param A, B, D, d Dynamics constraints x_{k+1} = A_k x_k + B_k u_k + D_k \lambda_k + d_k
   /// @param E, F, H, c Complementarity constraints  0 <= \lambda_k \perp E_k x_k + F_k \lambda_k  + H_k u_k + c_k
 	C3(const std::vector<Eigen::MatrixXd>& A, const std::vector<Eigen::MatrixXd>& B,
-		 const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::VectorXd>& d,
+		 const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::MatrixXd>& d,
 		 const std::vector<Eigen::MatrixXd>& E, const std::vector<Eigen::MatrixXd>& F,
      const std::vector<Eigen::MatrixXd>& H, const std::vector<Eigen::VectorXd>& c,
      const C3Options& options);
@@ -23,7 +23,7 @@ class C3 {
 	/// Constructor for time-invariant LCS
 	/// TODO: add documentation
   C3(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
-  	 const Eigen::MatrixXd& D, const Eigen::VectorXd& d,
+  	 const Eigen::MatrixXd& D, const Eigen::MatrixXd& d,
   	 const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
   	 const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
   	 const C3Options& options);
@@ -61,7 +61,7 @@ class C3 {
   						  Eigen::VectorXd* delta_n, Eigen::VectorXd* w_n);
 
   /// TODO: determine inputs/outputs
-  void SolveQP(const Eigen::MatrixXd& A,const Eigen::MatrixXd& B, const Eigen::MatrixXd& D, const Eigen::VectorXd& d, const int& n, const int& m,const int& k,const int& N, const Eigen::VectorXd& x0, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R, const Eigen::MatrixXd& G, const Eigen::MatrixXd& WD);
+  void SolveQP(const std::vector<Eigen::MatrixXd>& A,const std::vector<Eigen::MatrixXd>& B, const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::MatrixXd>& d, const int& n, const int& m,const int& k,const int& N, const Eigen::VectorXd& x0, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R, const std::vector<Eigen::MatrixXd>& G, const std::vector<Eigen::MatrixXd>& WD);
 
   /// TODO: determine inputs/outputs
   void SolveProjection();
@@ -69,13 +69,13 @@ class C3 {
 	/// TODO: determine inputs/outputs
 	/// I just include one argument here as an example
 	/// Virtual method, to be implemented by subclasses
-  virtual void SolveSingleProjection(const Eigen::MatrixXd& U, const Eigen::MatrixXd& delta_c, const Eigen::MatrixXd& E, const Eigen::MatrixXd& F, const Eigen::MatrixXd& c, const Eigen::MatrixXd& H);
+  virtual void SolveSingleProjection(const Eigen::MatrixXd& E);
 
  private:
  	const std::vector<Eigen::MatrixXd> A_;
  	const std::vector<Eigen::MatrixXd> B_;
 	const std::vector<Eigen::MatrixXd> D_;
-	const std::vector<Eigen::VectorXd> d_;
+	const std::vector<Eigen::MatrixXd> d_;
 	const std::vector<Eigen::MatrixXd> E_;
 	const std::vector<Eigen::MatrixXd> F_;
   const std::vector<Eigen::MatrixXd> H_;

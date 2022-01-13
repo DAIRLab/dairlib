@@ -156,6 +156,7 @@ PlannerFinalPosition::PlannerFinalPosition(
     const Eigen::VectorXd& global_target_pos)
     : PlannerFinalPosition(plant_feedback, 0) {
   global_target_pos_ = global_target_pos;
+  cout << "  global_target_pos = " << global_target_pos << endl;
 }
 
 // Constructor for constant step length
@@ -165,6 +166,8 @@ PlannerFinalPosition::PlannerFinalPosition(
     : PlannerFinalPosition(plant_feedback, 1) {
   const_step_length_ = const_step_length;
   n_step_ = n_step;
+  cout << "  const_step_length = " << const_step_length << endl;
+  cout << "  n_step = " << n_step << endl;
 }
 
 // Constructor for radio speed command
@@ -174,6 +177,8 @@ PlannerFinalPosition::PlannerFinalPosition(
     : PlannerFinalPosition(plant_feedback, 2) {
   stride_period_ = stride_period;
   n_step_ = n_step;
+  cout << "  stride_period = " << stride_period << endl;
+  cout << "  n_step = " << n_step << endl;
 
   controller_signal_port_ =
       this->DeclareVectorInputPort("ctrl_thread", TimestampedVector<double>(5))
@@ -185,6 +190,17 @@ PlannerFinalPosition::PlannerFinalPosition(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
     int high_level_command_mode)
     : high_level_command_mode_(high_level_command_mode) {
+  DRAKE_DEMAND(high_level_command_mode >= 0 && high_level_command_mode <= 2);
+  cout << "\nPlannerFinalPosition setting: \n";
+  if (high_level_command_mode == 0) {
+    cout << "  global position tracking\n";
+  } else if (high_level_command_mode == 1) {
+    cout << "  constant walking speed\n";
+  } else {
+    cout << "  getting vel command from remote control\n";
+  }
+  cout << endl;
+
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(

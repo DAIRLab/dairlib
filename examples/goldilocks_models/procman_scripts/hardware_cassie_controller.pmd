@@ -66,16 +66,12 @@ group "0.operator" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py  --script examples/Cassie/director_scripts/show_time_hardware.py";
         host = "localhost";
     }
-    cmd "3.0.switch-to-rom-mpc1 (tell dispatcher_in to switch)" {
+    cmd "3.0.switch-to-rom-mpc" {
         exec = "bazel-bin/examples/goldilocks_models/run_rom_controller_switch";
         host = "dair-cassie";
     }
     cmd "4.0.controller-switch-to-standing" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=1.0";
-        host = "dair-cassie";
-    }
-    cmd "3.0.switch-to-rom-mpc2 (start controller's fsm)" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=ROM_WALKING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01";
         host = "dair-cassie";
     }
     cmd "5.0.switch-to-default-walking" {
@@ -202,8 +198,7 @@ script "switch to standing" {
 }
 
 script "switch to walking" {
-    start cmd "3.0.switch-to-rom-mpc1 (tell dispatcher_in to switch)";
-    start cmd "3.0.switch-to-rom-mpc2 (start controller's fsm)";
+    start cmd "3.0.switch-to-rom-mpc";
     wait ms 1000;
     stop cmd "3.standing-controller-real-robot";
 }

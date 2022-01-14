@@ -916,7 +916,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     trajopt.SetInitialGuessForAllVariables(z0);
   } else {
     PrintEssentialStatus("global_fsm_idx = " + to_string(global_fsm_idx));
-    if (warm_start_with_previous_solution_ && fsm < 0) {
+    if (fsm < 0 && warm_start_with_previous_solution_ && counter_ > 0) {
       trajopt.SetInitialGuessForAllVariables(z_);
     } else if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");

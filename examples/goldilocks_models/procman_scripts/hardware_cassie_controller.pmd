@@ -101,11 +101,11 @@ group "4.lcm-tools" {
 
 group "1.rom-space-controller (wired ethernet)" {
     cmd "2.2.rom-planner (wired); generate init file" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=true --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=true --fix_duration=true --knots_per_mode=5 --n_step=2 --feas_tol=1e-2 --log_solver_info=false --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "localhost";
     }
     cmd "3.2.rom-planner (wired); w init file" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false --init_file=0_z.csv  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=5 --n_step=2 --feas_tol=1e-2 --log_solver_info=false --init_file=0_z.csv  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true --time_limit=0.1 &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "localhost";
     }
     cmd "2.0 rename data to data_x" {
@@ -125,7 +125,7 @@ group "1.rom-space-controller (wired ethernet)" {
         host = "dair-cassie";
     }
     cmd "3.1.optimal-rom-walking-controller (wired); w init file" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true --init_traj_file_name=0_rom_trajectory";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true --init_traj_file_name=0_rom_trajectory  --get_swing_foot_from_planner=true";
         host = "dair-cassie";
     }
 }

@@ -161,7 +161,7 @@ group "1.rom-space-controller-with-init-traj" {
         host = "localhost";
     }
     cmd "2.2.rom-planner (w init)" {
-        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --zero_touchdown_impact=true --feas_tol=1e-2  --n_step=2 --log_solver_info=false --log_data=true --init_file=0_z.csv --use_ipopt=false --switch_to_snopt_after_first_loop=true --knots_per_mode=5";
+        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --zero_touchdown_impact=true --feas_tol=1e-2  --n_step=2 --log_solver_info=false --log_data=true --init_file=0_z.csv --use_ipopt=false --knots_per_mode=5";
         host = "localhost";
     }
     cmd "2.1.rom-walking-controller (w init) (with dispatcher)" {
@@ -169,7 +169,7 @@ group "1.rom-space-controller-with-init-traj" {
         host = "localhost";
     }
     cmd "2.2.rom-planner (w init) (with dispatcher)" {
-        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true  --zero_touchdown_impact=true --feas_tol=1e-2  --n_step=2 --log_solver_info=false --log_data=true --init_file=0_z.csv --use_ipopt=false --switch_to_snopt_after_first_loop=true  --channel_x=CASSIE_STATE_DISPATCHER --knots_per_mode=5 --time_limit=0.1";
+        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true  --zero_touchdown_impact=true --feas_tol=1e-2  --n_step=2 --log_solver_info=false --log_data=true --init_file=0_z.csv --use_ipopt=false --channel_x=CASSIE_STATE_DISPATCHER --knots_per_mode=5 --time_limit=0.1";
         host = "localhost";
     }
 }

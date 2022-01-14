@@ -60,6 +60,11 @@ void CurrentStanceFoot::GetStance(
       this->EvalVectorInput(context, controller_signal_port_);
   int fsm_state = (int)controller_signal_port->get_value()(0);
 
+  // Hacks for transition from standing to walking
+  if (fsm_state == -1) {
+    fsm_state = 0;
+  }
+
   // Find fsm_state in left_right_support_fsm_states_
   bool is_single_support_phase =
       find(left_right_support_fsm_states_.begin(),

@@ -77,12 +77,6 @@ void DairlibSignalSender::PackVectorIntoLcm(
   }
 
   if (with_hacks_) {
-    // Hacks for initial fsm state (need -1 for neutral point swing foot, and
-    // need 0 for planner)
-    if (msg->val[0] == -1) {
-      msg->val[0] = 0;
-    }
-
     // Add epsilon to avoid error from converting double to int.
     msg->utime = (context.get_time() + 1e-12) * 1e6;
 

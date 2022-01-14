@@ -615,6 +615,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       this->EvalVectorInput(context, controller_signal_port_);
   int global_fsm_idx = int(controller_signal_port->get_value()(2) + 1e-8);
 
+  int fsm = (int)controller_signal_port->get_value()(0);
+
   // Get final position of
   VectorXd final_position =
       this->EvalVectorInput(context, planner_final_pos_port_)->get_value();
@@ -914,7 +916,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     trajopt.SetInitialGuessForAllVariables(z0);
   } else {
     PrintEssentialStatus("global_fsm_idx = " + to_string(global_fsm_idx));
-    if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
+    if (warm_start_with_previous_solution_ && fsm < 0) {
+      trajopt.SetInitialGuessForAllVariables(z_);
+    } else if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
       WarmStartGuess(quat_xyz_shift, reg_x_FOM, global_fsm_idx,
                      first_mode_knot_idx, current_time, &trajopt);
@@ -1115,6 +1119,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   } else {
     local_predicted_com_vel_ =
         result.GetSolution(trajopt.predicted_com_vel_var_);
+  }
+
+  // For hardware -- before we switch from standing to MPC walking
+  if (fsm < 0) {
+    z_ = result.GetSolution();
   }
 
   prev_global_fsm_idx_ = global_fsm_idx;

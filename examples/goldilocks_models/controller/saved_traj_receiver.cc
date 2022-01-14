@@ -252,7 +252,10 @@ EventStatus SavedTrajReceiver::DiscreteVariableUpdate(
   // Read in finite state machine
   // I add 1e-8 just in case
   int fsm_state =
-      int(this->EvalVectorInput(context, fsm_port_)->get_value()(0) + 1e-8);
+      (fsm_state < -0.5)
+          ? -1
+          : int(this->EvalVectorInput(context, fsm_port_)->get_value()(0) +
+                1e-8);
 
   // Find fsm_state in left_right_support_fsm_states
   auto it = find(left_right_support_fsm_states_.begin(),

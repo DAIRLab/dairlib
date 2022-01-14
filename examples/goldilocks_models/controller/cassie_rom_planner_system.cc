@@ -2012,7 +2012,7 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
       // Shift the timestamps by the current time
       times_i.array() += current_time;
 
-      // Shift time by eps to ensure we evaluate the right piece of polynomial
+      // Shift time by eps to ensure we evaluate the correct piece of polynomial
       times_i(0) += 1e-8;
       times_i(mode_lengths[i] - 1) -= 1e-8;
 

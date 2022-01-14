@@ -31,7 +31,10 @@ namespace dairlib {
 
 class DirconTrajectory : public LcmTrajectory {
  public:
-  DirconTrajectory(const std::string& filepath) { LoadFromFile(filepath); }
+  DirconTrajectory(const drake::multibody::MultibodyPlant<double>& plant,
+                   const std::string& filepath) {
+    LoadFromFile(plant, filepath);
+  }
 
   DirconTrajectory(
       const drake::multibody::MultibodyPlant<double>& plant,
@@ -50,14 +53,13 @@ class DirconTrajectory : public LcmTrajectory {
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
       const;
   drake::trajectories::PiecewisePolynomial<double>
-  ReconstructStateTrajectoryWithSprings(
-      Eigen::MatrixXd&) const;
+  ReconstructStateTrajectoryWithSprings(Eigen::MatrixXd&) const;
   drake::trajectories::PiecewisePolynomial<double>
   ReconstructMirrorStateTrajectory(double t_offset) const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructJointTrajectory(
-      int joint_idx) const;
+      std::string joint_name) const;
   drake::trajectories::PiecewisePolynomial<double>
-  ReconstructMirrorJointTrajectory(int joint_idx) const;
+  ReconstructMirrorJointTrajectory(std::string joint_name) const;
 
   /// Returns a vector of polynomials describing the contact forces for each
   /// mode. For use when adding knot points to the initial guess
@@ -76,7 +78,10 @@ class DirconTrajectory : public LcmTrajectory {
 
   /// Loads the saved state and input trajectory as well as the decision
   /// variables
-  void LoadFromFile(const std::string& filepath) override;
+  /// A MultibodyPlant is required due to possible state and actuator indexing
+  /// conflicts.
+  void LoadFromFile(const drake::multibody::MultibodyPlant<double>& plant,
+                    const std::string& filepath);
 
   Eigen::MatrixXd GetStateSamples(int mode) const {
     DRAKE_DEMAND(mode >= 0);
@@ -101,7 +106,9 @@ class DirconTrajectory : public LcmTrajectory {
   Eigen::MatrixXd GetForceBreaks(int mode) const {
     return lambda_[mode]->time_vector;
   }
-  Eigen::MatrixXd GetImpulseSamples(int mode) const { return impulse_[mode - 1]->datapoints; }
+  Eigen::MatrixXd GetImpulseSamples(int mode) const {
+    return impulse_[mode - 1]->datapoints;
+  }
   Eigen::MatrixXd GetCollocationForceSamples(int mode) const {
     return lambda_c_[mode]->datapoints;
   }
@@ -127,5 +134,15 @@ class DirconTrajectory : public LcmTrajectory {
   std::vector<const Trajectory*> gamma_c_;
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
+
+  // convenience map
+  // NOTE:
+  std::map<std::string, int> pos_map_;
+  std::map<std::string, int> vel_map_;
+  std::map<std::string, int> act_map_;
+  // map from possibly old state indices to current state indices
+  Eigen::MatrixXd state_map_;
+  // map from possibly old actuator indices to current actuator indices
+  Eigen::MatrixXd actuator_map_;
 };
 }  // namespace dairlib

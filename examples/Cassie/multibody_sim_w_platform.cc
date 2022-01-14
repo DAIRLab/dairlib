@@ -195,35 +195,15 @@ int do_main(int argc, char* argv[]) {
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
-  MultibodyPlant<double> plant_wo_spr(FLAGS_dt);  // non-zero timestep to avoid
-  //  Parser parser_wo_spr(&plant_wo_spr, &scene_graph);
-  addCassieMultibody(&plant_wo_spr, &scene_graph, FLAGS_floating_base,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                     true);
-  plant_wo_spr.Finalize();
-  Eigen::MatrixXd map_no_spring_to_spring_pos =
-      multibody::CreateWithSpringsToWithoutSpringsMapPos(plant, plant_wo_spr);
-  Eigen::MatrixXd map_no_spring_to_spring_vel =
-      multibody::CreateWithSpringsToWithoutSpringsMapVel(plant, plant_wo_spr);
-  map_no_spring_to_spring_pos.transposeInPlace();
-  map_no_spring_to_spring_vel.transposeInPlace();
-
   const DirconTrajectory& dircon_trajectory =
-      DirconTrajectory(FLAGS_folder_path + FLAGS_traj_name);
+      DirconTrajectory(plant, FLAGS_folder_path + FLAGS_traj_name);
 
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
 
-  Eigen::VectorXd x_init = Eigen::VectorXd::Zero(nx);
   Eigen::VectorXd x_traj_init = state_traj.value(FLAGS_start_time);
-  if (FLAGS_spring_model) {
-    x_init << map_no_spring_to_spring_pos * x_traj_init.head(map_no_spring_to_spring_pos.cols()),
-        map_no_spring_to_spring_vel * x_traj_init.tail(map_no_spring_to_spring_vel.cols());
-  } else {
-    x_init << x_traj_init;
-  }
 
-  plant.SetPositionsAndVelocities(&plant_context, x_init);
+  plant.SetPositionsAndVelocities(&plant_context, x_traj_init);
 
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

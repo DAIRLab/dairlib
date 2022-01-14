@@ -125,7 +125,7 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::YamlReadArchive(root).Accept(&gains);
 
   /**** Get trajectory from optimization ****/
-  const DirconTrajectory& dircon_trajectory = DirconTrajectory(
+  const DirconTrajectory& dircon_trajectory = DirconTrajectory(plant_w_spr,
       FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
   string output_traj_path = FLAGS_folder_path + FLAGS_traj_name + "_processed";
   if (gains.relative_feet) {

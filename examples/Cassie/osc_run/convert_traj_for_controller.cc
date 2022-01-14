@@ -59,7 +59,7 @@ int DoMain() {
   auto pelvis_frame = &plant.GetBodyByName("pelvis").body_frame();
   auto world = &plant.world_frame();
 
-  DirconTrajectory dircon_traj(FLAGS_folder_path + FLAGS_trajectory_name);
+  DirconTrajectory dircon_traj(plant, FLAGS_folder_path + FLAGS_trajectory_name);
   PiecewisePolynomial<double> state_traj =
       dircon_traj.ReconstructStateTrajectory();
 

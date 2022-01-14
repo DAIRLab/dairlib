@@ -17,8 +17,8 @@
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "systems/trajectory_optimization/dircon/dircon_mode.h"
 #include "solvers/cost_function_utils.h"
+#include "systems/trajectory_optimization/dircon/dircon_mode.h"
 
 #include "drake/solvers/solve.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
@@ -31,13 +31,13 @@ using std::string;
 using std::unordered_map;
 using std::vector;
 
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::multibody::Parser;
 using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using drake::geometry::DrakeVisualizer;
 
 using dairlib::multibody::KinematicEvaluator;
 using dairlib::multibody::KinematicEvaluatorSet;
@@ -82,10 +82,10 @@ namespace dairlib {
 
 void setKinematicConstraints(Dircon<double>& trajopt,
                              const MultibodyPlant<double>& plant);
-MatrixXd loadSavedDecisionVars(const string& filepath);
-void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,
-                                   const string& filepath,
-                                   bool same_knot_points = false);
+void SetInitialGuessFromTrajectory(
+    Dircon<double>& trajopt,
+    const MultibodyPlant<double>& plant, const string& filepath,
+    bool same_knot_points = false);
 vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
                                             const map<string, int>& vel_map,
                                             const map<string, int>& act_map);
@@ -247,7 +247,7 @@ void DoMain() {
 
   if (!FLAGS_load_filename.empty()) {
     std::cout << "Loading: " << FLAGS_load_filename << std::endl;
-    SetInitialGuessFromTrajectory(trajopt,
+    SetInitialGuessFromTrajectory(trajopt, plant,
                                   FLAGS_data_directory + FLAGS_load_filename,
                                   FLAGS_same_knotpoints);
   } else {
@@ -255,19 +255,19 @@ void DoMain() {
         VectorXd::Random(trajopt.decision_variables().size()));
   }
 
-  auto loaded_traj =
-      DirconTrajectory(FLAGS_data_directory + FLAGS_load_filename);
-
-  std::vector<drake::trajectories::PiecewisePolynomial<double>> x_trajs;
-  x_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
-      loaded_traj.GetStateBreaks(0), loaded_traj.GetStateSamples(0),
-      loaded_traj.GetStateDerivativeSamples(0)));
-  x_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
-      loaded_traj.GetStateBreaks(1), loaded_traj.GetStateSamples(1),
-      loaded_traj.GetStateDerivativeSamples(1)));
-  x_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
-      loaded_traj.GetStateBreaks(2), loaded_traj.GetStateSamples(2),
-      loaded_traj.GetStateDerivativeSamples(2)));
+  //  auto loaded_traj =
+  //      DirconTrajectory(plant, FLAGS_data_directory + FLAGS_load_filename);
+  //
+  //  std::vector<drake::trajectories::PiecewisePolynomial<double>> x_trajs;
+  //  x_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
+  //      loaded_traj.GetStateBreaks(0), loaded_traj.GetStateSamples(0),
+  //      loaded_traj.GetStateDerivativeSamples(0)));
+  //  x_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
+  //      loaded_traj.GetStateBreaks(1), loaded_traj.GetStateSamples(1),
+  //      loaded_traj.GetStateDerivativeSamples(1)));
+  //  x_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
+  //      loaded_traj.GetStateBreaks(2), loaded_traj.GetStateSamples(2),
+  //      loaded_traj.GetStateDerivativeSamples(2)));
 
   // To avoid NaN quaternions
   for (int i = 0; i < trajopt.N(); i++) {
@@ -541,11 +541,11 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   MatrixXd Q = MatrixXd::Identity(n_v, n_v);
   Q(7, 7) = 10;
   Q(8, 8) = 10;
-//  MatrixXd R = 1e-3 * MatrixXd::Identity(n_u, n_u);
-//  R(8, 8) = 1;
-//  R(9, 9) = 1;
+  //  MatrixXd R = 1e-3 * MatrixXd::Identity(n_u, n_u);
+  //  R(8, 8) = 1;
+  //  R(9, 9) = 1;
   trajopt.AddRunningCost((x.tail(n_v).transpose() * Q * x.tail(n_v)));
-//  trajopt.AddRunningCost(u.transpose() * R * u);
+  //  trajopt.AddRunningCost(u.transpose() * R * u);
   solvers::AddPositiveWorkCost(trajopt, plant, W);
 
   //  MatrixXd S = MatrixXd::Zero(n_u, n_v);
@@ -570,9 +570,10 @@ void setKinematicConstraints(Dircon<double>& trajopt,
 }
 
 void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,
+                                   const MultibodyPlant<double>& plant,
                                    const string& filepath,
                                    bool same_knot_points) {
-  DirconTrajectory previous_traj = DirconTrajectory(filepath);
+  DirconTrajectory previous_traj = DirconTrajectory(plant, filepath);
   if (same_knot_points) {
     trajopt.SetInitialGuessForAllVariables(
         previous_traj.GetDecisionVariables());
@@ -592,14 +593,6 @@ void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,
                                         lambda_c_traj[mode], gamma_traj[mode]);
     }
   }
-}
-
-MatrixXd loadSavedDecisionVars(const string& filepath) {
-  DirconTrajectory previous_traj = DirconTrajectory(filepath);
-  for (auto& name : previous_traj.GetTrajectoryNames()) {
-    std::cout << name << std::endl;
-  }
-  return previous_traj.GetDecisionVariables();
 }
 
 }  // namespace dairlib

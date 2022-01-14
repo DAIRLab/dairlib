@@ -188,6 +188,7 @@ void CentroidalIKTrajGen::CalcTraj(
       &plant_, std::nullopt,
           plant_.world_frame(), context_);
 
+  prog.AddConstraint(qq.at(0) == state.head(plant_.num_positions()));
   for (int i = 0; i < 2; i++) {
     prog.AddConstraint(centroidal_constraint_ptr, {qq.at(i), vv.at(i), hh.at(i)});
     prog.AddConstraint(stance_foot_pos_contraint, qq.at(i));

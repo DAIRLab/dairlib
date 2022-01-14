@@ -233,9 +233,9 @@ int DoMain(int argc, char* argv[]) {
           left_right_pts, swing_foot_taj_gen_options);
 
   Matrix3d I_mat = I_rot.CopyToFullMatrix3();
-//  auto ik_solver = builder.AddSystem<mpc::CentroidalIKTrajGen>(
-//      *plant_ad, plant_context_ad.get(), plant_w_springs, plant_context.get(), I_mat,
-//      mass, 0.07, FLAGS_stance_duration);
+  auto ik_solver = builder.AddSystem<mpc::CentroidalIKTrajGen>(
+      *plant_ad, plant_context_ad.get(), plant_w_springs, plant_context.get(), I_mat,
+      mass, 0.07, FLAGS_stance_duration);
 //
 //  auto zero_rot_traj_source = builder.AddSystem(
 //      std::make_unique<ConstantValueSource<double>>(
@@ -419,7 +419,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("com_traj"));
 //  builder.Connect(zero_rot_traj_source->get_output_port(),
 //                  osc->get_tracking_data_input_port("orientation_traj"));
-  builder.Connect(mpc_reciever->get_angular_traj_output_port(),
+  builder.Connect(ik_solver->get_output_port_pelvis_orientation_traj(),
                   osc->get_tracking_data_input_port("orientation_traj"));
   builder.Connect(mpc_reciever->get_swing_ft_target_output_port(),
                   swing_foot_traj_gen->get_input_port_foot_target());
@@ -447,15 +447,15 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_state_input_port());
 
   // IK
-//  builder.Connect(fsm->get_output_port_fsm(), ik_solver->get_input_port_fsm());
-//  builder.Connect(liftoff_event_time->get_output_port_event_time(),
-//                  ik_solver->get_input_port_touchdown_time());
-//  builder.Connect(state_receiver->get_output_port(),
-//                  ik_solver->get_input_port_state());
-//  builder.Connect(mpc_subscriber->get_output_port(),
-//                  ik_solver->get_input_port_mpc_traj());
-//  builder.Connect(swing_foot_traj_gen->get_output_port(),
-//                  ik_solver->get_input_port_swing_foot_traj());
+  builder.Connect(fsm->get_output_port_fsm(), ik_solver->get_input_port_fsm());
+  builder.Connect(liftoff_event_time->get_output_port_event_time(),
+                  ik_solver->get_input_port_touchdown_time());
+  builder.Connect(state_receiver->get_output_port(),
+                  ik_solver->get_input_port_state());
+  builder.Connect(mpc_subscriber->get_output_port(),
+                  ik_solver->get_input_port_mpc_traj());
+  builder.Connect(swing_foot_traj_gen->get_output_port(),
+                  ik_solver->get_input_port_swing_foot_traj());
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),

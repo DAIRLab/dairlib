@@ -118,7 +118,7 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
     hip_pos = rot.transpose() * hip_pos;
     auto pelvis_vel = discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
                           .get_mutable_value();
-    pelvis_vel = 0.9 * v.segment(3, 3) + 0.1 * pelvis_vel;
+    pelvis_vel = 0.99 * v.segment(3, 3) + 0.01 * pelvis_vel;
     //    pelvis_vel = v.segment(3, 3);
     //    std::cout << "stance state: " << stance_state_ << std::endl;
     //    pelvis_vel = Vector3d::Zero();
@@ -157,6 +157,7 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   desired_pelvis_vel << desired_pelvis_vel_xy, 0;
   VectorXd pelvis_vel = v.segment(3, 3);
   pelvis_vel(0) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(0);
+//  pelvis_vel(1) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(1);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
   VectorXd footstep_correction = Kd_ * (pelvis_vel_err);
   if (is_left_foot_) {

@@ -122,10 +122,10 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
 //      breaks, samples, pelvis_vel, pelvis_vel + rddot * dt);
   double y_dist_des = 0;
   if(fsm_state == 0){
-    y_dist_des = -0.2;
+    y_dist_des = -0.15;
   }
   else if (fsm_state == 1){
-    y_dist_des = 0.2;
+    y_dist_des = 0.15;
   }
   return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
 }

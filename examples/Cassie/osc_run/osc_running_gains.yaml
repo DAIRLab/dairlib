@@ -1,8 +1,8 @@
 w_input: 0.0000000000
-w_accel: 0.0000
+w_accel: 0.00001
 #w_soft_constraint: 1000000
-w_soft_constraint: 100.0
-w_input_reg: 0.002
+w_soft_constraint: 1000.0
+w_input_reg: 0.01
 impact_threshold: 0.050
 relative_feet: true
 relative_pelvis: true
@@ -34,18 +34,18 @@ hip_yaw_kd: 15
 #hip_roll_kd: 10
 # Foot placement parameters
 footstep_offset: -0.05
-center_line_offset: 0.06
+center_line_offset: 0.05
 FootstepKd:
   [  0.4,     0,  0,
-     0,     0.425, 0,
+     0,     0.45, 0,
      0,        0,  0]
 PelvisW:
   [0.1,     0,    0,
     0,    0.1,    0,
     0,     0,    5]
 PelvisKp:
-  [0,    0,    0,
-    0,    0,    0,
+  [ 1,    0,    0,
+    0,    1,    0,
     0,    0,   110]
 PelvisKd:
   [  5,    0,   0,
@@ -61,7 +61,7 @@ PelvisRotKp:
    0,    0,   0]
 PelvisRotKd:
   [10,   0,  0,
-   0,   2.5,  0,
+   0,   10,  0,
    0,    0,  0]
 SwingFootW:
   [5,    0,    0,

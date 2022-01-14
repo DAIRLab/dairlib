@@ -1,6 +1,6 @@
 # Set robot id and model id
 robot=1
-model=10 #2, 4
+model=4
 echo robot_option = $robot, rom_option = $model
 
 # Set sample size
@@ -15,7 +15,7 @@ final_iter=1
 folder_name=
 
 # Multithreading
-threads=6
+threads=8
 
 # Delete and create a new data folder if specified in the argument
 if [ "$1" = "rm" ]; then

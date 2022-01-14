@@ -299,6 +299,92 @@ void waitForAllThreadsToJoin(vector<std::thread*>* threads,
   }
 }
 
+void extendModel(const string& dir, int iter, ReducedOrderModel& rom,
+                 VectorXd& prev_theta, VectorXd& step_direction,
+                 VectorXd& prev_step_direction, double& ave_min_cost_so_far,
+                 int& rom_option, int robot_option) {
+  throw std::runtime_error(
+      "Model extension implementation hasn't not been updated");
+  /*
+    int n_feature_y = rom.n_feature_y();
+
+    VectorXd theta_s_append = readCSV(dir +
+                                      string("theta_s_append.csv")).col(0);
+    int n_extend = theta_s_append.rows() / n_feature_y;
+
+    // update rom_option
+    if(rom_option == 0) {
+      rom_option = 1;
+    } else if (rom_option == 2) {
+      rom_option = 3;
+    } else {
+      throw std::runtime_error("Should not reach here");
+    }
+
+    // update n_y, n_yddot and n_tau
+    int old_n_y = rom.n_y();
+    rom.set_n_y(rom.n_y() + n_extend);
+    rom.set_n_yddot(rom.n_yddot() + n_extend);
+    rom.set_n_tau(rom.n_tau() + n_extend);
+    int n_y = rom.n_y();
+    int n_yddot = rom.n_yddot();
+    int n_tau = rom.n_tau();
+
+    // update n_feature_yddot
+    int old_n_feature_sDDot = rom.n_feature_yddot();
+    DynamicsExpression dyn_expression(n_yddot, 0, rom_option, robot_option);
+    VectorXd dummy_s = VectorXd::Zero(n_y);
+    rom.set_n_feature_yddot(dyn_expression.getFeature(dummy_s, dummy_s).size());
+    int n_feature_yddot = rom.n_feature_yddot();
+    cout << "Updated n_y = " << n_y << endl;
+    cout << "Updated n_yddot = " << n_yddot << endl;
+    cout << "Updated n_tau = " << n_tau << endl;
+    cout << "Updated n_feature_yddot = " << n_feature_yddot << endl;
+
+    // update B_tau
+    MatrixXd B_tau_old = rom.B();
+    MatrixXd B_tau(n_yddot, n_tau);
+    B_tau = MatrixXd::Zero(n_yddot, n_tau);
+    B_tau.block(0, 0, B_tau_old.rows(), B_tau_old.cols()) = B_tau_old;
+    B_tau.block(B_tau_old.rows(), B_tau_old.cols(), n_extend, n_extend) =
+      MatrixXd::Identity(n_extend, n_extend);
+    rom.SetB(B_tau);
+    cout << "Updated B_tau = \n" << rom.B() << endl;
+    writeCSV(dir + string("B_tau (before extension).csv"), B_tau_old);
+    writeCSV(dir + string("B_tau.csv"), rom.B());
+    // update theta_y
+    string prefix = to_string(iter) +  "_";
+    writeCSV(dir + prefix + string("theta_y (before extension).csv"),
+             rom.theta_y());
+    VectorXd theta_y(n_y * n_feature_y);
+    theta_y << rom.theta_y(), theta_s_append;
+    rom.SetThetaY(theta_y);
+    // update theta_yddot
+    writeCSV(dir + prefix + string("theta_yddot (before extension).csv"),
+             rom.theta_yddot());
+    VectorXd theta_sDDot_old = rom.theta_yddot();
+    VectorXd theta_yddot = VectorXd::Zero(n_yddot * n_feature_yddot);
+    VectorXd new_idx = readCSV(dir +
+                               string("theta_sDDot_new_index.csv")).col(0);
+    for (int i = 0; i < old_n_feature_sDDot; i++)
+      for (int j = 0; j < old_n_y; j++)
+        theta_yddot(new_idx(i) + j * n_feature_yddot) = theta_sDDot_old(
+              i + j * old_n_feature_sDDot);
+    rom.SetThetaYddot(theta_yddot);
+
+    // Some setup
+    prev_theta.resize(rom.n_theta());
+    prev_theta = rom.theta();
+    step_direction.resize(rom.n_theta());
+    prev_step_direction.resize(rom.n_theta());
+    prev_step_direction = VectorXd::Zero(
+        rom.n_theta());  // must initialize it because of momentum term
+    ave_min_cost_so_far = std::numeric_limits<double>::infinity();
+
+    rom.CheckModelConsistency();
+    */
+}
+
 void extractActiveAndIndependentRows(int sample, double active_tol,
                                      double indpt_row_tol, string dir,
                                      const SubQpData& QPs,
@@ -1223,6 +1309,98 @@ bool HasAchievedOptimum(bool is_newton, double stopping_threshold,
   }
   return false;
 }
+
+/*void remove_old_multithreading_files(const string& dir, int iter,
+                                     int N_sample) {
+  cout << "\nRemoving old thread_finished.csv files... ";
+  for (int i = 0; i < N_sample; i++) {
+    string prefix = to_string(iter) + "_" + to_string(i) + "_";
+    if (file_exist(dir + prefix + "thread_finished.csv")) {
+      bool rm =
+          (remove((dir + prefix + string("thread_finished.csv")).c_str()) == 0);
+      if (!rm) cout << "Error deleting files\n";
+      cout << prefix + "thread_finished.csv removed\n";
+    }
+  }
+  cout << "Done.\n";
+}*/
+
+/*void readApproxQpFiles(vector<VectorXd> * w_sol_vec, vector<MatrixXd> * A_vec,
+                       vector<MatrixXd> * H_vec,
+                       vector<VectorXd> * y_vec,
+                       vector<VectorXd> * lb_vec, vector<VectorXd> * ub_vec,
+                       vector<VectorXd> * b_vec, vector<VectorXd> * c_vec,
+                       vector<MatrixXd> * B_vec,
+                       int N_sample, int iter, string dir) {
+  // The order of samples in each vector must start from 0 to N_sample (because
+  // of the code where you compare the current cost and previous cost)
+  for (int sample = 0; sample < N_sample; sample++) {
+    string prefix = to_string(iter) +  "_" + to_string(sample) + "_";
+    VectorXd success =
+        readCSV(dir + prefix + string("is_success.csv")).col(0);
+    if (success(0)) {
+      w_sol_vec->push_back(readCSV(dir + prefix + string("w.csv")));
+      A_vec->push_back(readCSV(dir + prefix + string("A.csv")));
+      H_vec->push_back(readCSV(dir + prefix + string("H.csv")));
+      y_vec->push_back(readCSV(dir + prefix + string("y.csv")));
+      lb_vec->push_back(readCSV(dir + prefix + string("lb.csv")));
+      ub_vec->push_back(readCSV(dir + prefix + string("ub.csv")));
+      b_vec->push_back(readCSV(dir + prefix + string("b.csv")));
+      c_vec->push_back(readCSV(dir + prefix + string("c.csv")));
+      B_vec->push_back(readCSV(dir + prefix + string("B.csv")));
+
+      bool rm = true;
+      rm = (remove((dir + prefix + string("A.csv")).c_str()) == 0) & rm;
+      rm = (remove((dir + prefix + string("H.csv")).c_str()) == 0) & rm;
+      rm = (remove((dir + prefix + string("y.csv")).c_str()) == 0) & rm;
+      rm = (remove((dir + prefix + string("lb.csv")).c_str()) == 0) & rm;
+      rm = (remove((dir + prefix + string("ub.csv")).c_str()) == 0) & rm;
+      rm = (remove((dir + prefix + string("b.csv")).c_str()) == 0) & rm;
+      rm = (remove((dir + prefix + string("B.csv")).c_str()) == 0) & rm;
+      if ( !rm )
+        cout << "Error deleting files\n";
+    }
+  }
+}*/
+
+/*void readNonredundentMatrixFile(vector<int> * nw_vec,
+                                vector<int> * nl_vec,
+                                vector<MatrixXd> * A_active_vec,
+                                vector<MatrixXd> * B_active_vec,
+                                int n_succ_sample, string dir) {
+  for (int sample = 0; sample < n_succ_sample; sample++) {
+    string prefix = to_string(sample) + "_";
+
+    nw_vec->push_back(int(readCSV(dir + prefix + string("nw_i.csv"))(0)));
+    nl_vec->push_back(int(readCSV(dir + prefix + string("nl_i.csv"))(0)));
+    A_active_vec->push_back(readCSV(dir + prefix + string("A_processed.csv")));
+    B_active_vec->push_back(readCSV(dir + prefix + string("B_processed.csv")));
+
+    bool rm = true;
+    rm = (remove((dir + prefix + string("nw_i.csv")).c_str()) == 0) & rm;
+    rm = (remove((dir + prefix + string("nl_i.csv")).c_str()) == 0) & rm;
+    rm = (remove((dir + prefix + string("A_processed.csv")).c_str()) == 0) & rm;
+    rm = (remove((dir + prefix + string("B_processed.csv")).c_str()) == 0) & rm;
+    if ( !rm )
+      cout << "Error deleting files\n";
+  }
+}*/
+
+/*void readPiQiFile(vector<MatrixXd> * P_vec, vector<VectorXd> * q_vec,
+                  int n_succ_sample, const string& dir) {
+  for (int sample = 0; sample < n_succ_sample; sample++) {
+    string prefix = to_string(sample) + "_";
+
+    P_vec->push_back(readCSV(dir + prefix + string("Pi.csv")));
+    q_vec->push_back(readCSV(dir + prefix + string("qi.csv")));
+
+    bool rm = true;
+    rm = (remove((dir + prefix + string("Pi.csv")).c_str()) == 0) & rm;
+    rm = (remove((dir + prefix + string("qi.csv")).c_str()) == 0) & rm;
+    if ( !rm )
+      cout << "Error deleting files\n";
+  }
+}*/
 
 class SampleSuccessMonitor {
  public:

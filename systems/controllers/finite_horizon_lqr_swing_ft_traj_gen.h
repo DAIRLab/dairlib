@@ -6,6 +6,7 @@
 #include "drake/common/trajectories/trajectory.h"
 
 #include "systems/framework/output_vector.h"
+#include "target_swing_ft_traj_gen.h"
 
 namespace dairlib::systems::controllers {
 
@@ -15,18 +16,6 @@ namespace dairlib::systems::controllers {
 /// ydot_error = 0, and y_ddot = -K(t)(y - yd) where yd is the xy coordinates
 /// of the next stance foot location. A cubic spline is used for the swing foot
 /// z coordinate
-
-typedef struct SwingFootTajGenOptions {
-  std::string floating_base_body_name = "";
-  double double_support_duration;
-  double mid_foot_height;
-  double desired_final_foot_height ;
-  double desired_final_vertical_foot_velocity;
-  double max_com_to_x_footstep_dist;
-  double footstep_offset;
-  double center_line_offset;
-  bool wrt_com_in_local_frame = false;
-} SwingFootTajGenOptions;
 
 class FiniteHorizonLqrSwingFootTrajGenerator :
      public drake::systems::LeafSystem<double> {
@@ -87,7 +76,6 @@ class FiniteHorizonLqrSwingFootTrajGenerator :
   // Footstep parameters
   const SwingFootTajGenOptions opts_;
   const std::vector<int> left_right_support_fsm_states_;
-  const std::vector<double> left_right_support_durations_;
   const std::vector<std::pair<const Eigen::Vector3d,
                               const drake::multibody::Frame<double>&>> pts_;
 

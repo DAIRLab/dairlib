@@ -117,8 +117,7 @@ void LipmWarmStartSystem::CalcWarmstartSolution(
   double start_time = timestamp;
   double end_time = prev_event_time + stance_duration_;
   double first_mode_duration = end_time - start_time;
-
-      start_time = drake::math::saturate(start_time, -1,end_time - 0.001);
+  start_time = drake::math::saturate(start_time, -1,end_time - 0.001);
 
   VectorXd srbd_state = plant_.CalcSRBStateFromPlantState(x);
   // Get center of mass position and velocity

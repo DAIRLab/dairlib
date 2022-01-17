@@ -25,7 +25,6 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 
-
 namespace dairlib {
 
 using systems::DairlibSignalReceiver;
@@ -61,7 +60,7 @@ DEFINE_string(gains_filename, "examples/Cassie/mpc/cassie_srbd_cmpc_gains.yaml",
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION", "channel to publish/receive cassie state");
 DEFINE_string(channel_plan, "SRBD_MPC_OUT", "channel to publish plan trajectory");
 DEFINE_string(channel_fsm, "FSM", "the name of the channel with the time-based fsm");
-DEFINE_double(stance_time, 0.35, "duration of each stance phase");
+DEFINE_double(stance_duration, 0.35, "duration of each stance phase");
 DEFINE_bool(debug_mode, false, "Manually set MPC values to debug");
 DEFINE_bool(use_com, false, "Use center of mass or a point to track CM location");
 DEFINE_bool(print_diagram, false, "print block diagram");
@@ -102,6 +101,7 @@ int DoMain(int argc, char* argv[]) {
   Vector3d left_safe_nominal_foot_pos = {0, 0.125, 0};
   Vector3d right_neutral_foot_pos = -left_neutral_foot_pos;
   Vector3d right_safe_nominal_foot_pos = -left_safe_nominal_foot_pos;
+
   Matrix3d I_rot = Vector3d(0.91, 0.55, 0.89).asDiagonal();
 //  I_rot << 0.91, 0.04, 0.09, 0.04, 0.55, -0.001, 0.08, -0.001, 0.89;
   std::cout << "I:\n" << I_rot <<std::endl;
@@ -123,7 +123,7 @@ int DoMain(int argc, char* argv[]) {
   srb_plant.AddContactPoint(right_pt, BipedStance::kRight);
 
   int nx = 12;
-  int nu = 4;
+  int nu = 5;
   MatrixXd Al = MatrixXd::Zero(nx, nx+3);
   MatrixXd Bl = MatrixXd::Zero(nx, nu);
   VectorXd bl = VectorXd::Zero(nx);
@@ -131,18 +131,30 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd Br = MatrixXd::Zero(nx, nu);
   VectorXd br = VectorXd::Zero(nx);
 
-  srb_plant.CopyDiscreteLinearizedSrbDynamicsForMPC(
-      dt, mass, 0, BipedStance::kLeft,
-      I_rot, des_com_pos, left_neutral_foot_pos, &Al, &Bl, &bl);
-  srb_plant.CopyDiscreteLinearizedSrbDynamicsForMPC(
-      dt, mass, 0, BipedStance::kRight,
-      I_rot, des_com_pos, right_neutral_foot_pos, &Ar, &Br, &br);
+  Vector3d left_lambda_eq = (des_com_pos - left_neutral_foot_pos).normalized();
+  left_lambda_eq *= ((mass * 9.81) / left_lambda_eq(2));
+  Vector3d right_lambda_eq = (des_com_pos - right_neutral_foot_pos).normalized();
+  right_lambda_eq *= ((mass * 9.81) / right_lambda_eq(2));
+  Eigen::Vector2d tq_eq = Eigen::Vector2d::Zero();
+
+  srb_plant.CopyContinuousLinearized3dSrbDynamicsForMPC(
+      mass, 0, BipedStance::kLeft, I_rot, des_com_pos,
+      left_neutral_foot_pos, left_lambda_eq, tq_eq, &Al, &Bl, &bl);
+  srb_plant.CopyContinuousLinearized3dSrbDynamicsForMPC(
+      mass, 0, BipedStance::kRight, I_rot, des_com_pos,
+      right_neutral_foot_pos, right_lambda_eq, tq_eq, &Ar, &Br, &br);
+
+//  writeCSV("/home/brian/workspace/srb_dynamics/Al.csv", Al);
+//  writeCSV("/home/brian/workspace/srb_dynamics/Bl.csv", Bl);
+//  writeCSV("/home/brian/workspace/srb_dynamics/bl.csv", bl);
+//  writeCSV("/home/brian/workspace/srb_dynamics/Ar.csv", Ar);
+//  writeCSV("/home/brian/workspace/srb_dynamics/Br.csv", Br);
+//  writeCSV("/home/brian/workspace/srb_dynamics/br.csv", br);
 
   LinearSrbdDynamics left_stance_dynamics = {Al, Bl, bl};
   LinearSrbdDynamics right_stance_dynamics = {Ar, Br, br};
 
-  auto cmpc = builder.AddSystem<SrbdCMPC>(
-      srb_plant, dt, false, true);
+  auto cmpc = builder.AddSystem<SrbdCMPC>(srb_plant, dt, false);
   std::vector<VectorXd> kin_nom =
       {left_safe_nominal_foot_pos - des_com_pos,
        right_safe_nominal_foot_pos - des_com_pos};
@@ -150,9 +162,9 @@ int DoMain(int argc, char* argv[]) {
                                    kin_nom);
 
   cmpc->AddMode(left_stance_dynamics, BipedStance::kLeft,
-      MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_time / dt));
+      MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_duration / dt));
   cmpc->AddMode(right_stance_dynamics, BipedStance::kRight,
-      MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_time / dt));
+      MatrixXd::Identity(nx, nx), std::round(FLAGS_stance_duration / dt));
   cmpc->FinalizeModeSequence();
 
   // add tracking objective
@@ -164,7 +176,7 @@ int DoMain(int argc, char* argv[]) {
   cmpc->AddTrackingObjective(x_des, gains.q.asDiagonal());
   cmpc->SetTerminalCost(gains.qf.asDiagonal());
   cmpc->AddInputRegularization(gains.r.asDiagonal());
-  cmpc->AddFootPlacementRegularization(Eigen::Matrix3d::Zero());
+  cmpc->AddFootPlacementRegularization(0.1*Eigen::Matrix3d::Identity());
 
   // set friction coeff
   cmpc->SetMu(gains.mu);
@@ -176,32 +188,22 @@ int DoMain(int argc, char* argv[]) {
 
   std::vector<int> fsm_states = {BipedStance::kLeft, BipedStance::kRight};
   std::vector<BipedStance> fsm_stances = {BipedStance::kLeft, BipedStance::kRight};
-  std::vector<double> state_durations = {FLAGS_stance_time, FLAGS_stance_time};
+  std::vector<double> state_durations = {FLAGS_stance_duration, FLAGS_stance_duration};
 
   auto fsm = builder.AddSystem<TimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations);
 
 //  auto warmstarter = builder.AddSystem<LipmWarmStartSystem>(
-//      srb_plant, FLAGS_h_des, FLAGS_stance_time,
+//      srb_plant, FLAGS_h_des, FLAGS_stance_duration,
 //      FLAGS_dt, fsm_states, fsm_stances);
 //
 //  auto liftoff_event_time =
 //      builder.AddSystem<FiniteStateMachineEventTime>(plant, fsm_states);
 
-  std::vector<std::string> signals = {"fsm"};
-//  auto fsm_send = builder.AddSystem<DrakeSignalSender>(signals, FLAGS_stance_time * 2);
-//  auto fsm_pub = builder.AddSystem(
-//      LcmPublisherSystem::Make<lcmt_dairlib_signal>(FLAGS_channel_fsm, &lcm_local));
-
-
   // setup lcm messaging
   auto robot_out = builder.AddSystem<RobotOutputReceiver>(plant);
   auto mpc_out_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_plan, &lcm_local));
-
-  // fsm connections
-  //  builder.Connect(fsm->get_output_port(), fsm_send->get_input_port());
-  //  builder.Connect(fsm_send->get_output_port(), fsm_pub->get_input_port());
 
   builder.Connect(fsm->get_output_port(), cmpc->get_fsm_input_port());
 //  builder.Connect(fsm->get_output_port(), warmstarter->get_input_port_fsm());

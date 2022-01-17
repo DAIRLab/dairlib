@@ -39,6 +39,42 @@ cc_library(
 )
 
 cc_library(
+    name = "srbd_residual_estimator",
+    srcs = ["srbd_residual_estimator.cc"],
+    hdrs = [
+        "srbd_residual_estimator.h",
+    ],
+    deps = [
+        "//common:eigen_utils",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:single_rigid_body_plant",
+        "//systems/controllers:mpc_periodic_residual_manager",
+        "//systems/controllers:mpc_trajectory_reciever",
+        "//systems/controllers:srbd_cmpc",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "srbd_sparse_residual_estimator",
+    srcs = ["srbd_sparse_residual_estimator.cc"],
+    hdrs = [
+        "srbd_sparse_residual_estimator.h",
+    ],
+    deps = [
+        "//common:eigen_utils",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:single_rigid_body_plant",
+        "//systems/controllers:mpc_periodic_residual_manager",
+        "//systems/controllers:mpc_trajectory_reciever",
+        "//systems/controllers:srbd_cmpc",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
     name = "system_utils",
     srcs = ["system_utils.cc"],
     hdrs = ["system_utils.h"],

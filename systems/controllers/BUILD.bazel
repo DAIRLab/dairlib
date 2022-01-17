@@ -155,6 +155,7 @@ cc_library(
     srcs = ["mpc/srbd_cmpc.cc"],
     hdrs = ["mpc/srbd_cmpc.h"],
     deps = [
+        ":mpc_periodic_residual_manager",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
@@ -193,11 +194,31 @@ cc_library(
 )
 
 cc_library(
+    name = "mpc_periodic_residual_manager",
+    srcs = ["mpc/mpc_periodic_residual_manager.cc"],
+    hdrs = ["mpc/mpc_periodic_residual_manager.h"],
+    deps = ["@drake//common:essential"],
+)
+
+cc_library(
+    name = "target_swing_ft_traj_gen",
+    srcs = ["target_swing_ft_traj_gen.cc"],
+    hdrs = ["target_swing_ft_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "finite_horizon_lqr_swing_ft_traj_gen",
     srcs = ["finite_horizon_lqr_swing_ft_traj_gen.cc"],
     hdrs = ["finite_horizon_lqr_swing_ft_traj_gen.h"],
     deps = [
         ":control_utils",
+        ":target_swing_ft_traj_gen",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

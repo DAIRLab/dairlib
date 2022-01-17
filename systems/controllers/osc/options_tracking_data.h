@@ -1,12 +1,11 @@
 #pragma once
 
+#include "multibody/view_frame.h"
 #include "osc_tracking_data.h"
-#include "osc_view_frame.h"
 
 namespace dairlib {
 namespace systems {
 namespace controllers {
-
 
 /// OptionsTrackingData
 class OptionsTrackingData : public OscTrackingData {
@@ -30,10 +29,10 @@ class OptionsTrackingData : public OscTrackingData {
       const drake::trajectories::Trajectory<double>& ff_accel_multiplier);
   const drake::trajectories::Trajectory<double>* ff_accel_multiplier_ = nullptr;
 
-  // Additional feature -- OscViewFrame
-  const OscViewFrame* view_frame_;
+  // Additional feature -- ViewFrame
+  const multibody::ViewFrame<double>* view_frame_;
   Eigen::Matrix3d view_frame_rot_T_;
-  void SetViewFrame(const OscViewFrame& view_frame) {
+  void SetViewFrame(const multibody::ViewFrame<double>& view_frame) {
     view_frame_ = &view_frame;
     with_view_frame_ = true;
   }
@@ -43,6 +42,9 @@ class OptionsTrackingData : public OscTrackingData {
   void DisableFeedforwardAccel(const std::set<int>& indices) {
     idx_zero_feedforward_accel_ = indices;
   };
+
+ protected:
+  bool with_view_frame_ = false;
 
  private:
   void UpdateActual(
@@ -57,8 +59,6 @@ class OptionsTrackingData : public OscTrackingData {
   void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
   void UpdateYddotDes(double t, double t_since_state_switch) override;
   void UpdateYddotCmd(double t, double t_since_state_switch) override;
-
-  bool with_view_frame_ = false;
 
 
   // Members of low-pass filter

@@ -1,0 +1,10 @@
+#-*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "cassie_ik_test",
+    srcs = ["cassie_ik_test.py"],
+    deps = ["//bindings/pydairlib"],
+)

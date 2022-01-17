@@ -19,6 +19,7 @@
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
+#include "solvers/nonlinear_cost.h"
 
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"
@@ -29,6 +30,7 @@
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 #include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/context.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/trajectory_source.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
@@ -43,6 +45,7 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+using dairlib::solvers::NonlinearCost;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
@@ -60,6 +63,7 @@ using drake::multibody::SpatialInertia;
 using drake::multibody::UnitInertia;
 using drake::solvers::Constraint;
 using drake::solvers::SolutionResult;
+using drake::systems::Context;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 using drake::trajectories::PiecewisePolynomial;
 
@@ -70,6 +74,7 @@ DEFINE_string(save_filename, "default_filename",
               "Filename to save decision "
               "vars to.");
 DEFINE_bool(store_data, false, "To store solution or not");
+DEFINE_bool(angular_momentum_cost, false, "add running cost on angular momentum");
 
 // SNOPT parameters
 DEFINE_int32(max_iter, 100000, "Iteration limit");
@@ -81,14 +86,13 @@ DEFINE_int32(scale_option, 0,
 // Gait and traj opt parameters
 DEFINE_int32(n_node, 16, "Number of nodes");
 DEFINE_bool(is_fix_time, true, "Whether to fix the duration of gait or not");
-DEFINE_double(duration, 0.4,
+DEFINE_double(duration, 0.35,
               "Duration of the single support phase (s)."
               "If is_fix_time = false, then duration is only used in initial "
               "guess calculation");
-DEFINE_double(stride_length, 0.2, "stride length of the walking");
+DEFINE_double(stride_length, 0.0, "stride length of the walking");
 DEFINE_double(ground_incline, 0.0,
-              "incline level of the ground"
-              "(not implemented yet)");
+              "incline level of the ground (not implemented yet)");
 
 // Parameters which enable scaling to improve solving speed
 DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
@@ -99,6 +103,27 @@ DEFINE_bool(visualize_init_guess, false,
             "to visualize the poses of the initial guess");
 
 namespace dairlib {
+
+class AngularMomentumCost : public NonlinearCost<double> {
+ public:
+  AngularMomentumCost(
+      const MultibodyPlant<double>& plant, const std::string& description = "",
+      double eps = 1e-8) : NonlinearCost<double>(plant.num_positions() +
+                                                 plant.num_velocities(),
+                                                 description,
+                                                 eps),
+                                                 plant_(plant),
+                                                 context_(plant.CreateDefaultContext()){}
+  void EvaluateCost(const Eigen::Ref<const drake::VectorX<double>>& x,
+                     drake::VectorX<double>* y) const final {
+    plant_.SetPositionsAndVelocities(context_.get(), x);
+    Vector3d com = plant_.CalcCenterOfMassPositionInWorld(*context_);
+    *y = plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, com).rotational();
+  }
+ private:
+  const MultibodyPlant<double>& plant_;
+  std::unique_ptr<Context<double>> context_;
+};
 
 /// Trajectory optimization of fixed-spring cassie walking
 
@@ -243,8 +268,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
   DRAKE_DEMAND((stride_length / n_node) <= max_distance_per_node);
 
   // Cost on velocity and input
-  double w_Q = 0.05;
+  double w_Q = 100;
   double w_R = 0.0001;
+  double w_H = 0.05;
   // Cost on force
   double w_lambda = sqrt(0.1) * 1.0e-4;
   // Cost on difference over time
@@ -253,8 +279,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
   double w_u_diff = 0.0000001;
   // Cost on position
   double w_q_hip_roll = 5;
-  double w_q_hip_yaw = 5;
-  double w_q_quat_xyz = 5;
+  double w_q_hip_yaw = 10;
+  double w_q_quat_xyz = 1;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -483,8 +509,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
                                     xf(pos_map.at("base_x")));
 
   // height constraint
-  //  trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) == 1);
-  //  trajopt->AddLinearConstraint(xf(pos_map.at("base_z")) == 1.1);
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) == 0.82);
+    trajopt->AddLinearConstraint(xf(pos_map.at("base_z")) == 0.82);
 
   // initial pelvis position
   // trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) == 0);
@@ -709,6 +735,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // add cost
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
+  MatrixXd W_H = w_H * MatrixXd::Identity(3, 3);
 
   W_Q(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
   W_Q(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
@@ -731,6 +758,16 @@ void DoMain(double duration, double stride_length, double ground_incline,
         trajopt->AddCost(w_lambda_diff *
                          (lambda0 - lambda1).dot(lambda0 - lambda1));
       }
+    }
+  }
+
+  std::shared_ptr<AngularMomentumCost> angular_momentum_cost = nullptr;
+  // add cost on angular momentum wrt time
+  if (FLAGS_angular_momentum_cost) {
+    angular_momentum_cost =
+        std::make_shared<AngularMomentumCost>(plant, "angular_momentum");
+    for (int i = 0; i < N; i++) {
+      trajopt->AddCost(angular_momentum_cost, trajopt->state(i));
     }
   }
   // add cost on vel difference wrt time
@@ -774,6 +811,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // initial guess
   if (!init_file.empty()) {
+    std::cout << "reading initial guess from " <<
+        (data_directory + init_file) << std::endl;
     MatrixXd z0 = readCSV(data_directory + init_file);
     trajopt->SetInitialGuessForAllVariables(z0);
   } else {

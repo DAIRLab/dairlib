@@ -5,6 +5,8 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/primitives/trajectory_source.h"
+#include "drake/systems/primitives/constant_value_source.h"
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -23,7 +25,7 @@
 #include "systems/controllers/osc/rpy_space_tracking_data.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/controllers/fsm_event_time.h"
-#include "systems/controllers/finite_horizon_lqr_swing_ft_traj_gen.h"
+#include "systems/controllers/target_swing_ft_traj_gen.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -33,6 +35,7 @@
 #include "multibody/multibody_utils.h"
 
 #include "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.h"
+#include "examples/Cassie/mpc/centroidal_ik_traj_gen.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 
@@ -49,8 +52,8 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using multibody::FixedJointEvaluator;
-
+using drake::Value;
+using drake::AutoDiffXd;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -60,16 +63,18 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
-using drake::trajectories::PiecewisePolynomial;
+using drake::systems::TrajectorySource;
+using drake::systems::ConstantValueSource;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RpyTaskSpaceTrackingData;
-using systems::controllers::FiniteHorizonLqrSwingFootTrajGenerator;
+using systems::controllers::TargetSwingFtTrajGen;
 using systems::controllers::SwingFootTajGenOptions;
 using systems::TimeBasedFiniteStateMachine;
 using systems::DairlibSignalReceiver;
+using multibody::FixedJointEvaluator;
 
 namespace examples {
 
@@ -82,9 +87,9 @@ DEFINE_string(mpc_channel, "SRBD_MPC_OUT", "channel to recieve koopman mpc messa
 DEFINE_string(
     gains_filename,
     "examples/Cassie/mpc/cassie_mpc_osc_walking_gains.yaml","Filepath containing gains");
-DEFINE_double(swing_ft_height, 0.05, "Swing foot height");
+DEFINE_double(swing_ft_height, 0.08, "Swing foot height");
 DEFINE_double(stance_duration, 0.35, "stance phase duration");
-DEFINE_double(double_stance_duration, 0.075, "double stance phase duration");
+DEFINE_double(double_stance_duration, 0.05, "double stance phase duration");
 DEFINE_bool(track_com, false,
             "use com tracking data (otherwise uses trans space)");
 DEFINE_bool(print_osc_debug, false, "print osc_debug to the terminal");
@@ -103,8 +108,10 @@ int DoMain(int argc, char* argv[]) {
   // Built the MBP
   drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
   addCassieMultibody(&plant_w_springs, nullptr, true,
-      "examples/Cassie/urdf/cassie_v2.urdf", true, false);
+                     "examples/Cassie/urdf/cassie_v2.urdf", true, false);
   plant_w_springs.Finalize();
+
+  auto plant_ad = std::make_unique<MultibodyPlant<AutoDiffXd>>(plant_w_springs);
 
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_spr or plant_wo_spr because the contact frames exit in both
@@ -126,15 +133,15 @@ int DoMain(int argc, char* argv[]) {
       Vector3d::Zero(), plant_w_springs.GetFrameByName("toe_right"));
 
   auto plant_context = plant_w_springs.CreateDefaultContext();
+  auto plant_context_ad = plant_ad->CreateDefaultContext();
   Vector3d com_offset = {0, 0, -0.128};
 
-
+  drake::multibody::RotationalInertia I_rot(0.91, 0.55, 0.89, 0.0, 0.0, 0.0);
+  double mass = 30.0218;
   if (FLAGS_make_srbd_approx) {
     std::vector<std::string> links = {"yaw_left", "yaw_right", "hip_left", "hip_right",
                                       "thigh_left", "thigh_right", "knee_left", "knee_right", "shin_left",
                                       "shin_right"};
-    drake::multibody::RotationalInertia I_rot(0.91, 0.55, 0.89, 0.0, 0.0, 0.0);
-    double mass = 30.0218;
 
     multibody::MakePlantApproximateRigidBody(plant_context.get(), plant_w_springs,
                                              "pelvis", links, com_offset, I_rot, mass, 0.02);
@@ -158,13 +165,11 @@ int DoMain(int argc, char* argv[]) {
   /**** Setup swing foot tracking options ****/
   SwingFootTajGenOptions swing_foot_taj_gen_options;
   swing_foot_taj_gen_options.mid_foot_height = FLAGS_swing_ft_height;
-  auto lsys =
-      FiniteHorizonLqrSwingFootTrajGenerator::MakeDoubleIntegratorSystem();
-  auto lsys_context = lsys.CreateDefaultContext();
+  swing_foot_taj_gen_options.desired_final_vertical_foot_velocity = -0.1;
 
   std::vector<std::pair<const Eigen::Vector3d,
                         const drake::multibody::Frame<double>&>>
-                        left_right_pts = {left_toe_mid, right_toe_mid};
+      left_right_pts = {left_toe_mid, right_toe_mid};
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm_local;
@@ -196,8 +201,8 @@ int DoMain(int argc, char* argv[]) {
   int post_left_double_support_state = BipedStance::kLeft + 2;
   int post_right_double_support_state = BipedStance::kRight + 2;
   double single_support_duration = FLAGS_is_double_stance ?
-      FLAGS_stance_duration - FLAGS_double_stance_duration :
-      FLAGS_stance_duration;
+                                   FLAGS_stance_duration - FLAGS_double_stance_duration :
+                                   FLAGS_stance_duration;
 
   vector<int> fsm_states;
   vector<double> state_durations;
@@ -223,16 +228,26 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
           plant_w_springs, single_support_states);
   auto swing_foot_traj_gen =
-      builder.AddSystem<FiniteHorizonLqrSwingFootTrajGenerator>(
-          plant_w_springs, lsys, single_support_states, single_support_durations,
+      builder.AddSystem<TargetSwingFtTrajGen>(
+          plant_w_springs, single_support_states, single_support_durations,
           left_right_pts, swing_foot_taj_gen_options);
+
+  Matrix3d I_mat = I_rot.CopyToFullMatrix3();
+  auto ik_solver = builder.AddSystem<mpc::CentroidalIKTrajGen>(
+      *plant_ad, plant_context_ad.get(), plant_w_springs, plant_context.get(), I_mat,
+      mass, 0.07, FLAGS_stance_duration);
+//
+//  auto zero_rot_traj_source = builder.AddSystem(
+//      std::make_unique<ConstantValueSource<double>>(
+//          Value<drake::trajectories::Trajectory<double>>(
+//              drake::trajectories::PiecewisePolynomial<double>(VectorXd::Zero(3)))));
 
   /**** OSC setup ****/
   // Cost
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(nv, nv);
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
-   // Constraints in OSC
+  // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_springs);
   // 1. fourbar constraint
   auto left_loop = LeftLoopClosureEvaluator(plant_w_springs);
@@ -342,9 +357,9 @@ int DoMain(int argc, char* argv[]) {
       gains.W_swing_foot, plant_w_springs, plant_w_springs);
 
   swing_foot_traj.AddStateAndPointToTrack(BipedStance::kLeft,
-      "toe_right", right_toe_mid.first);
+                                          "toe_right", right_toe_mid.first);
   swing_foot_traj.AddStateAndPointToTrack(BipedStance::kRight,
-      "toe_left", left_toe_mid.first);
+                                          "toe_left", left_toe_mid.first);
   osc->AddTrackingData(&swing_foot_traj);
 
 
@@ -353,7 +368,7 @@ int DoMain(int argc, char* argv[]) {
   com_traj.AddFiniteStateToTrack(-1);
 
   TransTaskSpaceTrackingData pelvis_traj("com_traj", gains.K_p_com,
-                                        gains.K_d_com, gains.W_com, plant_w_springs, plant_w_springs);
+                                         gains.K_d_com, gains.W_com, plant_w_springs, plant_w_springs);
   pelvis_traj.AddPointToTrack("pelvis", com_offset);
 
   if (FLAGS_track_com) {
@@ -363,7 +378,8 @@ int DoMain(int argc, char* argv[]) {
   }
 
   RpyTaskSpaceTrackingData angular_traj("orientation_traj", gains.K_p_orientation,
-                                      gains.K_d_orientation, gains.W_orientation, plant_w_springs, plant_w_springs);
+                                        gains.K_d_orientation, gains.W_orientation,
+                                        plant_w_springs, plant_w_springs);
 
   angular_traj.AddFrameToTrack("pelvis");
 
@@ -401,7 +417,9 @@ int DoMain(int argc, char* argv[]) {
                   mpc_reciever->get_input_port());
   builder.Connect(mpc_reciever->get_com_traj_output_port(),
                   osc->get_tracking_data_input_port("com_traj"));
-  builder.Connect(mpc_reciever->get_angular_traj_output_port(),
+//  builder.Connect(zero_rot_traj_source->get_output_port(),
+//                  osc->get_tracking_data_input_port("orientation_traj"));
+  builder.Connect(ik_solver->get_output_port_pelvis_orientation_traj(),
                   osc->get_tracking_data_input_port("orientation_traj"));
   builder.Connect(mpc_reciever->get_swing_ft_target_output_port(),
                   swing_foot_traj_gen->get_input_port_foot_target());
@@ -427,6 +445,17 @@ int DoMain(int argc, char* argv[]) {
                   left_toe_angle_traj_gen->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
+
+  // IK
+  builder.Connect(fsm->get_output_port_fsm(), ik_solver->get_input_port_fsm());
+  builder.Connect(liftoff_event_time->get_output_port_event_time(),
+                  ik_solver->get_input_port_touchdown_time());
+  builder.Connect(state_receiver->get_output_port(),
+                  ik_solver->get_input_port_state());
+  builder.Connect(mpc_subscriber->get_output_port(),
+                  ik_solver->get_input_port_mpc_traj());
+  builder.Connect(swing_foot_traj_gen->get_output_port(),
+                  ik_solver->get_input_port_swing_foot_traj());
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),

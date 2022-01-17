@@ -1,6 +1,21 @@
 import matplotlib.pyplot as plt
 import plot_styler
 
+"""
+Plots data on the given plot_styler plot. 
+:param data_dictionary: dictionary containing the data to be plotted. It should 
+contain a time channel of length N and at least one data channel of size NxM
+:param time_key: The dictionary key of the time channel in data_dictionary
+:param time_slice: Slice object representing time indices to plot
+:param keys_to_plot: List of keys (['a_key'] for a single key) to plot. 
+data_dictionary[key] should be a Nx something array 
+:param slices_to_plot: dictionary with the keys in keys_to_plot with what slice
+each datapoint should be plotted for each data channel
+:param legend_entries: Dictionary of list of strings r=which will become the
+legend entry for each data channel - i.e. {'pos' : ['x', 'y', 'z']} if plotting 
+one 3 dimensional data channel named 'pos'
+"""
+
 
 def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
               slices_to_plot, legend_entries, plot_labels,
@@ -13,7 +28,8 @@ def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
         else:
             ps.plot(data_dictionary[time_key][time_slice],
                     data_dictionary[key][time_slice, slices_to_plot[key]])
-        legend.extend(legend_entries[key])
+        if key in legend_entries:
+            legend.extend(legend_entries[key])
 
     plt.legend(legend)
     plt.xlabel(plot_labels['xlabel'])
@@ -45,3 +61,11 @@ def make_mixed_data_plot(data_dictionaries, time_keys, time_slices,
     plt.ylabel(plot_labels['ylabel'])
     plt.title(plot_labels['title'])
     ps.set_default_styling()
+
+
+def slice_to_string_list(slice_):
+    if isinstance(slice_, slice):
+        return [str(i) for i in range(slice_.start, slice_.stop,
+                                      slice_.step if slice_.step else 1)]
+    if isinstance(slice_, list):
+        return [str(i) for i in slice_]

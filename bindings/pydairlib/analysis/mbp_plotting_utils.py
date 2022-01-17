@@ -78,6 +78,22 @@ def make_point_positions_from_q(
     return pos
 
 
+def make_centroidal_momentum_from_q(robot_output, plant, context):
+    q = robot_output['q']
+    v = robot_output['v']
+    k = np.zeros((q.shape[0], 3))
+    l = np.zeros((q.shape[0], 3))
+    for i, qv in enumerate(zip(q, v)):
+        plant.SetPositions(context, qv[0])
+        plant.SetVelocities(context, qv[1])
+        com_pos = plant.CalcCenterOfMassPositionInWorld(context)
+        h = plant.CalcSpatialMomentumInWorldAboutPoint(context, com_pos)
+        k[i] = h.rotational()
+        l[i] = h.translational()
+
+    return {'angular': k, 'linear': l}
+
+
 def process_osc_channel(data):
     t_osc = []
     input_cost = []
@@ -85,6 +101,10 @@ def process_osc_channel(data):
     soft_constraint_cost = []
     qp_solve_time = []
     u_sol = []
+    lambda_c_sol = []
+    lambda_h_sol = []
+    dv_sol = []
+    epsilon_sol = []
     osc_output = []
     fsm = []
     osc_debug_tracking_datas = {}
@@ -96,6 +116,11 @@ def process_osc_channel(data):
         soft_constraint_cost.append(msg.soft_constraint_cost)
         qp_solve_time.append(msg.qp_output.solve_time)
         u_sol.append(msg.qp_output.u_sol)
+        lambda_c_sol.append(msg.qp_output.lambda_c_sol)
+        lambda_h_sol.append(msg.qp_output.lambda_h_sol)
+        dv_sol.append(msg.qp_output.dv_sol)
+        epsilon_sol.append(msg.qp_output.epsilon_sol)
+
         osc_output.append(msg)
         for tracking_data in msg.tracking_data:
             if tracking_data.name not in osc_debug_tracking_datas:
@@ -119,10 +144,15 @@ def process_osc_channel(data):
             'acceleration_cost': np.array(accel_cost),
             'soft_constraint_cost': np.array(soft_constraint_cost),
             'qp_solve_time': np.array(qp_solve_time),
-            'osc_output': osc_output,
+            'u_sol': np.array(u_sol),
+            'lambda_c_sol': np.array(lambda_c_sol),
+            'lambda_h_sol': np.array(lambda_h_sol),
+            'dv_sol': np.array(dv_sol),
+            'epsilon_sol': np.array(epsilon_sol),
             'tracking_cost': tracking_cost,
             'osc_debug_tracking_datas': osc_debug_tracking_datas,
-            'fsm': np.array(fsm)}
+            'fsm': np.array(fsm),
+            'osc_output': osc_output}
 
 
 def load_default_channels(data, plant, state_channel, input_channel,
@@ -144,6 +174,15 @@ def load_input_channel(data, input_channel):
 
 def load_osc_channel(data, osc_debug_channel):
     return process_osc_channel(data[osc_debug_channel])
+
+
+def save_poses_to_csv(robot_output, dt,  filename):
+    t_vis = np.argwhere(np.isclose(np.fmod(robot_output['t_x'], dt),
+                                   np.zeros((robot_output['t_x'].size,)),
+                                   atol=.0001))
+    t_vis = np.ravel(t_vis)
+    q = robot_output['q'][t_vis, :]
+    np.savetxt(filename, q.T, delimiter=",")
 
 
 def plot_q_or_v_or_u(
@@ -245,6 +284,87 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
     return ps
 
 
+def plot_planned_linear_momentum(v_plan, t, time_slice, mass, dims):
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': t, 'l': mass * v_plan}
+    legend_entries = {'l': ['l_' + dim_map[i] for i in dims]}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['l'],
+        {'l': dims},
+        legend_entries,
+        {'title': 'SRBD Planned Linear Momentum',
+         'xlabel': 'time (s)',
+         'ylabel': 'l'}, ps)
+
+    return ps
+
+
+def plot_angular_momentum_srbd(omega, t, time_slice, inertia, dims):
+    h = (inertia @ omega.T).T
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': t, 'h': h}
+    legend_entries = {'h': ['h_' + dim_map[i] for i in dims]}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['h'],
+        {'h': dims},
+        legend_entries,
+        {'title': 'SRBD Angular Momentum',
+         'xlabel': 'time (s)',
+         'ylabel': 'h'}, ps)
+
+    return ps
+
+
+def plot_angular_momentum(robot_output, time_slice, plant, context, dims):
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': robot_output['t_x'],
+                 'h': make_centroidal_momentum_from_q(robot_output,
+                                                      plant,
+                                                      context)['angular']}
+    legend_entries = {'h': ['h_' + dim_map[i] for i in dims]}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['h'],
+        {'h': dims},
+        legend_entries,
+        {'title': 'Centroidal Angular Momentum',
+         'xlabel': 'time (s)',
+         'ylabel': 'h'}, ps)
+    return ps
+
+
+def plot_linear_momentum(robot_output, time_slice, plant, context, dims):
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': robot_output['t_x'],
+                 'l': make_centroidal_momentum_from_q(robot_output,
+                                                      plant,
+                                                      context)['linear']}
+    legend_entries = {'l': ['l_' + dim_map[i] for i in dims]}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['l'],
+        {'l': dims},
+        legend_entries,
+        {'title': 'Centroidal linear Momentum',
+         'xlabel': 'time (s)',
+         'ylabel': 'l'}, ps)
+    return ps
+
+
 def plot_tracking_costs(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()
     data_dict = \
@@ -317,6 +437,52 @@ def plot_qp_costs(osc_debug, time_slice):
     return ps
 
 
+def plot_qp_solve_time(osc_debug, time_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['qp_solve_time'],
+        {},
+        {},
+        {'xlabel': 'Timestamp',
+         'ylabel': 'Solve Time ',
+         'title': 'OSC QP Solve Time'}, ps)
+    return ps
+
+
+def plot_lambda_c_sol(osc_debug, time_slice, lambda_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['lambda_c_sol'],
+        {'lambda_c_sol': lambda_slice},
+        {'lambda_c_sol': ['lambda_c_' + i for i in
+                          plotting_utils.slice_to_string_list(lambda_slice)]},
+        {'xlabel': 'time',
+         'ylabel': 'lambda',
+         'title': 'OSC contact force solution'}, ps)
+    return ps
+
+
+def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['epsilon_sol'],
+        {'epsilon_sol': epsilon_slice},
+        {'epsilon_sol': ['epsilon_sol' + i for i in
+                         plotting_utils.slice_to_string_list(epsilon_slice)]},
+        {'xlabel': 'time',
+         'ylabel': 'epsilon',
+         'title': 'OSC soft constraint epsilon sol'}, ps)
+    return ps
+
+
 def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
-    ps.attach()
-    plt.plot(fsm_time, scale*fsm_signal)
+    ps.plot(fsm_time, scale*fsm_signal)

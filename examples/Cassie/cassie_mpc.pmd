@@ -1,8 +1,12 @@
 group "1.controllers-and-dispatchers" {
     cmd "2.srbd_mpc" {
-        exec = "bazel-bin/examples/Cassie/run_srbd_cmpc_process --h_des=0.82 --v_des=0 --dt=0.05 --use_com --channel_x=CASSIE_STATE_SIMULATION";
+        exec = "bazel-bin/examples/Cassie/run_srbd_cmpc_process --h_des=0.82 --v_des=0 --dt=0.07 --use_com --channel_x=CASSIE_STATE_SIMULATION";
         host = "localhost";
     }
+    cmd "2.srbd_mpc (residual)" {
+            exec = "bazel-bin/examples/Cassie/run_srbd_cmpc_residual_process --h_des=0.82 --v_des=0 --dt=0.07 --use_com --channel_x=CASSIE_STATE_SIMULATION";
+            host = "localhost";
+        }
     cmd "3.osc-mpc-tracking-controller (dispatched)" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_mpc --track_com --channel_x=CASSIE_STATE_SIMULATION";
         host = "localhost";
@@ -12,7 +16,7 @@ group "1.controllers-and-dispatchers" {
         host = "localhost";
     }
     cmd "3.osc-walking-controller (dispatched)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_SIMULATION";
         host = "localhost";
     }
     cmd "0.dispatcher-robot-out (lcm, floating-base)" {
@@ -60,6 +64,18 @@ group "0.operator" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
         host = "localhost";
     }
+    cmd "1.start-logging" {
+        exec = "python3 bindings/pydairlib/analysis/start_logging.py srbd";
+        host = "localhost";
+    }
+    cmd "1.start-logging (residual)" {
+        exec = "python3 bindings/pydairlib/analysis/start_logging.py residual";
+        host = "localhost";
+    }
+    cmd "1.start-logging (osc)" {
+        exec = "python3 bindings/pydairlib/analysis/start_logging.py osc";
+        host = "localhost";
+    }
     cmd "2.state-visualizer-floating (from dispatcher)" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true";
         host = "localhost";
@@ -79,13 +95,41 @@ group "4.lcm-tools" {
 
 
 script "cassie_walking" {
+    stop cmd "1.start-logging" wait "stopped";
     stop cmd "1.simulator-floating" wait "stopped";
     stop cmd "2.srbd_mpc" wait "stopped";
+    stop cmd "2.srbd_mpc (residual)" wait "stopped";
     stop cmd "3.osc-mpc-tracking-controller (dispatched)" wait "stopped";
-    restart cmd "0.dispatcher-robot-out (lcm, floating-base)" wait "running";
-    restart cmd "1.dispatcher-robot-in" wait "running";
     restart cmd "2.srbd_mpc" wait "running";
     restart cmd "3.osc-mpc-tracking-controller (dispatched)" wait "running";
-    wait ms 500;
+    restart cmd "1.start-logging" wait "running";
+    wait ms 250;
     start cmd "1.simulator-floating";
 }
+
+script "cassie_walking (residual)" {
+    stop cmd "1.start-logging (residual)" wait "stopped";
+    stop cmd "1.simulator-floating" wait "stopped";
+    stop cmd "2.srbd_mpc" wait "stopped";
+    stop cmd "2.srbd_mpc (residual)" wait "stopped";
+    stop cmd "3.osc-mpc-tracking-controller (dispatched)" wait "stopped";
+    restart cmd "2.srbd_mpc (residual)" wait "running";
+    restart cmd "3.osc-mpc-tracking-controller (dispatched)" wait "running";
+    restart cmd "1.start-logging (residual)" wait "running";
+    wait ms 250;
+    start cmd "1.simulator-floating";
+}
+
+script "cassie_walking (osc)" {
+    stop cmd "1.start-logging (osc)" wait "stopped";
+    stop cmd "1.simulator-floating" wait "stopped";
+    stop cmd "2.srbd_mpc" wait "stopped";
+    stop cmd "2.srbd_mpc (residual)" wait "stopped";
+    stop cmd "3.osc-mpc-tracking-controller (dispatched)" wait "stopped";
+    stop cmd "3.osc-walking-controller (dispatched)" wait "stopped";
+    restart cmd "3.osc-walking-controller (dispatched)" wait "running";
+    restart cmd "1.start-logging (osc)" wait "running";
+    wait ms 250;
+    start cmd "1.simulator-floating";
+}
+

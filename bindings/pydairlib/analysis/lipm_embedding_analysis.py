@@ -68,6 +68,8 @@ def main():
         pitch[:, i] = rpy['pitch']
         yaw[:, i] = rpy['yaw']
         swing_x[:, i] = swing_pos[:, 0]
+        swing_y[:, i] = swing_pos[:, 1]
+        swing_z[:, i] = swing_pos[:, 2]
 
 
 if __name__ == '__main__':

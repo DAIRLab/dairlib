@@ -199,6 +199,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable int prev_first_mode_knot_idx_ = -1;
   mutable std::vector<int> prev_mode_start_;
   // Previous solutions
+  mutable Eigen::VectorXd z_;
   mutable RomPlannerTrajectory lightweight_saved_traj_;
   mutable Eigen::VectorXd h_solutions_;
   mutable Eigen::MatrixXd input_at_knots_;

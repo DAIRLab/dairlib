@@ -5,7 +5,7 @@ cols: 3
 relative_swing_ft: true
 
 # High level command gains (with radio)
-vel_scale_rot: -3.5
+vel_scale_rot: -1.5
 vel_scale_trans_sagital: 0.4
 vel_scale_trans_lateral: -0.1
 

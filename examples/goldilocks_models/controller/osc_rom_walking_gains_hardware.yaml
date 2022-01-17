@@ -1,14 +1,14 @@
 rows: 3
 cols: 3
 
-### OSC gains (Hardware gains; copied from sim)
+### OSC gains (Simulation)
 mu: 0.8
 
 w_accel: 0.00000001  # 0.00001  trying to add back x component
 w_soft_constraint: 80
 w_input_reg: 0.0000003
 
-w_swing_toe: 2
+w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
@@ -19,17 +19,17 @@ hip_yaw_kd: 0.5
 ################## Tuned with dispatchers in both simulation ###################
 
 RomW:
-[0, 0, 0,
- 0, 0, 0,
- 0, 0, 10]
+  [0, 0, 0,
+   0, 0, 0,
+   0, 0, 10]
 RomKp:
-[0, 0, 0,
- 0, 0, 0,
- 0, 0, 50]
+  [0, 0, 0,
+   0, 0, 0,
+   0, 0, 50]
 RomKd:
-[0, 0, 0,
- 0, 0, 0,
- 0, 0, 1]
+  [0, 0, 0,
+   0, 0, 0,
+   0, 0, 1]
 #RomW:  # Weight for the old qp solver
 #  [0.02,    0,     0,
 #      0, 0.02,     0,
@@ -55,13 +55,26 @@ RomKd:
 #  [   0.01,    0,     0,
 #      0,    0,     0,
 #      0,    0,     0.2]
+# Add back x components  # This somehow caused stance hip yaw to rotate for simulation with springs
+#RomW:
+#  [0.1,    0,     0,
+#   0, 0,     0,
+#   0,    0,    10]
+#RomKp:
+#  [  10,    0,     0,
+#     0,    0,     0,
+#     0,    0,    50]
+#RomKd:
+#  [   0.2,    0,     0,
+#      0,    0,     0,
+#      0,    0,     1]
 
 PelvisBalanceW:
   [ 2,    0,     0,
     0,    4,     0,
     0,    0,     0]
 PelvisBalanceKp:
-  [300,      0,    0,
+  [200,      0,    0,
    0,    200,    0,
    0,      0,    0]
 PelvisBalanceKd:
@@ -80,7 +93,7 @@ PelvisHeadingKp:  # We are not using kp for pelvis yaw
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    5]
+      0,     0,    10]
 period_of_no_heading_control: 0.0
 
 SwingFootW:
@@ -88,9 +101,9 @@ SwingFootW:
     0,    4,     0,
     0,    0,     4]
 SwingFootKp:
-  [ 100,  0,     0,
-    0,  110,     0,
-    0,    0,    80]
+  [ 150,    0,     0,
+    0,  150,     0,
+    0,    0,   200]
 SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,

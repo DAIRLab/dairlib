@@ -250,9 +250,10 @@ EventStatus SavedTrajReceiver::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   // Read in finite state machine
-  // I add 1e-8 just in case
-  int fsm_state =
-      int(this->EvalVectorInput(context, fsm_port_)->get_value()(0) + 1e-8);
+  // I added 1e-8 just in case any floating base error when rounding down double
+  // to int
+  double fsm_double = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
+  int fsm_state = (fsm_double < -0.5) ? -1 : int(fsm_double + 1e-8);
 
   // Find fsm_state in left_right_support_fsm_states
   auto it = find(left_right_support_fsm_states_.begin(),
@@ -356,6 +357,11 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   //  const VectorXd& xf_time = xf_time_;
   //  const VectorXd& stance_foot = stance_foot_;
 
+  // Not sure why sometimes in the beginning of single support phase, the 0
+  // desired traj was read. As a quick fix, I just shift the time a bit.
+  // TODO: fix this
+  double eps_hack = double_support_duration_ == 0 ? 0 : 0.001;
+
   // Construct PP (concatenate the PP of each mode)
   // WARNING: we assume each mode in the planner is "single support" + "double
   // support"
@@ -375,7 +381,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
         // T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
         T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
                                           double_support_duration_
-                                    : x0_time(j);
+                                    : x0_time(j) - eps_hack;
         T_waypoint.at(2) = xf_time(j) - double_support_duration_;
         T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
         plant_control_.SetPositionsAndVelocities(context_control_.get(),
@@ -425,7 +431,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
       // Fill in the double support phase with a constant zero traj
       if (double_support_duration_ > 0) {
         VectorXd T_double_support(2);
-        T_double_support << T_waypoint.at(2), xf_time(j);
+        T_double_support << T_waypoint.at(2), xf_time(j) - eps_hack;
         /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
         cout << "xf_time(j) = " << xf_time(j) << endl;*/
         MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
@@ -602,7 +608,8 @@ void SavedTrajReceiver::CalcSwingHipTraj(
       T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
                                         double_support_duration_
                                   : x0_time(j);
-      // TODO (yminchen): the end time should actually be `xf_time(j) - double_support_duration_`
+      // TODO (yminchen): the end time should actually be `xf_time(j) -
+      // double_support_duration_`
       T_waypoint.at(1) = xf_time(j);
 
       // Start

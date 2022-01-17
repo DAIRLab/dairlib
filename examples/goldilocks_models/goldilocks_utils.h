@@ -195,7 +195,7 @@ struct PlannerSetting {
   std::string dir_model;  // location of the model files
   std::string dir_data;   // location to store the opt result
   std::string init_file;
-  std::string dir_and_prefex_FOM;
+  std::string dir_and_prefix_FOM;
 
   // Testing
   int n_step_lipm;

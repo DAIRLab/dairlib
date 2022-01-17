@@ -145,8 +145,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   y_guess_ = 1e-4 * MatrixXd::Random(n_y_, param_.knots_per_mode);
   dy_guess_ = 1e-4 * MatrixXd::Random(n_y_, param_.knots_per_mode);
   tau_guess_ = 1e-4 * MatrixXd::Random(n_tau_, param_.knots_per_mode);
-  if (param_.dir_and_prefex_FOM.empty() &&
+  if (param_.dir_and_prefix_FOM.empty() &&
       file_exist(model_dir_n_pref + "y_samples0.csv")) {
+    cout << "Construct rom regularization from ROM traj: " + model_dir_n_pref +
+                "y_samples0.csv\n";
     // y_samples0 might not always exist, becasue sometimes I didn't enforce
     // that all samples have to be successful before I proceed to the next
     // iteration in model optimization.
@@ -173,7 +175,11 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     }
 
     double duration = y_traj.end_time();
-    DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
+    if (std::abs(duration - stride_period) > 1e-15) {
+      cout << "duration = " << duration << endl;
+      cout << "stride_period = " << stride_period << endl;
+      DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
+    }
     for (int i = 0; i < param_.knots_per_mode; i++) {
       h_guess_(i) = duration / (param_.knots_per_mode - 1) * i;
       y_guess_.col(i) = y_traj.value(h_guess_(i));
@@ -183,6 +189,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       }
     }
   } else {
+    cout << "Construct rom regularization from ROM traj: " + model_dir_n_pref +
+                "x_samples0.csv\n";
     DRAKE_DEMAND(rom_->n_tau() == 0);
     DRAKE_DEMAND(file_exist(model_dir_n_pref + "t_breaks0.csv"));
     DRAKE_DEMAND(file_exist(model_dir_n_pref + "x_samples0.csv"));
@@ -217,6 +225,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   dy_reg_ = dy_guess_;
   tau_reg_ = tau_guess_;
 
+  cout << "use_standing_pose_as_init_FOM_guess_ = "
+       << use_standing_pose_as_init_FOM_guess_ << endl;
   if (use_standing_pose_as_init_FOM_guess_) {
     // Use standing pose for FOM guess
     // Note that it's dangerous to hard-code the state here because the MBP
@@ -244,14 +254,14 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     x_guess_left_in_front_post_ = x_standing_fixed_spring_;
     x_guess_right_in_front_post_ = x_standing_fixed_spring_;
   } else {
-    string dir_and_prefex_FOM = param_.dir_and_prefex_FOM.empty()
+    string dir_and_prefix_FOM = param_.dir_and_prefix_FOM.empty()
                                     ? model_dir_n_pref
-                                    : param_.dir_and_prefex_FOM;
-    cout << "dir_and_prefex_FOM = " << dir_and_prefex_FOM << endl;
+                                    : param_.dir_and_prefix_FOM;
+    cout << "dir_and_prefix_FOM = " << dir_and_prefix_FOM << endl;
     VectorXd x_guess_right_in_front_pre =
-        readCSV(dir_and_prefex_FOM + string("x_samples0.csv")).rightCols(1);
+        readCSV(dir_and_prefix_FOM + string("x_samples0.csv")).rightCols(1);
     VectorXd x_guess_right_in_front_post =
-        readCSV(dir_and_prefex_FOM + string("x_samples1.csv")).col(0);
+        readCSV(dir_and_prefix_FOM + string("x_samples1.csv")).col(0);
     VectorXd x_guess_left_in_front_pre(nx_);
     x_guess_left_in_front_pre
         << state_mirror_.MirrorPos(x_guess_right_in_front_pre.head(nq_)),
@@ -266,6 +276,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     x_guess_left_in_front_pre_ = x_guess_left_in_front_pre;
     x_guess_left_in_front_post_ = x_guess_left_in_front_post;
   }
+  cout << endl;
 
   //   cout << "initial guess duration ~ " << duration << endl;
   //   cout << "h_guess = " << h_guess_ << endl;
@@ -604,6 +615,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       this->EvalVectorInput(context, controller_signal_port_);
   int global_fsm_idx = int(controller_signal_port->get_value()(2) + 1e-8);
 
+  int fsm = (int)controller_signal_port->get_value()(0);
+
   // Get final position of
   VectorXd final_position =
       this->EvalVectorInput(context, planner_final_pos_port_)->get_value();
@@ -903,7 +916,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     trajopt.SetInitialGuessForAllVariables(z0);
   } else {
     PrintEssentialStatus("global_fsm_idx = " + to_string(global_fsm_idx));
-    if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
+    if (fsm < 0 && warm_start_with_previous_solution_ && counter_ > 0) {
+      trajopt.SetInitialGuessForAllVariables(z_);
+    } else if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
       WarmStartGuess(quat_xyz_shift, reg_x_FOM, global_fsm_idx,
                      first_mode_knot_idx, current_time, &trajopt);
@@ -1104,6 +1119,11 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   } else {
     local_predicted_com_vel_ =
         result.GetSolution(trajopt.predicted_com_vel_var_);
+  }
+
+  // For hardware -- before we switch from standing to MPC walking
+  if (fsm < 0) {
+    z_ = result.GetSolution();
   }
 
   prev_global_fsm_idx_ = global_fsm_idx;
@@ -1992,7 +2012,7 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
       // Shift the timestamps by the current time
       times_i.array() += current_time;
 
-      // Shift time by eps to ensure we evaluate the right piece of polynomial
+      // Shift time by eps to ensure we evaluate the correct piece of polynomial
       times_i(0) += 1e-8;
       times_i(mode_lengths[i] - 1) -= 1e-8;
 

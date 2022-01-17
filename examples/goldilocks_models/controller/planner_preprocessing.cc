@@ -60,6 +60,11 @@ void CurrentStanceFoot::GetStance(
       this->EvalVectorInput(context, controller_signal_port_);
   int fsm_state = (int)controller_signal_port->get_value()(0);
 
+  // Hacks for transition from standing to walking
+  if (fsm_state == -1) {
+    fsm_state = 0;
+  }
+
   // Find fsm_state in left_right_support_fsm_states_
   bool is_single_support_phase =
       find(left_right_support_fsm_states_.begin(),
@@ -156,6 +161,7 @@ PlannerFinalPosition::PlannerFinalPosition(
     const Eigen::VectorXd& global_target_pos)
     : PlannerFinalPosition(plant_feedback, 0) {
   global_target_pos_ = global_target_pos;
+  cout << "  global_target_pos = " << global_target_pos.transpose() << "\n\n";
 }
 
 // Constructor for constant step length
@@ -165,6 +171,8 @@ PlannerFinalPosition::PlannerFinalPosition(
     : PlannerFinalPosition(plant_feedback, 1) {
   const_step_length_ = const_step_length;
   n_step_ = n_step;
+  cout << "  const_step_length = " << const_step_length.transpose() << endl;
+  cout << "  n_step = " << n_step << "\n\n";
 }
 
 // Constructor for radio speed command
@@ -174,6 +182,8 @@ PlannerFinalPosition::PlannerFinalPosition(
     : PlannerFinalPosition(plant_feedback, 2) {
   stride_period_ = stride_period;
   n_step_ = n_step;
+  cout << "  stride_period = " << stride_period << endl;
+  cout << "  n_step = " << n_step << "\n\n";
 
   controller_signal_port_ =
       this->DeclareVectorInputPort("ctrl_thread", TimestampedVector<double>(5))
@@ -185,6 +195,16 @@ PlannerFinalPosition::PlannerFinalPosition(
     const drake::multibody::MultibodyPlant<double>& plant_feedback,
     int high_level_command_mode)
     : high_level_command_mode_(high_level_command_mode) {
+  DRAKE_DEMAND(high_level_command_mode >= 0 && high_level_command_mode <= 2);
+  cout << "\nPlannerFinalPosition setting: \n";
+  if (high_level_command_mode == 0) {
+    cout << "  global position tracking\n";
+  } else if (high_level_command_mode == 1) {
+    cout << "  constant walking speed\n";
+  } else {
+    cout << "  getting vel command from remote control\n";
+  }
+
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(

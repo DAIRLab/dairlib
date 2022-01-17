@@ -46,7 +46,7 @@ rom_option: 10  # 4, 9
 #The iteration number of the theta that you use.has to be >= 1
 model_iter: 1 #150  #1 #30
 #The sample that we use to initialize planner
-sample_idx: 19 #58 #40
+sample_idx: 40 #19 #58 #40
 
 
 ### High-level command (for both planner and controller)
@@ -62,9 +62,9 @@ constant_turning_rate: 0
 
 # when use_radio=true, the above high level command parameters are discarded
 use_radio: false
-vel_scale_rot: 1
-vel_scale_trans_sagital: 0.4
-vel_scale_trans_lateral: -0.15
+vel_scale_rot: -1.5
+vel_scale_trans_sagital: 0.1
+vel_scale_trans_lateral: -0.1
 
 
 ### For both planner and controller
@@ -170,9 +170,9 @@ target_pos_offset: 0 # -0.16
 
 #Speed control gains
 k_ff_sagittal: 0
-k_fb_sagittal: 0.24
+k_fb_sagittal: 0.2
 k_ff_lateral: 0
-k_fb_lateral: 0.25
+k_fb_lateral: 0.15
 speed_control_offset_sagittal: -0.0  # -0.04 for hardware; -0.01 for drake with springs; -0.0 for mujoco with springs
 
 #Finite state machine
@@ -181,7 +181,7 @@ ds_time: 0.
 
 #Swing foot trajectory
 max_CoM_to_footstep_dist: 0.5
-footstep_offset: 0.03
+footstep_offset: 0.0
 center_line_offset: 0.03
 mid_foot_height: 0.05  #0.03
 final_foot_height: -0.0

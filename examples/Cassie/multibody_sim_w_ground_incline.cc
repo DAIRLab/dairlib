@@ -74,9 +74,6 @@ DEFINE_double(penetration_allowance, 1e-5,
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
-DEFINE_double(init_height, .7,
-              "Initial starting height of the pelvis above "
-              "ground");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
 DEFINE_double(actuator_delay, 0.0,
@@ -92,8 +89,12 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "The name of the lcm channel that sends Cassie's state");
 
 // Initial condition
+DEFINE_double(init_height, .7,
+              "Initial starting height of the pelvis above "
+              "ground");
 DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");
 DEFINE_double(pelvis_y_vel, 0.3, "for stability");
+DEFINE_double(toe_spread, 0.15, "");
 
 // Terrain
 DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
@@ -292,7 +293,7 @@ int do_main(int argc, char* argv[]) {
     v_init = VectorXd::Zero(plant.num_velocities());
     double mu_fp = 0.5;         // 0
     double min_normal_fp = 10;  // 70
-    double toe_spread = .15;
+    double toe_spread = FLAGS_toe_spread;
     // Create a plant for CassieFixedPointSolver.
     // Note that we cannot use the plant from the above diagram, because after
     // the diagram is built, plant.get_actuation_input_port().HasValue(*context)
@@ -319,9 +320,10 @@ int do_main(int argc, char* argv[]) {
           plant_for_solver, pelvis_xy_vel, FLAGS_init_height, mu_fp,
           min_normal_fp, true, toe_spread, FLAGS_ground_incline, q_init, u_init,
           lambda_init, &q_init, &v_init, &u_init, &lambda_init);
-      std::cout << "q_init = \n" << q_init.transpose() << std::endl;
-      std::cout << "v_init = \n" << v_init.transpose() << std::endl;
       if (!FLAGS_path_init_pose_success.empty()) {
+        std::cout << "q_init = \n" << q_init.transpose() << std::endl;
+        std::cout << "v_init = \n" << v_init.transpose() << std::endl;
+
         std::string msg = success ? "0" : "1";
 
         std::ofstream outfile;

@@ -123,7 +123,7 @@ DEFINE_string(channel_y, "MPC_OUTPUT",
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
 // (for non debug mode)
-DEFINE_string(dir_and_prefex_FOM, "",
+DEFINE_string(dir_and_prefix_FOM, "",
               "file location and prefix for FOM poses (used in planner's "
               "regularization cost)");
 DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
@@ -183,10 +183,10 @@ int DoMain(int argc, char* argv[]) {
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 
   if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
-    DRAKE_DEMAND(FLAGS_dir_and_prefex_FOM.empty());
+    DRAKE_DEMAND(FLAGS_dir_and_prefix_FOM.empty());
   }
-  if (!FLAGS_dir_and_prefex_FOM.empty()) {
-    cout << "dir_and_prefex_FOM is specified, so we won't have any target ROM "
+  if (!FLAGS_dir_and_prefix_FOM.empty()) {
+    cout << "dir_and_prefix_FOM is specified, so we won't have any target ROM "
             "traj in the regularization term\n";
   }
 
@@ -260,7 +260,7 @@ int DoMain(int argc, char* argv[]) {
   param.dir_model = gains.dir_model;
   param.dir_data = gains.dir_data;
   param.init_file = FLAGS_init_file;
-  param.dir_and_prefex_FOM = FLAGS_dir_and_prefex_FOM;
+  param.dir_and_prefix_FOM = FLAGS_dir_and_prefix_FOM;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
   if (FLAGS_solve_idx_for_read_from_file >= 0) {

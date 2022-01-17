@@ -165,6 +165,7 @@ void TimeBasedFiniteStateMachineWithTrigger::CalcFiniteState(
     current_finite_state << -1;
   } else {
     double remainder = fmod(current_time - t0_, period_);
+    DRAKE_DEMAND(current_time - t0_ >= 0);
 
     for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
       if (remainder < accu_state_durations_[i]) {

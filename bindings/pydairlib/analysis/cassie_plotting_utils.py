@@ -26,16 +26,16 @@ cassie_default_channels = \
      'OSC_DEBUG_RUNNING': dairlib.lcmt_osc_output}
 
 
-def make_plant_and_context(floating_base=True, springs=True):
+def make_plant_and_context(floating_base=True, springs=True, loop_closure=False):
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
     if (springs):
         addCassieMultibody(plant, scene_graph,
-                           floating_base, cassie_urdf, True, True)
+                           floating_base, cassie_urdf, True, loop_closure)
     else:
         addCassieMultibody(plant, scene_graph,
-                           floating_base, cassie_urdf_no_springs, False, True)
-
+                           floating_base, cassie_urdf_no_springs,
+                           False, loop_closure)
     plant.Finalize()
     return plant, plant.CreateDefaultContext()
 
@@ -45,8 +45,8 @@ def get_toe_frames_and_points(plant):
     rear_contact_pt = np.array((0.088, 0, 0))
     mid_contact_pt = 0.5 * (front_contact_pt + rear_contact_pt)
 
-    left_frame = plant.GetBodyByName("toe_left")
-    right_frame = plant.GetBodyByName("toe_right")
+    left_frame = plant.GetBodyByName("toe_left").body_frame()
+    right_frame = plant.GetBodyByName("toe_right").body_frame()
 
     frames = {"left": left_frame, "right": right_frame}
     pts = {"rear": rear_contact_pt, "mid": mid_contact_pt,

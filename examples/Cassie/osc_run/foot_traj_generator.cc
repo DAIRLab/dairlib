@@ -30,6 +30,7 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
                                      Context<double>* context,
                                      const string& foot_name,
                                      const string& hip_name, bool relative_feet,
+                                     const int stance_state,
                                      std::vector<double> state_durations)
     : plant_(plant),
       context_(context),
@@ -37,19 +38,18 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
       foot_frame_(plant.GetFrameByName(foot_name)),
       hip_frame_(plant.GetFrameByName(hip_name)),
       relative_feet_(relative_feet),
+      stance_state_(stance_state),
       state_durations_(state_durations) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
 
   if (foot_name == "toe_left") {
     is_left_foot_ = true;
-    stance_state_ = 0;
     this->set_name("left_ft_traj");
     this->DeclareAbstractOutputPort("left_ft_traj", traj_inst,
                                     &FootTrajGenerator::CalcTraj);
   } else {
     is_left_foot_ = false;
-    stance_state_ = 1;
     this->set_name("right_ft_traj");
     this->DeclareAbstractOutputPort("right_ft_traj", traj_inst,
                                     &FootTrajGenerator::CalcTraj);
@@ -189,11 +189,11 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   std::vector<MatrixXd> Y(T_waypoints.size(), VectorXd::Zero(3));
   VectorXd start_pos = foot_pos - hip_pos;
   Y[0] = start_pos;
-  Y[0](2) = -REST_LENGTH;
+  Y[0](2) = -rest_length_;
   Y[1] = start_pos + 0.85 * footstep_correction;
-  Y[1](2) = -REST_LENGTH + 0.01;
+  Y[1](2) = -rest_length_ + 0.01;
   Y[2] = start_pos + footstep_correction;
-  Y[2](2) = -REST_LENGTH;
+  Y[2](2) = -rest_length_;
 
   // corrections
   if (is_left_foot_) {

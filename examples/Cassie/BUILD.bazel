@@ -47,6 +47,7 @@ cc_library(
         "//examples/Cassie:run_controller_switch",
         "//examples/Cassie:run_osc_jumping_controller",
         "//examples/Cassie:run_osc_running_controller",
+        "//examples/Cassie:run_osc_hopping_controller",
         "//examples/Cassie:run_osc_standing_controller",
         "//examples/Cassie:run_osc_walking_controller",
         "//examples/Cassie/osc",
@@ -346,6 +347,28 @@ cc_binary(
 cc_binary(
     name = "run_osc_running_controller",
     srcs = ["run_osc_running_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/osc",
+        "//examples/Cassie/osc_jump",
+        "//examples/Cassie/osc_run",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/osc:osc_tracking_datas",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "//systems/primitives:gaussian_noise_pass_through",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_hopping_controller",
+    srcs = ["run_osc_hopping_controller.cc"],
     deps = [
         ":cassie_urdf",
         ":cassie_utils",

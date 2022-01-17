@@ -3,7 +3,7 @@ w_accel: 0.00001
 #w_soft_constraint: 1000000
 w_soft_constraint: 1000.0
 w_input_reg: 0.01
-impact_threshold: 0.050
+impact_threshold: 0.025
 relative_feet: true
 relative_pelvis: true
 

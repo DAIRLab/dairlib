@@ -115,7 +115,6 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
-
   std::unordered_map<
       int, std::vector<std::pair<const Vector3d,
                                  const drake::multibody::Frame<double>&>>>
@@ -141,14 +140,11 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::YamlReadArchive(root).Accept(&osc_gains);
 
   /**** FSM and contact mode configuration ****/
-  int left_stance_state = 0;
-  int right_stance_state = 1;
-  int right_touchdown_air_phase = 2;
-  int left_touchdown_air_phase = 3;
+  int stance_state = 0;
+  int air_state = 1;
 
-  vector<int> fsm_states = {left_stance_state, right_touchdown_air_phase,
-                            right_stance_state, left_touchdown_air_phase,
-                            left_stance_state};
+  vector<int> fsm_states = {stance_state, air_state, stance_state, air_state,
+                            stance_state};
 
   vector<double> state_durations = {
       osc_gains.stance_duration, osc_gains.flight_duration,
@@ -214,10 +210,10 @@ int DoMain(int argc, char* argv[]) {
       plant, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
 
-  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
+  osc->AddStateAndContactPoint(stance_state, &left_toe_evaluator);
+  osc->AddStateAndContactPoint(stance_state, &left_heel_evaluator);
+  osc->AddStateAndContactPoint(stance_state, &right_toe_evaluator);
+  osc->AddStateAndContactPoint(stance_state, &right_heel_evaluator);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
   auto left_loop = LeftLoopClosureEvaluator(plant);
@@ -272,7 +268,7 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.relative_feet, 0, accumulated_state_durations);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_right", "hip_right",
-      osc_gains.relative_feet, 1, accumulated_state_durations);
+      osc_gains.relative_feet, 0, accumulated_state_durations);
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(osc_gains.rest_length,
@@ -294,20 +290,14 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData right_foot_tracking_data(
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  pelvis_tracking_data.AddStateAndPointToTrack(left_stance_state, "pelvis");
-  pelvis_tracking_data.AddStateAndPointToTrack(right_stance_state, "pelvis");
-  stance_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
-                                                    "toe_left");
-  stance_foot_tracking_data.AddStateAndPointToTrack(right_stance_state,
-                                                    "toe_right");
-  left_foot_tracking_data.AddStateAndPointToTrack(right_stance_state,
-                                                  "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
-                                                   "toe_right");
-  left_foot_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                  "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                   "toe_right");
+  pelvis_tracking_data.AddStateAndPointToTrack(stance_state, "pelvis");
+  stance_foot_tracking_data.AddStateAndPointToTrack(stance_state, "toe_left");
+  //  stance_foot_tracking_data.AddStateAndPointToTrack(stance_state,
+  //                                                    "toe_right");
+  left_foot_tracking_data.AddStateAndPointToTrack(stance_state, "toe_left");
+  right_foot_tracking_data.AddStateAndPointToTrack(stance_state, "toe_right");
+  left_foot_tracking_data.AddStateAndPointToTrack(air_state, "toe_left");
+  right_foot_tracking_data.AddStateAndPointToTrack(air_state, "toe_right");
 
   TransTaskSpaceTrackingData left_foot_yz_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -315,31 +305,25 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData right_foot_yz_tracking_data(
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  left_foot_yz_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                     "toe_left");
-  right_foot_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                      "toe_right");
+  left_foot_yz_tracking_data.AddStateAndPointToTrack(air_state, "toe_left");
+  right_foot_yz_tracking_data.AddStateAndPointToTrack(air_state, "toe_right");
 
-//  TransTaskSpaceTrackingData left_hip_tracking_data(
-//      "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-//      osc_gains.W_swing_foot, plant, plant);
-//  TransTaskSpaceTrackingData right_hip_tracking_data(
-//      "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-//      osc_gains.W_swing_foot, plant, plant);
+  //  TransTaskSpaceTrackingData left_hip_tracking_data(
+  //      "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+  //      osc_gains.W_swing_foot, plant, plant);
+  //  TransTaskSpaceTrackingData right_hip_tracking_data(
+  //      "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+  //      osc_gains.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData left_hip_tracking_data(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData right_hip_tracking_data(
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  left_hip_tracking_data.AddStateAndPointToTrack(right_stance_state,
-                                                 "pelvis");
-  right_hip_tracking_data.AddStateAndPointToTrack(left_stance_state,
-                                                  "pelvis");
-  right_hip_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                  "pelvis");
-  left_hip_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                 "pelvis");
+  left_hip_tracking_data.AddStateAndPointToTrack(stance_state, "pelvis");
+  right_hip_tracking_data.AddStateAndPointToTrack(stance_state, "pelvis");
+  right_hip_tracking_data.AddStateAndPointToTrack(air_state, "pelvis");
+  left_hip_tracking_data.AddStateAndPointToTrack(air_state, "pelvis");
 
   TransTaskSpaceTrackingData left_hip_yz_tracking_data(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -347,10 +331,8 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData right_hip_yz_tracking_data(
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  left_hip_yz_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                    "hip_left");
-  right_hip_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                     "hip_right");
+  left_hip_yz_tracking_data.AddStateAndPointToTrack(air_state, "hip_left");
+  right_hip_yz_tracking_data.AddStateAndPointToTrack(air_state, "hip_right");
 
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -399,13 +381,8 @@ int DoMain(int argc, char* argv[]) {
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
       osc_gains.W_pelvis_rot, plant, plant);
-  pelvis_rot_tracking_data.AddStateAndFrameToTrack(left_stance_state, "pelvis");
-  pelvis_rot_tracking_data.AddStateAndFrameToTrack(right_stance_state,
-                                                   "pelvis");
-  pelvis_rot_tracking_data.AddStateAndFrameToTrack(left_touchdown_air_phase,
-                                                   "pelvis");
-  pelvis_rot_tracking_data.AddStateAndFrameToTrack(right_touchdown_air_phase,
-                                                   "pelvis");
+  pelvis_rot_tracking_data.AddStateAndFrameToTrack(stance_state, "pelvis");
+  pelvis_rot_tracking_data.AddStateAndFrameToTrack(air_state, "pelvis");
   pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
   osc->AddTrackingData(&pelvis_rot_tracking_data);
 
@@ -428,18 +405,14 @@ int DoMain(int argc, char* argv[]) {
   JointSpaceTrackingData right_toe_angle_tracking_data(
       "right_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
       osc_gains.W_swing_toe, plant, plant);
-  left_toe_angle_tracking_data.AddStateAndJointToTrack(
-      right_stance_state, "toe_left", "toe_leftdot");
-  left_toe_angle_tracking_data.AddStateAndJointToTrack(
-      right_touchdown_air_phase, "toe_left", "toe_leftdot");
-  left_toe_angle_tracking_data.AddStateAndJointToTrack(
-      left_touchdown_air_phase, "toe_left", "toe_leftdot");
+  left_toe_angle_tracking_data.AddStateAndJointToTrack(stance_state, "toe_left",
+                                                       "toe_leftdot");
   right_toe_angle_tracking_data.AddStateAndJointToTrack(
-      left_stance_state, "toe_right", "toe_rightdot");
-  right_toe_angle_tracking_data.AddStateAndJointToTrack(
-      right_touchdown_air_phase, "toe_right", "toe_rightdot");
-  right_toe_angle_tracking_data.AddStateAndJointToTrack(
-      left_touchdown_air_phase, "toe_right", "toe_rightdot");
+      stance_state, "toe_right", "toe_rightdot");
+  left_toe_angle_tracking_data.AddStateAndJointToTrack(air_state, "toe_left",
+                                                       "toe_leftdot");
+  right_toe_angle_tracking_data.AddStateAndJointToTrack(air_state, "toe_right",
+                                                        "toe_rightdot");
   left_toe_angle_tracking_data.SetImpactInvariantProjection(true);
   right_toe_angle_tracking_data.SetImpactInvariantProjection(true);
   osc->AddTrackingData(&left_toe_angle_tracking_data);

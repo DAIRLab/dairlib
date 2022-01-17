@@ -267,6 +267,21 @@ def PlotForce(dircon_traj):
   if savefig:
     plt.savefig(save_path + figname + ".png")
 
+  ### Plot friction cone ratio
+  friction_cone = np.zeros((n_points, 4))
+  idx = 0
+  for i in [0, 3]:
+    friction_cone[:, 0+idx] = force_samples[:, 0+i] / force_samples[:, 2+i]
+    friction_cone[:, 1+idx] = force_samples[:, 1+i] / force_samples[:, 2+i]
+    idx += 2
+  figname = filename + " -- friction cone (idx 0 to 5)"
+  plt.figure(figname, figsize=figsize)
+  plt.plot(t, friction_cone, ".")
+  plt.legend(["pt1 x", "pt1 y", "pt2 x", "pt2 y"])
+  if savefig:
+    plt.savefig(save_path + figname + ".png")
+
+
 
 def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
   # Get data at knots

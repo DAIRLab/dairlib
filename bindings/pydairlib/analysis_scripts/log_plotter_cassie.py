@@ -112,8 +112,8 @@ def main():
   t_start = t_u[10]
   t_end = t_u[-10]
   # Override here #
-  # t_start = 10.35
-  # t_end = 2
+  # t_start = 0.23
+  # t_end = 0.3
   ### Convert times to indices
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
@@ -136,9 +136,9 @@ def main():
   # plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
   # plt.plot(t_input_supervisor, 10 * input_supervisor_status)
 
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot", True)
@@ -154,7 +154,7 @@ def main():
   # PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
   # PlotVdot(x, t_x, x_datatypes, True)
 
-  # PlotOscQpSol(t_osc_debug, osc_output, fsm)
+  PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
   # PlotSwingFootData(t_osc_debug, fsm)
   # PlotCentroidalAngularMomentum(t_osc_debug, fsm)
@@ -210,46 +210,67 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
 
   u_dim = osc_output[0].qp_output.u_dim
   lambda_c_dim = osc_output[0].qp_output.lambda_c_dim
+  lambda_h_dim = osc_output[0].qp_output.lambda_h_dim
   epsilon_dim = osc_output[0].qp_output.epsilon_dim
   v_dim = osc_output[0].qp_output.v_dim
 
   u_sol = np.zeros((len(osc_output), u_dim))
   contact_forces = np.zeros((len(osc_output), lambda_c_dim))
+  fourbar_forces = np.zeros((len(osc_output), lambda_h_dim))
   epsilons = np.zeros((len(osc_output), epsilon_dim))
   vdot = np.zeros((len(osc_output), v_dim))
   solve_time = np.zeros(len(osc_output))
   for i in range(len(osc_output)):
     u_sol[i] = osc_output[i].qp_output.u_sol
     contact_forces[i] = osc_output[i].qp_output.lambda_c_sol
+    fourbar_forces[i] = osc_output[i].qp_output.lambda_h_sol
     epsilons[i] = osc_output[i].qp_output.epsilon_sol
     vdot[i] = osc_output[i].qp_output.dv_sol
     solve_time[i] = osc_output[i].qp_output.solve_time
 
+  linestyle = '.'
+
   # plt.figure("Qp sol -- efforts " + filename)
-  # plt.plot(t_osc_debug[:], u_sol)
+  # plt.plot(t_osc_debug[:], u_sol, linestyle)
   # plt.legend([str(i) for i in range(u_dim)])
   #
   # # plt.figure("Qp sol -- contact forces " + filename)
-  # # plt.plot(t_osc_debug[:], contact_forces)
+  # # plt.plot(t_osc_debug[:], contact_forces, linestyle)
   # # plt.legend([str(i) for i in range(lambda_c_dim)])
   # plt.figure("Qp sol -- contact forces (idx 0 to 5) " + filename)
-  # plt.plot(t_osc_debug[:], contact_forces[:, 0:6])
+  # plt.plot(t_osc_debug[:], contact_forces[:, 0:6], linestyle)
   # plt.legend([str(i) for i in range(6)])
   # plt.figure("Qp sol -- contact forces (idx 6 to 11) " + filename)
-  # plt.plot(t_osc_debug[:], contact_forces[:, 6:12])
+  # plt.plot(t_osc_debug[:], contact_forces[:, 6:12], linestyle)
   # plt.legend([str(i) for i in range(6, 12)])
   #
+  # plt.figure("Qp sol -- fourbar forces " + filename)
+  # plt.plot(t_osc_debug[:], fourbar_forces[:, :], linestyle)
+  # plt.legend([str(i) for i in range(2)])
+  #
   # plt.figure("Qp sol -- epsilons " + filename)
-  # plt.plot(t_osc_debug[:], epsilons)
+  # plt.plot(t_osc_debug[:], epsilons, linestyle)
   # plt.legend([str(i) for i in range(epsilon_dim)])
   #
   # plt.figure("Qp sol -- vdot " + filename)
-  # plt.plot(t_osc_debug[:], vdot[:, 0:6])
+  # plt.plot(t_osc_debug[:], vdot[:, 0:6], linestyle)
   # plt.legend([str(i) for i in range(6)])
 
   plt.figure("Qp solve time " + filename)
-  plt.plot(t_osc_debug[:], solve_time)
-  plt.plot(t_osc_debug[t_u_slice], 0.0005 * fsm[t_u_slice])
+  plt.plot(t_osc_debug[:], solve_time, linestyle)
+  plt.plot(t_osc_debug[t_u_slice], 0.0005 * fsm[t_u_slice], linestyle)
+
+  ### Check friction cone ratio
+  friction_cone = np.zeros((len(osc_output), 4))
+  idx = 0
+  for i in [0, 3]:
+    friction_cone[:, 0+idx] = contact_forces[:, 0+i] / contact_forces[:, 2+i]
+    friction_cone[:, 1+idx] = contact_forces[:, 1+i] / contact_forces[:, 2+i]
+    idx += 2
+  plt.figure("Qp sol -- friction cone (idx 0 to 5) " + filename)
+  plt.plot(t_osc_debug[:], friction_cone, linestyle)
+  plt.legend(["pt1 x", "pt1 y", "pt2 x", "pt2 y"])
+
 
 
 def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant_w_spr):
@@ -598,7 +619,7 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   osc_traj00 = "swing_ft_traj"
-  osc_traj00 = "stance_hip_rpy_traj"
+  # osc_traj00 = "stance_hip_rpy_traj"
   # osc_traj0 = "swing_ft_traj"
   osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller

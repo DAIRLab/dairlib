@@ -4,18 +4,18 @@ model=4
 echo robot_option = $robot, rom_option = $model
 
 # Set sample size
-n_sl=5
+n_sl=7
 n_gi=1
 n_du=1
 n_tr=1
-n_ph=5
+n_ph=7
 
 # Other parameters
 final_iter=1
 folder_name=
 
 # Multithreading
-threads=8
+threads=6
 
 # Delete and create a new data folder if specified in the argument
 if [ "$1" = "rm" ]; then

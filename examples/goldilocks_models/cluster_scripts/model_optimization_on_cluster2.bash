@@ -44,6 +44,7 @@ n_gi=1
 n_du=1
 n_tr=1
 n_ph=3
+n_sm=1
 
 # Other parameters
 final_iter=100
@@ -61,13 +62,13 @@ mkdir -p ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot
 echo ===== evaluate nomial traj \(without snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=false \
  --data_folder_name=$folder_name \
- --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 \
+ --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 echo ===== evaluate nomial traj \(with snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
  --data_folder_name=$folder_name \
- --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 \
+ --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 echo ===== copy files for nomial gaits =====
@@ -77,14 +78,14 @@ echo ===== evaluate nomial traj \(without snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
  --data_folder_name=$folder_name \
  --swing_foot_cublic_spline=true \
- --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 \
+ --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 echo ===== evaluate nomial traj \(with snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
  --data_folder_name=$folder_name \
  --swing_foot_cublic_spline=true \
- --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 \
+ --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 echo ===== copy files for nomial gaits with cubic swing foot constraint =====
@@ -94,14 +95,14 @@ echo ===== evaluate nomial traj with com accel constraint  \(without snopt scali
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
  --data_folder_name=$folder_name \
  --com_accel_constraint=true --swing_foot_cublic_spline=true \
- --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 \
+ --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 echo ===== evaluate nomial traj with com accel constraint \(with snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
  --data_folder_name=$folder_name \
  --com_accel_constraint=true --swing_foot_cublic_spline=true \
- --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 \
+ --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 
@@ -109,21 +110,21 @@ echo ===== evaluate initial rom \(without snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=1 --snopt_scaling=false --start_current_iter_as_rerun=false \
  --data_folder_name=$folder_name \
  --swing_foot_cublic_spline=true \
- --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 \
+ --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 echo ===== evaluate \(with snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=1 --snopt_scaling=true --start_current_iter_as_rerun=true \
  --data_folder_name=$folder_name \
  --swing_foot_cublic_spline=true \
- --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 \
+ --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 echo ===== evaluate \(with snopt scaling\) =====
 ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=$final_iter --snopt_scaling=true --start_current_iter_as_rerun=false \
  --data_folder_name=$folder_name \
  --swing_foot_cublic_spline=true \
- --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --fix_node_number=true 2>&1 \
+ --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 
 

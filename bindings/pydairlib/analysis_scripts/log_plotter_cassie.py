@@ -138,7 +138,7 @@ def main():
 
   # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot", True)
@@ -262,11 +262,13 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
 
   ### Check friction cone ratio
   friction_cone = np.zeros((len(osc_output), 4))
-  idx = 0
+  j = 0
   for i in [0, 3]:
-    friction_cone[:, 0+idx] = contact_forces[:, 0+i] / contact_forces[:, 2+i]
-    friction_cone[:, 1+idx] = contact_forces[:, 1+i] / contact_forces[:, 2+i]
-    idx += 2
+    for i_row in range(len(osc_output)):
+      force_z = contact_forces[i_row, 2+i]
+      friction_cone[i_row, 0+j] = 0 if force_z == 0 else contact_forces[i_row, 0+i] / force_z
+      friction_cone[i_row, 1+j] = 0 if force_z == 0 else contact_forces[i_row, 1+i] / force_z
+    j += 2
   plt.figure("Qp sol -- friction cone (idx 0 to 5) " + filename)
   plt.plot(t_osc_debug[:], friction_cone, linestyle)
   plt.legend(["pt1 x", "pt1 y", "pt2 x", "pt2 y"])
@@ -619,16 +621,16 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   osc_traj00 = "swing_ft_traj"
-  # osc_traj00 = "stance_hip_rpy_traj"
+  osc_traj00 = "stance_hip_rpy_traj"
   # osc_traj0 = "swing_ft_traj"
   osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"
   osc_traj2 = "pelvis_balance_traj"
-  osc_traj2 = "pelvis_heading_traj"
-  # osc_traj2 = "pelvis_rot_traj"  # for standing controller
-  osc_traj3 = "swing_hip_yaw_traj"
+  osc_traj3 = "pelvis_heading_traj"
+  # osc_traj3 = "pelvis_rot_traj"  # for standing controller
+  osc_traj4 = "swing_hip_yaw_traj"
 
   # osc_traj0 = "left_support_traj"
   # for i in range(10):
@@ -659,28 +661,28 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   plot_osc(osc_debug, osc_traj00, 2, "accel")
   plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-
-  ###
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 0, "accel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-
-  # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  #
+  # ###
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  # plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # plot_osc(osc_debug, osc_traj0, 0, "accel")
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-
-  plot_osc(osc_debug, osc_traj0, 2, "pos")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 2, "vel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 2, "accel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  #
+  # # plot_osc(osc_debug, osc_traj0, 1, "pos")
+  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # # plot_osc(osc_debug, osc_traj0, 1, "vel")
+  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # # plot_osc(osc_debug, osc_traj0, 1, "accel")
+  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  #
+  # plot_osc(osc_debug, osc_traj0, 2, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 2, "vel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 2, "accel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
 
   ###
   # # plot_osc(osc_debug, osc_traj1, 0, "pos")
@@ -697,33 +699,46 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   # # plot_osc(osc_debug, osc_traj1, 1, "accel")
   # plot_osc(osc_debug, osc_traj1, 2, "accel")
 
-  # # plot_osc(osc_debug, osc_traj2, 0, "pos")
-  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.02 * fsm[t_osc_debug_slice])
-  # # plot_osc(osc_debug, osc_traj2, 1, "pos")
-  # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.02 * fsm[t_osc_debug_slice])
+  ###
+  # plot_osc(osc_debug, osc_traj2, 0, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.02 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj2, 1, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.02 * fsm[t_osc_debug_slice])
   # plot_osc(osc_debug, osc_traj2, 2, "pos")
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.02 * fsm[t_osc_debug_slice])
   # # plot_osc(osc_debug, osc_traj2, 3, "pos")
   # # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
-  # # #
-  # # plot_osc(osc_debug, osc_traj2, 0, "vel")
-  # # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
-  # # plot_osc(osc_debug, osc_traj2, 1, "vel")
-  # # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
-  # plot_osc(osc_debug, osc_traj2, 2, "vel")
+  # #
+  # plot_osc(osc_debug, osc_traj2, 0, "vel")
   # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
-  # # #
-  # # plot_osc(osc_debug, osc_traj2, 0, "accel")
-  # # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
-  # # plot_osc(osc_debug, osc_traj2, 1, "accel")
-  # # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
-  # plot_osc(osc_debug, osc_traj2, 2, "accel")
+  # plot_osc(osc_debug, osc_traj2, 1, "vel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
+  # #
+  # plot_osc(osc_debug, osc_traj2, 0, "accel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj2, 1, "accel")
   # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
 
-  # plot_osc(osc_debug, osc_traj3, 0, "accel")
+  ###
   # plot_osc(osc_debug, osc_traj3, 0, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.02 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj3, 1, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.02 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj3, 2, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.02 * fsm[t_osc_debug_slice])
+  # # plot_osc(osc_debug, osc_traj3, 3, "pos")
+  # # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
+
+  # plot_osc(osc_debug, osc_traj3, 2, "vel")
   # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
-  # plot_osc(osc_debug, osc_traj3, 0, "vel")
+  # plot_osc(osc_debug, osc_traj3, 2, "accel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
+
+  ###
+  # plot_osc(osc_debug, osc_traj4, 0, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj4, 0, "vel")
+  # plot_osc(osc_debug, osc_traj4, 0, "accel")
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):

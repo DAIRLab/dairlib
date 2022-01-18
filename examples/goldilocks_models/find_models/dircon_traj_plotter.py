@@ -95,6 +95,7 @@ def main():
   PlotState(dircon_traj, nq, nq + 6)
   PlotState(dircon_traj, nq + 6, nq + 6 + 8)
   PlotState(dircon_traj, nq + 6 + 8, nx)
+  PlotState(dircon_traj, nq, nq + 6, True)
 
   PlotInput(dircon_traj)
   PlotForce(dircon_traj)
@@ -146,7 +147,7 @@ def PrintDecisionVar(dircon_traj, name):
         dircon_traj.GetTrajectory("decision_vars").datapoints[i, 0]))
 
 
-def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
+def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19, plot_derivatives=False):
   # Get data at knot points
   t_knot = dircon_traj.GetStateBreaks(0)
   x_knot = dircon_traj.GetStateSamples(0)[x_idx_start:x_idx_end, :]
@@ -155,29 +156,49 @@ def PlotState(dircon_traj, x_idx_start=0, x_idx_end=19):
   state_traj = dircon_traj.ReconstructStateTrajectory()
   state_datatypes = dircon_traj.GetTrajectory("state_traj0").datatypes
 
-  # Get the vel in the second mode
-  state_2nd_mode = dircon_traj.GetTrajectory("state_traj1").datapoints[
-                   x_idx_start:x_idx_end, 0:1]
-
-  # Sampling the spline for visualization
+  # Sampling for visualization
   n_points = 10000
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
-  # state_samples = np.zeros((n_points, state_traj.value(0).shape[0]))
-  state_samples = np.zeros((n_points, x_idx_end - x_idx_start))
-  for i in range(n_points):
-    state_samples[i] = state_traj.value(t[i])[x_idx_start:x_idx_end, 0]
 
-  # Plotting reconstructed state trajectories
-  figname = filename + " -- state trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
-  plt.figure(figname, figsize=figsize)
-  plt.plot(t, state_samples)
-  plt.gca().set_prop_cycle(None)
-  plt.plot(t[-1], state_2nd_mode.T, 'o', markersize=4)
-  plt.plot(t_knot, x_knot.T, 'ko', markersize=2)
-  plt.xlabel('time (s)')
-  plt.legend(state_datatypes[x_idx_start:x_idx_end])
-  if savefig:
-    plt.savefig(save_path + figname + ".png")
+  if not plot_derivatives:
+    ### Plot state traj
+    # Get the vel in the second mode
+    state_2nd_mode = dircon_traj.GetTrajectory("state_traj1").datapoints[
+                     x_idx_start:x_idx_end, 0:1]
+
+    # Sampling the spline for visualization
+    # state_samples = np.zeros((n_points, state_traj.value(0).shape[0]))
+    state_samples = np.zeros((n_points, x_idx_end - x_idx_start))
+    for i in range(n_points):
+      state_samples[i] = state_traj.value(t[i])[x_idx_start:x_idx_end, 0]
+
+    # Plotting reconstructed state trajectories
+    figname = filename + " -- state trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
+    plt.figure(figname, figsize=figsize)
+    plt.plot(t, state_samples)
+    plt.gca().set_prop_cycle(None)
+    plt.plot(t[-1], state_2nd_mode.T, 'o', markersize=4)
+    plt.plot(t_knot, x_knot.T, 'ko', markersize=2)
+    plt.xlabel('time (s)')
+    plt.legend(state_datatypes[x_idx_start:x_idx_end])
+    if savefig:
+      plt.savefig(save_path + figname + ".png")
+
+  else:
+    ### Plot derivatives of state traj
+    # construct
+    state_dot_traj = state_traj.MakeDerivative(1)
+    state_dot_samples = np.zeros((n_points, x_idx_end - x_idx_start))
+    for i in range(n_points):
+      state_dot_samples[i] = state_dot_traj.value(t[i])[x_idx_start:x_idx_end, 0]
+    # plot
+    figname = filename + " -- state dot trajectory " + str(x_idx_start) + "-" + str(x_idx_end)
+    plt.figure(figname, figsize=figsize)
+    plt.plot(t, state_dot_samples)
+    plt.xlabel('time (s)')
+    plt.legend([name + " dot" for name in state_datatypes[x_idx_start:x_idx_end]])
+    if savefig:
+      plt.savefig(save_path + figname + ".png")
 
 
 def PlotInput(dircon_traj):

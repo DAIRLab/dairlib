@@ -1958,6 +1958,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double turning_rate = task.get("turning_rate");
   double duration = task.get("duration");
   double pelvis_height = task.get("pelvis_height");
+  double swing_margin = task.get("swing_margin");
   // double walking_vel = stride_length / duration;
 
   double all_cost_scale = setting.all_cost_scale;
@@ -2456,7 +2457,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                       num_time_samples.size() - 1,
                       num_time_samples[num_time_samples.size() - 1] - 1);
   auto x_mid = trajopt.state(int(num_time_samples[0] / 2));
-  auto x_pre = trajopt.final_state(); // pre-impact
+  auto x_pre = trajopt.final_state();  // pre-impact
 
   // Testing
   if (only_one_mode) {
@@ -2847,7 +2848,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   std::unordered_map<int, double> odbp_constraint_scale;  // scaling
   odbp_constraint_scale.insert(std::pair<int, double>(0, s));
   if (swing_leg_collision_avoidance && (turning_rate == 0)) {
-    double margin = 0.03;
+    double margin = swing_margin;
     auto left_foot_constraint =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_left", Vector3d::Zero(),

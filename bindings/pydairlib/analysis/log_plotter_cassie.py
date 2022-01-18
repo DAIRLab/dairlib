@@ -61,18 +61,21 @@ def main():
     ''' Plot Velocities '''
     # Plot floating base velocities if applicable
     if use_floating_base and plot_config.plot_floating_base_velocities:
-        mbp_plots.plot_floating_base_velocities(
+        plot = mbp_plots.plot_floating_base_velocities(
             robot_output, vel_names, 6, t_x_slice)
 
     # Plot all joint velocities
     if plot_config.plot_joint_positions:
-        mbp_plots.plot_joint_velocities(robot_output, vel_names,
+        plot = mbp_plots.plot_joint_velocities(robot_output, vel_names,
                                         6 if use_floating_base else 0,
                                         t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
+
     # Plot specific velocities
     if plot_config.vel_names:
-        mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
-                                          t_x_slice, vel_map)
+        plot = mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
+                                                 t_x_slice, vel_map)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.1)
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:

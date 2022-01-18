@@ -118,13 +118,18 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
     hip_pos = rot.transpose() * hip_pos;
     auto pelvis_vel = discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
                           .get_mutable_value();
-    pelvis_vel = 0.99 * v.segment(3, 3) + 0.01 * pelvis_vel;
+//    std::cout << "name: " << this->get_name() << std::endl;
+//    std::cout << "stored: " << pelvis_vel(0) << std::endl;
+//    std::cout << "current: " << v(3) << std::endl;
+//    std::cout << "difference: " << pelvis_vel(0) - v(3) << std::endl;
+    pelvis_vel(0) = 0.5 * v(3) + 0.5 * pelvis_vel(0);
+//    pelvis_vel(1) = 0.99 * v(4) + 0.01 * pelvis_vel(1);
     //    pelvis_vel = v.segment(3, 3);
     //    std::cout << "stance state: " << stance_state_ << std::endl;
     //    pelvis_vel = Vector3d::Zero();
   }
-  //  if (fsm_state(0) != stance_state_) {
-  //  }
+//    if (fsm_state(0) != stance_state_) {
+//    }
 
   return EventStatus::Succeeded();
 }
@@ -199,12 +204,12 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   if (is_left_foot_) {
     Y[1](1) += 0.25 * center_line_offset_;
     //    Y[0](1) = drake::math::saturate(Y[2](1), 0.05, 0.2);
-    Y[1](1) = drake::math::saturate(Y[2](1), center_line_offset_, 0.2);
+    Y[1](1) = drake::math::saturate(Y[1](1), center_line_offset_, 0.2);
     Y[2](1) = drake::math::saturate(Y[2](1), center_line_offset_, 0.2);
   } else {
     Y[1](1) -= 0.25 * center_line_offset_;
     //    Y[0](1) = drake::math::saturate(Y[2](1), -0.2, -0.05);
-    Y[1](1) = drake::math::saturate(Y[2](1), -0.2, -center_line_offset_);
+    Y[1](1) = drake::math::saturate(Y[1](1), -0.2, -center_line_offset_);
     Y[2](1) = drake::math::saturate(Y[2](1), -0.2, -center_line_offset_);
   }
 

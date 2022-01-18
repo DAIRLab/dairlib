@@ -304,7 +304,8 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
     elif deriv == 'vel':
         data['ydot_des'] = tracking_data.ydot_des[:, dim]
         data['ydot'] = tracking_data.ydot[:, dim]
-        data['error_ydot'] = tracking_data.error_ydot[:, dim]
+        data['error_ydot'] = tracking_data.ydot_des[:, dim] - tracking_data.ydot[:, dim]
+        data['projected_error_ydot'] = tracking_data.error_ydot[:, dim]
     elif deriv == 'accel':
         data['yddot_des'] = tracking_data.yddot_des[:, dim]
         data['yddot_command'] = tracking_data.yddot_command[:, dim]

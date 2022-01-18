@@ -34,6 +34,7 @@
 #include "yaml-cpp/yaml.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -380,8 +381,8 @@ int DoMain(int argc, char* argv[]) {
 
   left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
-  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+//  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+//  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);
   //  left_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
   //  right_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});

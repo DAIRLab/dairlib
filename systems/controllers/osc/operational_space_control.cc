@@ -916,6 +916,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   total_cost_ += output->acceleration_cost;
   total_cost_ += output->input_cost;
   total_cost_ += output->soft_constraint_cost;
+  soft_constraint_cost_ = output->soft_constraint_cost;
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -1030,7 +1031,7 @@ void OperationalSpaceControl::CheckTracking(
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
   //  std::cout << "total cost: " << total_cost_ << std::endl;
-  if (total_cost_ > 5e4 || isnan(total_cost_)) {
+  if (soft_constraint_cost_ > 1e2 || isnan(soft_constraint_cost_)) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

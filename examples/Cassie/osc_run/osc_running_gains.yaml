@@ -9,13 +9,13 @@ relative_pelvis: true
 
 # High level command gains (with radio)
 vel_scale_rot: -0.5
-vel_scale_trans_sagital: 0.5
+vel_scale_trans_sagital: 0.1
 vel_scale_trans_lateral: -0.15
 
 # SLIP parameters
 rest_length: 0.80
 stance_duration: 0.30
-flight_duration: 0.08
+flight_duration: 0.09
 
 mu: 0.6
 

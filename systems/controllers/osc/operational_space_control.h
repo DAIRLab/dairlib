@@ -399,6 +399,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd W_input_reg_;
 
   mutable double total_cost_ = 0;
+  mutable double soft_constraint_cost_ = 0;
 };
 
 }  // namespace dairlib::systems::controllers

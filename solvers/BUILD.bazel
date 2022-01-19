@@ -23,7 +23,8 @@ cc_library(
         "c3_options.h"
     ],
     deps = [
-        "@drake//:drake_shared_library"
+        "@drake//:drake_shared_library",
+        "@gurobi//:gurobi_cxx",
     ]
 )
 

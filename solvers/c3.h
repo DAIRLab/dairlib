@@ -17,7 +17,7 @@ class C3 {
 	C3(const std::vector<Eigen::MatrixXd>& A, const std::vector<Eigen::MatrixXd>& B,
 		 const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::MatrixXd>& d,
 		 const std::vector<Eigen::MatrixXd>& E, const std::vector<Eigen::MatrixXd>& F,
-     const std::vector<Eigen::MatrixXd>& H, const std::vector<Eigen::VectorXd>& c,
+     const std::vector<Eigen::MatrixXd>& H, const std::vector<Eigen::VectorXd>& c, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R,
      const C3Options& options);
 
 	/// Constructor for time-invariant LCS
@@ -25,7 +25,7 @@ class C3 {
   C3(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
   	 const Eigen::MatrixXd& D, const Eigen::MatrixXd& d,
   	 const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
-  	 const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
+  	 const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R, const int& N,
   	 const C3Options& options);
 
   /// Solve the MPC problem
@@ -56,32 +56,35 @@ class C3 {
   /// @param z_n A pointer to the output primal variables 
   /// @param delta_n A pointer to the output copy variables
   /// @param w_n A pointer to the scaled dual variables
-  void ADMMStep(const Eigen::VectorXd& z, const Eigen::VectorXd& delta,
-  						  const Eigen::VectorXd& w, Eigen::VectorXd* z_n,
-  						  Eigen::VectorXd* delta_n, Eigen::VectorXd* w_n);
+  void ADMMStep(Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta, std::vector<Eigen::VectorXd>& w);
 
   /// TODO: determine inputs/outputs
-  void SolveQP(const std::vector<Eigen::MatrixXd>& A,const std::vector<Eigen::MatrixXd>& B, const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::MatrixXd>& d, const int& n, const int& m,const int& k,const int& N, const Eigen::VectorXd& x0, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R, const std::vector<Eigen::MatrixXd>& G, const std::vector<Eigen::MatrixXd>& WD);
+  std::vector<Eigen::VectorXd> SolveQP(Eigen::VectorXd& x0, std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WD);
 
   /// TODO: determine inputs/outputs
-  void SolveProjection();
+  std::vector<Eigen::VectorXd> SolveProjection(std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ );
 
 	/// TODO: determine inputs/outputs
 	/// I just include one argument here as an example
 	/// Virtual method, to be implemented by subclasses
-  virtual void SolveSingleProjection(const Eigen::MatrixXd& E);
+  virtual Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c, const Eigen::MatrixXd& E, const Eigen::MatrixXd& F, const Eigen::MatrixXd& H, const Eigen::VectorXd& c) = 0;
 
- private:
+ public:
  	const std::vector<Eigen::MatrixXd> A_;
  	const std::vector<Eigen::MatrixXd> B_;
 	const std::vector<Eigen::MatrixXd> D_;
 	const std::vector<Eigen::MatrixXd> d_;
 	const std::vector<Eigen::MatrixXd> E_;
 	const std::vector<Eigen::MatrixXd> F_;
+    const std::vector<Eigen::MatrixXd> Q_;
+    const std::vector<Eigen::MatrixXd> R_;
   const std::vector<Eigen::MatrixXd> H_;
   const std::vector<Eigen::VectorXd> c_;
   const C3Options options_;
   const int N_;
+  const int n_;
+  const int m_;
+  const int k_;
 
   // TODO: add QP workspace variables and anything else needed
 

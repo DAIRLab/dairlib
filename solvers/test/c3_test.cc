@@ -28,9 +28,19 @@ int DoMain(int argc, char* argv[]) {
     const std::vector<MatrixXd> F(N, MatrixXd::Ones(m,m) );
     const std::vector<VectorXd> c(N, VectorXd::Ones(m) );
     const std::vector<MatrixXd> H(N, MatrixXd::Zero(m,k) );
+    const std::vector<MatrixXd> Q(N+1, MatrixXd::Ones(n,n) );
+    const std::vector<MatrixXd> R(N, MatrixXd::Ones(k,k) );
     const C3Options options;
 
-    C3 opt(A, B, D, d, E, F, H, c, options);
+    C3MIQP opt(A, B, D, d, E, F, H, c, Q, R, options);
+
+    VectorXd x0 = VectorXd::Zero(n);
+    std::vector<VectorXd> delta(N, VectorXd::Ones(m) );
+    std::vector<VectorXd> w(N, VectorXd::Ones(m) );
+
+    opt.ADMMStep(x0, delta, w);
+
+    //opt.SolveQP();
 
 
 	return 0;

@@ -128,6 +128,18 @@ cc_library(
 )
 
 cc_library(
+    name = "alip_traj_gen",
+    srcs = ["alip_traj_gen.cc"],
+    hdrs = ["alip_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "swing_ft_traj_gen",
     srcs = ["swing_ft_traj_gen.cc"],
     hdrs = ["swing_ft_traj_gen.h"],

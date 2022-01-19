@@ -481,10 +481,10 @@ void OperationalSpaceControl::Build() {
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
 //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);  // 1e-7
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);  // 1e-7
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);  // 1e-56
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);  // 1e-56
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);

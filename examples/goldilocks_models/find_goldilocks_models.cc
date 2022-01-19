@@ -1534,7 +1534,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       task_gen_grid = GridTasksGenerator(
           6,
           {"stride_length", "ground_incline", "duration", "turning_rate",
-           "pelvis_height, stance_width"},
+           "pelvis_height", "stance_width"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr, FLAGS_N_sample_ph, FLAGS_N_sample_sm},
           {0, 0, 0.35, FLAGS_turning_rate_center, 0.95, 0.03},
@@ -1559,9 +1559,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
           {FLAGS_sl_max, FLAGS_gi_max, FLAGS_du_max});
     } else if (FLAGS_robot_option == 1) {
       task_gen_uniform = UniformTasksGenerator(
-          5,
+          6,
           {"stride_length", "ground_incline", "duration", "turning_rate",
-           "pelvis_height"},
+           "pelvis_height", "stance_width"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr, FLAGS_N_sample_ph, FLAGS_N_sample_sm},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_du_min, FLAGS_tr_min, FLAGS_ph_min,

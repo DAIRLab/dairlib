@@ -335,12 +335,12 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.W_swing_foot, plant, plant);
   left_hip_tracking_data.AddStateAndPointToTrack(right_stance_state,
                                                  "pelvis");
+  left_hip_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
+                                                 "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(left_stance_state,
                                                   "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
                                                   "pelvis");
-  left_hip_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                 "pelvis");
 
   TransTaskSpaceTrackingData left_hip_yz_tracking_data(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,

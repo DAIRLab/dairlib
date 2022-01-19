@@ -816,7 +816,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
       VectorXd v_proj = VectorXd::Zero(n_v_);
-      active_tracking_data_dim += tracking_data->GetYDim();
+      active_tracking_data_dim += tracking_data->GetYdotDim();
       if (fixed_position_vec_.at(i).size() != 0) {
         // Create constant trajectory and update
         tracking_data->Update(

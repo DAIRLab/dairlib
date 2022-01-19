@@ -167,6 +167,7 @@ class VisualizationGui(QWidget):
         Function for setting the flag for clearing the history of any line present
         '''
         self.clear = True
+        self.state_handler(self.msg)
 
     def placeCheckBoxes(self):
         '''

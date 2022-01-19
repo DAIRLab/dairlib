@@ -118,18 +118,18 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
     hip_pos = rot.transpose() * hip_pos;
     auto pelvis_vel = discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
                           .get_mutable_value();
-//    std::cout << "name: " << this->get_name() << std::endl;
-//    std::cout << "stored: " << pelvis_vel(0) << std::endl;
-//    std::cout << "current: " << v(3) << std::endl;
-//    std::cout << "difference: " << pelvis_vel(0) - v(3) << std::endl;
+    //    std::cout << "name: " << this->get_name() << std::endl;
+    //    std::cout << "stored: " << pelvis_vel(0) << std::endl;
+    //    std::cout << "current: " << v(3) << std::endl;
+    //    std::cout << "difference: " << pelvis_vel(0) - v(3) << std::endl;
     pelvis_vel(0) = 0.5 * v(3) + 0.5 * pelvis_vel(0);
-//    pelvis_vel(1) = 0.99 * v(4) + 0.01 * pelvis_vel(1);
+    //    pelvis_vel(1) = 0.99 * v(4) + 0.01 * pelvis_vel(1);
     //    pelvis_vel = v.segment(3, 3);
     //    std::cout << "stance state: " << stance_state_ << std::endl;
     //    pelvis_vel = Vector3d::Zero();
   }
-//    if (fsm_state(0) != stance_state_) {
-//    }
+  //    if (fsm_state(0) != stance_state_) {
+  //    }
 
   return EventStatus::Succeeded();
 }
@@ -139,7 +139,7 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
   const auto desired_pelvis_vel_xy =
-      this->EvalVectorInput(context, target_vel_port_)->get_value();
+      this->EvalVectorInput(context, target_vel_port_)->value();
 
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
@@ -159,12 +159,27 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   // TODO(yangwill): should not use estimated pelvis velocity - from discussion
   // with OSU DRL
   Vector3d desired_pelvis_vel;
-  desired_pelvis_vel << desired_pelvis_vel_xy, 0;
-  VectorXd pelvis_vel = v.segment(3, 3);
-  pelvis_vel(0) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(0);
-//  pelvis_vel(1) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(1);
-  VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
-  VectorXd footstep_correction = Kd_ * (pelvis_vel_err);
+  desired_pelvis_vel << desired_pelvis_vel_xy(1), desired_pelvis_vel_xy(0), 0;
+
+  Vector3d stance_foot_pos;
+  if (is_left_foot_) {
+    plant_.CalcPointsPositions(*context_,
+                               plant_.GetBodyByName("toe_right").body_frame(),
+                               Vector3d::Zero(), world_, &stance_foot_pos);
+  } else {
+    plant_.CalcPointsPositions(*context_,
+                               plant_.GetBodyByName("toe_left").body_frame(),
+                               Vector3d::Zero(), world_, &stance_foot_pos);
+  }
+  drake::multibody::SpatialMomentum<double> momentum =
+      plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, stance_foot_pos);
+  Vector3d L = momentum.rotational();
+
+  //  context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(0);
+  //  pelvis_vel(1) =
+  //  context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(1);
+  Vector3d pelvis_vel_err = rot.transpose() * L - desired_pelvis_vel;
+  Vector3d footstep_correction = Kd_ * (pelvis_vel_err);
   if (is_left_foot_) {
     footstep_correction(1) += center_line_offset_;
   } else {
@@ -202,12 +217,12 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
 
   // corrections
   if (is_left_foot_) {
-    Y[1](1) += 0.25 * center_line_offset_;
+//    Y[1](1) += 0.25 * center_line_offset_;
     //    Y[0](1) = drake::math::saturate(Y[2](1), 0.05, 0.2);
     Y[1](1) = drake::math::saturate(Y[1](1), center_line_offset_, 0.2);
     Y[2](1) = drake::math::saturate(Y[2](1), center_line_offset_, 0.2);
   } else {
-    Y[1](1) -= 0.25 * center_line_offset_;
+//    Y[1](1) -= 0.25 * center_line_offset_;
     //    Y[0](1) = drake::math::saturate(Y[2](1), -0.2, -0.05);
     Y[1](1) = drake::math::saturate(Y[1](1), -0.2, -center_line_offset_);
     Y[2](1) = drake::math::saturate(Y[2](1), -0.2, -center_line_offset_);
@@ -215,7 +230,7 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
-  Y_dot_end(2) = -0.1;
+//  Y_dot_end(2) = -0.1;
 
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
@@ -224,10 +239,6 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   if (is_left_foot_) {
     return swing_foot_spline;
   } else {
-    //    MatrixXd Y0 = MatrixXd::Zero(3, 3);
-    //    MatrixXd Ydot0 = MatrixXd::Zero(3, 3);
-    //    MatrixXd Y1 = MatrixXd::Zero(2, 3);
-    //    MatrixXd Ydot1 = MatrixXd::Zero(2, 3);
     std::vector<MatrixXd> Y0(T_waypoints_0.size(), VectorXd::Zero(3));
     std::vector<MatrixXd> Ydot0(T_waypoints_0.size(), VectorXd::Zero(3));
     std::vector<MatrixXd> Y2(T_waypoints_1.size(), VectorXd::Zero(3));
@@ -248,26 +259,13 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
         PiecewisePolynomial<double>::ZeroOrderHold(T_waypoints_1, Y2));
     offset_swing_foot_spline.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(T_waypoints_2, Y2, Ydot2));
-    //    for (auto t : offset_swing_foot_spline.get_segment_times()){
-    //      std::cout << t << std::endl;
-    //    }
     return offset_swing_foot_spline;
   }
-  //  return swing_foot_spline;
 }
 
 void FootTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  // Read in current state
-  //  const auto robot_output =
-  //      this->template EvalVectorInput<OutputVector>(context, state_port_);
-  //  VectorXd x = robot_output->GetState();
-  //  double timestamp = robot_output->get_timestamp();
-  //
-  //  // Read in finite state machine
-  //  const auto fsm_state = this->EvalVectorInput(context,
-  //  fsm_port_)->get_value();
 
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(

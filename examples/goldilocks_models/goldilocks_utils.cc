@@ -107,7 +107,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   //   goldilocks_model_traj_opt.cc
   //   cassie_rom_planner_system.cc
 
-  // Basis for mapping function (dependent on the robot)
+  /// Basis for mapping function (dependent on the robot)
   vector<int> empty_inds = {};
   std::unique_ptr<MonomialFeatures> mapping_basis;
   if (robot_option == 0) {
@@ -119,19 +119,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     //  pitch yaw)
     vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
-    if (0 <= rom_option && rom_option <= 6) {
-      mapping_basis = std::make_unique<MonomialFeatures>(
-          2, plant.num_positions(), skip_inds, "mapping basis");
-    } else if (rom_option == 7) {
-      mapping_basis = std::make_unique<MonomialFeatures>(
-          0, plant.num_positions(), skip_inds, "mapping basis");
-    } else if (rom_option == 8) {
-      mapping_basis = std::make_unique<MonomialFeatures>(
-          2, plant.num_positions(), skip_inds, "mapping basis");
-    } else if (rom_option == 9) {
-      mapping_basis = std::make_unique<MonomialFeatures>(
-          2, plant.num_positions(), skip_inds, "mapping basis");
-    } else if ((rom_option >= 10) && (rom_option <= 13)) {
+    if ((rom_option >= 10) && (rom_option <= 14)) {
+      // Also skip the right leg joints (swing leg)
       std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
       cout << "Joint skipped in mapping function: ";
       for (auto& pair : pos_map) {
@@ -141,14 +130,27 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         }
       }
       cout << endl;
+    }
+    if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||
+        (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13))) {
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
+    } else if (rom_option == 7) {
+      mapping_basis = std::make_unique<MonomialFeatures>(
+          0, plant.num_positions(), skip_inds, "mapping basis");
+    } else if (rom_option == 14) {
+      mapping_basis = std::make_unique<MonomialFeatures>(
+          4, plant.num_positions(), skip_inds, "mapping basis");
+    } else {
+      DRAKE_UNREACHABLE();
     }
   }
+
   if (print_info) {
     mapping_basis->PrintInfo();
   }
-  // Basis for dynamic function
+
+  /// Basis for dynamic function
   std::unique_ptr<MonomialFeatures> dynamic_basis;
   if (rom_option == 0) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
@@ -181,7 +183,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 9 || rom_option == 10 || rom_option == 11) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 12 || rom_option == 13) {
+  } else if (rom_option == 12 || rom_option == 13 || rom_option == 14) {
     // Highest degree = 4
     dynamic_basis = std::make_unique<MonomialFeatures>(
         4, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
@@ -191,7 +193,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   if (print_info) {
     dynamic_basis->PrintInfo();
   }
-  // Contact frames and position for mapping function
+
+  /// Contact frames and position for mapping function
   string stance_foot_body_name;
   Vector3d stance_foot_contact_point_pos;
   string swing_foot_body_name;
@@ -215,7 +218,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   auto swing_foot = std::pair<const Vector3d, const Frame<double>&>(
       swing_foot_contact_point_pos, plant.GetFrameByName(swing_foot_body_name));
 
-  // Construct reduced-order model
+  /// Construct reduced-order model
   std::unique_ptr<ReducedOrderModel> rom;
   if (rom_option == 0) {
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
@@ -257,7 +260,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);
-  } else if (rom_option == 10 || rom_option == 12) {
+  } else if (rom_option == 10 || rom_option == 12 || rom_option == 14) {
     // Fix the mapping function of the COM xy part
     // Use pelvis as a proxy for COM
     // ROM is only a function of stance leg's joints

@@ -178,34 +178,34 @@ SavedTrajReceiver::SavedTrajReceiver(
   swing_hip_yaw_vel_map2_.insert(
       {false, nq_ + vel_idx_map.at("hip_yaw_leftdot")});
 
-  // // [Test sim gap] -- use trajopt's traj directly in OSC
-  //  std::string dir = gains.dir_model + std::to_string(gains.model_iter) + "_"
-  //  +
-  //                    std::to_string(gains.sample_idx) + "_";
-  //  cout << "dir = " << dir << endl;
-  //  rom_pp_ = PiecewisePolynomial<double>::CubicHermite(
-  //      readCSV(dir + "t_breaks0.csv").col(0), readCSV(dir +
-  //      "y_samples0.csv"), readCSV(dir + "ydot_samples0.csv"));
-  //
-  //  n_mode_ = 2;
-  //  x0_ = MatrixXd(nx_, n_mode_ + 1);
-  //  x0_time_ = VectorXd(n_mode_ + 1);
-  //  xf_ = MatrixXd(nx_, n_mode_);
-  //  xf_time_ = VectorXd(n_mode_);
-  //  stance_foot_ = VectorXd(n_mode_);
-  //  VectorXd xpost = readCSV(dir + "x_samples1.csv").leftCols<1>();
-  //  VectorXd xpre = readCSV(dir + "x_samples0.csv").rightCols<1>();
-  //  double t_end = readCSV(dir + "t_breaks1.csv")(0, 0);
-  //  x0_.col(0) = readCSV(dir + "x_samples0.csv").leftCols<1>();
-  //  x0_.col(1) = xpost;
-  //  x0_.col(2) << state_mirror.MirrorPos(xpost.head(nq_)),
-  //      state_mirror.MirrorVel(xpost.tail(nv_));
-  //  x0_time_ << 0, t_end, 2 * t_end;
-  //  xf_.col(0) = xpre;
-  //  xf_.col(1) << state_mirror.MirrorPos(xpre.head(nq_)),
-  //      state_mirror.MirrorVel(xpre.tail(nv_));
-  //  xf_time_ << t_end, 2 * t_end;
-  //  stance_foot_ << 0, 1;  // left is 0, right is 1
+   // [Test sim gap] -- use trajopt's traj directly in OSC
+    std::string dir = gains.dir_model + std::to_string(gains.model_iter) + "_"
+    +
+                      std::to_string(gains.sample_idx) + "_";
+    cout << "dir = " << dir << endl;
+    rom_pp_ = PiecewisePolynomial<double>::CubicHermite(
+        readCSV(dir + "t_breaks0.csv").col(0), readCSV(dir +
+        "y_samples0.csv"), readCSV(dir + "ydot_samples0.csv"));
+
+    n_mode_ = 2;
+    x0_ = MatrixXd(nx_, n_mode_ + 1);
+    x0_time_ = VectorXd(n_mode_ + 1);
+    xf_ = MatrixXd(nx_, n_mode_);
+    xf_time_ = VectorXd(n_mode_);
+    stance_foot_ = VectorXd(n_mode_);
+    VectorXd xpost = readCSV(dir + "x_samples1.csv").leftCols<1>();
+    VectorXd xpre = readCSV(dir + "x_samples0.csv").rightCols<1>();
+    double t_end = readCSV(dir + "t_breaks1.csv")(0, 0);
+    x0_.col(0) = readCSV(dir + "x_samples0.csv").leftCols<1>();
+    x0_.col(1) = xpost;
+    x0_.col(2) << state_mirror.MirrorPos(xpost.head(nq_)),
+        state_mirror.MirrorVel(xpost.tail(nv_));
+    x0_time_ << 0, t_end, 2 * t_end;
+    xf_.col(0) = xpre;
+    xf_.col(1) << state_mirror.MirrorPos(xpre.head(nq_)),
+        state_mirror.MirrorVel(xpre.tail(nv_));
+    xf_time_ << t_end, 2 * t_end;
+    stance_foot_ << 0, 1;  // left is 0, right is 1
 }
 
 void SavedTrajReceiver::CalcRomTraj(
@@ -231,9 +231,9 @@ void SavedTrajReceiver::CalcRomTraj(
   RomPlannerTrajectory traj_data(*lcm_traj);
 
   // Construct cubic splines
-  PiecewisePolynomial<double> pp = traj_data.ConstructPositionTrajectory();
+//  PiecewisePolynomial<double> pp = traj_data.ConstructPositionTrajectory();
   // // [Test sim gap] -- use trajopt's traj directly in OSC
-  //  PiecewisePolynomial<double> pp = rom_pp_;
+    PiecewisePolynomial<double> pp = rom_pp_;
 
   if (context.get_time() > pp.end_time()) {
     cout << "WARNING: exceeded trajectory's end time! ";
@@ -338,24 +338,24 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   }
 
   // Construct rom planner data from lcm message
-  RomPlannerTrajectory traj_data(*lcm_traj);
-  int n_mode = traj_data.GetNumModes();
+//  RomPlannerTrajectory traj_data(*lcm_traj);
+//  int n_mode = traj_data.GetNumModes();
+//
+//  // Get states (in global frame) and stance_foot
+//  const MatrixXd& x0 = traj_data.get_x0();
+//  const VectorXd& x0_time = traj_data.get_x0_time();
+//  const MatrixXd& xf = traj_data.get_xf();
+//  const VectorXd& xf_time = traj_data.get_xf_time();
+//  const VectorXd& stance_foot = traj_data.get_stance_foot();
+//  DRAKE_DEMAND(xf_time(0) == x0_time(1));
 
-  // Get states (in global frame) and stance_foot
-  const MatrixXd& x0 = traj_data.get_x0();
-  const VectorXd& x0_time = traj_data.get_x0_time();
-  const MatrixXd& xf = traj_data.get_xf();
-  const VectorXd& xf_time = traj_data.get_xf_time();
-  const VectorXd& stance_foot = traj_data.get_stance_foot();
-  DRAKE_DEMAND(xf_time(0) == x0_time(1));
-
-  // // [Test sim gap] -- use trajopt's traj directly in OSC
-  //  int n_mode = 2;
-  //  const MatrixXd& x0 = x0_;
-  //  const VectorXd& x0_time = x0_time_;
-  //  const MatrixXd& xf = xf_;
-  //  const VectorXd& xf_time = xf_time_;
-  //  const VectorXd& stance_foot = stance_foot_;
+   // [Test sim gap] -- use trajopt's traj directly in OSC
+    int n_mode = 2;
+    const MatrixXd& x0 = x0_;
+    const VectorXd& x0_time = x0_time_;
+    const MatrixXd& xf = xf_;
+    const VectorXd& xf_time = xf_time_;
+    const VectorXd& stance_foot = stance_foot_;
 
   // Not sure why sometimes in the beginning of single support phase, the 0
   // desired traj was read. As a quick fix, I just shift the time a bit.
@@ -468,23 +468,23 @@ void SavedTrajReceiver::CalcStanceHipTraj(
   }
 
   // Construct rom planner data from lcm message
-  RomPlannerTrajectory traj_data(*lcm_traj);
-  int n_mode = traj_data.GetNumModes();
+//  RomPlannerTrajectory traj_data(*lcm_traj);
+//  int n_mode = traj_data.GetNumModes();
+//
+//  // Get states (in global frame) and stance_foot
+//  const MatrixXd& x0 = traj_data.get_x0();
+//  const VectorXd& x0_time = traj_data.get_x0_time();
+//  const MatrixXd& xf = traj_data.get_xf();
+//  const VectorXd& xf_time = traj_data.get_xf_time();
+//  const VectorXd& stance_foot = traj_data.get_stance_foot();
 
-  // Get states (in global frame) and stance_foot
-  const MatrixXd& x0 = traj_data.get_x0();
-  const VectorXd& x0_time = traj_data.get_x0_time();
-  const MatrixXd& xf = traj_data.get_xf();
-  const VectorXd& xf_time = traj_data.get_xf_time();
-  const VectorXd& stance_foot = traj_data.get_stance_foot();
-
-  // // [Test sim gap] -- use trajopt's traj directly in OSC
-  //  int n_mode = 2;
-  //  const MatrixXd& x0 = x0_;
-  //  const VectorXd& x0_time = x0_time_;
-  //  const MatrixXd& xf = xf_;
-  //  const VectorXd& xf_time = xf_time_;
-  //  const VectorXd& stance_foot = stance_foot_;
+   // [Test sim gap] -- use trajopt's traj directly in OSC
+    int n_mode = 2;
+    const MatrixXd& x0 = x0_;
+    const VectorXd& x0_time = x0_time_;
+    const MatrixXd& xf = xf_;
+    const VectorXd& xf_time = xf_time_;
+    const VectorXd& stance_foot = stance_foot_;
 
   // Construct PP (concatenate the PP of each mode)
   // WARNING: we assume each mode in the planner is "single support" + "double
@@ -569,23 +569,23 @@ void SavedTrajReceiver::CalcSwingHipTraj(
   }
 
   // Construct rom planner data from lcm message
-  RomPlannerTrajectory traj_data(*lcm_traj);
-  int n_mode = traj_data.GetNumModes();
+//  RomPlannerTrajectory traj_data(*lcm_traj);
+//  int n_mode = traj_data.GetNumModes();
+//
+//  // Get states (in global frame) and stance_foot
+//  const MatrixXd& x0 = traj_data.get_x0();
+//  const VectorXd& x0_time = traj_data.get_x0_time();
+//  const MatrixXd& xf = traj_data.get_xf();
+//  const VectorXd& xf_time = traj_data.get_xf_time();
+//  const VectorXd& stance_foot = traj_data.get_stance_foot();
 
-  // Get states (in global frame) and stance_foot
-  const MatrixXd& x0 = traj_data.get_x0();
-  const VectorXd& x0_time = traj_data.get_x0_time();
-  const MatrixXd& xf = traj_data.get_xf();
-  const VectorXd& xf_time = traj_data.get_xf_time();
-  const VectorXd& stance_foot = traj_data.get_stance_foot();
-
-  //  // [Test sim gap] -- use trajopt's traj directly in OSC
-  //  int n_mode = 2;
-  //  const MatrixXd& x0 = x0_;
-  //  const VectorXd& x0_time = x0_time_;
-  //  const MatrixXd& xf = xf_;
-  //  const VectorXd& xf_time = xf_time_;
-  //  const VectorXd& stance_foot = stance_foot_;
+    // [Test sim gap] -- use trajopt's traj directly in OSC
+    int n_mode = 2;
+    const MatrixXd& x0 = x0_;
+    const VectorXd& x0_time = x0_time_;
+    const MatrixXd& xf = xf_;
+    const VectorXd& xf_time = xf_time_;
+    const VectorXd& stance_foot = stance_foot_;
 
   // Construct PP (concatenate the PP of each mode)
   // WARNING: we assume each mode in the planner is "single support" + "double

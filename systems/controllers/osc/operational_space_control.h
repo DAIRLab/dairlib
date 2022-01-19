@@ -275,6 +275,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 //  drake::solvers::OsqpSolver qp_solver_;
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_;
+  std::unique_ptr<drake::solvers::OsqpSolver> osqp_solver_;
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;

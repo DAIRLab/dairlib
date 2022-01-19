@@ -392,23 +392,29 @@ void OperationalSpaceControl::Build() {
     VectorXd one(1);
     MatrixXd A = MatrixXd(5, kSpaceDim);
     A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
+//    cout << "A = " << A << endl;
 
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
+      auto binding = prog_
+          ->AddLinearConstraint(
+              A, VectorXd::Zero(5),
+              Eigen::VectorXd::Constant(
+                  5, std::numeric_limits<double>::infinity()),
+              lambda_c_.segment(kSpaceDim * j, 3));
       friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(
-                  A, VectorXd::Zero(5),
-                  Eigen::VectorXd::Constant(
-                      5, std::numeric_limits<double>::infinity()),
-                  lambda_c_.segment(kSpaceDim * j, 3))
+          binding
               .evaluator()
               .get());
+      cout << "j = " << j << endl;
+      cout << binding.variables() << endl;
     }
   }
   // 5. Input constraint
   if (with_input_constraints_) {
-    prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
-                               u_);
+    cout << "u_min_ = " << u_min_ << endl;
+    cout << "u_max_ = " << u_max_ << endl;
+//    prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
+//                               u_);
   }
   // No joint position constraint in this implementation
 
@@ -439,10 +445,10 @@ void OperationalSpaceControl::Build() {
   // 5. Joint Limit cost
   w_joint_limit_ = VectorXd::Zero(n_revolute_joints_);
   K_joint_pos = MatrixXd::Identity(n_revolute_joints_, n_revolute_joints_);
-  joint_limit_cost_.push_back(
-      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_revolute_joints_))
-          .evaluator()
-          .get());
+//  joint_limit_cost_.push_back(
+//      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_revolute_joints_))
+//          .evaluator()
+//          .get());
 
   // (Testing) 6. contact force blending
   if (ds_duration_ > 0) {
@@ -477,19 +483,24 @@ void OperationalSpaceControl::Build() {
             .get();
   }
 
+
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
 //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
   std::cout << solver_options << std::endl;
   solver_->InitializeSolver(*prog_, solver_options);
+
+
+  osqp_solver_ = std::make_unique<drake::solvers::OsqpSolver>();
+  prog_->SetSolverOptions(solver_options);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -647,7 +658,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   if (!all_contacts_.empty()) {
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
-        friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
+        friction_constraints_.at(i)->UpdateLowerBound(-1e-2 * VectorXd::Ones(5));
       } else {
         friction_constraints_.at(i)->UpdateLowerBound(
             VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));
@@ -699,9 +710,10 @@ VectorXd OperationalSpaceControl::SolveQp(
       }
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
-      const MatrixXd& W = tracking_data->GetWeight();
+      MatrixXd W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
+//      W += 1e-2 * MatrixXd::Identity(W.rows(), W.cols());
       // The tracking cost is
       // 0.5 * (J_*dv + JdotV - y_command)^T * W * (J_*dv + JdotV - y_command).
       // We ignore the constant term
@@ -725,7 +737,7 @@ VectorXd OperationalSpaceControl::SolveQp(
                          .tail(n_revolute_joints_) -
                      q_min_)
                         .cwiseMin(0);
-  joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
+//  joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
   // (Testing) 6. blend contact forces during double support phase
   if (ds_duration_ > 0) {
@@ -764,7 +776,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Solve the QP
-  //  const MathematicalProgramResult result = qp_solver_.Solve(*prog_);
+//    const MathematicalProgramResult result = osqp_solver_->Solve(*prog_);
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;

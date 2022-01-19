@@ -14,8 +14,6 @@ enum BipedStance {
 
 namespace multibody {
 
-
-
   Eigen::Matrix3d HatOperator3x3(const Eigen::Vector3d& v);
 
   /// SingleRigidBodyPlant represents a biped robot as a single rigid body

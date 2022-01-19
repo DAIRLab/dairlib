@@ -413,8 +413,8 @@ void OperationalSpaceControl::Build() {
   if (with_input_constraints_) {
     cout << "u_min_ = " << u_min_ << endl;
     cout << "u_max_ = " << u_max_ << endl;
-//    prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
-//                               u_);
+    prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
+                               u_);
   }
   // No joint position constraint in this implementation
 
@@ -445,10 +445,10 @@ void OperationalSpaceControl::Build() {
   // 5. Joint Limit cost
   w_joint_limit_ = VectorXd::Zero(n_revolute_joints_);
   K_joint_pos = MatrixXd::Identity(n_revolute_joints_, n_revolute_joints_);
-//  joint_limit_cost_.push_back(
-//      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_revolute_joints_))
-//          .evaluator()
-//          .get());
+  joint_limit_cost_.push_back(
+      prog_->AddLinearCost(w_joint_limit_, 0, dv_.tail(n_revolute_joints_))
+          .evaluator()
+          .get());
 
   // (Testing) 6. contact force blending
   if (ds_duration_ > 0) {
@@ -737,7 +737,7 @@ VectorXd OperationalSpaceControl::SolveQp(
                          .tail(n_revolute_joints_) -
                      q_min_)
                         .cwiseMin(0);
-//  joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
+  joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
   // (Testing) 6. blend contact forces during double support phase
   if (ds_duration_ > 0) {

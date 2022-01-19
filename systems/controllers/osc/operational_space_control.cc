@@ -658,7 +658,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   if (!all_contacts_.empty()) {
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
-        friction_constraints_.at(i)->UpdateLowerBound(-1e-2 * VectorXd::Ones(5));
+        friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
       } else {
         friction_constraints_.at(i)->UpdateLowerBound(
             VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));

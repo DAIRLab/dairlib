@@ -136,9 +136,9 @@ def main():
   # plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
   # plt.plot(t_input_supervisor, 10 * input_supervisor_status)
 
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, "left foot", True)
@@ -230,31 +230,31 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
 
   linestyle = '.'
 
-  # plt.figure("Qp sol -- efforts " + filename)
-  # plt.plot(t_osc_debug[:], u_sol, linestyle)
-  # plt.legend([str(i) for i in range(u_dim)])
-  #
-  # # plt.figure("Qp sol -- contact forces " + filename)
-  # # plt.plot(t_osc_debug[:], contact_forces, linestyle)
-  # # plt.legend([str(i) for i in range(lambda_c_dim)])
-  # plt.figure("Qp sol -- contact forces (idx 0 to 5) " + filename)
-  # plt.plot(t_osc_debug[:], contact_forces[:, 0:6], linestyle)
-  # plt.legend([str(i) for i in range(6)])
-  # plt.figure("Qp sol -- contact forces (idx 6 to 11) " + filename)
-  # plt.plot(t_osc_debug[:], contact_forces[:, 6:12], linestyle)
-  # plt.legend([str(i) for i in range(6, 12)])
-  #
-  # plt.figure("Qp sol -- fourbar forces " + filename)
-  # plt.plot(t_osc_debug[:], fourbar_forces[:, :], linestyle)
-  # plt.legend([str(i) for i in range(2)])
-  #
-  # plt.figure("Qp sol -- epsilons " + filename)
-  # plt.plot(t_osc_debug[:], epsilons, linestyle)
-  # plt.legend([str(i) for i in range(epsilon_dim)])
-  #
-  # plt.figure("Qp sol -- vdot " + filename)
-  # plt.plot(t_osc_debug[:], vdot[:, 0:6], linestyle)
-  # plt.legend([str(i) for i in range(6)])
+  plt.figure("Qp sol -- efforts " + filename)
+  plt.plot(t_osc_debug[:], u_sol, linestyle)
+  plt.legend([str(i) for i in range(u_dim)])
+
+  # plt.figure("Qp sol -- contact forces " + filename)
+  # plt.plot(t_osc_debug[:], contact_forces, linestyle)
+  # plt.legend([str(i) for i in range(lambda_c_dim)])
+  plt.figure("Qp sol -- contact forces (idx 0 to 5) " + filename)
+  plt.plot(t_osc_debug[:], contact_forces[:, 0:6], linestyle)
+  plt.legend([str(i) for i in range(6)])
+  plt.figure("Qp sol -- contact forces (idx 6 to 11) " + filename)
+  plt.plot(t_osc_debug[:], contact_forces[:, 6:12], linestyle)
+  plt.legend([str(i) for i in range(6, 12)])
+
+  plt.figure("Qp sol -- fourbar forces " + filename)
+  plt.plot(t_osc_debug[:], fourbar_forces[:, :], linestyle)
+  plt.legend([str(i) for i in range(2)])
+
+  plt.figure("Qp sol -- epsilons " + filename)
+  plt.plot(t_osc_debug[:], epsilons, linestyle)
+  plt.legend([str(i) for i in range(epsilon_dim)])
+
+  plt.figure("Qp sol -- vdot " + filename)
+  plt.plot(t_osc_debug[:], vdot[:, 0:6], linestyle)
+  plt.legend([str(i) for i in range(6)])
 
   plt.figure("Qp solve time " + filename)
   plt.plot(t_osc_debug[:], solve_time, linestyle)
@@ -270,6 +270,18 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
       friction_cone[i_row, 1+j] = 0 if force_z == 0 else contact_forces[i_row, 1+i] / force_z
     j += 2
   plt.figure("Qp sol -- friction cone (idx 0 to 5) " + filename)
+  plt.plot(t_osc_debug[:], friction_cone, linestyle)
+  plt.legend(["pt1 x", "pt1 y", "pt2 x", "pt2 y"])
+
+  friction_cone = np.zeros((len(osc_output), 4))
+  j = 0
+  for i in [6, 9]:
+    for i_row in range(len(osc_output)):
+      force_z = contact_forces[i_row, 2+i]
+      friction_cone[i_row, 0+j] = 0 if force_z == 0 else contact_forces[i_row, 0+i] / force_z
+      friction_cone[i_row, 1+j] = 0 if force_z == 0 else contact_forces[i_row, 1+i] / force_z
+    j += 2
+  plt.figure("Qp sol -- friction cone (idx 6 to 11) " + filename)
   plt.plot(t_osc_debug[:], friction_cone, linestyle)
   plt.legend(["pt1 x", "pt1 y", "pt2 x", "pt2 y"])
 

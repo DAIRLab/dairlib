@@ -11,9 +11,9 @@ using Eigen::VectorXd;
 C3MIQP::C3MIQP(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
 			 				 const vector<MatrixXd>& D, const vector<MatrixXd>& d,
 			 				 const vector<MatrixXd>& E, const vector<MatrixXd>& F,
-			 				 const vector<MatrixXd>& H, const vector<VectorXd>& c, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
+			 				 const vector<MatrixXd>& H, const vector<VectorXd>& c, const vector<MatrixXd>& Q, const vector<MatrixXd>& R, const vector<MatrixXd>& G,
 			 				 const C3Options& options)
-		: C3(A, B, D, d, E, F, H, c, Q, R, options) {
+		: C3(A, B, D, d, E, F, H, c, Q, R, G, options) {
 	// TODO: any MIQP-specific workspace construction goes here
 }
 
@@ -22,11 +22,11 @@ C3MIQP::C3MIQP(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
 /// description
 C3MIQP::C3MIQP(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
 			 const MatrixXd& d, const MatrixXd& E, const MatrixXd& F,
-			 const MatrixXd& H, const VectorXd& c,  const MatrixXd& Q, const MatrixXd& R, const int& N,
+			 const MatrixXd& H, const VectorXd& c,  const MatrixXd& Q, const MatrixXd& R, const MatrixXd& G, const int& N,
 			 const C3Options& options)
 		: C3MIQP(vector<MatrixXd>(N, A), vector<MatrixXd>(N, B), vector<MatrixXd>(N, D),
 				 vector<MatrixXd>(N, d), vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
-				 vector<MatrixXd>(N, H), vector<VectorXd>(N, c), vector<MatrixXd>(N, Q), vector<MatrixXd>(N, R), options) {}
+				 vector<MatrixXd>(N, H), vector<VectorXd>(N, c), vector<MatrixXd>(N, Q), vector<MatrixXd>(N, R), vector<MatrixXd>(N, G),options) {}
 
     VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c, const MatrixXd& E, const MatrixXd& F, const MatrixXd& H, const VectorXd& c) {
 

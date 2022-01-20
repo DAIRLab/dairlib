@@ -16,7 +16,7 @@ class C3MIQP:public C3 {
 	C3MIQP(const std::vector<Eigen::MatrixXd>& A, const std::vector<Eigen::MatrixXd>& B,
 		     const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::MatrixXd>& d,
 		     const std::vector<Eigen::MatrixXd>& E, const std::vector<Eigen::MatrixXd>& F,
-         const std::vector<Eigen::MatrixXd>& H, const std::vector<Eigen::VectorXd>& c, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R,
+         const std::vector<Eigen::MatrixXd>& H, const std::vector<Eigen::VectorXd>& c, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R, const std::vector<Eigen::MatrixXd>& G,
          const C3Options& options);
 
 	/// Constructor for time-invariant LCS
@@ -24,7 +24,7 @@ class C3MIQP:public C3 {
   C3MIQP(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
   	     const Eigen::MatrixXd& D, const Eigen::MatrixXd& d,
   	     const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
-  	     const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R, const int& N,
+  	     const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R, const Eigen::MatrixXd& G, const int& N,
   	     const C3Options& options);
 
 

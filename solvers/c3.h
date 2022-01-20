@@ -17,7 +17,7 @@ class C3 {
 	C3(const std::vector<Eigen::MatrixXd>& A, const std::vector<Eigen::MatrixXd>& B,
 		 const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::MatrixXd>& d,
 		 const std::vector<Eigen::MatrixXd>& E, const std::vector<Eigen::MatrixXd>& F,
-     const std::vector<Eigen::MatrixXd>& H, const std::vector<Eigen::VectorXd>& c, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R,
+     const std::vector<Eigen::MatrixXd>& H, const std::vector<Eigen::VectorXd>& c, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R, const std::vector<Eigen::MatrixXd>& G,
      const C3Options& options);
 
 	/// Constructor for time-invariant LCS
@@ -25,7 +25,7 @@ class C3 {
   C3(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
   	 const Eigen::MatrixXd& D, const Eigen::MatrixXd& d,
   	 const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
-  	 const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R, const int& N,
+  	 const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R, const Eigen::MatrixXd& G, const int& N,
   	 const C3Options& options);
 
   /// Solve the MPC problem
@@ -43,10 +43,7 @@ class C3 {
   /// @param delta A pointer to the copy variable solution
   /// @param w A pointer to the scaled dual variable solution
   /// @return The first control action to take, u[0]
-  Eigen::VectorXd Solve(const Eigen::VectorXd& x0, const Eigen::VectorXd& z0,
-  											const Eigen::VectorXd& delta0,
-  											const Eigen::VectorXd& w0, Eigen::VectorXd* z,
-  											Eigen::VectorXd* delta, Eigen::VectorXd* w);
+  Eigen::VectorXd Solve(Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta, std::vector<Eigen::VectorXd>* w);
 
   /// Solve a single ADMM step
   /// TODO: add documentation
@@ -56,7 +53,7 @@ class C3 {
   /// @param z_n A pointer to the output primal variables 
   /// @param delta_n A pointer to the output copy variables
   /// @param w_n A pointer to the scaled dual variables
-  void ADMMStep(Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta, std::vector<Eigen::VectorXd>& w);
+  void ADMMStep(Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta, std::vector<Eigen::VectorXd>* w, std::vector<Eigen::MatrixXd>* G);
 
   /// TODO: determine inputs/outputs
   std::vector<Eigen::VectorXd> SolveQP(Eigen::VectorXd& x0, std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WD);
@@ -76,15 +73,17 @@ class C3 {
 	const std::vector<Eigen::MatrixXd> d_;
 	const std::vector<Eigen::MatrixXd> E_;
 	const std::vector<Eigen::MatrixXd> F_;
+    const std::vector<Eigen::MatrixXd> H_;
+    const std::vector<Eigen::VectorXd> c_;
     const std::vector<Eigen::MatrixXd> Q_;
     const std::vector<Eigen::MatrixXd> R_;
-  const std::vector<Eigen::MatrixXd> H_;
-  const std::vector<Eigen::VectorXd> c_;
+    const std::vector<Eigen::MatrixXd> G_;
   const C3Options options_;
   const int N_;
   const int n_;
   const int m_;
   const int k_;
+  const bool hflag_;
 
   // TODO: add QP workspace variables and anything else needed
 

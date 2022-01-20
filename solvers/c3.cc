@@ -22,7 +22,7 @@ using drake::solvers::Solve;
 C3::C3(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
 			 const vector<MatrixXd>& D, const vector<MatrixXd>& d,
 			 const vector<MatrixXd>& E, const vector<MatrixXd>& F,
-			 const vector<MatrixXd>& H, const vector<VectorXd>& c, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
+			 const vector<MatrixXd>& H, const vector<VectorXd>& c, const vector<MatrixXd>& Q, const vector<MatrixXd>& R, const vector<MatrixXd>& G,
 			 const C3Options& options)
 		: A_(A),
 			B_(B),
@@ -34,11 +34,13 @@ C3::C3(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
 			c_(c),
             Q_(Q),
             R_(R),
+            G_(G),
 			options_(options),
 			N_(A.size()),
             n_(A[0].cols()),
             m_(D[0].cols()),
-            k_(B[0].cols()) {
+            k_(B[0].cols()),
+            hflag_(H[0].isZero(0)) {
             // Build the QP workspace and anything else needed at construction
 	// Not a bad idea to also check that all of the vector sizes and matrix/
 	// dimensions match one another
@@ -50,17 +52,23 @@ C3::C3(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
 /// description
 C3::C3(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
 			 const MatrixXd& d, const MatrixXd& E, const MatrixXd& F,
-			 const MatrixXd& H, const VectorXd& c, const MatrixXd& Q, const MatrixXd& R, const int& N,
+			 const MatrixXd& H, const VectorXd& c, const MatrixXd& Q, const MatrixXd& R, const MatrixXd& G, const int& N,
 			 const C3Options& options)
 		: C3(vector<MatrixXd>(N, A), vector<MatrixXd>(N, B), vector<MatrixXd>(N, D),
 				 vector<MatrixXd>(N, d), vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
-				 vector<MatrixXd>(N, H), vector<VectorXd>(N, c),  vector<MatrixXd>(N, Q), vector<MatrixXd>(N, R), options) {}
+				 vector<MatrixXd>(N, H), vector<VectorXd>(N, c),  vector<MatrixXd>(N, Q), vector<MatrixXd>(N, R), vector<MatrixXd>(N, G), options) {}
 		
 
 
-VectorXd C3::Solve(const VectorXd& x0, const VectorXd& z0,
-									 const VectorXd& delta0, const VectorXd& w0,
-									 VectorXd* z, VectorXd* delta, VectorXd* w) {
+VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w) {
+
+    vector<MatrixXd> Gv = G_;
+
+    for (int i = 0; i < options_.admm_iter; i++) {
+        ADMMStep(x0, delta, w, &Gv);
+    }
+
+
 	/// Any problem setup that's necessary
 	/// For loop that calls ADMMStep
 	/// Extract and return u[0], just to help the user out
@@ -68,29 +76,42 @@ VectorXd C3::Solve(const VectorXd& x0, const VectorXd& z0,
 
 }
 
-void C3::ADMMStep(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
+void C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w, vector<MatrixXd>* Gv) {
 	// TODO: SolveQP and SolveProjection are going to need the proper arguments
     vector<VectorXd> WD(N_, VectorXd::Zero(n_+m_+k_) );
 
     for (int i = 0; i < N_; i++) {
-        WD[i] = w[i] - delta[i];
+        WD[i] = w->at(i) - delta->at(i);
     }
-    vector<MatrixXd> G(N_, 10*MatrixXd::Identity(n_+m_+k_,n_+m_+k_) );
-    vector<VectorXd> z = SolveQP(x0, G, WD);
+
+    vector<VectorXd> z = SolveQP(x0, *Gv, WD);
     //std::cout << "Sol: "<< z[0] << std::endl;
 
 
     vector<VectorXd> ZW(N_, VectorXd::Zero(n_+m_+k_) );
     for (int i = 0; i < N_; i++) {
-        ZW[i] = w[i] + z[i];
+        ZW[i] = w->at(i) + z[i];
     }
 
-    delta = SolveProjection(G, ZW);
+    //debug
+    //std::vector<MatrixXd> Gvv = *Gv;
+    //std::vector<MatrixXd> Gvv(N_, 10*MatrixXd::Identity(n_+m_+k_,n_+m_+k_) );
+
+
+    *delta = SolveProjection(*Gv, ZW);
 
 	// Update dual variables
     for (int i = 0; i < N_; i++) {
-        w[i] = w[i] + z[i] - delta[i];
+        w->at(i) = w->at(i) + z[i] - delta->at(i);
+        w->at(i) = w->at(i) / options_.rho_scale;
+        Gv->at(i) = Gv->at(i) * options_.rho_scale;
     }
+
+
+
+
+    //std::cout << "Sol: "<< hflag_ << std::endl;
+
 
 }
 

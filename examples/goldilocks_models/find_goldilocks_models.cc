@@ -1642,7 +1642,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }
 
       // Set the step size for particular models
-      if (FLAGS_rom_option >= 10 && FLAGS_rom_option <= 13) {
+      if (FLAGS_rom_option >= 10 && FLAGS_rom_option <= 14) {
         h_step = 5e-3;
       }
     }

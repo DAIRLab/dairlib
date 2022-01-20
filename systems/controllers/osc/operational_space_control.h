@@ -280,7 +280,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<drake::solvers::SnoptSolver> snopt_solver_;
   mutable Eigen::VectorXd prev_sol_ = Eigen::VectorXd::Zero(1);
   mutable int counter_ = 0;
-  bool use_osqp_ = true;
+  bool use_osqp_ = false;
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;

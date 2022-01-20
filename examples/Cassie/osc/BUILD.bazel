@@ -12,6 +12,8 @@ cc_library(
         "//examples/Cassie/osc:standing_pelvis_traj",
         "//examples/Cassie/osc:swing_toe_traj",
         "//examples/Cassie/osc:walking_speed_control",
+        "//systems/controllers:alip_swing_ft_traj_gen",
+        "//systems/controllers:alip_traj_gen",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:swing_ft_traj_gen",
         "//systems/controllers:time_based_fsm",

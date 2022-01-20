@@ -53,13 +53,14 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   const {
     return this->get_input_port(touchdown_time_port_);
   }
+
   // Output port getters
-  const drake::systems::OutputPort<double>& get_output_port_alip_com()
+  const drake::systems::OutputPort<double>& get_output_port_alip_state()
   const {
-    return this->get_output_port(output_port_alip_com_);
+    return this->get_output_port(output_port_alip_state_);
   }
-  const drake::systems::OutputPort<double>&get_output_port_alip_L_() const {
-    return this->get_output_port(output_port_alip_L_);
+  const drake::systems::OutputPort<double>& get_output_port_com() const {
+    return this->get_output_port(output_port_com_);
   }
 
  private:
@@ -67,30 +68,40 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  int GetModeIdx(int fsm_state) const;
+
+  std::pair<Eigen::MatrixXd, Eigen::VectorXd> MakeExponentialTrajAandXi(
+      const Eigen::Vector3d& CoM, const Eigen::Vector3d& L,
+      const Eigen::Vector3d& stance_foot_pos) const;
+
+  void CalcAlipState(const Eigen::VectorXd& x, int mode_index,
+                     const drake::EigenPtr<Eigen::Vector3d>& CoM,
+                     const drake::EigenPtr<Eigen::Vector3d>& L,
+                     const drake::EigenPtr<Eigen::Vector3d>& stance_pos) const;
+
   drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
-  ConstructAlipTraj(const Eigen::VectorXd& CoM, const Eigen::VectorXd& dCoM,
-                    const Eigen::VectorXd& stance_foot_pos, double start_time,
+  ConstructAlipComTraj(const Eigen::Vector3d& CoM, const Eigen::Vector3d& L,
+                    const Eigen::Vector3d& stance_foot_pos, double start_time,
                     double end_time_of_this_fsm_state) const;
 
-  void CalcTrajFromCurrent(const drake::systems::Context<double>& context,
+  drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
+  ConstructAlipStateTraj(const Eigen::Vector3d& CoM, const Eigen::Vector3d& L,
+                         const Eigen::Vector3d& stance_foot_pos, double start_time,
+                         double end_time_of_this_fsm_state) const;
+
+  void CalcComTrajFromCurrent(const drake::systems::Context<double>& context,
                            drake::trajectories::Trajectory<double>* traj) const;
-  void CalcTrajFromTouchdown(
-      const drake::systems::Context<double>& context,
-      drake::trajectories::Trajectory<double>* traj) const;
+
+  void CalcAlipTrajFromCurrent(const drake::systems::Context<double>& context,
+                               drake::trajectories::Trajectory<double>* traj) const;
 
   // Port indices
   int state_port_;
   int fsm_port_;
   int touchdown_time_port_;
 
-  int output_port_alip_com_;
-  int output_port_alip_L_;
-
-  int prev_touchdown_time_idx_;
-  int stance_foot_pos_idx_;
-  int touchdown_com_pos_idx_;
-  int touchdown_com_vel_idx_;
-  int prev_fsm_idx_;
+  int output_port_alip_state_;
+  int output_port_com_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
@@ -107,9 +118,7 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_;
 
   bool use_com_;
-
-  // Testing
-  mutable double heuristic_ratio_;
+  double m_;
   double foot_spread_lb_ = 0.2;
   double foot_spread_ub_ = 0.5;
   const drake::multibody::Frame<double>& pelvis_frame_;

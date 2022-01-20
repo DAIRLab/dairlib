@@ -152,6 +152,18 @@ cc_library(
 )
 
 cc_library(
+    name = "alip_swing_ft_traj_gen",
+    srcs = ["alip_swing_ft_traj_gen.cc"],
+    hdrs = ["alip_swing_ft_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "safe_velocity_controller",
     srcs = ["safe_velocity_controller.cc"],
     hdrs = ["safe_velocity_controller.h"],

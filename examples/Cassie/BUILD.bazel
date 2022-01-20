@@ -46,6 +46,7 @@ cc_library(
         "//examples/Cassie:multibody_sim",
         "//examples/Cassie:run_osc_standing_controller",
         "//examples/Cassie:run_osc_walking_controller",
+        "//examples/Cassie:run_osc_walking_controller_alip",
         "//examples/Cassie/osc",
     ],
 )
@@ -373,6 +374,26 @@ cc_binary(
 cc_binary(
     name = "run_osc_walking_controller",
     srcs = ["run_osc_walking_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        ":simulator_drift",
+        "//examples/Cassie/osc",
+        "//multibody:utils",
+        "//multibody:view_frame",
+        "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_walking_controller_alip",
+    srcs = ["run_osc_walking_controller_alip.cc"],
     deps = [
         ":cassie_urdf",
         ":cassie_utils",

@@ -3,7 +3,7 @@
 //
 
 #include "alip_traj_gen.h"
-#include <math.h>
+#include <cmath>
 
 #include <fstream>
 #include <string>
@@ -18,6 +18,7 @@ using std::vector;
 using Eigen::MatrixXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
 
 using drake::systems::BasicVector;
@@ -79,199 +80,130 @@ ALIPTrajGenerator::ALIPTrajGenerator(
   // Provide an instance to allocate the memory first (for the output)
   ExponentialPlusPiecewisePolynomial<double> exp;
   drake::trajectories::Trajectory<double>& traj_inst = exp;
-  output_port_alip_com_ =
-      this->DeclareAbstractOutputPort("ALIP_xyz_from_current", traj_inst,
-                                      &ALIPTrajGenerator::CalcTrajFromCurrent)
+  output_port_com_ =
+      this->DeclareAbstractOutputPort("alip_com_prediction", traj_inst,
+                                      &ALIPTrajGenerator::CalcComTrajFromCurrent)
           .get_index();
-  output_port_alip_L_ =
-      this->DeclareAbstractOutputPort("ALIP_xyz_from_touchdown", traj_inst,
-                                      &ALIPTrajGenerator::CalcTrajFromTouchdown)
+  output_port_alip_state_ =
+      this->DeclareAbstractOutputPort("alip x, y, Lx, Ly prediction",
+                                      traj_inst,
+                                      &ALIPTrajGenerator::CalcAlipTrajFromCurrent)
           .get_index();
-
-  // State variables inside this controller block
-  DeclarePerStepDiscreteUpdateEvent(&ALIPTrajGenerator::DiscreteVariableUpdate);
-  // The last FSM event time
-  prev_touchdown_time_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
-  // The stance foot position in the beginning of the swing phase
-  stance_foot_pos_idx_ = this->DeclareDiscreteState(3);
-  // COM state at touchdown
-  touchdown_com_pos_idx_ = this->DeclareDiscreteState(3);
-  touchdown_com_vel_idx_ = this->DeclareDiscreteState(3);
-  prev_fsm_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
 }
 
-EventStatus ALIPTrajGenerator::DiscreteVariableUpdate(
-    const Context<double>& context,
-    DiscreteValues<double>* discrete_state) const {
-  // Read in previous touchdown time
-  auto prev_touchdown_time =
-      discrete_state->get_mutable_vector(prev_touchdown_time_idx_)
-          .get_mutable_value();
-  double touchdown_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
 
-  // Read in finite state machine
-  auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
-  // when entering a new stance phase
-  if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)) {
-    prev_touchdown_time << touchdown_time;
+std::pair<MatrixXd, VectorXd> ALIPTrajGenerator::MakeExponentialTrajAandXi(
+    const Eigen::Vector3d &CoM, const Eigen::Vector3d &L,
+    const Eigen::Vector3d &stance_foot_pos) const {
 
-    // Read in current state
-    const OutputVector<double>* robot_output =
-        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-    VectorXd v = robot_output->GetVelocities();
-    multibody::SetPositionsAndVelocitiesIfNew<double>(
-        plant_, robot_output->GetState(), context_);
-
-    // Find fsm_state in unordered_fsm_states_
-    auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
-                   fsm_state);
-    int mode_index = std::distance(unordered_fsm_states_.begin(), it);
-    if (it == unordered_fsm_states_.end()) {
-      std::cerr << "WARNING: fsm state number " << fsm_state
-                << " doesn't exist in ALIPTrajGenerator\n";
-      mode_index = 0;
-    }
-
-    // Stance foot position (Forward Kinematics)
-    // Take the average of all the points
-    Vector3d stance_foot_pos = Vector3d::Zero();
-    for (const auto& j : contact_points_in_each_state_[mode_index]) {
-      Vector3d position;
-      plant_.CalcPointsPositions(*context_, j.second, j.first, world_,
-                                 &position);
-      stance_foot_pos += position;
-    }
-    stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
-
-    // Get center of mass position and velocity
-    Vector3d CoM;
-    MatrixXd J(3, plant_.num_velocities());
-    if (use_com_) {
-      CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
-      plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-          *context_, JacobianWrtVariable::kV, world_, world_, &J);
-    } else {
-      plant_.CalcPointsPositions(*context_,
-                                 plant_.GetBodyByName("pelvis").body_frame(),
-                                 VectorXd::Zero(3), world_, &CoM);
-      plant_.CalcJacobianTranslationalVelocity(
-          *context_, JacobianWrtVariable::kV,
-          plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3),
-          world_, world_, &J);
-    }
-    Vector3d dCoM = J * v;
-
-    discrete_state->get_mutable_vector(stance_foot_pos_idx_).get_mutable_value()
-        << stance_foot_pos;
-    discrete_state->get_mutable_vector(touchdown_com_pos_idx_)
-        .get_mutable_value()
-        << CoM;
-    discrete_state->get_mutable_vector(touchdown_com_vel_idx_)
-        .get_mutable_value()
-        << dCoM;
-
-    // TODO(Brian-Acosta): Remove this one
-    Vector3d toe_left_origin_position;
-    plant_.CalcPointsPositions(*context_, toe_left_frame_, Vector3d::Zero(),
-                               pelvis_frame_, &toe_left_origin_position);
-    Vector3d toe_right_origin_position;
-    plant_.CalcPointsPositions(*context_, toe_right_frame_, Vector3d::Zero(),
-                               pelvis_frame_, &toe_right_origin_position);
-    double dist = toe_left_origin_position(1) - toe_right_origin_position(1);
-    // <foot_spread_lb_ meter: ratio 1
-    // >foot_spread_ub_ meter: ratio 0.9
-    // Linear interpolate in between
-    heuristic_ratio_ = drake::math::saturate(
-        1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
-            (dist - foot_spread_lb_),
-        0.9, 1);
-  }
-
-  discrete_state->get_mutable_vector(prev_fsm_idx_).GetAtIndex(0) = fsm_state;
-
-  return EventStatus::Succeeded();
-}
-
-ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipTraj(
-    const VectorXd& CoM, const VectorXd& dCoM, const VectorXd& stance_foot_pos,
-    double start_time, double end_time_of_this_fsm_state) const {
-  // Get CoM_wrt_foot for ALIP
-  double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
-  double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
+  Vector2d CoM_wrt_foot_xy = CoM.head(2) - stance_foot_pos.head(2);
   double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
-  double dCoM_wrt_foot_x = dCoM(0);
-  double dCoM_wrt_foot_y = dCoM(1);
+  DRAKE_DEMAND(CoM_wrt_foot_z > 0);
+
+  // Dynamics of ALIP: (eqn 6) https://arxiv.org/pdf/2109.14862.pdf
+  const double g = 9.81;
+  double a1x = 1.0 / (m_ * CoM_wrt_foot_z);
+  double a2x = -m_ * g;
+  double a1y = -1.0 / (m_ * CoM_wrt_foot_z);
+  double a2y = m_ * g;
+
+  // Sum of two exponential + one-segment 3D polynomial
+  MatrixXd A = MatrixXd::Zero(4, 4);
+  A(0, 3) = a1x;
+  A(1, 2) = a1y;
+  A(2, 1) = a2x;
+  A(3, 0) = a2y;
+
+  Vector4d alpha = Vector4d::Zero();
+  alpha.head(2) = CoM_wrt_foot_xy;
+  alpha.tail(2) = L.head(2);
+  return {A, alpha};
+}
+
+ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTraj(
+    const Vector3d& CoM, const Vector3d& L, const Vector3d& stance_foot_pos,
+    double start_time, double end_time_of_this_fsm_state) const {
+
+  double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
-  // Note that the start time in T_waypoint_com is also used by
-  // ExponentialPlusPiecewisePolynomial.
-  vector<double> T_waypoint_com = {start_time, end_time_of_this_fsm_state};
+  Vector2d T_waypoint_com {start_time, end_time_of_this_fsm_state};
+  MatrixXd Y = MatrixXd::Zero(3, T_waypoint_com.size());
+  Y.col(0).head(2) = stance_foot_pos.head(2);
+  Y.col(1).head(2) = stance_foot_pos.head(2);
 
-  vector<MatrixXd> Y(T_waypoint_com.size(), MatrixXd::Zero(3, 1));
-  Y[0](0, 0) = stance_foot_pos(0);
-  Y[1](0, 0) = stance_foot_pos(0);
-  Y[0](1, 0) = stance_foot_pos(1);
-  Y[1](1, 0) = stance_foot_pos(1);
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   double max_height_diff_per_step = 0.05;
   double final_height = drake::math::saturate(
       desired_com_height_ + stance_foot_pos(2),
-      CoM(2) - max_height_diff_per_step, CoM(2) + max_height_diff_per_step);
+      CoM(2) - max_height_diff_per_step,
+      CoM(2) + max_height_diff_per_step);
   //  double final_height = desired_com_height_ + stance_foot_pos(2);
-  Y[0](2, 0) = final_height;
-  Y[1](2, 0) = final_height;
+  Y(0,2) = final_height;
+  Y(1, 2) = final_height;
 
-  MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-  MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
+  VectorXd Y_dot_start = MatrixXd::Zero(3, 1);
+  VectorXd Y_dot_end = MatrixXd::Zero(3, 1);
 
   PiecewisePolynomial<double> pp_part =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-          T_waypoint_com, Y, Y_dot_start, Y_dot_end);
+          T_waypoint_com, Y,
+          Y_dot_start, Y_dot_end);
 
-  // Dynamics of ALIP
-  // ddy = 9.81/CoM_wrt_foot_z*y, which has an analytical solution.
-  // Let omega^2 = 9.81/CoM_wrt_foot_z.
-  // Let y0 and dy0 be the intial position and velocity. Then the solution is
-  //   y = k_1 * exp(w*t) + k_2 * exp(-w*t)
-  // where k_1 = (y0 + dy0/w)/2
-  //       k_2 = (y0 - dy0/w)/2.
-  // double omega = sqrt(9.81 / (final_height - stance_foot_pos(2)));
-  double omega = sqrt(9.81 / CoM_wrt_foot_z);
-  double omega_y = omega /* * heuristic_ratio_*/;
-  double k1x = 0.5 * (CoM_wrt_foot_x + dCoM_wrt_foot_x / omega);
-  double k2x = 0.5 * (CoM_wrt_foot_x - dCoM_wrt_foot_x / omega);
-  double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega_y);
-  double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega_y);
-
-  //  cout << "omega = " << omega << endl;
-
-  // Sum of two exponential + one-segment 3D polynomial
-  MatrixXd K = MatrixXd::Zero(3, 4);
-  MatrixXd A = MatrixXd::Zero(4, 4);
-  MatrixXd alpha = MatrixXd::Ones(4, 1);
-  K(0, 0) = k1x;
-  K(0, 1) = k2x;
-  K(1, 2) = k1y;
-  K(1, 3) = k2y;
-  A(0, 0) = omega;
-  A(1, 1) = -omega;
-  A(2, 2) = omega_y;
-  A(3, 3) = -omega_y;
-  // TODO: this is in global coordinate. But the ratio change should apply
-  //  locally. I think we just need to get the pos/vel in local frame + apply a
-  //  rotational matrix in front ( which can be lumped into K matrix). Then the
-  //  output is in global frame.
+  MatrixXd K = MatrixXd::Zero(3,4);
+  K.topLeftCorner(2,2) = MatrixXd::Identity(2,2);
+  auto [A, alpha] = MakeExponentialTrajAandXi(CoM, L, stance_foot_pos);
 
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
 }
 
-void ALIPTrajGenerator::CalcTrajFromCurrent(
-    const Context<double>& context,
-    drake::trajectories::Trajectory<double>* traj) const {
+ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipStateTraj(
+    const Vector3d& CoM, const Vector3d& L, const Vector3d& stance_foot_pos,
+    double start_time, double end_time_of_this_fsm_state) const {
+
+  Vector2d breaks = {start_time, end_time_of_this_fsm_state};
+  PiecewisePolynomial<double> pp_part =
+      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+          breaks, MatrixXd::Zero(4,2),
+          Vector4d::Zero(), Vector4d::Zero());
+  MatrixXd K = MatrixXd::Identity(4,4);
+  auto [A, alpha] = MakeExponentialTrajAandXi(CoM, L, stance_foot_pos);
+  return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
+}
+
+void ALIPTrajGenerator::CalcAlipState(
+    const Eigen::VectorXd &x, int mode_index,
+    const drake::EigenPtr<Eigen::Vector3d>& CoM_p,
+    const drake::EigenPtr<Eigen::Vector3d>& L_p,
+    const drake::EigenPtr<Eigen::Vector3d>& stance_pos_p) const {
+
+  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, x, context_);
+  Vector3d CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
+
+  // Take average of contact points a stance position
+  Vector3d stance_foot_pos = Vector3d::Zero();
+  for (const auto& stance_foot : contact_points_in_each_state_[mode_index]) {
+    Vector3d position;
+    plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
+                               world_, &position);
+    stance_foot_pos += position;
+  }
+  stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
+
+  Vector3d L = plant_.CalcSpatialMomentumInWorldAboutPoint(
+      *context_, stance_foot_pos).rotational();
+
+  *CoM_p = CoM;
+  *L_p = L;
+  *stance_pos_p = stance_foot_pos;
+}
+
+void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
+    double> &context, drake::trajectories::Trajectory<double> *traj) const {
+
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -284,108 +216,75 @@ void ALIPTrajGenerator::CalcTrajFromCurrent(
   VectorXd prev_event_time =
       this->EvalVectorInput(context, touchdown_time_port_)->get_value();
 
-  // Find fsm_state in unordered_fsm_states_
-  auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
-                 int(fsm_state(0)));
-  int mode_index = std::distance(unordered_fsm_states_.begin(), it);
-  if (it == unordered_fsm_states_.end()) {
-    std::cerr << "WARNING: fsm state number " << fsm_state(0)
-              << " doesn't exist in ALIPTrajGenerator\n";
-    mode_index = 0;
-  }
+  int mode_index = GetModeIdx((int)fsm_state(0));
 
   // Get time
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
-
   double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
-  // Ensure "current_time < end_time" to avoid error in
-  // creating trajectory.
-  start_time = drake::math::saturate(
-      start_time, -std::numeric_limits<double>::infinity(), end_time - 0.001);
+  start_time = drake::math::saturate(start_time,
+                                     -std::numeric_limits<double>::infinity(),
+                                     end_time - 0.001);
 
-  VectorXd q = robot_output->GetPositions();
-  multibody::SetPositionsIfNew<double>(plant_, q, context_);
-
-  // Get center of mass position and velocity
-  Vector3d CoM;
-  MatrixXd J(3, plant_.num_velocities());
-  if (use_com_) {
-    CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
-    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, world_, world_, &J);
-  } else {
-    plant_.CalcPointsPositions(*context_,
-                               plant_.GetBodyByName("pelvis").body_frame(),
-                               VectorXd::Zero(3), world_, &CoM);
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV,
-        plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3), world_,
-        world_, &J);
-  }
-  Vector3d dCoM = J * v;
-
-  // Stance foot position (Forward Kinematics)
-  // Take the average of all the points
-  Vector3d stance_foot_pos = Vector3d::Zero();
-  for (const auto& stance_foot : contact_points_in_each_state_[mode_index]) {
-    Vector3d position;
-    plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
-                               world_, &position);
-    stance_foot_pos += position;
-  }
-  stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
+  Vector3d CoM, L, stance_foot_pos;
+  CalcAlipState(
+      robot_output->GetState(), mode_index,
+      &CoM, &L, &stance_foot_pos);
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
   *exp_pp_traj =
-      ConstructAlipTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
+      ConstructAlipComTraj(CoM, L, stance_foot_pos, start_time, end_time);
 }
-void ALIPTrajGenerator::CalcTrajFromTouchdown(
-    const Context<double>& context,
-    drake::trajectories::Trajectory<double>* traj) const {
+
+void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
+    double> &context, drake::trajectories::Trajectory<double> *traj) const {
+  // Read in current state
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  VectorXd v = robot_output->GetVelocities();
   // Read in finite state machine
   const BasicVector<double>* fsm_output =
-  (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
   // Read in finite state machine switch time
   VectorXd prev_event_time =
       this->EvalVectorInput(context, touchdown_time_port_)->get_value();
 
-  // TODO(yangwill): move this in a function or make it shorter
-  // Find fsm_state in unordered_fsm_states_
-  auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
-                 int(fsm_state(0)));
-  int mode_index = std::distance(unordered_fsm_states_.begin(), it);
-  if (it == unordered_fsm_states_.end()) {
-    cout << "WARNING: fsm state number " << fsm_state(0)
-         << " doesn't exist in ALIPTrajGenerator\n";
-    mode_index = 0;
-  }
+  int mode_index = GetModeIdx((int)fsm_state(0));
 
-  double end_time_of_this_fsm_state =
-      prev_event_time(0) + unordered_state_durations_[mode_index];
+  // Get time
+  double timestamp = robot_output->get_timestamp();
+  double start_time = timestamp;
+  double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
+  start_time = drake::math::saturate(start_time,
+                                     -std::numeric_limits<double>::infinity(),
+                                     end_time - 0.001);
 
-  // Get center of mass position and velocity
-  const auto CoM_at_touchdown =
-      context.get_discrete_state(touchdown_com_pos_idx_).get_value();
-  const auto dCoM_at_touchdown =
-      context.get_discrete_state(touchdown_com_vel_idx_).get_value();
-
-  // Stance foot position
-  const auto stance_foot_pos_at_touchdown =
-      context.get_discrete_state(stance_foot_pos_idx_).get_value();
-
-  double prev_touchdown_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+  Vector3d CoM, L, stance_foot_pos;
+  CalcAlipState(
+      robot_output->GetState(), mode_index,
+      &CoM, &L, &stance_foot_pos);
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  *exp_pp_traj = ConstructAlipTraj(
-      CoM_at_touchdown, dCoM_at_touchdown, stance_foot_pos_at_touchdown,
-      prev_touchdown_time, end_time_of_this_fsm_state);
+  *exp_pp_traj =
+      ConstructAlipStateTraj(CoM, L, stance_foot_pos, start_time, end_time);
+}
+
+int ALIPTrajGenerator::GetModeIdx(int fsm_state) const {
+  auto it = find(unordered_fsm_states_.begin(),
+                 unordered_fsm_states_.end(),
+                 fsm_state);
+  int mode_index = std::distance(unordered_fsm_states_.begin(), it);
+  if (it == unordered_fsm_states_.end()) {
+    cout << "WARNING: fsm state number " << fsm_state
+         << " doesn't exist in ALIPTrajGenerator\n";
+    mode_index = 0;
+  }
+  return mode_index;
 }
 
 }  // namespace systems

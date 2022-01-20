@@ -416,17 +416,21 @@ void OperationalSpaceControl::Build() {
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {
-    prog_->AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u_);
+    auto binding = prog_->AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u_);
+    binding.evaluator().get()->set_description("input_cost");
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
-    prog_->AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv_);
+    auto binding =
+        prog_->AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv_);
+    binding.evaluator().get()->set_description("joint_accel_cost");
   }
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
-    prog_->AddQuadraticCost(
+    auto binding = prog_->AddQuadraticCost(
         w_soft_constraint_ * MatrixXd::Identity(n_c_active_, n_c_active_),
         VectorXd::Zero(n_c_active_), epsilon_);
+    binding.evaluator().get()->set_description("soft_constraint_cost");
   }
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
@@ -435,6 +439,8 @@ void OperationalSpaceControl::Build() {
                                                     VectorXd::Zero(n_v_), dv_)
                                  .evaluator()
                                  .get());
+    tracking_cost_.back()->set_description(
+        tracking_data_vec_->at(i)->GetName());
   }
 
   // 5. Joint Limit cost
@@ -476,6 +482,7 @@ void OperationalSpaceControl::Build() {
         prog_->AddQuadraticCost(W_input_reg_, VectorXd::Zero(n_u_), u_)
             .evaluator()
             .get();
+    input_reg_cost_->set_description("input_reg_cost");
   }
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
@@ -708,14 +715,24 @@ VectorXd OperationalSpaceControl::SolveQp(
       MatrixXd W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
+
       //      W += 1e-2 * MatrixXd::Identity(W.rows(), W.cols());
+
+      MatrixXd Q = J_t.transpose() * W * J_t;
+      // Check Hessian PSD (algorithm same as QuadraticCost::CheckHessianPsd())
+      Eigen::LDLT<Eigen::MatrixXd> ldlt_solver;
+      ldlt_solver.compute(Q);
+      if (!ldlt_solver.isPositive()) {
+        cout << tracking_cost_.at(i)->get_description() << " is not convex!\n";
+      }
+
       // The tracking cost is
       // 0.5 * (J_*dv + JdotV - y_command)^T * W * (J_*dv + JdotV - y_command).
       // We ignore the constant term
       // 0.5 * (JdotV - y_command)^T * W * (JdotV - y_command),
       // since it doesn't change the result of QP.
       tracking_cost_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t));
+          Q, J_t.transpose() * W * (JdotV_t - ddy_t));
     } else {
       tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                                VectorXd::Zero(n_v_));
@@ -773,8 +790,11 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Solve the QP
   MathematicalProgramResult result;
 
+  cout << counter_ << ": ";
   if (counter_ == 0 || use_osqp_) {
-    //      result = osqp_solver_->Solve(*prog_);
+    //    result = prev_sol_.norm() == 0 ? osqp_solver_->Solve(*prog_)
+    //                                   : osqp_solver_->Solve(*prog_,
+    //                                   prev_sol_);
     result = solver_->Solve(*prog_);
     solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
   } else {
@@ -784,8 +804,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
     solve_time_ = elapsed.count();
-    cout << result.get_solution_result() << endl;
   }
+  cout << result.get_solution_result() << endl;
   prev_sol_ = result.GetSolution();
   counter_++;
 

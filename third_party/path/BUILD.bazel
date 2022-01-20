@@ -1,0 +1,23 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+
+cc_import(
+	name = "path_lib",
+	shared_library = "lib/libpath50.so",
+)
+
+cc_library(
+	name = "path_hdrs",
+	hdrs = glob(['include/*.h']),
+	includes = ["include"],
+)
+
+cc_library(
+	name = "path",
+	deps = [
+		"path_hdrs",
+		"path_lib"
+	],
+	linkopts = ['-ldl', '-lm']
+)

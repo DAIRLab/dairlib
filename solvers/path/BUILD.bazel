@@ -1,0 +1,25 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+	name = "path",
+	hdrs = [
+		"path_eigen.h",
+		"cWrapper_Path.h"],
+	srcs = [
+		"path_eigen.cc",
+		"cWrapper_Path.cc"
+	],
+	deps = [
+		"//third_party/path",
+		"@eigen",
+	]
+)
+
+cc_binary(
+	name = "path_eigen_example",
+	srcs = ["test/path_eigen_example.cc"],
+	deps = [":path"]
+)

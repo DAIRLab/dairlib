@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <drake/multibody/plant/multibody_plant.h>
+#include <drake/solvers/snopt_solver.h>
 
 #include "dairlib/lcmt_osc_output.hpp"
 #include "dairlib/lcmt_osc_qp_output.hpp"
@@ -276,6 +277,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_;
   std::unique_ptr<drake::solvers::OsqpSolver> osqp_solver_;
+  std::unique_ptr<drake::solvers::SnoptSolver> snopt_solver_;
+  mutable Eigen::VectorXd prev_sol_ = Eigen::VectorXd::Zero(1);
+  mutable int counter_ = 0;
+  bool use_osqp_ = false;
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;

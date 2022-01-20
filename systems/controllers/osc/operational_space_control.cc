@@ -1,9 +1,10 @@
 #include "systems/controllers/osc/operational_space_control.h"
 
+#include <chrono>
+
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "common/eigen_utils.h"
-#include "multibody/multibody_utils.h"
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/text_logging.h"
@@ -51,8 +52,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
     bool used_with_finite_state_machine, bool print_tracking_info,
-    double qp_time_limit,
-    bool use_new_qp_setting)
+    double qp_time_limit, bool use_new_qp_setting)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_w_spr_(context_w_spr),
@@ -392,19 +392,14 @@ void OperationalSpaceControl::Build() {
     VectorXd one(1);
     MatrixXd A = MatrixXd(5, kSpaceDim);
     A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
-//    cout << "A = " << A << endl;
+    //    cout << "A = " << A << endl;
 
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
-      auto binding = prog_
-          ->AddLinearConstraint(
-              A, VectorXd::Zero(5),
-              Eigen::VectorXd::Constant(
-                  5, std::numeric_limits<double>::infinity()),
-              lambda_c_.segment(kSpaceDim * j, 3));
-      friction_constraints_.push_back(
-          binding
-              .evaluator()
-              .get());
+      auto binding = prog_->AddLinearConstraint(
+          A, VectorXd::Zero(5),
+          Eigen::VectorXd::Constant(5, std::numeric_limits<double>::infinity()),
+          lambda_c_.segment(kSpaceDim * j, 3));
+      friction_constraints_.push_back(binding.evaluator().get());
       cout << "j = " << j << endl;
       cout << binding.variables() << endl;
     }
@@ -483,24 +478,24 @@ void OperationalSpaceControl::Build() {
             .get();
   }
 
-
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-//  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
+  //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
   std::cout << solver_options << std::endl;
   solver_->InitializeSolver(*prog_, solver_options);
 
-
   osqp_solver_ = std::make_unique<drake::solvers::OsqpSolver>();
   prog_->SetSolverOptions(solver_options);
+
+  snopt_solver_ = std::make_unique<drake::solvers::SnoptSolver>();
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -713,7 +708,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       MatrixXd W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-//      W += 1e-2 * MatrixXd::Identity(W.rows(), W.cols());
+      //      W += 1e-2 * MatrixXd::Identity(W.rows(), W.cols());
       // The tracking cost is
       // 0.5 * (J_*dv + JdotV - y_command)^T * W * (J_*dv + JdotV - y_command).
       // We ignore the constant term
@@ -776,10 +771,23 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Solve the QP
-//    const MathematicalProgramResult result = osqp_solver_->Solve(*prog_);
-  const MathematicalProgramResult result = solver_->Solve(*prog_);
+  MathematicalProgramResult result;
 
-  solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+  if (counter_ == 0 || use_osqp_) {
+    //      result = osqp_solver_->Solve(*prog_);
+    result = solver_->Solve(*prog_);
+    solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+  } else {
+    auto start = std::chrono::high_resolution_clock::now();
+    result = prev_sol_.norm() == 0 ? snopt_solver_->Solve(*prog_)
+                                   : snopt_solver_->Solve(*prog_, prev_sol_);
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    solve_time_ = elapsed.count();
+    cout << result.get_solution_result() << endl;
+  }
+  prev_sol_ = result.GetSolution();
+  counter_++;
 
   if (!result.is_success()) {
     std::cout << "reverting to old sol" << std::endl;

@@ -34,7 +34,7 @@ tracking_datas_to_plot:
 #  hip_yaw_left_traj: {'dims': [0], 'derivs': ['pos']}
   #  hip_roll_left_traj: {'dims': [0], 'derivs': ['pos']}
   #  hip_pitch_left_traj: {'dims': [0], 'derivs': ['pos', 'vel', 'acc']}
-  left_ft_traj: {'dims': [0, 2], 'derivs': ['pos', 'vel']}
+  left_ft_traj: {'dims': [0, 1], 'derivs': ['pos', 'vel']}
 #  right_ft_traj: {'dims': [0], 'derivs': ['pos']}
-  left_ft_z_traj: {'dims': [0, 2], 'derivs': ['pos', 'vel']}
+  left_ft_z_traj: {'dims': [0, 1], 'derivs': ['pos', 'vel']}
 #  right_ft_z_traj: {'dims': [0], 'derivs': ['pos']}

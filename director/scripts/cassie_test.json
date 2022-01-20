@@ -125,7 +125,7 @@
         "abstract_type": "dairlib.lcmt_osc_output",
         "abstract_field": "tracking_data[%d].y",
         "index_field": "tracking_data_names",
-        "index_element": "right_ft_traj",
+        "index_element": "left_ft_z_traj",
         "x_index": 0
       },
       "type_data": {
@@ -148,13 +148,13 @@
         "abstract_type": "dairlib.lcmt_osc_output",
         "abstract_field": "tracking_data[%d].y_des",
         "index_field": "tracking_data_names",
-        "index_element": "right_ft_traj",
+        "index_element": "left_ft_z_traj",
         "x_index": 0
       },
       "type_data": {
         "color": [
           1,
-          0,
+          1,
           1
         ],
         "alpha": 0.5,

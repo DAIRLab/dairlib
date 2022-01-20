@@ -269,10 +269,10 @@ int DoMain(int argc, char* argv[]) {
           osc_gains.relative_pelvis);
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_left", "hip_left",
+      plant, plant_context.get(), "toe_left", "pelvis",
       osc_gains.relative_feet, 0, accumulated_state_durations);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_right", "hip_right",
+      plant, plant_context.get(), "toe_right", "pelvis",
       osc_gains.relative_feet, 1, accumulated_state_durations);
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
@@ -349,9 +349,9 @@ int DoMain(int argc, char* argv[]) {
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
   left_hip_yz_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                    "hip_left");
+                                                    "pelvis");
   right_hip_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                     "hip_right");
+                                                     "pelvis");
 
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,

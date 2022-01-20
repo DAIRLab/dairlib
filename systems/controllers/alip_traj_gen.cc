@@ -79,11 +79,11 @@ ALIPTrajGenerator::ALIPTrajGenerator(
   // Provide an instance to allocate the memory first (for the output)
   ExponentialPlusPiecewisePolynomial<double> exp;
   drake::trajectories::Trajectory<double>& traj_inst = exp;
-  output_port_alip_from_current_ =
+  output_port_alip_com_ =
       this->DeclareAbstractOutputPort("ALIP_xyz_from_current", traj_inst,
                                       &ALIPTrajGenerator::CalcTrajFromCurrent)
           .get_index();
-  output_port_alip_from_touchdown_ =
+  output_port_alip_L_ =
       this->DeclareAbstractOutputPort("ALIP_xyz_from_touchdown", traj_inst,
                                       &ALIPTrajGenerator::CalcTrajFromTouchdown)
           .get_index();

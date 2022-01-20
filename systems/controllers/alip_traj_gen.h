@@ -54,13 +54,12 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(touchdown_time_port_);
   }
   // Output port getters
-  const drake::systems::OutputPort<double>& get_output_port_lipm_from_current()
+  const drake::systems::OutputPort<double>& get_output_port_alip_com()
   const {
-    return this->get_output_port(output_port_alip_from_current_);
+    return this->get_output_port(output_port_alip_com_);
   }
-  const drake::systems::OutputPort<double>&
-  get_output_port_lipm_from_touchdown() const {
-    return this->get_output_port(output_port_alip_from_touchdown_);
+  const drake::systems::OutputPort<double>&get_output_port_alip_L_() const {
+    return this->get_output_port(output_port_alip_L_);
   }
 
  private:
@@ -84,8 +83,8 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   int fsm_port_;
   int touchdown_time_port_;
 
-  int output_port_alip_from_current_;
-  int output_port_alip_from_touchdown_;
+  int output_port_alip_com_;
+  int output_port_alip_L_;
 
   int prev_touchdown_time_idx_;
   int stance_foot_pos_idx_;

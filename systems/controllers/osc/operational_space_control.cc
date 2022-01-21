@@ -817,25 +817,28 @@ VectorXd OperationalSpaceControl::SolveQp(
                                         -W_input_reg_ * (*u_sol_));
   }
 
+  // Testing -- set scaling (For OSQP, make sure that you are using the Drake
+  // where you implement the scaling)
+  if (counter_ > 0) {
+    const auto& w = prog_->decision_variables();
+    for (int i = 0; i < prev_sol_.size(); i++) {
+      //      if (prev_sol_(i) != 0) {
+      if (abs(prev_sol_(i)) > 1e-3) {
+        prog_->SetVariableScaling(w(i), abs(prev_sol_(i)));
+      }
+    }
+  }
+
   // Solve the QP
   MathematicalProgramResult result;
 
   cout << counter_ << ": ";
   if (counter_ == 0 || use_osqp_) {
-    //    result = prev_sol_.norm() == 0 ? osqp_solver_->Solve(*prog_)
-    //                                   : osqp_solver_->Solve(*prog_,
-    //                                   prev_sol_);
-    result = solver_->Solve(*prog_);
+    result = prev_sol_.norm() == 0 ? osqp_solver_->Solve(*prog_)
+                                   : osqp_solver_->Solve(*prog_, prev_sol_);
+    //    result = solver_->Solve(*prog_);
     solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
   } else {
-    // Testing -- set scaling for snopt
-    const auto& w = prog_->decision_variables();
-    for (int i = 0; i < prev_sol_.size(); i++) {
-      if (prev_sol_(i) != 0) {
-        prog_->SetVariableScaling(w(i), abs(prev_sol_(i)));
-      }
-    }
-
     // Solve with snopt
     auto start = std::chrono::high_resolution_clock::now();
     result = prev_sol_.norm() == 0 ? snopt_solver_->Solve(*prog_)

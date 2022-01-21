@@ -49,7 +49,7 @@ using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::TriggerTypeSet;
+using drake::systems::TriggerTypeSet;
 
 using multibody::WorldYawViewFrame;
 using systems::controllers::ComTrackingData;

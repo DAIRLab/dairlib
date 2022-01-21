@@ -6,6 +6,7 @@
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
+#include "solvers/optimization_utils.h"
 
 #include "drake/common/text_logging.h"
 
@@ -408,8 +409,10 @@ void OperationalSpaceControl::Build() {
   if (with_input_constraints_) {
     cout << "u_min_ = " << u_min_ << endl;
     cout << "u_max_ = " << u_max_ << endl;
-    prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
-                               u_);
+    /*prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
+                               u_);*/
+    prog_->AddBoundingBoxConstraint(u_min_, u_max_, u_);
+    // TODO: Maybe use AddBoundingBoxConstraint
   }
   // No joint position constraint in this implementation
 
@@ -421,6 +424,8 @@ void OperationalSpaceControl::Build() {
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
+    MatrixXd W_joint_accel_scaled = W_joint_accel_;
+    W_joint_accel_scaled.rightCols<2>() /= (dv_scale_ * dv_scale_);
     auto binding =
         prog_->AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv_);
     binding.evaluator().get()->set_description("joint_accel_cost");
@@ -428,7 +433,8 @@ void OperationalSpaceControl::Build() {
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
     auto binding = prog_->AddQuadraticCost(
-        w_soft_constraint_ * MatrixXd::Identity(n_c_active_, n_c_active_),
+        (w_soft_constraint_ / eps_scale_ / eps_scale_) *
+            MatrixXd::Identity(n_c_active_, n_c_active_),
         VectorXd::Zero(n_c_active_), epsilon_);
     binding.evaluator().get()->set_description("soft_constraint_cost");
   }
@@ -485,6 +491,11 @@ void OperationalSpaceControl::Build() {
     input_reg_cost_->set_description("input_reg_cost");
   }
 
+  // Testing 8. Regularization for all variable
+  //  const auto& w = prog_->decision_variables();
+  //  prog_->AddQuadraticCost(1e-8 * MatrixXd::Identity(w.size(), w.size()),
+  //                          VectorXd::Zero(w.size()), w);
+
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
@@ -498,6 +509,7 @@ void OperationalSpaceControl::Build() {
   //  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+  //  solver_options.SetOption(OsqpSolver::id(), "scaling", 500);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
   //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   std::cout << solver_options << std::endl;
@@ -507,10 +519,10 @@ void OperationalSpaceControl::Build() {
   prog_->SetSolverOptions(solver_options);
 
   snopt_solver_ = std::make_unique<drake::solvers::SnoptSolver>();
-  prog_->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                         "../snopt_in_osc.out");
-  prog_->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                         2);  // snopt doc said try 2 if seeing snopta exit 40
+  //  prog_->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+  //                         "../snopt_in_osc.out");
+  /*prog_->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
+                         2);  // snopt doc said try 2 if seeing snopta exit 40*/
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -629,11 +641,14 @@ VectorXd OperationalSpaceControl::SolveQp(
   A_dyn.block(0, n_v_, n_v_, n_c_) = -J_c.transpose();
   A_dyn.block(0, n_v_ + n_c_, n_v_, n_h_) = -J_h.transpose();
   A_dyn.block(0, n_v_ + n_c_ + n_h_, n_v_, n_u_) = -B;
+  A_dyn.block(0, n_v_ - 2, n_v_, 2) /= dv_scale_;
   dynamics_constraint_->UpdateCoefficients(A_dyn, -bias);
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
   /// -> J_h*dv == -JdotV_h
-  holonomic_constraint_->UpdateCoefficients(J_h, -JdotV_h);
+  MatrixXd J_h_scaled = J_h;
+  J_h_scaled.rightCols<2>() /= dv_scale_;
+  holonomic_constraint_->UpdateCoefficients(J_h_scaled, -JdotV_h);
   // 3. Contact constraint
   if (!all_contacts_.empty()) {
     if (w_soft_constraint_ <= 0) {
@@ -648,7 +663,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       MatrixXd A_c = MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_);
       A_c.block(0, 0, n_c_active_, n_v_) = J_c_active;
       A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-          MatrixXd::Identity(n_c_active_, n_c_active_);
+          MatrixXd::Identity(n_c_active_, n_c_active_) / eps_scale_;
+      A_c.block(0, n_v_ - 2, n_c_active_, 2) /= dv_scale_;
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
@@ -721,11 +737,15 @@ VectorXd OperationalSpaceControl::SolveQp(
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
       MatrixXd W = tracking_data->GetWeight();
-      const MatrixXd& J_t = tracking_data->GetJ();
+      MatrixXd J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
 
       //      W += 1e-2 * MatrixXd::Identity(W.rows(), W.cols());
 
+      // Testing -- scaling dv
+      J_t.rightCols<2>() /= dv_scale_;
+
+      // Testing
       MatrixXd Q = J_t.transpose() * W * J_t;
       Q += 1e-12 * MatrixXd::Identity(n_v_, n_v_);
       // Check Hessian PSD (algorithm same as QuadraticCost::CheckHessianPsd())
@@ -734,7 +754,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       if (!ldlt_solver.isPositive()) {
         cout << tracking_cost_.at(i)->get_description() << " is not convex!\n";
       }
-      //      cout << "vectorD = " << ldlt_solver.vectorD() << endl;
+      //      cout << "vectorD = " << ldlt_solver.vectorD().diagonal() << endl;
 
       // The tracking cost is
       // 0.5 * (J_*dv + JdotV - y_command)^T * W * (J_*dv + JdotV - y_command).
@@ -808,6 +828,15 @@ VectorXd OperationalSpaceControl::SolveQp(
     result = solver_->Solve(*prog_);
     solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
   } else {
+    // Testing -- set scaling for snopt
+    const auto& w = prog_->decision_variables();
+    for (int i = 0; i < prev_sol_.size(); i++) {
+      if (prev_sol_(i) != 0) {
+        prog_->SetVariableScaling(w(i), abs(prev_sol_(i)));
+      }
+    }
+
+    // Solve with snopt
     auto start = std::chrono::high_resolution_clock::now();
     result = prev_sol_.norm() == 0 ? snopt_solver_->Solve(*prog_)
                                    : snopt_solver_->Solve(*prog_, prev_sol_);
@@ -818,18 +847,37 @@ VectorXd OperationalSpaceControl::SolveQp(
   cout << result.get_solution_result() << endl;
   prev_sol_ = result.GetSolution();
   counter_++;
+  //  cout << "prev_sol_= \n " << prev_sol_ << endl;
 
   if (!result.is_success()) {
     std::cout << "reverting to old sol" << std::endl;
     return *u_sol_;
   }
 
+  // // Testing
+  //  MatrixXd A, H;
+  //  VectorXd y, lb, ub, b;
+  //  // cout << "LinearizeConstraints...\n";
+  //  solvers::LinearizeConstraints(*prog_, result.GetSolution(), &y, &A, &lb,
+  //  &ub);
+  //  // cout << "SecondOrderCost...\n";
+  //  solvers::SecondOrderCost(*prog_, result.GetSolution(), &H, &b);
+  //
+  //  Eigen::LDLT<Eigen::MatrixXd> ldlt_solver;
+  //  ldlt_solver.compute(H);
+  //  cout << "H = \n" << H << endl;
+  //  //  cout << "vectorD = \n" << ldlt_solver.vectorD() << endl;
+  //  //  cout << "vectorD = \n" << ldlt_solver.vectorD().diagonal() << endl;
+  //  //  cout << "A = \n" << A << endl;
+
   // Extract solutions
-  *dv_sol_ = result.GetSolution(dv_);
+  VectorXd dv_sol_scaled = result.GetSolution(dv_);
+  dv_sol_scaled.bottomRows<2>() /= dv_scale_;
+  *dv_sol_ = dv_sol_scaled;
   *u_sol_ = result.GetSolution(u_);
   *lambda_c_sol_ = result.GetSolution(lambda_c_);
   *lambda_h_sol_ = result.GetSolution(lambda_h_);
-  *epsilon_sol_ = result.GetSolution(epsilon_);
+  *epsilon_sol_ = result.GetSolution(epsilon_) / eps_scale_;
 
   for (auto tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {

@@ -834,9 +834,10 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   cout << counter_ << ": ";
   if (counter_ == 0 || use_osqp_) {
-    result = prev_sol_.norm() == 0 ? osqp_solver_->Solve(*prog_)
-                                   : osqp_solver_->Solve(*prog_, prev_sol_);
-    //    result = solver_->Solve(*prog_);
+    //    result = prev_sol_.norm() == 0 ? osqp_solver_->Solve(*prog_)
+    //                                   : osqp_solver_->Solve(*prog_,
+    //                                   prev_sol_);
+    result = solver_->Solve(*prog_);
     solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
   } else {
     // Solve with snopt

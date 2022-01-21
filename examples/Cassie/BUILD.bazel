@@ -44,6 +44,8 @@ cc_library(
         "//examples/Cassie:dispatcher_robot_in",
         "//examples/Cassie:dispatcher_robot_out",
         "//examples/Cassie:multibody_sim",
+        "//examples/Cassie:run_controller_switch",
+        "//examples/Cassie:run_osc_jumping_controller",
         "//examples/Cassie:run_osc_standing_controller",
         "//examples/Cassie:run_osc_walking_controller",
         "//examples/Cassie:run_pd_controller",

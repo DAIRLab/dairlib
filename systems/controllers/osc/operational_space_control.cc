@@ -508,8 +508,9 @@ void OperationalSpaceControl::Build() {
   //  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
   //  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
+  solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 5);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  //  solver_options.SetOption(OsqpSolver::id(), "scaling", 500);
+  //    solver_options.SetOption(OsqpSolver::id(), "scaling", 500);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
   //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   std::cout << solver_options << std::endl;
@@ -819,7 +820,8 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Testing -- set scaling (For OSQP, make sure that you are using the Drake
   // where you implement the scaling)
-  if (counter_ > 0) {
+  //  if (counter_ > 0) {
+  if (counter_ == 1) {
     const auto& w = prog_->decision_variables();
     for (int i = 0; i < prev_sol_.size(); i++) {
       //      if (prev_sol_(i) != 0) {

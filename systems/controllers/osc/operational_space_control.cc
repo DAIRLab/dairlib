@@ -633,7 +633,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       MatrixXd A_c = MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_);
       A_c.block(0, 0, n_c_active_, n_v_) = J_c_active;
       A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-          MatrixXd::Identity(n_c_active_, n_c_active_);
+          0.01 * MatrixXd::Identity(n_c_active_, n_c_active_);
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
@@ -844,11 +844,11 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   for (auto tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
-      A.block(start_row, 0, tracking_data->GetYDim(), active_constraint_dim) =
+      A.block(start_row, 0, tracking_data->GetYdotDim(), active_constraint_dim) =
           tracking_data->GetJ() * M_Jt_;
-      ydot_err_vec.segment(start_row, tracking_data->GetYDim()) =
+      ydot_err_vec.segment(start_row, tracking_data->GetYdotDim()) =
           tracking_data->GetErrorYdot();
-      start_row += tracking_data->GetYDim();
+      start_row += tracking_data->GetYdotDim();
     }
   }
 

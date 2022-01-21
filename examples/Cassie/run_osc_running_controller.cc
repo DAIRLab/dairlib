@@ -34,7 +34,6 @@
 #include "yaml-cpp/yaml.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
-#include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -269,8 +268,8 @@ int DoMain(int argc, char* argv[]) {
           osc_gains.relative_pelvis);
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_left", "pelvis",
-      osc_gains.relative_feet, 0, accumulated_state_durations);
+      plant, plant_context.get(), "toe_left", "pelvis", osc_gains.relative_feet,
+      0, accumulated_state_durations);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_right", "pelvis",
       osc_gains.relative_feet, 1, accumulated_state_durations);
@@ -335,12 +334,12 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.W_swing_foot, plant, plant);
   left_hip_tracking_data.AddStateAndPointToTrack(right_stance_state,
                                                  "pelvis");
-  left_hip_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                 "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(left_stance_state,
                                                   "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
                                                   "pelvis");
+  left_hip_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
+                                                 "pelvis");
 
   TransTaskSpaceTrackingData left_hip_yz_tracking_data(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -349,9 +348,9 @@ int DoMain(int argc, char* argv[]) {
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
   left_hip_yz_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                    "pelvis");
+                                                    "hip_left");
   right_hip_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                     "pelvis");
+                                                     "hip_right");
 
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -381,8 +380,8 @@ int DoMain(int argc, char* argv[]) {
 
   left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-//  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
-//  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);
   //  left_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
   //  right_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});

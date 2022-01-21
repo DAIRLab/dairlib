@@ -672,7 +672,7 @@
         <parent link="thigh_left" />
         <child link="knee_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.862" upper="-0.646" effort="300"/>
+        <limit lower="-2.862" upper="-0.646" effort="195"/>
         <dynamics damping="1" />
     </joint>
 
@@ -681,7 +681,7 @@
         <parent link="thigh_right" />
         <child link="knee_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.862" upper="-0.646" effort="300"/>
+        <limit lower="-2.862" upper="-0.646" effort="195"/>
         <dynamics damping="1" />
     </joint>
 
@@ -786,7 +786,7 @@
         <parent link="tarsus_left" />
         <child link="toe_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.0" upper="-0.74" effort="150"/>
+        <limit lower="-2.0" upper="-0.74" effort="50"/>
         <dynamics damping="1" />
     </joint>
 
@@ -795,7 +795,7 @@
         <parent link="tarsus_right" />
         <child link="toe_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.0" upper="-0.74" effort="150"/>
+        <limit lower="-2.0" upper="-0.74" effort="50"/>
         <dynamics damping="1" />
     </joint>
 

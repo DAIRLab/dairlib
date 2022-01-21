@@ -7,7 +7,6 @@
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
-#include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -18,7 +17,6 @@
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/options_tracking_data.h"
-#include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
@@ -298,8 +296,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   pelvis_traj_generator->get_input_port_state());
 
-
-
   // Create swing leg trajectory generator
   // Since the ground is soft in the simulation, we raise the desired final
   // foot height by 1 cm. The controller is sensitive to this number, should
@@ -330,6 +326,8 @@ int DoMain(int argc, char* argv[]) {
                   swing_ft_traj_generator->get_input_port_state());
   builder.Connect(lipm_traj_generator->get_output_port_alip_state(),
                   swing_ft_traj_generator->get_input_port_alip_state());
+  builder.Connect(high_level_command->get_xy_output_port(),
+                  swing_ft_traj_generator->get_input_port_vdes());
 
   // Swing toe joint trajectory
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
@@ -504,7 +502,7 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Center of mass tracking
-  bool use_pelvis_for_lipm_tracking = true;
+  bool use_pelvis_for_lipm_tracking = false;
 
   TransTaskSpaceTrackingData pelvis_traj("lipm_traj", gains.K_p_com,
                                          gains.K_d_com, gains.W_com,
@@ -512,6 +510,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_traj.AddPointToTrack("pelvis");
   ComTrackingData center_of_mass_traj("lipm_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);
+  center_of_mass_traj.AddFiniteStateToTrack(-1);
   if (use_pelvis_for_lipm_tracking) {
     osc->AddTrackingData(&pelvis_traj);
   } else {

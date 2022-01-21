@@ -89,6 +89,8 @@ ALIPTrajGenerator::ALIPTrajGenerator(
                                       traj_inst,
                                       &ALIPTrajGenerator::CalcAlipTrajFromCurrent)
           .get_index();
+
+  m_ = plant_.CalcTotalMass(*context_);
 }
 
 
@@ -130,7 +132,7 @@ ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTr
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   Vector2d T_waypoint_com {start_time, end_time_of_this_fsm_state};
-  MatrixXd Y = MatrixXd::Zero(3, T_waypoint_com.size());
+  MatrixXd Y = MatrixXd::Zero(3, 2);
   Y.col(0).head(2) = stance_foot_pos.head(2);
   Y.col(1).head(2) = stance_foot_pos.head(2);
 
@@ -142,11 +144,11 @@ ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTr
       CoM(2) - max_height_diff_per_step,
       CoM(2) + max_height_diff_per_step);
   //  double final_height = desired_com_height_ + stance_foot_pos(2);
-  Y(0,2) = final_height;
-  Y(1, 2) = final_height;
+  Y(2,0) = final_height;
+  Y(2, 1) = final_height;
 
-  VectorXd Y_dot_start = MatrixXd::Zero(3, 1);
-  VectorXd Y_dot_end = MatrixXd::Zero(3, 1);
+  Vector3d Y_dot_start = Vector3d::Zero();
+  VectorXd Y_dot_end = Vector3d::Zero();
 
   PiecewisePolynomial<double> pp_part =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(

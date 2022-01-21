@@ -200,7 +200,7 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   // com and angular momentum prediction
   const drake::AbstractValue* alip_traj_p =
       this->EvalAbstractInput(context, alip_state_port_);
-  DRAKE_ASSERT(alip_traj_p != nullptr);
+  DRAKE_DEMAND(alip_traj_p != nullptr);
   const auto& alip_traj =
       alip_traj_p->get_value<drake::trajectories::Trajectory<double>>();
   Vector4d alip_pred = alip_traj.value(end_time_of_this_interval);
@@ -213,14 +213,15 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   double L_x_n = m_ * H * footstep_offset_ *
       (omega * sinh(omega * T) / (1 + cosh(omega * T)));
   Vector2d L_i;
+
   if (wrt_com_in_local_frame_) {
     L_i = rot.transpose() * alip_pred.tail<2>();
     Vector2d L_f = is_right_support ?
         Vector2d(L_x_offset + L_x_n, L_y_des) :
-        Vector2d(-L_x_offset - L_x_n, L_y_des);
+        Vector2d(L_x_offset - L_x_n, L_y_des);
     double p_x_ft_to_com = ( L_f(1) - cosh(omega*T) * L_i(1) ) /
                            (m_ * H * omega * sinh(omega*T));
-    double p_y_ft_to_com = ( L_f(0) - cosh(omega*T) * L_i(0) ) /
+    double p_y_ft_to_com = -( L_f(0) - cosh(omega*T) * L_i(0) ) /
                            (m_ * H * omega * sinh(omega*T));
     *x_fs = Vector2d(-p_x_ft_to_com, -p_y_ft_to_com);
   } else {
@@ -230,7 +231,7 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
                    Vector2d(-L_x_offset - L_x_n, L_y_des);
     double p_x_ft_to_com = ( L_f(1) - cosh(omega*T) * L_i(1) ) /
         (m_ * H * omega * sinh(omega*T));
-    double p_y_ft_to_com = ( L_f(0) - cosh(omega*T) * L_i(0) ) /
+    double p_y_ft_to_com = - ( L_f(0) - cosh(omega*T) * L_i(0) ) /
         (m_ * H * omega * sinh(omega*T));
     *x_fs = Vector2d(p_x_ft_to_com, p_y_ft_to_com);
   }

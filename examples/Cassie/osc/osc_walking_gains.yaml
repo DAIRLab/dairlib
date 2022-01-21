@@ -38,17 +38,17 @@ ds_time: 0.1
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55
-footstep_offset: 0.0
+footstep_offset: 0.25
 center_line_offset: 0.03
-mid_foot_height: 0.05
+mid_foot_height: 0.1
 final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
-lipm_height: 0.9
+lipm_height: 0.75
 
 # OSC gains
-mu: 0.8
+mu: 0.75
 
 w_accel: 0.00000001
 w_soft_constraint: 80
@@ -73,7 +73,7 @@ CoMKp:
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,     1]
+      0,    0,     5]
 #CoMW:
 #  [   1,    0,     0,
 #      0,    1,     0,

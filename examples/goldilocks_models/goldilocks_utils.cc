@@ -99,6 +99,25 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
   }
 }
 
+// rom_option list for robot_option=1
+/*     skip_idx,        order, order,  model,          pelvs?  fixed?
+  0 : quat, xy            2      2    2dlipm            COM
+  1 : quat, xy            2      2    2dlipm w/sw       COM
+  2 : quat, xy            2      2    fixheight         COM
+  3 : quat, xy            2      2    fixheight w/sw    COM
+  4 : quat, xy            2      2    3dlipm            COM
+  5 : quat, xy            2      2    3dlipm w/sw       COM
+  6 : quat, xy            2      2    3dlipm w/sw       COM    fix xyz (com)
+  7 : quat, xy            0      2    3dlipm            COM    fix xyz (com)
+  8 : quat, xy            2      2    3dGip             COM
+  9 : quat, xy            2      2    3dlipm            COM    fix xy
+  10: quat, xy, swing     2      2    3dlipm            yes    fix xy
+  11: quat, xy, swing     2      2    3dlipm            yes    fix xyz
+  12: quat, xy, swing     2      4    3dlipm            yes    fix xy
+  13: quat, xy, swing     2      4    3dlipm            yes    fix xyz
+  14: quat, xy, swing     4      4    3dlipm            yes    fix xy
+  15: quat, xyz           4      4    3dlipm            yes    fix xy
+*/
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
     const drake::multibody::MultibodyPlant<double>& plant, bool print_info) {
@@ -117,6 +136,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // TODO: we completely remove the quaternion for now. We want to have
     //  roll and pitch, so add this component later (need to map quat to roll
     //  pitch yaw)
+    // Note that we shouldn't use pelvis z because it drifts in state estimation
     vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     if ((rom_option >= 10) && (rom_option <= 14)) {
@@ -130,6 +150,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         }
       }
       cout << endl;
+    }
+    if (rom_option == 15) {
+      skip_inds.push_back(6);  // pelvis z
     }
     if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||
         (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13))) {

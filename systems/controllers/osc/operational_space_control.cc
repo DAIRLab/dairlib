@@ -53,8 +53,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
     bool used_with_finite_state_machine, bool print_tracking_info,
-    double qp_time_limit,
-    bool use_new_qp_setting)
+    double qp_time_limit, bool use_new_qp_setting)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_w_spr_(context_w_spr),
@@ -830,10 +829,10 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Solve the QP
   MathematicalProgramResult result;
 
-  cout << counter_ << ": ";
   if (counter_ == 0 || use_osqp_) {
     //    result = osqp_solver_->Solve(*prog_);  // no warm start
     if (counter_ == 0) {
+      // Could be more efficient
       solver_->InitializeSolver(*prog_, solver_options_);
     }
     result = solver_->Solve(*prog_);

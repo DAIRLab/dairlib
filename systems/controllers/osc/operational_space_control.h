@@ -281,10 +281,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<drake::solvers::SnoptSolver> snopt_solver_;
   mutable Eigen::VectorXd prev_sol_ = Eigen::VectorXd::Zero(1);
   mutable int counter_ = 0;
+  mutable int prev_fsm_state_ = -1;
   bool use_osqp_ = true;
 
   drake::solvers::QuadraticCost* reg_cost_;
   Eigen::MatrixXd W_reg_;
+  Eigen::MatrixXd W_reg_0_;
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;

@@ -492,36 +492,35 @@ void OperationalSpaceControl::Build() {
   //                          VectorXd::Zero(w.size()), w);
   // Target previous solution
   const auto& w = prog_->decision_variables();
+  W_reg_ = 1e-6 * MatrixXd::Identity(w.size(), w.size());
+  W_reg_0_ = 0 * MatrixXd::Identity(w.size(), w.size());
   reg_cost_ =
-      prog_
-          ->AddQuadraticErrorCost(0 * MatrixXd::Identity(w.size(), w.size()),
-                                  VectorXd::Zero(w.size()), w)
+      prog_->AddQuadraticErrorCost(W_reg_0_, VectorXd::Zero(w.size()), w)
           .evaluator()
           .get();
-  W_reg_ = 1e-6 * MatrixXd::Identity(w.size(), w.size());
+
+  solver_options_.SetOption(OsqpSolver::id(), "verbose", 0);
+  solver_options_.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+  solver_options_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+  solver_options_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
+  solver_options_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
+  //  solver_options_.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
+  //  solver_options_.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
+  //  solver_options_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
+  //  solver_options_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
+  solver_options_.SetOption(OsqpSolver::id(), "polish", 1);
+  solver_options_.SetOption(OsqpSolver::id(), "polish_refine_iter", 5);
+  solver_options_.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+  //    solver_options_.SetOption(OsqpSolver::id(), "scaling", 500);
+  solver_options_.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
+  //  solver_options_.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+  std::cout << solver_options_ << std::endl;
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
-  //  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
-  //  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
-  //  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
-  //  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
-  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-  solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 5);
-  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  //    solver_options.SetOption(OsqpSolver::id(), "scaling", 500);
-  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
-  //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  std::cout << solver_options << std::endl;
-  solver_->InitializeSolver(*prog_, solver_options);
+  solver_->InitializeSolver(*prog_, solver_options_);
 
   osqp_solver_ = std::make_unique<drake::solvers::OsqpSolver>();
-  prog_->SetSolverOptions(solver_options);
+  prog_->SetSolverOptions(solver_options_);
 
   snopt_solver_ = std::make_unique<drake::solvers::SnoptSolver>();
   //  prog_->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
@@ -557,6 +556,11 @@ VectorXd OperationalSpaceControl::SolveQp(
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double time_since_last_state_switch, double alpha,
     int next_fsm_state) const {
+  if (prev_fsm_state_ != fsm_state) {
+    counter_ = 0;
+    prev_fsm_state_ = fsm_state;
+  }
+
   // Get active contact indices
   std::set<int> active_contact_set = {};
   if (single_contact_mode_) {
@@ -802,14 +806,18 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // 8. Regularization cost
-  if (counter_ > 0) {
+  if (counter_ == 0) {
+    reg_cost_->UpdateCoefficients(
+        W_reg_0_, VectorXd::Zero(prog_->decision_variables().size()));
+  } else {
     reg_cost_->UpdateCoefficients(2 * W_reg_, -2 * W_reg_ * prev_sol_);
   }
 
   // Testing -- set scaling (For OSQP, make sure that you are using the Drake
   // where you implement the scaling)
-  //  if (counter_ > 0) {
-  if (counter_ == 1) {
+  if (counter_ == 0) {
+    prog_->ClearVariableScaling();
+  } else if (counter_ == 1 /*counter_ >= 1*/) {
     const auto& w = prog_->decision_variables();
     for (int i = 0; i < prev_sol_.size(); i++) {
       //      if (prev_sol_(i) != 0) {
@@ -824,9 +832,10 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   cout << counter_ << ": ";
   if (counter_ == 0 || use_osqp_) {
-    //    result = prev_sol_.norm() == 0 ? osqp_solver_->Solve(*prog_)
-    //                                   : osqp_solver_->Solve(*prog_,
-    //                                   prev_sol_);
+    //    result = osqp_solver_->Solve(*prog_);  // no warm start
+    if (counter_ == 0) {
+      solver_->InitializeSolver(*prog_, solver_options_);
+    }
     result = solver_->Solve(*prog_);
     solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
   } else {

@@ -846,7 +846,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     std::chrono::duration<double> elapsed = finish - start;
     solve_time_ = elapsed.count();
   }
-  cout << result.get_solution_result() << endl;
+  // cout << result.get_solution_result() << endl;
   prev_sol_ = result.GetSolution();
   counter_++;
   //  cout << "prev_sol_= \n " << prev_sol_ << endl;

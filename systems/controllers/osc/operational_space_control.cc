@@ -424,8 +424,6 @@ void OperationalSpaceControl::Build() {
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
-    MatrixXd W_joint_accel_scaled = W_joint_accel_;
-    W_joint_accel_scaled.rightCols<2>() /= (dv_scale_ * dv_scale_);
     auto binding =
         prog_->AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv_);
     binding.evaluator().get()->set_description("joint_accel_cost");
@@ -433,8 +431,7 @@ void OperationalSpaceControl::Build() {
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
     auto binding = prog_->AddQuadraticCost(
-        (w_soft_constraint_ / eps_scale_ / eps_scale_) *
-            MatrixXd::Identity(n_c_active_, n_c_active_),
+        w_soft_constraint_ * MatrixXd::Identity(n_c_active_, n_c_active_),
         VectorXd::Zero(n_c_active_), epsilon_);
     binding.evaluator().get()->set_description("soft_constraint_cost");
   }
@@ -652,14 +649,11 @@ VectorXd OperationalSpaceControl::SolveQp(
   A_dyn.block(0, n_v_, n_v_, n_c_) = -J_c.transpose();
   A_dyn.block(0, n_v_ + n_c_, n_v_, n_h_) = -J_h.transpose();
   A_dyn.block(0, n_v_ + n_c_ + n_h_, n_v_, n_u_) = -B;
-  A_dyn.block(0, n_v_ - 2, n_v_, 2) /= dv_scale_;
   dynamics_constraint_->UpdateCoefficients(A_dyn, -bias);
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
   /// -> J_h*dv == -JdotV_h
-  MatrixXd J_h_scaled = J_h;
-  J_h_scaled.rightCols<2>() /= dv_scale_;
-  holonomic_constraint_->UpdateCoefficients(J_h_scaled, -JdotV_h);
+  holonomic_constraint_->UpdateCoefficients(J_h, -JdotV_h);
   // 3. Contact constraint
   if (!all_contacts_.empty()) {
     if (w_soft_constraint_ <= 0) {
@@ -674,8 +668,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       MatrixXd A_c = MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_);
       A_c.block(0, 0, n_c_active_, n_v_) = J_c_active;
       A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-          MatrixXd::Identity(n_c_active_, n_c_active_) / eps_scale_;
-      A_c.block(0, n_v_ - 2, n_c_active_, 2) /= dv_scale_;
+          MatrixXd::Identity(n_c_active_, n_c_active_);
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
@@ -752,9 +745,6 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
 
       //      W += 1e-2 * MatrixXd::Identity(W.rows(), W.cols());
-
-      // Testing -- scaling dv
-      J_t.rightCols<2>() /= dv_scale_;
 
       // Testing
       MatrixXd Q = J_t.transpose() * W * J_t;
@@ -892,13 +882,11 @@ VectorXd OperationalSpaceControl::SolveQp(
   //  //  cout << "A = \n" << A << endl;
 
   // Extract solutions
-  VectorXd dv_sol_scaled = result.GetSolution(dv_);
-  dv_sol_scaled.bottomRows<2>() /= dv_scale_;
-  *dv_sol_ = dv_sol_scaled;
+  *dv_sol_ = result.GetSolution(dv_);
   *u_sol_ = result.GetSolution(u_);
   *lambda_c_sol_ = result.GetSolution(lambda_c_);
   *lambda_h_sol_ = result.GetSolution(lambda_h_);
-  *epsilon_sol_ = result.GetSolution(epsilon_) / eps_scale_;
+  *epsilon_sol_ = result.GetSolution(epsilon_);
 
   for (auto tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {

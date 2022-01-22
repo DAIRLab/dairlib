@@ -286,11 +286,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* reg_cost_;
   Eigen::MatrixXd W_reg_;
 
-  //  double eps_scale_ = 50;
-  //  double dv_scale_ = 0.02;
-  double eps_scale_ = 1;
-  double dv_scale_ = 1;
-
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
   // Decision variables

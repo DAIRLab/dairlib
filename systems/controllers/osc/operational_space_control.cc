@@ -486,6 +486,11 @@ VectorXd OperationalSpaceControl::SolveQp(
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double time_since_last_state_switch, double alpha,
     int next_fsm_state) const {
+  if (prev_fsm_state_ != fsm_state) {
+    counter_ = 0;
+    prev_fsm_state_ = fsm_state;
+  }
+
   // Get active contact indices
   std::set<int> active_contact_set = {};
   if (single_contact_mode_) {
@@ -730,6 +735,13 @@ VectorXd OperationalSpaceControl::SolveQp(
                                         -W_input_reg_ * (*u_sol_));
   }
 
+//  // 8. Regularization cost
+//  if (counter_ == 0) {
+//    reg_cost_->UpdateCoefficients(
+//        W_reg_0_, VectorXd::Zero(prog_->decision_variables().size()));
+//  } else {
+//    reg_cost_->UpdateCoefficients(2 * W_reg_, -2 * W_reg_ * prev_sol_);
+//  }
 
   // Testing -- set scaling (For OSQP, make sure that you are using the Drake
   // where you implement the scaling)

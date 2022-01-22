@@ -139,9 +139,10 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // Note that we shouldn't use pelvis z because it drifts in state estimation
     vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
+    std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
+    DRAKE_DEMAND(pos_map.at("base_qw") == 0);  // Assumption
     if ((rom_option >= 10) && (rom_option <= 14)) {
       // Also skip the right leg joints (swing leg)
-      std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
       cout << "Joint skipped in mapping function: ";
       for (auto& pair : pos_map) {
         if (pair.first.find("right") != std::string::npos) {

@@ -492,9 +492,19 @@ void OperationalSpaceControl::Build() {
   }
 
   // Testing 8. Regularization for all variable
+  // // Target 0
   //  const auto& w = prog_->decision_variables();
   //  prog_->AddQuadraticCost(1e-8 * MatrixXd::Identity(w.size(), w.size()),
   //                          VectorXd::Zero(w.size()), w);
+  // Target previous solution
+  const auto& w = prog_->decision_variables();
+  reg_cost_ =
+      prog_
+          ->AddQuadraticErrorCost(0 * MatrixXd::Identity(w.size(), w.size()),
+                                  VectorXd::Zero(w.size()), w)
+          .evaluator()
+          .get();
+  W_reg_ = 1e-6 * MatrixXd::Identity(w.size(), w.size());
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
@@ -816,6 +826,11 @@ VectorXd OperationalSpaceControl::SolveQp(
   if (w_input_reg_ > 0) {
     input_reg_cost_->UpdateCoefficients(W_input_reg_,
                                         -W_input_reg_ * (*u_sol_));
+  }
+
+  // 8. Regularization cost
+  if (counter_ > 0) {
+    reg_cost_->UpdateCoefficients(2 * W_reg_, -2 * W_reg_ * prev_sol_);
   }
 
   // Testing -- set scaling (For OSQP, make sure that you are using the Drake

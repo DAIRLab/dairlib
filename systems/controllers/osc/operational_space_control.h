@@ -273,14 +273,18 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool is_quaternion_;
 
   // Solver
-  //  drake::solvers::OsqpSolver qp_solver_;
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
+
+  // Testing
   drake::solvers::SolverOptions solver_options_;
   std::unique_ptr<drake::solvers::OsqpSolver> osqp_solver_;
   std::unique_ptr<drake::solvers::SnoptSolver> snopt_solver_;
   mutable Eigen::VectorXd prev_sol_ = Eigen::VectorXd::Zero(1);
   mutable int counter_ = 0;
   bool use_osqp_ = true;
+
+  drake::solvers::QuadraticCost* reg_cost_;
+  Eigen::MatrixXd W_reg_;
 
   //  double eps_scale_ = 50;
   //  double dv_scale_ = 0.02;

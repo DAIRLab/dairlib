@@ -1046,9 +1046,14 @@ int DoMain(int argc, char* argv[]) {
 
     // Cost
     int n_v = plant_wo_springs.num_velocities();
-    MatrixXd Q_accel = osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
-    osc->SetAccelerationCostForAllJoints(Q_accel);
-    osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
+
+    if (osc_gains.w_accel > 0) {
+      MatrixXd Q_accel = osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
+      osc->SetAccelerationCostForAllJoints(Q_accel);
+    }
+    if (osc_gains.w_input_reg > 0) {
+      osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
+    }
 
     // Constraints in OSC
     osc->AddKinematicConstraint(&evaluators);

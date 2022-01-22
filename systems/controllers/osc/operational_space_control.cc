@@ -393,26 +393,22 @@ void OperationalSpaceControl::Build() {
     VectorXd one(1);
     MatrixXd A = MatrixXd(5, kSpaceDim);
     A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
-    //    cout << "A = " << A << endl;
 
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
-      auto binding = prog_->AddLinearConstraint(
-          A, VectorXd::Zero(5),
-          Eigen::VectorXd::Constant(5, std::numeric_limits<double>::infinity()),
-          lambda_c_.segment(kSpaceDim * j, 3));
-      friction_constraints_.push_back(binding.evaluator().get());
-      cout << "j = " << j << endl;
-      cout << binding.variables() << endl;
+      friction_constraints_.push_back(
+          prog_
+              ->AddLinearConstraint(
+                  A, VectorXd::Zero(5),
+                  Eigen::VectorXd::Constant(
+                      5, std::numeric_limits<double>::infinity()),
+                  lambda_c_.segment(kSpaceDim * j, 3))
+              .evaluator()
+              .get());
     }
   }
   // 5. Input constraint
   if (with_input_constraints_) {
-    cout << "u_min_ = " << u_min_ << endl;
-    cout << "u_max_ = " << u_max_ << endl;
-    /*prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
-                               u_);*/
     prog_->AddBoundingBoxConstraint(u_min_, u_max_, u_);
-    // TODO: Maybe use AddBoundingBoxConstraint
   }
   // No joint position constraint in this implementation
 

@@ -138,7 +138,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     } else if (rom_option == 7) {
       mapping_basis = std::make_unique<MonomialFeatures>(
           0, plant.num_positions(), skip_inds, "mapping basis");
-    } else if (rom_option == 14) {
+    } else if (rom_option == 14 || rom_option == 15) {
       mapping_basis = std::make_unique<MonomialFeatures>(
           4, plant.num_positions(), skip_inds, "mapping basis");
     } else {
@@ -183,7 +183,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 9 || rom_option == 10 || rom_option == 11) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 12 || rom_option == 13 || rom_option == 14) {
+  } else if ((rom_option >= 12) && (rom_option <= 15)) {
     // Highest degree = 4
     dynamic_basis = std::make_unique<MonomialFeatures>(
         4, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
@@ -260,7 +260,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);
-  } else if (rom_option == 10 || rom_option == 12 || rom_option == 14) {
+  } else if (rom_option == 10 || rom_option == 12 || rom_option == 14 ||
+             rom_option == 15) {
     // Fix the mapping function of the COM xy part
     // Use pelvis as a proxy for COM
     // ROM is only a function of stance leg's joints

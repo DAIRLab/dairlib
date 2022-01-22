@@ -1470,7 +1470,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   DRAKE_DEMAND((FLAGS_robot_option == 0) || FLAGS_robot_option == 1);
-  DRAKE_DEMAND((FLAGS_rom_option >= 0) && FLAGS_rom_option <= 14);
+  DRAKE_DEMAND((FLAGS_rom_option >= 0) && FLAGS_rom_option <= 15);
   if (FLAGS_robot_option == 0) {
     DRAKE_DEMAND(FLAGS_rom_option != 4);
     DRAKE_DEMAND(FLAGS_rom_option != 5);

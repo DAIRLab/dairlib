@@ -13,6 +13,18 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "some_test",
+    size = "small",
+    srcs = ["some_test.cc"],
+    deps = [
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
+    ],
+)
+
 cc_binary(
     name = "run_cassie_walking_controller_test1",
     srcs = ["run_cassie_walking_controller_test1.cc"],

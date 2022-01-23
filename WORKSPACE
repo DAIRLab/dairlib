@@ -13,11 +13,14 @@ workspace(name = "dairlib")
 # Choose a revision of Drake to use.
 # Note that there can only be one DRAKE_COMMIT text in this file because the install script search text in this file for the version.
 DRAKE_COMMIT = "e5c603b7f4a07c3344559e45989cd6e8e44bb304"  # my own Drake repo for PinocchioPlant with OSQP and MP change
-#DRAKE_COMMIT = "0788abe9657545bdb66ac21ab398f2098e8fdc92"  # my own Drake repo for PinocchioPlant
-#DRAKE_COMMITTTT = "2f16f87df02d7c6ef436fb87437e59a3df840bb5"
+DRAKE_CHECKSUM = "25d6d2ee3608b7f386d477baaa13302095bb7ac2b7e10d5364fb4228ddf740fd"
 
-DRAKE_CHECKSUM = "7f956fcf6945e5d5a2ceb38b04a56e322f1adc335846ff25f4a147cf9dd4713e"
+#DRAKE_COMMIT = "0788abe9657545bdb66ac21ab398f2098e8fdc92"  # my own Drake repo for PinocchioPlant
+#DRAKE_CHECKSUM = "7f956fcf6945e5d5a2ceb38b04a56e322f1adc335846ff25f4a147cf9dd4713e"
+
+#DRAKE_COMMITTTT = "2f16f87df02d7c6ef436fb87437e59a3df840bb5"
 #DRAKE_CHECKSUM = "fb65e3f2949a7d50075afa658ec0043b6c8a32f8f692628032c53a18176eff76"
+
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 # DRAKE_CHECKSUM = "0" * 64

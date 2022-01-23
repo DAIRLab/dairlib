@@ -188,6 +188,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--spring_model=%s' % str(spring_model).lower(),
     '--get_swing_foot_from_planner=%s' % str(foot_step_from_planner).lower(),
     '--get_stance_hip_angles_from_planner=%s' % str(stance_hip_angles_from_planner).lower(),
+    '--get_swing_hip_angle_from_planner=%s' % str(swing_hip_angle_from_planner).lower(),
     '--path_wait_identifier=%s' % control_wait_identifier,
     ]
   simulator_cmd = [
@@ -1212,6 +1213,7 @@ if __name__ == "__main__":
   target_realtime_rate = 0.1  # 0.04
   foot_step_from_planner = True
   stance_hip_angles_from_planner = True
+  swing_hip_angle_from_planner = False
   init_sim_vel = True
   use_nominal_traj_pool = True
   set_sim_init_state_from_trajopt = True

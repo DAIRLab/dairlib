@@ -12,7 +12,8 @@ workspace(name = "dairlib")
 
 # Choose a revision of Drake to use.
 # Note that there can only be one DRAKE_COMMIT text in this file because the install script search text in this file for the version.
-DRAKE_COMMIT = "0788abe9657545bdb66ac21ab398f2098e8fdc92"  # my own Drake repo for PinocchioPlant
+DRAKE_COMMIT = "e5c603b7f4a07c3344559e45989cd6e8e44bb304"  # my own Drake repo for PinocchioPlant with OSQP and MP change
+#DRAKE_COMMIT = "0788abe9657545bdb66ac21ab398f2098e8fdc92"  # my own Drake repo for PinocchioPlant
 #DRAKE_COMMITTTT = "2f16f87df02d7c6ef436fb87437e59a3df840bb5"
 
 DRAKE_CHECKSUM = "7f956fcf6945e5d5a2ceb38b04a56e322f1adc335846ff25f4a147cf9dd4713e"

@@ -1244,6 +1244,7 @@ if __name__ == "__main__":
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
   tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim([0.95], "pelvis_height")
+  tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
 
   # log indices
   log_idx_offset = 0  # 0

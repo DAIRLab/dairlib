@@ -81,6 +81,19 @@ TEST_F(MultibodyPlantJointOrderTest, FixedSpringCassie) {
   EXPECT_TRUE(vel_map.at("ankle_joint_rightdot") == 15);
   EXPECT_TRUE(vel_map.at("toe_leftdot") == 16);
   EXPECT_TRUE(vel_map.at("toe_rightdot") == 17);
+
+  std::map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+
+  EXPECT_TRUE(act_map.at("hip_roll_left_motor") == 0)
+  EXPECT_TRUE(act_map.at("hip_roll_right_motor") == 1)
+  EXPECT_TRUE(act_map.at("hip_yaw_left_motor") == 2)
+  EXPECT_TRUE(act_map.at("hip_yaw_right_motor") == 3)
+  EXPECT_TRUE(act_map.at("hip_pitch_left_motor") == 4)
+  EXPECT_TRUE(act_map.at("hip_pitch_right_motor") == 5)
+  EXPECT_TRUE(act_map.at("knee_left_motor") == 6)
+  EXPECT_TRUE(act_map.at("knee_right_motor") == 7)
+  EXPECT_TRUE(act_map.at("toe_left_motor") == 8)
+  EXPECT_TRUE(act_map.at("toe_right_motor") == 9)
 }
 
 }  // namespace

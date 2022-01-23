@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -84,16 +83,16 @@ TEST_F(MultibodyPlantJointOrderTest, FixedSpringCassie) {
 
   std::map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
-  EXPECT_TRUE(act_map.at("hip_roll_left_motor") == 0)
-  EXPECT_TRUE(act_map.at("hip_roll_right_motor") == 1)
-  EXPECT_TRUE(act_map.at("hip_yaw_left_motor") == 2)
-  EXPECT_TRUE(act_map.at("hip_yaw_right_motor") == 3)
-  EXPECT_TRUE(act_map.at("hip_pitch_left_motor") == 4)
-  EXPECT_TRUE(act_map.at("hip_pitch_right_motor") == 5)
-  EXPECT_TRUE(act_map.at("knee_left_motor") == 6)
-  EXPECT_TRUE(act_map.at("knee_right_motor") == 7)
-  EXPECT_TRUE(act_map.at("toe_left_motor") == 8)
-  EXPECT_TRUE(act_map.at("toe_right_motor") == 9)
+  EXPECT_TRUE(act_map.at("hip_roll_left_motor") == 0);
+  EXPECT_TRUE(act_map.at("hip_roll_right_motor") == 1);
+  EXPECT_TRUE(act_map.at("hip_yaw_left_motor") == 2);
+  EXPECT_TRUE(act_map.at("hip_yaw_right_motor") == 3);
+  EXPECT_TRUE(act_map.at("hip_pitch_left_motor") == 4);
+  EXPECT_TRUE(act_map.at("hip_pitch_right_motor") == 5);
+  EXPECT_TRUE(act_map.at("knee_left_motor") == 6);
+  EXPECT_TRUE(act_map.at("knee_right_motor") == 7);
+  EXPECT_TRUE(act_map.at("toe_left_motor") == 8);
+  EXPECT_TRUE(act_map.at("toe_right_motor") == 9);
 }
 
 }  // namespace

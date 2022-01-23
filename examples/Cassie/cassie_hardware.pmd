@@ -62,7 +62,7 @@ group "2.controller-switch-commands" {
 group "3.lcm-tools" {
     cmd "0.cassie-lcm-logger" {
         exec = "python3 examples/Cassie/start_logging.py";
-        host = "dair-cassie"
+        host = "dair-cassie";
     }
     cmd "0.lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";

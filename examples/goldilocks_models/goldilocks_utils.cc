@@ -141,7 +141,10 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // TODO: we completely remove the quaternion for now. We want to have
     //  roll and pitch, so add this component later (need to map quat to roll
     //  pitch yaw)
-    // Note that we shouldn't use pelvis z because it drifts in state estimation
+    // Note that we shouldn't use pelvis z (in constructing the basis) because
+    // it drifts in state estimation. It's fine that we are using COM/pelvis in
+    // the initial model because we are actually using the COM/pelvis wrt the
+    // stance foot.
     vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);

@@ -283,14 +283,14 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   //   cout << "y_guess = " << y_guess_ << endl;
   //   cout << "dy_guess = " << dy_guess_ << endl;
   //   cout << "tau_guess = " << tau_guess_ << endl;
-  //    cout << "x_guess_right_in_front_pre_ = "
-  //         << x_guess_right_in_front_pre_.transpose() << endl;
-  //    cout << "x_guess_right_in_front_post_ = "
-  //         << x_guess_right_in_front_post_.transpose() << endl;
-  //    cout << "x_guess_left_in_front_pre_ = "
-  //         << x_guess_left_in_front_pre_.transpose() << endl;
-  //    cout << "x_guess_left_in_front_post_ = "
-  //         << x_guess_left_in_front_post_.transpose() << endl;
+  cout << "x_guess_right_in_front_pre_ = "
+       << x_guess_right_in_front_pre_.transpose() << endl;
+  cout << "x_guess_right_in_front_post_ = "
+       << x_guess_right_in_front_post_.transpose() << endl;
+  cout << "x_guess_left_in_front_pre_ = "
+       << x_guess_left_in_front_pre_.transpose() << endl;
+  cout << "x_guess_left_in_front_post_ = "
+       << x_guess_left_in_front_post_.transpose() << endl;
 
   /// Inverse kinematics
   auto left_toe = LeftToeFront(plant_control_);
@@ -452,6 +452,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   solver_option_ipopt_.SetOption(id, "acceptable_tol", 1e2);
   solver_option_ipopt_.SetOption(id, "acceptable_iter", 5);
   /// Snopt
+  solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
+                                 "Print file", "../snopt_planning.out");
   if (param_.log_solver_info) {
     solver_option_snopt_.SetOption(drake::solvers::SnoptSolver::id(),
                                    "Print file", "../snopt_planning.out");
@@ -723,6 +725,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       left_stance = !left_stance;
     }
   }
+
+  cout << "reg_x_FOM = \n";
+  for (auto mem : reg_x_FOM) {
+    cout << mem.transpose() << endl;
+  }
+
 
   ///
   /// Construct rom traj opt
@@ -1030,12 +1038,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     cout << "Cost:" << result.get_optimal_cost() << "\n";
   }
 
+  cout << "***\n*** WARNING: set the solution to be initial guess\n***\n";
+  result.set_x_val(trajopt.initial_guess());
+
   // Testing -- use different solver to test the solution quality.
   //  ResolveWithAnotherSolver(trajopt, result, prefix, current_time,
   //                           quat_xyz_shift);
 
   // Testing -- print all param, costs and constriants for debugging
-  // PrintAllCostsAndConstraints(trajopt);
+   PrintAllCostsAndConstraints(trajopt);
 
   // Testing -- store the initial guess to the result (to visualize init guess)
   if (single_eval_mode_) {
@@ -1213,6 +1224,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   ///
   counter_++;
+
+  throw std::runtime_error("stop program here");
 }
 
 bool CassiePlannerWithMixedRomFom::RunLipmMPC(
@@ -1500,8 +1513,8 @@ bool CassiePlannerWithMixedRomFom::GetDesiredFullStateFromLipmMPCSol(
     //    prog.SetInitialGuess(v, v_desired);
 
     // Snopt settings
-    /*prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                         "../snopt_test.out");*/
+    prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                         "../snopt_test.out");
     prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
     prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
                          "Major optimality tolerance", 1e-2);

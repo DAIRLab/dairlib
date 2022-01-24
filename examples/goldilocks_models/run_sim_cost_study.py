@@ -214,12 +214,12 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
 
   # Testing code to get command
   # if (rom_iter_idx == 100) and (log_idx == 37) and (not get_init_file):
-  # if not get_init_file:
-  #   print(' '.join(planner_cmd))
-  #   print(' '.join(controller_cmd))
-  #   print(' '.join(simulator_cmd))
-  #   print(' '.join(lcm_logger_cmd))
-  #   input("type anything to continue")
+  if not get_init_file:
+    print(' '.join(planner_cmd))
+    print(' '.join(controller_cmd))
+    print(' '.join(simulator_cmd))
+    print(' '.join(lcm_logger_cmd))
+    input("type anything to continue")
   # else:
   #   return
 
@@ -420,6 +420,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   working_threads = []
   n_max_thread = min(int(psutil.cpu_count() / 3) - 1, len(task_list))  # TODO: check if the min is necessary
   n_max_thread = min(int(psutil.cpu_count() / 2), len(task_list)) if target_realtime_rate == 0.1 else n_max_thread
+  n_max_thread = 1
 
   global thread_idx_set
   thread_idx_set = set()
@@ -1226,13 +1227,13 @@ if __name__ == "__main__":
   idx_spacing = 5
 
   # Task list
-  n_task_sl = 30
-  n_task_ph = 3
+  n_task_sl = 1
+  n_task_ph = 1
   tasks = Tasks()
   # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
-  tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0.2, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
+  tasks.AddTaskDim(np.linspace(0.25, 0.25, n_task_sl), "stride_length")
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
   # stride_length = np.linspace(0.4, 0.5, n_task)
@@ -1354,7 +1355,7 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  #RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
+  RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
 
   # Cost evaluate only
   #EvalCostInMultithread(model_indices, log_indices)

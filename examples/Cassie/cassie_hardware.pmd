@@ -23,11 +23,11 @@ group "1.cassie-robot" {
         host = "dair-cassie";
     }
     cmd "3.0 standing-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING";
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cost_weight_multiplier=1.0";
         host = "dair-cassie";
     }
     cmd "3.1 standing-controller-real-robot (radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING";
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cost_weight_multiplier=1.0";
         host = "dair-cassie";
     }
     cmd "4.0 walking-controller-real-robot" {
@@ -84,12 +84,12 @@ script "initialize_standing" {
 
 script "setup_from_pd_to_osc_standing" {
     restart cmd "0.dispatcher-robot-out-real-robot";
-    start cmd "3.0 osc-standing-real-robot";
+    start cmd "3.0 standing-controller-real-robot";
 }
 
 script "setup_from_pd_to_osc_standing (radio)" {
     restart cmd "0.dispatcher-robot-out-real-robot";
-    start cmd "3.1 osc-standing-real-robot (radio)";
+    start cmd "3.1 standing-controller-real-robot (radio)";
 }
 
 script "switch_to_standing" {

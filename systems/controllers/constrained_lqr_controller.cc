@@ -12,9 +12,9 @@ using drake::MatrixX;
 using drake::VectorX;
 using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
-using drake::math::initializeAutoDiff;
-using drake::math::autoDiffToGradientMatrix;
-using drake::math::autoDiffToValueMatrix;
+using drake::math::InitializeAutoDiff;
+using drake::math::ExtractGradient;
+using drake::math::ExtractValue;
 using drake::systems::Context;
 using drake::systems::controllers::LinearQuadraticRegulator;
 
@@ -82,7 +82,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   MatrixXd F_quat =
       MatrixXd::Zero(num_quat, J_active_qdot.cols() + J_active_v.cols());
   for (int i = 0; i < num_quat; i++) {
-    F_quat.row(i).segment(quat_start.at(i), 4) = autoDiffToValueMatrix(
+    F_quat.row(i).segment(quat_start.at(i), 4) = ExtractValue(
         plant_.GetPositions(context).segment(quat_start.at(i),4));
   }
 
@@ -91,10 +91,10 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Fx = 0 (where x is the full state vector of the model)
   MatrixXd F(J_active_qdot.rows() + J_active_v.rows() + num_quat,
              J_active_qdot.cols() + J_active_v.cols());
-  F << autoDiffToValueMatrix(J_active_qdot),
+  F << ExtractValue(J_active_qdot),
        MatrixXd::Zero(J_active_qdot.rows(), J_active_v.cols()),
        MatrixXd::Zero(J_active_v.rows(), J_active_qdot.cols()),
-       autoDiffToValueMatrix(J_active_v),
+       ExtractValue(J_active_v),
        F_quat;
 
   // Computing the null space of F
@@ -111,11 +111,11 @@ ConstrainedLQRController::ConstrainedLQRController(
 
   VectorXd xu(plant_.num_positions() + plant_.num_velocities()
       + plant_.num_actuators());
-  auto x = autoDiffToValueMatrix(plant_.GetPositionsAndVelocities(context));
+  auto x = ExtractValue(plant_.GetPositionsAndVelocities(context));
   auto u =
-      autoDiffToValueMatrix(plant_.get_actuation_input_port().Eval(context));
+      ExtractValue(plant_.get_actuation_input_port().Eval(context));
   xu << x, u;
-  AutoDiffVecXd xu_ad = initializeAutoDiff(xu);
+  AutoDiffVecXd xu_ad = InitializeAutoDiff(xu);
 
   AutoDiffVecXd x_ad = xu_ad.head(plant_.num_positions()
       + plant_.num_velocities());
@@ -126,7 +126,7 @@ ConstrainedLQRController::ConstrainedLQRController(
 
   AutoDiffVecXd xdot = evaluators_.CalcTimeDerivatives(*context_ad);
 
-  MatrixXd AB = autoDiffToGradientMatrix(xdot);
+  MatrixXd AB = ExtractGradient(xdot);
   MatrixXd A = AB.leftCols(plant_.num_positions() + plant_.num_velocities());
   MatrixXd B = AB.rightCols(plant_.num_actuators());
 

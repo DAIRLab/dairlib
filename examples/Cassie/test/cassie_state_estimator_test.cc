@@ -106,9 +106,9 @@ class ContactEstimationTest : public ::testing::Test {
 TEST_F(ContactEstimationTest, solveFourbarLinkageTest) {
   // Example position (floating base position doesn't affect the result)
   VectorXd q_init(plant_.num_positions());
-  q_init << 1, VectorXd::Zero(6), -0.084017, 0.084017, -0.00120735, 0.00120735,
-      0.366012, 0.366012, -0.6305, -0.6305, 0.00205363, 0.00205363, 0.838878,
-      0.838878, 0, 0.205351, 0, 0.205351;
+  q_init << 1, VectorXd::Zero(6), -0.084017,  -0.00120735, 0.366012, -0.6305,
+      0.00205363, 0.838878, 0, 0.205351,
+      0.084017,  0.00120735, 0.366012, -0.6305, 0.00205363,  0.838878, 0, 0.205351;
 
   // Get the angles analytically
   double calc_left_heel_spring, calc_right_heel_spring;
@@ -137,7 +137,7 @@ TEST_F(ContactEstimationTest, solveFourbarLinkageTest) {
   }
 
   program.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance", 1e-8);
+                          "Major feasibility tolerance", 1e-6);
   program.SetInitialGuess(q, q_init);
   const auto result = Solve(program);
   VectorXd q_sol = result.GetSolution(q);
@@ -147,10 +147,8 @@ TEST_F(ContactEstimationTest, solveFourbarLinkageTest) {
   double nlp_right_heel_spring =
       q_sol(positionIndexMap.at("ankle_spring_joint_right"));
 
-  EXPECT_TRUE((calc_left_heel_spring - nlp_left_heel_spring) < 1e-10);
-  EXPECT_TRUE((calc_right_heel_spring - nlp_right_heel_spring) < 1e-10);
-  EXPECT_TRUE((calc_left_heel_spring - nlp_left_heel_spring) > -1e-10);
-  EXPECT_TRUE((calc_right_heel_spring - nlp_right_heel_spring) > -1e-10);
+  EXPECT_NEAR(calc_left_heel_spring, nlp_left_heel_spring, 1e-5);
+  EXPECT_NEAR(calc_right_heel_spring, nlp_right_heel_spring, 1e-5);
 }
 
 }  // namespace

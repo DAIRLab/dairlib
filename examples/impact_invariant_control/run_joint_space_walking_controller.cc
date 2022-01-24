@@ -10,8 +10,8 @@
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
+#include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
@@ -38,9 +38,9 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
 using examples::osc_jump::BasicTrajectoryPassthrough;
 using systems::controllers::JointSpaceTrackingData;
@@ -98,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
-      FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
+      plant, FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
 
   PiecewisePolynomial<double> state_traj =
       dircon_trajectory.ReconstructStateTrajectory();
@@ -109,9 +109,11 @@ int DoMain(int argc, char* argv[]) {
   vector<int> fsm_states;
   vector<double> state_durations;
   fsm_states = {0, 1, 0};
-  state_durations = {dircon_trajectory.GetStateBreaks(1)(0),
-                     dircon_trajectory.GetStateBreaks(2)(0) - dircon_trajectory.GetStateBreaks(1)(0),
-                     state_traj.end_time() - dircon_trajectory.GetStateBreaks(2)(0)};
+  state_durations = {
+      dircon_trajectory.GetStateBreaks(1)(0),
+      dircon_trajectory.GetStateBreaks(2)(0) -
+          dircon_trajectory.GetStateBreaks(1)(0),
+      state_traj.end_time() - dircon_trajectory.GetStateBreaks(2)(0)};
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations, 0.0, gains.impact_threshold);
@@ -167,8 +169,7 @@ int DoMain(int argc, char* argv[]) {
     joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
                                                         joint_name + "dot");
     joint_tracking_data_vec[joint_idx]->SetImpactInvariantProjection(true);
-    auto joint_traj = dircon_trajectory.ReconstructJointTrajectory(
-        pos_map_wo_spr[joint_name]);
+    auto joint_traj = dircon_trajectory.ReconstructJointTrajectory(joint_name);
     auto joint_traj_generator = builder.AddSystem<BasicTrajectoryPassthrough>(
         joint_traj, joint_name + "_traj");
     joint_trajs.push_back(joint_traj_generator);

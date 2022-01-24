@@ -93,7 +93,7 @@ int do_main(int argc, char* argv[]) {
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
 
   const DirconTrajectory& loaded_traj =
-      DirconTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
+      DirconTrajectory(plant, FLAGS_folder_path + FLAGS_trajectory_name);
   auto state_traj = loaded_traj.ReconstructStateTrajectory();
 
   // Create input receiver.

@@ -14,7 +14,8 @@ class FlightToeAngleTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   FlightToeAngleTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context, int swing_toe_idx,
+      drake::systems::Context<double>* context,
+      drake::trajectories::PiecewisePolynomial<double>& toe_traj, int swing_toe_idx,
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
       feet_contact_points,
@@ -39,6 +40,9 @@ class FlightToeAngleTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
+
+  drake::trajectories::PiecewisePolynomial<double> toe_traj_;
+  bool use_traj_;
 
   int swing_toe_idx_;
   // A list of pairs of contact body frame and contact point

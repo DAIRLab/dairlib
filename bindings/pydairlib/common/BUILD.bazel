@@ -34,6 +34,12 @@ py_library(
     ],
 )
 
+py_library(
+    name = "plotting_utils",
+    srcs = ["plotting_utils.py"],
+    deps = [],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -52,6 +58,7 @@ py_library(
 PY_LIBRARIES = [
     ":common_py",
     ":plot_styler",
+    ":plotting_utils",
 ]
 
 # Package roll-up (for Bazel dependencies).

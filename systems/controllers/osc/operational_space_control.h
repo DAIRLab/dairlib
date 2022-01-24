@@ -362,6 +362,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* input_reg_cost_;
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
+
+  // store costs for failure checking
+  mutable double total_cost_ = 0;
+  mutable double soft_constraint_cost_ = 0;
 };
 
 }  // namespace dairlib::systems::controllers

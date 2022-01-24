@@ -1,4 +1,4 @@
-group "1.controllers-and-dispatchers" {
+group "1.controllers (standalone)" {
     cmd "osc_standing_controller (state_est)" {
         exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER  --height=.85";
         host = "localhost";
@@ -11,20 +11,12 @@ group "1.controllers-and-dispatchers" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
-    cmd "dispatcher_robot_out" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
-        host = "localhost";
-    }
     cmd "osc_standing_controller" {
         exec = "bazel-bin/examples/Cassie/run_osc_standing_controller  --height=.85";
         host = "localhost";
     }
     cmd "pd_controller" {
         exec = "bazel-bin/examples/Cassie/run_pd_controller";
-        host = "localhost";
-    }
-    cmd "dispatcher_robot_in" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_initial=CASSIE_INPUT";
         host = "localhost";
     }
     cmd "osc_jumping_controller" {
@@ -37,7 +29,19 @@ group "1.controllers-and-dispatchers" {
     }
 }
 
-group "2.simulators" {
+group "2.simulators-and-dispatchers" {
+    cmd "dispatcher_robot_in" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_initial=CASSIE_INPUT";
+        host = "localhost";
+    }
+    cmd "dispatcher_robot_out" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
+        host = "localhost";
+    }
+    cmd "dispatcher_robot_in (from standing)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_initial=OSC_STANDING --sim=1";
+        host = "localhost";
+    }
     cmd "cassie_sim" {
         exec = "bazel-bin/examples/Cassie/multibody_sim --init_height=0.9";
         host = "localhost";

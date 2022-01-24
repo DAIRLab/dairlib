@@ -862,6 +862,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
              (*epsilon_sol_))(0)
           : 0;
+  soft_constraint_cost_ = output->soft_constraint_cost;
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
@@ -989,7 +990,7 @@ void OperationalSpaceControl::CheckTracking(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
-  if (abs(robot_output->get_timestamp() - 5.0) < 5e-3) {
+  if (soft_constraint_cost_ > 1e2 || isnan(soft_constraint_cost_)) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

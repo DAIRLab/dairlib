@@ -90,7 +90,7 @@ def process_effort_channel(data, plant):
         for i in range(len(u_temp)):
             u_temp[act_map[msg.effort_names[i]]] = msg.efforts[i]
         t.append(msg.utime / 1e6)
-        u.append(msg.u_temp)
+        u.append(u_temp)
 
     return {'t_u': np.array(t), 'u': np.array(u)}
 

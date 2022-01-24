@@ -11,10 +11,10 @@ load(
     "pybind_py_library",
 )
 
-py_library(
-    name = "process_lcm_log_py",
+py_binary(
+    name = "process_lcm_log",
     srcs = ["process_lcm_log.py"],
-    deps = [],
+    deps = ["@lcm//:lcm-python"],
 )
 
 py_library(

@@ -22,6 +22,33 @@ def make_mbp_name_vectors(plant):
     return q_names, v_names, u_names
 
 
+def make_joint_order_permutation_matrix(names_in_old_order, names_in_new_order):
+    n = len(names_in_new_order)
+    perm = np.zeros((n, n), dtype=int)
+    for i, name in enumerate(names_in_new_order):
+        try:
+            j = names_in_old_order.index(name)
+        except ValueError:
+            print(f"Error: {name} not found in old joint ordering")
+            raise
+        except BaseException as err:
+            print(f"Unexpected {err}, {type(err)}")
+            raise
+        perm[i, j] = 1
+    return perm
+
+
+def make_joint_order_permutations(robot_output_message, plant):
+    qnames, vnames, unames = make_mbp_name_vectors(plant)
+    qperm = make_joint_order_permutation_matrix(
+        robot_output_message.position_names, qnames)
+    vperm = make_joint_order_permutation_matrix(
+        robot_output_message.velocity_names, vnames)
+    uperm = make_joint_order_permutation_matrix(
+        robot_output_message.effort_names, unames)
+    return qperm, vperm, uperm
+
+
 def process_state_channel(state_data, plant):
     t_x = []
     q = []
@@ -59,7 +86,7 @@ def process_effort_channel(data, plant):
 
     act_map = makeNameToActuatorsMap(plant)
     for msg in data:
-        u_temp = [[] for i in range(len(msg.effort))]
+        u_temp = [[] for i in range(len(msg.efforts))]
         for i in range(len(u_temp)):
             u_temp[act_map[msg.effort_names[i]]] = msg.efforts[i]
         t.append(msg.utime / 1e6)
@@ -144,25 +171,22 @@ def process_osc_channel(data):
             'osc_output': osc_output}
 
 
+def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
+    _, vperm, uperm = make_joint_order_permutations(robot_output_msg, plant)
+    osc_data['u_sol'] = (osc_data['u_sol'] @ uperm.T)
+    osc_data['dv_sol'] = (osc_data['dv_sol'] @ vperm.T)
+    return osc_data
+
+
 def load_default_channels(data, plant, state_channel, input_channel,
                           osc_debug_channel):
     robot_output = process_state_channel(data[state_channel], plant)
-    robot_input = process_effort_channel(data[input_channel])
+    robot_input = process_effort_channel(data[input_channel], plant)
     osc_debug = process_osc_channel(data[osc_debug_channel])
+    osc_debug = permute_osc_joint_ordering(
+        osc_debug, data[state_channel][0], plant)
 
     return robot_output, robot_input, osc_debug
-
-
-def load_state_channel(data, plant, state_channel):
-    return process_state_channel(data[state_channel], plant)
-
-
-def load_input_channel(data, input_channel):
-    return process_effort_channel(data[input_channel])
-
-
-def load_osc_channel(data, osc_debug_channel):
-    return process_osc_channel(data[osc_debug_channel])
 
 
 def plot_q_or_v_or_u(

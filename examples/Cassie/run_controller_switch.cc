@@ -15,7 +15,7 @@ namespace dairlib {
 
 using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
-using drake::systems::lcm::TriggerTypeSet;
+using drake::systems::TriggerTypeSet;
 
 DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
               "The name of the channel which receives state");

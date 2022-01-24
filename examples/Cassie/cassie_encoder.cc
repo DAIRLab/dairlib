@@ -15,7 +15,7 @@ CassieEncoder::CassieEncoder(const drake::multibody::MultibodyPlant<double>& pla
       joint_pos_indices_(joint_pos_indices),
       joint_vel_indices_(joint_vel_indices),
       ticks_per_revolution_(ticks_per_revolution){
-  for (int i = 0; i < ticks_per_revolution_.size(); ++i){
+  for (int i = 0; i < joint_vel_indices_.size(); ++i){
     joint_filters_.push_back(std::make_unique<JointFilter>());
   }
   this->DeclareVectorInputPort("robot_state",
@@ -27,17 +27,17 @@ CassieEncoder::CassieEncoder(const drake::multibody::MultibodyPlant<double>& pla
 
 void CassieEncoder::UpdateFilter(const drake::systems::Context<double>& context,
                            systems::BasicVector<double>* output) const {
-  const systems::BasicVector<double>& input =
+  const systems::BasicVector<double>& x =
       *this->template EvalVectorInput<systems::BasicVector>(context, 0);
 
-  VectorXd q = input.get_value().head(num_positions_);
-  VectorXd v = input.get_value().tail(num_velocities_);
+  VectorXd q = x.value().head(num_positions_);
+  VectorXd v = x.value().tail(num_velocities_);
 
-  VectorXd q_filtered = q;
-  VectorXd v_filtered = v;
+  VectorXd q_filtered = VectorXd::Zero(num_positions_);
+  VectorXd v_filtered = VectorXd::Zero(num_velocities_);
 
   // joint_encoders
-  for (int joint_index = 0; joint_index < joint_pos_indices_.size();
+  for (int joint_index = 0; joint_index < joint_filters_.size();
        ++joint_index) {
     auto filter = joint_filters_[joint_index].get();
 
@@ -56,6 +56,7 @@ void CassieEncoder::UpdateFilter(const drake::systems::Context<double>& context,
       allzero &= filter->x[i] == 0;
     }
     if (allzero) {
+      std::cout << "Initializing with current encoder value:" << std::endl;
       // If all filter values are zero, initialize the signal array
       // with the current encoder value
       for (int i = 0; i < CASSIE_JOINT_FILTER_NB; ++i) {
@@ -67,7 +68,7 @@ void CassieEncoder::UpdateFilter(const drake::systems::Context<double>& context,
     for (int i = CASSIE_JOINT_FILTER_NB - 1; i > 0; --i) {
       filter->x[i] = filter->x[i - 1];
     }
-    filter->x[0] = q[joint_pos_indices_[joint_index]];
+    filter->x[0] = q_filtered[joint_pos_indices_[joint_index]];
     for (int i = CASSIE_JOINT_FILTER_NA - 1; i > 0; --i) {
       filter->y[i] = filter->y[i - 1];
     }
@@ -84,7 +85,7 @@ void CassieEncoder::UpdateFilter(const drake::systems::Context<double>& context,
   }
 
   VectorXd x_filtered = VectorXd::Zero(num_positions_ + num_velocities_);
-  x_filtered << q_filtered, v_filtered;
+  x_filtered << q_filtered, v;
 //  x_filtered << q, v;
   output->set_value(x_filtered);
 }

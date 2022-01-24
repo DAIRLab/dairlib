@@ -42,8 +42,6 @@ class CassieEncoder final : public drake::systems::LeafSystem<double> {
                     systems::BasicVector<double>* output) const;
 
  private:
-  /// Unused: this filter is for the measured motor torques which are not being
-  /// used
   struct JointFilter {
     double x[CASSIE_JOINT_FILTER_NB];
     double y[CASSIE_JOINT_FILTER_NA];

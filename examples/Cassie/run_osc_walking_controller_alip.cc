@@ -72,7 +72,7 @@ DEFINE_bool(use_radio, false,
 DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
-DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains.yaml",
+DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains_alip.yaml",
               "Filepath containing gains");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");

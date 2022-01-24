@@ -53,12 +53,17 @@ def process_state_channel(state_data, plant):
             'u': np.array(u)}
 
 
-def process_effort_channel(data):
+def process_effort_channel(data, plant):
     u = []
     t = []
+
+    act_map = makeNameToActuatorsMap(plant)
     for msg in data:
+        u_temp = [[] for i in range(len(msg.effort))]
+        for i in range(len(u_temp)):
+            u_temp[act_map[msg.effort_names[i]]] = msg.efforts[i]
         t.append(msg.utime / 1e6)
-        u.append(msg.efforts)
+        u.append(msg.u_temp)
 
     return {'t_u': np.array(t), 'u': np.array(u)}
 

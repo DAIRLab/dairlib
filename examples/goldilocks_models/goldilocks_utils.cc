@@ -118,6 +118,11 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
   14: quat, xy, swing     4      4    3dlipm            yes    fix xy
   15: quat, xyz           4      4    3dlipm            yes    fix xy
 */
+// Note:
+// Whenever you add a new model, remember to update the model number in
+//   1. find_goldilocks_model.cc (a check in the start)
+//   2. goldilocks_model_traj_opt.cc
+//   3. cassie_rom_planner_system.cc (where we called SetInitialGuess)
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
     const drake::multibody::MultibodyPlant<double>& plant, bool print_info) {

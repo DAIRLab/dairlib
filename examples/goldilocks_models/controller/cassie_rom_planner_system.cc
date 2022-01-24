@@ -882,10 +882,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     for (int j = 0; j < num_time_samples.at(i); j++) {
       if ((param_.rom_option == 0) || (param_.rom_option == 1)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
-      } else if ((param_.rom_option == 4) || (param_.rom_option == 8) ||
-                 (param_.rom_option == 9) || (param_.rom_option == 10) ||
-                 (param_.rom_option == 11) || (param_.rom_option == 12) ||
-                 (param_.rom_option == 13)) {
+      } else if ((param_.rom_option == 4) ||
+                 ((param_.rom_option >= 8) && (param_.rom_option <= 14))) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(2), 1);
       } else {
         DRAKE_UNREACHABLE();
@@ -918,7 +916,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     PrintEssentialStatus("global_fsm_idx = " + to_string(global_fsm_idx));
     if (fsm < 0 && warm_start_with_previous_solution_ && counter_ > 0) {
       trajopt.SetInitialGuessForAllVariables(z_);
-    } else if (warm_start_with_previous_solution_ && (prev_global_fsm_idx_ >= 0)) {
+    } else if (warm_start_with_previous_solution_ &&
+               (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
       WarmStartGuess(quat_xyz_shift, reg_x_FOM, global_fsm_idx,
                      first_mode_knot_idx, current_time, &trajopt);

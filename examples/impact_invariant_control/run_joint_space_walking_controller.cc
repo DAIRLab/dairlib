@@ -16,7 +16,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "yaml-cpp/yaml.h"
 
-#include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -91,10 +91,8 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  JointSpaceWalkingGains gains;
-  const YAML::Node& root =
-      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
-  drake::yaml::YamlReadArchive(root).Accept(&gains);
+  JointSpaceWalkingGains gains =
+      drake::yaml::LoadYamlFile<JointSpaceWalkingGains>(FLAGS_gains_filename);
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(

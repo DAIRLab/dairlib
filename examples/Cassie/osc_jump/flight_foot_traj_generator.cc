@@ -53,10 +53,10 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                        "x, u, t", OutputVector<double>(plant_.num_positions(),
-                                                        plant_.num_velocities(),
-                                                        plant_.num_actuators()))
-                    .get_index();
+      "x, u, t", OutputVector<double>(plant_.num_positions(),
+                                      plant_.num_velocities(),
+                                      plant_.num_actuators()))
+      .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
@@ -93,7 +93,7 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::GenerateFlightTraj(
 }
 
 PiecewisePolynomial<double> FlightFootTrajGenerator::GenerateRelativeTraj()
-    const {
+const {
   return foot_traj_ - hip_traj_;
 }
 

@@ -115,9 +115,9 @@ class JointAccelCost : public solvers::NonlinearCost<double> {
                  const KinematicEvaluatorSet<double>* constraints,
                  const std::string& description = "")
       : solvers::NonlinearCost<double>(
-            plant.num_positions() + plant.num_velocities() +
-                plant.num_actuators() + constraints->count_full(),
-            description),
+      plant.num_positions() + plant.num_velocities() +
+          plant.num_actuators() + constraints->count_full(),
+      description),
         plant_(plant),
         context_(plant_.CreateDefaultContext()),
         constraints_(constraints),
@@ -519,17 +519,17 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
     for (const auto& sym_joint_name : sym_joint_names) {
       trajopt->AddConstraintToAllKnotPoints(
           x_0(pos_map[sym_joint_name + l_r_pair.first]) ==
-          x_0(pos_map[sym_joint_name + l_r_pair.second]));
+              x_0(pos_map[sym_joint_name + l_r_pair.second]));
       trajopt->AddLinearConstraint(
           x_f(pos_map[sym_joint_name + l_r_pair.first]) ==
-          x_f(pos_map[sym_joint_name + l_r_pair.second]));
+              x_f(pos_map[sym_joint_name + l_r_pair.second]));
       if (sym_joint_name != "ankle_joint") {  // No actuator at ankle
         trajopt->AddConstraintToAllKnotPoints(
             u_0(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) ==
-            u_0(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
+                u_0(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
         trajopt->AddConstraintToAllKnotPoints(
             u_f(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) ==
-            u_f(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
+                u_f(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
       }
     }
   }
@@ -540,10 +540,10 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   for (const auto& member : joint_names) {
     trajopt->AddConstraintToAllKnotPoints(
         x(pos_map.at(member)) <=
-        plant.GetJointByName(member).position_upper_limits()(0));
+            plant.GetJointByName(member).position_upper_limits()(0));
     trajopt->AddConstraintToAllKnotPoints(
         x(pos_map.at(member)) >=
-        plant.GetJointByName(member).position_lower_limits()(0));
+            plant.GetJointByName(member).position_lower_limits()(0));
   }
 
   // actuator limits
@@ -732,15 +732,15 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
   for (const auto& l_r_pair : l_r_pairs) {
     for (const auto& sym_joint_name : sym_joint_names) {
       auto pos_diff = x(pos_map.at(sym_joint_name + l_r_pair.first)) -
-                      x(pos_map.at(sym_joint_name + l_r_pair.second));
+          x(pos_map.at(sym_joint_name + l_r_pair.second));
       auto vel_diff = x(vel_map.at(sym_joint_name + l_r_pair.first + "dot")) -
-                      x(vel_map.at(sym_joint_name + l_r_pair.second + "dot"));
+          x(vel_map.at(sym_joint_name + l_r_pair.second + "dot"));
       trajopt->AddRunningCost(w_symmetry_pos * pos_diff * pos_diff);
       trajopt->AddRunningCost(w_symmetry_vel * vel_diff * vel_diff);
       if (sym_joint_name != "ankle_joint") {
         auto act_diff =
             u(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) -
-            u(act_map.at(sym_joint_name + l_r_pair.second + "_motor"));
+                u(act_map.at(sym_joint_name + l_r_pair.second + "_motor"));
         trajopt->AddRunningCost(w_symmetry_u * act_diff * act_diff);
       }
     }
@@ -748,15 +748,15 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
   for (const auto& l_r_pair : l_r_pairs) {
     for (const auto& asy_joint_name : asy_joint_names) {
       auto pos_diff = x(pos_map.at(asy_joint_name + l_r_pair.first)) +
-                      x(pos_map.at(asy_joint_name + l_r_pair.second));
+          x(pos_map.at(asy_joint_name + l_r_pair.second));
       auto vel_diff = x(vel_map.at(asy_joint_name + l_r_pair.first + "dot")) +
-                      x(vel_map.at(asy_joint_name + l_r_pair.second + "dot"));
+          x(vel_map.at(asy_joint_name + l_r_pair.second + "dot"));
       trajopt->AddRunningCost(w_symmetry_pos * pos_diff * pos_diff);
       trajopt->AddRunningCost(w_symmetry_vel * vel_diff * vel_diff);
       if (asy_joint_name != "ankle_joint") {
         auto act_diff =
             u(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) +
-            u(act_map.at(asy_joint_name + l_r_pair.second + "_motor"));
+                u(act_map.at(asy_joint_name + l_r_pair.second + "_motor"));
         trajopt->AddRunningCost(w_symmetry_u * act_diff * act_diff);
       }
     }
@@ -800,7 +800,7 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
       auto x_i = trajopt->state_vars(mode, index);
       auto u_i = trajopt->input_vars(mode, index);
       auto l_i = trajopt->force_vars(mode, index);
-      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
+      trajopt->AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
     }
   }
 }
@@ -852,9 +852,9 @@ void AddCostsSprings(Dircon<double>* trajopt,
   for (const auto& l_r_pair : l_r_pairs) {
     for (const auto& sym_joint_name : sym_joint_names) {
       auto pos_diff = x(pos_map[sym_joint_name + l_r_pair.first]) -
-                      x(pos_map[sym_joint_name + l_r_pair.second]);
+          x(pos_map[sym_joint_name + l_r_pair.second]);
       auto vel_diff = x(vel_map[sym_joint_name + l_r_pair.first + "dot"]) -
-                      x(vel_map[sym_joint_name + l_r_pair.second + "dot"]);
+          x(vel_map[sym_joint_name + l_r_pair.second + "dot"]);
       trajopt->AddRunningCost(w_symmetry_pos * pos_diff * pos_diff);
       trajopt->AddRunningCost(w_symmetry_vel * vel_diff * vel_diff);
     }
@@ -893,7 +893,7 @@ void AddCostsSprings(Dircon<double>* trajopt,
       auto x_i = trajopt->state_vars(mode, index);
       auto u_i = trajopt->input_vars(mode, index);
       auto l_i = trajopt->force_vars(mode, index);
-      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
+      trajopt->AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
     }
   }
 }

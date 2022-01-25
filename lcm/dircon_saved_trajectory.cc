@@ -183,7 +183,7 @@ DirconTrajectory::DirconTrajectory(
       force_names.push_back("lambda_" + std::to_string(num_forces));
       impulse_names.push_back("Lambda_" + std::to_string(i));
       collocation_force_names.push_back("lambda_c_" +
-                                        std::to_string(num_forces));
+          std::to_string(num_forces));
       ++num_forces;
     }
     force_traj.traj_name = "force_vars" + std::to_string(mode);
@@ -269,7 +269,7 @@ DirconTrajectory::DirconTrajectory(
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
-    const {
+const {
   PiecewisePolynomial<double> state_traj;
 
   for (int mode = 0; mode < num_modes_; ++mode) {
@@ -369,7 +369,7 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructMirrorJointTrajectory(
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory()
-    const {
+const {
   PiecewisePolynomial<double> input_traj =
       PiecewisePolynomial<double>::FirstOrderHold(
           u_->time_vector, actuator_map_ * u_->datapoints);
@@ -412,7 +412,7 @@ DirconTrajectory::ReconstructGammaCTrajectory() const {
   return gamma_c_traj;
 }
 
-void DirconTrajectory::LoadFromFile(const MultibodyPlant<double>& plant,
+void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant,
                                     const std::string& filepath) {
   LcmTrajectory::LoadFromFile(filepath);
 
@@ -493,8 +493,8 @@ Eigen::VectorXd DirconTrajectory::GetCollocationPoints(
   // using a + (b - a) / 2 midpoint
   int num_knotpoints = time_vector.size();
   return time_vector.head(num_knotpoints - 1) +
-         0.5 * (time_vector.tail(num_knotpoints - 1) -
-                time_vector.head(num_knotpoints - 1));
+      0.5 * (time_vector.tail(num_knotpoints - 1) -
+          time_vector.head(num_knotpoints - 1));
 }
 
 }  // namespace dairlib

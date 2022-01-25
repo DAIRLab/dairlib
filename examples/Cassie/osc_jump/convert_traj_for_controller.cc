@@ -70,7 +70,8 @@ int DoMain() {
   auto pelvis_frame = &plant.GetBodyByName("pelvis").body_frame();
   auto world = &plant.world_frame();
 
-  DirconTrajectory dircon_traj(plant, FLAGS_folder_path + FLAGS_trajectory_name);
+  DirconTrajectory dircon_traj(plant,
+                               FLAGS_folder_path + FLAGS_trajectory_name);
   PiecewisePolynomial<double> state_traj =
       dircon_traj.ReconstructStateTrajectory();
 
@@ -106,12 +107,6 @@ int DoMain() {
     for (unsigned int i = 0; i < times.size(); ++i) {
       VectorXd x_i = state_samples.col(i).head(nx);
       VectorXd xdot_i = state_derivative_samples.col(i);
-      //      VectorXd xdot_i = state_traj.derivative(1).value(times[i]);
-//      std::cout << "x: " << state_samples.col(i) << std::endl;
-//      std::cout << "xdot: " << state_derivative_samples.col(i) << std::endl;
-//      std::cout << "nx: " << nx << std::endl;
-//      std::cout << x_i << std::endl;
-//      std::cout << xdot_i << std::endl;
       plant.SetPositionsAndVelocities(context.get(), x_i);
       Eigen::Ref<Eigen::MatrixXd> pelvis_pos_block =
           pelvis_points.block(0, i, 3, 1);
@@ -190,7 +185,8 @@ int DoMain() {
       l_hip_points.block(6, i, 3, 1) = JdotV_l_hip + J_l_hip * xdot_i.tail(nv);
       r_hip_points.block(6, i, 3, 1) = JdotV_r_hip + J_r_hip * xdot_i.tail(nv);
     }
-    pelvis_points = pelvis_points - 0.5 * (l_foot_points.topRows(6) + r_foot_points.topRows(6));
+    pelvis_points = pelvis_points -
+                    0.5 * (l_foot_points.topRows(6) + r_foot_points.topRows(6));
 
     all_times.push_back(times);
     all_l_foot_points.push_back(l_foot_points);
@@ -210,32 +206,32 @@ int DoMain() {
     lfoot_traj_block.traj_name = "left_foot_trajectory" + std::to_string(mode);
     lfoot_traj_block.datapoints = all_l_foot_points[mode];
     lfoot_traj_block.time_vector = all_times[mode];
-    lfoot_traj_block.datatypes = {"lfoot_x",    "lfoot_y",    "lfoot_z",
-                                  "lfoot_xdot", "lfoot_ydot", "lfoot_zdot",
+    lfoot_traj_block.datatypes = {"lfoot_x",     "lfoot_y",     "lfoot_z",
+                                  "lfoot_xdot",  "lfoot_ydot",  "lfoot_zdot",
                                   "lfoot_xddot", "lfoot_yddot", "lfoot_zddot"};
 
     auto rfoot_traj_block = LcmTrajectory::Trajectory();
     rfoot_traj_block.traj_name = "right_foot_trajectory" + std::to_string(mode);
     rfoot_traj_block.datapoints = all_r_foot_points[mode];
     rfoot_traj_block.time_vector = all_times[mode];
-    rfoot_traj_block.datatypes = {"rfoot_x",    "rfoot_y",    "rfoot_z",
-                                  "rfoot_xdot", "rfoot_ydot", "rfoot_zdot",
+    rfoot_traj_block.datatypes = {"rfoot_x",     "rfoot_y",     "rfoot_z",
+                                  "rfoot_xdot",  "rfoot_ydot",  "rfoot_zdot",
                                   "rfoot_xddot", "rfoot_yddot", "rfoot_zddot"};
 
     auto lhip_traj_block = LcmTrajectory::Trajectory();
     lhip_traj_block.traj_name = "left_hip_trajectory" + std::to_string(mode);
     lhip_traj_block.datapoints = all_l_hip_points[mode];
     lhip_traj_block.time_vector = all_times[mode];
-    lhip_traj_block.datatypes = {"lhip_x",    "lhip_y",    "lhip_z",
-                                 "lhip_xdot", "lhip_ydot", "lhip_zdot",
+    lhip_traj_block.datatypes = {"lhip_x",     "lhip_y",     "lhip_z",
+                                 "lhip_xdot",  "lhip_ydot",  "lhip_zdot",
                                  "lhip_xddot", "lhip_yddot", "lhip_zddot"};
 
     auto rhip_traj_block = LcmTrajectory::Trajectory();
     rhip_traj_block.traj_name = "right_hip_trajectory" + std::to_string(mode);
     rhip_traj_block.datapoints = all_r_hip_points[mode];
     rhip_traj_block.time_vector = all_times[mode];
-    rhip_traj_block.datatypes = {"rhip_x",    "rhip_y",    "rhip_z",
-                                 "rhip_xdot", "rhip_ydot", "rhip_zdot",
+    rhip_traj_block.datatypes = {"rhip_x",     "rhip_y",     "rhip_z",
+                                 "rhip_xdot",  "rhip_ydot",  "rhip_zdot",
                                  "rhip_xddot", "rhip_yddot", "rhip_zddot"};
 
     auto ltoe_traj_block = LcmTrajectory::Trajectory();

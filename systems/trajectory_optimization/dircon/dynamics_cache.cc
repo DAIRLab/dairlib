@@ -63,8 +63,8 @@ bool AreVectorsEqual(const Eigen::Ref<const AutoDiffVecXd>& a,
   if (a.value() != b.value()) {
     return false;
   }
-  const Eigen::MatrixXd& a_gradient = drake::math::autoDiffToGradientMatrix(a);
-  const Eigen::MatrixXd& b_gradient = drake::math::autoDiffToGradientMatrix(b);
+  const Eigen::MatrixXd& a_gradient = drake::math::ExtractGradient(a);
+  const Eigen::MatrixXd& b_gradient = drake::math::ExtractGradient(b);
 
   return a_gradient == b_gradient;
 }

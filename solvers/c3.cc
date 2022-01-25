@@ -64,19 +64,23 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w) {
 
     vector<MatrixXd> Gv = G_;
 
+    VectorXd z;
+
     for (int i = 0; i < options_.admm_iter; i++) {
-        ADMMStep(x0, delta, w, &Gv);
+        z = ADMMStep(x0, delta, w, &Gv);
     }
+
+
 
 
 	/// Any problem setup that's necessary
 	/// For loop that calls ADMMStep
 	/// Extract and return u[0], just to help the user out
-	return VectorXd(1);
+	return z.block(k_,0,n_+m_,1);
 
 }
 
-void C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w, vector<MatrixXd>* Gv) {
+VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w, vector<MatrixXd>* Gv) {
 	// TODO: SolveQP and SolveProjection are going to need the proper arguments
     vector<VectorXd> WD(N_, VectorXd::Zero(n_+m_+k_) );
 
@@ -107,6 +111,7 @@ void C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w, ve
         Gv->at(i) = Gv->at(i) * options_.rho_scale;
     }
 
+    return z[0];
 
 
 
@@ -237,6 +242,18 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G, vector<VectorXd>& WZ) 
 	}
 
     return delta;
+}
+
+VectorXd C3::Simulate(VectorXd& x_init, VectorXd& input) {
+
+    VectorXd x_final;
+
+    //calculate force
+    VectorXd force;
+
+    x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
+
+    return x_final;
 }
 
 } // namespace dairlib

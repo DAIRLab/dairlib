@@ -53,7 +53,7 @@ class C3 {
   /// @param z_n A pointer to the output primal variables 
   /// @param delta_n A pointer to the output copy variables
   /// @param w_n A pointer to the scaled dual variables
-  void ADMMStep(Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta, std::vector<Eigen::VectorXd>* w, std::vector<Eigen::MatrixXd>* G);
+  Eigen::VectorXd ADMMStep(Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta, std::vector<Eigen::VectorXd>* w, std::vector<Eigen::MatrixXd>* G);
 
   /// TODO: determine inputs/outputs
   std::vector<Eigen::VectorXd> SolveQP(Eigen::VectorXd& x0, std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WD);
@@ -65,6 +65,8 @@ class C3 {
 	/// I just include one argument here as an example
 	/// Virtual method, to be implemented by subclasses
   virtual Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c, const Eigen::MatrixXd& E, const Eigen::MatrixXd& F, const Eigen::MatrixXd& H, const Eigen::VectorXd& c) = 0;
+
+  Eigen::VectorXd Simulate( Eigen::VectorXd& x_init, Eigen::VectorXd& input );
 
  public:
  	const std::vector<Eigen::MatrixXd> A_;

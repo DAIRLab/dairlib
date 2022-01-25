@@ -17,7 +17,7 @@ rest_length: 0.85
 stance_duration: 0.30
 flight_duration: 0.09
 
-mu: 0.6
+mu: 0.4
 
 w_swing_toe: 1
 swing_toe_kp: 1500
@@ -34,22 +34,22 @@ hip_yaw_kd: 15
 #hip_roll_kd: 10
 # Foot placement parameters
 footstep_offset: -0.04
-center_line_offset: 0.03
+center_line_offset: 0.04
 FootstepKd:
   [  0.2,     0,  0,
      0,     0.4, 0,
      0,        0,  0]
 PelvisW:
   [0.1,     0,    0,
-   0,    0.1,    0,
+   0,    0,    0,
    0,     0,    5]
 PelvisKp:
   [ 0,    0,    0,
-    0,    1,    0,
+    0,    0,    0,
     0,    0,   95]
 PelvisKd:
   [  1,    0,   0,
-     0,    5,   0,
+     0,    0,   0,
      0,    0,  5]
 PelvisRotW:
   [0.1,  0,   0,
@@ -60,7 +60,7 @@ PelvisRotKp:
    0,  50,   0,
    0,    0,   0]
 PelvisRotKd:
-  [5,   0,  0,
+  [15,   0,  0,
    0,   10,  0,
    0,    0,  0]
 SwingFootW:

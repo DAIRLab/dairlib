@@ -107,7 +107,7 @@ void runDircon() {
   auto start = std::chrono::high_resolution_clock::now();
   auto solver = drake::solvers::SnoptSolver();
 
-  const auto result = solver.Solve(trajopt->prog(), trajopt->initial_guess());
+  const auto result = solver.Solve(*trajopt, trajopt->initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Solve time:" << elapsed.count() <<std::endl;

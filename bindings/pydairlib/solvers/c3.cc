@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
+#include <pybind11/stl.h>
 
 #include "solvers/c3_miqp.h"
 
@@ -60,6 +61,10 @@ PYBIND11_MODULE(c3, m)
 
 	py::class_<C3Options> options(m, "C3Options");
 	options.def(py::init<>());
+	options.def_readwrite("admm_iter", &C3Options::admm_iter);
+	options.def_readwrite("rho", &C3Options::rho);
+	options.def_readwrite("rho_scale", &C3Options::rho_scale);
+
 
 }
 

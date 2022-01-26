@@ -57,7 +57,7 @@ C3::C3(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
 			 const C3Options& options)
 		: C3(vector<MatrixXd>(N, A), vector<MatrixXd>(N, B), vector<MatrixXd>(N, D),
 				 vector<MatrixXd>(N, d), vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
-				 vector<MatrixXd>(N, H), vector<VectorXd>(N, c),  vector<MatrixXd>(N, Q), vector<MatrixXd>(N, R), vector<MatrixXd>(N, G), options) {}
+				 vector<MatrixXd>(N, H), vector<VectorXd>(N, c),  vector<MatrixXd>(N+1, Q), vector<MatrixXd>(N, R), vector<MatrixXd>(N, G), options) {}
 		
 
 
@@ -66,7 +66,7 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w) {
     vector<MatrixXd> Gv = G_;
 
     VectorXd z;
-
+    
     for (int i = 0; i < options_.admm_iter; i++) {
         z = ADMMStep(x0, delta, w, &Gv);
     }

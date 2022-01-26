@@ -56,10 +56,11 @@ c_i = np.array([[d1, -d2]]).T
 delta_c = np.array([[0, 0]]).T
 U = np.identity(7)
 
-# import pdb; pdb.set_trace()
+
 
 ret = opt.SolveSingleProjection(U=U, delta_c=delta_c, E=E, F=F, H=H, c=c_i)
 
-print(ret)
+# At the moment, the Solve() function causes a crash, somewhere in the C++
+(u, delta_1, w_1) = opt.Solve(x0, delta, w)
 
-# (u, delta_1, w_1) = opt.Solve(x0, delta, w)
+# import pdb; pdb.set_trace()

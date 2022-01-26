@@ -26,7 +26,7 @@ C3MIQP::C3MIQP(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
 			 const C3Options& options)
 		: C3MIQP(vector<MatrixXd>(N, A), vector<MatrixXd>(N, B), vector<MatrixXd>(N, D),
 				 vector<MatrixXd>(N, d), vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
-				 vector<MatrixXd>(N, H), vector<VectorXd>(N, c), vector<MatrixXd>(N, Q), vector<MatrixXd>(N, R), vector<MatrixXd>(N, G),options) {}
+				 vector<MatrixXd>(N, H), vector<VectorXd>(N, c), vector<MatrixXd>(N+1, Q), vector<MatrixXd>(N, R), vector<MatrixXd>(N, G),options) {}
 
     VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c, const MatrixXd& E, const MatrixXd& F, const MatrixXd& H, const VectorXd& c) {
 

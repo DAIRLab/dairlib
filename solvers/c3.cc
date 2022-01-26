@@ -90,8 +90,12 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w
         WD[i] = w->at(i) - delta->at(i);
     }
 
+    //std::cout << "WD: "<< (WD)[0] << std::endl;
+
     vector<VectorXd> z = SolveQP(x0, *Gv, WD);
-    //std::cout << "Sol: "<< z[0] << std::endl;
+
+    std::cout << "Sol: "<< z[0] << std::endl;
+
 
 
     vector<VectorXd> ZW(N_, VectorXd::Zero(n_+m_+k_) );
@@ -136,6 +140,7 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w
 
 }
 
+/*
 vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>& WD ) {
 
     drake::solvers::MathematicalProgram prog;
@@ -224,7 +229,7 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
     prog.AddQuadraticCost(2*Cost, CostLinearWD, dv, 1);
 
     drake::solvers::SolverOptions options;
-    options.SetOption(OsqpSolver::id(), "verbose", 0);
+    options.SetOption(OsqpSolver::id(), "verbose", 1);
     drake::solvers::OsqpSolver osqp;
     prog.SetSolverOptions(options);
 
@@ -240,11 +245,36 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
     vector<VectorXd> zz(N_, VectorXd::Zero(n_+m_+k_) );
 
     for (int i = 0; i < N_; i++) {
-        zz[i] = zSol.block(n_+m_+k_*(i+1),0,n_+m_+k_,1);
+        //zz[i] = zSol.block(n_+m_+k_*(i+1),0,n_+m_+k_,1);
+        zz[i] = zSol.segment(n_+m_+k_*(i+1), n_+m_+k_);
     }
 
     return zz;
 
+}
+
+*/
+
+vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>& WD ) {
+
+    drake::solvers::MathematicalProgram prog;
+
+    vector<drake::solvers::VectorXDecisionVariable> x;
+
+    for (int i = 0; i < N_+1; i++) {
+        x.push_back(prog.NewContinuousVariables(n_, "x" + std::to_string(i)));
+}
+
+    
+
+        //drake::solvers::VectorXDecisionVariable
+
+
+
+
+
+    std::vector<VectorXd> rere(N_, VectorXd::Zero(n_+m_+k_) );
+    return rere;
 }
 
 vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G, vector<VectorXd>& WZ) {

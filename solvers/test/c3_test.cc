@@ -87,6 +87,7 @@ int DoMain(int argc, char* argv[]) {
     Rinit << 1;
     //std::cout << Rinit;
 
+    //void exit
 
 
     const std::vector<MatrixXd> A(N, Ainit * Ts + MatrixXd::Identity(n,n) );
@@ -109,11 +110,10 @@ int DoMain(int argc, char* argv[]) {
     //VectorXd x0 = VectorXd::Zero(n);
 
     VectorXd x0(n);
-    x0 << 0,
+    x0 << 0.1,
             0,
-            0,
+            0.3,
             0;
-
 
 
     std::vector<VectorXd> delta_reset(N, VectorXd::Zero(m) );
@@ -122,7 +122,7 @@ int DoMain(int argc, char* argv[]) {
     std::vector<VectorXd> w(N, VectorXd::Zero(m) );
 
 
-    int timesteps = 3;
+    int timesteps = 10;
 
     std::vector<VectorXd> x(timesteps, VectorXd::Zero(n) );
     std::vector<VectorXd> input(timesteps, VectorXd::Zero(k) );
@@ -134,7 +134,7 @@ int DoMain(int argc, char* argv[]) {
         delta = delta_reset;
         w = w_reset;
 
-        input[i] = opt.Solve(x0, &delta, &w );
+        input[i] = opt.Solve(x[i], &delta, &w );
         x[i+1] = opt.Simulate(x[i], input[i]);
         std::cout << "state: "<< x[i+1] << std::endl;
 

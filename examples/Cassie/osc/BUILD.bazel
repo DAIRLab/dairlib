@@ -33,17 +33,6 @@ cc_library(
 )
 
 cc_library(
-    name = "alip_walking_speed_control",
-    srcs = ["alip_walking_speed_control.cc"],
-    hdrs = ["alip_walking_speed_control.h"],
-    deps = [
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "high_level_command",
     srcs = ["high_level_command.cc"],
     hdrs = ["high_level_command.h"],

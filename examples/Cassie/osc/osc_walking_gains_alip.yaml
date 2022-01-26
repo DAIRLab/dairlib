@@ -5,7 +5,7 @@ cols: 3
 relative_swing_ft: true
 
 # High level command gains (with radio)
-vel_scale_rot: -3.0
+vel_scale_rot: -3.5
 vel_scale_trans_sagital: 0.6
 vel_scale_trans_lateral: -0.25
 
@@ -33,19 +33,19 @@ k_ff_lateral: 0
 k_fb_lateral: 0.1
 
 # Finite state machine
-ss_time: 0.35
-ds_time: 0.05
+ss_time: 0.3
+ds_time: 0.1
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.25
 center_line_offset: 0.03
-mid_foot_height: 0.1
+mid_foot_height: 0.08
 final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
-lipm_height: 0.75
+lipm_height: 0.85
 
 # OSC gains
 mu: 0.75

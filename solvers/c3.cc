@@ -77,7 +77,8 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w) {
 	/// Any problem setup that's necessary
 	/// For loop that calls ADMMStep
 	/// Extract and return u[0], just to help the user out
-	return z.block(k_,0,n_+m_,1);
+	//return z.block(k_,0,n_+m_,1);
+    return z.segment(n_+m_, k_);
 
 }
 
@@ -102,8 +103,22 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w
     //std::vector<MatrixXd> Gvv = *Gv;
     //std::vector<MatrixXd> Gvv(N_, 10*MatrixXd::Identity(n_+m_+k_,n_+m_+k_) );
 
+    //trying for now
 
-    *delta = SolveProjection(*Gv, ZW);
+    MatrixXd U(n_+m_+k_,n_+m_+k_);
+    U << 1000, 0, 0, 0, 0, 0, 0,
+        0, 1000, 0, 0, 0, 0, 0,
+        0, 0, 1000, 0, 0, 0, 0,
+        0, 0, 0, 1000, 0 ,0 ,0,
+        0, 0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 0, 1, 0,
+        0,0,0,0,0,0,0;
+    vector<MatrixXd> Ustack(N_, U );
+    *delta = SolveProjection(Ustack, ZW);
+
+
+
+    //*delta = SolveProjection(*Gv, ZW);
 
 	// Update dual variables
     for (int i = 0; i < N_; i++) {
@@ -209,7 +224,7 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
     prog.AddQuadraticCost(2*Cost, CostLinearWD, dv, 1);
 
     drake::solvers::SolverOptions options;
-    options.SetOption(OsqpSolver::id(), "verbose", 1);
+    options.SetOption(OsqpSolver::id(), "verbose", 0);
     drake::solvers::OsqpSolver osqp;
     prog.SetSolverOptions(options);
 

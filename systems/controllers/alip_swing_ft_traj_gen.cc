@@ -8,6 +8,7 @@
 #include "drake/math/saturate.h"
 #include "drake/math/roll_pitch_yaw.h"
 #include "systems/controllers/control_utils.h"
+#include "multibody/multibody_utils.h"
 
 using std::cout;
 using std::endl;
@@ -148,17 +149,10 @@ EventStatus AlipSwingFootTrajGenerator::DiscreteVariableUpdate(
     plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_at_liftoff);
     if (wrt_com_in_local_frame_) {
-      // Get approximated heading angle of pelvis and rotational matrix
-      double approx_pelvis_yaw = RollPitchYaw<double>(
-          plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation())
-        .yaw_angle();
-      Eigen::Matrix3d rot =
-          RollPitchYaw<double>(0, 0, approx_pelvis_yaw).
-        ToMatrix3ViaRotationMatrix();
-
-      // Vector from com to swing foot viewed in pelvis frame
       swing_foot_pos_at_liftoff =
-          rot.transpose() * (swing_foot_pos_at_liftoff -
+          multibody::ReExpressWorldVector3InBodyYawFrame(
+              plant_, *context_, "pelvis",
+              swing_foot_pos_at_liftoff -
               plant_.CalcCenterOfMassPositionInWorld(*context_));
     }
   }
@@ -183,11 +177,10 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
                              world_, &stance_foot_pos);
 
-  double approx_pelvis_yaw = RollPitchYaw<double>(
-      plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation())
-      .yaw_angle();
-  Eigen::Matrix2d rot = RollPitchYaw<double>(0, 0, approx_pelvis_yaw)
-          .ToMatrix3ViaRotationMatrix().topLeftCorner<2,2>();
+  Vector3d pelvis_x =
+      plant_.EvalBodyPoseInWorld(*context_, pelvis_)
+      .rotation().col(0);
+  double approx_pelvis_yaw = atan2(pelvis_x(1), pelvis_x(0));
 
   Vector3d CoM_curr = plant_.CalcCenterOfMassPositionInWorld(*context_);
 
@@ -215,7 +208,8 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   Vector2d L_i;
 
   if (wrt_com_in_local_frame_) {
-    L_i = rot.transpose() * alip_pred.tail<2>();
+    L_i = multibody::ReExpressWorldVector2InBodyYawFrame<double>(
+        plant_, *context_,"pelvis", alip_pred.tail<2>());
     Vector2d L_f = is_right_support ?
         Vector2d(L_x_offset + L_x_n, L_y_des) :
         Vector2d(L_x_offset - L_x_n, L_y_des);
@@ -241,7 +235,8 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
 
     // Impose half-plane guard
     Vector2d stance_foot_wrt_com_in_local_frame =
-        rot.transpose() * (stance_foot_pos - CoM_curr).head<2>();
+        multibody::ReExpressWorldVector2InBodyYawFrame<double>(
+            plant_, *context_,"pelvis",  (stance_foot_pos - CoM_curr).head<2>());
     if (is_right_support) {
       double line_pos =
           std::max(center_line_offset_, stance_foot_wrt_com_in_local_frame(1));

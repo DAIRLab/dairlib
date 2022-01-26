@@ -11,6 +11,20 @@ load(
     "pybind_py_library",
 )
 
+
+pybind_py_library(
+    name = "c3_py",
+    cc_deps = [
+        "//solvers:c3",
+    ],
+    cc_so_name = "c3",
+    cc_srcs = ["c3.cc"],
+    py_deps = [
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 pybind_py_library(
     name = "pathlcp_py",
     cc_deps = [
@@ -41,6 +55,7 @@ py_library(
 
 PY_LIBRARIES = [
     ":pathlcp_py",
+    ":c3_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

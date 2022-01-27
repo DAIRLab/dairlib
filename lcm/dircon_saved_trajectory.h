@@ -138,8 +138,9 @@ class DirconTrajectory : public LcmTrajectory {
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 
-  // convenience map
-  // NOTE:
+  // Convenience maps
+  // NOTE: these joint name to index maps are constructed using the
+  // MultibodyPlant supplied in the constructor
   std::map<std::string, int> pos_map_;
   std::map<std::string, int> vel_map_;
   std::map<std::string, int> act_map_;

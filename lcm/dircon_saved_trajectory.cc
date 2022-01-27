@@ -466,7 +466,7 @@ void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant
       state_map_(nq + vel_map[state_name], i) = 1;
       vel_map_[state_name] = i;
     } else {
-      std::cerr << "Trajectory contains state names that are present in the "
+      std::cerr << "Trajectory contains state names that are not present in the "
                    "supplied MultibodyPlant."
                 << std::endl;
     }
@@ -481,7 +481,7 @@ void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant
       actuator_map_(act_map[motor_name], i) = 1;
       act_map_[motor_name] = i;
     } else {
-      std::cerr << "Trajectory contains state names that are present in the "
+      std::cerr << "Trajectory contains actuator names that are not present in the "
                    "supplied MultibodyPlant."
                 << std::endl;
     }

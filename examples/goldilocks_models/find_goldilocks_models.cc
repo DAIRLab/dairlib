@@ -87,6 +87,11 @@ DEFINE_bool(is_grid_task, true,
     "Uniform grid of task space. If non-uniform grid, use the interpolated "
     "initial guess and restrict the number of samples");
 
+// cost weights (use flags for convenience)
+DEFINE_double(Q, 0, "cost weight Q");
+DEFINE_double(R, 0, "cost weight R");
+DEFINE_double(w_joint_accel, 0, "cost weight w_joint_accel");
+
 // inner loop
 DEFINE_string(init_file, "",
               "Initial Guess for Trajectory Optimization. "
@@ -196,15 +201,18 @@ DEFINE_double(turning_rate_center, 0.0, "The step size for outer loop");
 
 DEFINE_bool(only_update_wrt_main_cost, false, "");
 
-void setCostWeight(double* Q, double* R, double* all_cost_scale,
-                   int robot_option) {
+void setCostWeight(double* Q, double* R, double* w_joint_accel,
+                   double* all_cost_scale, int robot_option) {
   if (robot_option == 0) {
     *Q = 1;
     *R = 0.1;
+    //*w_joint_accel = 0.0001;  // not implemented yet
     //*all_cost_scale = 1;  // not implemented yet
   } else if (robot_option == 1) {
-    *Q = 0.005;
+    *Q = 0.1;  // big weight: 0.1; small weight 0.005
     *R = 0.0002;
+    // Final weight for joint accel is w_joint_accel * W_Q
+    *w_joint_accel = 0.0001;  // big: 0.002; small: 0.0001
     *all_cost_scale = 1 /* * 0.6*/;
   }
 }
@@ -1780,10 +1788,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_robot_option == 0) {
     max_inner_iter = 300;
   }
-  double Q = 0;  // Cost on velocity
-  double R = 0;  // Cost on input effort
+  double Q = 0;              // Cost on velocity
+  double R = 0;              // Cost on input effort
+  double w_joint_accel = 0;  // Cost on joint acceleration
   double all_cost_scale = 1;
-  setCostWeight(&Q, &R, &all_cost_scale, FLAGS_robot_option);
+  setCostWeight(&Q, &R, &w_joint_accel, &all_cost_scale, FLAGS_robot_option);
+  if (FLAGS_Q > 0) Q = FLAGS_Q;
+  if (FLAGS_R > 0) R = FLAGS_R;
+  if (FLAGS_w_joint_accel > 0) w_joint_accel = FLAGS_w_joint_accel;
   cout << "\nOptimization setting (inner loop):\n";
   cout << "max_inner_iter = " << max_inner_iter << endl;
   cout << "major_optimality_tol = " << FLAGS_major_optimality_tol << endl;
@@ -1819,6 +1831,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   InnerLoopSetting inner_loop_setting = InnerLoopSetting();
   inner_loop_setting.Q_double = Q;
   inner_loop_setting.R_double = R;
+  inner_loop_setting.w_joint_accel = w_joint_accel;
   inner_loop_setting.eps_reg = FLAGS_eps_regularization;
   inner_loop_setting.all_cost_scale = all_cost_scale;
   inner_loop_setting.is_add_tau_in_cost = FLAGS_is_add_tau_in_cost;

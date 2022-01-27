@@ -117,7 +117,13 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
   13: quat, xy, swing     2      4    3dlipm            yes    fix xyz
   14: quat, xy, swing     4      4    3dlipm            yes    fix xy
   15: quat, xyz           4      4    3dlipm            yes    fix xy
+  16: quat, xyz           4      4    3dlipm            COM    fix xy
 */
+// Note:
+// Whenever you add a new model, remember to update the model number in
+//   1. find_goldilocks_model.cc (a check in the start)
+//   2. goldilocks_model_traj_opt.cc
+//   3. cassie_rom_planner_system.cc (where we called SetInitialGuess)
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
     const drake::multibody::MultibodyPlant<double>& plant, bool print_info) {
@@ -152,7 +158,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       }
       cout << endl;
     }
-    if (rom_option == 15) {
+    if (rom_option == 15 || rom_option == 16) {
       skip_inds.push_back(6);  // pelvis z
     }
     if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||
@@ -162,7 +168,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     } else if (rom_option == 7) {
       mapping_basis = std::make_unique<MonomialFeatures>(
           0, plant.num_positions(), skip_inds, "mapping basis");
-    } else if (rom_option == 14 || rom_option == 15) {
+    } else if (rom_option == 14 || rom_option == 15 || rom_option == 16) {
       mapping_basis = std::make_unique<MonomialFeatures>(
           4, plant.num_positions(), skip_inds, "mapping basis");
     } else {
@@ -207,7 +213,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 9 || rom_option == 10 || rom_option == 11) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else if ((rom_option >= 12) && (rom_option <= 15)) {
+  } else if ((rom_option >= 12) && (rom_option <= 16)) {
     // Highest degree = 4
     dynamic_basis = std::make_unique<MonomialFeatures>(
         4, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
@@ -279,7 +285,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // 3D Gip (general inverted pendulum)
     rom = std::make_unique<Gip>(plant, stance_foot, *mapping_basis,
                                 *dynamic_basis, 3);
-  } else if (rom_option == 9) {
+  } else if (rom_option == 9 || rom_option == 16) {
     // Fix the mapping function of the COM xy part
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
@@ -288,7 +294,6 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
              rom_option == 15) {
     // Fix the mapping function of the COM xy part
     // Use pelvis as a proxy for COM
-    // ROM is only a function of stance leg's joints
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx, true);

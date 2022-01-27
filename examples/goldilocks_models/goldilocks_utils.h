@@ -31,6 +31,7 @@ class InnerLoopSetting {
   int n_node;
   double Q_double;
   double R_double;
+  double w_joint_accel;
   double eps_reg;
   double all_cost_scale;
   bool is_add_tau_in_cost;

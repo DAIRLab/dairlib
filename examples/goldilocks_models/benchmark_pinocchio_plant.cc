@@ -1,20 +1,29 @@
 /*
+Benchmark done on Jan 24th, 2022.
 
-Units below are [seconds per 1,000,000 calls]
+Units below are [seconds per 100,000 calls]
 
 Without resetting drake context every loop:
-r_com time (Pinocchio):0.833135
-r_com time (Drake):0.63641
-v_com time (Pinocchio):1.38537
-v_com time (Drake):1.50729
+r_com time (Pinocchio):0.0406533
+r_com time (Drake):0.0244223
+0.600745times faster
+v_com time (Pinocchio):0.0578227
+v_com time (Drake):0.0902847
+1.56141times faster
+J_com time (Pinocchio):0.0692747
+J_com time (Drake):0.602594
+8.69861times faster
 
 When resetting context in every loop:
-r_com time (Pinocchio):1.09758
-r_com time (Drake):3.59607
-v_com time (Pinocchio):1.63794
-v_com time (Drake):6.92368
-J_com time (Pinocchio):1.29014
-J_com time (Drake):13.6425
+r_com time (Pinocchio):0.0988584
+r_com time (Drake):0.369517
+3.73784times faster
+v_com time (Pinocchio):0.137124
+v_com time (Drake):0.711533
+5.18897times faster
+J_com time (Pinocchio):0.148367
+J_com time (Drake):1.55255
+10.4642times faster
 
  */
 

@@ -1783,11 +1783,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   ///  `max_cost_increase_rate_before_ask_for_help`, then the program rerun the
   ///  iteration
 
-  // Parameters for the inner loop optimization
-  int max_inner_iter = FLAGS_max_inner_iter;
-  if (FLAGS_robot_option == 0) {
-    max_inner_iter = 300;
-  }
+  // Parameters for the main costs (i.e. non-regularization cost)
   double Q = 0;              // Cost on velocity
   double R = 0;              // Cost on input effort
   double w_joint_accel = 0;  // Cost on joint acceleration
@@ -1796,6 +1792,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_Q > 0) Q = FLAGS_Q;
   if (FLAGS_R > 0) R = FLAGS_R;
   if (FLAGS_w_joint_accel > 0) w_joint_accel = FLAGS_w_joint_accel;
+  cout << "Q = " << Q << endl;
+  cout << "R = " << R << endl;
+  cout << "w_joint_accel = " << w_joint_accel << endl;
+
+  // Parameters for the inner loop optimization
+  int max_inner_iter = FLAGS_max_inner_iter;
+  if (FLAGS_robot_option == 0) {
+    max_inner_iter = 300;
+  }
   cout << "\nOptimization setting (inner loop):\n";
   cout << "max_inner_iter = " << max_inner_iter << endl;
   cout << "major_optimality_tol = " << FLAGS_major_optimality_tol << endl;

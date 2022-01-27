@@ -35,7 +35,7 @@ bazel build --jobs=40 examples/goldilocks_models:find_goldilocks_models
 ###########model optimization setting##########
 # Set robot id and model id
 robot=1
-model=11 #2, 4
+model=16 #2, 4
 echo robot_option = $robot, rom_option = $model
 
 # Set sample size
@@ -47,12 +47,12 @@ n_ph=3
 n_sm=1
 
 # main cost weights
-Q = 0.1    # big weight: 0.1; small weight 0.005
-R = 0.0002  #
-w_joint_accel = 0.0001    # big: 0.002; small: 0.0001  # Final weight is w_joint_accel * W_Q
+Q=0.1    # big weight: 0.1; small weight 0.005
+R=0.0002  #
+w_joint_accel=0.0001    # big: 0.002; small: 0.0001  # Final weight is w_joint_accel * W_Q
 
 # Other parameters
-final_iter=100
+final_iter=200
 folder_name=
 
 # Delete and create a new data folder if specified in the argument

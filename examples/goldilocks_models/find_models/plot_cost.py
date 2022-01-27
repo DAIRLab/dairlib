@@ -84,8 +84,10 @@ if normalize_by_nominal_cost:
         cost = []
         # assert os.path.isfile(directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
         # matrix = np.genfromtxt(directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
-        assert os.path.isfile(directory+'0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
-        matrix = np.genfromtxt(directory+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
+        assert os.path.isfile(directory+'nominal_traj_cubic_swing_foot/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
+        matrix = np.genfromtxt(directory+'nominal_traj_cubic_swing_foot/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
+        # assert os.path.isfile(directory+'0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
+        # matrix = np.genfromtxt(directory+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
         cost.append(matrix)
 
         nominal_cost += cost[0] / N_sample

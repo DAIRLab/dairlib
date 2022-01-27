@@ -320,12 +320,6 @@ int DoMain(int argc, char* argv[]) {
   right_foot_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
                                                       "toe_right");
 
-//  TransTaskSpaceTrackingData left_hip_tracking_data(
-//      "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-//      osc_gains.W_swing_foot, plant, plant);
-//  TransTaskSpaceTrackingData right_hip_tracking_data(
-//      "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-//      osc_gains.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData left_hip_tracking_data(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
@@ -380,8 +374,8 @@ int DoMain(int argc, char* argv[]) {
 
   left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
-  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+//  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+//  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);
   //  left_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
   //  right_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});

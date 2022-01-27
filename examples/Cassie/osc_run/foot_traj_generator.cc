@@ -174,12 +174,12 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   std::vector<double> T_waypoints_2;
   T_waypoints = {state_durations_[1],
                  state_durations_[1] +
-                     2.0 / 3.0 * (state_durations_[4] - state_durations_[1]),
+                     1.5 / 3.0 * (state_durations_[4] - state_durations_[1]),
                  state_durations_[4]};
   T_waypoints_0 = {
       state_durations_[0],
       (state_durations_[3] - state_durations_[4]) +
-          2.0 / 3.0 * (0.1 + state_durations_[2] - state_durations_[0]),
+          1.5 / 3.0 * (0.1 + state_durations_[2] - state_durations_[0]),
       state_durations_[2]};
   T_waypoints_1 = {state_durations_[2], state_durations_[3]};
   T_waypoints_2 = {state_durations_[3], state_durations_[4]};

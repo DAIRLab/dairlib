@@ -64,13 +64,13 @@ DirconTrajectory::DirconTrajectory(
                              num_forces, force_traj.time_vector.size());
 
     // Impulse vars
-    if (mode > 0) {
-      impulse_traj.traj_name = "impulse_vars" + std::to_string(mode);
-      impulse_traj.datatypes = impulse_names;
-      // Get start of mode to get time of impulse
-      impulse_traj.time_vector = state_breaks[mode].segment(0, 1);
-      impulse_traj.datapoints = result.GetSolution(dircon.impulse_vars(mode));
-    }
+//    if (mode < num_modes_ - 1) {
+//      impulse_traj.traj_name = "impulse_vars" + std::to_string(mode);
+//      impulse_traj.datatypes = impulse_names;
+//      // Get start of mode to get time of impulse
+//      impulse_traj.time_vector = state_breaks[mode].segment(0, 1);
+//      impulse_traj.datapoints = result.GetSolution(dircon.impulse_vars(mode));
+//    }
 
     // Collocation force vars
     if (state_breaks[mode].size() > 1) {

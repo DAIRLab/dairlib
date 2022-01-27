@@ -465,8 +465,8 @@ cc_binary(
 cc_binary(
     name = "run_dircon_jumping",
     srcs = ["run_dircon_jumping.cc"],
-    data = glob(["examples/Cassie/urdf/*.urdf"]),
     deps = [
+        ":cassie_urdf",
         ":cassie_utils",
         "//common",
         "//lcm:dircon_trajectory_saver",

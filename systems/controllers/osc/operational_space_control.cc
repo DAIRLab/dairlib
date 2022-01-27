@@ -101,10 +101,10 @@ OperationalSpaceControl::OperationalSpaceControl(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
           .get_index();
 
-  failure_port_ =
-      this->DeclareVectorOutputPort("failure_signal", TimestampedVector<double>(1),
-                                    &OperationalSpaceControl::CheckTracking)
-          .get_index();
+  failure_port_ = this->DeclareVectorOutputPort(
+                          "failure_signal", TimestampedVector<double>(1),
+                          &OperationalSpaceControl::CheckTracking)
+                      .get_index();
 
   const std::map<string, int>& vel_map_wo_spr =
       multibody::makeNameToVelocitiesMap(plant_wo_spr);
@@ -761,11 +761,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
-
-  //  if (result.get_optimal_cost() < -1e6) {
-  //    std::cout << "qp cost: " << result.get_optimal_cost() << std::endl;
-  //    return VectorXd::Zero(n_u_);
-  //  }
+  //  solve_time_ = alpha;
 
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);
@@ -844,8 +840,8 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   for (auto tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
-      A.block(start_row, 0, tracking_data->GetYdotDim(), active_constraint_dim) =
-          tracking_data->GetJ() * M_Jt_;
+      A.block(start_row, 0, tracking_data->GetYdotDim(),
+              active_constraint_dim) = tracking_data->GetJ() * M_Jt_;
       ydot_err_vec.segment(start_row, tracking_data->GetYdotDim()) =
           tracking_data->GetErrorYdot();
       start_row += tracking_data->GetYdotDim();
@@ -922,15 +918,25 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     auto tracking_data = tracking_data_vec_->at(i);
     output->tracking_data_names[i] = tracking_data->GetName();
 
+    lcmt_osc_tracking_data osc_output;
+    osc_output.y_dim = tracking_data->GetYDim();
+    osc_output.ydot_dim = tracking_data->GetYdotDim();
+    osc_output.name = tracking_data->GetName();
+    osc_output.is_active = tracking_data->IsActive(fsm_state);
+    osc_output.y = std::vector<double>(osc_output.y_dim);
+    osc_output.y_des = std::vector<double>(osc_output.y_dim);
+    osc_output.error_y = std::vector<double>(osc_output.ydot_dim);
+    osc_output.ydot = std::vector<double>(osc_output.ydot_dim);
+    osc_output.ydot_des = std::vector<double>(osc_output.ydot_dim);
+    osc_output.error_ydot = std::vector<double>(osc_output.ydot_dim);
+    osc_output.yddot_des = std::vector<double>(osc_output.ydot_dim);
+    osc_output.yddot_command = std::vector<double>(osc_output.ydot_dim);
+    osc_output.yddot_command_sol = std::vector<double>(osc_output.ydot_dim);
+
+    output->tracking_cost[i] = 0;
     if (tracking_data->IsActive(fsm_state) &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
-      lcmt_osc_tracking_data osc_output;
-      osc_output.y_dim = tracking_data->GetYDim();
-      osc_output.ydot_dim = tracking_data->GetYdotDim();
-      osc_output.name = tracking_data->GetName();
-      // This should always be true
-      osc_output.is_active = tracking_data->IsActive(fsm_state);
       osc_output.y = CopyVectorXdToStdVector(tracking_data->GetY());
       osc_output.y_des = CopyVectorXdToStdVector(tracking_data->GetYDes());
       osc_output.error_y = CopyVectorXdToStdVector(tracking_data->GetErrorY());
@@ -945,7 +951,6 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommand());
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
-      output->tracking_data[i] = osc_output;
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
       const MatrixXd& W = tracking_data->GetWeight();
@@ -956,6 +961,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
            (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
       total_cost_ += output->tracking_cost[i];
     }
+    output->tracking_data[i] = osc_output;
   }
 
   output->num_tracking_data = output->tracking_data_names.size();

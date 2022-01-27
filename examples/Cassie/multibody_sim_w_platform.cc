@@ -59,6 +59,7 @@ DEFINE_double(publish_rate, 2000, "Publish rate for simulator");
 DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
+DEFINE_string(channel_u, "CASSIE_INPUT", "LCM channel to receive controller commands from");
 DEFINE_double(platform_height, 0.0, "Height of the platform");
 DEFINE_double(platform_x, 0.0, "x location of the  platform");
 DEFINE_double(start_time, 0.0,
@@ -126,7 +127,7 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", lcm));
+          FLAGS_channel_u, lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,

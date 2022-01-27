@@ -37,6 +37,8 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
   // Accumulate the durations to get timestamps
   double sum = 0;
   DRAKE_DEMAND(states.size() == state_durations.size());
+  impact_times_.push_back(0);
+  impact_states_.push_back(states[0]);
   for (int i = 0; i < states.size(); ++i) {
     sum += state_durations[i];
     accu_state_durations_.push_back(sum);
@@ -44,6 +46,11 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
       impact_times_.push_back(sum);
       impact_states_.push_back(states[i+1]);
     }
+  }
+
+  std::cout << "Impact times: " << std::endl;
+  for(int i = 0; i < impact_times_.size(); ++i){
+    std::cout << impact_times_[i] << std::endl;
   }
 
   period_ = sum;
@@ -76,9 +83,9 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   // Get current finite state
   if (current_time >= t0_) {
     for (int i = 0; i < impact_states_.size(); ++i) {
-      if (impact_states_[i] == 2) {
-        continue;
-      }
+//      if (impact_states_[i] > 2) {
+//        continue;
+//      }
       double blend_window = blend_func_ == SIGMOID
                                 ? 1.5 * near_impact_threshold_
                                 : near_impact_threshold_;

@@ -1,6 +1,6 @@
 # LCM channels to read data from
-channel_x: "CASSIE_STATE_SIMULATION"
-channel_u: "CASSIE_INPUT"
+channel_x: "CASSIE_STATE_DISPATCHER"
+channel_u: "OSC_WALKING"
 channel_osc: "OSC_DEBUG_WALKING"
 
 # Plant properties
@@ -27,5 +27,5 @@ plot_qp_costs: true
 plot_tracking_costs: true
 plot_qp_solve_time: true
 tracking_datas_to_plot:
-  com_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+  lipm_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
   swing_ft_traj: {'dims': [2], 'derivs': ['pos', 'accel']}

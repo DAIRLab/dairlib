@@ -46,8 +46,8 @@ template <>
 void NonlinearConstraint<AutoDiffXd>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x, Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
-  EvaluateConstraint(drake::math::initializeAutoDiff(x), &y_t);
-  *y = drake::math::autoDiffToValueMatrix(y_t);
+  EvaluateConstraint(drake::math::InitializeAutoDiff(x), &y_t);
+  *y = drake::math::ExtractValue(y_t);
   this->ScaleConstraint<double>(y);
 }
 
@@ -69,10 +69,10 @@ void NonlinearConstraint<AutoDiffXd>::DoEval(
 template <>
 void NonlinearConstraint<double>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
-  MatrixXd original_grad = drake::math::autoDiffToGradientMatrix(x);
+  MatrixXd original_grad = drake::math::ExtractGradient(x);
 
   // forward differencing
-  VectorXd x_val = drake::math::autoDiffToValueMatrix(x);
+  VectorXd x_val = drake::math::ExtractValue(x);
   VectorXd y0, yi;
   EvaluateConstraint(x_val, &y0);
 
@@ -87,10 +87,9 @@ void NonlinearConstraint<double>::DoEval(
   // Profiling identified dy * original_grad as a significant runtime event,
   // even though it is almost always the identity matrix.
   if (original_grad.isIdentity(1e-16)) {
-    *y = drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy);
+    *y = drake::math::InitializeAutoDiff(y0, dy);
   } else {
-    *y = drake::math::initializeAutoDiffGivenGradientMatrix(y0,
-                                                            dy * original_grad);
+    *y = drake::math::InitializeAutoDiff(y0, dy * original_grad);
   }
 
   this->ScaleConstraint<AutoDiffXd>(y);

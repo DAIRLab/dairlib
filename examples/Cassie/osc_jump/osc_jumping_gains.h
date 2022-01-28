@@ -6,6 +6,7 @@ using Eigen::MatrixXd;
 struct OSCJumpingGains {
   // costs
   double w_input;
+  double w_input_reg;
   double w_accel;
   double w_soft_constraint;
   double x_offset;
@@ -43,10 +44,15 @@ struct OSCJumpingGains {
   MatrixXd W_flight_foot;
   MatrixXd K_p_flight_foot;
   MatrixXd K_d_flight_foot;
+  MatrixXd W_hip_yaw;
+  MatrixXd K_p_hip_yaw;
+  MatrixXd K_d_hip_yaw;
+
 
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(w_input));
+    a->Visit(DRAKE_NVP(w_input_reg));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(x_offset));
@@ -97,6 +103,9 @@ struct OSCJumpingGains {
     K_d_flight_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->FlightFootKd.data(), 3, 3);
+    W_hip_yaw = w_hip_yaw * MatrixXd::Identity(1, 1);
+    K_p_hip_yaw = hip_yaw_kp * MatrixXd::Identity(1, 1);
+    K_d_hip_yaw = hip_yaw_kd * MatrixXd::Identity(1, 1);
 
   }
 };

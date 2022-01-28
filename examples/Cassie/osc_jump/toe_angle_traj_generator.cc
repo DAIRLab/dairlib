@@ -14,7 +14,8 @@ namespace dairlib::cassie::osc_jump {
 
 FlightToeAngleTrajGenerator::FlightToeAngleTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context, int swing_toe_idx,
+    drake::systems::Context<double>* context,
+    PiecewisePolynomial<double>& toe_traj, int swing_toe_idx,
     const std::vector<std::pair<const Eigen::Vector3d,
                                 const drake::multibody::Frame<double>&>>&
     feet_contact_points,
@@ -22,16 +23,19 @@ FlightToeAngleTrajGenerator::FlightToeAngleTrajGenerator(
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
+      toe_traj_(toe_traj),
       swing_toe_idx_(swing_toe_idx),
       feet_contact_points_(feet_contact_points) {
   DRAKE_DEMAND(feet_contact_points_.size() == 2);
+  use_traj_ = !toe_traj_.empty();
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant.num_positions(),
-                                                        plant.num_velocities(),
-                                                        plant.num_actuators()))
-          .get_index();
-  fsm_port_ = this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
+  state_port_ = this->DeclareVectorInputPort(
+      "x, u, t", OutputVector<double>(plant.num_positions(),
+                                      plant.num_velocities(),
+                                      plant.num_actuators()))
+      .get_index();
+  fsm_port_ =
+      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
@@ -71,9 +75,13 @@ void FlightToeAngleTrajGenerator::CalcTraj(
 
   // Read in finite state machine
   auto* casted_traj =
-  (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-      traj);
-  *casted_traj = CalcToeAngle(robot_output->GetPositions());
+      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+          traj);
+  if (use_traj_) {
+    *casted_traj = toe_traj_;
+  } else {
+    *casted_traj = CalcToeAngle(robot_output->GetPositions());
+  }
 }
 
 }  // namespace dairlib::cassie::osc_jump

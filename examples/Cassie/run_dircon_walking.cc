@@ -114,10 +114,33 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
 
   vector<VectorXd> q_init_guess;
   VectorXd q_ik_guess = VectorXd::Zero(n_q);
+
+  map<string, double> pos_value_map;
   Eigen::Vector4d quat(2000.06, -0.339462, -0.609533, -0.760854);
-  q_ik_guess << quat.normalized(), 0.000889849, 0.000626865, 1.0009, -0.0112109,
-      0.00927845, -0.000600725, -0.000895805, 1.15086, 0.610808, -1.38608,
-      -1.35926, 0.806192, 1.00716, -M_PI / 2, -M_PI / 2;
+  quat.normalize();
+  pos_value_map["base_qw"] = quat(0);
+  pos_value_map["base_qx"] = quat(1);
+  pos_value_map["base_qy"] = quat(2);
+  pos_value_map["base_qz"] = quat(3);
+  pos_value_map["base_x"] = 0.000889849;
+  pos_value_map["base_y"] = 0.000626865;
+  pos_value_map["base_z"] = 1.0009;
+  pos_value_map["hip_roll_left"] = -0.0112109;
+  pos_value_map["hip_roll_right"] = 0.00927845;
+  pos_value_map["hip_yaw_left"] = -0.000600725;
+  pos_value_map["hip_yaw_right"] = -0.000895805;
+  pos_value_map["hip_pitch_left"] = 1.15086;
+  pos_value_map["hip_pitch_right"] = 0.610808;
+  pos_value_map["knee_left"] = -1.38608;
+  pos_value_map["knee_right"] = -1.35926;
+  pos_value_map["ankle_joint_left"] = 0.806192;
+  pos_value_map["ankle_joint_right"] = 1.00716;
+  pos_value_map["toe_left"] = -M_PI / 2;
+  pos_value_map["toe_right"] = -M_PI / 2;
+
+  for (auto pair : pos_value_map) {
+    q_ik_guess(positions_map.at(pair.first)) = pair.second;
+  }
 
   for (int i = 0; i < N; i++) {
     double eps = 1e-3;
@@ -386,20 +409,86 @@ void DoMain(double duration, double stride_length, double ground_incline,
     options_list[i].setConstraintRelative(1, true);
     options_list[i].setConstraintRelative(3, true);
   }
+
+  int base_qw_idx = pos_map.at("base_qw");
+  int base_qx_idx = pos_map.at("base_qx");
+  int base_qy_idx = pos_map.at("base_qy");
+  int base_qz_idx = pos_map.at("base_qz");
+  int base_x_idx = pos_map.at("base_x");
+  int base_y_idx = pos_map.at("base_y");
+  int base_z_idx = pos_map.at("base_z");
+  int hip_roll_left_idx = pos_map.at("hip_roll_left");
+  int hip_roll_right_idx = pos_map.at("hip_roll_right");
+  int hip_yaw_left_idx = pos_map.at("hip_yaw_left");
+  int hip_yaw_right_idx = pos_map.at("hip_yaw_right");
+  int hip_pitch_left_idx = pos_map.at("hip_pitch_left");
+  int hip_pitch_right_idx = pos_map.at("hip_pitch_right");
+  int knee_left_idx = pos_map.at("knee_left");
+  int knee_right_idx = pos_map.at("knee_right");
+  int ankle_joint_left_idx = pos_map.at("ankle_joint_left");
+  int ankle_joint_right_idx = pos_map.at("ankle_joint_right");
+  int toe_left_idx = pos_map.at("toe_left");
+  int toe_right_idx = pos_map.at("toe_right");
+
+  int base_wx_idx = vel_map.at("base_wx");
+  int base_wy_idx = vel_map.at("base_wy");
+  int base_wz_idx = vel_map.at("base_wz");
+  int base_vx_idx = vel_map.at("base_vx");
+  int base_vy_idx = vel_map.at("base_vy");
+  int base_vz_idx = vel_map.at("base_vz");
+  int hip_roll_leftdot_idx = vel_map.at("hip_roll_leftdot");
+  int hip_roll_rightdot_idx = vel_map.at("hip_roll_rightdot");
+  int hip_yaw_leftdot_idx = vel_map.at("hip_yaw_leftdot");
+  int hip_yaw_rightdot_idx = vel_map.at("hip_yaw_rightdot");
+  int hip_pitch_leftdot_idx = vel_map.at("hip_pitch_leftdot");
+  int hip_pitch_rightdot_idx = vel_map.at("hip_pitch_rightdot");
+  int knee_leftdot_idx = vel_map.at("knee_leftdot");
+  int knee_rightdot_idx = vel_map.at("knee_rightdot");
+  int ankle_joint_leftdot_idx = vel_map.at("ankle_joint_leftdot");
+  int ankle_joint_rightdot_idx = vel_map.at("ankle_joint_rightdot");
+  int toe_leftdot_idx = vel_map.at("toe_leftdot");
+  int toe_rightdot_idx = vel_map.at("toe_rightdot");
+
+  int hip_roll_left_motor_idx = act_map.at("hip_roll_left_motor");
+  int hip_roll_right_motor_idx = act_map.at("hip_roll_right_motor");
+  int hip_yaw_left_motor_idx = act_map.at("hip_yaw_left_motor");
+  int hip_yaw_right_motor_idx = act_map.at("hip_yaw_right_motor");
+  int hip_pitch_left_motor_idx = act_map.at("hip_pitch_left_motor");
+  int hip_pitch_right_motor_idx = act_map.at("hip_pitch_right_motor");
+  int knee_left_motor_idx = act_map.at("knee_left_motor");
+  int knee_right_motor_idx = act_map.at("knee_right_motor");
+  int toe_left_motor_idx = act_map.at("toe_left_motor");
+  int toe_right_motor_idx = act_map.at("toe_right_motor");
+
   // Constraint scaling
   if (FLAGS_is_scale_constraint) {
     for (int i = 0; i < 2; i++) {
       double s = 1;  // scale everything together
       // Dynamic constraints
-      options_list[i].setDynConstraintScaling({0, 1, 2, 3}, s * 1.0 / 30.0);
       options_list[i].setDynConstraintScaling(
-          {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, s * 1.0 / 60.0);
-      options_list[i].setDynConstraintScaling({17, 18}, s * 1.0 / 300.0);
+          {base_qw_idx, base_qx_idx, base_qy_idx, base_qz_idx}, s * 1.0 / 30.0);
       options_list[i].setDynConstraintScaling(
-          {19, 20, 21, 22, 23, 24, 25, 26, 27, 28}, s * 1.0 / 600.0);
-      options_list[i].setDynConstraintScaling({29, 30, 31, 32, 33, 34},
-                                              s * 1.0 / 3000.0);
-      options_list[i].setDynConstraintScaling({35, 36}, s * 1.0 / 60000.0);
+          {base_x_idx, base_y_idx, base_z_idx, hip_roll_left_idx,
+           hip_roll_right_idx, hip_yaw_left_idx, hip_yaw_right_idx,
+           hip_pitch_left_idx, hip_pitch_right_idx, knee_left_idx,
+           knee_right_idx, ankle_joint_left_idx, ankle_joint_right_idx},
+          s * 1.0 / 60.0);
+      options_list[i].setDynConstraintScaling({toe_left_idx, toe_right_idx},
+                                              s * 1.0 / 300.0);
+      options_list[i].setDynConstraintScaling(
+          {n_q + base_wx_idx, n_q + base_wy_idx, n_q + base_wz_idx,
+           n_q + base_vx_idx, n_q + base_vy_idx, n_q + base_vz_idx,
+           n_q + hip_roll_leftdot_idx, n_q + hip_roll_rightdot_idx,
+           n_q + hip_yaw_leftdot_idx, n_q + hip_yaw_rightdot_idx},
+          s * 1.0 / 600.0);
+      options_list[i].setDynConstraintScaling(
+          {n_q + hip_pitch_leftdot_idx, n_q + hip_pitch_rightdot_idx,
+           n_q + knee_leftdot_idx, n_q + knee_rightdot_idx,
+           n_q + ankle_joint_leftdot_idx, n_q + ankle_joint_rightdot_idx},
+          s * 1.0 / 3000.0);
+      options_list[i].setDynConstraintScaling(
+          {n_q + toe_leftdot_idx, n_q + toe_rightdot_idx}, s * 1.0 / 60000.0);
+
       // Kinematic constraints
       int n_l = options_list[i].getNumConstraints();
       options_list[i].setKinConstraintScaling({0, 1, 2, 3, 4}, s / 6000.0);
@@ -412,13 +501,22 @@ void DoMain(double duration, double stride_length, double ground_incline,
       options_list[i].setKinConstraintScaling({2 * n_l + 5, 2 * n_l + 6},
                                               s * 20);
       // Impact constraints
-      options_list[i].setImpConstraintScaling({0, 1, 2}, s / 50.0);
-      options_list[i].setImpConstraintScaling({3, 4, 5}, s / 300.0);
-      options_list[i].setImpConstraintScaling({6, 7}, s / 24.0);
-      options_list[i].setImpConstraintScaling({8, 9}, s / 6.0);
-      options_list[i].setImpConstraintScaling({10, 11, 12, 13}, s / 12.0);
-      options_list[i].setImpConstraintScaling({14, 15}, s / 2.0);
-      options_list[i].setImpConstraintScaling({16, 17}, s);
+      options_list[i].setImpConstraintScaling(
+          {base_wx_idx, base_wy_idx, base_wz_idx}, s / 50.0);
+      options_list[i].setImpConstraintScaling(
+          {base_vx_idx, base_vy_idx, base_vz_idx}, s / 300.0);
+      options_list[i].setImpConstraintScaling(
+          {hip_roll_leftdot_idx, hip_roll_rightdot_idx}, s / 24.0);
+      options_list[i].setImpConstraintScaling(
+          {hip_yaw_leftdot_idx, hip_yaw_rightdot_idx}, s / 6.0);
+      options_list[i].setImpConstraintScaling(
+          {hip_pitch_leftdot_idx, hip_pitch_rightdot_idx, knee_leftdot_idx,
+           knee_rightdot_idx},
+          s / 12.0);
+      options_list[i].setImpConstraintScaling(
+          {ankle_joint_leftdot_idx, ankle_joint_rightdot_idx}, s / 2.0);
+      options_list[i].setImpConstraintScaling(
+          {toe_leftdot_idx, toe_rightdot_idx}, s);
     }
   }
 
@@ -619,7 +717,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
 
   // Optional -- constraint on initial floating base
-  trajopt->AddConstraint(x0(0) == 1);
+  trajopt->AddConstraint(x0(pos_map.at("base_qw")) == 1);
   // Optional -- constraint on the forces magnitude
   /*for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
@@ -673,17 +771,24 @@ void DoMain(double duration, double stride_length, double ground_incline,
     // time
     trajopt->ScaleTimeVariables(0.008);
     // state
-    trajopt->ScaleStateVariables({0, 1, 2, 3}, 0.5);
+    trajopt->ScaleStateVariables(
+        {base_qw_idx, base_qx_idx, base_qy_idx, base_qz_idx}, 0.5);
     if (s_q_toe > 1) {
-      trajopt->ScaleStateVariables({n_q - 2, n_q - 1}, s_q_toe);
+      trajopt->ScaleStateVariables({toe_left_idx, toe_right_idx}, s_q_toe);
     }
+    std::set<int> idx_set;
+    for (int i = n_q; i < n_q + n_v; i++) {
+      idx_set.insert(i);
+    }
+    idx_set.erase(n_q + vel_map.at("toe_leftdot"));
+    idx_set.erase(n_q + vel_map.at("toe_rightdot"));
     idx_list.clear();
-    for (int i = n_q; i < n_q + n_v - 2; i++) {
-      idx_list.push_back(i);
-    }
+    idx_list.assign(idx_set.begin(), idx_set.end());
     trajopt->ScaleStateVariables(idx_list, 10);
-    trajopt->ScaleStateVariable(n_q + n_v - 2, 10 * s_v_toe_l);
-    trajopt->ScaleStateVariable(n_q + n_v - 1, 10 * s_v_toe_r);
+    trajopt->ScaleStateVariable(n_q + vel_map.at("toe_leftdot"),
+                                10 * s_v_toe_l);
+    trajopt->ScaleStateVariable(n_q + vel_map.at("toe_rightdot"),
+                                10 * s_v_toe_r);
     // input
     trajopt->ScaleInputVariables({0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 100);
     // force
@@ -710,8 +815,10 @@ void DoMain(double duration, double stride_length, double ground_incline,
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
 
-  W_Q(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
-  W_Q(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
+  W_Q(vel_map.at("toe_leftdot"), vel_map.at("toe_leftdot")) /=
+      (s_v_toe_l * s_v_toe_l);
+  W_Q(vel_map.at("toe_rightdot"), vel_map.at("toe_rightdot")) /=
+      (s_v_toe_r * s_v_toe_r);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * W_Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * W_R * u);
 
@@ -735,8 +842,10 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
   // add cost on vel difference wrt time
   MatrixXd Q_v_diff = w_v_diff * MatrixXd::Identity(n_v, n_v);
-  Q_v_diff(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
-  Q_v_diff(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
+  Q_v_diff(vel_map.at("toe_leftdot"), vel_map.at("toe_leftdot")) /=
+      (s_v_toe_l * s_v_toe_l);
+  Q_v_diff(vel_map.at("toe_rightdot"), vel_map.at("toe_rightdot")) /=
+      (s_v_toe_r * s_v_toe_r);
   if (w_v_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto v0 = trajopt->state(i).tail(n_v);
@@ -755,19 +864,23 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // add cost on joint position
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
-      auto q = trajopt->state(i).segment(7, 2);
-      trajopt->AddCost(w_q_hip_roll * q.transpose() * q);
+      auto q1 = trajopt->state(i).segment<1>(hip_roll_left_idx);
+      auto q2 = trajopt->state(i).segment<1>(hip_roll_right_idx);
+      trajopt->AddCost(w_q_hip_yaw * q1.transpose() * q1);
+      trajopt->AddCost(w_q_hip_yaw * q2.transpose() * q2);
     }
   }
   if (w_q_hip_yaw) {
     for (int i = 0; i < N; i++) {
-      auto q = trajopt->state(i).segment(9, 2);
-      trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
+      auto q1 = trajopt->state(i).segment<1>(hip_yaw_left_idx);
+      auto q2 = trajopt->state(i).segment<1>(hip_yaw_right_idx);
+      trajopt->AddCost(w_q_hip_yaw * q1.transpose() * q1);
+      trajopt->AddCost(w_q_hip_yaw * q2.transpose() * q2);
     }
   }
   if (w_q_quat_xyz) {
     for (int i = 0; i < N; i++) {
-      auto q = trajopt->state(i).segment(1, 3);
+      auto q = trajopt->state(i).segment(base_qx_idx, 3);
       trajopt->AddCost(w_q_quat_xyz * q.transpose() * q);
     }
   }
@@ -801,11 +914,11 @@ void DoMain(double duration, double stride_length, double ground_incline,
       // These guesses are from a good solution
       for (int i = 0; i < N; i++) {
         auto u = trajopt->input(i);
-        trajopt->SetInitialGuess(u(0), 20);
-        trajopt->SetInitialGuess(u(2), -30);
-        trajopt->SetInitialGuess(u(4), 30);
-        trajopt->SetInitialGuess(u(6), 50);
-        trajopt->SetInitialGuess(u(8), 20);
+        trajopt->SetInitialGuess(u(hip_roll_left_motor_idx), 20);
+        trajopt->SetInitialGuess(u(hip_yaw_left_motor_idx), -30);
+        trajopt->SetInitialGuess(u(hip_pitch_left_motor_idx), 30);
+        trajopt->SetInitialGuess(u(knee_left_motor_idx), 50);
+        trajopt->SetInitialGuess(u(toe_left_motor_idx), 20);
       }
       // initial guess for force (also forces at collocation)
       for (int i = 0; i < N; i++) {
@@ -879,12 +992,13 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // produces NAN value in some calculation.
   for (int i = 0; i < N; i++) {
     auto xi = trajopt->state(i);
-    if ((trajopt->GetInitialGuess(xi.head(4)).norm() == 0) ||
-        std::isnan(trajopt->GetInitialGuess(xi.head(4)).norm())) {
-      trajopt->SetInitialGuess(xi(0), 1);
-      trajopt->SetInitialGuess(xi(1), 0);
-      trajopt->SetInitialGuess(xi(2), 0);
-      trajopt->SetInitialGuess(xi(3), 0);
+    if ((trajopt->GetInitialGuess(xi.segment<4>(base_qw_idx)).norm() == 0) ||
+        std::isnan(
+            trajopt->GetInitialGuess(xi.segment<4>(base_qw_idx)).norm())) {
+      trajopt->SetInitialGuess(xi(pos_map.at("base_qw")), 1);
+      trajopt->SetInitialGuess(xi(pos_map.at("base_qx")), 0);
+      trajopt->SetInitialGuess(xi(pos_map.at("base_qy")), 0);
+      trajopt->SetInitialGuess(xi(pos_map.at("base_qz")), 0);
     }
   }
 
@@ -1061,22 +1175,30 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // add cost on joint position
   double cost_q_hip_roll = 0;
   for (int i = 0; i < N; i++) {
-    auto q = result.GetSolution(trajopt->state(i).segment(7, 2));
-    cost_q_hip_roll += w_q_hip_roll * q.transpose() * q;
+    auto q1 =
+        result.GetSolution(trajopt->state(i).segment<1>(hip_roll_left_idx));
+    auto q2 =
+        result.GetSolution(trajopt->state(i).segment<1>(hip_roll_right_idx));
+    cost_q_hip_roll += w_q_hip_roll * q1.transpose() * q1;
+    cost_q_hip_roll += w_q_hip_roll * q2.transpose() * q2;
   }
   total_cost += cost_q_hip_roll;
   cout << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
   double cost_q_hip_yaw = 0;
   for (int i = 0; i < N; i++) {
-    auto q = result.GetSolution(trajopt->state(i).segment(9, 2));
-    cost_q_hip_yaw += w_q_hip_yaw * q.transpose() * q;
+    auto q1 =
+        result.GetSolution(trajopt->state(i).segment<1>(hip_yaw_left_idx));
+    auto q2 =
+        result.GetSolution(trajopt->state(i).segment<1>(hip_yaw_right_idx));
+    cost_q_hip_roll += w_q_hip_yaw * q1.transpose() * q1;
+    cost_q_hip_roll += w_q_hip_yaw * q2.transpose() * q2;
   }
   total_cost += cost_q_hip_yaw;
   cout << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
   // add cost on quaternion
   double cost_q_quat_xyz = 0;
   for (int i = 0; i < N; i++) {
-    auto q = result.GetSolution(trajopt->state(i).segment(1, 3));
+    auto q = result.GetSolution(trajopt->state(i).segment(base_qx_idx, 3));
     cost_q_quat_xyz += w_q_quat_xyz * q.transpose() * q;
   }
   total_cost += cost_q_quat_xyz;

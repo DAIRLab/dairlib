@@ -234,6 +234,7 @@ cc_binary(
         ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
+        "//multibody:terrain_generator",
         "//solvers:optimization_utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:vector",

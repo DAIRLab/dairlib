@@ -9,9 +9,11 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/terrain_generator.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
@@ -23,9 +25,11 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
 
+
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
+using drake::geometry::DrakeVisualizer;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
@@ -41,7 +45,8 @@ using Eigen::VectorXd;
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
-
+DEFINE_bool(generate_terrain, false, "generate rough terrain for walking");
+DEFINE_bool(visualize, true, "use drake visualizer");
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
@@ -81,7 +86,11 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    if (FLAGS_generate_terrain) {
+      multibody::addRandomTerrain(&plant, &scene_graph, .8, .8);
+    } else {
+      multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    }
   }
 
   std::string urdf;
@@ -161,6 +170,10 @@ int do_main(int argc, char* argv[]) {
                   sensor_aggregator.get_input_port_radio());
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
+
+  if (FLAGS_visualize) {
+    DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+  }
 
   auto diagram = builder.Build();
 

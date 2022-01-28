@@ -66,6 +66,17 @@ cc_library(
 )
 
 cc_library(
+    name = "terrain_generator",
+    srcs = ["terrain_generator.cc"],
+    hdrs = ["terrain_generator.h"],
+    deps = [
+        ":utils",
+        "@drake//:drake_shared_library"
+    ]
+)
+
+
+cc_library(
     name = "view_frame",
     srcs = ["view_frame.cc"],
     hdrs = ["view_frame.h"],

@@ -303,19 +303,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Solver
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
-  std::unique_ptr<solvers::FastOsqpSolver> ii_solver_;
   drake::solvers::SolverOptions solver_options_;
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
-  std::unique_ptr<drake::solvers::MathematicalProgram> ii_prog_;
 
-  // Decision variables/constraints for impact invariant QP
-  drake::solvers::VectorXDecisionVariable ii_lambda_c_;
-  drake::solvers::VectorXDecisionVariable ii_lambda_h_;
-  std::vector<drake::solvers::LinearConstraint*> ii_friction_constraints_;
-  std::vector<drake::solvers::LinearConstraint*> ii_normal_constraints_;
-  drake::solvers::BoundingBoxConstraint* ii_holonomic_constraint_;
 
   // Decision variables
   drake::solvers::VectorXDecisionVariable dv_;
@@ -330,7 +322,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
   std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
-  std::vector<drake::solvers::QuadraticCost*> ii_tracking_cost_;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;
@@ -394,7 +385,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
 
   // Optional feature -- regularizing input
-  drake::solvers::QuadraticCost* input_reg_cost_;
+  std::shared_ptr<drake::solvers::QuadraticCost> input_reg_cost_;
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
 

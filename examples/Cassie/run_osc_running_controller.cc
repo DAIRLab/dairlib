@@ -115,7 +115,6 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
-
   std::unordered_map<
       int, std::vector<std::pair<const Vector3d,
                                  const drake::multibody::Frame<double>&>>>
@@ -259,7 +258,7 @@ int DoMain(int argc, char* argv[]) {
       plant, plant_context.get(), osc_gains.vel_scale_rot,
       osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
   builder.Connect(cassie_out_receiver->get_output_port(),
-                  high_level_command->get_cassie_output_port());
+                  high_level_command->get_cassie_out_input_port());
 
   auto default_traj = PiecewisePolynomial<double>(Vector3d{0, 0, 0});
   auto pelvis_trans_traj_generator =
@@ -326,10 +325,8 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData right_hip_tracking_data(
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  left_hip_tracking_data.AddStateAndPointToTrack(right_stance_state,
-                                                 "pelvis");
-  right_hip_tracking_data.AddStateAndPointToTrack(left_stance_state,
-                                                  "pelvis");
+  left_hip_tracking_data.AddStateAndPointToTrack(right_stance_state, "pelvis");
+  right_hip_tracking_data.AddStateAndPointToTrack(left_stance_state, "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
                                                   "pelvis");
   left_hip_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
@@ -374,8 +371,8 @@ int DoMain(int argc, char* argv[]) {
 
   left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-//  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
-//  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+  //  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+  //  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);
   //  left_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
   //  right_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});

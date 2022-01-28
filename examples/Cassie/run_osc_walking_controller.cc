@@ -177,7 +177,7 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
             FLAGS_cassie_out_channel, &lcm_local));
     builder.Connect(cassie_out_receiver->get_output_port(),
-                    high_level_command->get_cassie_output_port());
+                    high_level_command->get_cassie_out_input_port());
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,

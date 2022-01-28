@@ -1,5 +1,5 @@
-w_input: 0.00000
-w_accel: 0.00000
+w_input: 0.000001
+w_accel: 0.000001
 #w_soft_constraint: 1000000
 w_soft_constraint: 0.01
 w_input_reg: 0.01
@@ -48,15 +48,15 @@ PelvisKd:
 PelvisRotW:
   [1,  0,   0,
    0,  0.1,   0,
-   0,   0,  0]
+   0,   0,  1]
 PelvisRotKp:
   [50,   0,   0,
    0,  50,   0,
-   0,    0,   0]
+   0,    0,  0]
 PelvisRotKd:
   [10,   0,  0,
    0,   10,  0,
-   0,    0,  0]
+   0,    0,  10]
 SwingFootW:
   [50,    0,    0,
    0,   10,    0,

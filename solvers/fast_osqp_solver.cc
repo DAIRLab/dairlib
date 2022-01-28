@@ -105,7 +105,8 @@ void ParseLinearConstraints(
     const MathematicalProgram& prog,
     const std::vector<Binding<C>>& linear_constraints,
     std::vector<Eigen::Triplet<c_float>>* A_triplets, std::vector<c_float>* l,
-    std::vector<c_float>* u, int* num_A_rows) {
+    std::vector<c_float>* u, int* num_A_rows,
+    std::unordered_map<Binding<Constraint>, int>* constraint_start_row) {
   // Loop over the linear constraints, stack them to get l, u and A.
   for (const auto& constraint : linear_constraints) {
     const std::vector<int> x_indices =
@@ -114,7 +115,7 @@ void ParseLinearConstraints(
         SparseMatrixToTriplets(constraint.evaluator()->A());
     const Binding<Constraint> constraint_cast =
         BindingDynamicCast<Constraint>(constraint);
-//    constraint_start_row->emplace(constraint_cast, *num_A_rows);
+    constraint_start_row->emplace(constraint_cast, *num_A_rows);
     // Append constraint.A to osqp A.
     for (const auto& Ai_triplet : Ai_triplets) {
       A_triplets->emplace_back(*num_A_rows + Ai_triplet.row(),
@@ -135,11 +136,13 @@ void ParseLinearConstraints(
 void ParseBoundingBoxConstraints(
     const MathematicalProgram& prog,
     std::vector<Eigen::Triplet<c_float>>* A_triplets, std::vector<c_float>* l,
-    std::vector<c_float>* u, int* num_A_rows) {
+    std::vector<c_float>* u, int* num_A_rows,
+    std::unordered_map<Binding<Constraint>, int>* constraint_start_row) {
   // Loop over the linear constraints, stack them to get l, u and A.
   for (const auto& constraint : prog.bounding_box_constraints()) {
     const Binding<Constraint> constraint_cast =
         BindingDynamicCast<Constraint>(constraint);
+    constraint_start_row->emplace(constraint_cast, *num_A_rows);
     // Append constraint.A to osqp A.
     for (int i = 0; i < static_cast<int>(constraint.GetNumElements()); ++i) {
       A_triplets->emplace_back(
@@ -160,16 +163,18 @@ void ParseBoundingBoxConstraints(
 
 void ParseAllLinearConstraints(
     const MathematicalProgram& prog, Eigen::SparseMatrix<c_float>* A,
-    std::vector<c_float>* l, std::vector<c_float>* u) {
+    std::vector<c_float>* l, std::vector<c_float>* u,
+    std::unordered_map<Binding<Constraint>, int>* constraint_start_row) {
   std::vector<Eigen::Triplet<c_float>> A_triplets;
   l->clear();
   u->clear();
   int num_A_rows = 0;
   ParseLinearConstraints(prog, prog.linear_constraints(), &A_triplets, l, u,
-                         &num_A_rows);
+                         &num_A_rows, constraint_start_row);
   ParseLinearConstraints(prog, prog.linear_equality_constraints(), &A_triplets,
-                         l, u, &num_A_rows);
-  ParseBoundingBoxConstraints(prog, &A_triplets, l, u, &num_A_rows);
+                         l, u, &num_A_rows, constraint_start_row);
+  ParseBoundingBoxConstraints(prog, &A_triplets, l, u, &num_A_rows,
+                              constraint_start_row);
   A->resize(num_A_rows, prog.num_vars());
   A->setFromTriplets(A_triplets.begin(), A_triplets.end());
 }
@@ -199,9 +204,9 @@ csc* EigenSparseToCSC(const Eigen::SparseMatrix<c_float>& mat) {
 }
 
 template <typename T1, typename T2>
-void SetFastOsqpSolverSetting(
-    const std::unordered_map<std::string, T1>& options,
-    const std::string& option_name, T2* osqp_setting_field) {
+void SetFastOsqpSolverSetting(const std::unordered_map<std::string, T1>& options,
+                          const std::string& option_name,
+                          T2* osqp_setting_field) {
   const auto it = options.find(option_name);
   if (it != options.end()) {
     *osqp_setting_field = it->second;
@@ -295,12 +300,12 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
 
   // linear_constraint_start_row[binding] stores the starting row index in A
   // corresponding to the linear constraint `binding`.
-//  std::unordered_map<Binding<Constraint>, int> constraint_start_row;
+  std::unordered_map<Binding<Constraint>, int> constraint_start_row;
 
   // Parse the linear constraints.
   Eigen::SparseMatrix<c_float> A_sparse;
   std::vector<c_float> l, u;
-  ParseAllLinearConstraints(prog, &A_sparse, &l, &u);
+  ParseAllLinearConstraints(prog, &A_sparse, &l, &u, &constraint_start_row);
 
   // Now pass the constraint and cost to osqp data.
   osqp_data_ = nullptr;
@@ -340,7 +345,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
         "OsqpSolver doesn't support the feature of variable scaling.");
   }
 
-  OsqpSolverDetails& solver_details =
+  auto solver_details =
       result->SetSolverDetailsType<OsqpSolverDetails>();
 
   // OSQP solves a convex quadratic programming problem
@@ -356,10 +361,14 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   ParseQuadraticCosts(prog, &P_sparse, &q, &constant_cost_term);
   ParseLinearCosts(prog, &q, &constant_cost_term);
 
+  // linear_constraint_start_row[binding] stores the starting row index in A
+  // corresponding to the linear constraint `binding`.
+  std::unordered_map<Binding<Constraint>, int> constraint_start_row;
+
   // Parse the linear constraints.
   Eigen::SparseMatrix<c_float> A_sparse;
   std::vector<c_float> l, u;
-  ParseAllLinearConstraints(prog, &A_sparse, &l, &u);
+  ParseAllLinearConstraints(prog, &A_sparse, &l, &u, &constraint_start_row);
 
   csc* P_csc = EigenSparseToCSC(P_sparse);
   csc* A_csc = EigenSparseToCSC(A_sparse);
@@ -435,6 +444,16 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
     }
   }
   result->set_solution_result(solution_result.value());
+
+//  osqp_cleanup(workspace_);
+  c_free(P_csc->x);
+  c_free(P_csc->i);
+  c_free(P_csc->p);
+  c_free(P_csc);
+  c_free(A_csc->x);
+  c_free(A_csc->i);
+  c_free(A_csc->p);
+  c_free(A_csc);
 }
 
 }  // namespace solvers

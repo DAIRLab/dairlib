@@ -75,7 +75,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_yaw_output_port() const {
     return this->get_output_port(yaw_port_);
   }
-  const drake::systems::InputPort<double>& get_cassie_output_port() const {
+  const drake::systems::InputPort<double>& get_cassie_out_input_port() const {
     return this->get_input_port(cassie_out_port_);
   }
   const drake::systems::OutputPort<double>& get_xy_output_port() const {

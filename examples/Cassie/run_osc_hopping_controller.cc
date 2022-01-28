@@ -255,7 +255,7 @@ int DoMain(int argc, char* argv[]) {
       plant, plant_context.get(), osc_gains.vel_scale_rot,
       osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
   builder.Connect(cassie_out_receiver->get_output_port(),
-                  high_level_command->get_cassie_output_port());
+                  high_level_command->get_cassie_out_input_port());
 
   auto default_traj = PiecewisePolynomial<double>(Vector3d{0, 0, 0});
   auto pelvis_trans_traj_generator =

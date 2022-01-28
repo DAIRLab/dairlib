@@ -359,7 +359,6 @@ void DoMain() {
     SetInitialGuessFromTrajectory(trajopt, plant,
                                   FLAGS_data_directory + FLAGS_load_filename,
                                   FLAGS_same_knotpoints, spr_map);
-    //    trajopt->SetInitialGuessForAllVariables(decisionVars);
   }
 
   double alpha = .2;
@@ -377,9 +376,6 @@ void DoMain() {
   cout << "Solve time:" << elapsed.count() << std::endl;
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "Solve result: " << result.get_solution_result() << std::endl;
-
-//  std::cout << "Lambda sol: " << result.GetSolution(trajopt.impulse_vars(1))
-//            << std::endl;
 
   // Save trajectory to file
   DirconTrajectory saved_traj(plant, trajopt, result, "jumping_trajectory",

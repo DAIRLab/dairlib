@@ -281,7 +281,6 @@ void OperationalSpaceControl::Build() {
 
   // Construct QP
   prog_ = std::make_unique<MathematicalProgram>();
-  ii_prog_ = std::make_unique<MathematicalProgram>();
 
   // Size of decision variable
   n_h_ = (kinematic_evaluators_ == nullptr)
@@ -323,9 +322,6 @@ void OperationalSpaceControl::Build() {
   lambda_c_ = prog_->NewContinuousVariables(n_c_, "lambda_contact");
   lambda_h_ = prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
   epsilon_ = prog_->NewContinuousVariables(n_c_active_, "epsilon");
-
-  ii_lambda_c_ = ii_prog_->NewContinuousVariables(n_c_, "lambda_contact");
-  ii_lambda_h_ = ii_prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
 
   // Add constraints
   // 1. Dynamics constraint
@@ -409,16 +405,6 @@ void OperationalSpaceControl::Build() {
                                                     VectorXd::Zero(n_v_), dv_)
                                  .evaluator()
                                  .get());
-    ii_tracking_cost_.push_back(
-        ii_prog_
-            ->Add2NormSquaredCost(
-                MatrixXd::Zero(tracking_data_vec_->at(i)->GetYdotDim(),
-                               n_c_ + n_h_),
-                VectorXd::Zero(tracking_data_vec_->at(i)->GetYdotDim()),
-                {ii_lambda_c_, ii_lambda_h_})
-            .evaluator()
-            .get());
-    // TODO(yangwill): update the coefficients correctly
   }
 
   // 5. Joint Limit cost
@@ -458,8 +444,7 @@ void OperationalSpaceControl::Build() {
     W_input_reg_ = w_input_reg_ * MatrixXd::Identity(n_u_, n_u_);
     input_reg_cost_ =
         prog_->AddQuadraticCost(W_input_reg_, VectorXd::Zero(n_u_), u_)
-            .evaluator()
-            .get();
+            .evaluator();
   }
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
@@ -557,7 +542,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
   }
-
   //  SetVelocitiesIfNew<double>(
   //      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
   //      context_wo_spr_);
@@ -759,6 +743,8 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
+//  auto osqp_solver = drake::solvers::OsqpSolver();
+//  const MathematicalProgramResult result = osqp_solver.Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
   //  solve_time_ = alpha;
@@ -971,7 +957,7 @@ void OperationalSpaceControl::CalcOptimalInput(
     const drake::systems::Context<double>& context,
     systems::TimestampedVector<double>* control) const {
   // Read in current state and time
-  const OutputVector<double>* robot_output =
+  auto robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
   VectorXd q_w_spr = robot_output->GetPositions();
@@ -994,12 +980,10 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {
     // Read in finite state machine
-    const BasicVector<double>* fsm_output =
-        (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+    auto fsm_output = this->EvalVectorInput(context, fsm_port_);
     double clock_time = current_time;
     if (this->get_input_port(clock_port_).HasValue(context)) {
-      const BasicVector<double>* clock =
-          (BasicVector<double>*)this->EvalVectorInput(context, clock_port_);
+      auto clock = this->EvalVectorInput(context, clock_port_);
       clock_time = clock->get_value()(0);
     }
     VectorXd fsm_state = fsm_output->get_value();
@@ -1007,7 +991,7 @@ void OperationalSpaceControl::CalcOptimalInput(
     double alpha = 0;
     int next_fsm_state = -1;
     if (this->get_near_impact_input_port().HasValue(context)) {
-      const ImpactInfoVector<double>* impact_info =
+      auto impact_info =
           (ImpactInfoVector<double>*)this->EvalVectorInput(context,
                                                            impact_info_port_);
       alpha = impact_info->GetAlpha();
@@ -1032,7 +1016,7 @@ void OperationalSpaceControl::CalcOptimalInput(
 void OperationalSpaceControl::CheckTracking(
     const drake::systems::Context<double>& context,
     TimestampedVector<double>* output) const {
-  const OutputVector<double>* robot_output =
+  auto robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;

@@ -49,7 +49,8 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
            py::arg("trajectory_name"));
   py::class_<DirconTrajectory>(m, "DirconTrajectory")
-      .def(py::init<const std::string&>())
+      .def(py::init<const drake::multibody::MultibodyPlant<double>&,
+                    const std::string&>())
       .def("WriteToFile", &LcmTrajectory::WriteToFile,
            py::arg("trajectory_name"))
       .def("GetMetadata", &LcmTrajectory::GetMetadata)

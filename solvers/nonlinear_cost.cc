@@ -27,8 +27,8 @@ template <>
 void NonlinearCost<AutoDiffXd>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x, Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
-  EvaluateCost(drake::math::initializeAutoDiff(x), &y_t);
-  *y = drake::math::autoDiffToValueMatrix(y_t);
+  EvaluateCost(drake::math::InitializeAutoDiff(x), &y_t);
+  *y = drake::math::ExtractValue(y_t);
 }
 
 template <typename T>
@@ -47,10 +47,10 @@ void NonlinearCost<AutoDiffXd>::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
 template <>
 void NonlinearCost<double>::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
                                    AutoDiffVecXd* y) const {
-  MatrixXd original_grad = drake::math::autoDiffToGradientMatrix(x);
+  MatrixXd original_grad = drake::math::ExtractGradient(x);
 
   // forward differencing
-  VectorXd x_val = drake::math::autoDiffToValueMatrix(x);
+  VectorXd x_val = drake::math::ExtractValue(x);
   VectorXd y0, yi;
   EvaluateCost(x_val, &y0);
 
@@ -61,8 +61,7 @@ void NonlinearCost<double>::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
     x_val(i) -= eps_;
     dy.col(i) = (yi - y0) / eps_;
   }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
-                                                     *y);
+  *y = drake::math::InitializeAutoDiff(y0, dy * original_grad);
 }
 
 }  // namespace solvers

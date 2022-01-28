@@ -12,38 +12,19 @@ load(
 )
 
 pybind_py_library(
-    name = "lcm_trajectory_py",
+    name = "cassie_utils_py",
     cc_deps = [
-        "//lcm:dircon_trajectory_saver",
-        "//lcm:lcm_trajectory_saver",
+        "//examples/Cassie:cassie_utils",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "lcm_trajectory",
-    cc_srcs = ["lcm_trajectory_py.cc"],
-    py_deps = ["@drake//bindings/pydrake"],
+    cc_so_name = "cassie_utils",
+    cc_srcs = ["cassie_utils_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        "//bindings/pydairlib/multibody:kinematic_py",
+        ":module_py",
+    ],
     py_imports = ["."],
-)
-
-py_binary(
-    name = "lcm_trajectory_plotter",
-    srcs = [":lcm_trajectory_plotter.py"],
-    deps = [
-        ":lcm_trajectory_py",
-        ":module_py",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-py_binary(
-    name = "dircon_trajectory_plotter",
-    srcs = [":dircon_trajectory_plotter.py"],
-    deps = [
-        ":lcm_trajectory_py",
-        ":module_py",
-        "//bindings/pydairlib/common",
-        "//bindings/pydairlib/multibody:multibody_py",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
 )
 
 # This determines how `PYTHONPATH` is configured, and how to install the
@@ -62,14 +43,12 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":dircon_trajectory_plotter",
-    ":lcm_trajectory_plotter",
-    ":lcm_trajectory_py",
+    ":cassie_utils_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "lcm",
+    name = "cassie_utils",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

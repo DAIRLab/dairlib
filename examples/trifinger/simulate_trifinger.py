@@ -2,6 +2,35 @@ from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 from pydrake.all import *
 from pydairlib.common import FindResourceOrThrow
 
+# Define the system.
+class TrifingerDemoController(LeafSystem):
+  def __init__(self, plant):
+    LeafSystem.__init__(self)
+
+    self.plant = plant
+        
+    # Input is state, output is torque (control action)
+    self.DeclareVectorInputPort("x", plant.num_positions() +
+     																 plant.num_velocities())
+    self.DeclareVectorOutputPort("u", plant.num_actuators(),
+     														 self.CalcControl)
+
+  def CalcControl(self, context, output):
+    x = self.EvalVectorInput(context, 0).get_value()
+    # q and v are [fingers; cube]
+    # cube position is [quat; xyz] and velocity [ang_vel; xyz]
+    q = x[0:self.plant.num_positions()]
+    v = x[self.plant.num_positions():]
+    u = -.03*np.ones(self.plant.num_actuators())
+
+    # use a simple PD controller with constant setpoint
+    kp = 10
+    kd = 2
+    q_des = np.array([.1, 0, -1, .1, -.5, -1, .1, -.5, -1])
+    u = kp*(q_des - q[0:9]) - kd * v[0:9]
+    # import pdb; pdb.set_trace()
+    output.SetFromVector(u)
+
 # Load the URDF and the cube
 builder = DiagramBuilder()
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 1e-4)
@@ -20,19 +49,21 @@ X_WI = RigidTransform.Identity()
 plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI)
 plant.Finalize()
 
+# Build and connect the controller
+controller = builder.AddSystem(TrifingerDemoController(plant))
+builder.Connect(plant.get_state_output_port(), controller.get_input_port(0))
+builder.Connect(controller.get_output_port(0), plant.get_actuation_input_port())
+
 # Constuct the simulator and visualizer
 DrakeVisualizer.AddToBuilder(builder=builder, scene_graph=scene_graph)
 diagram = builder.Build()
+
 simulator = Simulator(diagram)
 simulator.Initialize()
 simulator.set_target_realtime_rate(1)
 
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
-
-# Set a dummy controller with open-loop, constant torques
-plant.get_actuation_input_port().FixValue(
-    plant_context, -.03*np.ones(plant.num_actuators()))
 
 # Set the initial state
 q = np.zeros(plant.num_positions())

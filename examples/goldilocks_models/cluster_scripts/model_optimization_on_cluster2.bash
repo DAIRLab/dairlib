@@ -39,7 +39,7 @@ model=16 #2, 4
 echo robot_option = $robot, rom_option = $model
 
 # Set sample size
-n_sl=13
+n_sl=27
 n_gi=1
 n_du=1
 n_tr=1
@@ -138,6 +138,7 @@ echo ===== evaluate \(with snopt scaling\) =====
  --data_folder_name=$folder_name \
  --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
  --swing_foot_cublic_spline=true \
+ --N_rerun=1 --max_inner_iter=100 \
  --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
  | tee -a ../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/terminal_log
 

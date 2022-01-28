@@ -803,7 +803,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
     }
     trajopt->ScaleForceVariables(1, idx_list, 1000);
     // impulse
-    trajopt->ScaleImpulseVariables(base_wx_idx, idx_list, 10);
+    trajopt->ScaleImpulseVariables(0, idx_list, 10);
     // quaternion slack
     trajopt->ScaleQuaternionSlackVariables(30);
     // Constraint slack

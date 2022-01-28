@@ -85,9 +85,10 @@ int do_main(int argc, char* argv[]) {
 
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
+  multibody::TerrainConfig terrain_config;
   if (FLAGS_floating_base) {
     if (FLAGS_generate_terrain) {
-      multibody::addRandomTerrain(&plant, &scene_graph, .8, .8);
+      multibody::addRandomTerrain(&plant, &scene_graph, terrain_config);
     } else {
       multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
     }

@@ -19,14 +19,17 @@ namespace dairlib::multibody {
 
 void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
                 drake::geometry::SceneGraph<double> *scene_graph,
-                double mu_static, double mu_kinetic,
-                Eigen::Vector3d normal_W) {
-  addFlatTerrain<double>(plant, scene_graph, mu_static, mu_kinetic, normal_W);
+                      TerrainConfig terrain_config) {
+  addFlatTerrain<double>(
+      plant, scene_graph, terrain_config.mu_flat,
+      terrain_config.mu_flat, terrain_config.normal);
 
-  int nboxes = 10;
+  int nboxes = 20;
   std::vector<RigidTransformd> cube_poses = GenerateRandomPoses(nboxes);
-  std::vector<Box> boxes = GenerateRandomBoxes(nboxes);
-  std::vector<CoulombFriction<double>> frictions = GenerateRandomFrictions(nboxes);
+  std::vector<Box> boxes = GenerateRandomBoxes(
+      nboxes, terrain_config.min_cube_size, terrain_config.min_cube_size);
+  std::vector<CoulombFriction<double>> frictions = GenerateRandomFrictions(
+      nboxes, terrain_config.mu_cube_min, terrain_config.mu_cube_max);
   for (int i = 0; i < nboxes; i++) {
     plant->RegisterCollisionGeometry(
         plant->world_body(), cube_poses.at(i),
@@ -41,21 +44,24 @@ void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
 
 std::vector<RigidTransformd> GenerateRandomPoses(int n) {
   DRAKE_ASSERT(n >= 0);
-  std::uniform_real_distribution<double> d(0.0, 1.0);
+  std::uniform_real_distribution<double> d(-1.0, 1.0);
   std::default_random_engine r(time(NULL));
 
   std::vector<RigidTransformd> poses;
   for (int i = 0 ; i < n; i++) {
-    drake::math::RollPitchYawd rpy(d(r), d(r), d(r));
-    Vector3d trans(d(r), d(r), d(r));
+    drake::math::RollPitchYawd rpy(M_PI_4*d(r), M_PI_4*d(r), M_PI*d(r));
+    Vector3d trans(10*d(r), d(r), 0);
+    while (trans.norm() < 1.0) {
+      trans*=2.0;
+    }
     poses.emplace_back(RigidTransformd(rpy, trans));
   }
   return poses;
 }
 
-std::vector<Box> GenerateRandomBoxes(int n) {
+std::vector<Box> GenerateRandomBoxes(int n, double s_min, double s_max) {
   DRAKE_ASSERT(n >= 0);
-  std::uniform_real_distribution<double> d(0.0, 1.0);
+  std::uniform_real_distribution<double> d(s_min, s_max);
   std::default_random_engine r(time(NULL));;
 
   std::vector<Box> boxes;
@@ -66,9 +72,10 @@ std::vector<Box> GenerateRandomBoxes(int n) {
   return boxes;
 }
 
-std::vector<CoulombFriction<double>> GenerateRandomFrictions(int n) {
+std::vector<CoulombFriction<double>> GenerateRandomFrictions(
+    int n, double mu_min, double mu_max) {
   DRAKE_ASSERT(n >= 0);
-  std::uniform_real_distribution<double> d(0.0, 1.0);
+  std::uniform_real_distribution<double> d(mu_min, mu_max);
   std::default_random_engine r(time(NULL));;
 
   std::vector<CoulombFriction<double>> friction;

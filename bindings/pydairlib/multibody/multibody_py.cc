@@ -14,6 +14,8 @@ namespace pydairlib {
 using multibody::MultiposeVisualizer;
 
 PYBIND11_MODULE(multibody, m) {
+  py::module::import("pydrake.all");
+
   m.doc() = "Binding utility functions for MultibodyPlant";
 
   py::class_<MultiposeVisualizer>(m, "MultiposeVisualizer")
@@ -35,8 +37,11 @@ PYBIND11_MODULE(multibody, m) {
            py::arg("plant"))
       .def("createActuatorNameVectorFromMap",
            &dairlib::multibody::createActuatorNameVectorFromMap<double>,
-           py::arg("plant"));
-
+           py::arg("plant"))
+      .def("addFlatTerrain",
+            &dairlib::multibody::addFlatTerrain<double>, py::arg("plant"),
+            py::arg("scene_graph"), py::arg("mu_static"), py::arg("mu_kinetic"),
+            py::arg("normal_W") = Eigen::Vector3d(0, 0, 1));
 
 }
 

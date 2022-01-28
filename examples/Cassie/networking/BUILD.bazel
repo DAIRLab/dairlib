@@ -60,7 +60,7 @@ cc_library(
     hdrs = ["simple_cassie_udp_subscriber.h"],
     deps = [
         "//examples/Cassie/datatypes:cassie_inout_types",
-        "@drake//common",
+        "@drake//:drake_shared_library",
     ],
 )
 

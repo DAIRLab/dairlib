@@ -1,8 +1,8 @@
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <memory>
 #include <string>
-#include <algorithm>
 #include <unordered_map>
 
 #include <gflags/gflags.h>
@@ -114,6 +114,56 @@ void DoMain(double duration, int max_iter, string data_directory,
   map<string, int> velocities_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> actuators_map = multibody::makeNameToActuatorsMap(plant);
 
+  int base_qw_idx = positions_map.at("base_qw");
+  int base_qx_idx = positions_map.at("base_qx");
+  int base_qy_idx = positions_map.at("base_qy");
+  int base_qz_idx = positions_map.at("base_qz");
+  int base_x_idx = positions_map.at("base_x");
+  int base_y_idx = positions_map.at("base_y");
+  int base_z_idx = positions_map.at("base_z");
+  int hip_roll_left_idx = positions_map.at("hip_roll_left");
+  int hip_roll_right_idx = positions_map.at("hip_roll_right");
+  int hip_yaw_left_idx = positions_map.at("hip_yaw_left");
+  int hip_yaw_right_idx = positions_map.at("hip_yaw_right");
+  int hip_pitch_left_idx = positions_map.at("hip_pitch_left");
+  int hip_pitch_right_idx = positions_map.at("hip_pitch_right");
+  int knee_left_idx = positions_map.at("knee_left");
+  int knee_right_idx = positions_map.at("knee_right");
+  int ankle_joint_left_idx = positions_map.at("ankle_joint_left");
+  int ankle_joint_right_idx = positions_map.at("ankle_joint_right");
+  int toe_left_idx = positions_map.at("toe_left");
+  int toe_right_idx = positions_map.at("toe_right");
+
+  int base_wx_idx = velocities_map.at("base_wx");
+  int base_wy_idx = velocities_map.at("base_wy");
+  int base_wz_idx = velocities_map.at("base_wz");
+  int base_vx_idx = velocities_map.at("base_vx");
+  int base_vy_idx = velocities_map.at("base_vy");
+  int base_vz_idx = velocities_map.at("base_vz");
+  int hip_roll_leftdot_idx = velocities_map.at("hip_roll_leftdot");
+  int hip_roll_rightdot_idx = velocities_map.at("hip_roll_rightdot");
+  int hip_yaw_leftdot_idx = velocities_map.at("hip_yaw_leftdot");
+  int hip_yaw_rightdot_idx = velocities_map.at("hip_yaw_rightdot");
+  int hip_pitch_leftdot_idx = velocities_map.at("hip_pitch_leftdot");
+  int hip_pitch_rightdot_idx = velocities_map.at("hip_pitch_rightdot");
+  int knee_leftdot_idx = velocities_map.at("knee_leftdot");
+  int knee_rightdot_idx = velocities_map.at("knee_rightdot");
+  int ankle_joint_leftdot_idx = velocities_map.at("ankle_joint_leftdot");
+  int ankle_joint_rightdot_idx = velocities_map.at("ankle_joint_rightdot");
+  int toe_leftdot_idx = velocities_map.at("toe_leftdot");
+  int toe_rightdot_idx = velocities_map.at("toe_rightdot");
+
+  int hip_roll_left_motor_idx = actuators_map.at("hip_roll_left_motor");
+  int hip_roll_right_motor_idx = actuators_map.at("hip_roll_right_motor");
+  int hip_yaw_left_motor_idx = actuators_map.at("hip_yaw_left_motor");
+  int hip_yaw_right_motor_idx = actuators_map.at("hip_yaw_right_motor");
+  int hip_pitch_left_motor_idx = actuators_map.at("hip_pitch_left_motor");
+  int hip_pitch_right_motor_idx = actuators_map.at("hip_pitch_right_motor");
+  int knee_left_motor_idx = actuators_map.at("knee_left_motor");
+  int knee_right_motor_idx = actuators_map.at("knee_right_motor");
+  int toe_left_motor_idx = actuators_map.at("toe_left_motor");
+  int toe_right_motor_idx = actuators_map.at("toe_right_motor");
+
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
@@ -188,14 +238,27 @@ void DoMain(double duration, int max_iter, string data_directory,
     double s_dyn_2 = (FLAGS_scale_variable) ? 6.0 : 1.0;
     double s_dyn_3 = (FLAGS_scale_variable) ? 85.0 : 1.0;
     double_support.SetDynamicsScale(
-        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, 1.0 / 150.0);
-    double_support.SetDynamicsScale({15, 16}, 1.0 / 150.0 / 3.33 / s_dyn_1);
-    double_support.SetDynamicsScale({17, 18}, 1.0 / 150.0);
-    double_support.SetDynamicsScale({19, 20, 21, 22, 23, 24, 25, 26},
-                                    1.0 / 150.0 / s_dyn_1);
-    double_support.SetDynamicsScale({27, 28}, 1.0 / 150.0 / s_dyn_2);
-    double_support.SetDynamicsScale({29, 30, 31, 32, 33, 34}, 1.0 / 150.0 / 10);
-    double_support.SetDynamicsScale({35, 36}, 1.0 / 150.0 / 15.0 / s_dyn_3);
+        {base_qw_idx, base_qx_idx, base_qy_idx, base_qz_idx, base_x_idx,
+         base_y_idx, base_z_idx, hip_roll_left_idx, hip_roll_right_idx,
+         hip_yaw_left_idx, hip_yaw_right_idx, hip_pitch_left_idx,
+         hip_pitch_right_idx, knee_left_idx, knee_right_idx},
+        1.0 / 150.0);
+    double_support.SetDynamicsScale(
+        {ankle_joint_left_idx, ankle_joint_right_idx},
+        1.0 / 150.0 / 3.33 / s_dyn_1);
+    double_support.SetDynamicsScale({toe_left_idx, toe_right_idx}, 1.0 / 150.0);
+    double_support.SetDynamicsScale(
+        {base_wx_idx, base_wy_idx, base_wz_idx, base_vx_idx, base_vy_idx,
+         base_vz_idx, hip_roll_leftdot_idx, hip_roll_rightdot_idx},
+        1.0 / 150.0 / s_dyn_1);
+    double_support.SetDynamicsScale({hip_yaw_leftdot_idx, hip_yaw_rightdot_idx},
+                                    1.0 / 150.0 / s_dyn_2);
+    double_support.SetDynamicsScale(
+        {hip_pitch_leftdot_idx, hip_pitch_rightdot_idx, knee_leftdot_idx,
+         knee_rightdot_idx, ankle_joint_leftdot_idx, ankle_joint_rightdot_idx},
+        1.0 / 150.0 / 10);
+    double_support.SetDynamicsScale({toe_leftdot_idx, toe_rightdot_idx},
+                                    1.0 / 150.0 / 15.0 / s_dyn_3);
 
     // // Kinematic constraints
     double s_kin_vel = 500;
@@ -384,21 +447,30 @@ void DoMain(double duration, int max_iter, string data_directory,
     // time
     trajopt.ScaleTimeVariables(0.015);
     // state
-    std::vector<int> idx_list;
-    for (int i = n_q; i <= n_q + 9; i++) {
-      idx_list.push_back(i);
-    }
+    std::vector<int> idx_list = {
+        n_q + base_wx_idx,          n_q + base_wy_idx,
+        n_q + base_wz_idx,          n_q + base_vx_idx,
+        n_q + base_vy_idx,          n_q + base_vz_idx,
+        n_q + hip_roll_leftdot_idx, n_q + hip_roll_rightdot_idx,
+        n_q + hip_yaw_leftdot_idx,  n_q + hip_yaw_rightdot_idx};
     trajopt.ScaleStateVariables(idx_list, 6);
     idx_list.clear();
-    for (int i = n_q + 10; i <= n_q + n_v - 1; i++) {
-      idx_list.push_back(i);
-    }
+    idx_list = {n_q + hip_pitch_leftdot_idx,   n_q + hip_pitch_rightdot_idx,
+                n_q + knee_leftdot_idx,        n_q + knee_rightdot_idx,
+                n_q + ankle_joint_leftdot_idx, n_q + ankle_joint_rightdot_idx,
+                n_q + toe_leftdot_idx,         n_q + toe_rightdot_idx};
     trajopt.ScaleStateVariables(idx_list, 3);
     // input
-    trajopt.ScaleInputVariables({0, 1}, 60);
-    trajopt.ScaleInputVariables({2, 3}, 300);  // 300
-    trajopt.ScaleInputVariables({4, 7}, 60);
-    trajopt.ScaleInputVariables({8, 9}, 600);  // 600
+    trajopt.ScaleInputVariables(
+        {hip_roll_left_motor_idx, hip_roll_right_motor_idx}, 60);
+    trajopt.ScaleInputVariables(
+        {hip_yaw_left_motor_idx, hip_yaw_right_motor_idx}, 300);  // 300
+    trajopt.ScaleInputVariables(
+        {hip_pitch_left_motor_idx, hip_pitch_right_motor_idx,
+         knee_left_motor_idx, knee_right_motor_idx},
+        60);
+    trajopt.ScaleInputVariables({toe_left_motor_idx, toe_right_motor_idx},
+                                600);  // 600
     // force
     trajopt.ScaleForceVariables(0, {0, 1}, 10);
     trajopt.ScaleForceVariables(0, {2, 2}, 1000);  // 1000
@@ -473,12 +545,13 @@ void DoMain(double duration, int max_iter, string data_directory,
   // produces NAN value in some calculation.
   for (int i = 0; i < num_knotpoints; i++) {
     auto xi = trajopt.state(i);
-    if ((trajopt.GetInitialGuess(xi.head(4)).norm() == 0) ||
-        std::isnan(trajopt.GetInitialGuess(xi.head(4)).norm())) {
-      trajopt.SetInitialGuess(xi(0), 1);
-      trajopt.SetInitialGuess(xi(1), 0);
-      trajopt.SetInitialGuess(xi(2), 0);
-      trajopt.SetInitialGuess(xi(3), 0);
+    if ((trajopt.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm() == 0) ||
+        std::isnan(
+            trajopt.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm())) {
+      trajopt.SetInitialGuess(xi(base_qw_idx), 1);
+      trajopt.SetInitialGuess(xi(base_qx_idx), 0);
+      trajopt.SetInitialGuess(xi(base_qy_idx), 0);
+      trajopt.SetInitialGuess(xi(base_qz_idx), 0);
     }
   }
 

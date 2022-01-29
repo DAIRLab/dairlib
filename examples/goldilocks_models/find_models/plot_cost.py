@@ -197,8 +197,9 @@ for directory in directory_list:
         plt.gcf().subplots_adjust(left=0.15)
 
         if save_figure:
+            affix = "_new" if os.path.exists(directory + "../cost.png") else ""
             plt.savefig("../cost.png")
-            plt.savefig(directory + "../cost.png")
+            plt.savefig("%s../cost%s.png" % (directory, affix))
             print("figure saved")
             break
 

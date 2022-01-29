@@ -1,6 +1,7 @@
-from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 from pydrake.all import *
-from pydairlib.common import FindResourceOrThrow
+
+from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
+import pydairlib.common
 
 # A demo controller system
 class TrifingerDemoController(LeafSystem):
@@ -39,9 +40,9 @@ addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0, mu_kinetic=1
 # The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
 parser.package_map().Add("robot_properties_fingers", "examples/trifinger/robot_properties_fingers")
-parser.AddModelFromFile(FindResourceOrThrow(
+parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/trifinger/robot_properties_fingers/urdf/trifinger_minimal_collision.urdf"))
-parser.AddModelFromFile(FindResourceOrThrow(
+parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf"))
 
 # Fix the base of the finger to the world

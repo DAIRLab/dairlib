@@ -1601,6 +1601,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
   writeCSV(dir + string("n_sample.csv"), N_sample * VectorXd::Ones(1));
+  writeCSV(dir + string("n_samples.csv"),
+           VectorXd(task_gen->sample_numbers().data()));
   SaveStringVecToCsv(task_gen->names(), dir + string("task_names.csv"));
 
   // Parameters for the outer loop optimization

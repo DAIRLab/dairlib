@@ -2597,7 +2597,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
 
       // Testing -- set the end pelvis angular vel to be 0 (OSC heuristics)
-      if (setting.zero_end_pelvis_angular_vel) {
+      if (setting.zero_ending_pelvis_angular_vel) {
         trajopt.AddBoundingBoxConstraint(0, 0,
                                          x_pre(n_q + vel_map.at("base_wx")));
         trajopt.AddBoundingBoxConstraint(0, 0,

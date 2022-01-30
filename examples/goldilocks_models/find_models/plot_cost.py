@@ -205,6 +205,8 @@ for directory in directory_list:
                 print("Warning: didn't extract unique_folder_name correctly")
             plt.savefig("../cost_%s.png" % unique_folder_name)
             print("figure saved for %s" % unique_folder_name)
+
+            plt.clf()
             break
 
         plt.pause(60)

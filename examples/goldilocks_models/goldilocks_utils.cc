@@ -99,26 +99,6 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
   }
 }
 
-// rom_option list for robot_option=1
-/*     skip_idx,        order, order,  model,          pelvs?  fixed?
-  0 : quat, xy            2      2    2dlipm            COM
-  1 : quat, xy            2      2    2dlipm w/sw       COM
-  2 : quat, xy            2      2    fixheight         COM
-  3 : quat, xy            2      2    fixheight w/sw    COM
-  4 : quat, xy            2      2    3dlipm            COM
-  5 : quat, xy            2      2    3dlipm w/sw       COM
-  6 : quat, xy            2      2    3dlipm w/sw       COM    fix xyz (com)
-  7 : quat, xy            0      2    3dlipm            COM    fix xyz (com)
-  8 : quat, xy            2      2    3dGip             COM
-  9 : quat, xy            2      2    3dlipm            COM    fix xy
-  10: quat, xy, swing     2      2    3dlipm            yes    fix xy
-  11: quat, xy, swing     2      2    3dlipm            yes    fix xyz
-  12: quat, xy, swing     2      4    3dlipm            yes    fix xy
-  13: quat, xy, swing     2      4    3dlipm            yes    fix xyz
-  14: quat, xy, swing     4      4    3dlipm            yes    fix xy
-  15: quat, xyz           4      4    3dlipm            yes    fix xy
-  16: quat, xyz           4      4    3dlipm            COM    fix xy
-*/
 // Note:
 // Whenever you add a new model, remember to update the model number in
 //   1. find_goldilocks_model.cc (a check in the start)
@@ -158,11 +138,12 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       }
       cout << endl;
     }
-    if (rom_option == 15 || rom_option == 16) {
+    if (rom_option == 15 || rom_option == 16 || rom_option == 17) {
       skip_inds.push_back(6);  // pelvis z
     }
     if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||
-        (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13))) {
+        (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13)) ||
+        rom_option == 17) {
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
     } else if (rom_option == 7) {
@@ -195,24 +176,17 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * FixHeightAccelWithSwingFoot::kDimension, empty_inds,
         "dynamic basis");
-  } else if (rom_option == 4) {
+  } else if (rom_option == 4 || rom_option == 7 ||
+             ((rom_option >= 9) && (rom_option <= 11)) || rom_option == 17) {
+    // Highest degree = 2
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 5) {
+  } else if (rom_option == 5 || rom_option == 6) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 6) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 7) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else if (rom_option == 8) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3) + 1, empty_inds, "dynamic basis");
-  } else if (rom_option == 9 || rom_option == 10 || rom_option == 11) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else if ((rom_option >= 12) && (rom_option <= 16)) {
     // Highest degree = 4
     dynamic_basis = std::make_unique<MonomialFeatures>(
@@ -285,7 +259,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // 3D Gip (general inverted pendulum)
     rom = std::make_unique<Gip>(plant, stance_foot, *mapping_basis,
                                 *dynamic_basis, 3);
-  } else if (rom_option == 9 || rom_option == 16) {
+  } else if (rom_option == 9 || rom_option == 16 || rom_option == 17) {
     // Fix the mapping function of the COM xy part
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,

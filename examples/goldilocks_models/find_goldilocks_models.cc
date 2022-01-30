@@ -1478,7 +1478,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   DRAKE_DEMAND((FLAGS_robot_option == 0) || FLAGS_robot_option == 1);
-  DRAKE_DEMAND((FLAGS_rom_option >= 0) && FLAGS_rom_option <= 16);
+  DRAKE_DEMAND((FLAGS_rom_option >= 0) && FLAGS_rom_option <= 17);
   if (FLAGS_robot_option == 0) {
     DRAKE_DEMAND(FLAGS_rom_option != 4);
     DRAKE_DEMAND(FLAGS_rom_option != 5);
@@ -1737,6 +1737,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << max_average_cost_increase_rate << endl;
   cout << "n_shrink_before_relaxing_tolerance = "
        << n_shrink_before_relaxing_tolerance << endl;
+  cout << "only_update_wrt_main_cost = " << FLAGS_only_update_wrt_main_cost
+       << endl;
   // Outer loop setting - help from adjacent samples
   bool get_good_sol_from_adjacent_sample =
       FLAGS_get_good_sol_from_adjacent_sample;

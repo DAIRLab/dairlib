@@ -201,6 +201,7 @@ DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 DEFINE_bool(com_accel_constraint, false, "");
 DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
 DEFINE_bool(swing_foot_cublic_spline, false, "");
+DEFINE_bool(zero_end_pelvis_angular_vel, false, "");
 
 DEFINE_bool(only_update_wrt_main_cost, false, "");
 
@@ -1865,6 +1866,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       FLAGS_cubic_spline_in_rom_constraint;  // for testing
   inner_loop_setting.swing_foot_cublic_spline_constraint =
       FLAGS_swing_foot_cublic_spline;  // for testing
+  inner_loop_setting.zero_end_pelvis_angular_vel =
+      FLAGS_zero_end_pelvis_angular_vel;  // for testing
   cout << "mu = " << inner_loop_setting.mu << endl;
   cout << "directory = " << dir << endl;
   cout << "com_accel_constraint = " << inner_loop_setting.com_accel_constraint
@@ -1873,6 +1876,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << inner_loop_setting.cubic_spline_in_rom_constraint << endl;
   cout << "swing_foot_cublic_spline_constraint (zero impact) = "
        << inner_loop_setting.swing_foot_cublic_spline_constraint << endl;
+  cout << "zero_end_pelvis_angular_vel = "
+       << inner_loop_setting.zero_end_pelvis_angular_vel << endl;
   if (inner_loop_setting.snopt_log) {
     cout << "WARNING: you are printing snopt log for Cassie (could slow down "
             "the optimization)!\n";

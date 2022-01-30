@@ -29,15 +29,11 @@ if [ ! "$BASH_VERSION" ] ; then
     exit 1
 fi
 
-echo
-echo
-echo ======================================================================
+printf "\n\n======================================================================\n"
 echo ====== Start running script at `date` =======
-echo ======================================================================
-echo
-echo
+printf "======================================================================\n\n\n"
 
-echo Make sure that cpus-per-task is less than total number sample per iter
+printf "Make sure that cpus-per-task is less than total number sample per iter\n\n"
 
 ###########model optimization setting##########
 # Set robot id and model id
@@ -71,8 +67,9 @@ cd /scratch/$USER/dairlib
 
 # Note that you need to bazel build the binary, because not all machines/nodes have it. (even though it's the same file path...)
 # Build the program
+printf "\n\n\n"
 bazel build --jobs=40 examples/goldilocks_models:find_goldilocks_models
-
+printf "\n\n\n"
 
 ### Count the lastest iteration (I wrote this becasuse the job can get preempted if run at low QOS
 iter_max=1000  # The code is untested. Just in case we created an infinity loop

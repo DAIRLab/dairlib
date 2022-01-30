@@ -205,7 +205,7 @@ then
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel \
-   --only_update_wrt_main_cost=true \
+   --only_update_wrt_main_cost=false \
    --N_rerun=2 --max_inner_iter=150 \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
@@ -222,7 +222,7 @@ else
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel \
-   --only_update_wrt_main_cost=true \
+   --only_update_wrt_main_cost=false \
    --N_rerun=2 --max_inner_iter=150 \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \

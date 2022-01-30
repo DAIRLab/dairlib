@@ -198,10 +198,14 @@ for directory in directory_list:
 
         if save_figure:
             affix = "_new" if os.path.exists(directory + "../cost.png") else ""
-            plt.savefig("../cost.png")
             plt.savefig("%s../cost%s.png" % (directory, affix))
-            print("figure saved")
+
+            unique_folder_name = directory.split("/")[-3]
+            if unique_folder_name == "robot_1" or unique_folder_name == "find_models":
+                print("Warning: didn't extract unique_folder_name correctly")
+            plt.savefig("../cost_%s.png" % unique_folder_name)
+            print("figure saved for %s" % unique_folder_name)
             break
 
-        plt.pause(10)
+        plt.pause(60)
         plt.clf()

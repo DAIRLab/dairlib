@@ -48,6 +48,8 @@ n_du=1
 n_tr=1
 n_ph=1
 n_sm=1
+# Set grid parameter
+stride_length_center=0
 
 # main cost weights
 Q=0.1    # big weight: 0.1; small weight 0.005
@@ -113,14 +115,18 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=false \
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits =====
@@ -131,7 +137,9 @@ then
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
@@ -139,7 +147,9 @@ then
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits with cubic swing foot constraint =====
@@ -150,7 +160,9 @@ then
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --com_accel_constraint=true --swing_foot_cublic_spline=true \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj with com accel constraint \(with snopt scaling\) =====
@@ -158,7 +170,9 @@ then
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --com_accel_constraint=true --swing_foot_cublic_spline=true \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
 
@@ -167,7 +181,9 @@ then
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate \(with snopt scaling\) =====
@@ -175,7 +191,9 @@ then
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   # Note that max_inner_iter cannot be too small. Otherwise, the solver never get a chance to find the solution. This messes up the outer loop.
@@ -186,7 +204,9 @@ then
    --swing_foot_cublic_spline=true \
    --only_update_wrt_main_cost=true \
    --N_rerun=2 --max_inner_iter=150 \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
 else
@@ -198,7 +218,9 @@ else
    --swing_foot_cublic_spline=true \
    --only_update_wrt_main_cost=true \
    --N_rerun=2 --max_inner_iter=150 \
-   --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
+   --rom_option=$model --robot_option=$robot \
+   --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
+   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
 fi

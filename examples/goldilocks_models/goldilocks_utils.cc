@@ -101,18 +101,12 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
 
 // Note:
 // * Whenever you add a new model, remember to update the model number in
-//     1. find_goldilocks_model.cc (a check in the start)
-//     2. goldilocks_model_traj_opt.cc
-//     3. cassie_rom_planner_system.cc (where we called SetInitialGuess)
+//     1. goldilocks_model_traj_opt.cc
+//     2. cassie_rom_planner_system.cc (where we called SetInitialGuess)
 // * See google sheet for the ROM list
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
     const drake::multibody::MultibodyPlant<double>& plant, bool print_info) {
-  // Whenever you add a new model, remember to update the code in
-  //   find_goldilocks_models.cc
-  //   goldilocks_model_traj_opt.cc
-  //   cassie_rom_planner_system.cc
-
   /// Basis for mapping function (dependent on the robot)
   vector<int> empty_inds = {};
   std::unique_ptr<MonomialFeatures> mapping_basis;
@@ -139,18 +133,22 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       }
       cout << endl;
     }
-    if (rom_option == 15 || rom_option == 16 || rom_option == 17) {
-      skip_inds.push_back(6);  // pelvis z
+    if ((rom_option >= 15) && (rom_option <= 18)) {
+      // skip pelvis z
+      skip_inds.push_back(6);
     }
     if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||
         (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13)) ||
-        rom_option == 17) {
+        rom_option == 17 || rom_option == 18) {
+      // Second order
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
     } else if (rom_option == 7) {
+      // Zeroth order
       mapping_basis = std::make_unique<MonomialFeatures>(
           0, plant.num_positions(), skip_inds, "mapping basis");
     } else if (rom_option == 14 || rom_option == 15 || rom_option == 16) {
+      // Fourth order
       mapping_basis = std::make_unique<MonomialFeatures>(
           4, plant.num_positions(), skip_inds, "mapping basis");
     } else {
@@ -178,7 +176,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         2, 2 * FixHeightAccelWithSwingFoot::kDimension, empty_inds,
         "dynamic basis");
   } else if (rom_option == 4 || rom_option == 7 ||
-             ((rom_option >= 9) && (rom_option <= 11)) || rom_option == 17) {
+             ((rom_option >= 9) && (rom_option <= 11)) || rom_option == 17 ||
+             rom_option == 18) {
     // Highest degree = 2
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
@@ -237,7 +236,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 3) {
     rom = std::make_unique<FixHeightAccelWithSwingFoot>(
         plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis);
-  } else if (rom_option == 4) {
+  } else if (rom_option == 4 || rom_option == 18) {
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3);
   } else if (rom_option == 5) {

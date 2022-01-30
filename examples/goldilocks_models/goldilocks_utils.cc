@@ -100,10 +100,11 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
 }
 
 // Note:
-// Whenever you add a new model, remember to update the model number in
-//   1. find_goldilocks_model.cc (a check in the start)
-//   2. goldilocks_model_traj_opt.cc
-//   3. cassie_rom_planner_system.cc (where we called SetInitialGuess)
+// * Whenever you add a new model, remember to update the model number in
+//     1. find_goldilocks_model.cc (a check in the start)
+//     2. goldilocks_model_traj_opt.cc
+//     3. cassie_rom_planner_system.cc (where we called SetInitialGuess)
+// * See google sheet for the ROM list
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
     const drake::multibody::MultibodyPlant<double>& plant, bool print_info) {

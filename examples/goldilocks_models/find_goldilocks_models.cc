@@ -103,7 +103,9 @@ DEFINE_double(major_feasibility_tol, 1e-4,
 DEFINE_int32(max_inner_iter, 150,
     "Max iteration # for traj opt. Sometimes, snopt takes very small steps "
     "(TODO: find out why), so maybe it's better to stop at some iterations and "
-    "resolve again.");
+    "resolve again."
+    "Note that this number cannot be too small. Otherwise, it might never solve "
+    "successfuly");
 DEFINE_bool(fix_node_number, true, "Fix the number of nodes in traj opt");
 DEFINE_double(node_density, 40, "# of nodes per second in traj opt");
 // Two things you need to be careful about node density (keep an eye on these

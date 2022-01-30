@@ -181,13 +181,14 @@ then
    --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
-
+  # Note that max_inner_iter cannot be too small. Otherwise, the solver never get a chance to find the solution. This messes up the outer loop.
   echo ===== evaluate \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=$final_iter --snopt_scaling=true --start_current_iter_as_rerun=false \
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true \
-   --N_rerun=1 --max_inner_iter=100 \
+   --only_update_wrt_main_cost=true \
+   --N_rerun=2 --max_inner_iter=150 \
    --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
@@ -198,7 +199,8 @@ else
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true \
-   --N_rerun=1 --max_inner_iter=100 \
+   --only_update_wrt_main_cost=true \
+   --N_rerun=2 --max_inner_iter=150 \
    --rom_option=$model --robot_option=$robot --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 

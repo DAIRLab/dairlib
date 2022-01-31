@@ -12,9 +12,9 @@ struct TerrainConfig {
   double min_cube_size=0.1;   // minimum cube side length
   double max_cube_size=1.0;   // maximum cube side length
   double clearing_radius=1.0; // radius around 0,0 to keep free of cubes
-  double mu_flat;
-  double mu_cube_min;
-  double mu_cube_max;
+  double mu_flat=0.8;
+  double mu_cube_min=0.1;
+  double mu_cube_max=1.0;
   Eigen::Vector3d normal = Eigen::Vector3d::UnitZ();
 };
 

@@ -27,7 +27,7 @@ void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
   int nboxes = 20;
   std::vector<RigidTransformd> cube_poses = GenerateRandomPoses(nboxes);
   std::vector<Box> boxes = GenerateRandomBoxes(
-      nboxes, terrain_config.min_cube_size, terrain_config.min_cube_size);
+      nboxes, terrain_config.min_cube_size, terrain_config.max_cube_size);
   std::vector<CoulombFriction<double>> frictions = GenerateRandomFrictions(
       nboxes, terrain_config.mu_cube_min, terrain_config.mu_cube_max);
   for (int i = 0; i < nboxes; i++) {

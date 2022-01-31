@@ -168,10 +168,10 @@ for directory in directory_list:
 
             # Write jobs into file
             f = open(directory + "../costs_info.txt", "w")
-            f.write("For %s" % directory)
-            f.write("  folder_name_nominal_cost = %s" % folder_name_nominal_cost)
-            f.write("  nominal_cost = %.3f" % nominal_cost)
-            f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
+            f.write("For %s\n" % directory)
+            f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
+            f.write("  nominal_cost = %.3f\n" % nominal_cost)
+            f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
             f.close()
             print(open(directory + "../costs_info.txt", "r").read())
 
@@ -210,7 +210,7 @@ for directory in directory_list:
             if unique_folder_name == "robot_1" or unique_folder_name == "find_models":
                 print("Warning: didn't extract unique_folder_name correctly")
             plt.savefig("../cost_%s.png" % unique_folder_name)
-            print("figure saved for %s" % unique_folder_name)
+            print("  figure saved for %s" % unique_folder_name)
 
             plt.clf()
             break

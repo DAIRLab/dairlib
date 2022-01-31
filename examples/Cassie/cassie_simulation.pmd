@@ -8,73 +8,113 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "1.state-visualizer(simulation)" {
-         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_SIMULATION";
-         host = "localhost";
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_SIMULATION";
+        host = "localhost";
     }
 }
 
 group "1.cassie-robot" {
     cmd "0.dispatcher-robot-out" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --floating_base=true";
-        host = "dair-cassie";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --floating_base --simulation";
+        host = "localhost";
     }
     cmd "1.dispatcher-robot-in" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000";
-        host = "dair-cassie";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --control_channel_name_1=OSC_STANDING --port 25000 --sim";
+        host = "localhost";
     }
     cmd "2.pd-controller(dispatched)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=PD_CONTROL";
-        host = "dair-cassie";
+        exec = "bazel-bin/examples/Cassie/run_pd_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=PD_CONTROL";
+        host = "localhost";
     }
     cmd "3.0 standing-controller(dispatched)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cost_weight_multiplier=1.0";
-        host = "dair-cassie";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cost_weight_multiplier=1.0";
+        host = "localhost";
     }
     cmd "3.1 standing-controller(dispatched, radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cost_weight_multiplier=1.0";
-        host = "dair-cassie";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cassie_out_channel=CASSIE_OUTPUT --cost_weight_multiplier=1.0";
+        host = "localhost";
     }
     cmd "4.0 walking-controller(dispatched)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
-        host = "dair-cassie";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
+        host = "localhost";
     }
     cmd "4.1 walking-controller(dispatched, radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
-        host = "dair-cassie";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING --cassie_out_channel=CASSIE_OUTPUT";
+        host = "localhost";
     }
-    cmd "4.0 alip-walking-controller-(dispatched)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller_alip --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
-        host = "dair-cassie";
+    cmd "4.0 alip-walking-controller(dispatched)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller_alip --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
+        host = "localhost";
     }
     cmd "4.1 alip-walking-controller(dispatched, radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller_alip --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
-        host = "dair-cassie";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller_alip --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
+        host = "localhost";
     }
 }
 
-group "2.controller-switch-commands" {
+
+group "2.drake-simulator" {
+    cmd "1.simulator (visualization)" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --publish_rate=500 --init_height=0.85";
+        host = "localhost";
+    }
+    cmd "1.simulator" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --visualization=false --publish_rate=500 --init_height=0.85";
+        host = "localhost";
+    }
+    cmd "1.simulator (terrain)" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --generate_terrain --publish_rate=500 --init_height=0.85";
+        host = "localhost";
+    }
+    cmd "1.simulator (fixed base)" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=false";
+        host = "localhost";
+    }
+}
+
+group "3.other-simulators" {
+    cmd "1.launch-gazebo-fixed-base" {
+        exec = "bash ../cassie-gazebo-sim/cassie_fixed_base/launch_sim.sh";
+        host = "localhost";
+    }
+    cmd "0.launch-gazebo" {
+        exec = "bash ../cassie-gazebo-sim/cassie/launch_sim.sh";
+        host = "localhost";
+    }
+    cmd "3.cassie-mujoco-fixed-base" {
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -h -s";
+        host = "localhost";
+    }
+    cmd "2.cassie-mujoco" {
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -s";
+        host = "localhost";
+    }
+}
+
+
+group "4.controller-switch-commands" {
     cmd "controller-switch-to-standing" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=1.0";
-        host = "dair-cassie";
+        host = "localhost";
     }
     cmd "controller-switch-to-walking" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01 --fsm_period=0.4 --fsm_offset=.35 --n_period_delay=2";
-        host = "dair-cassie";
+        host = "localhost";
     }
     cmd "controller-switch-to-jumping" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_JUMPING --channel_x=CASSIE_STATE_DISPATCHER";
-        host = "dair-cassie";
+        host = "localhost";
     }
     cmd "controller-switch-to-pd" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=PD_CONTROL --channel_x=CASSIE_STATE_DISPATCHER";
-        host = "dair-cassie";
+        host = "localhost";
     }
 }
 
-group "3.lcm-tools" {
-    cmd "0.cassie-lcm-logger (simulation)" {
+group "5.lcm-tools" {
+    cmd "0.cassie-lcm-logger" {
         exec = "python3 examples/Cassie/start_logging.py";
-        host = "dair-cassie";
+        host = "localhost";
     }
     cmd "0.lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
@@ -86,35 +126,32 @@ group "3.lcm-tools" {
     }
 }
 
+
 script "initialize_standing" {
     stop group "1.cassie-robot";
-    stop cmd  "0.cassie-lcm-logger";
-    start cmd "0.dispatcher-robot-out-real-robot";
-    start cmd "1.dispatcher-robot-in-real-robot";
-    start cmd "2.pd-controller-real-robot";
+    stop group "2.drake-simulator";
+    stop group "3.other-simulators";
+    stop cmd "0.cassie-lcm-logger";
+    start cmd "0.dispatcher-robot-out";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "3.0 standing-controller(dispatched)";
 }
 
-script "setup_from_pd_to_osc_standing" {
-    restart cmd "0.dispatcher-robot-out-real-robot";
-    start cmd "3.0 standing-controller-real-robot";
-}
-
-script "setup_from_pd_to_osc_standing (radio)" {
-    restart cmd "0.dispatcher-robot-out-real-robot";
-    start cmd "3.1 standing-controller-real-robot (radio)";
-}
-
-script "switch_to_standing" {
-    start cmd "controller-switch-to-standing";
-    wait ms 1000;
-    stop cmd "2.pd-controller-real-robot";
+script "initialize_standing (radio)" {
+    stop group "1.cassie-robot";
+    stop group "2.drake-simulator";
+    stop group "3.other-simulators";
+    stop cmd "0.cassie-lcm-logger";
+    start cmd "0.dispatcher-robot-out";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "3.1 standing-controller(dispatched, radio)";
 }
 
 script "switch_to_walking" {
     start cmd "controller-switch-to-walking";
     wait ms 2000;
-    stop cmd "3.0 standing-controller-real-robot";
-    stop cmd "3.1 standing-controller-real-robot (radio)";
+    stop cmd "3.0 standing-controller(dispatched)";
+    stop cmd "3.1 standing-controller(dispatched, radio)";
 }
 
 script "switch_to_walking_start_logging" {
@@ -122,6 +159,6 @@ script "switch_to_walking_start_logging" {
     wait ms 100;
     start cmd "controller-switch-to-walking";
     wait ms 2000;
-    stop cmd "3.0 standing-controller-real-robot";
-    stop cmd "3.1 standing-controller-real-robot (radio)";
+    stop cmd "3.0 standing-controller(dispatched)";
+    stop cmd "3.1 standing-controller(dispatched, radio)";
 }

@@ -59,7 +59,7 @@ group "2.drake-simulator" {
         host = "localhost";
     }
     cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --visualization=false --publish_rate=500 --init_height=0.85";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --floating_base=true --visualize=false --publish_rate=500 --init_height=0.85";
         host = "localhost";
     }
     cmd "1.simulator (terrain)" {

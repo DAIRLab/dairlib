@@ -98,6 +98,7 @@ while True:
   f = open(status_file_path, "w")
   f.write(first_line)
   f.write("\n".join([", ".join(line) for line in merged_output]))
+  f.write("\n")
   f.close()
 
   # break

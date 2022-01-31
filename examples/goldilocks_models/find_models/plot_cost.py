@@ -59,13 +59,20 @@ else:
     ave_cost_label = "Averaged cost"
 
 
-for directory in directory_list:
+for i in range(len(directory_list)):
+    directory = directory_list[i]
+    print("%d/%d" % (i, len(directory_list)))
     # Checks for the director_list
     if len(directory_list) > 1 and not save_figure:
         raise ValueError("save_figure has to be true. Otherwise this script won't go through the list")
     if not os.path.exists(directory):
         print(directory, " doesn't exist, so we skip to the next one")
         continue
+
+    # Extract unique_folder_name
+    unique_folder_name = directory.split("/")[-3]
+    if unique_folder_name == "robot_1" or unique_folder_name == "find_models":
+        print("Warning: didn't extract unique_folder_name correctly")
 
     # Set N_sample
     # n_sampel_sl = 13  # should be > 0
@@ -168,7 +175,7 @@ for directory in directory_list:
 
             # Write jobs into file
             f = open(directory + "../costs_info.txt", "w")
-            f.write("For %s\n" % directory)
+            f.write("For %s\n" % unique_folder_name)
             f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
             f.write("  nominal_cost = %.3f\n" % nominal_cost)
             f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
@@ -206,9 +213,6 @@ for directory in directory_list:
             affix = "_new" if os.path.exists(directory + "../cost.png") else ""
             plt.savefig("%s../cost%s.png" % (directory, affix))
 
-            unique_folder_name = directory.split("/")[-3]
-            if unique_folder_name == "robot_1" or unique_folder_name == "find_models":
-                print("Warning: didn't extract unique_folder_name correctly")
             plt.savefig("../cost_%s.png" % unique_folder_name)
             print("  figure saved for %s" % unique_folder_name)
 

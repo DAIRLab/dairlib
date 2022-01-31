@@ -9,9 +9,9 @@ using Eigen::MatrixXd;
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::math::DiscardGradient;
-using drake::math::autoDiffToValueMatrix;
-using drake::math::autoDiffToGradientMatrix;
-using drake::math::initializeAutoDiff;
+using drake::math::ExtractValue;
+using drake::math::ExtractGradient;
+using drake::math::InitializeAutoDiff;
 
 int main() {
   int x_dim = 2;
@@ -22,11 +22,11 @@ int main() {
   // Declare autoDiff x
   VectorXd x_val(x_dim);
   x_val << M_PI/2, 3;
-  AutoDiffVecXd x = initializeAutoDiff(x_val);
+  AutoDiffVecXd x = InitializeAutoDiff(x_val);
 
   // Compute jacobian of x
   // Default wrt itself since it's not derived from other autoDiff
-  MatrixXd dxdSTH  = autoDiffToGradientMatrix(x);
+  MatrixXd dxdSTH  = ExtractGradient(x);
   cout << "dxdSTH = \n" <<  dxdSTH << "\n\n";
 
   //////////////////////////////////////////////////////////
@@ -37,11 +37,11 @@ int main() {
        cos(x(0)) + sqrt(x(1));
 
   // Get the value of y
-  VectorXd y_val = autoDiffToValueMatrix(y);
+  VectorXd y_val = ExtractValue(y);
   cout << "y_val = \n" << y_val << "\n\n";
 
   // Compute jacobian of y wrt x
-  MatrixXd dydx  = autoDiffToGradientMatrix(y);
+  MatrixXd dydx  = ExtractGradient(y);
   cout << "dydx = \n" << dydx << "\n\n";
 
   //////////////////////////////////////////////////////////
@@ -50,12 +50,12 @@ int main() {
   z << y(0) + y(1);
 
   // Get the value of z
-  VectorXd z_val = autoDiffToValueMatrix(z);
+  VectorXd z_val = ExtractValue(z);
   cout << "z_val = \n" << z_val << "\n\n";
 
   // Compute jacobian of z wrt x
   // Note that it's wrt x instead of wrt y
-  MatrixXd dzdSTH  = autoDiffToGradientMatrix(z);
+  MatrixXd dzdSTH  = ExtractGradient(z);
   cout << "dzdSTH = \n" << dzdSTH << "\n\n";
 
 

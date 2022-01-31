@@ -1,4 +1,4 @@
-#include <gflags/gflags.h>
+  #include <gflags/gflags.h>
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/math/autodiff.h"
@@ -143,7 +143,7 @@ int do_main(int argc, char* argv[]) {
   VectorXd xul(plant.num_positions() + plant.num_velocities()
       + plant.num_actuators() + evaluators.count_full());
   xul << q, VectorXd::Zero(plant.num_velocities()), u, lambda;
-  AutoDiffVecXd xul_ad = drake::math::initializeAutoDiff(xul);
+  AutoDiffVecXd xul_ad = drake::math::InitializeAutoDiff(xul);
 
   AutoDiffVecXd x_ad = xul_ad.head(plant.num_positions()
       + plant.num_velocities());

@@ -25,13 +25,16 @@ namespace dairlib {
 
 /// DirconTrajectory by default contains four Trajectory objects: the state
 /// trajectory, the input trajectory, the force trajectory, the contact force
-/// trajectory, the collocation force trajectory, the collocation slack trajectory
-/// and the decision variables. Additional trajectories can be added using
-/// the AddTrajectory() function
+/// trajectory, the collocation force trajectory, the collocation slack
+/// trajectory and the decision variables. Additional trajectories can be added
+/// using the AddTrajectory() function
 
 class DirconTrajectory : public LcmTrajectory {
  public:
-  DirconTrajectory(const std::string& filepath) { LoadFromFile(filepath); }
+  DirconTrajectory(const drake::multibody::MultibodyPlant<double>& plant,
+                   const std::string& filepath) {
+    LoadFromFileWithPlant(plant, filepath);
+  }
 
   DirconTrajectory(
       const drake::multibody::MultibodyPlant<double>& plant,
@@ -46,53 +49,68 @@ class DirconTrajectory : public LcmTrajectory {
       const std::string& name, const std::string& description);
 
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
-  const;
+      const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
-  const;
-  drake::trajectories::PiecewisePolynomial<double> ReconstructJointTrajectory(int joint_idx)
-  const;
+      const;
+  drake::trajectories::PiecewisePolynomial<double>
+  ReconstructStateTrajectoryWithSprings(Eigen::MatrixXd&) const;
+  drake::trajectories::PiecewisePolynomial<double>
+  ReconstructMirrorStateTrajectory(double t_offset) const;
+  drake::trajectories::PiecewisePolynomial<double> ReconstructJointTrajectory(
+      std::string joint_name) const;
+  drake::trajectories::PiecewisePolynomial<double>
+  ReconstructMirrorJointTrajectory(std::string joint_name) const;
 
-  /// Returns a vector of polynomials describing the contact forces for each mode. For use when
-  /// adding knot points to the initial guess
-  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaTrajectory()
-  const;
+  /// Returns a vector of polynomials describing the contact forces for each
+  /// mode. For use when adding knot points to the initial guess
+  std::vector<drake::trajectories::PiecewisePolynomial<double>>
+  ReconstructLambdaTrajectory() const;
 
-  /// Returns a vector of polynomials describing the collocation forces for each mode. For use
-  /// when adding knot points to the initial guess
-  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructLambdaCTrajectory()
-  const;
+  /// Returns a vector of polynomials describing the collocation forces for each
+  /// mode. For use when adding knot points to the initial guess
+  std::vector<drake::trajectories::PiecewisePolynomial<double>>
+  ReconstructLambdaCTrajectory() const;
 
-  /// Returns a vector of polynomials describing the collocation slack vars. For use when adding
-  /// knot points to the initial guess
-  std::vector<drake::trajectories::PiecewisePolynomial<double>> ReconstructGammaCTrajectory()
-  const;
+  /// Returns a vector of polynomials describing the collocation slack vars. For
+  /// use when adding knot points to the initial guess
+  std::vector<drake::trajectories::PiecewisePolynomial<double>>
+  ReconstructGammaCTrajectory() const;
 
   /// Loads the saved state and input trajectory as well as the decision
   /// variables
-  void LoadFromFile(const std::string& filepath) override;
+  /// A MultibodyPlant is required due to possible state and actuator indexing
+  /// conflicts.
+  void LoadFromFileWithPlant(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::string& filepath);
 
   Eigen::MatrixXd GetStateSamples(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
-    return x_[mode]->datapoints;
+    return state_map_ * x_[mode]->datapoints;
   }
   Eigen::MatrixXd GetStateDerivativeSamples(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
-    return xdot_[mode]->datapoints;
+    return state_map_ * xdot_[mode]->datapoints;
   }
   Eigen::MatrixXd GetStateBreaks(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
     return x_[mode]->time_vector;
   }
-  Eigen::MatrixXd GetInputSamples() const { return u_->datapoints; }
+  Eigen::MatrixXd GetInputSamples() const {
+    return actuator_map_ * u_->datapoints;
+  }
   Eigen::MatrixXd GetBreaks() const { return u_->time_vector; }
   Eigen::MatrixXd GetForceSamples(int mode) const {
     return lambda_[mode]->datapoints;
   }
   Eigen::MatrixXd GetForceBreaks(int mode) const {
     return lambda_[mode]->time_vector;
+  }
+  Eigen::MatrixXd GetImpulseSamples(int mode) const {
+    return impulse_[mode - 1]->datapoints;
   }
   Eigen::MatrixXd GetCollocationForceSamples(int mode) const {
     return lambda_c_[mode]->datapoints;
@@ -113,10 +131,22 @@ class DirconTrajectory : public LcmTrajectory {
 
   const Trajectory* decision_vars_;
   const Trajectory* u_;
+  std::vector<const Trajectory*> impulse_;
   std::vector<const Trajectory*> lambda_;
   std::vector<const Trajectory*> lambda_c_;
   std::vector<const Trajectory*> gamma_c_;
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
+
+  // Convenience maps
+  // NOTE: these joint name to index maps are constructed using the
+  // MultibodyPlant supplied in the constructor
+  std::map<std::string, int> pos_map_;
+  std::map<std::string, int> vel_map_;
+  std::map<std::string, int> act_map_;
+  // map from possibly old state indices to current state indices
+  Eigen::MatrixXd state_map_;
+  // map from possibly old actuator indices to current actuator indices
+  Eigen::MatrixXd actuator_map_;
 };
 }  // namespace dairlib

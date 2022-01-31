@@ -91,6 +91,10 @@ while True:
   else:
     merged_output = parsed_output
 
+  # Clean up data -- remove leading white spaces
+  for line in merged_output:
+    line = [e.lstrip() for e in line]
+
   # Write jobs into file
   f = open(status_file_path, "w")
   f.write(first_line)

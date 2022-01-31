@@ -413,14 +413,12 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
         solver_details.y = Eigen::Map<Eigen::VectorXd>(workspace_->solution->y,
                                                        workspace_->data->m);
         solution_result = SolutionResult::kSolutionFound;
-        //        SetDualSolution(prog.linear_constraints(), solver_details.y,
-        //                        constraint_start_row, result);
-        //        SetDualSolution(prog.linear_equality_constraints(),
-        //        solver_details.y,
-        //                        constraint_start_row, result);
-        //        SetDualSolution(prog.bounding_box_constraints(),
-        //        solver_details.y,
-        //                        constraint_start_row, result);
+        SetDualSolution(prog.linear_constraints(), solver_details.y,
+                        constraint_start_row, result);
+        SetDualSolution(prog.linear_equality_constraints(), solver_details.y,
+                        constraint_start_row, result);
+        SetDualSolution(prog.bounding_box_constraints(), solver_details.y,
+                        constraint_start_row, result);
 
         break;
       }

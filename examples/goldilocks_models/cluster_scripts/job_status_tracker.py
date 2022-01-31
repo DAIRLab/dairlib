@@ -41,7 +41,7 @@ while True:
   output = GetCommandOutput("squeue -u yminchen -o \"%i %t\"", True)
   parsed_output = output.split("\n")  # split by newline
   parsed_output = [e for e in parsed_output[1:] if len(e) > 0]  # ignore the first line and get rid of empty element
-  parsed_output = [e.split(" ") for e in parsed_output if len(e) > 0]  # split again by SPACE
+  parsed_output = [e.split(" ") for e in parsed_output]  # split again by SPACE
 
   # Append commands of each job
   for line in parsed_output:
@@ -58,7 +58,7 @@ while True:
     f.close()
     parsed_output_history = text.split("\n")  # split by newline
     parsed_output_history = [e for e in parsed_output_history[1:] if len(e) > 0]  # get rid of empty element
-    parsed_output_history = [e.split(", ") for e in parsed_output_history if len(e) > 0]  # split again by COMMA
+    parsed_output_history = [e.split(", ") for e in parsed_output_history]  # split again by COMMA
 
     # Add new job to file
     for line in parsed_output:

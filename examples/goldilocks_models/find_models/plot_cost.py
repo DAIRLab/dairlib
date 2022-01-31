@@ -174,13 +174,15 @@ for i in range(len(directory_list)):
             ax.plot(t[0:len_total_cost], average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
 
             # Write jobs into file
-            f = open(directory + "../costs_info.txt", "w")
-            f.write("For %s\n" % unique_folder_name)
-            f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
-            f.write("  nominal_cost = %.3f\n" % nominal_cost)
-            f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
-            f.close()
-            print(open(directory + "../costs_info.txt", "r").read())
+            if file_name == "c_main.csv":
+                f = open(directory + "../costs_info.txt", "w")
+                f.write("For %s\n" % unique_folder_name)
+                f.write("  file_name_cost = %s\n" % file_name)
+                f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
+                f.write("  nominal_cost = %.3f\n" % nominal_cost)
+                f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
+                f.close()
+                print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)\n" % (nominal_cost, average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
 
         # labels
         plt.xlabel('Iteration')

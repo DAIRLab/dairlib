@@ -32,6 +32,7 @@ robot_option = 1  # 0 is five-link robot. 1 is cassie_fixed_spring
 
 directory_list = []
 directory_list.append('../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/')
+# Add more optimization directories below this line.
 
 
 ### cost setting
@@ -182,7 +183,7 @@ for i in range(len(directory_list)):
                 f.write("  nominal_cost = %.3f\n" % nominal_cost)
                 f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
                 f.close()
-                print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)\n" % (nominal_cost, average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
+                print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)" % (nominal_cost, average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
 
         # labels
         plt.xlabel('Iteration')

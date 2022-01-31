@@ -16,12 +16,16 @@ struct TerrainConfig {
   double mu_cube_min=0.1;
   double mu_cube_max=1.0;
   Eigen::Vector3d normal = Eigen::Vector3d::UnitZ();
+  Eigen::Vector3d rpy_bounds = Eigen::Vector3d::UnitZ();
 };
 
 
 
-std::vector<drake::math::RigidTransformd> GenerateRandomPoses(int n);
+std::vector<drake::math::RigidTransformd> GenerateRandomPoses(
+    int n, double clearing_radius, Eigen::Vector3d rpy_bounds);
 std::vector<drake::geometry::Box> GenerateRandomBoxes(
+    int n, double s_min, double s_max);
+std::vector<drake::geometry::Ellipsoid> GenerateRandomEllipsoids(
     int n, double s_min, double s_max);
 std::vector<drake::multibody::CoulombFriction<double>> GenerateRandomFrictions(
     int n, double mu_min, double mu_max);

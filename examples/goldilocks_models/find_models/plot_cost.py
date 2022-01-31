@@ -42,6 +42,9 @@ file_name2 = 'c.csv'
 file_name_nominal_cost = file_name1
 file_name_list = [file_name1, file_name2]
 
+# folder_name_nominal_cost = ""
+# folder_name_nominal_cost = "nominal_no_constraint_traj/"
+folder_name_nominal_cost = "nominal_traj_cubic_swing_foot/"
 
 ### visualization setting
 ave_cost_prop = ""
@@ -83,18 +86,14 @@ for directory in directory_list:
     if normalize_by_nominal_cost:
         for sample_i in range(N_sample):
             cost = []
-            # assert os.path.isfile(directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
-            # matrix = np.genfromtxt(directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
-            assert os.path.isfile(directory+'nominal_traj_cubic_swing_foot/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
-            matrix = np.genfromtxt(directory+'nominal_traj_cubic_swing_foot/'+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
-            # assert os.path.isfile(directory+'0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
-            # matrix = np.genfromtxt(directory+'0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
+            assert os.path.isfile(directory + folder_name_nominal_cost + '0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
+            matrix = np.genfromtxt(directory + folder_name_nominal_cost + '0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
             cost.append(matrix)
 
             nominal_cost += cost[0] / N_sample
     else:
         nominal_cost = 1.0
-    print('nominal_cost = '+str(nominal_cost))
+    # print('nominal_cost = '+str(nominal_cost))
 
     # plot
     while 1:
@@ -167,9 +166,14 @@ for directory in directory_list:
             average_cost = [x / y for x, y in zip(total_cost, n_successful_sample_each_iter)]
             ax.plot(t[0:len_total_cost], average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
 
-            # Print
-            print("For %s" % directory)
-            print("  (iter 1 cost, min cost, improvement) = (%.3f, %.3f, %.1f%%)" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
+            # Write jobs into file
+            f = open(directory + "../costs_info.txt", "w")
+            f.write("For %s" % directory)
+            f.write("  folder_name_nominal_cost = %s" % folder_name_nominal_cost)
+            f.write("  nominal_cost = %.3f" % nominal_cost)
+            f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
+            f.close()
+            print(open(directory + "../costs_info.txt", "r").read())
 
         # labels
         plt.xlabel('Iteration')

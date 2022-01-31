@@ -89,8 +89,7 @@ void NonlinearConstraint<double>::DoEval(
   if (original_grad.isIdentity(1e-16)) {
     *y = drake::math::InitializeAutoDiff(y0, dy);
   } else {
-    *y = drake::math::InitializeAutoDiff(y0,
-                                                            dy * original_grad);
+    *y = drake::math::InitializeAutoDiff(y0, dy * original_grad);
   }
 
   this->ScaleConstraint<AutoDiffXd>(y);

@@ -27,17 +27,18 @@ def get_log_data(lcm_log, lcm_channels, data_processing_callback, *args,
 
 
 def get_log_summary(lcm_log):
-    channels = {}
+    channel_names_and_msg_counts = {}
     for event in lcm_log:
-        if event.channel not in channels:
-            channels[event.channel] = 0
+        if event.channel not in channel_names_and_msg_counts:
+            channel_names_and_msg_counts[event.channel] = 1
         else:
-            channels[event.channel] = channels[event.channel] + 1
-    return channels
+            channel_names_and_msg_counts[event.channel] = \
+            channel_names_and_msg_counts[event.channel] + 1
+    return channel_names_and_msg_counts
 
 
 def print_log_summary(filename, log):
-    print(f"Channels in{filename}:\n")
+    print(f"Channels in {filename}:\n")
     summary = get_log_summary(log)
     for channel, count in summary.items():
         print(f"{channel}: {count:06} messages")

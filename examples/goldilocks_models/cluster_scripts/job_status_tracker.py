@@ -48,7 +48,7 @@ while True:
     line.append(GetCommandOutput("scontrol show job -d %s | grep Command;" % line[0], True))
 
   # Remove plotting jobs
-  parsed_output = [e for e in parsed_output if e[2] != "   Command=python3"]
+  parsed_output = [e for e in parsed_output if "Command=python3" not in e[2]]
 
   merged_output = []
   if os.path.exists(status_file_path):

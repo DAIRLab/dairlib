@@ -31,9 +31,7 @@ robot_option = 1  # 0 is five-link robot. 1 is cassie_fixed_spring
 
 
 directory_list = []
-# directory = 'data/robot_' + str(robot_option) + '/'
-directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/'
-directory_list.append(directory)
+directory_list.append('../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/')
 
 
 ### cost setting
@@ -168,6 +166,10 @@ for directory in directory_list:
             # 2. Plot average cost
             average_cost = [x / y for x, y in zip(total_cost, n_successful_sample_each_iter)]
             ax.plot(t[0:len_total_cost], average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
+
+            # Print
+            print("For %s" % directory)
+            print("  (iter 1 cost, min cost, improvement) = (%.3f, %.3f, %.1f%%)" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
 
         # labels
         plt.xlabel('Iteration')

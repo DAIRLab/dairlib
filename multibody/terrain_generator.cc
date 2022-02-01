@@ -9,6 +9,7 @@ using drake::geometry::Ellipsoid;
 using drake::geometry::SceneGraph;
 using drake::geometry::ProximityProperties;
 using drake::geometry::AddCompliantHydroelasticPropertiesForHalfSpace;
+using drake::geometry::AddCompliantHydroelasticProperties;
 using drake::geometry::AddContactMaterial;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::CoulombFriction;
@@ -39,7 +40,7 @@ void addFlatHydroelasticTerrain(
   const drake::math::RigidTransformd X_WG(
       HalfSpace::MakePose(normal_W, point_W));
 
-  drake::geometry::ProximityProperties ground_props;
+  ProximityProperties ground_props;
   AddCompliantHydroelasticPropertiesForHalfSpace(1.0, 5e7, &ground_props);
   AddContactMaterial(1.25, {}, friction, &ground_props);
 
@@ -68,10 +69,13 @@ void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
       nboxes, terrain_config.mu_cube_min, terrain_config.mu_cube_max);
 
   for (int i = 0; i < nboxes; i++) {
+    ProximityProperties obstacle_props;
+    AddCompliantHydroelasticProperties(0.1, 5e7, &obstacle_props);
+    AddContactMaterial(1.25, {}, frictions.at(i), &obstacle_props);
     plant->RegisterCollisionGeometry(
         plant->world_body(), cube_poses.at(i),
         ellipsoids.at(i), "box_collision_"+std::to_string(i),
-        frictions.at(i));
+        std::move(obstacle_props));
     plant->RegisterVisualGeometry(
         plant->world_body(), cube_poses.at(i),
         ellipsoids.at(i), "box_visual_"+std::to_string(i),

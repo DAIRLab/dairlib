@@ -82,10 +82,11 @@ while True:
       for line in parsed_output:
         if job_id == line[0]:
           job_exist_current = True
+          old_line[1] = line[1]  # Update status
           break
 
       if not job_exist_current:
-        old_line[1] = "inactive"
+        old_line[1] = "inactive"  # Update status
 
         # Re-submit the job
         if old_line[2].split("/")[-1] in nonstop_sbatch_script:

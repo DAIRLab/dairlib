@@ -567,7 +567,7 @@ void DoMain(double duration, int max_iter, const string& data_directory,
     solver_id = drake::solvers::IpoptSolver().id();
     cout << "\nChose manually: " << solver_id.name() << endl;
   } else {
-    solver_id = drake::solvers::ChooseBestSolver(trajopt);
+    solver_id = drake::solvers::ChooseBestSolver(prog);
     cout << "\nChose the best solver: " << solver_id.name() << endl;
   }
 

@@ -19,7 +19,11 @@ struct TerrainConfig {
   Eigen::Vector3d rpy_bounds = Eigen::Vector3d::UnitZ();
 };
 
-
+void addFlatHydroelasticTerrain(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph,
+    double mu_static, double mu_kinetic,
+    Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1));
 
 std::vector<drake::math::RigidTransformd> GenerateRandomPoses(
     int n, double clearing_radius, Eigen::Vector3d rpy_bounds);

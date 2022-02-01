@@ -7,6 +7,9 @@ using drake::geometry::HalfSpace;
 using drake::geometry::Box;
 using drake::geometry::Ellipsoid;
 using drake::geometry::SceneGraph;
+using drake::geometry::ProximityProperties;
+using drake::geometry::AddCompliantHydroelasticPropertiesForHalfSpace;
+using drake::geometry::AddContactMaterial;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::CoulombFriction;
 using drake::math::RigidTransformd;
@@ -18,10 +21,41 @@ using std::vector;
 
 namespace dairlib::multibody {
 
+
+
+void addFlatHydroelasticTerrain(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph,
+    double mu_static, double mu_kinetic, Eigen::Vector3d normal_W) {
+
+  if (!plant->geometry_source_is_registered()) {
+    plant->RegisterAsSourceForSceneGraph(scene_graph);
+  }
+
+  Eigen::Vector3d point_W(0, 0, 0);
+  drake::multibody::CoulombFriction<double> friction(mu_static, mu_kinetic);
+
+  // A half-space for the ground geometry.
+  const drake::math::RigidTransformd X_WG(
+      HalfSpace::MakePose(normal_W, point_W));
+
+  drake::geometry::ProximityProperties ground_props;
+  AddCompliantHydroelasticPropertiesForHalfSpace(1.0, 5e7, &ground_props);
+  AddContactMaterial(1.25, {}, friction, &ground_props);
+
+  plant->RegisterCollisionGeometry(
+      plant->world_body(), X_WG, HalfSpace(),
+      "collision", std::move(ground_props));
+
+  // Add visual for the ground.
+  plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
+                                "visual");
+}
+
 void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
                 drake::geometry::SceneGraph<double> *scene_graph,
                       TerrainConfig terrain_config) {
-  addFlatTerrain<double>(
+  addFlatHydroelasticTerrain(
       plant, scene_graph, terrain_config.mu_flat,
       terrain_config.mu_flat, terrain_config.normal);
 

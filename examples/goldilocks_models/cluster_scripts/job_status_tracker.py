@@ -27,6 +27,9 @@ def GetCommandOutput(cmd, use_shell=False):
 status_file_path = "../job_status.txt"
 nonstop_sbatch_script = []  # re-submit scripts if added. Only file name is required (don't need directory)
 
+# Some setups
+nonstop_sbatch_script = [e.split("/")[-1] for e in nonstop_sbatch_script]  # Get rid of directory. Only keep file name
+
 while True:
   # Read current status
   '''

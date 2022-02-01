@@ -14,15 +14,13 @@
 #SBATCH --partition=posa-compute
 #SBATCH --qos=posa-high
 #SBATCH --nodes=1
-#### commented out. #SSSSBATCH --nodelist=node-2080ti-7
+#SSSSBATCH --nodelist=node-2080ti-7
 
 #SBATCH --cpus-per-task=40
 #SBATCH --mem-per-cpu=2G
 
 ##job setting##
 #SBATCH --ntasks=1
-#### commented out. #SSSBATCH --array=0%1
-#### commented out. #SSSBATCH --array=0-100%1
 
 if [ ! "$BASH_VERSION" ] ; then
     echo "Please do not use sh to run this script ($0), just execute it directly" 1>&2
@@ -62,7 +60,7 @@ w_joint_accel=0.0001    # big: 0.002; small: 0.0001  # Final weight is w_joint_a
 zero_ending_pelvis_angular_vel=false
 
 # Other parameters
-final_iter=200
+final_iter=300
 folder_name=
 
 ### Some setup

@@ -151,14 +151,15 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   auto trajopt = std::make_shared<HybridDircon<double>>(
       *plant, timesteps, min_dt, max_dt, contact_mode_list, options_list);
 
+  auto& prog = trajopt->prog();
   trajopt->AddDurationBounds(FLAGS_max_duration, 2.0 * FLAGS_max_duration);
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
                            "walking_snopt.out");
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", 1000);
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Iterations limit", 100000);
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Minor iterations limit", 5000);
 
   // Set initial guesses
@@ -179,34 +180,34 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   auto x = trajopt->state();
 
   // "forward" constraints
-  trajopt->AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
-  trajopt->AddLinearConstraint(x_mid_point(positions_map["planar_x"]) == 0.15);
-  trajopt->AddLinearConstraint(xf(positions_map["planar_x"]) == 0.3);
+  prog.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
+  prog.AddLinearConstraint(x_mid_point(positions_map["planar_x"]) == 0.15);
+  prog.AddLinearConstraint(xf(positions_map["planar_x"]) == 0.3);
 
   // periodicity constraints
-  trajopt->AddLinearConstraint(xf(positions_map["planar_z"]) ==
+  prog.AddLinearConstraint(xf(positions_map["planar_z"]) ==
                                (x0(positions_map["planar_z"])));
-  //  trajopt->AddLinearConstraint(xf(positions_map["planar_roty"]) ==
+  //  prog.AddLinearConstraint(xf(positions_map["planar_roty"]) ==
   //                               (x0(positions_map["planar_roty"])));
-  trajopt->AddLinearConstraint(xf(positions_map["left_hip_pin"]) ==
+  prog.AddLinearConstraint(xf(positions_map["left_hip_pin"]) ==
                                (x0(positions_map["left_hip_pin"])));
-  trajopt->AddLinearConstraint(xf(positions_map["right_hip_pin"]) ==
+  prog.AddLinearConstraint(xf(positions_map["right_hip_pin"]) ==
                                (x0(positions_map["right_hip_pin"])));
-  trajopt->AddLinearConstraint(xf(positions_map["left_knee_pin"]) ==
+  prog.AddLinearConstraint(xf(positions_map["left_knee_pin"]) ==
                                (x0(positions_map["left_knee_pin"])));
-  trajopt->AddLinearConstraint(xf(positions_map["right_knee_pin"]) ==
+  prog.AddLinearConstraint(xf(positions_map["right_knee_pin"]) ==
                                (x0(positions_map["right_knee_pin"])));
-  //  trajopt->AddLinearConstraint(x0.tail(n) == VectorXd::Zero(n));
-  //  trajopt->AddLinearConstraint(xf.tail(n) == VectorXd::Zero(n));
-  trajopt->AddLinearConstraint(x0(n + velocities_map["planar_xdot"]) ==
+  //  prog.AddLinearConstraint(x0.tail(n) == VectorXd::Zero(n));
+  //  prog.AddLinearConstraint(xf.tail(n) == VectorXd::Zero(n));
+  prog.AddLinearConstraint(x0(n + velocities_map["planar_xdot"]) ==
                                xf(n + velocities_map["planar_xdot"]));
-  trajopt->AddLinearConstraint(x0(n + velocities_map["left_knee_pindot"]) ==
+  prog.AddLinearConstraint(x0(n + velocities_map["left_knee_pindot"]) ==
                                xf(n + velocities_map["left_knee_pindot"]));
-  trajopt->AddLinearConstraint(x0(n + velocities_map["right_knee_pindot"]) ==
+  prog.AddLinearConstraint(x0(n + velocities_map["right_knee_pindot"]) ==
                                xf(n + velocities_map["right_knee_pindot"]));
-  trajopt->AddLinearConstraint(x0(n + velocities_map["left_hip_pindot"]) ==
+  prog.AddLinearConstraint(x0(n + velocities_map["left_hip_pindot"]) ==
                                xf(n + velocities_map["left_hip_pindot"]));
-  trajopt->AddLinearConstraint(x0(n + velocities_map["right_hip_pindot"]) ==
+  prog.AddLinearConstraint(x0(n + velocities_map["right_hip_pindot"]) ==
                                xf(n + velocities_map["right_hip_pindot"]));
   //  input constraints
   trajopt->AddConstraintToAllKnotPoints(u(0) >= -150);
@@ -244,7 +245,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
 
   // Solve the traj optimization problem
   auto start = std::chrono::high_resolution_clock::now();
-  const auto result = Solve(*trajopt, trajopt->initial_guess());
+  const auto result = Solve(prog, prog.initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Solve time:" << elapsed.count() << std::endl;

@@ -89,8 +89,8 @@ using systems::trajectory_optimization::Dircon;
 using systems::trajectory_optimization::DirconMode;
 using systems::trajectory_optimization::KinematicConstraintType;
 
-void DoMain(double duration, int max_iter, string data_directory,
-            string init_file, double tol, bool to_store_data) {
+void DoMain(double duration, int max_iter, const string& data_directory,
+            const string& init_file, double tol, bool to_store_data) {
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -290,43 +290,44 @@ void DoMain(double duration, int max_iter, string data_directory,
   //                                   KinematicConstraintType::kAccelOnly);
 
   auto trajopt = Dircon<double>(&double_support);
+  auto& prog = trajopt.prog();
 
   if (FLAGS_ipopt) {
     // Ipopt settings adapted from CaSaDi and FROST
     auto id = drake::solvers::IpoptSolver::id();
-    trajopt.SetSolverOption(id, "tol", tol);
-    trajopt.SetSolverOption(id, "dual_inf_tol", tol);
-    trajopt.SetSolverOption(id, "constr_viol_tol", tol);
-    trajopt.SetSolverOption(id, "compl_inf_tol", tol);
-    trajopt.SetSolverOption(id, "max_iter", max_iter);
-    trajopt.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
-    trajopt.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
-    trajopt.SetSolverOption(id, "print_timing_statistics", "yes");
-    trajopt.SetSolverOption(id, "print_level", 5);
+    prog.SetSolverOption(id, "tol", tol);
+    prog.SetSolverOption(id, "dual_inf_tol", tol);
+    prog.SetSolverOption(id, "constr_viol_tol", tol);
+    prog.SetSolverOption(id, "compl_inf_tol", tol);
+    prog.SetSolverOption(id, "max_iter", max_iter);
+    prog.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
+    prog.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
+    prog.SetSolverOption(id, "print_timing_statistics", "yes");
+    prog.SetSolverOption(id, "print_level", 5);
 
     // Set to ignore overall tolerance/dual infeasibility, but terminate when
     // primal feasible and objective fails to increase over 5 iterations.
-    trajopt.SetSolverOption(id, "acceptable_compl_inf_tol", tol);
-    trajopt.SetSolverOption(id, "acceptable_constr_viol_tol", tol);
-    trajopt.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
-    trajopt.SetSolverOption(id, "acceptable_tol", 1e2);
-    trajopt.SetSolverOption(id, "acceptable_iter", 5);
+    prog.SetSolverOption(id, "acceptable_compl_inf_tol", tol);
+    prog.SetSolverOption(id, "acceptable_constr_viol_tol", tol);
+    prog.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
+    prog.SetSolverOption(id, "acceptable_tol", 1e2);
+    prog.SetSolverOption(id, "acceptable_iter", 5);
   } else {
     // Snopt settings
     auto id = drake::solvers::SnoptSolver::id();
-    // trajopt.SetSolverOption(id, "Print file", "../snopt.out");
-    trajopt.SetSolverOption(id, "Major iterations limit", max_iter);
-    trajopt.SetSolverOption(id, "Iterations limit", 100000);
-    trajopt.SetSolverOption(id, "Verify level", 0);
+    // prog.SetSolverOption(id, "Print file", "../snopt.out");
+    prog.SetSolverOption(id, "Major iterations limit", max_iter);
+    prog.SetSolverOption(id, "Iterations limit", 100000);
+    prog.SetSolverOption(id, "Verify level", 0);
 
     // snopt doc said try 2 if seeing snopta exit 40
-    trajopt.SetSolverOption(id, "Scale option", 0);
+    prog.SetSolverOption(id, "Scale option", 0);
 
     // target nonlinear constraint violation
-    trajopt.SetSolverOption(id, "Major optimality tolerance", tol);
+    prog.SetSolverOption(id, "Major optimality tolerance", tol);
 
     // target complementarity gap
-    trajopt.SetSolverOption(id, "Major feasibility tolerance", tol);
+    prog.SetSolverOption(id, "Major feasibility tolerance", tol);
   }
 
   // Get the decision variables that will be used
@@ -337,26 +338,26 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
 
   // height constraint
-  trajopt.AddBoundingBoxConstraint(1, 1, x0(positions_map.at("base_z")));
-  trajopt.AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("base_z")));
+  prog.AddBoundingBoxConstraint(1, 1, x0(positions_map.at("base_z")));
+  prog.AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("base_z")));
 
   // initial pelvis position
-  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x")));
-  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_y")));
+  prog.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x")));
+  prog.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_y")));
 
   // pelvis pose constraints
   for (int i = 0; i < num_knotpoints; i++) {
     auto xi = trajopt.state(i);
-    trajopt.AddBoundingBoxConstraint(1, 1, xi(positions_map.at("base_qw")));
-    trajopt.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qx")));
-    trajopt.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qy")));
-    trajopt.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qz")));
+    prog.AddBoundingBoxConstraint(1, 1, xi(positions_map.at("base_qw")));
+    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qx")));
+    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qy")));
+    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qz")));
   }
 
   // start/end velocity constraints
-  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+  prog.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    x0.tail(n_v));
-  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+  prog.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    xf.tail(n_v));
 
   // create joint/motor names
@@ -371,7 +372,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   vector<string> sym_joint_names{"hip_pitch", "knee", "ankle_joint", "toe"};
   vector<string> joint_names{};
   vector<string> motor_names{};
-  for (auto l_r_pair : l_r_pairs) {
+  for (auto &l_r_pair : l_r_pairs) {
     for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
       joint_names.push_back(asy_joint_names[i] + l_r_pair.first);
       motor_names.push_back(asy_joint_names[i] + l_r_pair.first + "_motor");
@@ -397,7 +398,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   // u limit
   for (int i = 0; i < num_knotpoints; i++) {
     auto ui = trajopt.input_vars(0, i);
-    trajopt.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
+    prog.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
                                      VectorXd::Constant(n_u, +300), ui);
   }
 
@@ -430,7 +431,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
   for (int index = 0; index < num_knotpoints; index++) {
     auto x = trajopt.state(index);
-    trajopt.AddConstraint(foot_y_constraint, x.head(n_q));
+    prog.AddConstraint(foot_y_constraint, x.head(n_q));
   }
 
   // add cost
@@ -500,11 +501,11 @@ void DoMain(double duration, int max_iter, string data_directory,
   // initial guess
   if (!init_file.empty()) {
     MatrixXd z0 = readCSV(data_directory + init_file);
-    trajopt.SetInitialGuessForAllVariables(z0);
+    prog.SetInitialGuessForAllVariables(z0);
   } else {
     // Add random initial guess first (the seed for RNG is fixed)
-    trajopt.SetInitialGuessForAllVariables(
-        VectorXd::Random(trajopt.decision_variables().size()));
+    prog.SetInitialGuessForAllVariables(
+        VectorXd::Random(prog.decision_variables().size()));
 
     VectorXd q0, qf, u0, uf, lambda0, lambdaf;
     double min_normal_force = 70;
@@ -545,13 +546,13 @@ void DoMain(double duration, int max_iter, string data_directory,
   // produces NAN value in some calculation.
   for (int i = 0; i < num_knotpoints; i++) {
     auto xi = trajopt.state(i);
-    if ((trajopt.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm() == 0) ||
+    if ((prog.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm() == 0) ||
         std::isnan(
-            trajopt.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm())) {
-      trajopt.SetInitialGuess(xi(base_qw_idx), 1);
-      trajopt.SetInitialGuess(xi(base_qx_idx), 0);
-      trajopt.SetInitialGuess(xi(base_qy_idx), 0);
-      trajopt.SetInitialGuess(xi(base_qz_idx), 0);
+            prog.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm())) {
+      prog.SetInitialGuess(xi(base_qw_idx), 1);
+      prog.SetInitialGuess(xi(base_qx_idx), 0);
+      prog.SetInitialGuess(xi(base_qy_idx), 0);
+      prog.SetInitialGuess(xi(base_qz_idx), 0);
     }
   }
 
@@ -574,7 +575,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto start = std::chrono::high_resolution_clock::now();
   auto solver = drake::solvers::MakeSolver(solver_id);
   drake::solvers::MathematicalProgramResult result;
-  solver->Solve(trajopt, trajopt.initial_guess(), trajopt.solver_options(),
+  solver->Solve(prog, prog.initial_guess(),
+                prog.solver_options(),
                 &result);
   SolutionResult solution_result = result.get_solution_result();
   auto finish = std::chrono::high_resolution_clock::now();
@@ -602,11 +604,12 @@ void DoMain(double duration, int max_iter, string data_directory,
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
   // store the solution of the decision variable
-  VectorXd z = result.GetSolution(trajopt.decision_variables());
+  VectorXd z = result.GetSolution(prog.decision_variables());
   VectorXd constraint_y, constraint_lb, constraint_ub;
   MatrixXd constraint_A;
-  solvers::LinearizeConstraints(trajopt, z, &constraint_y, &constraint_A,
-                                &constraint_lb, &constraint_ub);
+  solvers::LinearizeConstraints(
+      prog, z, &constraint_y,&constraint_A,
+      &constraint_lb, &constraint_ub);
   if (to_store_data) {
     writeCSV(data_directory + string("z.csv"), z);
     writeCSV(data_directory + string("A.csv"), constraint_A);
@@ -691,8 +694,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }
-
-  return;
 }
 }  // namespace dairlib
 

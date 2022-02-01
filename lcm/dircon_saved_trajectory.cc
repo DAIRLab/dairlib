@@ -260,7 +260,8 @@ DirconTrajectory::DirconTrajectory(
   decision_var_traj.datatypes =
       vector<string>(decision_var_traj.datapoints.size());
   for (int i = 0; i < decision_var_traj.datapoints.size(); i++) {
-    decision_var_traj.datatypes[i] = dircon.decision_variable(i).get_name();
+    decision_var_traj.datatypes[i] =
+        dircon.prog().decision_variable(i).get_name();
   }
   AddTrajectory(decision_var_traj.traj_name, decision_var_traj);
   decision_vars_ = &decision_var_traj;

@@ -107,6 +107,9 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
     const drake::multibody::MultibodyPlant<double>& plant, bool print_info) {
+  // TODO: add unit test to make sure the ROM settings are correct (it is
+  //  possible that I create bugs while editing.)
+
   /// Basis for mapping function (dependent on the robot)
   vector<int> empty_inds = {};
   std::unique_ptr<MonomialFeatures> mapping_basis;
@@ -133,7 +136,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       }
       cout << endl;
     }
-    if ((rom_option >= 15) && (rom_option <= 18)) {
+    if ((rom_option >= 15) && (rom_option <= 19)) {
       // skip pelvis z
       skip_inds.push_back(6);
     }
@@ -151,6 +154,10 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       // Fourth order
       mapping_basis = std::make_unique<MonomialFeatures>(
           4, plant.num_positions(), skip_inds, "mapping basis");
+    } else if (rom_option == 19) {
+      // sixth order
+      mapping_basis = std::make_unique<MonomialFeatures>(
+          6, plant.num_positions(), skip_inds, "mapping basis");
     } else {
       DRAKE_UNREACHABLE();
     }
@@ -189,6 +196,10 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         2, 2 * Lipm::kDimension(3) + 1, empty_inds, "dynamic basis");
   } else if ((rom_option >= 12) && (rom_option <= 16)) {
     // Highest degree = 4
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        4, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+  } else if (rom_option == 19) {
+    // Highest degree = 6
     dynamic_basis = std::make_unique<MonomialFeatures>(
         4, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else {
@@ -265,7 +276,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);
   } else if (rom_option == 10 || rom_option == 12 || rom_option == 14 ||
-             rom_option == 15) {
+             rom_option == 15 || rom_option == 19) {
     // Fix the mapping function of the COM xy part
     // Use pelvis as a proxy for COM
     std::set<int> invariant_idx = {0, 1};

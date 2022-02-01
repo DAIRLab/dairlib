@@ -136,7 +136,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       }
       cout << endl;
     }
-    if ((rom_option >= 15) && (rom_option <= 19)) {
+    if ((rom_option >= 15) && (rom_option <= 20)) {
       // skip pelvis z
       skip_inds.push_back(6);
     }
@@ -150,7 +150,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       // Zeroth order
       mapping_basis = std::make_unique<MonomialFeatures>(
           0, plant.num_positions(), skip_inds, "mapping basis");
-    } else if (rom_option == 14 || rom_option == 15 || rom_option == 16) {
+    } else if (rom_option == 14 || rom_option == 15 || rom_option == 16 ||
+               rom_option == 20) {
       // Fourth order
       mapping_basis = std::make_unique<MonomialFeatures>(
           4, plant.num_positions(), skip_inds, "mapping basis");
@@ -198,10 +199,10 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // Highest degree = 4
     dynamic_basis = std::make_unique<MonomialFeatures>(
         4, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 19) {
+  } else if (rom_option == 19 || rom_option == 20) {
     // Highest degree = 6
     dynamic_basis = std::make_unique<MonomialFeatures>(
-        4, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+        6, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else {
     throw std::runtime_error("Not implemented");
   }
@@ -276,7 +277,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);
   } else if (rom_option == 10 || rom_option == 12 || rom_option == 14 ||
-             rom_option == 15 || rom_option == 19) {
+             rom_option == 15 || rom_option == 19 || rom_option == 20) {
     // Fix the mapping function of the COM xy part
     // Use pelvis as a proxy for COM
     std::set<int> invariant_idx = {0, 1};

@@ -1271,8 +1271,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }
-
-  return;
 }
 }  // namespace dairlib
 

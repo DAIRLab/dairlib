@@ -89,7 +89,7 @@ while True:
           break
 
       if not job_exist_current:
-        first_time_setting_to_inactive = (old_line[1] != "inactive")
+        first_time_setting_to_inactive = (old_line[1] == "inactive")
 
         if first_time_setting_to_inactive:
           # Re-submit the job if desired

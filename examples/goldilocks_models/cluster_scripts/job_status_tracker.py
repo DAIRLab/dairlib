@@ -1,3 +1,4 @@
+# This script tracks every job's status and is able to re-submit jobs if specified.
 # Run this script at the root of Dairlib directory
 
 import subprocess
@@ -24,7 +25,7 @@ def GetCommandOutput(cmd, use_shell=False):
 
 # Parameters
 status_file_path = "../job_status.txt"
-first_line = "JOBID, ST, command\n"
+nonstop_sbatch_script = []  # re-submit scripts if added. Only file name is required (don't need directory)
 
 while True:
   # Read current status
@@ -45,10 +46,10 @@ while True:
 
   # Append commands of each job
   for line in parsed_output:
-    line.append(GetCommandOutput("scontrol show job -d %s | grep Command;" % line[0], True))
+    line.append(GetCommandOutput("scontrol show job -d %s | grep Command;" % line[0], True).replace("Command=", ""))
 
   # Remove plotting jobs
-  parsed_output = [e for e in parsed_output if "Command=python3" not in e[2]]
+  parsed_output = [e for e in parsed_output if "python3" not in e[2]]
 
   merged_output = []
   if os.path.exists(status_file_path):
@@ -86,6 +87,10 @@ while True:
       if not job_exist_current:
         old_line[1] = "inactive"
 
+        # Re-submit the job
+        if old_line[2].split("/")[-1] in nonstop_sbatch_script:
+          RunCommand("sbatch " + old_line[2], True)
+
     merged_output = parsed_output_history
 
   else:
@@ -93,16 +98,23 @@ while True:
 
   # Clean up data -- remove leading white spaces
   merged_output = [[e.lstrip() for e in line] for line in merged_output]
+  # merged_output = [[e.replace("Command=", "") for e in line] for line in merged_output]
+
+  # Sort the list
+  merged_output.sort()
 
   # Write jobs into file
   f = open(status_file_path, "w")
-  f.write(first_line)
+  f.write("JOBID, ST, command\n")
   f.write("\n".join([", ".join(line) for line in merged_output]))
   f.write("\n")
   f.close()
 
   # break
-  time.sleep(600)
+  if len(nonstop_sbatch_script) > 0:
+    time.sleep(60)
+  else:
+    time.sleep(600)
 
 
 

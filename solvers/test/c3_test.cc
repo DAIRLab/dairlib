@@ -1,4 +1,5 @@
 #include "solvers/c3_miqp.h"
+#include "drake/math/discrete_algebraic_riccati_equation.h"
 
 using std::vector;
 using Eigen::MatrixXd;
@@ -81,13 +82,24 @@ int DoMain(int argc, char* argv[]) {
             0, 3, 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1;
+
     //std::cout << Qinit;
 
     MatrixXd Rinit(k,k);
     Rinit << 1;
     //std::cout << Rinit;
 
-    //void exit
+    MatrixXd Ginit(n+m+k, n+m+k);
+    Ginit = 0.1*MatrixXd::Identity(n+m+k,n+m+k); Ginit(n+m+k-1,n+m+k-1) = 0;
+    //std::cout << Ginit;
+
+    MatrixXd QNinit = drake::math::DiscreteAlgebraicRiccatiEquation(Ainit * Ts + MatrixXd::Identity(n,n), Ts*Binit, Qinit, Rinit);
+    //std::cout << QNinit;
+
+
+    std::vector<MatrixXd> Qsetup(N+1, Qinit );
+    Qsetup.at(N) = QNinit; //Switch to QNinit, solution of Algebraic Ricatti
+
 
 
     const std::vector<MatrixXd> A(N, Ainit * Ts + MatrixXd::Identity(n,n) );
@@ -98,9 +110,9 @@ int DoMain(int argc, char* argv[]) {
     const std::vector<MatrixXd> F(N, Finit );
     const std::vector<VectorXd> c(N, cinit );
     const std::vector<MatrixXd> H(N, Hinit );
-    const std::vector<MatrixXd> Q(N+1, Qinit );
+    const std::vector<MatrixXd> Q = Qsetup;
     const std::vector<MatrixXd> R(N, Rinit );
-    const std::vector<MatrixXd> G(N, 0.1*MatrixXd::Identity(n+m+k,n+m+k) );
+    const std::vector<MatrixXd> G(N, Ginit );
     const C3Options options;
 
     C3MIQP opt(A, B, D, d, E, F, H, c, Q, R, G, options);
@@ -116,13 +128,12 @@ int DoMain(int argc, char* argv[]) {
             0;
 
 
-    std::vector<VectorXd> delta_reset(N, VectorXd::Zero(m) );
-    std::vector<VectorXd> w_reset(N, VectorXd::Zero(m) );
-    std::vector<VectorXd> delta(N, VectorXd::Zero(m) );
-    std::vector<VectorXd> w(N, VectorXd::Zero(m) );
+    std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n+m+k) );
+    std::vector<VectorXd> w_reset(N, VectorXd::Zero(n+m+k) );
+    std::vector<VectorXd> delta(N, VectorXd::Zero(n+m+k) );
+    std::vector<VectorXd> w(N, VectorXd::Zero(n+m+k) );
 
-
-    int timesteps = 10;
+    int timesteps = 500;
 
     std::vector<VectorXd> x(timesteps, VectorXd::Zero(n) );
     std::vector<VectorXd> input(timesteps, VectorXd::Zero(k) );
@@ -131,6 +142,7 @@ int DoMain(int argc, char* argv[]) {
 
     for (int i = 0; i < timesteps-1; i++) {
 
+        //THIS MIGHT NOT WORK
         delta = delta_reset;
         w = w_reset;
 

@@ -66,10 +66,21 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w) {
     vector<MatrixXd> Gv = G_;
 
     VectorXd z;
+
     
     for (int i = 0; i < options_.admm_iter; i++) {
+
+        //std::cout << "delta" << std::endl;
+        //std::cout << delta->at(1) << std::endl;
+
         z = ADMMStep(x0, delta, w, &Gv);
+
+        //std::cout << "delta" << std::endl;
+        //std::cout << delta->at(1) << std::endl;
+
     }
+
+
 
 
 
@@ -86,15 +97,26 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w
 	// TODO: SolveQP and SolveProjection are going to need the proper arguments
     vector<VectorXd> WD(N_, VectorXd::Zero(n_+m_+k_) );
 
+
     for (int i = 0; i < N_; i++) {
-        WD[i] = w->at(i) - delta->at(i);
+        WD.at(i) = delta->at(i) - w->at(i);
+        //std::cout << WD.at(i) << std::endl;
+        //std::cout << w->at(i) << std::endl;
     }
 
-    //std::cout << "WD: "<< (WD)[0] << std::endl;
+
+
+    //std::cout << "WD" << std::endl;
+    //std::cout << WD.at(7) << std::endl;
+
 
     vector<VectorXd> z = SolveQP(x0, *Gv, WD);
+    /*
+    for (int i = 0; i < N_; i++) {
+        std::cout << "Sol: " << z[i] << std::endl;
+    } */
 
-    std::cout << "Sol: "<< z[0] << std::endl;
+    //std::cout << "Break " << std::endl;
 
 
 
@@ -119,6 +141,7 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w
         0,0,0,0,0,0,0;
     vector<MatrixXd> Ustack(N_, U );
     *delta = SolveProjection(Ustack, ZW);
+    //DRAKE_DEMAND(1 == 1);
 
 
 
@@ -260,34 +283,100 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
     drake::solvers::MathematicalProgram prog;
 
     vector<drake::solvers::VectorXDecisionVariable> x;
+    vector<drake::solvers::VectorXDecisionVariable> u;
+    vector<drake::solvers::VectorXDecisionVariable> lambda;
+
 
     for (int i = 0; i < N_+1; i++) {
         x.push_back(prog.NewContinuousVariables(n_, "x" + std::to_string(i)));
+        if (i < N_) {
+            u.push_back(prog.NewContinuousVariables(k_, "k" + std::to_string(i)));
+            lambda.push_back(prog.NewContinuousVariables(m_, "lambda" + std::to_string(i)));
+        }
 }
 
-    
+    prog.AddLinearConstraint(x[0] == x0);
 
-        //drake::solvers::VectorXDecisionVariable
+    if (hflag_ == 1) {
+        drake::solvers::MobyLCPSolver<double> LCPSolver;
+        VectorXd lambda0;
+        LCPSolver.SolveLcpLemke(F_[0], E_[0] * x0 + c_[0], &lambda0);
+        prog.AddLinearConstraint(lambda[0] == lambda0);
+        }
+
+    for (int i = 0; i < N_; i++) {
+
+        prog.AddLinearConstraint(A_[i] * x[i] + B_[i] * u[i] + D_[i] * lambda[i] + d_[i] == x[i+1]);
+
+    }
+
+    for (int i = 0; i < N_+1 ; i++) {
+        prog.AddQuadraticCost(Q_.at(i)*2, VectorXd::Zero(n_), x.at(i));
+        if (i < N_) {
+            prog.AddQuadraticCost(R_.at(i)*2, VectorXd::Zero(k_), u.at(i));
+
+            //right-hand side of cost
+            //std::cout << G.at(i).segment(n_+m_,k_) << std::endl;
+
+            //VectorXd hold = WD.at(i);
+            //std::cout << "hold" << std::endl;
+            //std::cout << hold.size() << std::endl;
+            //std::cout << hold << std::endl;
+            //VectorXd asd = -2 * G.at(i).block(n_,n_,m_,m_) * WD.at(i).segment(n_,m_);
+            //std::cout << "asd" << std::endl;
+            //std::cout << asd << std::endl;
+
+            prog.AddQuadraticCost(G.at(i).block(0,0,n_,n_) * 2, -2 * G.at(i).block(0,0,n_,n_) * WD.at(i).segment(0,n_), x.at(i) );
+            prog.AddQuadraticCost(G.at(i).block(n_,n_,m_,m_) * 2, -2 * G.at(i).block(n_,n_,m_,m_) * WD.at(i).segment(n_,m_), lambda.at(i) );
+            prog.AddQuadraticCost(G.at(i).block(n_+m_,n_+m_,k_,k_) * 2,  -2 * G.at(i).block(n_+m_,n_+m_,k_,k_) * WD.at(i).segment(n_+m_,k_), u.at(i) );
+
+        }
+    }
+
+
+
+    drake::solvers::SolverOptions options;
+    options.SetOption(OsqpSolver::id(), "verbose", 0);
+    drake::solvers::OsqpSolver osqp;
+    prog.SetSolverOptions(options);
+    MathematicalProgramResult result = osqp.Solve(prog);
+    //SolutionResult solution_result = result.get_solution_result();
+
+    VectorXd xSol = result.GetSolution(x[0]);
+
+    vector<VectorXd> zz(N_, VectorXd::Zero(n_+m_+k_) );
+
+    for (int i = 0; i < N_; i++) {
+
+        zz.at(i).segment(0,n_) = result.GetSolution(x[i]);
+        zz.at(i).segment(n_,m_) = result.GetSolution(lambda[i]);
+        zz.at(i).segment(n_+m_,k_) = result.GetSolution(u[i]);
+
+
+    }
+
+    return zz;
 
 
 
 
 
-    std::vector<VectorXd> rere(N_, VectorXd::Zero(n_+m_+k_) );
-    return rere;
+
+    //std::vector<VectorXd> rere(N_, VectorXd::Zero(n_+m_+k_) );
+    //return rere;
 }
 
 vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G, vector<VectorXd>& WZ) {
 	// TODO: fill this in, along with the arguments
 	// TODO: replace for loop with parallelization
 
-    vector<VectorXd> delta(N_, VectorXd::Zero(n_+m_+k_) );
+    vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_+m_+k_) );
 
 	for (int i = 0; i < N_; i++) {
-        delta[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i]);
+        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i]);
 	}
 
-    return delta;
+    return deltaProj;
 }
 
 VectorXd C3::Simulate(VectorXd& x_init, VectorXd& input) {

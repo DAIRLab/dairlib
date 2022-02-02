@@ -93,7 +93,7 @@ while True:
         old_line[1] = "inactive"  # Update status
 
         if first_time_setting_to_inactive:
-          job_timed_out = "TIMEOUT" in GetCommandOutput("seff %s | grep State:" % job_id)
+          job_timed_out = "TIMEOUT" in GetCommandOutput("seff %s | grep State:" % job_id, True)
           intend_to_resubmit = old_line[2].split("/")[-1] in nonstop_sbatch_script
           # Re-submit the job if desired
           if intend_to_resubmit and job_timed_out:

@@ -62,7 +62,7 @@ else:
 
 for i in range(len(directory_list)):
     directory = directory_list[i]
-    print("%d/%d" % (i, len(directory_list)))
+    print("%d/%d" % (i, len(directory_list)), end='')
     # Checks for the director_list
     if len(directory_list) > 1 and not save_figure:
         raise ValueError("save_figure has to be true. Otherwise this script won't go through the list")
@@ -74,6 +74,7 @@ for i in range(len(directory_list)):
     unique_folder_name = directory.split("/")[-3]
     if unique_folder_name == "robot_1" or unique_folder_name == "find_models":
         print("Warning: didn't extract unique_folder_name correctly")
+    print("(%s)" % unique_folder_name)
 
     # Set N_sample
     # n_sampel_sl = 13  # should be > 0
@@ -183,7 +184,7 @@ for i in range(len(directory_list)):
                 f.write("  nominal_cost = %.3f\n" % nominal_cost)
                 f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
                 f.close()
-                print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)" % (nominal_cost, average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
+                print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)" % (nominal_cost, average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]), end='')
 
         # labels
         plt.xlabel('Iteration')
@@ -217,7 +218,8 @@ for i in range(len(directory_list)):
             plt.savefig("%s../cost%s.png" % (directory, affix))
 
             plt.savefig("../cost_%s.png" % unique_folder_name)
-            print("  figure saved for %s" % unique_folder_name)
+            print(";  figure saved")
+            # print("  figure saved for %s" % unique_folder_name)
 
             plt.clf()
             break

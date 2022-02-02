@@ -7,6 +7,7 @@ cc_test(
     deps = [
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
+        "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:reduced_order_models",
         "@drake//:drake_shared_library",
         "@gtest//:main",

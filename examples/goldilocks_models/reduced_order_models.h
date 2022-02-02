@@ -5,9 +5,11 @@
 #include <set>
 #include <string>
 #include <tuple>
+
 #include <Eigen/Dense>
 
 #include "common/file_utils.h"
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
@@ -42,6 +44,9 @@ class MonomialFeatures {
   void PrintSymbolicPartialDerivatives(int order) const;
 
   int length() const { return features_.size(); }
+
+  int n_order() const { return n_order_; };
+  const std::vector<int>& skip_inds() const { return skip_inds_; };
 
  private:
   static std::set<std::multiset<int>> ConstructSubfeaturesWithOneMoreOrder(
@@ -118,6 +123,11 @@ class ReducedOrderModel {
   // Getters for basis functions
   const MonomialFeatures& mapping_basis() const { return mapping_basis_; };
   const MonomialFeatures& dynamic_basis() const { return dynamic_basis_; };
+
+  // Getters for invariant_elements
+  const std::set<int>& invariant_elements() const {
+    return invariant_elements_;
+  };
 
   // Getter/Setters for model parameters
   int n_theta_y() const { return theta_y_.size(); };
@@ -214,8 +224,7 @@ class Lipm : public ReducedOrderModel {
        const BodyPoint& stance_contact_point,
        const MonomialFeatures& mapping_basis,
        const MonomialFeatures& dynamic_basis, int world_dim,
-       const std::set<int>& invariant_elements = {},
-       bool use_pelvis = false);
+       const std::set<int>& invariant_elements = {}, bool use_pelvis = false);
 
   // Copy constructor for the Clone() method
   // TODO(yminchen): Do we need to explicitly define the copy constructor here?

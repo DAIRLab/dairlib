@@ -1,9 +1,16 @@
+#include "examples/goldilocks_models/reduced_order_models.h"
+
+#include <list>
 #include <memory>
+#include <set>
+
+#include <boost/any.hpp>
 #include <gtest/gtest.h>
 
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/goldilocks_models/reduced_order_models.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "multibody/multibody_utils.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 
 using drake::MatrixX;
@@ -15,7 +22,10 @@ using drake::systems::SystemOutput;
 using std::cout;
 using std::endl;
 using std::make_unique;
+using std::set;
+using std::string;
 using std::unique_ptr;
+using std::vector;
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -411,6 +421,127 @@ TEST_F(ReducedOrderModelTest, ThirdOrderFeatures) {
   //   J_analytical = 0.407693
   //   JdotV_numerical = 41.3167
   //   JdotV_analytical = 0.238603
+}
+
+class ReducedOrderModelOptionTest : public ::testing::Test {
+ protected:
+  ReducedOrderModelOptionTest()
+      : plant_(drake::multibody::MultibodyPlant<double>(1e-3)) {
+    addCassieMultibody(&plant_, nullptr, true /*floating base*/,
+                       "examples/Cassie/urdf/cassie_fixed_springs.urdf",
+                       false /*spring model*/, false /*loop closure*/);
+    plant_.Finalize();
+  };
+  drake::multibody::MultibodyPlant<double> plant_;
+};
+
+TEST_F(ReducedOrderModelOptionTest, AllOptions) {
+  int robot_option = 1;
+  std::unique_ptr<ReducedOrderModel> rom;
+
+  // Right leg joints indices (swing leg)
+  vector<int> swing_leg_inds = {};
+  for (auto& pair : multibody::makeNameToPositionsMap(plant_)) {
+    if (pair.first.find("right") != std::string::npos) {
+      swing_leg_inds.push_back(pair.second);
+    }
+  }
+  EXPECT_TRUE(swing_leg_inds == vector<int>({16, 12, 8, 10, 14, 18}));
+
+  // clang-format off
+
+  rom = CreateRom(9, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  rom = CreateRom(10, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  rom = CreateRom(11, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
+
+  rom = CreateRom(12, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 4);
+  EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  rom = CreateRom(13, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 4);
+  EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
+
+  rom = CreateRom(14, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 4);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 4);
+  EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  rom = CreateRom(15, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 4);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 4);
+  EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  rom = CreateRom(16, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 4);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 4);
+  EXPECT_TRUE(rom->name() == "3D lipm");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  rom = CreateRom(17, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  rom = CreateRom(18, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
+
+  rom = CreateRom(19, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 6);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 6);
+  EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  rom = CreateRom(20, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 4);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 6);
+  EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  rom = CreateRom(21, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
+
+  // clang-format on
 }
 
 }  // namespace

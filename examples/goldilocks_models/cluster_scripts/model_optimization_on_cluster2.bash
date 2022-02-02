@@ -50,6 +50,7 @@ n_ph=1
 n_sm=1
 # Set grid parameter
 stride_length_center=0
+pelvis_height_center=0.95
 
 # main cost weights
 Q=0.1    # big weight: 0.1; small weight 0.005
@@ -120,7 +121,7 @@ then
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
@@ -129,7 +130,7 @@ then
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits =====
@@ -142,7 +143,7 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
@@ -152,7 +153,7 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits with cubic swing foot constraint =====
@@ -165,7 +166,7 @@ then
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj with com accel constraint \(with snopt scaling\) =====
@@ -175,7 +176,7 @@ then
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
 
@@ -186,7 +187,7 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate \(with snopt scaling\) =====
@@ -196,7 +197,7 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   # Note that max_inner_iter cannot be too small. Otherwise, the solver never get a chance to find the solution. This messes up the outer loop.
@@ -209,7 +210,7 @@ then
    --N_rerun=2 --max_inner_iter=150 \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
 else
@@ -226,7 +227,7 @@ else
    --N_rerun=2 --max_inner_iter=150 \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
 fi

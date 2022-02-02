@@ -82,6 +82,7 @@ DEFINE_double(sm_min, 0.0, "min stance width");
 DEFINE_double(sm_max, 0.15, "max stance width");
 DEFINE_double(stride_length_center, 0.0, "stride length center for grid method");
 DEFINE_double(turning_rate_center, 0.0, "turning rate center for grid method");
+DEFINE_double(pelvis_height_center, 0.95, "pelvis height center for grid method");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
@@ -1548,8 +1549,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
            "pelvis_height", "swing_margin"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr, FLAGS_N_sample_ph, FLAGS_N_sample_sm},
-          {FLAGS_stride_length_center, 0, 0.35, FLAGS_turning_rate_center, 0.95,
-           0.03},
+          {FLAGS_stride_length_center, 0, 0.35, FLAGS_turning_rate_center,
+           FLAGS_pelvis_height_center, 0.03},
           {0.03, 0.05, 0.05, 0.125, 0.05, 0.02},
           {(FLAGS_N_sample_sl > 1) && FLAGS_is_stochastic,
            (FLAGS_N_sample_gi > 1) && FLAGS_is_stochastic,

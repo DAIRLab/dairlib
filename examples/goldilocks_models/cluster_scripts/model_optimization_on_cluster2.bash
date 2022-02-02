@@ -66,7 +66,7 @@ folder_name=
 
 ### Some setup
 total_cores_needed=$((n_sl*n_gi*n_du*n_tr*n_ph*n_sm))
-if [ $SLURM_CPUS_PER_TASK -gt $((total_cores_needed + 1)) ];
+if [ "$SLURM_CPUS_PER_TASK" -gt "$((total_cores_needed + 1))" ];
 then printf "Allocated too many cores (%s). This job only need %s.\n" $SLURM_CPUS_PER_TASK $total_cores_needed;
 fi
 

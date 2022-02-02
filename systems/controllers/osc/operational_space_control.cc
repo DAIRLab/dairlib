@@ -743,11 +743,8 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
-//  auto osqp_solver = drake::solvers::OsqpSolver();
-//  const MathematicalProgramResult result = osqp_solver.Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
-  //  solve_time_ = alpha;
 
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);

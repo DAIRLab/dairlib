@@ -128,7 +128,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   // iterate through all the possible error flags
   bool is_error = false;
   for (const auto& error_flags : error_indices_) {
-    is_error = is_error || context.get_discrete_state().get_value(
+    is_error = is_error || context.get_discrete_state().value(
                                error_indices_index_)[error_flags.second];
   }
 
@@ -158,12 +158,12 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     output->SetDataVector(u);
   } else if (is_error) {
     output->set_timestamp(safety_command->get_timestamp());
-    output->SetDataVector(safety_command->get_value());
+    output->SetDataVector(safety_command->value());
   } else if (alpha < 1.0) {
     Eigen::VectorXd blended_effort =
-        alpha * command->get_value() +
+        alpha * command->value() +
         (1 - alpha) *
-            context.get_discrete_state(prev_efforts_index_).get_value();
+            context.get_discrete_state(prev_efforts_index_).value();
     output->SetDataVector(blended_effort);
   } else {
     output->get_mutable_data() = command->get_data();
@@ -191,14 +191,14 @@ void InputSupervisor::SetStatus(
                                                         command_input_port_);
   output->utime = command->get_timestamp() * 1e6;
   output->active_channel = active_channel_;
-  output->shutdown = context.get_discrete_state().get_value(shutdown_index_)[0];
+  output->shutdown = context.get_discrete_state().value(shutdown_index_)[0];
   output->num_status = error_indices_.size();
   output->status_names = std::vector<std::string>(error_indices_.size());
   output->status_states = std::vector<int8_t>(error_indices_.size());
   for (const auto& error_flags : error_indices_) {
     output->status_names[error_flags.second] = error_flags.first;
     output->status_states[error_flags.second] =
-        context.get_discrete_state().get_value(
+        context.get_discrete_state().value(
             error_indices_index_)[error_flags.second];
   }
 }
@@ -208,7 +208,7 @@ void InputSupervisor::SetFailureStatus(
     dairlib::lcmt_controller_failure* output) const {
   output->utime = context.get_time() * 1e6;
   output->error_code =
-      context.get_discrete_state().get_value(shutdown_index_)[0];
+      context.get_discrete_state().value(shutdown_index_)[0];
   output->controller_channel = "GLOBAL_ERROR";
   output->error_name = "";
 }
@@ -255,7 +255,7 @@ void InputSupervisor::UpdateErrorFlag(
 
   bool is_error = false;
   for (const auto& error_flags : error_indices_) {
-    is_error = is_error || context.get_discrete_state().get_value(
+    is_error = is_error || context.get_discrete_state().value(
                                error_indices_index_)[error_flags.second];
   }
   discrete_state->get_mutable_value(shutdown_index_)[0] = is_error;
@@ -278,7 +278,7 @@ void InputSupervisor::UpdateErrorFlag(
   if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
       blend_duration_) {
     discrete_state->get_mutable_value(prev_efforts_index_) =
-        command->get_value();
+        command->value();
   }
 }
 
@@ -289,7 +289,7 @@ void InputSupervisor::CheckVelocities(
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
-  if (discrete_state->get_value(n_fails_index_)[0] <
+  if (discrete_state->value(n_fails_index_)[0] <
       min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
@@ -300,7 +300,7 @@ void InputSupervisor::CheckVelocities(
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
       std::cout << "Consecutive error "
-                << discrete_state->get_value(n_fails_index_)[0] << " of "
+                << discrete_state->value(n_fails_index_)[0] << " of "
                 << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl

@@ -22,6 +22,7 @@ cassie_default_channels = \
      'OSC_WALKING': dairlib.lcmt_robot_input,
      'OSC_STANDING': dairlib.lcmt_robot_input,
      'OSC_JUMPING': dairlib.lcmt_robot_input,
+     'OSC_RUNNING': dairlib.lcmt_robot_input,
      'CASSIE_OUTPUT': dairlib.lcmt_cassie_out,
      'OSC_DEBUG_STANDING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_WALKING': dairlib.lcmt_osc_output,

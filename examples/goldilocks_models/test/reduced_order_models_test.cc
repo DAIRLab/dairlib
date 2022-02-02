@@ -450,6 +450,69 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
 
   // clang-format off
 
+  rom = CreateRom(0, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "2D lipm");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
+
+  rom = CreateRom(1, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "2D lipm with swing foot");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
+
+  rom = CreateRom(2, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "Fixed COM vertical acceleration");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
+
+  rom = CreateRom(3, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "Fixed COM vertical acceleration + 2D swing foot");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
+
+  rom = CreateRom(4, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
+
+  rom = CreateRom(5, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm with swing foot");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
+
+  rom = CreateRom(6, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm with swing foot");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
+
+  /*rom = CreateRom(7, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 0);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D lipm");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));*/
+
+  /*rom = CreateRom(8, robot_option, plant_);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->name() == "3D GIP");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({}));*/
+
   rom = CreateRom(9, robot_option, plant_);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);

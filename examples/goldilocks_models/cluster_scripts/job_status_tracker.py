@@ -42,14 +42,10 @@ while True:
   148008 R
   148016 R
   '''
-  output = GetCommandOutput("squeue -u yminchen -o \"%i %t\"", True)
+  output = GetCommandOutput("squeue -u yminchen -o \"%i, %t, %o\"", True)
   parsed_output = output.split("\n")  # split by newline
   parsed_output = [e for e in parsed_output[1:] if len(e) > 0]  # ignore the first line and get rid of empty element
-  parsed_output = [e.split(" ") for e in parsed_output]  # split again by SPACE
-
-  # Append commands of each job
-  for line in parsed_output:
-    line.append(GetCommandOutput("scontrol show job -d %s | grep Command;" % line[0], True).replace("Command=", ""))
+  parsed_output = [e.split(", ") for e in parsed_output]  # split again by ", "
 
   # Remove plotting jobs
   parsed_output = [e for e in parsed_output if "python3" not in e[2]]
@@ -114,7 +110,7 @@ while True:
 
   # Write jobs into file
   f = open(status_file_path, "w")
-  f.write("JOBID, ST, command\n")
+  f.write("JOBID, ST, COMMAND\n")
   f.write("\n".join([", ".join(line) for line in merged_output]))
   f.write("\n")
   f.close()

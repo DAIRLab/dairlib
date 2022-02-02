@@ -136,13 +136,13 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       }
       cout << endl;
     }
-    if ((rom_option >= 15) && (rom_option <= 20)) {
+    if ((rom_option >= 15) && (rom_option <= 21)) {
       // skip pelvis z
       skip_inds.push_back(6);
     }
     if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||
         (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13)) ||
-        rom_option == 17 || rom_option == 18) {
+        rom_option == 17 || rom_option == 18 || rom_option == 21) {
       // Second order
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
@@ -185,7 +185,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         "dynamic basis");
   } else if (rom_option == 4 || rom_option == 7 ||
              ((rom_option >= 9) && (rom_option <= 11)) || rom_option == 17 ||
-             rom_option == 18) {
+             rom_option == 18 || rom_option == 21) {
     // Highest degree = 2
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
@@ -277,7 +277,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);
   } else if (rom_option == 10 || rom_option == 12 || rom_option == 14 ||
-             rom_option == 15 || rom_option == 19 || rom_option == 20) {
+             rom_option == 15 || rom_option == 19 || rom_option == 20 ||
+             rom_option == 21) {
     // Fix the mapping function of the COM xy part
     // Use pelvis as a proxy for COM
     std::set<int> invariant_idx = {0, 1};

@@ -12,9 +12,8 @@ class TrifingerDemoController(LeafSystem):
         
     # Input is state, output is torque (control action)
     self.DeclareVectorInputPort("x", plant.num_positions() +
-     																 plant.num_velocities())
-    self.DeclareVectorOutputPort("u", plant.num_actuators(),
-     														 self.CalcControl)
+        plant.num_velocities())
+    self.DeclareVectorOutputPort("u", plant.num_actuators(), self.CalcControl)
 
   def CalcControl(self, context, output):
     x = self.EvalVectorInput(context, 0).get_value()
@@ -35,11 +34,13 @@ class TrifingerDemoController(LeafSystem):
 builder = DiagramBuilder()
 sim_dt = 2e-4
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
-addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0, mu_kinetic=1.0)
+addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
+               mu_kinetic=1.0)
 
 # The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
-parser.package_map().Add("robot_properties_fingers", "examples/trifinger/robot_properties_fingers")
+parser.package_map().Add("robot_properties_fingers",
+                         "examples/trifinger/robot_properties_fingers")
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/trifinger/robot_properties_fingers/urdf/trifinger_minimal_collision.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(

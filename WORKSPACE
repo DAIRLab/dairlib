@@ -28,6 +28,8 @@ environ_repository(
 
 load("@environ//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
 
+DAIRLIB_LOCAL_DRAKE_PATH=""
+
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
 # "@drake", the other is named "@drake_ignored".

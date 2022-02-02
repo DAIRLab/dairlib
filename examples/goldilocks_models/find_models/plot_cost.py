@@ -9,6 +9,8 @@ import csv
 import os
 import time
 import sys
+import traceback
+import logging
 plt.rcParams.update({'font.size': 18})
 
 save_figure = True
@@ -90,139 +92,143 @@ for i in range(len(directory_list)):
     # print('n_sampel_ph = ' + str(n_sampel_ph))
     N_sample = int(np.loadtxt(directory + "n_sample.csv"))
 
-    # get nomial cost
-    nominal_cost = 0.0
-    if normalize_by_nominal_cost:
-        for sample_i in range(N_sample):
-            cost = []
-            assert os.path.isfile(directory + folder_name_nominal_cost + '0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
-            matrix = np.genfromtxt(directory + folder_name_nominal_cost + '0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
-            cost.append(matrix)
+    # Use try-catch, so that the script doesn't stop to continue to the next ROM optimization folder
+    try:
 
-            nominal_cost += cost[0] / N_sample
-    else:
-        nominal_cost = 1.0
-    # print('nominal_cost = '+str(nominal_cost))
+        # get nomial cost
+        nominal_cost = 0.0
+        if normalize_by_nominal_cost:
+            for sample_i in range(N_sample):
+                cost = []
+                assert os.path.isfile(directory + folder_name_nominal_cost + '0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
+                matrix = np.genfromtxt(directory + folder_name_nominal_cost + '0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
+                cost.append(matrix)
 
-    # plot
-    while 1:
-        # fig = plt.figure(1)
-        fig_size = (6.4, 4.8)  if only_plot_average_cost else (12.8, 9.6)
-        fig = plt.figure(num=1, figsize=fig_size)
-        ax = fig.gca()
+                nominal_cost += cost[0] / N_sample
+        else:
+            nominal_cost = 1.0
+        # print('nominal_cost = '+str(nominal_cost))
 
-        for file_name in file_name_list:
-            # Get the length of the cost first (in case the lengths of different samples are the not the same). This is for plotting the average cost
-            len_total_cost = 0
+        # plot
+        while 1:
+            # fig = plt.figure(1)
+            fig_size = (6.4, 4.8)  if only_plot_average_cost else (12.8, 9.6)
+            fig = plt.figure(num=1, figsize=fig_size)
+            ax = fig.gca()
+
+            # Get the iteration length first (in case the lengths are different among samples). This is for plotting the average cost
+            iteration_length = 0
             for sample_i in range(N_sample):
                 cost = []
                 iteration = iter_start
-                while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
-                    matrix = np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
-                    cost.append(matrix)
-                    if is_iter_end & (iteration == iter_end):
-                        break;
-                    iteration+=1
-                if len_total_cost == 0:
-                    len_total_cost = len(cost)
-                else:
-                    len_total_cost = min(len_total_cost, len(cost))
-
-            # Initialize total_cost with all zeros
-            total_cost = [0] * len_total_cost
-
-            #
-            n_successful_sample_each_iter = [0] * len_total_cost
-
-            # 1. Plot each sample
-            for sample_i in range(N_sample):
-                # read in cost
-                cost = []
-                iteration = iter_start
-                while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
-                    matrix = np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
+                while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name2):
+                    matrix = np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name2, delimiter=",") / nominal_cost
                     cost.append(matrix)
                     if is_iter_end & (iteration == iter_end):
                         break
-                    iteration+=1
+                    iteration += 1
+                iteration_length = len(cost) if (iteration_length == 0) else min(iteration_length, len(cost))
+            if iteration_length == 0:
+                print("There is at least one sample in Iteration %d that's not evaluated. Stop plotting." % iter_start)
+                break
 
-                # plot cost for each sample
-                length = len(cost)
-                t = range(iter_start, length+iter_start)
-                if not only_plot_average_cost:
-                    if file_name == 'c_main.csv':
-                        ax.plot(t, cost)
-                        # ax.plot(t,cost, label='sample_idx = '+str(sample_i))
-                        # TODO: not very important, but you can read the task value and use it as a label
+            for file_name in file_name_list:
+                # Initialize total_cost and n_successful_sample_each_iter
+                total_cost = [0] * iteration_length
+                n_successful_sample_each_iter = [0] * iteration_length
 
-                # Read in is_success
-                is_success = []
-                if only_add_successful_samples_to_average_cost:
-                    for iter_i in range(iter_start, iter_start + len_total_cost):
-                        matrix = np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=",")
-                        is_success.append(matrix)
-                else:
-                    is_success = [1] * len_total_cost
+                # 1. Plot each sample
+                for sample_i in range(N_sample):
+                    # read in cost
+                    cost = []
+                    iteration = iter_start
+                    while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
+                        matrix = np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
+                        cost.append(matrix)
+                        if is_iter_end & (iteration == iter_end):
+                            break
+                        iteration += 1
 
-                # Add to accumulated success
-                n_successful_sample_each_iter = [x + y for x, y in zip(n_successful_sample_each_iter, is_success)]
+                    # plot cost for each sample
+                    length = len(cost)
+                    t = range(iter_start, length+iter_start)
+                    if not only_plot_average_cost:
+                        if file_name == 'c_main.csv':
+                            ax.plot(t, cost)
+                            # ax.plot(t,cost, label='sample_idx = '+str(sample_i))
+                            # TODO: not very important, but you can read the task value and use it as a label
 
-                # Add to total cost
-                filtered_cost = [x * y for x, y in zip(is_success, cost[0:len_total_cost])]
-                total_cost = [x + y for x, y in zip(total_cost, filtered_cost[0:len_total_cost])]
+                    # Read in is_success
+                    is_success = []
+                    if only_add_successful_samples_to_average_cost:
+                        for iter_i in range(iter_start, iter_start + iteration_length):
+                            matrix = np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=",")
+                            is_success.append(matrix)
+                    else:
+                        is_success = [1] * iteration_length
 
-            # 2. Plot average cost
-            average_cost = [x / y for x, y in zip(total_cost, n_successful_sample_each_iter)]
-            ax.plot(t[0:len_total_cost], average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
+                    # Add to accumulated success
+                    n_successful_sample_each_iter = [x + y for x, y in zip(n_successful_sample_each_iter, is_success)]
 
-            # Write jobs into file
-            if file_name == "c_main.csv":
-                f = open(directory + "../costs_info.txt", "w")
-                f.write("For %s\n" % unique_folder_name)
-                f.write("  file_name_cost = %s\n" % file_name)
-                f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
-                f.write("  nominal_cost = %.3f\n" % nominal_cost)
-                f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
-                f.close()
-                print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)" % (nominal_cost, average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]), end='')
+                    # Add to total cost
+                    filtered_cost = [x * y for x, y in zip(is_success, cost[0:iteration_length])]
+                    total_cost = [x + y for x, y in zip(total_cost, filtered_cost[0:iteration_length])]
 
-        # labels
-        plt.xlabel('Iteration')
-        if only_plot_average_cost & only_add_successful_samples_to_average_cost:
-            plt.ylabel('Averaged (successful) task cost')
-        else:
-            plt.ylabel('Averaged task cost')
-        if not only_plot_average_cost:
-            plt.title('Cost over iterations')
+                # 2. Plot average cost
+                average_cost = [x / y for x, y in zip(total_cost, n_successful_sample_each_iter)]
+                ax.plot(t[0:iteration_length], average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
 
-        if len(file_name_list) > 1 or not only_plot_average_cost:
-            plt.legend()
+                # Write jobs into file
+                if file_name == "c_main.csv":
+                    f = open(directory + "../costs_info.txt", "w")
+                    f.write("For %s\n" % unique_folder_name)
+                    f.write("  file_name_cost = %s\n" % file_name)
+                    f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
+                    f.write("  nominal_cost = %.3f\n" % nominal_cost)
+                    f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]))
+                    f.close()
+                    print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)" % (nominal_cost, average_cost[0], min(average_cost), 100 * (average_cost[0] - min(average_cost)) / average_cost[0]), end='')
 
-        # Change the ticks
-        # ax.set_yticks(np.arange(1.05,1.301,0.05))
+            # labels
+            plt.xlabel('Iteration')
+            if only_plot_average_cost & only_add_successful_samples_to_average_cost:
+                plt.ylabel('Averaged (successful) task cost')
+            else:
+                plt.ylabel('Averaged task cost')
+            if not only_plot_average_cost:
+                plt.title('Cost over iterations')
 
-        # Set limit
-        # ax.set_ylim(0, 6)
+            if len(file_name_list) > 1 or not only_plot_average_cost:
+                plt.legend()
 
-        plt.title("Traj opt cost over model iteration")
+            # Change the ticks
+            # ax.set_yticks(np.arange(1.05,1.301,0.05))
 
-        plt.draw()
+            # Set limit
+            # ax.set_ylim(0, 6)
 
-        # so that the label is not cut off by the window
-        # plt.tight_layout()
-        plt.gcf().subplots_adjust(bottom=0.15)
-        plt.gcf().subplots_adjust(left=0.15)
+            plt.title("Traj opt cost over model iteration")
 
-        if save_figure:
-            affix = "_new" if os.path.exists(directory + "../cost.png") else ""
-            plt.savefig("%s../cost%s.png" % (directory, affix))
+            plt.draw()
 
-            plt.savefig("../cost_%s.png" % unique_folder_name)
-            print(";  figure saved")
-            # print("  figure saved for %s" % unique_folder_name)
+            # so that the label is not cut off by the window
+            # plt.tight_layout()
+            plt.gcf().subplots_adjust(bottom=0.15)
+            plt.gcf().subplots_adjust(left=0.15)
 
+            if save_figure:
+                affix = "_new" if os.path.exists(directory + "../cost.png") else ""
+                plt.savefig("%s../cost%s.png" % (directory, affix))
+
+                plt.savefig("../cost_%s.png" % unique_folder_name)
+                print(";  figure saved")
+                # print("  figure saved for %s" % unique_folder_name)
+
+                plt.clf()
+                break
+
+            plt.pause(60)
             plt.clf()
-            break
 
-        plt.pause(60)
-        plt.clf()
+    except Exception as e:
+        logging.error(traceback.format_exc())  # Logs the error appropriately.

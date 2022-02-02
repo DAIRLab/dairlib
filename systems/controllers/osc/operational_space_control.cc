@@ -1018,7 +1018,7 @@ void OperationalSpaceControl::CheckTracking(
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
   //  std::cout << "total cost: " << total_cost_ << std::endl;
-  if (soft_constraint_cost_ > 1e2 || isnan(soft_constraint_cost_)) {
+  if (soft_constraint_cost_ > 5e3 || isnan(soft_constraint_cost_)) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

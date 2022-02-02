@@ -1,8 +1,8 @@
 #pragma once
 #include <limits>
 
-#include "dairlib/lcmt_input_supervisor_status.hpp"
 #include "dairlib/lcmt_controller_failure.hpp"
+#include "dairlib/lcmt_input_supervisor_status.hpp"
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -43,8 +43,8 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   explicit InputSupervisor(
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::string& initial_channel, double max_joint_velocity,
-      double update_period, int min_consecutive_failures = 1,
-      double input_limit = std::numeric_limits<double>::max());
+      double update_period, Eigen::VectorXd& input_limit,
+      int min_consecutive_failures = 1);
 
   const drake::systems::InputPort<double>& get_input_port_command() const {
     return this->get_input_port(command_input_port_);
@@ -102,7 +102,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
 
   // Output a failure message when any error is triggered
   void SetFailureStatus(const drake::systems::Context<double>& context,
-                 dairlib::lcmt_controller_failure* output) const;
+                        dairlib::lcmt_controller_failure* output) const;
 
   void CheckVelocities(
       const drake::systems::Context<double>& context,
@@ -122,7 +122,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // supervisor settings
   const int min_consecutive_failures_;
   double max_joint_velocity_;
-  mutable double input_limit_;
+  mutable Eigen::VectorXd input_limit_;
   mutable double blend_duration_ = 0.0;
 
   // For keeping track of things that require multiple failures

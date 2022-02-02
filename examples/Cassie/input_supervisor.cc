@@ -18,7 +18,7 @@ using systems::TimestampedVector;
 InputSupervisor::InputSupervisor(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::string& initial_channel, double max_joint_velocity,
-    double update_period, int min_consecutive_failures, double input_limit)
+    double update_period, Eigen::VectorXd& input_limit, int min_consecutive_failures)
     : plant_(plant),
       num_actuators_(plant_.num_actuators()),
       num_positions_(plant_.num_positions()),
@@ -27,9 +27,6 @@ InputSupervisor::InputSupervisor(
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
-  if (input_limit_ == std::numeric_limits<double>::max()) {
-    std::cout << "Warning. No input limits have been set." << std::endl;
-  }
 
   // Create input ports
   command_input_port_ =
@@ -153,7 +150,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   // any other controller signal
   if (cassie_out->pelvis.radio.channel[15] == -1) {
     Eigen::VectorXd u = -K_ * state->GetVelocities();
-    input_limit_ = 100;
+    input_limit_ = 100 * Eigen::VectorXd::Ones(num_actuators_);
     output->set_timestamp(state->get_timestamp());
     output->SetDataVector(u);
   } else if (is_error) {
@@ -162,24 +159,21 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   } else if (alpha < 1.0) {
     Eigen::VectorXd blended_effort =
         alpha * command->value() +
-        (1 - alpha) *
-            context.get_discrete_state(prev_efforts_index_).value();
+        (1 - alpha) * context.get_discrete_state(prev_efforts_index_).value();
     output->SetDataVector(blended_effort);
   } else {
     output->get_mutable_data() = command->get_data();
   }
 
   // Apply input_limits
-  if (input_limit_ != std::numeric_limits<double>::max()) {
-    for (int i = 0; i < command->get_data().size(); i++) {
-      double command_value = output->get_data()(i);
-      if (command_value > input_limit_) {
-        command_value = input_limit_;
-      } else if (command_value < -input_limit_) {
-        command_value = -input_limit_;
-      }
-      output->get_mutable_data()(i) = command_value;
+  for (int i = 0; i < command->get_data().size(); i++) {
+    double command_value = output->get_data()(i);
+    if (command_value > input_limit_(i)) {
+      command_value = input_limit_(i);
+    } else if (command_value < -input_limit_(i)) {
+      command_value = -input_limit_(i);
     }
+    output->get_mutable_data()(i) = command_value;
   }
 }
 
@@ -207,8 +201,7 @@ void InputSupervisor::SetFailureStatus(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_controller_failure* output) const {
   output->utime = context.get_time() * 1e6;
-  output->error_code =
-      context.get_discrete_state().value(shutdown_index_)[0];
+  output->error_code = context.get_discrete_state().value(shutdown_index_)[0];
   output->controller_channel = "GLOBAL_ERROR";
   output->error_name = "";
 }
@@ -277,8 +270,7 @@ void InputSupervisor::UpdateErrorFlag(
   // efforts
   if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
       blend_duration_) {
-    discrete_state->get_mutable_value(prev_efforts_index_) =
-        command->value();
+    discrete_state->get_mutable_value(prev_efforts_index_) = command->value();
   }
 }
 
@@ -289,8 +281,7 @@ void InputSupervisor::CheckVelocities(
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
-  if (discrete_state->value(n_fails_index_)[0] <
-      min_consecutive_failures_) {
+  if (discrete_state->value(n_fails_index_)[0] < min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
                              (velocities.array() < -max_joint_velocity_).any();

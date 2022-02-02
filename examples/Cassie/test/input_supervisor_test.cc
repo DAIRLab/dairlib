@@ -22,9 +22,10 @@ class InputSupervisorTest : public ::testing::Test {
                        "examples/Cassie/urdf/cassie_v2.urdf",
                        true /*spring model*/, false /*loop closure*/);
     plant_.Finalize();
+    input_limits_ = 20.0 * VectorXd::Ones(plant_.num_actuators());
     supervisor_ = std::make_unique<InputSupervisor>(
-        plant_, "DEFAULT_CONTROL_CHANNEL", 10.0, 0.01, min_consecutive_failures,
-        20.0);
+        plant_, "DEFAULT_CONTROL_CHANNEL", 10.0, 0.01, input_limits_,
+        min_consecutive_failures);
     context_ = supervisor_->CreateDefaultContext();
     status_output_ = std::make_unique<dairlib::lcmt_input_supervisor_status>();
     cassie_out_ = std::make_unique<dairlib::lcmt_cassie_out>();
@@ -41,6 +42,7 @@ class InputSupervisorTest : public ::testing::Test {
 
   int state_input_port_;
   drake::multibody::MultibodyPlant<double> plant_;
+  Eigen::VectorXd input_limits_;
   const int min_consecutive_failures = 5;
   std::unique_ptr<InputSupervisor> supervisor_;
   std::unique_ptr<dairlib::lcmt_input_supervisor_status> status_output_;

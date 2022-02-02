@@ -89,14 +89,14 @@ while True:
           break
 
       if not job_exist_current:
-        first_time_setting_to_inactive = (old_line[1] == "inactive")
+        first_time_setting_to_inactive = (old_line[1] != "inactive")
+        old_line[1] = "inactive"  # Update status
 
         if first_time_setting_to_inactive:
           # Re-submit the job if desired
           if old_line[2].split("/")[-1] in nonstop_sbatch_script:
+            print("resubmitting %s" % old_line[2])
             RunCommand("sbatch " + old_line[2], True)
-        else:
-          old_line[1] = "inactive"  # Update status
 
     merged_output = parsed_output_history
 

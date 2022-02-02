@@ -62,7 +62,7 @@ else:
 
 for i in range(len(directory_list)):
     directory = directory_list[i]
-    print("%d/%d" % (i, len(directory_list)), end='')
+    print("%d/%d " % (i, len(directory_list)), end='')
     # Checks for the director_list
     if len(directory_list) > 1 and not save_figure:
         raise ValueError("save_figure has to be true. Otherwise this script won't go through the list")

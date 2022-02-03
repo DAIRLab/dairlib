@@ -4,11 +4,11 @@ import os
 import pybullet as p
 
 cube_urdf_path = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/urdf/cube.urdf')
-plane_urdf_path =  os.path.join(os.getcwd(), 'examples/contact_parameter_learning/urdf/plane.urdf')
+plane_urdf_path = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/urdf/plane.urdf')
 
-default_bullet_contact_params = {"stiffness" : 6000, 
-                                 "damping" : 500.0, 
-                                 "mu_tangent" : 0.36}
+default_bullet_contact_params = {"stiffness": 6000,
+                                 "damping": 500.0,
+                                 "mu_tangent": 0.36}
 
 
 class BulletCubeSim(CubeSim):
@@ -36,7 +36,6 @@ class BulletCubeSim(CubeSim):
         p.setTimeStep(CUBE_DATA_DT / self.substeps, physicsClientId=self.client_id)
         
     def set_initial_condition(self, state):
-        
         initial_state = self.reexpress_state_local_to_global_omega(state)
 
         q = initial_state[CUBE_DATA_QUATERNION_SLICE]

@@ -5,9 +5,7 @@ import os
 from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 import pickle
-from pyquaternion import Quaternion
 import pybullet as p
-# import quaternionic
 from math import pi
 
 CUBE_DATA_DT = 1.0/148.0
@@ -60,6 +58,7 @@ class CubeSim(ABC):
         rot = quat_to_rotation(new_state[CUBE_DATA_QUATERNION_SLICE])
         new_state[CUBE_DATA_OMEGA_SLICE] = rot.apply(new_state[CUBE_DATA_OMEGA_SLICE], inverse=True)
         return new_state
+
 
 class FastLossWeights():
     def __init__(self, debug=False,
@@ -211,13 +210,16 @@ def fit_initial_condition(data_traj):
     data_traj[idx_pre, CUBE_DATA_OMEGA_SLICE] = omega
     return data_traj[idx_pre:,:]
 
+
 def get_window_around_contact_event(data_traj):
     # return whole trajectory for now
     start_idx = get_index_before_contact(data_traj)
     return data_traj[start_idx:]
 
+
 def quat_to_rotation(q):
     return R.from_quat([q[1], q[2], q[3], q[0]])
+
 
 def calc_lowest_corner_pos(state):
     state = state.ravel()

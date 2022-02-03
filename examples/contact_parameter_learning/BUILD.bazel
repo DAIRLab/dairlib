@@ -96,6 +96,14 @@ py_library(
 )
 
 py_library(
+    name = "bullet_cassie_sim_py",
+    srcs = ["bullet_cassie_sim.py"],
+    deps = [
+        "//bindings/pydairlib"
+    ],
+)
+
+py_library(
     name = "plotting_utils",
     srcs = ["plotting_utils.py"],
 )

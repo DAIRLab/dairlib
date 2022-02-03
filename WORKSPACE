@@ -67,6 +67,11 @@ load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repo
 
 signal_scope_repository(name = "signal_scope")
 
+load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
+
+pydrake_repository(name = "pydrake_pegged")
+
+
 # Prebuilt ROS workspace
 new_local_repository(
     name = "ros",

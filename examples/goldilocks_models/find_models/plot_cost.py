@@ -31,11 +31,23 @@ robot_option = 1  # 0 is five-link robot. 1 is cassie_fixed_spring
 # if len(sys.argv) >= 4:
 #     robot_option = int(sys.argv[3])
 
+### Some path settings
+base = '../dairlib_data/goldilocks_models/find_models/'
 
 directory_list = []
-directory_list.append('../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/')
-# Add more optimization directories below this line.
-
+## Automatically add folders in `base` directory if on cluster
+if "/scratch/yminchen" in os.getcwd():
+    all_subfolders = [os.path.join(base, o) for o in os.listdir(base) if os.path.isdir(os.path.join(base, o))]
+    for subfolder in all_subfolders:
+        data_folder = '%srobot_%d/' % (subfolder, robot_option)
+        if os.path.exists(data_folder):
+            directory_list.append(data_folder)
+else:
+    directory_list.append('%srobot_%d/' % (base, robot_option))
+## Manually add more folders here
+# directory_list.append('')
+## Print
+[print(d) for d in directory_list]
 
 ### cost setting
 # file_name = 'c.csv'

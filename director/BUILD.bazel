@@ -18,14 +18,3 @@ drake_runfiles_binary(
     name = "drake-director",
     target = ":drake_director_py",
 )
-
-py_test(
-    name ="drake_director_test",
-    srcs = ["test/drake_director_test.py"],
-    deps = [
-        "//lcmtypes:lcmtypes_robot_py",
-        "@drake//tools:drake_visualizer_py",
-        "@pydrake_pegged",
-    ],
-    env={"DISPLAY": ":1"},
-)

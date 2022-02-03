@@ -62,7 +62,6 @@ zero_ending_pelvis_angular_vel=false
 
 # Other parameters
 final_iter=300
-folder_name=
 
 ### Some setup
 total_cores_needed=$((n_sl*n_gi*n_du*n_tr*n_ph*n_sm))
@@ -70,6 +69,13 @@ if [ "$SLURM_CPUS_PER_TASK" -gt "$((total_cores_needed + 1))" ];
 then printf "Allocated too many cores (%s). This job only need %s.\n" $SLURM_CPUS_PER_TASK $total_cores_needed;
 fi
 
+# folder name (Create data folder's name automatically from this bash script's name)
+if [[ -n "$SLURM_JOB_ID" ]]; then
+  folder_name=`squeue -h -j $SLURM_JOB_ID -o %o`
+  folder_name=${folder_name%.bash}  # Get rid of suffix
+  folder_name=${folder_name#/mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/model_optimization_on_cluster2_}  # Get rid of prefix
+  folder_name=${folder_name#/mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/}  # Get rid of prefix
+fi
 echo folder_name = $folder_name
 
 directory=../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/

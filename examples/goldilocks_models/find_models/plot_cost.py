@@ -32,20 +32,20 @@ robot_option = 1  # 0 is five-link robot. 1 is cassie_fixed_spring
 #     robot_option = int(sys.argv[3])
 
 ### Some path settings
-base = '../dairlib_data/goldilocks_models/find_models/'
+base = '../dairlib_data/goldilocks_models/find_models'
 
 directory_list = []
 ## Automatically add folders in `base` directory if on cluster
 if "/scratch/yminchen" in os.getcwd():
     all_subfolders = [os.path.join(base, o) for o in os.listdir(base) if os.path.isdir(os.path.join(base, o))]
     for subfolder in all_subfolders:
-        data_folder = '%srobot_%d/' % (subfolder, robot_option)
+        data_folder = '%s/robot_%d/' % (subfolder, robot_option)
         if os.path.exists(data_folder):
             directory_list.append(data_folder)
 else:
-    directory_list.append('%srobot_%d/' % (base, robot_option))
-## Manually add more folders here
-# directory_list.append('')
+    directory_list.append('%s/robot_%d/' % (base, robot_option))
+## Manually add more folders here (note that the path needs to end with "/")
+# directory_list.append('/')
 ## Print
 [print(d) for d in directory_list]
 

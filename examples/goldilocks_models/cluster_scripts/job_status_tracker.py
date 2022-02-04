@@ -44,7 +44,7 @@ while True:
   '''
   output = GetCommandOutput("squeue -u yminchen -o \"%i, %t, %o\"", True)
   parsed_output = output.split("\n")  # split by newline
-  parsed_output = [e for e in parsed_output[1:] if len(e) > 0]  # ignore the first line and get rid of empty element
+  parsed_output = [e for e in parsed_output[1:] if len(e) > 0]  # ignore the first line and get rid of empty line
   parsed_output = [e.split(", ") for e in parsed_output]  # split again by ", "
 
   # Remove plotting jobs
@@ -54,55 +54,55 @@ while True:
   if os.path.exists(status_file_path):
     # Merge the current status with the old status
     f = open(status_file_path, "r")
-    text = f.read()
+    history_output = f.read()
     f.close()
-    parsed_output_history = text.split("\n")  # split by newline
-    parsed_output_history = [e for e in parsed_output_history[1:] if len(e) > 0]  # get rid of empty element
-    parsed_output_history = [e.split(", ") for e in parsed_output_history]  # split again by COMMA
+    parsed_history_output = history_output.split("\n")  # split by newline
+    parsed_history_output = [e for e in parsed_history_output[1:] if len(e) > 0]  # ignore the first line and get rid of empty line
+    parsed_history_output = [e.split(", ") for e in parsed_history_output]  # split again by COMMA
 
     # Add new job to file
     for line in parsed_output:
-      current_job_id = line[0]
-
-      job_exist_in_file = False
-      for old_line in parsed_output_history:
-        if current_job_id == old_line[0]:
-          job_exist_in_file = True
-          break
-
+      job_exist_in_file = line[0] in list(zip(*parsed_history_output))[0]  # check if the new job id exists in the file
       if not job_exist_in_file:
-        parsed_output_history.append(line)
+        parsed_history_output.append(line)
 
     # Update old job status
-    for old_line in parsed_output_history:
+    for old_line in parsed_history_output:
       job_id = old_line[0]
 
-      job_exist_current = False
-      for line in parsed_output:
-        if job_id == line[0]:
-          job_exist_current = True
-          old_line[1] = line[1]  # Update status
-          break
+      transpose_parsed_output = [list(x) for x in zip(*parsed_output)]
+      job_currently_exists = job_id in transpose_parsed_output[0]
+      if job_currently_exists:
+        line_idx = transpose_parsed_output[0].index(job_id)
+        old_line[1] = parsed_output[line_idx][1]  # Update status
 
-      if not job_exist_current:
+      else:
         first_time_setting_to_inactive = (old_line[1] != "inactive")
+        job_was_previously_pending = (old_line[1] == "PD")
+        job_state = GetCommandOutput("seff %s | grep State:" % job_id, True)
+        job_timed_out = "TIMEOUT" in job_state
+        job_cancelled = "CANCELLED" in job_state
+        intend_to_resubmit = old_line[2].split("/")[-1] in nonstop_sbatch_script
+
+        # If a previously-pending job was canceled, then remove it from the history (we don't want this info in the file)
+        if job_was_previously_pending and job_cancelled:
+          old_line.clear()
+          continue
+
+        # Otherwise, set the job status to inactive, and resubmit a new one if desired.
         old_line[1] = "inactive"  # Update status
+        if first_time_setting_to_inactive and job_timed_out and intend_to_resubmit:
+          print("resubmitting %s" % old_line[2])
+          RunCommand("sbatch " + old_line[2], True)
 
-        if first_time_setting_to_inactive:
-          job_timed_out = "TIMEOUT" in GetCommandOutput("seff %s | grep State:" % job_id, True)
-          intend_to_resubmit = old_line[2].split("/")[-1] in nonstop_sbatch_script
-          # Re-submit the job if desired
-          if intend_to_resubmit and job_timed_out:
-            print("resubmitting %s" % old_line[2])
-            RunCommand("sbatch " + old_line[2], True)
-
-    merged_output = parsed_output_history
+    merged_output = parsed_history_output
 
   else:
     merged_output = parsed_output
 
   # Clean up data -- remove leading white spaces
   merged_output = [[e.lstrip() for e in line] for line in merged_output]
+  merged_output = [e for e in merged_output if len(e) > 0]  # get rid of empty line
   # merged_output = [[e.replace("Command=", "") for e in line] for line in merged_output]
 
   # Sort the list

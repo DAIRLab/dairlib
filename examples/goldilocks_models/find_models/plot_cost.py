@@ -46,7 +46,8 @@ else:
     directory_list.append('%s/robot_%d/' % (base, robot_option))
 ## Manually add more folders here (note that the path needs to end with "/")
 # directory_list.append('/')
-## Print
+## Sort and print
+directory_list.sort()
 [print(d) for d in directory_list]
 
 ### cost setting

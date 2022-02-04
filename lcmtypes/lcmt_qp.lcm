@@ -8,8 +8,8 @@ struct lcmt_qp
   double Q[n_x][n_x];
   double w[n_x];
   double A_ineq[n_ineq][n_x];
-  double ineq_lb[n_eq];
-  double ineq_ub[n_eq];
+  double ineq_lb[n_ineq];
+  double ineq_ub[n_ineq];
   double A_eq[n_eq][n_x];
   double b_eq[n_eq];
   double x_lb[n_x];

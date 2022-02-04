@@ -17,6 +17,13 @@ py_binary(
     deps = ["@lcm//:lcm-python"],
 )
 
+py_binary(
+    name = "qp_test",
+    srcs = ["qp_test.py"],
+    deps = ["@lcm//:lcm-python",
+            "//lcmtypes:lcmtypes_robot_py"],
+)
+
 py_library(
     name = "osc_debug_py",
     srcs = ["osc_debug.py"],

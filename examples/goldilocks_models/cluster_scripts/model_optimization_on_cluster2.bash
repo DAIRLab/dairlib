@@ -33,13 +33,10 @@ printf "\n\n====================================================================
 echo ====== Start running script at `date` =======
 printf "======================================================================\n\n\n"
 
-printf "Make sure that cpus-per-task is less than total number sample per iter\n\n"
-
 ###########model optimization setting##########
 # Set robot id and model id
 robot=1
 model=16 #2, 4
-echo robot_option = $robot, rom_option = $model
 
 # Set sample size
 n_sl=1
@@ -76,6 +73,9 @@ if [[ -n "$SLURM_JOB_ID" ]]; then
   folder_name=${folder_name#/mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/model_optimization_on_cluster2_}  # Get rid of prefix
   folder_name=${folder_name#/mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/}  # Get rid of prefix
 fi
+
+# Prints
+echo robot_option = $robot, rom_option = $model
 echo folder_name = $folder_name
 
 directory=../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/

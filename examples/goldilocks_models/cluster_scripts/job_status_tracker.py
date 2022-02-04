@@ -22,6 +22,22 @@ def GetCommandOutput(cmd, use_shell=False):
   output_string = codecs.getdecoder("unicode_escape")(output_bytes)[0]
   return output_string
 
+# It happened that I accidentally ran two identical jobs at the same time, so I wrote a function to check any duplication
+def MakeSureThereIsNoDuplicatedJobs(parsed_output):
+  output_with_only_running_jobs = [line for line in parsed_output if line[1] == "R"]
+  output_with_only_running_jobs.sort()
+
+  script_names = [line[2] for line in output_with_only_running_jobs]
+
+  cancelled_list = set()
+  for name in script_names:
+    if name not in cancelled_list:
+      index_of_occurrences = [i for i in range(len(script_names)) if script_names[i] == name]
+      for i in index_of_occurrences[1:]:
+        print("cancelling a job with id=%s due to duplication" % output_with_only_running_jobs[i][0])
+        RunCommand("scancel " + output_with_only_running_jobs[i][0], True)
+        cancelled_list.add(name)
+
 
 # Parameters
 status_file_path = "../job_status.txt"
@@ -49,6 +65,9 @@ while True:
 
   # Remove plotting jobs
   parsed_output = [e for e in parsed_output if "python3" not in e[2]]
+
+  # Remove job duplications
+  MakeSureThereIsNoDuplicatedJobs(parsed_output)
 
   merged_output = []
   if os.path.exists(status_file_path):

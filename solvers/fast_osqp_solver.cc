@@ -9,6 +9,8 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
 
+#include "dairlib/lcmt_qp.hpp"
+#include <lcm/lcm-cpp.hpp>
 
 using drake::math::SparseMatrixToTriplets;
 using drake::solvers::Binding;
@@ -370,6 +372,32 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   SetFastOsqpSolverSettings(merged_options, osqp_settings_);
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
+
+  lcmt_qp msg;
+  msg.n_x = prog.num_vars();
+
+  Eigen::MatrixXd Q(P_sparse);
+  for (int i = 0; i < prog.num_vars(); i++) {
+    msg.Q.push_back(std::vector<double>(Q.row(i).data(),
+                                        Q.row(i).data() + prog.num_vars()));
+  }
+  msg.w = q;
+
+  Eigen::MatrixXd A(A_sparse);
+  msg.n_ineq = A.rows();
+  for (int i = 0; i < A.rows(); i++) {
+    msg.A_ineq.push_back(std::vector<double>(
+        A.row(i).data(), A.row(i).data() + prog.num_vars()));
+  }
+  msg.ineq_lb = l;
+  msg.ineq_ub = u;
+  msg.x_lb = std::vector<double>(prog.num_vars(), -std::numeric_limits<double>::infinity());
+  msg.x_ub = std::vector<double>(prog.num_vars(), std::numeric_limits<double>::infinity());
+
+  msg.n_eq = 0;
+  lcm::LCM lcm;
+  lcm.publish("QP_LOG", &msg);
+
 
   // Solve problem.
   if (!solution_result) {

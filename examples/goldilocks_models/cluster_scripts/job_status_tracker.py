@@ -23,8 +23,8 @@ def GetCommandOutput(cmd, use_shell=False):
   return output_string
 
 # It happened that I accidentally ran two identical jobs at the same time, so I wrote a function to check any duplication
-def MakeSureThereIsNoDuplicatedJobs(parsed_output):
-  output_with_only_running_jobs = [line for line in parsed_output if line[1] == "R"]
+def MakeSureThereIsNoDuplicatedJobs(current_output):
+  output_with_only_running_jobs = [line for line in current_output if line[1] == "R"]
   output_with_only_running_jobs.sort()
 
   script_names = [line[2] for line in output_with_only_running_jobs]
@@ -40,6 +40,12 @@ def MakeSureThereIsNoDuplicatedJobs(parsed_output):
         ids_of_cancelled_job.append(output_with_only_running_jobs[i][0])
         names_of_cancelled_job.add(name)
   return ids_of_cancelled_job
+
+def ParseJobTable(txt):
+  parsed = txt.split("\n")  # split by newline
+  parsed = [e for e in parsed[1:] if len(e) > 0]  # ignore the first line and get rid of empty line
+  parsed = [e.split(", ") for e in parsed]  # split again by ", "
+  return parsed
 
 
 # Parameters
@@ -58,43 +64,37 @@ while True:
   150038, R, /mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/model_optimization_on_cluster2_20220201_rom16_much_smaller_range__only_walking_forward__more_forward.bash
   150090, R, /mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/model_optimization_on_cluster2_20220202_rom17_much_much_smaller_range__only_walking_forward__more_forward.bash
   '''
-  output = GetCommandOutput("squeue -u yminchen -o \"%i, %t, %o\"", True)
-  parsed_output = output.split("\n")  # split by newline
-  parsed_output = [e for e in parsed_output[1:] if len(e) > 0]  # ignore the first line and get rid of empty line
-  parsed_output = [e.split(", ") for e in parsed_output]  # split again by ", "
+  current_output = ParseJobTable(GetCommandOutput("squeue -u yminchen -o \"%i, %t, %o\"", True))
 
   # Remove plotting or debugging jobs from the list
-  parsed_output = [e for e in parsed_output if "/mnt/beegfs/scratch/yminchen" in e[2]]
+  current_output = [e for e in current_output if "/mnt/beegfs/scratch/yminchen" in e[2]]
 
   # Cancel duplicated jobs
-  ids_of_cancelled_job = MakeSureThereIsNoDuplicatedJobs(parsed_output)
-  parsed_output = [e for e in parsed_output if e[0] not in ids_of_cancelled_job]
+  ids_of_cancelled_job = MakeSureThereIsNoDuplicatedJobs(current_output)
+  current_output = [e for e in current_output if e[0] not in ids_of_cancelled_job]
 
   merged_output = []
   if os.path.exists(status_file_path):
     # Merge the current status with the old status
     f = open(status_file_path, "r")
-    history_output = f.read()
+    history_output = ParseJobTable(f.read())
     f.close()
-    parsed_history_output = history_output.split("\n")  # split by newline
-    parsed_history_output = [e for e in parsed_history_output[1:] if len(e) > 0]  # ignore the first line and get rid of empty line
-    parsed_history_output = [e.split(", ") for e in parsed_history_output]  # split again by COMMA
 
-    # Add new job to file
-    for line in parsed_output:
-      job_exist_in_file = line[0] in list(zip(*parsed_history_output))[0]  # check if the new job id exists in the file
-      if not job_exist_in_file:
-        parsed_history_output.append(line)
+    # Add new job to history
+    for line in current_output:
+      job_exist_in_history = line[0] in list(zip(*history_output))[0]  # check if the new job id exists in the history
+      if not job_exist_in_history:
+        history_output.append(line)
 
     # Update old job status
-    for old_line in parsed_history_output:
+    for old_line in history_output:
       job_id = old_line[0]
 
-      transpose_parsed_output = [list(x) for x in zip(*parsed_output)]
-      job_currently_exists = job_id in transpose_parsed_output[0]
+      current_output = [list(x) for x in zip(*current_output)]
+      job_currently_exists = job_id in current_output[0]
       if job_currently_exists:
-        line_idx = transpose_parsed_output[0].index(job_id)
-        old_line[1] = parsed_output[line_idx][1]  # Update status
+        line_idx = current_output[0].index(job_id)
+        old_line[1] = current_output[line_idx][1]  # Update status
 
       else:
         first_time_setting_to_inactive = (old_line[1] != "inactive")
@@ -104,7 +104,7 @@ while True:
         job_cancelled = "CANCELLED" in job_state
         intend_to_resubmit = old_line[2].split("/")[-1] in nonstop_sbatch_script
 
-        # If a previously-pending job was canceled, then remove it from the history (we don't want this info in the file)
+        # If a previously-pending job was canceled, then remove it from the history (we don't want this info in the history)
         if job_was_previously_pending and job_cancelled:
           old_line.clear()
           continue
@@ -115,10 +115,10 @@ while True:
           print("resubmitting %s" % old_line[2])
           RunCommand("sbatch " + old_line[2], True)
 
-    merged_output = parsed_history_output
+    merged_output = history_output
 
   else:
-    merged_output = parsed_output
+    merged_output = current_output
 
   # Clean up data -- remove leading white spaces
   merged_output = [[e.lstrip() for e in line] for line in merged_output]

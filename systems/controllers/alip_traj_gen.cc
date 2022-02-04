@@ -41,8 +41,7 @@ ALIPTrajGenerator::ALIPTrajGenerator(
     const vector<double>& unordered_state_durations,
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
-    contact_points_in_each_state,
-    bool use_CoM)
+    contact_points_in_each_state)
     : plant_(plant),
       context_(context),
       desired_com_height_(desired_com_height),
@@ -50,20 +49,14 @@ ALIPTrajGenerator::ALIPTrajGenerator(
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
       world_(plant_.world_frame()),
-      use_com_(use_CoM),
       pelvis_frame_(plant.GetFrameByName("pelvis")),
       toe_left_frame_(plant.GetFrameByName("toe_left")),
       toe_right_frame_(plant.GetFrameByName("toe_right")) {
-  if (use_CoM) {
-    this->set_name("ALIP_traj");
-  } else {
-    this->set_name("pelvis_traj");
-  }
 
-  // Checking vector dimension
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
-  DRAKE_DEMAND(unordered_fsm_states.size() ==
-      contact_points_in_each_state.size());
+  DRAKE_DEMAND(unordered_fsm_states.size() == contact_points_in_each_state.size());
+
+  this->set_name("ALIP_traj");
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(

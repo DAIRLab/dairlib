@@ -265,33 +265,16 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({left_toe_mid});
     contact_points_in_each_state.push_back({right_toe_mid});
   }
-  auto lipm_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
+  auto alip_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
       contact_points_in_each_state);
   builder.Connect(fsm->get_output_port(0),
-                  lipm_traj_generator->get_input_port_fsm());
+                  alip_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
-                  lipm_traj_generator->get_input_port_touchdown_time());
+                  alip_traj_generator->get_input_port_touchdown_time());
   builder.Connect(simulator_drift->get_output_port(0),
-                  lipm_traj_generator->get_input_port_state());
-
-  // We can use the same desired_com_height for pelvis_traj_generator as we use
-  // for lipm_traj_generator, even though one is pelvis and the other is COM.
-  // This is because we don't use the COM desired height in
-  // pelvis_traj_generator. Only the initial COM height is used in the x and y
-  // direction.
-  auto pelvis_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), desired_com_height,
-      unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state, false);
-
-  builder.Connect(fsm->get_output_port(0),
-                  pelvis_traj_generator->get_input_port_fsm());
-  builder.Connect(touchdown_event_time->get_output_port_event_time(),
-                  pelvis_traj_generator->get_input_port_touchdown_time());
-  builder.Connect(simulator_drift->get_output_port(0),
-                  pelvis_traj_generator->get_input_port_state());
+                  alip_traj_generator->get_input_port_state());
 
   // Create swing leg trajectory generator
   // Since the ground is soft in the simulation, we raise the desired final
@@ -321,7 +304,7 @@ int DoMain(int argc, char* argv[]) {
                   swing_ft_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_state());
-  builder.Connect(lipm_traj_generator->get_output_port_alip_state(),
+  builder.Connect(alip_traj_generator->get_output_port_alip_state(),
                   swing_ft_traj_generator->get_input_port_alip_state());
   builder.Connect(high_level_command->get_xy_output_port(),
                   swing_ft_traj_generator->get_input_port_vdes());
@@ -498,21 +481,12 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&swing_ft_traj_global);
   }
 
-  // Center of mass tracking
-  bool use_pelvis_for_lipm_tracking = false;
-
-  TransTaskSpaceTrackingData pelvis_traj("lipm_traj", gains.K_p_com,
-                                         gains.K_d_com, gains.W_com,
-                                         plant_w_spr, plant_w_spr);
-  pelvis_traj.AddPointToTrack("pelvis");
-  ComTrackingData center_of_mass_traj("lipm_traj", gains.K_p_com, gains.K_d_com,
+  ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);
+  // FiniteStatesToTrack cannot be empty
   center_of_mass_traj.AddFiniteStateToTrack(-1);
-  if (use_pelvis_for_lipm_tracking) {
-    osc->AddTrackingData(&pelvis_traj);
-  } else {
-    osc->AddTrackingData(&center_of_mass_traj);
-  }
+  osc->AddTrackingData(&center_of_mass_traj);
+
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
@@ -562,14 +536,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  if (use_pelvis_for_lipm_tracking) {
-    builder.Connect(
-        pelvis_traj_generator->get_output_port_com(),
-        osc->get_tracking_data_input_port("lipm_traj"));
-  } else {
-    builder.Connect(lipm_traj_generator->get_output_port_com(),
-                    osc->get_tracking_data_input_port("lipm_traj"));
-  }
+  builder.Connect(alip_traj_generator->get_output_port_com(),
+                    osc->get_tracking_data_input_port("alip_com_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),

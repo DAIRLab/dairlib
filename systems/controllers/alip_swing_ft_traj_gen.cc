@@ -58,14 +58,16 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
       max_com_to_footstep_dist_(max_com_to_footstep_dist),
       footstep_offset_(footstep_offset),
       center_line_offset_(center_line_offset),
-      double_support_duration_(double_support_duration),
-      wrt_com_in_local_frame_(wrt_com_in_local_frame),
-      left_right_foot_(left_right_foot) {
+      double_support_duration_(double_support_duration) {
   this->set_name("swing_ft_traj");
 
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
   DRAKE_DEMAND(left_right_support_durations.size() == 2);
   DRAKE_DEMAND(left_right_foot.size() == 2);
+  if (!wrt_com_in_local_frame) {
+    std::cerr << "ALIP swing foot trajectory only supports relative to CoM\n";
+  }
+  DRAKE_DEMAND(wrt_com_in_local_frame);
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -148,13 +150,11 @@ EventStatus AlipSwingFootTrajGenerator::DiscreteVariableUpdate(
     auto swing_foot = swing_foot_map_.at(fsm_state);
     plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_at_liftoff);
-    if (wrt_com_in_local_frame_) {
-      swing_foot_pos_at_liftoff =
-          multibody::ReExpressWorldVector3InBodyYawFrame(
-              plant_, *context_, "pelvis",
-              swing_foot_pos_at_liftoff -
-              plant_.CalcCenterOfMassPositionInWorld(*context_));
-    }
+
+    swing_foot_pos_at_liftoff = multibody::ReExpressWorldVector3InBodyYawFrame(
+        plant_, *context_, "pelvis",
+        swing_foot_pos_at_liftoff -
+        plant_.CalcCenterOfMassPositionInWorld(*context_));
   }
 
   return EventStatus::Succeeded();
@@ -205,85 +205,41 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   double T = duration_map_.at(fsm_state) + double_support_duration_;
   double L_x_n = m_ * H * footstep_offset_ *
       (omega * sinh(omega * T) / (1 + cosh(omega * T)));
-  Vector2d L_i;
 
-  if (wrt_com_in_local_frame_) {
-    L_i = multibody::ReExpressWorldVector2InBodyYawFrame<double>(
-        plant_, *context_,"pelvis", alip_pred.tail<2>());
-    Vector2d L_f = is_right_support ?
-        Vector2d(L_x_offset + L_x_n, L_y_des) :
-        Vector2d(L_x_offset - L_x_n, L_y_des);
-    double p_x_ft_to_com = ( L_f(1) - cosh(omega*T) * L_i(1) ) /
-                           (m_ * H * omega * sinh(omega*T));
-    double p_y_ft_to_com = -( L_f(0) - cosh(omega*T) * L_i(0) ) /
-                           (m_ * H * omega * sinh(omega*T));
-    *x_fs = Vector2d(-p_x_ft_to_com, -p_y_ft_to_com);
-  } else {
-    L_i = alip_pred.tail<2>();
-    Vector2d L_f = is_right_support ?
-                   Vector2d(L_x_offset + L_x_n, L_y_des) :
-                   Vector2d(-L_x_offset - L_x_n, L_y_des);
-    double p_x_ft_to_com = ( L_f(1) - cosh(omega*T) * L_i(1) ) /
-        (m_ * H * omega * sinh(omega*T));
-    double p_y_ft_to_com = - ( L_f(0) - cosh(omega*T) * L_i(0) ) /
-        (m_ * H * omega * sinh(omega*T));
-    *x_fs = Vector2d(p_x_ft_to_com, p_y_ft_to_com);
-  }
+
+  Vector2d L_i = multibody::ReExpressWorldVector2InBodyYawFrame<double>(
+      plant_, *context_,"pelvis", alip_pred.tail<2>());
+  Vector2d L_f = is_right_support ?
+      Vector2d(L_x_offset + L_x_n, L_y_des) :
+      Vector2d(L_x_offset - L_x_n, L_y_des);
+  double p_x_ft_to_com = ( L_f(1) - cosh(omega*T) * L_i(1) ) /
+                         (m_ * H * omega * sinh(omega*T));
+  double p_y_ft_to_com = -( L_f(0) - cosh(omega*T) * L_i(0) ) /
+                         (m_ * H * omega * sinh(omega*T));
+  *x_fs = Vector2d(-p_x_ft_to_com, -p_y_ft_to_com);
 
   /// Imposing guards
-  if (wrt_com_in_local_frame_) {
-
-    // Impose half-plane guard
-    Vector2d stance_foot_wrt_com_in_local_frame =
-        multibody::ReExpressWorldVector2InBodyYawFrame<double>(
-            plant_, *context_,"pelvis",  (stance_foot_pos - CoM_curr).head<2>());
-    if (is_right_support) {
-      double line_pos =
-          std::max(center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
-      (*x_fs)(1) = std::max(line_pos, (*x_fs)(1));
-    } else {
-      double line_pos =
-          std::min(-center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
-      (*x_fs)(1) = std::min(line_pos, (*x_fs)(1));
-    }
-
-    // Cap by the step length
-    double dist = x_fs->norm();
-    if (dist > max_com_to_footstep_dist_) {
-      (*x_fs) = (*x_fs) * max_com_to_footstep_dist_ / dist;
-    }
+  // Impose half-plane guard
+  Vector2d stance_foot_wrt_com_in_local_frame =
+      multibody::ReExpressWorldVector2InBodyYawFrame<double>(
+          plant_, *context_,"pelvis",  (stance_foot_pos - CoM_curr).head<2>());
+  if (is_right_support) {
+    double line_pos =
+        std::max(center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
+    (*x_fs)(1) = std::max(line_pos, (*x_fs)(1));
   } else {
-    // Shift footstep laterally away from sagittal plane
-    // so that the foot placement position at steady state is right below the
-    // hip joint
-    Vector2d shift_foothold_dir;
-    if (is_right_support) {
-      shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 1 / 2),
-          sin(approx_pelvis_yaw + M_PI * 1 / 2);
-    } else {
-      shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 3 / 2),
-          sin(approx_pelvis_yaw + M_PI * 3 / 2);
-    }
-    *x_fs += shift_foothold_dir * footstep_offset_;
-
-    *x_fs = ImposeHalfplaneGuard(*x_fs, !is_right_support, approx_pelvis_yaw,
-                                 alip_pred.head<2>(), stance_foot_pos.head<2>(),
-                                 center_line_offset_);
-
-    // Cap by the step length
-    *x_fs = ImposeStepLengthGuard(*x_fs, alip_pred.head<2>(),
-                                  max_com_to_footstep_dist_);
+    double line_pos =
+        std::min(-center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
+    (*x_fs)(1) = std::min(line_pos, (*x_fs)(1));
   }
 
-  /// Assignment for stance foot height
-  if (wrt_com_in_local_frame_) {
-    // stance foot height wrt COM
-    *stance_foot_height = stance_foot_pos(2) - CoM_curr(2);
-  } else {
-    // absolute stance foot height
-    *stance_foot_height = stance_foot_pos(2);
+  // Cap by the step length
+  double dist = x_fs->norm();
+  if (dist > max_com_to_footstep_dist_) {
+    (*x_fs) = (*x_fs) * max_com_to_footstep_dist_ / dist;
   }
-  last_timestamp_ = robot_output->get_timestamp();
+
+  *stance_foot_height = stance_foot_pos(2) - CoM_curr(2);
 }
 
 PiecewisePolynomial<double> AlipSwingFootTrajGenerator::CreateSplineForSwingFoot(
@@ -359,10 +315,6 @@ void AlipSwingFootTrajGenerator::CalcTrajs(
     // Read in current robot state
     const OutputVector<double>* robot_output =
         (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-
-    // Get current time
-    double timestamp = robot_output->get_timestamp();
-    auto current_time = static_cast<double>(timestamp);
 
     // Get the start time and the end time of the current stance phase
     double start_time_of_this_interval = liftoff_time(0);

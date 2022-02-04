@@ -49,14 +49,11 @@ nonstop_sbatch_script = [e.split("/")[-1] for e in nonstop_sbatch_script]  # Get
 while True:
   # Read current status
   '''
-  Example output of `squeue -u yminchen -o "%i %t"`
-  JOBID ST
-  148205 R
-  148209 R
-  148202 R
-  148196 PD
-  148008 R
-  148016 R
+  Example output of `squeue -u yminchen -o "%i, %t, %o"`
+  JOBID, ST, COMMAND
+  150102, PD, /mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/20220202_rom17_much_smaller_range__only_walking_forward__more_forward__lower_height.bash
+  150038, R, /mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/model_optimization_on_cluster2_20220201_rom16_much_smaller_range__only_walking_forward__more_forward.bash
+  150090, R, /mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/model_optimization_on_cluster2_20220202_rom17_much_much_smaller_range__only_walking_forward__more_forward.bash
   '''
   output = GetCommandOutput("squeue -u yminchen -o \"%i, %t, %o\"", True)
   parsed_output = output.split("\n")  # split by newline
@@ -122,7 +119,6 @@ while True:
   # Clean up data -- remove leading white spaces
   merged_output = [[e.lstrip() for e in line] for line in merged_output]
   merged_output = [e for e in merged_output if len(e) > 0]  # get rid of empty line
-  # merged_output = [[e.replace("Command=", "") for e in line] for line in merged_output]
 
   # Sort the list
   merged_output.sort()

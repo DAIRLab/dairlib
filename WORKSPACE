@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "5357d9aad2a9e34c8a2d283de7a93a6595c5293a"
+DRAKE_COMMIT = "eea358cebed239bd528a886ebef5a6c16365006e"
 
-DRAKE_CHECKSUM = "7fa094858de3bb7989cd86de7eb9e61e248c6a4bb862f891a6c8e419c2fc6745"
+DRAKE_CHECKSUM = "3e7ad19d4004578dbb0aa097225e3d1c02ee3632110534497c315fba104021b8"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 # DRAKE_CHECKSUM = "0" * 64
@@ -66,6 +66,11 @@ add_default_repositories()
 load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
 
 signal_scope_repository(name = "signal_scope")
+
+load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
+
+pydrake_repository(name = "pydrake_pegged")
+
 
 # Prebuilt ROS workspace
 new_local_repository(

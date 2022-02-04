@@ -29,14 +29,17 @@ def MakeSureThereIsNoDuplicatedJobs(parsed_output):
 
   script_names = [line[2] for line in output_with_only_running_jobs]
 
-  cancelled_list = set()
+  ids_of_cancelled_job = []
+  names_of_cancelled_job = set()
   for name in script_names:
-    if name not in cancelled_list:
+    if name not in names_of_cancelled_job:
       index_of_occurrences = [i for i in range(len(script_names)) if script_names[i] == name]
       for i in index_of_occurrences[1:]:
         print("cancelling a job with id=%s due to duplication" % output_with_only_running_jobs[i][0])
         RunCommand("scancel " + output_with_only_running_jobs[i][0], True)
-        cancelled_list.add(name)
+        ids_of_cancelled_job.append(output_with_only_running_jobs[i][0])
+        names_of_cancelled_job.add(name)
+  return ids_of_cancelled_job
 
 
 # Parameters
@@ -60,11 +63,12 @@ while True:
   parsed_output = [e for e in parsed_output[1:] if len(e) > 0]  # ignore the first line and get rid of empty line
   parsed_output = [e.split(", ") for e in parsed_output]  # split again by ", "
 
-  # Remove plotting jobs
-  parsed_output = [e for e in parsed_output if "python3" not in e[2]]
+  # Remove plotting or debugging jobs from the list
+  parsed_output = [e for e in parsed_output if "/mnt/beegfs/scratch/yminchen" in e[2]]
 
-  # Remove job duplications
-  MakeSureThereIsNoDuplicatedJobs(parsed_output)
+  # Cancel duplicated jobs
+  ids_of_cancelled_job = MakeSureThereIsNoDuplicatedJobs(parsed_output)
+  parsed_output = [e for e in parsed_output if e[0] not in ids_of_cancelled_job]
 
   merged_output = []
   if os.path.exists(status_file_path):

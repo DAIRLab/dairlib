@@ -377,9 +377,11 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   msg.n_x = prog.num_vars();
 
   Eigen::MatrixXd Q(P_sparse);
+
+  // Note: message is transposed, becaues Eigen defaults to column major
   for (int i = 0; i < prog.num_vars(); i++) {
-    msg.Q.push_back(std::vector<double>(Q.row(i).data(),
-                                        Q.row(i).data() + prog.num_vars()));
+    msg.Q.push_back(std::vector<double>(Q.col(i).data(),
+                                        Q.col(i).data() + prog.num_vars()));
   }
   msg.w = q;
 
@@ -408,6 +410,8 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
       solution_result = SolutionResult::kInvalidInput;
     }
   }
+
+  // std::cout << workspace_->info->run_time << std::endl;
 
   // Extract results.
   if (!solution_result) {

@@ -387,6 +387,8 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
 
 
   Eigen::MatrixXd A(A_sparse);
+
+  // std::cout << A.row(68) << std::endl;
   msg.n_ineq = A.rows();
   for (int i = 0; i < A.rows(); i++) {
     std::vector<double> row(A.cols());

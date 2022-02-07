@@ -8,7 +8,7 @@ cc_binary(
     srcs = ["test/c3_test.cc"],
     deps = [
         ":c3"
-    ]
+    ],
 )
 
 
@@ -34,6 +34,12 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
         "@gurobi//:gurobi_cxx",
+    ],
+    copts = [
+        "-fopenmp"
+    ],
+    linkopts = [
+        "-lgomp"
     ]
 )
 

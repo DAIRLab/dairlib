@@ -113,7 +113,9 @@ int DoMain(int argc, char* argv[]) {
     const std::vector<MatrixXd> Q = Qsetup;
     const std::vector<MatrixXd> R(N, Rinit );
     const std::vector<MatrixXd> G(N, Ginit );
-    const C3Options options;
+
+    C3Options options;
+    // options.num_threads = 5;
 
     C3MIQP opt(A, B, D, d, E, F, H, c, Q, R, G, options);
 

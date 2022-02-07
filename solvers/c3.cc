@@ -3,6 +3,7 @@
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 #include "drake/solvers/moby_lcp_solver.h"
+#include <omp.h>
 
 namespace dairlib {
 namespace solvers {
@@ -371,8 +372,14 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G, vector<VectorXd>& WZ) 
 	// TODO: replace for loop with parallelization
 
     vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_+m_+k_) );
+    int i;
+    if (options_.num_threads > 0) {
+        omp_set_dynamic(0);     // Explicitly disable dynamic teams
+        omp_set_num_threads(options_.num_threads); // Set number of threads
+    }
 
-	for (int i = 0; i < N_; i++) {
+    #pragma omp parallel for
+	for (i = 0; i < N_; i++) {
         deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i]);
 	}
 

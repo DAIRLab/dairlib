@@ -50,6 +50,7 @@ def solve_osqp(qp, settings):
 
     qp_result = m.solve()
     return {'iter': qp_result.info.iter,
+            'run_time': qp_result.info.run_time,
             'status': qp_result.info.status,
             'obj_val': qp_result.info.obj_val,
             'pri_res': qp_result.info.pri_res,
@@ -102,7 +103,7 @@ def main():
     axs[1].plot(run_times)
     axs[1].set_title('Solve times per QP')
     plt.show()
-    
+
     import pdb;pdb.set_trace()
 
 

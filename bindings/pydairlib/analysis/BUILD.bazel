@@ -24,6 +24,13 @@ py_binary(
             "//lcmtypes:lcmtypes_robot_py"],
 )
 
+py_binary(
+    name = "osqp_settings_sandbox",
+    srcs = ["osqp_settings_sandbox.py"],
+    deps = ["@lcm//:lcm-python",
+            "//lcmtypes:lcmtypes_robot_py"],
+)
+
 py_library(
     name = "osc_debug_py",
     srcs = ["osc_debug.py"],

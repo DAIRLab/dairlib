@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <memory>
@@ -88,8 +89,8 @@ using systems::trajectory_optimization::Dircon;
 using systems::trajectory_optimization::DirconMode;
 using systems::trajectory_optimization::KinematicConstraintType;
 
-void DoMain(double duration, int max_iter, string data_directory,
-            string init_file, double tol, bool to_store_data) {
+void DoMain(double duration, int max_iter, const string& data_directory,
+            const string& init_file, double tol, bool to_store_data) {
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -112,6 +113,56 @@ void DoMain(double duration, int max_iter, string data_directory,
   map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> velocities_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> actuators_map = multibody::makeNameToActuatorsMap(plant);
+
+  int base_qw_idx = positions_map.at("base_qw");
+  int base_qx_idx = positions_map.at("base_qx");
+  int base_qy_idx = positions_map.at("base_qy");
+  int base_qz_idx = positions_map.at("base_qz");
+  int base_x_idx = positions_map.at("base_x");
+  int base_y_idx = positions_map.at("base_y");
+  int base_z_idx = positions_map.at("base_z");
+  int hip_roll_left_idx = positions_map.at("hip_roll_left");
+  int hip_roll_right_idx = positions_map.at("hip_roll_right");
+  int hip_yaw_left_idx = positions_map.at("hip_yaw_left");
+  int hip_yaw_right_idx = positions_map.at("hip_yaw_right");
+  int hip_pitch_left_idx = positions_map.at("hip_pitch_left");
+  int hip_pitch_right_idx = positions_map.at("hip_pitch_right");
+  int knee_left_idx = positions_map.at("knee_left");
+  int knee_right_idx = positions_map.at("knee_right");
+  int ankle_joint_left_idx = positions_map.at("ankle_joint_left");
+  int ankle_joint_right_idx = positions_map.at("ankle_joint_right");
+  int toe_left_idx = positions_map.at("toe_left");
+  int toe_right_idx = positions_map.at("toe_right");
+
+  int base_wx_idx = velocities_map.at("base_wx");
+  int base_wy_idx = velocities_map.at("base_wy");
+  int base_wz_idx = velocities_map.at("base_wz");
+  int base_vx_idx = velocities_map.at("base_vx");
+  int base_vy_idx = velocities_map.at("base_vy");
+  int base_vz_idx = velocities_map.at("base_vz");
+  int hip_roll_leftdot_idx = velocities_map.at("hip_roll_leftdot");
+  int hip_roll_rightdot_idx = velocities_map.at("hip_roll_rightdot");
+  int hip_yaw_leftdot_idx = velocities_map.at("hip_yaw_leftdot");
+  int hip_yaw_rightdot_idx = velocities_map.at("hip_yaw_rightdot");
+  int hip_pitch_leftdot_idx = velocities_map.at("hip_pitch_leftdot");
+  int hip_pitch_rightdot_idx = velocities_map.at("hip_pitch_rightdot");
+  int knee_leftdot_idx = velocities_map.at("knee_leftdot");
+  int knee_rightdot_idx = velocities_map.at("knee_rightdot");
+  int ankle_joint_leftdot_idx = velocities_map.at("ankle_joint_leftdot");
+  int ankle_joint_rightdot_idx = velocities_map.at("ankle_joint_rightdot");
+  int toe_leftdot_idx = velocities_map.at("toe_leftdot");
+  int toe_rightdot_idx = velocities_map.at("toe_rightdot");
+
+  int hip_roll_left_motor_idx = actuators_map.at("hip_roll_left_motor");
+  int hip_roll_right_motor_idx = actuators_map.at("hip_roll_right_motor");
+  int hip_yaw_left_motor_idx = actuators_map.at("hip_yaw_left_motor");
+  int hip_yaw_right_motor_idx = actuators_map.at("hip_yaw_right_motor");
+  int hip_pitch_left_motor_idx = actuators_map.at("hip_pitch_left_motor");
+  int hip_pitch_right_motor_idx = actuators_map.at("hip_pitch_right_motor");
+  int knee_left_motor_idx = actuators_map.at("knee_left_motor");
+  int knee_right_motor_idx = actuators_map.at("knee_right_motor");
+  int toe_left_motor_idx = actuators_map.at("toe_left_motor");
+  int toe_right_motor_idx = actuators_map.at("toe_right_motor");
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
@@ -187,14 +238,27 @@ void DoMain(double duration, int max_iter, string data_directory,
     double s_dyn_2 = (FLAGS_scale_variable) ? 6.0 : 1.0;
     double s_dyn_3 = (FLAGS_scale_variable) ? 85.0 : 1.0;
     double_support.SetDynamicsScale(
-        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, 1.0 / 150.0);
-    double_support.SetDynamicsScale({15, 16}, 1.0 / 150.0 / 3.33 / s_dyn_1);
-    double_support.SetDynamicsScale({17, 18}, 1.0 / 150.0);
-    double_support.SetDynamicsScale({19, 20, 21, 22, 23, 24, 25, 26},
-                                    1.0 / 150.0 / s_dyn_1);
-    double_support.SetDynamicsScale({27, 28}, 1.0 / 150.0 / s_dyn_2);
-    double_support.SetDynamicsScale({29, 30, 31, 32, 33, 34}, 1.0 / 150.0 / 10);
-    double_support.SetDynamicsScale({35, 36}, 1.0 / 150.0 / 15.0 / s_dyn_3);
+        {base_qw_idx, base_qx_idx, base_qy_idx, base_qz_idx, base_x_idx,
+         base_y_idx, base_z_idx, hip_roll_left_idx, hip_roll_right_idx,
+         hip_yaw_left_idx, hip_yaw_right_idx, hip_pitch_left_idx,
+         hip_pitch_right_idx, knee_left_idx, knee_right_idx},
+        1.0 / 150.0);
+    double_support.SetDynamicsScale(
+        {ankle_joint_left_idx, ankle_joint_right_idx},
+        1.0 / 150.0 / 3.33 / s_dyn_1);
+    double_support.SetDynamicsScale({toe_left_idx, toe_right_idx}, 1.0 / 150.0);
+    double_support.SetDynamicsScale(
+        {base_wx_idx, base_wy_idx, base_wz_idx, base_vx_idx, base_vy_idx,
+         base_vz_idx, hip_roll_leftdot_idx, hip_roll_rightdot_idx},
+        1.0 / 150.0 / s_dyn_1);
+    double_support.SetDynamicsScale({hip_yaw_leftdot_idx, hip_yaw_rightdot_idx},
+                                    1.0 / 150.0 / s_dyn_2);
+    double_support.SetDynamicsScale(
+        {hip_pitch_leftdot_idx, hip_pitch_rightdot_idx, knee_leftdot_idx,
+         knee_rightdot_idx, ankle_joint_leftdot_idx, ankle_joint_rightdot_idx},
+        1.0 / 150.0 / 10);
+    double_support.SetDynamicsScale({toe_leftdot_idx, toe_rightdot_idx},
+                                    1.0 / 150.0 / 15.0 / s_dyn_3);
 
     // // Kinematic constraints
     double s_kin_vel = 500;
@@ -226,43 +290,44 @@ void DoMain(double duration, int max_iter, string data_directory,
   //                                   KinematicConstraintType::kAccelOnly);
 
   auto trajopt = Dircon<double>(&double_support);
+  auto& prog = trajopt.prog();
 
   if (FLAGS_ipopt) {
     // Ipopt settings adapted from CaSaDi and FROST
     auto id = drake::solvers::IpoptSolver::id();
-    trajopt.SetSolverOption(id, "tol", tol);
-    trajopt.SetSolverOption(id, "dual_inf_tol", tol);
-    trajopt.SetSolverOption(id, "constr_viol_tol", tol);
-    trajopt.SetSolverOption(id, "compl_inf_tol", tol);
-    trajopt.SetSolverOption(id, "max_iter", max_iter);
-    trajopt.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
-    trajopt.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
-    trajopt.SetSolverOption(id, "print_timing_statistics", "yes");
-    trajopt.SetSolverOption(id, "print_level", 5);
+    prog.SetSolverOption(id, "tol", tol);
+    prog.SetSolverOption(id, "dual_inf_tol", tol);
+    prog.SetSolverOption(id, "constr_viol_tol", tol);
+    prog.SetSolverOption(id, "compl_inf_tol", tol);
+    prog.SetSolverOption(id, "max_iter", max_iter);
+    prog.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
+    prog.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
+    prog.SetSolverOption(id, "print_timing_statistics", "yes");
+    prog.SetSolverOption(id, "print_level", 5);
 
     // Set to ignore overall tolerance/dual infeasibility, but terminate when
     // primal feasible and objective fails to increase over 5 iterations.
-    trajopt.SetSolverOption(id, "acceptable_compl_inf_tol", tol);
-    trajopt.SetSolverOption(id, "acceptable_constr_viol_tol", tol);
-    trajopt.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
-    trajopt.SetSolverOption(id, "acceptable_tol", 1e2);
-    trajopt.SetSolverOption(id, "acceptable_iter", 5);
+    prog.SetSolverOption(id, "acceptable_compl_inf_tol", tol);
+    prog.SetSolverOption(id, "acceptable_constr_viol_tol", tol);
+    prog.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
+    prog.SetSolverOption(id, "acceptable_tol", 1e2);
+    prog.SetSolverOption(id, "acceptable_iter", 5);
   } else {
     // Snopt settings
     auto id = drake::solvers::SnoptSolver::id();
-    // trajopt.SetSolverOption(id, "Print file", "../snopt.out");
-    trajopt.SetSolverOption(id, "Major iterations limit", max_iter);
-    trajopt.SetSolverOption(id, "Iterations limit", 100000);
-    trajopt.SetSolverOption(id, "Verify level", 0);
+    // prog.SetSolverOption(id, "Print file", "../snopt.out");
+    prog.SetSolverOption(id, "Major iterations limit", max_iter);
+    prog.SetSolverOption(id, "Iterations limit", 100000);
+    prog.SetSolverOption(id, "Verify level", 0);
 
     // snopt doc said try 2 if seeing snopta exit 40
-    trajopt.SetSolverOption(id, "Scale option", 0);
+    prog.SetSolverOption(id, "Scale option", 0);
 
     // target nonlinear constraint violation
-    trajopt.SetSolverOption(id, "Major optimality tolerance", tol);
+    prog.SetSolverOption(id, "Major optimality tolerance", tol);
 
     // target complementarity gap
-    trajopt.SetSolverOption(id, "Major feasibility tolerance", tol);
+    prog.SetSolverOption(id, "Major feasibility tolerance", tol);
   }
 
   // Get the decision variables that will be used
@@ -273,26 +338,26 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
 
   // height constraint
-  trajopt.AddBoundingBoxConstraint(1, 1, x0(positions_map.at("base_z")));
-  trajopt.AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("base_z")));
+  prog.AddBoundingBoxConstraint(1, 1, x0(positions_map.at("base_z")));
+  prog.AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("base_z")));
 
   // initial pelvis position
-  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x")));
-  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_y")));
+  prog.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x")));
+  prog.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_y")));
 
   // pelvis pose constraints
   for (int i = 0; i < num_knotpoints; i++) {
     auto xi = trajopt.state(i);
-    trajopt.AddBoundingBoxConstraint(1, 1, xi(positions_map.at("base_qw")));
-    trajopt.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qx")));
-    trajopt.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qy")));
-    trajopt.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qz")));
+    prog.AddBoundingBoxConstraint(1, 1, xi(positions_map.at("base_qw")));
+    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qx")));
+    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qy")));
+    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qz")));
   }
 
   // start/end velocity constraints
-  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+  prog.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    x0.tail(n_v));
-  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+  prog.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                    xf.tail(n_v));
 
   // create joint/motor names
@@ -307,7 +372,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   vector<string> sym_joint_names{"hip_pitch", "knee", "ankle_joint", "toe"};
   vector<string> joint_names{};
   vector<string> motor_names{};
-  for (auto l_r_pair : l_r_pairs) {
+  for (auto &l_r_pair : l_r_pairs) {
     for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
       joint_names.push_back(asy_joint_names[i] + l_r_pair.first);
       motor_names.push_back(asy_joint_names[i] + l_r_pair.first + "_motor");
@@ -333,7 +398,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   // u limit
   for (int i = 0; i < num_knotpoints; i++) {
     auto ui = trajopt.input_vars(0, i);
-    trajopt.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
+    prog.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
                                      VectorXd::Constant(n_u, +300), ui);
   }
 
@@ -366,7 +431,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
   for (int index = 0; index < num_knotpoints; index++) {
     auto x = trajopt.state(index);
-    trajopt.AddConstraint(foot_y_constraint, x.head(n_q));
+    prog.AddConstraint(foot_y_constraint, x.head(n_q));
   }
 
   // add cost
@@ -383,21 +448,30 @@ void DoMain(double duration, int max_iter, string data_directory,
     // time
     trajopt.ScaleTimeVariables(0.015);
     // state
-    std::vector<int> idx_list;
-    for (int i = n_q; i <= n_q + 9; i++) {
-      idx_list.push_back(i);
-    }
+    std::vector<int> idx_list = {
+        n_q + base_wx_idx,          n_q + base_wy_idx,
+        n_q + base_wz_idx,          n_q + base_vx_idx,
+        n_q + base_vy_idx,          n_q + base_vz_idx,
+        n_q + hip_roll_leftdot_idx, n_q + hip_roll_rightdot_idx,
+        n_q + hip_yaw_leftdot_idx,  n_q + hip_yaw_rightdot_idx};
     trajopt.ScaleStateVariables(idx_list, 6);
     idx_list.clear();
-    for (int i = n_q + 10; i <= n_q + n_v - 1; i++) {
-      idx_list.push_back(i);
-    }
+    idx_list = {n_q + hip_pitch_leftdot_idx,   n_q + hip_pitch_rightdot_idx,
+                n_q + knee_leftdot_idx,        n_q + knee_rightdot_idx,
+                n_q + ankle_joint_leftdot_idx, n_q + ankle_joint_rightdot_idx,
+                n_q + toe_leftdot_idx,         n_q + toe_rightdot_idx};
     trajopt.ScaleStateVariables(idx_list, 3);
     // input
-    trajopt.ScaleInputVariables({0, 1}, 60);
-    trajopt.ScaleInputVariables({2, 3}, 300);  // 300
-    trajopt.ScaleInputVariables({4, 7}, 60);
-    trajopt.ScaleInputVariables({8, 9}, 600);  // 600
+    trajopt.ScaleInputVariables(
+        {hip_roll_left_motor_idx, hip_roll_right_motor_idx}, 60);
+    trajopt.ScaleInputVariables(
+        {hip_yaw_left_motor_idx, hip_yaw_right_motor_idx}, 300);  // 300
+    trajopt.ScaleInputVariables(
+        {hip_pitch_left_motor_idx, hip_pitch_right_motor_idx,
+         knee_left_motor_idx, knee_right_motor_idx},
+        60);
+    trajopt.ScaleInputVariables({toe_left_motor_idx, toe_right_motor_idx},
+                                600);  // 600
     // force
     trajopt.ScaleForceVariables(0, {0, 1}, 10);
     trajopt.ScaleForceVariables(0, {2, 2}, 1000);  // 1000
@@ -427,11 +501,11 @@ void DoMain(double duration, int max_iter, string data_directory,
   // initial guess
   if (!init_file.empty()) {
     MatrixXd z0 = readCSV(data_directory + init_file);
-    trajopt.SetInitialGuessForAllVariables(z0);
+    prog.SetInitialGuessForAllVariables(z0);
   } else {
     // Add random initial guess first (the seed for RNG is fixed)
-    trajopt.SetInitialGuessForAllVariables(
-        VectorXd::Random(trajopt.decision_variables().size()));
+    prog.SetInitialGuessForAllVariables(
+        VectorXd::Random(prog.decision_variables().size()));
 
     VectorXd q0, qf, u0, uf, lambda0, lambdaf;
     double min_normal_force = 70;
@@ -472,12 +546,13 @@ void DoMain(double duration, int max_iter, string data_directory,
   // produces NAN value in some calculation.
   for (int i = 0; i < num_knotpoints; i++) {
     auto xi = trajopt.state(i);
-    if ((trajopt.GetInitialGuess(xi.head(4)).norm() == 0) ||
-        std::isnan(trajopt.GetInitialGuess(xi.head(4)).norm())) {
-      trajopt.SetInitialGuess(xi(0), 1);
-      trajopt.SetInitialGuess(xi(1), 0);
-      trajopt.SetInitialGuess(xi(2), 0);
-      trajopt.SetInitialGuess(xi(3), 0);
+    if ((prog.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm() == 0) ||
+        std::isnan(
+            prog.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm())) {
+      prog.SetInitialGuess(xi(base_qw_idx), 1);
+      prog.SetInitialGuess(xi(base_qx_idx), 0);
+      prog.SetInitialGuess(xi(base_qy_idx), 0);
+      prog.SetInitialGuess(xi(base_qz_idx), 0);
     }
   }
 
@@ -492,7 +567,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     solver_id = drake::solvers::IpoptSolver().id();
     cout << "\nChose manually: " << solver_id.name() << endl;
   } else {
-    solver_id = drake::solvers::ChooseBestSolver(trajopt);
+    solver_id = drake::solvers::ChooseBestSolver(prog);
     cout << "\nChose the best solver: " << solver_id.name() << endl;
   }
 
@@ -500,7 +575,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto start = std::chrono::high_resolution_clock::now();
   auto solver = drake::solvers::MakeSolver(solver_id);
   drake::solvers::MathematicalProgramResult result;
-  solver->Solve(trajopt, trajopt.initial_guess(), trajopt.solver_options(),
+  solver->Solve(prog, prog.initial_guess(),
+                prog.solver_options(),
                 &result);
   SolutionResult solution_result = result.get_solution_result();
   auto finish = std::chrono::high_resolution_clock::now();
@@ -528,11 +604,12 @@ void DoMain(double duration, int max_iter, string data_directory,
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
   // store the solution of the decision variable
-  VectorXd z = result.GetSolution(trajopt.decision_variables());
+  VectorXd z = result.GetSolution(prog.decision_variables());
   VectorXd constraint_y, constraint_lb, constraint_ub;
   MatrixXd constraint_A;
-  solvers::LinearizeConstraints(trajopt, z, &constraint_y, &constraint_A,
-                                &constraint_lb, &constraint_ub);
+  solvers::LinearizeConstraints(
+      prog, z, &constraint_y,&constraint_A,
+      &constraint_lb, &constraint_ub);
   if (to_store_data) {
     writeCSV(data_directory + string("z.csv"), z);
     writeCSV(data_directory + string("A.csv"), constraint_A);
@@ -617,8 +694,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }
-
-  return;
 }
 }  // namespace dairlib
 

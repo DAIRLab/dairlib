@@ -6,9 +6,9 @@ using drake::solvers::Constraint;
 using drake::solvers::Binding;
 using drake::solvers::MathematicalProgram;
 using drake::AutoDiffVecXd;
-using drake::math::initializeAutoDiff;
-using drake::math::autoDiffToGradientMatrix;
-using drake::math::autoDiffToValueMatrix;
+using drake::math::InitializeAutoDiff;
+using drake::math::ExtractGradient;
+using drake::math::ExtractValue;
 
 namespace dairlib {
 namespace solvers {
@@ -49,15 +49,15 @@ double SecondOrderCost(const MathematicalProgram& prog, const VectorXd& x_nom,
     if (variables.size() == 0)
       continue;
     AutoDiffVecXd y_val =
-        initializeAutoDiff(VectorXd::Zero(1), variables.size());
+        InitializeAutoDiff(VectorXd::Zero(1), variables.size());
     VectorXd x_binding(variables.size());
     for (int i = 0; i < variables.size(); i++) {
       x_binding(i) = x_nom(prog.FindDecisionVariableIndex(variables(i)));
     }
-    AutoDiffVecXd x_val = initializeAutoDiff(x_binding);
+    AutoDiffVecXd x_val = InitializeAutoDiff(x_binding);
     binding.evaluator()->Eval(x_val, &y_val);
-    MatrixXd gradient_x = autoDiffToGradientMatrix(y_val);
-    VectorXd y = autoDiffToValueMatrix(y_val);
+    MatrixXd gradient_x = ExtractGradient(y_val);
+    VectorXd y = ExtractValue(y_val);
     c += y(0);  // costs are length 1
     for (int i = 0; i < variables.size(); i++) {
       (*w)(prog.FindDecisionVariableIndex(variables(i))) += gradient_x(0, i);
@@ -65,12 +65,12 @@ double SecondOrderCost(const MathematicalProgram& prog, const VectorXd& x_nom,
 
     // forward differencing for Hessian
     AutoDiffVecXd y_hessian =
-        initializeAutoDiff(VectorXd::Zero(1), variables.size());
+        InitializeAutoDiff(VectorXd::Zero(1), variables.size());
     for (int i = 0; i < variables.size(); i++) {
       x_val(i) += eps;
       binding.evaluator()->Eval(x_val, &y_hessian);
       x_val(i) -= eps;
-      MatrixXd gradient_hessian = autoDiffToGradientMatrix(y_hessian);
+      MatrixXd gradient_hessian = ExtractGradient(y_hessian);
       for (int j = 0; j <= i; j++) {
         int ind_i = prog.FindDecisionVariableIndex(variables(i));
         int ind_j = prog.FindDecisionVariableIndex(variables(j));
@@ -121,12 +121,12 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
     for (int i = 0; i < variables.size(); i++) {
       x_binding(i) = x(prog.FindDecisionVariableIndex(variables(i)));
     }
-    AutoDiffVecXd x_val = initializeAutoDiff(x_binding);
+    AutoDiffVecXd x_val = InitializeAutoDiff(x_binding);
     // Evaluate constraint and extract gradient
     binding.evaluator()->Eval(x_val, &y_val);
-    MatrixXd dx = autoDiffToGradientMatrix(y_val);
+    MatrixXd dx = ExtractGradient(y_val);
 
-    y->segment(constraint_index, n) = autoDiffToValueMatrix(y_val);
+    y->segment(constraint_index, n) = ExtractValue(y_val);
     for (int i = 0; i < variables.size(); i++) {
       A->block(constraint_index,
           prog.FindDecisionVariableIndex(variables(i)), n, 1) = dx.col(i);

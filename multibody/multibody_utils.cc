@@ -14,10 +14,12 @@ using drake::AutoDiffXd;
 using drake::VectorX;
 using drake::geometry::HalfSpace;
 using drake::geometry::SceneGraph;
-using drake::math::autoDiffToGradientMatrix;
-using drake::math::autoDiffToValueMatrix;
+using drake::math::ExtractGradient;
+using drake::math::ExtractValue;
+using drake::multibody::BodyIndex;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
+using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::VectorXd;
@@ -30,11 +32,11 @@ bool AreVectorsEqual(const Eigen::Ref<const AutoDiffVecXd>& a,
   if (a.rows() != b.rows()) {
     return false;
   }
-  if (autoDiffToValueMatrix(a) != autoDiffToValueMatrix(b)) {
+  if (ExtractValue(a) != ExtractValue(b)) {
     return false;
   }
-  const Eigen::MatrixXd a_gradient = autoDiffToGradientMatrix(a);
-  const Eigen::MatrixXd b_gradient = autoDiffToGradientMatrix(b);
+  const Eigen::MatrixXd a_gradient = ExtractGradient(a);
+  const Eigen::MatrixXd b_gradient = ExtractGradient(b);
   if (a_gradient.rows() != b_gradient.rows() ||
       a_gradient.cols() != b_gradient.cols()) {
     return false;
@@ -50,8 +52,7 @@ bool AreVectorsEqual(const Eigen::Ref<const VectorXd>& a,
 template <typename T>
 VectorX<T> getInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
   if (plant.num_actuators() > 0) {
-    VectorX<T> input = plant.EvalEigenVectorInput(
-        context, plant.get_actuation_input_port().get_index());
+    VectorX<T> input = plant.get_actuation_input_port().Eval(context);
     return input;
   } else {
     return VectorX<T>(0);
@@ -337,130 +338,56 @@ vector<string> createActuatorNameVectorFromMap(
   return actuator_names;
 }
 
-
 template <typename T>
 Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(
     const drake::multibody::MultibodyPlant<T>& plant_w_spr,
     const drake::multibody::MultibodyPlant<T>& plant_wo_spr) {
-  int nq_wo_spr = plant_wo_spr.num_positions();
-  int nv_wo_spr = plant_wo_spr.num_velocities();
-  int nq_w_spr = plant_w_spr.num_positions();
-  int nv_w_spr = plant_w_spr.num_velocities();
-
-  int nx_wo_spr = nq_wo_spr + nv_wo_spr;
-  int nx_w_spr = nq_w_spr + nv_w_spr;
-
   const std::map<string, int>& pos_map_w_spr =
       multibody::makeNameToPositionsMap(plant_w_spr);
-  const std::map<string, int>& vel_map_w_spr =
-      multibody::makeNameToVelocitiesMap(plant_w_spr);
   const std::map<string, int>& pos_map_wo_spr =
       multibody::makeNameToPositionsMap(plant_wo_spr);
-  const std::map<string, int>& vel_map_wo_spr =
-      multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
-  // Initialize the mapping from states for the plant without springs to the
-  // plant with springs. Note: this is a tall matrix
-  Eigen::MatrixXd map_position_from_no_spring_to_spring =
-      Eigen::MatrixXd::Zero(nq_w_spr, nq_wo_spr);
-  Eigen::MatrixXd map_velocity_from_no_spring_to_spring =
-      Eigen::MatrixXd::Zero(nv_w_spr, nv_wo_spr);
-  Eigen::MatrixXd map_state_from_no_spring_to_spring =
-      Eigen::MatrixXd::Zero(nx_w_spr, nx_wo_spr);
-
-  for (const auto& pos_pair_wo_spr : pos_map_wo_spr) {
+  // Initialize the mapping from spring to no spring
+  Eigen::MatrixXd ret = Eigen::MatrixXd::Zero(plant_wo_spr.num_positions(),
+                                              plant_w_spr.num_positions());
+  for (auto pos_pair_wo_spr : pos_map_wo_spr) {
     bool successfully_added = false;
-    for (const auto& pos_pair_w_spr : pos_map_w_spr) {
+    for (auto pos_pair_w_spr : pos_map_w_spr) {
       if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
-        map_position_from_no_spring_to_spring(pos_pair_w_spr.second,
-                                              pos_pair_wo_spr.second) = 1;
+        ret(pos_pair_wo_spr.second, pos_pair_w_spr.second) = 1;
         successfully_added = true;
       }
     }
     DRAKE_DEMAND(successfully_added);
   }
 
-  for (const auto& vel_pair_wo_spr : vel_map_wo_spr) {
-    bool successfully_added = false;
-    for (const auto& vel_pair_w_spr : vel_map_w_spr) {
-      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
-        map_velocity_from_no_spring_to_spring(vel_pair_w_spr.second,
-                                              vel_pair_wo_spr.second) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
-
-  map_state_from_no_spring_to_spring.block(0, 0, nq_w_spr, nq_wo_spr) =
-      map_position_from_no_spring_to_spring;
-  map_state_from_no_spring_to_spring.block(nq_w_spr, nq_wo_spr, nv_w_spr,
-                                           nv_wo_spr) =
-      map_velocity_from_no_spring_to_spring;
-  return map_state_from_no_spring_to_spring;
+  return ret;
 }
-
 
 template <typename T>
 Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(
     const drake::multibody::MultibodyPlant<T>& plant_w_spr,
     const drake::multibody::MultibodyPlant<T>& plant_wo_spr) {
-  int nq_wo_spr = plant_wo_spr.num_positions();
-  int nv_wo_spr = plant_wo_spr.num_velocities();
-  int nq_w_spr = plant_w_spr.num_positions();
-  int nv_w_spr = plant_w_spr.num_velocities();
-
-  int nx_wo_spr = nq_wo_spr + nv_wo_spr;
-  int nx_w_spr = nq_w_spr + nv_w_spr;
-
-  const std::map<string, int>& pos_map_w_spr =
-      multibody::makeNameToPositionsMap(plant_w_spr);
   const std::map<string, int>& vel_map_w_spr =
       multibody::makeNameToVelocitiesMap(plant_w_spr);
-  const std::map<string, int>& pos_map_wo_spr =
-      multibody::makeNameToPositionsMap(plant_wo_spr);
   const std::map<string, int>& vel_map_wo_spr =
       multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
-  // Initialize the mapping from states for the plant without springs to the
-  // plant with springs. Note: this is a tall matrix
-  Eigen::MatrixXd map_position_from_no_spring_to_spring =
-      Eigen::MatrixXd::Zero(nq_w_spr, nq_wo_spr);
-  Eigen::MatrixXd map_velocity_from_no_spring_to_spring =
-      Eigen::MatrixXd::Zero(nv_w_spr, nv_wo_spr);
-  Eigen::MatrixXd map_state_from_no_spring_to_spring =
-      Eigen::MatrixXd::Zero(nx_w_spr, nx_wo_spr);
-
-  for (const auto& pos_pair_wo_spr : pos_map_wo_spr) {
+  // Initialize the mapping from spring to no spring
+  Eigen::MatrixXd ret = Eigen::MatrixXd::Zero(plant_wo_spr.num_velocities(),
+                                              plant_w_spr.num_velocities());
+  for (auto vel_pair_wo_spr : vel_map_wo_spr) {
     bool successfully_added = false;
-    for (const auto& pos_pair_w_spr : pos_map_w_spr) {
-      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
-        map_position_from_no_spring_to_spring(pos_pair_w_spr.second,
-                                              pos_pair_wo_spr.second) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
-
-  for (const auto& vel_pair_wo_spr : vel_map_wo_spr) {
-    bool successfully_added = false;
-    for (const auto& vel_pair_w_spr : vel_map_w_spr) {
+    for (auto vel_pair_w_spr : vel_map_w_spr) {
       if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
-        map_velocity_from_no_spring_to_spring(vel_pair_w_spr.second,
-                                              vel_pair_wo_spr.second) = 1;
+        ret(vel_pair_wo_spr.second, vel_pair_w_spr.second) = 1;
         successfully_added = true;
       }
     }
     DRAKE_DEMAND(successfully_added);
   }
 
-  map_state_from_no_spring_to_spring.block(0, 0, nq_w_spr, nq_wo_spr) =
-      map_position_from_no_spring_to_spring;
-  map_state_from_no_spring_to_spring.block(nq_w_spr, nq_wo_spr, nv_w_spr,
-                                           nv_wo_spr) =
-      map_velocity_from_no_spring_to_spring;
-  return map_state_from_no_spring_to_spring;
+  return ret;
 }
 
 bool JointsWithinLimits(const MultibodyPlant<double>& plant, VectorXd positions,
@@ -510,6 +437,31 @@ template <typename T>
 bool isQuaternion(const MultibodyPlant<T>& plant) {
   return QuaternionStartIndex(plant) != -1;
 }
+
+Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
+  // clang-format off
+  Eigen::MatrixXd ret(4,3);
+  ret <<  -q(1), -q(2), -q(3),
+           q(0),  q(3), -q(2),
+          -q(3),  q(0),  q(1),
+           q(2), -q(1),  q(0);
+  ret *= 0.5;
+  // clang-format on
+  return ret;
+}
+
+Eigen::MatrixXd JwrtqdotToJwrtv(
+    const Eigen::VectorXd& q, const Eigen::MatrixXd& Jwrtqdot) {
+  //[J_1:4, J_5:end] * [WToQuatDotMap, 0] = [J_1:4 * WToQuatDotMap, J_5:end]
+  //                   [      0      , I]
+  DRAKE_DEMAND(Jwrtqdot.cols() == q.size());
+
+  Eigen::MatrixXd ret(Jwrtqdot.rows(), q.size() -1);
+  ret << Jwrtqdot.leftCols<4>() * WToQuatDotMap(q.head<4>()),
+      Jwrtqdot.rightCols(q.size() - 4);
+  return ret;
+}
+
 
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT

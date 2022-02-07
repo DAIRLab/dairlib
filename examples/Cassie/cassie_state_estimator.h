@@ -79,29 +79,30 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
                            double* left_heel_spring,
                            double* right_heel_spring) const;
 
-  /// EstimateContactFromSprings() and EstimateContactForController()
+  /// EstimateContactForEkf() and EstimateContactForController()
   /// estimate the ground contacts based on the optimal costs and spring
   /// deflections.
-  /// Estimation from EstimateContactFromSprings() is more conservative compared to
+  /// Estimation from EstimateContactForEkf() is more conservative compared to
   /// EstimateContactForController(). See the cc file for more detail.
   /// The methods are set to be public in order to unit test them.
 
-  void EstimateContactFromSprings(const systems::OutputVector<double>& output,
-                             double* left_contact, double* right_contact) const;
+  void EstimateContactForEkf(const systems::OutputVector<double>& output,
+                             int* left_contact, int* right_contact) const;
   void EstimateContactForController(const systems::OutputVector<double>& output,
                                     int* left_contact,
                                     int* right_contact) const;
   void EstimateContactForces(const drake::systems::Context<double>& context,
                              const systems::OutputVector<double>& output,
-                             Eigen::VectorXd& lambda, double* left_contact,
-                             double* right_contact) const;
+                             Eigen::VectorXd& lambda, int& left_contact,
+                             int& right_contact) const;
 
   // Setters for initial values
   void setPreviousTime(drake::systems::Context<double>* context,
                        double time) const;
-  void setInitialPelvisPose(drake::systems::Context<double>* context,
-                            Eigen::Vector4d quat,
-                            Eigen::Vector3d position) const;
+  void setInitialPelvisPose(
+      drake::systems::Context<double>* context, Eigen::Vector4d quat,
+      Eigen::Vector3d position,
+      Eigen::Vector3d pelvis_vel = Eigen::Vector3d::Zero()) const;
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
                                  const Eigen::VectorXd& imu_value) const;
 

@@ -11,27 +11,109 @@ cc_library(
         "operational_space_control.h",
     ],
     deps = [
-        ":osc_tracking_data",
+        ":osc_tracking_datas",
         "//common:eigen_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//multibody/kinematic",
+        "//solvers:fast_osqp_solver",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
-        "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
-    name = "osc_tracking_data",
-    srcs = [
-        "osc_tracking_data.cc",
-    ],
-    hdrs = [
-        "osc_tracking_data.h",
-    ],
+    name = "osc_tracking_datas",
     deps = [
+        ":com_tracking_data",
+        ":joint_space_tracking_data",
+        ":osc_tracking_data",
+        ":relative_transform_tracking_data",
+        ":rot_space_tracking_data",
+        ":trans_space_tracking_data",
+    ],
+)
+
+cc_library(
+    name = "osc_tracking_data",
+    srcs = ["osc_tracking_data.cc"],
+    hdrs = ["osc_tracking_data.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "options_tracking_data",
+    srcs = ["options_tracking_data.cc"],
+    hdrs = ["options_tracking_data.h"],
+    deps = [
+        ":osc_tracking_data",
+        "//multibody:view_frame",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "com_tracking_data",
+    srcs = ["com_tracking_data.cc"],
+    hdrs = ["com_tracking_data.h"],
+    deps = [
+        ":options_tracking_data",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "trans_space_tracking_data",
+    srcs = ["trans_space_tracking_data.cc"],
+    hdrs = ["trans_space_tracking_data.h"],
+    deps = [
+        ":options_tracking_data",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "rot_space_tracking_data",
+    srcs = ["rot_space_tracking_data.cc"],
+    hdrs = ["rot_space_tracking_data.h"],
+    deps = [
+        ":options_tracking_data",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "joint_space_tracking_data",
+    srcs = ["joint_space_tracking_data.cc"],
+    hdrs = ["joint_space_tracking_data.h"],
+    deps = [
+        ":options_tracking_data",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "relative_transform_tracking_data",
+    srcs = ["relative_translation_tracking_data.cc"],
+    hdrs = ["relative_translation_tracking_data.h"],
+    deps = [
+        ":options_tracking_data",
+        ":trans_space_tracking_data",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

@@ -32,7 +32,7 @@ cc_library(
         "multibody_utils.h",
     ],
     deps = [
-        "@drake//multibody/plant",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -61,6 +61,17 @@ cc_library(
         "multipose_visualizer.h",
     ],
     deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "view_frame",
+    srcs = ["view_frame.cc"],
+    hdrs = ["view_frame.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

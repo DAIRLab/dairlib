@@ -730,6 +730,21 @@ VectorXd OperationalSpaceControl::SolveQp(
                                         -W_input_reg_ * (*u_sol_));
   }
 
+
+  // Testing -- set scaling (For OSQP, make sure that you are using the Drake
+  // where you implement the scaling)
+  if (counter_ == 0) {
+    prog_->ClearVariableScaling();
+  } else if (counter_ == 1 /*counter_ >= 1*/) {
+    const auto& w = prog_->decision_variables();
+    for (int i = 0; i < prev_sol_.size(); i++) {
+      //      if (prev_sol_(i) != 0) {
+      if (abs(prev_sol_(i)) > 1e-3) {
+        prog_->SetVariableScaling(w(i), abs(prev_sol_(i)));
+      }
+    }
+  }
+
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
@@ -739,6 +754,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     std::cout << "reverting to old sol" << std::endl;
     return *u_sol_;
   }
+
+  prev_sol_ = result.GetSolution();
+  counter_++;
 
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);

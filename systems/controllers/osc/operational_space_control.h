@@ -355,6 +355,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* input_reg_cost_;
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
+
+  mutable Eigen::VectorXd prev_sol_ = Eigen::VectorXd::Zero(1);
+  mutable int counter_ = 0;
 };
 
 }  // namespace dairlib::systems::controllers

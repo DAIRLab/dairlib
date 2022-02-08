@@ -59,7 +59,10 @@ def solve_osqp(qp, settings):
 
 def main():
 
-    filename = "/home/brian/workspace/logs/qp_logging/lcmlog03"
+    # filename = "/home/brian/workspace/logs/qp_logging/lcmlog03"
+    # filename = "/home/yuming/Downloads/20220208_testing_osqp/02_07_22/lcmlog-03"
+    # filename = "/home/yuming/Downloads/qp_logging/qp1e-7"
+    filename = "/home/yuming/Downloads/20220208_testing_osqp/lcmlog-2022-02-08.01"
     log = lcm.EventLog(filename, "r")
     qp_list = get_log_data(log, {"QP_LOG": lcmt_qp}, ParseQP)
 

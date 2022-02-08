@@ -9,6 +9,10 @@ namespace dairlib::multibody {
 
 
 struct TerrainConfig {
+  int xbound = 20;
+  int ybound=3;
+  double mesh_res=0.5;
+
   double min_cube_size=0.1;   // minimum cube side length
   double max_cube_size=1.0;   // maximum cube side length
   double clearing_radius=1.0; // radius around 0,0 to keep free of cubes
@@ -18,6 +22,10 @@ struct TerrainConfig {
   Eigen::Vector3d normal = Eigen::Vector3d::UnitZ();
   Eigen::Vector3d rpy_bounds = Eigen::Vector3d::UnitZ();
 };
+
+drake::geometry::TriangleSurfaceMesh<double>
+makeRandomHeightMap(int nx, int ny,double x_resolution, double y_resolution,
+                    Eigen::Vector3d normal);
 
 void addFlatHydroelasticTerrain(
     drake::multibody::MultibodyPlant<double>* plant,

@@ -111,7 +111,7 @@ while True:
 
     # Add new job to history
     for line in current_output:
-      job_exist_in_history = line[0] in list(zip(*history_output))[0]  # check if the new job id exists in the history
+      job_exist_in_history = False if (len(list(zip(*history_output))) == 0) else (line[0] in list(zip(*history_output))[0])  # check if the new job id exists in the history
       if not job_exist_in_history:
         history_output.append(line)
 

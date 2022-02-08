@@ -80,21 +80,15 @@ while True:
     history_output = ParseJobTable(f.read())
     f.close()
 
-    # Add new job to history
-    for line in current_output:
-      job_exist_in_history = line[0] in list(zip(*history_output))[0]  # check if the new job id exists in the history
-      if not job_exist_in_history:
-        history_output.append(line)
-
     # Update old job status
     for old_line in history_output:
       job_id = old_line[0]
 
-      current_output = [list(x) for x in zip(*current_output)]
-      job_currently_exists = False if (len(current_output) == 0) else (job_id in current_output[0])
+      current_output_T = [list(x) for x in zip(*current_output)]
+      job_currently_exists = False if (len(current_output) == 0) else (job_id in current_output_T[0])
       if job_currently_exists:
-        line_idx = current_output[0].index(job_id)
-        old_line[1] = current_output[1][line_idx]  # Update status
+        line_idx = current_output_T[0].index(job_id)
+        old_line[1] = current_output_T[1][line_idx]  # Update status
 
       else:
         first_time_setting_to_inactive = (old_line[1] != "inactive")
@@ -114,6 +108,12 @@ while True:
         if first_time_setting_to_inactive and job_timed_out and intend_to_resubmit:
           print("resubmitting %s" % old_line[2])
           RunCommand("sbatch " + old_line[2], True)
+
+    # Add new job to history
+    for line in current_output:
+      job_exist_in_history = line[0] in list(zip(*history_output))[0]  # check if the new job id exists in the history
+      if not job_exist_in_history:
+        history_output.append(line)
 
     merged_output = history_output
 

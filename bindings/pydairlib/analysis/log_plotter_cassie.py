@@ -39,14 +39,28 @@ def main():
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
     # Define x time slice
-    t_x_slice = slice(robot_output['t_x'].size)
-    t_osc_slice = slice(osc_debug['t_osc'].size)
+    start_time = 0.8
+    duration = 2.0
+
+    t_start_x = np.argwhere(robot_output['t_x'] -
+                            robot_output['t_x'][0] > start_time).ravel()[0]
+    t_end_x = np.argwhere(robot_output['t_x'] -
+                          robot_output['t_x'][t_start_x] > duration).ravel()[0]
+
+    t_start_osc = np.argwhere(osc_debug['t_osc'] -
+                              osc_debug['t_osc'][0] > start_time).ravel()[0]
+    t_end_osc = np.argwhere(osc_debug['t_osc'] -
+                            osc_debug['t_osc'][t_start_osc] > duration).ravel()[0]
+
+    t_x_slice = slice(t_start_x, t_end_x)
+    t_osc_slice = slice(t_start_osc, t_end_osc)
 
     ''' Plot Positions '''
     # Plot floating base positions if applicable
     if use_floating_base and plot_config.plot_floating_base_positions:
-        mbp_plots.plot_floating_base_positions(
+        ps = mbp_plots.plot_floating_base_positions(
             robot_output, pos_names, 7, t_x_slice)
+        ps.set_default_styling("/home/brian/workspace/logs/qp_logging/")
 
     # Plot joint positions
     if plot_config.plot_joint_positions:
@@ -75,7 +89,10 @@ def main():
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
-        mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
+        ps = mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
+        ps.set_default_styling("/home/brian/workspace/logs/qp_logging/")
+        ps.save_fig(f"joint_efforts{sys.argv[2]}")
+
     if plot_config.act_names:
         mbp_plots.plot_measured_efforts_by_name(robot_output,
                                                 plot_config.act_names,
@@ -83,7 +100,10 @@ def main():
 
     ''' Plot OSC '''
     if plot_config.plot_qp_costs:
-        mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
+        ps = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
+        ps.set_default_styling("/home/brian/workspace/logs/qp_logging/")
+        ps.save_fig(f"qp_costs{sys.argv[2]}")
+
     if plot_config.plot_tracking_costs:
         mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
 
@@ -109,7 +129,11 @@ def main():
                                         foot_frames, pts, dims)
 
     if plot_config.plot_qp_solve_time:
-        mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+        ps = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+        ps.set_default_styling("/home/brian/workspace/logs/qp_logging/")
+        ps.attach()
+        plt.ylim([0, 0.004])
+        ps.save_fig(f"solve_time{sys.argv[2]}")
 
     plt.show()
 

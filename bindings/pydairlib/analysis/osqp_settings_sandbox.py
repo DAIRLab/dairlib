@@ -59,49 +59,59 @@ def solve_osqp(qp, settings):
 
 def main():
 
-    filename = "/home/brian/workspace/logs/qp_logging/lcmlog00"
+    filename = "/home/brian/workspace/logs/qp_logging/lcmlog03"
     log = lcm.EventLog(filename, "r")
     qp_list = get_log_data(log, {"QP_LOG": lcmt_qp}, ParseQP)
 
-    qp_list = qp_list[:200]
-    run_times = np.zeros((len(qp_list),))
-    obj_vals = np.zeros((len(qp_list),))
-    pri_eps_vals = np.zeros((len(qp_list,)))
+    qp_list = qp_list[:400]
+    eps = np.logspace(-7, -4, num=4)
+    nr = eps.size
+    run_times = np.zeros((len(qp_list), nr))
+    obj_vals = np.zeros((len(qp_list), nr))
+    pri_eps_vals = np.zeros((len(qp_list), nr))
 
-    for i, qp in enumerate(qp_list):
-        osqp_settings = \
-            {'eps_abs': 1e-7,
-             'eps_rel': 1e-7,
-             'eps_prim_inf': 1e-6,
-             'eps_dual_inf': 1e-6,
-             'polish': 1,
-             'scaled_termination': 1,
-             'adaptive_rho_fraction': 1,
-             'verbose': 0,
-             'warm_start': 0,
-             'rho': .1,
-             'check_termination': 3}
+    osqp_settings = \
+        {'eps_abs': 1e-7,
+         'eps_rel': 1e-7,
+         'eps_prim_inf': 1e-6,
+         'eps_dual_inf': 1e-6,
+         'polish': 1,
+         'scaled_termination': 1,
+         'adaptive_rho_fraction': 1,
+         'verbose': 0,
+         'warm_start': 0,
+         'rho': .1,
+         'check_termination': 10}
 
-        osqp_result = solve_osqp(qp, osqp_settings)
-        run_times[i] = osqp_result['run_time']
-        obj_vals[i] = osqp_result['obj_val']
-        pri_eps_vals[i] = osqp_result['pri_res']
+    for j, eps_val in enumerate(eps):
+        osqp_settings['eps_abs'] = eps_val
+        osqp_settings['eps_rel'] = eps_val
+        osqp_settings['eps_prim_inf'] = 10*eps_val
+        osqp_settings['eps_dual_inf'] = 10*eps_val
+        for i, qp in enumerate(qp_list):
 
+            osqp_result = solve_osqp(qp, osqp_settings)
+            run_times[i, j] = osqp_result['run_time']
+            obj_vals[i, j] = osqp_result['obj_val']
+            pri_eps_vals[i, j] = osqp_result['pri_res']
 
-    print(f'OSQP mean runtime: {np.mean(run_times)}')
-    print(f'OSQP mean objective: {np.mean(obj_vals)}')
-    print(f'OSQP mean primal residuals: {np.mean(pri_eps_vals)}')
+    print(f'OSQP mean runtime: {np.mean(run_times,axis=0)}')
+    print(f'OSQP mean objective: {np.mean(obj_vals, axis=0)}')
+    print(f'OSQP mean primal residuals: {np.mean(pri_eps_vals, axis=0)}')
 
     import matplotlib.pyplot as plt
 
-    fig, axs = plt.subplots(2, 1, sharex=True)
+    fig, axs = plt.subplots(3, 1, sharex=True)
 
-    axs[0].plot(obj_vals, label='OSQP')
-    axs[0].legend()
+    axs[0].plot(obj_vals)
+    axs[0].legend(['eps = ' + str(eps_val) for eps_val in eps])
     axs[0].set_title('Objective values per QP')
 
     axs[1].plot(run_times)
     axs[1].set_title('Solve times per QP')
+
+    axs[2].plot(pri_eps_vals)
+    axs[2].set_title('Primal residual per QP')
     plt.show()
 
     import pdb;pdb.set_trace()

@@ -36,11 +36,12 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211221_3dlipm_fix_xy_big_w_accel_and_grad_main_cost/"                # rom_option 10
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211227_3dlipm_fix_xy_big_w_accel_and_grad_main_cost_and_big_range/"  # rom_option 10
 dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range/"     # rom_option 10
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range_rerun_fix_task/"    # rom_option 10
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20220105_big_accel_weight_and_grad_main_cost_and_big_range_0_pelvis_omega/"           # rom_option 10
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20220108_big_vel_weight_and_grad_main_cost_and_big_range_0_pelvis_omega/"             # rom_option 10
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range_rerun_fix_task/"     # rom_option 10
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20220105_big_accel_weight_and_grad_main_cost_and_big_range_0_pelvis_omega/"            # rom_option 10
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20220108_big_vel_weight_and_grad_main_cost_and_big_range_0_pelvis_omega/"              # rom_option 10
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20220119_fix_xy__big_vel_weight__big_range__high_order/"               # rom_option 14
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_2021xxxx_3dlipm_fix_xyz_and_degree_4_dyn/"                             # rom_option 13
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"                # rom_option 17
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter

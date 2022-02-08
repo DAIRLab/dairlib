@@ -274,7 +274,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_;
   std::unique_ptr<drake::solvers::OsqpSolver> osqp_solver_;
-  std::unique_ptr<drake::solvers::SnoptSolver> snopt_solver_;
   mutable int prev_fsm_state_ = -1;
   bool use_osqp_ = true;
 

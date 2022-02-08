@@ -90,10 +90,11 @@ while True:
     for old_line in history_output:
       job_id = old_line[0]
 
-      job_currently_exists = False if (len(current_output) == 0) else (job_id in [list(x) for x in zip(*current_output)][0])
+      current_output = [list(x) for x in zip(*current_output)]
+      job_currently_exists = False if (len(current_output) == 0) else (job_id in current_output[0])
       if job_currently_exists:
         line_idx = current_output[0].index(job_id)
-        old_line[1] = current_output[line_idx][1]  # Update status
+        old_line[1] = current_output[1][line_idx]  # Update status
 
       else:
         first_time_setting_to_inactive = (old_line[1] != "inactive")

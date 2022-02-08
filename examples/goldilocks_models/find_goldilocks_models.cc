@@ -178,6 +178,9 @@ DEFINE_bool(start_iterations_with_shrinking_stepsize, false,
 DEFINE_double(initial_extra_shrink_factor, -1,
               "shrinking factor for the step size");
 DEFINE_bool(is_debug, false, "Debugging or not");
+DEFINE_bool(no_model_update, false,
+    "This is used after the model has been optimized. We turn this flag on to "
+    "evaluate the given model's performance on different task");
 
 // Extend model from passive to actuated
 DEFINE_bool(extend_model, false,
@@ -2110,11 +2113,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }
     }
 
-    // store initial parameter values
+    // Store parameter values
     prefix = to_string(iter) + "_";
-    if (!is_get_nominal || !FLAGS_is_debug) {
-      writeCSV(dir + prefix + string("theta_y.csv"), rom->theta_y());
-      writeCSV(dir + prefix + string("theta_yddot.csv"), rom->theta_yddot());
+    if (!FLAGS_no_model_update) {
+      if (!is_get_nominal || !FLAGS_is_debug) {
+        writeCSV(dir + prefix + string("theta_y.csv"), rom->theta_y());
+        writeCSV(dir + prefix + string("theta_yddot.csv"), rom->theta_yddot());
+      }
     }
 
     // setup for each iteration
@@ -2400,6 +2405,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
                << no_sample_failed_so_far << ", " << success_rate_is_high_enough
                << ")\n";
 
+          // If the flag `no_model_update` is on, then we never stop the sample
+          // evaluation early.
+          if (FLAGS_no_model_update) {
+            continue;
+          }
+
           // Stop evaluating if
           // 1. any sample failed after a all-success iteration
           // 2. fail rate higher than threshold before seeing all-success
@@ -2438,6 +2449,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }  // while(sample < N_sample)
     }    // end if-else (start_iterations_with_shrinking_stepsize)
     if (FLAGS_is_debug) break;
+    if (FLAGS_no_model_update) {
+      VectorXd theta_y =
+          readCSV(dir + to_string(iter + 1) + string("_theta_y.csv")).col(0);
+      VectorXd theta_yddot =
+          readCSV(dir + to_string(iter + 1) + string("_theta_yddot.csv"))
+              .col(0);
+      rom->SetThetaY(theta_y);
+      rom->SetThetaYddot(theta_yddot);
+      continue;
+    }
 
     // cout << "Only run for 1 iteration. for testing.\n";
     // for (int i = 0; i < 100; i++) {cout << '\a';}  // making noise to notify

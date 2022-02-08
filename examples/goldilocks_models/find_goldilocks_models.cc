@@ -2078,6 +2078,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }*/
   }
 
+  // Some checks
+  if (FLAGS_no_model_update) {
+    // We don't want this folder to be empty, because no_model_update is
+    // supposed to be used after the model optimizaiton is finished. I just
+    // check if 1_thead_y.csv exists
+    DRAKE_DEMAND(file_exist(dir + "1_thread_y.csv"));
+  }
+
   // Setup for getting good solution from adjacent samples
   MatrixXi adjacent_sample_indices;
   if (is_grid_task) {

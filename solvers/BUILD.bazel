@@ -34,6 +34,7 @@ cc_library(
         "fast_osqp_solver.h",
     ],
     deps = [
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@osqp",
     ],

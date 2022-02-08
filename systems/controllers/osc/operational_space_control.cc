@@ -451,8 +451,8 @@ void OperationalSpaceControl::Build() {
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
   //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "rho", 0.1);
-  solver_options.SetOption(OsqpSolver::id(), "sigma", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "rho", 0.0001);
+  solver_options.SetOption(OsqpSolver::id(), "sigma", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "max_iter", 4000);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
@@ -463,7 +463,7 @@ void OperationalSpaceControl::Build() {
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
   solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 3);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  solver_options.SetOption(OsqpSolver::id(), "check_termination", 10);
+  solver_options.SetOption(OsqpSolver::id(), "check_termination", 25);
   solver_options.SetOption(OsqpSolver::id(), "scaling", 10);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho", 1);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_interval", 0);
@@ -1029,7 +1029,7 @@ void OperationalSpaceControl::CheckTracking(
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
   //  std::cout << "total cost: " << total_cost_ << std::endl;
-  if (soft_constraint_cost_ > 5e3 || isnan(soft_constraint_cost_)) {
+  if (soft_constraint_cost_ > 5e2 || isnan(soft_constraint_cost_)) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

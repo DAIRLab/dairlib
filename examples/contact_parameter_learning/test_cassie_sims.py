@@ -9,11 +9,13 @@ def test_sim(sim):
   dataset_num = '15'
   sim.make(params, dataset_num)
   rollout = sim.advance_to(0.0495)
-  sim.free_sim()
-  rollout.plot_positions()
-  sim.hardware_traj.plot_positions()
-  import pdb; pdb.set_trace()
-  plt.show()
+  # sim.free_sim()
+  # rollout.plot_positions()
+  # sim.hardware_traj.plot_positions()
+  rollout.plot_efforts()
+  sim.hardware_traj.plot_efforts()
+  # import pdb; pdb.set_trace()
+  # plt.show()
 
 def test_mujoco_sim():
   sim = mujoco_cassie_sim_v2.MuJoCoCassieSim()
@@ -24,5 +26,5 @@ def test_drake_sim():
   test_sim(sim)
 
 if __name__ == '__main__':
-  # test_drake_sim()
+  test_drake_sim()
   test_mujoco_sim()

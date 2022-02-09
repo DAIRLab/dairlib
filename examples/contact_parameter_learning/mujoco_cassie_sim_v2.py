@@ -38,8 +38,9 @@ class MuJoCoCassieSim():
                                    'knee_right_motor': 8,
                                    'toe_right_motor': 9}
 
-    def make(self, params, hardware_traj_num, xml='/home/yangwill/workspace/cassie-mujoco-sim/model/cassie_new_params.xml'):
+    def make(self, params, hardware_traj_num, xml='/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'):
         self.cassie_env = CassieSim(xml)
+        self.cassie_vis = CassieVis(self.cassie_env, xml)
         self.dt = 5e-4
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.reset()
@@ -65,7 +66,7 @@ class MuJoCoCassieSim():
     def sim_step(self, action=None):
         next_timestep = self.cassie_env.time() + self.dt
         action = self.hardware_traj.get_action(next_timestep)
-
+        self.cassie_vis.draw(self.cassie_env)
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, action)
         print("outer step")
         while self.cassie_env.time() < next_timestep:

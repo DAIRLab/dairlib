@@ -30,6 +30,8 @@ PY_LIBRARIES = [
     "//bindings/pydairlib/common",
     "//bindings/pydairlib/lcm",
     "//bindings/pydairlib/multibody",
+    "//bindings/pydairlib/cassie:cassie_utils",
+    "//bindings/pydairlib/systems",
 ]
 
 # Package roll-up (for Bazel dependencies).

@@ -101,9 +101,7 @@ void DoMain() {
   string file_name = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   if(FLAGS_use_springs)
     file_name = "examples/Cassie/urdf/cassie_v2.urdf";
-  addCassieMultibody(&plant, &scene_graph, true,
-                     file_name, false,
-                     false);
+  AddCassieMultibody(&plant, &scene_graph, true, file_name, false, false);
   plant.Finalize();
 
   int n_q = plant.num_positions();
@@ -662,7 +660,7 @@ vector<VectorXd> GetInitGuessForQStance(int num_knot_points,
       SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<SceneGraph>();
       scene_graph_ik.set_name("scene_graph_ik");
       MultibodyPlant<double> plant_ik(1e-4);
-      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8);
+      multibody::AddFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
@@ -762,7 +760,7 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
       SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<SceneGraph>();
       scene_graph_ik.set_name("scene_graph_ik");
       MultibodyPlant<double> plant_ik(1e-4);
-      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8);
+      multibody::AddFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");

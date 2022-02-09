@@ -36,8 +36,7 @@ PYBIND11_MODULE(multibody, m) {
       .def("createActuatorNameVectorFromMap",
            &dairlib::multibody::createActuatorNameVectorFromMap<double>,
            py::arg("plant"))
-      .def("addFlatTerrain",
-           &dairlib::multibody::addFlatTerrain<double>,
+      .def("AddFlatTerrain", &dairlib::multibody::AddFlatTerrain<double>,
            py::arg("plant"), py::arg("scene_graph"),
            py::arg("mu_static"), py::arg("mu_kinetic"),
            py::arg("normal_W"), py::arg("stiffness"), py::arg("dissipation_rate"));

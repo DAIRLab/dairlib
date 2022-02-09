@@ -64,7 +64,7 @@ void SetInputsIfNew(const drake::multibody::MultibodyPlant<T>& plant,
 /// default direction)
 // TODO: we might want to add other types of terrain in the future
 template <typename T>
-void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
+void AddFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     drake::geometry::SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
                     Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1),

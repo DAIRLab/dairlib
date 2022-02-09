@@ -1,0 +1,4 @@
+stiffness: 0.1
+dissipation: 0.1
+mu: 0.1
+dt: 0.1

@@ -90,11 +90,11 @@ int DoMain(int argc, char* argv[]) {
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   if (FLAGS_spring_model) {
-    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_v2.urdf",
                        true /*spring model*/, false /*loop closure*/);
   } else {
-    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_fixed_springs.urdf",
                        false /*spring model*/, false /*loop closure*/);
   }

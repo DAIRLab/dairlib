@@ -129,12 +129,6 @@ class DrakeCassieSim():
 
   def run(self, params, log_num):
     # params
-
-    # penetration_allowance = self.default_drake_contact_params['pen_allow']
-    # mu_static = self.default_drake_contact_params['mu_static']
-    # mu_kinetic = self.default_drake_contact_params['mu_ratio'] * self.default_drake_contact_params['mu_static']
-    # stiction_tol = self.default_drake_contact_params['stiction_tol']
-    # penetration_allowance = params['pen_allow']
     stiffness = params['stiffness']
     dissipation = params['dissipation']
     mu_static = params['mu']
@@ -142,10 +136,7 @@ class DrakeCassieSim():
     stiction_tol = 1e-3
     log_idx = self.log_nums_real.index(log_num)
     log_idx = self.log_nums_real.index('15')
-    # print('log_idx' + str(log_idx))
 
-    # x_traj = np.load(self.folder_path + 'x_' + log_num + '.npy')
-    # t = np.load(self.folder_path + 't_x_' + log_num + '.npy')
     x_traj = self.x_trajs[log_num]
     t = self.t_x[log_num]
 
@@ -157,7 +148,6 @@ class DrakeCassieSim():
     x_interp = interpolate.interp1d(t[:, 0], x_traj, axis=0, bounds_error=False)
     x_init = x_interp(start_time)
 
-
     # z_offset = self.z_offsets[log_num]
     # vel_offset = self.vel_offsets[log_num]
     # z_offset = params['z_offset']
@@ -167,8 +157,6 @@ class DrakeCassieSim():
     vel_offset = np.zeros(3)
     if log_num in self.log_nums_w_offset:
       z_offset = np.array([-0.015])
-    # print(z_offset)
-    # print(vel_offset)
 
     x_init[self.base_z_idx] += z_offset
     x_init[self.base_vel_idx] += vel_offset
@@ -180,31 +168,24 @@ class DrakeCassieSim():
                      '--terrain_height=%.4f' % self.terrain_height,
                      '--start_time=%.3f' % start_time,
                      '--log_num=' + log_num,
-                     # '--penetration_allowance=%.7f' % penetration_allowance,
                      '--stiffness=%.1f' % stiffness,
                      '--dissipation_rate=%.3f' % dissipation,
                      '--stiction_tol=%.7f' % stiction_tol,
                      '--mu_static=%.5f' % mu_static,
                      '--mu_kinetic=%.5f' % mu_kinetic,
                      '--target_realtime_rate=%.2f' % self.realtime_rate,
-                     # '--delta_x_init=%.5f' % delta_x_init,
                      ]
-    # print((' ').join(simulator_cmd))
     simulator_process = subprocess.Popen(simulator_cmd)
     simulator_process.wait()
     if simulator_process.returncode == 1:
       return '-1'
     x_traj = np.genfromtxt('x_traj.csv', delimiter=',', dtype='f16')
     t_x = np.genfromtxt('t_x.csv')
-    # t_x = np.append(t_x, self.start_time + self.sim_time)
-    # sim_id = log_num + str(np.abs(hash(frozenset(params))))
+
     np.save(self.sim_data_folder + 'x_' + log_num, x_traj)
     np.save(self.sim_data_folder + 't_x_' + log_num, t_x)
 
     self.iter_num += 1
-    # if not self.iter_num % 17:
-      # print("sim_run: " + str(self.iter_num))
-      # print("iter: " + str(self.iter_num / 17))
 
     return log_num
 

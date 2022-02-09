@@ -29,6 +29,7 @@ pybind_py_library(
 pybind_py_library(
     name = "primitives_py",
     cc_deps = [
+        "//systems/controllers:trajectory_playback",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],

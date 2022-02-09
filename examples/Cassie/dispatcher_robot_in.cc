@@ -70,7 +70,7 @@ int do_main(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant, nullptr, FLAGS_floating_base /*floating base*/,
+  AddCassieMultibody(&plant, nullptr, FLAGS_floating_base /*floating base*/,
                      "examples/Cassie/urdf/cassie_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();

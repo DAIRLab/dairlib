@@ -71,6 +71,7 @@ cc_library(
     hdrs = ["terrain_generator.h"],
     deps = [
         ":utils",
+        "//common",
         "@drake//:drake_shared_library"
     ]
 )

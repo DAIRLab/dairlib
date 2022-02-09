@@ -9,23 +9,22 @@ namespace dairlib::multibody {
 
 
 struct TerrainConfig {
-  int xbound = 20;
-  int ybound=3;
-  double mesh_res=0.5;
-
-  double min_cube_size=0.1;   // minimum cube side length
-  double max_cube_size=1.0;   // maximum cube side length
-  double clearing_radius=1.0; // radius around 0,0 to keep free of cubes
+  int xbound = 41;
+  int ybound= 41;
+  double mesh_res=0.25;
   double mu_flat=0.8;
-  double mu_cube_min=0.1;
-  double mu_cube_max=1.0;
+  Eigen::Vector4d freq_scales = Eigen::Vector4d(1.0, 3.0, 3.0, 2.0);
   Eigen::Vector3d normal = Eigen::Vector3d::UnitZ();
   Eigen::Vector3d rpy_bounds = Eigen::Vector3d::UnitZ();
 };
 
-drake::geometry::TriangleSurfaceMesh<double>
-makeRandomHeightMap(int nx, int ny,double x_resolution, double y_resolution,
-                    Eigen::Vector3d normal);
+void writeTriangleMeshToObj(
+    const drake::geometry::TriangleSurfaceMesh<double> &mesh,
+    std::string filename);
+
+std::string makeRandomHeightMap(int nx, int ny,double x_resolution,
+                                double y_resolution, Eigen::Vector4d freq_scales,
+                                Eigen::Vector3d normal);
 
 void addFlatHydroelasticTerrain(
     drake::multibody::MultibodyPlant<double>* plant,
@@ -44,7 +43,7 @@ std::vector<drake::multibody::CoulombFriction<double>> GenerateRandomFrictions(
 
 void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
                 drake::geometry::SceneGraph<double> *scene_graph,
-                TerrainConfig terrain_config);
+                const TerrainConfig& terrain_config);
 }
 
 

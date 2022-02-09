@@ -517,15 +517,42 @@
             </material>
         </visual>
 
+        <visual>
+            <geometry>
+                <sphere radius="0.01"/>
+            </geometry>
+            <origin xyz="-0.0457 .112 .01" rpy="0 0 0"/>
+        </visual>
         <collision>
             <geometry>
-                <mesh filename="meshes/agility/left_foot.obj" />
+                <sphere radius="0.01"/>
             </geometry>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <origin xyz="-0.0457 .112 0.01" rpy="0 0 0"/>
             <drake:proximity_properties>
                 <drake:proximity_properties>
-                    <drake:rigid_hydroelastic/>
-                    <drake:mesh_resolution_hint>0.05</drake:mesh_resolution_hint>
+                    <drake:compliant_hydroelastic/>
+                    <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+                    <drake:hydroelastic_modulus>5e7</drake:hydroelastic_modulus>
+                    <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
+                </drake:proximity_properties>
+            </drake:proximity_properties>
+        </collision>
+        <visual>
+            <geometry>
+                <sphere radius="0.01"/>
+            </geometry>
+            <origin xyz="0.088 0 0.01" rpy="0 0 0"/>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="0.01"/>
+            </geometry>
+            <origin xyz="0.088 0 .01" rpy="0 0 0"/>
+            <drake:proximity_properties>
+                <drake:proximity_properties>
+                    <drake:compliant_hydroelastic/>
+                    <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+                    <drake:hydroelastic_modulus>5e7</drake:hydroelastic_modulus>
                     <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
                 </drake:proximity_properties>
             </drake:proximity_properties>
@@ -558,15 +585,42 @@
                 <color rgba="0.4 0.4 0.4 1" />
             </material>
         </visual>
+        <visual>
+            <geometry>
+                <sphere radius="0.01"/>
+            </geometry>a
+            <origin xyz="-0.0457 .112 .01" rpy="0 0 0"/>
+        </visual>
         <collision>
             <geometry>
-                <mesh filename="meshes/agility/right_foot.obj" />
+                <sphere radius="0.01"/>
             </geometry>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <origin xyz="-0.0457 .112 0.01" rpy="0 0 0"/>
             <drake:proximity_properties>
                 <drake:proximity_properties>
-                    <drake:rigid_hydroelastic/>
-                    <drake:mesh_resolution_hint>0.05</drake:mesh_resolution_hint>
+                    <drake:compliant_hydroelastic/>
+                    <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+                    <drake:hydroelastic_modulus>5e7</drake:hydroelastic_modulus>
+                    <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
+                </drake:proximity_properties>
+            </drake:proximity_properties>
+        </collision>
+        <visual>
+            <geometry>
+                <sphere radius="0.01"/>
+            </geometry>
+            <origin xyz="0.088 0 0.01" rpy="0 0 0"/>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="0.01"/>
+            </geometry>
+            <origin xyz="0.088 0 .01" rpy="0 0 0"/>
+            <drake:proximity_properties>
+                <drake:proximity_properties>
+                    <drake:compliant_hydroelastic/>
+                    <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+                    <drake:hydroelastic_modulus>5e7</drake:hydroelastic_modulus>
                     <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
                 </drake:proximity_properties>
             </drake:proximity_properties>

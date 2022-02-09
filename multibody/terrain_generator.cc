@@ -1,7 +1,9 @@
 #include "multibody/terrain_generator.h"
 #include "drake/geometry/proximity/triangle_surface_mesh.h"
+#include "common/find_resource.h"
 #include <random>
 #include <ctime>
+#include <fstream>
 
 using drake::VectorX;
 using drake::geometry::HalfSpace;
@@ -10,8 +12,10 @@ using drake::geometry::Ellipsoid;
 using drake::geometry::SceneGraph;
 using drake::geometry::ProximityProperties;
 using drake::geometry::SurfaceTriangle;
+using drake::geometry::TriangleSurfaceMesh;
 using drake::geometry::AddCompliantHydroelasticPropertiesForHalfSpace;
 using drake::geometry::AddCompliantHydroelasticProperties;
+using drake::geometry::AddRigidHydroelasticProperties;
 using drake::geometry::AddContactMaterial;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::CoulombFriction;
@@ -25,19 +29,39 @@ using std::vector;
 
 namespace dairlib::multibody {
 
-drake::geometry::TriangleSurfaceMesh<double>
-makeRandomHeightMap(int nx, int ny,double x_resolution, double y_resolution,
-                    Vector3d normal) {
-  Vector4d freq_x = Vector4d::Random();
-  Vector4d freq_y = Vector4d::Random();
+
+void writeTriangleMeshToObj(const TriangleSurfaceMesh<double> &mesh,
+                            std::string filename) {
+  std::ofstream ofs;
+  ofs.open(filename, std::ios::out);
+  ofs << "# Random Terrain Generated for Cassie Simulation\n# Vertices:\n";
+  for (auto& v : mesh.vertices()) {
+    ofs << "v " << v(0) << " " << v(1) << " " << v(2) << "\n";
+  }
+  ofs << "# Faces:\n";
+  for (auto& t : mesh.triangles()) {
+    ofs << "f " << t.vertex(0)+1 << " " << t.vertex(1)+1 << " " << t.vertex(2)+1 << "\n";
+  }
+  ofs.close();
+}
+
+std::string makeRandomHeightMap(int nx, int ny,double x_resolution,
+                                double y_resolution, Vector4d freq_scales,
+                                Vector3d normal) {
+  srand((unsigned int) time(0));
+  Vector4d x_amplitudes = (Vector4d::Random().array() * freq_scales.array()).matrix();
+  Vector4d y_amplitudes = (Vector4d::Random().array() * freq_scales.array()).matrix();
 
   VectorXd xvals = VectorXd::LinSpaced(nx,-nx*x_resolution, nx*x_resolution);
   VectorXd yvals = VectorXd::LinSpaced(ny,-ny*y_resolution, ny*y_resolution);
   MatrixXd height = MatrixXd::Zero(ny, nx);
 
-  for (int i = 0; i < freq_x.size(); i++) {
-    MatrixXd freq = (freq_y(0) * yvals.array().sin()).matrix() *
-        (freq_x(0) * xvals.array().sin().transpose()).matrix();
+  double omega_x = 2*M_2_PI / (nx * x_resolution);
+  double omega_y = 2*M_2_PI / (ny * y_resolution);
+
+  for (int i = 0; i < x_amplitudes.size(); i++) {
+    MatrixXd freq = y_amplitudes(i) * Eigen::sin((i+1)*omega_y*yvals.array()).matrix() *
+        (x_amplitudes(i) * Eigen::sin((i+1)*omega_x*xvals.array()).matrix().transpose());
     height += freq;
   }
   height.rowwise() += (normal(0) / normal(2)) * xvals.transpose();
@@ -52,18 +76,20 @@ makeRandomHeightMap(int nx, int ny,double x_resolution, double y_resolution,
   }
   for (int i = 0; i < nx-1; i++) {
     for (int j = 0; j < ny-1; j++) {
-      int ul = j*nx + i;
-      int bl = ul+nx;
+      int ul = j*ny + i;
+      int bl = ul+ny;
       int ur = ul+1;
-      int br = ul+nx+1;
+      int br = bl+1;
       t.emplace_back(SurfaceTriangle(ul, bl, ur));
       t.emplace_back(SurfaceTriangle(bl, br, ur));
     }
   }
 
-  drake::geometry::TriangleSurfaceMesh<double>
-      mesh(std::move(t), std::move(v));
-  return mesh;
+  TriangleSurfaceMesh<double>mesh(std::move(t), std::move(v));
+//  mesh.ReverseFaceWinding();
+  std::string filename = "examples/Cassie/terrains/tmp/terrain_mesh.obj";
+  writeTriangleMeshToObj(mesh, filename);
+  return filename;
 }
 
 void addFlatHydroelasticTerrain(
@@ -97,33 +123,34 @@ void addFlatHydroelasticTerrain(
 
 void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
                 drake::geometry::SceneGraph<double> *scene_graph,
-                      TerrainConfig terrain_config) {
+                      const TerrainConfig& terrain_config) {
 
-  auto mesh = makeRandomHeightMap(terrain_config.xbound,
+  if (!plant->geometry_source_is_registered()) {
+    plant->RegisterAsSourceForSceneGraph(scene_graph);
+  }
+
+  auto mesh_file = makeRandomHeightMap(terrain_config.xbound,
                                             terrain_config.ybound,
                                             terrain_config.mesh_res,
                                             terrain_config.mesh_res,
+                                            terrain_config.freq_scales,
                                             terrain_config.normal);
-  addFlatHydroelasticTerrain(plant, scene_graph,
-                             terrain_config.mu_flat,
-                             terrain_config.mu_flat,
-                             terrain_config.normal);
 
   ProximityProperties obstacle_props;
-  AddCompliantHydroelasticProperties(
-      0.1, 5e7, &obstacle_props);
+  AddRigidHydroelasticProperties(0.02, &obstacle_props);
   CoulombFriction<double> friction(terrain_config.mu_flat, terrain_config.mu_flat);
-  AddContactMaterial(1.25, {}, friction, &obstacle_props);
+  AddContactMaterial(1.5, 9100, friction, &obstacle_props);
 
+  drake::geometry::Mesh mesh(FindResourceOrThrow(mesh_file));
+  plant->RegisterCollisionGeometry(
+        plant->world_body(), RigidTransformd::Identity(),
+        mesh, "ground_mesh",
+        std::move(obstacle_props));
+  plant->RegisterVisualGeometry(
+        plant->world_body(),  RigidTransformd::Identity(),
+        mesh, "ground_mesh",
+        Vector4d(1, 1, 1, 1.0));
 
-//  plant->RegisterCollisionGeometry(
-//        plant->world_body(), RigidTransformd::Identity(),
-//        mesh, "ground_mesh",
-//        std::move(obstacle_props));
-//  plant->RegisterVisualGeometry(
-//        plant->world_body(),  RigidTransformd::Identity(),
-//        mesh, "ground_mesh",
-//        Vector4d(1, 1, 1, 1.0));
 }
 
 std::vector<RigidTransformd> GenerateRandomPoses(

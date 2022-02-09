@@ -28,6 +28,7 @@
 
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
+using dairlib::multibody::makeNameToPositionsMap;
 using drake::geometry::SceneGraph;
 using drake::geometry::DrakeVisualizer;
 using drake::multibody::ContactResultsToLcmSystem;
@@ -208,6 +209,8 @@ int do_main(int argc, char* argv[]) {
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);
   }
+  auto pos_map = makeNameToPositionsMap<double>(plant_for_solver);
+  q_init(pos_map["base_z"]) += 0.1;
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
 

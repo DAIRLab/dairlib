@@ -52,9 +52,6 @@ class MujocoCassieSim():
     for u_name in act_map:
       cassie_in.torque[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
       u_mujoco[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
-    # print('drake:')
-    # print(u_drake[5])
-    # print(u_mujoco[7])
     return cassie_in, u_mujoco
 
   def pack_cassie_out(self):
@@ -95,11 +92,11 @@ class MujocoCassieSim():
     # print('omega_init: ')
     # print(v_mujoco[9:12])
     # print(v_mujoco[22:25])
+    # import pdb; pdb.set_trace()
+    # print(v_mujoco)
     mujoco_state = self.cassie_env.get_state()
     mujoco_state.set_qpos(q_mujoco)
     mujoco_state.set_qvel(v_mujoco)
-    # import pdb; pdb.set_trace()
-    # print(v_mujoco)
     self.cassie_env.set_state(mujoco_state)
 
   # due to the mujoco simulator modeling actuator delays

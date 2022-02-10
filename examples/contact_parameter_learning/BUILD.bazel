@@ -95,10 +95,11 @@ py_library(
     ],
 )
 
-py_library(
-    name = "bullet_cassie_sim_py",
+py_binary(
+    name = "bullet_cassie_sim",
     srcs = ["bullet_cassie_sim.py"],
     deps = [
+        "//bindings/pydairlib/cassie:cassie_utils",
         "//bindings/pydairlib"
     ],
 )

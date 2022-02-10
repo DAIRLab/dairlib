@@ -4,8 +4,8 @@
 #include <pybind11/stl.h>
 
 #include "examples/Cassie/cassie_utils.h"
-
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace py = pybind11;
 

@@ -26,7 +26,6 @@ class DrakeCassieSim():
         self.traj = CassieSimTraj()
         self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
-
         self.default_params = {"mu": 0.8,
                                "stiffness": 4e4,
                                "dissipation": 0.5}

@@ -7,16 +7,16 @@ import matplotlib.pyplot as plt
 
 def test_sim(sim):
   params = sim.default_params
-  hardware_traj_num = '15'
+  hardware_traj_num = '28'
   sim.make(params, hardware_traj_num)
   rollout = sim.advance_to(0.0495)
-  # sim.free_sim()
-  rollout.plot_positions()
-  sim.hardware_traj.plot_positions()
-  # rollout.plot_efforts()
+  sim.free_sim()
+  # rollout.plot_positions()
+  # sim.hardware_traj.plot_positions()
+  rollout.plot_efforts()
   # sim.hardware_traj.plot_efforts()
-  plt.show()
-  # import pdb; pdb.set_trace()
+  # plt.show()
+  import pdb; pdb.set_trace()
 
 def test_mujoco_sim():
   sim = mujoco_cassie_sim_v2.MuJoCoCassieSim()

@@ -35,12 +35,7 @@ class CassieLoss():
     self.quat_slice = slice(0, 4)
     self.rot_vel_slice = slice(23, 26)
     self.weights = self.load_weights(filename)
-    # self.weights = CassieLossWeights()
-    # self.weights.pos = 10 * self.weights.pos
-    # self.weights.quat = 10 * self.weights.quat
-    # self.weights.pos_offset_weight = 20
-    # self.weights.save('pos_loss_weights')
-    # self.weights.save('pos_loss_weights')
+
 
   def load_weights(self, filename):
     with open(LOSS_WEIGHTS_FOLDER + filename + '.pkl', 'rb') as f:
@@ -79,15 +74,14 @@ class CassieLoss():
     return np.mean(loss)
 
   def CalculateLossTraj(self, traj1, traj2):
-    l_pos = self.CalcPositionsLoss(traj1[:, self.position_slice], traj2[:, self.position_slice])
-    l_vel = self.CalcVelocitiesLoss(traj1[:, self.velocity_slice], traj2[:, self.velocity_slice])
-    l_omega = self.CalcOmegaLoss(traj1[:, self.rot_vel_slice], traj2[:, self.rot_vel_slice])
-    l_quat = self.CalcQuatLoss(traj1[:, self.quat_slice], traj2[:, self.quat_slice])
-    # print('l_pos: ' + str(l_pos))
-    # print('l_vel: ' + str(l_vel))
-    # print('l_omega: ' + str(l_omega))
-    # print('l_quat: ' + str(l_quat))
+    l_pos = self.CalcPositionsLoss(traj1.get_positions(), traj2.get_positions())
+    l_vel = self.CalcVelocitiesLoss(traj1.get_velocities(), traj2.get_velocities())
+    l_omega = self.CalcOmegaLoss(traj1.get_omegas(), traj2.get_omegas())
+    l_quat = self.CalcQuatLoss(traj1.get_orientations(), traj2.get_orientations())
     return l_pos + l_vel + l_omega + l_quat
+
+  def CalcLoss(self, traj1, traj2):
+    return self.CalculateLossTraj(traj1, traj2)
 
   def CalculateLossParams(self, params):
     # Regularize the state offsets

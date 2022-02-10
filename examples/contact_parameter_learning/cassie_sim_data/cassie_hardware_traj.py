@@ -24,7 +24,7 @@ class CassieHardwareTraj(CassieTraj):
         # self.t = np.zeros((CASSIE_DTS,))
         # self.x_samples = np.zeros((CASSIE_DTS, CASSIE_NX))
         # self.u_samples = np.zeros((CASSIE_DTS, CASSIE_NU))
-
+        self.dataset_num = dataset_num
         self.t = np.load(DATASET_DIR + 't_' + dataset_num + '.npy')
         self.x_samples = np.load(DATASET_DIR + 'x_' + dataset_num + '.npy')
         self.u_samples = np.load(DATASET_DIR + 'u_' + dataset_num + '.npy')
@@ -33,18 +33,6 @@ class CassieHardwareTraj(CassieTraj):
     def get_initial_state(self):
         initial_state = np.copy(self.x_samples[0, :])
         return initial_state
-
-    def get_positions(self):
-        return
-
-    def get_orientations(self):
-        return
-
-    def get_velocities(self):
-        return
-
-    def get_omegas(self):
-        return
 
     def get_action(self, t):
         return self.u_samples[self.time_to_index(t), :]

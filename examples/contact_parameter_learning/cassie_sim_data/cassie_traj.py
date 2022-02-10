@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 # TODO(yangwill): verify the indices, all simulators should output the final trajectory data in the same format
 CASSIE_QUATERNION_SLICE = slice(0, 4)
 CASSIE_POSITION_SLICE = slice(4, 23)
-CASSIE_OMEGA_SLICE = slice(26, 45)
-CASSIE_VELOCITY_SLICE = slice(23, 26)
+CASSIE_OMEGA_SLICE = slice(23, 26)
+CASSIE_VELOCITY_SLICE = slice(26, 45)
 
 CASSIE_NX = 45
 CASSIE_NU = 10
@@ -26,16 +26,16 @@ class CassieTraj():
         return int(t * 2000)
 
     def get_positions(self):
-        return
+        return self.x_samples[:, CASSIE_POSITION_SLICE]
 
     def get_orientations(self):
-        return
+        return self.x_samples[:, CASSIE_QUATERNION_SLICE]
 
     def get_velocities(self):
-        return
+        return self.x_samples[:, CASSIE_VELOCITY_SLICE]
 
     def get_omegas(self):
-        return
+        return self.x_samples[:, CASSIE_OMEGA_SLICE]
 
     def plot_positions(self):
         plt.plot(self.t, self.x_samples[:, CASSIE_POSITION_SLICE])
@@ -44,5 +44,7 @@ class CassieTraj():
         plt.plot(self.t, self.x_samples[:, CASSIE_VELOCITY_SLICE])
 
     def plot_efforts(self):
+        np.save('t_sim', self.t)
+        np.save('u_sim', self.u_samples)
         plt.plot(self.t, self.u_samples)
 

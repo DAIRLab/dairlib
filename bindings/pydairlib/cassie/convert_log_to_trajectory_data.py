@@ -59,14 +59,14 @@ def convert_log(filename, controller_channel, save_est_contact_forces=False):
   # t_start = t_u[10]
   # t_end = t_u[-10]
   # Override here #
-  dataset_num = '28'
-  impact_time = 50.520
+  dataset_num = '21'
+  impact_time = 30.637
 
 
   t_start = impact_time - 0.005 # start window 5 ms before impact
   t_end = t_start + 0.050 # end window 50 ms after the start
   ### Convert times to indices
-  t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
+  t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0] - 1)
   # t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
 
   # log_file_num = log_name.split('-')[1]
@@ -76,7 +76,10 @@ def convert_log(filename, controller_channel, save_est_contact_forces=False):
   # t_slice_shift = slice(t_slice.start - 2, t_slice.stop - 2)
   # t_slice_shift = slice(t_slice.start - 2, t_slice.stop - 2)
   u_meas = u_meas[t_slice]
-  t_x = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
+  t_x = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], ))
+  t_x = t_x - t_start + (t_start - t_x[0])
+  # import pdb; pdb.set_trace()
+  # t_x = np.arange(0, 0.05, 5e-4)
   t_u = t_x
 
   # for visualizing hardware trajectory

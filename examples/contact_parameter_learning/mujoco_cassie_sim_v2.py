@@ -19,6 +19,8 @@ class MuJoCoCassieSim():
         self.start_time = 0.00
         self.end_time = 0.05
         self.sample_period = 2e-3
+
+        # Will read in the default mujoco model and write a new model with the updated contact parameters
         self.default_model_directory = '/home/yangwill/workspace/cassie-mujoco-sim/model/'
         self.default_model_file = '/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
         self.tree = ET.parse(self.default_model_file)
@@ -82,10 +84,11 @@ class MuJoCoCassieSim():
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, action)
         if self.visualize:
             self.cassie_vis = self.cassie_vis.draw(self.cassie_env)
-        print("outer step")
+        # print("outer step")
         while self.cassie_env.time() < next_timestep:
-            print("inner step")
+            # print("inner step")
             self.cassie_env.step(cassie_in)
+        import pdb; pdb.set_trace()
         # get current state
         t = self.cassie_env.time()
         q = self.cassie_env.qpos()

@@ -26,11 +26,3 @@ class CassieSimTraj(CassieTraj):
         self.x_samples[index] = state
         self.u_samples[index] = action
         self.t[index] = t
-    def get_positions(self):
-        return
-    def get_orientations(self):
-        return
-    def get_velocities(self):
-        return
-    def get_omegas(self):
-        return

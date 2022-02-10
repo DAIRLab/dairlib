@@ -123,8 +123,8 @@ def learn_drake_cassie_params(iteration, batch=False):
   optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
   if batch:
     params = optimizer.minimize(get_drake_loss_mp)
-  else:
-    params = optimizer.minimize(get_drake_loss)
+  # else:
+  #   params = optimizer.minimize(get_drake_loss)
   loss = np.array(loss_over_time)
   stiffness = np.array(stiffness_over_time)
   np.save(drake_sim.params_folder + log_num + '_loss_trajectory_' + str(budget), loss)
@@ -416,7 +416,7 @@ def print_drake_training_test_analysis():
 
 if (__name__ == '__main__'):
   plt.close()
-  print_drake_training_test_analysis()
+  # print_drake_training_test_analysis()
   # print_mujoco_training_test_analysis()
 
 
@@ -428,10 +428,10 @@ if (__name__ == '__main__'):
   # save_x_offsets()
   # print_drake_cassie_params()
 
-  # for i in range(2, 10):
-    # training_idxs = sample(all_logs, num_train)
-    # test_idxs = [idx for idx in all_logs if not (idx in training_idxs)]
-    # learn_drake_cassie_params(str(i), batch=True)
+  for i in range(2, 10):
+    training_idxs = sample(all_logs, num_train)
+    test_idxs = [idx for idx in all_logs if not (idx in training_idxs)]
+    learn_drake_cassie_params(str(i), batch=True)
     # learn_mujoco_cassie_params(str(i))
   # plot_per_log_loss_drake()
   # plot_per_log_loss_mujoco()

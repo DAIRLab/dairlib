@@ -1,4 +1,6 @@
 import numpy as np
+import xml.etree.ElementTree as ET
+
 from cassie_sim_data.cassie_sim_traj import *
 from cassie_sim_data.cassie_hardware_traj import *
 
@@ -10,6 +12,7 @@ class MuJoCoCassieSim():
 
     def __init__(self, visualize=False):
         self.sim_dt = 5e-5
+        self.dt = 5e-4
         self.visualize = visualize
         # hardware logs are 50ms long and start approximately 5ms before impact
         # the simulator will check to make sure ground reaction forces are first detected within 3-7ms
@@ -17,15 +20,17 @@ class MuJoCoCassieSim():
         self.end_time = 0.05
         self.sample_period = 2e-3
         self.default_model_directory = '/home/yangwill/workspace/cassie-mujoco-sim/model/'
-        # self.default_model_file = '/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
+        self.default_model_file = '/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
+        self.tree = ET.parse(self.default_model_file)
+
         self.traj = CassieSimTraj()
-        self.valid_ground_truth_trajs = np.arange(0, 24)
+        self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
         self.drake_to_mujoco_converter = DrakeToMujocoConverter(self.sim_dt)
         self.cassie_in = cassie_user_in_t()
-        self.default_params = {"mu": 0.8,
-                               "stiffness": 4e4,
-                               "dissipation": 0.5}
+        self.default_params = {"stiffness" : 2000,
+                               "damping" : 36.02,
+                               "mu_tangent" : 0.18}
 
         self.actuator_index_map = {'hip_roll_left_motor': 0,
                                    'hip_yaw_left_motor': 1,
@@ -38,10 +43,18 @@ class MuJoCoCassieSim():
                                    'knee_right_motor': 8,
                                    'toe_right_motor': 9}
 
-    def make(self, params, hardware_traj_num, xml='/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'):
-        self.cassie_env = CassieSim(xml)
-        self.cassie_vis = CassieVis(self.cassie_env, xml)
-        self.dt = 5e-4
+    def make(self, params, hardware_traj_num, xml='cassie_new_params.xml'):
+
+        stiffness = params['stiffness']
+        damping = params['damping']
+        mu_tangent = params['mu_tangent']
+        self.tree.getroot().find('default').find('geom').set('solref', '%.5f %.5f' % (-stiffness, -damping))
+        self.tree.getroot().find('default').find('geom').set('friction',
+                                                             '%.5f %.5f %.5f' % (mu_tangent, .001, .001))
+        self.tree.write(self.default_model_directory + xml)
+        self.cassie_env = CassieSim(self.default_model_directory + xml)
+        if self.visualize:
+            self.cassie_vis = CassieVis(self.cassie_env, xml)
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.reset()
 
@@ -66,12 +79,14 @@ class MuJoCoCassieSim():
     def sim_step(self, action=None):
         next_timestep = self.cassie_env.time() + self.dt
         action = self.hardware_traj.get_action(next_timestep)
-        self.cassie_vis.draw(self.cassie_env)
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, action)
+        if self.visualize:
+            self.cassie_vis = self.cassie_vis.draw(self.cassie_env)
         print("outer step")
         while self.cassie_env.time() < next_timestep:
             print("inner step")
             self.cassie_env.step(cassie_in)
+        # get current state
         t = self.cassie_env.time()
         q = self.cassie_env.qpos()
         v = self.cassie_env.qvel()

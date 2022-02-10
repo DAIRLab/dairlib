@@ -215,6 +215,18 @@ py_binary(
 )
 
 py_binary(
+    name = "learn_cassie_parameters_v2",
+    srcs = ["learn_cassie_parameters_v2.py"],
+    deps = [
+        ":cassie_loss_utils",
+        ":drake_cassie_sim_py",
+        "//bindings/pydairlib/cassie:kinematics_helper",
+        "//bindings/pydairlib/cassie:mujoco_sim",
+        "//bindings/pydairlib/common:plot_styler",
+    ],
+)
+
+py_binary(
     name = "test_cassie_sims",
     srcs = ["test_cassie_sims.py"],
     deps = [

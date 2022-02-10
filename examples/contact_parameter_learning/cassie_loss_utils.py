@@ -5,9 +5,7 @@ from pydairlib.common import FindResourceOrThrow
 from scipy.integrate import trapezoid, simpson
 from pyquaternion import Quaternion
 
-
 LOSS_WEIGHTS_FOLDER = 'examples/contact_parameter_learning/cassie_loss_weights/'
-
 
 class CassieLossWeights():
   def __init__(self,

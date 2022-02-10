@@ -97,7 +97,9 @@ int do_main(int argc, char* argv[]) {
 
   std::string urdf;
   if (FLAGS_spring_model) {
-    urdf = "examples/Cassie/urdf/cassie_hydroelastic.urdf";
+    urdf = FLAGS_generate_terrain ?
+        "examples/Cassie/urdf/cassie_hydroelastic.urdf" :
+        "examples/Cassie/urdf/cassie_v2.urdf";
   } else {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }

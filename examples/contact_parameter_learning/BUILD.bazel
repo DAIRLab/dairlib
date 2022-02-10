@@ -58,6 +58,30 @@ py_library(
 )
 
 py_library(
+    name = "drake_cassie_sim_v2_py",
+    srcs = ["drake_cassie_sim_v2.py"],
+    deps = [
+        ":cassie_loss_utils",
+        "//bindings/pydairlib/cassie:cassie_utils",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems:primitives_py",
+        "//examples/contact_parameter_learning/cassie_sim_data",
+    ],
+)
+
+py_library(
+    name = "mujoco_cassie_sim_v2_py",
+    srcs = ["mujoco_cassie_sim_v2.py"],
+    deps = [
+        ":cassie_loss_utils",
+        "//bindings/pydairlib/cassie:cassie_mujoco_py",
+        "//bindings/pydairlib/cassie:drake_to_mujoco_converter",
+        "//bindings/pydairlib/cassie:mujoco_lcm_utils",
+        "//examples/contact_parameter_learning/cassie_sim_data",
+    ],
+)
+
+py_library(
     name = "mujoco_cassie_sim_py",
     srcs = ["mujoco_cassie_sim.py"],
     deps = [
@@ -99,8 +123,8 @@ py_binary(
     name = "bullet_cassie_sim",
     srcs = ["bullet_cassie_sim.py"],
     deps = [
+        "//bindings/pydairlib",
         "//bindings/pydairlib/cassie:cassie_utils",
-        "//bindings/pydairlib"
     ],
 )
 
@@ -159,8 +183,8 @@ py_binary(
     srcs = ["cassie_figures.py"],
     deps = [
         ":cassie_loss_plotter",
-        ":plotting_utils",
         ":evaluate_cube_parameters",
+        ":plotting_utils",
         ":sensitivity_analysis",
         "//bindings/pydairlib",
     ],
@@ -191,12 +215,12 @@ py_binary(
 )
 
 py_binary(
-    name = "test_drake_sim",
-    srcs = ["test_drake_sim.py"],
+    name = "test_cassie_sims",
+    srcs = ["test_cassie_sims.py"],
     deps = [
         ":cassie_loss_utils",
-        ":drake_cassie_sim_py",
-        ":mujoco_cube_sim_py",
+        ":drake_cassie_sim_v2_py",
+        ":mujoco_cassie_sim_v2_py",
         "//bindings/pydairlib/common:plot_styler",
     ],
 )
@@ -233,7 +257,7 @@ py_binary(
         "//bindings/pydairlib/cassie:cassie_utils",
         "//bindings/pydairlib/cassie:kinematics_helper",
         "//bindings/pydairlib/common",
-#        "//bindings/pydairlib/cassie:mujoco_sim",
+        #        "//bindings/pydairlib/cassie:mujoco_sim",
         "//bindings/pydairlib/multibody",
         "@drake//bindings/pydrake",
         "@lcm//:lcm-python",

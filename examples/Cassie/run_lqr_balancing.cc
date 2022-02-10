@@ -58,7 +58,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant, nullptr, true, urdf, FLAGS_spring_model, false);
+  AddCassieMultibody(&plant, nullptr, true, urdf, FLAGS_spring_model, false);
   plant.Finalize();
 
   std::unique_ptr<MultibodyPlant<AutoDiffXd>> plant_ad =

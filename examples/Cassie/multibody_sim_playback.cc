@@ -103,7 +103,7 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_dt;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, FLAGS_mu_static,
+    multibody::AddFlatTerrain(&plant, &scene_graph, FLAGS_mu_static,
                               FLAGS_mu_kinetic, Eigen::Vector3d(0, 0, 1),
                               FLAGS_stiffness, FLAGS_dissipation_rate);
   }
@@ -166,7 +166,7 @@ int do_main(int argc, char* argv[]) {
   //  plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_stiction_tol);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
 
   plant.Finalize();
@@ -268,13 +268,6 @@ int do_main(int argc, char* argv[]) {
   diagram->SetDefaultContext(diagram_context.get());
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
-
-  MultibodyPlant<double> plant_wo_spr(FLAGS_dt);  // non-zero timestep to avoid
-  //  Parser parser_wo_spr(&plant_wo_spr, &scene_graph);
-  addCassieMultibody(&plant_wo_spr, &scene_graph, FLAGS_floating_base,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                     true);
-  plant_wo_spr.Finalize();
 
   InitialState init_state;
   const YAML::Node& root =

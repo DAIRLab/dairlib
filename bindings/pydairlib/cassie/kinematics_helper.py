@@ -28,7 +28,7 @@ class KinematicsHelper():
     self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, self.drake_sim_dt)
     self.fixed_springs = urdf == "examples/Cassie/urdf/cassie_fixed_springs.urdf"
 
-    addCassieMultibody(self.plant, self.scene_graph, True, urdf, False, False)
+    AddCassieMultibody(self.plant, self.scene_graph, True, urdf, False, False)
     self.plant.Finalize()
 
     self.diagram = self.builder.Build()

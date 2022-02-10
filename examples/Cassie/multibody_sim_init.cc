@@ -81,7 +81,7 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_dt;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
   }
 
   if (FLAGS_terrain_height != 0) {
@@ -104,7 +104,7 @@ int do_main(int argc, char* argv[]) {
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
 
   plant.Finalize();
@@ -189,7 +189,7 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double> plant_wo_spr(FLAGS_dt);  // non-zero timestep to avoid
   //  Parser parser_wo_spr(&plant_wo_spr, &scene_graph);
-  addCassieMultibody(&plant_wo_spr, &scene_graph, FLAGS_floating_base,
+  AddCassieMultibody(&plant_wo_spr, &scene_graph, FLAGS_floating_base,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      true);
   plant_wo_spr.Finalize();

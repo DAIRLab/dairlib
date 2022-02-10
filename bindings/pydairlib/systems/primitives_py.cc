@@ -3,11 +3,13 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "systems/controllers/trajectory_playback.h"
 #include "systems/primitives/subvector_pass_through.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 
 namespace py = pybind11;
+using py_rvp = py::return_value_policy;
 
 namespace dairlib {
 namespace pydairlib {
@@ -43,8 +45,16 @@ PYBIND11_MODULE(primitives, m) {
 
   using drake::multibody::MultibodyPlant;
 
-  py::class_<systems::SubvectorPassThrough<double>, drake::systems::LeafSystem<double>>(m, "SubvectorPassThrough")
+  py::class_<systems::SubvectorPassThrough<double>,
+             drake::systems::LeafSystem<double>>(m, "SubvectorPassThrough")
       .def(py::init<int, int, int>());
+  py::class_<systems::TrajectoryPlayback, drake::systems::LeafSystem<double>>(
+      m, "TrajectoryPlayback")
+      .def(py::init<drake::trajectories::PiecewisePolynomial<double>, int,
+                    double>())
+      .def("get_command_output_port",
+           &systems::TrajectoryPlayback::get_command_output_port,
+           py_rvp::reference_internal);
 }
 
 }  // namespace pydairlib

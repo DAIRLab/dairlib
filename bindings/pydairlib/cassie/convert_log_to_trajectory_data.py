@@ -10,19 +10,21 @@ import pydairlib.multibody
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.common import plot_styler
 from pydairlib.lcm import lcm_trajectory
+import matplotlib.pyplot as plt
 
 
 def convert_log(filename, controller_channel, save_est_contact_forces=False):
   figure_directory = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/'
+  # figure_directory = '/home/yangwill/workspace/dairlib/examples/contact_parameter_learning/cassie_sim_data'
   ps = plot_styler.PlotStyler()
   ps.set_default_styling(directory=figure_directory)
 
   builder = DiagramBuilder()
   plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
   plant_wo_spr, scene_graph_wo_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
-  pydairlib.cassie.cassie_utils.addCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
+  pydairlib.cassie.cassie_utils.AddCassieMultibody(plant_w_spr, scene_graph_w_spr, True,
                                                    "examples/Cassie/urdf/cassie_v2.urdf", False, False)
-  pydairlib.cassie.cassie_utils.addCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
+  pydairlib.cassie.cassie_utils.AddCassieMultibody(plant_wo_spr, scene_graph_wo_spr, True,
                                                    "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, False)
   plant_w_spr.Finalize()
   plant_wo_spr.Finalize()
@@ -54,36 +56,55 @@ def convert_log(filename, controller_channel, save_est_contact_forces=False):
   osc_output, full_log, t_lcmlog_u = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   # Default time window values, can override
-  t_start = t_u[10]
-  t_end = t_u[-10]
+  # t_start = t_u[10]
+  # t_end = t_u[-10]
   # Override here #
-  # t_start = 30.495
-  t_start = 50.0
-  t_end = t_start + 1.0
+  dataset_num = '28'
+  impact_time = 50.520
+
+
+  t_start = impact_time - 0.005 # start window 5 ms before impact
+  t_end = t_start + 0.050 # end window 50 ms after the start
   ### Convert times to indices
   t_slice = slice(np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0])
-  t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
+  # t_u_slice = slice(np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0], np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0])
 
-  log_file_num = log_name.split('-')[1]
-  print(log_file_num)
+  # log_file_num = log_name.split('-')[1]
+  # print(log_file_num)
+
   x = x[t_slice]
-  t_slice_shift = slice(t_slice.start - 2, t_slice.stop - 2)
-  u_meas = u_meas[t_slice_shift]
+  # t_slice_shift = slice(t_slice.start - 2, t_slice.stop - 2)
+  # t_slice_shift = slice(t_slice.start - 2, t_slice.stop - 2)
+  u_meas = u_meas[t_slice]
   t_x = np.reshape(t_x[t_slice], (t_x[t_slice].shape[0], 1))
   t_u = t_x
-  np.save(ps.directory + log_date + '/' + 'x_' + log_file_num, x)
-  np.save(ps.directory + log_date + '/' + 't_x_' + log_file_num, t_x)
-  np.save(ps.directory + log_date + '/' + 'u_' + log_file_num, u_meas)
 
-  controller_input_traj = lcm_trajectory.Trajectory()
-  controller_input_traj.traj_name = 'controller_inputs'
-  controller_input_traj.time_vector = t_u
-  controller_input_traj.datapoints = u_meas.transpose()
-  controller_input_traj.datatypes = [''] * u_meas.shape[1]
-  # import pdb; pdb.set_trace()
-  lcm_traj = lcm_trajectory.LcmTrajectory()
-  lcm_traj.AddTrajectory('controller_inputs', controller_input_traj)
-  lcm_traj.WriteToFile(ps.directory + log_date + '/' + 'u_traj_' + log_file_num)
+  # for visualizing hardware trajectory
+  # plt.figure("efforts")
+  # plt.plot(t_x, u_meas)
+  # plt.figure("state")
+  # plt.plot(t_x, x[:, -6:])
+  # plt.show()
+
+  print(t_x.shape)
+
+
+  # np.save(ps.directory + log_date + '/' + 'x_' + dataset_num, x)
+  # np.save(ps.directory + log_date + '/' + 't_' + dataset_num, t_x)
+  # np.save(ps.directory + log_date + '/' + 'u_' + dataset_num, u_meas)
+  np.save(ps.directory + 'curated_trajectories/' + 'x_' + dataset_num, x)
+  np.save(ps.directory + 'curated_trajectories/' + 't_' + dataset_num, t_x)
+  np.save(ps.directory + 'curated_trajectories/' + 'u_' + dataset_num, u_meas)
+
+  # for use with c++ simulator
+  # controller_input_traj = lcm_trajectory.Trajectory()
+  # controller_input_traj.traj_name = 'controller_inputs'
+  # controller_input_traj.time_vector = t_u
+  # controller_input_traj.datapoints = u_meas.transpose()
+  # controller_input_traj.datatypes = [''] * u_meas.shape[1]
+  # lcm_traj = lcm_trajectory.LcmTrajectory()
+  # lcm_traj.AddTrajectory('controller_inputs', controller_input_traj)
+  # lcm_traj.WriteToFile(ps.directory + log_date + '/' + 'u_traj_' + log_file_num)
 
 
   if save_est_contact_forces:
@@ -136,11 +157,11 @@ def convert_log(filename, controller_channel, save_est_contact_forces=False):
 
 def convert_all_hardware_jumping_logs():
   controller_channel = 'OSC_JUMPING'
-  root_log_dir = '/home/yangwill/Documents/research/projects/cassie/hardware/logs/'
+  root_log_dir = '/home/yangwill/Documents/research/projects/cassie/hardware/logs/2021/'
   jan_logs = np.arange(8, 18)
   feb_logs = np.arange(20, 34)
   # feb_26_logs = np.hstack((np.arange(0, 7), np.arange(11, 15), np.arange(16,18)))
-  feb_26_logs = np.hstack((np.arange(16,18)))
+  feb_26_logs = np.hstack((np.arange(0,18)))
   jan_logs = ['%0.2d' % i for i in jan_logs]
   feb_logs = ['%0.2d' % i for i in feb_logs]
   feb_26_logs = ['%0.2d' % i for i in feb_26_logs]
@@ -164,5 +185,5 @@ def main():
   convert_log(filename, controller_channel)
 
 if __name__ == '__main__':
-  convert_all_hardware_jumping_logs()
-  # main()
+  # convert_all_hardware_jumping_logs()
+  main()

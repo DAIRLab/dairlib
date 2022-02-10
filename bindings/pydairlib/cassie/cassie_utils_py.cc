@@ -29,7 +29,7 @@ PYBIND11_MODULE(cassie_utils, m) {
            &dairlib::LeftLoopClosureEvaluator<double>, py::arg("plant"))
       .def("RightLoopClosureEvaluator",
            &dairlib::RightLoopClosureEvaluator<double>, py::arg("plant"))
-      .def("addCassieMultibody", &dairlib::addCassieMultibody, py::arg("plant"),
+      .def("AddCassieMultibody", &dairlib::AddCassieMultibody, py::arg("plant"),
            py::arg("scene_graph"), py::arg("floating_base"),
            py::arg("filename"), py::arg("add_leaf_springs"),
            py::arg("add_loop_closure"))

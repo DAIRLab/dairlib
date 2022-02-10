@@ -89,6 +89,7 @@ int do_main(int argc, char* argv[]) {
   multibody::TerrainConfig terrain_config;
   if (FLAGS_floating_base) {
     if (FLAGS_generate_terrain) {
+      plant.set_contact_model(drake::multibody::ContactModel::kHydroelastic);
       multibody::addRandomTerrain(&plant, &scene_graph, terrain_config);
     } else {
       multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
@@ -106,8 +107,8 @@ int do_main(int argc, char* argv[]) {
                      FLAGS_spring_model, true);
   plant.Finalize();
 
-  plant.set_penetration_allowance(FLAGS_penetration_allowance);
-  plant.set_stiction_tolerance(FLAGS_v_stiction);
+//  plant.set_penetration_allowance(FLAGS_penetration_allowance);
+//  plant.set_stiction_tolerance(FLAGS_v_stiction);
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();

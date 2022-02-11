@@ -22,6 +22,7 @@ class DrakeCassieSim():
         # hardware logs are 50ms long and start approximately 5ms before impact
         # the simulator will check to make sure ground reaction forces are first detected within 3-7ms
         self.start_time = 0.00
+        self.current_time = 0.00
         self.end_time = 0.05
         self.traj = CassieSimTraj()
         self.valid_ground_truth_trajs = np.arange(0, 29)
@@ -43,29 +44,31 @@ class DrakeCassieSim():
 
         self.plant.Finalize()
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
-        controller_inputs = self.builder.AddSystem(
+        self.controller_inputs = self.builder.AddSystem(
             TrajectoryPlayback(self.hardware_traj.generate_input_traj(), self.plant.num_actuators(), 0.0))
-        passthrough = self.builder.AddSystem(SubvectorPassThrough(11, 0, 10))
-        self.builder.Connect(controller_inputs.get_command_output_port(), passthrough.get_input_port())
-        self.builder.Connect(passthrough.get_output_port(), self.plant.get_actuation_input_port())
+        self.passthrough = self.builder.AddSystem(SubvectorPassThrough(11, 0, 10))
+        self.builder.Connect(self.controller_inputs.get_command_output_port(), self.passthrough.get_input_port())
+        self.builder.Connect(self.passthrough.get_output_port(), self.plant.get_actuation_input_port())
         # self.input_port = self.plant.get_actuation_input_port()
         self.diagram = self.builder.Build()
-        self.diagram_context = self.diagram.CreateDefaultContext()
+        # self.diagram_context = self.diagram.CreateDefaultContext()
         # self.diagram_context.EnableCaching()
         # self.diagram.SetDefaultContext(self.diagram_context)
-        # self.plant_context = self.diagram.GetMutableSubsystemContext(self.plant, self.diagram_context)
-        self.diagram_context.SetTime(self.start_time)
+        # self.diagram_context.SetTime(self.start_time)
         self.sim = Simulator(self.diagram)
 
-        self.reset()
+        self.plant_context = self.diagram.GetMutableSubsystemContext(self.plant, self.sim.get_mutable_context())
+        self.sim.get_mutable_context().SetTime(self.start_time)
+        self.reset(hardware_traj_num)
         # self.sim.Initialize()
         # self.current_time = 0.0
 
-    def reset(self):
+    def reset(self, hardware_traj_num):
+        self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.traj = CassieSimTraj()
         self.plant.SetPositionsAndVelocities(self.plant.GetMyMutableContextFromRoot(
             self.sim.get_mutable_context()), self.hardware_traj.get_initial_state())
-        self.diagram_context.SetTime(self.start_time)
+        self.sim.get_mutable_context().SetTime(self.start_time)
         self.traj.update(self.start_time, self.hardware_traj.get_initial_state(), self.hardware_traj.get_action(self.start_time))
         self.sim.Initialize()
         self.current_time = self.start_time
@@ -77,9 +80,11 @@ class DrakeCassieSim():
         return self.traj
 
     def sim_step(self, action=None):
-        next_timestep = self.sim.get_mutable_context().get_time() + self.dt
-        action = self.hardware_traj.get_action(next_timestep)
-        # self.plant.get_actuation_input_port().FixValue(self.plant_context, action)
+        next_timestep = self.sim.get_context().get_time() + self.dt
+        action = self.hardware_traj.get_action(self.sim.get_context().get_time())
+        # print(next_timestep)
+        self.plant.get_actuation_input_port().FixValue(self.plant_context, action)
+        # self.plant.get_actuation_input_port().FixValue(self.plant_context, np.zeros(10))
         self.sim.AdvanceTo(next_timestep)
 
         cassie_state = self.plant.GetPositionsAndVelocities(

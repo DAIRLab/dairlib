@@ -58,15 +58,16 @@ class MuJoCoCassieSim():
         if self.visualize:
             self.cassie_vis = CassieVis(self.cassie_env, xml)
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
-        self.reset()
+        self.reset(hardware_traj_num)
 
-
-    def reset(self):
+    def reset(self, hardware_traj_num):
+        self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.traj = CassieSimTraj()
         q_mujoco, v_mujoco = self.drake_to_mujoco_converter.convert_to_mujoco(self.hardware_traj.get_initial_state())
         mujoco_state = self.cassie_env.get_state()
         mujoco_state.set_qpos(q_mujoco)
         mujoco_state.set_qvel(v_mujoco)
+        mujoco_state.set_time(self.start_time)
         self.cassie_env.set_state(mujoco_state)
 
         self.traj.update(self.start_time, self.hardware_traj.get_initial_state(), self.hardware_traj.get_action(self.start_time))
@@ -88,7 +89,7 @@ class MuJoCoCassieSim():
         while self.cassie_env.time() < next_timestep:
             # print("inner step")
             self.cassie_env.step(cassie_in)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         # get current state
         t = self.cassie_env.time()
         q = self.cassie_env.qpos()

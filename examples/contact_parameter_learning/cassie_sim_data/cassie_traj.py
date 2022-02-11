@@ -23,6 +23,8 @@ class CassieTraj():
         self.lambda_traj = np.zeros((CASSIE_DTS, CASSIE_NL))  # May be empty
 
     def time_to_index(self, t):
+        if int(t * 2000) >= self.u_samples.shape[0]:
+            print("time %.2f is out of bounds" % t)
         return int(t * 2000)
 
     def get_positions(self):
@@ -38,13 +40,17 @@ class CassieTraj():
         return self.x_samples[:, CASSIE_OMEGA_SLICE]
 
     def plot_positions(self):
+        # np.save('t_hardware', self.t)
+        # np.save('q_hardware', self.x_samples[:, CASSIE_POSITION_SLICE])
+        # np.save('t_sim', self.t)
+        # np.save('q_sim', self.x_samples[:, CASSIE_POSITION_SLICE])
         plt.plot(self.t, self.x_samples[:, CASSIE_POSITION_SLICE])
 
     def plot_velocities(self):
         plt.plot(self.t, self.x_samples[:, CASSIE_VELOCITY_SLICE])
 
     def plot_efforts(self):
-        np.save('t_sim', self.t)
-        np.save('u_sim', self.u_samples)
+        # np.save('t_sim', self.t)
+        # np.save('u_sim', self.u_samples)
         plt.plot(self.t, self.u_samples)
 

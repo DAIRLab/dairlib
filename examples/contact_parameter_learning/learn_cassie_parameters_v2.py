@@ -36,24 +36,30 @@ class CassieContactParamsOptimizer():
         with open(folder + self.date_prefix + '.pkl', 'wb') as f:
             pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
 
-    def get_single_loss(self, params, hardware_traj_num=None):
+    def get_single_loss(self, hardware_traj_num=None, params=None):
         if (hardware_traj_num == None):
             hardware_traj_num = choice(self.hardware_traj_nums)
-
         # initialize sim
-        self.sim.make(params, hardware_traj_num)
+        if (params == None):
+            self.sim.reset(hardware_traj_num)
+        else:
+            self.sim.make(params, hardware_traj_num)
+
+        # self.sim.make(params, hardware_traj_num)
+        # self.sim.reset(params, hardware_traj_num)
 
         # rollout a trajectory and compute the loss
         rollout = self.sim.advance_to(self.end_time)
-        # import pdb; pdb.set_trace()
         loss = self.loss_function.CalcLoss(rollout, self.sim.hardware_traj)
         self.loss_over_time.append(loss)
         return loss
 
     def get_batch_loss(self, params):
         self.total_loss = 0
+        self.sim.make(params, '00')
         for hardware_traj_num in self.hardware_traj_nums:
-            self.total_loss += self.get_single_loss(params, hardware_traj_num)
+            self.total_loss += self.get_single_loss(hardware_traj_num)
+            # self.total_loss += self.get_single_loss(hardware_traj_num, params)
         avg_loss = self.total_loss / len(self.hardware_traj_nums)
         print(avg_loss)
         return avg_loss
@@ -96,9 +102,11 @@ class CassieContactParamsOptimizer():
         self.save_params(self.mujoco_params_folder, params)
 
 if __name__ == '__main__':
-    budget = 10
+    budget = 5000
     loss_function = cassie_loss_utils.CassieLoss(filename='2021_09_07_weights')
+    # loss_function = cassie_loss_utils.CassieLoss(filename='default_loss_weights')
+    # loss_function = cassie_loss_utils.CassieLoss(filename='pos_loss_weights')
     optimizer = CassieContactParamsOptimizer(budget, loss_function)
 
     optimizer.learn_drake_params()
-    optimizer.learn_mujoco_params()
+    # optimizer.learn_mujoco_params()

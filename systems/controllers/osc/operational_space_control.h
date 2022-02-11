@@ -272,6 +272,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Solver
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
+  std::unique_ptr<solvers::FastOsqpSolver> solver2_;
   drake::solvers::SolverOptions solver_options_;
   std::unique_ptr<drake::solvers::OsqpSolver> osqp_solver_;
   mutable int prev_fsm_state_ = -1;
@@ -366,6 +367,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd prev_sol_ = Eigen::VectorXd::Zero(1);
   mutable int counter_ = 0;
   std::map<int, Eigen::VectorXd> offline_sols_;
+  drake::solvers::BoundingBoxConstraint* left_toe_effort_constraint_;
+  drake::solvers::BoundingBoxConstraint* right_toe_effort_constraint_;
+  drake::solvers::LinearEqualityConstraint* force_center_left_constraint_;
+  drake::solvers::LinearEqualityConstraint* force_center_right_constraint_;
+  drake::solvers::VectorXDecisionVariable epsilon_center_;
 };
 
 }  // namespace dairlib::systems::controllers

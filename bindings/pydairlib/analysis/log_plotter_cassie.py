@@ -39,7 +39,7 @@ def main():
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
     # Define x time slice
-    start_time = 0.8
+    start_time = 0.0
     duration = 2.0
 
     t_start_x = np.argwhere(robot_output['t_x'] -
@@ -91,7 +91,7 @@ def main():
     if plot_config.plot_measured_efforts:
         ps = mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
         ps.set_default_styling("/home/brian/workspace/logs/qp_logging/")
-        ps.save_fig(f"joint_efforts{sys.argv[2]}")
+        # ps.save_fig(f"joint_efforts{sys.argv[2]}")
 
     if plot_config.act_names:
         mbp_plots.plot_measured_efforts_by_name(robot_output,
@@ -102,7 +102,7 @@ def main():
     if plot_config.plot_qp_costs:
         ps = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
         ps.set_default_styling("/home/brian/workspace/logs/qp_logging/")
-        ps.save_fig(f"qp_costs{sys.argv[2]}")
+        # ps.save_fig(f"qp_costs{sys.argv[2]}")
 
     if plot_config.plot_tracking_costs:
         mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
@@ -133,7 +133,7 @@ def main():
         ps.set_default_styling("/home/brian/workspace/logs/qp_logging/")
         ps.attach()
         plt.ylim([0, 0.004])
-        ps.save_fig(f"solve_time{sys.argv[2]}")
+        # ps.save_fig(f"solve_time{sys.argv[2]}")
 
     plt.show()
 

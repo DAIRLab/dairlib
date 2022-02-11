@@ -63,7 +63,12 @@ def main():
     # filename = "/home/brian/workspace/logs/qp_logging/lcmlog03"
     # filename = "/home/yuming/Downloads/20220208_testing_osqp/02_07_22/lcmlog-03"
     # filename = "/home/yuming/Downloads/qp_logging/qp1e-7"
-    filename = "/home/yuming/Downloads/20220208_testing_osqp/2_run_osc_with_loose_tolerance/lcmlog-2022-02-08.00"
+    filename = "/home/yuming/Downloads/20220208_testing_osqp/3_scale_by_previous_sol/lcmlog-2022-02-11.01"
+    filename = "/home/yuming/Downloads/20220208_testing_osqp/4_log_scaling_offline/with_stricter_tolerance/lcmlog-2022-02-11.01"
+    filename = "/home/yuming/Downloads/20220208_testing_osqp/5_add_zero_stance_toe_effort_constraint/lcmlog-2022-02-11.00"
+    filename = "/home/yuming/Downloads/20220208_testing_osqp/6_add_one_more_constraint_to_get_rid_off_null_space/lcmlog-2022-02-11.01"
+    filename = "/home/yuming/Downloads/20220208_testing_osqp/7_rerun_baseline__strict_tolerance/lcmlog-2022-02-11.00"
+    filename = "/home/yuming/Downloads/20220208_testing_osqp/8_increase_accel_weight__to_see_if_remove_null_space/lcmlog-2022-02-11.01"
     log = lcm.EventLog(filename, "r")
     qp_list = get_log_data(log, {"QP_LOG": lcmt_qp}, ParseQP)
 

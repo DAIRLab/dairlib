@@ -443,14 +443,57 @@ void OperationalSpaceControl::Build() {
             .get();
   }
 
+  /*// Testing -- zero out the stance toe effort (trying to remove null space in
+  // cost)
+  const std::map<string, int>& effort_map =
+      multibody::makeNameToActuatorsMap(plant_wo_spr_);
+  left_toe_effort_constraint_ =
+      prog_->AddBoundingBoxConstraint(0, 0, u_(effort_map.at("toe_left_motor")))
+          .evaluator()
+          .get();
+  right_toe_effort_constraint_ =
+      prog_
+          ->AddBoundingBoxConstraint(0, 0, u_(effort_map.at("toe_right_motor")))
+          .evaluator()
+          .get();
+
+  // Testing -- cost to encourage equal force between the front and the back toe
+  // (trying to remove null space in cost)
+  epsilon_center_ = prog_->NewContinuousVariables(2, "epsilon_center_left");
+  MatrixXd A_center = MatrixXd::Ones(1, 3);
+  A_center(0, 1) = -1;
+  force_center_left_constraint_ =
+      prog_
+          ->AddLinearEqualityConstraint(
+              A_center, VectorXd::Zero(1),
+              {lambda_c_.segment(2, 1), lambda_c_.segment(5, 1),
+               epsilon_center_.segment(0, 1)})
+          .evaluator()
+          .get();
+  force_center_right_constraint_ =
+      prog_
+          ->AddLinearEqualityConstraint(
+              A_center, VectorXd::Zero(1),
+              {lambda_c_.segment(8, 1), lambda_c_.segment(11, 1),
+               epsilon_center_.segment(1, 1)})
+          .evaluator()
+          .get();
+  prog_->AddQuadraticCost(0.01 * MatrixXd::Identity(2, 2), VectorXd::Zero(2),
+                          epsilon_center_);*/
+
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
+  solver2_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
   //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+  //  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
+  //  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
+  //  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
+  //  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "check_termination", 10);
   solver_options.SetOption(OsqpSolver::id(), "warmstart", 1);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
@@ -458,12 +501,13 @@ void OperationalSpaceControl::Build() {
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
   std::cout << solver_options << std::endl;
   solver_->InitializeSolver(*prog_, solver_options);
+  solver2_->InitializeSolver(*prog_, solver_options);
 
   // variable scaling
-  /*offline_sols_[0] = readCSV("../sol_mode_" + std::to_string(0));
+  offline_sols_[0] = readCSV("../sol_mode_" + std::to_string(0));
   offline_sols_[1] = readCSV("../sol_mode_" + std::to_string(1));
   offline_sols_[3] = readCSV("../sol_mode_" + std::to_string(3));
-  offline_sols_[4] = readCSV("../sol_mode_" + std::to_string(4));*/
+  offline_sols_[4] = readCSV("../sol_mode_" + std::to_string(4));
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -750,34 +794,110 @@ VectorXd OperationalSpaceControl::SolveQp(
   //    reg_cost_->UpdateCoefficients(2 * W_reg_, -2 * W_reg_ * prev_sol_);
   //  }
 
+  // Testing -- zero stance toe effort (trying to remove null space in cost)
+  /*VectorXd inf_vec =
+      VectorXd::Ones(1) * std::numeric_limits<double>::infinity();
+  VectorXd zero_vec = VectorXd::Zero(1);
+  if (int(fsm_state) == 0) {
+    left_toe_effort_constraint_->set_bounds(zero_vec, zero_vec);
+    right_toe_effort_constraint_->set_bounds(-inf_vec, inf_vec);
+  } else if (int(fsm_state) == 1) {
+    left_toe_effort_constraint_->set_bounds(-inf_vec, inf_vec);
+    right_toe_effort_constraint_->set_bounds(zero_vec, zero_vec);
+  } else {
+    left_toe_effort_constraint_->set_bounds(-inf_vec, inf_vec);
+    right_toe_effort_constraint_->set_bounds(-inf_vec, inf_vec);
+  }
+
+  // Testing -- cost to encourage equal force between the front and the back toe
+  // (trying to remove null space in cost)
+  if ((int(fsm_state) == 3) || (int(fsm_state) == 4)) {
+    MatrixXd A_center = MatrixXd::Ones(1, 3);
+    A_center(0, 1) = -1;
+    force_center_left_constraint_->UpdateCoefficients(A_center,
+                                                      VectorXd::Zero(1));
+    force_center_right_constraint_->UpdateCoefficients(A_center,
+                                                       VectorXd::Zero(1));
+  } else {
+    MatrixXd A_center = MatrixXd::Ones(1, 3);
+    A_center(0, 0) = 0;
+    A_center(0, 1) = 0;
+    force_center_left_constraint_->UpdateCoefficients(A_center,
+                                                      VectorXd::Zero(1));
+    force_center_right_constraint_->UpdateCoefficients(A_center,
+                                                       VectorXd::Zero(1));
+  }*/
+
   // Testing -- set scaling (For OSQP, make sure that you are using the Drake
   // where you implement the scaling)
-  // 1. Scaling it with previous solution
-  if (counter_ == 0) {
-    prog_->ClearVariableScaling();
-  } else if (counter_ == 1 /*counter_ >= 1*/) {
-    const auto& w = prog_->decision_variables();
-    for (int i = 0; i < prev_sol_.size(); i++) {
-      //      if (prev_sol_(i) != 0) {
-      if (abs(prev_sol_(i)) > 1e-3) {
-        prog_->SetVariableScaling(w(i), abs(prev_sol_(i)));
-      }
-    }
-  }
-  // 2. Scale it with solutions saved offline
+  //  // 1. Scaling it with previous solution
   //  if (counter_ == 0) {
-  //    const auto &w = prog_->decision_variables();
-  //    const VectorXd& offline_sol = offline_sols_.at(int(fsm_state));
-  //    for (int i = 0; i < offline_sol.size(); i++) {
-  //      //      if (offline_sol(i) != 0) {
-  //      if (abs(offline_sol(i)) > 1e-3) {
-  //        prog_->SetVariableScaling(w(i), abs(offline_sol(i)));
+  //    prog_->ClearVariableScaling();
+  //  } else if (counter_ == 1 /*counter_ >= 1*/) {
+  //    const auto& w = prog_->decision_variables();
+  //    for (int i = 0; i < prev_sol_.size(); i++) {
+  //      //      if (prev_sol_(i) != 0) {
+  //      if (abs(prev_sol_(i)) > 1e-3) {
+  //        prog_->SetVariableScaling(w(i), abs(prev_sol_(i)));
   //      }
   //    }
   //  }
+  // 2. Scale it with solutions saved offline
+  if (counter_ == 0) {
+    const auto& w = prog_->decision_variables();
+    const VectorXd& offline_sol = offline_sols_.at(int(fsm_state));
+    for (int i = 0; i < offline_sol.size(); i++) {
+      //      if (offline_sol(i) != 0) {
+      if (abs(offline_sol(i)) > 1e-3) {
+        prog_->SetVariableScaling(w(i), abs(offline_sol(i)));
+      }
+    }
+  }
 
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
+
+  //////////////////// Testing code below /////////////////////////
+  //  // Solve the QP without scaling first
+  //  prog_->ClearVariableScaling();
+  //  const MathematicalProgramResult result = solver_->Solve(*prog_);
+  //
+  //  // Scale
+  //  const auto& w = prog_->decision_variables();
+  //  const VectorXd& offline_sol = offline_sols_.at(int(fsm_state));
+  //  for (int i = 0; i < offline_sol.size(); i++) {
+  //    //      if (offline_sol(i) != 0) {
+  //    if (abs(offline_sol(i)) > 1e-3) {
+  //      prog_->SetVariableScaling(w(i), abs(offline_sol(i)));
+  //    }
+  //  }
+  //
+  //  // Solve it again with scaling
+  //  const MathematicalProgramResult result2 = solver2_->Solve(*prog_);
+  //  //  VectorXd sol2 = result2.get_x_val();
+  //
+  //  // Eval the unscaled cost with the solution from scaled problem
+  //  auto costs = prog_->GetAllCosts();
+  //  double cost_scaled = 0;
+  //  VectorXd y(1);
+  //  for (const auto& binding : costs) {
+  //    y(0) = 0;
+  //    binding.evaluator()->Eval(result2.GetSolution(binding.variables()), &y);
+  //    cost_scaled += y(0);
+  //  }
+  //  //  cout << "cost (unscaled vs scaled) = " << result.get_optimal_cost()
+  //  <<",
+  //  //  " << cost_scaled << endl; cout << "cost (scaled - unscaled) = " <<
+  //  //  cost_scaled - result.get_optimal_cost() << endl;
+  //  std::ofstream outfile;
+  //  outfile.open("../cost_comparison_numbers_only2.txt", std::ios_base::app);
+  //  outfile << cost_scaled - result.get_optimal_cost() << endl;
+  //  outfile.close();
+  //  outfile.open("../solve_time.txt", std::ios_base::app);
+  //  outfile << result.get_solver_details<OsqpSolver>().run_time << ", "
+  //          << result2.get_solver_details<OsqpSolver>().run_time << endl;
+  //  outfile.close();
+  //////////////////// Testing code above /////////////////////////
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 

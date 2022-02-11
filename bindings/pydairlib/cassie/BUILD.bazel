@@ -11,6 +11,12 @@ load(
     "pybind_py_library",
 )
 
+py_library(
+    name = "drake_to_mujoco_converter",
+    srcs = ["drake_to_mujoco_converter.py"],
+    deps = [],
+)
+
 pybind_py_library(
     name = "cassie_utils_py",
     cc_deps = [

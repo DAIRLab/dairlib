@@ -13,6 +13,7 @@ cc_library(
     deps = [
         ":osc_tracking_datas",
         "//common:eigen_utils",
+        "//common:file_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//multibody/kinematic",
@@ -52,8 +53,8 @@ cc_library(
     hdrs = ["options_tracking_data.h"],
     deps = [
         ":osc_tracking_data",
-        "//multibody:view_frame",
         "//multibody:utils",
+        "//multibody:view_frame",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

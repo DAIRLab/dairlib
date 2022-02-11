@@ -365,6 +365,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   mutable Eigen::VectorXd prev_sol_ = Eigen::VectorXd::Zero(1);
   mutable int counter_ = 0;
+  std::map<int, Eigen::VectorXd> offline_sols_;
 };
 
 }  // namespace dairlib::systems::controllers

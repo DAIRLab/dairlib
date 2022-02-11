@@ -3,6 +3,7 @@
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "common/eigen_utils.h"
+#include "common/file_utils.h"
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/text_logging.h"
@@ -445,7 +446,7 @@ void OperationalSpaceControl::Build() {
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-//  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+  //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
@@ -457,6 +458,12 @@ void OperationalSpaceControl::Build() {
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
   std::cout << solver_options << std::endl;
   solver_->InitializeSolver(*prog_, solver_options);
+
+  // variable scaling
+  /*offline_sols_[0] = readCSV("../sol_mode_" + std::to_string(0));
+  offline_sols_[1] = readCSV("../sol_mode_" + std::to_string(1));
+  offline_sols_[3] = readCSV("../sol_mode_" + std::to_string(3));
+  offline_sols_[4] = readCSV("../sol_mode_" + std::to_string(4));*/
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -735,16 +742,17 @@ VectorXd OperationalSpaceControl::SolveQp(
                                         -W_input_reg_ * (*u_sol_));
   }
 
-//  // 8. Regularization cost
-//  if (counter_ == 0) {
-//    reg_cost_->UpdateCoefficients(
-//        W_reg_0_, VectorXd::Zero(prog_->decision_variables().size()));
-//  } else {
-//    reg_cost_->UpdateCoefficients(2 * W_reg_, -2 * W_reg_ * prev_sol_);
-//  }
+  //  // 8. Regularization cost
+  //  if (counter_ == 0) {
+  //    reg_cost_->UpdateCoefficients(
+  //        W_reg_0_, VectorXd::Zero(prog_->decision_variables().size()));
+  //  } else {
+  //    reg_cost_->UpdateCoefficients(2 * W_reg_, -2 * W_reg_ * prev_sol_);
+  //  }
 
   // Testing -- set scaling (For OSQP, make sure that you are using the Drake
   // where you implement the scaling)
+  // 1. Scaling it with previous solution
   if (counter_ == 0) {
     prog_->ClearVariableScaling();
   } else if (counter_ == 1 /*counter_ >= 1*/) {
@@ -756,6 +764,17 @@ VectorXd OperationalSpaceControl::SolveQp(
       }
     }
   }
+  // 2. Scale it with solutions saved offline
+  //  if (counter_ == 0) {
+  //    const auto &w = prog_->decision_variables();
+  //    const VectorXd& offline_sol = offline_sols_.at(int(fsm_state));
+  //    for (int i = 0; i < offline_sol.size(); i++) {
+  //      //      if (offline_sol(i) != 0) {
+  //      if (abs(offline_sol(i)) > 1e-3) {
+  //        prog_->SetVariableScaling(w(i), abs(offline_sol(i)));
+  //      }
+  //    }
+  //  }
 
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
@@ -769,6 +788,9 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   prev_sol_ = result.GetSolution();
   counter_++;
+  // Save the scaling and load it in the next experiment
+  //  if (counter_ == 10)
+  //    writeCSV("../sol_mode_" + std::to_string(int(fsm_state)), prev_sol_);
 
   // Extract solutions
   *dv_sol_ = result.GetSolution(dv_);

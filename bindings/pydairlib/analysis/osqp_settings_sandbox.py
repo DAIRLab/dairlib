@@ -54,7 +54,8 @@ def solve_osqp(qp, settings):
             'status': qp_result.info.status,
             'obj_val': qp_result.info.obj_val,
             'pri_res': qp_result.info.pri_res,
-            'dual_res': qp_result.info.dua_res}
+            'dual_res': qp_result.info.dua_res,
+            'x': qp_result.x}
 
 
 def main():
@@ -62,9 +63,10 @@ def main():
     # filename = "/home/brian/workspace/logs/qp_logging/lcmlog03"
     # filename = "/home/yuming/Downloads/20220208_testing_osqp/02_07_22/lcmlog-03"
     # filename = "/home/yuming/Downloads/qp_logging/qp1e-7"
-    filename = "/home/yuming/Downloads/20220208_testing_osqp/lcmlog-2022-02-08.01"
+    filename = "/home/yuming/Downloads/20220208_testing_osqp/2_run_osc_with_loose_tolerance/lcmlog-2022-02-08.00"
     log = lcm.EventLog(filename, "r")
     qp_list = get_log_data(log, {"QP_LOG": lcmt_qp}, ParseQP)
+
 
     qp_list = qp_list[:400]
     eps = np.logspace(-7, -4, num=4)
@@ -72,6 +74,8 @@ def main():
     run_times = np.zeros((len(qp_list), nr))
     obj_vals = np.zeros((len(qp_list), nr))
     pri_eps_vals = np.zeros((len(qp_list), nr))
+    x = np.zeros((len(qp_list), nr, len(qp_list[0]["x_lb"])))
+    dx = np.zeros((len(qp_list), nr))
 
     osqp_settings = \
         {'eps_abs': 1e-7,
@@ -97,6 +101,11 @@ def main():
             run_times[i, j] = osqp_result['run_time']
             obj_vals[i, j] = osqp_result['obj_val']
             pri_eps_vals[i, j] = osqp_result['pri_res']
+            x[i, j, :] = osqp_result['x']
+
+    for j in range(1, nr):
+      for i, qp in enumerate(qp_list):
+        dx[i, j] = np.linalg.norm(x[i, j, :] - x[i, 0, :])
 
     print(f'OSQP mean runtime: {np.mean(run_times,axis=0)}')
     print(f'OSQP mean objective: {np.mean(obj_vals, axis=0)}')
@@ -104,7 +113,7 @@ def main():
 
     import matplotlib.pyplot as plt
 
-    fig, axs = plt.subplots(3, 1, sharex=True)
+    fig, axs = plt.subplots(4, 1, sharex=True)
 
     axs[0].plot(obj_vals)
     axs[0].legend(['eps = ' + str(eps_val) for eps_val in eps])
@@ -115,6 +124,10 @@ def main():
 
     axs[2].plot(pri_eps_vals)
     axs[2].set_title('Primal residual per QP')
+
+    axs[3].plot(dx)
+    axs[3].set_title('solution difference per QP')
+
     plt.show()
 
     import pdb;pdb.set_trace()

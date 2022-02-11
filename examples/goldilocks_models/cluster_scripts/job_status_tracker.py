@@ -80,20 +80,17 @@ while True:
     history_output = ParseJobTable(f.read())
     f.close()
 
-    # Add new job to history
-    n_new = 0
-    for line in current_output:
-      job_exist_in_history = False if (len(list(zip(*history_output))) == 0) else (line[0] in list(zip(*history_output))[0])  # check if the new job id exists in the history
-      if not job_exist_in_history:
-        history_output.append(line)
-        n_new = n_new + 1 
-
     # Update old job status
-    for old_line in history_output[:-n_new]:
+    #print("Update old job status")
+    #print("history_output")
+    for old_line in history_output:
       job_id = old_line[0]
+      #print("job_id = ", job_id)
 
       current_output_T = [list(x) for x in zip(*current_output)]
       job_currently_exists = False if (len(current_output) == 0) else (job_id in current_output_T[0])
+      #print(current_output)
+      #print(job_currently_exists)
       if job_currently_exists:
         line_idx = current_output_T[0].index(job_id)
         old_line[1] = current_output_T[1][line_idx]  # Update status
@@ -105,6 +102,12 @@ while True:
         job_timed_out = "TIMEOUT" in job_state
         job_cancelled = "CANCELLED" in job_state
         intend_to_resubmit = old_line[2].split("/")[-1] in nonstop_sbatch_script
+        #print("first_time_setting_to_inactive", first_time_setting_to_inactive)
+        #print("job_was_previously_pending", job_was_previously_pending)
+        #print("job_state", job_state)
+        #print("job_timed_out",job_timed_out)
+        #print("job_cancelled", job_cancelled)
+        #print("intend_to_resubmit", intend_to_resubmit)
 
         # If a previously-pending job was canceled, then remove it from the history (we don't want this info in the history)
         if job_was_previously_pending and job_cancelled:
@@ -116,6 +119,16 @@ while True:
         if first_time_setting_to_inactive and job_timed_out and intend_to_resubmit:
           print("resubmitting %s" % old_line[2])
           RunCommand("sbatch " + old_line[2], True)
+
+    # Add new job to history
+    #print("Add new job to history")
+    #print(current_output)
+    # n_new = 0
+    for line in current_output:
+      job_exist_in_history = False if (len(list(zip(*history_output))) == 0) else (line[0] in list(zip(*history_output))[0])  # check if the new job id exists in the history
+      if not job_exist_in_history:
+        history_output.append(line)
+        #n_new = n_new + 1 
 
     merged_output = history_output
 

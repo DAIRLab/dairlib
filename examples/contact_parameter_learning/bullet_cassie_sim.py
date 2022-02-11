@@ -1,7 +1,7 @@
 import os
 from pydairlib.multibody import makeNameToPositionsMap, \
     makeNameToVelocitiesMap, makeNameToActuatorsMap
-from pydairlib.cassie.cassie_utils import addCassieMultibody
+from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 import pybullet as p
@@ -17,9 +17,8 @@ plane_urdf_path = os.path.join(
 def make_drake_plant_and_context(floating_base=True):
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
-    addCassieMultibody(
+    AddCassieMultibody(
         plant, scene_graph, floating_base, cassie_drake_urdf, True, True)
-
     plant.Finalize()
     return plant, plant.CreateDefaultContext()
 
@@ -55,7 +54,7 @@ class BulletCassieSim():
         p.setTimeStep(self.dt, physicsClientId=self.client_id)
 
     def add_fourbar_constraint(self):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         achilles_length=0.5012
         left_rod_heel = (None,
                          np.array([.11877, -.01, 0]))
@@ -65,13 +64,14 @@ class BulletCassieSim():
                           np.array([0.0, 0.0, 0.045]))
         right_rod_thigh = (None,
                            np.array([0.0, 0.0, -0.045]))
-        p.createConstraint()
+        # p.createConstraint()
 
     def make_joint_ordering(self):
         pass
 
     def set_initial_condition(self, state):
         pass
+
 
 def main():
     sim = BulletCassieSim(visualize=True)
@@ -80,6 +80,8 @@ def main():
                   'damping': 30.6})
     for j in range(p.getNumJoints(sim.cassie_id)):
         print(p.getJointInfo(sim.cassie_id, j))
+    for j in range(p.getNumBodies(sim.cassie_id)):
+        print(p.getBodyInfo(sim.cassie_id, j))
 
 
 if __name__ == '__main__':

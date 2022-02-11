@@ -1,10 +1,11 @@
 import numpy as np
-# import mujoco_cube_sim
+import mujoco_cube_sim
 import drake_cube_sim
 import bullet_cube_sim
 import cube_sim
 from timeit import default_timer as timer
-# from learn_cube_parameters import cube_data_folder, drake_data_folder, mujoco_data_folder, bullet_data_folder, num_trials
+from learn_cube_parameters import cube_data_folder, drake_data_folder, \
+     mujoco_data_folder, bullet_data_folder, num_trials
 
 test_state = np.array([ 0.18629883,  0.02622872,  1.89283257, -0.52503014,  0.39360754,
        -0.29753734, -0.67794127,  0.01438053,  1.29095332, -0.21252927,
@@ -53,26 +54,29 @@ if (__name__ == "__main__"):
     # traj2 = test_bullet()
     # vis_sim = drake_cube_sim.DrakeCubeSim()
     # vis_sim.visualize_two_cubes(traj1, traj2, 0.2)
-    
-    # Profiling quaternion losses
-    w = cube_sim.FastLossWeights(bullet=True)
-    t1 = np.random.rand(100,4)
-    t2 = np.random.rand(100,4)
-    tmp1 = np.linalg.norm(t1, axis=-1)
-    tmp2 =  np.linalg.norm(t2, axis=-1)
 
-    for i in range(4):
-        t1[:,i] /= tmp1
-        t2[:,i] /= tmp2
+    for i in range(100000):
+        test_drake()
 
-    start = timer()
-    e1 = w.CalcQuatLoss(t1, t2)
-    stop = timer()
-    print(stop-start)
-
-    print()
-
-    start = timer()
-    e2 = w.FastQuatLoss(t1, t2)
-    stop = timer()
-    print(stop-start)
+    # # Profiling quaternion losses
+    # w = cube_sim.FastLossWeights(bullet=True)
+    # t1 = np.random.rand(100,4)
+    # t2 = np.random.rand(100,4)
+    # tmp1 = np.linalg.norm(t1, axis=-1)
+    # tmp2 =  np.linalg.norm(t2, axis=-1)
+    #
+    # for i in range(4):
+    #     t1[:,i] /= tmp1
+    #     t2[:,i] /= tmp2
+    #
+    # start = timer()
+    # e1 = w.CalcQuatLoss(t1, t2)
+    # stop = timer()
+    # print(stop-start)
+    #
+    # print()
+    #
+    # start = timer()
+    # e2 = w.FastQuatLoss(t1, t2)
+    # stop = timer()
+    # print(stop-start)

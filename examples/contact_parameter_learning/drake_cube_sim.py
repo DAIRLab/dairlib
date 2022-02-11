@@ -14,31 +14,32 @@ from pydairlib.common import FindResourceOrThrow
 from pydairlib.multibody import MultiposeVisualizer
 # from ctypes import c_double
 
-# Note that the mu_ratio defines the ratio 
-# mu_kinetic/mu_static = [0 ... 1] to enforce that mu_kinetic <= mu_static
-default_drake_contact_params = {
-    "mu": 0.18,
-    "stiffness": 1.0e4, 
-    "dissipation":0.5 }
+default_drake_contact_params = {"mu": 0.18,
+                                "stiffness": 1.0e4,
+                                "dissipation": 0.5}
+
 
 class DrakeCubeSim(CubeSim):
 
     def __init__(self, visualize=False, substeps=1):
-        if (not type(visualize) == bool) : 
+        if not type(visualize) == bool :
             raise TypeError('visualize argument must be set to a boolean value')
+
         self.drake_sim_dt = CUBE_DATA_DT / substeps
-        self.visualize=visualize
+        self.visualize = visualize
+        self.builder = None
+        self.plant = None
+        self.scene_graph = None
+        self.diagram = None
+        self.diagram_context = None
+        self.sim = None
 
     def init_sim(self, params):
-        ''' Here we build a diagram for the drake simulation'''
         self.builder = DiagramBuilder()
-        
-        # Add a cube as MultibodyPlant
         self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, self.drake_sim_dt)       
         self.add_plant_and_terrain(params)
 
-        # Add visualization if visualizing the simlation
-        if (self.visualize):
+        if self.visualize:
             DrakeVisualizer.AddToBuilder(self.builder, self.scene_graph)
 
         self.diagram = self.builder.Build()
@@ -46,15 +47,15 @@ class DrakeCubeSim(CubeSim):
         
         self.sim = Simulator(self.diagram)
 
-        if (self.visualize):
+        if self.visualize:
             self.sim.set_target_realtime_rate(1.0)
 
         self.sim.Initialize()
 
     def add_plant_and_terrain(self, params):
-        terrain_normal=np.array([0.0, 0.0, 1.0])
-        terrain_point=np.zeros((3,))
-        terrain_color=np.array([0.8, 0.8, 0.8, 1.0])
+        terrain_normal = np.array([0.0, 0.0, 1.0])
+        terrain_point = np.zeros((3,))
+        terrain_color = np.array([0.8, 0.8, 0.8, 1.0])
         friction = CoulombFriction(params['mu'], params['mu'])
         props = ProximityProperties()
         props.AddProperty("material", "point_contact_stiffness", params['stiffness'])
@@ -67,8 +68,10 @@ class DrakeCubeSim(CubeSim):
             FindResourceOrThrow(
                 "examples/contact_parameter_learning/urdf/cube.urdf"))
 
-        self.plant.RegisterCollisionGeometry(self.plant.world_body(), X_WG, HalfSpace(), "collision", props)
-        self.plant.RegisterVisualGeometry(self.plant.world_body(), X_WG, Box(1, 1, 0.001), "visual", terrain_color)
+        self.plant.RegisterCollisionGeometry(
+            self.plant.world_body(), X_WG, HalfSpace(), "collision", props)
+        self.plant.RegisterVisualGeometry(
+            self.plant.world_body(), X_WG, Box(1, 1, 0.001), "visual", terrain_color)
         self.plant.Finalize()
 
     def init_playback_sim(self, traj_to_play_back):
@@ -212,7 +215,7 @@ class DrakeCubeSim(CubeSim):
         visualizer.DrawPoses(cube_positions)
 
     def sim_step(self, dt):
-        data_arr = np.zeros((1,13))
+        data_arr = np.zeros((1, 13))
 
         cube_state = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
@@ -241,8 +244,6 @@ class DrakeCubeSim(CubeSim):
         v[0:3] = initial_state[CUBE_DATA_OMEGA_SLICE]
         v[3:] = initial_state[CUBE_DATA_VELOCITY_SLICE]
 
-        
-
         self.sim.get_mutable_context().SetTime(0.0)
         self.sim.Initialize()
 
@@ -253,11 +254,10 @@ class DrakeCubeSim(CubeSim):
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()), v)
 
-
     def visualize_data_file(self, data_folder, toss_id):
         data_file = data_folder + str(toss_id) + '.pt'
         toss = load_cube_toss(data_file)
-        self.visualize=True
+        self.visualize = True
         self.init_sim(default_drake_contact_params)
         self.visualize_data_rollout(toss)
 
@@ -266,7 +266,7 @@ class DrakeCubeSim(CubeSim):
         t_end = CUBE_DATA_DT * data.shape[0]
         self.sim.set_target_realtime_rate(1.0)
         
-        while(True):
+        while True:
             self.sim.get_mutable_context().SetTime(0.0)
             self.sim.Initialize()
             self.sim.AdvanceTo(t_end)

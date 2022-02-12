@@ -197,12 +197,12 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<T>& plant) {
     }
   }
 
-  for (int i = 0; i < plant.num_positions(); ++i) {
-    // if index has not already been captured, throw an error
-    if (index_set.find(i) == index_set.end()) {
-      DRAKE_THROW_UNLESS(false);
-    }
-  }
+//  for (int i = 0; i < plant.num_positions(); ++i) {
+//    // if index has not already been captured, throw an error
+//    if (index_set.find(i) == index_set.end()) {
+//      DRAKE_THROW_UNLESS(false);
+//    }
+//  }
 
   return name_to_index_map;
 }
@@ -265,12 +265,12 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
     }
   }
 
-  for (int i = 0; i < plant.num_velocities(); ++i) {
-    // if index has not already been captured, throw an error
-    if (index_set.find(i) == index_set.end()) {
-      DRAKE_THROW_UNLESS(false);
-    }
-  }
+//  for (int i = 0; i < plant.num_velocities(); ++i) {
+//    // if index has not already been captured, throw an error
+//    if (index_set.find(i) == index_set.end()) {
+//      DRAKE_THROW_UNLESS(false);
+//    }
+//  }
 
   return name_to_index_map;
 }

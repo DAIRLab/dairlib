@@ -14,7 +14,18 @@ load(
 py_library(
     name = "drake_to_mujoco_converter",
     srcs = ["drake_to_mujoco_converter.py"],
-    deps = [],
+    deps = [
+        ":cassie_utils",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody:multibody_py",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
+    name = "drake_to_mujoco_test",
+    srcs = ["drake_to_mujoco_test.py"],
+    deps = [":drake_to_mujoco_converter"],
 )
 
 pybind_py_library(

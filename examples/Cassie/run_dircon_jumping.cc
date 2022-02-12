@@ -171,7 +171,7 @@ void DoMain() {
     file_name = "examples/Cassie/urdf/cassie_v2_conservative.urdf";
   }
 
-  addCassieMultibody(&plant, nullptr, true, file_name, FLAGS_use_springs,
+  AddCassieMultibody(&plant, nullptr, true, file_name, FLAGS_use_springs,
                      false);
 
   Parser parser_vis(&plant_vis, &scene_graph);

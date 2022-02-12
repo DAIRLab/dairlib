@@ -56,7 +56,7 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double> plant(0.0);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
   if (FLAGS_floating_base) {
     // Ground direction
     Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,

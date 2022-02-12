@@ -10,7 +10,7 @@ int main() {
   Eigen::MatrixXd x;
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  dairlib::addCassieMultibody(&plant);
+  dairlib::AddCassieMultibody(&plant);
 
   std::string channel = "CASSIE_INPUT";
   std::string filename =

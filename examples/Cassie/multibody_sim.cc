@@ -91,7 +91,7 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
   plant.Finalize();
 
@@ -182,7 +182,7 @@ int do_main(int argc, char* argv[]) {
   // diagram is built, plant.get_actuation_input_port().HasValue(*context)
   // throws a segfault error
   drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
-  addCassieMultibody(&plant_for_solver, nullptr,
+  AddCassieMultibody(&plant_for_solver, nullptr,
                      FLAGS_floating_base /*floating base*/, urdf,
                      FLAGS_spring_model, true);
   plant_for_solver.Finalize();

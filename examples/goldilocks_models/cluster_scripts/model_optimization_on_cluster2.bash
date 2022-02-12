@@ -93,12 +93,18 @@ printf "\n\n\n"
 ### Count the lastest iteration (I wrote this becasuse the job can get preempted if run at low QOS
 iter_max=1000  # The code is untested. Just in case we created an infinity loop
 iter_start=0
+if [ $no_model_update ]
+then
+  FILE=_0_c.csv
+else
+  FILE=_theta_y.csv
+fi
 while true
 do
-  FILE="$directory""$iter_start"_theta_y.csv
-  if [ -f "$FILE" ]
+  FULL_PATH="$directory""$iter_start""$FILE"
+  if [ -f "$FULL_PATH" ]
   then
-    echo "$FILE exists."
+    echo "$FULL_PATH exists."
     iter_start=$((iter_start+1))
   else
     iter_start=$((iter_start-1))

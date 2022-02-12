@@ -443,7 +443,7 @@ void OperationalSpaceControl::Build() {
             .get();
   }
 
-  /*// Testing -- zero out the stance toe effort (trying to remove null space in
+  // Testing -- zero out the stance toe effort (trying to remove null space in
   // cost)
   const std::map<string, int>& effort_map =
       multibody::makeNameToActuatorsMap(plant_wo_spr_);
@@ -459,27 +459,21 @@ void OperationalSpaceControl::Build() {
 
   // Testing -- cost to encourage equal force between the front and the back toe
   // (trying to remove null space in cost)
-  epsilon_center_ = prog_->NewContinuousVariables(2, "epsilon_center_left");
-  MatrixXd A_center = MatrixXd::Ones(1, 3);
+  epsilon_center_ = prog_->NewContinuousVariables(1, "epsilon_center");
+  prog_->AddQuadraticCost(0.000001 * MatrixXd::Identity(1, 1),
+                          VectorXd::Zero(1), epsilon_center_);
+  MatrixXd A_center = MatrixXd::Ones(1, 5);
   A_center(0, 1) = -1;
-  force_center_left_constraint_ =
+  A_center(0, 3) = -1;
+  force_center_constraint_ =
       prog_
           ->AddLinearEqualityConstraint(
               A_center, VectorXd::Zero(1),
               {lambda_c_.segment(2, 1), lambda_c_.segment(5, 1),
-               epsilon_center_.segment(0, 1)})
+               lambda_c_.segment(8, 1), lambda_c_.segment(11, 1),
+               epsilon_center_})
           .evaluator()
           .get();
-  force_center_right_constraint_ =
-      prog_
-          ->AddLinearEqualityConstraint(
-              A_center, VectorXd::Zero(1),
-              {lambda_c_.segment(8, 1), lambda_c_.segment(11, 1),
-               epsilon_center_.segment(1, 1)})
-          .evaluator()
-          .get();
-  prog_->AddQuadraticCost(0.01 * MatrixXd::Identity(2, 2), VectorXd::Zero(2),
-                          epsilon_center_);*/
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   solver2_ = std::make_unique<solvers::FastOsqpSolver>();
@@ -795,7 +789,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   //  }
 
   // Testing -- zero stance toe effort (trying to remove null space in cost)
-  /*VectorXd inf_vec =
+  VectorXd inf_vec =
       VectorXd::Ones(1) * std::numeric_limits<double>::infinity();
   VectorXd zero_vec = VectorXd::Zero(1);
   if (int(fsm_state) == 0) {
@@ -812,21 +806,15 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Testing -- cost to encourage equal force between the front and the back toe
   // (trying to remove null space in cost)
   if ((int(fsm_state) == 3) || (int(fsm_state) == 4)) {
-    MatrixXd A_center = MatrixXd::Ones(1, 3);
+    MatrixXd A_center = MatrixXd::Ones(1, 5);
     A_center(0, 1) = -1;
-    force_center_left_constraint_->UpdateCoefficients(A_center,
-                                                      VectorXd::Zero(1));
-    force_center_right_constraint_->UpdateCoefficients(A_center,
-                                                       VectorXd::Zero(1));
+    A_center(0, 3) = -1;
+    force_center_constraint_->UpdateCoefficients(A_center, VectorXd::Zero(1));
   } else {
-    MatrixXd A_center = MatrixXd::Ones(1, 3);
-    A_center(0, 0) = 0;
-    A_center(0, 1) = 0;
-    force_center_left_constraint_->UpdateCoefficients(A_center,
-                                                      VectorXd::Zero(1));
-    force_center_right_constraint_->UpdateCoefficients(A_center,
-                                                       VectorXd::Zero(1));
-  }*/
+    MatrixXd A_center = MatrixXd::Zero(1, 5);
+    A_center(0, 4) = 1;
+    force_center_constraint_->UpdateCoefficients(A_center, VectorXd::Zero(1));
+  }
 
   // Testing -- set scaling (For OSQP, make sure that you are using the Drake
   // where you implement the scaling)
@@ -843,16 +831,16 @@ VectorXd OperationalSpaceControl::SolveQp(
   //    }
   //  }
   // 2. Scale it with solutions saved offline
-  if (counter_ == 0) {
-    const auto& w = prog_->decision_variables();
-    const VectorXd& offline_sol = offline_sols_.at(int(fsm_state));
-    for (int i = 0; i < offline_sol.size(); i++) {
-      //      if (offline_sol(i) != 0) {
-      if (abs(offline_sol(i)) > 1e-3) {
-        prog_->SetVariableScaling(w(i), abs(offline_sol(i)));
-      }
-    }
-  }
+  //  if (counter_ == 0) {
+  //    const auto& w = prog_->decision_variables();
+  //    const VectorXd& offline_sol = offline_sols_.at(int(fsm_state));
+  //    for (int i = 0; i < offline_sol.size(); i++) {
+  //      //      if (offline_sol(i) != 0) {
+  //      if (abs(offline_sol(i)) > 1e-3) {
+  //        prog_->SetVariableScaling(w(i), abs(offline_sol(i)));
+  //      }
+  //    }
+  //  }
 
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);

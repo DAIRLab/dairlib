@@ -369,8 +369,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::map<int, Eigen::VectorXd> offline_sols_;
   drake::solvers::BoundingBoxConstraint* left_toe_effort_constraint_;
   drake::solvers::BoundingBoxConstraint* right_toe_effort_constraint_;
-  drake::solvers::LinearEqualityConstraint* force_center_left_constraint_;
-  drake::solvers::LinearEqualityConstraint* force_center_right_constraint_;
+  drake::solvers::LinearEqualityConstraint* force_center_constraint_;
   drake::solvers::VectorXDecisionVariable epsilon_center_;
 };
 

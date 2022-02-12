@@ -69,6 +69,7 @@ def main():
     filename = "/home/yuming/Downloads/20220208_testing_osqp/6_add_one_more_constraint_to_get_rid_off_null_space/lcmlog-2022-02-11.01"
     filename = "/home/yuming/Downloads/20220208_testing_osqp/7_rerun_baseline__strict_tolerance/lcmlog-2022-02-11.00"
     filename = "/home/yuming/Downloads/20220208_testing_osqp/8_increase_accel_weight__to_see_if_remove_null_space/lcmlog-2022-02-11.01"
+    filename = "/home/yuming/Desktop/20220208_testing_osqp/6_add_one_more_constraint_to_get_rid_off_null_space/2_second_formulation_only_one_constraint/with_constraint_variable_scaling/lcmlog-2022-02-12.00"
     log = lcm.EventLog(filename, "r")
     qp_list = get_log_data(log, {"QP_LOG": lcmt_qp}, ParseQP)
 

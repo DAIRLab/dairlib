@@ -7,7 +7,6 @@
 #include <string>
 
 #include <drake/math/saturate.h>
-
 #include "systems/controllers/control_utils.h"
 
 using std::cout;
@@ -152,18 +151,11 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
 
     if (wrt_com_in_local_frame_) {
       // Get approximated heading angle of pelvis and rotational matrix
-      Vector3d pelvis_heading_vec =
-          plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
-      double approx_pelvis_yaw =
-          atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
-      Eigen::Matrix3d rot;
-      rot << cos(approx_pelvis_yaw), -sin(approx_pelvis_yaw), 0,
-          sin(approx_pelvis_yaw), cos(approx_pelvis_yaw), 0, 0, 0, 1;
-
-      // Vector from com to swing foot viewed in pelvis frame
       swing_foot_pos_at_liftoff =
-          rot.transpose() * (swing_foot_pos_at_liftoff -
-                             plant_.CalcCenterOfMassPositionInWorld(*context_));
+          multibody::ReExpressWorldVector3InBodyYawFrame(
+              plant_, *context_, "pelvis",
+              swing_foot_pos_at_liftoff -
+                  plant_.CalcCenterOfMassPositionInWorld(*context_));
 
       // Testing
       // Heuristic ratio for LIPM dyanmics (because the centroidal angular

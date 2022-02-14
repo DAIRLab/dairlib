@@ -225,22 +225,6 @@
         </inertial>
     </link>
 
-    <link name="achilles_heel_roll_left">
-        <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-            <mass value="0"/>
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-        </inertial>
-    </link>
-
-    <link name="achilles_heel_pitch_left">
-        <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-            <mass value="0"/>
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-        </inertial>
-    </link>
-
     <link name="achilles_rod_right">
         <inertial>
             <origin
@@ -269,22 +253,6 @@
     </link>
 
     <link name="achilles_hip_pitch_right">
-        <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-            <mass value="0"/>
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-        </inertial>
-    </link>
-
-    <link name="achilles_heel_roll_right">
-        <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-            <mass value="0"/>
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-        </inertial>
-    </link>
-
-    <link name="achilles_heel_pitch_right">
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <mass value="0"/>
@@ -625,22 +593,6 @@
         </inertial>
     </link>
 
-    <link name="plantar_foot_roll_left">
-        <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-            <mass value="0"/>
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-        </inertial>
-    </link>
-
-    <link name="plantar_foot_pitch_left">
-        <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-            <mass value="0"/>
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-        </inertial>
-    </link>
-
     <link name="plantar_rod_right">
         <inertial>
             <origin
@@ -669,22 +621,6 @@
     </link>
 
     <link name="plantar_crank_pitch_right">
-        <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-            <mass value="0"/>
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-        </inertial>
-    </link>
-
-    <link name="plantar_foot_roll_right">
-        <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-            <mass value="0"/>
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-        </inertial>
-    </link>
-
-    <link name="plantar_foot_pitch_right">
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <mass value="0"/>
@@ -912,24 +848,6 @@
         <limit lower="-3.14" upper="3.14"/>
     </joint>
 
-    <joint name="achilles_heel_roll_left" type="revolute">
-        <origin xyz=".5012 0 0" />
-        <parent link="achilles_rod_left" />
-        <child link="achilles_heel_roll_left" />
-        <axis xyz ="1 0 0" />
-        <dynamics damping="0.01" />
-        <limit lower="-20" upper="20"/>
-    </joint>
-
-    <joint name="achilles_heel_pitch_left" type="revolute">
-        <origin xyz="0 0 0" />
-        <parent link="achilles_heel_roll_left" />
-        <child link="achilles_heel_pitch_left" />
-        <axis xyz ="0 1 0" />
-        <dynamics damping="0.01" />
-        <limit lower="-3.14" upper="3.14"/>
-    </joint>
-
     <joint name="achilles_hip_right" type="revolute">
         <origin xyz ="0  0  -.045" rpy="0 0 0" />
         <parent link="thigh_right" />
@@ -946,25 +864,6 @@
         <dynamics damping="0.01" />
         <limit lower="-3.14" upper="3.14"/>
     </joint>
-
-    <joint name="achilles_heel_roll_right" type="revolute">
-        <origin xyz=".5012 0 0" />
-        <parent link="achilles_rod_right" />
-        <child link="achilles_heel_roll_right" />
-        <axis xyz ="1 0 0" />
-        <dynamics damping="0.01" />
-        <limit lower="-3.14" upper="3.14"/>
-    </joint>
-
-    <joint name="achilles_heel_pitch_right" type="revolute">
-        <origin xyz="0 0 0" />
-        <parent link="achilles_heel_roll_right" />
-        <child link="achilles_heel_pitch_right" />
-        <axis xyz ="0 1 0" />
-        <dynamics damping="0.01" />
-        <limit lower="-3.14" upper="3.14"/>
-    </joint>
-
 
     <joint name="knee_left" type="revolute">
         <origin xyz="0.12 0 0.0045" rpy="0 0 0" />
@@ -1011,24 +910,6 @@
         <limit lower="-3.14" upper="3.14"/>
     </joint>
 
-    <joint name="plantar_foot_roll_left" type="revolute">
-        <origin xyz=".35012 0 0" />
-        <parent link="plantar_rod_left" />
-        <child link="plantar_foot_roll_left" />
-        <axis xyz ="1 0 0" />
-        <dynamics damping="0.01" />
-        <limit lower="-3.14" upper="3.14"/>
-    </joint>
-
-    <joint name="plantar_foot_pitch_left" type="revolute">
-        <origin xyz="0 0 0" />
-        <parent link="plantar_foot_roll_left" />
-        <child link="plantar_foot_pitch_left" />
-        <axis xyz ="0 1 0" />
-        <dynamics damping="0.01" />
-        <limit lower="-3.14" upper="3.14"/>
-    </joint>
-
     <joint name="plantar_crank_right" type="revolute">
         <origin xyz ="0.055  0  .00791" rpy="0 0 0" />
         <parent link="foot_crank_link_right" />
@@ -1045,25 +926,6 @@
         <dynamics damping="0.01" />
         <limit lower="-3.14" upper="3.14"/>
     </joint>
-
-    <joint name="plantar_foot_roll_right" type="revolute">
-        <origin xyz=".35012 0 0" />
-        <parent link="plantar_rod_right" />
-        <child link="plantar_foot_roll_right" />
-        <axis xyz ="1 0 0" />
-        <dynamics damping="0.01" />
-        <limit lower="-3.14" upper="3.14"/>
-    </joint>
-
-    <joint name="plantar_foot_pitch_right" type="revolute">
-        <origin xyz="0 0 0" />
-        <parent link="plantar_foot_roll_right" />
-        <child link="plantar_foot_pitch_right" />
-        <axis xyz ="0 1 0" />
-        <dynamics damping="0.01" />
-        <limit lower="-3.14" upper="3.14"/>
-    </joint>
-
 
     <joint name="toe_crank_right" type="revolute">
         <origin xyz="0.058 -0.034 -0.02275" rpy="0 0 0" />
@@ -1165,29 +1027,29 @@
     </joint>
 
     <!-- LOOP_JOINTS ||| LOOP_JOINTS ||| LOOP_JOINTS ||| LOOP_JOINTS |||-->
-    <loop_joint name="achilles_loop_left">
-        <link1 link="achilles_heel_pitch_left" xyz="0 0 0" />
-        <link2 link="heel_spring_left" xyz=".11877 -.01 0" />
-        <axis xyz="0 0 1"/>
-    </loop_joint>
+<!--    <loop_joint name="achilles_loop_left">-->
+<!--        <link1 link="achilles_heel_pitch_left" xyz="0 0 0" />-->
+<!--        <link2 link="heel_spring_left" xyz=".11877 -.01 0" />-->
+<!--        <axis xyz="0 0 1"/>-->
+<!--    </loop_joint>-->
 
-    <loop_joint name="achilles_loop_right">
-        <link1 link="achilles_heel_pitch_right" xyz="0 0 0" />
-        <link2 link="heel_spring_right" xyz=".11877 -.01 0" />
-        <axis xyz="0 0 1"/>
-    </loop_joint>
+<!--    <loop_joint name="achilles_loop_right">-->
+<!--        <link1 link="achilles_heel_pitch_right" xyz="0 0 0" />-->
+<!--        <link2 link="heel_spring_right" xyz=".11877 -.01 0" />-->
+<!--        <axis xyz="0 0 1"/>-->
+<!--    </loop_joint>-->
 
-    <loop_joint name="plantar_loop_left">
-        <link1 link="plantar_foot_pitch_left" xyz="0 0 0" />
-        <link2 link="toe_left" xyz=".055 0 .00776" />
-        <axis xyz="0 0 1"/>
-    </loop_joint>
+<!--    <loop_joint name="plantar_loop_left">-->
+<!--        <link1 link="plantar_foot_pitch_left" xyz="0 0 0" />-->
+<!--        <link2 link="toe_left" xyz=".055 0 .00776" />-->
+<!--        <axis xyz="0 0 1"/>-->
+<!--    </loop_joint>-->
 
-    <loop_joint name="plantar_loop_right">
-        <link1 link="plantar_foot_pitch_right" xyz="0 0 0" />
-        <link2 link="toe_right" xyz=".055 0 -.00776" />
-        <axis xyz="0 0 1"/>
-    </loop_joint>
+<!--    <loop_joint name="plantar_loop_right">-->
+<!--        <link1 link="plantar_foot_pitch_right" xyz="0 0 0" />-->
+<!--        <link2 link="toe_right" xyz=".055 0 -.00776" />-->
+<!--        <axis xyz="0 0 1"/>-->
+<!--    </loop_joint>-->
 
     <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
     <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->

@@ -46,8 +46,10 @@ class BulletCassieSim():
                                     physicsClientId=self.client_id)
         self.plane_id = p.loadURDF(plane_urdf_path, useFixedBase=True,
                                    physicsClientId=self.client_id)
-        self.make_joint_ordering()
-        # self.add_fourbar_constraint()
+        self.parse_joints_and_links()
+        self.add_achilles_fourbar_constraint()
+        self.add_plantar_fourbar_constraint()
+
         p.changeDynamics(self.plane_id, -1,
                          lateralFriction=params['mu_tangent'],
                          contactStiffness=params['stiffness'],
@@ -64,13 +66,58 @@ class BulletCassieSim():
             self.joint_idxs[joint_name] = i
             self.link_idxs[link_name] = i
 
-    def add_fourbar_constraint(self):
-        # import pdb; pdb.set_trace()
-        achilles_length = 0.5012
-        left_rod_heel = (self.link_idxs['heel_spring_left'],
-                         np.array([.11877, -.01, 0]))
-        right_rod_heel = (self.link_idxs['heel_spring_left'],
-                          np.array([.11877, -.01, 0]))
+    def add_achilles_fourbar_constraint(self):
+        left_rod_heel = {
+            'link1': self.link_idxs['achilles_rod_left'],
+            'xyz1': np.array([0.5012, 0, 0]),
+            'link2': self.link_idxs['heel_spring_left'],
+            'xyz2': np.array([.11877, -.01, 0]),
+            'axis': np.array([0, 0, 1])
+        }
+        right_rod_heel = {
+            'link1': self.link_idxs['achilles_rod_right'],
+            'xyz1': np.array([0.5012, 0, 0]),
+            'link2': self.link_idxs['heel_spring_right'],
+            'xyz2': np.array([.11877, -.01, 0]),
+            'axis': np.array([0, 0, 1])
+        }
+
+        p.createConstraint(
+            self.cassie_id, left_rod_heel['link1'], self.cassie_id,
+            left_rod_heel['link2'],  p.JOINT_POINT2POINT, left_rod_heel['axis'],
+            left_rod_heel['xyz1'], left_rod_heel['xyz2'])
+
+        p.createConstraint(
+            self.cassie_id, right_rod_heel['link1'], self.cassie_id,
+            right_rod_heel['link2'], p.JOINT_POINT2POINT, right_rod_heel['axis'],
+            right_rod_heel['xyz1'], right_rod_heel['xyz2'])
+
+    def add_plantar_fourbar_constraint(self):
+        left_rod_toe = {
+            'link1': self.link_idxs['plantar_rod_left'],
+            'xyz1': np.array([0.35012, 0, 0]),
+            'link2': self.link_idxs['toe_left'],
+            'xyz2': np.array([.055, 0, .00776]),
+            'axis': np.array([0, 0, 1])
+        }
+
+        right_rod_toe = {
+            'link1': self.link_idxs['plantar_rod_right'],
+            'xyz1': np.array([0.35012, 0, 0]),
+            'link2': self.link_idxs['toe_right'],
+            'xyz2': np.array([.055, 0, -.00776]),
+            'axis': np.array([0, 0, 1])
+        }
+
+        p.createConstraint(
+            self.cassie_id, left_rod_toe['link1'], self.cassie_id,
+            left_rod_toe['link2'], p.JOINT_POINT2POINT, left_rod_toe['axis'],
+            left_rod_toe['xyz1'], left_rod_toe['xyz2'])
+
+        p.createConstraint(
+            self.cassie_id, right_rod_toe['link1'], self.cassie_id,
+            right_rod_toe['link2'], p.JOINT_POINT2POINT, right_rod_toe['axis'],
+            right_rod_toe['xyz1'], right_rod_toe['xyz2'])
 
     def set_initial_condition(self, state):
         pass

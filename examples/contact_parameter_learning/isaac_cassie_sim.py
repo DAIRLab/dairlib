@@ -12,6 +12,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import numpy as np
 
+from cassie_sim_data.cassie_traj import *
 from cassie_sim_data.cassie_sim_traj import *
 from cassie_sim_data.cassie_hardware_traj import *
 
@@ -19,9 +20,6 @@ from pydairlib.common import FindResourceOrThrow
 
 from isaacgym import gymutil
 from isaacgym import gymapi
-
-from cassie_sim_data.cassie_traj import CASSIE_JOINT_POSITION_SLICE
-from cassie_sim_data.cassie_traj import CASSIE_JOINT_VELOCITY_SLICE
 
 
 class IsaacCassieSim():
@@ -38,11 +36,17 @@ class IsaacCassieSim():
         self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
         self.default_params = {"mu": 0.8,
-                               "stiffness": 4e4,
+                               "restitution": 0.0,
                                "dissipation": 0.5}
         self.armatures = np.array(
             [0.038125, 0.038125, 0.09344, 0.09344, 0, 0, 0, 0.01225,
              0.038125, 0.038125, 0.09344, 0.09344, 0, 0, 0, 0.01225])
+
+        self.efforts_map = np.zeros((16, 10))
+        self.efforts_map[0:4, 0:4] = np.eye(4)
+        self.efforts_map[7, 4] = 1
+        self.efforts_map[8:12, 5:9] = np.eye(4)
+        self.efforts_map[15, 9] = 1
 
     def make(self, params, hardware_traj_num, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         self.gym = gymapi.acquire_gym()
@@ -56,6 +60,7 @@ class IsaacCassieSim():
         sim_params.physx.num_threads = 0
         sim_params.physx.use_gpu = 0
 
+        sim_params.dt = self.sim_dt
         sim_params.substeps = 10
         sim_params.use_gpu_pipeline = False
         sim_params.up_axis = gymapi.UP_AXIS_Z
@@ -84,8 +89,8 @@ class IsaacCassieSim():
         # create cassie plant
         asset_options = gymapi.AssetOptions()
         asset_options.fix_base_link = False
-        asset_root = "../../assets"
-        asset_file = "urdf/cassie_description/urdf/cassie_v2.urdf"
+        asset_root = "examples/Cassie/"
+        asset_file = "urdf/cassie_v2.urdf"
         asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
         np.random.seed(17)
 
@@ -100,13 +105,24 @@ class IsaacCassieSim():
 
         self.actor_handle = self.gym.create_actor(self.env, asset, pose, "cassie_v2", 0, 1)
 
+        #
+        self.cassie_dof_props = self.gym.get_actor_dof_properties(self.env, self.actor_handle)
+        self.cassie_dof_props["driveMode"].fill(gymapi.DOF_MODE_EFFORT)
+        self.cassie_dof_props["driveMode"][4:7] = 0
+        self.cassie_dof_props["driveMode"][12:15] = 0
+        self.cassie_dof_props['armature'] = self.armatures
+        self.cassie_dof_props['stiffness'][4] = 1500
+        self.cassie_dof_props['stiffness'][6] = 1250
+        self.cassie_dof_props['stiffness'][12] = 1500
+        self.cassie_dof_props['stiffness'][14] = 1250
+        self.gym.set_actor_dof_properties(self.env, self.actor_handle, self.cassie_dof_props)
+
         if self.visualize:
             cam_pos = gymapi.Vec3(2, 0, 2.0)
             cam_target = gymapi.Vec3(1, 0, -2.5)
             self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
-        self.full_state = np.copy(self.gym.get_actors_rigid_body_states(self.env, self.actor_handle, gymapi.STATE_ALL))
-
+        self.full_state = np.copy(self.gym.get_actor_rigid_body_states(self.env, self.actor_handle, gymapi.STATE_ALL))
         self.joint_states = self.gym.get_actor_dof_states(self.env, self.actor_handle, gymapi.STATE_ALL)
 
         self.current_time = 0.0
@@ -116,56 +132,56 @@ class IsaacCassieSim():
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.traj = CassieSimTraj()
 
-        qjointpos_init_drake = self.hardware_traj.get_initial_state()[CASSIE_JOINT_POSITION_SLICE]
-        qjointvel_init_drake = self.hardware_traj.get_initial_state()[CASSIE_JOINT_VELOCITY_SLICE]
+        x_init_drake = self.hardware_traj.get_initial_state()
+        qjointpos_init_drake = x_init_drake[CASSIE_JOINT_POSITION_SLICE]
+        qjointvel_init_drake = x_init_drake[CASSIE_JOINT_VELOCITY_SLICE]
+        qfbpos_init_drake = x_init_drake[CASSIE_FB_POSITION_SLICE]
+        qfbvel_init_drake = x_init_drake[CASSIE_FB_POSITION_SLICE]
+        qfbquat_init_drake = x_init_drake[CASSIE_QUATERNION_SLICE]
+        qfbomega_init_drake = x_init_drake[CASSIE_OMEGA_SLICE]
+        self.full_state['pose']['p']['x'][0] = qfbpos_init_drake[0]
+        self.full_state['pose']['p']['y'][0] = qfbpos_init_drake[1]
+        self.full_state['pose']['p']['z'][0] = qfbpos_init_drake[2]
+        self.full_state['pose']['r']['w'][0] = qfbquat_init_drake[0]
+        self.full_state['pose']['r']['x'][0] = qfbquat_init_drake[1]
+        self.full_state['pose']['r']['y'][0] = qfbquat_init_drake[2]
+        self.full_state['pose']['r']['z'][0] = qfbquat_init_drake[3]
+        self.full_state['vel']['linear']['x'][0] = qfbvel_init_drake[0]
+        self.full_state['vel']['linear']['y'][0] = qfbvel_init_drake[1]
+        self.full_state['vel']['linear']['z'][0] = qfbvel_init_drake[2]
+        self.full_state['vel']['angular']['x'][0] = qfbomega_init_drake[0]
+        self.full_state['vel']['angular']['y'][0] = qfbomega_init_drake[1]
+        self.full_state['vel']['angular']['z'][0] = qfbomega_init_drake[2]
 
-        # for i in range(cassie_num_dofs):
         self.joint_states['pos'] = qjointpos_init_drake
         self.joint_states['vel'] = qjointvel_init_drake
+        self.full_state = np.copy(self.gym.set_actor_rigid_body_states(self.env, self.actor_handle, self.full_state, gymapi.STATE_ALL))
         self.gym.set_actor_dof_states(self.env, self.actor_handle, self.joint_states, gymapi.STATE_POS)
 
-        self.sim.get_mutable_context().SetTime(self.start_time)
         self.traj.update(self.start_time, self.hardware_traj.get_initial_state(),
                          self.hardware_traj.get_action(self.start_time))
-        self.sim.Initialize()
         self.current_time = self.start_time
         return
 
     def advance_to(self, time):
-        while not self.gym.query_viewer_has_closed(self.viewer):
-            # step the physics
-            self.gym.simulate(self.sim)
-            self.gym.fetch_results(self.sim, True)
-
-            # update the viewer
-            self.gym.step_graphics(self.sim)
-            self.gym.draw_viewer(self.viewer, self.sim, True)
-
-            # Wait for dt to elapse in real time.
-            # This synchronizes the physics simulation with the rendering rate.
-            self.gym.sync_frame_time(self.sim)
-
-        self.gym.destroy_viewer(self.viewer)
-        self.gym.destroy_sim(self.sim)
         while (self.current_time < time):
             self.sim_step()
         return self.traj
 
     def sim_step(self, action=None):
-        next_timestep = self.sim.get_context().get_time() + self.dt
-        action = self.hardware_traj.get_action(self.sim.get_context().get_time())
-        # self.plant.get_actuation_input_port().FixValue(self.plant_context, action)
+        next_timestep = self.current_time + self.sim_dt
+        action = self.hardware_traj.get_action(self.current_time)
         efforts = self.convert_action_to_full_efforts(action)
         self.gym.apply_actor_dof_efforts(self.env, self.actor_handle, efforts)
-        # self.plant.get_actuation_input_port().FixValue(self.plant_context, np.zeros(10))
         self.sim.AdvanceTo(next_timestep)
 
         self.gym.simulate(self.sim)
         self.gym.fetch_results(self.sim, True)
 
-        cassie_state = self.plant.GetPositionsAndVelocities(
-            self.plant.GetMyMutableContextFromRoot(
-                self.sim.get_mutable_context()))
+        joint_state = self.gym.get_actor_dof_states(self.env, self.actor_handle, gymapi.STATE_ALL)
+        rigid_body_state = self.gym.get_actor_rigid_body_states(self.env, self.actor_handle, gymapi.STATE_ALL)
+        cassie_state = self.convert_isaac_state_to_drake(joint_state, rigid_body_state)
+
         self.current_time = next_timestep
         self.traj.update(next_timestep, cassie_state, action)
         return cassie_state
@@ -178,66 +194,15 @@ class IsaacCassieSim():
             self.gym.destroy_viewer(self.viewer)
         self.gym.destroy_sim(self.sim)
 
+    def convert_isaac_state_to_drake(self, joint_state, rigid_body_state):
+        cassie_state = np.zeros(45)
+        cassie_state[CASSIE_JOINT_POSITION_SLICE] = joint_state['pos']
+        cassie_state[CASSIE_JOINT_VELOCITY_SLICE] = joint_state['vel']
+        cassie_state[CASSIE_FB_POSITION_SLICE] = rigid_body_state['pose']['p'][0]
+        cassie_state[CASSIE_QUATERNION_SLICE] = rigid_body_state['pose']['r'][0]
+        cassie_state[CASSIE_FB_VELOCITY_SLICE] = rigid_body_state['vel']['linear'][0]
+        cassie_state[CASSIE_OMEGA_SLICE] = rigid_body_state['vel']['angular'][0]
+        return cassie_state
+
     def convert_action_to_full_efforts(self, action):
-        efforts_map = np.zeros((16, 10))
-        efforts = efforts_map * action
-
-
-### Set the joint armatures
-cassie_dof_props = gym.get_actor_dof_properties(env, actor_handle)
-cassie_num_dofs = len(cassie_dof_props)
-
-import pdb;
-
-pdb.set_trace()
-
-### (WORK IN PROGRESS, figure out how to set the initial state including velocities)
-
-# FULL STATE OF ALL THE RIGID BODIES
-initial_state = np.copy(gym.get_sim_rigid_body_states(sim, gymapi.STATE_ALL))
-# initial_state['pose'][0]['p']['z'] = 1.0 # HOW TO SET A SINGLE STATE
-
-
-# STATE OF THE ROBOT DOFs
-dof_states = gym.get_actor_dof_states(env, actor_handle, gymapi.STATE_ALL)
-
-# pelvis_pos = gymapi.Vec3(0.0, 0.0, 1.0)
-# initial_state['pose'][0]['p'] = gymapi.Vec3(0.0, 0.0, 1.0)
-# gym.set_sim_rigid_body_states(sim, initial_state, gymapi.STATE_ALL)
-
-# gym.set_sim_rigid_body_states(sim, initial_state, gymapi.STATE_ALL)
-# initial_pos = np.copy(gym.get_sim_rigid_body_states(sim, gymapi.STATE_POS))
-
-# gym.set_actor_dof_states(env, actor_handle, dof_states, gymapi.STATE_ALL)
-
-qjointpos_init_drake = np.array([0.0045, 0, 0.4973, -1.1997, 0, 1.4267, 0, -1.5968,
-                                 0.0045, 0, 0.4973, -1.1997, 0, 1.4267, 0, -1.5968])
-qjointvel_init_drake = np.zeros(16)
-
-for i in range(cassie_num_dofs):
-    dof_states['pos'][i] = qjointpos_init_drake[i]
-    dof_states['vel'][i] = qjointvel_init_drake[i]
-
-gym.set_actor_dof_states(env, actor_handle, dof_states, gymapi.STATE_POS)
-
-while not gym.query_viewer_has_closed(viewer):
-
-    # Get input actions from the viewer and handle them appropriately
-    for evt in gym.query_viewer_action_events(viewer):
-        if evt.action == "reset" and evt.value > 0:
-            gym.set_sim_rigid_body_states(sim, initial_state, gymapi.STATE_ALL)
-
-    # step the physics
-    gym.simulate(sim)
-    gym.fetch_results(sim, True)
-
-    # update the viewer
-    gym.step_graphics(sim)
-    gym.draw_viewer(viewer, sim, True)
-
-    # Wait for dt to elapse in real time.
-    # This synchronizes the physics simulation with the rendering rate.
-    gym.sync_frame_time(sim)
-
-gym.destroy_viewer(viewer)
-gym.destroy_sim(sim)
+        return self.efforts_map @ action

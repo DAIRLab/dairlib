@@ -884,7 +884,7 @@
     </joint>
 
 
-    <joint name="toe_crank_left" type="revolute">
+    <joint name="toe_left" type="revolute">
         <origin xyz="0.058 -0.034 0.02275" rpy="0 0 0" />
         <parent link="tarsus_left" />
         <child link="foot_crank_link_left" />
@@ -927,7 +927,7 @@
         <limit lower="-3.14" upper="3.14"/>
     </joint>
 
-    <joint name="toe_crank_right" type="revolute">
+    <joint name="toe_right" type="revolute">
         <origin xyz="0.058 -0.034 -0.02275" rpy="0 0 0" />
         <parent link="tarsus_right" />
         <child link="foot_crank_link_right" />
@@ -1008,7 +1008,7 @@
     </joint>
 
 
-    <joint name="toe_left" type="revolute">
+    <joint name="toe_ee_left" type="revolute">
         <origin xyz="0.408 -0.040 0" rpy="0 0 0" />
         <parent link="tarsus_left" />
         <child link="toe_left" />
@@ -1017,7 +1017,7 @@
         <dynamics damping="1" />
     </joint>
 
-    <joint name="toe_right" type="revolute">
+    <joint name="toe_ee_right" type="revolute">
         <origin xyz="0.408 -0.040 0" rpy="0 0 0" />
         <parent link="tarsus_right" />
         <child link="toe_right" />
@@ -1110,15 +1110,15 @@
         <mechanicalReduction>1</mechanicalReduction>
     </transmission>
 
-    <transmission name="toe_crank_left_trans" type="transmission_interface/SimpleTransmission">
-        <actuator name="toe_crank_left_motor"/>
-        <joint name="toe_crank_left"/>
+    <transmission name="toe_left_trans" type="transmission_interface/SimpleTransmission">
+        <actuator name="toe_left_motor"/>
+        <joint name="toe_left"/>
         <mechanicalReduction>1</mechanicalReduction>
     </transmission>
 
-    <transmission name="toe_crank_right_trans" type="transmission_interface/SimpleTransmission">
-        <actuator name="toe_crank_right_motor"/>
-        <joint name="toe_crank_right"/>
+    <transmission name="toe_right_trans" type="transmission_interface/SimpleTransmission">
+        <actuator name="toe_right_motor"/>
+        <joint name="toe_right"/>
         <mechanicalReduction>1</mechanicalReduction>
     </transmission>
 

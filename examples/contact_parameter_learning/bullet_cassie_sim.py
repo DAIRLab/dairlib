@@ -1,6 +1,6 @@
 import os
 from pydairlib.multibody import makeNameToPositionsMap, \
-    makeNameToVelocitiesMap, makeNameToActuatorsMap
+    makeNameToVelocitiesMap, makeNameToActuatorsMap, createStateNameVectorFromMap
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
@@ -31,15 +31,21 @@ class BulletCassieSim():
             self.client_id = p.connect(p.GUI)
         else:
             self.client_id = p.connect(p.DIRECT)
+        self.plant = None
+        self.context = None
         self.cassie_id = None
         self.plane_id = None
-        self.bullet_joint_order = []
-        self.bullet_actuator_order = []
         self.dt = dt
-        self.link_idxs = {}
-        self.joint_idxs = {}
+        self.bullet_link_idxs = {}
+        self.bullet_joint_idxs = {}
+        self.drake_pos_map = None
+        self.drake_vel_map = None
+        self.drake_act_map = None
+        self.drake_state_names = None
+        self.joint_accessor_vect = None
 
     def init_sim(self, params):
+        # Bullet simulation setup
         p.resetSimulation(physicsClientId=self.client_id)
         p.setGravity(0, 0, -9.81, physicsClientId=self.client_id)
         self.cassie_id = p.loadURDF(cassie_urdf_path, useFixedBase=False,
@@ -58,26 +64,40 @@ class BulletCassieSim():
 
         p.setTimeStep(self.dt, physicsClientId=self.client_id)
 
+    def get_joint_states(self):
+        pass
+
     def parse_joints_and_links(self):
         for i in range(p.getNumJoints(self.cassie_id)):
             joint_info = p.getJointInfo(self.cassie_id, i)
             joint_name = joint_info[jim['joint_name']].decode("utf8")
             link_name = joint_info[jim['link_name']].decode("utf8")
-            self.joint_idxs[joint_name] = i
-            self.link_idxs[link_name] = i
+            self.bullet_joint_idxs[joint_name] = i
+            self.bullet_link_idxs[link_name] = i
+
+        # Drake setup for state and input permutation
+        self.plant, self.context = make_drake_plant_and_context()
+        self.drake_pos_map = makeNameToPositionsMap(self.plant)
+        self.drake_vel_map = makeNameToVelocitiesMap(self.plant)
+        self.drake_act_map = makeNameToActuatorsMap(self.plant)
+        self.drake_state_names = createStateNameVectorFromMap(self.plant)
+
+        self.joint_accessor_vect = \
+            [self.bullet_joint_idxs[name] for name in
+             self.drake_state_names[7:self.plant.num_positions()]]
 
     def add_achilles_fourbar_constraint(self):
         left_rod_heel = {
-            'link1': self.link_idxs['achilles_rod_left'],
+            'link1': self.bullet_link_idxs['achilles_rod_left'],
             'xyz1': np.array([0.5012, 0, 0]),
-            'link2': self.link_idxs['heel_spring_left'],
+            'link2': self.bullet_link_idxs['heel_spring_left'],
             'xyz2': np.array([.11877, -.01, 0]),
             'axis': np.array([0, 0, 1])
         }
         right_rod_heel = {
-            'link1': self.link_idxs['achilles_rod_right'],
+            'link1': self.bullet_link_idxs['achilles_rod_right'],
             'xyz1': np.array([0.5012, 0, 0]),
-            'link2': self.link_idxs['heel_spring_right'],
+            'link2': self.bullet_link_idxs['heel_spring_right'],
             'xyz2': np.array([.11877, -.01, 0]),
             'axis': np.array([0, 0, 1])
         }
@@ -85,26 +105,28 @@ class BulletCassieSim():
         p.createConstraint(
             self.cassie_id, left_rod_heel['link1'], self.cassie_id,
             left_rod_heel['link2'],  p.JOINT_POINT2POINT, left_rod_heel['axis'],
-            left_rod_heel['xyz1'], left_rod_heel['xyz2'])
+            left_rod_heel['xyz1'], left_rod_heel['xyz2'],
+            physicsClientId=self.client_id)
 
         p.createConstraint(
             self.cassie_id, right_rod_heel['link1'], self.cassie_id,
             right_rod_heel['link2'], p.JOINT_POINT2POINT, right_rod_heel['axis'],
-            right_rod_heel['xyz1'], right_rod_heel['xyz2'])
+            right_rod_heel['xyz1'], right_rod_heel['xyz2'],
+            physicsClientId=self.client_id)
 
     def add_plantar_fourbar_constraint(self):
         left_rod_toe = {
-            'link1': self.link_idxs['plantar_rod_left'],
+            'link1': self.bullet_link_idxs['plantar_rod_left'],
             'xyz1': np.array([0.35012, 0, 0]),
-            'link2': self.link_idxs['toe_left'],
+            'link2': self.bullet_link_idxs['toe_left'],
             'xyz2': np.array([.055, 0, .00776]),
             'axis': np.array([0, 0, 1])
         }
 
         right_rod_toe = {
-            'link1': self.link_idxs['plantar_rod_right'],
+            'link1': self.bullet_link_idxs['plantar_rod_right'],
             'xyz1': np.array([0.35012, 0, 0]),
-            'link2': self.link_idxs['toe_right'],
+            'link2': self.bullet_link_idxs['toe_right'],
             'xyz2': np.array([.055, 0, -.00776]),
             'axis': np.array([0, 0, 1])
         }
@@ -112,12 +134,14 @@ class BulletCassieSim():
         p.createConstraint(
             self.cassie_id, left_rod_toe['link1'], self.cassie_id,
             left_rod_toe['link2'], p.JOINT_POINT2POINT, left_rod_toe['axis'],
-            left_rod_toe['xyz1'], left_rod_toe['xyz2'])
+            left_rod_toe['xyz1'], left_rod_toe['xyz2'],
+            physicsClientId=self.client_id)
 
         p.createConstraint(
             self.cassie_id, right_rod_toe['link1'], self.cassie_id,
             right_rod_toe['link2'], p.JOINT_POINT2POINT, right_rod_toe['axis'],
-            right_rod_toe['xyz1'], right_rod_toe['xyz2'])
+            right_rod_toe['xyz1'], right_rod_toe['xyz2'],
+            physicsClientId=self.client_id)
 
     def set_initial_condition(self, state):
         pass
@@ -128,7 +152,6 @@ def main():
     sim.init_sim({'mu_tangent': 0.8,
                   'stiffness': 2500,
                   'damping': 30.6})
-    import pdb; pdb.set_trace()
     for j in range(p.getNumJoints(sim.cassie_id)):
         inf = p.getJointInfo(sim.cassie_id, j)
         print(f'joint: {inf[jim["joint_name"]]}, link:{inf[jim["link_name"]]}')

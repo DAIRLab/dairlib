@@ -129,7 +129,7 @@ class DrakeToMujocoConverter():
 
         Parser(plant).AddModelFromFile(FindResourceOrThrow('examples/Cassie/urdf/cassie_left_leg.urdf'))
         plant.Finalize()
-        self.print_pos_indices(plant)
+        # self.print_pos_indices(plant)
 
         plant_context = plant.CreateDefaultContext()
         print(plant.num_positions())

@@ -64,7 +64,6 @@ class BulletCassieSim():
             self.joint_idxs[joint_name] = i
             self.link_idxs[link_name] = i
 
-
     def add_fourbar_constraint(self):
         # import pdb; pdb.set_trace()
         achilles_length = 0.5012
@@ -72,14 +71,6 @@ class BulletCassieSim():
                          np.array([.11877, -.01, 0]))
         right_rod_heel = (self.link_idxs['heel_spring_left'],
                           np.array([.11877, -.01, 0]))
-        left_rod_thigh = (self.link_idxs['thigh_left'],
-                          np.array([0.0, 0.0, 0.045]))
-        right_rod_thigh = (self.link_idxs['thigh_right'],
-                           np.array([0.0, 0.0, -0.045]))
-        p.createConstraint()
-
-    def make_joint_ordering(self):
-        pass
 
     def set_initial_condition(self, state):
         pass

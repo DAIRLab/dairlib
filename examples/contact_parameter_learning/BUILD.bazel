@@ -82,6 +82,18 @@ py_library(
 )
 
 py_library(
+    name = "isaac_cassie_sim_py",
+    srcs = ["isaac_cassie_sim.py"],
+    deps = [
+        ":cassie_loss_utils",
+        "//bindings/pydairlib/cassie:cassie_mujoco_py",
+        "//bindings/pydairlib/cassie:drake_to_mujoco_converter",
+        "//bindings/pydairlib/cassie:mujoco_lcm_utils",
+        "//examples/contact_parameter_learning/cassie_sim_data",
+    ],
+)
+
+py_library(
     name = "mujoco_cassie_sim_py",
     srcs = ["mujoco_cassie_sim.py"],
     deps = [
@@ -232,6 +244,7 @@ py_binary(
     deps = [
         ":cassie_loss_utils",
         ":drake_cassie_sim_v2_py",
+        ":isaac_cassie_sim_py",
         ":mujoco_cassie_sim_v2_py",
         "//bindings/pydairlib/common:plot_styler",
     ],

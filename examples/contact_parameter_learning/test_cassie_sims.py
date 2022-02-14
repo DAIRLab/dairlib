@@ -1,5 +1,6 @@
 import drake_cassie_sim_v2
 import mujoco_cassie_sim_v2
+import isaac_cassie_sim
 # import bullet_cassie_sim
 import sys
 import matplotlib.pyplot as plt
@@ -30,6 +31,10 @@ def test_drake_sim():
   sim = drake_cassie_sim_v2.DrakeCassieSim()
   test_sim(sim)
 
+def test_isaac_sim():
+  sim = isaac_cassie_sim.IsaacCassieSim()
+  test_sim(sim)
+
 # def test_bullet_sim():
 #   bullet_cassie_sim.test_sim()
   # sim = bullet_cassie_sim.BulletCassieSim()
@@ -39,3 +44,4 @@ if __name__ == '__main__':
   # test_drake_sim()
   # test_bullet_sim()
   test_mujoco_sim()
+  test_isaac_sim()

@@ -12,15 +12,13 @@ def test_sim(sim):
   sim.make(params, hardware_traj_num)
   rollout = sim.advance_to(0.0495)
   # sim.free_sim()
-  # rollout.plot_positions()
-  # sim.hardware_traj.plot_positions()
-  sim.reset(hardware_traj_num)
-  rollout = sim.advance_to(0.0495)
-
+  rollout.plot_positions()
+  sim.hardware_traj.plot_positions()
+  # sim.reset(hardware_traj_num)
+  # rollout = sim.advance_to(0.0495)
   # sim.hardware_traj.plot_positions()
   # rollout.plot_efforts()
-  # sim.hardware_traj.plot_efforts()
-  # plt.show()
+  plt.show()
   # import pdb; pdb.set_trace()
 
 def test_mujoco_sim():
@@ -43,5 +41,5 @@ def test_isaac_sim():
 if __name__ == '__main__':
   # test_drake_sim()
   # test_bullet_sim()
-  test_mujoco_sim()
+  # test_mujoco_sim()
   test_isaac_sim()

@@ -17,6 +17,7 @@ from cassie_sim_data.cassie_sim_traj import *
 from cassie_sim_data.cassie_hardware_traj import *
 
 from pydairlib.common import FindResourceOrThrow
+from pydairlib.cassie.drake_to_isaac_converter import DrakeToIsaacConverter
 
 from isaacgym import gymutil
 from isaacgym import gymapi
@@ -25,7 +26,7 @@ from isaacgym import gymapi
 class IsaacCassieSim():
 
     def __init__(self, visualize=False):
-        self.sim_dt = 5e-4
+        self.sim_dt = 5e-5
         self.visualize = visualize
         # hardware logs are 50ms long and start approximately 5ms before impact
         # the simulator will check to make sure ground reaction forces are first detected within 3-7ms
@@ -47,6 +48,8 @@ class IsaacCassieSim():
         self.efforts_map[7, 4] = 1
         self.efforts_map[8:12, 5:9] = np.eye(4)
         self.efforts_map[15, 9] = 1
+
+        self.state_converter = DrakeToIsaacConverter()
 
     def make(self, params, hardware_traj_num, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         self.gym = gymapi.acquire_gym()
@@ -133,12 +136,15 @@ class IsaacCassieSim():
         self.traj = CassieSimTraj()
 
         x_init_drake = self.hardware_traj.get_initial_state()
-        qjointpos_init_drake = x_init_drake[CASSIE_JOINT_POSITION_SLICE]
-        qjointvel_init_drake = x_init_drake[CASSIE_JOINT_VELOCITY_SLICE]
+        qjointpos_init_drake = self.state_converter.map_drake_pos_to_isaac_joint_pos(
+            x_init_drake[:CASSIE_NQ])
+        qjointvel_init_drake = self.state_converter.map_drake_vel_to_isaac_joint_vel(
+            x_init_drake[-CASSIE_NV:])
         qfbpos_init_drake = x_init_drake[CASSIE_FB_POSITION_SLICE]
-        qfbvel_init_drake = x_init_drake[CASSIE_FB_POSITION_SLICE]
+        qfbvel_init_drake = x_init_drake[CASSIE_FB_VELOCITY_SLICE]
         qfbquat_init_drake = x_init_drake[CASSIE_QUATERNION_SLICE]
         qfbomega_init_drake = x_init_drake[CASSIE_OMEGA_SLICE]
+
         self.full_state['pose']['p']['x'][0] = qfbpos_init_drake[0]
         self.full_state['pose']['p']['y'][0] = qfbpos_init_drake[1]
         self.full_state['pose']['p']['z'][0] = qfbpos_init_drake[2]
@@ -155,7 +161,7 @@ class IsaacCassieSim():
 
         self.joint_states['pos'] = qjointpos_init_drake
         self.joint_states['vel'] = qjointvel_init_drake
-        self.full_state = np.copy(self.gym.set_actor_rigid_body_states(self.env, self.actor_handle, self.full_state, gymapi.STATE_ALL))
+        self.gym.set_actor_rigid_body_states(self.env, self.actor_handle, self.full_state, gymapi.STATE_ALL)
         self.gym.set_actor_dof_states(self.env, self.actor_handle, self.joint_states, gymapi.STATE_POS)
 
         self.traj.update(self.start_time, self.hardware_traj.get_initial_state(),
@@ -173,10 +179,13 @@ class IsaacCassieSim():
         action = self.hardware_traj.get_action(self.current_time)
         efforts = self.convert_action_to_full_efforts(action)
         self.gym.apply_actor_dof_efforts(self.env, self.actor_handle, efforts)
-        self.sim.AdvanceTo(next_timestep)
 
         self.gym.simulate(self.sim)
         self.gym.fetch_results(self.sim, True)
+
+        if self.visualize:
+            self.gym.step_graphics(self.sim)
+            self.gym.draw_viewer(self.viewer, self.sim, True)
 
         joint_state = self.gym.get_actor_dof_states(self.env, self.actor_handle, gymapi.STATE_ALL)
         rigid_body_state = self.gym.get_actor_rigid_body_states(self.env, self.actor_handle, gymapi.STATE_ALL)
@@ -198,11 +207,18 @@ class IsaacCassieSim():
         cassie_state = np.zeros(45)
         cassie_state[CASSIE_JOINT_POSITION_SLICE] = joint_state['pos']
         cassie_state[CASSIE_JOINT_VELOCITY_SLICE] = joint_state['vel']
-        cassie_state[CASSIE_FB_POSITION_SLICE] = rigid_body_state['pose']['p'][0]
-        cassie_state[CASSIE_QUATERNION_SLICE] = rigid_body_state['pose']['r'][0]
-        cassie_state[CASSIE_FB_VELOCITY_SLICE] = rigid_body_state['vel']['linear'][0]
-        cassie_state[CASSIE_OMEGA_SLICE] = rigid_body_state['vel']['angular'][0]
+        pelvis_pose = rigid_body_state['pose']['p'][0]
+        pelvis_quat = rigid_body_state['pose']['r'][0]
+        pelvis_linear_vel = rigid_body_state['vel']['linear'][0]
+        pelvis_angular_vel = rigid_body_state['vel']['angular'][0]
+        cassie_state[CASSIE_FB_POSITION_SLICE] = np.array([pelvis_pose[0], pelvis_pose[1], pelvis_pose[2]])
+        cassie_state[CASSIE_QUATERNION_SLICE] = np.array(
+            [pelvis_quat[3], pelvis_quat[0], pelvis_quat[1], pelvis_quat[2]])
+        cassie_state[CASSIE_FB_VELOCITY_SLICE] = np.array(
+            [pelvis_linear_vel[0], pelvis_linear_vel[1], pelvis_linear_vel[2]])
+        cassie_state[CASSIE_OMEGA_SLICE] = np.array(
+            [pelvis_angular_vel[0], pelvis_angular_vel[1], pelvis_angular_vel[2]])
         return cassie_state
 
     def convert_action_to_full_efforts(self, action):
-        return self.efforts_map @ action
+        return np.array(self.efforts_map @ action, dtype=np.float32)

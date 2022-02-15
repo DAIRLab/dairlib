@@ -87,7 +87,7 @@ py_library(
     deps = [
         ":cassie_loss_utils",
         "//bindings/pydairlib/cassie:cassie_mujoco_py",
-        "//bindings/pydairlib/cassie:drake_to_mujoco_converter",
+        "//bindings/pydairlib/cassie:simulator_conversion_utils",
         "//bindings/pydairlib/cassie:mujoco_lcm_utils",
         "//examples/contact_parameter_learning/cassie_sim_data",
     ],

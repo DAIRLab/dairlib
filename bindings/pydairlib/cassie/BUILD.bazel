@@ -28,6 +28,14 @@ pybind_py_library(
 )
 
 py_library(
+    name = "simulator_conversion_utils",
+    srcs = [],
+    deps = [":drake_to_mujoco_converter",
+            ":drake_to_isaac_converter",
+            ":convert_log_to_trajectory_data"],
+)
+
+py_library(
     name = "mujoco_lcm_utils",
     srcs = ["mujoco_lcm_utils.py"],
     deps = [
@@ -38,6 +46,16 @@ py_library(
 py_library(
     name = "drake_to_mujoco_converter",
     srcs = ["drake_to_mujoco_converter.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils",
+        "//lcmtypes:lcmtypes_robot_py",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "drake_to_isaac_converter",
+    srcs = ["drake_to_isaac_converter.py"],
     deps = [
         "//bindings/pydairlib/cassie:cassie_utils",
         "//lcmtypes:lcmtypes_robot_py",

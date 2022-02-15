@@ -1,12 +1,7 @@
 import numpy as np
-from cassie_sim_data.cassie_traj import CassieTraj
+from cassie_sim_data.cassie_traj import *
 from pydrake.trajectories import PiecewisePolynomial
 
-# TODO(yangwill): verify the indices, all simulators shoud output the final trajectory data in the same format
-CASSIE_QUATERNION_SLICE = slice(0, 4)
-CASSIE_POSITION_SLICE = slice(4, 23)
-CASSIE_OMEGA_SLICE = slice(3, 7)
-CASSIE_VELOCITY_SLICE = slice(3, 7)
 
 CASSIE_NX = 45
 CASSIE_NU = 10

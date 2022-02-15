@@ -6,7 +6,12 @@ from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 import pybullet as p
 import numpy as np
+
+from cassie_sim_data.cassie_traj import *
+from cassie_sim_data.cassie_sim_traj import *
+from cassie_sim_data.cassie_hardware_traj import *
 from bullet_utils import joint_info_map as jim
+from bullet_utils import left_leg_achilles_ik
 
 cassie_urdf_path = os.path.join(
     os.getcwd(), 'examples/Cassie/urdf/cassie_full_model_bullet.urdf')
@@ -64,8 +69,52 @@ class BulletCassieSim():
 
         p.setTimeStep(self.dt, physicsClientId=self.client_id)
 
-    def get_joint_states(self):
-        pass
+    def get_sim_state_in_drake_coords(self):
+        pelvis_xyz, pelvis_q = p.getBasePositionAndOrientation(
+            self.cassie_id, physicsClientId=self.client_id)
+        q_conv = np.array([pelvis_q[3], pelvis_q[0], pelvis_q[1], pelvis_q[2]])
+
+        pelvis_vel, pelvis_omega = p.getBasePositionAndOrientation(
+            self.cassie_id, physicsClientId=self.client_id)
+
+        pelvis_omega = p.getMatrixFromQuaternion(pelvis_q) @ pelvis_omega
+
+        joint_pos, joint_vel = p.getJointStates(
+            self.cassie_id, self.joint_accessor_vect,
+            physicsClientId=self.client_id)
+
+        return np.concatenate(
+            q_conv, pelvis_xyz, joint_pos, pelvis_omega, pelvis_vel, joint_vel)
+
+    def set_sim_state_from_drake_coords(self, x):
+        q = x[:self.plant.num_positions()].ravel()
+        v = x[self.plant.num_positions():].ravel()
+
+        pelvis_q = np.array([q[1], q[2], q[3], q[0]])
+        pelvis_xyz = q[4:7]
+        p.resetBasePositionAndOrientation(
+            self.cassie_id, posObj=pelvis_xyz, ornObj=pelvis_q,
+            physicsClientId=self.client_id)
+
+        drake_joints = self.drake_state_names[7:self.plant.num_positions()]
+        for name in drake_joints:
+            print(name)
+            p.resetJointState(self.cassie_id, self.bullet_joint_idxs[name],
+                q[self.drake_pos_map[name]], v[self.drake_vel_map[name + 'dot']],
+                physicsClientId=self.client_id)
+            
+        rod_roll_left, rod_pitch_left = left_leg_achilles_ik(
+            self.plant, self.context, self.drake_pos_map, self.drake_vel_map, x)
+
+        p.resetJointState(self.cassie_id,
+                          self.bullet_joint_idxs['achilles_hip_pitch_left'],
+                          rod_pitch_left, physicsClientId=self.client_id)
+
+        p.resetJointState(self.cassie_id,
+                          self.bullet_joint_idxs['achilles_hip_left'],
+                          rod_roll_left, physicsClientId=self.client_id)
+        
+        ''' TODO: implement velocity '''
 
     def parse_joints_and_links(self):
         for i in range(p.getNumJoints(self.cassie_id)):
@@ -148,10 +197,13 @@ class BulletCassieSim():
 
 
 def main():
+    x_init = CassieHardwareTraj('00').get_initial_state()
     sim = BulletCassieSim(visualize=True)
     sim.init_sim({'mu_tangent': 0.8,
                   'stiffness': 2500,
                   'damping': 30.6})
+    sim.set_sim_state_from_drake_coords(x_init)
+    import pdb; pdb.set_trace()
     for j in range(p.getNumJoints(sim.cassie_id)):
         inf = p.getJointInfo(sim.cassie_id, j)
         print(f'joint: {inf[jim["joint_name"]]}, link:{inf[jim["link_name"]]}')

@@ -28,6 +28,8 @@ class IsaacCassieSim:
 
     def __init__(self, visualize=False):
         self.sim_dt = 5e-5
+        self.dt = 5e-4
+        self.substeps = 10
         self.visualize = visualize
         # hardware logs are 50ms long and start approximately 5ms before impact
         # the simulator will check to make sure ground reaction forces are first detected within 3-7ms
@@ -37,7 +39,7 @@ class IsaacCassieSim:
         self.traj = CassieSimTraj()
         self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
-        self.default_params = {"mu": 0.8,
+        self.default_params = {"mu": 1.0,
                                "restitution": 0.0,
                                "dissipation": 0.5}
 
@@ -52,6 +54,8 @@ class IsaacCassieSim:
         self.efforts_map[15, 9] = 1
 
         self.kCassieAchillesLength = 0.5012
+        # self.achilles_stiffness = 1e4
+        # self.achilles_damping = 2e1
         self.achilles_stiffness = 1e6
         self.achilles_damping = 2e3
 
@@ -62,7 +66,7 @@ class IsaacCassieSim:
 
         # Set simulator parameters
         sim_params = gymapi.SimParams()
-        sim_params.physx.bounce_threshold_velocity = 2 *kCassieAchillesLength 9.81 * self.sim_dt / sim_params.substeps
+        sim_params.physx.bounce_threshold_velocity = 2 * 9.81 * self.sim_dt / sim_params.substeps
         sim_params.physx.solver_type = 1  # O: PGS, 1: TGS
         sim_params.physx.num_position_iterations = 4  # [1, 255]
         sim_params.physx.num_velocity_iterations = 1  # [1, 255]
@@ -121,10 +125,10 @@ class IsaacCassieSim:
                                                        self.kCassieAchillesLength, self.achilles_stiffness,
                                                        self.achilles_damping)
         self.right_loop_closure = IsaacSpringConstraint(self.body_indices['thigh_right'],
-                                                       self.body_indices['heel_spring_right'],
-                                                       gymapi.Vec3(0.0, 0.0, -0.045), gymapi.Vec3(.11877, -.01, 0.0),
-                                                       self.kCassieAchillesLength, self.achilles_stiffness,
-                                                       self.achilles_damping)
+                                                        self.body_indices['heel_spring_right'],
+                                                        gymapi.Vec3(0.0, 0.0, -0.045), gymapi.Vec3(.11877, -.01, 0.0),
+                                                        self.kCassieAchillesLength, self.achilles_stiffness,
+                                                        self.achilles_damping)
 
         self.cassie_dof_props = self.gym.get_actor_dof_properties(self.env, self.actor_handle)
         self.cassie_dof_props["driveMode"].fill(gymapi.DOF_MODE_EFFORT)
@@ -143,7 +147,7 @@ class IsaacCassieSim:
             self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
         self.full_state = np.copy(self.gym.get_actor_rigid_body_states(self.env, self.actor_handle, gymapi.STATE_ALL))
-        self.joint_states = self.gym.get_actor_dof_states(self.env, self.actor_handle, gymapi.STATE_ALL)
+        self.joint_states = np.copy(self.gym.get_actor_dof_states(self.env, self.actor_handle, gymapi.STATE_ALL))
 
         self.current_time = 0.0
         self.reset(hardware_traj_num)
@@ -187,20 +191,21 @@ class IsaacCassieSim:
         return
 
     def advance_to(self, time):
-        while (self.current_time < time):
+        while self.current_time < time:
             self.sim_step()
         return self.traj
 
     def sim_step(self, action=None):
-        next_timestep = self.current_time + self.sim_dt
-        action = self.hardware_traj.get_action(self.current_time)
-        efforts = self.convert_action_to_full_efforts(action)
-        self.gym.apply_actor_dof_efforts(self.env, self.actor_handle, efforts)
-        self.left_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
-        self.right_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
+        next_timestep = self.current_time + self.dt
+        action = self.hardware_traj.get_action(next_timestep)
+        efforts = np.array(self.state_converter.map_drake_effort_to_isaac(action), dtype=np.float32)
 
-        self.gym.simulate(self.sim)
-        self.gym.fetch_results(self.sim, True)
+        for i in range(self.substeps):
+            self.gym.apply_actor_dof_efforts(self.env, self.actor_handle, efforts)
+            self.left_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
+            self.right_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
+            self.gym.simulate(self.sim)
+            self.gym.fetch_results(self.sim, True)
 
         if self.visualize:
             self.gym.step_graphics(self.sim)
@@ -224,8 +229,10 @@ class IsaacCassieSim:
 
     def convert_isaac_state_to_drake(self, joint_state, rigid_body_state):
         cassie_state = np.zeros(45)
-        cassie_state[CASSIE_JOINT_POSITION_SLICE] = joint_state['pos']
-        cassie_state[CASSIE_JOINT_VELOCITY_SLICE] = joint_state['vel']
+        cassie_state[:CASSIE_NQ] = self.state_converter.map_isaac_joint_pos_to_drake_pos(
+            joint_state['pos'])
+        cassie_state[-CASSIE_NV:] = self.state_converter.map_isaac_joint_vel_to_drake_vel(
+            joint_state['vel'])
         pelvis_pose = rigid_body_state['pose']['p'][0]
         pelvis_quat = rigid_body_state['pose']['r'][0]
         pelvis_linear_vel = rigid_body_state['vel']['linear'][0]
@@ -239,5 +246,3 @@ class IsaacCassieSim:
             [pelvis_angular_vel[0], pelvis_angular_vel[1], pelvis_angular_vel[2]])
         return cassie_state
 
-    def convert_action_to_full_efforts(self, action):
-        return np.array(self.efforts_map @ action, dtype=np.float32)

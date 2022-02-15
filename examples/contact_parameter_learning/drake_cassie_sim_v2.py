@@ -75,13 +75,14 @@ class DrakeCassieSim():
         return
 
     def advance_to(self, time):
-        while (self.current_time < time):
+        while self.current_time < time:
             self.sim_step()
         return self.traj
 
     def sim_step(self, action=None):
         next_timestep = self.sim.get_context().get_time() + self.dt
-        action = self.hardware_traj.get_action(self.sim.get_context().get_time())
+        # print(self.current_time)
+        action = self.hardware_traj.get_action(next_timestep)
         # print(next_timestep)
         self.plant.get_actuation_input_port().FixValue(self.plant_context, action)
         # self.plant.get_actuation_input_port().FixValue(self.plant_context, np.zeros(10))

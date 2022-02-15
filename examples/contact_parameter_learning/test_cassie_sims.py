@@ -12,13 +12,15 @@ def test_sim(sim):
   sim.make(params, hardware_traj_num)
   rollout = sim.advance_to(0.0495)
   # sim.free_sim()
-  rollout.plot_positions()
-  sim.hardware_traj.plot_positions()
+  # rollout.plot_positions()
+  # sim.hardware_traj.plot_positions()
+  rollout.plot_velocities()
+  # sim.hardware_traj.plot_velocities()
+  # rollout.plot_efforts()5
+  # sim.hardware_traj.plot_efforts()
+  plt.show()
   # sim.reset(hardware_traj_num)
   # rollout = sim.advance_to(0.0495)
-  # sim.hardware_traj.plot_positions()
-  # rollout.plot_efforts()
-  plt.show()
   # import pdb; pdb.set_trace()
 
 def test_mujoco_sim():
@@ -30,7 +32,8 @@ def test_drake_sim():
   test_sim(sim)
 
 def test_isaac_sim():
-  sim = isaac_cassie_sim.IsaacCassieSim()
+  # sim = isaac_cassie_sim.IsaacCassieSim()
+  sim = isaac_cassie_sim.IsaacCassieSim(visualize=True)
   test_sim(sim)
 
 # def test_bullet_sim():
@@ -40,6 +43,6 @@ def test_isaac_sim():
 
 if __name__ == '__main__':
   # test_drake_sim()
+  # test_mujoco_sim()
+  test_isaac_sim()
   # test_bullet_sim()
-  test_mujoco_sim()
-  # test_isaac_sim()

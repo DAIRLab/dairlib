@@ -84,7 +84,7 @@ class MuJoCoCassieSim():
         action = self.hardware_traj.get_action(next_timestep)
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, action)
         if self.visualize:
-            self.cassie_vis = self.cassie_vis.draw(self.cassie_env)
+            self.cassie_vis.draw(self.cassie_env)
         # print("outer step")
         while self.cassie_env.time() < next_timestep:
             # print("inner step")
@@ -97,7 +97,7 @@ class MuJoCoCassieSim():
         q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
         self.current_time = t
         cassie_state = np.hstack((q, v))
-        self.traj.update(t, np.hstack((q, v)), action)
+        self.traj.update(t, cassie_state, action)
         # print(cassie_state)
         return cassie_state
 

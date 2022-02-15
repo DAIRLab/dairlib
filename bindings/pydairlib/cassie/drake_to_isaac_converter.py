@@ -28,6 +28,7 @@ class DrakeToIsaacConverter():
 
         self.map_q_drake_to_isaac = np.zeros((16, 23))
         self.map_v_drake_to_isaac = np.zeros((16, 22))
+        self.map_u_drake_to_isaac = np.zeros((16, 10))
 
         self.generate_matrices()
 
@@ -36,6 +37,18 @@ class DrakeToIsaacConverter():
 
     def map_drake_vel_to_isaac_joint_vel(self, drake_vel):
         return self.map_v_drake_to_isaac @ drake_vel
+
+    def map_isaac_joint_pos_to_drake_pos(self, isaac_joint_pos):
+        return self.map_q_drake_to_isaac.T @ isaac_joint_pos
+
+    def map_isaac_joint_vel_to_drake_vel(self, isaac_joint_vel):
+        return self.map_v_drake_to_isaac.T @ isaac_joint_vel
+
+    def map_drake_effort_to_isaac(self, drake_effort):
+        return self.map_u_drake_to_isaac @ drake_effort
+
+    def map_isaac_effort_to_drake(self, isaac_effort):
+        return self.map_u_drake_to_isaac.T @ isaac_effort
 
     def generate_matrices(self):
         self.map_q_drake_to_isaac = np.zeros((16, 23))
@@ -73,3 +86,15 @@ class DrakeToIsaacConverter():
         self.map_v_drake_to_isaac[13, self.vel_map["ankle_joint_rightdot"]] = 1
         self.map_v_drake_to_isaac[14, self.vel_map["ankle_spring_joint_rightdot"]] = 1
         self.map_v_drake_to_isaac[15, self.vel_map["toe_rightdot"]] = 1
+
+        self.map_u_drake_to_isaac = np.zeros((16, 10))
+        self.map_u_drake_to_isaac[0, self.act_map['hip_roll_left_motor']] = 1
+        self.map_u_drake_to_isaac[1, self.act_map['hip_yaw_left_motor']] = 1
+        self.map_u_drake_to_isaac[2, self.act_map['hip_pitch_left_motor']] = 1
+        self.map_u_drake_to_isaac[3, self.act_map['knee_left_motor']] = 1
+        self.map_u_drake_to_isaac[7, self.act_map['toe_left_motor']] = 1
+        self.map_u_drake_to_isaac[8, self.act_map['hip_roll_right_motor']] = 1
+        self.map_u_drake_to_isaac[9, self.act_map['hip_yaw_right_motor']] = 1
+        self.map_u_drake_to_isaac[10, self.act_map['hip_pitch_right_motor']] = 1
+        self.map_u_drake_to_isaac[11, self.act_map['knee_right_motor']] = 1
+        self.map_u_drake_to_isaac[15, self.act_map['toe_right_motor']] = 1

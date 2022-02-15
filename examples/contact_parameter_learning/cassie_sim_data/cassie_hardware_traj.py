@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from cassie_sim_data.cassie_traj import CassieTraj
+from cassie_sim_data.cassie_traj import *
 from pydrake.trajectories import PiecewisePolynomial
 
 # TODO(yangwill): verify the indices, all simulators shoud output the final trajectory data in the same format
@@ -18,7 +18,6 @@ CASSIE_DTS = 100  # 2000 * 0.05
 DATASET_DIR = os.path.join(
     os.getenv('HOME'),
     'Documents/research/projects/impact_uncertainty/data/curated_trajectories/')
-
 
 class CassieHardwareTraj(CassieTraj):
 

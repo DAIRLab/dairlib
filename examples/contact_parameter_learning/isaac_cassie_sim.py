@@ -18,12 +18,13 @@ from cassie_sim_data.cassie_hardware_traj import *
 
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.cassie.drake_to_isaac_converter import DrakeToIsaacConverter
+from pydairlib.cassie.isaac_spring_constraint import IsaacSpringConstraint
 
 from isaacgym import gymutil
 from isaacgym import gymapi
 
 
-class IsaacCassieSim():
+class IsaacCassieSim:
 
     def __init__(self, visualize=False):
         self.sim_dt = 5e-5
@@ -39,6 +40,7 @@ class IsaacCassieSim():
         self.default_params = {"mu": 0.8,
                                "restitution": 0.0,
                                "dissipation": 0.5}
+
         self.armatures = np.array(
             [0.038125, 0.038125, 0.09344, 0.09344, 0, 0, 0, 0.01225,
              0.038125, 0.038125, 0.09344, 0.09344, 0, 0, 0, 0.01225])
@@ -49,6 +51,10 @@ class IsaacCassieSim():
         self.efforts_map[8:12, 5:9] = np.eye(4)
         self.efforts_map[15, 9] = 1
 
+        self.kCassieAchillesLength = 0.5012
+        self.achilles_stiffness = 1e6
+        self.achilles_damping = 2e3
+
         self.state_converter = DrakeToIsaacConverter()
 
     def make(self, params, hardware_traj_num, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
@@ -56,7 +62,7 @@ class IsaacCassieSim():
 
         # Set simulator parameters
         sim_params = gymapi.SimParams()
-        sim_params.physx.bounce_threshold_velocity = 2 * 9.81 * self.sim_dt / sim_params.substeps
+        sim_params.physx.bounce_threshold_velocity = 2 *kCassieAchillesLength 9.81 * self.sim_dt / sim_params.substeps
         sim_params.physx.solver_type = 1  # O: PGS, 1: TGS
         sim_params.physx.num_position_iterations = 4  # [1, 255]
         sim_params.physx.num_velocity_iterations = 1  # [1, 255]
@@ -107,8 +113,19 @@ class IsaacCassieSim():
         pose.r = gymapi.Quat(0, 0.0, 0.0, 1.0)
 
         self.actor_handle = self.gym.create_actor(self.env, asset, pose, "cassie_v2", 0, 1)
+        self.body_indices = self.gym.get_actor_rigid_body_dict(self.env, self.actor_handle)
 
-        #
+        self.left_loop_closure = IsaacSpringConstraint(self.body_indices['thigh_left'],
+                                                       self.body_indices['heel_spring_left'],
+                                                       gymapi.Vec3(0.0, 0.0, 0.045), gymapi.Vec3(.11877, -.01, 0.0),
+                                                       self.kCassieAchillesLength, self.achilles_stiffness,
+                                                       self.achilles_damping)
+        self.right_loop_closure = IsaacSpringConstraint(self.body_indices['thigh_right'],
+                                                       self.body_indices['heel_spring_right'],
+                                                       gymapi.Vec3(0.0, 0.0, -0.045), gymapi.Vec3(.11877, -.01, 0.0),
+                                                       self.kCassieAchillesLength, self.achilles_stiffness,
+                                                       self.achilles_damping)
+
         self.cassie_dof_props = self.gym.get_actor_dof_properties(self.env, self.actor_handle)
         self.cassie_dof_props["driveMode"].fill(gymapi.DOF_MODE_EFFORT)
         self.cassie_dof_props["driveMode"][4:7] = 0
@@ -179,6 +196,8 @@ class IsaacCassieSim():
         action = self.hardware_traj.get_action(self.current_time)
         efforts = self.convert_action_to_full_efforts(action)
         self.gym.apply_actor_dof_efforts(self.env, self.actor_handle, efforts)
+        self.left_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
+        self.right_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
 
         self.gym.simulate(self.sim)
         self.gym.fetch_results(self.sim, True)

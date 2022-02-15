@@ -11,7 +11,6 @@ CASSIE_DTS = 100  # 2000 * 0.05
 
 DATASET_DIR = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/curated_trajectories/'
 
-
 class CassieHardwareTraj(CassieTraj):
 
     def __init__(self, dataset_num):

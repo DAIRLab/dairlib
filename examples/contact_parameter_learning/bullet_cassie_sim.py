@@ -64,8 +64,24 @@ class BulletCassieSim():
 
         p.setTimeStep(self.dt, physicsClientId=self.client_id)
 
-    def get_joint_states(self):
-        pass
+    def get_sim_state_in_drake_coords(self):
+        pelvis_xyz, pelvis_q = p.getBasePositionAndOrientation(
+            self.cassie_id, physicsClientId=self.client_id)
+        q_conv = np.array([pelvis_q[3], pelvis_q[0], pelvis_q[1], pelvis_q[2]])
+
+        pelvis_vel, pelvis_omega = p.getBasePositionAndOrientation(
+            self.cassie_id, physicsClientId=self.client_id)
+
+        pelvis_omega = p.getMatrixFromQuaternion(pelvis_q) @ pelvis_omega
+
+        joint_pos, joint_vel = p.getJointStates(
+            self.cassie_id, self.joint_accessor_vect,
+            physicsClientId=self.client_id)
+
+        return np.concatenate(
+            q_conv, pelvis_xyz, joint_pos, pelvis_omega, pelvis_vel, joint_vel)
+
+    def
 
     def parse_joints_and_links(self):
         for i in range(p.getNumJoints(self.cassie_id)):

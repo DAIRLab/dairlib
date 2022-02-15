@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from cassie_sim_data.cassie_traj import CassieTraj
 from pydrake.trajectories import PiecewisePolynomial
 
@@ -14,7 +15,9 @@ CASSIE_NL = 12
 
 CASSIE_DTS = 100  # 2000 * 0.05
 
-DATASET_DIR = '/home/yangwill/Documents/research/projects/impact_uncertainty/data/curated_trajectories/'
+DATASET_DIR = os.path.join(
+    os.getenv('HOME'),
+    'Documents/research/projects/impact_uncertainty/data/curated_trajectories/')
 
 
 class CassieHardwareTraj(CassieTraj):

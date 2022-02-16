@@ -1135,25 +1135,25 @@
 
     <!-- Real springs -->
     <force_element name="left_knee_spring">
-        <torsional_spring stiffness="2300" rest_angle="0" >
+        <torsional_spring stiffness="1500" rest_angle="0" >
             <joint name="knee_joint_left" />
         </torsional_spring>
     </force_element>
 
     <force_element name="left_ankle_spring">
-        <torsional_spring stiffness="2000" rest_angle="0">
+        <torsional_spring stiffness="1250" rest_angle="0">
             <joint name="ankle_spring_joint_left" />
         </torsional_spring>
     </force_element>
 
     <force_element name="right_knee_spring">
-        <torsional_spring stiffness="2300" rest_angle="0" >
+        <torsional_spring stiffness="1500" rest_angle="0" >
             <joint name="knee_joint_right" />
         </torsional_spring>
     </force_element>
 
     <force_element name="right_ankle_spring">
-        <torsional_spring stiffness="2000" rest_angle="0">
+        <torsional_spring stiffness="1250" rest_angle="0">
             <joint name="ankle_spring_joint_right" />
         </torsional_spring>
     </force_element>

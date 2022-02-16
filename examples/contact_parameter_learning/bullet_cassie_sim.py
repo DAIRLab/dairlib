@@ -41,8 +41,8 @@ class BulletCassieSim():
         self.current_time = 0
         self.params = None
         self.default_params = {'mu_tangent': 0.8,
-                               'stiffness': 60000,
-                               'damping': 3000.6}
+                               'stiffness': 25000,
+                               'damping': 100.6}
 
         # pybullet related members
         if self.visualize:
@@ -73,7 +73,8 @@ class BulletCassieSim():
         self.current_time = 0
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.traj = CassieSimTraj()
-        p.resetSimulation(physicsClientId=self.client_id)
+        # p.resetSimulation(physicsClientId=self.client_id)
+        # p.setPhysicsEngineParameter(numSubSteps=10, erp=0.2, contactERP=0.2)
         p.setGravity(0, 0, -9.81, physicsClientId=self.client_id)
         self.cassie_id = p.loadURDF(cassie_urdf_path, useFixedBase=False,
                                     physicsClientId=self.client_id)

@@ -9,7 +9,7 @@ import numpy as np
 
 def test_all_trajs(sim):
   params = sim.default_params
-  hardware_traj_num = '00'
+  hardware_traj_num = '15'
   sim.make(params, hardware_traj_num)
   hardware_trajs = np.arange(0, 29)
   hardware_traj_nums = ["%.2d" % i for i in hardware_trajs]
@@ -54,7 +54,7 @@ def test_isaac_sim():
 
 
 def test_bullet_sim():
-  sim = bullet_cassie_sim.BulletCassieSim()
+  sim = bullet_cassie_sim.BulletCassieSim(visualize=True)
   test_sim(sim)
 
 if __name__ == '__main__':

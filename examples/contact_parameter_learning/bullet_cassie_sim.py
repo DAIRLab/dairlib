@@ -6,6 +6,7 @@ from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 import pybullet as p
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 from cassie_sim_data.cassie_traj import *
 from cassie_sim_data.cassie_sim_traj import *
@@ -31,7 +32,7 @@ def make_drake_plant_and_context(floating_base=True):
 
 
 class BulletCassieSim():
-    def __init__(self, visualize=False, dt=0.0001):
+    def __init__(self, visualize=False, dt=0.0005):
         # Constants / settings
         self.visualize = visualize
         self.dt = dt
@@ -39,6 +40,9 @@ class BulletCassieSim():
         self.traj = None
         self.current_time = 0
         self.params = None
+        self.default_params = {'mu_tangent': 0.8,
+                               'stiffness': 60000,
+                               'damping': 3000.6}
 
         # pybullet related members
         if self.visualize:
@@ -86,33 +90,52 @@ class BulletCassieSim():
             self.hardware_traj.get_initial_state())
         self.add_achilles_fourbar_constraint()
         self.add_plantar_fourbar_constraint()
+        for i in range(p.getNumJoints(
+                       self.cassie_id, physicsClientId=self.client_id)):
+            p.setJointMotorControl2(
+                self.cassie_id, i, controlMode=p.VELOCITY_CONTROL, force=0,
+                physicsClientId=self.client_id)
+
+        self.traj.update(self.current_time,
+                         self.hardware_traj.get_initial_state(),
+                         self.hardware_traj.get_action(self.current_time))
 
     def get_sim_state_in_drake_coords(self):
         pelvis_xyz, pelvis_q = p.getBasePositionAndOrientation(
             self.cassie_id, physicsClientId=self.client_id)
         q_conv = np.array([pelvis_q[3], pelvis_q[0], pelvis_q[1], pelvis_q[2]])
 
-        pelvis_vel, pelvis_omega = p.getBasePositionAndOrientation(
+        rot = np.asarray(p.getMatrixFromQuaternion(pelvis_q)).reshape(3, 3)
+        pelvis_vel, pelvis_omega = p.getBaseVelocity(
             self.cassie_id, physicsClientId=self.client_id)
 
-        pelvis_omega = p.getMatrixFromQuaternion(pelvis_q) @ pelvis_omega
+        pelvis_omega = rot @ np.asarray(pelvis_omega)
 
-        joint_pos, joint_vel = p.getJointStates(
+        tmp = p.getJointStates(
             self.cassie_id, self.joint_accessor_vect,
             physicsClientId=self.client_id)
+        joint_pos = np.array([state[0] for state in tmp])
+        joint_vel = np.array([state[1] for state in tmp])
 
         return np.concatenate(
-            q_conv, pelvis_xyz, joint_pos, pelvis_omega, pelvis_vel, joint_vel)
+            (q_conv, np.asarray(pelvis_xyz), joint_pos,
+             pelvis_omega, np.asarray(pelvis_vel), joint_vel))
 
     def set_sim_state_from_drake_coords(self, x):
         q = x[:self.plant.num_positions()].ravel()
         v = x[self.plant.num_positions():].ravel()
 
         pelvis_q = np.array([q[1], q[2], q[3], q[0]])
+        pelvis_omega = R.from_quat(pelvis_q).apply(v[0:3], inverse=True)
+        pelvis_vel = v[3:6]
+
         pelvis_xyz = q[4:7]
         p.resetBasePositionAndOrientation(
             self.cassie_id, posObj=pelvis_xyz, ornObj=pelvis_q,
             physicsClientId=self.client_id)
+        p.resetBaseVelocity(
+            self.cassie_id, linearVelocity=pelvis_vel,
+            angularVelocity=pelvis_omega, physicsClientId=self.client_id)
 
         drake_joints = self.drake_state_names[CASSIE_JOINT_POSITION_SLICE]
         for name in drake_joints:
@@ -142,12 +165,16 @@ class BulletCassieSim():
         ''' TODO: validate these velocities''' 
 
     def parse_joints_and_links(self):
-        for i in range(p.getNumJoints(self.cassie_id)):
-            joint_info = p.getJointInfo(self.cassie_id, i)
+        for i in range(p.getNumJoints(self.cassie_id,
+                       physicsClientId=self.client_id)):
+            joint_info = p.getJointInfo(self.cassie_id, i,
+                                        physicsClientId=self.client_id)
+
             joint_name = joint_info[jim['joint_name']].decode("utf8")
             link_name = joint_info[jim['link_name']].decode("utf8")
             self.bullet_joint_idxs[joint_name] = i
             self.bullet_link_idxs[link_name] = i
+
 
         # Drake setup for state and input permutation
         self.plant, self.context = make_drake_plant_and_context()
@@ -245,18 +272,17 @@ class BulletCassieSim():
             forces=action, physicsClientId=self.client_id)
         p.stepSimulation(physicsClientId=self.client_id)
         self.current_time = next_timestep
-        # cassie_state = self.get_sim_state_in_drake_coords()
-        # self.traj.update(next_timestep, cassie_state, action)
+        cassie_state = self.get_sim_state_in_drake_coords()
+        self.traj.update(next_timestep, cassie_state, action)
 
 
 def main():
-    sim = BulletCassieSim(visualize=True)
-    sim.make({'mu_tangent': 0.8,
-                  'stiffness': 2500,
-                  'damping': 30.6}, '01')
-    import pdb; pdb.set_trace()
-    sim.advance_to(0.0495)
-
+    sim = BulletCassieSim(visualize=False)
+    sim.make(sim.default_params, '00')
+    for j in range(p.getNumJoints(sim.cassie_id)):
+        inf = p.getJointInfo(sim.cassie_id, j)
+        print(f'joint: {inf[jim["joint_name"]]}, link:{inf[jim["joint_type"]]}')
+    sim.advance_to(0.045)
 
 
 if __name__ == '__main__':

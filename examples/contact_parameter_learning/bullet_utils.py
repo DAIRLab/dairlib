@@ -13,33 +13,33 @@ joint_info_map = {joint_info_return[i]: i for i in range(len(joint_info_return))
 
 # All quantities are expressed here in the body frame of the first link in the
 # key name
-ik_contants = {
+ik_constants = {
     'left_thigh_to_rod_end': np.array([0, 0, 0.045]),
-    'heel_spring_to_rod_end': np.array([.11877, -.01, 0]),
-    'achilles_len': 0.5012
+    'right_thigh_to_rod_end': np.array([0, 0, -0.045]),
+    'heel_spring_to_rod_end': np.array([.11877, -.01, 0])
 }
 
 
-def left_leg_achilles_ik(plant, context, name_to_pos_map, name_to_vel_map, x):
+def achilles_ik(plant, context, x):
     plant.SetPositionsAndVelocities(context, x)
-    hip_connection_point = ik_contants['left_thigh_to_rod_end']
-    heel_connection_point = plant.CalcPointsPositions(
-        context,
-        plant.GetBodyByName("heel_spring_left").body_frame(),
-        ik_contants['heel_spring_to_rod_end'],
-        plant.GetBodyByName("thigh_left").body_frame()).ravel()
+    rod_joint_angles = {'left': {}, 'right': {}}
 
-    achilles_rod_in_thigh_frame = heel_connection_point - hip_connection_point
-    achilles_rod_in_thigh_xy = np.array([achilles_rod_in_thigh_frame[0],
-                                         achilles_rod_in_thigh_frame[1], 0])
+    for side in ['left', 'right']:
+        hip_connection_point = ik_constants[side + '_thigh_to_rod_end']
+        heel_connection_point = plant.CalcPointsPositions(
+            context,
+            plant.GetBodyByName('heel_spring_' + side).body_frame(),
+            ik_constants['heel_spring_to_rod_end'],
+            plant.GetBodyByName('thigh_'+side).body_frame()).ravel()
 
-    pitch_angle = -np.arccos(achilles_rod_in_thigh_xy[0] /
-                             np.linalg.norm(achilles_rod_in_thigh_xy))
+        achilles_rod_in_thigh_frame = heel_connection_point - hip_connection_point
+        u = achilles_rod_in_thigh_frame / \
+            np.linalg.norm(achilles_rod_in_thigh_frame)
 
-    roll_angle = -np.arccos(np.dot(achilles_rod_in_thigh_frame,
-                                   achilles_rod_in_thigh_xy) /
-                            (np.linalg.norm(achilles_rod_in_thigh_frame) *
-                            np.linalg.norm(achilles_rod_in_thigh_xy)))
+        pitch_angle = np.arcsin(u[1])
+        roll_angle = np.arccos(u[0] / np.cos(pitch_angle))
+        
+        rod_joint_angles[side]['pitch'] = pitch_angle
+        rod_joint_angles[side]['roll'] = roll_angle
 
-    return roll_angle, pitch_angle
-
+    return rod_joint_angles

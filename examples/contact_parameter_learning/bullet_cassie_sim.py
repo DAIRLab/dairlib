@@ -11,7 +11,7 @@ from cassie_sim_data.cassie_traj import *
 from cassie_sim_data.cassie_sim_traj import *
 from cassie_sim_data.cassie_hardware_traj import *
 from bullet_utils import joint_info_map as jim
-from bullet_utils import left_leg_achilles_ik
+from bullet_utils import achilles_ik
 
 cassie_urdf_path = os.path.join(
     os.getcwd(), 'examples/Cassie/urdf/cassie_full_model_bullet.urdf')
@@ -103,16 +103,27 @@ class BulletCassieSim():
                 q[self.drake_pos_map[name]], v[self.drake_vel_map[name + 'dot']],
                 physicsClientId=self.client_id)
             
-        rod_roll_left, rod_pitch_left = left_leg_achilles_ik(
-            self.plant, self.context, self.drake_pos_map, self.drake_vel_map, x)
+        achilles_angles = achilles_ik(self.plant, self.context, x)
 
         p.resetJointState(self.cassie_id,
                           self.bullet_joint_idxs['achilles_hip_pitch_left'],
-                          rod_pitch_left, physicsClientId=self.client_id)
+                          achilles_angles['left']['pitch'],
+                          physicsClientId=self.client_id)
 
         p.resetJointState(self.cassie_id,
                           self.bullet_joint_idxs['achilles_hip_left'],
-                          rod_roll_left, physicsClientId=self.client_id)
+                          achilles_angles['left']['roll'],
+                          physicsClientId=self.client_id)
+
+        p.resetJointState(self.cassie_id,
+                          self.bullet_joint_idxs['achilles_hip_pitch_right'],
+                          achilles_angles['right']['pitch'],
+                          physicsClientId=self.client_id)
+
+        p.resetJointState(self.cassie_id,
+                          self.bullet_joint_idxs['achilles_hip_right'],
+                          achilles_angles['right']['roll'],
+                          physicsClientId=self.client_id)
         
         ''' TODO: implement velocity '''
 

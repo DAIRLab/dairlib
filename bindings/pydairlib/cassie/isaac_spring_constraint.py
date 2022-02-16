@@ -2,7 +2,6 @@ import numpy as np
 from isaacgym import gymapi, gymutil
 from math import sqrt
 
-
 class IsaacSpringConstraint:
 
     def __init__(self, bodyA_handle, bodyB_handle, p_AP, p_BQ, free_length, stiffness, damping):
@@ -41,7 +40,7 @@ class IsaacSpringConstraint:
 
         f_AP_W = r_PQ_W * (self.stiffness * (length_soft - self.free_length))
         f_AP_W += r_PQ_W * self.damping * length_dot
-        print(f_AP_W)
+        # print(f_AP_W)
 
         gym.apply_body_forces(env, self.bodyA_handle, f_AP_W, p_WP, gymapi.ENV_SPACE)
         gym.apply_body_forces(env, self.bodyB_handle, -f_AP_W, p_WQ, gymapi.ENV_SPACE)

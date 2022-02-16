@@ -225,7 +225,6 @@ py_binary(
         ":cassie_loss_utils",
         ":cube_sim",
         ":drake_cassie_sim_py",
-        ":mujoco_cube_sim_py",
         "//bindings/pydairlib/cassie:kinematics_helper",
         "//bindings/pydairlib/cassie:mujoco_sim",
         "//bindings/pydairlib/common:plot_styler",
@@ -238,6 +237,8 @@ py_binary(
     deps = [
         ":cassie_loss_utils",
         ":drake_cassie_sim_py",
+        ":mujoco_cassie_sim_v2_py",
+        ":isaac_cassie_sim_py",
         "//bindings/pydairlib/cassie:kinematics_helper",
         "//bindings/pydairlib/cassie:mujoco_sim",
         "//bindings/pydairlib/common:plot_styler",

@@ -20,14 +20,14 @@ from pydairlib.common import FindResourceOrThrow
 from pydairlib.cassie.drake_to_isaac_converter import DrakeToIsaacConverter
 from pydairlib.cassie.isaac_spring_constraint import IsaacSpringConstraint
 
-from isaacgym import gymutil
-from isaacgym import gymapi
+from isaacgym import gymutil, gymapi, gymtorch
+from isaacgym.torch_utils import *
 
 
 class IsaacCassieSim:
 
     def __init__(self, visualize=False):
-        self.sim_dt = 5e-5
+        self.sim_dt = 5e-4
         self.dt = 5e-4
         self.substeps = 10
         self.visualize = visualize
@@ -39,9 +39,10 @@ class IsaacCassieSim:
         self.traj = CassieSimTraj()
         self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
-        self.default_params = {"mu": 1.0,
-                               "restitution": 0.0,
-                               "dissipation": 0.5}
+        self.box_size = 1.0
+        self.default_params = {"mu": 0.18,
+                               "stiffness": 100,
+                               "damping": 36.02}
 
         self.armatures = np.array(
             [0.038125, 0.038125, 0.09344, 0.09344, 0, 0, 0, 0.01225,
@@ -56,16 +57,22 @@ class IsaacCassieSim:
         self.kCassieAchillesLength = 0.5012
         # self.achilles_stiffness = 1e4
         # self.achilles_damping = 2e1
-        self.achilles_stiffness = 1e6
-        self.achilles_damping = 2e3
+        self.achilles_stiffness = 1e5
+        self.achilles_damping = 2e2
 
         self.state_converter = DrakeToIsaacConverter()
 
-    def make(self, params, hardware_traj_num, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         self.gym = gymapi.acquire_gym()
 
+    def make(self, params, hardware_traj_num, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         # Set simulator parameters
         sim_params = gymapi.SimParams()
+        sim_params.dt = self.sim_dt
+        sim_params.substeps = self.substeps
+        sim_params.use_gpu_pipeline = False
+        sim_params.up_axis = gymapi.UP_AXIS_Z
+        sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.81)
+
         sim_params.physx.bounce_threshold_velocity = 2 * 9.81 * self.sim_dt / sim_params.substeps
         sim_params.physx.solver_type = 1  # O: PGS, 1: TGS
         sim_params.physx.num_position_iterations = 4  # [1, 255]
@@ -73,24 +80,16 @@ class IsaacCassieSim:
         sim_params.physx.num_threads = 0
         sim_params.physx.use_gpu = 0
 
-        sim_params.dt = self.sim_dt
-        sim_params.substeps = 10
-        sim_params.use_gpu_pipeline = False
-        sim_params.up_axis = gymapi.UP_AXIS_Z
-        sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.81)
-
         self.sim = self.gym.create_sim(0, 0, gymapi.SIM_PHYSX, sim_params)
 
         # add ground plane
-        plane_params = gymapi.PlaneParams()
-
-        plane_params.normal = gymapi.Vec3(0, 0, 1)  # z-up!
-        plane_params.distance = 0
-        plane_params.static_friction = params['mu']
-        plane_params.dynamic_friction = params['mu']
-        plane_params.restitution = params['restitution']
-
-        self.gym.add_ground(self.sim, plane_params)
+        # plane_params = gymapi.PlaneParams()
+        # plane_params.normal = gymapi.Vec3(0, 0, 1)  # z-up!
+        # plane_params.distance = 0
+        # plane_params.static_friction = params['mu']
+        # plane_params.dynamic_friction = params['mu']
+        # plane_params.restitution = params['restitution']
+        # self.gym.add_ground(self.sim, plane_params)
 
         # add visualization
         if self.visualize:
@@ -116,8 +115,8 @@ class IsaacCassieSim:
         pose.p = gymapi.Vec3(0.0, 0.0, 1.5)
         pose.r = gymapi.Quat(0, 0.0, 0.0, 1.0)
 
-        self.actor_handle = self.gym.create_actor(self.env, asset, pose, "cassie_v2", 0, 1)
-        self.body_indices = self.gym.get_actor_rigid_body_dict(self.env, self.actor_handle)
+        self.cassie_handle = self.gym.create_actor(self.env, asset, pose, "cassie_v2", 0, 1)
+        self.body_indices = self.gym.get_actor_rigid_body_dict(self.env, self.cassie_handle)
 
         self.left_loop_closure = IsaacSpringConstraint(self.body_indices['thigh_left'],
                                                        self.body_indices['heel_spring_left'],
@@ -130,24 +129,40 @@ class IsaacCassieSim:
                                                         self.kCassieAchillesLength, self.achilles_stiffness,
                                                         self.achilles_damping)
 
-        self.cassie_dof_props = self.gym.get_actor_dof_properties(self.env, self.actor_handle)
+        self.cassie_dof_props = self.gym.get_actor_dof_properties(self.env, self.cassie_handle)
         self.cassie_dof_props["driveMode"].fill(gymapi.DOF_MODE_EFFORT)
-        self.cassie_dof_props["driveMode"][4:7] = 0
-        self.cassie_dof_props["driveMode"][12:15] = 0
+        self.cassie_dof_props["driveMode"][4:7] = np.full(3, gymapi.DOF_MODE_NONE)
+        self.cassie_dof_props["driveMode"][12:15] = np.full(3, gymapi.DOF_MODE_NONE)
         self.cassie_dof_props['armature'] = self.armatures
         self.cassie_dof_props['stiffness'][4] = 1500
         self.cassie_dof_props['stiffness'][6] = 1250
         self.cassie_dof_props['stiffness'][12] = 1500
         self.cassie_dof_props['stiffness'][14] = 1250
-        self.gym.set_actor_dof_properties(self.env, self.actor_handle, self.cassie_dof_props)
+        self.gym.set_actor_dof_properties(self.env, self.cassie_handle, self.cassie_dof_props)
+
+        plane_pose = gymapi.Transform()
+        plane_pose.p = gymapi.Vec3(0.0, 0.0, 0.05)
+        plane_pose.r = gymapi.Quat(0, 0.0, 0.0, 1.0)
+        asset_options = gymapi.AssetOptions()
+        asset_options.fix_base_link = True
+        asset_options.linear_damping = params['damping']
+        plane = self.gym.create_box(self.sim, self.box_size, self.box_size, 0.0, asset_options)
+        self.plane_handle = self.gym.create_actor(self.env, plane, plane_pose, 'plane', 0, 0)
+        shape_props = self.gym.get_actor_rigid_shape_properties(self.env, self.plane_handle)
+        shape_props[0].friction = params['mu']
+        shape_props[0].compliance = params['stiffness']  # compliance
+        self.gym.set_actor_rigid_shape_properties(self.env, self.plane_handle, shape_props)
+
+        self.actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
+        self.root_states = gymtorch.wrap_tensor(self.actor_root_state)
 
         if self.visualize:
             cam_pos = gymapi.Vec3(2, 0, 2.0)
             cam_target = gymapi.Vec3(1, 0, -2.5)
             self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
-        self.full_state = np.copy(self.gym.get_actor_rigid_body_states(self.env, self.actor_handle, gymapi.STATE_ALL))
-        self.joint_states = np.copy(self.gym.get_actor_dof_states(self.env, self.actor_handle, gymapi.STATE_ALL))
+        # self.full_state = np.copy(self.gym.get_actor_rigid_body_states(self.env, self.actor_handle, gymapi.STATE_ALL))
+        self.joint_states = np.copy(self.gym.get_actor_dof_states(self.env, self.cassie_handle, gymapi.STATE_ALL))
 
         self.current_time = 0.0
         self.reset(hardware_traj_num)
@@ -166,24 +181,35 @@ class IsaacCassieSim:
         qfbquat_init_drake = x_init_drake[CASSIE_QUATERNION_SLICE]
         qfbomega_init_drake = x_init_drake[CASSIE_OMEGA_SLICE]
 
-        self.full_state['pose']['p']['x'][0] = qfbpos_init_drake[0]
-        self.full_state['pose']['p']['y'][0] = qfbpos_init_drake[1]
-        self.full_state['pose']['p']['z'][0] = qfbpos_init_drake[2]
-        self.full_state['pose']['r']['w'][0] = qfbquat_init_drake[0]
-        self.full_state['pose']['r']['x'][0] = qfbquat_init_drake[1]
-        self.full_state['pose']['r']['y'][0] = qfbquat_init_drake[2]
-        self.full_state['pose']['r']['z'][0] = qfbquat_init_drake[3]
-        self.full_state['vel']['linear']['x'][0] = qfbvel_init_drake[0]
-        self.full_state['vel']['linear']['y'][0] = qfbvel_init_drake[1]
-        self.full_state['vel']['linear']['z'][0] = qfbvel_init_drake[2]
-        self.full_state['vel']['angular']['x'][0] = qfbomega_init_drake[0]
-        self.full_state['vel']['angular']['y'][0] = qfbomega_init_drake[1]
-        self.full_state['vel']['angular']['z'][0] = qfbomega_init_drake[2]
+        self.root_states[self.cassie_handle, :3] = to_torch(qfbpos_init_drake)
+        self.root_states[self.cassie_handle, 3:7] = to_torch(
+            [qfbquat_init_drake[1], qfbquat_init_drake[2], qfbquat_init_drake[3], qfbquat_init_drake[0]])
+        self.root_states[self.cassie_handle, 7:10] = to_torch(qfbvel_init_drake)
+        self.root_states[self.cassie_handle, 10:13] = to_torch(qfbomega_init_drake)
+
+        self.root_states[self.plane_handle, :3] = to_torch([0., 0., 0.])
+        self.root_states[self.plane_handle, 3:7] = to_torch([0., 0., 0., 1.])
+        self.root_states[self.plane_handle, 7:13] = to_torch([0., 0., 0., 0., 0., 0.])
+
+        # self.full_state['pose']['p']['x'][0] = qfbpos_init_drake[0]
+        # self.full_state['pose']['p']['y'][0] = qfbpos_init_drake[1]
+        # self.full_state['pose']['p']['z'][0] = qfbpos_init_drake[2]
+        # self.full_state['pose']['r']['w'][0] = qfbquat_init_drake[0]
+        # self.full_state['pose']['r']['x'][0] = qfbquat_init_drake[1]
+        # self.full_state['pose']['r']['y'][0] = qfbquat_init_drake[2]
+        # self.full_state['pose']['r']['z'][0] = qfbquat_init_drake[3]
+        # self.full_state['vel']['linear']['x'][0] = qfbvel_init_drake[0]
+        # self.full_state['vel']['linear']['y'][0] = qfbvel_init_drake[1]
+        # self.full_state['vel']['linear']['z'][0] = qfbvel_init_drake[2]
+        # self.full_state['vel']['angular']['x'][0] = qfbomega_init_drake[0]
+        # self.full_state['vel']['angular']['y'][0] = qfbomega_init_drake[1]
+        # self.full_state['vel']['angular']['z'][0] = qfbomega_init_drake[2]
 
         self.joint_states['pos'] = qjointpos_init_drake
         self.joint_states['vel'] = qjointvel_init_drake
-        self.gym.set_actor_rigid_body_states(self.env, self.actor_handle, self.full_state, gymapi.STATE_ALL)
-        self.gym.set_actor_dof_states(self.env, self.actor_handle, self.joint_states, gymapi.STATE_POS)
+        # self.gym.set_actor_rigid_body_states(self.env, self.actor_handle, self.full_state, gymapi.STATE_ALL)
+        self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(self.root_states))
+        self.gym.set_actor_dof_states(self.env, self.cassie_handle, self.joint_states, gymapi.STATE_ALL)
 
         self.traj.update(self.start_time, self.hardware_traj.get_initial_state(),
                          self.hardware_traj.get_action(self.start_time))
@@ -199,20 +225,19 @@ class IsaacCassieSim:
         next_timestep = self.current_time + self.dt
         action = self.hardware_traj.get_action(next_timestep)
         efforts = np.array(self.state_converter.map_drake_effort_to_isaac(action), dtype=np.float32)
+        self.gym.apply_actor_dof_efforts(self.env, self.cassie_handle, efforts)
+        self.left_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
+        self.right_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
 
-        for i in range(self.substeps):
-            self.gym.apply_actor_dof_efforts(self.env, self.actor_handle, efforts)
-            self.left_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
-            self.right_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
-            self.gym.simulate(self.sim)
-            self.gym.fetch_results(self.sim, True)
+        self.gym.simulate(self.sim)
+        self.gym.fetch_results(self.sim, True)
 
         if self.visualize:
             self.gym.step_graphics(self.sim)
             self.gym.draw_viewer(self.viewer, self.sim, True)
 
-        joint_state = self.gym.get_actor_dof_states(self.env, self.actor_handle, gymapi.STATE_ALL)
-        rigid_body_state = self.gym.get_actor_rigid_body_states(self.env, self.actor_handle, gymapi.STATE_ALL)
+        joint_state = self.gym.get_actor_dof_states(self.env, self.cassie_handle, gymapi.STATE_ALL)
+        rigid_body_state = self.gym.get_actor_rigid_body_states(self.env, self.cassie_handle, gymapi.STATE_ALL)
         cassie_state = self.convert_isaac_state_to_drake(joint_state, rigid_body_state)
 
         self.current_time = next_timestep
@@ -245,4 +270,3 @@ class IsaacCassieSim:
         cassie_state[CASSIE_OMEGA_SLICE] = np.array(
             [pelvis_angular_vel[0], pelvis_angular_vel[1], pelvis_angular_vel[2]])
         return cassie_state
-

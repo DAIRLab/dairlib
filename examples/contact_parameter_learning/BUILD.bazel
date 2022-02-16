@@ -87,8 +87,8 @@ py_library(
     deps = [
         ":cassie_loss_utils",
         "//bindings/pydairlib/cassie:cassie_mujoco_py",
-        "//bindings/pydairlib/cassie:simulator_conversion_utils",
         "//bindings/pydairlib/cassie:mujoco_lcm_utils",
+        "//bindings/pydairlib/cassie:simulator_conversion_utils",
         "//examples/contact_parameter_learning/cassie_sim_data",
     ],
 )
@@ -129,6 +129,12 @@ py_library(
     deps = [
         ":cube_sim",
     ],
+)
+
+py_library(
+    name = "bullet_utils",
+    srcs = ["bullet_utils.py"],
+    deps = ["@drake//bindings/pydrake"],
 )
 
 py_binary(

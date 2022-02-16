@@ -110,20 +110,19 @@ class BulletCassieSim():
                 v[self.drake_vel_map['toe_'+ side + 'dot']],
                 physicsClientId=self.client_id)
             
-        achilles_angles = achilles_ik(self.plant, self.context, x)
+        achilles_angles, achilles_vels = \
+            achilles_ik(self.plant, self.context, x)
         plantar_angles, plantar_vels = \
             plantar_ik(self.drake_pos_map, self.drake_vel_map, q, v)
-
-        dummy_rates = {'left': {'pitch': 0, 'roll': 0},
-                       'right': {'pitch': 0, 'roll': 0}}
+        
         set_tie_rod_joint_angles_and_rates(
-            achilles_angles, dummy_rates, 'achilles_hip',
+            achilles_angles, achilles_vels, 'achilles_hip',
             self.bullet_joint_idxs, self.cassie_id, self.client_id)
         set_tie_rod_joint_angles_and_rates(
             plantar_angles, plantar_vels, 'plantar_crank',
             self.bullet_joint_idxs, self.cassie_id, self.client_id)
-            
-        ''' TODO: implement velocity '''
+
+        ''' TODO: validate these velocities''' 
 
     def parse_joints_and_links(self):
         for i in range(p.getNumJoints(self.cassie_id)):
@@ -206,7 +205,7 @@ class BulletCassieSim():
 
 
 def main():
-    x_init = CassieHardwareTraj('00').get_initial_state()
+    x_init = CassieHardwareTraj('07').get_initial_state()
     sim = BulletCassieSim(visualize=True)
     sim.init_sim({'mu_tangent': 0.8,
                   'stiffness': 2500,

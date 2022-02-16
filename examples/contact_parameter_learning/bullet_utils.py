@@ -1,6 +1,8 @@
 import numpy as np
 import pybullet as p
 
+from pydrake.multibody.tree import JacobianWrtVariable
+
 joint_info_return = ['joint_index', 'joint_name', 'joint_type', 'q_index',
                      'v_index', 'flags', 'damping', 'friction',
                      'joint_limit_lower', 'joint_limit_upper',
@@ -11,7 +13,6 @@ joint_info_return = ['joint_index', 'joint_name', 'joint_type', 'q_index',
 joint_info_map = {joint_info_return[i]: i for i in range(len(joint_info_return))}
 
 # All quantities are expressed here in the body frame of the first link in the
-# key name
 ik_constants = {
     'left_thigh_to_rod_end': np.array([0, 0, 0.045]),
     'right_thigh_to_rod_end': np.array([0, 0, -0.045]),
@@ -23,6 +24,7 @@ def achilles_ik(plant, context, x):
     plant.SetPositionsAndVelocities(context, x)
 
     rod_joint_angles = {'left': {}, 'right': {}}
+    rod_joint_vels = {'left': {}, 'right': {}}
 
     for side in ['left', 'right']:
         hip_connection_point = ik_constants[side + '_thigh_to_rod_end']
@@ -31,6 +33,15 @@ def achilles_ik(plant, context, x):
             plant.GetBodyByName('heel_spring_' + side).body_frame(),
             ik_constants['heel_spring_to_rod_end'],
             plant.GetBodyByName('thigh_'+side).body_frame()).ravel()
+
+        heel_connection_point_vel = \
+            plant.CalcJacobianTranslationalVelocity(
+            context, JacobianWrtVariable.kV, 
+            plant.GetBodyByName('heel_spring_' + side).body_frame(),
+            ik_constants['heel_spring_to_rod_end'],
+            plant.GetBodyByName('thigh_'+side).body_frame(), 
+            plant.GetBodyByName('thigh_'+side).body_frame()) @ x[plant.num_positions():]
+
 
         '''
             Since our urdf defines the achilles rod to essentially be a 
@@ -63,15 +74,26 @@ def achilles_ik(plant, context, x):
         u = achilles_rod_in_thigh_frame / \
             np.linalg.norm(achilles_rod_in_thigh_frame)
 
+        udot = heel_connection_point_vel / \
+               np.linalg.norm(achilles_rod_in_thigh_frame)
+
         pitch_angle = np.arcsin(u[1])
+        pitch_dot = udot[1] / np.sqrt(1 - u[1]**2)
         roll_angle = np.arccos(u[0] / np.cos(pitch_angle))
+        roll_dot = (-udot[0] / np.sqrt(1 - (u[0] / np.cos(pitch_angle))**2)) - \
+                   pitch_dot * u[0]*u[1] / (np.cos(pitch_angle)**2 * 
+                   np.sqrt(1 - (u[0] / np.cos(pitch_angle))**2 ))
+
         if side == 'right':
             roll_angle *= -1
+            roll_dot *=-1
 
         rod_joint_angles[side]['pitch'] = pitch_angle
         rod_joint_angles[side]['roll'] = roll_angle
+        rod_joint_vels[side]['pitch'] = pitch_dot
+        rod_joint_vels[side]['roll'] = roll_dot
 
-    return rod_joint_angles
+    return rod_joint_angles, rod_joint_vels
 
 
 def set_tie_rod_joint_angles_and_rates(rod_angles, rod_rates, rod_name,

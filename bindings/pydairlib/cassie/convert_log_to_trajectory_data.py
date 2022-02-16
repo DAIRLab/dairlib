@@ -93,9 +93,9 @@ def convert_log(filename, controller_channel, save_est_contact_forces=False):
   plt.figure("state")
   plt.plot(t_x, x[:, -6:])
 
-  np.save(ps.directory + 'curated_trajectories/' + 'x_' + dataset_num, x)
-  np.save(ps.directory + 'curated_trajectories/' + 't_' + dataset_num, t_x)
-  np.save(ps.directory + 'curated_trajectories/' + 'u_' + dataset_num, u_meas)
+  # np.save(ps.directory + 'curated_trajectories/' + 'x_' + dataset_num, x)
+  # np.save(ps.directory + 'curated_trajectories/' + 't_' + dataset_num, t_x)
+  # np.save(ps.directory + 'curated_trajectories/' + 'u_' + dataset_num, u_meas)
 
   foot_pos_hardware = np.empty((t_x.shape[0], 4))
   for i in range(t_x.shape[0]):

@@ -40,9 +40,9 @@ class IsaacCassieSim:
         self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
         self.box_size = 1.0
-        self.default_params = {"mu": 0.18,
-                               "stiffness": 100,
-                               "damping": 36.02}
+        self.default_params = {"mu": 0.1,
+                               "stiffness": 100.0,
+                               "restitution": 0.0}
 
         self.armatures = np.array(
             [0.038125, 0.038125, 0.09344, 0.09344, 0, 0, 0, 0.01225,
@@ -64,7 +64,6 @@ class IsaacCassieSim:
 
         self.gym = gymapi.acquire_gym()
 
-    def make(self, params, hardware_traj_num, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         # Set simulator parameters
         sim_params = gymapi.SimParams()
         sim_params.dt = self.sim_dt
@@ -75,11 +74,10 @@ class IsaacCassieSim:
 
         sim_params.physx.bounce_threshold_velocity = 2 * 9.81 * self.sim_dt / sim_params.substeps
         sim_params.physx.solver_type = 1  # O: PGS, 1: TGS
-        sim_params.physx.num_position_iterations = 4  # [1, 255]
-        sim_params.physx.num_velocity_iterations = 1  # [1, 255]
+        sim_params.physx.num_position_iterations = 10  # [1, 255]
+        sim_params.physx.num_velocity_iterations = 10  # [1, 255]
         sim_params.physx.num_threads = 0
         sim_params.physx.use_gpu = 0
-
         self.sim = self.gym.create_sim(0, 0, gymapi.SIM_PHYSX, sim_params)
 
         # add ground plane
@@ -104,7 +102,6 @@ class IsaacCassieSim:
         asset_root = "examples/Cassie/"
         asset_file = "urdf/cassie_v2.urdf"
         asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
-        np.random.seed(17)
 
         spacing = 1.0
         lower = gymapi.Vec3(-spacing, -spacing, 0.0)
@@ -145,12 +142,15 @@ class IsaacCassieSim:
         plane_pose.r = gymapi.Quat(0, 0.0, 0.0, 1.0)
         asset_options = gymapi.AssetOptions()
         asset_options.fix_base_link = True
-        asset_options.linear_damping = params['damping']
         plane = self.gym.create_box(self.sim, self.box_size, self.box_size, 0.0, asset_options)
         self.plane_handle = self.gym.create_actor(self.env, plane, plane_pose, 'plane', 0, 0)
+
+
+    def make(self, params, hardware_traj_num, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         shape_props = self.gym.get_actor_rigid_shape_properties(self.env, self.plane_handle)
         shape_props[0].friction = params['mu']
         shape_props[0].compliance = params['stiffness']  # compliance
+        shape_props[0].restitution = params['restitution']  # damping equivalent
         self.gym.set_actor_rigid_shape_properties(self.env, self.plane_handle, shape_props)
 
         self.actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
@@ -161,9 +161,7 @@ class IsaacCassieSim:
             cam_target = gymapi.Vec3(1, 0, -2.5)
             self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
-        # self.full_state = np.copy(self.gym.get_actor_rigid_body_states(self.env, self.actor_handle, gymapi.STATE_ALL))
         self.joint_states = np.copy(self.gym.get_actor_dof_states(self.env, self.cassie_handle, gymapi.STATE_ALL))
-
         self.current_time = 0.0
         self.reset(hardware_traj_num)
 
@@ -248,9 +246,12 @@ class IsaacCassieSim:
         return self.traj
 
     def free_sim(self):
-        if self.visualize:
-            self.gym.destroy_viewer(self.viewer)
-        self.gym.destroy_sim(self.sim)
+        pass
+        # Freeing sim doesn't do anything
+        # https://forums.developer.nvidia.com/t/not-all-vram-is-freed-after-the-simulation-is-destroyed/188329/2
+        # if self.visualize:
+        #     self.gym.destroy_viewer(self.viewer)
+        # self.gym.destroy_sim(self.sim)
 
     def convert_isaac_state_to_drake(self, joint_state, rigid_body_state):
         cassie_state = np.zeros(45)

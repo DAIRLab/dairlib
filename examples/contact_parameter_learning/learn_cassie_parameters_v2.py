@@ -34,7 +34,7 @@ class CassieContactParamsOptimizer():
         self.loss_over_time = []
 
     def save_params(self, folder, params, budget):
-        with open(folder + self.date_prefix + str(budget) + '.pkl', 'wb') as f:
+        with open(folder + self.date_prefix + '_' + str(budget) + '.pkl', 'wb') as f:
             pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
 
     def get_single_loss(self, hardware_traj_num=None, params=None):
@@ -51,6 +51,8 @@ class CassieContactParamsOptimizer():
         rollout = self.sim.advance_to(self.end_time)
         loss = self.loss_function.CalcLoss(rollout, self.sim.hardware_traj)
         self.loss_over_time.append(loss)
+        # print(hardware_traj_num)
+        # print(loss)
         return loss
 
     def get_batch_loss(self, params):
@@ -102,8 +104,9 @@ class CassieContactParamsOptimizer():
 
     def learn_isaac_params(self, batch=True):
         self.default_params = ng.p.Dict(
-            mu=ng.p.Scalar(lower=0, upper=1e6),
-            restitution=ng.p.Scalar(lower=0, upper=2)
+            mu=ng.p.Scalar(lower=0.01, upper=1.0),
+            stiffness=ng.p.Log(lower=1e-1, upper=1e3),
+            restitution=ng.p.Scalar(lower=0.0, upper=1),
         )
         self.sim = isaac_cassie_sim.IsaacCassieSim()
         self.default_params.value = self.sim.default_params
@@ -118,7 +121,7 @@ class CassieContactParamsOptimizer():
 
 
 if __name__ == '__main__':
-    budget = 2500
+    budget = 1000
     loss_function = cassie_loss_utils.CassieLoss(filename='2021_09_07_weights')
     # loss_function = cassie_loss_utils.CassieLoss(filename='default_loss_weights')
     # loss_function = cassie_loss_utils.CassieLoss(filename='pos_loss_weights')

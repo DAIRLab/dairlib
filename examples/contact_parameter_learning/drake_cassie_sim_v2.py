@@ -97,3 +97,6 @@ class DrakeCassieSim():
 
     def get_traj(self):
         return self.traj
+
+    def free_sim(self):
+        return

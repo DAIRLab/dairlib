@@ -30,10 +30,12 @@ pybind_py_library(
 py_library(
     name = "simulator_conversion_utils",
     srcs = [],
-    deps = [":drake_to_mujoco_converter",
-            ":drake_to_isaac_converter",
-            ":isaac_spring_constraint",
-            ":convert_log_to_trajectory_data"],
+    deps = [
+        ":convert_log_to_trajectory_data",
+        ":drake_to_isaac_converter",
+        ":drake_to_mujoco_converter",
+        ":isaac_spring_constraint",
+    ],
 )
 
 py_library(
@@ -109,6 +111,7 @@ py_binary(
     srcs = ["convert_log_to_trajectory_data.py"],
     deps = [
         ":cassie_utils_py",
+        ":kinematics_helper",
         ":mujoco_lcm_utils",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/lcm",

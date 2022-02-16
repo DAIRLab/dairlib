@@ -11,7 +11,8 @@ from cassie_sim_data.cassie_traj import *
 from cassie_sim_data.cassie_sim_traj import *
 from cassie_sim_data.cassie_hardware_traj import *
 from bullet_utils import joint_info_map as jim
-from bullet_utils import achilles_ik
+from bullet_utils import achilles_ik, plantar_ik, \
+     set_tie_rod_joint_angles_and_rates
 
 cassie_urdf_path = os.path.join(
     os.getcwd(), 'examples/Cassie/urdf/cassie_full_model_bullet.urdf')
@@ -102,29 +103,26 @@ class BulletCassieSim():
             p.resetJointState(self.cassie_id, self.bullet_joint_idxs[name],
                 q[self.drake_pos_map[name]], v[self.drake_vel_map[name + 'dot']],
                 physicsClientId=self.client_id)
+        for side in ['left', 'right']:
+            p.resetJointState(
+                self.cassie_id, self.bullet_joint_idxs['toe_ee_' + side], 
+                q[self.drake_pos_map['toe_' + side]],
+                v[self.drake_vel_map['toe_'+ side + 'dot']],
+                physicsClientId=self.client_id)
             
         achilles_angles = achilles_ik(self.plant, self.context, x)
+        plantar_angles, plantar_vels = \
+            plantar_ik(self.drake_pos_map, self.drake_vel_map, q, v)
 
-        p.resetJointState(self.cassie_id,
-                          self.bullet_joint_idxs['achilles_hip_pitch_left'],
-                          achilles_angles['left']['pitch'],
-                          physicsClientId=self.client_id)
-
-        p.resetJointState(self.cassie_id,
-                          self.bullet_joint_idxs['achilles_hip_left'],
-                          achilles_angles['left']['roll'],
-                          physicsClientId=self.client_id)
-
-        p.resetJointState(self.cassie_id,
-                          self.bullet_joint_idxs['achilles_hip_pitch_right'],
-                          achilles_angles['right']['pitch'],
-                          physicsClientId=self.client_id)
-
-        p.resetJointState(self.cassie_id,
-                          self.bullet_joint_idxs['achilles_hip_right'],
-                          achilles_angles['right']['roll'],
-                          physicsClientId=self.client_id)
-        
+        dummy_rates = {'left': {'pitch': 0, 'roll': 0},
+                       'right': {'pitch': 0, 'roll': 0}}
+        set_tie_rod_joint_angles_and_rates(
+            achilles_angles, dummy_rates, 'achilles_hip',
+            self.bullet_joint_idxs, self.cassie_id, self.client_id)
+        set_tie_rod_joint_angles_and_rates(
+            plantar_angles, plantar_vels, 'plantar_crank',
+            self.bullet_joint_idxs, self.cassie_id, self.client_id)
+            
         ''' TODO: implement velocity '''
 
     def parse_joints_and_links(self):

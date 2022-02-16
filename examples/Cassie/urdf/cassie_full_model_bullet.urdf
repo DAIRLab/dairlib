@@ -549,7 +549,7 @@
                     xyz="0 0 0"
                     rpy="0 0 0" />
             <geometry>
-                <mesh filename="meshes/agility/foot_crank.obj" />
+                <mesh filename="meshes/toe-output-crank.obj" />
             </geometry>
             <material name="">
                 <color rgba="0.024 0.24 0.5 1.0" />
@@ -647,7 +647,7 @@
                     xyz="0 0 0"
                     rpy="0 0 0" />
             <geometry>
-                <mesh filename="meshes/agility/foot_crank.obj" />
+                <mesh filename="meshes/toe-output-crank-r.obj" />
             </geometry>
             <material name="">
                 <color rgba="0.024 0.24 0.5 1.0" />

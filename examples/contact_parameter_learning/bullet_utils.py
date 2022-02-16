@@ -1,6 +1,5 @@
-import pdb
-
 import numpy as np
+import pybullet as p
 
 joint_info_return = ['joint_index', 'joint_name', 'joint_type', 'q_index',
                      'v_index', 'flags', 'damping', 'friction',
@@ -22,6 +21,7 @@ ik_constants = {
 
 def achilles_ik(plant, context, x):
     plant.SetPositionsAndVelocities(context, x)
+
     rod_joint_angles = {'left': {}, 'right': {}}
 
     for side in ['left', 'right']:
@@ -38,8 +38,34 @@ def achilles_ik(plant, context, x):
 
         pitch_angle = np.arcsin(u[1])
         roll_angle = np.arccos(u[0] / np.cos(pitch_angle))
-        
+        if side == 'right':
+            roll_angle *= -1
+
         rod_joint_angles[side]['pitch'] = pitch_angle
         rod_joint_angles[side]['roll'] = roll_angle
 
     return rod_joint_angles
+
+
+def set_tie_rod_joint_angles_and_rates(rod_angles, rod_rates, rod_name,
+                                       joint_map, cassie_id, client_id):
+    for side in ['left', 'right']:
+        p.resetJointState(cassie_id, joint_map[rod_name + '_' + side],
+                          rod_angles[side]['roll'], rod_rates[side]['roll'],
+                          physicsClientId=client_id)
+        p.resetJointState(cassie_id, joint_map[rod_name + '_pitch_' + side],
+                          rod_angles[side]['pitch'], rod_rates[side]['pitch'],
+                          physicsClientId=client_id)
+
+
+def plantar_ik(pos_map, vel_map, q, v):
+    rod_joint_angles = {'left': {}, 'right': {}}
+    rod_joint_vels = {'left': {}, 'right': {}}
+
+    for side in ['left', 'right']:
+        rod_joint_angles[side]['pitch'] = -q[pos_map['toe_' + side]]
+        rod_joint_vels[side]['pitch'] = -v[vel_map['toe_' + side + 'dot']]
+        rod_joint_angles[side]['roll'] = 0
+        rod_joint_vels[side]['roll'] = 0
+
+    return rod_joint_angles, rod_joint_vels

@@ -49,8 +49,8 @@ def test_drake_sim():
 def test_isaac_sim():
   # sim = isaac_cassie_sim.IsaacCassieSim()
   sim = isaac_cassie_sim.IsaacCassieSim(visualize=True)
-  # test_sim(sim)
-  test_all_trajs(sim)
+  test_sim(sim)
+  # test_all_trajs(sim)
 
 
 # def test_bullet_sim():

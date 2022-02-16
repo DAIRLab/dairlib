@@ -36,11 +36,12 @@ def achilles_ik(plant, context, x):
 
         heel_connection_point_vel = \
             plant.CalcJacobianTranslationalVelocity(
-            context, JacobianWrtVariable.kV, 
-            plant.GetBodyByName('heel_spring_' + side).body_frame(),
-            ik_constants['heel_spring_to_rod_end'],
-            plant.GetBodyByName('thigh_'+side).body_frame(), 
-            plant.GetBodyByName('thigh_'+side).body_frame()) @ x[plant.num_positions():]
+                context, JacobianWrtVariable.kV,
+                plant.GetBodyByName('heel_spring_' + side).body_frame(),
+                ik_constants['heel_spring_to_rod_end'],
+                plant.GetBodyByName('thigh_'+side).body_frame(),
+                plant.GetBodyByName('thigh_'+side).body_frame()) @ \
+            x[plant.num_positions():]
 
 
         '''
@@ -64,29 +65,28 @@ def achilles_ik(plant, context, x):
             So the direction of the rod, expressed in the thigh frame 
             (denote u), is the first column of R_T_p = R_T_r * R_r_p, 
             which is [cos(roll)cos(pitch), sin(pitch), -sin(roll)cos(pitch)]^T
-            so pitch = arcsin(u_y), roll = arccos(u_x / cos(pitch)
+            so pitch = arcsin(u_y), roll = arccos(u_x / cos(pitch))
         '''
 
-        achilles_rod_in_thigh_frame = heel_connection_point - \
-                                      hip_connection_point
-
+        achilles_rod_in_thigh_frame = \
+            heel_connection_point - hip_connection_point
 
         u = achilles_rod_in_thigh_frame / \
             np.linalg.norm(achilles_rod_in_thigh_frame)
 
         udot = heel_connection_point_vel / \
-               np.linalg.norm(achilles_rod_in_thigh_frame)
+            np.linalg.norm(achilles_rod_in_thigh_frame)
 
         pitch_angle = np.arcsin(u[1])
         pitch_dot = udot[1] / np.sqrt(1 - u[1]**2)
         roll_angle = np.arccos(u[0] / np.cos(pitch_angle))
         roll_dot = (-udot[0] / np.sqrt(1 - (u[0] / np.cos(pitch_angle))**2)) - \
-                   pitch_dot * u[0]*u[1] / (np.cos(pitch_angle)**2 * 
-                   np.sqrt(1 - (u[0] / np.cos(pitch_angle))**2 ))
+            pitch_dot * u[0]*u[1] / (np.cos(pitch_angle)**2 *
+            np.sqrt(1 - (u[0] / np.cos(pitch_angle))**2))
 
         if side == 'right':
             roll_angle *= -1
-            roll_dot *=-1
+            roll_dot *= -1
 
         rod_joint_angles[side]['pitch'] = pitch_angle
         rod_joint_angles[side]['roll'] = roll_angle

@@ -31,27 +31,44 @@ def make_drake_plant_and_context(floating_base=True):
 
 
 class BulletCassieSim():
-    def __init__(self, visualize=False, dt=0.001):
+    def __init__(self, visualize=False, dt=0.0001):
+        # Constants / settings
         self.visualize = visualize
+        self.dt = dt
+        self.hardware_traj = None
+        self.traj = None
+        self.current_time = 0
+        self.params = None
+
+        # pybullet related members
         if self.visualize:
             self.client_id = p.connect(p.GUI)
         else:
             self.client_id = p.connect(p.DIRECT)
-        self.plant = None
-        self.context = None
+        self.joint_accessor_vect = None
+        self.motor_control_vect = None
         self.cassie_id = None
         self.plane_id = None
         self.dt = dt
         self.bullet_link_idxs = {}
         self.bullet_joint_idxs = {}
+
+        # drake related members
         self.drake_pos_map = None
         self.drake_vel_map = None
         self.drake_act_map = None
         self.drake_state_names = None
-        self.joint_accessor_vect = None
+        self.plant = None
+        self.context = None
 
-    def init_sim(self, params):
-        # Bullet simulation setup
+    def make(self, params, hardware_traj_num):
+        self.params = params
+        self.reset(hardware_traj_num)
+
+    def reset(self, hardware_traj_num):
+        self.current_time = 0
+        self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
+        self.traj = CassieSimTraj()
         p.resetSimulation(physicsClientId=self.client_id)
         p.setGravity(0, 0, -9.81, physicsClientId=self.client_id)
         self.cassie_id = p.loadURDF(cassie_urdf_path, useFixedBase=False,
@@ -59,16 +76,16 @@ class BulletCassieSim():
         self.plane_id = p.loadURDF(plane_urdf_path, useFixedBase=True,
                                    physicsClientId=self.client_id)
         self.parse_joints_and_links()
+        p.changeDynamics(self.plane_id, -1,
+                         lateralFriction=self.params['mu_tangent'],
+                         contactStiffness=self.params['stiffness'],
+                         contactDamping=self.params['damping'],
+                         physicsClientId=self.client_id)
+        p.setTimeStep(self.dt, physicsClientId=self.client_id)
+        self.set_sim_state_from_drake_coords(
+            self.hardware_traj.get_initial_state())
         self.add_achilles_fourbar_constraint()
         self.add_plantar_fourbar_constraint()
-
-        p.changeDynamics(self.plane_id, -1,
-                         lateralFriction=params['mu_tangent'],
-                         contactStiffness=params['stiffness'],
-                         contactDamping=params['damping'],
-                         physicsClientId=self.client_id)
-
-        p.setTimeStep(self.dt, physicsClientId=self.client_id)
 
     def get_sim_state_in_drake_coords(self):
         pelvis_xyz, pelvis_q = p.getBasePositionAndOrientation(
@@ -97,7 +114,7 @@ class BulletCassieSim():
             self.cassie_id, posObj=pelvis_xyz, ornObj=pelvis_q,
             physicsClientId=self.client_id)
 
-        drake_joints = self.drake_state_names[7:self.plant.num_positions()]
+        drake_joints = self.drake_state_names[CASSIE_JOINT_POSITION_SLICE]
         for name in drake_joints:
             print(name)
             p.resetJointState(self.cassie_id, self.bullet_joint_idxs[name],
@@ -141,22 +158,32 @@ class BulletCassieSim():
 
         self.joint_accessor_vect = \
             [self.bullet_joint_idxs[name] for name in
-             self.drake_state_names[7:self.plant.num_positions()]]
+             self.drake_state_names[CASSIE_JOINT_POSITION_SLICE]]
+
+        drake_actuated_joints = \
+            {idx: self.plant.GetJointActuatorByName(name).joint().name()
+             for name, idx in self.drake_act_map.items()}
+
+        self.motor_control_vect = \
+            [self.bullet_joint_idxs[drake_actuated_joints[i]] for i in
+             range(len(drake_actuated_joints))]
 
     def add_achilles_fourbar_constraint(self):
         left_rod_heel = {
             'link1': self.bullet_link_idxs['achilles_rod_left'],
-            'xyz1': np.array([0.5012, 0, 0]),
+            'xyz1': np.array([0.25105, 0, 0]),
             'link2': self.bullet_link_idxs['heel_spring_left'],
-            'xyz2': np.array([.11877, -.01, 0]),
-            'axis': np.array([0, 0, 1])
+            'xyz2': np.array([.11877, -.01, 0]) -
+                    np.array([0.08097, 0.00223, -0.0000385]),
+            'axis': np.array([1, 0, 0])
         }
         right_rod_heel = {
             'link1': self.bullet_link_idxs['achilles_rod_right'],
-            'xyz1': np.array([0.5012, 0, 0]),
+            'xyz1': np.array([0.25105, 0, 0]),
             'link2': self.bullet_link_idxs['heel_spring_right'],
-            'xyz2': np.array([.11877, -.01, 0]),
-            'axis': np.array([0, 0, 1])
+            'xyz2': np.array([.11877, -.01, 0]) -
+                    np.array([0.08097, 0.00223, -0.0000385]),
+            'axis': np.array([1, 0, 0])
         }
 
         p.createConstraint(
@@ -174,17 +201,19 @@ class BulletCassieSim():
     def add_plantar_fourbar_constraint(self):
         left_rod_toe = {
             'link1': self.bullet_link_idxs['plantar_rod_left'],
-            'xyz1': np.array([0.35012, 0, 0]),
+            'xyz1': np.array([0.17792, 0, 0]),
             'link2': self.bullet_link_idxs['toe_left'],
-            'xyz2': np.array([.055, 0, .00776]),
+            'xyz2': np.array([.055, 0, .00776]) -
+                    np.array([0.00474, 0.02748, -0.00014]),
             'axis': np.array([0, 0, 1])
         }
 
         right_rod_toe = {
             'link1': self.bullet_link_idxs['plantar_rod_right'],
-            'xyz1': np.array([0.35012, 0, 0]),
+            'xyz1': np.array([0.17792, 0, 0]),
             'link2': self.bullet_link_idxs['toe_right'],
-            'xyz2': np.array([.055, 0, -.00776]),
+            'xyz2': np.array([.055, 0, -.00776]) -
+                    np.array([0.00474, 0.02748, 0.00014]),
             'axis': np.array([0, 0, 1])
         }
 
@@ -201,20 +230,32 @@ class BulletCassieSim():
             physicsClientId=self.client_id)
 
     def set_initial_condition(self, state):
-        pass
+        self.set_sim_state_from_drake_coords(state)
+
+    def advance_to(self, time):
+        while self.current_time < time:
+            self.sim_step()
+        return self.traj
+
+    def sim_step(self, action=None):
+        next_timestep = self.current_time + self.dt
+        action = self.hardware_traj.get_action(next_timestep)
+        p.setJointMotorControlArray(
+            self.cassie_id, self.motor_control_vect, p.TORQUE_CONTROL,
+            forces=action, physicsClientId=self.client_id)
+        p.stepSimulation(physicsClientId=self.client_id)
+        self.current_time = next_timestep
+        # cassie_state = self.get_sim_state_in_drake_coords()
+        # self.traj.update(next_timestep, cassie_state, action)
 
 
 def main():
-    x_init = CassieHardwareTraj('07').get_initial_state()
     sim = BulletCassieSim(visualize=True)
-    sim.init_sim({'mu_tangent': 0.8,
+    sim.make({'mu_tangent': 0.8,
                   'stiffness': 2500,
-                  'damping': 30.6})
-    sim.set_sim_state_from_drake_coords(x_init)
+                  'damping': 30.6}, '01')
     import pdb; pdb.set_trace()
-    for j in range(p.getNumJoints(sim.cassie_id)):
-        inf = p.getJointInfo(sim.cassie_id, j)
-        print(f'joint: {inf[jim["joint_name"]]}, link:{inf[jim["link_name"]]}')
+    sim.advance_to(0.0495)
 
 
 

@@ -32,7 +32,34 @@ def achilles_ik(plant, context, x):
             ik_constants['heel_spring_to_rod_end'],
             plant.GetBodyByName('thigh_'+side).body_frame()).ravel()
 
-        achilles_rod_in_thigh_frame = heel_connection_point - hip_connection_point
+        '''
+            Since our urdf defines the achilles rod to essentially be a 
+            vector parallel to the x-axis of the thigh frame, we  
+            find the joint angles by constructing a rotation 
+            matrix which maps vectors in the achilles rod frame to vectors in 
+            the thigh frame. We set the first column of this matrix equal to 
+            the direction from the heel spring rod end to the hip motor rod end, 
+            expressed in the thigh frame and solve for the angles 
+
+            let "roll" be the first rotation, about the achilles rod y axis,
+            with rotation matrix R_T_r = |cos(roll)  0 sin(roll)|
+                                         |   0       1    0     | 
+                                         |-sin(roll) 0 cos(roll)|
+
+            and "pitch" be a subsequent rotation about the rod z-axis
+            with rotation matrix R_r_p = |cos(pitch) -sin(pitch) 0|
+                                         |sin(pitch)  cos(pitch) 0|
+                                         |   0           0       1|
+            So the direction of the rod, expressed in the thigh frame 
+            (denote u), is the first column of R_T_p = R_T_r * R_r_p, 
+            which is [cos(roll)cos(pitch), sin(pitch), -sin(roll)cos(pitch)]^T
+            so pitch = arcsin(u_y), roll = arccos(u_x / cos(pitch)
+        '''
+
+        achilles_rod_in_thigh_frame = heel_connection_point - \
+                                      hip_connection_point
+
+
         u = achilles_rod_in_thigh_frame / \
             np.linalg.norm(achilles_rod_in_thigh_frame)
 

@@ -4,7 +4,6 @@ from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import MultibodyPlant, AddMultibodyPlantSceneGraph, CoulombFriction
 from pydrake.systems.analysis import Simulator
 from pydrake.systems.framework import DiagramBuilder
-from pydrake.systems.meshcat_visualizer import MeshcatVisualizer, ConnectMeshcatVisualizer
 from pydrake.systems.rendering import MultibodyPositionToGeometryPose
 from pydrake.systems.primitives import TrajectorySource
 from pydrake.math import RigidTransform
@@ -225,9 +224,13 @@ class DrakeCubeSim(CubeSim):
         data_arr[0, CUBE_DATA_POSITION_SLICE] = cube_state[4:7]
         data_arr[0, CUBE_DATA_OMEGA_SLICE] = cube_state[7:10]
         data_arr[0, CUBE_DATA_VELOCITY_SLICE] = cube_state[10:]
-        
-        new_time = self.sim.get_mutable_context().get_time() + dt
-        self.sim.AdvanceTo(new_time)
+
+        cur_time = self.sim.get_mutable_context().get_time()
+        offset = cur_time % dt
+        cur_time_quantized = cur_time - offset + (dt if offset > dt/2 else 0)
+        eps = dt / 4
+        next_time = cur_time_quantized + dt + eps
+        self.sim.AdvanceTo(next_time)
 
         data_arr[0] = self.reexpress_state_global_to_local_omega(data_arr[0])
         return data_arr

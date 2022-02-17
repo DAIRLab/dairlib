@@ -132,6 +132,14 @@ py_library(
 )
 
 py_library(
+    name = "isaac_cube_sim_py",
+    srcs = ["isaac_cube_sim.py"],
+    deps = [
+        ":cube_sim",
+    ],
+)
+
+py_library(
     name = "bullet_utils",
     srcs = ["bullet_utils.py"],
     deps = ["@drake//bindings/pydrake"],
@@ -237,8 +245,8 @@ py_binary(
     deps = [
         ":cassie_loss_utils",
         ":drake_cassie_sim_py",
-        ":mujoco_cassie_sim_v2_py",
         ":isaac_cassie_sim_py",
+        ":mujoco_cassie_sim_v2_py",
         "//bindings/pydairlib/cassie:kinematics_helper",
         "//bindings/pydairlib/cassie:mujoco_sim",
         "//bindings/pydairlib/common:plot_styler",

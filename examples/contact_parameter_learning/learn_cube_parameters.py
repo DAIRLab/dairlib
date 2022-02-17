@@ -1,8 +1,9 @@
 import nevergrad as ng
-import cube_sim
+import isaac_cube_sim
 import drake_cube_sim
 import mujoco_cube_sim
 import bullet_cube_sim
+import cube_sim
 import os
 import sys
 from json import dump, load
@@ -86,8 +87,9 @@ def log_optimization(sim_name, test, loss, weights, params_over_time, optimal_pa
     with open(weights_file_name, 'wb+') as fpw:
         weights.save(fpw)
 
+
 ####################################
-## DRAKE FUNCTIONS
+# DRAKE FUNCTIONS
 
 def get_drake_loss_mp(params):
     loss_sum = 0
@@ -99,6 +101,7 @@ def get_drake_loss_mp(params):
     loss_over_time.append(loss_sum / batch_size)
     return loss_sum / batch_size
 
+
 def get_drake_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
     weights = cube_sim.FastLossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
@@ -108,6 +111,7 @@ def get_drake_loss(params, trial_num=None):
     except:
         loss = SIM_ERROR_LOSS
     return loss
+
 
 def learn_drake_params():
     
@@ -121,10 +125,12 @@ def learn_drake_params():
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
     optimal_params = optimizer.minimize(get_drake_loss_mp)
 
-    log_optimization('drake', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
+    log_optimization('drake', test_idxs, loss_over_time, default_loss,
+                     params_over_time, optimal_params.value)
+
 
 ####################################
-## MUJOCO FUNCTIONS
+# MUJOCO FUNCTIONS
 
 def get_mujoco_loss_mp(params):
     loss_sum = 0
@@ -136,11 +142,13 @@ def get_mujoco_loss_mp(params):
     loss_over_time.append(loss_sum / batch_size)
     return loss_sum / batch_size
 
+
 def get_mujoco_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
     weights = cube_sim.FastLossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
     sim = mujoco_cube_sim.MujocoCubeSim(visualize=False, substeps=default_substep)
     return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=weights)
+
 
 def learn_mujoco_params():
     optimization_param = ng.p.Dict(
@@ -158,7 +166,7 @@ def learn_mujoco_params():
 
 
 ####################################
-## BULLET FUNCTIONS
+# BULLET FUNCTIONS
 
 def get_bullet_loss_mp(params):
     loss_sum = 0
@@ -170,11 +178,13 @@ def get_bullet_loss_mp(params):
     loss_over_time.append(loss_sum / batch_size)
     return loss_sum / batch_size
 
+
 def get_bullet_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
     weights = cube_sim.FastLossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), bullet=True)
     sim = bullet_cube_sim.BulletCubeSim(visualize=False, substeps=default_substep)
     return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=weights)
+
 
 def learn_bullet_params():
     optimization_param = ng.p.Dict(
@@ -190,17 +200,58 @@ def learn_bullet_params():
     optimal_params = optimizer.minimize(get_bullet_loss_mp)
     
     log_optimization('bullet', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
-    
 
-if (__name__ == '__main__'):
+
+####################################
+# ISAAC FUNCTIONS
+
+def learn_isaac_params():
+    optimization_param = ng.p.Dict(
+        stiffness=ng.p.Scalar(lower=100, upper=10000),
+        restitution=ng.p.Scalar(lower=0, upper=1),
+        mu=ng.p.Scalar(lower=0.01, upper=1.0),
+    )
+    optimization_param.value = isaac_cube_sim.default_isaac_contact_params
+    optimizer = \
+        ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
+    optimal_params = optimizer.minimize(get_isaac_loss_mp)
+    log_optimization('isaac', test_idxs, loss_over_time, default_loss,
+        params_over_time, optimal_params.value)
+
+
+def get_isaac_loss_mp(params):
+    loss_sum = 0
+    for i in range(batch_size):
+        loss_sum += get_isaac_loss(params, trial_num=training_idxs[i])
+    print(loss_sum / batch_size)
+
+    params_over_time.append(params)
+    loss_over_time.append(loss_sum / batch_size)
+    return loss_sum / batch_size
+
+
+def get_isaac_loss(params, trial_num=None):
+    global isaac_sim_g
+    trial_num = choice(training_idxs) if trial_num is None else trial_num
+    weights = cube_sim.FastLossWeights(
+        pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
+    return cube_sim.calculate_cubesim_loss(
+        params, trial_num, cube_data_folder,
+        isaac_sim_g, debug=False, weights=weights)
+
+
+if __name__ == '__main__':
     sim_choice = sys.argv[1]
 
-    if (sim_choice == 'drake'):
+    if sim_choice == 'drake':
         learn_drake_params()
-    elif (sim_choice == 'mujoco'):
+    elif sim_choice == 'mujoco':
         learn_mujoco_params()
-    elif (sim_choice == 'bullet'):
+    elif sim_choice == 'bullet':
         learn_bullet_params()
-
+    elif sim_choice == 'isaac':
+        global isaac_sim_g
+        isaac_sim_g = isaac_cube_sim.IsaacCubeSim(substeps=default_substep)
+        learn_isaac_params()
     else:
         print('please pick a supported simulator')

@@ -60,5 +60,5 @@ def test_bullet_sim():
 if __name__ == '__main__':
   # test_drake_sim()
   # test_mujoco_sim()
-  # test_isaac_sim()
-  test_bullet_sim()
+  test_isaac_sim()
+  # test_bullet_sim()

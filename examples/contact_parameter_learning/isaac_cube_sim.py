@@ -20,8 +20,16 @@ from cube_sim import CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, \
     CUBE_DATA_DT, load_cube_toss
 
 default_isaac_contact_params = {"mu": 0.1,
-                                "stiffness": 100.0,
-                                "restitution": 0.0}
+                                "stiffness": 300.0,
+                                "restitution": 0.25}
+
+
+def gym_vec3_to_np(vec):
+    return np.array([vec['x'], vec['y'], vec['z']])
+
+
+def gym_quat_to_np_xyzw(q):
+    return np.array([q['w'], q['x'], q['y'], q['z']])
 
 
 class IsaacCubeSim(CubeSim):
@@ -34,12 +42,13 @@ class IsaacCubeSim(CubeSim):
         self.gym = gymapi.acquire_gym()
         sim_params = gymapi.SimParams()
         sim_params.dt = self.sim_dt
-        sim_params.substeps = self.substeps
+        sim_params.substeps = substeps
         sim_params.use_gpu_pipeline = False
         sim_params.up_axis = gymapi.UP_AXIS_Z
         sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.81)
 
-        sim_params.physx.bounce_threshold_velocity = 2 * 9.81 * self.sim_dt / sim_params.substeps
+        sim_params.physx.bounce_threshold_velocity = 2 * 9.81 * self.sim_dt / \
+                                                     sim_params.substeps
         sim_params.physx.solver_type = 1  # O: PGS, 1: TGS
         sim_params.physx.num_position_iterations = 10  # [1, 255]
         sim_params.physx.num_velocity_iterations = 10  # [1, 255]
@@ -101,5 +110,36 @@ class IsaacCubeSim(CubeSim):
         self.root_states[self.plane_handle, 7:13] = to_torch([0., 0., 0., 0., 0., 0.])
 
     def set_initial_condition(self, state):
+        initial_state = self.reexpress_state_local_to_global_omega(state)
+        quat = state[CUBE_DATA_QUATERNION_SLICE]
         self.root_states[self.cube_handle, :3] = \
-            to_torch(state[CUBE_DATA_POSITION_SLICE])
+            to_torch(initial_state[CUBE_DATA_POSITION_SLICE])
+        self.root_states[self.cube_handle, 3:7] = \
+            to_torch([quat[1], quat[2], quat[3], quat[0]])
+        self.root_states[self.cube_handle, 7:10] = \
+            to_torch(initial_state[CUBE_DATA_VELOCITY_SLICE])
+        self.root_states[self.cube_handle, 10:13] = \
+            to_torch(initial_state[CUBE_DATA_VELOCITY_SLICE])
+        self.gym.set_actor_root_state_tensor(
+            self.sim, gymtorch.unwrap_tensor(self.root_states))
+
+    def sim_step(self, dt):
+        state = np.zeros((13,))
+        rigid_body_state = self.gym.get_actor_rigid_body_states(
+            self.env, self.cube_handle, gymapi.STATE_ALL)
+        state[CUBE_DATA_POSITION_SLICE] = \
+            gym_vec3_to_np(rigid_body_state['pose']['p'][0])
+        state[CUBE_DATA_QUATERNION_SLICE] = \
+            gym_quat_to_np_xyzw(rigid_body_state['pose']['r'][0])
+        state[CUBE_DATA_VELOCITY_SLICE] = \
+            gym_vec3_to_np(rigid_body_state['vel']['linear'][0])
+        state[CUBE_DATA_OMEGA_SLICE] = \
+            gym_vec3_to_np(rigid_body_state['vel']['angular'][0])
+
+        self.gym.simulate(self.sim)
+        self.gym.fetch_results(self.sim, True)
+        if self.visualize:
+            self.gym.step_graphics(self.sim)
+            self.gym.draw_viewer(self.viewer, self.sim, True)
+
+        return self.reexpress_state_global_to_local_omega(state)

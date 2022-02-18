@@ -118,8 +118,7 @@ for i in range(len(directory_list)):
             for sample_i in range(N_sample):
                 cost = []
                 assert os.path.isfile(directory + folder_name_nominal_cost + '0_'+str(sample_i)+'_'+file_name_nominal_cost), 'file does not exist'
-                matrix = np.genfromtxt(directory + folder_name_nominal_cost + '0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=",")
-                cost.append(matrix)
+                cost.append(np.genfromtxt(directory + folder_name_nominal_cost + '0_'+str(sample_i)+'_'+file_name_nominal_cost, delimiter=","))
 
                 nominal_cost += cost[0] / N_sample
         else:
@@ -139,8 +138,7 @@ for i in range(len(directory_list)):
                 cost = []
                 iteration = iter_start
                 while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name2):
-                    matrix = np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name2, delimiter=",") / nominal_cost
-                    cost.append(matrix)
+                    cost.append(np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name2, delimiter=",") / nominal_cost)
                     if is_iter_end & (iteration == iter_end):
                         break
                     iteration += 1
@@ -160,8 +158,7 @@ for i in range(len(directory_list)):
                     cost = []
                     iteration = iter_start
                     while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
-                        matrix = np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
-                        cost.append(matrix)
+                        cost.append(np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost)
                         if is_iter_end & (iteration == iter_end):
                             break
                         iteration += 1
@@ -170,7 +167,7 @@ for i in range(len(directory_list)):
                     length = len(cost)
                     t = range(iter_start, length+iter_start)
                     if not only_plot_average_cost:
-                        sl = np.loadtxt(directory+str(iteration)+'_'+str(sample_i)+'_task.csv')[0]
+                        sl = np.loadtxt(directory+str(iter_start)+'_'+str(sample_i)+'_task.csv')[0]
                         task_criteria_satisfied = True if (target_stride_length is None) else (abs(sl-target_stride_length) < target_stride_length_tol)
                         if file_name == 'c_main.csv' and task_criteria_satisfied:
                             ax.plot(t, cost)
@@ -181,8 +178,7 @@ for i in range(len(directory_list)):
                     is_success = []
                     if only_add_successful_samples_to_average_cost:
                         for iter_i in range(iter_start, iter_start + iteration_length):
-                            matrix = np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=",")
-                            is_success.append(matrix)
+                            is_success.append(np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=","))
                     else:
                         is_success = [1] * iteration_length
 
@@ -224,10 +220,10 @@ for i in range(len(directory_list)):
             # ax.set_yticks(np.arange(1.05,1.301,0.05))
 
             # Set limit
-            # ax.set_ylim(0, 6)
+            # ax.set_ylim(1, 2.5)
 
+            plt.grid()
             plt.title("Traj opt cost over model iteration")
-
             plt.draw()
 
             # so that the label is not cut off by the window

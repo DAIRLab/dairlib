@@ -58,7 +58,7 @@ class MuJoCoCassieSim():
         self.tree.write(self.default_model_directory + xml)
         self.cassie_env = CassieSim(self.default_model_directory + xml)
         if self.visualize:
-            self.cassie_vis = CassieVis(self.cassie_env, xml)
+            self.cassie_vis = CassieVis(self.cassie_env)
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.reset(hardware_traj_num)
 
@@ -89,13 +89,11 @@ class MuJoCoCassieSim():
         next_timestep = self.cassie_env.time() + self.dt
         action = self.hardware_traj.get_action(next_timestep)
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, action)
+        while self.cassie_env.time() < next_timestep:
+            self.cassie_env.step(cassie_in)
         if self.visualize:
             self.cassie_vis.draw(self.cassie_env)
-        # print("outer step")
-        while self.cassie_env.time() < next_timestep:
-            # print("inner step")
-            self.cassie_env.step(cassie_in)
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         # get current state
         t = self.cassie_env.time()
         q = self.cassie_env.qpos()

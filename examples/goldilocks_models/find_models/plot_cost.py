@@ -11,6 +11,8 @@ import time
 import sys
 import traceback
 import logging
+import argparse
+
 plt.rcParams.update({'font.size': 18})
 
 save_figure = True
@@ -19,17 +21,25 @@ only_plot_average_cost = True
 normalize_by_nominal_cost = True
 only_add_successful_samples_to_average_cost = False
 
-iter_start = 1
-iter_end = 11
-is_iter_end = 0
-robot_option = 1  # 0 is five-link robot. 1 is cassie_fixed_spring
-# if len(sys.argv) >= 2:
-#     iter_start = int(sys.argv[1])
-# if len(sys.argv) >= 3:
-#     iter_end = int(sys.argv[2])
-#     is_iter_end = 1
-# if len(sys.argv) >= 4:
-#     robot_option = int(sys.argv[3])
+
+### Some plots settings
+target_stride_length = None #0.3
+target_stride_length_tol = 0.01
+
+
+### argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument("--iter_start", help="", default=1, type=int)
+parser.add_argument("--iter_end", help="", default=-1, type=int)
+parser.add_argument("--robot_option", help="0 is five-link robot. 1 is cassie_fixed_spring", default=1, type=int, choices=[0, 1])
+parser.add_argument("--path", help="", default="", type=str)
+args = parser.parse_args()
+
+iter_start = args.iter_start
+iter_end = args.iter_end
+is_iter_end = (args.iter_end > 1)
+robot_option = args.robot_option
+
 
 ### Some path settings
 base = '../dairlib_data/goldilocks_models/find_models'
@@ -43,7 +53,8 @@ if "/scratch/yminchen" in os.getcwd():
         if os.path.exists(data_folder):
             directory_list.append(data_folder)
 else:
-    directory_list.append('%s/robot_%d/' % (base, robot_option))
+    directory_list.append('%s/robot_%d/' % (base if len(args.path) == 0 else args.path, robot_option))
+    #directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range/robot_1/')
 ## Manually add more folders here (note that the path needs to end with "/")
 # directory_list.append('/')
 ## Sort and print
@@ -62,17 +73,10 @@ file_name_list = [file_name1, file_name2]
 # folder_name_nominal_cost = "nominal_no_constraint_traj/"
 folder_name_nominal_cost = "nominal_traj_cubic_swing_foot/"
 
+
 ### visualization setting
-ave_cost_prop = ""
-if only_plot_average_cost:
-    ave_cost_prop = "k-"
-else:
-    ave_cost_prop = "k--"
-ave_cost_label = ""
-if only_add_successful_samples_to_average_cost:
-    ave_cost_label = "Averaged cost (excluding failed samples)"
-else:
-    ave_cost_label = "Averaged cost"
+ave_cost_prop = "k-" if only_plot_average_cost else "k--"
+ave_cost_label = "Averaged cost (excluding failed samples)" if only_add_successful_samples_to_average_cost else "Averaged cost"
 
 
 for i in range(len(directory_list)):
@@ -166,7 +170,9 @@ for i in range(len(directory_list)):
                     length = len(cost)
                     t = range(iter_start, length+iter_start)
                     if not only_plot_average_cost:
-                        if file_name == 'c_main.csv':
+                        sl = np.loadtxt(directory+str(iteration)+'_'+str(sample_i)+'_task.csv')[0]
+                        task_criteria_satisfied = True if (target_stride_length is None) else (abs(sl-target_stride_length) < target_stride_length_tol)
+                        if file_name == 'c_main.csv' and task_criteria_satisfied:
                             ax.plot(t, cost)
                             # ax.plot(t,cost, label='sample_idx = '+str(sample_i))
                             # TODO: not very important, but you can read the task value and use it as a label

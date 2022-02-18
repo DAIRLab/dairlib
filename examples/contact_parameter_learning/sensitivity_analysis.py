@@ -175,9 +175,9 @@ def get_friction_range(sim_type, mu_0):
 def get_damping_range(sim_type, b0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['dissipation'] = (b0 * np.logspace(-1, 1, num=5)).tolist()
+        params_range['dissipation'] = (b0 * np.logspace(-1, 1, base=10, num=5)).tolist()
     else:
-        params_range['damping'] = (b0 * np.logspace(-1, 1, num=5)).tolist()
+        params_range['damping'] = (b0 * np.logspace(-1, 1, base=10, num=5)).tolist()
     return params_range
 
 

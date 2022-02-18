@@ -165,12 +165,21 @@ def make_gridded_sensitivity_analysis_figure(id, damp_key):
     X = sensitivity_analysis['stiffness'] / optimal_params['stiffness']
     Y = sensitivity_analysis[damp_key] / optimal_params[damp_key]
     Z = sensitivity_analysis['loss_avgs']
+
     plt.contourf(X, Y, Z, 20, cmap='RdGy')
     plt.colorbar()
     plt.xscale('log')
     plt.yscale('log')
+    frame = plt.gca()
+    frame.axes.get_xaxis().set_ticks([0.1, 0.3, 1.0, 3.1, 10])
+    frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    frame.axes.get_yaxis().set_ticks([0.1, 0.3, 1.0, 3.1, 10])
+    frame.axes.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
     plt.xlim((X[0, 0], X[-1, -1]))
     plt.ylim((Y[0, 0], Y[-1, -1]))
+    plt.xlabel('$k / k^{*}$')
+    plt.ylabel('$b / b^{*}$')
+    plt.title(format_sim_name(id) + ' Stiffness and Damping Sensitivity')
 
 
 def make_damping_ratio_sensitivity_analysis_figure():
@@ -415,7 +424,7 @@ def quick_video():
     cube_eval.visualize_learned_params(params, eval_sim, traj)
 
 if __name__ == '__main__':
-    make_gridded_sensitivity_analysis_figure(paper_ids[0], 'dissipation')
+    make_gridded_sensitivity_analysis_figure(paper_ids[2], 'damping')
     plt.show()
     # make_estimated_pdf_figure()
     # make_friction_sensitivity_analysis_figure()

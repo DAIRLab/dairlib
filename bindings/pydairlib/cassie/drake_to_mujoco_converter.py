@@ -292,14 +292,14 @@ class DrakeToMujocoConverter():
         self.map_q_drake_to_mujoco[16, self.pos_map["ankle_joint_left"]] = 1
         self.map_q_drake_to_mujoco[17, self.pos_map["ankle_spring_joint_left"]] = 1
         self.map_q_drake_to_mujoco[20, self.pos_map["toe_left"]] = 1
-        self.map_q_drake_to_mujoco[21, self.pos_map["hip_roll_left"]] = 1
-        self.map_q_drake_to_mujoco[22, self.pos_map["hip_yaw_left"]] = 1
-        self.map_q_drake_to_mujoco[23, self.pos_map["hip_pitch_left"]] = 1
-        self.map_q_drake_to_mujoco[28, self.pos_map["knee_left"]] = 1
-        self.map_q_drake_to_mujoco[29, self.pos_map["knee_joint_left"]] = 1
-        self.map_q_drake_to_mujoco[30, self.pos_map["ankle_joint_left"]] = 1
-        self.map_q_drake_to_mujoco[31, self.pos_map["ankle_spring_joint_left"]] = 1
-        self.map_q_drake_to_mujoco[34, self.pos_map["toe_left"]] = 1
+        self.map_q_drake_to_mujoco[21, self.pos_map["hip_roll_right"]] = 1
+        self.map_q_drake_to_mujoco[22, self.pos_map["hip_yaw_right"]] = 1
+        self.map_q_drake_to_mujoco[23, self.pos_map["hip_pitch_right"]] = 1
+        self.map_q_drake_to_mujoco[28, self.pos_map["knee_right"]] = 1
+        self.map_q_drake_to_mujoco[29, self.pos_map["knee_joint_right"]] = 1
+        self.map_q_drake_to_mujoco[30, self.pos_map["ankle_joint_right"]] = 1
+        self.map_q_drake_to_mujoco[31, self.pos_map["ankle_spring_joint_right"]] = 1
+        self.map_q_drake_to_mujoco[34, self.pos_map["toe_right"]] = 1
 
         self.map_v_drake_to_mujoco[0:3, 3:6] = np.eye(3)
         self.map_v_drake_to_mujoco[3:6, 0:3] = np.eye(3)

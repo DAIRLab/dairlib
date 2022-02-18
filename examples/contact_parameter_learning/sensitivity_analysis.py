@@ -57,6 +57,7 @@ def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params
 
     return pos_avgs, pos_meds, rot_avgs, rot_meds
 
+
 def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, test_traj_set, plant='cube'):
     
     loss_avgs = {}
@@ -72,9 +73,9 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
             params[param_key] = param_val
             print(f'{param_key}: {param_val}')
             if (plant == 'cube'):
-                pairs = load_traj_pairs(sim, params, test_traj_set, print_progress=False)
-                for pair_idx in pairs:
-                    pair = pairs[pair_idx]
+                pairs = load_traj_pairs(sim, params, test_traj_set,
+                                        print_progress=False)
+                for _, pair in pairs.items():
                     losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
                 loss_avg.append(np.average(losses))
                 loss_med.append(np.median(losses))
@@ -89,6 +90,36 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
         loss_meds[param_key] = np.array(loss_med)
 
     return loss_avgs, loss_meds
+
+
+# So far only supports cube
+def get_gridded_stiffness_damping_sensitivity_analysis(
+    sim, loss_weights, optimal_params, params_ranges, test_traj_set,
+        plant='cube'):
+    assert('stiffness' in params_ranges)
+    assert('damping' in params_ranges or 'dissipation' in params_ranges)
+
+    damp_key = 'damping' if 'damping' in params_ranges else 'dissipation'
+    stiffness, damping = \
+        np.meshgrid(params_ranges['stiffness'], params_ranges[damp_key])
+    loss_avgs = np.zeros(stiffness.shape)
+    loss_meds = np.zeros(stiffness.shape)
+    for i in range(stiffness.shape[0]):
+        for j in range(stiffness.shape[1]):
+            losses = []
+            params = deepcopy(optimal_params)
+            params['stiffness'] = stiffness[i, j]
+            params[damp_key] = damping[i, j]
+            pairs = load_traj_pairs(sim, params, test_traj_set,
+                                    print_progress=True)
+            for _, pair in pairs.items():
+                losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
+            loss_avgs[i, j] = np.average(losses)
+            loss_meds[i, j] = np.median(losses)
+
+    return {'stiffness': stiffness, damp_key: damping,
+            'loss_avgs': loss_avgs, 'loss_mdes': loss_meds}
+
 
 # for bullet / mujoco only
 def get_dr_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, test_traj_set):
@@ -131,7 +162,7 @@ def get_damping_ratio_range(sim_type, k0, b0):
 
 
 def get_stiffness_range(sim_type, k0):
-    return {'stiffness' : (k0 * np.logspace(-1.9, 1, num=25)).tolist()}
+    return {'stiffness' : (k0 * np.logspace(-1.9, 1, num=5)).tolist()}
 
 def get_friction_range(sim_type, mu_0):
     params_range = {}
@@ -144,9 +175,9 @@ def get_friction_range(sim_type, mu_0):
 def get_damping_range(sim_type, b0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['dissipation'] = (b0 * np.logspace(-1, 1, num=25)).tolist()
+        params_range['dissipation'] = (b0 * np.logspace(-1, 1, num=5)).tolist()
     else:
-        params_range['damping'] = (b0 * np.logspace(-1, 1, num=25)).tolist()
+        params_range['damping'] = (b0 * np.logspace(-1, 1, num=5)).tolist()
     return params_range
 
 

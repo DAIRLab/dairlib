@@ -1,11 +1,9 @@
 import matplotlib
-matplotlib.use('Agg')
-from cube_sim import CUBE_DATA_DT, CubeSim, BLOCK_HALF_WIDTH, FastLossWeights, load_cube_toss, make_cube_toss_filename
+# matplotlib.use('Agg')
+import evaluate_cube_parameters as cube_eval
 from random import choice
-import drake_cube_sim
 from json import load
 from random import sample
-import evaluate_cube_parameters as cube_eval
 import os
 import glob
 import numpy as np
@@ -13,6 +11,8 @@ from scipy.stats import gaussian_kde
 from matplotlib import pyplot as plt
 from plotting_utils import format_sim_name
 import sensitivity_analysis as sa
+import drake_cube_sim
+from cube_sim import CUBE_DATA_DT, CubeSim, BLOCK_HALF_WIDTH, FastLossWeights, load_cube_toss, make_cube_toss_filename
 from pydairlib.common.plot_styler import PlotStyler
 
 
@@ -21,11 +21,11 @@ figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learnin
 ps = PlotStyler()
 ps.set_default_styling(directory=figure_directory, figsize=(8,6))
 
-sim_colors = {'Drake' : ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
+sim_colors = {'Drake': ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
 
-paper_ids = ['drake_2021_09_11_16_44_10',
-             'mujoco_2021_10_18_16_26_10', 
-             'bullet_2021_09_13_23_26_10']
+paper_ids = ['drake_2022_02_17_16_43_10',
+             'mujoco_2022_02_17_15_04_10',
+             'bullet_2022_02_17_16_30_10']
 
 # def plot_damping_ratios(ids):
 #     stiffness = []
@@ -61,6 +61,7 @@ def plot_estimated_loss_pdfs(losses):
     plt.legend(legend_strs)
     ps.save_fig(filename)
 
+
 def plot_sensitivity_analysis(loss_sweeps, params_range, title=''):
     for key in loss_sweeps:
         plt.figure()
@@ -87,6 +88,7 @@ def plot_impulses_list_of_ids(ids, traj_id):
     ps.save_fig('ContactTangentImpulses.png')
     # plt.show()
 
+
 def make_training_loss_sensitivity_analysis(ids, params_ranges):
     sweeps = {}
     for id in ids:
@@ -104,6 +106,7 @@ def make_training_loss_sensitivity_analysis(ids, params_ranges):
         sweeps[id] = {'loss_avg' : loss_avg, 
                       'loss_med' : loss_med}
     return sweeps
+
 
 def make_damping_ratio_sensitivity_analysis(ids, params_ranges):
     sweeps = {}
@@ -142,6 +145,34 @@ def make_pos_rot_sensitivity_analysis(ids, params_ranges):
                       'rot_med': rot_med}
     return sweeps
 
+
+def make_gridded_sensitivity_analysis_figure(id, damp_key):
+    optimal_params, _, _ = cube_eval.load_params_and_logs(id)
+    stiffness_range = sa.get_stiffness_range(id.split('_')[0],
+                                            optimal_params['stiffness'])
+    damping_range = sa.get_damping_range(id.split('_')[0],
+                                         optimal_params[damp_key])
+    params_range = {'stiffness': stiffness_range['stiffness'],
+                    damp_key: damping_range[damp_key]}
+    weights = FastLossWeights(
+        pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)),
+        bullet=(format_sim_name(id) == 'Bullet'))
+    sensitivity_analysis = \
+        sa.get_gridded_stiffness_damping_sensitivity_analysis(
+            cube_eval.get_eval_sim(id), weights, optimal_params,
+            params_range, range(550))
+
+    X = sensitivity_analysis['stiffness'] / optimal_params['stiffness']
+    Y = sensitivity_analysis[damp_key] / optimal_params[damp_key]
+    Z = sensitivity_analysis['loss_avgs']
+    plt.contourf(X, Y, Z, 20, cmap='RdGy')
+    plt.colorbar()
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim((X[0, 0], X[-1, -1]))
+    plt.ylim((Y[0, 0], Y[-1, -1]))
+
+
 def make_damping_ratio_sensitivity_analysis_figure():
     ids = paper_ids[1:]
 
@@ -174,6 +205,7 @@ def make_damping_ratio_sensitivity_analysis_figure():
     plt.xlim((k_ratio[0], k_ratio[-1]))
     ps.save_fig('StiffnessSensitivityDampingRatio.png')
     # plt.show()
+
 
 def make_stiffness_sensitivity_analysis_figure():
     ids = paper_ids
@@ -383,12 +415,14 @@ def quick_video():
     cube_eval.visualize_learned_params(params, eval_sim, traj)
 
 if __name__ == '__main__':
+    make_gridded_sensitivity_analysis_figure(paper_ids[0], 'dissipation')
+    plt.show()
     # make_estimated_pdf_figure()
-    make_friction_sensitivity_analysis_figure()
-    make_damping_sensitivity_analysis_figure()
-    make_stiffness_sensitivity_analysis_figure()
+    # make_friction_sensitivity_analysis_figure()
+    # make_damping_sensitivity_analysis_figure()
+    # make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()
-    make_contact_impulse_plot()
+    # make_contact_impulse_plot()
     # visualize_cube_initial_condition()
     # make_damping_ratio_sensitivity_analysis_figure()
     # make_inelastic_traj_video()

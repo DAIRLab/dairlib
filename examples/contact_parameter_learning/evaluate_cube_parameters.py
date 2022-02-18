@@ -1,14 +1,14 @@
 import os
-
 from numpy.core.fromnumeric import trace
-import cube_sim
+from learn_cube_parameters import cube_data_folder, model_folder, log_folder
 import drake_cube_sim
 import mujoco_cube_sim
 import bullet_cube_sim
+import cube_sim
 import os
 import json
 from random import choice
-from learn_cube_parameters import cube_data_folder, model_folder, log_folder
+
 from matplotlib import pyplot as plt, use
 import numpy as np
 from plotting_utils import format_sim_name

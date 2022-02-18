@@ -13,9 +13,6 @@ class CassieHardwareTraj(CassieTraj):
 
     def __init__(self, dataset_num):
         # Shape of member variables
-        # self.t = np.zeros((CASSIE_DTS,))
-        # self.x_samples = np.zeros((CASSIE_DTS, CASSIE_NX))
-        # self.u_samples = np.zeros((CASSIE_DTS, CASSIE_NU))
         self.dataset_num = dataset_num
         self.t = np.load(DATASET_DIR + 't_' + dataset_num + '.npy')
         self.x_samples = np.load(DATASET_DIR + 'x_' + dataset_num + '.npy')

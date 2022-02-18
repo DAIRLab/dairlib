@@ -3,10 +3,12 @@ import xml.etree.ElementTree as ET
 
 from cassie_sim_data.cassie_sim_traj import *
 from cassie_sim_data.cassie_hardware_traj import *
+# from cassie_sim_data.cassie_traj import reexpress_state_local_to_global_omega, reexpress_state_global_to_local_omega
 
 from cassiemujoco import *
 from mujoco_lcm_utils import *
 from drake_to_mujoco_converter import DrakeToMujocoConverter
+
 
 class MuJoCoCassieSim():
 
@@ -30,9 +32,9 @@ class MuJoCoCassieSim():
         self.hardware_traj = None
         self.drake_to_mujoco_converter = DrakeToMujocoConverter(self.sim_dt)
         self.cassie_in = cassie_user_in_t()
-        self.default_params = {"stiffness" : 2000,
-                               "damping" : 36.02,
-                               "mu_tangent" : 0.18}
+        self.default_params = {"stiffness": 2000,
+                               "damping": 36.02,
+                               "mu_tangent": 0.18}
 
         self.actuator_index_map = {'hip_roll_left_motor': 0,
                                    'hip_yaw_left_motor': 1,
@@ -56,21 +58,25 @@ class MuJoCoCassieSim():
         self.tree.write(self.default_model_directory + xml)
         self.cassie_env = CassieSim(self.default_model_directory + xml)
         if self.visualize:
-            self.cassie_vis = CassieVis(self.cassie_env, xml)
+            self.cassie_vis = CassieVis(self.cassie_env)
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.reset(hardware_traj_num)
 
     def reset(self, hardware_traj_num):
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.traj = CassieSimTraj()
-        q_mujoco, v_mujoco = self.drake_to_mujoco_converter.convert_to_mujoco(self.hardware_traj.get_initial_state())
+        x_init = self.hardware_traj.get_initial_state()
+
+        q_mujoco, v_mujoco = self.drake_to_mujoco_converter.convert_to_mujoco(
+            reexpress_state_global_to_local_omega(x_init))
         mujoco_state = self.cassie_env.get_state()
         mujoco_state.set_qpos(q_mujoco)
         mujoco_state.set_qvel(v_mujoco)
         mujoco_state.set_time(self.start_time)
         self.cassie_env.set_state(mujoco_state)
 
-        self.traj.update(self.start_time, self.hardware_traj.get_initial_state(), self.hardware_traj.get_action(self.start_time))
+        self.traj.update(self.start_time, self.hardware_traj.get_initial_state(),
+                         self.hardware_traj.get_action(self.start_time))
         self.current_time = self.start_time
         return
 
@@ -83,13 +89,11 @@ class MuJoCoCassieSim():
         next_timestep = self.cassie_env.time() + self.dt
         action = self.hardware_traj.get_action(next_timestep)
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, action)
+        while self.cassie_env.time() < next_timestep:
+            self.cassie_env.step(cassie_in)
         if self.visualize:
             self.cassie_vis.draw(self.cassie_env)
-        # print("outer step")
-        while self.cassie_env.time() < next_timestep:
-            # print("inner step")
-            self.cassie_env.step(cassie_in)
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         # get current state
         t = self.cassie_env.time()
         q = self.cassie_env.qpos()
@@ -97,6 +101,7 @@ class MuJoCoCassieSim():
         q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
         self.current_time = t
         cassie_state = np.hstack((q, v))
+        cassie_state = reexpress_state_local_to_global_omega(cassie_state)
         self.traj.update(t, cassie_state, action)
         # print(cassie_state)
         return cassie_state

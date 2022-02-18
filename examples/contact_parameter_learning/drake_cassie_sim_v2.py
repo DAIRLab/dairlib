@@ -49,19 +49,12 @@ class DrakeCassieSim():
         self.passthrough = self.builder.AddSystem(SubvectorPassThrough(11, 0, 10))
         self.builder.Connect(self.controller_inputs.get_command_output_port(), self.passthrough.get_input_port())
         self.builder.Connect(self.passthrough.get_output_port(), self.plant.get_actuation_input_port())
-        # self.input_port = self.plant.get_actuation_input_port()
         self.diagram = self.builder.Build()
-        # self.diagram_context = self.diagram.CreateDefaultContext()
-        # self.diagram_context.EnableCaching()
-        # self.diagram.SetDefaultContext(self.diagram_context)
-        # self.diagram_context.SetTime(self.start_time)
         self.sim = Simulator(self.diagram)
 
         self.plant_context = self.diagram.GetMutableSubsystemContext(self.plant, self.sim.get_mutable_context())
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.reset(hardware_traj_num)
-        # self.sim.Initialize()
-        # self.current_time = 0.0
 
     def reset(self, hardware_traj_num):
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
@@ -81,11 +74,8 @@ class DrakeCassieSim():
 
     def sim_step(self, action=None):
         next_timestep = self.sim.get_context().get_time() + self.dt
-        # print(self.current_time)
         action = self.hardware_traj.get_action(next_timestep)
-        # print(next_timestep)
         self.plant.get_actuation_input_port().FixValue(self.plant_context, action)
-        # self.plant.get_actuation_input_port().FixValue(self.plant_context, np.zeros(10))
         self.sim.AdvanceTo(next_timestep)
 
         cassie_state = self.plant.GetPositionsAndVelocities(
@@ -100,3 +90,5 @@ class DrakeCassieSim():
 
     def free_sim(self):
         return
+
+

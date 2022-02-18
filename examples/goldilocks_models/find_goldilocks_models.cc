@@ -2085,8 +2085,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_no_model_update) {
     // We don't want this folder to be empty, because no_model_update is
     // supposed to be used after the model optimizaiton is finished. I just
-    // check if 1_thead_y.csv exists
-    DRAKE_DEMAND(file_exist(dir + "1_thread_y.csv"));
+    // check if 1_theta_y.csv exists
+    DRAKE_DEMAND(file_exist(dir + "1_theta_y.csv"));
   }
 
   // Setup for getting good solution from adjacent samples
@@ -2466,6 +2466,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
       VectorXd theta_yddot =
           readCSV(dir + to_string(iter + 1) + string("_theta_yddot.csv"))
               .col(0);
+      if (rom->n_theta_y() != theta_y.size()) {
+        cout << "rom->n_theta_y() = " << rom->n_theta_y() << endl;
+        cout << "theta_y.size() = " << theta_y.size() << endl;
+        cout << dir + to_string(iter + 1) + string("_theta_y.csv") << endl;
+      }
+      if (rom->n_theta_yddot() != theta_yddot.size()) {
+        cout << "rom->n_theta_yddot() = " << rom->n_theta_yddot() << endl;
+        cout << "theta_yddot.size() = " << theta_yddot.size() << endl;
+        cout << dir + to_string(iter + 1) + string("_theta_yddot.csv") << endl;
+      }
       rom->SetThetaY(theta_y);
       rom->SetThetaYddot(theta_yddot);
       continue;

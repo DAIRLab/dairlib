@@ -61,7 +61,7 @@ if __name__ == '__main__':
           0.9238795325112867,
           1.0])
 
-    qpos_init_drake = np.hstack((qstate_gt[1:5], np.array([0, 0, qstate_gt[0]]), qstate_gt[5:9], qstate_gt[34], qstate_gt[35], 0.0, qstate_gt[9], qstate_gt[11:15], qstate_gt[37:39], 0.0, qstate_gt[16]))
+    qpos_init_drake = np.hstack((qstate_gt[1:5], np.array([0, 0, qstate_gt[0]]), qstate_gt[5:9], qstate_gt[34], qstate_gt[35], 0.0, qstate_gt[9], qstate_gt[11:15], qstate_gt[37:39], 0.0, qstate_gt[14]))
     qvel_init_drake = np.hstack((qstate_gt[18:21], qstate_gt[15:18], qstate_gt[21:25], qstate_gt[40:42], 0.0, qstate_gt[25], qstate_gt[26:30], qstate_gt[44:46], 0.0, qstate_gt[30]))
 
     # qpos_init_drake = np.array(
@@ -75,6 +75,8 @@ if __name__ == '__main__':
     # converter.visualize_state_lower(x_init_drake)
     converter.visualize_entire_leg(x_init_drake)
 
+
     qpos, qvel = converter.convert_to_mujoco(x_init_drake)
     converter.print_pos_indices(converter.plant)
     import pdb; pdb.set_trace()
+

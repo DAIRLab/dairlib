@@ -8,6 +8,7 @@ from pydairlib.cassie.cassie_utils import *
 from scipy.spatial.transform import Rotation as R
 from pydairlib.multibody import *
 from pydrake.solvers.mathematicalprogram import MathematicalProgram, Solve
+from pydrake.solvers.snopt import *
 from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box
 from pydairlib.multibody import MultiposeVisualizer
 
@@ -234,13 +235,14 @@ class DrakeToMujocoConverter():
         self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_ang])
         self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
                                               np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
-        result = Solve(self.ik_solver.prog())
+        snopt_solver = SnoptSolver()
+        result = snopt_solver.Solve(self.ik_solver.prog())
         left_foot_crank_state = result.GetSolution()
         toe_ang = x[self.pos_map['toe_right']]
         self.toe_angle_constraint.evaluator().UpdateCoefficients(Aeq=[[1]], beq=[toe_ang])
         self.ik_solver.prog().SetInitialGuess(self.ik_solver.q(),
                                               np.array([1, 0, 0, 0, 0, 0, 0, toe_ang, toe_ang, -toe_ang]))
-        result = Solve(self.ik_solver.prog())
+        result = snopt_solver.Solve(self.ik_solver.prog())
         right_foot_crank_state = result.GetSolution()
 
         q = x[:self.plant.num_positions()]

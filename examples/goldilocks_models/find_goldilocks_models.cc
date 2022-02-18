@@ -1941,6 +1941,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Some setup
   cout << "\nOther settings:\n";
   cout << "is_debug? " << FLAGS_is_debug << endl;
+  cout << "no_model_update? " << FLAGS_no_model_update << endl;
   double ave_min_cost_so_far = std::numeric_limits<double>::infinity();
   std::vector<double> each_min_cost_so_far(
       N_sample, std::numeric_limits<double>::infinity());

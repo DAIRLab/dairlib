@@ -3,6 +3,7 @@ __pycache__/
 /.idea/
 /cmake-build-debug/
 /bazel-*
+/venv/
 *.ipynb_checkpoints
 *.DS_Store*
 attic/multibody/solver_log/

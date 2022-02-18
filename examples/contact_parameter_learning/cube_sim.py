@@ -60,14 +60,12 @@ class CubeSim(ABC):
         return new_state
 
 
-class FastLossWeights():
-    def __init__(self, debug=False,
-                 pos=np.ones((3,)),
-                 quat=1, bullet=False):
+class FastLossWeights:
+
+    def __init__(self, debug=False, pos=np.ones((3,)), quat=1, bullet=False):
         self.pos = np.diag(pos)
         self.quat = quat
         self.debug = debug
-        self.bullet=bullet
 
     def CalcPositionsLoss(self, traj1, traj2):
         diff = traj1 - traj2
@@ -76,8 +74,9 @@ class FastLossWeights():
     def CalcQuatLoss(self, traj1, traj2):
         loss = np.zeros((traj1.shape[0],))
         for i in range(traj1.shape[0]):
-            q1= p.getDifferenceQuaternion([traj1[i][1], traj1[i][2], traj1[i][3], traj1[i][0]],
-                                      [traj2[i][1], traj2[i][2], traj2[i][3], traj2[i][0]])
+            q1 = p.getDifferenceQuaternion(
+                [traj1[i][1], traj1[i][2], traj1[i][3], traj1[i][0]],
+                [traj2[i][1], traj2[i][2], traj2[i][3], traj2[i][0]])
             theta = 2 * np.arctan2(np.linalg.norm(q1[0:3]), q1[-1])
             loss[i] = theta ** 2
         return np.mean(loss)
@@ -87,7 +86,8 @@ class FastLossWeights():
         l_quat = self.CalcQuatLoss(traj1[:,CUBE_DATA_QUATERNION_SLICE], traj2[:,CUBE_DATA_QUATERNION_SLICE])
         return l_pos + l_quat
 
-class LossWeights():
+
+class LossWeights:
 
     def __init__(self, debug=False,
                  pos=np.ones((3,)),
@@ -150,8 +150,10 @@ class LossWeights():
         loss_weights.omega = np.array(loss_weights.omega)
         return loss_weights
 
+
 def make_cube_toss_filename(data_folder, toss_id):
     return os.path.join(data_folder, str(toss_id) + '.pt')
+
 
 def make_simulated_toss_filename(data_folder, toss_id):
     return os.path.join(data_folder, str(toss_id) + '.npy')

@@ -27,7 +27,7 @@ def test_sim(sim):
 
   # rollout.plot_positions()
   # sim.hardware_traj.plot_positions()
-
+  import pdb; pdb.set_trace()
   rollout.plot_velocities()
   sim.hardware_traj.plot_velocities()
 
@@ -50,15 +50,15 @@ def test_drake_sim():
 def test_isaac_sim():
   # sim = isaac_cassie_sim.IsaacCassieSim()
   sim = isaac_cassie_sim.IsaacCassieSim(visualize=True)
-  # test_sim(sim)
-  test_all_trajs(sim)
+  test_sim(sim)
+  # test_all_trajs(sim)
 
 def test_bullet_sim():
-  sim = bullet_cassie_sim.BulletCassieSim(visualize=True)
+  sim = bullet_cassie_sim.BulletCassieSim(visualize=True, dt=5e-4)
   test_sim(sim)
 
 if __name__ == '__main__':
-  # test_drake_sim()
+  test_drake_sim()
   # test_mujoco_sim()
   # test_isaac_sim()
-  test_bullet_sim()
+  # test_bullet_sim()

@@ -1,15 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation as R
 
-# TODO(yangwill): verify the indices, all simulators should output the final trajectory data in the same format
 CASSIE_QUATERNION_SLICE = slice(0, 4)
 CASSIE_POSITION_SLICE = slice(4, 23)
 CASSIE_OMEGA_SLICE = slice(23, 26)
 CASSIE_VELOCITY_SLICE = slice(26, 45)
-CASSIE_JOINT_POSITION_SLICE = slice(7,23)
-CASSIE_JOINT_VELOCITY_SLICE = slice(29,45)
-CASSIE_FB_POSITION_SLICE = slice(4,7)
-CASSIE_FB_VELOCITY_SLICE = slice(26,29)
+CASSIE_JOINT_POSITION_SLICE = slice(7, 23)
+CASSIE_JOINT_VELOCITY_SLICE = slice(29, 45)
+CASSIE_FB_POSITION_SLICE = slice(4, 7)
+CASSIE_FB_VELOCITY_SLICE = slice(26, 29)
 
 CASSIE_NX = 45
 CASSIE_NQ = 23
@@ -60,3 +60,20 @@ class CassieTraj():
         # np.save('u_sim', self.u_samples)
         plt.plot(self.t, self.u_samples)
 
+
+def quat_to_rotation(q):
+    return R.from_quat([q[1], q[2], q[3], q[0]])
+
+
+def reexpress_state_local_to_global_omega(state):
+    new_state = state.flatten()
+    rot = quat_to_rotation(new_state[CASSIE_QUATERNION_SLICE])
+    new_state[CASSIE_OMEGA_SLICE] = rot.apply(new_state[CASSIE_OMEGA_SLICE])
+    return new_state
+
+
+def reexpress_state_global_to_local_omega(state):
+    new_state = state.flatten()
+    rot = quat_to_rotation(new_state[CASSIE_QUATERNION_SLICE])
+    new_state[CASSIE_OMEGA_SLICE] = rot.apply(new_state[CASSIE_OMEGA_SLICE], inverse=True)
+    return new_state

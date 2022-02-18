@@ -2,6 +2,7 @@ import numpy as np
 import pybullet as p
 
 from pydrake.multibody.tree import JacobianWrtVariable
+from drake_to_mujoco_converter import DrakeToMujocoConverter
 
 joint_info_return = ['joint_index', 'joint_name', 'joint_type', 'q_index',
                      'v_index', 'flags', 'damping', 'friction',
@@ -19,6 +20,7 @@ ik_constants = {
     'heel_spring_to_rod_end': np.array([.11877, -.01, 0])
 }
 
+converter = DrakeToMujocoConverter()
 
 def achilles_ik(plant, context, x):
     plant.SetPositionsAndVelocities(context, x)
@@ -111,10 +113,22 @@ def plantar_ik(pos_map, vel_map, q, v):
     rod_joint_angles = {'left': {}, 'right': {}}
     rod_joint_vels = {'left': {}, 'right': {}}
 
+    q_missing, v_missing = converter.solve_IK(np.hstack((q, v)))
+
     for side in ['left', 'right']:
         rod_joint_angles[side]['pitch'] = -q[pos_map['toe_' + side]]
         rod_joint_vels[side]['pitch'] = -v[vel_map['toe_' + side + 'dot']]
         rod_joint_angles[side]['roll'] = 0
         rod_joint_vels[side]['roll'] = 0
 
+    # rod_joint_angles['left']['pitch'] = q_missing[19]
+    # rod_joint_vels['left']['pitch'] = v_missing[17]
+    # rod_joint_angles['left']['roll'] = 0
+    # rod_joint_vels['left']['roll'] = 0
+    # rod_joint_angles['right']['pitch'] = q_missing[33]
+    # rod_joint_vels['right']['pitch'] = v_missing[30]
+    # rod_joint_angles['right']['roll'] = 0
+    # rod_joint_vels['right']['roll'] = 0
+
+    # import pdb; pdb.set_trace()
     return rod_joint_angles, rod_joint_vels

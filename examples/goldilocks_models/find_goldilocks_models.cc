@@ -2011,7 +2011,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   VectorXd step_direction;
   VectorXd prev_step_direction = VectorXd::Zero(
       rom->n_theta());  // must initialize this because of momentum term
-  if (iter_start > 1 && !FLAGS_is_debug) {
+  if (iter_start > 1 && !FLAGS_is_debug && !FLAGS_no_model_update) {
     cout << "Reading previous step direction... (will get memory issue if the "
             "file doesn't exist)\n";
     step_direction =

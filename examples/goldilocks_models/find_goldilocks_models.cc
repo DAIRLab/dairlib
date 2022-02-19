@@ -1988,8 +1988,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Some setup
   bool rerun_current_iteration = FLAGS_start_current_iter_as_rerun;
   bool has_been_all_success = iter_start > 1;
-  if ((FLAGS_start_current_iter_as_rerun && (iter_start >= 1)) ||
-      (!FLAGS_start_current_iter_as_rerun && (iter_start >= 2))) {
+  if (FLAGS_no_model_update) {  // do nothing
+  } else if ((FLAGS_start_current_iter_as_rerun && (iter_start >= 1)) ||
+             (!FLAGS_start_current_iter_as_rerun && (iter_start >= 2))) {
     int iter_check_all_success =
         FLAGS_start_current_iter_as_rerun ? iter_start : iter_start - 1;
 

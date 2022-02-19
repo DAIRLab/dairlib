@@ -140,6 +140,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=false \
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
+   --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
@@ -149,6 +150,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
    --data_folder_name=$folder_name \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
+   --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \

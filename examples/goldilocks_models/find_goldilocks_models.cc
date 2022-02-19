@@ -2028,7 +2028,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
             .col(0);
   }
   double current_iter_step_size = h_step;
-  if ((iter_start > 1) && FLAGS_read_previous_step_size && !FLAGS_is_debug) {
+  if ((iter_start > 1) && FLAGS_read_previous_step_size && !FLAGS_is_debug &&
+      !FLAGS_no_model_update) {
     cout << "Reading previous step size... (will get memory issue if the file "
             "doesn't exist)\n";
     current_iter_step_size = readCSV(dir + to_string(iter_start - 1) +

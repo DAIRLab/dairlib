@@ -236,8 +236,8 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      int sample_idx_to_help, const string& dir,
                      const TasksGenerator* task_gen, const Task& task,
                      const ReducedOrderModel& rom, bool non_grid_task,
-                     bool use_database, int robot_option,
-                     bool no_model_update) {
+                     bool use_database, int robot_option, bool no_model_update,
+                     int delta_iter) {
   if (is_get_nominal && !rerun_current_iteration) {
     if (use_database) {
       *init_file = SetInitialGuessByInterpolation(
@@ -261,7 +261,8 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   } else if (rerun_current_iteration) {
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   } else if (no_model_update) {
-    *init_file = to_string(1) + "_" + to_string(sample) + string("_w.csv");
+    *init_file = to_string(iter - delta_iter) + "_" + to_string(sample) +
+                 string("_w.csv");
   } else {
     if (non_grid_task) {
       *init_file = SetInitialGuessByInterpolation(
@@ -2279,12 +2280,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Get file name of initial seed
           string init_file_pass_in;
           if (!FLAGS_is_debug) {
-            getInitFileName(
-                &init_file_pass_in, init_file, iter, sample_idx, is_get_nominal,
-                current_sample_is_a_rerun, has_been_all_success,
-                step_size_shrinked_last_loop, n_rerun[sample_idx],
-                sample_idx_to_help, dir, task_gen, task, *rom, !is_grid_task,
-                FLAGS_use_database, FLAGS_robot_option, FLAGS_no_model_update);
+            getInitFileName(&init_file_pass_in, init_file, iter, sample_idx,
+                            is_get_nominal, current_sample_is_a_rerun,
+                            has_been_all_success, step_size_shrinked_last_loop,
+                            n_rerun[sample_idx], sample_idx_to_help, dir,
+                            task_gen, task, *rom, !is_grid_task,
+                            FLAGS_use_database, FLAGS_robot_option,
+                            FLAGS_no_model_update, delta_iter);
           } else {
             init_file_pass_in = init_file.empty() ? to_string(iter) + "_" +
                                                         to_string(sample_idx) +

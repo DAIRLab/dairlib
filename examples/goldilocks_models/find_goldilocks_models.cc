@@ -183,6 +183,8 @@ DEFINE_bool(is_debug, false, "Debugging or not");
 DEFINE_bool(no_model_update, false,
     "This is used after the model has been optimized. We turn this flag on to "
     "evaluate the given model's performance on different task");
+DEFINE_int32(delta_iter, 1, "Sometimes I want to skip iterations when "
+                            "re-evaluating");
 
 // Extend model from passive to actuated
 DEFINE_bool(extend_model, false,
@@ -1623,6 +1625,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nOptimization setting (outer loop):\n";
   int iter_start = FLAGS_iter_start;
   int max_outer_iter = FLAGS_max_outer_iter;
+  int delta_iter = FLAGS_delta_iter;
   double stopping_threshold = 1e-4;
 
   double beta_momentum = FLAGS_beta_momentum;
@@ -2102,7 +2105,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int iter;
   int n_shrink_step = 0;
   auto iter_start_time = std::chrono::system_clock::now();
-  for (iter = iter_start; iter <= max_outer_iter; iter++) {
+  for (iter = iter_start; iter <= max_outer_iter; iter+=delta_iter) {
     bool is_get_nominal = iter == 0;
 
     // Print info about iteration # and current time

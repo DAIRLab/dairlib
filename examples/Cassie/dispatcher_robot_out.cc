@@ -68,7 +68,7 @@ DEFINE_int64(test_mode, -1,
              "0: both feet always in contact with ground. "
              "1: both feet never in contact with ground. "
              "2: both feet always in contact with the ground until contact is"
-             " detected in which case it swtiches to test mode -1.");
+             " detected in which case it switches to test mode -1.");
 
 // Initial condition (used for simulation)
 DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");

@@ -74,9 +74,6 @@ def main():
         textPrint.print(screen, "Controller detected: {}".format(name) )
 
         for event in pygame.event.get():
-            if event.type == pygame.JOYDEVICEREMOVED:
-                raise RuntimeError("Joystick removed. please reconnect and restart")
-
             if event.type == pygame.QUIT: # If user clicked close
                 done=True # Flag that we are done so we exit this loop
 

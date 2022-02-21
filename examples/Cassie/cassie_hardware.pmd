@@ -38,12 +38,12 @@ group "1.cassie-robot" {
         exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
         host = "dair-cassie";
     }
-    cmd "5.0 running-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_running_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_RUNNING";
+    cmd "4.0 alip-walking-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller_alip --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
         host = "dair-cassie";
     }
-    cmd "5.1 running-controller-real-robot (radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_running_controller --use_radio=1 --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_RUNNING";
+    cmd "4.1 alip-walking-controller-real-robot (radio)" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller_alip --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
         host = "dair-cassie";
     }
 }
@@ -59,10 +59,6 @@ group "2.controller-switch-commands" {
     }
     cmd "controller-switch-to-jumping" {
         exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_JUMPING --channel_x=CASSIE_STATE_DISPATCHER";
-        host = "dair-cassie";
-    }
-    cmd "controller-switch-to-running" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_RUNNING --channel_x=CASSIE_STATE_DISPATCHER";
         host = "dair-cassie";
     }
     cmd "controller-switch-to-pd" {
@@ -121,15 +117,6 @@ script "switch_to_walking_start_logging" {
     start cmd "0.cassie-lcm-logger";
     wait ms 100;
     start cmd "controller-switch-to-walking";
-    wait ms 2000;
-    stop cmd "3.0 standing-controller-real-robot";
-    stop cmd "3.1 standing-controller-real-robot (radio)";
-}
-
-script "switch_to_running_start_logging" {
-    start cmd "0.cassie-lcm-logger";
-    wait ms 100;
-    start cmd "controller-switch-to-running";
     wait ms 2000;
     stop cmd "3.0 standing-controller-real-robot";
     stop cmd "3.1 standing-controller-real-robot (radio)";

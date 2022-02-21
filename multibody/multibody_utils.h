@@ -140,6 +140,21 @@ int QuaternionStartIndex(const drake::multibody::MultibodyPlant<T>& plant);
 template <typename T>
 bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 
+template <typename T>
+Eigen::Vector3d ReExpressWorldVector3InBodyYawFrame(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const drake::systems::Context<T>& context,
+    const std::string& body_name,
+    const Eigen::Vector3d& vec);
+
+template <typename T>
+Eigen::Vector2d ReExpressWorldVector2InBodyYawFrame(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const drake::systems::Context<T>& context,
+    const std::string& body_name,
+    const Eigen::Vector2d& vec);
+
+
 /// Computes the matrix for mapping global roll-pitch-yaw angular velocity to
 /// quaternion derivatives
 /// Ref: equation 16 of https://arxiv.org/pdf/0811.2889.pdf

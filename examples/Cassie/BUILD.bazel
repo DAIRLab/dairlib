@@ -50,6 +50,8 @@ cc_library(
         "//examples/Cassie:run_osc_running_controller",
         "//examples/Cassie:run_osc_standing_controller",
         "//examples/Cassie:run_osc_walking_controller",
+        "//examples/Cassie:run_osc_walking_controller_alip",
+        "//examples/Cassie:run_pd_controller",
         "//examples/Cassie/osc",
     ],
 )
@@ -360,8 +362,8 @@ cc_binary(
         "//systems/controllers/osc:osc_tracking_datas",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
-        "//systems/primitives:gaussian_noise_pass_through",
         "@drake//:drake_shared_library",
+        "//systems:system_utils",
         "@gflags",
     ],
 )
@@ -396,6 +398,26 @@ cc_binary(
         ":simulator_drift",
         "//examples/Cassie/osc",
         "//examples/impact_invariant_control:impact_aware_time_based_fsm",
+        "//multibody:utils",
+        "//multibody:view_frame",
+        "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:fsm_event_time",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_walking_controller_alip",
+    srcs = ["run_osc_walking_controller_alip.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        ":simulator_drift",
+        "//examples/Cassie/osc",
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",

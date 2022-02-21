@@ -116,9 +116,9 @@ void runDircon() {
   //   std::cout << it.first << std::endl;
   // }
 
-  // trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+  // trajopt.prog().SetSolverOption(drake::solvers::SnoptSolver::id(),
   //                          "Print file", "../snopt.out");
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+  trajopt.prog().SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", 200);
 
   int nx = plant.num_positions() + plant.num_velocities();
@@ -140,20 +140,20 @@ void runDircon() {
   auto x0 = trajopt.initial_state();
   // Set initial floating base orientation without overconstraining when
   // combined with quaternion norm constraint
-  trajopt.AddLinearConstraint(x0(positions_map.at("base_qx")) == .2);
-  trajopt.AddLinearConstraint(x0(positions_map.at("base_qy")) == .3);
-  trajopt.AddLinearConstraint(x0(positions_map.at("base_qz")) == -.2);
-  trajopt.AddLinearConstraint(x0(positions_map.at("base_qw")) >= .1);
-  trajopt.AddLinearConstraint(x0(plant.num_positions() + 
+  trajopt.prog().AddLinearConstraint(x0(positions_map.at("base_qx")) == .2);
+  trajopt.prog().AddLinearConstraint(x0(positions_map.at("base_qy")) == .3);
+  trajopt.prog().AddLinearConstraint(x0(positions_map.at("base_qz")) == -.2);
+  trajopt.prog().AddLinearConstraint(x0(positions_map.at("base_qw")) >= .1);
+  trajopt.prog().AddLinearConstraint(x0(plant.num_positions() + 
       velocities_map.at("base_wx")) == 0);
-  trajopt.AddLinearConstraint(x0(plant.num_positions() + 
+  trajopt.prog().AddLinearConstraint(x0(plant.num_positions() + 
       velocities_map.at("base_wy")) == 0);
-  trajopt.AddLinearConstraint(x0(plant.num_positions() + 
+  trajopt.prog().AddLinearConstraint(x0(plant.num_positions() + 
       velocities_map.at("base_wz")) == 0);
 
 
   auto start = std::chrono::high_resolution_clock::now();
-  const auto result = drake::solvers::Solve(trajopt, trajopt.initial_guess());
+  const auto result = Solve(trajopt.prog(), trajopt.prog().initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Solve time:" << elapsed.count() <<std::endl;

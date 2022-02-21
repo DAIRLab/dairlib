@@ -107,12 +107,13 @@ void runDircon(
   sequence.AddMode(&mode_left);
   sequence.AddMode(&mode_right);
   auto trajopt = Dircon<T>(sequence);  
+  auto& prog = trajopt.prog();
 
   trajopt.AddDurationBounds(duration, duration);
 
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Print file", "../snopt.out");
-  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", 200);
 
   for (int j = 0; j < sequence.num_modes(); j++) {
@@ -139,29 +140,29 @@ void runDircon(
 
   auto x0 = trajopt.initial_state();
   auto xf = trajopt.final_state();
-  trajopt.AddLinearConstraint(
+  prog.AddLinearConstraint(
       x0(positions_map["planar_z"]) == xf(positions_map["planar_z"]));
-  trajopt.AddLinearConstraint(x0(positions_map["hip_pin"]) +
+  prog.AddLinearConstraint(x0(positions_map["hip_pin"]) +
       x0(positions_map["planar_roty"]) == xf(positions_map["planar_roty"]));
-  trajopt.AddLinearConstraint(x0(positions_map["left_knee_pin"]) ==
+  prog.AddLinearConstraint(x0(positions_map["left_knee_pin"]) ==
       xf(positions_map["right_knee_pin"]));
-  trajopt.AddLinearConstraint(x0(positions_map["right_knee_pin"]) ==
+  prog.AddLinearConstraint(x0(positions_map["right_knee_pin"]) ==
       xf(positions_map["left_knee_pin"]));
-  trajopt.AddLinearConstraint(x0(positions_map["hip_pin"]) ==
+  prog.AddLinearConstraint(x0(positions_map["hip_pin"]) ==
       -xf(positions_map["hip_pin"]));
 
 
   int nq = plant.num_positions();
-  trajopt.AddLinearConstraint(x0(nq + velocities_map["planar_zdot"]) ==
+  prog.AddLinearConstraint(x0(nq + velocities_map["planar_zdot"]) ==
                                xf(nq + velocities_map["planar_zdot"]));
-  trajopt.AddLinearConstraint(x0(nq + velocities_map["hip_pindot"]) +
+  prog.AddLinearConstraint(x0(nq + velocities_map["hip_pindot"]) +
                                x0(nq + velocities_map["planar_rotydot"]) ==
                                xf(nq + velocities_map["planar_rotydot"]));
-  trajopt.AddLinearConstraint(x0(nq + velocities_map["left_knee_pindot"]) ==
+  prog.AddLinearConstraint(x0(nq + velocities_map["left_knee_pindot"]) ==
                                xf(nq + velocities_map["right_knee_pindot"]));
-  trajopt.AddLinearConstraint(x0(nq + velocities_map["right_knee_pindot"]) ==
+  prog.AddLinearConstraint(x0(nq + velocities_map["right_knee_pindot"]) ==
                                xf(nq + velocities_map["left_knee_pindot"]));
-  trajopt.AddLinearConstraint(x0(nq + velocities_map["hip_pindot"]) ==
+  prog.AddLinearConstraint(x0(nq + velocities_map["hip_pindot"]) ==
                                -xf(nq + velocities_map["hip_pindot"]));
 
   // // Knee joint limits
@@ -171,12 +172,12 @@ void runDircon(
       x(positions_map["right_knee_pin"]) >= 0);
 
   // stride length constraints
-  trajopt.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
-  trajopt.AddLinearConstraint(xf(positions_map["planar_x"]) == stride_length);
+  prog.AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
+  prog.AddLinearConstraint(xf(positions_map["planar_x"]) == stride_length);
 
   for (int i = 0; i < 10; i++) {
-    trajopt.AddBoundingBoxConstraint(0, 0, trajopt.force_vars(0, i)(1));
-    trajopt.AddBoundingBoxConstraint(0, 0, trajopt.force_vars(1, i)(1));
+    prog.AddBoundingBoxConstraint(0, 0, trajopt.force_vars(0, i)(1));
+    prog.AddBoundingBoxConstraint(0, 0, trajopt.force_vars(1, i)(1));
   }
 
   const double R = 10;  // Cost on input effort
@@ -192,7 +193,7 @@ void runDircon(
       visualizer_poses, 0.2, "base");
 
   auto start = std::chrono::high_resolution_clock::now();
-  const auto result = drake::solvers::Solve(trajopt, trajopt.initial_guess());
+  const auto result = Solve(prog, prog.initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Solve time:" << elapsed.count() <<std::endl;

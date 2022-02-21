@@ -64,13 +64,13 @@ DirconTrajectory::DirconTrajectory(
                              num_forces, force_traj.time_vector.size());
 
     // Impulse vars
-//    if (mode < num_modes_ - 1) {
-//      impulse_traj.traj_name = "impulse_vars" + std::to_string(mode);
-//      impulse_traj.datatypes = impulse_names;
-//      // Get start of mode to get time of impulse
-//      impulse_traj.time_vector = state_breaks[mode].segment(0, 1);
-//      impulse_traj.datapoints = result.GetSolution(dircon.impulse_vars(mode));
-//    }
+    if (mode > 0) {
+      impulse_traj.traj_name = "impulse_vars" + std::to_string(mode);
+      impulse_traj.datatypes = impulse_names;
+      // Get start of mode to get time of impulse
+      impulse_traj.time_vector = state_breaks[mode].segment(0, 1);
+      impulse_traj.datapoints = result.GetSolution(dircon.impulse_vars(mode));
+    }
 
     // Collocation force vars
     if (state_breaks[mode].size() > 1) {
@@ -260,7 +260,8 @@ DirconTrajectory::DirconTrajectory(
   decision_var_traj.datatypes =
       vector<string>(decision_var_traj.datapoints.size());
   for (int i = 0; i < decision_var_traj.datapoints.size(); i++) {
-    decision_var_traj.datatypes[i] = dircon.decision_variable(i).get_name();
+    decision_var_traj.datatypes[i] =
+        dircon.prog().decision_variable(i).get_name();
   }
   AddTrajectory(decision_var_traj.traj_name, decision_var_traj);
   decision_vars_ = &decision_var_traj;
@@ -466,7 +467,7 @@ void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant
       state_map_(nq + vel_map[state_name], i) = 1;
       vel_map_[state_name] = i;
     } else {
-      std::cerr << "Trajectory contains state names that are present in the "
+      std::cerr << "Trajectory contains state names that are not present in the "
                    "supplied MultibodyPlant."
                 << std::endl;
     }
@@ -481,7 +482,7 @@ void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant
       actuator_map_(act_map[motor_name], i) = 1;
       act_map_[motor_name] = i;
     } else {
-      std::cerr << "Trajectory contains state names that are present in the "
+      std::cerr << "Trajectory contains actuator names that are not present in the "
                    "supplied MultibodyPlant."
                 << std::endl;
     }

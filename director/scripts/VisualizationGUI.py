@@ -4,7 +4,6 @@ from PythonQt.QtCore import *
 
 # director library imports
 import dairlib
-from pydairlib.common import FindResourceOrThrow
 from director import visualization as vis
 from director import lcmUtils
 import director.applogic
@@ -25,6 +24,10 @@ import json
 from collections import deque
 import re
 import os
+
+import pydrake
+drake_root = f"{os.path.dirname(pydrake.__file__)}/share"
+os.environ["DRAKE_RESOURCE_ROOT"] = drake_root
 
 class VisualizationGui(QWidget):
 
@@ -75,9 +78,8 @@ class VisualizationGui(QWidget):
 
         # use dialog box to get JSON directory
         mainWindow = director.applogic.getMainWindow()
-        fileFilters = "Data Files (*.json)"
-        print(os.getcwd() + 'director/scripts/')
-        filename = QtGui.QFileDialog.getOpenFileName(mainWindow, "Open...", os.getcwd() + '/director/scripts/', fileFilters, '', QtGui.QFileDialog.DontUseNativeDialog)
+        fileFilters = "Data Files (*.json)";
+        filename = QtGui.QFileDialog.getOpenFileName(mainWindow, "Open...", os.getcwd(), fileFilters, "", QtGui.QFileDialog.DontUseNativeDialog)
 
         if not filename:
           return
@@ -134,8 +136,9 @@ class VisualizationGui(QWidget):
             builder = pydrake.systems.framework.DiagramBuilder()
             self.plant, scene_graph = \
                 pydrake.multibody.plant.AddMultibodyPlantSceneGraph(builder, 0)
-            pydrake.multibody.parsing.Parser(self.plant).AddModelFromFile(
-            FindResourceOrThrow(self.modelFile))
+
+            file = os.getcwd() + '/' + self.modelFile
+            pydrake.multibody.parsing.Parser(self.plant).AddModelFromFile(file)
 
             # determine if there is a need to use the weld a body part
             if (self.weldBody != None):
@@ -330,6 +333,9 @@ class VisualizationGui(QWidget):
                         self.plant.GetFrameByName(currShape.frame),
                         currShape.point, self.plant.world_frame())
                     next_loc = pt_world.transpose()[0]
+
+                elif (currShape.category == "com"):
+                    next_loc = self.plant.CalcCenterOfMassPositionInWorld(context = self.context)
 
                 elif (currShape.category == "lcm"):
                     # in the case of an lcm message do not do anything as this is

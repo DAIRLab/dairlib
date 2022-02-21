@@ -97,6 +97,13 @@ class IsaacCubeSim(CubeSim):
         shape_props[0].compliance = params['stiffness']  # compliance
         shape_props[0].restitution = params['restitution']  # damping equivalent
         self.gym.set_actor_rigid_shape_properties(self.env, self.plane_handle, shape_props)
+
+        shape_props = self.gym.get_actor_rigid_shape_properties(self.env, self.cube_handle)
+        shape_props[0].friction = params['mu']
+        shape_props[0].compliance = params['stiffness']  # compliance
+        shape_props[0].restitution = params['restitution']  # damping equivalent
+        self.gym.set_actor_rigid_shape_properties(self.env, self.cube_handle, shape_props)
+
         self.actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
         self.root_states = gymtorch.wrap_tensor(self.actor_root_state)
 

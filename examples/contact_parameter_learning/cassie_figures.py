@@ -50,7 +50,7 @@ def main():
   if sim_type == 'drake':
     params = optimizer.load_drake_params('2022_02_17_11_1000').value
     damp_key = 'dissipation'
-    optimizer.sim = mujoco_cassie_sim_v2.DrakeCassieSim()
+    optimizer.sim = drake_cassie_sim_v2.DrakeCassieSim()
   elif sim_type == 'isaac':
     params = optimizer.load_isaac_params('2022_02_16_18_1000').value
     damp_key = 'restitution'
@@ -93,7 +93,7 @@ def main():
   return
 
 
-def make_gridded_sensitivity_analysis_figure( optimizer, sim_type, optimal_params, damp_key):
+def make_gridded_sensitivity_analysis_figure(optimizer, sim_type, optimal_params, damp_key):
   stiffness_range = sa.get_stiffness_range('',
                                            optimal_params['stiffness'], discretization_n = 10)
   damping_range = sa.get_damping_range(sim_type,
@@ -124,7 +124,7 @@ def make_gridded_sensitivity_analysis_figure( optimizer, sim_type, optimal_param
   plt.ylim((Y[0, 0], Y[-1, -1]))
   plt.xlabel('$k / k^{*}$')
   plt.ylabel('$b / b^{*}$')
-  plt.title(sim_type + ' Stiffness and Damping Sensitivity')
+  plt.title(format_sim_name(sim_type) + ' Stiffness and Damping Sensitivity')
   plt.savefig(sim_type + '_cassie_grid')
 
 def plot_estimated_loss_pdfs(losses):

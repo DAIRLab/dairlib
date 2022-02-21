@@ -38,7 +38,6 @@ class IsaacCassieSim:
         self.current_time = 0.00
         self.end_time = 0.05
         self.traj = CassieSimTraj()
-        self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
         self.box_size = 2.0
         self.default_params = {"mu": 0.1,

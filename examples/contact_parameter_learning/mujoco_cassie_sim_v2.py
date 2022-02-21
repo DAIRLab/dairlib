@@ -28,7 +28,6 @@ class MuJoCoCassieSim():
         self.tree = ET.parse(self.default_model_file)
 
         self.traj = CassieSimTraj()
-        self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
         self.drake_to_mujoco_converter = DrakeToMujocoConverter(self.sim_dt)
         self.cassie_in = cassie_user_in_t()

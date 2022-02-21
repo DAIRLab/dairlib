@@ -162,7 +162,7 @@ def get_damping_ratio_range(sim_type, k0, b0):
 
 
 def get_stiffness_range(sim_type, k0):
-    return {'stiffness' : (k0 * np.logspace(-1.9, 1, num=5)).tolist()}
+    return {'stiffness' : (k0 * np.logspace(-1.9, 1, num=20)).tolist()}
 
 def get_friction_range(sim_type, mu_0):
     params_range = {}
@@ -175,9 +175,9 @@ def get_friction_range(sim_type, mu_0):
 def get_damping_range(sim_type, b0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['dissipation'] = (b0 * np.logspace(-1, 1, base=10, num=5)).tolist()
+        params_range['dissipation'] = (b0 * np.logspace(-1, 1, base=10, num=20)).tolist()
     else:
-        params_range['damping'] = (b0 * np.logspace(-1, 1, base=10, num=5)).tolist()
+        params_range['damping'] = (b0 * np.logspace(-1, 1, base=10, num=20)).tolist()
     return params_range
 
 

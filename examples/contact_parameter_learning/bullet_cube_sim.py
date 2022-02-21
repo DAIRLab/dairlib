@@ -6,9 +6,9 @@ import pybullet as p
 cube_urdf_path = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/urdf/cube.urdf')
 plane_urdf_path = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/urdf/plane.urdf')
 
-default_bullet_contact_params = {"stiffness": 6000,
-                                 "damping": 500.0,
-                                 "mu_tangent": 0.36}
+default_bullet_contact_params = {"stiffness": 550,
+                                 "damping": 19.0,
+                                 "mu_tangent": 0.39}
 
 
 class BulletCubeSim(CubeSim):

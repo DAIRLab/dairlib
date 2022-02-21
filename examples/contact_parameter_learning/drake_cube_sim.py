@@ -13,7 +13,7 @@ from pydairlib.common import FindResourceOrThrow
 from pydairlib.multibody import MultiposeVisualizer
 # from ctypes import c_double
 
-default_drake_contact_params = {"mu": 0.18,
+default_drake_contact_params = {"mu": 0.1,
                                 "stiffness": 1.0e4,
                                 "dissipation": 0.5}
 

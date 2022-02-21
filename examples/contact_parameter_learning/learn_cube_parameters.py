@@ -116,9 +116,15 @@ def get_drake_loss(params, trial_num=None):
 def learn_drake_params():
     
     optimization_param = ng.p.Dict(
-        mu = ng.p.Scalar(lower=0.01, upper=1.0), 
-        stiffness = ng.p.Scalar(lower=1e2, upper=1e5),
-        dissipation = ng.p.Scalar(lower=0, upper=2.0)
+        mu=ng.p.Scalar(
+            lower=drake_cube_sim.default_drake_contact_params['mu']/2,
+            upper=drake_cube_sim.default_drake_contact_params['mu']*2),
+        stiffness=ng.p.Scalar(
+            lower=drake_cube_sim.default_drake_contact_params['stiffness']/2,
+            upper=drake_cube_sim.default_drake_contact_params['stiffness']*2),
+        dissipation=ng.p.Scalar(
+            lower=drake_cube_sim.default_drake_contact_params['dissipation']/2,
+            upper=drake_cube_sim.default_drake_contact_params['dissipation']*2)
     )
 
     optimization_param.value=drake_cube_sim.default_drake_contact_params
@@ -152,11 +158,15 @@ def get_mujoco_loss(params, trial_num=None):
 
 def learn_mujoco_params():
     optimization_param = ng.p.Dict(
-        stiffness=ng.p.Scalar(lower=100, upper=10000),
-        damping=ng.p.Scalar(lower=0, upper=1000),
-        mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0)
-        # mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
-        # mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
+        stiffness=ng.p.Scalar(
+            lower=mujoco_cube_sim.default_mujoco_contact_params['stiffness']/2,
+            upper=mujoco_cube_sim.default_mujoco_contact_params['stiffness']*2),
+        damping=ng.p.Scalar(
+            lower=mujoco_cube_sim.default_mujoco_contact_params['damping']/2,
+            upper=mujoco_cube_sim.default_mujoco_contact_params['damping']*2),
+        mu_tangent=ng.p.Scalar(
+            lower=mujoco_cube_sim.default_mujoco_contact_params['mu_tangent']/2,
+            upper=mujoco_cube_sim.default_mujoco_contact_params['mu_tangent']*2)
     )
     optimization_param.value=mujoco_cube_sim.default_mujoco_contact_params
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
@@ -188,17 +198,20 @@ def get_bullet_loss(params, trial_num=None):
 
 def learn_bullet_params():
     optimization_param = ng.p.Dict(
-        stiffness=ng.p.Scalar(lower=100, upper=10000),
-        damping=ng.p.Scalar(lower=0, upper=1000),
-        mu_tangent=ng.p.Scalar(lower=0.01, upper=1.0),
-        # restitution=ng.p.Scalar(lower=0.01, upper=0.3),
-        # mu_torsion=ng.p.Scalar(lower=0.001, upper=1.0),
-        # mu_rolling=ng.p.Log(lower=0.000001, upper=0.01)
+        stiffness=ng.p.Scalar(
+            lower=bullet_cube_sim.default_bullet_contact_params['stiffness']/4,
+            upper=bullet_cube_sim.default_bullet_contact_params['stiffness']*4),
+        damping=ng.p.Scalar(
+            lower=bullet_cube_sim.default_bullet_contact_params['damping']/4,
+            upper=bullet_cube_sim.default_bullet_contact_params['damping']*4),
+        mu_tangent=ng.p.Scalar(
+            lower=bullet_cube_sim.default_bullet_contact_params['mu_tangent']/2,
+            upper=bullet_cube_sim.default_bullet_contact_params['mu_tangent']*2)
     )
     optimization_param.value=bullet_cube_sim.default_bullet_contact_params
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)
     optimal_params = optimizer.minimize(get_bullet_loss_mp)
-    
+
     log_optimization('bullet', test_idxs, loss_over_time, default_loss, params_over_time, optimal_params.value)
 
 

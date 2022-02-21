@@ -4,11 +4,10 @@ from scipy.spatial.transform import Rotation as R
 from cube_sim import BLOCK_HALF_WIDTH, CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT, load_cube_toss
 
 default_mujoco_contact_params = \
-                 {"stiffness" : 2000, 
-                  "damping" : 36.02, 
-                  "mu_tangent" : 0.18} #, 
-                #   "mu_torsion" : 0.005, 
-                #   "mu_rolling" : 0.0001}
+                 {"stiffness" : 1500,
+                  "damping" : 50.02,
+                  "mu_tangent" : 0.2}
+
 
 def get_model_xml_text(substeps, params=None,):
     if (params is None) : params = default_mujoco_contact_params

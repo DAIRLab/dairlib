@@ -73,7 +73,7 @@ class CassieLoss():
       loss[i] = (2 * Quaternion.distance(Quaternion(traj1[i]), Quaternion(traj2[i]))) ** 2
     return np.mean(loss)
 
-  def CalculateLossTraj(self, traj1, traj2):
+  def CalculateLoss(self, traj1, traj2):
     l_pos = self.CalcPositionsLoss(traj1.get_positions(), traj2.get_positions())
     l_vel = self.CalcVelocitiesLoss(traj1.get_velocities(), traj2.get_velocities())
     l_omega = self.CalcOmegaLoss(traj1.get_omegas(), traj2.get_omegas())
@@ -81,7 +81,7 @@ class CassieLoss():
     return l_pos + l_vel + l_omega + l_quat
 
   def CalcLoss(self, traj1, traj2):
-    return self.CalculateLossTraj(traj1, traj2)
+    return self.CalculateLoss(traj1, traj2)
 
   def CalculateLossParams(self, params):
     # Regularize the state offsets
@@ -102,11 +102,3 @@ class CassieLoss():
       impulse_errors[foot] = net_impulse_1 - net_impulse_2
       total_impulse_error += self.weights.impulse_weight * impulse_errors[foot].T @ impulse_errors[foot]
     return total_impulse_error
-
-  # def calc_rotational_distance(self, quat1, quat2):
-  #   q1 = quat1.ravel()
-  #   q2 = quat2.ravel()
-  #   R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]])
-  #   R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]])
-  #   Rel = R1 * R2.inv()
-  #   return np.linalg.norm(Rel.as_rotvec()) ** 2

@@ -93,7 +93,6 @@ class MuJoCoCassieSim():
             self.cassie_env.step(cassie_in)
         if self.visualize:
             self.cassie_vis.draw(self.cassie_env)
-        import pdb; pdb.set_trace()
         # get current state
         t = self.cassie_env.time()
         q = self.cassie_env.qpos()

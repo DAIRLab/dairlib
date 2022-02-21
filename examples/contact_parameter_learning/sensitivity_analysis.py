@@ -9,6 +9,7 @@ from math import pi
 import cube_sim
 # import drake_cassie_sim
 # import mujoco_cassie_sim
+from tqdm import *
 
 
 def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params_range, traj_set):
@@ -95,7 +96,7 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
 # So far only supports cube
 def get_gridded_stiffness_damping_sensitivity_analysis(
     sim, loss_weights, optimal_params, params_ranges, test_traj_set,
-        plant='cube'):
+        plant='cube', optimizer=None):
     assert('stiffness' in params_ranges)
     assert('damping' in params_ranges or 'dissipation' in params_ranges)
 
@@ -104,16 +105,22 @@ def get_gridded_stiffness_damping_sensitivity_analysis(
         np.meshgrid(params_ranges['stiffness'], params_ranges[damp_key])
     loss_avgs = np.zeros(stiffness.shape)
     loss_meds = np.zeros(stiffness.shape)
-    for i in range(stiffness.shape[0]):
-        for j in range(stiffness.shape[1]):
+    for i in trange(stiffness.shape[0]):
+        for j in trange(stiffness.shape[1]):
             losses = []
             params = deepcopy(optimal_params)
             params['stiffness'] = stiffness[i, j]
             params[damp_key] = damping[i, j]
-            pairs = load_traj_pairs(sim, params, test_traj_set,
-                                    print_progress=True)
-            for _, pair in pairs.items():
-                losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
+            if (plant == 'cube'):
+                pairs = load_traj_pairs(sim, params, test_traj_set,
+                                        print_progress=True)
+                for _, pair in pairs.items():
+                    losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
+            else:
+                sim.make(params, '00')
+                for hardware_traj_num in optimizer.selected_hardware_trajs_nums:
+                    losses.append(optimizer.get_single_loss(hardware_traj_num))
+                sim.free_sim()
             loss_avgs[i, j] = np.average(losses)
             loss_meds[i, j] = np.median(losses)
 
@@ -161,8 +168,8 @@ def get_damping_ratio_range(sim_type, k0, b0):
     return params_range
 
 
-def get_stiffness_range(sim_type, k0):
-    return {'stiffness' : (k0 * np.logspace(-1.9, 1, num=5)).tolist()}
+def get_stiffness_range(sim_type, k0, discretization_n = 5):
+    return {'stiffness' : (k0 * np.logspace(-1.9, 1, num=discretization_n)).tolist()}
 
 def get_friction_range(sim_type, mu_0):
     params_range = {}
@@ -172,12 +179,12 @@ def get_friction_range(sim_type, mu_0):
         params_range['mu_tangent'] = (mu_0 * np.logspace(-1, 1, base=2, num=25)).tolist()
     return params_range
 
-def get_damping_range(sim_type, b0):
+def get_damping_range(sim_type, b0, discretization_n = 5):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['dissipation'] = (b0 * np.logspace(-1, 1, base=10, num=5)).tolist()
+        params_range['dissipation'] = (b0 * np.logspace(-1, 1, base=10, num=discretization_n)).tolist()
     else:
-        params_range['damping'] = (b0 * np.logspace(-1, 1, base=10, num=5)).tolist()
+        params_range['damping'] = (b0 * np.logspace(-1, 1, base=10, num=discretization_n)).tolist()
     return params_range
 
 

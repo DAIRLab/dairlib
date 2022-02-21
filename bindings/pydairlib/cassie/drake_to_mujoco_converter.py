@@ -44,7 +44,6 @@ class DrakeToMujocoConverter():
     # Print the indices for the newly constructed plants
     # self.print_pos_indices(self.knee_linkage_plant)
     # self.print_pos_indices(self.plant)
-    self.print_vel_indices(self.plant)
 
     self.pos_map = makeNameToPositionsMap(self.plant)
     self.vel_map = makeNameToVelocitiesMap(self.plant)

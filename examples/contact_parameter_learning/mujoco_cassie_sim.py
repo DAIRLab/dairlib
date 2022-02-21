@@ -197,7 +197,7 @@ class LearningMujocoCassieSim():
       #   plt.figure('loss')
       #   self.ps.plot(t_x_sim[:min_time_length], x_traj_sim[:min_time_length, 23:45] - x_traj_hardware[:min_time_length, 23:45], color=self.ps.grey)
       plt.show()
-    traj_loss = self.loss_func.CalculateLossTraj(x_traj_sim[:min_time_length], x_traj_hardware[:min_time_length])
+    traj_loss = self.loss_func.CalculateLoss(x_traj_sim[:min_time_length], x_traj_hardware[:min_time_length])
     # regularization_loss = self.loss_func.CalculateLossParams(params)
     # return traj_loss + regularization_loss
     return traj_loss

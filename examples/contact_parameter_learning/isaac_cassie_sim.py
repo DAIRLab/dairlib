@@ -27,7 +27,8 @@ from isaacgym.torch_utils import *
 class IsaacCassieSim:
 
     def __init__(self, visualize=False):
-        self.sim_dt = 5e-4
+        # changing the sim_dt from 5e-5 to 5e-4 does not change the trajectory but greatly improves the runtime
+        self.sim_dt = 5e-5
         self.dt = 5e-4
         self.substeps = 10
         self.visualize = visualize
@@ -37,7 +38,6 @@ class IsaacCassieSim:
         self.current_time = 0.00
         self.end_time = 0.05
         self.traj = CassieSimTraj()
-        self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
         self.box_size = 2.0
         self.default_params = {"mu": 0.1,
@@ -55,10 +55,8 @@ class IsaacCassieSim:
         self.efforts_map[15, 9] = 1
 
         self.kCassieAchillesLength = 0.5012
-        # self.achilles_stiffness = 1e4
-        # self.achilles_damping = 2e1
-        self.achilles_stiffness = 1e5
-        self.achilles_damping = 2e2
+        self.achilles_stiffness = 1e6
+        self.achilles_damping = 7e2
 
         self.state_converter = DrakeToIsaacConverter()
 
@@ -209,12 +207,12 @@ class IsaacCassieSim:
         next_timestep = self.current_time + self.dt
         action = self.hardware_traj.get_action(next_timestep)
         efforts = np.array(self.state_converter.map_drake_effort_to_isaac(action), dtype=np.float32)
-        self.gym.apply_actor_dof_efforts(self.env, self.cassie_handle, efforts)
-        self.left_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
-        self.right_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
-
-        self.gym.simulate(self.sim)
-        self.gym.fetch_results(self.sim, True)
+        for i in range(int(self.dt / self.sim_dt)):
+            self.gym.apply_actor_dof_efforts(self.env, self.cassie_handle, efforts)
+            self.left_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
+            self.right_loop_closure.CalcAndAddForceContribution(self.gym, self.env)
+            self.gym.simulate(self.sim)
+            self.gym.fetch_results(self.sim, True)
 
         if self.visualize:
             self.gym.step_graphics(self.sim)

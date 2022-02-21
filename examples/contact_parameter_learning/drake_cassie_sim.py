@@ -224,7 +224,7 @@ class DrakeCassieSim():
         self.ps.plot(t_x_hardware[:min_time_length], x_traj_hardware[:min_time_length, joint])
         self.ps.add_legend([self.x_datatypes[joint] + ': sim', self.x_datatypes[joint] + ': real'])
       plt.show()
-    traj_loss = self.loss_func.CalculateLossTraj(x_traj_sim[:min_time_length], x_traj_hardware[:min_time_length])
+    traj_loss = self.loss_func.CalculateLoss(x_traj_sim[:min_time_length], x_traj_hardware[:min_time_length])
     # regularization_loss = self.loss_func.CalculateLossParams(params)
     # return traj_loss + regularization_loss
     return traj_loss

@@ -209,6 +209,7 @@ py_binary(
     srcs = ["cassie_figures.py"],
     deps = [
         ":cassie_loss_plotter",
+        ":learn_cassie_parameters_v2",
         ":evaluate_cube_parameters",
         ":plotting_utils",
         ":sensitivity_analysis",

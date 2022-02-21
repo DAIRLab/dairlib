@@ -80,7 +80,7 @@ class CassieContactParamsOptimizer():
             self.total_loss += self.get_single_loss(hardware_traj_num)
             # self.total_loss += self.get_single_loss(hardware_traj_num, params)
         self.sim.free_sim()
-        avg_loss = self.total_loss / len(self.hardware_traj_nums)
+        avg_loss = self.total_loss / len(self.selected_hardware_trajs_nums)
         print(avg_loss)
         return avg_loss
 
@@ -165,19 +165,27 @@ if __name__ == '__main__':
     # optimizer.learn_drake_params()
     # optimizer.learn_mujoco_params()
     # optimizer.learn_isaac_params()
-    optimizer.learn_bullet_params()
+    # optimizer.learn_bullet_params()
 
     # isaac_params = optimizer.load_isaac_params('2022_02_17_17_1000')
     # isaac_params = optimizer.load_isaac_params('2022_02_16_18_1000')
     # loss_trajectory = np.load(optimizer.isaac_params_folder + 'training_loss_trajectory_1000.npy')
 
-    # drake_params = optimizer.load_drake_params('2022_02_17_17_1000')
-    # drake_params = optimizer.load_drake_params('2022_02_17_11_1000')
-    # loss_trajectory = np.load(optimizer.drake_params_folder + 'training_loss_trajectory_1000.npy')
+    drake_params = optimizer.load_drake_params('2022_02_17_17_1000')
+    # drake_params = optimizer.load_drake_params('2022_02_21_12_1000')
+    loss_trajectory = np.load(optimizer.drake_params_folder + 'training_loss_trajectory_1000.npy')
+    optimizer.sim = drake_cassie_sim_v2.DrakeCassieSim()
+    optimizer.get_batch_loss(drake_params.value)
+    print(drake_params.value)
 
     # mujoco_params = optimizer.load_mujoco_params('2022_02_17_11_1000')
-    # mujoco_params = optimizer.load_mujoco_params('2022_02_18_11_1000')
+    # mujoco_params = optimizer.load_mujoco_params('2022_02_21_13_1000')
     # loss_trajectory = np.load(optimizer.mujoco_params_folder + 'training_loss_trajectory_1000.npy')
+    # optimizer.sim = mujoco_cassie_sim_v2.MuJoCoCassieSim()
+    # optimizer.get_batch_loss(mujoco_params.value)
+    # print(mujoco_params.value)
+
+
     # import matplotlib.pyplot as plt
     # plt.plot(loss_trajectory)
     # plt.show()

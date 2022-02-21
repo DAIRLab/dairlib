@@ -25,7 +25,6 @@ class DrakeCassieSim():
         self.current_time = 0.00
         self.end_time = 0.05
         self.traj = CassieSimTraj()
-        self.valid_ground_truth_trajs = np.arange(0, 29)
         self.hardware_traj = None
         self.default_params = {"mu": 0.8,
                                "stiffness": 4e4,
@@ -59,8 +58,9 @@ class DrakeCassieSim():
     def reset(self, hardware_traj_num):
         self.hardware_traj = CassieHardwareTraj(hardware_traj_num)
         self.traj = CassieSimTraj()
+        x_init_drake = self.hardware_traj.get_initial_state()
         self.plant.SetPositionsAndVelocities(self.plant.GetMyMutableContextFromRoot(
-            self.sim.get_mutable_context()), self.hardware_traj.get_initial_state())
+            self.sim.get_mutable_context()), x_init_drake)
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.traj.update(self.start_time, self.hardware_traj.get_initial_state(), self.hardware_traj.get_action(self.start_time))
         self.sim.Initialize()

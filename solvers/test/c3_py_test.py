@@ -1,8 +1,10 @@
 import numpy as np
 
+from pydairlib.solvers import LCS
 from pydairlib.solvers import C3MIQP
 from pydairlib.solvers import C3Options
 
+N = 10
 n = 4
 m = 2
 k = 1
@@ -36,21 +38,42 @@ d = np.zeros((4, 1))
 
 H = np.zeros((m, k))
 
-Q = np.array([[10, 0, 0, 0], [0, 3, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+Q = np.array([[10, 0, 0, 0], [0, 3, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]) * N
 
-R = np.array([[1]])
+R = np.array([[1]]) * N
 
-G = 0.1*np.identity(n+m+k)
+G = 0.1*np.identity(n+m+k) * N
+
+px = 1000
+plam = 1
+pu = 0
+U = [[px, 0, 0, 0, 0, 0, 0], [0, px, 0, 0, 0, 0, 0 ], [0, 0, px, 0, 0, 0, 0 ], [0, 0, 0, px, 0 ,0 ,0], [0, 0, 0, 0, plam, 0, 0], [0, 0, 0, 0, 0, plam, 0  ], [0,0,0,0,0,0,0]]
+U= np.asarray(U)
+
+U = U * N
+
+
+cartpole = LCS(A,B,D,d,E,F,H,c, N)
 
 options = C3Options()
 
-opt = C3MIQP(A, B, D, d, E, F, H, c, Q, R, G, N, options)
+opt = C3MIQP(cartpole, Q, R, G, U, options)
 
 x0 = np.zeros((4,1))
+
 
 delta = [np.zeros((m, 1))] * N
 
 w = [np.zeros((m, 1))] * N
+
+input = [5]
+
+opt.Solve(x0, delta, w)
+
+cartpole.Simulate(x0, input)
+
+print(x1)
+
 
 c_i = np.array([[d1, -d2]]).T
 delta_c = np.array([[0, 0]]).T
@@ -58,9 +81,9 @@ U = np.identity(7)
 
 
 
-ret = opt.SolveSingleProjection(U=U, delta_c=delta_c, E=E, F=F, H=H, c=c_i)
+#ret = opt.SolveSingleProjection(U=U, delta_c=delta_c, E=E, F=F, H=H, c=c_i)
 
 # At the moment, the Solve() function causes a crash, somewhere in the C++
-(u, delta_1, w_1) = opt.Solve(x0, delta, w)
+#(u, delta_1, w_1) = opt.Solve(x0, delta, w)
 
 # import pdb; pdb.set_trace()

@@ -52,9 +52,12 @@ PYBIND11_MODULE(c3, m)
 
   // An example of binding a simple function. pybind will automatically
   // deduce the arguments, but providing the names here for usability
+
+  /*
   c3miqp.def("SolveSingleProjection",
   					 &C3MIQP::SolveSingleProjection, arg("U"), arg("delta_c"), arg("E"),
-  					 arg("F"), arg("H"), arg("c"));
+                    arg("F"), arg("H"), arg("c"));
+*/
 
 /*
   c3miqp.def("Solve",
@@ -73,6 +76,7 @@ PYBIND11_MODULE(c3, m)
   			VectorXd u = self->Solve(x0, delta, w);
   			// Return a tuple of (u, delta, w), by value
   			return py::make_tuple(u, *delta, *w);
+              //return u;
 
   		}
   		);

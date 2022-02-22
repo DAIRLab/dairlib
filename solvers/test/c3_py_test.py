@@ -38,11 +38,11 @@ d = np.zeros((4, 1))
 
 H = np.zeros((m, k))
 
-Q = np.array([[10, 0, 0, 0], [0, 3, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]) * N
+Q = np.array([[10, 0, 0, 0], [0, 3, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
 
-R = np.array([[1]]) * N
+R = np.array([[1]])
 
-G = 0.1*np.identity(n+m+k) * N
+G = 0.1*np.identity(n+m+k)
 
 px = 1000
 plam = 1
@@ -50,38 +50,61 @@ pu = 0
 U = [[px, 0, 0, 0, 0, 0, 0], [0, px, 0, 0, 0, 0, 0 ], [0, 0, px, 0, 0, 0, 0 ], [0, 0, 0, px, 0 ,0 ,0], [0, 0, 0, 0, plam, 0, 0], [0, 0, 0, 0, 0, plam, 0  ], [0,0,0,0,0,0,0]]
 U= np.asarray(U)
 
-U = U * N
+
+Qp = []
+Rp = []
+Gp = []
+Up = []
+
+for i in range(N):
+	Qp.append(Q)
+	Rp.append(R)
+	Gp.append(G)
+	Up.append(U)
+
+#change with algebraic ricatti
+Qp.append(Q)
 
 
 cartpole = LCS(A,B,D,d,E,F,H,c, N)
 
 options = C3Options()
 
-opt = C3MIQP(cartpole, Q, R, G, U, options)
+opt = C3MIQP(cartpole, Qp, Rp, Gp, Up, options)
+
+#print(Qp)
 
 x0 = np.zeros((4,1))
 
+x0[1] = 0.2
 
-delta = [np.zeros((m, 1))] * N
-
-w = [np.zeros((m, 1))] * N
+delta_add = np.zeros((m, 1))
+w_add = np.zeros((m, 1))
 
 input = [5]
 
-opt.Solve(x0, delta, w)
+delta = []
+w = []
 
-cartpole.Simulate(x0, input)
+for i in range(N):
+	delta.append(delta_add)
+	w.append(w_add)
+
+
+z = opt.Solve(x0, delta, w)
+
+print(z)
+
+x1 = cartpole.Simulate(x0, input)
 
 print(x1)
 
 
-c_i = np.array([[d1, -d2]]).T
-delta_c = np.array([[0, 0]]).T
-U = np.identity(7)
+#c_i = np.array([[d1, -d2]]).T
+#delta_c = np.array([[0, 0]]).T
+#U = np.identity(7)
+#ret = opt.SolveSingleProjection(U, delta_c, E, F, H, c_i)
 
-
-
-#ret = opt.SolveSingleProjection(U=U, delta_c=delta_c, E=E, F=F, H=H, c=c_i)
 
 # At the moment, the Solve() function causes a crash, somewhere in the C++
 #(u, delta_1, w_1) = opt.Solve(x0, delta, w)

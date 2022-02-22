@@ -14,8 +14,8 @@ import numpy as np
 from plotting_utils import format_sim_name
 
 mse_loss = cube_sim.LossWeights() # default weights are all ones
-pos_rot_loss = cube_sim.FastLossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), bullet=True)
-# pos_rot_loss = cube_sim.LossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=np.zeros((3,)), omega=np.zeros((3,)))
+pos_rot_loss = cube_sim.FastLossWeights(
+    pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), bullet=True)
 
 def visualize_learned_params(params, data_sim, toss_id):
     cube_data = cube_sim.load_cube_toss(cube_sim.make_cube_toss_filename(cube_data_folder, toss_id))
@@ -59,14 +59,63 @@ def calc_damping_ratio(params):
 # visualize if there is action at a distance 
 # by checking impulses against sdf
 def plot_sdf_and_contact(traj, title=''):
-    impulses = calculate_contact_impulse(traj)
-    sdf = calculate_sdf_trajectory(traj) * 100.0
+    impulses = calculate_contact_impulse(traj) / (0.37*9.81)
+    sdf = calculate_sdf_trajectory(traj)
+    sdf *= 1000.0
     times = cube_sim.CubeSim.make_traj_timestamps(traj)
     
     plt.figure()
     plt.plot(times, sdf)
-    plt.step(times[1:], impulses[:,1])
-    plt.legend(['sdf (mm)', 'Avg Force (N)'])
+    plt.step(times[1:], impulses[:,0])
+    plt.legend(['sdf (mm)', 'Avg Force (% Cube Weight)'])
+
+
+def plot_penetration_vs_error(traj_pairs, loss):
+    err = np.zeros((len(traj_pairs),))
+    pen = np.zeros((len(traj_pairs),))
+    p_i = np.zeros((len(traj_pairs),))
+    for i in range(len(traj_pairs)):
+        sdf = calculate_sdf_trajectory(traj_pairs[i][0])
+        start = np.argwhere(sdf <= 0)[0,0]
+        sdf = sdf[start:]
+        err[i] = loss.CalculateLoss(traj_pairs[i][0], traj_pairs[i][1])
+        apex_t = np.argmax(sdf)
+        pen[i] = traj_pairs[i][0][apex_t, cube_sim.CUBE_DATA_POSITION_SLICE.stop-1]
+        p_i[i] = sdf[0]
+
+    fail_idx = np.argwhere(err > 0.5)
+    success_idx = np.argwhere(err < 0.5)
+
+    plt.scatter(pen[fail_idx], err[fail_idx])
+    plt.xlabel('maximum bounce height (table to cube corner, m)')
+    plt.ylabel('Loss')
+    plt.title('Drake')
+    print(f'N fail:{fail_idx.shape[0]}')
+    print(f'fail med: {np.median(pen[fail_idx])},'
+          f' success_med: {np.median(pen[success_idx])}')
+
+
+def plot_omega_vs_err(traj_pairs, losses):
+    omega = np.zeros((len(traj_pairs),))
+    loss = []
+    for i in range(omega.shape[0]):
+        omega[i] = np.linalg.norm(
+            traj_pairs[i][0][0, cube_sim.CUBE_DATA_OMEGA_SLICE])
+        loss.append(losses[i])
+
+    plt.scatter(omega, loss)
+
+
+def plot_sliding_vel_vs_error(traj_pairs, loss):
+    err = np.zeros((len(traj_pairs),))
+    vel = np.zeros((len(traj_pairs),))
+    for i in range(len(traj_pairs)):
+        err[i] = loss.CalculateLoss(traj_pairs[i][0], traj_pairs[i][1])
+        vel[i] = np.max(np.linalg.norm(
+            traj_pairs[i][1][:, cube_sim.CUBE_DATA_VELOCITY_SLICE][:,:2], axis=1))
+    plt.scatter(vel, err)
+
+
 
 
 def plot_contact_impulses(traj_pair, title=''):
@@ -241,8 +290,8 @@ def compare_worst_case(result_losses):
     for key in result_losses.keys():
         loss_lists[key] = list(result_losses[key].values())
         toss_id_lists[key] = list(result_losses[key].keys())
-        worst_case_union = list_union(worst_case_union, toss_id_lists[key][:20]) 
-        worst_case_by_result[key] = toss_id_lists[key][:20]
+        worst_case_union = list_union(worst_case_union, toss_id_lists[key][:50])
+        worst_case_by_result[key] = toss_id_lists[key][:50]
         num_traj = len(loss_lists[key])
         print(format_sim_name(key), end='     ')
     
@@ -295,59 +344,58 @@ def get_eval_sim(result_id):
     elif (sim_type == 'bullet'):
         eval_sim = bullet_cube_sim.BulletCubeSim(substeps=substeps)
     else:
-        print(f'{sim_type} is not a supported simulator - please check for spelling mistakes and try again')
+        print(f'{sim_type} is not a supported simulator - '
+              f'please check for spelling mistakes and try again')
         eval_sim = None
     
     return eval_sim
 
 
-if (__name__ == '__main__'):
-    
-    # ids = ['bullet_2021_08_31_16_53_100', 
-    #        'bullet_2021_08_31_16_54_100',
-    #        'bullet_2021_08_31_16_55_100']
+'''
+MuJoCo does poorly on:
+98: 1.716660188946459, Drake: 0.09156737726210927,  Bullet: 0.08788414835125526
+131: 1.70630226926509, Drake: 0.002824340702355384, Bullet: 0.006856337891091856
+69: 1.852155781179135, Drake: 0.034522080477405376, Bullet: 0.04861447755645776
+40: 1.753181670344446, Drake: 0.0390318811175085,   Bullet: 0.030108881166298115
+41: 1.772070828274563, Drake: 0.09489551415782743,  Bullet: 0.09992052713587063
+424: 1.65708407838393, Drake: 0.004789650031465638, Bullet: 0.021473635831862514
+74: 1.834700963188898, Drake: 0.07011218322986842,  Bullet: 0.06801649169201493
+428: 1.89230347762956, Drake: 0.013299232835989206, Bullet: 0.014990523159786526
+13: 1.678057795492889, Drake: 1.147878016063214,    Bullet: 1.5111092761444016
+204: 1.93138896322582, Drake: 0.18843052278183464,  Bullet: 0.015637716905955806
+361: 2.11957152033531, Drake: 0.08129174910387611,  Bullet: 0.08089075668020973
+181: 1.80547033854560, Drake: 0.039653810290791555, Bullet: 0.008131049097260291
+118: 1.67463106413349, Drake: 0.02274910139478128,  Bullet: 0.02369505796822118
+471: 1.65733546143384, Drake: 0.020100468256805674, Bullet: 0.021532889326593252
+88: 2.077534422678576, Drake: 1.4196046327396925,   Bullet: 1.429125869777734
+250: 1.68928686946214, Drake: 0.004517231431237634, Bullet: 0.018244078880291222
+443: 1.76718433018395, Drake: 1.346168545431131,    Bullet: 1.4754644350814576
+'''
 
-    # ids = ['drake_2021_08_31_14_00_100', 
-    #        'drake_2021_08_31_14_04_100',
-    #        'drake_2021_08_31_17_28_100']
+if __name__ == '__main__':
 
-    # ids = ['mujoco_2021_08_31_16_17_100', 
-    #        'mujoco_2021_08_31_16_18_100', 
-    #        'mujoco_2021_08_31_16_21_100']
-    
-    # ids = ['mujoco_2021_08_31_16_17_100',
-    #        'drake_2021_08_31_14_04_100', 
-    #        'bullet_2021_08_31_16_55_100']
+    ids = ['drake_2022_02_21_18_31_10',
+           'mujoco_2022_02_21_23_19_10',
+           'bullet_2022_02_22_00_36_10']
 
-           
-    ids = [
-            'mujoco_2021_09_12_10_27_10', 
-           'drake_2021_09_11_16_44_10',
-           'bullet_2021_09_13_23_26_10']
+    sorted_pairs, losses, params, sims, _ = \
+        load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
 
-    # ids = ['mujoco_2021_08_31_11_03_1',
-    #        'mujoco_2021_08_31_12_05_10',
-    #        'mujoco_2021_08_31_16_18_100']
-    
-    # ids = ['drake_2021_08_31_11_11_1', 
-    #        'drake_2021_08_31_11_32_10', 
-    #        'drake_2021_08_31_14_04_100']
+    fail_idxs = list(sorted_pairs[ids[0]].keys())[:75]
+    succes_idxs = list(sorted_pairs[ids[0]].keys())[76:]
 
-    # ids = ['bullet_2021_08_31_11_12_1', 
-    #        'bullet_2021_08_31_12_16_10', 
-    #        'bullet_2021_08_31_16_55_100']
-
-    # sorted_pairs, losses, params, sims, _ = load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
+    for idx in succes_idxs:
+        plt.plot(sorted_pairs[ids[0]][idx][0][:, cube_sim.CUBE_DATA_POSITION_SLICE.stop-1])
 
     # worst_case_set, worst_case_by_id = compare_worst_case(losses)
     # print()
     # for i in range(3):
     #     comp = list_complement([0, 1, 2], [i])
-
+    #
     #     fails = list_complement(list_complement(worst_case_set,
     #         worst_case_by_id[ids[comp[0]]]), worst_case_by_id[ids[comp[1]]])
-        
-    #     print(f'{format_sim_name(ids[i])} does poorly on:')
+    #
+    #     print(f'\n{format_sim_name(ids[i])} does poorly on:')
     #     for toss_id in fails:
     #         print(f'{toss_id}: {losses[ids[i]][toss_id]}, \
     #             {format_sim_name(ids[comp[0]])}: {losses[ids[comp[0]]][toss_id]}, \
@@ -356,20 +404,23 @@ if (__name__ == '__main__'):
     #     print()
 
     # visualize_learned_params(params[ids[0]], sims[ids[0]], 69)
+    # plot_penetration_vs_error(sorted_pairs[ids[2]], pos_rot_loss)
+    # plot_omega_vs_err(sorted_pairs[ids[0]], losses[ids[0]])
 
-    # plot_sdf_and_contact(sorted_pairs[ids[0]][69][1])
-    # plot_sdf_and_contact(sorted_pairs[ids[0]][69][0])
-    # plt.show()
+    # plot_sdf_and_contact(sorted_pairs[ids[0]][118][1])
+    # plot_sdf_and_contact(sorted_pairs[ids[1]][118][1])
+    # plot_sdf_and_contact(sorted_pairs[ids[2]][118][1])
+    plt.show()
 
 
     # plot_estimated_loss_pdfs(losses)
     # plt.show()
 
 #     ## INDIVIDUAL LOG FUNCTIONS
-    learning_result = ids[2]
+#     learning_result = ids[2]
 # # 
-    eval_sim = get_eval_sim(learning_result)
-    params, _, _ = load_params_and_logs(learning_result)
+#     eval_sim = get_eval_sim(learning_result)
+    # params, _, _ = load_params_and_logs(learning_result)
     # traj_pairs = load_traj_pairs(eval_sim, params, range(550))
     # weights=cube_sim.FastLossWeights(
     #         pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
@@ -378,7 +429,7 @@ if (__name__ == '__main__'):
     # for key in sorted_pairs:
     #     print(f'Toss: {key} \t\t MSE: {losses[key]}')
 
-    visualize_learned_params(params, eval_sim, 361) # list(sorted_pairs.keys())[0])
+    # visualize_learned_params(params, eval_sim, 361) # list(sorted_pairs.keys())[0])z
 #     if (eval_sim == None): quit()
     # for id in ids:
     #     params, _, _ = load_params_and_logs(id)

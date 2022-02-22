@@ -91,7 +91,8 @@ def main():
              'sigma': 1e-6,
              'alpha': 1.6,
              'delta': 1e-6,
-             'check_termination': 25}
+             'check_termination': 25,
+             'time_limit': 1e-3}
 
         osqp_result = solve_osqp(qp, osqp_settings)
         run_times[i] = osqp_result['run_time']

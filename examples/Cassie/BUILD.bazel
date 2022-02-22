@@ -358,7 +358,6 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
-        "//systems:system_utils",
         "//systems/controllers/osc:osc_tracking_datas",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",

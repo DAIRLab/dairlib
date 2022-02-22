@@ -86,6 +86,7 @@ DEFINE_string(
 DEFINE_double(
     fsm_time_offset, 0.0,
     "Time (s) in the fsm to move from the stance phase to the flight phase");
+DEFINE_double(qp_time_limit, 0.0, "Time limit (s) for the OSC QP");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -174,7 +175,8 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true);
+      plant, plant, plant_context.get(), plant_context.get(), true, false,
+      FLAGS_qp_time_limit);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_RUNNING", &lcm, TriggerTypeSet({TriggerType::kForced})));

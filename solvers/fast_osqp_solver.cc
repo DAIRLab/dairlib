@@ -2,15 +2,15 @@
 
 #include <vector>
 
-#include "dairlib/lcmt_qp.hpp"
 #include <lcm/lcm-cpp.hpp>
 #include <osqp.h>
+
+#include "dairlib/lcmt_qp.hpp"
 
 #include "drake/common/text_logging.h"
 #include "drake/math/eigen_sparse_triplet.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
-
 
 using drake::math::SparseMatrixToTriplets;
 using drake::solvers::Binding;
@@ -206,9 +206,9 @@ csc* EigenSparseToCSC(const Eigen::SparseMatrix<c_float>& mat) {
 }
 
 template <typename T1, typename T2>
-void SetFastOsqpSolverSetting(const std::unordered_map<std::string, T1>& options,
-                          const std::string& option_name,
-                          T2* osqp_setting_field) {
+void SetFastOsqpSolverSetting(
+    const std::unordered_map<std::string, T1>& options,
+    const std::string& option_name, T2* osqp_setting_field) {
   const auto it = options.find(option_name);
   if (it != options.end()) {
     *osqp_setting_field = it->second;
@@ -240,32 +240,34 @@ void SetFastOsqpSolverSettings(const SolverOptions& solver_options,
   SetFastOsqpSolverSetting(options_double, "eps_abs", &(settings->eps_abs));
   SetFastOsqpSolverSetting(options_double, "eps_rel", &(settings->eps_rel));
   SetFastOsqpSolverSetting(options_double, "eps_prim_inf",
-                       &(settings->eps_prim_inf));
+                           &(settings->eps_prim_inf));
   SetFastOsqpSolverSetting(options_double, "eps_dual_inf",
-                       &(settings->eps_dual_inf));
+                           &(settings->eps_dual_inf));
   SetFastOsqpSolverSetting(options_double, "alpha", &(settings->alpha));
   SetFastOsqpSolverSetting(options_double, "delta", &(settings->delta));
   // Default polish to true, to get an accurate solution.
   SetFastOsqpSolverSettingWithDefaultValue(options_int, "polish",
-                                       &(settings->polish), 1);
+                                           &(settings->polish), 1);
   SetFastOsqpSolverSetting(options_int, "polish_refine_iter",
-                       &(settings->polish_refine_iter));
+                           &(settings->polish_refine_iter));
   SetFastOsqpSolverSettingWithDefaultValue(options_int, "verbose",
-                                       &(settings->verbose), 0);
+                                           &(settings->verbose), 0);
   SetFastOsqpSolverSetting(options_int, "scaled_termination",
-                       &(settings->scaled_termination));
+                           &(settings->scaled_termination));
   SetFastOsqpSolverSetting(options_int, "check_termination",
-                       &(settings->check_termination));
+                           &(settings->check_termination));
   SetFastOsqpSolverSetting(options_int, "warm_start", &(settings->warm_start));
   SetFastOsqpSolverSetting(options_int, "scaling", &(settings->scaling));
-  SetFastOsqpSolverSetting(options_int, "adaptive_rho", &(settings->adaptive_rho));
+  SetFastOsqpSolverSetting(options_int, "adaptive_rho",
+                           &(settings->adaptive_rho));
   SetFastOsqpSolverSetting(options_double, "adaptive_rho_interval",
-                       &(settings->adaptive_rho_interval));
+                           &(settings->adaptive_rho_interval));
   SetFastOsqpSolverSetting(options_double, "adaptive_rho_tolerance",
-                       &(settings->adaptive_rho_tolerance));
+                           &(settings->adaptive_rho_tolerance));
   SetFastOsqpSolverSetting(options_double, "adaptive_rho_fraction",
-                       &(settings->adaptive_rho_fraction));
-  SetFastOsqpSolverSetting(options_double, "time_limit", &(settings->time_limit));
+                           &(settings->adaptive_rho_fraction));
+  SetFastOsqpSolverSetting(options_double, "time_limit",
+                           &(settings->time_limit));
 }
 
 template <typename C>
@@ -328,6 +330,7 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   osqp_settings_ = static_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
   osqp_set_default_settings(osqp_settings_);
   SetFastOsqpSolverSettings(solver_options, osqp_settings_);
+  std::cout << osqp_settings_->time_limit << std::endl;
 
   // Setup workspace.
   workspace_ = nullptr;
@@ -336,6 +339,7 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   if (osqp_setup_err != 0) {
     std::cerr << "Error setting up osqp solver.";
   }
+  is_init_ = true;
 }
 
 void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
@@ -378,7 +382,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   osqp_update_bounds(workspace_, l.data(), u.data());
   osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
                   OSQP_NULL, A_csc->nzmax);
-  SetFastOsqpSolverSettings(merged_options, osqp_settings_);
+//  SetFastOsqpSolverSettings(merged_options, osqp_settings_);
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
 
@@ -394,7 +398,6 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   }
   msg.w = q;
 
-
   Eigen::MatrixXd A(A_sparse);
 
   // std::cout << A.row(68) << std::endl;
@@ -402,15 +405,17 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   for (int i = 0; i < A.rows(); i++) {
     std::vector<double> row(A.cols());
     for (int j = 0; j < A.cols(); j++) {
-      row[j] = A(i,j);
+      row[j] = A(i, j);
     }
     msg.A_ineq.push_back(row);
   }
 
   msg.ineq_lb = l;
   msg.ineq_ub = u;
-  msg.x_lb = std::vector<double>(prog.num_vars(), -std::numeric_limits<double>::infinity());
-  msg.x_ub = std::vector<double>(prog.num_vars(), std::numeric_limits<double>::infinity());
+  msg.x_lb = std::vector<double>(prog.num_vars(),
+                                 -std::numeric_limits<double>::infinity());
+  msg.x_ub = std::vector<double>(prog.num_vars(),
+                                 std::numeric_limits<double>::infinity());
 
   msg.n_eq = 0;
   lcm::LCM lcm;
@@ -440,6 +445,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
 
     switch (workspace_->info->status_val) {
       case OSQP_SOLVED:
+        this->EnableWarmStart();
       case OSQP_SOLVED_INACCURATE: {
         const Eigen::Map<Eigen::Matrix<c_float, Eigen::Dynamic, 1>> osqp_sol(
             workspace_->solution->x, prog.num_vars());
@@ -449,12 +455,12 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
         solver_details.y = Eigen::Map<Eigen::VectorXd>(workspace_->solution->y,
                                                        workspace_->data->m);
         solution_result = SolutionResult::kSolutionFound;
-//        SetDualSolution(prog.linear_constraints(), solver_details.y,
-//                        constraint_start_row, result);
-//        SetDualSolution(prog.linear_equality_constraints(), solver_details.y,
-//                        constraint_start_row, result);
-//        SetDualSolution(prog.bounding_box_constraints(), solver_details.y,
-//                        constraint_start_row, result);
+        SetDualSolution(prog.linear_constraints(), solver_details.y,
+                        constraint_start_row, result);
+        SetDualSolution(prog.linear_equality_constraints(), solver_details.y,
+                        constraint_start_row, result);
+        SetDualSolution(prog.bounding_box_constraints(), solver_details.y,
+                        constraint_start_row, result);
 
         break;
       }
@@ -481,15 +487,17 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   }
   result->set_solution_result(solution_result.value());
 
-//  osqp_cleanup(workspace_);
-  c_free(P_csc->x);
-  c_free(P_csc->i);
-  c_free(P_csc->p);
-  c_free(P_csc);
-  c_free(A_csc->x);
-  c_free(A_csc->i);
-  c_free(A_csc->p);
-  c_free(A_csc);
+  //  osqp_cleanup(workspace_);
+  if (warm_start_) {
+    c_free(P_csc->x);
+    c_free(P_csc->i);
+    c_free(P_csc->p);
+    c_free(P_csc);
+    c_free(A_csc->x);
+    c_free(A_csc->i);
+    c_free(A_csc->p);
+    c_free(A_csc);
+  }
 }
 
 }  // namespace solvers

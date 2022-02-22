@@ -802,7 +802,7 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
       auto x_i = trajopt->state_vars(mode, index);
       auto u_i = trajopt->input_vars(mode, index);
       auto l_i = trajopt->force_vars(mode, index);
-      trajopt->AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
+      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
     }
   }
 }
@@ -895,7 +895,7 @@ void AddCostsSprings(Dircon<double>* trajopt,
       auto x_i = trajopt->state_vars(mode, index);
       auto u_i = trajopt->input_vars(mode, index);
       auto l_i = trajopt->force_vars(mode, index);
-      trajopt->AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
+      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
     }
   }
 }

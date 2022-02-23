@@ -18,7 +18,7 @@ from pydairlib.common.plot_styler import PlotStyler
 import sys
 
 
-figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/testing/')
+figure_directory = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/figures/')
 
 ps = PlotStyler()
 ps.set_default_styling(directory=figure_directory, figsize=(8,6))
@@ -149,36 +149,36 @@ def make_pos_rot_sensitivity_analysis(ids, params_ranges):
 
 
 def make_gridded_sensitivity_analysis_figure(id, damp_key):
-    # optimal_params, _, _ = cube_eval.load_params_and_logs(id)
-    # stiffness_range = sa.get_stiffness_range(id.split('_')[0],
-    #                                         optimal_params['stiffness'], discretization_n=10)
-    # damping_range = sa.get_damping_range(id.split('_')[0],
-    #                                      optimal_params[damp_key], discretization_n=10)
-    # params_range = {'stiffness': stiffness_range['stiffness'],
-    #                 damp_key: damping_range[damp_key]}
-    # weights = FastLossWeights(
-    #     pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)),
-    #     bullet=(format_sim_name(id) == 'Bullet'))
-    # sensitivity_analysis = \
-    #     sa.get_gridded_stiffness_damping_sensitivity_analysis(
-    #         cube_eval.get_eval_sim(id), weights, optimal_params,
-    #         params_range, range(550))
-    #
-    # X = sensitivity_analysis['stiffness'] / optimal_params['stiffness']
-    # Y = sensitivity_analysis[damp_key] / optimal_params[damp_key]
-    # Z = sensitivity_analysis['loss_avgs']
+    optimal_params, _, _ = cube_eval.load_params_and_logs(id)
+    stiffness_range = sa.get_stiffness_range(id.split('_')[0],
+                                            optimal_params['stiffness'], discretization_n=11)
+    damping_range = sa.get_damping_range(id.split('_')[0],
+                                         optimal_params[damp_key], discretization_n=11)
+    params_range = {'stiffness': stiffness_range['stiffness'],
+                    damp_key: damping_range[damp_key]}
+    weights = FastLossWeights(
+        pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)),
+        bullet=(format_sim_name(id) == 'Bullet'))
+    sensitivity_analysis = \
+        sa.get_gridded_stiffness_damping_sensitivity_analysis(
+            cube_eval.get_eval_sim(id), weights, optimal_params,
+            params_range, range(550))
+
+    X = sensitivity_analysis['stiffness'] / optimal_params['stiffness']
+    Y = sensitivity_analysis[damp_key] / optimal_params[damp_key]
+    Z = sensitivity_analysis['loss_avgs']
 
 
-    # np.save('cube_X_' + format_sim_name(id) + '_grid', X)
-    # np.save('cube_Y_' + format_sim_name(id) + '_grid', Y)
-    # np.save('cube_Z_' + format_sim_name(id) + '_grid', Z)
+    np.save('cube_X_' + format_sim_name(id) + '_grid', X)
+    np.save('cube_Y_' + format_sim_name(id) + '_grid', Y)
+    np.save('cube_Z_' + format_sim_name(id) + '_grid', Z)
     cmaps = {'Drake': 'Blues',
              'MuJoCo': 'Reds',
              'Bullet': 'YlOrBr'}
 
-    X = np.load('cube_X_' + format_sim_name(id) + '_grid.npy')
-    Y = np.load('cube_Y_' + format_sim_name(id) + '_grid.npy')
-    Z = np.load('cube_Z_' + format_sim_name(id) + '_grid.npy')
+    # X = np.load('cube_X_' + format_sim_name(id) + '_grid.npy')
+    # Y = np.load('cube_Y_' + format_sim_name(id) + '_grid.npy')
+    # Z = np.load('cube_Z_' + format_sim_name(id) + '_grid.npy')
 
     # levels = np.linspace(0.27, 0.4, 50)
     cmap = plt.cm.get_cmap(cmaps[format_sim_name(id)])
@@ -195,9 +195,11 @@ def make_gridded_sensitivity_analysis_figure(id, damp_key):
     frame.axes.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
     plt.xlim((X[0, 0], X[-1, -1]))
     plt.ylim((Y[0, 0], Y[-1, -1]))
-    plt.xlabel('$k / k^{*}$')
-    plt.ylabel('$b / b^{*}$')
-    plt.title(format_sim_name(id) + f'{format_sim_name(id)} Sensitivity')
+    plt.xlabel('Normalized Stiffness $k / k^{*}$')
+    plt.ylabel('Normalised Damping $b / b^{*}$')
+    plt.title(f'{format_sim_name(id)} Sensitivity')
+
+    ps.save_fig(format_sim_name(id) + '_cube_grid')
 
 
 def make_damping_ratio_sensitivity_analysis_figure():
@@ -271,7 +273,7 @@ def make_stiffness_sensitivity_analysis_figure():
 def make_friction_sensitivity_analysis_figure():
     ids = paper_ids
 
-    mu_keys = {ids[0] : 'mu', ids[1] : 'mu_tangent', ids[2] : 'mu_tangent'}
+    mu_keys = {ids[0]: 'mu', ids[1]: 'mu_tangent', ids[2]: 'mu_tangent'}
 
     params_ranges = {}
     params = {}
@@ -291,8 +293,8 @@ def make_friction_sensitivity_analysis_figure():
         ps.plot(k_ratio, sweeps[id]['loss_avg'][mu_keys[id]], color=sim_colors[format_sim_name(id)])
     plt.title('Cube Friction Sensitivity')
     plt.xlabel('$\mu / \mu^{*}$')
-    plt.xscale('log', basex=2)
-    # plt.legend(legend_strs)
+    plt.xscale('log', base=2)
+    plt.legend(legend_strs)
     frame = plt.gca()
     frame.axes.get_xaxis().set_ticks([0.5, 0.7, 1.0, 1.4, 2.0])
     frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
@@ -446,7 +448,7 @@ if __name__ == '__main__':
     sim_choice = int(sys.argv[1])
     make_gridded_sensitivity_analysis_figure(
         paper_ids[sim_choice], damping_keys[sim_choice])
-    plt.show()
+    # plt.show()
     # make_estimated_pdf_figure()
     # make_friction_sensitivity_analysis_figure()
     # make_damping_sensitivity_analysis_figure()

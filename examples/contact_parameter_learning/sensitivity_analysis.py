@@ -113,7 +113,7 @@ def get_gridded_stiffness_damping_sensitivity_analysis(
             params[damp_key] = damping[i, j]
             if (plant == 'cube'):
                 pairs = load_traj_pairs(sim, params, test_traj_set,
-                                        print_progress=True)
+                                        print_progress=False)
                 for _, pair in pairs.items():
                     losses.append(loss_weights.CalculateLoss(pair[0], pair[1]))
             else:
@@ -175,9 +175,9 @@ def get_stiffness_range(sim_type, k0, discretization_n = 5):
 def get_friction_range(sim_type, mu_0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['mu'] = (mu_0 * np.logspace(-1, 1, base=2, num=25)).tolist()
+        params_range['mu'] = (mu_0 * np.logspace(-1, 1, base=2, num=20)).tolist()
     else:
-        params_range['mu_tangent'] = (mu_0 * np.logspace(-1, 1, base=2, num=25)).tolist()
+        params_range['mu_tangent'] = (mu_0 * np.logspace(-1, 1, base=2, num=20)).tolist()
     return params_range
 
 

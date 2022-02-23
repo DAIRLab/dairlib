@@ -10,7 +10,10 @@ import cube_sim
 # import drake_cassie_sim
 # import mujoco_cassie_sim
 from tqdm import *
-
+# from learn_cassie_parameters_v2 import CassieContactParamsOptimizer
+# import cassie_loss_utils
+# import drake_cassie_sim_v2
+# import mujoco_cassie_sim_v2
 
 def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params_range, traj_set):
     pos_avgs = {}
@@ -59,10 +62,10 @@ def get_cube_position_and_rotation_error_sensitivity(sim, optimal_params, params
     return pos_avgs, pos_meds, rot_avgs, rot_meds
 
 
-def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, test_traj_set, plant='cube'):
+def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, test_traj_set, plant='cube', optimizer=None):
     
     loss_avgs = {}
-    loss_meds ={}
+    loss_meds = {}
     for param_key in params_range:
         loss_avg = []
         loss_med = []
@@ -81,10 +84,10 @@ def get_sensitivity_analysis(sim, loss_weights, optimal_params, params_range, te
                 loss_avg.append(np.average(losses))
                 loss_med.append(np.median(losses))
             else:
-                for log_num in sim.log_nums_real:
-                    sim_id = sim.run(params, log_num)
-                    loss = sim.compute_loss(log_num, sim_id, params, plot=False)
-                    losses.append(loss)
+                sim.make(params, '00')
+                for hardware_traj_num in optimizer.selected_hardware_trajs_nums:
+                    losses.append(optimizer.get_single_loss(hardware_traj_num))
+                sim.free_sim()
                 loss_avg.append(np.average(losses))
                 loss_med.append(np.median(losses))
         loss_avgs[param_key] = np.array(loss_avg)
@@ -106,7 +109,7 @@ def get_gridded_stiffness_damping_sensitivity_analysis(
     loss_avgs = np.zeros(stiffness.shape)
     loss_meds = np.zeros(stiffness.shape)
     for i in trange(stiffness.shape[0]):
-        for j in trange(stiffness.shape[1]):
+        for j in trange(stiffness.shape[1], leave=False):
             losses = []
             params = deepcopy(optimal_params)
             params['stiffness'] = stiffness[i, j]
@@ -169,8 +172,7 @@ def get_damping_ratio_range(sim_type, k0, b0):
 
 
 def get_stiffness_range(sim_type, k0, discretization_n = 5):
-    return {'stiffness' : (k0 * np.logspace(-1, 1, num=discretization_n)).tolist()}
-
+    return {'stiffness' : (k0 * np.logspace(-0.1, 1, base=3, num=discretization_n)).tolist()}
 
 def get_friction_range(sim_type, mu_0):
     params_range = {}
@@ -263,23 +265,15 @@ def cube_sensitivity_analysis_main(learning_result, use_all_traj=False):
 
     return avg, med
 
-def get_cassie_sim(result_id):
+def get_cassie_sim(result_id, optimizer):
     sim_type = result_id.split('_')[0]
     # substeps = int(result_id.split('_')[-1])
-    if (sim_type == 'mujoco'):
-        eval_sim = mujoco_cassie_sim.LearningMujocoCassieSim(loss_filename='2021_09_07_weights')
-    elif (sim_type == 'drake'):
-        eval_sim = drake_cassie_sim.DrakeCassieSim(drake_sim_dt=8e-5, loss_filename='2021_09_07_weights')
-    else:
-        eval_sim = None
-    return eval_sim
+    optimizer.set_sim(sim_type)
+    return optimizer.sim
 
 def load_cassie_params(result_id):
     sim_type = result_id.split('_')[0]
-    eval_sim = get_cassie_sim(result_id)
-    if (eval_sim == None): quit()
-    params = eval_sim.load_params(result_id).value
-    return params
+    return load_params(result_id)
 
 def cassie_sensitivity_analysis_main(optimal_param_file):
     sim_type = optimal_param_file.split('_')[0]

@@ -4,9 +4,10 @@ from scipy.spatial.transform import Rotation as R
 from cube_sim import BLOCK_HALF_WIDTH, CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT, load_cube_toss
 
 default_mujoco_contact_params = \
-                 {"stiffness" : 1500,
-                  "damping" : 50.02,
-                  "mu_tangent" : 0.2}
+                 {"stiffness": 2500,
+                  "damping": 62,
+                  "mu_tangent": 0.2},
+                  # "blend": 0.95}
 
 
 def get_model_xml_text(substeps, params=None,):
@@ -30,7 +31,7 @@ friction=\"{params["mu_tangent"]} .001 .001\" /> \
 </worldbody>\
 </mujoco>'
 
-
+# solimp = \"{params["blend"]} {params["blend"]} .001 0.5 2\" \
 
 class MujocoCubeSim(CubeSim):
 

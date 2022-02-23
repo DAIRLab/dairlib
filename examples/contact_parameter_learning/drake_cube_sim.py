@@ -227,9 +227,10 @@ class DrakeCubeSim(CubeSim):
 
         cur_time = self.sim.get_mutable_context().get_time()
         offset = cur_time % self.drake_sim_dt
-        cur_time_quantized = cur_time - offset + (dt if offset > dt/2 else 0)
+        cur_time_quantized = cur_time - offset + (self.drake_sim_dt if offset
+                                                  > self.drake_sim_dt/2 else 0)
         eps = self.drake_sim_dt / 4
-        next_time = cur_time_quantized + dt + epscd
+        next_time = cur_time_quantized + dt + eps
         self.sim.AdvanceTo(next_time)
 
         data_arr[0] = self.reexpress_state_global_to_local_omega(data_arr[0])

@@ -89,27 +89,34 @@ def get_energy_trajectory(traj):
 
 def plot_penetration_vs_error(traj_pairs, loss):
     err = np.zeros((len(traj_pairs),))
-    pen = np.zeros((len(traj_pairs),))
+    apex_com_real = np.zeros((len(traj_pairs),))
+    apex_com_sim = np.zeros((len(traj_pairs),))
     p_i = np.zeros((len(traj_pairs),))
     for i in range(len(traj_pairs)):
         sdf = calculate_sdf_trajectory(traj_pairs[i][0])
-        start = np.argwhere(sdf <= 0)[0,0]
+        start = np.argwhere(sdf <= 0)[0, 0]
         sdf = sdf[start:]
+        sdf_sim = calculate_sdf_trajectory(traj_pairs[i][1])
+        start = np.argwhere(sdf_sim <= 0)[0, 0]
+        sdf_sim = sdf_sim[start:]
         err[i] = loss.CalculateLoss(traj_pairs[i][0], traj_pairs[i][1])
         apex_t = np.argmax(sdf)
-        pen[i] = traj_pairs[i][0][apex_t, cube_sim.CUBE_DATA_POSITION_SLICE.stop-1]
+        apex_t_sim = np.argmax(sdf_sim)
+        apex_com_real[i] = sdf[apex_t] #traj_pairs[i][0][apex_t, cube_sim.CUBE_DATA_POSITION_SLICE.stop-1]
+        apex_com_sim[i] = sdf_sim[apex_t_sim] #traj_pairs[i][1][apex_t, cube_sim.CUBE_DATA_POSITION_SLICE.stop-1]
         p_i[i] = sdf[0]
 
     fail_idx = np.argwhere(err > 0.5)
     success_idx = np.argwhere(err < 0.5)
 
-    plt.scatter(pen[fail_idx], err[fail_idx])
+    plt.hist(apex_com_real, bins=50, alpha=0.5, label="Real Cube Toss")
+    plt.hist(apex_com_sim, bins=50, alpha=0.5, label="Sim Cube Toss")
     plt.xlabel('maximum bounce height (table to cube corner, m)')
-    plt.ylabel('Loss')
+    plt.ylabel('Count')
     plt.title('Drake')
-    print(f'N fail:{fail_idx.shape[0]}')
-    print(f'fail med: {np.median(pen[fail_idx])},'
-          f' success_med: {np.median(pen[success_idx])}')
+    # print(f'N fail:{fail_idx.shape[0]}')
+    # print(f'fail med: {np.median(apex_com_real[fail_idx])},'
+    #       f' success_med: {np.median(apex_com_real[success_idx])}')
 
 
 def plot_omega_vs_err(traj_pairs, losses):
@@ -404,14 +411,33 @@ MuJoCo does poorly on:
 
 if __name__ == '__main__':
 
-    ids = ['drake_2022_02_21_18_31_10',
-           'mujoco_2022_02_21_23_19_10',
-           'bullet_2022_02_22_00_36_10']
+    ids = ['drake_2022_02_21_15_19_10,',
+           'mujoco_2022_02_23_15_29_10,',
+           'bullet_2022_02_18_02_00_10']
+
+    bullet_ids = ['bullet_2022_02_17_16_30_10',
+                  'bullet_2022_02_17_19_31_10',
+                  'bullet_2022_02_17_22_48_10',
+                  'bullet_2022_02_18_02_00_10',
+                  'bullet_2022_02_18_16_59_10',
+                  'bullet_2022_02_18_20_09_10',
+                  'bullet_2022_02_18_23_31_10',
+                  'bullet_2022_02_19_02_54_10',
+                  'bullet_2022_02_21_15_05_10',
+                  'bullet_2022_02_21_18_03_10',
+                  'bullet_2022_02_21_21_22_10',
+                  'bullet_2022_02_22_00_36_10',
+                  'bullet_2022_02_23_00_48_10',
+                  'bullet_2022_02_23_07_00_10',]
 
     sorted_pairs, losses, params, sims, _ = \
-        load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
+        load_list_of_results(bullet_ids, pos_rot_loss, eval_all_traj=True)
 
     import pdb; pdb.set_trace()
+    for id in bullet_ids:
+        print(f'id: {id}, loss: {np.average([losses[id][idx] for idx in losses[id]])}')
+
+    # import pdb; pdb.set_trace()
     fail_idxs = list(sorted_pairs[ids[1]].keys())[:75]
     succes_idxs = list(sorted_pairs[ids[1]].keys())[100:]
 
@@ -436,12 +462,12 @@ if __name__ == '__main__':
     #     print()
 
     # visualize_learned_params(params[ids[0]], sims[ids[0]], 69)
-    # plot_penetration_vs_error(sorted_pairs[ids[2]], pos_rot_loss)
+    plot_penetration_vs_error(sorted_pairs[ids[2]], pos_rot_loss)
     # plot_omega_vs_err(sorted_pairs[ids[0]], losses[ids[0]])
-
-    plot_sdf_and_contact(sorted_pairs[ids[0]][451][1])
-    plot_sdf_and_contact(sorted_pairs[ids[1]][451][1])
-    plot_sdf_and_contact(sorted_pairs[ids[2]][451][1])
+    #
+    # plot_sdf_and_contact(sorted_pairs[ids[0]][451][1])
+    # plot_sdf_and_contact(sorted_pairs[ids[1]][451][1])
+    # plot_sdf_and_contact(sorted_pairs[ids[2]][451][1])
     plt.show()
 
 

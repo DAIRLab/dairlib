@@ -16,7 +16,8 @@ import time
 ## COMMON VALUES AND FUNCTIONS
 
 # File paths
-cube_data_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/cleaned_cube_trajectories/data')
+cube_data_folder = os.path.join(os.getcwd(),
+    'examples/contact_parameter_learning/cleaned_cube_trajectories/data')
 drake_data_folder = os.path.join(os.getcwd(), 
     'examples/contact_parameter_learning/simulated_cube_trajectories/drake')
 mujoco_data_folder = os.path.join(os.getcwd(), 
@@ -24,10 +25,14 @@ mujoco_data_folder = os.path.join(os.getcwd(),
 bullet_data_folder = os.path.join(os.getcwd(), 
     'examples/contact_parameter_learning/simulated_cube_trajectories/bullet')
 
-log_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/logs/cube')
-model_folder = os.path.join(os.getcwd(), 'examples/contact_parameter_learning/learned_parameters/cube')
+log_folder = os.path.join(os.getcwd(),
+                          'examples/contact_parameter_learning/logs/cube')
+model_folder = os.path.join(os.getcwd(),
+    'examples/contact_parameter_learning/learned_parameters/cube')
 
-default_loss = cube_sim.LossWeights(pos=(2.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)), vel=np.zeros((3,)), omega=np.zeros((3,)))
+default_loss = cube_sim.LossWeights(
+    pos=(2.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
+    vel=np.zeros((3,)), omega=np.zeros((3,)))
 SIM_ERROR_LOSS = 100
 
 # timestepping definitions
@@ -43,7 +48,7 @@ num_workers = 1
 num_trials = 550
 num_train = 300
 
-budget = 2000
+budget = 1500
 
 
 
@@ -106,8 +111,11 @@ def get_drake_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
     weights = cube_sim.FastLossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
     try:
-        sim = drake_cube_sim.DrakeCubeSim(visualize=False, substeps=default_substep)
-        loss = cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=weights)
+        sim = drake_cube_sim.DrakeCubeSim(
+            visualize=False, substeps=default_substep)
+        loss = cube_sim.calculate_cubesim_loss(
+            params, trial_num, cube_data_folder, sim,
+            debug=False, weights=weights)
     except:
         loss = SIM_ERROR_LOSS
     return loss
@@ -152,21 +160,22 @@ def get_mujoco_loss_mp(params):
 def get_mujoco_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
     weights = cube_sim.FastLossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
-    sim = mujoco_cube_sim.MujocoCubeSim(visualize=False, substeps=default_substep)
+    sim = mujoco_cube_sim.MujocoCubeSim(visualize=False, substeps=1)
     return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=weights)
 
 
 def learn_mujoco_params():
     optimization_param = ng.p.Dict(
         stiffness=ng.p.Scalar(
-            lower=mujoco_cube_sim.default_mujoco_contact_params['stiffness']/2,
-            upper=mujoco_cube_sim.default_mujoco_contact_params['stiffness']*2),
+            lower=mujoco_cube_sim.default_mujoco_contact_params['stiffness']/10,
+            upper=mujoco_cube_sim.default_mujoco_contact_params['stiffness']*10),
         damping=ng.p.Scalar(
-            lower=mujoco_cube_sim.default_mujoco_contact_params['damping']/2,
-            upper=mujoco_cube_sim.default_mujoco_contact_params['damping']*2),
+            lower=mujoco_cube_sim.default_mujoco_contact_params['damping']/10,
+            upper=mujoco_cube_sim.default_mujoco_contact_params['damping']*10),
         mu_tangent=ng.p.Scalar(
             lower=mujoco_cube_sim.default_mujoco_contact_params['mu_tangent']/2,
-            upper=mujoco_cube_sim.default_mujoco_contact_params['mu_tangent']*2)
+            upper=mujoco_cube_sim.default_mujoco_contact_params['mu_tangent']*4),
+        blend=ng.p.Scalar(lower=0.9, upper=1.0)
     )
     optimization_param.value=mujoco_cube_sim.default_mujoco_contact_params
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)

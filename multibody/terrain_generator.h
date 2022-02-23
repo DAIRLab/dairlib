@@ -7,15 +7,33 @@
 
 namespace dairlib::multibody {
 
-
 struct TerrainConfig {
-  int xbound = 41;
-  int ybound= 41;
-  double mesh_res=0.25;
-  double mu_flat=0.8;
-  Eigen::Vector4d freq_scales = Eigen::Vector4d(1.0, 3.0, 3.0, 2.0);
-  Eigen::Vector3d normal = Eigen::Vector3d::UnitZ();
-  Eigen::Vector3d rpy_bounds = Eigen::Vector3d::UnitZ();
+  int x_length;
+  int y_length;
+  double x_resolution;
+  double y_resolution;
+  double n_freq_components;
+  std::vector<double> frequency_amplitudes;
+  std::vector<double> frequencies;
+  std::vector<double> average_normal;
+
+  Eigen::VectorXd freq_amps;
+  Eigen::VectorXd freqs;
+  Eigen::Vector3d normal;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(x_length));
+    a->Visit(DRAKE_NVP(y_length));
+    a->Visit(DRAKE_NVP(x_resolution));
+    a->Visit(DRAKE_NVP(y_resolution));
+    a->Visit(DRAKE_NVP(n_freq_components));
+    a->Visit(DRAKE_NVP(frequency_amplitudes));
+    a->Visit(DRAKE_NVP(frequencies));
+    a->Visit(DRAKE_NVP(average_normal));
+
+    freq_amps = Eigen::Map<Eigen::Dynamic, Eigen::
+  }
 };
 
 void writeTriangleMeshToObj(
@@ -23,7 +41,7 @@ void writeTriangleMeshToObj(
     std::string filename);
 
 std::string makeRandomHeightMap(int nx, int ny,double x_resolution,
-                                double y_resolution, Eigen::Vector4d freq_scales,
+                                double y_resolution, Eigen::VectorXd freq_scales,
                                 Eigen::Vector3d normal);
 
 void addFlatHydroelasticTerrain(

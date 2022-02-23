@@ -70,6 +70,23 @@ def plot_sdf_and_contact(traj, title=''):
     plt.legend(['sdf (mm)', 'Avg Force (% Cube Weight)'])
 
 
+def get_energy_trajectory(traj):
+    E = np.zeros((traj.shape[0],))
+    for i in range(E.shape[0]):
+        T_v = 0.5 * cube_sim.CUBE_MASS * np.dot(
+            traj[i, cube_sim.CUBE_DATA_VELOCITY_SLICE],
+            traj[i, cube_sim.CUBE_DATA_VELOCITY_SLICE])
+        T_rot = 0.5 * 0.00081 * np.dot(
+            traj[i, cube_sim.CUBE_DATA_OMEGA_SLICE],
+            traj[i, cube_sim.CUBE_DATA_OMEGA_SLICE])
+        V = cube_sim.CUBE_MASS * 9.81 * (
+            traj[i, cube_sim.CUBE_DATA_POSITION_SLICE.stop-1] -
+            cube_sim.BLOCK_HALF_WIDTH)
+        E[i] = T_v + T_rot + V
+
+    return E
+
+
 def plot_penetration_vs_error(traj_pairs, loss):
     err = np.zeros((len(traj_pairs),))
     pen = np.zeros((len(traj_pairs),))
@@ -193,6 +210,7 @@ def make_sim_to_real_comparison_plots_single_toss(traj_pair):
         plt.plot(tvec, errors[key])
         plt.title(key)
 
+
 def calc_error_and_loss_stats(traj_pairs, loss_weights):
     pos = []
     vel = []
@@ -248,16 +266,24 @@ def calc_error_and_loss_stats(traj_pairs, loss_weights):
             'mse_std' : loss_std }
 
     
-def sort_traj_pairs_by_loss(pairs, loss_weights):
+def sort_traj_pairs_by_loss(pairs, loss_weights, include_outliers=True):
     loss = {}
+
     for idx, pair in pairs.items():
         loss[idx] = loss_weights.CalculateLoss(pair[0], pair[1])
-        
-    sorted_pairs = {idx : pair for idx, pair in sorted(pairs.items(), 
-        key=lambda item: loss[item[0]], reverse=True)}
 
-    loss = {idx: loss for idx, loss in sorted(loss.items(), 
-        key=lambda item : item[1], reverse=True)}
+    sorted_pairs = {}
+    if include_outliers:
+        sorted_pairs = {idx : pair for idx, pair in sorted(pairs.items(),
+            key=lambda item: loss[item[0]], reverse=True)}
+
+        loss = {idx: loss for idx, loss in sorted(loss.items(),
+            key=lambda item : item[1], reverse=True)}
+    else:
+        loss = {idx: loss for idx, loss in sorted(loss.items(),
+            key=lambda item: item[1], reverse=True)[100:]}
+
+        sorted_pairs = {idx: pairs[idx] for idx in loss}
 
     return sorted_pairs, loss
 
@@ -309,6 +335,7 @@ def list_complement(list1, list2):
 def list_union(list1, list2):
     return list(set(list1) | set(list2))
 
+
 def load_list_of_results(training_results, loss_to_compare, eval_all_traj=False):
     result_traj_pairs = {}
     result_losses = {}
@@ -320,6 +347,9 @@ def load_list_of_results(training_results, loss_to_compare, eval_all_traj=False)
         print(f'Loading logs for {result}')
         sims[result] = get_eval_sim(result)
         result_params[result], test_set, _ = load_params_and_logs(result)
+        if format_sim_name(result) == 'MuJoCo':
+            result_params[result]['stiffness'] *= 3
+            result_params[result]['damping'] *= 3
         if (eval_all_traj):
             test_set = range(550)
         union_of_test_sets = list_union(union_of_test_sets, test_set)
@@ -381,11 +411,13 @@ if __name__ == '__main__':
     sorted_pairs, losses, params, sims, _ = \
         load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
 
-    fail_idxs = list(sorted_pairs[ids[0]].keys())[:75]
-    succes_idxs = list(sorted_pairs[ids[0]].keys())[76:]
+    import pdb; pdb.set_trace()
+    fail_idxs = list(sorted_pairs[ids[1]].keys())[:75]
+    succes_idxs = list(sorted_pairs[ids[1]].keys())[100:]
 
-    for idx in succes_idxs:
-        plt.plot(sorted_pairs[ids[0]][idx][0][:, cube_sim.CUBE_DATA_POSITION_SLICE.stop-1])
+    # for idx in succes_idxs:
+    #     plt.plot(get_energy_trajectory(sorted_pairs[ids[1]][idx][1]) -
+    #              get_energy_trajectory(sorted_pairs[ids[0]][idx][1]))
 
     # worst_case_set, worst_case_by_id = compare_worst_case(losses)
     # print()
@@ -407,9 +439,9 @@ if __name__ == '__main__':
     # plot_penetration_vs_error(sorted_pairs[ids[2]], pos_rot_loss)
     # plot_omega_vs_err(sorted_pairs[ids[0]], losses[ids[0]])
 
-    # plot_sdf_and_contact(sorted_pairs[ids[0]][118][1])
-    # plot_sdf_and_contact(sorted_pairs[ids[1]][118][1])
-    # plot_sdf_and_contact(sorted_pairs[ids[2]][118][1])
+    plot_sdf_and_contact(sorted_pairs[ids[0]][451][1])
+    plot_sdf_and_contact(sorted_pairs[ids[1]][451][1])
+    plot_sdf_and_contact(sorted_pairs[ids[2]][451][1])
     plt.show()
 
 
@@ -431,17 +463,17 @@ if __name__ == '__main__':
 
     # visualize_learned_params(params, eval_sim, 361) # list(sorted_pairs.keys())[0])z
 #     if (eval_sim == None): quit()
-    # for id in ids:
-    #     params, _, _ = load_params_and_logs(id)
-    #     eval_sim = get_eval_sim(id)
-    #     traj_pairs = load_traj_pairs(eval_sim, params, range(550))
-    #     weights=cube_sim.FastLossWeights(
-    #         pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
-    #          bullet=(format_sim_name(id) == 'Bullet'))
-    #     stats = calc_error_and_loss_stats(traj_pairs, weights)
-    #     print()
-    #     print(id) 
-    #     print(stats)
+#     for id in ids:
+#         params, _, _ = load_params_and_logs(id)
+#         eval_sim = get_eval_sim(id)
+#         # traj_pairs = load_traj_pairs(eval_sim, params, range(550))
+#         weights=cube_sim.FastLossWeights(
+#             pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
+#              bullet=(format_sim_name(id) == 'Bullet'))
+#         stats = calc_error_and_loss_stats(sorted_pairs[id], weights)
+#         print()
+#         print(id)
+#         print(stats)
 
 #     sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, pos_rot_loss)
 #     print('Test set sorted from highest to lowest MSE')

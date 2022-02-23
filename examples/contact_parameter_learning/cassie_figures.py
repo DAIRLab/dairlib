@@ -16,6 +16,17 @@ import isaac_cassie_sim
 import bullet_cassie_sim
 import cassie_loss_utils
 
+loss_function = cassie_loss_utils.CassieLoss(filename='2021_09_07_weights')
+optimizer = CassieContactParamsOptimizer(0, loss_function)
+
+def load_params(sim_type):
+  params = None
+  if sim_type == 'drake':
+    params = optimizer.load_drake_params('2022_02_17_11_1000').value
+  elif sim_type == 'mujoco':
+    params = optimizer.load_mujoco_params('2022_02_18_11_1000').value
+  return params
+
 def main():
   global ps
   global figure_directory
@@ -41,10 +52,9 @@ def main():
     x_datatypes = pickle.load(fp)
   sim_colors = {'Drake' : ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
 
-  loss_function = cassie_loss_utils.CassieLoss(filename='2021_09_07_weights')
-  optimizer = CassieContactParamsOptimizer(0, loss_function)
 
-  sim_type='drake'
+
+  sim_type='mujoco'
   params = None
   damp_key = ''
   if sim_type == 'drake':
@@ -82,23 +92,23 @@ def main():
   # make_damping_sensitivity_analysis_figure(use_saved_data=True, save_figs=True)
 
   # make_friction_sensitivity_analysis_figure()
-  # saved_data = {'sensitivity_analysis' : figure_data_directory + '2021_09_14_11_mu.pkl'}
-  # make_friction_sensitivity_analysis_figure(use_saved_data=True, save_figs=True)
+  saved_data = {'sensitivity_analysis' : figure_data_directory + '2022_02_22_18_mu.pkl'}
+  make_friction_sensitivity_analysis_figure(use_saved_data=True, save_figs=True)
 
   # make_estimated_pdf_figure()
 
   # optimizer.sim = drake_cassie_sim_v2.DrakeCassieSim()
 
-  make_gridded_sensitivity_analysis_figure(optimizer, sim_type, params, damp_key)
+  # make_gridded_sensitivity_analysis_figure(optimizer, sim_type, params, damp_key)
   return
 
 
 def make_gridded_sensitivity_analysis_figure(optimizer, sim_type, optimal_params, damp_key):
   stiffness_range = sa.get_stiffness_range('',
-                                           optimal_params['stiffness'], discretization_n = 10)
+                                           optimal_params['stiffness'], discretization_n = 20)
   damping_range = sa.get_damping_range(sim_type,
                                        optimal_params[damp_key],
-                                       discretization_n = 10)
+                                       discretization_n = 20)
   params_range = {'stiffness': stiffness_range['stiffness'],
                   damp_key: damping_range[damp_key]}
 
@@ -111,6 +121,10 @@ def make_gridded_sensitivity_analysis_figure(optimizer, sim_type, optimal_params
   Y = sensitivity_analysis[damp_key] / optimal_params[damp_key]
   Z = sensitivity_analysis['loss_avgs']
 
+  np.save('X_' + sim_type + '_grid', X)
+  np.save('Y_' + sim_type + '_grid', Y)
+  np.save('Z_' + sim_type + '_grid', Z)
+
   plt.contourf(X, Y, Z, 20, cmap='RdGy')
   plt.colorbar()
   plt.xscale('log')
@@ -122,10 +136,11 @@ def make_gridded_sensitivity_analysis_figure(optimizer, sim_type, optimal_params
   frame.axes.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
   plt.xlim((X[0, 0], X[-1, -1]))
   plt.ylim((Y[0, 0], Y[-1, -1]))
-  plt.xlabel('$k / k^{*}$')
-  plt.ylabel('$b / b^{*}$')
-  plt.title(format_sim_name(sim_type) + ' Stiffness and Damping Sensitivity')
+  plt.xlabel('normalized stiffness $k / k^{*}$')
+  plt.ylabel('normalized damping $b / b^{*}$')
+  plt.title(format_sim_name(sim_type) + ' Sensitivity')
   plt.savefig(sim_type + '_cassie_grid')
+  ps.save_fig(sim_type + '_cassie_grid')
 
 def plot_estimated_loss_pdfs(losses):
   training_results = list(losses.keys())
@@ -165,17 +180,18 @@ def get_sensitivity_analysis_results(ids, param_ranges):
   sweeps = {}
   for param_id in ids:
     sim_type = param_id.split('_')[0]
-    eval_sim = get_cassie_sim(param_id)
+    eval_sim = sa.get_cassie_sim(param_id, optimizer)
     # params_range = get_cassie_params_range(sim_type)
     # import pdb; pdb.set_trace()
-    params = eval_sim.load_params(param_id).value
+    params = load_params(sim_type)
     avg, med = sa.get_sensitivity_analysis(
       eval_sim,
       None,
       params,
       param_ranges[param_id],
       None,
-      plant='cassie')
+      plant='cassie',
+      optimizer=optimizer)
 
     sweeps[param_id] = {'avg': avg,
                         'med': med}
@@ -299,15 +315,17 @@ def make_damping_sensitivity_analysis_figure(use_saved_data=False, save_figs=Fal
     ps.save_fig('DampingSensitivity_cassie.png')
 
 def make_friction_sensitivity_analysis_figure(use_saved_data=False, save_figs=False):
-  ids = ['drake_2021_09_10_17_training_2500',
-         'mujoco_2021_09_12_22_training_2500']
+  ids = ['drake_params',
+         'mujoco_params']
   mu_keys = {ids[0] : 'mu', ids[1] : 'mu_tangent'}
   params_ranges = {}
   params = {}
   for param_id in ids:
-    param = load_cassie_params(param_id)
+    sim_type = param_id.split('_')[0]
+    # param = sa.load_cassie_params(param_id)
+    param = load_params(sim_type)
     params[param_id] = param
-    params_ranges[param_id] = get_friction_range(param_id.split('_')[0], param[mu_keys[param_id]])
+    params_ranges[param_id] = sa.get_friction_range(sim_type, param[mu_keys[param_id]])
 
   save_data_file = figure_data_directory + date_prefix + '_mu' + '.pkl'
   sweeps = {}
@@ -333,12 +351,12 @@ def make_friction_sensitivity_analysis_figure(use_saved_data=False, save_figs=Fa
 
   plt.title('Cassie Friction Sensitivity')
   plt.xlabel('$\mu / \mu^{*}$')
-  plt.xscale('log', basex=2)
+  plt.xscale('log', base=2)
   frame = plt.gca()
-  frame.axes.get_xaxis().set_ticks([0.5, 0.7, 1.0, 1.4, 2.0])
   frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+  frame.axes.get_xaxis().set_ticks([0.5, 0.7, 1.0, 1.4, 2.0])
   # plt.xticks(np.logspace(0.5, 2, 5))
-  # plt.legend(legend_strs)
+  plt.legend(legend_strs)
   # plt.ylabel('Average $e_{cassie}$')
   plt.ylim((20, 70))
   plt.xlim((0.5, 2))

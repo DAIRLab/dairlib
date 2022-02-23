@@ -54,6 +54,14 @@ class CassieContactParamsOptimizer():
     def load_isaac_params(self, param_file):
         return self.load_params(param_file, self.isaac_params_folder)
 
+    def set_sim(self, sim_type):
+        if sim_type == 'drake':
+            self.sim = drake_cassie_sim_v2.DrakeCassieSim()
+        if sim_type == 'mujoco':
+            self.sim = mujoco_cassie_sim_v2.MuJoCoCassieSim()
+        if sim_type == 'isaac':
+            self.sim = isaac_cassie_sim.IsaacCassieSim()
+
     def get_single_loss(self, hardware_traj_num=None, params=None):
         if (hardware_traj_num == None):
             hardware_traj_num = choice(self.hardware_traj_nums)

@@ -252,7 +252,7 @@ def Generate2dPlots(model_indices, cmt):
   print("\nPlotting iterations vs task...")
 
   data_list = [cmt]
-  title_list = ["(Drake sim)", "(traj opt)"]
+  title_list = ["(Open loop)", ""]
   app_list = ["", "_nom"]
   for i in range(1):
     plt.rcParams.update({'font.size': 14})
@@ -436,7 +436,7 @@ if __name__ == "__main__":
 
   ### Parameters for plotting
   model_iter_idx_start = 1
-  model_iter_idx_end = 201
+  model_iter_idx_end = 291
   model_iter_idx_delta = 10
   model_indices = list(range(model_iter_idx_start, model_iter_idx_end+1, model_iter_idx_delta))
 

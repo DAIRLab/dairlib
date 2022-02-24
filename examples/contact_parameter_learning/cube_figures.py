@@ -183,42 +183,45 @@ def make_pos_rot_sensitivity_analysis(ids, params_ranges):
 
 
 def make_gridded_sensitivity_analysis_figure(id, damp_key):
-    optimal_params, _, _ = cube_eval.load_params_and_logs(id)
-    stiffness_range = sa.get_stiffness_range(id.split('_')[0],
-                                            optimal_params['stiffness'], discretization_n=11)
-    damping_range = sa.get_damping_range(id.split('_')[0],
-                                         optimal_params[damp_key], discretization_n=11)
-    params_range = {'stiffness': stiffness_range['stiffness'],
-                    damp_key: damping_range[damp_key]}
-    weights = FastLossWeights(
-        pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)),
-        bullet=(format_sim_name(id) == 'Bullet'))
-    sensitivity_analysis = \
-        sa.get_gridded_stiffness_damping_sensitivity_analysis(
-            cube_eval.get_eval_sim(id), weights, optimal_params,
-            params_range, range(550))
+    # optimal_params, _, _ = cube_eval.load_params_and_logs(id)
+    # stiffness_range = sa.get_stiffness_range(id.split('_')[0],
+    #                                         optimal_params['stiffness'], discretization_n=11)
+    # damping_range = sa.get_damping_range(id.split('_')[0],
+    #                                      optimal_params[damp_key], discretization_n=11)
+    # params_range = {'stiffness': stiffness_range['stiffness'],
+    #                 damp_key: damping_range[damp_key]}
+    # weights = FastLossWeights(
+    #     pos=(1.0/BLOCK_HALF_WIDTH)*np.ones((3,)),
+    #     bullet=(format_sim_name(id) == 'Bullet'))
+    # sensitivity_analysis = \
+    #     sa.get_gridded_stiffness_damping_sensitivity_analysis(
+    #         cube_eval.get_eval_sim(id), weights, optimal_params,
+    #         params_range, range(550))
+    #
+    # X = sensitivity_analysis['stiffness'] / optimal_params['stiffness']
+    # Y = sensitivity_analysis[damp_key] / optimal_params[damp_key]
+    # Z = sensitivity_analysis['loss_avgs']
 
-    X = sensitivity_analysis['stiffness'] / optimal_params['stiffness']
-    Y = sensitivity_analysis[damp_key] / optimal_params[damp_key]
-    Z = sensitivity_analysis['loss_avgs']
 
-
-    np.save('cube_X_' + format_sim_name(id) + '_grid', X)
-    np.save('cube_Y_' + format_sim_name(id) + '_grid', Y)
-    np.save('cube_Z_' + format_sim_name(id) + '_grid', Z)
-    cmaps = {'Drake': 'Blues',
+    # np.save('cube_X_' + format_sim_name(id) + '_grid', X)
+    # np.save('cube_Y_' + format_sim_name(id) + '_grid', Y)
+    # np.save('cube_Z_' + format_sim_name(id) + '_grid', Z)
+    cmaps = {'Drake': 'GnBu',
              'MuJoCo': 'Reds',
              'Bullet': 'YlOrBr'}
 
-    # X = np.load('cube_X_' + format_sim_name(id) + '_grid.npy')
-    # Y = np.load('cube_Y_' + format_sim_name(id) + '_grid.npy')
-    # Z = np.load('cube_Z_' + format_sim_name(id) + '_grid.npy')
+    X = np.load('cube_X_' + format_sim_name(id) + '_grid.npy')
+    Y = np.load('cube_Y_' + format_sim_name(id) + '_grid.npy')
+    Z = np.load('cube_Z_' + format_sim_name(id) + '_grid.npy')
 
     # levels = np.linspace(0.27, 0.4, 50)
     cmap = plt.cm.get_cmap(cmaps[format_sim_name(id)])
     cmap = cmap.reversed()
     plt.contourf(X, Y, Z, 20, cmap=cmap)
-    plt.colorbar(extend='max')
+    if format_sim_name(id) == 'Bullet':
+        plt.colorbar(extend='max', label='Average Error $(e_{q})$', format='%.2f')
+    else:
+        plt.colorbar(extend='max', format='%.2f')
     plt.xscale('log')
     plt.yscale('log')
     frame = plt.gca()
@@ -232,7 +235,7 @@ def make_gridded_sensitivity_analysis_figure(id, damp_key):
     plt.xlabel('Normalized Stiffness $k / k^{*}$')
     if format_sim_name(id) == 'Drake':
         plt.ylabel('Normalised Damping $b / b^{*}$')
-    plt.title(f'{format_sim_name(id)} Sensitivity')
+    plt.title(f'{format_sim_name(id)} Sensitivity (Cube)')
 
     ps.save_fig(format_sim_name(id) + '_cube_grid')
 
@@ -479,14 +482,14 @@ def quick_video():
     cube_eval.visualize_learned_params(params, eval_sim, traj)
 
 if __name__ == '__main__':
-    # damping_keys = ['dissipation', 'damping', 'damping']
-    # sim_choice = int(sys.argv[1])
-    # make_gridded_sensitivity_analysis_figure(
-    #     paper_ids[sim_choice], damping_keys[sim_choice])
+    damping_keys = ['dissipation', 'damping', 'damping']
+    sim_choice = int(sys.argv[1])
+    make_gridded_sensitivity_analysis_figure(
+        paper_ids[sim_choice], damping_keys[sim_choice])
     # make_bounces_histogram(paper_ids)
     # plt.show()
     # make_estimated_pdf_figure()
-    make_friction_sensitivity_analysis_figure()
+    # make_friction_sensitivity_analysis_figure()
     # make_damping_sensitivity_analysis_figure()
     # make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()

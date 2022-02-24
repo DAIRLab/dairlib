@@ -1,7 +1,7 @@
 import subprocess
 
 cmd = 'bazel-bin/examples/contact_parameter_learning/learn_cube_parameters'
-sims = ['mujoco', 'mujoco', 'mujoco', 'mujoco']
+sims = ['mujoco', 'drake', 'bullet', 'mujoco']
 
 n_experiments = 2
 

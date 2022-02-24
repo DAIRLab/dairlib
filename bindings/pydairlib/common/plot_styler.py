@@ -135,7 +135,6 @@ class PlotStyler():
     return
 
   def save_fig(self, filename):
-
     plt.savefig(self.directory + filename, dpi=200)
     plt.close()
     return

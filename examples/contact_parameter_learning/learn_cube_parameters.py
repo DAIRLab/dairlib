@@ -48,7 +48,7 @@ num_workers = 1
 num_trials = 550
 num_train = 300
 
-budget = 1500
+budget = 800
 
 
 
@@ -160,7 +160,7 @@ def get_mujoco_loss_mp(params):
 def get_mujoco_loss(params, trial_num=None):
     if (trial_num == None): trial_num = choice(training_idxs)
     weights = cube_sim.FastLossWeights(pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)))
-    sim = mujoco_cube_sim.MujocoCubeSim(visualize=False, substeps=1)
+    sim = mujoco_cube_sim.MujocoCubeSim(visualize=False, substeps=default_substep)
     return cube_sim.calculate_cubesim_loss(params, trial_num, cube_data_folder, sim, debug=False, weights=weights)
 
 
@@ -175,7 +175,7 @@ def learn_mujoco_params():
         mu_tangent=ng.p.Scalar(
             lower=mujoco_cube_sim.default_mujoco_contact_params['mu_tangent']/2,
             upper=mujoco_cube_sim.default_mujoco_contact_params['mu_tangent']*4),
-        blend=ng.p.Scalar(lower=0.9, upper=1.0)
+        blend=ng.p.Scalar(lower=0.8, upper=1.0)
     )
     optimization_param.value=mujoco_cube_sim.default_mujoco_contact_params
     optimizer = ng.optimizers.NGOpt(parametrization=optimization_param, budget=budget)

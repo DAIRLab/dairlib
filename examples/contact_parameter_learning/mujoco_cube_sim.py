@@ -4,14 +4,15 @@ from scipy.spatial.transform import Rotation as R
 from cube_sim import BLOCK_HALF_WIDTH, CUBE_DATA_OMEGA_SLICE, CUBE_DATA_POSITION_SLICE, CUBE_DATA_QUATERNION_SLICE, CUBE_DATA_VELOCITY_SLICE, CubeSim, CUBE_DATA_DT, load_cube_toss
 
 default_mujoco_contact_params = \
-                 {"stiffness": 2500,
-                  "damping": 62,
-                  "mu_tangent": 0.2},
-                  # "blend": 0.95}
+                 {"stiffness": 3300,
+                  "damping": 45,
+                  "mu_tangent": 0.2,
+                  "blend": 0.95}
 
 
 def get_model_xml_text(substeps, params=None,):
-    if (params is None) : params = default_mujoco_contact_params
+    if params is None:
+        params = default_mujoco_contact_params
     ixx = 0.00081
 
     return f'<mujoco model=\"Cube\"> <compiler inertiafromgeom=\"false\" angle=\"degree\"/> <option timestep = \"{CUBE_DATA_DT / substeps}\"> \

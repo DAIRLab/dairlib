@@ -111,6 +111,7 @@ def plot_penetration_vs_error(traj_pairs, loss):
 
     plt.hist(apex_com_real, bins=50, alpha=0.5, label="Real Cube Toss")
     plt.hist(apex_com_sim, bins=50, alpha=0.5, label="Sim Cube Toss")
+    plt.legend()
     plt.xlabel('maximum bounce height (table to cube corner, m)')
     plt.ylabel('Count')
     plt.title('Drake')
@@ -138,8 +139,6 @@ def plot_sliding_vel_vs_error(traj_pairs, loss):
         vel[i] = np.max(np.linalg.norm(
             traj_pairs[i][1][:, cube_sim.CUBE_DATA_VELOCITY_SLICE][:,:2], axis=1))
     plt.scatter(vel, err)
-
-
 
 
 def plot_contact_impulses(traj_pair, title=''):
@@ -411,35 +410,41 @@ MuJoCo does poorly on:
 
 if __name__ == '__main__':
 
-    ids = ['drake_2022_02_21_15_19_10,',
-           'mujoco_2022_02_23_15_29_10,',
-           'bullet_2022_02_18_02_00_10']
-
-    bullet_ids = ['bullet_2022_02_17_16_30_10',
-                  'bullet_2022_02_17_19_31_10',
-                  'bullet_2022_02_17_22_48_10',
-                  'bullet_2022_02_18_02_00_10',
-                  'bullet_2022_02_18_16_59_10',
-                  'bullet_2022_02_18_20_09_10',
-                  'bullet_2022_02_18_23_31_10',
-                  'bullet_2022_02_19_02_54_10',
-                  'bullet_2022_02_21_15_05_10',
-                  'bullet_2022_02_21_18_03_10',
-                  'bullet_2022_02_21_21_22_10',
-                  'bullet_2022_02_22_00_36_10',
-                  'bullet_2022_02_23_00_48_10',
-                  'bullet_2022_02_23_07_00_10',]
+    ids = ['drake_2022_02_21_15_19_10',
+           'mujoco_2022_02_23_15_29_10',
+           'bullet_2022_02_22_00_36_10']
+    # muj_ids = [
+    #     'mujoco_2022_02_24_12_58_10',
+    #     'mujoco_2022_02_24_12_59_10',
+    #     'mujoco_2022_02_24_13_00_10',
+    #     'mujoco_2022_02_24_13_07_10'
+    # ]
+    #
+    # bullet_ids = ['bullet_2022_02_17_16_30_10',
+    #               'bullet_2022_02_17_19_31_10',
+    #               'bullet_2022_02_17_22_48_10',
+    #               'bullet_2022_02_18_02_00_10',
+    #               'bullet_2022_02_18_16_59_10',
+    #               'bullet_2022_02_18_20_09_10',
+    #               'bullet_2022_02_18_23_31_10',
+    #               'bullet_2022_02_19_02_54_10',
+    #               'bullet_2022_02_21_15_05_10',
+    #               'bullet_2022_02_21_18_03_10',
+    #               'bullet_2022_02_21_21_22_10',
+    #               'bullet_2022_02_22_00_36_10',
+    #               'bullet_2022_02_23_00_48_10',
+    #               'bullet_2022_02_23_07_00_10',]
 
     sorted_pairs, losses, params, sims, _ = \
-        load_list_of_results(bullet_ids, pos_rot_loss, eval_all_traj=True)
-
-    import pdb; pdb.set_trace()
-    for id in bullet_ids:
-        print(f'id: {id}, loss: {np.average([losses[id][idx] for idx in losses[id]])}')
+        load_list_of_results(ids, pos_rot_loss, eval_all_traj=True)
 
     # import pdb; pdb.set_trace()
-    fail_idxs = list(sorted_pairs[ids[1]].keys())[:75]
-    succes_idxs = list(sorted_pairs[ids[1]].keys())[100:]
+    # for id in bullet_ids:
+    #     print(f'id: {id}, loss: {np.average([losses[id][idx] for idx in losses[id]])}')
+
+    # import pdb; pdb.set_trace()
+    # fail_idxs = list(sorted_pairs[ids[1]].keys())[:75]
+    # succes_idxs = list(sorted_pairs[ids[1]].keys())[100:]
 
     # for idx in succes_idxs:
     #     plt.plot(get_energy_trajectory(sorted_pairs[ids[1]][idx][1]) -
@@ -462,13 +467,13 @@ if __name__ == '__main__':
     #     print()
 
     # visualize_learned_params(params[ids[0]], sims[ids[0]], 69)
-    plot_penetration_vs_error(sorted_pairs[ids[2]], pos_rot_loss)
+    # plot_penetration_vs_error(sorted_pairs[ids[2]], pos_rot_loss)
     # plot_omega_vs_err(sorted_pairs[ids[0]], losses[ids[0]])
     #
     # plot_sdf_and_contact(sorted_pairs[ids[0]][451][1])
     # plot_sdf_and_contact(sorted_pairs[ids[1]][451][1])
     # plot_sdf_and_contact(sorted_pairs[ids[2]][451][1])
-    plt.show()
+    # plt.show()
 
 
     # plot_estimated_loss_pdfs(losses)
@@ -489,17 +494,17 @@ if __name__ == '__main__':
 
     # visualize_learned_params(params, eval_sim, 361) # list(sorted_pairs.keys())[0])z
 #     if (eval_sim == None): quit()
-#     for id in ids:
-#         params, _, _ = load_params_and_logs(id)
-#         eval_sim = get_eval_sim(id)
-#         # traj_pairs = load_traj_pairs(eval_sim, params, range(550))
-#         weights=cube_sim.FastLossWeights(
-#             pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
-#              bullet=(format_sim_name(id) == 'Bullet'))
-#         stats = calc_error_and_loss_stats(sorted_pairs[id], weights)
-#         print()
-#         print(id)
-#         print(stats)
+    for id in ids:
+        # params, _, _ = load_params_and_logs(id)
+        # eval_sim = get_eval_sim(id)
+        # traj_pairs = load_traj_pairs(eval_sim, params, range(550))
+        weights=cube_sim.FastLossWeights(
+            pos=(1.0/cube_sim.BLOCK_HALF_WIDTH)*np.ones((3,)),
+             bullet=(format_sim_name(id) == 'Bullet'))
+        stats = calc_error_and_loss_stats(sorted_pairs[id], weights)
+        print()
+        print(id)
+        print(stats)
 
 #     sorted_pairs, losses = sort_traj_pairs_by_loss(traj_pairs, pos_rot_loss)
 #     print('Test set sorted from highest to lowest MSE')

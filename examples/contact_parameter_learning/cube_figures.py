@@ -27,7 +27,7 @@ sim_colors = {'Drake': ps.blue, 'MuJoCo': ps.red, 'Bullet' : ps.yellow}
 
 paper_ids = ['drake_2022_02_21_15_19_10',
              'mujoco_2022_02_23_15_29_10',
-             'bullet_2022_02_18_02_00_10']
+             'bullet_2022_02_22_00_36_10']
 
 # def plot_damping_ratios(ids):
 #     stiffness = []
@@ -89,6 +89,40 @@ def plot_impulses_list_of_ids(ids, traj_id):
     plt.legend(legend_strs)
     ps.save_fig('ContactTangentImpulses.png')
     # plt.show()
+
+
+def make_bounces_histogram(ids):
+    legend_strs = []
+    bounces = {}
+    for id in ids:
+        corner_z = np.zeros((550,))
+        corner_z_sim = np.zeros((550,))
+        sim = cube_eval.get_eval_sim(id)
+        params, _, _ = cube_eval.load_params_and_logs(id)
+        traj_pairs = cube_eval.load_traj_pairs(sim, params, range(550))
+        for i in range(len(traj_pairs)):
+            sdf = cube_eval.calculate_sdf_trajectory(traj_pairs[i][0])
+            start = np.argwhere(sdf <= 0)[0, 0]
+            sdf = sdf[start:]
+            sdf_sim = cube_eval.calculate_sdf_trajectory(traj_pairs[i][1])
+            start = np.argwhere(sdf_sim <= 0)[0, 0]
+            sdf_sim = sdf_sim[start:]
+            apex_t = np.argmax(sdf)
+            apex_t_sim = np.argmax(sdf_sim)
+            corner_z[i] = 100 * sdf[apex_t]/(2*BLOCK_HALF_WIDTH)
+            corner_z_sim[i] = 100 * sdf_sim[apex_t_sim] / (2*BLOCK_HALF_WIDTH)
+        bounces[id] = corner_z_sim
+        bounces["real"] = corner_z
+
+    for id in ids:
+        plt.hist(bounces[id], 100, histtype=u'step',
+                 label=format_sim_name(id))
+
+    plt.hist(bounces["real"], 100,  histtype=u'step',label="Real Cube")
+    plt.xlabel('Bounce Height (\% Cube Width)')
+    plt.ylabel('Count')
+    plt.legend()
+    ps.save_fig('CubeBounceHistogram.png')
 
 
 def make_training_loss_sensitivity_analysis(ids, params_ranges):
@@ -196,7 +230,8 @@ def make_gridded_sensitivity_analysis_figure(id, damp_key):
     plt.xlim((X[0, 0], X[-1, -1]))
     plt.ylim((Y[0, 0], Y[-1, -1]))
     plt.xlabel('Normalized Stiffness $k / k^{*}$')
-    plt.ylabel('Normalised Damping $b / b^{*}$')
+    if format_sim_name(id) == 'Drake':
+        plt.ylabel('Normalised Damping $b / b^{*}$')
     plt.title(f'{format_sim_name(id)} Sensitivity')
 
     ps.save_fig(format_sim_name(id) + '_cube_grid')
@@ -292,14 +327,14 @@ def make_friction_sensitivity_analysis_figure():
         k_ratio = np.array(params_ranges[id][mu_keys[id]]) / k_opt
         ps.plot(k_ratio, sweeps[id]['loss_avg'][mu_keys[id]], color=sim_colors[format_sim_name(id)])
     plt.title('Cube Friction Sensitivity')
-    plt.xlabel('$\mu / \mu^{*}$')
+    plt.xlabel('Normalized Friction Coeff $\mu / \mu^{*}$')
     plt.xscale('log', base=2)
     plt.legend(legend_strs)
     frame = plt.gca()
     frame.axes.get_xaxis().set_ticks([0.5, 0.7, 1.0, 1.4, 2.0])
     frame.axes.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
     
-    # plt.ylabel('Average $e_{q}$')
+    plt.ylabel('Average Error ($e_{q}$)')
     plt.ylim((0, 0.8))
     plt.xlim((k_ratio[0], k_ratio[-1]))
     ps.save_fig('FrictionSensitivity.png')
@@ -444,13 +479,14 @@ def quick_video():
     cube_eval.visualize_learned_params(params, eval_sim, traj)
 
 if __name__ == '__main__':
-    damping_keys = ['dissipation', 'damping', 'damping']
-    sim_choice = int(sys.argv[1])
-    make_gridded_sensitivity_analysis_figure(
-        paper_ids[sim_choice], damping_keys[sim_choice])
+    # damping_keys = ['dissipation', 'damping', 'damping']
+    # sim_choice = int(sys.argv[1])
+    # make_gridded_sensitivity_analysis_figure(
+    #     paper_ids[sim_choice], damping_keys[sim_choice])
+    # make_bounces_histogram(paper_ids)
     # plt.show()
     # make_estimated_pdf_figure()
-    # make_friction_sensitivity_analysis_figure()
+    make_friction_sensitivity_analysis_figure()
     # make_damping_sensitivity_analysis_figure()
     # make_stiffness_sensitivity_analysis_figure()
     # make_error_vs_time_plot()

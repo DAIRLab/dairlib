@@ -2096,6 +2096,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // We don't want this folder to be empty, because no_model_update is
     // supposed to be used after the model optimizaiton is finished. I just
     // check if 1_theta_y.csv exists
+    cout << "Check file: " << dir + "1_theta_y.csv" << endl;
     DRAKE_DEMAND(file_exist(dir + "1_theta_y.csv"));
   }
 

@@ -59,14 +59,16 @@ PYBIND11_MODULE(c3, m)
                     arg("F"), arg("H"), arg("c"));
 */
 
-/*
+
   c3miqp.def("Solve",
                &C3MIQP::Solve);
-*/
+
 
   lcs.def("Simulate",
                &LCS::Simulate);
 
+
+/*
 
 	// For binding Solve, because it has multiple return arguments
 	// (via pointer, in C++) pointer, the binding is a bit more complex
@@ -75,13 +77,13 @@ PYBIND11_MODULE(c3, m)
   			     vector<VectorXd>* w) {
   			VectorXd u = self->Solve(x0, delta, w);
   			// Return a tuple of (u, delta, w), by value
-  			return py::make_tuple(u, *delta, *w);
-              //return u;
+  			//return py::make_tuple(u, *delta, *w);
+              return u;
 
   		}
   		);
 
-
+*/
 
 	py::class_<C3Options> options(m, "C3Options");
 	options.def(py::init<>());

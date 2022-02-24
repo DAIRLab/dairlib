@@ -23,7 +23,7 @@ class C3 {
     /// @param delta A pointer to the copy variable solution
     /// @param w A pointer to the scaled dual variable solution
     /// @return The first control action to take, u[0]
-    Eigen::VectorXd Solve(Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta, std::vector<Eigen::VectorXd>* w);
+    Eigen::VectorXd Solve(Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta, std::vector<Eigen::VectorXd>& w);
 
     /// Solve a single ADMM step
     /// @param x0 The initial state of the system

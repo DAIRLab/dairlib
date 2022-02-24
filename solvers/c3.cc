@@ -43,14 +43,14 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R, con
             k_((LCS.B_)[0].cols()),
             hflag_(H_[0].isZero(0)) {}
 
-VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w) {
+VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
     vector<MatrixXd> Gv = G_;
     VectorXd z;
 
     for (int i = 0; i < options_.admm_iter; i++) {
 
-        z = ADMMStep(x0, delta, w, &Gv);
+        z = ADMMStep(x0, &delta, &w, &Gv);
 
     }
 

@@ -59,7 +59,8 @@ int DoMain(int argc, char* argv[]) {
         w = w_reset;
 
         ///calculate the input given x[i]
-        input[i] = opt.Solve(x[i], &delta, &w );
+        //input[i] = opt.Solve(x[i], &delta, &w );
+        input[i] = opt.Solve(x[i], delta, w );
 
         ///simulate the LCS
         x[i+1] = cartpole.Simulate(x[i], input[i]);

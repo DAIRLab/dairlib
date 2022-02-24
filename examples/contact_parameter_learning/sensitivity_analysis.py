@@ -172,14 +172,14 @@ def get_damping_ratio_range(sim_type, k0, b0):
 
 
 def get_stiffness_range(sim_type, k0, discretization_n = 5):
-    return {'stiffness' : (k0 * np.logspace(-1, 1, base=10, num=discretization_n)).tolist()}
+    return {'stiffness' : (k0 * np.logspace(-1, 1, num=discretization_n)).tolist()}
 
 def get_friction_range(sim_type, mu_0):
     params_range = {}
     if (sim_type == 'drake'):
-        params_range['mu'] = (mu_0 * np.logspace(-1, 1, base=2, num=20)).tolist()
+        params_range['mu'] = (mu_0 * np.logspace(-1, 1, base=2, num=25)).tolist()
     else:
-        params_range['mu_tangent'] = (mu_0 * np.logspace(-1, 1, base=2, num=20)).tolist()
+        params_range['mu_tangent'] = (mu_0 * np.logspace(-1, 1, base=2, num=25)).tolist()
     return params_range
 
 

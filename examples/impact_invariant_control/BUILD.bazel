@@ -23,6 +23,11 @@ load(
 )
 
 cc_library(
+    name = "urdf",
+    data = glob(["urdf/**"]),
+)
+
+cc_library(
     name = "impact_aware_time_based_fsm",
     srcs = ["impact_aware_time_based_fsm.cc"],
     hdrs = ["impact_aware_time_based_fsm.h"],

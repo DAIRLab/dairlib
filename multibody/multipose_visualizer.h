@@ -28,7 +28,7 @@ class MultiposeVisualizer {
   /// @param num_poses The number of simultaneous poses to draw (fixed)
   /// @param weld_frame_to_world Welds the frame of the given name to the world
   MultiposeVisualizer(std::string model_file, int num_poses,
-                      std::string weld_frame_to_world = "");
+                      const std::string& weld_frame_to_world = "");
 
   /// Constructor, scales all alpha transparencies by a constant
   /// @param model_file A full path to model (e.g. through FindResourceOrThrow)
@@ -36,7 +36,7 @@ class MultiposeVisualizer {
   /// @param alpha_scale Scales the transparency alpha field of all bodies
   /// @param weld_frame_to_world Welds the frame of the given name to the world
   MultiposeVisualizer(std::string model_file, int num_poses, double alpha_scale,
-                      std::string weld_frame_to_world = "");
+                      const std::string& weld_frame_to_world = "");
 
   /// Constructor, scales all alpha transparencies by a constant
   /// @param model_file A full path to model (e.g. through FindResourceOrThrow)
@@ -46,7 +46,7 @@ class MultiposeVisualizer {
   /// @param weld_frame_to_world Welds the frame of the given name to the world
   MultiposeVisualizer(std::string model_file, int num_poses,
                       const Eigen::VectorXd& alpha_scale,
-                      std::string weld_frame_to_world = "");
+                      const std::string& weld_frame_to_world = "");
 
   /// Draws the poses in the given (num_positions x num_poses) matrix
   /// Note: the matrix can have extra rows (e.g. velocities), which will be

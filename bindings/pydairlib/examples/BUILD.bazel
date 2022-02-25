@@ -1,0 +1,24 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_binary(
+    name = "five_link_biped_ik",
+    srcs = ["five_link_biped_ik.py"],
+    data = ["//examples/impact_invariant_control:urdf"
+            ],
+    deps = ["@lcm//:lcm-python",
+            "//bindings/pydairlib/common",
+            "//bindings/pydairlib/multibody:multibody_py",
+            ],
+
+)

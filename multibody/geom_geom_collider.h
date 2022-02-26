@@ -1,5 +1,6 @@
 #pragma once
 
+#include "drake/common/sorted_pair.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib {
@@ -25,8 +26,7 @@ class GeomGeomCollider {
   /// @param num_friction_directions
   GeomGeomCollider(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const drake::geometry::GeometryId geometry_id_A,
-      const drake::geometry::GeometryId geometry_id_B,
+      const drake::SortedPair<drake::geometry::GeometryId> geometry_pair,
       const int num_friction_directions);
 
   /// This is an alternate constructor for planar systems
@@ -40,8 +40,7 @@ class GeomGeomCollider {
   /// @param planar_normal
   GeomGeomCollider(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const drake::geometry::GeometryId geometry_id_A,
-      const drake::geometry::GeometryId geometry_id_B,
+      const drake::SortedPair<drake::geometry::GeometryId> geometry_pair,
       const Eigen::Vector3d planar_normal);
 
   /// Calculates the distance and contact Jacobian, set via pointer
@@ -50,8 +49,8 @@ class GeomGeomCollider {
   /// @param context
   /// @param J
   /// @return the distance as a scalar
-  T Eval(const drake::systems::Context<T>& context,
-         drake::EigenPtr<drake::MatrixX<T>> J);
+  std::pair<T, drake::MatrixX<T>> Eval(
+      const drake::systems::Context<T>& context);
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;

@@ -1,23 +1,25 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "common/find_resource.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/diagram_builder.h"
 
+
 namespace dairlib {
-namespace multibody {
+namespace solvers {
 namespace {
 
-using drake::SortedPair;
+using drake::AutoDiffXd;
 using drake::geometry::GeometryId;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using Eigen::VectorXd;
 
 
-void GeomGeomColliderTest() {
+void LcsTest() {
   drake::systems::DiagramBuilder<double> builder;
 
   auto [plant, scene_graph] =
@@ -46,6 +48,9 @@ void GeomGeomColliderTest() {
   const std::vector<GeometryId>& finger_lower_link_120_geoms =
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
           "finger_lower_link_120"));
+  const std::vector<GeometryId>& finger_lower_link_240_geoms =
+      plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
+          "finger_lower_link_240"));
   const std::vector<GeometryId>& cube_geoms =
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
           "cube"));
@@ -53,16 +58,18 @@ void GeomGeomColliderTest() {
   // Each body here only has one geometry
   auto geom_A = finger_lower_link_0_geoms[0];
   auto geom_B = finger_lower_link_120_geoms[0];
+  auto geom_C = finger_lower_link_240_geoms[0];
 
-  GeomGeomCollider collider_A_B(plant, SortedPair(geom_A, geom_B), 2);
-  GeomGeomCollider collider_A_cube(plant, SortedPair(geom_A, cube_geoms[0]), 4);
+  multibody::GeomGeomCollider collider_A_cube(plant, geom_A, cube_geoms[0], 2);
+  multibody::GeomGeomCollider collider_B_cube(plant, geom_B, cube_geoms[0], 2);
+  multibody::GeomGeomCollider collider_C_cube(plant, geom_C, cube_geoms[0], 2);
 
   auto diagram_context = diagram->CreateDefaultContext();
   auto& context = diagram->GetMutableSubsystemContext(plant,
                                                       diagram_context.get());
 
   VectorXd q = VectorXd::Zero(plant.num_positions());
-  auto q_map = makeNameToPositionsMap(plant);
+  auto q_map = multibody::makeNameToPositionsMap(plant);
 
   q(q_map.at("finger_base_to_upper_joint_0")) = 0;
   q(q_map.at("finger_upper_to_middle_joint_0")) = -1;
@@ -82,18 +89,34 @@ void GeomGeomColliderTest() {
 
   plant.SetPositions(&context, q);
 
-  auto [phi_A_cube, J_A_cube] = collider_A_cube.Eval(context);
+  VectorXd v = VectorXd::Zero(plant.num_velocities());
+  auto v_map = multibody::makeNameToVelocitiesMap(plant);
+
+  VectorXd u = VectorXd::Zero(plant.num_actuators());
+
+  plant.SetVelocities(&context, v);
+
+  Eigen::MatrixXd J_A_cube(9, plant.num_positions());
+  collider_A_cube.Eval(context, &J_A_cube);
   std::cout << J_A_cube << std::endl << std::endl;
 
-  auto [phi_A_B, J_A_B] = collider_A_B.Eval(context);
-  std::cout << J_A_B << std::endl << std::endl;
+  // Build the LCS
+  // First, we'll use an AutoDiff version of the plant for non-contact terms
+
+  auto plant_ad = drake::systems::System<double>::ToAutoDiffXd(plant);
+  multibody::KinematicEvaluatorSet<AutoDiffXd> evaluator(*plant_ad);
+
+  // stacked [x;u] as autodiff
+  VectorXd xu(q.size() + v.size() + u.size());
+  xu << q, v, u;
+  auto xu_ad = drake::math::InitializeAutoDiff(xu);
 }
 
 }  // namespace
-}  // namespace multibody
+}  // namespace solvers
 }  // namespace dairlib
 
 
 int main(int argc, char **argv) {
-  dairlib::multibody::GeomGeomColliderTest();
+  dairlib::solvers::LcsTest();
 }

@@ -5,6 +5,7 @@ namespace dairlib {
 namespace solvers {
 
 class LCSFactory {
+ public:
   /// Build a time-invariant LCS, linearizing a MultibodyPlant
   /// Contacts are specified by the pairs in contact_geoms. Each elemnt
   /// in the contact_geoms vector defines a collision.
@@ -29,7 +30,7 @@ class LCSFactory {
       const drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
-      int num_friction_faces, double mu);
+      int num_friction_directions, double mu);
 
   };
 

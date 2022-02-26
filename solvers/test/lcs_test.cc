@@ -1,7 +1,8 @@
+#include "common/find_resource.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "common/find_resource.h"
+#include "solvers/lcs_factory.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
@@ -13,6 +14,7 @@ namespace solvers {
 namespace {
 
 using drake::AutoDiffXd;
+using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -55,19 +57,21 @@ void LcsTest() {
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
           "cube"));
 
-  // Each body here only has one geometry
-  auto geom_A = finger_lower_link_0_geoms[0];
-  auto geom_B = finger_lower_link_120_geoms[0];
-  auto geom_C = finger_lower_link_240_geoms[0];
-
-  multibody::GeomGeomCollider collider_A_cube(plant, geom_A, cube_geoms[0], 2);
-  multibody::GeomGeomCollider collider_B_cube(plant, geom_B, cube_geoms[0], 2);
-  multibody::GeomGeomCollider collider_C_cube(plant, geom_C, cube_geoms[0], 2);
+  std::vector<SortedPair<GeometryId>> contact_geoms;
+  contact_geoms.push_back(SortedPair(finger_lower_link_0_geoms[0],
+                                     cube_geoms[0]));
+  contact_geoms.push_back(SortedPair(finger_lower_link_120_geoms[0],
+                                     cube_geoms[0]));
+  contact_geoms.push_back(SortedPair(finger_lower_link_240_geoms[0],
+                                     cube_geoms[0]));
 
   auto diagram_context = diagram->CreateDefaultContext();
   auto& context = diagram->GetMutableSubsystemContext(plant,
                                                       diagram_context.get());
 
+  ///
+  /// Set state and input for linearization
+  ///
   VectorXd q = VectorXd::Zero(plant.num_positions());
   auto q_map = multibody::makeNameToPositionsMap(plant);
 
@@ -95,21 +99,31 @@ void LcsTest() {
   VectorXd u = VectorXd::Zero(plant.num_actuators());
 
   plant.SetVelocities(&context, v);
-
-  Eigen::MatrixXd J_A_cube(9, plant.num_positions());
-  collider_A_cube.Eval(context, &J_A_cube);
-  std::cout << J_A_cube << std::endl << std::endl;
+  multibody::SetInputsIfNew<double>(plant, u, &context);
 
   // Build the LCS
   // First, we'll use an AutoDiff version of the plant for non-contact terms
 
   auto plant_ad = drake::systems::System<double>::ToAutoDiffXd(plant);
-  multibody::KinematicEvaluatorSet<AutoDiffXd> evaluator(*plant_ad);
 
   // stacked [x;u] as autodiff
+  // Now, all gradients will be w.r.t. [x;u]
   VectorXd xu(q.size() + v.size() + u.size());
   xu << q, v, u;
   auto xu_ad = drake::math::InitializeAutoDiff(xu);
+
+  auto context_ad = plant_ad->CreateDefaultContext();
+  plant_ad->SetPositionsAndVelocities(context_ad.get(),
+      xu_ad.head(plant.num_positions() + plant.num_velocities()));
+  multibody::SetInputsIfNew<AutoDiffXd>(*plant_ad,
+                                        xu_ad.tail(plant.num_actuators()),
+                                        context_ad.get());
+
+  int num_friction_directions = 2;
+  double mu = .8;
+  LCSFactory::LinearizePlantToLCS(plant, context, *plant_ad, *context_ad,
+          contact_geoms, num_friction_directions, mu);
+
 }
 
 }  // namespace

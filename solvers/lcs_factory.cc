@@ -29,7 +29,7 @@ LCS LCSFactory::LinearizePlantToLCS(
     const MultibodyPlant<AutoDiffXd>& plant_ad,
      const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
-    int num_friction_faces, double mu) {
+    int num_friction_directions, double mu) {
 
   ///
   /// First, calculate vdot and derivatives from non-contact dynamcs
@@ -63,17 +63,17 @@ LCS LCSFactory::LinearizePlantToLCS(
   ///
   VectorXd phi(contact_geoms.size());
   MatrixXd J_n(contact_geoms.size(), plant.num_velocities());
-  MatrixXd J_t(2 * contact_geoms.size() * num_friction_faces,
+  MatrixXd J_t(2 * contact_geoms.size() * num_friction_directions,
                plant.num_velocities());
   for (int i = 0; i < contact_geoms.size(); i++) {
     multibody::GeomGeomCollider collider(plant, contact_geoms[i],
-                                         num_friction_faces);
+                                         num_friction_directions);
     auto [phi_i, J_i] = collider.Eval(context);
     phi(i) = phi_i;
     J_n.row(i) = J_i.row(0);
-    J_t.block(2 * i * num_friction_faces, 0, 2 * num_friction_faces,
+    J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
               plant.num_velocities()) =
-        J_i.block(1, 0, 2 * num_friction_faces, plant.num_velocities());
+        J_i.block(1, 0, 2 * num_friction_directions, plant.num_velocities());
   }
 
 

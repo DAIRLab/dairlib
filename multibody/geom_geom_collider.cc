@@ -63,12 +63,12 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::Eval(const Context<T>& context) {
       inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
           signed_distance_pair.p_ACa;
 
-  Matrix<double, 3, Eigen::Dynamic> Jq_v_BCa_W(3, plant_.num_positions());
+  Matrix<double, 3, Eigen::Dynamic> J_v_BCa_W(3, plant_.num_velocities());
   auto wrt = drake::multibody::JacobianWrtVariable::kV;
 
   plant_.CalcJacobianTranslationalVelocity(context, wrt,
                                             frameA, p_ACa, frameB,
-                                            plant_.world_frame(), &Jq_v_BCa_W);
+                                            plant_.world_frame(), &J_v_BCa_W);
 
   // Compute force basis
   Matrix<double, 3, Eigen::Dynamic> force_basis(
@@ -94,7 +94,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::Eval(const Context<T>& context) {
   }
 
   return std::pair<T, MatrixX<T>>(signed_distance_pair.distance,
-                                  force_basis.transpose() * Jq_v_BCa_W);
+                                  force_basis.transpose() * J_v_BCa_W);
 }
 
 }  // namespace multibody

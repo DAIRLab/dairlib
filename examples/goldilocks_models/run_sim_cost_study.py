@@ -1000,8 +1000,8 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     fig.colorbar(surf, shrink=0.9, aspect=15)
 
     # plt.xlim([0, 135])
-    plt.xlabel('pelvis height (m)')
-    plt.ylabel('stride length (m)')
+    plt.xlabel('stride length (m)')
+    plt.ylabel('pelvis height (m)')
     plt.title('Cost landscape at iteration %d ' % model_slice_value_cost_landsacpe + title_list[i])
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)

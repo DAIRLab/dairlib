@@ -119,11 +119,20 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
         }
 
 
+    MatrixXd LinEq(n_, 2*n_+k_+m_);
+    LinEq.block(0,n_+k_+m_, n_, n_) = -MatrixXd::Identity(n_,n_);
 
     for (int i = 0; i < N_; i++) {
 
 
         prog.AddLinearConstraint(A_.at(i) * x.at(i) + B_.at(i) * u.at(i) + D_.at(i) * lambda.at(i) + d_.at(i) == x.at(i+1));
+
+        //LinEq.block(0,0,n_,n_) = A_.at(i);
+        //LinEq.block(0,n_,n_,k_ ) = B_.at(i);
+        //LinEq.block(0,n_+k_, n_, m_) = D_.at(i);
+
+
+        //prog.AddLinearEqualityConstraint(A_.at(i), -d_.at(i), x.at(1));
 
         //for finger gaiting
         prog.AddLinearConstraint(u[i](2) >= 0);

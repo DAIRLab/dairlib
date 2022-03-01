@@ -6,8 +6,8 @@ using std::vector;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_);
-void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_);
+void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_);
+void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_);
 
 
 namespace dairlib {
@@ -18,15 +18,15 @@ int DoMain(int argc, char* argv[]) {
     ///dimensions (n: state dimension, m: complementarity variable dimension, k: input dimension, N: MPC horizon)
     int nd, md, kd, Nd;
     ///variables (LCS)
-    vector<MatrixXd> Ad, Bd, Dd, dd, Ed, Fd, Hd;
-    vector<VectorXd> cd;
+    vector<MatrixXd> Ad, Bd, Dd, Ed, Fd, Hd;
+    vector<VectorXd> dd, cd;
     ///variables (cost, ADMM)
     vector<MatrixXd> Qd, Rd, Gd, Ud;
     ///initialize (change wrt your specific system)
     //init_cartpole(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud);
     init_fingergait(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud);
     ///set parameters as const
-    const vector<MatrixXd> A = Ad; const vector<MatrixXd> B = Bd; const vector<MatrixXd> D = Dd; const vector<MatrixXd> E = Ed; const vector<MatrixXd> F = Fd; const vector<MatrixXd> H = Hd; const vector<MatrixXd> d = dd; const vector<VectorXd> c = cd; const vector<MatrixXd> Q = Qd; const vector<MatrixXd> R = Rd; const vector<MatrixXd> G = Gd; const vector<MatrixXd> U = Ud; const int N = Nd; const int n = nd; const int m = md; const int k = kd;
+    const vector<MatrixXd> A = Ad; const vector<MatrixXd> B = Bd; const vector<MatrixXd> D = Dd; const vector<MatrixXd> E = Ed; const vector<MatrixXd> F = Fd; const vector<MatrixXd> H = Hd; const vector<VectorXd> d = dd; const vector<VectorXd> c = cd; const vector<MatrixXd> Q = Qd; const vector<MatrixXd> R = Rd; const vector<MatrixXd> G = Gd; const vector<MatrixXd> U = Ud; const int N = Nd; const int n = nd; const int m = md; const int k = kd;
     ///options
     C3Options options;
 
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
 }
 
 ///initialize LCS parameters for cartpole
-void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_) {
+void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_) {
 
     int n = 4;
     int m = 2;
@@ -157,7 +157,7 @@ void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vec
     cinit << d1,
             -d2;
 
-    MatrixXd dinit(n,1);
+    VectorXd dinit(n);
     dinit << 0,
             0,
             0,
@@ -185,7 +185,7 @@ void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vec
     std::vector<MatrixXd> A(N, Ainit * Ts + MatrixXd::Identity(n,n) );
     std::vector<MatrixXd> B(N, Ts*Binit );
     std::vector<MatrixXd> D(N, Ts*Dinit );
-    std::vector<MatrixXd> d(N, Ts*dinit );
+    std::vector<VectorXd> d(N, Ts*dinit );
     std::vector<MatrixXd> E(N, Einit );
     std::vector<MatrixXd> F(N, Finit );
     std::vector<VectorXd> c(N, cinit );
@@ -223,7 +223,7 @@ void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vec
 
 };
 
-void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_){
+void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_){
 
     int n = 6;
     int m = 6;
@@ -285,7 +285,7 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
             -h*g,
             h*g;
 
-    MatrixXd dinit(n,1);
+    VectorXd dinit(n);
     dinit << -g*h*h,
             -g*h,
             0,
@@ -321,7 +321,7 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
     std::vector<MatrixXd> A(N, Ainit);
     std::vector<MatrixXd> B(N, Binit );
     std::vector<MatrixXd> D(N, Dinit );
-    std::vector<MatrixXd> d(N, dinit );
+    std::vector<VectorXd> d(N, dinit );
     std::vector<MatrixXd> E(N, Einit );
     std::vector<MatrixXd> F(N, Finit );
     std::vector<VectorXd> c(N, cinit );

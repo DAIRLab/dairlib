@@ -14,13 +14,13 @@ class LCS {
     /// @param A, B, D, d Dynamics constraints x_{k+1} = A_k x_k + B_k u_k + D_k \lambda_k + d_k
     /// @param E, F, H, c Complementarity constraints  0 <= \lambda_k \perp E_k x_k + F_k \lambda_k  + H_k u_k + c_k
     LCS(const std::vector<Eigen::MatrixXd>& A, const std::vector<Eigen::MatrixXd>& B,
-       const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::MatrixXd>& d,
+       const std::vector<Eigen::MatrixXd>& D, const std::vector<Eigen::VectorXd>& d,
        const std::vector<Eigen::MatrixXd>& E, const std::vector<Eigen::MatrixXd>& F,
        const std::vector<Eigen::MatrixXd>& H, const std::vector<Eigen::VectorXd>& c);
 
     /// Constructor for time-invariant LCS
     LCS(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
-    const Eigen::MatrixXd& D, const Eigen::MatrixXd& d,
+    const Eigen::MatrixXd& D, const Eigen::VectorXd& d,
     const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
     const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N);
 
@@ -33,7 +33,7 @@ public:
     const std::vector<Eigen::MatrixXd> A_;
     const std::vector<Eigen::MatrixXd> B_;
     const std::vector<Eigen::MatrixXd> D_;
-    const std::vector<Eigen::MatrixXd> d_;
+    const std::vector<Eigen::VectorXd> d_;
     const std::vector<Eigen::MatrixXd> E_;
     const std::vector<Eigen::MatrixXd> F_;
     const std::vector<Eigen::MatrixXd> H_;

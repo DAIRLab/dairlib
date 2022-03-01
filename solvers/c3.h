@@ -53,7 +53,7 @@ class C3 {
  	const std::vector<Eigen::MatrixXd> A_;
  	const std::vector<Eigen::MatrixXd> B_;
 	const std::vector<Eigen::MatrixXd> D_;
-	const std::vector<Eigen::MatrixXd> d_;
+	const std::vector<Eigen::VectorXd> d_;
 	const std::vector<Eigen::MatrixXd> E_;
 	const std::vector<Eigen::MatrixXd> F_;
     const std::vector<Eigen::MatrixXd> H_;

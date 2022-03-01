@@ -12,7 +12,7 @@ namespace dairlib {
 namespace solvers {
 
 LCS::LCS(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
-       const vector<MatrixXd>& D, const vector<MatrixXd>& d,
+       const vector<MatrixXd>& D, const vector<VectorXd>& d,
        const vector<MatrixXd>& E, const vector<MatrixXd>& F,
        const vector<MatrixXd>& H, const vector<VectorXd>& c)
         : A_(A),
@@ -26,10 +26,10 @@ LCS::LCS(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
           N_(A.size()) {}
 
 LCS::LCS(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
-       const MatrixXd& d, const MatrixXd& E, const MatrixXd& F,
+       const VectorXd& d, const MatrixXd& E, const MatrixXd& F,
        const MatrixXd& H, const VectorXd& c, const int& N)
         : LCS(vector<MatrixXd>(N, A), vector<MatrixXd>(N, B), vector<MatrixXd>(N, D),
-             vector<MatrixXd>(N, d), vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
+             vector<VectorXd>(N, d), vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
              vector<MatrixXd>(N, H), vector<VectorXd>(N, c)) {}
 
 VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {

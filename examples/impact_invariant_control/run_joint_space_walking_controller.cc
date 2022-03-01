@@ -128,10 +128,10 @@ int DoMain(int argc, char* argv[]) {
   /**** OSC setup ****/
   // Cost
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(nv, nv);
-  osc->SetAccelerationCostForAllJoints(Q_accel);
+  osc->SetAccelerationCostWeights(Q_accel);
   // Soft constraint on contacts
   double w_contact_relax = gains.w_soft_constraint;
-  osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  osc->SetSoftConstraintWeight(w_contact_relax);
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);

@@ -137,19 +137,22 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return this->get_input_port(0);
   }
 
-  // Cost methods
-  void SetInputCost(const Eigen::MatrixXd& W) { W_input_ = W; }
-  void SetAccelerationCostForAllJoints(const Eigen::MatrixXd& W) {
+  // Regularization cost weights
+  void SetInputCostWeights(const Eigen::MatrixXd& W) { W_input_ = W; }
+  void SetAccelerationCostWeights(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
   }
-  void AddAccelerationCost(const std::string& joint_vel_name, double w);
+  void SetInputSmoothingWeights(const Eigen::MatrixXd& W) {
+    W_input_smoothing_ = W;
+  }
+  void SetSoftConstraintWeight(double w_soft_constraint) {
+    w_soft_constraint_ = w_soft_constraint;
+  }
 
   // Constraint methods
   void DisableAcutationConstraint() { with_input_constraints_ = false; }
   void SetContactFriction(double mu) { mu_ = mu; }
-  void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
-    w_soft_constraint_ = w_soft_constraint;
-  }
+
   void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator);
   void AddStateAndContactPoint(
       int state, const multibody::WorldPointEvaluator<double>* evaluator);
@@ -176,7 +179,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                        int left_support_state,
                                        int right_support_state,
                                        std::vector<int> ds_states);
-  void SetInputRegularizationWeight(double w) { w_input_reg_ = w; }
 
   // OSC LeafSystem builder
   void Build();
@@ -340,10 +342,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   /// could consider using acceleration cost instead.
   Eigen::MatrixXd W_input_;        // Input cost weight
   Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
+  Eigen::MatrixXd W_input_smoothing_;
 
   // OSC constraint members
   bool with_input_constraints_ = true;
-
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
@@ -386,9 +388,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Optional feature -- regularizing input
   std::shared_ptr<drake::solvers::QuadraticCost> input_reg_cost_;
-  double w_input_reg_ = -1;
-  Eigen::MatrixXd W_input_reg_;
-
   mutable double total_cost_ = 0;
   mutable double soft_constraint_cost_ = 0;
 };

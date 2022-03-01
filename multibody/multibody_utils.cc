@@ -5,6 +5,7 @@
 
 #include "drake/common/drake_assert.h"
 #include "drake/math/autodiff_gradient.h"
+#include "drake/geometry/proximity_properties.h"
 
 namespace dairlib {
 namespace multibody {
@@ -118,23 +119,31 @@ void SetInputsIfNew(const MultibodyPlant<T>& plant,
   }
 }
 
+
 template <typename T>
-void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
+void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
-                    Eigen::Vector3d normal_W) {
+                    Eigen::Vector3d normal_W, double stiffness, double dissipation_rate) {
   if (!plant->geometry_source_is_registered()) {
     plant->RegisterAsSourceForSceneGraph(scene_graph);
   }
 
   Eigen::Vector3d point_W(0, 0, 0);
-  drake::multibody::CoulombFriction<T> friction(mu_static, mu_kinetic);
 
   // A half-space for the ground geometry.
   const drake::math::RigidTransformd X_WG(
       HalfSpace::MakePose(normal_W, point_W));
 
+  drake::geometry::ProximityProperties props;
+  props.AddProperty("material", "point_contact_stiffness", stiffness);
+  props.AddProperty("material", "hunt_crossley_dissipation",
+                    dissipation_rate);
+  props.AddProperty(drake::geometry::internal::kMaterialGroup,
+                    drake::geometry::internal::kFriction,
+                    drake::multibody::CoulombFriction<double>(mu_static, mu_kinetic));
+
   plant->RegisterCollisionGeometry(plant->world_body(), X_WG, HalfSpace(),
-                                   "collision", friction);
+                                   "collision", props);
 
   // Add visual for the ground.
 //  plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
@@ -510,7 +519,7 @@ template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<dou
 template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
 template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
-template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W);   // NOLINT
+template void AddFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W, double stiffness, double dissipation_rate);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
 template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>& input);  // NOLINT

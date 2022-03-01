@@ -192,7 +192,8 @@ int DoMain(int argc, char* argv[]) {
   /// REGULARIZATION COSTS
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
   osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
-  osc->SetLambdaRegularizationWeight(1e-8 * gains.W_lambda_regularization);
+//  osc->SetInputCostWeights(1e-3 * gains.W_input_regularization);
+  osc->SetLambdaRegularizationWeight(1e-6 * gains.W_lambda_regularization);
 
   // Soft constraint on contacts
   osc->SetSoftConstraintWeight(gains.w_soft_constraint);

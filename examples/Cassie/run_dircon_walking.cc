@@ -200,7 +200,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       scene_graph_ik.set_name("scene_graph_ik");
       MultibodyPlant<double> plant_ik(0.0);
       Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
-      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8,
+      multibody::AddFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8,
                                 ground_normal);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
@@ -291,7 +291,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   MultibodyPlant<double> plant(0.0);
 
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
-  multibody::addFlatTerrain(&plant, &scene_graph, 1, 1, ground_normal);
+  multibody::AddFlatTerrain(&plant, &scene_graph, 1, 1, ground_normal);
 
   Parser parser(&plant, &scene_graph);
 

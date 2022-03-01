@@ -17,7 +17,7 @@ class InputSupervisorVisualizer(object):
 
         self.text_box = vis.TextItem('safety_info', 'safety_info', view)
         self.text_box.setProperty('Font Size', 18)
-        self.text_box.setProperty('Position', [0, 1600])
+        self.text_box.setProperty('Position', [1600, 10])
 
         self.set_enabled(True)
 

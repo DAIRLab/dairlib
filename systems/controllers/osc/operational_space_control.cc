@@ -886,7 +886,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           : 0;
   double lambda_h_cost =
       (W_lambda_reg_.size() > 0)
-          ? (0.5 * (*lambda_h_sol_).transpose() * W_input_smoothing_ * (*lambda_h_sol_))(0)
+          ? (0.5 * (*lambda_h_sol_).transpose() * W_lambda_reg_ * (*lambda_h_sol_))(0)
           : 0;
 
   output->regularization_costs.clear();

@@ -436,7 +436,7 @@ if __name__ == "__main__":
 
   ### Parameters for plotting
   model_iter_idx_start = 1
-  model_iter_idx_end = 291
+  model_iter_idx_end = 301
   model_iter_idx_delta = 10
   model_indices = list(range(model_iter_idx_start, model_iter_idx_end+1, model_iter_idx_delta))
 

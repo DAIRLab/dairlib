@@ -179,7 +179,7 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G, vector<VectorXd>& WZ) 
         omp_set_num_threads(options_.num_threads); // Set number of threads
     }
 
-    //#pragma omp parallel for
+    #pragma omp parallel for
 	for (i = 0; i < N_; i++) {
         deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i]);
 	}

@@ -89,13 +89,13 @@ int DoMain(int argc, char* argv[]) {
         input[i] = opt.Solve(x[i], delta, w );
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
-        //std::cout << "Solve time:" << elapsed.count() << std::endl;
+        std::cout << "Solve time:" << elapsed.count() << std::endl;
 
         ///simulate the LCS
         x[i+1] = system.Simulate(x[i], input[i]);
 
         ///print the state
-        std::cout << "state: "<< x[i+1] << std::endl;
+        //std::cout << "state: "<< x[i+1] << std::endl;
 
     }
 

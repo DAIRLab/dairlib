@@ -458,8 +458,8 @@ void OperationalSpaceControl::Build() {
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
 //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-4);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "check_termination", 10);
   solver_options.SetOption(OsqpSolver::id(), "warmstart", 1);

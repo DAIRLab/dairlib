@@ -354,7 +354,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Optional feature - penalize forces in the nullspace of J^T
   drake::solvers::QuadraticCost* lambda_null_cost_;
-  Eigen::MatrixXd W_lambda_null_;
+  mutable Eigen::MatrixXd W_lambda_null_;
   double w_lambda_null_ = -1;
 
   // Optional feature -- regularizing input

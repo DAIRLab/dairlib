@@ -550,10 +550,18 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Get J for external forces in equations of motion
   MatrixXd J_c = MatrixXd::Zero(n_c_, n_v_);
+  MatrixXd P = MatrixXd::Zero(n_c_, n_c_);
+  int j = 0;
+  int z = 1;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
     if (active_contact_set.find(i) != active_contact_set.end()) {
+      P.block(kSpaceDim * j, kSpaceDim*i, kSpaceDim, kSpaceDim) = Eigen::Matrix3d::Identity();
+      j++;
       J_c.block(kSpaceDim * i, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
+    } else {
+      P.block(n_c_ - z*kSpaceDim, i*kSpaceDim, kSpaceDim, kSpaceDim) = Eigen::Matrix3d::Identity();
+      z++;
     }
   }
 
@@ -576,16 +584,19 @@ VectorXd OperationalSpaceControl::SolveQp(
     row_idx += contact_i->num_active();
   }
 
-  auto J_c_T_QR = J_c.transpose().householderQr();
-  MatrixXd R = J_c_T_QR.matrixQR().triangularView<Eigen::Upper>();
+  auto J_c_T_QR = (P*J_c).topRows(kSpaceDim* active_contact_set.size()).transpose().fullPivHouseholderQr();
+  MatrixXd Rtmp = J_c_T_QR.matrixQR().triangularView<Eigen::Upper>();
+  MatrixXd R = Rtmp.topRows(Rtmp.cols());
   std::cout << "R:\n" << R << std::endl;
   MatrixXd R_T = R.transpose();
-  MatrixXd N_J_c_T = MatrixXd::Identity(n_c_active_, n_c_active_) -
+  MatrixXd N_J_c_T = MatrixXd::Identity(R.rows(),R.cols()) -
                       R_T * (R * R_T).inverse() * R;
   std::cout << "N:\n" << N_J_c_T << std::endl;
-  lambda_null_cost_->UpdateCoefficients(
-      N_J_c_T.transpose() * W_lambda_null_ * N_J_c_T,
-      VectorXd::Zero(n_c_active_));
+  MatrixXd N = MatrixXd::Zero(n_c_, n_c_);
+  N.topLeftCorner(R.rows(), R.cols()) = N_J_c_T;
+  MatrixXd W = P.transpose()*N.transpose()*W_lambda_null_ * N * P;
+  lambda_null_cost_->UpdateCoefficients(W,
+      VectorXd::Zero(n_c_));
 
   // Update constraints
   // 1. Dynamics constraint

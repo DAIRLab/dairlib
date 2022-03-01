@@ -189,13 +189,13 @@ int DoMain(int argc, char* argv[]) {
 
   /**** OSC setup ****/
   // Cost
-  MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(nv, nv);
-  osc->SetAccelerationCostForAllJoints(Q_accel);
-  osc->SetInputRegularizationWeight(gains.w_input_reg);
+  /// REGULARIZATION COSTS
+  osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
+  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
+  osc->SetLambdaRegularizationWeight(1e-8 * gains.W_lambda_regularization);
 
   // Soft constraint on contacts
-  double w_contact_relax = gains.w_soft_constraint;
-  osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  osc->SetSoftConstraintWeight(gains.w_soft_constraint);
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);

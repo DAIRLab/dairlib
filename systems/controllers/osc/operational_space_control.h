@@ -148,6 +148,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetSoftConstraintWeight(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
+  void SetLambdaRegularizationWeight(const Eigen::MatrixXd& W) {
+    W_lambda_reg_ = W;
+  }
 
   // Constraint methods
   void DisableAcutationConstraint() { with_input_constraints_ = false; }
@@ -324,6 +327,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
   std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
+  drake::solvers::QuadraticCost* input_smoothing_cost_;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;
@@ -331,6 +335,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
+  std::unique_ptr<Eigen::VectorXd> u_prev_;
   mutable double solve_time_;
 
   mutable Eigen::VectorXd ii_lambda_sol_;
@@ -343,6 +348,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd W_input_;        // Input cost weight
   Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
   Eigen::MatrixXd W_input_smoothing_;
+  Eigen::MatrixXd W_lambda_reg_;
 
   // OSC constraint members
   bool with_input_constraints_ = true;
@@ -387,7 +393,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
 
   // Optional feature -- regularizing input
-  std::shared_ptr<drake::solvers::QuadraticCost> input_reg_cost_;
   mutable double total_cost_ = 0;
   mutable double soft_constraint_cost_ = 0;
 };

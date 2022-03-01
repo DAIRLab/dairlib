@@ -304,6 +304,7 @@ void OperationalSpaceControl::Build() {
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
+  u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
   dv_sol_->setZero();
   u_sol_->setZero();
   lambda_c_sol_->setZero();
@@ -386,6 +387,10 @@ void OperationalSpaceControl::Build() {
   if (W_joint_accel_.size() > 0) {
     prog_->AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv_);
   }
+  // 3. constraint force cost
+  if (W_lambda_reg_.size() > 0) {
+    prog_->AddQuadraticCost(W_lambda_reg_, VectorXd::Zero(n_h_), lambda_h_);
+  }
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
     prog_->AddQuadraticCost(
@@ -394,7 +399,7 @@ void OperationalSpaceControl::Build() {
   }
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0) {
-    input_reg_cost_ =
+    input_smoothing_cost_ =
         prog_->AddQuadraticCost(W_input_smoothing_, VectorXd::Zero(n_u_), u_)
             .evaluator()
             .get();
@@ -443,11 +448,11 @@ void OperationalSpaceControl::Build() {
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   solver_options.SetOption(OsqpSolver::id(), "rho", 0.0001);
-  solver_options.SetOption(OsqpSolver::id(), "sigma", 1e-5);
+  solver_options.SetOption(OsqpSolver::id(), "sigma", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "max_iter", 4000);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
@@ -736,21 +741,30 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0) {
-    input_reg_cost_->UpdateCoefficients(W_input_smoothing_,
-                                        -W_input_smoothing_ * (*u_sol_));
+    input_smoothing_cost_->UpdateCoefficients(W_input_smoothing_,
+                                        -W_input_smoothing_ * (*u_prev_));
   }
 
+  if (!solver_->IsInitialized()) {
+    solver_->InitializeSolver(*prog_, solver_options_);
+  }
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
+  if (result.is_success()) {
+    // Extract solutions
+    *dv_sol_ = result.GetSolution(dv_);
+    *u_sol_ = result.GetSolution(u_);
+    *lambda_c_sol_ = result.GetSolution(lambda_c_);
+    *lambda_h_sol_ = result.GetSolution(lambda_h_);
+    *epsilon_sol_ = result.GetSolution(epsilon_);
+    *u_prev_ = *u_sol_;
+  } else {
+    std::cerr << "QP did not solve in time!" << std::endl;
+    solver_->DisableWarmStart();
+    *u_prev_ = VectorXd::Zero(n_u_);
+  }
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
-
-  // Extract solutions
-  *dv_sol_ = result.GetSolution(dv_);
-  *u_sol_ = result.GetSolution(u_);
-  *lambda_c_sol_ = result.GetSolution(lambda_c_);
-  *lambda_h_sol_ = result.GetSolution(lambda_h_);
-  *epsilon_sol_ = result.GetSolution(epsilon_);
 
   for (auto tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {
@@ -868,7 +882,11 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           : 0;
   double input_smoothing_cost =
       (W_input_smoothing_.size() > 0)
-          ? (0.5 * (*u_sol_).transpose() * W_input_smoothing_ * (*u_sol_))(0)
+          ? (0.5 * (*u_sol_- *u_prev_).transpose() * W_input_smoothing_ * (*u_sol_ - *u_prev_))(0)
+          : 0;
+  double lambda_h_cost =
+      (W_lambda_reg_.size() > 0)
+          ? (0.5 * (*lambda_h_sol_).transpose() * W_input_smoothing_ * (*lambda_h_sol_))(0)
           : 0;
 
   output->regularization_costs.clear();
@@ -883,6 +901,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->regularization_cost_names.push_back("soft_constraint_cost");
   output->regularization_costs.push_back(input_smoothing_cost);
   output->regularization_cost_names.push_back("input_smoothing_cost");
+  output->regularization_costs.push_back(lambda_h_cost);
+  output->regularization_cost_names.push_back("lambda_h_cost");
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
@@ -904,14 +924,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   output->tracking_data =
       std::vector<lcmt_osc_tracking_data>(tracking_data_vec_->size());
-  output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
+  output->tracking_costs = std::vector<double>(tracking_data_vec_->size());
   output->tracking_data_names =
       std::vector<std::string>(tracking_data_vec_->size());
-
-  total_cost_ += output->acceleration_cost;
-  total_cost_ += output->input_cost;
-  total_cost_ += output->soft_constraint_cost;
-  soft_constraint_cost_ = output->soft_constraint_cost;
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -932,7 +947,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     osc_output.yddot_command = std::vector<double>(osc_output.ydot_dim);
     osc_output.yddot_command_sol = std::vector<double>(osc_output.ydot_dim);
 
-    output->tracking_cost[i] = 0;
+    output->tracking_costs[i] = 0;
     if (tracking_data->IsActive(fsm_state) &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
@@ -958,7 +973,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       output->tracking_costs[i] =
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
            (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
-      total_cost_ += output->tracking_cost[i];
+      total_cost_ += output->tracking_costs[i];
     }
     output->tracking_data[i] = osc_output;
   }
@@ -1005,9 +1020,8 @@ void OperationalSpaceControl::CalcOptimalInput(
     double alpha = 0;
     int next_fsm_state = -1;
     if (this->get_near_impact_input_port().HasValue(context)) {
-      auto impact_info =
-          (ImpactInfoVector<double>*)this->EvalVectorInput(context,
-                                                           impact_info_port_);
+      auto impact_info = (ImpactInfoVector<double>*)this->EvalVectorInput(
+          context, impact_info_port_);
       alpha = impact_info->GetAlpha();
       next_fsm_state = impact_info->GetCurrentContactMode();
     }

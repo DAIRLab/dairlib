@@ -1,7 +1,15 @@
 w_input: 0.000001
-w_accel: 0.000001
+w_accel: 0.0001
+# roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
+W_accel: [1, 1, 1, 1, 1, 1,
+          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
+          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
+W_input_reg: [1, 0.9, 0.5, 0.1, 1,
+              1, 0.9, 0.5, 0.1, 1]
+W_lambda_reg: [1, 1, 1,
+               1, 1, 1]
 #w_soft_constraint: 1000000
-w_soft_constraint: 0.01
+w_soft_constraint: 0.0
 w_input_reg: 0.01
 impact_threshold: 0.025
 relative_feet: true
@@ -23,11 +31,11 @@ w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 2.5
+w_hip_yaw: 1
 hip_yaw_kp: 60
 hip_yaw_kd: 1
 # Foot placement parameters
-footstep_offset: -0.03
+footstep_offset: -0.05
 center_line_offset: 0.05
 FootstepKd:
   [  0.2,     0,  0,
@@ -36,7 +44,7 @@ FootstepKd:
 PelvisW:
   [0.1,     0,    0,
    0,    0,    0,
-   0,     0,    1]
+   0,     0,    5]
 PelvisKp:
   [ 0,    0,    0,
     0,    0,    0,

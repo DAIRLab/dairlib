@@ -73,6 +73,7 @@ def main():
     run_times = np.zeros((len(qp_list),))
     obj_vals = np.zeros((len(qp_list),))
     pri_eps_vals = np.zeros((len(qp_list,)))
+    # sols = np.zeros((len(qp_list,), 60))
     sols = np.zeros((len(qp_list,), 60))
 
     for i, qp in enumerate(qp_list):
@@ -92,7 +93,7 @@ def main():
              'alpha': 1.6,
              'delta': 1e-6,
              'check_termination': 25,
-             'time_limit': 1e-3}
+             'time_limit': 1e-4}
 
         osqp_result = solve_osqp(qp, osqp_settings)
         run_times[i] = osqp_result['run_time']

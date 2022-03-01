@@ -926,7 +926,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   if save_fig:
     plt.savefig("%scost_vs_task_ph%.2f.png" % (eval_dir, task_slice_value_ph))
 
-  ### 2D plot (iter vs tasks)
+  ### 2D plot (iter vs tasks; cost visualized in contours)
   print("\nPlotting iterations vs task...")
 
   data_list = [cmt, nominal_cmt]
@@ -961,11 +961,52 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     # plt.xlim([0, 135])
     plt.xlabel('model iterations')
     plt.ylabel('stride length (m)')
-    plt.title('Cost landscape ' + title_list[i])
+    plt.title('1D cost landscape at pelvis height %.2f m ' % task_slice_value_ph + title_list[i])
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
       plt.savefig("%scost_landscape_iter%s_ph%.2f.png" % (eval_dir, app_list[i], task_slice_value_ph))
+
+  ### 2D plot; cost landscape (task1 vs task2; cost visualized in contours)
+  print("\nPlotting 2D cost landscape (task1 vs task2)...")
+
+  data_list = [cmt, nominal_cmt]
+  title_list = ["(Drake sim)", "(traj opt)"]
+  app_list = ["", "_nom"]
+  for i in range(2 if plot_nominal else 1):
+    plt.rcParams.update({'font.size': 14})
+    fig, ax = plt.subplots()
+
+    data = copy.deepcopy(data_list[i])
+
+    # Interpolate to get the cost at specific pelvis height
+    interpolator = LinearNDInterpolator(data[:, 1:], data[:, 0]) if i == 0 else LinearNDInterpolator(data[:, 1:2+num_task_dim], data[:, 0])
+    z = interpolator(np.vstack((model_slice_value_cost_landsacpe * np.ones(len(data[:, 1])), data[:, 2], data[:, 3])).T) if i == 0 else interpolator(np.vstack((data[:, 1], data[:, 2])).T)
+
+    # Remove the rows correponding to nan cost (from interpolation outside the region)
+    data = data[~np.isnan(z), :]
+    z = z[~np.isnan(z)]
+
+    n_levels = 50
+    levels = list(set(
+      np.linspace(min(z), max(z), n_levels).round(
+        decimals=2)))  # set() is used to get rid of duplicates
+    levels.sort()
+    levels[0] -= 0.01
+    levels[-1] += 0.01
+    # levels = list(set(np.linspace(0.4, 3, n_levels)))
+    # levels.sort()
+    surf = ax.tricontourf(data[:, 2], data[:, 3], z, levels=levels, cmap='coolwarm')
+    fig.colorbar(surf, shrink=0.9, aspect=15)
+
+    # plt.xlim([0, 135])
+    plt.xlabel('pelvis height (m)')
+    plt.ylabel('stride length (m)')
+    plt.title('Cost landscape at iteration %d ' % model_slice_value_cost_landsacpe + title_list[i])
+    plt.gcf().subplots_adjust(bottom=0.15)
+    plt.gcf().subplots_adjust(left=0.15)
+    if save_fig:
+      plt.savefig("%scost_landscape%s_model_iter_%d.png" % (eval_dir, app_list[i], model_slice_value_cost_landsacpe))
 
 
 def ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_average):
@@ -1273,6 +1314,10 @@ if __name__ == "__main__":
   # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
+
+  # 2D landscape (task1 vs task2)
+  # model_slices_cost_landsacpe = []
+  model_slice_value_cost_landsacpe = 1
 
   # Expected (averaged) cost over a task range
   stride_length_range_to_average = [-0.4, 0.4]

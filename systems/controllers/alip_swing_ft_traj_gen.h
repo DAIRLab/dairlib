@@ -14,9 +14,14 @@ namespace systems {
 
 /// AlipSwingFootTrajGenerator generates a desired 3D trajectory of swing foot.
 /// The trajectory is a cubic spline (two segments of cubic polynomials).
+///
 /// In the x-y plane, the start point of the traj is the swing foot position
-/// at lift-off, and the end point is either the capture point (CP) or the
-/// neutral point derived from LIPM. In the z direction, the start point is the
+/// at lift-off, and the end point is determined by solving for the appropriate
+/// footstep location to reach the desired angular momentum about the contact
+/// point at the end of the next stance period
+/// (see https://doi.org/10.1109/ICRA48506.2021.9560821)
+///
+/// In the z direction, the start point is the
 /// swing foot position before it leaves the ground, and the mid point and end
 /// point are both specified by the user. The footstep location, x_fs, can be
 /// modified with two flags
@@ -34,20 +39,15 @@ namespace systems {
 /// - desired vertical velocity of the swing foot at the end of swing phase
 /// - maximum distance between center of mass and x_fs
 ///     (used to restrict the footstep within an area)
-/// - footstep offset (to avoid foot collision)
-/// - center line offset (used to restrict the footstep within an area)
-/// - a flag enabling footstep modification (e.g. walking speed regularization)
-/// - a flag enabling feet collision avoidance
-/// - a flag enabling the usage of prediction of center of mass
-///     (use predicted center of mass position at touchdown to calculate x_fs)
-/// - an integer indicates which foot step algorithm to use:
-///     0 is the capture point
-///     1 is the neutral point derived from LIPM given the stance duration
+/// - footstep offset (desired foot spread during steady state walking)
+/// - center line offset
+///      (minimum distance from the robot x-axis to each footstep xy location)
+/// - wrt_com_in_local_frame
+///      (whether to express the foot location relative to
+///                                             the CoM in the pelvis yaw frame)
 
 class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  // TODO(yminchen): clean up the parameters. Maybe we should extract the
-  //  collision avoidance into a new leafsystem?
   AlipSwingFootTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
@@ -134,16 +134,6 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
                           const drake::multibody::Frame<double>&>>
       swing_foot_map_;
   std::map<int, double> duration_map_;
-
-  mutable double last_timestamp_ = 0;
-
-  // Flags
-  bool wrt_com_in_local_frame_;
-  double foot_spread_lb_ = 0.2;
-  double foot_spread_ub_ = 0.5;
-  std::vector<
-      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
-      left_right_foot_;
 };
 
 }  // namespace systems

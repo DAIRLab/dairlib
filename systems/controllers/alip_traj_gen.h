@@ -17,6 +17,10 @@ namespace systems {
 /// The trajectories in horizontal directions (x and y axes) are predicted, and
 /// the traj in the vertical direction (z axis) starts/ends at the
 /// current/desired height.
+/// There is also a port which, along with predicted x and y CoM positions,
+/// outputs Lx and Ly predictions using the ALIP model. The state order for
+/// this trajectory is [x_com, y_com, Lx, Ly]^T
+
 
 /// Constructor inputs:
 ///  @param plant, the MultibodyPlant
@@ -39,8 +43,7 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
-      contact_points_in_each_state,
-      bool use_CoM = true);
+      contact_points_in_each_state);
 
   // Input port getters
   const drake::systems::InputPort<double>& get_input_port_state() const {

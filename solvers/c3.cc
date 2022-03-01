@@ -62,23 +62,42 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w
     vector<VectorXd> WD(N_, VectorXd::Zero(n_+m_+k_) );
 
     for (int i = 0; i < N_; i++) {
-        WD.at(i) = delta->at(i) - w->at(i);
+        //WD.at(i) = delta->at(i) - w->at(i);
     }
 
-    vector<VectorXd> z = SolveQP(x0, *Gv, WD);
+    //vector<VectorXd> z = SolveQP(x0, *Gv, WD);
+    //vector<VectorXd> z(N_, VectorXd::Ones(n_+m_+k_));
+
+    vector<MatrixXd> Uz = U_;
+    vector<VectorXd> z = SolveQP(x0, Uz, WD);
+
+       //std::cout << "START(Z)" << std::endl;
+        //std::cout << z[1] << std::endl;
+        //std::cout << "END(Z)" << std::endl;
+
 
     vector<VectorXd> ZW(N_, VectorXd::Zero(n_+m_+k_) );
     for (int i = 0; i < N_; i++) {
-        ZW[i] = w->at(i) + z[i];
+        ZW[i] = w->at(i) + z[i];//VectorXd::Zero(n_+m_+k_);
     }
 
     if(U_[0].isZero(0) == 0){
         vector<MatrixXd> Uv = U_;
+        //std::cout << Uv[9] << std::endl;
+        //std::cout << ZW[9] << std::endl;
         *delta = SolveProjection(Uv, ZW);
     }
     else {
         *delta = SolveProjection(*Gv, ZW);
     }
+
+    std::cout << "START(Z)" << std::endl;
+    std::cout << ZW[1] << std::endl;
+    std::cout << "END(Z)" << std::endl;
+
+    //std::cout << "START(DELTA)" << std::endl;
+    //std::cout << (*delta)[0] << std::endl;
+    //std::cout << "END(DELTA)" << std::endl;
 
     for (int i = 0; i < N_; i++) {
         w->at(i) = w->at(i) + z[i] - delta->at(i);
@@ -121,6 +140,15 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
 
         prog.AddLinearConstraint(A_[i] * x[i] + B_[i] * u[i] + D_[i] * lambda[i] + d_[i] == x[i+1]);
 
+        /*
+        //for finger gaiting
+        prog.AddLinearConstraint(u[i][2] >= 0);
+        prog.AddLinearConstraint(u[i][3] >= 0);
+        if (i > 0) {
+            prog.AddLinearConstraint(x[i][2] >= 1); prog.AddLinearConstraint(x[i][2] <= 3);
+            prog.AddLinearConstraint(x[i][4] >= 3); prog.AddLinearConstraint(x[i][4] <= 5);
+        }
+        */
     }
 
     for (int i = 0; i < N_+1 ; i++) {
@@ -163,7 +191,7 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G, vector<VectorXd>& WZ) 
         omp_set_num_threads(options_.num_threads); // Set number of threads
     }
 
-    #pragma omp parallel for
+    //#pragma omp parallel for
 	for (i = 0; i < N_; i++) {
         deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i]);
 	}

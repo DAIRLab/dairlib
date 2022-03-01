@@ -1,11 +1,14 @@
 #include "solvers/c3_miqp.h"
 #include "drake/math/discrete_algebraic_riccati_equation.h"
+#include <chrono>
 
 using std::vector;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-void init(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_);
+void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_);
+void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_);
+
 
 namespace dairlib {
 namespace solvers {
@@ -19,22 +22,34 @@ int DoMain(int argc, char* argv[]) {
     vector<VectorXd> cd;
     ///variables (cost, ADMM)
     vector<MatrixXd> Qd, Rd, Gd, Ud;
-    ///initialize (parameters for cartpole, change wrt your specific system)
-    init(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud);
+    ///initialize (change wrt your specific system)
+    //init_cartpole(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud);
+    init_fingergait(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud);
     ///set parameters as const
     const vector<MatrixXd> A = Ad; const vector<MatrixXd> B = Bd; const vector<MatrixXd> D = Dd; const vector<MatrixXd> E = Ed; const vector<MatrixXd> F = Fd; const vector<MatrixXd> H = Hd; const vector<MatrixXd> d = dd; const vector<VectorXd> c = cd; const vector<MatrixXd> Q = Qd; const vector<MatrixXd> R = Rd; const vector<MatrixXd> G = Gd; const vector<MatrixXd> U = Ud; const int N = Nd; const int n = nd; const int m = md; const int k = kd;
     ///options
     C3Options options;
 
     ///define the LCS class variable
-    LCS cartpole(A, B, D, d, E, F, H, c);
-    C3MIQP opt(cartpole, Q, R, G, U, options);
+    LCS system(A, B, D, d, E, F, H, c);
+    C3MIQP opt(system, Q, R, G, U, options);
 
-    ///initial condition
+    /*
+    ///initial condition(cartpole)
     VectorXd x0(n);
     x0 << 0.1,
             0,
             0.3,
+            0;
+    */
+
+    ///initial condition(fingergait)
+    VectorXd x0(n);
+    x0 << 0,  //-8
+            0,
+            0,  //3
+            0,
+            0,  //4
             0;
 
     ///initialize ADMM variables (delta, w)
@@ -54,19 +69,29 @@ int DoMain(int argc, char* argv[]) {
 
     for (int i = 0; i < options.timesteps-1; i++) {
 
-        ///reset delta and w
+        ///reset delta and w(cartpole)
+        //delta = delta_reset;
+        //w = w_reset;
+
+        ///reset delta and w(finger gaiting)
         delta = delta_reset;
         w = w_reset;
+        for (int j = 0; j < N; j++) {
+            delta[j].head(n) = x[i];
+        }
 
+        auto start = std::chrono::high_resolution_clock::now();
         ///calculate the input given x[i]
-        //input[i] = opt.Solve(x[i], &delta, &w );
         input[i] = opt.Solve(x[i], delta, w );
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = finish - start;
+        std::cout << "Solve time:" << elapsed.count() << std::endl;
 
         ///simulate the LCS
-        x[i+1] = cartpole.Simulate(x[i], input[i]);
+        //x[i+1] = system.Simulate(x[i], input[i]);
 
         ///print the state
-        std::cout << "state: "<< x[i+1] << std::endl;
+        //std::cout << "state: "<< x[i+1] << std::endl;
 
     }
 
@@ -80,8 +105,8 @@ int main(int argc, char* argv[]) {
 	return dairlib::solvers::DoMain(argc, argv);
 }
 
-///initialize LCS parameters
-void init(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_) {
+///initialize LCS parameters for cartpole
+void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_) {
 
     int n = 4;
     int m = 2;
@@ -191,5 +216,150 @@ void init(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<Matri
     *R_ = R;
     *G_ = G;
     *U_ = U;
+
+};
+
+void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<MatrixXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_){
+
+    int n = 6;
+    int m = 6;
+    int k = 4;
+    int N = 10;
+
+    float h = 0.1;
+    float g = 9.81;
+    float mu = 1.0;
+
+    MatrixXd Ainit(n,n);
+    Ainit << 1,h,0,0,0,0,
+            0, 1, 0, 0, 0, 0,
+            0, 0, 1, h, 0, 0,
+            0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 1, h,
+            0, 0, 0, 0, 0, 1;
+
+    MatrixXd Binit(n,k);
+    Binit << 0,0,0,0,
+            0,0,0,0,
+            h*h, 0, 0, 0,
+            h, 0, 0, 0,
+            0, h*h, 0, 0,
+            0, h, 0, 0;
+
+    MatrixXd Dinit(n,m);
+    Dinit << 0, h*h, -h*h, 0, h*h, -h*h,
+            0, h, -h, 0, h, -h,
+            0, -h*h, h*h, 0, 0, 0,
+            0, -h, h, 0, 0, 0,
+            0, 0, 0, 0, -h*h, h*h,
+            0, 0, 0, 0, -h, h;
+
+    MatrixXd Einit(m,n);
+    Einit << 0, 0, 0, 0, 0, 0,
+            0, 1, 0, -1, 0, 0,
+            0, -1, 0, 1, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 1, 0, 0, 0, -1,
+            0, -1, 0, 0, 0, 1;
+
+    MatrixXd Finit(m,m);
+    Finit << 0, -1, -1, 0, 0, 0,
+            1, 2*h, -2*h, 0, h, -h,
+            1, -2*h, 2*h, 0, -h, h,
+            0, 0, 0, 0, -1,-1,
+            0, h, -h, 1, 2*h, -2*h,
+            0, -h, h, 1, -2*h, 2*h;
+
+    VectorXd cinit(m);
+    cinit << 0,
+            -h*g,
+            h*g,
+            0,
+            -h*g,
+            h*g;
+
+    MatrixXd dinit(n,1);
+    dinit << -g*h*h,
+            -g*h,
+            0,
+            0,
+            0,
+            0;
+
+    MatrixXd Hinit(m,k);
+    Hinit << 0, 0, mu, 0,
+            -h, 0, 0, 0,
+            h, 0, 0, 0,
+            0, 0, 0, mu,
+            0, -h, 0, 0,
+            0, h, 0, 0;
+
+    MatrixXd Qinit(n,n);
+    Qinit << 5000, 0, 0, 0, 0, 0, //5000
+            0, 10, 0, 0, 0, 0,
+            0, 0, 10, 0, 0 ,0,
+            0, 0, 0, 10, 0, 0,
+            0, 0, 0, 0, 10, 0,
+            0, 0, 0, 0, 0, 10;
+
+    MatrixXd Rinit(k,k);
+    Rinit = MatrixXd::Identity(k,k);
+
+    MatrixXd Ginit(n+m+k, n+m+k);
+    Ginit = 1*MatrixXd::Identity(n+m+k,n+m+k);
+
+    std::vector<MatrixXd> A(N, Ainit);
+    std::vector<MatrixXd> B(N, Binit );
+    std::vector<MatrixXd> D(N, Dinit );
+    std::vector<MatrixXd> d(N, dinit );
+    std::vector<MatrixXd> E(N, Einit );
+    std::vector<MatrixXd> F(N, Finit );
+    std::vector<VectorXd> c(N, cinit );
+    std::vector<MatrixXd> H(N, Hinit );
+    std::vector<MatrixXd> Q(N+1, Qinit );
+    std::vector<MatrixXd> R(N, Rinit );
+    std::vector<MatrixXd> G(N, Ginit );
+
+    /*
+    MatrixXd Us(n+m+k,n+m+k);
+    Us << 1000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
+    */
+
+    MatrixXd Us = MatrixXd::Identity(n+m+k,n+m+k);
+
+    std::vector<MatrixXd> U(N, Us );
+
+    *n_ = n;
+    *m_ = m;
+    *k_ = k;
+    *N_ = N;
+    *A_ = A;
+    *B_ = B;
+    *D_ = D;
+    *d_ = d;
+    *c_ = c;
+    *E_ = E;
+    *F_ = F;
+    *H_ = H;
+    *Q_ = Q;
+    *R_ = R;
+    *G_ = G;
+    *U_ = U;
+
 
 };

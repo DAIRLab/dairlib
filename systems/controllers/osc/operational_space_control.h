@@ -136,6 +136,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     W_joint_accel_ = W;
   }
   void AddAccelerationCost(const std::string& joint_vel_name, double w);
+  void AddLambdaNullCost(double w) { w_lambda_null_ = w; }
 
   // Constraint methods
   void DisableAcutationConstraint() { with_input_constraints_ = false; }
@@ -350,6 +351,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   mutable double prev_distinct_fsm_state_ = -1;
   drake::solvers::LinearEqualityConstraint* blend_constraint_;
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
+
+  // Optional feature - penalize forces in the nullspace of J^T
+  drake::solvers::QuadraticCost* lambda_null_cost_;
+  Eigen::MatrixXd W_lambda_null_;
+  double w_lambda_null_ = -1;
 
   // Optional feature -- regularizing input
   drake::solvers::QuadraticCost* input_reg_cost_;

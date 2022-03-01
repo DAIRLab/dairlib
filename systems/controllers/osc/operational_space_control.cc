@@ -174,6 +174,8 @@ void OperationalSpaceControl::AddAccelerationCost(
   W_joint_accel_(idx, idx) += w;
 }
 
+
+
 // Constraint methods
 void OperationalSpaceControl::AddContactPoint(
     const WorldPointEvaluator<double>* evaluator) {
@@ -442,6 +444,15 @@ void OperationalSpaceControl::Build() {
             .get();
   }
 
+  // (Testing) 8. Penalize forces in Null(J^T)
+  if (w_lambda_null_ > 0) {
+    DRAKE_DEMAND(n_c_active_ == n_c_);
+    W_lambda_null_ = w_lambda_null_ * MatrixXd::Identity(n_c_active_, n_c_active_);
+    lambda_null_cost_ = prog_->AddQuadraticCost(W_lambda_null_, VectorXd::Zero(n_c_active_), lambda_c_)
+        .evaluator()
+        .get();
+  }
+
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
@@ -564,6 +575,17 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
     row_idx += contact_i->num_active();
   }
+
+  auto J_c_T_QR = J_c.transpose().householderQr();
+  MatrixXd R = J_c_T_QR.matrixQR().triangularView<Eigen::Upper>();
+  std::cout << "R:\n" << R << std::endl;
+  MatrixXd R_T = R.transpose();
+  MatrixXd N_J_c_T = MatrixXd::Identity(n_c_active_, n_c_active_) -
+                      R_T * (R * R_T).inverse() * R;
+  std::cout << "N:\n" << N_J_c_T << std::endl;
+  lambda_null_cost_->UpdateCoefficients(
+      N_J_c_T.transpose() * W_lambda_null_ * N_J_c_T,
+      VectorXd::Zero(n_c_active_));
 
   // Update constraints
   // 1. Dynamics constraint

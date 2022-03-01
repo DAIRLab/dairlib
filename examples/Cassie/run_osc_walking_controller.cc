@@ -420,13 +420,13 @@ int DoMain(int argc, char* argv[]) {
   multibody::WorldYawViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, left_toe.first, left_toe.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, left_heel.first, left_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, right_toe.first, right_toe.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
@@ -434,6 +434,8 @@ int DoMain(int argc, char* argv[]) {
   osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
+  osc->AddLambdaNullCost(1.0);
+
   if (!FLAGS_is_two_phase) {
     osc->AddStateAndContactPoint(post_left_double_support_state,
                                  &left_toe_evaluator);

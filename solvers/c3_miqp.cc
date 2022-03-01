@@ -10,7 +10,15 @@ using Eigen::VectorXd;
 
 C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R, const vector<MatrixXd>& G, const vector<MatrixXd>& U,
 			 				 const C3Options& options)
-		: C3(LCS, Q, R, G, U, options) {
+		: C3(LCS, Q, R, G, U, options),
+          env_(true) {
+
+    // Create an environment
+    env_.set("LogToConsole", "0");
+    env_.set("OutputFlag", "0");
+    env_.set("Threads", "1");
+    env_.start();
+
 
 }
 
@@ -39,15 +47,9 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
     MatrixXd Mcons2(m_,n_+m_+k_);
     Mcons2 << MM1, MM2, MM3;
 
-    // Create an environment
-    GRBEnv env = GRBEnv(true);
-    env.set("LogToConsole", "0");
-    env.set("OutputFlag", "0");
-    env.set("Threads", "1");
-    env.start();
 
     // Create an empty model
-    GRBModel model = GRBModel(env);
+    GRBModel model = GRBModel(env_);
 
     //GRBVar* delta_k = 0;
     //GRBVar* binary = 0;

@@ -19,6 +19,7 @@ class C3MIQP:public C3 {
     Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c, const Eigen::MatrixXd& E, const Eigen::MatrixXd& F, const Eigen::MatrixXd& H, const Eigen::VectorXd& c);
 
  private:
+  GRBEnv env_;
 
 };
 

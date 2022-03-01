@@ -164,16 +164,6 @@ void OperationalSpaceControl::SetUpDoubleSupportPhaseBlending(
   ds_states_ = ds_states;
 }
 
-// Cost methods
-void OperationalSpaceControl::AddAccelerationCost(
-    const std::string& joint_vel_name, double w) {
-  if (W_joint_accel_.size() == 0) {
-    W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
-  }
-  int idx = makeNameToVelocitiesMap(plant_wo_spr_).at(joint_vel_name);
-  W_joint_accel_(idx, idx) += w;
-}
-
 // Constraint methods
 void OperationalSpaceControl::AddContactPoint(
     const WorldPointEvaluator<double>* evaluator) {
@@ -246,6 +236,10 @@ void OperationalSpaceControl::AddConstTrackingData(
 void OperationalSpaceControl::CheckCostSettings() {
   if (W_input_.size() != 0) {
     DRAKE_DEMAND((W_input_.rows() == n_u_) && (W_input_.cols() == n_u_));
+  }
+  if (W_input_smoothing_.size() != 0) {
+    DRAKE_DEMAND((W_input_smoothing_.rows() == n_u_) &&
+                 (W_input_smoothing_.cols() == n_u_));
   }
   if (W_joint_accel_.size() != 0) {
     DRAKE_DEMAND((W_joint_accel_.rows() == n_v_) &&
@@ -392,6 +386,13 @@ void OperationalSpaceControl::Build() {
         w_soft_constraint_ * MatrixXd::Identity(n_c_active_, n_c_active_),
         VectorXd::Zero(n_c_active_), epsilon_);
   }
+  // (Testing) 7. Cost for staying close to the previous input
+  if (W_input_smoothing_.size() > 0) {
+    input_reg_cost_ =
+        prog_->AddQuadraticCost(W_input_smoothing_, VectorXd::Zero(n_u_), u_)
+            .evaluator()
+            .get();
+  }
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     tracking_cost_.push_back(prog_
@@ -433,19 +434,10 @@ void OperationalSpaceControl::Build() {
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
 
-  // (Testing) 7. Cost for staying close to the previous input
-  if (w_input_reg_ > 0) {
-    W_input_reg_ = w_input_reg_ * MatrixXd::Identity(n_u_, n_u_);
-    input_reg_cost_ =
-        prog_->AddQuadraticCost(W_input_reg_, VectorXd::Zero(n_u_), u_)
-            .evaluator()
-            .get();
-  }
-
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-//  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+  //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
@@ -723,9 +715,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // (Testing) 7. Cost for staying close to the previous input
-  if (w_input_reg_ > 0) {
-    input_reg_cost_->UpdateCoefficients(W_input_reg_,
-                                        -W_input_reg_ * (*u_sol_));
+  if (W_input_smoothing_.size() > 0) {
+    input_reg_cost_->UpdateCoefficients(W_input_smoothing_,
+                                        -W_input_smoothing_ * (*u_sol_));
   }
 
   // Solve the QP
@@ -844,23 +836,40 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_state;
-  output->input_cost =
+  double input_cost =
       (W_input_.size() > 0)
           ? (0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_))(0)
           : 0;
-  output->acceleration_cost =
+  double acceleration_cost =
       (W_joint_accel_.size() > 0)
           ? (0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_))(0)
           : 0;
-  output->soft_constraint_cost =
+  double soft_constraint_cost =
       (w_soft_constraint_ > 0)
           ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
              (*epsilon_sol_))(0)
           : 0;
+  double input_smoothing_cost =
+      (W_input_smoothing_.size() > 0)
+          ? (0.5 * (*u_sol_).transpose() * W_input_smoothing_ * (*u_sol_))(0)
+          : 0;
+
+  output->regularization_costs.clear();
+  output->regularization_cost_names.clear();
+
+  output->regularization_costs.reserve(4);
+  output->regularization_costs.push_back(input_cost);
+  output->regularization_cost_names.push_back("input_cost");
+  output->regularization_costs.push_back(acceleration_cost);
+  output->regularization_cost_names.push_back("acceleration_cost");
+  output->regularization_costs.push_back(soft_constraint_cost);
+  output->regularization_cost_names.push_back("soft_constraint_cost");
+  output->regularization_costs.push_back(input_smoothing_cost);
+  output->regularization_cost_names.push_back("input_smoothing_cost");
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
-  output->tracking_cost.clear();
+  output->tracking_costs.clear();
 
   lcmt_osc_qp_output qp_output;
   qp_output.solve_time = solve_time_;
@@ -877,7 +886,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->qp_output = qp_output;
 
   output->tracking_data.reserve(tracking_data_vec_->size());
-  output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
+  output->tracking_costs = std::vector<double>(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -912,13 +921,14 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       const MatrixXd& W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-      output->tracking_cost[i] =
+      output->tracking_costs[i] =
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
            (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
     }
   }
 
   output->num_tracking_data = output->tracking_data_names.size();
+  output->num_regularization_costs = output->regularization_cost_names.size();
 }
 
 void OperationalSpaceControl::CalcOptimalInput(

@@ -35,22 +35,25 @@ int DoMain(int argc, char* argv[]) {
     C3MIQP opt(system, Q, R, G, U, options);
 
     /*
-    ///initial condition(cartpole)
-    VectorXd x0(n);
-    x0 << 0.1,
-            0,
-            0.3,
-            0;
-    */
+     ///initial condition(cartpole)
+     VectorXd x0(n);
+     x0 << 0.1,
+             0,
+             0.3,
+             0;
+     */
 
-    ///initial condition(fingergait)
-    VectorXd x0(n);
-    x0 << 0,  //-8
-            0,
-            0,  //3
-            0,
-            0,  //4
-            0;
+
+   ///initial condition(fingergait)
+   VectorXd x0(n);
+   x0 << -8,  //-8
+           0,
+           3,  //3
+           0,
+           4,  //4
+           0;
+
+
 
     ///initialize ADMM variables (delta, w)
     std::vector<VectorXd> delta(N, VectorXd::Zero(n+m+k) );
@@ -80,18 +83,19 @@ int DoMain(int argc, char* argv[]) {
             delta[j].head(n) = x[i];
         }
 
+        //std::cout << "x: "<< x[i] << std::endl;
         auto start = std::chrono::high_resolution_clock::now();
         ///calculate the input given x[i]
         input[i] = opt.Solve(x[i], delta, w );
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
-        std::cout << "Solve time:" << elapsed.count() << std::endl;
+        //std::cout << "Solve time:" << elapsed.count() << std::endl;
 
         ///simulate the LCS
-        //x[i+1] = system.Simulate(x[i], input[i]);
+        x[i+1] = system.Simulate(x[i], input[i]);
 
         ///print the state
-        //std::cout << "state: "<< x[i+1] << std::endl;
+        std::cout << "state: "<< x[i+1] << std::endl;
 
     }
 
@@ -238,6 +242,8 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
             0, 0, 0, 0, 1, h,
             0, 0, 0, 0, 0, 1;
 
+    //MatrixXd Binit = MatrixXd::Zero(n,k);
+
     MatrixXd Binit(n,k);
     Binit << 0,0,0,0,
             0,0,0,0,
@@ -245,6 +251,7 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
             h, 0, 0, 0,
             0, h*h, 0, 0,
             0, h, 0, 0;
+
 
     MatrixXd Dinit(n,m);
     Dinit << 0, h*h, -h*h, 0, h*h, -h*h,
@@ -286,6 +293,7 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
             0,
             0;
 
+
     MatrixXd Hinit(m,k);
     Hinit << 0, 0, mu, 0,
             -h, 0, 0, 0,
@@ -293,6 +301,8 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
             0, 0, 0, mu,
             0, -h, 0, 0,
             0, h, 0, 0;
+
+    //MatrixXd Hinit = MatrixXd::Zero(m,k);
 
     MatrixXd Qinit(n,n);
     Qinit << 5000, 0, 0, 0, 0, 0, //5000
@@ -320,7 +330,7 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
     std::vector<MatrixXd> R(N, Rinit );
     std::vector<MatrixXd> G(N, Ginit );
 
-    /*
+
     MatrixXd Us(n+m+k,n+m+k);
     Us << 1000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 1000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -338,9 +348,9 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
-    */
 
-    MatrixXd Us = MatrixXd::Identity(n+m+k,n+m+k);
+
+    //MatrixXd Us = MatrixXd::Identity(n+m+k,n+m+k);
 
     std::vector<MatrixXd> U(N, Us );
 

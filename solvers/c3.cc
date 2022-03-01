@@ -62,42 +62,23 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w
     vector<VectorXd> WD(N_, VectorXd::Zero(n_+m_+k_) );
 
     for (int i = 0; i < N_; i++) {
-        //WD.at(i) = delta->at(i) - w->at(i);
+        WD.at(i) = delta->at(i) - w->at(i);
     }
 
-    //vector<VectorXd> z = SolveQP(x0, *Gv, WD);
-    //vector<VectorXd> z(N_, VectorXd::Ones(n_+m_+k_));
-
-    vector<MatrixXd> Uz = U_;
-    vector<VectorXd> z = SolveQP(x0, Uz, WD);
-
-       //std::cout << "START(Z)" << std::endl;
-        //std::cout << z[1] << std::endl;
-        //std::cout << "END(Z)" << std::endl;
-
+    vector<VectorXd> z = SolveQP(x0, *Gv, WD);
 
     vector<VectorXd> ZW(N_, VectorXd::Zero(n_+m_+k_) );
     for (int i = 0; i < N_; i++) {
-        ZW[i] = w->at(i) + z[i];//VectorXd::Zero(n_+m_+k_);
+        ZW[i] = w->at(i) + z[i];
     }
 
     if(U_[0].isZero(0) == 0){
         vector<MatrixXd> Uv = U_;
-        //std::cout << Uv[9] << std::endl;
-        //std::cout << ZW[9] << std::endl;
         *delta = SolveProjection(Uv, ZW);
     }
     else {
         *delta = SolveProjection(*Gv, ZW);
     }
-
-    std::cout << "START(Z)" << std::endl;
-    std::cout << ZW[1] << std::endl;
-    std::cout << "END(Z)" << std::endl;
-
-    //std::cout << "START(DELTA)" << std::endl;
-    //std::cout << (*delta)[0] << std::endl;
-    //std::cout << "END(DELTA)" << std::endl;
 
     for (int i = 0; i < N_; i++) {
         w->at(i) = w->at(i) + z[i] - delta->at(i);
@@ -129,6 +110,7 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
 
     prog.AddLinearConstraint(x[0] == x0);
 
+
     if (hflag_ == 1) {
         drake::solvers::MobyLCPSolver<double> LCPSolver;
         VectorXd lambda0;
@@ -136,20 +118,24 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
         prog.AddLinearConstraint(lambda[0] == lambda0);
         }
 
+
+
     for (int i = 0; i < N_; i++) {
 
-        prog.AddLinearConstraint(A_[i] * x[i] + B_[i] * u[i] + D_[i] * lambda[i] + d_[i] == x[i+1]);
 
-        /*
+        prog.AddLinearConstraint(A_.at(i) * x.at(i) + B_.at(i) * u.at(i) + D_.at(i) * lambda.at(i) + d_.at(i) == x.at(i+1));
+
         //for finger gaiting
-        prog.AddLinearConstraint(u[i][2] >= 0);
-        prog.AddLinearConstraint(u[i][3] >= 0);
+        prog.AddLinearConstraint(u[i](2) >= 0);
+        prog.AddLinearConstraint(u[i](3) >= 0);
         if (i > 0) {
-            prog.AddLinearConstraint(x[i][2] >= 1); prog.AddLinearConstraint(x[i][2] <= 3);
-            prog.AddLinearConstraint(x[i][4] >= 3); prog.AddLinearConstraint(x[i][4] <= 5);
+            prog.AddLinearConstraint(x[i](2) >= 1); prog.AddLinearConstraint(x[i](2) <= 3);
+            prog.AddLinearConstraint(x[i](4) >= 3); prog.AddLinearConstraint(x[i](4) <= 5);
         }
-        */
+
+
     }
+
 
     for (int i = 0; i < N_+1 ; i++) {
         prog.AddQuadraticCost(Q_.at(i)*2, VectorXd::Zero(n_), x.at(i));
@@ -161,6 +147,9 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
 
         }
     }
+
+
+
 
     drake::solvers::SolverOptions options;
     options.SetOption(OsqpSolver::id(), "verbose", 0);
@@ -175,7 +164,6 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
         zz.at(i).segment(0,n_) = result.GetSolution(x[i]);
         zz.at(i).segment(n_,m_) = result.GetSolution(lambda[i]);
         zz.at(i).segment(n_+m_,k_) = result.GetSolution(u[i]);
-
     }
 
     return zz;

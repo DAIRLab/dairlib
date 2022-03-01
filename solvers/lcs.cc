@@ -40,7 +40,6 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd force;
     //MatrixXd regulator = MatrixXd::Identity(F_[0].size(),F_[0].size() );
-    std::cout << F_[0].size() << std::endl;
     LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force);
 
     //update

@@ -14,15 +14,13 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
 
 }
 
+
     VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c, const MatrixXd& E, const MatrixXd& F, const MatrixXd& H, const VectorXd& c) {
 
 
-    //std::cout << "BEGIN(delta_c)" << std::endl;
-    //std::cout << delta_c << std::endl;
-    //std::cout << "END(delta_c)" << std::endl;
-
     //set up linear term in cost
-    MatrixXd cost_lin = -2 * delta_c.transpose() * U;
+    //MatrixXd cost_lin = -2 * delta_c.transpose() * U;
+    VectorXd cost_lin = -2 * delta_c.transpose() * U;
 
     //set up for constraints (Ex + F \lambda + Hu + c >= 0)
     MatrixXd Mcons1(m_,n_+m_+k_);
@@ -40,15 +38,13 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
 
     // Create an environment
     GRBEnv env = GRBEnv(true);
-    env.set("LogToConsole", "1");
-    env.set("OutputFlag", "1");
+    env.set("LogToConsole", "0");
+    env.set("OutputFlag", "0");
     env.set("Threads", "1");
     env.start();
 
     // Create an empty model
     GRBModel model = GRBModel(env);
-    model.set("FeasibilityTol","1e-6");
-    model.set("IntFeasTol","1e-6");
 
     // Create variables
     const int n_delta_k = n_+m_+k_;
@@ -65,9 +61,11 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
     binary = model.addVars(n_binary, GRB_BINARY);
 
     GRBQuadExpr obj = 0;
+
+
     for (int i = 0; i < n_delta_k; i++) {
 
-        obj.addTerm(cost_lin(i,1), delta_k[i]);
+        obj.addTerm(cost_lin(i), delta_k[i]);
 
         for (int j = 0; j < n_delta_k; j++) {
             obj.addTerm( U(i,j), delta_k[i] , delta_k[j]);
@@ -77,6 +75,8 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
     model.setObjective(obj, GRB_MINIMIZE);
 
     int M = 1000; //big M variable
+
+
 
     for (int i = 0; i < n_binary; i++) {
         GRBLinExpr lin_holder = 0;  //make sure you are reseting lin_holder
@@ -90,8 +90,11 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
         model.addConstr( lin_holder2  <=  M * (1 - binary[i] )     );
     }
 
+
+
     model.optimize();
 
+    /*
     //Solution as MatrixXd
     MatrixXd delta_kc(n_+m_+k_,1);
     for (int i = 0; i < n_delta_k; i++) {
@@ -99,9 +102,16 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
 
     }
 
+     */
+
+    VectorXd delta_kc(n_+m_+k_);
+    for (int i = 0; i < n_delta_k; i++) {
+        delta_kc(i) = delta_k[i].get(GRB_DoubleAttr_X);
+    }
 
     return delta_kc;
 }
+
 
 } // namespace dairlib
 } // namespace solvers

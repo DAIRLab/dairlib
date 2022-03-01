@@ -25,15 +25,14 @@ cc_library(
     srcs = [
         "c3.cc",
         "c3_miqp.cc",
-        "lcs.cc"
     ],
     hdrs = [
         "c3.h",
         "c3_miqp.h",
         "c3_options.h",
-        "lcs.h"
     ],
     deps = [
+        ":lcs",
         "@drake//:drake_shared_library",
         "@gurobi//:gurobi_cxx",
     ],
@@ -43,6 +42,23 @@ cc_library(
     linkopts = [
         "-lgomp"
     ]
+)
+
+cc_library(
+    name = "lcs",
+    srcs = [
+        "lcs.cc",
+        "lcs_factory.cc",
+    ],
+    hdrs = [
+        "lcs.h",
+        "lcs_factory.h",
+    ],
+    deps = [
+        "//multibody/kinematic",
+        "//multibody:geom_geom_collider",
+        "@drake//:drake_shared_library",
+    ],
 )
 
 cc_library(
@@ -129,4 +145,19 @@ cc_test(
         ":optimization_utils",
         "@gtest//:main",
     ],
+)
+
+
+cc_binary(
+    name = "lcs_test",
+    srcs = ["test/lcs_test.cc"],
+    deps = [
+        ":c3",
+        "//multibody:geom_geom_collider",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//common",
+        "@drake//:drake_shared_library",
+    ],
+    data = ["//examples/trifinger:trifinger_urdf"],
 )

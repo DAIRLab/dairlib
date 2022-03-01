@@ -9,7 +9,7 @@ class TrifingerDemoController(LeafSystem):
     LeafSystem.__init__(self)
 
     self.plant = plant
-        
+
     # Input is state, output is torque (control action)
     self.DeclareVectorInputPort("x", plant.num_positions() +
         plant.num_velocities())

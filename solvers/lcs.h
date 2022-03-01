@@ -2,10 +2,8 @@
 #include <vector>
 #include <Eigen/Dense>
 
-#include "solvers/c3_options.h"
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/osqp_solver.h"
-#include "drake/solvers/solve.h"
+#include "drake/common/sorted_pair.h"
+#include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib {
 namespace solvers {
@@ -29,7 +27,7 @@ class LCS {
     ///Simulate the system for one-step
     /// @param x_init Initial x value
     /// @param input Input value
-    Eigen::VectorXd Simulate( Eigen::VectorXd& x_init, Eigen::VectorXd& input );
+    Eigen::VectorXd Simulate( Eigen::VectorXd& x_init, Eigen::VectorXd& input);
 
 public:
     const std::vector<Eigen::MatrixXd> A_;

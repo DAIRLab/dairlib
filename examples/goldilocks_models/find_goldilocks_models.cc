@@ -1543,6 +1543,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Parameters for tasks
   cout << "\nTasks settings:\n";
   bool is_grid_task = FLAGS_is_grid_task;
+  bool is_stochastic = FLAGS_is_stochastic;
+  if (FLAGS_no_model_update) is_stochastic = false;
   TasksGenerator* task_gen;
   GridTasksGenerator task_gen_grid;
   UniformTasksGenerator task_gen_uniform;
@@ -1552,7 +1554,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           3, {"stride_length", "ground_incline", "duration"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du},
           {0.25, 0, 0.4}, {0.015, 0.05, 0.05},
-          std::vector<bool>(3, FLAGS_is_stochastic));
+          std::vector<bool>(3, is_stochastic));
     } else if (FLAGS_robot_option == 1) {
       task_gen_grid = GridTasksGenerator(
           6,
@@ -1564,12 +1566,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
            FLAGS_pelvis_height_center, 0.03},
           {FLAGS_stride_length_delta, 0.05, 0.05, 0.125,
            FLAGS_pelvis_height_delta, 0.02},
-          {(FLAGS_N_sample_sl > 1) && FLAGS_is_stochastic,
-           (FLAGS_N_sample_gi > 1) && FLAGS_is_stochastic,
-           (FLAGS_N_sample_du > 1) && FLAGS_is_stochastic,
-           (FLAGS_N_sample_tr > 1) && FLAGS_is_stochastic,
-           (FLAGS_N_sample_ph > 1) && FLAGS_is_stochastic,
-           (FLAGS_N_sample_sm > 1) && FLAGS_is_stochastic});
+          {(FLAGS_N_sample_sl > 1) && is_stochastic,
+           (FLAGS_N_sample_gi > 1) && is_stochastic,
+           (FLAGS_N_sample_du > 1) && is_stochastic,
+           (FLAGS_N_sample_tr > 1) && is_stochastic,
+           (FLAGS_N_sample_ph > 1) && is_stochastic,
+           (FLAGS_N_sample_sm > 1) && is_stochastic});
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_grid = GridTasksGenerator();
@@ -1663,7 +1665,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // (20200216) After using new traj opt
       h_step = 1e-4;  // maybe h_step shouldn't be too high, because rom
                       // constraint is the constraint that is hard to satisfy?
-      if (!FLAGS_is_stochastic) {
+      if (!is_stochastic) {
         h_step = 1e-3;  // we can always shrink steps if the cost goes up with
                         // fixed tasks (it should go down theoretically)
       }
@@ -1680,7 +1682,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   double indpt_row_tol = 1e-6;  // 1e-6
   bool is_newton = FLAGS_is_newton;
-  bool is_stochastic = FLAGS_is_stochastic;
   int N_rerun;
   if (FLAGS_N_rerun > -1) {
     N_rerun = FLAGS_N_rerun;
@@ -1701,13 +1702,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double max_sample_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     if (is_grid_task) {
-      max_sample_cost_increase_rate = FLAGS_is_stochastic ? 2.0 : 0.01;
+      max_sample_cost_increase_rate = is_stochastic ? 2.0 : 0.01;
     } else {
       max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
     }
   } else if (FLAGS_robot_option == 1) {
     if (is_grid_task) {
-      max_sample_cost_increase_rate = FLAGS_is_stochastic ? 2.0 : 0.01;
+      max_sample_cost_increase_rate = is_stochastic ? 2.0 : 0.01;
       // 0.5 // 0.3
     } else {
       max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
@@ -1719,14 +1720,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     if (is_grid_task) {
-      max_average_cost_increase_rate = FLAGS_is_stochastic ? 0.5 : 0.01;
+      max_average_cost_increase_rate = is_stochastic ? 0.5 : 0.01;
     } else {
       max_average_cost_increase_rate = 2;
     }
   } else if (FLAGS_robot_option == 1) {
     if (is_grid_task) {
       max_average_cost_increase_rate =
-          FLAGS_is_stochastic ? 0.2 : 0.01;  // 0.15
+          is_stochastic ? 0.2 : 0.01;  // 0.15
     } else {
       max_average_cost_increase_rate = 1;
     }

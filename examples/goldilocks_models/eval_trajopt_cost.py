@@ -308,7 +308,7 @@ def Generate2dCostLandscapeComparison(cmt):
   ct2 = Generate2dCostLandscape(cmt, iter2, True)
 
   # Grid of the whole task space
-  nx, ny = (50, 50)
+  nx, ny = (100, 100)
   stride_length_vec = np.linspace(-0.8, 0.8, nx)
   pelvis_height_vec = np.linspace(0.3, 1.3, ny)
   x, y = np.meshgrid(stride_length_vec, pelvis_height_vec)
@@ -330,7 +330,7 @@ def Generate2dCostLandscapeComparison(cmt):
       if np.isnan(z2[i]):
         z[i] = z2[i]
       else:
-        z[i] = 0
+        z[i] = -1e-8
     else:
       if np.isnan(z2[i]):
         z[i] = np.inf
@@ -585,7 +585,7 @@ if __name__ == "__main__":
 
   # 2D landscape (task1 vs task2)
   # model_slices_cost_landsacpe = []
-  model_slices_cost_landsacpe = [1, 200]
+  model_slices_cost_landsacpe = [1, 2, 11, 200]
 
   # Expected (averaged) cost over a task range
   stride_length_range_to_average = [-0.4, 0.4]

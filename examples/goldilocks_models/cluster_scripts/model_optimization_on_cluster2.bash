@@ -64,10 +64,20 @@ no_model_update=false  # used to re-evaluate different task while fixing model
 # Other parameters
 final_iter=300
 
+iter_start=1
+iter_delta=1
+
 ### Some setup
+# A check on number of CPUs
 total_cores_needed=$((n_sl*n_gi*n_du*n_tr*n_ph*n_sm))
 if [ "$SLURM_CPUS_PER_TASK" -gt "$((total_cores_needed + 1))" ];
 then printf "Allocated too many cores (%s). This job only need %s.\n" $SLURM_CPUS_PER_TASK $total_cores_needed;
+fi
+
+# Prevent the server from shutting down when using too many cpu cores
+n_thread_to_use=$SLURM_CPUS_PER_TASK
+if [ "$n_thread_to_use" -ge "40" ]; then
+  n_thread_to_use=$(($n_thread_to_use*9/10))
 fi
 
 # folder name (Create data folder's name automatically from this bash script's name)
@@ -81,6 +91,7 @@ fi
 # Prints
 echo robot_option = $robot, rom_option = $model
 echo folder_name = $folder_name
+echo n_thread_to_use = $n_thread_to_use
 
 directory=../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/
 
@@ -94,9 +105,7 @@ printf "\n\n\n"
 
 ### Count the lastest iteration (I wrote this becasuse the job can get preempted if run at low QOS
 iter_max=1000  # The code is untested. Just in case we created an infinity loop
-iter_start=0
-if [ $no_model_update ]
-then
+if [ $no_model_update ]; then
   FILE=_0_c.csv
 else
   FILE=_theta_y.csv
@@ -107,9 +116,9 @@ do
   if [ -f "$FULL_PATH" ]
   then
     echo "$FULL_PATH exists."
-    iter_start=$((iter_start+1))
+    iter_start=$((iter_start+iter_delta))
   else
-    iter_start=$((iter_start-1))
+    iter_start=$((iter_start-iter_delta))
     echo lastest iteration is $iter_start
     break
   fi
@@ -138,7 +147,7 @@ then
   # Optimize the model
   echo ===== evaluate nomial traj \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=false \
-   --data_folder_name=$folder_name \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
@@ -148,7 +157,7 @@ then
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
@@ -161,7 +170,7 @@ then
 
   echo ===== evaluate nomial traj \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
@@ -171,7 +180,7 @@ then
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
@@ -184,7 +193,7 @@ then
 
   echo ===== evaluate nomial traj with com accel constraint  \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
@@ -194,7 +203,7 @@ then
 
   echo ===== evaluate nomial traj with com accel constraint \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
@@ -205,7 +214,7 @@ then
 
   echo ===== evaluate initial rom \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=1 --snopt_scaling=false --start_current_iter_as_rerun=false \
-   --data_folder_name=$folder_name \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
@@ -215,10 +224,11 @@ then
 
   echo ===== evaluate \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=1 --snopt_scaling=true --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
+   --delta_iter=$iter_delta \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
@@ -234,10 +244,11 @@ else
 
   echo ===== evaluate \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=$iter_start --max_outer_iter=$final_iter --snopt_scaling=true --start_current_iter_as_rerun=false \
-   --data_folder_name=$folder_name \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
+   --delta_iter=$iter_delta \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log

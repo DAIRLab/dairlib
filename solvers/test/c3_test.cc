@@ -33,7 +33,6 @@ int DoMain(int argc, char* argv[]) {
     ///define the LCS class variable
     LCS system(A, B, D, d, E, F, H, c);
     C3MIQP opt(system, Q, R, G, U, options);
-
     /*
      ///initial condition(cartpole)
      VectorXd x0(n);
@@ -69,7 +68,7 @@ int DoMain(int argc, char* argv[]) {
 
     ///initialize at x0
     x[0] = x0;
-
+    double total_time = 0;
     for (int i = 0; i < options.timesteps-1; i++) {
 
         ///reset delta and w(cartpole)
@@ -90,6 +89,7 @@ int DoMain(int argc, char* argv[]) {
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
         std::cout << "Solve time:" << elapsed.count() << std::endl;
+        total_time += elapsed.count();
 
         ///simulate the LCS
         x[i+1] = system.Simulate(x[i], input[i]);
@@ -98,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
         //std::cout << "state: "<< x[i+1] << std::endl;
 
     }
-
+    std::cout << "Average time: " << total_time/(options.timesteps-1) << std::endl;
 	return 0;
 }
 

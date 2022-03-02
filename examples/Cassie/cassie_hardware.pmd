@@ -38,14 +38,6 @@ group "1.cassie-robot" {
         exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
         host = "dair-cassie";
     }
-    cmd "4.0 alip-walking-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller_alip --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
-        host = "dair-cassie";
-    }
-    cmd "4.1 alip-walking-controller-real-robot (radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller_alip --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
-        host = "dair-cassie";
-    }
 }
 
 group "2.controller-switch-commands" {
@@ -54,7 +46,7 @@ group "2.controller-switch-commands" {
         host = "dair-cassie";
     }
     cmd "controller-switch-to-walking" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01 --fsm_period=0.4 --fsm_offset=.35 --n_period_delay=2";
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_WALKING --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01 --fsm_period=0.4 --fsm_offset=.035 --n_period_delay=2";
         host = "dair-cassie";
     }
     cmd "controller-switch-to-jumping" {

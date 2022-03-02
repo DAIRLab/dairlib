@@ -54,6 +54,7 @@ DEFINE_string(control_channel_name_2, "OSC_STANDING",
               "The name of the lcm channel that sends Cassie's state");
 DEFINE_string(control_channel_name_3, "OSC_WALKING",
               "The name of the lcm channel that sends Cassie's state");
+DEFINE_bool(sim, false, "whether to use for simulation");
 
 // Cassie model parameter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -130,15 +131,22 @@ int do_main(int argc, char* argv[]) {
 
   // Create and connect LCM command echo to network
   auto net_command_sender = builder.AddSystem<RobotCommandSender>(plant);
-  auto net_command_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          "NETWORK_CASSIE_INPUT", &lcm_network, {TriggerType::kPeriodic},
-          FLAGS_pub_rate));
+  LcmPublisherSystem* command_pub;
+  if (FLAGS_sim) {
+    command_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+            "CASSIE_INPUT", &lcm_local, {TriggerType::kForced}));
+  } else {
+    command_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+            "NETWORK_CASSIE_INPUT", &lcm_network, {TriggerType::kPeriodic},
+            FLAGS_pub_rate));
+  }
 
   builder.Connect(input_supervisor->get_output_port_command(),
                   net_command_sender->get_input_port(0));
 
-  builder.Connect(*net_command_sender, *net_command_pub);
+  builder.Connect(*net_command_sender, *command_pub);
 
   // Finish building the diagram
   auto owned_diagram = builder.Build();

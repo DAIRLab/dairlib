@@ -240,7 +240,7 @@ int DoMain(int argc, char* argv[]) {
   // Add contact points (The position doesn't matter. It's not used in OSC)
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
+      Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&left_toe_evaluator);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
@@ -248,12 +248,14 @@ int DoMain(int argc, char* argv[]) {
   osc->AddContactPoint(&left_heel_evaluator);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
+      Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&right_toe_evaluator);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, right_heel.first, right_heel.second,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&right_heel_evaluator);
+  osc->AddLambdaNullCost(1.0);
+
   // Cost
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);

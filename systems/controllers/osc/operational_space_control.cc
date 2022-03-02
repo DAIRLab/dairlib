@@ -584,19 +584,19 @@ VectorXd OperationalSpaceControl::SolveQp(
     row_idx += contact_i->num_active();
   }
 
-  auto J_c_T_QR = (P*J_c).topRows(kSpaceDim* active_contact_set.size()).transpose().fullPivHouseholderQr();
-  MatrixXd Rtmp = J_c_T_QR.matrixQR().triangularView<Eigen::Upper>();
-  MatrixXd R = Rtmp.topRows(Rtmp.cols());
-  std::cout << "R:\n" << R << std::endl;
-  MatrixXd R_T = R.transpose();
-  MatrixXd N_J_c_T = MatrixXd::Identity(R.rows(),R.cols()) -
-                      R_T * (R * R_T).inverse() * R;
-  std::cout << "N:\n" << N_J_c_T << std::endl;
-  MatrixXd N = MatrixXd::Zero(n_c_, n_c_);
-  N.topLeftCorner(R.rows(), R.cols()) = N_J_c_T;
-  MatrixXd W = P.transpose()*N.transpose()*W_lambda_null_ * N * P;
-  lambda_null_cost_->UpdateCoefficients(W,
-      VectorXd::Zero(n_c_));
+  if (w_lambda_null_ > 0){
+    int m_c = kSpaceDim*active_contact_set.size();
+    auto J_c_T_LU = Eigen::FullPivLU<MatrixXd>(J_c.cols(), m_c);
+    J_c_T_LU.setThreshold(1e-8);
+    J_c_T_LU.compute((P*J_c).topRows(m_c).transpose());
+    MatrixXd N_J_c_T = MatrixXd::Zero(m_c, m_c) ;
+    N_J_c_T.topRows(J_c_T_LU.dimensionOfKernel()) = J_c_T_LU.kernel().transpose();
+    MatrixXd N = MatrixXd::Zero(n_c_, n_c_);
+    N.topLeftCorner(m_c, m_c) = N_J_c_T;
+
+    MatrixXd W = P.transpose()*N.transpose()*W_lambda_null_ * N * P;
+    lambda_null_cost_->UpdateCoefficients(W,VectorXd::Zero(n_c_));
+  }
 
   // Update constraints
   // 1. Dynamics constraint

@@ -32,12 +32,12 @@ class PlotStyler():
     matplotlib.rcParams["savefig.directory"] = directory
     matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
     # matplotlib.rcParams['figure.figsize'] = 10, 12
-    matplotlib.rcParams['figure.figsize'] = 20, 6
+    matplotlib.rcParams['figure.figsize'] = 20, 20
     # matplotlib.rcParams['figure.figsize'] = 8, 5
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 18}
     matplotlib.rc('font', **font)
-    matplotlib.rcParams['lines.linewidth'] = 1.5
+    matplotlib.rcParams['lines.linewidth'] = 2
     plt.set_cmap('tab20')
     self.directory = directory
 

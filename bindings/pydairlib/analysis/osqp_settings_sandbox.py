@@ -2,6 +2,7 @@ import lcm
 import numpy as np
 from process_lcm_log import get_log_data
 from dairlib import lcmt_qp
+from pydairlib.common import plot_styler
 
 import osqp
 from scipy.sparse import csc_matrix
@@ -29,8 +30,9 @@ def ParseQP(data):
 
 
 def solve_osqp(qp, settings):
-    Q = qp["Q"] + qp["Q"].T - np.diag(np.diag(qp["Q"]))
-    Q = Q + 1e-7 * np.eye(Q.shape[0])
+    # Q = qp["Q"] + qp["Q"].T - np.diag(np.diag(qp["Q"]))
+    # Q = Q + 1e-7 * np.eye(Q.shape[0])
+    Q = qp["Q"]
     m = osqp.OSQP()
     m.setup(
         P=csc_matrix(Q), q=qp["w"],
@@ -49,7 +51,8 @@ def solve_osqp(qp, settings):
         check_termination=settings['check_termination'])
 
     qp_result = m.solve()
-    return {'iter': qp_result.info.iter,
+    return {'sol': qp_result.x,
+            'iter': qp_result.info.iter,
             'run_time': qp_result.info.run_time,
             'status': qp_result.info.status,
             'obj_val': qp_result.info.obj_val,
@@ -58,8 +61,10 @@ def solve_osqp(qp, settings):
 
 
 def main():
+    ps = plot_styler.PlotStyler()
+    ps.set_default_styling()
 
-    filename = "/home/brian/workspace/logs/qp_logging/lcmlog03"
+    filename = "/home/brian/workspace/logs/qp_logging/lcmlog00"
     log = lcm.EventLog(filename, "r")
     qp_list = get_log_data(log, {"QP_LOG": lcmt_qp}, ParseQP)
 
@@ -69,6 +74,7 @@ def main():
     run_times = np.zeros((len(qp_list), nr))
     obj_vals = np.zeros((len(qp_list), nr))
     pri_eps_vals = np.zeros((len(qp_list), nr))
+    torques = np.zeros((nr, len(qp_list), 10))
 
     osqp_settings = \
         {'eps_abs': 1e-7,
@@ -94,6 +100,8 @@ def main():
             run_times[i, j] = osqp_result['run_time']
             obj_vals[i, j] = osqp_result['obj_val']
             pri_eps_vals[i, j] = osqp_result['pri_res']
+            torques[j, i, :] = osqp_result['sol'][22:32]
+
 
     print(f'OSQP mean runtime: {np.mean(run_times,axis=0)}')
     print(f'OSQP mean objective: {np.mean(obj_vals, axis=0)}')
@@ -110,7 +118,7 @@ def main():
     axs[1].plot(run_times)
     axs[1].set_title('Solve times per QP')
 
-    axs[2].plot(pri_eps_vals)
+    axs[2].plot(torques[:,:,0].T)
     axs[2].set_title('Primal residual per QP')
     plt.show()
 

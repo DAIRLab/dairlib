@@ -20,15 +20,20 @@ py_binary(
 py_binary(
     name = "qp_test",
     srcs = ["qp_test.py"],
-    deps = ["@lcm//:lcm-python",
-            "//lcmtypes:lcmtypes_robot_py"],
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+        "@lcm//:lcm-python",
+    ],
 )
 
 py_binary(
     name = "osqp_settings_sandbox",
     srcs = ["osqp_settings_sandbox.py"],
-    deps = ["@lcm//:lcm-python",
-            "//lcmtypes:lcmtypes_robot_py"],
+    deps = [
+        "//bindings/pydairlib/common",
+        "//lcmtypes:lcmtypes_robot_py",
+        "@lcm//:lcm-python",
+    ],
 )
 
 py_library(

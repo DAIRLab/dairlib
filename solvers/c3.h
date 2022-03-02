@@ -7,6 +7,7 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
+#include "solvers/fast_osqp_solver.h"
 
 namespace dairlib {
 namespace solvers {

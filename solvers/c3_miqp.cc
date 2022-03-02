@@ -99,7 +99,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
         GRBLinExpr cexpr = 0;
 
         ///convert VectorXd to double
-        for (int j = 0; j < n_ + m_ + k_; j++) {
+        for (int j = 0; j < n_+m_+k_; j++) {
             coeff[j] = Mcons2.row(i)(j);
         }
 
@@ -110,13 +110,13 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
         GRBLinExpr cexpr2 = 0;
 
         ///convert VectorXd to double
-        for (int j = 0; j < n_ + m_ + k_; j++) {
+        for (int j = 0; j < n_+m_+k_; j++) {
             coeff[j] = Mcons1.row(i)(j);
         }
 
         cexpr2.addTerms(coeff,delta_k,n_+m_+k_);
-        model.addConstr( cexpr2 >= 0  );
-        model.addConstr( cexpr2  <=  M * binary[i]     );
+        model.addConstr( cexpr2 + c(i) >= 0  );
+        model.addConstr( cexpr2 + c(i)  <=  M * binary[i]     );
 
 
 

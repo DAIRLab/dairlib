@@ -48,8 +48,12 @@ n_ph=1
 n_sm=1
 # Set grid parameter
 stride_length_center=0
+ground_incline_center=0
+turning_rate_center=0
 pelvis_height_center=0.95
 stride_length_delta=0.03
+ground_incline_delta=0.05
+turning_rate_delta=0.125
 pelvis_height_delta=0.05
 
 # main cost weights
@@ -152,7 +156,9 @@ then
    --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
@@ -162,7 +168,9 @@ then
    --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits =====
@@ -175,7 +183,9 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
@@ -185,7 +195,9 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits with cubic swing foot constraint =====
@@ -198,7 +210,9 @@ then
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj with com accel constraint \(with snopt scaling\) =====
@@ -208,7 +222,9 @@ then
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
 
@@ -219,7 +235,9 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate \(with snopt scaling\) =====
@@ -230,7 +248,9 @@ then
    --rom_option=$model --robot_option=$robot \
    --delta_iter=$iter_delta \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
 else
@@ -250,7 +270,9 @@ else
    --rom_option=$model --robot_option=$robot \
    --delta_iter=$iter_delta \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --pelvis_height_center=$pelvis_height_center --stride_length_delta=$stride_length_delta --pelvis_height_delta=$pelvis_height_delta --fix_node_number=true 2>&1 \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --fix_node_number=true 2>&1 \
    | tee -a "$directory"terminal_log
 
 fi

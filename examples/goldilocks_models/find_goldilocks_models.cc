@@ -81,9 +81,12 @@ DEFINE_double(ph_max, 0.8, "max pelvis height");
 DEFINE_double(sm_min, 0.0, "min stance width");
 DEFINE_double(sm_max, 0.15, "max stance width");
 DEFINE_double(stride_length_center, 0.0, "stride length center for grid method");
+DEFINE_double(ground_incline_center, 0.0, "ground incline center for grid method");
 DEFINE_double(turning_rate_center, 0.0, "turning rate center for grid method");
 DEFINE_double(pelvis_height_center, 0.95, "pelvis height center for grid method");
 DEFINE_double(stride_length_delta, 0.03, "stride length delta for grid method");
+DEFINE_double(ground_incline_delta, 0.05, "ground incline delta for grid method");
+DEFINE_double(turning_rate_delta, 0.125, "turning rate delta for grid method");
 DEFINE_double(pelvis_height_delta, 0.05, "pelvis height delta for grid method");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
@@ -1562,10 +1565,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
            "pelvis_height", "swing_margin"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr, FLAGS_N_sample_ph, FLAGS_N_sample_sm},
-          {FLAGS_stride_length_center, 0, 0.35, FLAGS_turning_rate_center,
-           FLAGS_pelvis_height_center, 0.03},
-          {FLAGS_stride_length_delta, 0.05, 0.05, 0.125,
-           FLAGS_pelvis_height_delta, 0.02},
+          {FLAGS_stride_length_center, FLAGS_ground_incline_center, 0.35,
+           FLAGS_turning_rate_center, FLAGS_pelvis_height_center, 0.03},
+          {FLAGS_stride_length_delta, FLAGS_ground_incline_delta, 0.05,
+           FLAGS_turning_rate_delta, FLAGS_pelvis_height_delta, 0.02},
           {(FLAGS_N_sample_sl > 1) && is_stochastic,
            (FLAGS_N_sample_gi > 1) && is_stochastic,
            (FLAGS_N_sample_du > 1) && is_stochastic,
@@ -1726,8 +1729,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   } else if (FLAGS_robot_option == 1) {
     if (is_grid_task) {
-      max_average_cost_increase_rate =
-          is_stochastic ? 0.2 : 0.01;  // 0.15
+      max_average_cost_increase_rate = is_stochastic ? 0.2 : 0.01;  // 0.15
     } else {
       max_average_cost_increase_rate = 1;
     }

@@ -28,8 +28,7 @@ TimestampedLowPassFilter::TimestampedLowPassFilter(
     std::iota(idxs.begin(), idxs.end(), 0);
     filter_idxs_ = idxs;
   } else {
-    std::copy(filter_idxs_.begin(), filter_idxs_.end(),
-              std::back_inserter(filter_idxs.value()));
+    filter_idxs_ = filter_idxs.value();
   }
 
   TimestampedVector<double> model_vector(n_y);
@@ -49,6 +48,7 @@ drake::systems::EventStatus TimestampedLowPassFilter::DiscreteVariableUpdate(
 
   const TimestampedVector<double>* y_t =
       (TimestampedVector<double>*)this->EvalVectorInput(context, 0);
+
   double dt  = y_t->get_timestamp() -
       discrete_state->get_value(prev_time_idx_)[0];
   VectorXd y = y_t->get_data();
@@ -69,7 +69,7 @@ drake::systems::EventStatus TimestampedLowPassFilter::DiscreteVariableUpdate(
 void TimestampedLowPassFilter::CalcFilter(
     const drake::systems::Context<double> &context,
     systems::TimestampedVector<double> *y) const {
-  y->set_value(context.get_discrete_state(prev_val_idx_).get_value());
+  y->SetDataVector(context.get_discrete_state(prev_val_idx_).get_value());
   y->set_timestamp(context.get_discrete_state(prev_time_idx_).get_value()[0]);
 }
 } 

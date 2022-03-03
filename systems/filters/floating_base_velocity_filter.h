@@ -12,7 +12,8 @@ class FloatingBaseVelocityFilter : public TimestampedLowPassFilter {
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::vector<double>& tau) :
     TimestampedLowPassFilter(
-        tau, plant.num_positions()+plant.num_velocities(),
+        tau, plant.num_positions() + plant.num_velocities() +
+                 plant.num_actuators() + 3,
     std::vector<int>{plant.num_positions() + 3,
                               plant.num_positions() + 4,
                               plant.num_positions() + 5}){};

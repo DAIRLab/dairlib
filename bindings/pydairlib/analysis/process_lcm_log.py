@@ -16,12 +16,15 @@ def get_log_data(lcm_log, lcm_channels, data_processing_callback, *args,
     data_to_process = {}
     for event in lcm_log:
         if event.channel in lcm_channels:
-            if event.channel in data_to_process:
-                data_to_process[event.channel].append(
-                    lcm_channels[event.channel].decode(event.data))
-            else:
-                data_to_process[event.channel] = \
-                    [lcm_channels[event.channel].decode(event.data)]
+            try:
+                if event.channel in data_to_process:
+                    data_to_process[event.channel].append(
+                        lcm_channels[event.channel].decode(event.data))
+                else:
+                    data_to_process[event.channel] = \
+                        [lcm_channels[event.channel].decode(event.data)]
+            except:
+                pass
 
     return data_processing_callback(data_to_process, *args, *kwargs)
 

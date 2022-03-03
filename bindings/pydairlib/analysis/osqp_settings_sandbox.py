@@ -64,11 +64,11 @@ def main():
     ps = plot_styler.PlotStyler()
     ps.set_default_styling()
 
-    filename = "/home/brian/workspace/logs/qp_logging/lcmlog00"
+    filename = "/home/brian/workspace/logs/qp_logging/03_02_22/lcmlog-02"
     log = lcm.EventLog(filename, "r")
     qp_list = get_log_data(log, {"QP_LOG": lcmt_qp}, ParseQP)
 
-    qp_list = qp_list[:400]
+    # qp_list = qp_list
     eps = np.logspace(-7, -4, num=4)
     nr = eps.size
     run_times = np.zeros((len(qp_list), nr))

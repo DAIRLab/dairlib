@@ -890,11 +890,11 @@ void GetAdjacentHelper(int sample_idx, MatrixXi& sample_idx_waiting_to_help,
       break;
     }
   }
-  cout << "before adding idx # " << sample_idx << endl;
-  cout << "sample_idx_waiting_to_help = \n"
-       << sample_idx_waiting_to_help.transpose() << endl;
-  cout << "sample_idx_that_helped = \n"
-       << sample_idx_that_helped.transpose() << endl;
+  //  cout << "before adding idx # " << sample_idx << endl;
+  //  cout << "sample_idx_waiting_to_help = \n"
+  //       << sample_idx_waiting_to_help.transpose() << endl;
+  //  cout << "sample_idx_that_helped = \n"
+  //       << sample_idx_that_helped.transpose() << endl;
   DRAKE_DEMAND(sample_idx_to_help != -1);  // must exist a helper
 }
 void RecordSolutionQualityAndQueueList(
@@ -2206,7 +2206,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Evaluate samples
       while (!awaiting_sample_idx.empty() || !assigned_thread_idx.empty()) {
-        /*cout << "awaiting_sample_idx = ";
+        cout << "awaiting_sample_idx = ";
         for (auto mem : awaiting_sample_idx) {
           cout << mem << ", ";
         }
@@ -2215,7 +2215,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         for (auto mem : assigned_thread_idx) {
           cout << mem.second << ", ";
         }
-        cout << endl;*/
+        cout << endl;
 
         // clang-format off
         //std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
@@ -2337,9 +2337,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
           available_thread_idx.pop();
         } else {
           // Select the thread to join
+          cout << "selectThreadIdxToWait\n";
           int selected_idx =
               selectThreadIdxToWait(assigned_thread_idx, thread_finished_vec);
-          // cout << "selected_idx = " << selected_idx << endl;
+          cout << "selected_idx = " << selected_idx << endl;
 
           // Wait for the selected thread to join, then delete thread
           int thread_to_wait_idx = assigned_thread_idx[selected_idx].first;

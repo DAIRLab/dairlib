@@ -24,6 +24,7 @@
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
+#include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -136,6 +137,10 @@ int DoMain(int argc, char* argv[]) {
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
+  std::vector<double> tau_vfb = {.03, .03, .03};
+  auto pelvis_vel_filter =
+      builder.AddSystem<systems::FloatingBaseVelocityFilter>(
+          plant_w_spr, tau_vfb);
 
   // Create command sender.
   auto command_pub =

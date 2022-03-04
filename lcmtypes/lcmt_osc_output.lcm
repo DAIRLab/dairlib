@@ -8,11 +8,10 @@ struct lcmt_osc_output
   int32_t num_regularization_costs;
 
   lcmt_osc_qp_output qp_output;
-
-  lcmt_osc_tracking_data tracking_data[num_tracking_data];
   string tracking_data_names[num_tracking_data];
   double tracking_costs [num_tracking_data];
-
   double regularization_costs [num_regularization_costs];
   string regularization_cost_names [num_regularization_costs];
+
+  lcmt_osc_tracking_data tracking_data[num_tracking_data];
 }

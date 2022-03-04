@@ -9,6 +9,7 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/geared_motor.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -86,7 +87,8 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
+    //    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
+    multibody::AddFlatTerrain(&plant, &scene_graph, 1e4, 1e2);
   }
 
   std::string urdf;
@@ -132,8 +134,9 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
-  auto radio_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(FLAGS_radio_channel, lcm));
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          FLAGS_radio_channel, lcm));
   const auto& sensor_aggregator =
       AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
 
@@ -141,15 +144,31 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
 
+  std::vector<double> omega_max = {303.687, 303.687, 136.136, 136.135, 575.958,
+                                   303.687, 303.687, 136.136, 136.135, 575.958};
+
+  auto cassie_motor = builder.AddSystem<systems::GearedMotor>(plant, omega_max);
+
   // connect leaf systems
   builder.Connect(*input_sub, *input_receiver);
-  builder.Connect(*input_receiver, *passthrough);
+  bool motor_model = true;
+  if (motor_model) {
+    builder.Connect(input_receiver->get_output_port(),
+                    cassie_motor->get_input_port_command());
+    builder.Connect(cassie_motor->get_output_port(),
+                    passthrough->get_input_port());
+  } else {
+    builder.Connect(input_receiver->get_output_port(),
+                    passthrough->get_input_port());
+  }
   builder.Connect(passthrough->get_output_port(),
                   discrete_time_delay->get_input_port());
   builder.Connect(discrete_time_delay->get_output_port(),
                   plant.get_actuation_input_port());
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
+  builder.Connect(plant.get_state_output_port(),
+                  cassie_motor->get_input_port_state());
   builder.Connect(discrete_time_delay->get_output_port(),
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);

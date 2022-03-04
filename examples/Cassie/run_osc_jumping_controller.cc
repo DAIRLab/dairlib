@@ -1,4 +1,5 @@
 
+#include <drake/common/yaml/yaml_io.h>
 #include <drake/common/yaml/yaml_read_archive.h>
 #include <drake/lcmt_contact_results_for_viz.hpp>
 #include <drake/multibody/parsing/parser.h>
@@ -120,14 +121,15 @@ int DoMain(int argc, char* argv[]) {
       feet_contact_points = {left_toe, right_toe};
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  OSCJumpingGains gains;
-  const YAML::Node& root =
-      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
-  drake::yaml::YamlReadArchive(root).Accept(&gains);
+  //  OSCJumpingGains gains;
+  //  const YAML::Node& root =
+  //      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+  OSCJumpingGains gains = drake::yaml::LoadYamlFile<OSCJumpingGains>(
+      FindResourceOrThrow(FLAGS_gains_filename));
 
   /**** Get trajectory from optimization ****/
-  const DirconTrajectory& dircon_trajectory = DirconTrajectory(plant_w_spr,
-      FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
+  const DirconTrajectory& dircon_trajectory = DirconTrajectory(
+      plant_w_spr, FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
   string output_traj_path = FLAGS_folder_path + FLAGS_traj_name + "_processed";
   if (gains.relative_feet) {
     output_traj_path += "_rel";
@@ -301,7 +303,8 @@ int DoMain(int argc, char* argv[]) {
   osc->SetSoftConstraintWeight(w_contact_relax);
   // Soft constraint on contacts
   double w_input_reg = gains.w_input_reg;
-  osc->SetInputSmoothingWeights(gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
+  osc->SetInputSmoothingWeights(gains.w_input_reg *
+                                MatrixXd::Identity(n_u, n_u));
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);

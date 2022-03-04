@@ -1,5 +1,6 @@
 #include <fstream>
 
+#include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 
@@ -130,15 +131,17 @@ int DoMain(int argc, char* argv[]) {
   /**** Get trajectory from optimization ****/
 
   /**** OSC Gains ****/
-  OSCGains gains{};
-  const YAML::Node& root =
-      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
+//  OSCGains gains;
+//  const YAML::Node& root =
+//      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive::Options yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-  drake::yaml::YamlReadArchive(root, yaml_options).Accept(&gains);
+//  drake::yaml::YamlReadArchive(root, yaml_options).Accept(&gains);
 
-  OSCRunningGains osc_gains;
-  drake::yaml::YamlReadArchive(root).Accept(&osc_gains);
+  OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
+  OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(FindResourceOrThrow(FLAGS_gains_filename));
+
+//  drake::yaml::YamlReadArchive(root).Accept(&osc_gains);
 
   /**** FSM and contact mode configuration ****/
   int left_stance_state = 0;
@@ -191,9 +194,10 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   /// REGULARIZATION COSTS
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
-//  osc->SetInputCostWeights(1e-3 * gains.W_input_regularization);
-  osc->SetLambdaRegularizationWeight(1e-6 * gains.W_lambda_regularization);
+//  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
+  osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
+//  osc->SetLambdaContactRegularizationWeight(1e-4 * gains.W_lambda_c_regularization);
+  osc->SetLambdaHolonomicRegularizationWeight(1e-5 * gains.W_lambda_h_regularization);
 
   // Soft constraint on contacts
   osc->SetSoftConstraintWeight(gains.w_soft_constraint);

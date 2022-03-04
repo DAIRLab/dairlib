@@ -713,7 +713,7 @@
     <parent link="knee_left" />
     <child link="shin_left" />
     <axis xyz="0 0 1" />
-    <limit lower="-.1" upper="0.075"/>
+    <limit lower="-.35" upper="0.35"/>
     <dynamics damping=".1" />
   </joint>
 
@@ -722,7 +722,7 @@
     <parent link="knee_right" />
     <child link="shin_right" />
     <axis xyz="0 0 1" />
-    <limit lower="-.1" upper="0.075"/>
+    <limit lower="-.35" upper="0.35"/>
     <dynamics damping=".1" />
   </joint>
 
@@ -763,7 +763,7 @@
     <origin xyz="-.01269 -.03059 .00092" rpy="0.0780 0.00549 2.7192" />
     <parent link="tarsus_left" />
     <child link="heel_spring_left" />
-    <limit lower="-.1" upper="0.1"/>
+    <limit lower="-1" upper="0.5"/>
     <axis xyz="0 0 1" />
     <dynamics damping="10" /> <!-- made up value -->
   </joint> 
@@ -773,7 +773,7 @@
     <origin xyz="-.01269 -.03059 -.00092" rpy="-0.0780 -0.00549 2.7192" />
     <parent link="tarsus_right" />
     <child link="heel_spring_right" />
-    <limit lower="-.1" upper="0.1"/>
+    <limit lower="-1" upper="0.5"/>
     <axis xyz="0 0 1" />
     <dynamics damping="10" /> <!-- made up value -->
   </joint> 

@@ -49,6 +49,9 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
     warm_start_ = true;
   }
 
+  void WarmStart(const Eigen::VectorXd& primal,
+                 const Eigen::VectorXd& dual);
+
   bool IsInitialized()const{
     return is_init_;
   }

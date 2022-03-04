@@ -342,6 +342,20 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   is_init_ = true;
 }
 
+void FastOsqpSolver::WarmStart(const Eigen::VectorXd& primal,
+                               const Eigen::VectorXd& dual) {
+  std::vector<c_float> x, y;
+  x.reserve(primal.size());
+  y.reserve(dual.size());
+  for (int i = 0; i < primal.size(); ++i) {
+    x.push_back(ConvertInfinity(primal(i)));
+  }
+  for (int i = 0; i < dual.size(); ++i){
+    y.push_back(ConvertInfinity(dual(i)));
+  }
+  osqp_warm_start(workspace_, x.data(), y.data());
+}
+
 void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
                              const Eigen::VectorXd& initial_guess,
                              const SolverOptions& merged_options,
@@ -382,7 +396,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   osqp_update_bounds(workspace_, l.data(), u.data());
   osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
                   OSQP_NULL, A_csc->nzmax);
-//  SetFastOsqpSolverSettings(merged_options, osqp_settings_);
+  //  SetFastOsqpSolverSettings(merged_options, osqp_settings_);
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
 

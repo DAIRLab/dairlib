@@ -16,11 +16,13 @@ struct OSCGains {
   double mu;
   std::vector<double> W_accel;
   std::vector<double> W_input_reg;
-  std::vector<double> W_lambda_reg;
+  std::vector<double> W_lambda_c_reg;
+  std::vector<double> W_lambda_h_reg;
 
   MatrixXd W_acceleration;
   MatrixXd W_input_regularization;
-  MatrixXd W_lambda_regularization;
+  MatrixXd W_lambda_c_regularization;
+  MatrixXd W_lambda_h_regularization;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -32,7 +34,8 @@ struct OSCGains {
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(W_accel));
     a->Visit(DRAKE_NVP(W_input_reg));
-    a->Visit(DRAKE_NVP(W_lambda_reg));
+    a->Visit(DRAKE_NVP(W_lambda_c_reg));
+    a->Visit(DRAKE_NVP(W_lambda_h_reg));
 
     Eigen::VectorXd w_acceleration =
         Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(this->W_accel.data(),
@@ -40,11 +43,15 @@ struct OSCGains {
     Eigen::VectorXd w_input_regularization =
         Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(this->W_input_reg.data(),
                                                       this->W_input_reg.size());
-    Eigen::VectorXd w_lambda_regularization =
+    Eigen::VectorXd w_lambda_c_regularization =
         Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-            this->W_lambda_reg.data(), this->W_lambda_reg.size());
+            this->W_lambda_c_reg.data(), this->W_lambda_c_reg.size());
+    Eigen::VectorXd w_lambda_h_regularization =
+        Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+            this->W_lambda_h_reg.data(), this->W_lambda_h_reg.size());
     W_acceleration = w_acceleration.asDiagonal();
     W_input_regularization = w_input_regularization.asDiagonal();
-    W_lambda_regularization = w_lambda_regularization.asDiagonal();
+    W_lambda_c_regularization = w_lambda_c_regularization.asDiagonal();
+    W_lambda_h_regularization = w_lambda_h_regularization.asDiagonal();
   }
 };

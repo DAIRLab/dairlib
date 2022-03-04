@@ -58,6 +58,20 @@ cc_library(
 )
 
 cc_library(
+    name = "geared_motor",
+    srcs = [
+        "geared_motor.cc",
+    ],
+    hdrs = [
+        "geared_motor.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "constrained_lqr_controller",
     srcs = [
         "constrained_lqr_controller.cc",

@@ -15,8 +15,8 @@
 #include "solvers/fast_osqp_solver.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
-#include "systems/framework/output_vector.h"
 #include "systems/framework/impact_info_vector.h"
+#include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -148,8 +148,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetSoftConstraintWeight(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
-  void SetLambdaRegularizationWeight(const Eigen::MatrixXd& W) {
-    W_lambda_reg_ = W;
+  void SetLambdaContactRegularizationWeight(const Eigen::MatrixXd& W) {
+    W_lambda_c_reg_ = W;
+  }
+  void SetLambdaHolonomicRegularizationWeight(const Eigen::MatrixXd& W) {
+    W_lambda_h_reg_ = W;
   }
 
   // Constraint methods
@@ -235,9 +238,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
   // Safety function that triggers when the tracking cost is too high
-  void CheckTracking(
-      const drake::systems::Context<double>& context,
-      TimestampedVector<double>* output) const;
+  void CheckTracking(const drake::systems::Context<double>& context,
+                     TimestampedVector<double>* output) const;
 
   // Input/Output ports
   int osc_debug_port_;
@@ -313,7 +315,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
 
-
   // Decision variables
   drake::solvers::VectorXDecisionVariable dv_;
   drake::solvers::VectorXDecisionVariable u_;
@@ -348,7 +349,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd W_input_;        // Input cost weight
   Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
   Eigen::MatrixXd W_input_smoothing_;
-  Eigen::MatrixXd W_lambda_reg_;
+  Eigen::MatrixXd W_lambda_c_reg_;
+  Eigen::MatrixXd W_lambda_h_reg_;
 
   // OSC constraint members
   bool with_input_constraints_ = true;
@@ -365,6 +367,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<const multibody::WorldPointEvaluator<double>*> all_contacts_ = {};
   // single_contact_mode_ is true if there is only 1 contact mode in OSC
   bool single_contact_mode_ = false;
+
+  mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_x_ = {};
+  mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_y_ = {};
 
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =

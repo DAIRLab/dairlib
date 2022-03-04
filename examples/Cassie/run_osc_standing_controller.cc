@@ -269,7 +269,7 @@ int DoMain(int argc, char* argv[]) {
   center_of_mass_traj.AddPointToTrack("pelvis");
   //  double cutoff_freq = 5; // in Hz
   //  double tau = 1 / (2 * M_PI * cutoff_freq);
-  center_of_mass_traj.SetLowPassFilter(0.09, {1});
+  center_of_mass_traj.SetLowPassFilter(0.03, {1});
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   RotTaskSpaceTrackingData pelvis_rot_traj(

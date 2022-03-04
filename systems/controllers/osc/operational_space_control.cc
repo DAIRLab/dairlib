@@ -381,17 +381,25 @@ void OperationalSpaceControl::Build() {
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {
+    DRAKE_DEMAND(W_input_.rows() == n_u_);
     prog_->AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u_);
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
+    DRAKE_DEMAND(W_joint_accel_.rows() == n_v_);
     prog_->AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv_);
   }
-  // 3. constraint force cost
-  if (W_lambda_reg_.size() > 0) {
-    prog_->AddQuadraticCost(W_lambda_reg_, VectorXd::Zero(n_h_), lambda_h_);
+  // 3. contact force cost
+  if (W_lambda_c_reg_.size() > 0) {
+    DRAKE_DEMAND(W_lambda_c_reg_.rows() == n_c_);
+    prog_->AddQuadraticCost(W_lambda_c_reg_, VectorXd::Zero(n_c_), lambda_c_);
   }
-  // 3. Soft constraint cost
+  // 3. constraint force cost
+  if (W_lambda_h_reg_.size() > 0) {
+    DRAKE_DEMAND(W_lambda_h_reg_.rows() == n_h_);
+    prog_->AddQuadraticCost(W_lambda_h_reg_, VectorXd::Zero(n_h_), lambda_h_);
+  }
+  // 4. Soft constraint cost
   if (w_soft_constraint_ > 0) {
     prog_->AddQuadraticCost(
         w_soft_constraint_ * MatrixXd::Identity(n_c_active_, n_c_active_),
@@ -451,7 +459,7 @@ void OperationalSpaceControl::Build() {
   solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
   solver_options.SetOption(OsqpSolver::id(), "rho", 0.0001);
   solver_options.SetOption(OsqpSolver::id(), "sigma", 1e-6);
-  solver_options.SetOption(OsqpSolver::id(), "max_iter", 4000);
+  solver_options.SetOption(OsqpSolver::id(), "max_iter", 100);
   solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
   solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
@@ -467,6 +475,7 @@ void OperationalSpaceControl::Build() {
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_interval", 0);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_tolerance", 5);
   solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 0.4);
+  solver_options.SetOption(OsqpSolver::id(), "warm_start", 1);
   std::cout << solver_options << std::endl;
   solver_->InitializeSolver(*prog_, solver_options);
 }
@@ -591,6 +600,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
     row_idx += contact_i->num_active();
   }
+
+//  std::cout << "JdotV_h" << JdotV_h.transpose() << std::endl;
+//  std::cout << "JdotV_c" << JdotV_c_active.transpose() << std::endl;
 
   // Update constraints
   // 1. Dynamics constraint
@@ -742,12 +754,19 @@ VectorXd OperationalSpaceControl::SolveQp(
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0) {
     input_smoothing_cost_->UpdateCoefficients(W_input_smoothing_,
-                                        -W_input_smoothing_ * (*u_prev_));
+                                              -W_input_smoothing_ * (*u_prev_));
   }
 
   if (!solver_->IsInitialized()) {
     solver_->InitializeSolver(*prog_, solver_options_);
   }
+
+  if (initial_guess_x_.count(fsm_state) > 0) {
+    //    std::cout << "Setting initial guess: " << fsm_state << std::endl;
+    solver_->WarmStart(initial_guess_x_.at(fsm_state),
+                       initial_guess_y_.at(fsm_state));
+  }
+
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
   if (result.is_success()) {
@@ -758,6 +777,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
     *u_prev_ = *u_sol_;
+    initial_guess_x_[fsm_state] = result.GetSolution();
+    initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
     std::cerr << "QP did not solve in time!" << std::endl;
     solver_->DisableWarmStart();
@@ -882,13 +903,20 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           : 0;
   double input_smoothing_cost =
       (W_input_smoothing_.size() > 0)
-          ? (0.5 * (*u_sol_- *u_prev_).transpose() * W_input_smoothing_ * (*u_sol_ - *u_prev_))(0)
+          ? (0.5 * (*u_sol_ - *u_prev_).transpose() * W_input_smoothing_ *
+             (*u_sol_ - *u_prev_))(0)
           : 0;
-  double lambda_h_cost =
-      (W_lambda_reg_.size() > 0)
-          ? (0.5 * (*lambda_h_sol_).transpose() * W_lambda_reg_ * (*lambda_h_sol_))(0)
-          : 0;
-
+  double lambda_h_cost = (W_lambda_h_reg_.size() > 0)
+                             ? (0.5 * (*lambda_h_sol_).transpose() *
+                                W_lambda_h_reg_ * (*lambda_h_sol_))(0)
+                             : 0;
+  double lambda_c_cost = (W_lambda_c_reg_.size() > 0)
+                             ? (0.5 * (*lambda_c_sol_).transpose() *
+                                W_lambda_c_reg_ * (*lambda_c_sol_))(0)
+                             : 0;
+  total_cost_ += input_cost + acceleration_cost + soft_constraint_cost +
+                      input_smoothing_cost + lambda_h_cost + lambda_c_cost;
+  soft_constraint_cost_ = soft_constraint_cost;
   output->regularization_costs.clear();
   output->regularization_cost_names.clear();
 
@@ -901,6 +929,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->regularization_cost_names.push_back("soft_constraint_cost");
   output->regularization_costs.push_back(input_smoothing_cost);
   output->regularization_cost_names.push_back("input_smoothing_cost");
+  output->regularization_costs.push_back(lambda_c_cost);
+  output->regularization_cost_names.push_back("lambda_c_cost");
   output->regularization_costs.push_back(lambda_h_cost);
   output->regularization_cost_names.push_back("lambda_h_cost");
 
@@ -977,6 +1007,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     }
     output->tracking_data[i] = osc_output;
   }
+//  std::cout << total_cost_ << std::endl;
 
   output->num_tracking_data = output->tracking_data_names.size();
   output->num_regularization_costs = output->regularization_cost_names.size();

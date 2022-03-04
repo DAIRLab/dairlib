@@ -1,8 +1,16 @@
 w_input: 0.000
 w_accel: 0.0000001
+# roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
+W_accel: [1, 1, 1, 1, 1, 1,
+          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
+          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
+W_input_reg: [1, 0.9, 0.5, 0.1, 1,
+              1, 0.9, 0.5, 0.1, 1]
+W_lambda_reg: [0.001, 0.001, 0.01,
+               0.01, 0.02, 0.02]
 w_input_reg: 0.01
 w_soft_constraint: 100
-x_offset: 0.0
+x_offset: -0.0
 relative_feet: true
 
 mu: 0.8
@@ -16,7 +24,7 @@ hip_yaw_kp: 40
 hip_yaw_kd: 5
 
 impact_threshold: 0.050
-landing_delay: 0.050
+landing_delay: 0.000
 
 CoMW:
   [20,    0,    0,
@@ -31,11 +39,11 @@ FlightFootW:
    0,   1,    0,
    0,   0,   1]
 CoMKp:
-  [50,   0,    0,
+  [25,   0,    0,
    0,   50,    0,
    0,    0,  50]
 CoMKd:
-  [  5,    0,   0,
+  [ 7.5,    0,   0,
      0,    5,   0,
      0,    0,   5]
 PelvisRotKp:
@@ -47,11 +55,11 @@ PelvisRotKd:
    0,   10,  0,
    0,    0,  0]
 FlightFootKp:
-  [150,   0,    0,
+  [50,   0,    0,
    0,   100,    0,
    0,     0,  100]
 FlightFootKd:
-  [ 0,   0,    0,
+  [20,   0,    0,
     0,   0,     0,
     0,   0,    0]
 

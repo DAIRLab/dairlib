@@ -1,5 +1,6 @@
 #include <fstream>
 
+#include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 
@@ -130,15 +131,10 @@ int DoMain(int argc, char* argv[]) {
   /**** Get trajectory from optimization ****/
 
   /**** OSC Gains ****/
-  OSCGains gains{};
-  const YAML::Node& root =
-      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   drake::yaml::YamlReadArchive::Options yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-  drake::yaml::YamlReadArchive(root, yaml_options).Accept(&gains);
-
-  OSCRunningGains osc_gains;
-  drake::yaml::YamlReadArchive(root).Accept(&osc_gains);
+  OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
+  OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(FindResourceOrThrow(FLAGS_gains_filename));
 
   /**** FSM and contact mode configuration ****/
   int stance_state = 0;

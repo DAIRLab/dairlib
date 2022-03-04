@@ -129,21 +129,29 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
   }
 
   Eigen::Vector3d point_W(0, 0, 0);
+  drake::multibody::CoulombFriction<T> friction(mu_static, mu_kinetic);
 
   // A half-space for the ground geometry.
   const drake::math::RigidTransformd X_WG(
       HalfSpace::MakePose(normal_W, point_W));
 
-  drake::geometry::ProximityProperties props;
-  props.AddProperty("material", "point_contact_stiffness", stiffness);
-  props.AddProperty("material", "hunt_crossley_dissipation",
-                    dissipation_rate);
-  props.AddProperty(drake::geometry::internal::kMaterialGroup,
-                    drake::geometry::internal::kFriction,
-                    drake::multibody::CoulombFriction<double>(mu_static, mu_kinetic));
 
-  plant->RegisterCollisionGeometry(plant->world_body(), X_WG, HalfSpace(),
-                                   "collision", props);
+
+  if (stiffness != 0){
+    drake::geometry::ProximityProperties props;
+    props.AddProperty("material", "point_contact_stiffness", stiffness);
+    props.AddProperty("material", "hunt_crossley_dissipation",
+                      dissipation_rate);
+    props.AddProperty(drake::geometry::internal::kMaterialGroup,
+                      drake::geometry::internal::kFriction,
+                      friction);
+    plant->RegisterCollisionGeometry(plant->world_body(), X_WG, HalfSpace(),
+                                     "collision", props);
+  }
+  else{
+    plant->RegisterCollisionGeometry(plant->world_body(), X_WG, HalfSpace(),
+                                     "collision", friction);
+  }
 
   // Add visual for the ground.
 //  plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),

@@ -17,12 +17,11 @@ namespace multibody {
 template <typename T>
 GeomGeomCollider<T>::GeomGeomCollider(
     const drake::multibody::MultibodyPlant<T>& plant,
-    const drake::geometry::GeometryId geometry_id_A,
-    const drake::geometry::GeometryId geometry_id_B,
+    const drake::SortedPair<drake::geometry::GeometryId> geometry_pair,
     const int num_friction_directions)
     : plant_(plant),
-      geometry_id_A_(geometry_id_A),
-      geometry_id_B_(geometry_id_B),
+      geometry_id_A_(geometry_pair.first()),
+      geometry_id_B_(geometry_pair.second()),
       num_friction_directions_(num_friction_directions) ,
       planar_normal_(Vector3d::Zero()) {
   if (num_friction_directions == 1) {
@@ -35,18 +34,16 @@ GeomGeomCollider<T>::GeomGeomCollider(
 template <typename T>
 GeomGeomCollider<T>::GeomGeomCollider(
     const drake::multibody::MultibodyPlant<T>& plant,
-    const drake::geometry::GeometryId geometry_id_A,
-    const drake::geometry::GeometryId geometry_id_B,
+    const drake::SortedPair<drake::geometry::GeometryId> geometry_pair,
     const Eigen::Vector3d planar_normal)
     : plant_(plant),
-      geometry_id_A_(geometry_id_A),
-      geometry_id_B_(geometry_id_B),
+      geometry_id_A_(geometry_pair.first()),
+      geometry_id_B_(geometry_pair.second()),
       num_friction_directions_(1),
       planar_normal_(planar_normal) {}
 
 template <typename T>
-T GeomGeomCollider<T>::Eval(const Context<T>& context,
-                             EigenPtr<MatrixX<T>> J) {
+std::pair<T, MatrixX<T>> GeomGeomCollider<T>::Eval(const Context<T>& context) {
 
   const auto& query_port = plant_.get_geometry_query_input_port();
   const auto& query_object =
@@ -66,12 +63,12 @@ T GeomGeomCollider<T>::Eval(const Context<T>& context,
       inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
           signed_distance_pair.p_ACa;
 
-  Matrix<double, 3, Eigen::Dynamic> Jq_v_BCa_W(3, plant_.num_positions());
-  auto wrt = drake::multibody::JacobianWrtVariable::kQDot;
+  Matrix<double, 3, Eigen::Dynamic> J_v_BCa_W(3, plant_.num_velocities());
+  auto wrt = drake::multibody::JacobianWrtVariable::kV;
 
   plant_.CalcJacobianTranslationalVelocity(context, wrt,
                                             frameA, p_ACa, frameB,
-                                            plant_.world_frame(), &Jq_v_BCa_W);
+                                            plant_.world_frame(), &J_v_BCa_W);
 
   // Compute force basis
   Matrix<double, 3, Eigen::Dynamic> force_basis(
@@ -96,10 +93,8 @@ T GeomGeomCollider<T>::Eval(const Context<T>& context,
     }
   }
 
-  *J = force_basis.transpose() * Jq_v_BCa_W;
-
-  return signed_distance_pair.distance;
-
+  return std::pair<T, MatrixX<T>>(signed_distance_pair.distance,
+                                  force_basis.transpose() * J_v_BCa_W);
 }
 
 }  // namespace multibody

@@ -2,8 +2,6 @@
 #include "multibody/geom_geom_collider.h"
 #include "common/find_resource.h"
 
-#include "drake/common/sorted_pair.h"
-#include "drake/multibody/plant/calc_distance_and_time_derivative.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -12,6 +10,7 @@ namespace dairlib {
 namespace multibody {
 namespace {
 
+using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -55,10 +54,8 @@ void GeomGeomColliderTest() {
   auto geom_A = finger_lower_link_0_geoms[0];
   auto geom_B = finger_lower_link_120_geoms[0];
 
-  GeomGeomCollider collider_A_B(plant, geom_A, geom_B, 2);
-  GeomGeomCollider collider_A_cube(plant, geom_A, cube_geoms[0], 4);
-
-  auto geometry_pair = drake::SortedPair<GeometryId>(geom_A, cube_geoms[0]);
+  GeomGeomCollider collider_A_B(plant, SortedPair(geom_A, geom_B), 2);
+  GeomGeomCollider collider_A_cube(plant, SortedPair(geom_A, cube_geoms[0]), 4);
 
   auto diagram_context = diagram->CreateDefaultContext();
   auto& context = diagram->GetMutableSubsystemContext(plant,
@@ -85,12 +82,10 @@ void GeomGeomColliderTest() {
 
   plant.SetPositions(&context, q);
 
-  Eigen::MatrixXd J_A_cube(9, plant.num_positions());
-  collider_A_cube.Eval(context, &J_A_cube);
+  auto [phi_A_cube, J_A_cube] = collider_A_cube.Eval(context);
   std::cout << J_A_cube << std::endl << std::endl;
 
-  Eigen::MatrixXd J_A_B(5, plant.num_positions());
-  collider_A_B.Eval(context, &J_A_B);
+  auto [phi_A_B, J_A_B] = collider_A_B.Eval(context);
   std::cout << J_A_B << std::endl << std::endl;
 }
 

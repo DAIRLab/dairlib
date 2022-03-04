@@ -137,7 +137,7 @@ int DoMain(int argc, char* argv[]) {
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
-  std::vector<double> tau_vfb = {.03, .03, .03};
+  std::vector<double> tau_vfb = {.01, .01, .01};
   auto pelvis_vel_filter =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(
           plant_w_spr, tau_vfb);

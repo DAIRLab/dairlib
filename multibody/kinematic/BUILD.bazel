@@ -11,6 +11,7 @@ cc_library(
         "fixed_joint_evaluator.cc",
         "kinematic_evaluator.cc",
         "kinematic_evaluator_set.cc",
+        "world_line_evaluator.cc",
         "world_point_evaluator.cc",
     ],
     hdrs = [
@@ -18,11 +19,12 @@ cc_library(
         "fixed_joint_evaluator.h",
         "kinematic_evaluator.h",
         "kinematic_evaluator_set.h",
+        "world_line_evaluator.h",
         "world_point_evaluator.h",
     ],
     deps = [
-        "//solvers:constraint_factory",
         "//multibody:view_frame",
+        "//solvers:constraint_factory",
         "@drake//:drake_shared_library",
     ],
 )

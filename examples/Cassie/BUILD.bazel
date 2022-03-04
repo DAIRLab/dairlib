@@ -408,6 +408,7 @@ cc_binary(
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
+        "//systems/filters:floating_base_velocity_filter",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

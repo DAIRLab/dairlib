@@ -40,7 +40,7 @@ ds_time: 0.1
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.25
 center_line_offset: 0.03
-mid_foot_height: 0.08
+mid_foot_height: 0.2
 final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 

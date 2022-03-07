@@ -175,7 +175,6 @@ void OperationalSpaceControl::AddAccelerationCost(
 }
 
 
-
 // Constraint methods
 void OperationalSpaceControl::AddContactPoint(
     const WorldPointEvaluator<double>* evaluator) {
@@ -190,6 +189,39 @@ void OperationalSpaceControl::AddStateAndContactPoint(
   // Find the new contact in all_contacts_
   auto it_c = std::find(all_contacts_.begin(), all_contacts_.end(), evaluator);
   int contact_idx = std::distance(all_contacts_.begin(), it_c);
+  // Add to contact list if the new contact doesn't exist in the list
+  if (it_c == all_contacts_.cend()) {
+    all_contacts_.push_back(evaluator);
+  }
+
+  // Find the finite state machine state in contact_indices_map_
+  auto map_iterator = contact_indices_map_.find(state);
+  if (map_iterator == contact_indices_map_.end()) {
+    // state doesn't exist in the map
+    contact_indices_map_[state] = {contact_idx};
+  } else {
+    // Add contact_idx to the existing set (note that std::set removes
+    // duplicates automatically)
+    map_iterator->second.insert(contact_idx);
+  }
+}
+
+
+void OperationalSpaceControl::AddLineContact(
+    const multibody::LineContactEvaluator<double> *evaluator) {
+  single_contact_mode_ = true;
+  AddStateAndLineContact(-1, evaluator);
+}
+
+
+void OperationalSpaceControl::AddStateAndLineContact(
+    int state, const multibody::LineContactEvaluator<double> *evaluator) {
+  DRAKE_DEMAND(&evaluator->plant() == &plant_wo_spr_);
+
+  // Find the new contact in all_contacts_
+  auto it_c = std::find(all_contacts_.begin(), all_contacts_.end(), evaluator);
+  int contact_idx = std::distance(all_contacts_.begin(), it_c);
+
   // Add to contact list if the new contact doesn't exist in the list
   if (it_c == all_contacts_.cend()) {
     all_contacts_.push_back(evaluator);
@@ -280,9 +312,10 @@ void OperationalSpaceControl::Build() {
   n_h_ = (kinematic_evaluators_ == nullptr)
              ? 0
              : kinematic_evaluators_->count_full();
-  n_c_ = kSpaceDim * all_contacts_.size();
+  n_c_ = 0;
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
+    n_c_ += evaluator->num_full();
     n_c_active_ += evaluator->num_active();
   }
 

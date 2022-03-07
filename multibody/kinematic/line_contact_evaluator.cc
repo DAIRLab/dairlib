@@ -116,15 +116,21 @@ template <typename T>
 vector<shared_ptr<Constraint>>
 LineContactEvaluator<T>::CreateLinearFrictionConstraints(int num_faces) const {
   vector<shared_ptr<Constraint>> constraints;
+  double l =contact_half_len_;
+  double mu = this->mu();
   // The normal index is 2
   if (is_frictional_) {
+    Eigen::MatrixXd A(6, 5);
+    A <<  1,  0, -mu,    0,   0,
+         -1,  0, -mu,    0,   0,
+          0,  l, -mu*l, -mu, -1,
+          0, -l, -mu*l,  mu, -1,
+          0,  l, -mu*l,  mu,  1,
+          0, -l, -mu*l, -mu, -1;
     constraints.push_back(
-        solvers::CreateLinearFrictionConstraint(this->mu(), num_faces, 2));
-    // Include redundant bounding box constraint
-    Vector3d lb = Vector3d::Constant(-std::numeric_limits<double>::infinity());
-    Vector3d ub = Vector3d::Constant(std::numeric_limits<double>::infinity());
-    lb(2) = 0;
-    constraints.push_back(std::make_shared<BoundingBoxConstraint>(lb, ub));
+        std::make_shared<drake::solvers::LinearConstraint>(
+        A, Eigen::VectorXd::Constant(6, -std::numeric_limits<double>::infinity()),
+        Eigen::VectorXd::Zero(6)));
   }
   return constraints;
 }

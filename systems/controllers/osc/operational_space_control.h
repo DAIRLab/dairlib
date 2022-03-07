@@ -12,6 +12,7 @@
 #include "dairlib/lcmt_osc_qp_output.hpp"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
+#include "multibody/kinematic/line_contact_evaluator.h"
 #include "solvers/fast_osqp_solver.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -147,6 +148,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator);
   void AddStateAndContactPoint(
       int state, const multibody::WorldPointEvaluator<double>* evaluator);
+  void AddLineContact(const multibody::LineContactEvaluator<double>* evaluator);
+  void AddStateAndLineContact(
+      int state, const multibody::LineContactEvaluator<double>* evaluator);
   void AddKinematicConstraint(
       const multibody::KinematicEvaluatorSet<double>* evaluators);
   // Tracking data methods
@@ -322,7 +326,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Map finite state machine state to its active contact indices
   std::map<int, std::set<int>> contact_indices_map_ = {};
   // All contacts (used in contact constraints)
-  std::vector<const multibody::WorldPointEvaluator<double>*> all_contacts_ = {};
+  std::vector<const multibody::KinematicEvaluator<double>*> all_contacts_ = {};
+
   // single_contact_mode_ is true if there is only 1 contact mode in OSC
   bool single_contact_mode_ = false;
 

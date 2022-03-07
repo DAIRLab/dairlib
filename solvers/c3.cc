@@ -130,6 +130,7 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
 
         prog.AddLinearEqualityConstraint(LinEq, -d_.at(i), {x.at(i), u.at(i), lambda.at(i),x.at(i+1)} );
 
+        /*
         //for finger gaiting
         VectorXd LinIneq = VectorXd::Zero(k_); LinIneq(2) = 1;
         prog.AddLinearConstraint(LinIneq.transpose(), 0, 10000, u.at(i));
@@ -144,6 +145,7 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
         LinIneq2(2) = 0; LinIneq2(4) = 1;
         prog.AddLinearConstraint(LinIneq2, 3, 5, x.at(i));
         }
+         */
 
 
         /* DEBUG
@@ -194,6 +196,12 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
 
     drake::solvers::SolverOptions options;
     options.SetOption(OsqpSolver::id(), "verbose", 0);
+    options.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
+    options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+    options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+    options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+    //options.SetOption(OsqpSolver::id(), "max_iter", 100);
+    //options.SetOption(OsqpSolver::id(), "check_termination", 10);
     drake::solvers::OsqpSolver osqp;
     prog.SetSolverOptions(options);
 
@@ -210,6 +218,7 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
         zz.at(i).segment(n_+m_,k_) = result.GetSolution(u[i]);
     }
 
+    //vector<VectorXd> zzz(N_, VectorXd::Zero(n_+m_+k_) );
     return zz;
 
 }

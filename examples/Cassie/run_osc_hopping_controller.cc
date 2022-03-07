@@ -81,6 +81,9 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 DEFINE_string(gains_filename, "examples/Cassie/osc_run/osc_running_gains.yaml",
               "Filepath containing gains");
+DEFINE_string(osqp_settings,
+              "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
+              "Filepath containing qp settings");
 DEFINE_string(
     channel_cassie_out, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
@@ -135,6 +138,9 @@ int DoMain(int argc, char* argv[]) {
   yaml_options.allow_yaml_with_no_cpp = true;
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
   OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(FindResourceOrThrow(FLAGS_gains_filename));
+  solvers::OSQPSettingsYaml osqp_settings =
+      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings));
 
   /**** FSM and contact mode configuration ****/
   int stance_state = 0;
@@ -432,7 +438,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
 
   // Build OSC problem
-  osc->Build();
+  osc->Build(osqp_settings);
   std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/

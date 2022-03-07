@@ -13,7 +13,7 @@ W_lambda_c_reg: [1, 0.001, 0.01,
 W_lambda_h_reg: [0.01, 0.01, 0.01,
                0.01, 0.02, 0.02]
 #w_soft_constraint: 1000000
-w_soft_constraint: 0.00001
+w_soft_constraint: 0.001
 w_input_reg: 0.01
 impact_threshold: 0.025
 relative_feet: true

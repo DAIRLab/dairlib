@@ -187,7 +187,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                        std::vector<int> ds_states);
 
   // OSC LeafSystem builder
-  void Build();
+  void Build(const solvers::OSQPSettingsYaml&);
 
  private:
   // Osc checkers and constructor-related methods

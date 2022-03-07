@@ -263,7 +263,7 @@ void OperationalSpaceControl::CheckConstraintSettings() {
   }
 }
 
-void OperationalSpaceControl::Build() {
+void OperationalSpaceControl::Build(const solvers::OSQPSettingsYaml& osqp_settings) {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
@@ -454,30 +454,7 @@ void OperationalSpaceControl::Build() {
   }
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "rho", 0.0001);
-  solver_options.SetOption(OsqpSolver::id(), "sigma", 1e-6);
-  solver_options.SetOption(OsqpSolver::id(), "max_iter", 100);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "alpha", 1.6);
-  solver_options.SetOption(OsqpSolver::id(), "delta", 1e-6);
-  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-  solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 3);
-  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  solver_options.SetOption(OsqpSolver::id(), "check_termination", 25);
-  solver_options.SetOption(OsqpSolver::id(), "scaling", 10);
-  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho", 1);
-  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_interval", 0);
-  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_tolerance", 5);
-  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 0.4);
-  solver_options.SetOption(OsqpSolver::id(), "warm_start", 1);
-  std::cout << solver_options << std::endl;
-  solver_->InitializeSolver(*prog_, solver_options);
+  solver_->InitializeSolver(*prog_, osqp_settings);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -757,12 +734,11 @@ VectorXd OperationalSpaceControl::SolveQp(
                                               -W_input_smoothing_ * (*u_prev_));
   }
 
-  if (!solver_->IsInitialized()) {
-    solver_->InitializeSolver(*prog_, solver_options_);
-  }
+//  if (!solver_->IsInitialized()) {
+//    solver_->InitializeSolver(*prog_);
+//  }
 
   if (initial_guess_x_.count(fsm_state) > 0) {
-    //    std::cout << "Setting initial guess: " << fsm_state << std::endl;
     solver_->WarmStart(initial_guess_x_.at(fsm_state),
                        initial_guess_y_.at(fsm_state));
   }
@@ -781,7 +757,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
     std::cerr << "QP did not solve in time!" << std::endl;
-    solver_->DisableWarmStart();
+//    solver_->DisableWarmStart();
     *u_prev_ = VectorXd::Zero(n_u_);
   }
 

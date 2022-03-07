@@ -12,7 +12,7 @@ cols: 3
 w_input: 0
 #w_accel: 0.00001
 w_accel: 0.00000001
-w_soft_constraint: 200
+w_soft_constraint: 0
 HipYawKp: 10
 HipYawKd: 1
 HipYawW: 0

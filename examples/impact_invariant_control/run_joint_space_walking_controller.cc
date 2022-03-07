@@ -60,6 +60,9 @@ DEFINE_string(
     gains_filename,
     "examples/impact_invariant_control/joint_space_walking_gains.yaml",
     "Filepath containing gains");
+DEFINE_string(osqp_settings,
+              "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
+              "Filepath containing qp settings");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -93,6 +96,9 @@ int DoMain(int argc, char* argv[]) {
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
   JointSpaceWalkingGains gains =
       drake::yaml::LoadYamlFile<JointSpaceWalkingGains>(FLAGS_gains_filename);
+  solvers::OSQPSettingsYaml osqp_settings =
+      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings));
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
@@ -178,7 +184,7 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Build OSC problem
-  osc->Build();
+  osc->Build(osqp_settings);
   std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/

@@ -44,6 +44,12 @@ class C3 {
     /// @param G A pointer to the G variables from previous step
     std::vector<Eigen::VectorXd> SolveProjection(std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ );
 
+    ///allow users to add input constraints
+    void AddLinearConstraint(Eigen::RowVectorXd& A, double& Lowerbound, double& Upperbound, int& constraint );
+
+    ///allow user to remove constraints
+    void RemoveConstraints();
+
     /// Solve a single projection step
     /// @param E, F, H, c LCS parameters
     /// @param U A pointer to the U variables
@@ -77,7 +83,8 @@ private:
     std::vector<drake::solvers::VectorXDecisionVariable> u_;
     std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
     std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
-
+    std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>> constraints_;
+    std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>> userconstraints_;
 };
 
 } // namespace dairlib

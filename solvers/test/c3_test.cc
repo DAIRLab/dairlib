@@ -1,10 +1,12 @@
 #include "solvers/c3_miqp.h"
 #include "drake/math/discrete_algebraic_riccati_equation.h"
 #include <chrono>
+#include <string>
 
 using std::vector;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::RowVectorXd;
 
 void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, C3Options* options);
 void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, C3Options* options);
@@ -15,6 +17,8 @@ namespace dairlib {
 namespace solvers {
 
 int DoMain(int argc, char* argv[]) {
+
+    int example = 0; ///0 for cartpole, 1 for finger gaiting, 2 for pivoting
 
     ///dimensions (n: state dimension, m: complementarity variable dimension, k: input dimension, N: MPC horizon)
     int nd, md, kd, Nd;
@@ -27,17 +31,57 @@ int DoMain(int argc, char* argv[]) {
     vector<MatrixXd> Qd, Rd, Gd, Ud;
     ///C3 options
     C3Options options;
-    ///initialize (change wrt your specific system)
-    init_cartpole(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
-    //init_fingergait(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
-    //VectorXd xcurrent = VectorXd::Zero(10);
-    //init_pivoting(xcurrent, &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+
+    int stateconstraint = 1;
+    int inputconstraint = 2;
+    int forceconstraint = 3;
+
+    if (example == 0){
+        init_cartpole(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+    }
+    else if ( example == 1){
+        init_fingergait(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+    }
+    else if (example == 2){
+        VectorXd xcurrent = VectorXd::Zero(10);
+        init_pivoting(xcurrent, &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+    }
+    else{
+        std::cout<<"ERROR:Set example parameter to 1, 2 or 3"<<std::endl;
+    }
+
+
     ///set parameters as const
     const vector<MatrixXd> A = Ad; const vector<MatrixXd> B = Bd; const vector<MatrixXd> D = Dd; const vector<MatrixXd> E = Ed; const vector<MatrixXd> F = Fd; const vector<MatrixXd> H = Hd; const vector<VectorXd> d = dd; const vector<VectorXd> c = cd; const vector<MatrixXd> Q = Qd; const vector<MatrixXd> R = Rd; const vector<MatrixXd> G = Gd; const vector<MatrixXd> U = Ud; const int N = Nd; const int n = nd; const int m = md; const int k = kd;
 
-    ///define the LCS class variable
-    //LCS system(A, B, D, d, E, F, H, c);
-    //C3MIQP opt(system, Q, R, G, U, options);
+    LCS system(A, B, D, d, E, F, H, c);
+    C3MIQP opt(system, Q, R, G, U, options);
+
+
+    if (example == 1){
+        ///clear all user constraints
+        opt.RemoveConstraints();
+
+        ///add user constraints on input
+        RowVectorXd LinIneq = RowVectorXd::Zero(4); LinIneq(2) = 1;
+        double lowerbound = 0;
+        double upperbound = 10000;
+        opt.AddLinearConstraint(LinIneq, lowerbound, upperbound, inputconstraint);
+        LinIneq(2) = 0; LinIneq(3) = 1;
+        opt.AddLinearConstraint(LinIneq, lowerbound, upperbound, inputconstraint);
+
+        ///add user constraints on state
+        lowerbound = 1;
+        upperbound = 3;
+        RowVectorXd LinIneq2 = VectorXd::Zero(6); LinIneq2(2) = 1;
+        opt.AddLinearConstraint(LinIneq2, lowerbound, upperbound, stateconstraint);
+
+        LinIneq2(2) = 0; LinIneq2(4) = 1;
+        lowerbound = 3;
+        upperbound = 5;
+        opt.AddLinearConstraint(LinIneq2, lowerbound, upperbound, stateconstraint);
+    }
+
 
     ///initialize ADMM variables (delta, w)
     std::vector<VectorXd> delta(N, VectorXd::Zero(n+m+k) );
@@ -47,7 +91,7 @@ int DoMain(int argc, char* argv[]) {
     std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n+m+k) );
     std::vector<VectorXd> w_reset(N, VectorXd::Zero(n+m+k) );
 
-    int timesteps = 100; //number of timesteps for the simulation
+    int timesteps = 500; //number of timesteps for the simulation
 
     ///create state and input arrays
     std::vector<VectorXd> x(timesteps, VectorXd::Zero(n) );
@@ -55,6 +99,7 @@ int DoMain(int argc, char* argv[]) {
 
     ///initialize at x0
     x[0] = x0;
+
 
     double total_time = 0;
         for (int i = 0; i < timesteps-1; i++) {
@@ -73,10 +118,11 @@ int DoMain(int argc, char* argv[]) {
                 w = w_reset;
             }
 
-            ///define LCS and the opt
-            //init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
-            LCS system(A, B, D, d, E, F, H, c);
-            C3MIQP opt(system, Q, R, G, U, options);
+            if ( example == 2){
+                init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+                LCS system(A, B, D, d, E, F, H, c);
+                C3MIQP opt(system, Q, R, G, U, options);
+            }
 
             auto start = std::chrono::high_resolution_clock::now();
             ///calculate the input given x[i]
@@ -325,7 +371,7 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
     //MatrixXd Hinit = MatrixXd::Zero(m,k);
 
     MatrixXd Qinit(n,n);
-    Qinit << 7000, 0, 0, 0, 0, 0, //5000
+    Qinit << 5000, 0, 0, 0, 0, 0, //5000
             0, 10, 0, 0, 0, 0,
             0, 0, 10, 0, 0 ,0,
             0, 0, 0, 10, 0, 0,

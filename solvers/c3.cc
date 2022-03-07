@@ -79,10 +79,10 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R, con
         }
 
         OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 0);
-        OSQPoptions_.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
-        OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-        OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-        OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+        //OSQPoptions_.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
+        //OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+        //OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+        //OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
         prog_.SetSolverOptions(OSQPoptions_);
 
 }
@@ -137,32 +137,22 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w
 
 vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>& WD ) {
 
-   //drake::solvers::MathematicalProgram prog;
 
+    for (auto & constraint : constraints_) {
+        prog_.RemoveConstraint(constraint);
+    }
+    constraints_.clear();
 
-
-
-    prog_.AddLinearConstraint(x_[0] == x0);
-
+    constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
     if (hflag_ == 1) {
         drake::solvers::MobyLCPSolver<double> LCPSolver;
         VectorXd lambda0;
         LCPSolver.SolveLcpLemke(F_[0], E_[0] * x0 + c_[0], &lambda0);
-        prog_.AddLinearConstraint(lambda_[0] == lambda0);
+        constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
         }
 
-    /*
-    MatrixXd LinEq(n_, 2*n_+k_+m_);
-    LinEq.block(0,n_+k_+m_, n_, n_) = -1 * MatrixXd::Identity(n_,n_);
-
-    for (int i = 0; i < N_; i++) {
-
-        LinEq.block(0,0,n_,n_) = A_.at(i);
-        LinEq.block(0,n_,n_,k_ ) = B_.at(i);
-        LinEq.block(0,n_+k_, n_, m_) = D_.at(i);
-
-        prog_.AddLinearEqualityConstraint(LinEq, -d_.at(i), {x_.at(i), u_.at(i), lambda_.at(i),x_.at(i+1)} );
+        /*
 
 
         //for finger gaiting
@@ -180,19 +170,6 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
         prog.AddLinearConstraint(LinIneq2, 3, 5, x.at(i));
         }
         */
-
-
-        /* DEBUG
-        prog.AddLinearConstraint(A_.at(i) * x.at(i) + B_.at(i) * u.at(i) + D_.at(i) * lambda.at(i) + d_.at(i) == x.at(i+1));
-        prog.AddLinearConstraint(u[i](2) >= 0);
-        prog.AddLinearConstraint(u[i](3) >= 0);
-        if (i > 0) {
-            prog.AddLinearConstraint(x[i](2) >= 1); prog.AddLinearConstraint(x[i](2) <= 3);
-            prog.AddLinearConstraint(x[i](4) >= 3); prog.AddLinearConstraint(x[i](4) <= 5);
-        }
-
-    }
-    */
 
     for (auto & cost : costs_) {
         prog_.RemoveCost(cost);
@@ -221,6 +198,38 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
     }
     
     return zz;
+
+}
+
+void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double& Lowerbound, double& Upperbound, int& constraint ){
+
+    if (constraint == 1){
+        for (int i = 1; i < N_; i++) {
+            userconstraints_.push_back(prog_.AddLinearConstraint(A, Lowerbound, Upperbound, x_.at(i)));
+        }
+    }
+
+    if (constraint == 2){
+        for (int i = 0; i < N_; i++) {
+            userconstraints_.push_back(prog_.AddLinearConstraint(A, Lowerbound, Upperbound, u_.at(i)));
+        }
+    }
+
+    if (constraint == 3){
+        for (int i = 0; i < N_; i++) {
+            userconstraints_.push_back(prog_.AddLinearConstraint(A, Lowerbound, Upperbound, lambda_.at(i)));
+        }
+    }
+
+
+}
+
+void C3::RemoveConstraints(){
+
+    for (auto & userconstraint : userconstraints_) {
+        prog_.RemoveConstraint(userconstraint);
+    }
+    userconstraints_.clear();
 
 }
 

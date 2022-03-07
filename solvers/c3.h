@@ -69,6 +69,14 @@ class C3 {
   const int m_;
   const int k_;
   const bool hflag_;
+private:
+    drake::solvers::MathematicalProgram prog_;
+    drake::solvers::SolverOptions OSQPoptions_;
+    drake::solvers::OsqpSolver osqp_;
+    std::vector<drake::solvers::VectorXDecisionVariable> x_;
+    std::vector<drake::solvers::VectorXDecisionVariable> u_;
+    std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
+    std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
 
 };
 

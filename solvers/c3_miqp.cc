@@ -25,12 +25,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>
 
     VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c, const MatrixXd& E, const MatrixXd& F, const MatrixXd& H, const VectorXd& c) {
 
-
-        //std::cout << "delta_c" << std::endl;
-        //std::cout << delta_c << std::endl;
-
     //set up linear term in cost
-    //MatrixXd cost_lin = -2 * delta_c.transpose() * U;
     VectorXd cost_lin = -2 * delta_c.transpose() * U;
 
     //set up for constraints (Ex + F \lambda + Hu + c >= 0)

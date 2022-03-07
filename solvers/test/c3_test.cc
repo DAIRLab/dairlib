@@ -30,8 +30,8 @@ int DoMain(int argc, char* argv[]) {
     ///initialize (change wrt your specific system)
     init_cartpole(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
     //init_fingergait(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
-    VectorXd xcurrent = VectorXd::Zero(10);
-    init_pivoting(xcurrent, &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+    //VectorXd xcurrent = VectorXd::Zero(10);
+    //init_pivoting(xcurrent, &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
     ///set parameters as const
     const vector<MatrixXd> A = Ad; const vector<MatrixXd> B = Bd; const vector<MatrixXd> D = Dd; const vector<MatrixXd> E = Ed; const vector<MatrixXd> F = Fd; const vector<MatrixXd> H = Hd; const vector<VectorXd> d = dd; const vector<VectorXd> c = cd; const vector<MatrixXd> Q = Qd; const vector<MatrixXd> R = Rd; const vector<MatrixXd> G = Gd; const vector<MatrixXd> U = Ud; const int N = Nd; const int n = nd; const int m = md; const int k = kd;
 
@@ -47,7 +47,7 @@ int DoMain(int argc, char* argv[]) {
     std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n+m+k) );
     std::vector<VectorXd> w_reset(N, VectorXd::Zero(n+m+k) );
 
-    int timesteps = 20; //number of timesteps for the simulation
+    int timesteps = 100; //number of timesteps for the simulation
 
     ///create state and input arrays
     std::vector<VectorXd> x(timesteps, VectorXd::Zero(n) );
@@ -73,9 +73,11 @@ int DoMain(int argc, char* argv[]) {
                 w = w_reset;
             }
 
-            init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+            ///define LCS and the opt
+            //init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
             LCS system(A, B, D, d, E, F, H, c);
             C3MIQP opt(system, Q, R, G, U, options);
+
             auto start = std::chrono::high_resolution_clock::now();
             ///calculate the input given x[i]
             input[i] = opt.Solve(x[i], delta, w );
@@ -88,7 +90,7 @@ int DoMain(int argc, char* argv[]) {
             x[i+1] = system.Simulate(x[i], input[i]);
 
             ///print the state
-            //std::cout << "state: "<< x[i+1] << std::endl;
+            std::cout << "state: "<< x[i+1] << std::endl;
 
         }
         std::cout << "Average time: " << total_time/(timesteps-1) << std::endl;

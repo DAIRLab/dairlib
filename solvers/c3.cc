@@ -16,6 +16,7 @@ using Eigen::VectorXd;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::SolutionResult;
+using drake::solvers::SolverOptions;
 
 using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
@@ -41,7 +42,50 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R, con
             n_((LCS.A_)[0].cols()),
             m_((LCS.D_)[0].cols()),
             k_((LCS.B_)[0].cols()),
-            hflag_(H_[0].isZero(0)) {}
+            hflag_(H_[0].isZero(0)),
+            prog_(MathematicalProgram()),
+            OSQPoptions_(SolverOptions()),
+            osqp_(OsqpSolver()){
+
+            x_ = vector<drake::solvers::VectorXDecisionVariable>();
+            u_ = vector<drake::solvers::VectorXDecisionVariable>();
+            lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
+
+            for (int i = 0; i < N_+1; i++) {
+                x_.push_back(prog_.NewContinuousVariables(n_, "x" + std::to_string(i)));
+                if (i < N_) {
+                    u_.push_back(prog_.NewContinuousVariables(k_, "k" + std::to_string(i)));
+                    lambda_.push_back(prog_.NewContinuousVariables(m_, "lambda" + std::to_string(i)));
+                }
+            }
+
+        MatrixXd LinEq(n_, 2*n_+k_+m_);
+        LinEq.block(0,n_+k_+m_, n_, n_) = -1 * MatrixXd::Identity(n_,n_);
+
+        for (int i = 0; i < N_; i++) {
+
+            LinEq.block(0, 0, n_, n_) = A_.at(i);
+            LinEq.block(0, n_, n_, k_) = B_.at(i);
+            LinEq.block(0, n_ + k_, n_, m_) = D_.at(i);
+
+            prog_.AddLinearEqualityConstraint(LinEq, -d_.at(i), {x_.at(i), u_.at(i), lambda_.at(i), x_.at(i + 1)});
+        }
+
+        for (int i = 0; i < N_+1 ; i++) {
+            prog_.AddQuadraticCost(Q_.at(i)*2, VectorXd::Zero(n_), x_.at(i));
+            if (i < N_) {
+                prog_.AddQuadraticCost(R_.at(i)*2, VectorXd::Zero(k_), u_.at(i));
+            }
+        }
+
+        OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 0);
+        OSQPoptions_.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
+        OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+        OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+        OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+        prog_.SetSolverOptions(OSQPoptions_);
+
+}
 
 VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
@@ -93,32 +137,22 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta, vector<VectorXd>* w
 
 vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>& WD ) {
 
-    drake::solvers::MathematicalProgram prog;
-
-    vector<drake::solvers::VectorXDecisionVariable> x;
-    vector<drake::solvers::VectorXDecisionVariable> u;
-    vector<drake::solvers::VectorXDecisionVariable> lambda;
+   //drake::solvers::MathematicalProgram prog;
 
 
-    for (int i = 0; i < N_+1; i++) {
-        x.push_back(prog.NewContinuousVariables(n_, "x" + std::to_string(i)));
-        if (i < N_) {
-            u.push_back(prog.NewContinuousVariables(k_, "k" + std::to_string(i)));
-            lambda.push_back(prog.NewContinuousVariables(m_, "lambda" + std::to_string(i)));
-        }
-}
 
-    prog.AddLinearConstraint(x[0] == x0);
+
+    prog_.AddLinearConstraint(x_[0] == x0);
 
 
     if (hflag_ == 1) {
         drake::solvers::MobyLCPSolver<double> LCPSolver;
         VectorXd lambda0;
         LCPSolver.SolveLcpLemke(F_[0], E_[0] * x0 + c_[0], &lambda0);
-        prog.AddLinearConstraint(lambda[0] == lambda0);
+        prog_.AddLinearConstraint(lambda_[0] == lambda0);
         }
 
-
+    /*
     MatrixXd LinEq(n_, 2*n_+k_+m_);
     LinEq.block(0,n_+k_+m_, n_, n_) = -1 * MatrixXd::Identity(n_,n_);
 
@@ -128,9 +162,9 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
         LinEq.block(0,n_,n_,k_ ) = B_.at(i);
         LinEq.block(0,n_+k_, n_, m_) = D_.at(i);
 
-        prog.AddLinearEqualityConstraint(LinEq, -d_.at(i), {x.at(i), u.at(i), lambda.at(i),x.at(i+1)} );
+        prog_.AddLinearEqualityConstraint(LinEq, -d_.at(i), {x_.at(i), u_.at(i), lambda_.at(i),x_.at(i+1)} );
 
-        /*
+
         //for finger gaiting
         VectorXd LinIneq = VectorXd::Zero(k_); LinIneq(2) = 1;
         prog.AddLinearConstraint(LinIneq.transpose(), 0, 10000, u.at(i));
@@ -157,68 +191,35 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
             prog.AddLinearConstraint(x[i](4) >= 3); prog.AddLinearConstraint(x[i](4) <= 5);
         }
 
-         */
-
-
     }
+    */
 
+    for (auto & cost : costs_) {
+        prog_.RemoveCost(cost);
+    }
+    costs_.clear();
 
     for (int i = 0; i < N_+1 ; i++) {
-        prog.AddQuadraticCost(Q_.at(i)*2, VectorXd::Zero(n_), x.at(i));
         if (i < N_) {
-            prog.AddQuadraticCost(R_.at(i)*2, VectorXd::Zero(k_), u.at(i));
-            prog.AddQuadraticCost(G.at(i).block(0,0,n_,n_) * 2, -2 * G.at(i).block(0,0,n_,n_) * WD.at(i).segment(0,n_), x.at(i) );
-            prog.AddQuadraticCost(G.at(i).block(n_,n_,m_,m_) * 2, -2 * G.at(i).block(n_,n_,m_,m_) * WD.at(i).segment(n_,m_), lambda.at(i) );
-            prog.AddQuadraticCost(G.at(i).block(n_+m_,n_+m_,k_,k_) * 2,  -2 * G.at(i).block(n_+m_,n_+m_,k_,k_) * WD.at(i).segment(n_+m_,k_), u.at(i) );
+            costs_.push_back(prog_.AddQuadraticCost(G.at(i).block(0,0,n_,n_) * 2, -2 * G.at(i).block(0,0,n_,n_) * WD.at(i).segment(0,n_), x_.at(i) ));
+            costs_.push_back(prog_.AddQuadraticCost(G.at(i).block(n_,n_,m_,m_) * 2, -2 * G.at(i).block(n_,n_,m_,m_) * WD.at(i).segment(n_,m_), lambda_.at(i) ));
+            costs_.push_back(prog_.AddQuadraticCost(G.at(i).block(n_+m_,n_+m_,k_,k_) * 2,  -2 * G.at(i).block(n_+m_,n_+m_,k_,k_) * WD.at(i).segment(n_+m_,k_), u_.at(i) ));
 
         }
     }
 
-    /*
-    std::unique_ptr<solvers::FastOsqpSolver> solver_;
-    drake::solvers::SolverOptions solver_options;
-    solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-//  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-    solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-    solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-    solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-    solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-    solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-    solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-    solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
-    std::cout << solver_options << std::endl;
-    solver_->InitializeSolver(prog, solver_options);
 
-     */
-
-    //solver_ = std::make_unique<solvers::FastOsqpSolver>();
-    //drake::solvers::SolverOptions solver_options;
-
-    drake::solvers::SolverOptions options;
-    options.SetOption(OsqpSolver::id(), "verbose", 0);
-    options.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
-    options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-    options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-    options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-    //options.SetOption(OsqpSolver::id(), "max_iter", 100);
-    //options.SetOption(OsqpSolver::id(), "check_termination", 10);
-    drake::solvers::OsqpSolver osqp;
-    prog.SetSolverOptions(options);
-
-
-    //MathematicalProgramResult result = solver_->Solve(*prog);
-    MathematicalProgramResult result = osqp.Solve(prog);
-    VectorXd xSol = result.GetSolution(x[0]);
+    MathematicalProgramResult result = osqp_.Solve(prog_);
+    VectorXd xSol = result.GetSolution(x_[0]);
     vector<VectorXd> zz(N_, VectorXd::Zero(n_+m_+k_) );
 
     for (int i = 0; i < N_; i++) {
 
-        zz.at(i).segment(0,n_) = result.GetSolution(x[i]);
-        zz.at(i).segment(n_,m_) = result.GetSolution(lambda[i]);
-        zz.at(i).segment(n_+m_,k_) = result.GetSolution(u[i]);
+        zz.at(i).segment(0,n_) = result.GetSolution(x_[i]);
+        zz.at(i).segment(n_,m_) = result.GetSolution(lambda_[i]);
+        zz.at(i).segment(n_+m_,k_) = result.GetSolution(u_[i]);
     }
-
-    //vector<VectorXd> zzz(N_, VectorXd::Zero(n_+m_+k_) );
+    
     return zz;
 
 }

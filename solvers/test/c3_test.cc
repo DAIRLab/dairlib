@@ -35,6 +35,29 @@ int DoMain(int argc, char* argv[]) {
     ///define the LCS class variable
     LCS system(A, B, D, d, E, F, H, c);
     C3MIQP opt(system, Q, R, G, U, options);
+<<<<<<< HEAD
+=======
+    /*
+     ///initial condition(cartpole)
+     VectorXd x0(n);
+     x0 << 0.1,
+             0,
+             0.3,
+             0;
+     */
+
+
+   ///initial condition(fingergait)
+   VectorXd x0(n);
+   x0 << -8,  //-8
+           0,
+           3,  //3
+           0,
+           4,  //4
+           0;
+
+
+>>>>>>> 298055d376ef9ccb3fe5a2f8bf45726b58135c7b
 
     ///initialize ADMM variables (delta, w)
     std::vector<VectorXd> delta(N, VectorXd::Zero(n+m+k) );
@@ -52,8 +75,13 @@ int DoMain(int argc, char* argv[]) {
 
     ///initialize at x0
     x[0] = x0;
+<<<<<<< HEAD
 
     for (int i = 0; i < timesteps-1; i++) {
+=======
+    double total_time = 0;
+    for (int i = 0; i < options.timesteps-1; i++) {
+>>>>>>> 298055d376ef9ccb3fe5a2f8bf45726b58135c7b
 
         if (options.delta_option == 1) {
             ///reset delta and w (option 1)
@@ -74,7 +102,12 @@ int DoMain(int argc, char* argv[]) {
         input[i] = opt.Solve(x[i], delta, w );
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
+<<<<<<< HEAD
         //std::cout << "Solve time:" << elapsed.count() << std::endl;
+=======
+        std::cout << "Solve time:" << elapsed.count() << std::endl;
+        total_time += elapsed.count();
+>>>>>>> 298055d376ef9ccb3fe5a2f8bf45726b58135c7b
 
         ///simulate the LCS
         x[i+1] = system.Simulate(x[i], input[i]);
@@ -83,7 +116,7 @@ int DoMain(int argc, char* argv[]) {
         std::cout << "state: "<< x[i+1] << std::endl;
 
     }
-
+    std::cout << "Average time: " << total_time/(options.timesteps-1) << std::endl;
 	return 0;
 }
 

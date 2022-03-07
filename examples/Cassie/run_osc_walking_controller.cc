@@ -76,6 +76,8 @@ DEFINE_string(
     "The name of the channel to receive the cassie out structure from.");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains.yaml",
               "Filepath containing gains");
+DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
+              "Filepath containing qp settings");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
@@ -92,7 +94,9 @@ int DoMain(int argc, char* argv[]) {
 
   // Read-in the parameters
   auto gains = drake::yaml::LoadYamlFile<OSCWalkingGains>(FLAGS_gains_filename);
-
+  solvers::OSQPSettingsYaml osqp_settings =
+      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings));
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -574,7 +578,7 @@ int DoMain(int argc, char* argv[]) {
       {post_left_double_support_state, post_right_double_support_state});
 
   // Build OSC problem
-  osc->Build();
+  osc->Build(osqp_settings);
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());

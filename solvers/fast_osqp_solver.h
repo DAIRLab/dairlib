@@ -2,6 +2,8 @@
 
 #include <osqp.h>
 
+#include "solvers/osqp_settings_yaml.h"
+
 #include "drake/common/drake_copyable.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solver_base.h"
@@ -36,7 +38,9 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
   //@}
 
   void InitializeSolver(const drake::solvers::MathematicalProgram&,
-                        const drake::solvers::SolverOptions&);
+                        const solvers::OSQPSettingsYaml& solver_options);
+  void SetOsqpSolverSettingsFromYaml(const solvers::OSQPSettingsYaml&);
+
   /// Solver will automatically reenable warm starting after a successful solve
   void DisableWarmStart() const {
     osqp_settings_->warm_start = false;
@@ -49,12 +53,9 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
     warm_start_ = true;
   }
 
-  void WarmStart(const Eigen::VectorXd& primal,
-                 const Eigen::VectorXd& dual);
+  void WarmStart(const Eigen::VectorXd& primal, const Eigen::VectorXd& dual);
 
-  bool IsInitialized()const{
-    return is_init_;
-  }
+  bool IsInitialized() const { return is_init_; }
 
   // A using-declaration adds these methods into our class's Doxygen.
   using SolverBase::Solve;

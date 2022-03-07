@@ -8,16 +8,16 @@
 #include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/osc/operational_space_control.h"
-#include "systems/framework/lcm_driven_loop.h"
-#include "systems/robot_lcm_systems.h"
-#include "drake/common/yaml/yaml_io.h"
-#include "systems/controllers/osc/options_tracking_data.h"
-#include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
+#include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/osc/options_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/framework/lcm_driven_loop.h"
+#include "systems/robot_lcm_systems.h"
 
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -36,9 +36,9 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::TriggerTypeSet;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
@@ -60,6 +60,8 @@ DEFINE_double(cost_weight_multiplier, 1.0,
 DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
+DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
+              "Filepath containing qp settings");
 DEFINE_bool(use_radio, false, "use the radio to set height or not");
 DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
@@ -135,7 +137,11 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
-  auto gains = drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_gains_filename);
+  auto gains =
+      drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_gains_filename);
+  solvers::OSQPSettingsYaml osqp_settings =
+      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings));
 
   MatrixXd K_p_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
@@ -201,7 +207,8 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
-      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height, FLAGS_use_radio);
+      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height,
+      FLAGS_use_radio);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
           plant_w_springs, context_w_spr.get(), feet_contact_points,
@@ -281,7 +288,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Hip yaw joint tracking
   // We use hip yaw joint tracking instead of pelvis yaw tracking because the
-  // foot sometimes rotates about yaw, and we need hip yaw joint to go back to 0.
+  // foot sometimes rotates about yaw, and we need hip yaw joint to go back to
+  // 0.
   double w_hip_yaw = 0.5;
   double hip_yaw_kp = 40;
   double hip_yaw_kd = 0.5;
@@ -299,7 +307,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
 
   // Build OSC problem
-  osc->Build();
+  osc->Build(osqp_settings);
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());

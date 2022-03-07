@@ -292,8 +292,9 @@ void SetDualSolution(
 
 bool FastOsqpSolver::is_available() { return true; }
 
-void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
-                                      const SolverOptions& solver_options) {
+void FastOsqpSolver::InitializeSolver(
+    const MathematicalProgram& prog,
+    const solvers::OSQPSettingsYaml& solver_options) {
   // Get the cost for the QP.
   Eigen::SparseMatrix<c_float> P_sparse;
   std::vector<c_float> q(prog.num_vars(), 0);
@@ -325,12 +326,9 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   osqp_data_->l = l.data();
   osqp_data_->u = u.data();
 
-  // Define Solver settings as default.
-  // Problem settings
   osqp_settings_ = static_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
   osqp_set_default_settings(osqp_settings_);
-  SetFastOsqpSolverSettings(solver_options, osqp_settings_);
-  std::cout << osqp_settings_->time_limit << std::endl;
+  SetOsqpSolverSettingsFromYaml(solver_options);
 
   // Setup workspace.
   workspace_ = nullptr;
@@ -342,6 +340,32 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   is_init_ = true;
 }
 
+void FastOsqpSolver::SetOsqpSolverSettingsFromYaml(
+    const solvers::OSQPSettingsYaml& solver_options) {
+  osqp_settings_->rho = solver_options.rho;
+  osqp_settings_->sigma = solver_options.sigma;
+  osqp_settings_->max_iter = solver_options.max_iter;
+  osqp_settings_->eps_abs = solver_options.eps_abs;
+  osqp_settings_->eps_rel = solver_options.eps_rel;
+  osqp_settings_->eps_prim_inf = solver_options.eps_prim_inf;
+  osqp_settings_->eps_dual_inf = solver_options.eps_dual_inf;
+  osqp_settings_->alpha = solver_options.alpha;
+
+  osqp_settings_->delta = solver_options.delta;
+  osqp_settings_->polish = solver_options.polish;
+  osqp_settings_->polish_refine_iter = solver_options.polish_refine_iter;
+  osqp_settings_->verbose = solver_options.verbose;
+  osqp_settings_->scaled_termination = solver_options.scaled_termination;
+  osqp_settings_->check_termination = solver_options.check_termination;
+  osqp_settings_->warm_start = solver_options.warm_start;
+  osqp_settings_->scaling = solver_options.scaling;
+  osqp_settings_->adaptive_rho = solver_options.adaptive_rho;
+  osqp_settings_->adaptive_rho_interval = solver_options.adaptive_rho_interval;
+  osqp_settings_->adaptive_rho_tolerance =
+      solver_options.adaptive_rho_tolerance;
+  osqp_settings_->adaptive_rho_fraction = solver_options.adaptive_rho_fraction;
+}
+
 void FastOsqpSolver::WarmStart(const Eigen::VectorXd& primal,
                                const Eigen::VectorXd& dual) {
   std::vector<c_float> x, y;
@@ -350,7 +374,7 @@ void FastOsqpSolver::WarmStart(const Eigen::VectorXd& primal,
   for (int i = 0; i < primal.size(); ++i) {
     x.push_back(ConvertInfinity(primal(i)));
   }
-  for (int i = 0; i < dual.size(); ++i){
+  for (int i = 0; i < dual.size(); ++i) {
     y.push_back(ConvertInfinity(dual(i)));
   }
   osqp_warm_start(workspace_, x.data(), y.data());

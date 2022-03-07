@@ -87,6 +87,8 @@ DEFINE_string(traj_name, "jumping_0.15h_0.3d",
               "File to load saved trajectories from");
 DEFINE_string(gains_filename, "examples/Cassie/osc_jump/osc_jumping_gains.yaml",
               "Filepath containing gains");
+DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
+              "Filepath containing qp settings");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -121,11 +123,11 @@ int DoMain(int argc, char* argv[]) {
       feet_contact_points = {left_toe, right_toe};
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  //  OSCJumpingGains gains;
-  //  const YAML::Node& root =
-  //      YAML::LoadFile(FindResourceOrThrow(FLAGS_gains_filename));
   OSCJumpingGains gains = drake::yaml::LoadYamlFile<OSCJumpingGains>(
       FindResourceOrThrow(FLAGS_gains_filename));
+  solvers::OSQPSettingsYaml osqp_settings =
+      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings));
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
@@ -470,7 +472,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_tracking_data.SetImpactInvariantProjection(true);
 
   // Build OSC problem
-  osc->Build();
+  osc->Build(osqp_settings);
   std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/

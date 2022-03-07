@@ -11,8 +11,9 @@
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/fsm_event_time.h"
+#include "systems/controllers/alip_swing_ft_traj_gen.h"
 #include "systems/controllers/alip_traj_gen.h"
+#include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -20,7 +21,6 @@
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
-#include "systems/controllers/alip_swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -45,9 +45,9 @@ using Eigen::VectorXd;
 using drake::multibody::Frame;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::TriggerTypeSet;
 
 using multibody::WorldYawViewFrame;
 using systems::controllers::ComTrackingData;
@@ -74,6 +74,8 @@ DEFINE_string(
     "The name of the channel to receive the cassie out structure from.");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains_alip.yaml",
               "Filepath containing gains");
+DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
+              "Filepath containing qp settings");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
@@ -90,7 +92,9 @@ int DoMain(int argc, char* argv[]) {
 
   // Read-in the parameters
   auto gains = drake::yaml::LoadYamlFile<OSCWalkingGains>(FLAGS_gains_filename);
-
+  solvers::OSQPSettingsYaml osqp_settings =
+      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings));
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   if (FLAGS_spring_model) {
@@ -338,7 +342,8 @@ int DoMain(int argc, char* argv[]) {
   int n_u = plant_w_spr.num_actuators();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
-  osc->SetInputSmoothingWeights(gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
+  osc->SetInputSmoothingWeights(gains.w_input_reg *
+                                MatrixXd::Identity(n_u, n_u));
 
   // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
@@ -482,8 +487,9 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&swing_ft_traj_global);
   }
 
-  ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
-                                      gains.W_com, plant_w_spr, plant_w_spr);
+  ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com,
+                                      gains.K_d_com, gains.W_com, plant_w_spr,
+                                      plant_w_spr);
   // FiniteStatesToTrack cannot be empty
   center_of_mass_traj.AddFiniteStateToTrack(-1);
   osc->AddTrackingData(&center_of_mass_traj);
@@ -532,13 +538,13 @@ int DoMain(int argc, char* argv[]) {
       {post_left_double_support_state, post_right_double_support_state});
 
   // Build OSC problem
-  osc->Build();
+  osc->Build(osqp_settings);
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   builder.Connect(alip_traj_generator->get_output_port_com(),
-                    osc->get_tracking_data_input_port("alip_com_traj"));
+                  osc->get_tracking_data_input_port("alip_com_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),

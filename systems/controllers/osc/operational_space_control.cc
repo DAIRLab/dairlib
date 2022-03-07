@@ -176,67 +176,54 @@ void OperationalSpaceControl::AddAccelerationCost(
 
 
 // Constraint methods
+void OperationalSpaceControl::AddStateAndGenericContact(
+    int state, const multibody::KinematicEvaluator<double> *evaluator) {
+  DRAKE_DEMAND(&evaluator->plant() == &plant_wo_spr_);
+
+  // Find the new contact in all_contacts_
+  auto it_c = std::find(all_contacts_.begin(), all_contacts_.end(), evaluator);
+  int contact_idx = std::distance(all_contacts_.begin(), it_c);
+  // Add to contact list if the new contact doesn't exist in the list
+  if (it_c == all_contacts_.cend()) {
+    all_contacts_.push_back(evaluator);
+    contact_rows_in_J_c_[contact_idx] = contact_idx == 0 ?
+        0 : contact_rows_in_J_c_[contact_idx-1] + evaluator->num_full();
+  }
+
+  // Find the finite state machine state in contact_indices_map_
+  auto map_iterator = contact_indices_map_.find(state);
+  if (map_iterator == contact_indices_map_.end()) {
+    // state doesn't exist in the map
+    contact_indices_map_[state] = {contact_idx};
+  } else {
+    // Add contact_idx to the existing set (note that std::set removes
+    // duplicates automatically)
+    map_iterator->second.insert(contact_idx);
+  }
+}
+
+
 void OperationalSpaceControl::AddContactPoint(
     const WorldPointEvaluator<double>* evaluator) {
   single_contact_mode_ = true;
-  AddStateAndContactPoint(-1, evaluator);
+  AddStateAndGenericContact(-1, evaluator);
 }
 
 void OperationalSpaceControl::AddStateAndContactPoint(
     int state, const WorldPointEvaluator<double>* evaluator) {
-  DRAKE_DEMAND(&evaluator->plant() == &plant_wo_spr_);
-
-  // Find the new contact in all_contacts_
-  auto it_c = std::find(all_contacts_.begin(), all_contacts_.end(), evaluator);
-  int contact_idx = std::distance(all_contacts_.begin(), it_c);
-  // Add to contact list if the new contact doesn't exist in the list
-  if (it_c == all_contacts_.cend()) {
-    all_contacts_.push_back(evaluator);
-  }
-
-  // Find the finite state machine state in contact_indices_map_
-  auto map_iterator = contact_indices_map_.find(state);
-  if (map_iterator == contact_indices_map_.end()) {
-    // state doesn't exist in the map
-    contact_indices_map_[state] = {contact_idx};
-  } else {
-    // Add contact_idx to the existing set (note that std::set removes
-    // duplicates automatically)
-    map_iterator->second.insert(contact_idx);
-  }
+  AddStateAndGenericContact(state, evaluator);
 }
-
 
 void OperationalSpaceControl::AddLineContact(
     const multibody::LineContactEvaluator<double> *evaluator) {
   single_contact_mode_ = true;
-  AddStateAndLineContact(-1, evaluator);
+  AddStateAndGenericContact(-1, evaluator);
 }
-
 
 void OperationalSpaceControl::AddStateAndLineContact(
     int state, const multibody::LineContactEvaluator<double> *evaluator) {
   DRAKE_DEMAND(&evaluator->plant() == &plant_wo_spr_);
-
-  // Find the new contact in all_contacts_
-  auto it_c = std::find(all_contacts_.begin(), all_contacts_.end(), evaluator);
-  int contact_idx = std::distance(all_contacts_.begin(), it_c);
-
-  // Add to contact list if the new contact doesn't exist in the list
-  if (it_c == all_contacts_.cend()) {
-    all_contacts_.push_back(evaluator);
-  }
-
-  // Find the finite state machine state in contact_indices_map_
-  auto map_iterator = contact_indices_map_.find(state);
-  if (map_iterator == contact_indices_map_.end()) {
-    // state doesn't exist in the map
-    contact_indices_map_[state] = {contact_idx};
-  } else {
-    // Add contact_idx to the existing set (note that std::set removes
-    // duplicates automatically)
-    map_iterator->second.insert(contact_idx);
-  }
+  AddStateAndGenericContact(state, evaluator);
 }
 
 void OperationalSpaceControl::AddKinematicConstraint(
@@ -319,7 +306,7 @@ void OperationalSpaceControl::Build() {
     n_c_active_ += evaluator->num_active();
   }
 
-  // Record the contact dimension per state
+  // Record the contact dimension per fsm state
   for (auto contact_map : contact_indices_map_) {
     int active_contact_dim = 0;
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {

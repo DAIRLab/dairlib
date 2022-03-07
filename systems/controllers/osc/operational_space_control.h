@@ -148,9 +148,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator);
   void AddStateAndContactPoint(
       int state, const multibody::WorldPointEvaluator<double>* evaluator);
+
   void AddLineContact(const multibody::LineContactEvaluator<double>* evaluator);
   void AddStateAndLineContact(
       int state, const multibody::LineContactEvaluator<double>* evaluator);
+
   void AddKinematicConstraint(
       const multibody::KinematicEvaluatorSet<double>* evaluators);
   // Tracking data methods
@@ -180,6 +182,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void Build();
 
  private:
+  // General contact adder
+  void AddStateAndGenericContact(
+      int state, const multibody::KinematicEvaluator<double>* evaluator);
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
   void CheckConstraintSettings();
@@ -327,6 +332,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::map<int, std::set<int>> contact_indices_map_ = {};
   // All contacts (used in contact constraints)
   std::vector<const multibody::KinematicEvaluator<double>*> all_contacts_ = {};
+  // Map a contact's index in all_contacts_ to its start row in J_c
+  std::map<int, int> contact_rows_in_J_c_ = {};
 
   // single_contact_mode_ is true if there is only 1 contact mode in OSC
   bool single_contact_mode_ = false;

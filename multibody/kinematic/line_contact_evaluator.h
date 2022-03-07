@@ -11,9 +11,9 @@ namespace multibody {
 
 /// Basic contact evaluator for a line contact on a body w.r.t. the world
 template <typename T>
-class WorldLineEvaluator : public KinematicEvaluator<T> {
+class LineContactEvaluator : public KinematicEvaluator<T> {
  public:
-  /// The basic constructor for WorldLineEvaluator, defined via a rotation
+  /// The basic constructor for LineContactEvaluator, defined via a rotation
   /// matrix.
   /// @param plant
   /// @param pt_A the contact point on the body
@@ -26,9 +26,10 @@ class WorldLineEvaluator : public KinematicEvaluator<T> {
   ///    considered active. These will correspond to rows of the rotation matrix
   ////   Default is {0,1,2}.
 
-  WorldLineEvaluator(
+  LineContactEvaluator(
       const drake::multibody::MultibodyPlant<T>& plant,
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
+      double contact_len,
       const Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
       std::vector<int> active_directions = {0, 1, 2, 3, 4});
@@ -39,10 +40,10 @@ class WorldLineEvaluator : public KinematicEvaluator<T> {
   /// frame, and expresses them in `ViewFrame` (i.e. rotates the vectors and
   /// matrix).
 
-  WorldLineEvaluator(
+  LineContactEvaluator(
       const drake::multibody::MultibodyPlant<T>& plant,
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
-      const multibody::ViewFrame<T>& view_frame,
+      double contact_len, const multibody::ViewFrame<T>& view_frame,
       const Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
       std::vector<int> active_directions = {0, 1, 2});
@@ -61,10 +62,7 @@ class WorldLineEvaluator : public KinematicEvaluator<T> {
   using KinematicEvaluator<T>::plant;
 
   std::vector<std::shared_ptr<drake::solvers::Constraint>>
-  CreateConicFrictionConstraints() const override;
-
-  std::vector<std::shared_ptr<drake::solvers::Constraint>>
-  CreateLinearFrictionConstraints(int num_faces = 8) const override;
+  CreateLinearFrictionConstraints(int num_faces = 4) const override;
 
   /// Identify this evaluator as frictional, for use when calling
   /// CreateConicFrictionConstraint and CreateLinearFrictionConstraint
@@ -76,7 +74,8 @@ class WorldLineEvaluator : public KinematicEvaluator<T> {
   const Eigen::Vector3d pt_A_;
   const drake::multibody::Frame<T>& frame_A_;
   const Eigen::Vector3d offset_;
-  const drake::math::RotationMatrix<double> rotation_;
+  const double contact_half_len_;
+  const drake::math::RotationMatrix<double> R_fl_;
   const multibody::ViewFrame<T>* view_frame_ = nullptr;
   bool is_frictional_ = false;
 };

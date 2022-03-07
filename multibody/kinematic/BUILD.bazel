@@ -11,7 +11,7 @@ cc_library(
         "fixed_joint_evaluator.cc",
         "kinematic_evaluator.cc",
         "kinematic_evaluator_set.cc",
-        "world_line_evaluator.cc",
+        "line_contact_evaluator.cc",
         "world_point_evaluator.cc",
     ],
     hdrs = [
@@ -19,7 +19,7 @@ cc_library(
         "fixed_joint_evaluator.h",
         "kinematic_evaluator.h",
         "kinematic_evaluator_set.h",
-        "world_line_evaluator.h",
+        "line_contact_evaluator.h",
         "world_point_evaluator.h",
     ],
     deps = [

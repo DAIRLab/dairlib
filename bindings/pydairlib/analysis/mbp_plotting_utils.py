@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pydairlib.common import plot_styler, plotting_utils
-from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost
+from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost, osc_regularlization_tracking_cost
 from pydairlib.multibody import makeNameToPositionsMap, \
     makeNameToVelocitiesMap, makeNameToActuatorsMap, \
     createStateNameVectorFromMap, createActuatorNameVectorFromMap
@@ -96,8 +96,7 @@ def process_effort_channel(data, plant):
 
 
 def make_point_positions_from_q(
-        q, plant, context, frame, pt_on_frame, frame_to_calc_position_in=None):
-
+    q, plant, context, frame, pt_on_frame, frame_to_calc_position_in=None):
     if frame_to_calc_position_in is None:
         frame_to_calc_position_in = plant.world_frame()
 
@@ -112,9 +111,10 @@ def make_point_positions_from_q(
 
 def process_osc_channel(data):
     t_osc = []
-    input_cost = []
-    accel_cost = []
-    soft_constraint_cost = []
+    # input_cost = []
+    # accel_cost = []
+    # soft_constraint_cost = []
+    regularization_costs = osc_regularlization_tracking_cost(data[0].regularization_cost_names)
     qp_solve_time = []
     u_sol = []
     lambda_c_sol = []
@@ -127,9 +127,7 @@ def process_osc_channel(data):
 
     for msg in data:
         t_osc.append(msg.utime / 1e6)
-        input_cost.append(msg.input_cost)
-        accel_cost.append(msg.acceleration_cost)
-        soft_constraint_cost.append(msg.soft_constraint_cost)
+        regularization_costs.append(msg.regularization_cost_names, msg.regularization_costs)
         qp_solve_time.append(msg.qp_output.solve_time)
         u_sol.append(msg.qp_output.u_sol)
         lambda_c_sol.append(msg.qp_output.lambda_c_sol)
@@ -149,16 +147,14 @@ def process_osc_channel(data):
 
     tracking_cost_handler = osc_tracking_cost(osc_debug_tracking_datas.keys())
     for msg in data:
-        tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_cost)
+        tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_costs)
     tracking_cost = tracking_cost_handler.convertToNP()
 
     for name in osc_debug_tracking_datas:
         osc_debug_tracking_datas[name].convertToNP()
 
     return {'t_osc': np.array(t_osc),
-            'input_cost': np.array(input_cost),
-            'acceleration_cost': np.array(accel_cost),
-            'soft_constraint_cost': np.array(soft_constraint_cost),
+            'regularization_costs': regularization_costs,
             'qp_solve_time': np.array(qp_solve_time),
             'u_sol': np.array(u_sol),
             'lambda_c_sol': np.array(lambda_c_sol),
@@ -190,8 +186,8 @@ def load_default_channels(data, plant, state_channel, input_channel,
 
 
 def plot_q_or_v_or_u(
-        robot_output, key, x_names, x_slice, time_slice,
-        ylabel=None, title=None):
+    robot_output, key, x_names, x_slice, time_slice,
+    ylabel=None, title=None):
     ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key
@@ -199,12 +195,12 @@ def plot_q_or_v_or_u(
         title = key
 
     plotting_utils.make_plot(
-        robot_output,                       # data dict
-        't_x',                              # time channel
+        robot_output,  # data dict
+        't_x',  # time channel
         time_slice,
-        [key],                              # key to plot
-        {key: x_slice},                     # slice of key to plot
-        {key: x_names},                     # legend entries
+        [key],  # key to plot
+        {key: x_slice},  # slice of key to plot
+        {key: x_names},  # legend entries
         {'xlabel': 'Time',
          'ylabel': ylabel,
          'title': title}, ps)
@@ -263,7 +259,6 @@ def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
 
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
                           pts, dims):
-
     dim_map = ['_x', '_y', '_z']
     data_dict = {'t': robot_output['t_x']}
     legend_entries = {}
@@ -345,19 +340,36 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
 
 
 def plot_qp_costs(osc_debug, time_slice):
-    cost_keys = ['input_cost', 'acceleration_cost',
-                 'soft_constraint_cost']
+    # cost_keys = ['input_cost', 'acceleration_cost',
+    #              'soft_constraint_cost']
+    # ps = plot_styler.PlotStyler()
+    # plotting_utils.make_plot(
+    #     osc_debug,
+    #     't_osc',
+    #     time_slice,
+    #     cost_keys,
+    #     {},
+    #     {key: [key] for key in cost_keys},
+    #     {'xlabel': 'Time',
+    #      'ylabel': 'Cost',
+    #      'title': 'OSC QP Costs'}, ps)
+    # return ps
     ps = plot_styler.PlotStyler()
+    regularization_cost = osc_debug['regularization_costs'].regularization_costs
+    data_dict = \
+        {key: val for key, val in regularization_cost.items()}
+    data_dict['t_osc'] = osc_debug['t_osc']
+
     plotting_utils.make_plot(
-        osc_debug,
+        data_dict,
         't_osc',
         time_slice,
-        cost_keys,
+        regularization_cost.keys(),
         {},
-        {key: [key] for key in cost_keys},
+        {key: [key] for key in regularization_cost.keys()},
         {'xlabel': 'Time',
          'ylabel': 'Cost',
-         'title': 'OSC QP Costs'}, ps)
+         'title': 'tracking_costs'}, ps)
     return ps
 
 
@@ -409,4 +421,4 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
 
 
 def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
-    ps.plot(fsm_time, scale*fsm_signal)
+    ps.plot(fsm_time, scale * fsm_signal)

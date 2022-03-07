@@ -633,7 +633,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       MatrixXd A_c = MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_);
       A_c.block(0, 0, n_c_active_, n_v_) = J_c_active;
       A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-          0.01 * MatrixXd::Identity(n_c_active_, n_c_active_);
+          0.001 * MatrixXd::Identity(n_c_active_, n_c_active_);
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
@@ -1022,10 +1022,10 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
-
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
                    plant_w_spr_.num_velocities());
   x_w_spr << q_w_spr, v_w_spr;
+
 
   double timestamp = robot_output->get_timestamp();
   double current_time = timestamp;

@@ -6,14 +6,14 @@ W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
 W_input_reg: [1, 0.9, 0.5, 0.1, 1,
               1, 0.9, 0.5, 0.1, 1]
-W_lambda_c_reg: [1, 1, 0.01,
-                 1, 1, 0.01,
-                 1, 1, 0.01,
-                 1, 1, 0.01]
-W_lambda_h_reg: [0.001, 0.001, 0.01,
+W_lambda_c_reg: [1, 0.001, 0.01,
+                 1, 0.001, 0.01,
+                 1, 0.1, 0.01,
+                 1, 0.1, 0.01]
+W_lambda_h_reg: [0.01, 0.01, 0.01,
                0.01, 0.02, 0.02]
 #w_soft_constraint: 1000000
-w_soft_constraint: 0.000
+w_soft_constraint: 0.00001
 w_input_reg: 0.01
 impact_threshold: 0.025
 relative_feet: true
@@ -35,15 +35,15 @@ w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 1
+w_hip_yaw: 5
 hip_yaw_kp: 60
 hip_yaw_kd: 1
 # Foot placement parameters
 footstep_offset: -0.05
 center_line_offset: 0.05
 FootstepKd:
-  [  0.3,     0,  0,
-     0,     0.4, 0,
+  [  0.2,     0,  0,
+     0,     0.45, 0,
      0,        0,  0]
 PelvisW:
   [0.1,     0,    0,
@@ -62,11 +62,11 @@ PelvisRotW:
    0,  0.1,   0,
    0,   0,  0]
 PelvisRotKp:
-  [25,   0,   0,
+  [40,   0,   0,
    0,  20,   0,
    0,    0,  0]
 PelvisRotKd:
-  [5,   0,  0,
+  [10,   0,  0,
    0,   5,  0,
    0,    0,  0]
 SwingFootW:

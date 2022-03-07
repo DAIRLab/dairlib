@@ -3,10 +3,12 @@ import numpy as np
 from process_lcm_log import get_log_data
 from dairlib import lcmt_qp
 import sys
+import matplotlib.pyplot as plt
 
 import osqp
 from scipy.sparse import csc_matrix
 
+saved_sols_folder = '/home/yangwill/Documents/research/projects/cassie/hardware/gain_tuning/qp_settings/cost_tuning/qp_formulation/'
 
 def ParseQP(data):
     qp_list = []
@@ -81,25 +83,26 @@ def main():
     sols = np.zeros((len(qp_list,), 60))
     iters = np.zeros((len(qp_list,),))
 
+    osqp_settings = \
+        {'eps_abs': 1e-7,
+         'eps_rel': 1e-5,
+         'eps_prim_inf': 1e-5,
+         'eps_dual_inf': 1e-5,
+         'polish': 1,
+         'scaled_termination': 1,
+         'adaptive_rho': 1,
+         'adaptive_rho_fraction': 0.4,
+         'verbose': 0,
+         'warm_start': 1,
+         'rho': 1e-4,
+         'sigma': 1e-6,
+         'alpha': 1.6,
+         'delta': 1e-6,
+         'max_iter': 200,
+         'check_termination': 25,
+         'time_limit': 1e-4}
+
     for i, qp in enumerate(qp_list):
-        osqp_settings = \
-            {'eps_abs': 1e-7,
-             'eps_rel': 1e-5,
-             'eps_prim_inf': 1e-5,
-             'eps_dual_inf': 1e-5,
-             'polish': 1,
-             'scaled_termination': 1,
-             'adaptive_rho': 1,
-             'adaptive_rho_fraction': 0.4,
-             'verbose': 0,
-             'warm_start': 1,
-             'rho': 1e-4,
-             'sigma': 1e-6,
-             'alpha': 1.6,
-             'delta': 1e-6,
-             'max_iter': 200,
-             'check_termination': 25,
-             'time_limit': 1e-4}
 
         osqp_result = solve_osqp(qp, osqp_settings)
         run_times[i] = osqp_result['run_time']
@@ -110,18 +113,21 @@ def main():
         iters[i] = osqp_result['iter']
 
         # import pdb; pdb.set_trace()
-
+    log_name = filename.split('/')[-1]
+    np.save(saved_sols_folder + log_name + '_' + str(osqp_settings['max_iter']), sols)
 
     print(f'OSQP mean runtime: {np.mean(run_times)}')
     print(f'OSQP mean objective: {np.mean(obj_vals)}')
     print(f'OSQP mean primal residuals: {np.mean(pri_eps_vals)}')
 
-    import matplotlib.pyplot as plt
 
     fig, axs = plt.subplots(4, 1, sharex=True)
 
-    axs[0].plot(obj_vals, label='OSQP')
-    axs[0].legend()
+    # axs[0].plot(obj_vals, label='OSQP')
+    # axs[0].plot(sols[:, 44:50])
+    # axs[0].plot(sols[:, 55:60])
+    axs[0].plot(sols[:, 44:50])
+    axs[0].legend(['0','1','2','3','4'])
     axs[0].set_title('Objective values per QP')
 
     axs[1].plot(run_times)
@@ -137,10 +143,25 @@ def main():
     axs[3].plot(sols[:, 24:28])
     axs[3].plot(sols[:, 30:32])
     axs[3].set_title('QP solutions')
-    plt.show()
-    import pdb;pdb.set_trace()
 
+def compare_sols():
+    # sol0 = np.load(saved_sols_folder + 'lcmlog-drake0_1000.npy')
+    sol0 = np.load(saved_sols_folder + 'lcmlog-drake1_1000.npy')
+    # sol1 = np.load(saved_sols_folder + 'lcmlog-drake0_200.npy')
+    sol1 = np.load(saved_sols_folder + 'lcmlog-drake1_200.npy')
+    fig, axs = plt.subplots(5, 1, sharex=True)
+    # a = np.max(sol0 - sol1, axis=0)
+    a = np.average(sol0 - sol1, axis=0)
+
+    axs[0].plot(a[0:22])
+    axs[1].plot(a[22:32])
+    axs[2].plot(a[32:44])
+    axs[3].plot(a[44:50])
+    axs[4].plot(a[50:60])
 
 
 if __name__ == '__main__':
+    # compare_sols()
     main()
+    plt.show()
+

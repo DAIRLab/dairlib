@@ -84,3 +84,23 @@ class osc_tracking_cost():
         for name in self.tracking_costs:
             self.tracking_costs[name] = np.array(self.tracking_costs[name])
         return self.tracking_costs
+
+
+# Helper class to easily get a list of acceleration tracking costs,
+# Setting the cost to zero when a tracking data is not active
+class osc_regularlization_tracking_cost():
+
+    def __init__(self, regularization_data_names):
+
+        self.regularization_costs = {}
+        for name in regularization_data_names:
+            self.regularization_costs[name] = []
+
+    def append(self, regularization_cost_names_list, regularization_cost_list):
+        for name, cost in zip(regularization_cost_names_list, regularization_cost_list):
+            self.regularization_costs[name].append(cost)
+
+    def convertToNP(self):
+        for name in self.regularization_costs:
+            self.regularization_costs[name] = np.array(self.regularization_costs[name])
+        return self.regularization_costs

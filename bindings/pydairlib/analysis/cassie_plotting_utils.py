@@ -32,6 +32,7 @@ cassie_default_channels = \
 
 def make_plant_and_context(floating_base=True, springs=True):
     builder = DiagramBuilder()
+    import pdb; pdb.set_trace()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
     if (springs):
         addCassieMultibody(plant, scene_graph,

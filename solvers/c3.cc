@@ -145,7 +145,7 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G, vector<VectorXd>
         LinIneq2(2) = 0; LinIneq2(4) = 1;
         prog.AddLinearConstraint(LinIneq2, 3, 5, x.at(i));
         }
-         */
+        */
 
 
         /* DEBUG

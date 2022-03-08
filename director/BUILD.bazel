@@ -6,10 +6,9 @@ py_binary(
     srcs = ["drake_director.py"],
     # Python libraries to import.
     deps = [
-        "//bindings/pydairlib",
         "//lcmtypes:lcmtypes_robot_py",
         "@drake//tools:drake_visualizer_py",
-        "@drake//bindings/pydrake",
+        "@pydrake_pegged",
     ],
 )
 

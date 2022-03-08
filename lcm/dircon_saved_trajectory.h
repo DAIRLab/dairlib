@@ -49,9 +49,9 @@ class DirconTrajectory : public LcmTrajectory {
       const std::string& name, const std::string& description);
 
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
-  const;
+      const;
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
-  const;
+      const;
   drake::trajectories::PiecewisePolynomial<double>
   ReconstructStateTrajectoryWithSprings(Eigen::MatrixXd&) const;
   drake::trajectories::PiecewisePolynomial<double>
@@ -80,25 +80,28 @@ class DirconTrajectory : public LcmTrajectory {
   /// variables
   /// A MultibodyPlant is required due to possible state and actuator indexing
   /// conflicts.
-  void LoadFromFileWithPlant(const drake::multibody::MultibodyPlant<double>& plant,
-                    const std::string& filepath);
+  void LoadFromFileWithPlant(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::string& filepath);
 
   Eigen::MatrixXd GetStateSamples(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
-    return x_[mode]->datapoints;
+    return state_map_ * x_[mode]->datapoints;
   }
   Eigen::MatrixXd GetStateDerivativeSamples(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
-    return xdot_[mode]->datapoints;
+    return state_map_ * xdot_[mode]->datapoints;
   }
   Eigen::MatrixXd GetStateBreaks(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
     return x_[mode]->time_vector;
   }
-  Eigen::MatrixXd GetInputSamples() const { return u_->datapoints; }
+  Eigen::MatrixXd GetInputSamples() const {
+    return actuator_map_ * u_->datapoints;
+  }
   Eigen::MatrixXd GetBreaks() const { return u_->time_vector; }
   Eigen::MatrixXd GetForceSamples(int mode) const {
     return lambda_[mode]->datapoints;
@@ -135,8 +138,9 @@ class DirconTrajectory : public LcmTrajectory {
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 
-  // convenience map
-  // NOTE:
+  // Convenience maps
+  // NOTE: these joint name to index maps are constructed using the
+  // MultibodyPlant supplied in the constructor
   std::map<std::string, int> pos_map_;
   std::map<std::string, int> vel_map_;
   std::map<std::string, int> act_map_;

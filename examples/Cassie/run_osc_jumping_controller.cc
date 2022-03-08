@@ -80,8 +80,7 @@ DEFINE_string(simulator, "DRAKE",
               "contact information. Other options include MUJOCO and soon to "
               "include contact results from the GM contact estimator.");
 DEFINE_int32(init_fsm_state, osc_jump::BALANCE, "Initial state of the FSM");
-DEFINE_string(folder_path,
-              "examples/impact_invariant_control/saved_trajectories/",
+DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "jumping_0.15h_0.3d",
               "File to load saved trajectories from");

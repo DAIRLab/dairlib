@@ -87,12 +87,9 @@ int do_main(int argc, char* argv[]) {
     multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
   }
 
-  std::string urdf;
-  if (FLAGS_spring_model) {
-    urdf = "examples/Cassie/urdf/cassie_v2.urdf";
-  } else {
-    urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-  }
+  std::string urdf = FLAGS_spring_model
+                         ? "examples/Cassie/urdf/cassie_v2.urdf"
+                         : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
 
   if (FLAGS_platform_height != 0) {
     Parser parser(&plant, &scene_graph);

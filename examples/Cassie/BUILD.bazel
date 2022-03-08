@@ -571,6 +571,7 @@ cc_library(
     ],
     deps = [
         "//systems/framework:vector",
+        "//multibody:utils",
         "@drake//:drake_shared_library",
     ],
 )

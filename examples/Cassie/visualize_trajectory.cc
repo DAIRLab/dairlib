@@ -32,7 +32,8 @@ DEFINE_int32(visualize_mode, 0,
              "2 - Multipose visualizer");
 DEFINE_bool(use_transparency, false,
             "Transparency setting for the Multipose visualizer");
-DEFINE_bool(use_springs, false, "Set to true if the trajectory is for the model with springs");
+DEFINE_bool(use_springs, false,
+            "Set to true if the trajectory is for the model with springs");
 DEFINE_bool(
     mirror_traj, false,
     "Whether or not to extend the trajectory by mirroring the trajectory. Only "
@@ -54,6 +55,10 @@ int DoMain() {
   int nq = plant.num_positions();
   int nv = plant.num_positions();
   int nx = nq + nv;
+
+  auto pos_map = multibody::makeNameToPositionsMap(plant);
+  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
 
   DirconTrajectory saved_traj(plant, FLAGS_folder_path + FLAGS_trajectory_name);
@@ -67,8 +72,9 @@ int DoMain() {
     auto mirrored_traj =
         saved_traj.ReconstructMirrorStateTrajectory(optimal_traj.end_time());
     VectorXd x_offset = VectorXd::Zero(nx);
-    x_offset(4) = optimal_traj.value(optimal_traj.end_time())(4) -
-                  optimal_traj.value(optimal_traj.start_time())(4);
+    x_offset(pos_map["base_x"]) =
+        optimal_traj.value(optimal_traj.end_time())(pos_map["base_x"]) -
+        optimal_traj.value(optimal_traj.start_time())(pos_map["base_x"]);
     std::vector<MatrixXd> x_offset_rep(mirrored_traj.get_segment_times().size(),
                                        x_offset);
     PiecewisePolynomial<double> x_offset_traj =
@@ -76,8 +82,9 @@ int DoMain() {
             mirrored_traj.get_segment_times(), x_offset_rep);
     optimal_traj.ConcatenateInTime(mirrored_traj + x_offset_traj);
 
-    x_offset(4) = optimal_traj.value(optimal_traj.end_time())(4) -
-                  optimal_traj.value(optimal_traj.start_time())(4);
+    x_offset(pos_map["base_x"]) =
+        optimal_traj.value(optimal_traj.end_time())(pos_map["base_x"]) -
+        optimal_traj.value(optimal_traj.start_time())(pos_map["base_x"]);
     x_offset_rep = std::vector<MatrixXd>(
         optimal_traj.get_segment_times().size(), x_offset);
 

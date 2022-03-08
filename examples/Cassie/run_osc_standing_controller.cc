@@ -238,6 +238,24 @@ int DoMain(int argc, char* argv[]) {
   double mu = 0.8;
   osc->SetContactFriction(mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
+
+
+
+  Matrix3d R_toe_line =
+      drake::math::RollPitchYaw<double>(M_PI/2, 2.44346, 0)
+          .ToMatrix3ViaRotationMatrix().transpose();
+  auto left_line_evaluator = multibody::LineContactEvaluator(
+      plant_wo_springs, 0.5*(left_heel.first + right_heel.first) ,
+      left_toe.second, 0.18,
+      R_toe_line);
+  auto right_line_evaluator = multibody::LineContactEvaluator(
+      plant_wo_springs, 0.5*(left_heel.first + right_heel.first) ,
+      right_toe.second, 0.18,
+      R_toe_line);
+
+  osc->AddLineContact(&left_line_evaluator);
+  osc->AddLineContact(&right_line_evaluator);
+
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});

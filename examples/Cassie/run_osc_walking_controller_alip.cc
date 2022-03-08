@@ -384,39 +384,62 @@ int DoMain(int argc, char* argv[]) {
   // Add contact points (The position doesn't matter. It's not used in OSC)
   const auto& pelvis = plant_w_spr.GetBodyByName("pelvis");
   multibody::WorldYawViewFrame view_frame(pelvis);
-  auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, left_toe.first, left_toe.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
-  auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, left_heel.first, left_heel.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
-  auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, right_toe.first, right_toe.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
-  auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, right_heel.first, right_heel.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
-  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
+
+  Matrix3d R_toe_line =
+      drake::math::RollPitchYaw<double>(M_PI/2, 2.44346, 0)
+          .ToMatrix3ViaRotationMatrix().transpose();
+
+  auto left_line_evaluator = multibody::LineContactEvaluator(
+      plant_w_spr, mid_contact_point, left_toe_mid.second, 0.18,
+      view_frame,R_toe_line);
+  auto right_line_evaluator = multibody::LineContactEvaluator(
+      plant_w_spr, mid_contact_point, right_toe_mid.second, 0.18,
+      view_frame, R_toe_line);
+
+  osc->AddStateAndLineContact(left_stance_state, &left_line_evaluator);
+  osc->AddStateAndLineContact(right_stance_state, &right_line_evaluator);
+//  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+//      plant_w_spr, left_toe.first, left_toe.second, view_frame,
+//      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+//  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+//      plant_w_spr, left_heel.first, left_heel.second, view_frame,
+//      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+//  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+//      plant_w_spr, right_toe.first, right_toe.second, view_frame,
+//      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+//  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+//      plant_w_spr, right_heel.first, right_heel.second, view_frame,
+//      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+//  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
+//  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
+//  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
+//  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
+//  osc->AddLambdaNullCost(1.0);
   if (!FLAGS_is_two_phase) {
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &left_toe_evaluator);
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &left_heel_evaluator);
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &right_toe_evaluator);
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &right_heel_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &left_toe_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &left_heel_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &right_toe_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &right_heel_evaluator);
+    osc->AddStateAndLineContact(post_left_double_support_state,
+                                &left_line_evaluator);
+    osc->AddStateAndLineContact(post_left_double_support_state,
+                                &right_line_evaluator);
+    osc->AddStateAndLineContact(post_right_double_support_state,
+                                &left_line_evaluator);
+    osc->AddStateAndLineContact(post_right_double_support_state,
+                                &right_line_evaluator);
+//    osc->AddStateAndContactPoint(post_left_double_support_state,
+//                                 &left_toe_evaluator);
+//    osc->AddStateAndContactPoint(post_left_double_support_state,
+//                                 &left_heel_evaluator);
+//    osc->AddStateAndContactPoint(post_left_double_support_state,
+//                                 &right_toe_evaluator);
+//    osc->AddStateAndContactPoint(post_left_double_support_state,
+//                                 &right_heel_evaluator);
+//    osc->AddStateAndContactPoint(post_right_double_support_state,
+//                                 &left_toe_evaluator);
+//    osc->AddStateAndContactPoint(post_right_double_support_state,
+//                                 &left_heel_evaluator);
+//    osc->AddStateAndContactPoint(post_right_double_support_state,
+//                                 &right_toe_evaluator);
+//    osc->AddStateAndContactPoint(post_right_double_support_state,
+//                                 &right_heel_evaluator);
   }
 
   // Swing foot tracking

@@ -78,11 +78,14 @@ void LineContactEvaluator<T>::EvalFullJacobian(
     J->bottomRows(2) = ((R_wf * R_fl_.template cast<T>()).inverse() *
         J_spatial.topRows(3)).bottomRows(2);
   } else {
-    auto R_vf_w =  view_frame_->CalcWorldToFrameRotation(plant(), context);
+    auto R_vf_w = view_frame_->CalcWorldToFrameRotation(plant(), context);
     J->topRows(3) = R_vf_w * J_spatial.bottomRows(3);
-    J->bottomRows(2) = ((R_wf * R_fl_.template cast<T>()).inverse() * R_vf_w.transpose() *
+    J->bottomRows(2) =
+        ((R_wf * R_fl_.template cast<T>()).inverse() * R_vf_w.transpose() *
             J_spatial.topRows(3)).bottomRows(2);
   }
+  drake::Matrix3<T> axes = (R_wf * R_fl_.template cast<T>()) * drake::Matrix3<T>::Identity();
+  std::cout << "Eval Full Jacobian x-y-z axes pose: \n" << axes << std::endl;
 }
 
 template <typename T>
@@ -94,12 +97,12 @@ VectorX<T> LineContactEvaluator<T>::EvalFullJacobianDotTimesV(
       frame_A_.CalcPoseInWorld(context).rotation();
   SpatialAcceleration<T> JdotV_spatial = plant().CalcBiasSpatialAcceleration(
       context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
-      pt_A_.template cast<T>(), world, frame_A_);
+      pt_A_.template cast<T>(), world, world);
 
   VectorX<T> JdotV = VectorX<T>::Zero(5);
 
   if (view_frame_ == nullptr) {
-    JdotV.head(3) = R_wf * JdotV_spatial.translational();
+    JdotV.head(3) = JdotV_spatial.translational();
     JdotV.tail(2) = ((R_wf * R_fl_.template cast<T>()).inverse() *
         JdotV_spatial.rotational()).tail(2);
   } else {

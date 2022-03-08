@@ -12,7 +12,7 @@ namespace solvers {
 class C3MIQP:public C3 {
  public:
 	/// Default constructor for time-varying LCS
-	C3MIQP(const LCS& LCS, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R, const std::vector<Eigen::MatrixXd>& G, const std::vector<Eigen::MatrixXd>& U,
+	C3MIQP(const LCS& LCS, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R, const std::vector<Eigen::MatrixXd>& G, const std::vector<Eigen::MatrixXd>& U, const std::vector<Eigen::VectorXd>& xdesired,
          const C3Options& options);
 
 	/// Virtual method

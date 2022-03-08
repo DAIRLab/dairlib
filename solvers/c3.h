@@ -16,7 +16,7 @@ class C3 {
 
     /// @param LCS LCS parameters
     /// @param Q, R, G, U Cost function parameters
-    C3(const LCS& LCS, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R, const std::vector<Eigen::MatrixXd>& G, const std::vector<Eigen::MatrixXd>& U,
+    C3(const LCS& LCS, const std::vector<Eigen::MatrixXd>& Q, const std::vector<Eigen::MatrixXd>& R, const std::vector<Eigen::MatrixXd>& G, const std::vector<Eigen::MatrixXd>& U, const std::vector<Eigen::VectorXd>& xdesired,
        const C3Options& options);
 
     /// Solve the MPC problem
@@ -69,6 +69,7 @@ class C3 {
     const std::vector<Eigen::MatrixXd> R_;
     const std::vector<Eigen::MatrixXd> U_;
     const std::vector<Eigen::MatrixXd> G_;
+    const std::vector<Eigen::VectorXd> xdesired_;
   const C3Options options_;
   const int N_;
   const int n_;

@@ -8,10 +8,9 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::RowVectorXd;
 
-void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, C3Options* options);
-void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, C3Options* options);
-void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, C3Options* options);
-
+void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, vector<VectorXd>* xdesired_, C3Options* options);
+void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, vector<VectorXd>* xdesired_, C3Options* options);
+void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, vector<VectorXd>* xdesired_, C3Options* options);
 
 namespace dairlib {
 namespace solvers {
@@ -25,8 +24,8 @@ int DoMain(int argc, char* argv[]) {
     ///variables (LCS)
     vector<MatrixXd> Ad, Bd, Dd, Ed, Fd, Hd;
     vector<VectorXd> dd, cd;
-    ///initial condition(x0)
-    VectorXd x0;
+    ///initial condition(x0), tracking (xdesired)
+    VectorXd x0; vector<VectorXd> xdesired;
     ///variables (cost, C3)
     vector<MatrixXd> Qd, Rd, Gd, Ud;
     ///C3 options
@@ -37,14 +36,14 @@ int DoMain(int argc, char* argv[]) {
     int forceconstraint = 3;
 
     if (example == 0){
-        init_cartpole(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+        init_cartpole(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
     }
     else if ( example == 1){
-        init_fingergait(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+        init_fingergait(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
     }
     else if (example == 2){
         VectorXd xcurrent = VectorXd::Zero(10);
-        init_pivoting(xcurrent, &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+        init_pivoting(xcurrent, &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
     }
     else{
         std::cout<<"ERROR:Set example parameter to 1, 2 or 3"<<std::endl;
@@ -55,7 +54,7 @@ int DoMain(int argc, char* argv[]) {
     const vector<MatrixXd> A = Ad; const vector<MatrixXd> B = Bd; const vector<MatrixXd> D = Dd; const vector<MatrixXd> E = Ed; const vector<MatrixXd> F = Fd; const vector<MatrixXd> H = Hd; const vector<VectorXd> d = dd; const vector<VectorXd> c = cd; const vector<MatrixXd> Q = Qd; const vector<MatrixXd> R = Rd; const vector<MatrixXd> G = Gd; const vector<MatrixXd> U = Ud; const int N = Nd; const int n = nd; const int m = md; const int k = kd;
 
     LCS system(A, B, D, d, E, F, H, c);
-    C3MIQP opt(system, Q, R, G, U, options);
+    C3MIQP opt(system, Q, R, G, U, xdesired, options);
 
 
     if (example == 1){
@@ -119,9 +118,9 @@ int DoMain(int argc, char* argv[]) {
             }
 
             if ( example == 2){
-                init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &options);
+                init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
                 LCS system(A, B, D, d, E, F, H, c);
-                C3MIQP opt(system, Q, R, G, U, options);
+                C3MIQP opt(system, Q, R, G, U, xdesired, options);
             }
 
             auto start = std::chrono::high_resolution_clock::now();
@@ -151,7 +150,7 @@ int main(int argc, char* argv[]) {
 }
 
 ///initialize LCS parameters for cartpole
-void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, C3Options* options) {
+void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, vector<VectorXd>* xdesired_, C3Options* options) {
 
     int n = 4;
     int m = 2;
@@ -242,6 +241,11 @@ void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vec
     std::vector<MatrixXd> R(N, Rinit );
     std::vector<MatrixXd> G(N, Ginit );
 
+    VectorXd xdesiredinit;
+    xdesiredinit = VectorXd::Zero(n);
+    std::vector<VectorXd> xdesired(N+1, xdesiredinit);
+
+
     MatrixXd Us(n+m+k,n+m+k);
     Us << 1000, 0, 0, 0, 0, 0, 0,
             0, 1000, 0, 0, 0, 0, 0,
@@ -277,10 +281,11 @@ void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vec
     *R_ = R;
     *G_ = G;
     *U_ = U;
+    *xdesired_ = xdesired;
 
 };
 
-void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, C3Options* options){
+void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, vector<VectorXd>* xdesired_, C3Options* options){
 
     int n = 6;
     int m = 6;
@@ -371,7 +376,7 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
     //MatrixXd Hinit = MatrixXd::Zero(m,k);
 
     MatrixXd Qinit(n,n);
-    Qinit << 5000, 0, 0, 0, 0, 0, //5000
+    Qinit << 6000, 0, 0, 0, 0, 0, //5000
             0, 10, 0, 0, 0, 0,
             0, 0, 10, 0, 0 ,0,
             0, 0, 0, 10, 0, 0,
@@ -395,6 +400,11 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
     std::vector<MatrixXd> Q(N+1, Qinit );
     std::vector<MatrixXd> R(N, Rinit );
     std::vector<MatrixXd> G(N, Ginit );
+
+    VectorXd xdesiredinit;
+    xdesiredinit = VectorXd::Zero(n);
+    std::vector<VectorXd> xdesired(N+1, xdesiredinit);
+
 
 
     MatrixXd Us(n+m+k,n+m+k);
@@ -443,11 +453,12 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, v
     *R_ = R;
     *G_ = G;
     *U_ = U;
+    *xdesired_ = xdesired;
 
 
 };
 
-void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, C3Options* options){
+void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, vector<MatrixXd>* B_, vector<MatrixXd>* D_, vector<VectorXd>* d_, vector<MatrixXd>* E_, vector<MatrixXd>* F_, vector<MatrixXd>* H_, vector<VectorXd>* c_, vector<MatrixXd>* Q_, vector<MatrixXd>* R_, vector<MatrixXd>* G_, vector<MatrixXd>* U_, VectorXd* x0, vector<VectorXd>* xdesired_, C3Options* options){
 
     int n = 10;
     int m = 10;
@@ -605,6 +616,11 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_, vector
     std::vector<MatrixXd> Q(N+1, Qinit );
     std::vector<MatrixXd> R(N, Rinit );
 
+    VectorXd xdesiredinit;
+    xdesiredinit = VectorXd::Zero(n);
+    std::vector<VectorXd> xdesired(N+1, xdesiredinit);
+
+
     MatrixXd Us(n+m+k,n+m+k);
     Us.block(0,0,n,n) = 1000*MatrixXd::Identity(n,n);
     Us.block(n,n,m,m) = MatrixXd::Identity(m,m);
@@ -640,6 +656,7 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_, vector
     *R_ = R;
     *G_ = G;
     *U_ = U;
+    *xdesired_ = xdesired;
 
 
 };

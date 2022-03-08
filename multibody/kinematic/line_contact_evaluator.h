@@ -46,7 +46,7 @@ class LineContactEvaluator : public KinematicEvaluator<T> {
       double contact_len, const multibody::ViewFrame<T>& view_frame,
       const Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
-      std::vector<int> active_directions = {0, 1, 2});
+      std::vector<int> active_directions = {0, 1, 2, 3, 4});
 
 
   drake::VectorX<T> EvalFull(
@@ -63,6 +63,11 @@ class LineContactEvaluator : public KinematicEvaluator<T> {
 
   std::vector<std::shared_ptr<drake::solvers::Constraint>>
   CreateLinearFrictionConstraints(int num_faces = 4) const override;
+
+  void SetFrictionConstraintInactive(drake::solvers::LinearConstraint* constraint) const override;
+  void SetFrictionConstraintActive(drake::solvers::LinearConstraint* constraint) const override;
+
+  std::vector<Eigen::MatrixXd> GetFrictionConstraintMatrixAndBounds(double mu) const override;
 
   /// Identify this evaluator as frictional, for use when calling
   /// CreateConicFrictionConstraint and CreateLinearFrictionConstraint

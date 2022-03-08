@@ -145,6 +145,36 @@ WorldPointEvaluator<T>::CreateLinearFrictionConstraints(int num_faces) const {
   return constraints;
 }
 
+
+template <typename T>
+vector<Eigen::MatrixXd>
+WorldPointEvaluator<T>::GetFrictionConstraintMatrixAndBounds(double mu) const {
+  Eigen::MatrixXd A = Eigen::MatrixXd(5, 3);
+  A << -1,  0, mu,
+        0, -1, mu,
+        1,  0, mu,
+        0,  1, mu,
+        0,  0, 1;
+  Eigen::VectorXd lb = Eigen::VectorXd::Zero(5);
+  Eigen::VectorXd ub =
+      Eigen::VectorXd::Constant(5, std::numeric_limits<double>::infinity());
+  return {A, lb, ub};
+}
+
+template <typename T>
+void WorldPointEvaluator<T>::SetFrictionConstraintInactive(
+    drake::solvers::LinearConstraint *constraint) const {
+  constraint->UpdateLowerBound(
+      Eigen::VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));
+}
+
+template <typename T>
+void WorldPointEvaluator<T>::SetFrictionConstraintActive(
+    drake::solvers::LinearConstraint *constraint) const {
+  constraint->UpdateLowerBound(Eigen::VectorXd::Zero(5));
+}
+
+
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::multibody::WorldPointEvaluator)
 

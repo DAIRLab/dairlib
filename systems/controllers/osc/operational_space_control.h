@@ -333,7 +333,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // All contacts (used in contact constraints)
   std::vector<const multibody::KinematicEvaluator<double>*> all_contacts_ = {};
   // Map a contact's index in all_contacts_ to its start row in J_c
-  std::map<int, int> contact_rows_in_J_c_ = {};
+  std::map<int, int> contact_start_idx_map_ = {};
 
   // single_contact_mode_ is true if there is only 1 contact mode in OSC
   bool single_contact_mode_ = false;

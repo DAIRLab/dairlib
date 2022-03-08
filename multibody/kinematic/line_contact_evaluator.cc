@@ -23,7 +23,7 @@ LineContactEvaluator<T>::LineContactEvaluator(
     const MultibodyPlant<T>& plant, Vector3d pt_A, const Frame<T>& frame_A,
     double contact_len, const Matrix3d rotation, const Vector3d offset,
     std::vector<int> active_directions)
-    : KinematicEvaluator<T>(plant, 3),
+    : KinematicEvaluator<T>(plant, 5),
       contact_half_len_(contact_len/2),
       pt_A_(pt_A),
       frame_A_(frame_A),
@@ -38,7 +38,7 @@ LineContactEvaluator<T>::LineContactEvaluator(
     double contact_len, const multibody::ViewFrame<T>& view_frame,
     const Matrix3d rotation, const Vector3d offset,
     std::vector<int> active_directions)
-    : KinematicEvaluator<T>(plant, 3),
+    : KinematicEvaluator<T>(plant, 5),
       pt_A_(pt_A),
       frame_A_(frame_A),
       contact_half_len_(contact_len/2),
@@ -133,6 +133,36 @@ LineContactEvaluator<T>::CreateLinearFrictionConstraints(int num_faces) const {
         Eigen::VectorXd::Zero(6)));
   }
   return constraints;
+}
+
+template <typename T>
+vector<Eigen::MatrixXd>
+LineContactEvaluator<T>::GetFrictionConstraintMatrixAndBounds(double mu) const {
+  double l = contact_half_len_;
+  Eigen::MatrixXd A(6, 5);
+  A <<  1,  0, -mu,    0,   0,
+       -1,  0, -mu,    0,   0,
+        0,  l, -mu*l, -mu, -1,
+        0, -l, -mu*l,  mu, -1,
+        0,  l, -mu*l,  mu,  1,
+        0, -l, -mu*l, -mu, -1;
+  Eigen::VectorXd lb =
+      Eigen::VectorXd::Constant(6, -std::numeric_limits<double>::infinity());
+  Eigen::VectorXd ub = Eigen::VectorXd::Zero(6);
+  return {A, lb, ub};
+}
+
+template <typename T>
+void LineContactEvaluator<T>::SetFrictionConstraintInactive(
+    drake::solvers::LinearConstraint *constraint) const {
+  constraint->UpdateUpperBound(
+      Eigen::VectorXd::Constant(6, std::numeric_limits<double>::infinity()));
+}
+
+template <typename T>
+void LineContactEvaluator<T>::SetFrictionConstraintActive(
+    drake::solvers::LinearConstraint *constraint) const {
+  constraint->UpdateUpperBound(Eigen::VectorXd::Zero(6));
 }
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(

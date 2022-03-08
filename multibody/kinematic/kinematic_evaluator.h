@@ -112,6 +112,16 @@ class KinematicEvaluator {
     return std::vector<std::shared_ptr<drake::solvers::Constraint>>();
   };
 
+  virtual void SetFrictionConstraintInactive(
+      drake::solvers::LinearConstraint* constraint) const {};
+  virtual void SetFrictionConstraintActive(
+      drake::solvers::LinearConstraint* constraint) const {};
+
+  virtual std::vector<Eigen::MatrixXd>
+  GetFrictionConstraintMatrixAndBounds(double mu) const {
+    return std::vector<Eigen::MatrixXd>();
+  };
+
   void set_mu(double mu) { mu_ = mu; };
 
   double mu() const { return mu_; };

@@ -18,12 +18,12 @@ kp_yaw: 1
 kd_yaw: 0.2
 vel_max_yaw: 0.5
 
-kp_pos_sagital: 0  # 0.3
-kd_pos_sagital: 0  # 0.3
-vel_max_sagital: 0  # 0.5
-kp_pos_lateral: 0  # 0.3
-kd_pos_lateral: 0  # 0.3
-vel_max_lateral: 0  # 0.3
+kp_pos_sagital: 0.3  # 0.3
+kd_pos_sagital: 0.3  # 0.3
+vel_max_sagital: 0.5  # 0.5
+kp_pos_lateral: 0.3  # 0.3
+kd_pos_lateral: 0.3 # 0.3
+vel_max_lateral: 0.3  # 0.3
 target_pos_offset: 0  # -0.16
 
 # Speed control gains
@@ -40,7 +40,7 @@ ds_time: 0.1
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.25
 center_line_offset: 0.03
-mid_foot_height: 0.08
+mid_foot_height: 0.2
 final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 
@@ -52,13 +52,13 @@ mu: 0.75
 
 w_accel: 0.00000001
 w_soft_constraint: 80
-w_input_reg: 0.0000003
+w_input_reg: 0
 
 w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 0.5
+w_hip_yaw: 1
 hip_yaw_kp: 40
 hip_yaw_kd: 0.5
 

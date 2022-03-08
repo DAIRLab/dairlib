@@ -186,8 +186,8 @@ void OperationalSpaceControl::AddStateAndGenericContact(
   // Add to contact list if the new contact doesn't exist in the list
   if (it_c == all_contacts_.cend()) {
     all_contacts_.push_back(evaluator);
-    contact_rows_in_J_c_[contact_idx] = contact_idx == 0 ?
-        0 : contact_rows_in_J_c_[contact_idx-1] + evaluator->num_full();
+    contact_start_idx_map_[contact_idx] = contact_idx == 0 ?
+                                          0 : contact_start_idx_map_[contact_idx-1] + evaluator->num_full();
   }
 
   // Find the finite state machine state in contact_indices_map_
@@ -374,20 +374,13 @@ void OperationalSpaceControl::Build() {
     }
   }
   if (!all_contacts_.empty()) {
-    VectorXd mu_neg1(2);
-    VectorXd mu_1(2);
-    VectorXd one(1);
-    MatrixXd A = MatrixXd(5, kSpaceDim);
-    A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
-
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
+      vector<MatrixXd> A_lb_ub = all_contacts_.at(j)->GetFrictionConstraintMatrixAndBounds(mu_);
       friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(
-                  A, VectorXd::Zero(5),
-                  Eigen::VectorXd::Constant(
-                      5, std::numeric_limits<double>::infinity()),
-                  lambda_c_.segment(kSpaceDim * j, 3))
+          prog_->AddLinearConstraint(
+                  A_lb_ub.at(0), A_lb_ub.at(1), A_lb_ub.at(2),
+                  lambda_c_.segment(contact_start_idx_map_[j],
+                                          all_contacts_.at(j)->num_full()))
               .evaluator()
               .get());
     }
@@ -433,16 +426,21 @@ void OperationalSpaceControl::Build() {
 
   // (Testing) 6. contact force blending
   if (ds_duration_ > 0) {
+    // There must be an even number of contact constraints
+    DRAKE_DEMAND(all_contacts_.size() % 2 == 0);
     epsilon_blend_ =
-        prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
+        prog_->NewContinuousVariables(all_contacts_.size(), "epsilon_blend");
+
+    drake::solvers::VariableRefList vars;
+    for (int i = 0; i < all_contacts_.size(); i++) {
+      vars.push_back(lambda_c_.segment(contact_start_idx_map_[i]+2, 1));
+    }
+    vars.push_back(epsilon_blend_);
     blend_constraint_ =
         prog_
             ->AddLinearEqualityConstraint(
-                MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim), VectorXd::Zero(1),
-                {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
-                 lambda_c_.segment(kSpaceDim * 1 + 2, 1),
-                 lambda_c_.segment(kSpaceDim * 2 + 2, 1),
-                 lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
+                MatrixXd::Zero(1, 2 *all_contacts_.size()),
+                VectorXd::Zero(1), vars)
             .evaluator()
             .get();
     /// Soft constraint version
@@ -467,8 +465,10 @@ void OperationalSpaceControl::Build() {
   // (Testing) 8. Penalize forces in Null(J^T)
   if (w_lambda_null_ > 0) {
     DRAKE_DEMAND(n_c_active_ == n_c_);
-    W_lambda_null_ = w_lambda_null_ * MatrixXd::Identity(n_c_active_, n_c_active_);
-    lambda_null_cost_ = prog_->AddQuadraticCost(W_lambda_null_, VectorXd::Zero(n_c_active_), lambda_c_)
+    W_lambda_null_ = w_lambda_null_ * MatrixXd::Identity(n_c_, n_c_);
+    lambda_null_cost_ =
+        prog_->AddQuadraticCost(W_lambda_null_,
+            VectorXd::Zero(n_c_active_), lambda_c_)
         .evaluator()
         .get();
   }
@@ -476,11 +476,10 @@ void OperationalSpaceControl::Build() {
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-//  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-4);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
+  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
   solver_options.SetOption(OsqpSolver::id(), "check_termination", 10);
   solver_options.SetOption(OsqpSolver::id(), "warmstart", 1);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
@@ -571,17 +570,14 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Get J for external forces in equations of motion
   MatrixXd J_c = MatrixXd::Zero(n_c_, n_v_);
   MatrixXd P = MatrixXd::Zero(n_c_, n_c_);
-  int j = 0;
-  int z = 1;
+  int m_c = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
     if (active_contact_set.find(i) != active_contact_set.end()) {
-      P.block(kSpaceDim * j, kSpaceDim*i, kSpaceDim, kSpaceDim) = Eigen::Matrix3d::Identity();
-      j++;
-      J_c.block(kSpaceDim * i, 0, kSpaceDim, n_v_) =
+      int n = all_contacts_[i]->num_full();
+      P.block(m_c, contact_start_idx_map_.find(i)->second, n, n) = MatrixXd::Identity(n, n);
+      m_c += n;
+      J_c.block(contact_start_idx_map_.find(i)->second, 0, n, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
-    } else {
-      P.block(n_c_ - z*kSpaceDim, i*kSpaceDim, kSpaceDim, kSpaceDim) = Eigen::Matrix3d::Identity();
-      z++;
     }
   }
 
@@ -596,7 +592,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       // of the Jacobian. (J_c_active is just a stack of slices of J_c)
       for (int j = 0; j < contact_i->num_active(); j++) {
         J_c_active.row(row_idx + j) =
-            J_c.row(kSpaceDim * i + contact_i->active_inds().at(j));
+            J_c.row(contact_start_idx_map_.find(i)->second + contact_i->active_inds().at(j));
       }
       JdotV_c_active.segment(row_idx, contact_i->num_active()) =
           contact_i->EvalActiveJacobianDotTimesV(*context_wo_spr_);
@@ -605,7 +601,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   if (w_lambda_null_ > 0){
-    int m_c = kSpaceDim*active_contact_set.size();
     auto J_c_T_LU = Eigen::FullPivLU<MatrixXd>(J_c.cols(), m_c);
     J_c_T_LU.setThreshold(1e-8);
     J_c_T_LU.compute((P*J_c).topRows(m_c).transpose());
@@ -651,26 +646,13 @@ VectorXd OperationalSpaceControl::SolveQp(
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
-  // 4. Friction constraint (approximated firction cone)
-  /// For i = active contact indices
-  ///     mu_*lambda_c(3*i+2) >= lambda_c(3*i+0)
-  ///    -mu_*lambda_c(3*i+2) <= lambda_c(3*i+0)
-  ///     mu_*lambda_c(3*i+2) >= lambda_c(3*i+1)
-  ///    -mu_*lambda_c(3*i+2) <= lambda_c(3*i+1)
-  ///         lambda_c(3*i+2) >= 0
-  /// ->
-  ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
-  ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
-  ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
-  ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
-  ///                           lambda_c(3*i+2) >= 0
+  // 4. Friction constraint (approximated friction cone)
   if (!all_contacts_.empty()) {
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
-        friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
+        all_contacts_.at(i)->SetFrictionConstraintActive(friction_constraints_.at(i));
       } else {
-        friction_constraints_.at(i)->UpdateLowerBound(
-            VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));
+        all_contacts_.at(i)->SetFrictionConstraintInactive(friction_constraints_.at(i));;
       }
     }
   }
@@ -749,7 +731,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // (Testing) 6. blend contact forces during double support phase
   if (ds_duration_ > 0) {
-    MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
+    MatrixXd A = MatrixXd::Zero(1, 2 * all_contacts_.size());
     if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
         ds_states_.end()) {
       double alpha_left = 0;
@@ -765,14 +747,12 @@ VectorXd OperationalSpaceControl::SolveQp(
                      (ds_duration_ - time_since_last_state_switch);
         alpha_right = -1;
       }
-      A(0, 0) = alpha_left / 2;
-      A(0, 1) = alpha_left / 2;
-      A(0, 2) = alpha_right / 2;
-      A(0, 3) = alpha_right / 2;
-      A(0, 4) = 1;
-      A(0, 5) = 1;
-      A(0, 6) = 1;
-      A(0, 7) = 1;
+      for (int i = 0; i < all_contacts_.size() / 2; i++) {
+        A(0, i) = alpha_left / 2;
+        A(0, all_contacts_.size() - i) = alpha_right / 2;
+      }
+      A.block(0, all_contacts_.size(), 1, all_contacts_.size()) =
+          Eigen::RowVectorXd::Ones(all_contacts_.size());
     }
     blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
   }

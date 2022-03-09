@@ -142,13 +142,12 @@ int DoMain(int argc, char* argv[]) {
   auto pelvis_filt =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant_w_spr, tau);
   builder.Connect(*state_receiver, *pelvis_filt);
-  
+
   if (FLAGS_publish_filtered_state) {
     auto [filtered_state_scope, filtered_state_sender]=
     LcmScopeSystem::AddToBuilder(&builder, &lcm_local,
                                  pelvis_filt->get_output_port(),"CASSIE_STATE_FB_FILTERED", 0);
   }
-
 
   // Create command sender.
   auto command_pub =

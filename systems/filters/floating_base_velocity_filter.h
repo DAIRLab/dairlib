@@ -2,7 +2,7 @@
 #include "output_vector_filter.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
-/// Specialization of Timestamped Low Pass Filter for floting base velocity
+/// Specialization of OutputVectorFilter for floting base linear velocity
 /// estimates
 namespace dairlib::systems {
 

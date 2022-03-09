@@ -4,9 +4,9 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "systems/framework/output_vector.h"
 
-/// TimestampedLowpassFilter implements a first order vector-valued linear
+/// OutputVectorFilter implements a first order vector-valued linear
 /// lowpass filter.  Since the control loops we use generally do not have 
-/// a fixed sampling rate, we implement this filter using timestamped vectors
+/// a fixed sampling rate, we implement this filter using timestamps
 /// to achieve the  desired time constant / cutoff frequency
 
 

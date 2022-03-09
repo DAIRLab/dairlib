@@ -241,7 +241,7 @@ then
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate \(with snopt scaling\) =====
-  ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=1 --snopt_scaling=true --start_current_iter_as_rerun=true \
+  ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=$final_iter --snopt_scaling=true --start_current_iter_as_rerun=true \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \

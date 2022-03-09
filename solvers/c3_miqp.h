@@ -18,7 +18,7 @@ namespace dairlib {
                    const std::vector<Eigen::VectorXd> &xdesired,
                    const C3Options &options);
 
-            /// Virtual method
+            /// Virtual projection method
             Eigen::VectorXd
             SolveSingleProjection(const Eigen::MatrixXd &U, const Eigen::VectorXd &delta_c, const Eigen::MatrixXd &E,
                                   const Eigen::MatrixXd &F, const Eigen::MatrixXd &H, const Eigen::VectorXd &c);

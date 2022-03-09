@@ -14,7 +14,7 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
                0.01, 0.02, 0.02]
 #w_soft_constraint: 1000000
 w_soft_constraint: 100
-w_input_reg: 0.01
+w_input_reg: 0.001
 impact_threshold: 0.025
 relative_feet: true
 relative_pelvis: true
@@ -35,7 +35,7 @@ w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 5
+w_hip_yaw: 1
 hip_yaw_kp: 60
 hip_yaw_kd: 1
 # Foot placement parameters
@@ -75,11 +75,11 @@ SwingFootW:
    0,    0,   1]
 SwingFootKp:
   [125,    0,    0,
-   0,   60,    0,
+   0,   80,    0,
    0,     0,  50]
 SwingFootKd:
-  [10,   0,   0,
-   0,   2,   0,
+  [5,   0,   0,
+   0,   1.5,   0,
    0,   0,  1]
 LiftoffSwingFootW:
   [0.1,    0,    0,

@@ -29,6 +29,7 @@
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -191,6 +192,9 @@ int DoMain(int argc, char* argv[]) {
   auto controller_failure_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
           "CONTROLLER_ERROR", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  std::vector<double> tau = {.001, .03, .001};
+  auto ekf_filter =
+      builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
 
   /**** OSC setup ****/
   // Cost
@@ -474,6 +478,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_near_impact_input_port());
   builder.Connect(fsm->get_output_port_clock(), osc->get_clock_input_port());
   builder.Connect(state_receiver->get_output_port(0),
+                  ekf_filter->get_input_port());
+  builder.Connect(ekf_filter->get_output_port(),
                   osc->get_robot_output_input_port());
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),

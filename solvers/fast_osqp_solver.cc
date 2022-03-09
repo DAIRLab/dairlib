@@ -424,7 +424,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
 
-  if(false){
+  if (false) {
     lcmt_qp msg;
     msg.n_x = prog.num_vars();
 
@@ -460,7 +460,6 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
     lcm::LCM lcm;
     lcm.publish("QP_LOG", &msg);
   }
-
 
   // Solve problem.
   if (!solution_result) {

@@ -24,7 +24,6 @@
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
-#include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -137,11 +136,6 @@ int DoMain(int argc, char* argv[]) {
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
-  std::vector<double> tau_vfb = {.01, .01, .01};
-  auto pelvis_vel_filter =
-      builder.AddSystem<systems::FloatingBaseVelocityFilter>(
-          plant_w_spr, tau_vfb);
-  builder.Connect(*state_receiver, *pelvis_vel_filter);
 
   // Create command sender.
   auto command_pub =
@@ -166,7 +160,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto simulator_drift =
       builder.AddSystem<SimulatorDrift>(plant_w_spr, drift_mean, drift_cov);
-  builder.Connect(pelvis_vel_filter->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   simulator_drift->get_input_port_state());
 
   // Create human high-level control
@@ -192,7 +186,7 @@ int DoMain(int argc, char* argv[]) {
         gains.vel_max_lateral, gains.target_pos_offset, global_target_position,
         params_of_no_turning);
   }
-  builder.Connect(pelvis_vel_filter->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
   // Create heading traj generator
@@ -363,9 +357,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
-  builder.Connect(pelvis_vel_filter->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   left_toe_angle_traj_gen->get_state_input_port());
-  builder.Connect(pelvis_vel_filter->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
 
   // Create Operational space control

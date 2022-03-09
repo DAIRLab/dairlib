@@ -756,7 +756,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     initial_guess_x_[fsm_state] = result.GetSolution();
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
-    std::cerr << "QP did not solve in time!" << std::endl;
+//    std::cerr << "QP did not solve in time!" << std::endl;
 //    solver_->DisableWarmStart();
     *u_prev_ = VectorXd::Zero(n_u_);
   }

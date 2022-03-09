@@ -54,8 +54,8 @@ void GeomGeomColliderTest() {
   auto geom_A = finger_lower_link_0_geoms[0];
   auto geom_B = finger_lower_link_120_geoms[0];
 
-  GeomGeomCollider collider_A_B(plant, SortedPair(geom_A, geom_B), 2);
-  GeomGeomCollider collider_A_cube(plant, SortedPair(geom_A, cube_geoms[0]), 4);
+  GeomGeomCollider collider_A_B(plant, SortedPair(geom_A, geom_B));
+  GeomGeomCollider collider_A_cube(plant, SortedPair(geom_A, cube_geoms[0]));
 
   auto diagram_context = diagram->CreateDefaultContext();
   auto& context = diagram->GetMutableSubsystemContext(plant,
@@ -82,11 +82,18 @@ void GeomGeomColliderTest() {
 
   plant.SetPositions(&context, q);
 
+  std::cout << "A-cube, standard basis" << std::endl;
   auto [phi_A_cube, J_A_cube] = collider_A_cube.Eval(context);
   std::cout << J_A_cube << std::endl << std::endl;
 
-  auto [phi_A_B, J_A_B] = collider_A_B.Eval(context);
+  std::cout << "A-B, 4-direction polytope" << std::endl;
+  auto [phi_A_B, J_A_B] = collider_A_B.EvalPolytope(context, 4);
   std::cout << J_A_B << std::endl << std::endl;
+
+  std::cout << "A-B, planar" << std::endl;
+  auto [phi_A_B_planar, J_A_B_planar] = collider_A_B.EvalPlanar(context,
+      Eigen::Vector3d(0, 1, 0));
+  std::cout << J_A_B_planar << std::endl << std::endl;
 }
 
 }  // namespace

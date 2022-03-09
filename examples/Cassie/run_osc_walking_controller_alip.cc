@@ -29,6 +29,7 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_scope_system.h"
 
 namespace dairlib {
 
@@ -48,6 +49,7 @@ using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::lcm::LcmScopeSystem;
 using drake::systems::TriggerTypeSet;
 
 using multibody::WorldYawViewFrame;
@@ -85,6 +87,8 @@ DEFINE_bool(is_two_phase, false,
 DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 DEFINE_bool(spring_model, true, "");
+DEFINE_bool(publish_filtered_state, false,
+            "whether to publish the low pass filtered state");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -134,10 +138,17 @@ int DoMain(int argc, char* argv[]) {
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
-  std::vector<double> tau = {.001, .03, .001};
+  std::vector<double> tau = {.01, .01, .01};
   auto pelvis_filt =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant_w_spr, tau);
   builder.Connect(*state_receiver, *pelvis_filt);
+  
+  if (FLAGS_publish_filtered_state) {
+    auto [filtered_state_scope, filtered_state_sender]=
+    LcmScopeSystem::AddToBuilder(&builder, &lcm_local,
+                                 pelvis_filt->get_output_port(),"CASSIE_STATE_FB_FILTERED", 0);
+  }
+
 
   // Create command sender.
   auto command_pub =

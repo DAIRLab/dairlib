@@ -13,6 +13,7 @@ def main():
     standing_gains = dair + "examples/Cassie/osc/osc_standing_gains.yaml"
     walking_gains = dair + "examples/Cassie/osc/osc_walking_gains.yaml"
     alip_walking_gains = dair + "examples/Cassie/osc/alip_osc_walking_gains.yaml"
+    running_gains = dair + "examples/Cassie/osc_run/osc_running_gains.yaml"
 
     if not os.path.isdir(logdir):
         os.mkdir(logdir)
@@ -37,6 +38,8 @@ def main():
     subprocess.run(['cp', walking_gains, 'walking_gains_%s.yaml' % log_num])
     subprocess.run(['cp', alip_walking_gains,
                     'walking_gains_alip_%s.yaml' % log_num])
+    subprocess.run(['cp', running_gains,
+                    'running_gains_%s.yaml' % log_num])
     subprocess.run(['lcm-logger', '-f', 'lcmlog-%s' % log_num])
 
 

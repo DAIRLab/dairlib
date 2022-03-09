@@ -153,24 +153,6 @@ namespace dairlib {
                 constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
             }
 
-            /*
-
-
-            //for finger gaiting
-            VectorXd LinIneq = VectorXd::Zero(k_); LinIneq(2) = 1;
-            prog.AddLinearConstraint(LinIneq.transpose(), 0, 10000, u.at(i));
-
-            LinIneq(2) = 0; LinIneq(3) = 1;
-            prog.AddLinearConstraint(LinIneq.transpose(), 0, 10000, u.at(i));
-
-            if (i > 0) {
-            VectorXd LinIneq2 = VectorXd::Zero(n_); LinIneq2(2) = 1;
-            prog.AddLinearConstraint(LinIneq2.transpose(), 1, 3, x.at(i));
-
-            LinIneq2(2) = 0; LinIneq2(4) = 1;
-            prog.AddLinearConstraint(LinIneq2, 3, 5, x.at(i));
-            }
-            */
 
             for (auto &cost: costs_) {
                 prog_.RemoveCost(cost);

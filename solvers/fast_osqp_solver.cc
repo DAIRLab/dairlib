@@ -424,40 +424,43 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
 
-  lcmt_qp msg;
-  msg.n_x = prog.num_vars();
+  if(false){
+    lcmt_qp msg;
+    msg.n_x = prog.num_vars();
 
-  Eigen::MatrixXd Q(P_sparse);
+    Eigen::MatrixXd Q(P_sparse);
 
-  // Note: Amessage is transposed, becaues Eigen defaults to column major
-  for (int i = 0; i < prog.num_vars(); i++) {
-    msg.Q.push_back(std::vector<double>(Q.col(i).data(),
-                                        Q.col(i).data() + prog.num_vars()));
-  }
-  msg.w = q;
-
-  Eigen::MatrixXd A(A_sparse);
-
-  // std::cout << A.row(68) << std::endl;
-  msg.n_ineq = A.rows();
-  for (int i = 0; i < A.rows(); i++) {
-    std::vector<double> row(A.cols());
-    for (int j = 0; j < A.cols(); j++) {
-      row[j] = A(i, j);
+    // Note: Amessage is transposed, becaues Eigen defaults to column major
+    for (int i = 0; i < prog.num_vars(); i++) {
+      msg.Q.push_back(std::vector<double>(Q.col(i).data(),
+                                          Q.col(i).data() + prog.num_vars()));
     }
-    msg.A_ineq.push_back(row);
+    msg.w = q;
+
+    Eigen::MatrixXd A(A_sparse);
+
+    // std::cout << A.row(68) << std::endl;
+    msg.n_ineq = A.rows();
+    for (int i = 0; i < A.rows(); i++) {
+      std::vector<double> row(A.cols());
+      for (int j = 0; j < A.cols(); j++) {
+        row[j] = A(i, j);
+      }
+      msg.A_ineq.push_back(row);
+    }
+
+    msg.ineq_lb = l;
+    msg.ineq_ub = u;
+    msg.x_lb = std::vector<double>(prog.num_vars(),
+                                   -std::numeric_limits<double>::infinity());
+    msg.x_ub = std::vector<double>(prog.num_vars(),
+                                   std::numeric_limits<double>::infinity());
+
+    msg.n_eq = 0;
+    lcm::LCM lcm;
+    lcm.publish("QP_LOG", &msg);
   }
 
-  msg.ineq_lb = l;
-  msg.ineq_ub = u;
-  msg.x_lb = std::vector<double>(prog.num_vars(),
-                                 -std::numeric_limits<double>::infinity());
-  msg.x_ub = std::vector<double>(prog.num_vars(),
-                                 std::numeric_limits<double>::infinity());
-
-  msg.n_eq = 0;
-  lcm::LCM lcm;
-  lcm.publish("QP_LOG", &msg);
 
   // Solve problem.
   if (!solution_result) {

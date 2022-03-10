@@ -10,9 +10,13 @@ namespace dairlib::multibody {
 struct TerrainConfig {
   int x_length;
   int y_length;
+  int n_freq_components;
   double x_resolution;
   double y_resolution;
-  double n_freq_components;
+  double mu;
+  double stiffness;
+  double dissipation;
+
   std::vector<double> frequency_amplitudes;
   std::vector<double> frequencies;
   std::vector<double> average_normal;
@@ -27,12 +31,21 @@ struct TerrainConfig {
     a->Visit(DRAKE_NVP(y_length));
     a->Visit(DRAKE_NVP(x_resolution));
     a->Visit(DRAKE_NVP(y_resolution));
+    a->Visit(DRAKE_NVP(mu));
+    a->Visit(DRAKE_NVP(stiffness));
+    a->Visit(DRAKE_NVP(dissipation));
     a->Visit(DRAKE_NVP(n_freq_components));
     a->Visit(DRAKE_NVP(frequency_amplitudes));
     a->Visit(DRAKE_NVP(frequencies));
     a->Visit(DRAKE_NVP(average_normal));
+    DRAKE_DEMAND(frequencies.size() == n_freq_components);
+    DRAKE_DEMAND(frequency_amplitudes.size() == n_freq_components);
 
-    freq_amps = Eigen::Map<Eigen::Dynamic, Eigen::
+    freq_amps = Eigen::Map<Eigen::VectorXd>(
+        frequency_amplitudes.data(), n_freq_components);
+    freqs = Eigen::Map<Eigen::VectorXd>(
+        frequencies.data(), n_freq_components);
+    normal = Eigen::Map<Eigen::Vector3d>(average_normal.data());
   }
 };
 
@@ -40,24 +53,17 @@ void writeTriangleMeshToObj(
     const drake::geometry::TriangleSurfaceMesh<double> &mesh,
     std::string filename);
 
-std::string makeRandomHeightMap(int nx, int ny,double x_resolution,
-                                double y_resolution, Eigen::VectorXd freq_scales,
-                                Eigen::Vector3d normal);
+std::string makeRandomHeightMapAsMesh(int nx, int ny, double x_resolution,
+                                      double y_resolution, int n_freq,
+                                      Eigen::VectorXd frequencies,
+                                      Eigen::VectorXd freq_scales,
+                                      Eigen::Vector3d normal);
 
 void addFlatHydroelasticTerrain(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph,
     double mu_static, double mu_kinetic,
     Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1));
-
-std::vector<drake::math::RigidTransformd> GenerateRandomPoses(
-    int n, double clearing_radius, Eigen::Vector3d rpy_bounds);
-std::vector<drake::geometry::Box> GenerateRandomBoxes(
-    int n, double s_min, double s_max);
-std::vector<drake::geometry::Ellipsoid> GenerateRandomEllipsoids(
-    int n, double s_min, double s_max);
-std::vector<drake::multibody::CoulombFriction<double>> GenerateRandomFrictions(
-    int n, double mu_min, double mu_max);
 
 void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
                 drake::geometry::SceneGraph<double> *scene_graph,

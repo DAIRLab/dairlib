@@ -24,6 +24,7 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
+#include "drake/common/yaml/yaml_io.h"
 
 
 namespace dairlib {
@@ -86,7 +87,8 @@ int do_main(int argc, char* argv[]) {
 
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
-  multibody::TerrainConfig terrain_config;
+  auto terrain_config = drake::yaml::LoadYamlFile<multibody::TerrainConfig>(
+      FindResourceOrThrow("examples/Cassie/terrains/default_random_terrain_config.yaml"));
   if (FLAGS_floating_base) {
     if (FLAGS_generate_terrain) {
       plant.set_contact_model(drake::multibody::ContactModel::kHydroelastic);
@@ -178,6 +180,7 @@ int do_main(int argc, char* argv[]) {
 
   if (FLAGS_visualize) {
     DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+    DrakeVisualizer<double>::DispatchLoadMessage(scene_graph, lcm);
   }
 
   auto diagram = builder.Build();

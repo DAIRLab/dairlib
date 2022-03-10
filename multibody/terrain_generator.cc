@@ -1,9 +1,12 @@
 #include "multibody/terrain_generator.h"
 #include "drake/geometry/proximity/triangle_surface_mesh.h"
 #include "common/find_resource.h"
+#include "drake/geometry/geometry_properties.h"
+#include "drake/geometry/proximity_properties.h"
 #include <random>
 #include <ctime>
 #include <fstream>
+#include <filesystem>
 
 using drake::VectorX;
 using drake::geometry::HalfSpace;
@@ -45,49 +48,65 @@ void writeTriangleMeshToObj(const TriangleSurfaceMesh<double> &mesh,
   ofs.close();
 }
 
-std::string makeRandomHeightMap(int nx, int ny,double x_resolution,
-                                double y_resolution, Vector4d freq_scales,
-                                Vector3d normal) {
+std::string makeRandomHeightMapAsMesh(int nx, int ny, double x_resolution,
+                                      double y_resolution, int n_freq,
+                                      Eigen::VectorXd frequencies,
+                                      Eigen::VectorXd freq_scales,
+                                      Eigen::Vector3d normal) {
   srand((unsigned int) time(0));
-  Vector4d x_amplitudes = (Vector4d::Random().array() * freq_scales.array()).matrix();
-  Vector4d y_amplitudes = (Vector4d::Random().array() * freq_scales.array()).matrix();
+
+  DRAKE_DEMAND(frequencies.size() == n_freq);
+  DRAKE_DEMAND(freq_scales.size() == n_freq);
 
   VectorXd xvals = VectorXd::LinSpaced(nx,-nx*x_resolution, nx*x_resolution);
   VectorXd yvals = VectorXd::LinSpaced(ny,-ny*y_resolution, ny*y_resolution);
   MatrixXd height = MatrixXd::Zero(ny, nx);
 
-  double omega_x = 2*M_2_PI / (nx * x_resolution);
-  double omega_y = 2*M_2_PI / (ny * y_resolution);
-
-  for (int i = 0; i < x_amplitudes.size(); i++) {
-    MatrixXd freq = y_amplitudes(i) * Eigen::sin((i+1)*omega_y*yvals.array()).matrix() *
-        (x_amplitudes(i) * Eigen::sin((i+1)*omega_x*xvals.array()).matrix().transpose());
-    height += freq;
+  for (int i = 0; i < n_freq; i++) {
+    double alpha_x = x_resolution / (x_resolution + 0.16/frequencies(i));
+    double alpha_y = y_resolution / (y_resolution + 0.16/frequencies(i));
+    MatrixXd freq =
+        freq_scales(i) * MatrixXd ::Random(ny, nx);
+    MatrixXd freq_filtered = MatrixXd::Zero(ny, nx);
+    for (int j = 0; j < ny; j++) {
+      Eigen::RowVectorXd filt_row = Eigen::RowVectorXd::Zero(nx);
+      filt_row(0) = freq(j, 0);
+      for (int k = 1; k < nx; k++) {
+        filt_row(k) = alpha_x * freq(j, k) + (1-alpha_x) * filt_row(k-1);
+      }
+      freq_filtered.row(j) = (j == 0) ? filt_row :
+          alpha_y * filt_row + (1-alpha_y) * freq_filtered.row(j-1);
+    }
+    height += freq_filtered;
   }
   height.rowwise() += (normal(0) / normal(2)) * xvals.transpose();
   height.colwise() += (normal(1) / normal(2)) * yvals;
-
+  height -= MatrixXd::Constant(ny, nx, height((ny+1)/2, (nx+1)/2));
   std::vector<Vector3d> v;
   std::vector<SurfaceTriangle> t;
   for (int i = 0; i < nx; i++) {
     for(int j = 0; j < ny; j++) {
-      v.emplace_back(Vector3d(xvals(i), yvals(j), height(j,i)));
+      v.push_back(Vector3d(xvals(i), yvals(j), height(j,i)));
     }
   }
-  for (int i = 0; i < nx-1; i++) {
-    for (int j = 0; j < ny-1; j++) {
+  for (int j = 0; j < nx-1; j++) {
+    for (int i = 0; i < ny-1; i++) {
       int ul = j*ny + i;
       int bl = ul+ny;
       int ur = ul+1;
       int br = bl+1;
-      t.emplace_back(SurfaceTriangle(ul, bl, ur));
-      t.emplace_back(SurfaceTriangle(bl, br, ur));
+      t.push_back(SurfaceTriangle(ul, bl, ur));
+      t.push_back(SurfaceTriangle(bl, br, ur));
     }
   }
 
   TriangleSurfaceMesh<double>mesh(std::move(t), std::move(v));
 //  mesh.ReverseFaceWinding();
-  std::string filename = "examples/Cassie/terrains/tmp/terrain_mesh.obj";
+
+  std::filesystem::remove_all("examples/Cassie/terrains/tmp");
+  std::filesystem::create_directory("examples/Cassie/terrains/tmp");
+  std::string filename = "examples/Cassie/terrains/tmp/terrain_mesh" +
+      std::to_string(time(0)) + ".obj";
   writeTriangleMeshToObj(mesh, filename);
   return filename;
 }
@@ -129,16 +148,18 @@ void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
     plant->RegisterAsSourceForSceneGraph(scene_graph);
   }
 
-  auto mesh_file = makeRandomHeightMap(terrain_config.xbound,
-                                            terrain_config.ybound,
-                                            terrain_config.mesh_res,
-                                            terrain_config.mesh_res,
-                                            terrain_config.freq_scales,
-                                            terrain_config.normal);
+  auto mesh_file = makeRandomHeightMapAsMesh(terrain_config.x_length,
+                                             terrain_config.y_length,
+                                             terrain_config.x_resolution,
+                                             terrain_config.y_resolution,
+                                             terrain_config.n_freq_components,
+                                             terrain_config.freqs,
+                                             terrain_config.freq_amps,
+                                             terrain_config.normal);
 
   ProximityProperties obstacle_props;
   AddRigidHydroelasticProperties(0.02, &obstacle_props);
-  CoulombFriction<double> friction(terrain_config.mu_flat, terrain_config.mu_flat);
+  CoulombFriction<double> friction(terrain_config.mu, terrain_config.mu);
   AddContactMaterial(1.5, 9100, friction, &obstacle_props);
 
   drake::geometry::Mesh mesh(FindResourceOrThrow(mesh_file));
@@ -150,67 +171,5 @@ void addRandomTerrain(drake::multibody::MultibodyPlant<double> *plant,
         plant->world_body(),  RigidTransformd::Identity(),
         mesh, "ground_mesh",
         Vector4d(1, 1, 1, 1.0));
-
 }
-
-std::vector<RigidTransformd> GenerateRandomPoses(
-    int n, double clearing_radius, Vector3d rpy_bounds) {
-  DRAKE_ASSERT(n >= 0);
-  std::uniform_real_distribution<double> d(-1.0, 1.0);
-  std::default_random_engine r(time(NULL));
-
-  std::vector<RigidTransformd> poses;
-  for (int i = 0 ; i < n; i++) {
-    drake::math::RollPitchYawd rpy(rpy_bounds(0)*d(r),
-                                   rpy_bounds(1)*d(r),
-                                   rpy_bounds(2)*d(r));
-
-    Vector3d trans(10*d(r), d(r), 0);
-    while (trans.norm() < clearing_radius) {
-      trans*=2.0;
-    }
-    poses.emplace_back(RigidTransformd(rpy, trans));
-  }
-  return poses;
-}
-
-std::vector<Box> GenerateRandomBoxes(int n, double s_min, double s_max) {
-  DRAKE_ASSERT(n >= 0);
-  std::uniform_real_distribution<double> d(s_min, s_max);
-  std::default_random_engine r(time(NULL));;
-
-  std::vector<Box> boxes;
-  for (int i = 0; i < n; i++) {
-    double s = d(r);
-    boxes.emplace_back(Box(s, s, s));
-  }
-  return boxes;
-}
-
-std::vector<Ellipsoid> GenerateRandomEllipsoids(int n, double s_min, double s_max) {
-  DRAKE_ASSERT(n >= 0);
-  std::uniform_real_distribution<double> d(s_min, s_max);
-  std::default_random_engine r(time(NULL));;
-
-  std::vector<Ellipsoid> ellip;
-  for (int i = 0; i < n; i++) {
-    ellip.emplace_back(Ellipsoid(d(r), d(r), d(r)));
-  }
-  return ellip;
-}
-
-std::vector<CoulombFriction<double>> GenerateRandomFrictions(
-    int n, double mu_min, double mu_max) {
-  DRAKE_ASSERT(n >= 0);
-  std::uniform_real_distribution<double> d(mu_min, mu_max);
-  std::default_random_engine r(time(NULL));;
-
-  std::vector<CoulombFriction<double>> friction;
-  for (int i = 0; i < n; i++) {
-    double s = d(r);
-    friction.emplace_back(CoulombFriction<double>(s, s));
-  }
-  return friction;
-}
-
 }

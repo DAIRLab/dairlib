@@ -138,15 +138,17 @@ int DoMain(int argc, char* argv[]) {
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
-  std::vector<double> tau = {.01, .01, .01};
   auto pelvis_filt =
-      builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant_w_spr, tau);
+      builder.AddSystem<systems::FloatingBaseVelocityFilter>(
+          plant_w_spr, gains.pelvis_xyz_vel_filter_tau);
   builder.Connect(*state_receiver, *pelvis_filt);
 
   if (FLAGS_publish_filtered_state) {
     auto [filtered_state_scope, filtered_state_sender]=
-    LcmScopeSystem::AddToBuilder(&builder, &lcm_local,
-                                 pelvis_filt->get_output_port(),"CASSIE_STATE_FB_FILTERED", 0);
+    // AddToBuilder will add the systems to the diagram and connect their ports
+    LcmScopeSystem::AddToBuilder(
+        &builder, &lcm_local,pelvis_filt->get_output_port(),
+        "CASSIE_STATE_FB_FILTERED", 0);
   }
 
   // Create command sender.

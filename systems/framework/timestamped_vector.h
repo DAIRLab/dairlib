@@ -27,7 +27,7 @@ public:
       : BasicVector<T>(data_size + 1), timestep_index_(data_size) {}
 
   /// Constructs a TimestampedVector with the specified @p data.
-  explicit TimestampedVector(const VectorX<T>& data) 
+  explicit TimestampedVector(const VectorX<T>& data)
       : TimestampedVector(data.size()) {
     VectorX<T> data_timestamped = VectorX<T>(data.size() + 1);
     data_timestamped.head(data.size()) = data;

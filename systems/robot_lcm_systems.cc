@@ -250,7 +250,8 @@ void RobotCommandSender::OutputCommand(
     }
     else{
       input_msg->efforts[i] = command->GetAtIndex(i);
-    }  }
+    }
+  }
 }
 
 SubvectorPassThrough<double>* AddActuatorAndStateLcm(

@@ -29,14 +29,12 @@ class InputSupervisorTest : public ::testing::Test {
     context_ = supervisor_->CreateDefaultContext();
     status_output_ = std::make_unique<dairlib::lcmt_input_supervisor_status>();
     cassie_out_ = std::make_unique<dairlib::lcmt_cassie_out>();
-    motor_output_ =
-        std::make_unique<TimestampedVector<double>>(plant_.num_actuators());
     command_input_ =
         std::make_unique<TimestampedVector<double>>(plant_.num_actuators());
     state_input_ = std::make_unique<OutputVector<double>>(
         plant_.num_positions(), plant_.num_velocities(),
         plant_.num_actuators());
-
+    output_ = supervisor_->AllocateOutput();
     state_input_port_ = supervisor_->get_input_port_state().get_index();
   }
 
@@ -44,10 +42,11 @@ class InputSupervisorTest : public ::testing::Test {
   drake::multibody::MultibodyPlant<double> plant_;
   Eigen::VectorXd input_limits_;
   const int min_consecutive_failures = 5;
+  std::unique_ptr<drake::systems::SystemOutput<double>> output_;
   std::unique_ptr<InputSupervisor> supervisor_;
   std::unique_ptr<dairlib::lcmt_input_supervisor_status> status_output_;
   std::unique_ptr<dairlib::lcmt_cassie_out> cassie_out_;
-  std::unique_ptr<TimestampedVector<double>> motor_output_;
+  //  std::unique_ptr<TimestampedVector<double>> motor_output_;
   std::unique_ptr<TimestampedVector<double>> command_input_;
   std::unique_ptr<OutputVector<double>> state_input_;
   std::unique_ptr<drake::systems::Context<double>> context_;
@@ -78,11 +77,13 @@ TEST_F(InputSupervisorTest, BlendEffortsTest) {
       context_.get(), (drake::AbstractValue&)*controller_failure);
   supervisor_->get_input_port_command().FixValue(context_.get(),
                                                  *command_input_);
-  supervisor_->UpdateErrorFlag(*context_,
-                               &context_->get_mutable_discrete_state());
-  supervisor_->SetMotorTorques(*context_, motor_output_.get());
 
-  VectorXd output_from_supervisor = motor_output_->get_value();
+  supervisor_->CalcOutput(*context_, output_.get());
+  const TimestampedVector<double>* motor_output =
+      dynamic_cast<const TimestampedVector<double>*>(
+          output_->get_vector_data(0));
+
+  VectorXd output_from_supervisor = motor_output->get_data();
   double alpha = (timestamp - blend_start_time) / blend_duration;
 
   EXPECT_EQ(output_from_supervisor, alpha * desired_input);

@@ -12,6 +12,7 @@
 #include "systems/controllers/geared_motor.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
@@ -151,16 +152,10 @@ int do_main(int argc, char* argv[]) {
 
   // connect leaf systems
   builder.Connect(*input_sub, *input_receiver);
-  bool motor_model = true;
-  if (motor_model) {
-    builder.Connect(input_receiver->get_output_port(),
-                    cassie_motor->get_input_port_command());
-    builder.Connect(cassie_motor->get_output_port(),
-                    passthrough->get_input_port());
-  } else {
-    builder.Connect(input_receiver->get_output_port(),
-                    passthrough->get_input_port());
-  }
+  builder.Connect(input_receiver->get_output_port(),
+                  cassie_motor->get_input_port_command());
+  builder.Connect(cassie_motor->get_output_port(),
+                  passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(),
                   discrete_time_delay->get_input_port());
   builder.Connect(discrete_time_delay->get_output_port(),
@@ -187,6 +182,8 @@ int do_main(int argc, char* argv[]) {
                   sensor_pub->get_input_port());
 
   auto diagram = builder.Build();
+  diagram->set_name(("multibody_sim"));
+  DrawAndSaveDiagramGraph(*diagram);
 
   // Create a context for this system:
   std::unique_ptr<Context<double>> diagram_context =
@@ -220,6 +217,10 @@ int do_main(int argc, char* argv[]) {
   }
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
+  VectorXd x = plant.GetPositionsAndVelocities(plant_context);
+  const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
+                                         Eigen::DontAlignCols, ", ", "\n");
+  std::cout << "x_init: " << x.transpose().format(CSVFormat) << std::endl;
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

@@ -1,0 +1,63 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+cc_library(
+    name = "osc_running_controller_diagram",
+    srcs = ["osc_running_controller_diagram.cc"],
+    hdrs = ["osc_running_controller_diagram.h"],
+    deps = [
+        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc_run:osc_run",
+        "//examples/Cassie/osc:osc",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/filters:floating_base_velocity_filter",
+        "//systems/controllers/osc:osc_tracking_datas",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "cassie_sim_diagram",
+    srcs = ["cassie_sim_diagram.cc"],
+    hdrs = ["cassie_sim_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_encoder",
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:geared_motor",
+        "//systems/primitives",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

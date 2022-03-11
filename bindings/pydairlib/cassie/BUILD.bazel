@@ -11,6 +11,34 @@ load(
     "pybind_py_library",
 )
 
+py_library(
+    name = "cassie_gym",
+    srcs = ["cassie_gym.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/systems:systems",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems:primitives_py",
+    ],
+)
+
+py_binary(
+    name = "cassie_gym_test",
+    srcs = ["cassie_gym_test.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_gym",
+        "//bindings/pydairlib/cassie:cassie",
+    ],
+)
+
+py_library(
+    name = "cassie_traj",
+    srcs = ["cassie_traj.py"],
+    deps = [
+    ],
+)
+
 pybind_py_library(
     name = "cassie_utils_py",
     cc_deps = [
@@ -22,6 +50,36 @@ pybind_py_library(
     py_deps = [
         "@drake//bindings/pydrake",
         "//bindings/pydairlib/multibody:kinematic_py",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+#pybind_py_library(
+#    name = "input_supervisor_py",
+#    cc_deps = [
+#        "//examples/Cassie:input_supervisor",
+#        "@drake//:drake_shared_library",
+#    ],
+#    cc_so_name = "input_supervisor",
+#    cc_srcs = ["input_supervisor_py.cc"],
+#    py_deps = [
+#        "@drake//bindings/pydrake",
+#        ":module_py",
+#    ],
+#    py_imports = ["."],
+#)
+
+pybind_py_library(
+    name = "controllers_py",
+    cc_deps = [
+        "@drake//:drake_shared_library",
+        "//examples/Cassie/diagrams:osc_running_controller_diagram",
+    ],
+    cc_so_name = "controllers",
+    cc_srcs = ["controllers_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
         ":module_py",
     ],
     py_imports = ["."],
@@ -44,11 +102,12 @@ py_library(
 
 PY_LIBRARIES = [
     ":cassie_utils_py",
+    ":controllers_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "cassie_utils",
+    name = "cassie",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

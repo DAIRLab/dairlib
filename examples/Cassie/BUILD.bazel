@@ -212,6 +212,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers:geared_motor",
         "//systems/primitives",
+        "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

@@ -1,3 +1,5 @@
+#include "osc_running_controller_diagram.h"
+
 #include <fstream>
 
 #include <drake/common/yaml/yaml_io.h>
@@ -11,8 +13,6 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
-#include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
-#include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_run/foot_traj_generator.h"
 #include "examples/Cassie/osc_run/osc_running_gains.h"
 #include "examples/Cassie/osc_run/pelvis_pitch_traj_generator.h"
@@ -31,6 +31,7 @@
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "yaml-cpp/yaml.h"
@@ -65,7 +66,6 @@ using drake::trajectories::PiecewisePolynomial;
 using examples::osc::PelvisPitchTrajGenerator;
 using examples::osc::PelvisRollTrajGenerator;
 using examples::osc::PelvisTransTrajGenerator;
-using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_run::FootTrajGenerator;
 using multibody::FixedJointEvaluator;
 using multibody::WorldYawViewFrame;
@@ -75,23 +75,10 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 namespace examples {
+namespace controllers {
 
-DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
-              "The name of the channel which receives state");
-DEFINE_string(channel_u, "CASSIE_INPUT",
-              "The name of the channel which publishes command");
-DEFINE_string(gains_filename, "examples/Cassie/osc_run/osc_running_gains.yaml",
-              "Filepath containing gains");
-DEFINE_string(osqp_settings,
-              "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
-              "Filepath containing qp settings");
-DEFINE_string(
-    channel_cassie_out, "CASSIE_OUTPUT_ECHO",
-    "The name of the channel to receive the cassie out structure from.");
-
-int DoMain(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-
+OSCRunningControllerDiagram::OSCRunningControllerDiagram(
+    const string& osc_gains_filename, const string& osqp_settings_filename) {
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
@@ -135,12 +122,12 @@ int DoMain(int argc, char* argv[]) {
   yaml_options.allow_yaml_with_no_cpp = true;
 
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
+      FindResourceOrThrow(osc_gains_filename), {}, {}, yaml_options);
   OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(
-      FindResourceOrThrow(FLAGS_gains_filename));
+      FindResourceOrThrow(osc_gains_filename));
   solvers::OSQPSettingsYaml osqp_settings =
       drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-          FindResourceOrThrow(FLAGS_osqp_settings));
+          FindResourceOrThrow(osqp_settings_filename));
 
   /**** FSM and contact mode configuration ****/
   int left_stance_state = 0;
@@ -172,21 +159,14 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-  auto command_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), true, false);
-  auto osc_debug_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG_RUNNING", &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto failure_aggregator =
-      builder.AddSystem<systems::ControllerFailureAggregator>(FLAGS_channel_u,
-                                                              1);
-  auto controller_failure_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
-          "CONTROLLER_ERROR", &lcm, TriggerTypeSet({TriggerType::kForced})));
+      builder.AddSystem<systems::ControllerFailureAggregator>(
+          control_channel_name_, 1);
+  auto passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
+      osc->get_output_port(0).size(), 0,
+      plant.get_actuation_input_port().size());
   std::vector<double> tau = {.05, .05, .01};
   auto ekf_filter =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
@@ -260,15 +240,13 @@ int DoMain(int argc, char* argv[]) {
 
   std::cout << "Creating tracking data. " << std::endl;
 
-  auto cassie_out_receiver =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
-          FLAGS_channel_cassie_out, &lcm));
+  //  auto cassie_out_receiver =
+  //      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+  //          FLAGS_channel_cassie_out, &lcm));
   cassie::osc::HighLevelCommand* high_level_command;
   high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant, plant_context.get(), osc_gains.vel_scale_rot,
       osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
-  builder.Connect(cassie_out_receiver->get_output_port(),
-                  high_level_command->get_cassie_out_input_port());
 
   auto default_traj = PiecewisePolynomial<double>(Vector3d{0, 0, 0});
   auto pelvis_trans_traj_generator =
@@ -524,34 +502,22 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
+  builder.Connect(osc->get_osc_output_port(),
+                  passthrough->get_input_port());
 
   // Publisher connections
-  builder.Connect(osc->get_osc_output_port(),
-                  command_sender->get_input_port(0));
-  builder.Connect(command_sender->get_output_port(0),
-                  command_pub->get_input_port());
-  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
-  builder.Connect(osc->get_failure_output_port(),
-                  failure_aggregator->get_input_port(0));
-  builder.Connect(failure_aggregator->get_status_output_port(),
-                  controller_failure_pub->get_input_port());
+  builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
+  builder.ExportInput(high_level_command->get_cassie_out_input_port(),
+                      "lcmt_cassie_out");
+  builder.ExportOutput(passthrough->get_output_port());
+  builder.ExportOutput(failure_aggregator->get_status_output_port());
 
   // Run lcm-driven simulation
-  // Create the diagram
-  auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc_running_controller"));
-
-  // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram());
-  loop.Simulate();
-
-  return 0;
+  // Create the diagram as itself
+  builder.BuildInto(this);
+  //  owned_diagram->set_name(("osc_running_controller"));
 }
+
+}  // namespace controllers
 }  // namespace examples
 }  // namespace dairlib
-
-int main(int argc, char* argv[]) {
-  return dairlib::examples::DoMain(argc, argv);
-}

@@ -29,12 +29,6 @@ class TrifingerDemoController(LeafSystem):
   def CalcControl(self, context, output):
     q = self.EvalVectorInput(context, 0).GetPositions()
     v = self.EvalVectorInput(context, 0).GetVelocities()
-    # q and v are [fingers; cube]
-    # cube position is [quat; xyz] and velocity [ang_vel; xyz]
-    # q = x[0:self.plant.num_positions()]
-    # v = x[self.plant.num_positions():self.plant.num_positions() +
-    #                                  self.plant.num_velocities()]
-    # u = -.03*np.ones(self.plant.num_actuators())
 
     # use a simple PD controller with constant setpoint
     kp = 8

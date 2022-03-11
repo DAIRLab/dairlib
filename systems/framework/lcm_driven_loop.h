@@ -166,7 +166,7 @@ class LcmDrivenLoop {
     diagram_context.SetTime(t0);
 
     // "Simulator" time
-    double time = t0;  // initialize the current time with 0
+    double time = 0;  // initialize the current time with 0
     // Variable needed for the driven loop
     std::string previous_active_channel_name = active_channel_;
 

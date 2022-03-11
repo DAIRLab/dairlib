@@ -47,6 +47,7 @@ pybind_py_library(
     cc_deps = [
         "//lcmtypes:lcmt_robot",
         "//systems/framework:lcm_driven_loop",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "framework",

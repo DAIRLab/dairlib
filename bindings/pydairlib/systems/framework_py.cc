@@ -4,6 +4,8 @@
 #include <pybind11/stl.h>
 
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/framework/output_vector.h"
+#include "systems/framework/timestamped_vector.h"
 
 #include "dairlib/lcmt_robot_output.hpp"
 
@@ -26,6 +28,29 @@ py::class_<LcmOutputDrivenLoop>(m, "LcmOutputDrivenLoop")
     .def("Simulate", &LcmOutputDrivenLoop::Simulate,
          py::arg("end_time") = std::numeric_limits<double>::infinity());
 
+py::class_<systems::TimestampedVector<double>,
+           drake::systems::BasicVector<double>>(m, "TimestampedVector")
+    .def(py::init<int>(), py::arg("data_size"))
+    .def("set_timestamp", &systems::TimestampedVector<double>::set_timestamp,
+         py::arg("timestamp"))
+    .def("get_timestamp", &systems::TimestampedVector<double>::get_timestamp)
+    .def("get_data", &systems::TimestampedVector<double>::get_data)
+    .def("SetDataVector", &systems::TimestampedVector<double>::SetDataVector,
+         py::arg("value"));
+
+py::class_<systems::OutputVector<double>,
+           drake::systems::BasicVector<double>>(m, "OutputVector")
+    .def(py::init<int,int,int>(), py::arg("num_positions"),
+         py::arg("num_velocities"), py::arg("num_efforts"))
+    .def("SetPositions", &systems::OutputVector<double>::SetPositions,
+         py::arg("positions"))
+    .def("SetVelocities", &systems::OutputVector<double>::SetVelocities,
+         py::arg("velocities"))
+    .def("SetState", &systems::OutputVector<double>::SetState,
+         py::arg("state"))
+    .def("GetPositions", &systems::OutputVector<double>::GetPositions)
+    .def("GetVelocities", &systems::OutputVector<double>::GetVelocities)
+    .def("GetState", &systems::OutputVector<double>::GetState);
 }
 
 }  // namespace pydairlib

@@ -15,7 +15,6 @@
 #include "drake/systems/lcm/serializer.h"
 
 namespace dairlib {
-namespace systems {
 
 /// LcmDrivenLoop runs the simulation of a diagram (the whole system) of which
 /// the update is triggered by the incoming lcm messages.
@@ -55,9 +54,9 @@ namespace systems {
 // to both single and multi inputs.
 template <typename InputMessageType,
           typename SwitchMessageType = dairlib::lcmt_controller_switch>
-class LcmDrivenLoop {
+class CassieLcmDrivenLoop {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(LcmDrivenLoop)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieLcmDrivenLoop)
 
   /// Constructor for single-input LcmDrivenLoop
   ///     @param drake_lcm DrakeLcm
@@ -66,13 +65,13 @@ class LcmDrivenLoop {
   ///     incoming lcm message
   ///     @param input_channel The name of the input channel
   ///     @param is_forced_publish A flag which enables publishing via diagram.
-  LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                std::unique_ptr<drake::systems::Diagram<double>> diagram,
-                const drake::systems::LeafSystem<double>* lcm_parser,
-                const std::string& input_channel, bool is_forced_publish)
-      : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
-                      std::vector<std::string>(1, input_channel), input_channel,
-                      "", is_forced_publish){};
+  CassieLcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
+                      std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                      const drake::systems::LeafSystem<double>* lcm_parser,
+                      const std::string& input_channel, bool is_forced_publish)
+      : CassieLcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
+                            std::vector<std::string>(1, input_channel),
+                            input_channel, "", is_forced_publish){};
 
   /// Constructor for multi-input LcmDrivenLoop
   ///     @param drake_lcm DrakeLcm
@@ -83,13 +82,13 @@ class LcmDrivenLoop {
   ///     @param active_channel The name of the initial active input channel
   ///     @param switch_channel The name of the switch channel
   ///     @param is_forced_publish A flag which enables publishing via diagram.
-  LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                std::unique_ptr<drake::systems::Diagram<double>> diagram,
-                const drake::systems::LeafSystem<double>* lcm_parser,
-                std::vector<std::string> input_channels,
-                const std::string& active_channel,
-                const std::string& switch_channel, bool is_forced_publish,
-                const std::string& backup_drive_channel = "")
+  CassieLcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
+                      std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                      const drake::systems::LeafSystem<double>* lcm_parser,
+                      std::vector<std::string> input_channels,
+                      const std::string& active_channel,
+                      const std::string& switch_channel, bool is_forced_publish,
+                      const std::string& backup_drive_channel = "")
       : drake_lcm_(drake_lcm),
         lcm_parser_(lcm_parser),
         is_forced_publish_(is_forced_publish) {
@@ -132,6 +131,9 @@ class LcmDrivenLoop {
     if (!backup_drive_channel.empty()) {
       state_sub_ = std::make_unique<drake::lcm::Subscriber<lcmt_robot_output>>(
           drake_lcm_, backup_drive_channel);
+      failure_sub_ =
+          std::make_unique<drake::lcm::Subscriber<lcmt_controller_failure>>(
+              drake_lcm_, "CONTROLLER_ERROR");
     }
   };
 
@@ -141,12 +143,12 @@ class LcmDrivenLoop {
   ///     @param input_channel The name of the input channel
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   /// The use case is that the user only need the time from lcm message.
-  LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                std::unique_ptr<drake::systems::Diagram<double>> diagram,
-                const std::string& input_channel, bool is_forced_publish)
-      : LcmDrivenLoop(drake_lcm, std::move(diagram), nullptr,
-                      std::vector<std::string>(1, input_channel), input_channel,
-                      "", is_forced_publish){};
+  CassieLcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
+                      std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                      const std::string& input_channel, bool is_forced_publish)
+      : CassieLcmDrivenLoop(drake_lcm, std::move(diagram), nullptr,
+                            std::vector<std::string>(1, input_channel),
+                            input_channel, "", is_forced_publish){};
 
   // Getters for diagram and its context
   drake::systems::Diagram<double>* get_diagram() { return diagram_ptr_; }
@@ -218,9 +220,18 @@ class LcmDrivenLoop {
             is_new_state_message = too_long_between_input_messages_;
           }
         }
+        if (failure_sub_ != nullptr) {
+          if (failure_sub_->count() > 0) {
+            if (failure_sub_->message().controller_channel ==
+                    "GLOBAL_CHANNEL" &&
+                failure_sub_->message().error_code != 0) {
+              too_long_between_input_messages_ = true;
+            }
+          }
+        }
 
         return is_new_input_message || is_new_switch_message ||
-            is_new_state_message;
+               is_new_state_message;
       });
 
       // Update the diagram context when there is new input message
@@ -318,11 +329,11 @@ class LcmDrivenLoop {
   std::map<std::string, drake::lcm::Subscriber<InputMessageType>>
       name_to_input_sub_map_;
   std::unique_ptr<drake::lcm::Subscriber<lcmt_robot_output>> state_sub_;
+  std::unique_ptr<drake::lcm::Subscriber<lcmt_controller_failure>> failure_sub_;
 
   bool is_forced_publish_;
   bool too_long_between_input_messages_ = false;
   double last_input_msg_time_;
 };
 
-}  // namespace systems
 }  // namespace dairlib

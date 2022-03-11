@@ -254,7 +254,7 @@ void RobotCommandSender::OutputCommand(
   }
 }
 
-SubvectorPassThrough<double>* AddActuatorAndStateLcm(
+SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm,

@@ -66,7 +66,7 @@ builder.Connect(state_receiver.get_output_port(0), controller.get_input_port(0))
 control_sender = builder.AddSystem(RobotCommandSender(plant))
 builder.Connect(controller.get_output_port(), control_sender.get_input_port(0))
 
-control_publisher = builder.AddSystem(LcmPublisherSystem.MakeWithTriggers(
+control_publisher = builder.AddSystem(LcmPublisherSystem.Make(
     channel="TRIFINGER_INPUT", lcm_type=lcmt_robot_input, lcm=lcm,
     publish_triggers={TriggerType.kForced},
     publish_period=0.0, use_cpp_serializer=True))

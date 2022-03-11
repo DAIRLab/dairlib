@@ -100,7 +100,7 @@ int do_main(int argc, char* argv[]) {
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
-  auto passthrough = systems::AddActuatorAndStateLcm(
+  auto passthrough = systems::AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, FLAGS_channel_u, "CASSIE_STATE_SIMULATION",
       FLAGS_publish_rate, FLAGS_publish_efforts, FLAGS_actuator_delay);
 

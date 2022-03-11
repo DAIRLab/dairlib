@@ -1,7 +1,7 @@
 from pydrake.all import *
 
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
-from pydairlib.systems import AddActuatorAndStateLcm
+from pydairlib.systems import AddActuationRecieverAndStateSenderLcm
 import pydairlib.common
 
 # Load the URDF and the cube
@@ -31,12 +31,10 @@ drake_lcm = DrakeLcm()
 lcm = builder.AddSystem(LcmInterfaceSystem(drake_lcm));
 
 
-passthrough = AddActuatorAndStateLcm(builder=builder, plant=plant, lcm=lcm,
-                                     actuator_channel="TRIFINGER_INPUT",
-                                     state_channel="TRIFINGER_OUTPUT",
-                                     publish_rate=1/output_dt,
-                                     publish_efforts=True,
-                                     actuator_delay=0.0)
+passthrough = AddActuationRecieverAndStateSenderLcm(
+    builder=builder, plant=plant, lcm=lcm, actuator_channel="TRIFINGER_INPUT",
+    state_channel="TRIFINGER_OUTPUT", publish_rate=1/output_dt,
+    publish_efforts=True, actuator_delay=0.0)
 # Constuct the simulator and visualizer
 DrakeVisualizer.AddToBuilder(builder=builder, scene_graph=scene_graph)
 
@@ -60,8 +58,6 @@ simulator = Simulator(diagram)
 
 simulator.set_publish_every_time_step(False);
 simulator.set_publish_at_initialization(False);
-
-simulator.Initialize()
 
 # Change the real-time rate to above 1 to simulate faster
 simulator.set_target_realtime_rate(1)
@@ -89,6 +85,7 @@ q[q_map['base_y']] = 0
 q[q_map['base_z']] = .05
 plant.SetPositions(plant_context, q)
 
+simulator.Initialize()
 # Simulate for 10 seconds
 simulator.AdvanceTo(10)
 

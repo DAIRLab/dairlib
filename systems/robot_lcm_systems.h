@@ -118,7 +118,7 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 /// Adds LCM 
 ///
 ///
-SubvectorPassThrough<double>* AddActuatorAndStateLcm(
+SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm,

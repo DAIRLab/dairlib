@@ -26,6 +26,15 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
   py::class_<systems::RobotOutputSender, drake::systems::LeafSystem<double>>(
       m, "RobotOutputSender")
       .def(py::init<const MultibodyPlant<double>&, bool>());
+  py::class_<systems::RobotCommandSender, drake::systems::LeafSystem<double>>(
+      m, "RobotCommandSender")
+      .def(py::init<const MultibodyPlant<double>&>());
+  m.def("AddActuatorAndStateLcm",
+        &dairlib::systems::AddActuatorAndStateLcm, py::arg("builder"),
+        py::arg("plant"), py::arg("lcm"), py::arg("actuator_channel"),
+        py::arg("state_channel"), py::arg("publish_rate"),
+        py::arg("publish_efforts"), py::arg("actuator_delay"));
+
 }
 
 }  // namespace pydairlib

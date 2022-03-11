@@ -8,9 +8,11 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
+#include "systems/primitives/subvector_pass_through.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -111,6 +113,20 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   std::vector<std::string> ordered_actuator_names_;
   std::map<std::string, int> actuatorIndexMap_;
 };
+
+
+/// Adds LCM 
+///
+///
+SubvectorPassThrough<double>* AddActuatorAndStateLcm(
+    drake::systems::DiagramBuilder<double>* builder,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::lcm::LcmInterfaceSystem* lcm,
+    std::string actuator_channel,
+    std::string state_channel,
+    double publish_rate,
+    bool publish_efforts = true,
+    double actuator_delay = 0);
 
 }  // namespace systems
 }  // namespace dairlib

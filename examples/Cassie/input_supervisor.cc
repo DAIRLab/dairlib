@@ -222,7 +222,9 @@ void InputSupervisor::UpdateErrorFlag(
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
-
+  // Because we are only ever setting the error flags to true, all errors are
+  // latching. ie. the error flags will only be reset if the input supervisor is
+  // reconstructed
   if (controller_error->controller_channel == active_channel_ &&
       controller_error->error_code != 0) {
     discrete_state->get_mutable_value(

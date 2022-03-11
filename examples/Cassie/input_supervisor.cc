@@ -18,7 +18,8 @@ using systems::TimestampedVector;
 InputSupervisor::InputSupervisor(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::string& initial_channel, double max_joint_velocity,
-    double update_period, int min_consecutive_failures, double input_limit)
+    double update_period, Eigen::VectorXd& input_limit,
+    int min_consecutive_failures)
     : plant_(plant),
       num_actuators_(plant_.num_actuators()),
       num_positions_(plant_.num_positions()),
@@ -27,10 +28,6 @@ InputSupervisor::InputSupervisor(
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
-  if (input_limit_ == std::numeric_limits<double>::max()) {
-    std::cout << "Warning. No input limits have been set." << std::endl;
-  }
-
   // Create input ports
   command_input_port_ =
       this->DeclareVectorInputPort("u, t",
@@ -153,7 +150,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   // any other controller signal
   if (cassie_out->pelvis.radio.channel[15] == -1) {
     Eigen::VectorXd u = -K_ * state->GetVelocities();
-    input_limit_ = 100;
+    input_limit_ = 100 * Eigen::VectorXd::Ones(num_actuators_);
     output->set_timestamp(state->get_timestamp());
     output->SetDataVector(u);
   } else if (is_error) {
@@ -170,16 +167,14 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   }
 
   // Apply input_limits
-  if (input_limit_ != std::numeric_limits<double>::max()) {
-    for (int i = 0; i < command->get_data().size(); i++) {
-      double command_value = output->get_data()(i);
-      if (command_value > input_limit_) {
-        command_value = input_limit_;
-      } else if (command_value < -input_limit_) {
-        command_value = -input_limit_;
-      }
-      output->get_mutable_data()(i) = command_value;
+  for (int i = 0; i < command->get_data().size(); i++) {
+    double command_value = output->get_data()(i);
+    if (command_value > input_limit_(i)) {
+      command_value = input_limit_(i);
+    } else if (command_value < -input_limit_(i)) {
+      command_value = -input_limit_(i);
     }
+    output->get_mutable_data()(i) = command_value;
   }
 }
 
@@ -228,8 +223,6 @@ void InputSupervisor::UpdateErrorFlag(
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
 
-  // Note the += operator works as an or operator because we only check if the
-  // error flag != 0
   if (controller_error->controller_channel == active_channel_ &&
       controller_error->error_code != 0) {
     discrete_state->get_mutable_value(
@@ -243,7 +236,7 @@ void InputSupervisor::UpdateErrorFlag(
   }
   if (command->get_data().array().isNaN().any()) {
     discrete_state->get_mutable_value(
-        error_indices_index_)[error_indices_.at("is_nan")] = 0;
+        error_indices_index_)[error_indices_.at("is_nan")] = 1;
   }
   if (context.get_discrete_state(n_fails_index_)[0] >=
       min_consecutive_failures_) {

@@ -75,7 +75,7 @@ int do_main(int argc, char* argv[]) {
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);
   addCassieMultibody(&plant, nullptr, FLAGS_floating_base /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();
 
@@ -120,14 +120,18 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*state_sub, *state_receiver);
 
   double input_supervisor_update_period = 1.0 / 1000.0;
-  double input_limit = FLAGS_input_limit;
-  if (input_limit < 0) {
-    input_limit = std::numeric_limits<double>::max();
+
+
+  // Get input limits
+  int nu = plant.num_actuators();
+  VectorXd input_limit(nu);
+  for (drake::multibody::JointActuatorIndex i(0); i < nu; ++i) {
+    input_limit(i) = plant.get_joint_actuator(i).effort_limit();
   }
 
   auto input_supervisor = builder.AddSystem<InputSupervisor>(
       plant, FLAGS_control_channel_name_initial, FLAGS_max_joint_velocity,
-      input_supervisor_update_period, FLAGS_supervisor_N, input_limit);
+      input_supervisor_update_period, input_limit, FLAGS_supervisor_N);
   builder.Connect(state_receiver->get_output_port(0),
                   input_supervisor->get_input_port_state());
   builder.Connect(command_receiver->get_output_port(0),

@@ -43,8 +43,8 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   explicit InputSupervisor(
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::string& initial_channel, double max_joint_velocity,
-      double update_period, int min_consecutive_failures = 1,
-      double input_limit = std::numeric_limits<double>::max());
+      double update_period, Eigen::VectorXd& input_limit,
+      int min_consecutive_failures = 1);
 
   const drake::systems::InputPort<double>& get_input_port_command() const {
     return this->get_input_port(command_input_port_);
@@ -122,7 +122,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // supervisor settings
   const int min_consecutive_failures_;
   double max_joint_velocity_;
-  mutable double input_limit_;
+  mutable Eigen::VectorXd input_limit_;
   mutable double blend_duration_ = 0.0;
 
   // For keeping track of things that require multiple failures

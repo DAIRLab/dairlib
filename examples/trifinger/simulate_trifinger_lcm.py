@@ -6,8 +6,8 @@ import pydairlib.common
 
 # Load the URDF and the cube
 builder = DiagramBuilder()
-sim_dt = 2e-4
-output_dt = 1e-3
+sim_dt = 1e-4
+output_dt = 5e-4
 
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
 addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
@@ -57,6 +57,10 @@ builder.Connect(mux.get_output_port(0), logger.get_input_port(0))
 diagram = builder.Build()
 
 simulator = Simulator(diagram)
+
+simulator.set_publish_every_time_step(False);
+simulator.set_publish_at_initialization(False);
+
 simulator.Initialize()
 
 # Change the real-time rate to above 1 to simulate faster
@@ -85,8 +89,8 @@ q[q_map['base_y']] = 0
 q[q_map['base_z']] = .05
 plant.SetPositions(plant_context, q)
 
-# Simulate for 3 seconds
-simulator.AdvanceTo(3)
+# Simulate for 10 seconds
+simulator.AdvanceTo(10)
 
 # numpy array of data (nq+nv+nu) x n_time
 data = logger.FindLog(simulator.get_context()).data()

@@ -201,37 +201,8 @@ const systems::SimCassieSensorAggregator& AddImuAndAggregator(
   std::vector<int> joint_pos_indices;
   std::vector<int> joint_vel_indices;
   std::vector<int> ticks_per_revolution;
-  std::map<std::string, int> joint_encoder_resolutions = {
-      {"hip_roll_left", CASSIE_ENC_RES_LOW},
-      {"hip_roll_right", CASSIE_ENC_RES_LOW},
-      {"hip_yaw_left", CASSIE_ENC_RES_LOW},
-      {"hip_yaw_right", CASSIE_ENC_RES_LOW},
-      {"hip_pitch_left", CASSIE_ENC_RES_LOW},
-      {"hip_pitch_right", CASSIE_ENC_RES_LOW},
-      {"knee_left", CASSIE_ENC_RES_LOW},
-      {"knee_right", CASSIE_ENC_RES_LOW},
-      {"knee_joint_left", CASSIE_ENC_RES_HIGH},
-      {"knee_joint_right", CASSIE_ENC_RES_HIGH},
-      {"ankle_joint_left", CASSIE_ENC_RES_HIGH},
-      {"ankle_joint_right", CASSIE_ENC_RES_HIGH},
-      {"toe_left", CASSIE_ENC_RES_LOW},
-      {"toe_right", CASSIE_ENC_RES_LOW}};
 
-  auto pos_map = multibody::makeNameToPositionsMap(plant);
-  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
-  for (int i = 0; i < plant.num_joints(); ++i) {
-    auto& joint = plant.get_joint(drake::multibody::JointIndex(i));
-    if (joint_encoder_resolutions.find(joint.name()) !=
-        joint_encoder_resolutions.end()) {
-      joint_pos_indices.push_back(pos_map[joint.name()]);
-      joint_vel_indices.push_back(vel_map[joint.name() + "dot"]);
-      ticks_per_revolution.push_back(
-          joint_encoder_resolutions.at(joint.name()));
-    }
-  }
-
-  const auto& encoders = builder->AddSystem<CassieEncoder>(
-      plant, joint_pos_indices, joint_vel_indices, ticks_per_revolution);
+  const auto& encoders = builder->AddSystem<CassieEncoder>(plant);
 
   auto sensor_aggregator =
       builder->AddSystem<systems::SimCassieSensorAggregator>(plant);

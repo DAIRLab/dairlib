@@ -310,6 +310,7 @@ cc_binary(
     name = "dispatcher_robot_in",
     srcs = ["dispatcher_robot_in.cc"],
     deps = [
+        ":cassie_lcm_driven_loop",
         ":cassie_state_estimator",
         ":cassie_urdf",
         ":cassie_utils",
@@ -317,9 +318,23 @@ cc_binary(
         "//examples/Cassie/networking:cassie_udp_pub_sub",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:linear_controller",
+        "//systems/controllers:pd_config_lcm",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+cc_library(
+    name = "cassie_lcm_driven_loop",
+    srcs = [
+    ],
+    hdrs = [
+        "cassie_lcm_driven_loop.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -537,6 +552,7 @@ cc_library(
     ],
     deps = [
         "//systems/framework:vector",
+        "//multibody:utils",
         "@drake//:drake_shared_library",
     ],
 )

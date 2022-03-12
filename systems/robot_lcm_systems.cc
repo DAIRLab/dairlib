@@ -158,8 +158,12 @@ void RobotOutputSender::Output(const Context<double>& context,
   state_msg->velocity.resize(num_velocities_);
 
   for (int i = 0; i < num_positions_; i++) {
-    state_msg->position[i] = state->GetAtIndex(i);
     state_msg->position_names[i] = ordered_position_names_[i];
+    if (std::isnan(state->GetAtIndex(i))) {
+      state_msg->position[i] = 0;
+    } else {
+      state_msg->position[i] = state->GetAtIndex(i);
+    }
   }
   for (int i = 0; i < num_velocities_; i++) {
     state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
@@ -196,7 +200,8 @@ RobotInputReceiver::RobotInputReceiver(
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_input",
                                  drake::Value<dairlib::lcmt_robot_input>{});
-  this->DeclareVectorOutputPort("u, t", TimestampedVector<double>(num_actuators_),
+  this->DeclareVectorOutputPort("u, t",
+                                TimestampedVector<double>(num_actuators_),
                                 &RobotInputReceiver::CopyInputOut);
 }
 
@@ -228,7 +233,8 @@ RobotCommandSender::RobotCommandSender(
     ordered_actuator_names_.push_back(plant.get_joint_actuator(i).name());
   }
 
-  this->DeclareVectorInputPort("u, t", TimestampedVector<double>(num_actuators_));
+  this->DeclareVectorInputPort("u, t",
+                               TimestampedVector<double>(num_actuators_));
   this->DeclareAbstractOutputPort("lcmt_robot_input",
                                   &RobotCommandSender::OutputCommand);
 }
@@ -245,10 +251,9 @@ void RobotCommandSender::OutputCommand(
   input_msg->efforts.resize(num_actuators_);
   for (int i = 0; i < num_actuators_; i++) {
     input_msg->effort_names[i] = ordered_actuator_names_[i];
-    if(std::isnan(command->GetAtIndex(i))){
+    if (std::isnan(command->GetAtIndex(i))) {
       input_msg->efforts[i] = 0;
-    }
-    else{
+    } else {
       input_msg->efforts[i] = command->GetAtIndex(i);
     }
   }

@@ -121,7 +121,7 @@ void SetInputsIfNew(const MultibodyPlant<T>& plant,
 template <typename T>
 void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
-                    Eigen::Vector3d normal_W) {
+                    Eigen::Vector3d normal_W, bool show_ground) {
   if (!plant->geometry_source_is_registered()) {
     plant->RegisterAsSourceForSceneGraph(scene_graph);
   }
@@ -137,8 +137,10 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
                                    "collision", friction);
 
   // Add visual for the ground.
-  plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
-                                "visual");
+  if (show_ground) {
+    plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
+                                  "visual");
+  }
 }
 
 /// Construct a map between joint names and position indices
@@ -509,7 +511,7 @@ template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<dou
 template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
 template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
-template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W);   // NOLINT
+template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W, bool show_ground);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
 template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>& input);  // NOLINT

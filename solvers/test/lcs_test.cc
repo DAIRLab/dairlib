@@ -1,13 +1,12 @@
 #include "common/find_resource.h"
-#include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/diagram_builder.h"
-
 
 namespace dairlib {
 namespace solvers {
@@ -20,7 +19,6 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using Eigen::VectorXd;
 
-
 void LcsTest() {
   drake::systems::DiagramBuilder<double> builder;
 
@@ -31,43 +29,42 @@ void LcsTest() {
 
   parser.package_map().Add("robot_properties_fingers",
                            "examples/trifinger/robot_properties_fingers");
-  parser.AddModelFromFile(FindResourceOrThrow("examples/trifinger/"
+  parser.AddModelFromFile(FindResourceOrThrow(
+      "examples/trifinger/"
       "robot_properties_fingers/urdf/trifinger_minimal_collision.urdf"));
   parser.AddModelFromFile(FindResourceOrThrow(
       "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf"));
 
   auto X_WI = drake::math::RigidTransform<double>::Identity();
-  plant.WeldFrames(plant.world_frame(),
-                    plant.GetFrameByName("base_link"), X_WI);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"),
+                   X_WI);
   plant.Finalize();
 
   auto diagram = builder.Build();
 
-
   const std::vector<GeometryId>& finger_lower_link_0_geoms =
-      plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
-          "finger_lower_link_0"));
+      plant.GetCollisionGeometriesForBody(
+          plant.GetBodyByName("finger_lower_link_0"));
   const std::vector<GeometryId>& finger_lower_link_120_geoms =
-      plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
-          "finger_lower_link_120"));
+      plant.GetCollisionGeometriesForBody(
+          plant.GetBodyByName("finger_lower_link_120"));
   const std::vector<GeometryId>& finger_lower_link_240_geoms =
-      plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
-          "finger_lower_link_240"));
+      plant.GetCollisionGeometriesForBody(
+          plant.GetBodyByName("finger_lower_link_240"));
   const std::vector<GeometryId>& cube_geoms =
-      plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
-          "cube"));
+      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"));
 
   std::vector<SortedPair<GeometryId>> contact_geoms;
-  contact_geoms.push_back(SortedPair(finger_lower_link_0_geoms[0],
-                                     cube_geoms[0]));
-  contact_geoms.push_back(SortedPair(finger_lower_link_120_geoms[0],
-                                     cube_geoms[0]));
-  contact_geoms.push_back(SortedPair(finger_lower_link_240_geoms[0],
-                                     cube_geoms[0]));
+  contact_geoms.push_back(
+      SortedPair(finger_lower_link_0_geoms[0], cube_geoms[0]));
+  contact_geoms.push_back(
+      SortedPair(finger_lower_link_120_geoms[0], cube_geoms[0]));
+  contact_geoms.push_back(
+      SortedPair(finger_lower_link_240_geoms[0], cube_geoms[0]));
 
   auto diagram_context = diagram->CreateDefaultContext();
-  auto& context = diagram->GetMutableSubsystemContext(plant,
-                                                      diagram_context.get());
+  auto& context =
+      diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   ///
   /// Set state and input for linearization
@@ -113,24 +110,20 @@ void LcsTest() {
   auto xu_ad = drake::math::InitializeAutoDiff(xu);
 
   auto context_ad = plant_ad->CreateDefaultContext();
-  plant_ad->SetPositionsAndVelocities(context_ad.get(),
+  plant_ad->SetPositionsAndVelocities(
+      context_ad.get(),
       xu_ad.head(plant.num_positions() + plant.num_velocities()));
-  multibody::SetInputsIfNew<AutoDiffXd>(*plant_ad,
-                                        xu_ad.tail(plant.num_actuators()),
-                                        context_ad.get());
+  multibody::SetInputsIfNew<AutoDiffXd>(
+      *plant_ad, xu_ad.tail(plant.num_actuators()), context_ad.get());
 
   int num_friction_directions = 2;
   double mu = .8;
   LCSFactory::LinearizePlantToLCS(plant, context, *plant_ad, *context_ad,
-          contact_geoms, num_friction_directions, mu);
-
+                                  contact_geoms, num_friction_directions, mu);
 }
 
 }  // namespace
 }  // namespace solvers
 }  // namespace dairlib
 
-
-int main(int argc, char **argv) {
-  dairlib::solvers::LcsTest();
-}
+int main(int argc, char** argv) { dairlib::solvers::LcsTest(); }

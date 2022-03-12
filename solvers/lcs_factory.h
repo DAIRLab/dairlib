@@ -31,8 +31,7 @@ class LCSFactory {
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
       int num_friction_directions, double mu);
+};
 
-  };
-
-} // namespace dairlib
-} // namespace solvers
+}  // namespace solvers
+}  // namespace dairlib

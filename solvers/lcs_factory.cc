@@ -10,8 +10,8 @@ namespace solvers {
 
 using std::vector;
 
-using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
 using drake::MatrixX;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
@@ -20,17 +20,15 @@ using drake::math::ExtractValue;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 
-using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 LCS LCSFactory::LinearizePlantToLCS(
-    const MultibodyPlant<double>& plant,
-    const Context<double>& context,
+    const MultibodyPlant<double>& plant, const Context<double>& context,
     const MultibodyPlant<AutoDiffXd>& plant_ad,
-     const Context<AutoDiffXd>& context_ad,
+    const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
     int num_friction_directions, double mu) {
-
   ///
   /// First, calculate vdot and derivatives from non-contact dynamcs
   ///
@@ -49,8 +47,8 @@ LCS LCSFactory::LinearizePlantToLCS(
   plant_ad.CalcMassMatrix(context_ad, &M);
 
   // If this ldlt is slow, there are alternate formulations which avoid it
-  AutoDiffVecXd vdot_no_contact = M.ldlt().solve(
-      tau_g + f_app.generalized_forces() + Bu - C);
+  AutoDiffVecXd vdot_no_contact =
+      M.ldlt().solve(tau_g + f_app.generalized_forces() + Bu - C);
 
   // Constant term in dynamics, d
   VectorXd d_v = ExtractValue(vdot_no_contact);
@@ -76,7 +74,6 @@ LCS LCSFactory::LinearizePlantToLCS(
         J_i.block(1, 0, 2 * num_friction_directions, plant.num_velocities());
   }
 
-
   auto M_ldlt = ExtractValue(M).ldlt();
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());
   MatrixXd MinvJ_t_T = M_ldlt.solve(J_t.transpose());
@@ -89,7 +86,5 @@ LCS LCSFactory::LinearizePlantToLCS(
   ///  tangential velocity: J_t * v_{k+1}
 }
 
-} // namespace dairlib
-} // namespace solvers
-
-
+}  // namespace solvers
+}  // namespace dairlib

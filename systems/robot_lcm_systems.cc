@@ -294,13 +294,17 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
       builder->Connect(discrete_time_delay->get_output_port(),
                        plant.get_actuation_input_port());
 
-      builder->Connect(discrete_time_delay->get_output_port(),
-                       state_sender->get_input_port_effort());
+      if (publish_efforts) {
+        builder->Connect(discrete_time_delay->get_output_port(),
+                         state_sender->get_input_port_effort());
+      }
   } else {
       builder->Connect(passthrough->get_output_port(),
                        plant.get_actuation_input_port());
-      builder->Connect(passthrough->get_output_port(),
-                       state_sender->get_input_port_effort());
+      if (publish_efforts) {
+        builder->Connect(passthrough->get_output_port(),
+                         state_sender->get_input_port_effort());
+      }
   }
 
   builder->Connect(*state_sender, *state_pub);

@@ -115,9 +115,28 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 };
 
 
-/// Adds LCM 
 ///
+/// Convenience method to add and connect leaf systems for controlling
+/// a MultibodyPlant via LCM. Makes two prmary connections:
+///  (1) connects the state output from the plant to a RobotOutputSender and
+///      LCM publisher, publishing lcmt_robot_output
+///  (2) connects the actuation input port of the plant to a RobotInputReceiver
+///      and LCM receiver, receiving lcmt_robot_input
 ///
+/// If an actuator delay is specified, also adds a DiscreteTimeDelay block
+/// between the input receiver and plant. This delay will also be applied to the
+/// efforts sent to the RobotOutputSender (if publish_efforts = true).
+///
+/// @param builder
+/// @param lcm The LcmInterfaceSystem to publish and receive on. Typically
+///        from `builder.AddSystem(LcmInterfaceSystem(...))`;
+/// @param actuator_channel The LCM channel name for the lcmt_robot_input
+/// @param state_channel The LCM channel name for the lcmt_robot_output
+/// @param publish_rate The frequency, in Hz, to publish at
+/// @param publish_efforts If true, the RobotOutputSender will also publish
+///        actuator efforts.
+/// @param actuator_delay The delay, in seconds, will be discretized according
+///        to publish_rate
 SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant,

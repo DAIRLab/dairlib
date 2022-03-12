@@ -58,14 +58,14 @@ template <typename T>
 std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPlanar(
     const Context<T>& context, const Vector3d& planar_normal,
     JacobianWrtVariable wrt) {
-  return DoEval(context, planar_normal.transpose(), wrt);
+  return DoEval(context, planar_normal.transpose(), wrt, true);
 }
 
   // }
 template <typename T>
 std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
     const Context<T>& context, Matrix<double, Eigen::Dynamic, 3> force_basis,
-    JacobianWrtVariable wrt) {
+    JacobianWrtVariable wrt, bool planar) {
 
   const auto& query_port = plant_.get_geometry_query_input_port();
   const auto& query_object =
@@ -84,23 +84,33 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
   const Vector3d& p_ACa =
       inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
           signed_distance_pair.p_ACa;
+  const Vector3d& p_BCb =
+      inspector.GetPoseInFrame(geometry_id_B_).template cast<T>() *
+          signed_distance_pair.p_BCb;
 
-  Matrix<double, 3, Eigen::Dynamic> J_v_BCa_W(3, plant_.num_velocities());
+
+  int n_cols = (wrt == JacobianWrtVariable::kV) ? plant_.num_velocities() :
+      plant_.num_positions();
+  Matrix<double, 3, Eigen::Dynamic> Jv_WCa(3, n_cols);
+  Matrix<double, 3, Eigen::Dynamic> Jv_WCb(3, n_cols);
 
   plant_.CalcJacobianTranslationalVelocity(context, wrt,
-                                            frameA, p_ACa, frameB,
-                                            plant_.world_frame(), &J_v_BCa_W);
+                                            frameA, p_ACa, plant_.world_frame(),
+                                            plant_.world_frame(), &Jv_WCa);
+  plant_.CalcJacobianTranslationalVelocity(context, wrt,
+                                            frameB, p_BCb, plant_.world_frame(),
+                                            plant_.world_frame(), &Jv_WCb);
 
   const auto& R_WC =
       drake::math::RotationMatrix<T>::MakeFromOneVector(
           signed_distance_pair.nhat_BA_W, 0);
 
-  // if force_basis is a row vector, then this is a planar problem, and the
-  // basis is encoding the planar normal direction.
+  // if this is a planar problem, then the basis has one row and encodes
+  // the planar normal direction.
   // These calculations cannot easily be moved to the EvalPlanar() method,
   // since they depend so heavily on the contact normal.
   // thus the somewhat awkward calculations here.
-  if (force_basis.rows() == 1) {
+  if (planar) {
     Vector3d planar_normal = force_basis.row(0);
     force_basis.resize(3, 3);
 
@@ -115,7 +125,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
     force_basis.row(2) = -force_basis.row(1);
   }
     // Standard case
-  auto J = force_basis * R_WC.matrix().transpose() * J_v_BCa_W;
+  auto J = force_basis * R_WC.matrix().transpose() * (Jv_WCa - Jv_WCb);
   return std::pair<T, MatrixX<T>>(signed_distance_pair.distance, J);
 }
 

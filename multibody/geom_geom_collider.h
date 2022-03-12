@@ -22,7 +22,8 @@ class GeomGeomCollider {
       const drake::SortedPair<drake::geometry::GeometryId> geometry_pair);
 
   /// Calculates the distance and contact frame Jacobian.
-  /// Jacobian is ordered [J_n; J_t], and has shape 3 x (nq)
+  /// Jacobian is ordered [J_n; J_t], and has shape 3 x (nq or nv), depending
+  /// on the choice of JacobianWrtVariable.
   /// @param context The context for the MultibodyPlant
   /// @return A pair with <distance as a scalar, J>
   std::pair<T, drake::MatrixX<T>> Eval(
@@ -33,7 +34,9 @@ class GeomGeomCollider {
 
   /// Calculates the distance and contact frame Jacobian.
   /// Jacobian is ordered [J_n; J_t], and has shape
-  ///     3 x (2*num_friction_directions + 1)
+  ////   (2*num_friction_directions + 1) x (nq or nv), depending
+  /// on the choice of JacobianWrtVariable.
+  ///
   /// Specifies the number of friction directions, used to
   /// construct a polytope representation of friction with
   /// (2 * num_friction_directions) faces.
@@ -67,7 +70,7 @@ class GeomGeomCollider {
   std::pair<T, drake::MatrixX<T>> DoEval(
       const drake::systems::Context<T>& context,
       Eigen::Matrix<double, Eigen::Dynamic, 3> force_basis,
-      drake::multibody::JacobianWrtVariable wrt);
+      drake::multibody::JacobianWrtVariable wrt, bool planar = false);
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   const drake::geometry::GeometryId geometry_id_A_;

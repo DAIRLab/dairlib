@@ -11,6 +11,7 @@ struct OSCWalkingGains {
   double w_soft_constraint;
   double w_input_reg;
   bool relative_swing_ft;
+  std::vector<double> pelvis_xyz_vel_filter_tau;
   std::vector<double> CoMW;
   std::vector<double> CoMKp;
   std::vector<double> CoMKd;
@@ -89,6 +90,7 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(w_input_reg));
     a->Visit(DRAKE_NVP(relative_swing_ft));
+    a->Visit(DRAKE_NVP(pelvis_xyz_vel_filter_tau));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(CoMKp));
     a->Visit(DRAKE_NVP(CoMKd));

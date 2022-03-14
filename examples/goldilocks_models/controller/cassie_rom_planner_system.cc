@@ -581,15 +581,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //      0.292816, -0.0255519, 0.885733, 0.961515;
 
   // Testing -- start the init ROM state form the previous plan
-  bool initialize_with_rom_state = false;
+  vector<int> initialize_with_rom_state =
+      {};  // {2, 5};  // for state, not only pos
   VectorXd init_rom_state(2 * n_y_);
-  if (initialize_with_rom_state) {
+  if (!initialize_with_rom_state.empty()) {
     if (counter_ == 0) {
-      initialize_with_rom_state = false;
+      initialize_with_rom_state.clear();
     } else {
       auto rom_traj = lightweight_saved_traj_.ConstructPositionTrajectory();
-      initialize_with_rom_state = rom_traj.end_time() > current_time;
-      if (initialize_with_rom_state) {
+      if (rom_traj.end_time() > current_time) {
         init_rom_state << rom_traj.value(current_time),
             rom_traj.EvalDerivative(current_time, 1);
       }

@@ -6,6 +6,7 @@
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/nonlinear_constraint.h"
+
 #include "drake/common/drake_assert.h"
 #include "drake/common/drake_throw.h"
 #include "drake/math/autodiff_gradient.h"
@@ -22,6 +23,7 @@ class KinematicsConstraint : public solvers::NonlinearConstraint<double> {
       const ReducedOrderModel& rom,
       const drake::multibody::MultibodyPlant<double>& plant, bool left_stance,
       const StateMirror& state_mirror, const std::set<int>& relax_index,
+      const std::vector<int>& initialize_with_rom_state,
       const std::string& description = "rom_fom_mapping_constraint");
 
  private:
@@ -34,6 +36,8 @@ class KinematicsConstraint : public solvers::NonlinearConstraint<double> {
   bool left_stance_;
   const StateMirror& state_mirror_;
   std::set<int> relax_index_;
+  std::vector<int> complement_of_initialize_with_rom_state_;
+  std::vector<int> initialize_with_rom_state_;
   int n_eps_;
   int n_y_;
   int n_z_;

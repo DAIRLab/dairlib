@@ -61,7 +61,7 @@ RomTrajOpt::RomTrajOpt(
     const VectorXd& x_init, const VectorXd& rom_state_init,
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
-    const PlannerSetting& param, bool initialize_with_rom_state,
+    const PlannerSetting& param, std::vector<int> initialize_with_rom_state,
     bool print_status)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
@@ -190,15 +190,19 @@ RomTrajOpt::RomTrajOpt(
   }*/
 
   // Initial state constraint
-  if (initialize_with_rom_state) {
+  if (!initialize_with_rom_state.empty()) {
+    // ROM part
+    VectorXDecisionVariable z_0 = state_vars_by_mode(0, 0);
     if (n_eps == 0) {
-      AddBoundingBoxConstraint(rom_state_init, rom_state_init,
-                               state_vars_by_mode(0, 0));
+      for (auto i : initialize_with_rom_state) {
+        AddBoundingBoxConstraint(rom_state_init(i), rom_state_init(i), z_0(i));
+      }
     } else {
-      VectorXDecisionVariable z_0 = state_vars_by_mode(0, 0);
       int idx_eps = 0;
       Eigen::RowVectorXd A = Eigen::RowVectorXd::Ones(2);
-      for (int i = 0; i < 2 * n_y_; i++) {
+      // Warning: we currently assume initialize_with_rom_state includes
+      //  eps_rom_var_
+      for (auto i : initialize_with_rom_state) {
         if (relax_index.find(i) == relax_index.end()) {
           AddBoundingBoxConstraint(rom_state_init(i), rom_state_init(i),
                                    z_0(i));
@@ -212,6 +216,7 @@ RomTrajOpt::RomTrajOpt(
       }
     }
 
+    // FOM part
     // We cannot get rid of x_init variable, because we still have stance foot
     // constraint for the first mode.
     AddBoundingBoxConstraint(x_init, x_init, x0_vars_by_mode(0));
@@ -323,14 +328,14 @@ RomTrajOpt::RomTrajOpt(
 
     // Add RoM-FoM mapping constraints (start of mode)
     // TODO: might need to rotate the local frame to align with the global
-    std::set<int> empty_idx = {};
     if (i == 0) {
-      if (!initialize_with_rom_state) {
+      if (initialize_with_rom_state.size() < n_z_) {
         PrintStatus(
             "Adding constraint -- RoM-FoM mapping (start of mode; relaxed)");
         auto kin_constraint_start =
             std::make_shared<planning::KinematicsConstraint>(
                 rom, plant, left_stance, state_mirror, relax_index,
+                initialize_with_rom_state,
                 "rom_fom_mapping_" + std::to_string(i) + "_start");
         kin_constraint_start->SetConstraintScaling(
             rom_fom_mapping_constraint_scaling_);
@@ -341,7 +346,8 @@ RomTrajOpt::RomTrajOpt(
       PrintStatus("Adding constraint -- RoM-FoM mapping (start of mode)");
       auto kin_constraint_start =
           std::make_shared<planning::KinematicsConstraint>(
-              rom, plant, left_stance, state_mirror, empty_idx,
+              rom, plant, left_stance, state_mirror, empty_idx_set_,
+              empty_idx_vec_,
               "rom_fom_mapping_" + std::to_string(i) + "_start");
       kin_constraint_start->SetConstraintScaling(
           rom_fom_mapping_constraint_scaling_);
@@ -352,7 +358,7 @@ RomTrajOpt::RomTrajOpt(
     // Add RoM-FoM mapping constraints (end of mode)
     PrintStatus("Adding constraint -- RoM-FoM mapping (end of mode)");
     auto kin_constraint_end = std::make_shared<planning::KinematicsConstraint>(
-        rom, plant, left_stance, state_mirror, empty_idx,
+        rom, plant, left_stance, state_mirror, empty_idx_set_, empty_idx_vec_,
         "rom_fom_mapping_" + std::to_string(i) + "_end");
     kin_constraint_end->SetConstraintScaling(
         rom_fom_mapping_constraint_scaling_);
@@ -1095,7 +1101,7 @@ RomTrajOptCassie::RomTrajOptCassie(
     const VectorXd& x_init, const VectorXd& rom_state_init,
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
-    const PlannerSetting& param, bool initialize_with_rom_state,
+    const PlannerSetting& param, std::vector<int> initialize_with_rom_state,
     bool print_status)
     : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
                  left_contacts, right_contacts, left_origin, right_origin,
@@ -1315,7 +1321,7 @@ RomTrajOptFiveLinkRobot::RomTrajOptFiveLinkRobot(
                  left_contacts, right_contacts, left_contacts.at(0),
                  right_contacts.at(0), fom_joint_name_lb_ub, x_init,
                  VectorXd(0), {}, start_with_left_stance, zero_touchdown_impact,
-                 {}, PlannerSetting(), false) {
+                 {}, PlannerSetting(), {}) {
   DRAKE_UNREACHABLE();  // I added a few things to RomTrajOpt which are not
                         // generalized to the five-link robot.
                         // E.g. PlannerSetting and others.

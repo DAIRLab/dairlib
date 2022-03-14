@@ -11,6 +11,7 @@ from pydairlib.cassie.cassie_utils import *
 from pydairlib.multibody import *
 from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
+from pydairlib.cassie.simulators import CassieSimDiagram
 
 class CassieGym():
     def __init__(self, visualize=False):
@@ -34,28 +35,32 @@ class CassieGym():
                                        "dissipation": 0.5}
         self.controller = None
 
-    def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
+    def make(self, controller, urdf):
         self.builder = DiagramBuilder()
         self.dt = 5e-4
-        self.params = self.default_contact_params
+        # self.params = self.default_contact_params
+        self.plant = MultibodyPlant(self.dt)
+        # terrain_normal = np.array([0.0, 0.0, 1.0])
+        # self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, self.sim_dt)
+        # addCassieMultibody(self.plant, self.scene_graph, True, urdf, True, True)
+        # AddFlatTerrain(self.plant, self.scene_graph, self.params['mu'], self.params['mu'], terrain_normal,
+        #                self.params['stiffness'], self.params['dissipation'])
+        # self.builder.AddSystem(self.plant)
+        # self.plant.Finalize()
 
-        terrain_normal = np.array([0.0, 0.0, 1.0])
-        self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, self.sim_dt)
-        addCassieMultibody(self.plant, self.scene_graph, True, urdf, True, True)
-        AddFlatTerrain(self.plant, self.scene_graph, self.params['mu'], self.params['mu'], terrain_normal,
-                       self.params['stiffness'], self.params['dissipation'])
-        self.plant.Finalize()
-        self.state_sender = self.builder.AddSystem(RobotOutputSender(self.plant, False))
-        self.builder.Connect(self.plant.get_state_output_port(), self.state_sender.get_input_port(0))
-        self.builder.AddSystem(controller)
         self.controller = controller
-        self.builder.Connect(self.controller.get_control_output_port(), self.plant.get_actuation_input_port())
-        # self.builder.Connect(self.controller.get_control_output_port(), self.state_sender.get_input_port_effort())
-        self.builder.Connect(self.state_sender.get_output_port(), self.controller.get_state_input_port())
+        self.simulator = CassieSimDiagram(self.plant, urdf, 0.8, 1e4, 1e2)
+        self.plant = self.simulator.get_plant()
+        self.builder.AddSystem(self.controller)
+        self.builder.AddSystem(self.simulator)
+
+        self.builder.Connect(self.controller.get_control_output_port(), self.simulator.get_actuation_input_port())
+        self.builder.Connect(self.simulator.get_state_output_port(), self.controller.get_state_input_port())
+        self.builder.Connect(self.simulator.get_cassie_out_output_port_index(), self.controller.get_cassie_out_input_port())
+        # self.builder.Connect(self.controller, self.simulator.get_radio_input_port())
 
         self.diagram = self.builder.Build()
         self.sim = Simulator(self.diagram)
-
         self.plant_context = self.diagram.GetMutableSubsystemContext(self.plant, self.sim.get_mutable_context())
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.reset()

@@ -3,6 +3,8 @@
 #include <memory>
 #include <utility>
 
+#include <drake/multibody/plant/multibody_plant.h>
+
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -16,7 +18,7 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieSimDiagram)
 
   /// @param[in] urdf filepath containing the osc_running_gains.
-  CassieSimDiagram(
+  CassieSimDiagram(std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
       const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf",
       double mu = 0.8, double stiffness = 1e4, double dissipation_rate = 1e2);
 
@@ -41,13 +43,18 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
     return this->get_output_port(cassie_out_output_port_index_);
   }
 
+  const drake::multibody::MultibodyPlant<double>& get_plant() { return *plant_; }
+
  private:
+//  drake::multibody::MultibodyPlant<double>& plant_ref_;
+  drake::multibody::MultibodyPlant<double>* plant_;
+  drake::geometry::SceneGraph<double>* scene_graph_;
   const int actuation_input_port_index_ = 0;
   const int radio_input_port_index_ = 1;
   const int state_output_port_index_ = 0;
   const int cassie_out_output_port_index_ = 1;
-  const double actuator_delay = 3e-3; // 3ms
-  const double actuator_update_rate =
+  const double actuator_delay = 3e-3;        // 3ms
+  const double actuator_update_rate = 1e-3;  // 1ms
   const double dt_ = 8e-5;
 };
 

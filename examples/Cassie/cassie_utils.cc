@@ -206,7 +206,7 @@ const systems::SimCassieSensorAggregator& AddImuAndAggregator(
 
   auto sensor_aggregator =
       builder->AddSystem<systems::SimCassieSensorAggregator>(plant);
-  builder->Connect(actuation_port, sensor_aggregator->get_input_port_input());
+//  builder->Connect(actuation_port, sensor_aggregator->get_input_port_input());
   builder->Connect(plant.get_state_output_port(), encoders->get_input_port());
   builder->Connect(encoders->get_output_port(),
                    sensor_aggregator->get_input_port_state());

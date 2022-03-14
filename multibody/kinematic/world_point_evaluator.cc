@@ -19,47 +19,46 @@ namespace dairlib {
 namespace multibody {
 
 template <typename T>
-WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
-                                            Vector3d pt_A,
-                                            const Frame<T>& frame_A,
-                                            const Matrix3d rotation,
-                                            const Vector3d offset,
-                                            std::vector<int> active_directions)
+WorldPointEvaluator<T>::WorldPointEvaluator(
+    const MultibodyPlant<T>& plant, const Vector3d& pt_A,
+    const Frame<T>& frame_A, const Matrix3d& ground_frame_rotation_mat,
+    const Vector3d& offset, std::vector<int> active_directions)
     : KinematicEvaluator<T>(plant, 3),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
-      rotation_(rotation) {
+      rotation_(ground_frame_rotation_mat.transpose()) {
   this->set_active_inds(active_directions);
 }
 
 template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(
-    const MultibodyPlant<T>& plant, Vector3d pt_A, const Frame<T>& frame_A,
-    const multibody::ViewFrame<T>& view_frame,
-    const Matrix3d rotation, const Vector3d offset,
+    const MultibodyPlant<T>& plant, const Vector3d& pt_A,
+    const Frame<T>& frame_A, const multibody::ViewFrame<T>& view_frame,
+    const Matrix3d& ground_frame_rotation_mat, const Vector3d& offset,
     std::vector<int> active_directions)
     : KinematicEvaluator<T>(plant, 3),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
-      rotation_(rotation),
+      rotation_(ground_frame_rotation_mat.transpose()),
       view_frame_(&view_frame) {
   this->set_active_inds(active_directions);
 }
 
 template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
-                                            const Vector3d pt_A,
+                                            const Vector3d& pt_A,
                                             const Frame<T>& frame_A,
-                                            const Vector3d normal,
-                                            const Vector3d offset,
+                                            const Vector3d& normal,
+                                            const Vector3d& offset,
                                             bool tangent_active)
     : KinematicEvaluator<T>(plant, 3),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
-      rotation_(RotationMatrix<double>::MakeFromOneVector(normal, 2)) {
+      rotation_(
+          RotationMatrix<double>::MakeFromOneVector(normal, 2).transpose()) {
   if (!tangent_active) {
     this->set_active_inds({2});  // only z is active
   }

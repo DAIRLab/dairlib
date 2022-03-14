@@ -505,8 +505,6 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
   builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));
-//  builder.Connect(osc->get_osc_output_port(),
-//                  passthrough->get_input_port());
 
   // Publisher connections
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
@@ -515,10 +513,10 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   builder.ExportOutput(command_sender->get_output_port(), "u, t");
   builder.ExportOutput(failure_aggregator->get_status_output_port(), "failure_status");
 
-  // Run lcm-driven simulation
-  // Create the diagram as itself
   builder.BuildInto(this);
-  //  owned_diagram->set_name(("osc_running_controller"));
+  this->set_name(("osc_running_controller"));
+  std::cout << "Built controller" << std::endl;
+
 }
 
 }  // namespace controllers

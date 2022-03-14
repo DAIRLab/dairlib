@@ -38,16 +38,7 @@ class CassieGym():
     def make(self, controller, urdf):
         self.builder = DiagramBuilder()
         self.dt = 5e-4
-        # self.params = self.default_contact_params
         self.plant = MultibodyPlant(self.dt)
-        # terrain_normal = np.array([0.0, 0.0, 1.0])
-        # self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, self.sim_dt)
-        # addCassieMultibody(self.plant, self.scene_graph, True, urdf, True, True)
-        # AddFlatTerrain(self.plant, self.scene_graph, self.params['mu'], self.params['mu'], terrain_normal,
-        #                self.params['stiffness'], self.params['dissipation'])
-        # self.builder.AddSystem(self.plant)
-        # self.plant.Finalize()
-
         self.controller = controller
         self.simulator = CassieSimDiagram(self.plant, urdf, 0.8, 1e4, 1e2)
         self.plant = self.simulator.get_plant()

@@ -45,8 +45,6 @@ def main():
     osqp_settings = 'examples/Cassie/osc_run/osc_running_qp_settings.yaml'
     urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
 
-    terrain_normal = np.array([0.0, 0.0, 1.0])
-
     controller = OSCRunningControllerFactory(osc_gains, osqp_settings)
     gym_env = CassieGym(visualize=True)
 

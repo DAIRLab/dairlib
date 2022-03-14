@@ -1,10 +1,10 @@
-x_length: 20
-y_length: 10
+x_length: 19
+y_length: 15
 x_resolution: 0.5
 y_resolution: 0.5
-mu: 0.8
+mu: 1.0
 n_freq_components: 5
-frequency_amplitudes: [3, 2, .125, 0.075, 0.05]
+frequency_amplitudes: [2, 1, .125, 0.075, 0.05]
 frequencies: [0.075, 0.125, .5, 1, 2]
 average_normal: [0, 0, 1]
 stiffness: 9000

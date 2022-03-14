@@ -509,8 +509,8 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
   builder.ExportInput(high_level_command->get_cassie_out_input_port(),
                       "lcmt_cassie_out");
-  builder.ExportOutput(passthrough->get_output_port());
-  builder.ExportOutput(failure_aggregator->get_status_output_port());
+  builder.ExportOutput(passthrough->get_output_port(), "u");
+  builder.ExportOutput(failure_aggregator->get_status_output_port(), "failure_status");
 
   // Run lcm-driven simulation
   // Create the diagram as itself

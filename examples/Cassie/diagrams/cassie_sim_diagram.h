@@ -15,10 +15,10 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieSimDiagram)
 
-  /// @param[in] osc_gains_filename filepath containing the osc_running_gains.
-  /// @param[in] osqp_settings filepath containing the osqp settings.
-  CassieSimDiagram(const std::string& osc_gains_filename,
-                              const std::string& osqp_settings_filename);
+  /// @param[in] urdf filepath containing the osc_running_gains.
+  CassieSimDiagram(
+      const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf",
+      double mu = 0.8, double stiffness = 1e4, double dissipation_rate = 1e2);
 
   /// @return the input port for the actuation command.
   const drake::systems::InputPort<double>& get_actuation_input_port() const {
@@ -46,6 +46,9 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
   const int radio_input_port_index_ = 1;
   const int state_output_port_index_ = 0;
   const int cassie_out_output_port_index_ = 1;
+  const double actuator_delay = 3e-3; // 3ms
+  const double actuator_update_rate =
+  const double dt_ = 8e-5;
 };
 
 }  // namespace examples

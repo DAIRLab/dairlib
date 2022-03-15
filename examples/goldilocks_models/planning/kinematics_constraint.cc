@@ -37,25 +37,42 @@ KinematicsConstraint::KinematicsConstraint(
     const ReducedOrderModel& rom,
     const drake::multibody::MultibodyPlant<double>& plant, bool left_stance,
     const StateMirror& state_mirror, const std::set<int>& relax_index,
+    const std::vector<int>& initialize_with_rom_state,
     const std::string& description)
-    : NonlinearConstraint<double>(2 * rom.n_y(),
-                                  2 * rom.n_y() + plant.num_positions() +
-                                      plant.num_velocities() +
-                                      relax_index.size(),
-                                  VectorXd::Zero(2 * rom.n_y()),
-                                  VectorXd::Zero(2 * rom.n_y()), description),
+    : NonlinearConstraint<double>(
+          2 * rom.n_y() - initialize_with_rom_state.size(),
+          2 * rom.n_y() + plant.num_positions() + plant.num_velocities() +
+              relax_index.size(),
+          VectorXd::Zero(2 * rom.n_y() - initialize_with_rom_state.size()),
+          VectorXd::Zero(2 * rom.n_y() - initialize_with_rom_state.size()),
+          description),
       rom_(rom),
       plant_(plant),
       context_(plant.CreateDefaultContext()),
       left_stance_(left_stance),
       state_mirror_(state_mirror),
       relax_index_(relax_index),
+      initialize_with_rom_state_(initialize_with_rom_state),
       n_eps_(relax_index.size()),
       n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
       n_q_(plant.num_positions()),
       n_v_(plant.num_velocities()),
-      n_x_(plant.num_positions() + plant.num_velocities()) {}
+      n_x_(plant.num_positions() + plant.num_velocities()) {
+  if (!initialize_with_rom_state_.empty()) {
+    for (int i = 0; i < n_z_; i++) {
+      if (std::find(initialize_with_rom_state.begin(),
+                    initialize_with_rom_state.end(),
+                    i) == initialize_with_rom_state.end()) {
+        complement_of_initialize_with_rom_state_.push_back(i);
+      }
+    }
+    //    for (auto i: complement_of_initialize_with_rom_state_) {
+    //      std::cout << i << ", ";
+    //    }
+    //    std::cout << std::endl;
+  }
+}
 
 void KinematicsConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<double>>& zxeps,
@@ -117,7 +134,19 @@ void KinematicsConstraint::EvaluateConstraint(
   }*/
 
   // Impose constraint
-  *output = value;
+  if (initialize_with_rom_state_.empty()) {
+    *output = value;
+
+  } else {
+    VectorX<double> extracted_value(n_z_);
+    i = 0;
+    for (int idx : complement_of_initialize_with_rom_state_) {
+      extracted_value(i) = value(idx);
+      i++;
+    }
+
+    *output = extracted_value;
+  }
 }
 
 }  // namespace planning

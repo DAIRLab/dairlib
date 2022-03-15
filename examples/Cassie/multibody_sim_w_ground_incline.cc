@@ -288,6 +288,11 @@ int do_main(int argc, char* argv[]) {
       DRAKE_DEMAND(x_init.size() == x_init_wo_spr.size());
       x_init = x_init_wo_spr;
     }
+
+    std::ofstream outfile;
+    outfile.open(FLAGS_path_init_pose_success, std::ios_base::trunc);
+    outfile << "1";
+    outfile.close();
   } else {
     VectorXd q_init, v_init, u_init, lambda_init;
     v_init = VectorXd::Zero(plant.num_velocities());
@@ -330,6 +335,7 @@ int do_main(int argc, char* argv[]) {
         outfile.open(FLAGS_path_init_pose_success, std::ios_base::trunc);
         outfile << msg;
         outfile.close();
+
         if (!success) {
           std::cout << "Sim didn't find a solution for init pose. Terminate.\n";
           return 0;

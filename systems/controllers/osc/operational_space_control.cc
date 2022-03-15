@@ -847,25 +847,26 @@ VectorXd OperationalSpaceControl::SolveQp(
     solve_time_ = elapsed.count();
   }
   // cout << result.get_solution_result() << endl;
-  prev_sol_ = result.GetSolution();
+  if (result.is_success()) {
+    prev_sol_ = result.GetSolution();
+  }
   counter_++;
   //  cout << "prev_sol_= \n " << prev_sol_ << endl;
 
   if (!result.is_success()) {
     std::cout << "reverting to old sol" << std::endl;
-    return *u_sol_;
-  }
+  } else {
+    // Extract solutions
+    *dv_sol_ = result.GetSolution(dv_);
+    *u_sol_ = result.GetSolution(u_);
+    *lambda_c_sol_ = result.GetSolution(lambda_c_);
+    *lambda_h_sol_ = result.GetSolution(lambda_h_);
+    *epsilon_sol_ = result.GetSolution(epsilon_);
 
-  // Extract solutions
-  *dv_sol_ = result.GetSolution(dv_);
-  *u_sol_ = result.GetSolution(u_);
-  *lambda_c_sol_ = result.GetSolution(lambda_c_);
-  *lambda_h_sol_ = result.GetSolution(lambda_h_);
-  *epsilon_sol_ = result.GetSolution(epsilon_);
-
-  for (auto tracking_data : *tracking_data_vec_) {
-    if (tracking_data->IsActive(fsm_state)) {
-      tracking_data->StoreYddotCommandSol(*dv_sol_);
+    for (auto tracking_data : *tracking_data_vec_) {
+      if (tracking_data->IsActive(fsm_state)) {
+        tracking_data->StoreYddotCommandSol(*dv_sol_);
+      }
     }
   }
 

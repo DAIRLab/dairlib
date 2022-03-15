@@ -112,9 +112,9 @@ TEST_F(KinematicEvaluatorTest, WorldPointEvaluatorTest) {
       frame, Vector3d({1, 0, 0}), Vector3d({1, 2, 3}), true);
 
   auto new_phi = new_evaluator.EvalFull(*context);
-  EXPECT_TRUE(CompareMatrices(Vector3d({-4, -2, 1}), new_phi, tolerance));
+  EXPECT_TRUE(CompareMatrices(Vector3d({4, -2, -1}), new_phi, tolerance));
   auto new_phi_active = new_evaluator.EvalActive(*context);
-  EXPECT_TRUE(CompareMatrices(Vector3d({-4, -2, 1}), new_phi_active,
+  EXPECT_TRUE(CompareMatrices(Vector3d({4, -2, -1}), new_phi_active,
       tolerance));  
 }
 

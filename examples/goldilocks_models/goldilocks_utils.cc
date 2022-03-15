@@ -125,7 +125,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
     DRAKE_DEMAND(pos_map.at("base_qw") == 0);  // Assumption
-    if ((rom_option >= 10) && (rom_option <= 14)) {
+    if ((rom_option >= 10) && (rom_option <= 14) || (rom_option == 22)) {
       // Also skip the right leg joints (swing leg)
       cout << "Joint skipped in mapping function: ";
       for (auto& pair : pos_map) {
@@ -136,13 +136,14 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       }
       cout << endl;
     }
-    if ((rom_option >= 15) && (rom_option <= 21)) {
+    if ((rom_option >= 15) && (rom_option <= 22)) {
       // skip pelvis z
       skip_inds.push_back(6);
     }
     if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||
         (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13)) ||
-        rom_option == 17 || rom_option == 18 || rom_option == 21) {
+        rom_option == 17 || rom_option == 18 || rom_option == 21 ||
+        rom_option == 22) {
       // Second order
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
@@ -185,7 +186,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         "dynamic basis");
   } else if (rom_option == 4 || rom_option == 7 ||
              ((rom_option >= 9) && (rom_option <= 11)) || rom_option == 17 ||
-             rom_option == 18 || rom_option == 21) {
+             rom_option == 18 || rom_option == 21 || rom_option == 22) {
     // Highest degree = 2
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
@@ -284,7 +285,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx, true);
-  } else if (rom_option == 11 || rom_option == 13) {
+  } else if (rom_option == 11 || rom_option == 13 || rom_option == 22) {
     // Fix the mapping function of LIPM
     // Use pelvis as a proxy for COM
     // ROM is only a function of stance leg's joints

@@ -282,10 +282,10 @@ int DoMain(int argc, char* argv[]) {
           osc_gains.relative_pelvis);
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_left", "toe_right", "pelvis", osc_gains.relative_feet,
+      plant, plant_context.get(), "toe_left", "pelvis", osc_gains.relative_feet,
       0, accumulated_state_durations);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_right", "toe_left", "pelvis",
+      plant, plant_context.get(), "toe_right", "pelvis",
       osc_gains.relative_feet, 1, accumulated_state_durations);
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);

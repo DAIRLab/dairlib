@@ -29,7 +29,6 @@ namespace dairlib::examples::osc_run {
 FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
                                      Context<double>* context,
                                      const string& foot_name,
-                                     const string& stance_foot_name,
                                      const string& hip_name, bool relative_feet,
                                      const int stance_state,
                                      std::vector<double> state_durations)
@@ -37,8 +36,6 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
       context_(context),
       world_(plant.world_frame()),
       foot_frame_(plant.GetFrameByName(foot_name)),
-      stance_foot_frame_(plant.GetFrameByName(stance_foot_name)),
-      stance_foot_name_(stance_foot_name),
       hip_frame_(plant.GetFrameByName(hip_name)),
       relative_feet_(relative_feet),
       stance_state_(stance_state),
@@ -138,7 +135,6 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
       this->template EvalVectorInput<OutputVector>(context, state_port_);
   const auto desired_pelvis_vel_xy =
       this->EvalVectorInput(context, target_vel_port_)->get_value();
-  VectorXd fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
 
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
@@ -160,18 +156,8 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   Vector3d desired_pelvis_vel;
   desired_pelvis_vel << desired_pelvis_vel_xy, 0;
   VectorXd pelvis_vel = v.segment(3, 3);
-  //  VectorXd stance_foot_vel = plant_.CalcVel(*context_,
-  //  plant_.GetBodyByName(""));
-  VectorXd stance_foot_vel = plant_.GetBodyByName(stance_foot_name_)
-                                 .EvalSpatialVelocityInWorld(*context_)
-                                 .translational();
-  if (fsm_state[0] < 2) {
-    pelvis_vel = pelvis_vel - stance_foot_vel;
-  }
-  //  pelvis_vel(0) =
-  //  context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(0);
-  //  pelvis_vel(1) =
-  //  context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(1);
+  pelvis_vel(0) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(0);
+//  pelvis_vel(1) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(1);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
   VectorXd footstep_correction = Kd_ * (pelvis_vel_err);
   if (is_left_foot_) {

@@ -13,10 +13,9 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   FootTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
                     drake::systems::Context<double>* context,
-                    const std::string& foot_name,
-                    const std::string& stance_foot_name,
-                    const std::string& hip_name, bool relative_feet,
-                    int stance_state, std::vector<double> state_durations);
+                    const std::string& foot_name, const std::string& hip_name,
+                    bool relative_feet, int stance_state,
+                    std::vector<double> state_durations);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -51,8 +50,6 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::Frame<double>& world_;
   const drake::multibody::Frame<double>& foot_frame_;
-  const drake::multibody::Frame<double>& stance_foot_frame_;
-  std::string stance_foot_name_;
   const drake::multibody::Frame<double>& hip_frame_;
 
   // Foot spline parameters

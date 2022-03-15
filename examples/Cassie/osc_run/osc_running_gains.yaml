@@ -40,7 +40,7 @@ hip_yaw_kp: 40
 hip_yaw_kd: 1
 # Foot placement parameters
 footstep_offset: -0.05
-center_line_offset: 0.05
+center_line_offset: 0.075
 FootstepKd:
   [  0.2,     0,  0,
      0,     0.45, 0,
@@ -92,5 +92,5 @@ LiftoffSwingFootKp:
 LiftoffSwingFootKd:
   [ 1,   0,   0,
     0,  1,   0,
-    0,   0,  0]
+    0,   0,  2]
 

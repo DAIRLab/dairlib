@@ -79,7 +79,7 @@ TEST_F(KinematicEvaluatorTest,
 
   auto J = evaluator.EvalFullJacobian(*context);
   MatrixXd J_expected(3, 6);
-  J_expected.row(0) << 1, 0, -1, 0, -1, -0.5;
+  J_expected.row(0) << 1, 0, -1, -1, 0, -0.5;
   J_expected.row(1) << 0, 0, 0, 0, 0, 0;
   J_expected.row(2) << 0, 1, 0, 0, 0, 0;
   EXPECT_TRUE(CompareMatrices(J, J_expected, tolerance));
@@ -218,7 +218,7 @@ TEST_F(KinematicEvaluatorTest, DistanceEvaluatorTest) {
 
   // Test q = pi/2, legs straight down
   VectorXd q = VectorXd::Zero(plant_->num_positions());
-  q(4) = M_PI / 2.0;
+  q(3) = M_PI / 2.0;
   plant_->SetPositions(context.get(), q);
   VectorXd v = Eigen::VectorXd::Random(plant_->num_velocities());
   plant_->SetVelocities(context.get(), v);

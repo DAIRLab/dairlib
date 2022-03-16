@@ -80,8 +80,10 @@ fi
 
 # Prevent the server from shutting down when using too many cpu cores
 n_thread_to_use=$SLURM_CPUS_PER_TASK
-if [ "$n_thread_to_use" -ge "40" ]; then
-  n_thread_to_use=$(($n_thread_to_use*9/10))
+if [ "$HOSTNAME" = "node-2080ti-7" ]; then
+  if [ "$n_thread_to_use" -ge "40" ]; then
+    n_thread_to_use=$(($n_thread_to_use*9/10))
+  fi
 fi
 
 # folder name (Create data folder's name automatically from this bash script's name)

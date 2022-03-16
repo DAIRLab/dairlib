@@ -1547,7 +1547,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nTasks settings:\n";
   bool is_grid_task = FLAGS_is_grid_task;
   bool is_stochastic = FLAGS_is_stochastic;
-  if (FLAGS_no_model_update) is_stochastic = false;
+  // if (FLAGS_no_model_update)
+  //   is_stochastic = false;  // I commented this out because it seems like
+  //                           // plots look better (with interpolation func)
   TasksGenerator* task_gen;
   GridTasksGenerator task_gen_grid;
   UniformTasksGenerator task_gen_uniform;

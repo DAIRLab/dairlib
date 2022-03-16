@@ -421,6 +421,7 @@ cc_binary(
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",
+        "//solvers:osqp_solver_options",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
         "//systems/filters:floating_base_velocity_filter",
@@ -553,8 +554,8 @@ cc_library(
         "cassie_encoder.h",
     ],
     deps = [
-        "//systems/framework:vector",
         "//multibody:utils",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

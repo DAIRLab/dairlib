@@ -23,6 +23,14 @@ load(
 )
 
 cc_library(
+    name = "diagrams",
+    deps = [
+        ":osc_running_controller_diagram",
+        ":cassie_sim_diagram",
+    ],
+)
+
+cc_library(
     name = "osc_running_controller_diagram",
     srcs = ["osc_running_controller_diagram.cc"],
     hdrs = ["osc_running_controller_diagram.h"],
@@ -56,6 +64,7 @@ cc_library(
         "//systems:robot_lcm_systems",
         "//systems/controllers:geared_motor",
         "//systems/primitives",
+        "//systems/primitives:radio_parser",
         "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",

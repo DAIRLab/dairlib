@@ -104,6 +104,9 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
+  std::cout << "state size : " << std::endl;
+  std::cout << plant.num_positions() + plant.num_velocities() << std::endl;
+
   std::unordered_map<
       int, std::vector<std::pair<const Vector3d,
                                  const drake::multibody::Frame<double>&>>>
@@ -162,12 +165,12 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), true, false);
-  auto failure_aggregator =
-      builder.AddSystem<systems::ControllerFailureAggregator>(
-          control_channel_name_, 1);
-//  auto passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
-//      osc->get_output_port(0).size(), 0,
-//      plant.get_actuation_input_port().size());
+  //  auto failure_aggregator =
+  //      builder.AddSystem<systems::ControllerFailureAggregator>(
+  //          control_channel_name_, 1);
+  //  auto passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
+  //      osc->get_output_port(0).size(), 0,
+  //      plant.get_actuation_input_port().size());
   std::vector<double> tau = {.05, .05, .01};
   auto ekf_filter =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
@@ -511,12 +514,13 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   builder.ExportInput(high_level_command->get_cassie_out_input_port(),
                       "lcmt_cassie_out");
   builder.ExportOutput(command_sender->get_output_port(), "u, t");
-  builder.ExportOutput(failure_aggregator->get_status_output_port(), "failure_status");
+  //  builder.ExportOutput(failure_aggregator->get_status_output_port(),
+  //  "failure_status");
 
   builder.BuildInto(this);
-  this->set_name(("osc_running_controller"));
+  this->set_name(("osc_running_controller_diagram"));
+  DrawAndSaveDiagramGraph(*this);
   std::cout << "Built controller" << std::endl;
-
 }
 
 }  // namespace controllers

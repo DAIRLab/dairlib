@@ -16,7 +16,7 @@ py_library(
     srcs = ["cassie_gym.py"],
     deps = [
         "//bindings/pydairlib/cassie:cassie",
-        "//bindings/pydairlib/common",
+        "//bindings/pydairlib",
         "//bindings/pydairlib/systems:systems",
         "//bindings/pydairlib/multibody",
         "//bindings/pydairlib/systems:primitives_py",
@@ -89,12 +89,15 @@ pybind_py_library(
     name = "simulators_py",
     cc_deps = [
         "@drake//:drake_shared_library",
+        "@drake//bindings/pydrake/common:value_pybind",
         "//examples/Cassie/diagrams:cassie_sim_diagram",
     ],
     cc_so_name = "simulators",
-    cc_srcs = ["simulators_py.cc"],
+    cc_srcs = ["simulators_py.cc",
+               ],
     py_deps = [
         "@drake//bindings/pydrake",
+        "//bindings/pydairlib/lcm:lcm",
         ":module_py",
     ],
     py_imports = ["."],

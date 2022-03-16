@@ -1,6 +1,8 @@
 
 #include "cassie_sim_diagram.h"
 
+#include <drake/systems/primitives/constant_vector_source.h>
+
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -8,6 +10,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/geared_motor.h"
+#include "systems/primitives/radio_parser.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -67,14 +70,18 @@ CassieSimDiagram::CassieSimDiagram(
   auto state_sender =
       builder.AddSystem<systems::RobotOutputSender>(*plant_, true);
 
-  const auto& sensor_aggregator =
-      AddImuAndAggregator(&builder, *plant_, passthrough->get_output_port());
+  auto constant_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource>(
+          VectorXd::Zero(10));
+  sensor_aggregator_ = &AddImuAndAggregator(&builder, *plant_,
+                                            constant_source->get_output_port());
 
   std::vector<double> omega_max = {303.687, 303.687, 136.136, 136.135, 575.958,
                                    303.687, 303.687, 136.136, 136.135, 575.958};
 
   auto cassie_motor =
       builder.AddSystem<systems::GearedMotor>(*plant_, omega_max);
+  auto radio_parser = builder.AddSystem<systems::RadioParser>();
 
   // connect leaf systems
   builder.Connect(input_receiver->get_output_port(),
@@ -96,14 +103,18 @@ CassieSimDiagram::CassieSimDiagram(
       scene_graph_->get_source_pose_port(plant_->get_source_id().value()));
   builder.Connect(scene_graph_->get_query_output_port(),
                   plant_->get_geometry_query_input_port());
+  builder.Connect(radio_parser->get_output_port(),
+                  sensor_aggregator_->get_input_port_radio());
 
-  builder.ExportInput(input_receiver->get_input_port(), "u");
-  builder.ExportInput(sensor_aggregator.get_input_port_radio(), "radio");
-  builder.ExportOutput(state_sender->get_output_port(0));
-  builder.ExportOutput(sensor_aggregator.get_output_port(0));
+  builder.ExportInput(input_receiver->get_input_port(), "u, t");
+  builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
+  builder.ExportOutput(state_sender->get_output_port(0), "x, u, t");
+  builder.ExportOutput(sensor_aggregator_->get_output_port(0),
+                       "lcmt_cassie_out");
 
   builder.BuildInto(this);
-  this->set_name("cassie_sim");
+  this->set_name("cassie_sim_diagram");
+  DrawAndSaveDiagramGraph(*this);
   std::cout << "Built simulator" << std::endl;
 }
 }  // namespace examples

@@ -11,7 +11,9 @@ from pydairlib.cassie.cassie_utils import *
 from pydairlib.multibody import *
 from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
+from dairlib import lcmt_radio_out
 from pydairlib.cassie.simulators import CassieSimDiagram
+
 
 class CassieGym():
     def __init__(self, visualize=False):
@@ -41,29 +43,37 @@ class CassieGym():
         self.plant = MultibodyPlant(self.dt)
         self.controller = controller
         self.simulator = CassieSimDiagram(self.plant, urdf, 0.8, 1e4, 1e2)
-        self.plant = self.simulator.get_plant()
+        self.new_plant = self.simulator.get_plant()
+        # self.sensor_aggregator = self.simulator.get_sensor_aggregator()
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.simulator)
 
         self.builder.Connect(self.controller.get_control_output_port(), self.simulator.get_actuation_input_port())
         self.builder.Connect(self.simulator.get_state_output_port(), self.controller.get_state_input_port())
-        self.builder.Connect(self.simulator.get_cassie_out_output_port_index(), self.controller.get_cassie_out_input_port())
+        self.builder.Connect(self.simulator.get_cassie_out_output_port_index(),
+                             self.controller.get_cassie_out_input_port())
         # self.builder.Connect(self.controller, self.simulator.get_radio_input_port())
 
         self.diagram = self.builder.Build()
         self.sim = Simulator(self.diagram)
-        self.plant_context = self.diagram.GetMutableSubsystemContext(self.plant, self.sim.get_mutable_context())
+        self.plant_context = self.diagram.GetMutableSubsystemContext(self.new_plant, self.sim.get_mutable_context())
+        self.simulator_context = self.diagram.GetMutableSubsystemContext(self.simulator, self.sim.get_mutable_context())
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.reset()
 
     def reset(self):
         self.traj = CassieTraj()
-        self.plant.SetPositionsAndVelocities(self.plant.GetMyMutableContextFromRoot(
+        self.new_plant.SetPositionsAndVelocities(self.new_plant.GetMyMutableContextFromRoot(
             self.sim.get_mutable_context()), self.x_init)
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.traj.update(self.start_time, self.x_init,
                          np.zeros(self.action_dim))
         self.sim.Initialize()
+        cassie_state = self.plant.GetPositionsAndVelocities(
+            self.plant.GetMyMutableContextFromRoot(
+                self.sim.get_mutable_context()))
+        import pdb;
+        pdb.set_trace()
         self.current_time = self.start_time
         return
 
@@ -75,8 +85,12 @@ class CassieGym():
     def get_state(self):
         return self.traj.get_positions()[-1]
 
-    def step(self, action=np.zeros(10)):
+    def step(self, action=np.ones(18)):
         next_timestep = self.sim.get_context().get_time() + self.dt
+        # action = lcmt_radio_out
+        # self.simulator.get_radio_input_port().FixValue(self.simulator_context, AbstractValue.Make(action))
+
+        self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
         self.sim.AdvanceTo(next_timestep)
 
         cassie_state = self.plant.GetPositionsAndVelocities(

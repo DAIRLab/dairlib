@@ -178,6 +178,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//common",
+        "//examples/Cassie/diagrams:diagrams",
         "//systems:robot_lcm_systems",
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",

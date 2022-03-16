@@ -547,6 +547,8 @@ int DoMain(int argc, char* argv[]) {
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
+  osc->SetOsqpSolverOptionsFromYaml(
+      "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
   // Build OSC problem
   osc->Build();
   // Connect ports

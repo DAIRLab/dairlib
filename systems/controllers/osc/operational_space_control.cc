@@ -448,18 +448,7 @@ void OperationalSpaceControl::Build() {
   }
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
-  std::cout << solver_options << std::endl;
-  solver_->InitializeSolver(*prog_, solver_options);
+  solver_->InitializeSolver(*prog_, solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(

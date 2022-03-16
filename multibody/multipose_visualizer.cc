@@ -19,13 +19,15 @@ namespace multibody {
 MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
                                          const string& weld_frame_to_world)
     : MultiposeVisualizer(model_file, num_poses,
-                          Eigen::VectorXd::Constant(num_poses, 1.0)) {}
+                          Eigen::VectorXd::Constant(num_poses, 1.0),
+                          weld_frame_to_world) {}
 
 MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
                                          double alpha_scale,
                                          const string& weld_frame_to_world)
     : MultiposeVisualizer(model_file, num_poses,
-                          Eigen::VectorXd::Constant(num_poses, alpha_scale)) {}
+                          Eigen::VectorXd::Constant(num_poses, alpha_scale),
+                          weld_frame_to_world) {}
 
 MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
                                          const Eigen::VectorXd& alpha_scale,
@@ -46,21 +48,18 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
     auto index =
         parser.AddModelFromFile(model_file, "model[" + std::to_string(i) + "]");
     model_indices_.push_back(index);
-//    if (!weld_frame_to_world.empty()) {
-//      std::cout << "welding frames: " << std::endl;
-//      plant_->WeldFrames(
-//          plant_->world_frame(),
-//          plant_->GetFrameByName(weld_frame_to_world, model_indices_.at(i)),
-//          drake::math::RigidTransform<double>(Eigen::Vector3d::Zero()));
+    if (!weld_frame_to_world.empty()) {
+      std::cout << "weld frame not empty: " << std::endl;
       plant_->WeldFrames(
           plant_->world_frame(),
-          plant_->GetFrameByName("base", model_indices_.at(i)),
+          plant_->GetFrameByName(weld_frame_to_world, model_indices_.at(i)),
           drake::math::RigidTransform<double>(Eigen::Vector3d::Zero()));
-//    }
+    }
   }
 
   plant_->Finalize();
-
+  std::cout << plant_->num_positions() << std::endl;
+  std::cout << plant_->num_velocities() << std::endl;
   // Adjust transparency alpha values
   const auto& inspector = scene_graph->model_inspector();
 
@@ -101,8 +100,6 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
 
 void MultiposeVisualizer::DrawPoses(MatrixXd poses) {
   // Set positions for individual instances
-  std::cout << poses << std::endl;
-  std::cout << plant_->num_positions() << std::endl;
   auto& plant_context =
       diagram_->GetMutableSubsystemContext(*plant_, diagram_context_.get());
   for (int i = 0; i < num_poses_; i++) {

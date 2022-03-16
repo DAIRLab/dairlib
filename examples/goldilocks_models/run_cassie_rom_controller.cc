@@ -737,7 +737,9 @@ int DoMain(int argc, char* argv[]) {
       // with optimaized ROM.
       // One solution is to soften the ROM tracking gains in the beginning of
       // stance, and the other solution is to make sure the swing foot is on the
-      // ground before switch.
+      // ground before switch. (Update: The later solution doesn't fix the issue
+      // for the optimaized models, because it's not physically interpreted as
+      // height anymore)
       //      osc->AddTrackingData(&optimal_rom_traj, 0.02);
       osc->AddTrackingData(&optimal_rom_traj);
     } else {

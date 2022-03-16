@@ -188,6 +188,23 @@ cc_binary(
 )
 
 cc_binary(
+    name = "closed_loop_running_sim",
+    srcs = ["closed_loop_running_sim.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//common",
+        "//examples/Cassie/diagrams:diagrams",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/controllers:pd_config_lcm",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "visualizer",
     srcs = ["visualizer.cc"],
     deps = [

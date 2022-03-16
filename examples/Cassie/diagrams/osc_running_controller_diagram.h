@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <utility>
+#include <drake/multibody/plant/multibody_plant.h>
 
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/diagram.h"
@@ -18,7 +19,7 @@ class OSCRunningControllerDiagram : public drake::systems::Diagram<double> {
 
   /// @param[in] osc_gains_filename filepath containing the osc_running_gains.
   /// @param[in] osqp_settings filepath containing the osqp settings.
-  OSCRunningControllerDiagram(const std::string& osc_gains_filename,
+  OSCRunningControllerDiagram(drake::multibody::MultibodyPlant<double>& plant, const std::string& osc_gains_filename,
                               const std::string& osqp_settings_filename);
 
   /// @return the input port for the plant state.
@@ -43,6 +44,8 @@ class OSCRunningControllerDiagram : public drake::systems::Diagram<double> {
   }
 
  private:
+  std::unique_ptr<drake::systems::Context<double>> plant_context;
+
   const int state_input_port_index_ = 0;
   const int cassie_out_input_port_index_ = 1;
   const int control_output_port_index_ = 0;

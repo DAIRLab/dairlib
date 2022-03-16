@@ -78,18 +78,18 @@ namespace examples {
 namespace controllers {
 
 OSCRunningControllerDiagram::OSCRunningControllerDiagram(
+    drake::multibody::MultibodyPlant<double>& plant,
     const string& osc_gains_filename, const string& osqp_settings_filename) {
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
   // Built the Cassie MBPs
-  drake::multibody::MultibodyPlant<double> plant(0.0);
   addCassieMultibody(&plant, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      false /*spring model*/, false /*loop closure*/);
   plant.Finalize();
 
-  auto plant_context = plant.CreateDefaultContext();
+  plant_context = plant.CreateDefaultContext();
 
   // Get contact frames and position
   auto left_toe = LeftToeFront(plant);

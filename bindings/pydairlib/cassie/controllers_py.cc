@@ -21,8 +21,8 @@ PYBIND11_MODULE(controllers, m) {
 
   py::class_<dairlib::examples::controllers::OSCRunningControllerDiagram, drake::systems::Diagram<double>>(
       m, "OSCRunningControllerFactory")
-      .def(py::init<const std::string&, const std::string&>(),
-           py::arg("osc_gains_filename"), py::arg("osqp_settings_filename"))
+      .def(py::init<drake::multibody::MultibodyPlant<double>&, const std::string&, const std::string&>(),
+           py::arg("plant"), py::arg("osc_gains_filename"), py::arg("osqp_settings_filename"))
       .def("get_state_input_port",
            &OSCRunningControllerDiagram::get_state_input_port,
            py_rvp::reference_internal)

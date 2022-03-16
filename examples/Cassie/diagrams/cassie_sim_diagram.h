@@ -45,7 +45,7 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
     return this->get_output_port(cassie_out_output_port_index_);
   }
 
-  const drake::multibody::MultibodyPlant<double>& get_plant() {
+  drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
   //  const drake::systems::System<double>& get_sensor_aggregator() { return

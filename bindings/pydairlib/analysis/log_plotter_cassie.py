@@ -12,9 +12,8 @@ import mbp_plotting_utils as mbp_plots
 
 
 def main():
-    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
-    # config_file = \
-    #     'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
+    config_file = \
+        'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
     use_floating_base = plot_config.use_floating_base
@@ -34,11 +33,13 @@ def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
     robot_output, robot_input, osc_debug = \
-        get_log_data(log,  # log
-                     cassie_plots.cassie_default_channels,  # lcm channels
-                     mbp_plots.load_default_channels,  # processing callback
+        get_log_data(log,                                       # log
+                     cassie_plots.cassie_default_channels,      # lcm channels
+                     plot_config.end_time,
+                     mbp_plots.load_default_channels,           # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
+    print('Finished processing log - making plots')
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
@@ -61,21 +62,18 @@ def main():
     ''' Plot Velocities '''
     # Plot floating base velocities if applicable
     if use_floating_base and plot_config.plot_floating_base_velocities:
-        plot = mbp_plots.plot_floating_base_velocities(
+        mbp_plots.plot_floating_base_velocities(
             robot_output, vel_names, 6, t_x_slice)
 
     # Plot all joint velocities
     if plot_config.plot_joint_positions:
-        plot = mbp_plots.plot_joint_velocities(robot_output, vel_names,
+        mbp_plots.plot_joint_velocities(robot_output, vel_names,
                                         6 if use_floating_base else 0,
                                         t_x_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
-
     # Plot specific velocities
     if plot_config.vel_names:
-        plot = mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
-                                                 t_x_slice, vel_map)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.1)
+        mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
+                                          t_x_slice, vel_map)
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
@@ -84,9 +82,6 @@ def main():
         mbp_plots.plot_measured_efforts_by_name(robot_output,
                                                 plot_config.act_names,
                                                 t_x_slice, act_map)
-    # plt.figure("efforts")
-    # plt.plot(robot_input['t_u'], robot_input['u'])
-
 
     ''' Plot OSC '''
     if plot_config.plot_qp_costs:
@@ -116,7 +111,7 @@ def main():
                                         foot_frames, pts, dims)
 
     if plot_config.plot_qp_solve_time:
-        plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+        mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
 
     plt.show()
 

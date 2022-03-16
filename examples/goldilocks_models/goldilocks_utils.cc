@@ -275,7 +275,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom = std::make_unique<Gip>(plant, stance_foot, *mapping_basis,
                                 *dynamic_basis, 3);
   } else if (rom_option == 9 || rom_option == 16 || rom_option == 17 ||
-             rom_option == 23) {
+             rom_option == 24) {
     // Fix the mapping function of the COM xy part
     std::set<int> invariant_idx = {0, 1};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,

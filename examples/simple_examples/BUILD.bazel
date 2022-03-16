@@ -29,3 +29,15 @@ cc_binary(
         "@drake//math:gradient",
     ],
 )
+
+cc_binary(
+    name = "c3_diagram_test",
+    srcs = ["c3_diagram_test.cc"],
+    data = [":five_link_biped.urdf"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@gflags",
+        "//common",
+        "//systems/controllers:c3_controller",
+    ],
+)

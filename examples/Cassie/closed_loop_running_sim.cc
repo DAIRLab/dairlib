@@ -32,9 +32,9 @@ int DoMain(int argc, char* argv[]) {
   std::string osqp_settings =
       "examples/Cassie/osc_run/osc_running_qp_settings.yaml";
   std::unique_ptr<MultibodyPlant<double>> plant =
-      std::make_unique<MultibodyPlant<double>>(1e-5);
+      std::make_unique<MultibodyPlant<double>>(8e-5);
   MultibodyPlant<double> controller_plant =
-      MultibodyPlant<double>(1e-5);
+      MultibodyPlant<double>(8e-5);
   // Built the Cassie MBPs
   addCassieMultibody(&controller_plant, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
@@ -79,7 +79,7 @@ int DoMain(int argc, char* argv[]) {
   new_plant.SetPositionsAndVelocities(&plant_context, x_init);
   //  auto sim = drake::systems::Simulator(diagram);
   std::cout << "advancing simulator: " << std::endl;
-  simulator.AdvanceTo(5.0);
+  simulator.AdvanceTo(20.0);
   return 0;
 }
 }}

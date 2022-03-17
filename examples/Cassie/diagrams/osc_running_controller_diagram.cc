@@ -87,8 +87,8 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       left_heel(LeftToeRear(plant)),
       right_toe(RightToeFront(plant)),
       right_heel(RightToeRear(plant)),
-      left_foot_points({left_toe, left_heel}),
-      right_foot_points({right_toe, right_heel}),
+      left_foot_points({left_heel, left_toe}),
+      right_foot_points({right_heel, right_toe}),
       view_frame(
           multibody::WorldYawViewFrame<double>(plant.GetBodyByName("pelvis"))),
       left_toe_evaluator(multibody::WorldPointEvaluator(

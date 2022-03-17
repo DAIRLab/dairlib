@@ -41,7 +41,7 @@ namespace dairlib {
 namespace solvers {
 
 int DoMain(int argc, char* argv[]) {
-  int example = 0;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
+  int example = 1;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
 
   /// dimensions (n: state dimension, m: complementarity variable dimension, k:
   /// input dimension, N: MPC horizon)

@@ -28,9 +28,9 @@ class LCSFactory {
       const drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       const drake::systems::Context<drake::AutoDiffXd>& context_ad,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-          contact_geoms,
-      int num_friction_directions, double mu);
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>& contact_geoms,
+      int num_friction_directions,
+      double mu);
 };
 
 }  // namespace solvers

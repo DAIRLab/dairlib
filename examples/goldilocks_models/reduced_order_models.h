@@ -47,6 +47,8 @@ class MonomialFeatures {
 
   int n_order() const { return n_order_; };
   const std::vector<int>& skip_inds() const { return skip_inds_; };
+  const  std::set<std::multiset<int>>& features() const { return features_; };
+  static void PrintMultiset(const std::multiset<int>& set);
 
  private:
   static std::set<std::multiset<int>> ConstructSubfeaturesWithOneMoreOrder(
@@ -60,8 +62,6 @@ class MonomialFeatures {
       const std::map<std::pair<int, std::multiset<int>>,
                      std::pair<int, std::multiset<int>>>& partial_diff_map)
       const;
-
-  static void PrintMultiset(const std::multiset<int>& set);
 
   int n_q_;
   std::string name_;

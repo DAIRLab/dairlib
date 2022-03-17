@@ -243,6 +243,35 @@ TEST_F(MonomialFeatureTest, HighOrder) {
   VectorX<double> expected_JdotV(10);
   expected_JdotV << 0, 0, 0.18, 0, 0.09, 0, 0, 0, 0, 0;
   EXPECT_TRUE((features.EvalJdotV(q, qdot) - expected_JdotV).norm() == 0);
+
+  // Check the order of the features. We hard coded here in case c++ internally
+  // change the order of set<>
+  // clang-format off
+  std::vector<std::multiset<int>> handcoded_features = {
+      {},
+      {0},
+      {0, 0},
+      {0, 0, 0},
+      {0, 0, 1},
+      {0, 1},
+      {0, 1, 1},
+      {1},
+      {1, 1},
+      {1, 1, 1}};
+  // clang-format on
+
+  int i = 0;
+  for (const auto& feat_i : features.features()) {
+    cout << "  " << i << ": ";
+    features.PrintMultiset(feat_i);
+    cout << "\n";
+    EXPECT_TRUE(feat_i == handcoded_features.at(i));
+    i++;
+  }
+
+  //  features.PrintSymbolicFeatures();
+  //  features.PrintSymbolicPartialDerivatives(1);
+  //  features.PrintSymbolicPartialDerivatives(2);
 }
 
 TEST_F(MonomialFeatureTest, SkipIndices) {

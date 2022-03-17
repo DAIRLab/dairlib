@@ -11,6 +11,11 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "systems/controllers/osc/osc_gains.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/controllers/osc/rot_space_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
+#include "systems/controllers/osc/com_tracking_data.h"
+#include "systems/controllers/osc/relative_translation_tracking_data.h"
 
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/diagram.h"
@@ -21,6 +26,11 @@ namespace dairlib {
 namespace examples {
 namespace controllers {
 
+using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::RelativeTranslationTrackingData;
+using systems::controllers::RotTaskSpaceTrackingData;
+using systems::controllers::JointSpaceTrackingData;
+
 class OSCRunningControllerDiagram final
     : public drake::systems::Diagram<double> {
  public:
@@ -29,8 +39,7 @@ class OSCRunningControllerDiagram final
   /// @param[in] osc_gains_filename filepath containing the osc_running_gains.
   /// @param[in] osqp_settings filepath containing the osqp settings.
   OSCRunningControllerDiagram(drake::multibody::MultibodyPlant<double>& plant,
-                              const std::string& osc_gains_filename,
-                              const std::string& osqp_settings_filename);
+                              const OSCGains& osc_gains, const OSCRunningGains& osc_running_gains);
 
   /// @return the input port for the plant state.
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -88,6 +97,27 @@ class OSCRunningControllerDiagram final
   multibody::FixedJointEvaluator<double> right_fixed_knee_spring;
   multibody::FixedJointEvaluator<double> left_fixed_ankle_spring;
   multibody::FixedJointEvaluator<double> right_fixed_ankle_spring;
+
+  std::unique_ptr<TransTaskSpaceTrackingData> pelvis_tracking_data;
+  std::unique_ptr<TransTaskSpaceTrackingData> stance_foot_tracking_data;
+  std::unique_ptr<TransTaskSpaceTrackingData> left_foot_tracking_data;
+  std::unique_ptr<TransTaskSpaceTrackingData> right_foot_tracking_data;
+  std::unique_ptr<TransTaskSpaceTrackingData> left_foot_yz_tracking_data;
+  std::unique_ptr<TransTaskSpaceTrackingData> right_foot_yz_tracking_data;
+  std::unique_ptr<TransTaskSpaceTrackingData> left_hip_tracking_data;
+  std::unique_ptr<TransTaskSpaceTrackingData> right_hip_tracking_data;
+  std::unique_ptr<TransTaskSpaceTrackingData> left_hip_yz_tracking_data;
+  std::unique_ptr<TransTaskSpaceTrackingData> right_hip_yz_tracking_data;
+  std::unique_ptr<RelativeTranslationTrackingData> left_foot_rel_tracking_data;
+  std::unique_ptr<RelativeTranslationTrackingData> right_foot_rel_tracking_data;
+  std::unique_ptr<RelativeTranslationTrackingData> left_foot_yz_rel_tracking_data;
+  std::unique_ptr<RelativeTranslationTrackingData> right_foot_yz_rel_tracking_data;
+  std::unique_ptr<RelativeTranslationTrackingData> pelvis_trans_rel_tracking_data;
+  std::unique_ptr<RotTaskSpaceTrackingData> pelvis_rot_tracking_data;
+  std::unique_ptr<JointSpaceTrackingData> left_toe_angle_tracking_data;
+  std::unique_ptr<JointSpaceTrackingData> right_toe_angle_tracking_data;
+  std::unique_ptr<JointSpaceTrackingData> left_hip_yaw_tracking_data;
+  std::unique_ptr<JointSpaceTrackingData> right_hip_yaw_tracking_data;
 
   OSCGains osc_gains_;
   OSCRunningGains osc_running_gains_;

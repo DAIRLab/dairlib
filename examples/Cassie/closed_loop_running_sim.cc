@@ -34,6 +34,11 @@ int DoMain(int argc, char* argv[]) {
       std::make_unique<MultibodyPlant<double>>(1e-5);
   MultibodyPlant<double> controller_plant =
       MultibodyPlant<double>(1e-5);
+  // Built the Cassie MBPs
+  addCassieMultibody(&controller_plant, nullptr, true,
+                     "examples/Cassie/urdf/cassie_v2_conservative.urdf",
+                     false /*spring model*/, false /*loop closure*/);
+  controller_plant.Finalize();
 //  auto controller_context = controller_plant.CreateDefaultContext();
 
   auto sim_diagram = builder.AddSystem<examples::CassieSimDiagram>(

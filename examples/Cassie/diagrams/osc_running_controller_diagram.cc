@@ -79,38 +79,52 @@ namespace controllers {
 
 OSCRunningControllerDiagram::OSCRunningControllerDiagram(
     drake::multibody::MultibodyPlant<double>& plant,
-    const string& osc_gains_filename, const string& osqp_settings_filename) {
+    const OSCGains& osc_gains, const OSCRunningGains& osc_running_gains)
+    : pos_map(multibody::makeNameToPositionsMap(plant)),
+      vel_map(multibody::makeNameToVelocitiesMap(plant)),
+      act_map(multibody::makeNameToActuatorsMap(plant)),
+      left_toe(LeftToeFront(plant)),
+      left_heel(LeftToeRear(plant)),
+      right_toe(RightToeFront(plant)),
+      right_heel(RightToeRear(plant)),
+      view_frame(
+          multibody::WorldYawViewFrame<double>(plant.GetBodyByName("pelvis"))),
+      left_toe_evaluator(multibody::WorldPointEvaluator(
+          plant, left_toe.first, left_toe.second, view_frame,
+          Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
+      left_heel_evaluator(multibody::WorldPointEvaluator(
+          plant, left_heel.first, left_heel.second, view_frame,
+          Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})),
+      right_toe_evaluator(multibody::WorldPointEvaluator(
+          plant, right_toe.first, right_toe.second, view_frame,
+          Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
+      right_heel_evaluator(multibody::WorldPointEvaluator(
+          plant, right_heel.first, right_heel.second, view_frame,
+          Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})),
+      left_loop(LeftLoopClosureEvaluator(plant)),
+      right_loop(RightLoopClosureEvaluator(plant)),
+      evaluators(multibody::KinematicEvaluatorSet<double>(plant)),
+      left_fixed_knee_spring(
+          FixedJointEvaluator(plant, pos_map.at("knee_joint_left"),
+                              vel_map.at("knee_joint_leftdot"), 0)),
+      right_fixed_knee_spring(
+          FixedJointEvaluator(plant, pos_map.at("knee_joint_right"),
+                              vel_map.at("knee_joint_rightdot"), 0)),
+      left_fixed_ankle_spring(
+          FixedJointEvaluator(plant, pos_map.at("ankle_spring_joint_left"),
+                              vel_map.at("ankle_spring_joint_leftdot"), 0)),
+      right_fixed_ankle_spring(
+          FixedJointEvaluator(plant, pos_map.at("ankle_spring_joint_right"),
+                              vel_map.at("ankle_spring_joint_rightdot"), 0)),
+      osc_gains_(osc_gains),
+      osc_running_gains_(osc_running_gains)
+
+{
+  std::cout << " here : " << std::endl;
+
   // Build the controller diagram
   DiagramBuilder<double> builder;
-
-  // Built the Cassie MBPs
-  addCassieMultibody(&plant, nullptr, true,
-                     "examples/Cassie/urdf/cassie_v2_conservative.urdf",
-                     false /*spring model*/, false /*loop closure*/);
-  plant.Finalize();
-
   plant_context = plant.CreateDefaultContext();
-
-  // Get contact frames and position
-  auto left_toe = LeftToeFront(plant);
-  auto left_heel = LeftToeRear(plant);
-  auto right_toe = RightToeFront(plant);
-  auto right_heel = RightToeRear(plant);
-
-  int nv = plant.num_velocities();
-
-  // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
-
-  std::cout << "state size : " << std::endl;
-  std::cout << plant.num_positions() + plant.num_velocities() << std::endl;
-
-  std::unordered_map<
-      int, std::vector<std::pair<const Vector3d,
-                                 const drake::multibody::Frame<double>&>>>
-      feet_contact_points;
   feet_contact_points[0] = std::vector<
       std::pair<const Vector3d, const drake::multibody::Frame<double>&>>(
       {left_toe, left_heel});
@@ -118,19 +132,10 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       std::pair<const Vector3d, const drake::multibody::Frame<double>&>>(
       {right_toe, right_heel});
 
-  /**** Get trajectory from optimization ****/
-
+  std::cout << " here : " << std::endl;
   /**** OSC Gains ****/
   drake::yaml::YamlReadArchive::Options yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-
-  OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(osc_gains_filename), {}, {}, yaml_options);
-  OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(
-      FindResourceOrThrow(osc_gains_filename));
-  solvers::OSQPSettingsYaml osqp_settings =
-      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-          FindResourceOrThrow(osqp_settings_filename));
 
   /**** FSM and contact mode configuration ****/
   int left_stance_state = 0;
@@ -138,14 +143,23 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   int right_touchdown_air_phase = 2;
   int left_touchdown_air_phase = 3;
 
-  vector<int> fsm_states = {left_stance_state, right_touchdown_air_phase,
-                            right_stance_state, left_touchdown_air_phase,
-                            left_stance_state};
+  fsm_states = vector<int>();
+  fsm_states.push_back(left_stance_state);
+  fsm_states.push_back(right_touchdown_air_phase);
+  fsm_states.push_back(right_stance_state);
+  fsm_states.push_back(left_touchdown_air_phase);
+  fsm_states.push_back(left_stance_state);
 
-  vector<double> state_durations = {
-      osc_gains.stance_duration, osc_gains.flight_duration,
-      osc_gains.stance_duration, osc_gains.flight_duration, 0.0};
-  vector<double> accumulated_state_durations;
+  state_durations = vector<double>();
+  state_durations.push_back(osc_running_gains_.stance_duration);
+  state_durations.push_back(osc_running_gains_.flight_duration);
+  state_durations.push_back(osc_running_gains_.stance_duration);
+  state_durations.push_back(osc_running_gains_.flight_duration);
+  state_durations.push_back(0.0);
+  //  vector<double> state_durations = {
+  //      osc_running_gains_.stance_duration, osc_running_gains_.flight_duration,
+  //      osc_running_gains_.stance_duration, osc_running_gains_.flight_duration, 0.0};
+  accumulated_state_durations = vector<double>();
   accumulated_state_durations.push_back(0);
   std::cout << accumulated_state_durations.back() << std::endl;
   for (double state_duration : state_durations) {
@@ -156,7 +170,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   accumulated_state_durations.pop_back();
 
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, 0.0, gains.impact_threshold);
+      plant, fsm_states, state_durations, 0.0, osc_gains_.impact_threshold);
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
@@ -178,61 +192,33 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   /**** OSC setup ****/
   // Cost
   /// REGULARIZATION COSTS
-  osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  //  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
-  osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
+  osc->SetAccelerationCostWeights(osc_gains_.w_accel * osc_gains_.W_acceleration);
+  //  osc->SetInputSmoothingWeights(1e-3 * osc_gains_.W_input_regularization);
+  osc->SetInputCostWeights(osc_gains_.w_input * osc_gains_.W_input_regularization);
   //  osc->SetLambdaContactRegularizationWeight(1e-4 *
-  //  gains.W_lambda_c_regularization);
+  //  osc_gains_.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
-                                              gains.W_lambda_h_regularization);
+                                              osc_gains_.W_lambda_h_regularization);
 
   // Soft constraint on contacts
-  osc->SetSoftConstraintWeight(gains.w_soft_constraint);
+  osc->SetSoftConstraintWeight(osc_gains_.w_soft_constraint);
 
   // Contact information for OSC
-  osc->SetContactFriction(gains.mu);
+  osc->SetContactFriction(osc_gains_.mu);
 
-  const auto& pelvis = plant.GetBodyByName("pelvis");
-  multibody::WorldYawViewFrame view_frame(pelvis);
-  auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, left_toe.first, left_toe.second, view_frame, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
-  auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, left_heel.first, left_heel.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
-  auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, right_toe.first, right_toe.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
-  auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, right_heel.first, right_heel.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+  //  multibody::WorldYawViewFrame view_frame(pelvis);
 
   osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
   osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
 
-  multibody::KinematicEvaluatorSet<double> evaluators(plant);
-  auto left_loop = LeftLoopClosureEvaluator(plant);
-  auto right_loop = RightLoopClosureEvaluator(plant);
+  //  multibody::KinematicEvaluatorSet<double> evaluators(plant);
+
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
   // Fix the springs in the dynamics
-  auto pos_idx_map = multibody::makeNameToPositionsMap(plant);
-  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant);
-  auto left_fixed_knee_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("knee_joint_left"),
-                          vel_idx_map.at("knee_joint_leftdot"), 0);
-  auto right_fixed_knee_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("knee_joint_right"),
-                          vel_idx_map.at("knee_joint_rightdot"), 0);
-  auto left_fixed_ankle_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("ankle_spring_joint_left"),
-                          vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
-  auto right_fixed_ankle_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("ankle_spring_joint_right"),
-                          vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
   evaluators.add_evaluator(&left_fixed_knee_spring);
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
@@ -249,42 +235,42 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   //          FLAGS_channel_cassie_out, &lcm));
   cassie::osc::HighLevelCommand* high_level_command;
   high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant, plant_context.get(), osc_gains.vel_scale_rot,
-      osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
+      plant, plant_context.get(), osc_running_gains_.vel_scale_rot,
+      osc_running_gains_.vel_scale_trans_sagital, osc_running_gains_.vel_scale_trans_lateral);
 
   auto default_traj = PiecewisePolynomial<double>(Vector3d{0, 0, 0});
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
           plant, plant_context.get(), default_traj, feet_contact_points,
-          osc_gains.relative_pelvis);
-  pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length);
+          osc_running_gains_.relative_pelvis);
+  pelvis_trans_traj_generator->SetSLIPParams(osc_running_gains_.rest_length);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_left", "pelvis", osc_gains.relative_feet,
+      plant, plant_context.get(), "toe_left", "pelvis", osc_running_gains_.relative_feet,
       0, accumulated_state_durations);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_right", "pelvis",
-      osc_gains.relative_feet, 1, accumulated_state_durations);
-  l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
-  r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
-  l_foot_traj_generator->SetFootPlacementOffsets(osc_gains.rest_length,
-                                                 osc_gains.center_line_offset,
-                                                 osc_gains.footstep_offset);
-  r_foot_traj_generator->SetFootPlacementOffsets(osc_gains.rest_length,
-                                                 osc_gains.center_line_offset,
-                                                 osc_gains.footstep_offset);
+      osc_running_gains_.relative_feet, 1, accumulated_state_durations);
+  l_foot_traj_generator->SetFootstepGains(osc_running_gains_.K_d_footstep);
+  r_foot_traj_generator->SetFootstepGains(osc_running_gains_.K_d_footstep);
+  l_foot_traj_generator->SetFootPlacementOffsets(osc_running_gains_.rest_length,
+                                                 osc_running_gains_.center_line_offset,
+                                                 osc_running_gains_.footstep_offset);
+  r_foot_traj_generator->SetFootPlacementOffsets(osc_running_gains_.rest_length,
+                                                 osc_running_gains_.center_line_offset,
+                                                 osc_running_gains_.footstep_offset);
 
   TransTaskSpaceTrackingData pelvis_tracking_data(
-      "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
-      osc_gains.W_pelvis, plant, plant);
+      "pelvis_trans_traj", osc_running_gains_.K_p_pelvis, osc_running_gains_.K_d_pelvis,
+      osc_running_gains_.W_pelvis, plant, plant);
   TransTaskSpaceTrackingData stance_foot_tracking_data(
-      "stance_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      "stance_ft_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData left_foot_tracking_data(
-      "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      "left_ft_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData right_foot_tracking_data(
-      "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      "right_ft_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant);
   pelvis_tracking_data.AddStateAndPointToTrack(left_stance_state, "pelvis");
   pelvis_tracking_data.AddStateAndPointToTrack(right_stance_state, "pelvis");
   stance_foot_tracking_data.AddStateAndPointToTrack(left_stance_state,
@@ -301,22 +287,22 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                                                    "toe_right");
 
   TransTaskSpaceTrackingData left_foot_yz_tracking_data(
-      "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      "left_ft_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData right_foot_yz_tracking_data(
-      "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      "right_ft_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant);
   left_foot_yz_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
                                                      "toe_left");
   right_foot_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
                                                       "toe_right");
 
   TransTaskSpaceTrackingData left_hip_tracking_data(
-      "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      "left_hip_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData right_hip_tracking_data(
-      "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      "right_hip_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant);
   left_hip_tracking_data.AddStateAndPointToTrack(right_stance_state, "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(left_stance_state, "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
@@ -325,35 +311,35 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                                                  "pelvis");
 
   TransTaskSpaceTrackingData left_hip_yz_tracking_data(
-      "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      "left_hip_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant);
   TransTaskSpaceTrackingData right_hip_yz_tracking_data(
-      "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      "right_hip_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant);
   left_hip_yz_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
                                                     "hip_left");
   right_hip_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
                                                      "hip_right");
 
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
-      "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant, &left_foot_tracking_data,
+      "left_ft_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant, &left_foot_tracking_data,
       &left_hip_tracking_data);
   RelativeTranslationTrackingData right_foot_rel_tracking_data(
-      "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant, &right_foot_tracking_data,
+      "right_ft_traj", osc_running_gains_.K_p_swing_foot, osc_running_gains_.K_d_swing_foot,
+      osc_running_gains_.W_swing_foot, plant, plant, &right_foot_tracking_data,
       &right_hip_tracking_data);
   RelativeTranslationTrackingData left_foot_yz_rel_tracking_data(
-      "left_ft_z_traj", osc_gains.K_p_liftoff_swing_foot,
-      osc_gains.K_d_liftoff_swing_foot, osc_gains.W_liftoff_swing_foot, plant,
+      "left_ft_z_traj", osc_running_gains_.K_p_liftoff_swing_foot,
+      osc_running_gains_.K_d_liftoff_swing_foot, osc_running_gains_.W_liftoff_swing_foot, plant,
       plant, &left_foot_yz_tracking_data, &left_hip_yz_tracking_data);
   RelativeTranslationTrackingData right_foot_yz_rel_tracking_data(
-      "right_ft_z_traj", osc_gains.K_p_liftoff_swing_foot,
-      osc_gains.K_d_liftoff_swing_foot, osc_gains.W_liftoff_swing_foot, plant,
+      "right_ft_z_traj", osc_running_gains_.K_p_liftoff_swing_foot,
+      osc_running_gains_.K_d_liftoff_swing_foot, osc_running_gains_.W_liftoff_swing_foot, plant,
       plant, &right_foot_yz_tracking_data, &right_hip_yz_tracking_data);
   RelativeTranslationTrackingData pelvis_trans_rel_tracking_data(
-      "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
-      osc_gains.W_pelvis, plant, plant, &pelvis_tracking_data,
+      "pelvis_trans_traj", osc_running_gains_.K_p_pelvis, osc_running_gains_.K_d_pelvis,
+      osc_running_gains_.W_pelvis, plant, plant, &pelvis_tracking_data,
       &stance_foot_tracking_data);
   left_foot_rel_tracking_data.SetViewFrame(view_frame);
   right_foot_rel_tracking_data.SetViewFrame(view_frame);
@@ -380,8 +366,8 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                                                            plant_context.get());
 
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
-      "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
-      osc_gains.W_pelvis_rot, plant, plant);
+      "pelvis_rot_traj", osc_running_gains_.K_p_pelvis_rot, osc_running_gains_.K_d_pelvis_rot,
+      osc_running_gains_.W_pelvis_rot, plant, plant);
   pelvis_rot_tracking_data.AddStateAndFrameToTrack(left_stance_state, "pelvis");
   pelvis_rot_tracking_data.AddStateAndFrameToTrack(right_stance_state,
                                                    "pelvis");
@@ -406,11 +392,11 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   // Swing toe joint tracking
   JointSpaceTrackingData left_toe_angle_tracking_data(
-      "left_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
-      osc_gains.W_swing_toe, plant, plant);
+      "left_toe_angle_traj", osc_running_gains_.K_p_swing_toe, osc_running_gains_.K_d_swing_toe,
+      osc_running_gains_.W_swing_toe, plant, plant);
   JointSpaceTrackingData right_toe_angle_tracking_data(
-      "right_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
-      osc_gains.W_swing_toe, plant, plant);
+      "right_toe_angle_traj", osc_running_gains_.K_p_swing_toe, osc_running_gains_.K_d_swing_toe,
+      osc_running_gains_.W_swing_toe, plant, plant);
   left_toe_angle_tracking_data.AddStateAndJointToTrack(
       right_stance_state, "toe_left", "toe_leftdot");
   left_toe_angle_tracking_data.AddStateAndJointToTrack(
@@ -430,11 +416,11 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   // Swing hip yaw joint tracking
   JointSpaceTrackingData left_hip_yaw_tracking_data(
-      "hip_yaw_left_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
-      osc_gains.W_hip_yaw, plant, plant);
+      "hip_yaw_left_traj", osc_running_gains_.K_p_hip_yaw, osc_running_gains_.K_d_hip_yaw,
+      osc_running_gains_.W_hip_yaw, plant, plant);
   JointSpaceTrackingData right_hip_yaw_tracking_data(
-      "hip_yaw_right_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
-      osc_gains.W_hip_yaw, plant, plant);
+      "hip_yaw_right_traj", osc_running_gains_.K_p_hip_yaw, osc_running_gains_.K_d_hip_yaw,
+      osc_running_gains_.W_hip_yaw, plant, plant);
   left_hip_yaw_tracking_data.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   right_hip_yaw_tracking_data.AddJointToTrack("hip_yaw_right",
                                               "hip_yaw_rightdot");
@@ -444,7 +430,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
 
   // Build OSC problem
-  osc->Build(osqp_settings);
+  osc->Build();
   std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/

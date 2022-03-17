@@ -125,9 +125,6 @@ int DoMain(int argc, char* argv[]) {
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
   OSCJumpingGains gains = drake::yaml::LoadYamlFile<OSCJumpingGains>(
       FindResourceOrThrow(FLAGS_gains_filename));
-  solvers::OSQPSettingsYaml osqp_settings =
-      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-          FindResourceOrThrow(FLAGS_osqp_settings));
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
@@ -471,8 +468,9 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
   pelvis_tracking_data.SetImpactInvariantProjection(true);
 
+  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem
-  osc->Build(osqp_settings);
+  osc->Build();
   std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/

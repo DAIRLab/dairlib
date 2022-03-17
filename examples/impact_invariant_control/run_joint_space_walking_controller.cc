@@ -96,9 +96,6 @@ int DoMain(int argc, char* argv[]) {
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
   JointSpaceWalkingGains gains =
       drake::yaml::LoadYamlFile<JointSpaceWalkingGains>(FLAGS_gains_filename);
-  solvers::OSQPSettingsYaml osqp_settings =
-      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-          FindResourceOrThrow(FLAGS_osqp_settings));
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
@@ -182,9 +179,10 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(joint_trajs[joint_idx]->get_output_port(),
                     osc->get_tracking_data_input_port(joint_name + "_traj"));
   }
-
+  osc->SetOsqpSolverOptionsFromYaml(
+      FLAGS_osqp_settings);
   // Build OSC problem
-  osc->Build(osqp_settings);
+  osc->Build();
   std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/

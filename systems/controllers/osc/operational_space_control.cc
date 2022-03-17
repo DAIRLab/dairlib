@@ -263,7 +263,7 @@ void OperationalSpaceControl::CheckConstraintSettings() {
   }
 }
 
-void OperationalSpaceControl::Build(const solvers::OSQPSettingsYaml& osqp_settings) {
+void OperationalSpaceControl::Build() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();

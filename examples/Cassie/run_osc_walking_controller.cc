@@ -94,9 +94,6 @@ int DoMain(int argc, char* argv[]) {
 
   // Read-in the parameters
   auto gains = drake::yaml::LoadYamlFile<OSCWalkingGains>(FLAGS_gains_filename);
-  solvers::OSQPSettingsYaml osqp_settings =
-      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-          FindResourceOrThrow(FLAGS_osqp_settings));
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -581,7 +578,7 @@ int DoMain(int argc, char* argv[]) {
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
 
   // Build OSC problem
-  osc->Build(osqp_settings);
+  osc->Build();
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());

@@ -194,7 +194,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
             FindResourceOrThrow(yaml_string)).osqp_options);
   };
   // OSC LeafSystem builder
-  void Build(const solvers::OSQPSettingsYaml&);
+  void Build();
 
  private:
   // Osc checkers and constructor-related methods

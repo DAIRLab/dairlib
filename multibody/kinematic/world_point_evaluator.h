@@ -97,7 +97,7 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
   const Eigen::Vector3d pt_A_;
   const drake::multibody::Frame<T>& frame_A_;
   const Eigen::Vector3d offset_;
-  const drake::math::RotationMatrix<double> rotation_;
+  const drake::math::RotationMatrix<double> R_WB_;
   const multibody::ViewFrame<T>* view_frame_ = nullptr;
   bool is_frictional_ = false;
 };

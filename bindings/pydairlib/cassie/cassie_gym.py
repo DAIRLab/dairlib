@@ -39,7 +39,7 @@ class CassieGym():
 
     def make(self, controller, urdf):
         self.builder = DiagramBuilder()
-        self.dt = 5e-4
+        self.dt = 5e-5
         self.plant = MultibodyPlant(self.dt)
         self.controller = controller
         self.simulator = CassieSimDiagram(self.plant, urdf, 0.8, 1e4, 1e2)
@@ -72,8 +72,7 @@ class CassieGym():
         cassie_state = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()))
-        import pdb;
-        pdb.set_trace()
+
         self.current_time = self.start_time
         return
 
@@ -85,19 +84,20 @@ class CassieGym():
     def get_state(self):
         return self.traj.get_positions()[-1]
 
-    def step(self, action=np.ones(18)):
+    def step(self, action=np.zeros(18)):
         next_timestep = self.sim.get_context().get_time() + self.dt
+        action[5] = 1
         # action = lcmt_radio_out
         # self.simulator.get_radio_input_port().FixValue(self.simulator_context, AbstractValue.Make(action))
 
         self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
         self.sim.AdvanceTo(next_timestep)
-
+        # import pdb; pdb.set_trace()
         cassie_state = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()))
         self.current_time = next_timestep
-        self.traj.update(next_timestep, cassie_state, action)
+        self.traj.update(next_timestep, cassie_state, action[:10])
         return cassie_state
 
     def get_traj(self):

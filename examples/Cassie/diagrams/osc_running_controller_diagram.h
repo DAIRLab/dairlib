@@ -39,8 +39,8 @@ class OSCRunningControllerDiagram final
   /// @param[in] osc_gains_filename filepath containing the osc_running_gains.
   /// @param[in] osqp_settings filepath containing the osqp settings.
   OSCRunningControllerDiagram(drake::multibody::MultibodyPlant<double>& plant,
-                              const OSCGains& osc_gains,
-                              const OSCRunningGains& osc_running_gains);
+                              const std::string& osc_gains_filename,
+                              const std::string& osqp_settings_filename);
 
   /// @return the input port for the plant state.
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -129,8 +129,8 @@ class OSCRunningControllerDiagram final
   std::unique_ptr<JointSpaceTrackingData> left_hip_yaw_tracking_data;
   std::unique_ptr<JointSpaceTrackingData> right_hip_yaw_tracking_data;
 
-  OSCGains osc_gains_;
-  OSCRunningGains osc_running_gains_;
+//  OSCGains osc_gains_;
+//  OSCRunningGains osc_running_gains_;
 
   const int state_input_port_index_ = 0;
   const int cassie_out_input_port_index_ = 1;

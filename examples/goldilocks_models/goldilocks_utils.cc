@@ -120,9 +120,15 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // TODO: we completely remove the quaternion for now. We want to have
     //  roll and pitch, so add this component later (need to map quat to roll
     //  pitch yaw)
-    // Note that we shouldn't use pelvis z because it drifts in state estimation
     vector<int> skip_inds = {0, 1, 2, 3, 4, 5};  // quaternion, x, and y
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
+    // Note that we shouldn't use pelvis z because it drifts in state estimation
+    // Skip pelvis z index
+    if ((rom_option >= 15) && (rom_option <= 24)) {
+      // skip pelvis z
+      skip_inds.push_back(6);
+    }
+    // Skip swing leg joint index
     std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
     DRAKE_DEMAND(pos_map.at("base_qw") == 0);  // Assumption
     if (((rom_option >= 10) && (rom_option <= 14)) ||
@@ -137,10 +143,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       }
       cout << endl;
     }
-    if ((rom_option >= 15) && (rom_option <= 24)) {
-      // skip pelvis z
-      skip_inds.push_back(6);
-    }
+    // Basis
     if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||
         (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13)) ||
         rom_option == 17 || rom_option == 18 || rom_option == 21 ||

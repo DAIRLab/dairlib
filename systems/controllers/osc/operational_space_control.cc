@@ -454,7 +454,7 @@ void OperationalSpaceControl::Build(const solvers::OSQPSettingsYaml& osqp_settin
   }
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  solver_->InitializeSolver(*prog_, osqp_settings);
+  solver_->InitializeSolver(*prog_, solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(

@@ -12,6 +12,14 @@ cc_library(
 )
 
 cc_library(
+    name = "osqp_solver_options",
+    hdrs = ["osqp_solver_options.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "constraint_factory",
     srcs = [
         "constraint_factory.cc",
@@ -34,20 +42,8 @@ cc_library(
         "fast_osqp_solver.h",
     ],
     deps = [
-        ":osqp_settings_yaml",
-        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@osqp",
-    ],
-)
-
-cc_library(
-    name = "osqp_settings_yaml",
-    srcs = [
-        "osqp_settings_yaml.h",
-    ],
-    deps = [
-        "@drake//:drake_shared_library",
     ],
 )
 

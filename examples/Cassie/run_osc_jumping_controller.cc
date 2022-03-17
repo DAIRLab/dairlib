@@ -358,71 +358,71 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data for OSC *****/
-  TransTaskSpaceTrackingData pelvis_tracking_data(
+  auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData> (
       "pelvis_trans_traj", gains.K_p_com, gains.K_d_com, gains.W_com,
       plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
-    pelvis_tracking_data.AddStateAndPointToTrack(mode, "pelvis");
+    pelvis_tracking_data->AddStateAndPointToTrack(mode, "pelvis");
   }
 
-  RotTaskSpaceTrackingData pelvis_rot_tracking_data(
+  auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData> (
       "pelvis_rot_tracking_data", gains.K_p_pelvis, gains.K_d_pelvis,
       gains.W_pelvis, plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
-    pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
+    pelvis_rot_tracking_data->AddStateAndFrameToTrack(mode, "pelvis");
   }
 
-  TransTaskSpaceTrackingData left_foot_tracking_data(
+  auto left_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData> (
       "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
       gains.W_flight_foot, plant_w_spr, plant_w_spr);
-  TransTaskSpaceTrackingData right_foot_tracking_data(
+  auto right_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData> (
       "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
       gains.W_flight_foot, plant_w_spr, plant_w_spr);
-  left_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
+  left_foot_tracking_data->AddStateAndPointToTrack(osc_jump::FLIGHT, "toe_left");
+  right_foot_tracking_data->AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_right");
 
-  TransTaskSpaceTrackingData left_hip_tracking_data(
+  auto left_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData> (
       "left_hip_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
       gains.W_flight_foot, plant_w_spr, plant_w_spr);
-  TransTaskSpaceTrackingData right_hip_tracking_data(
+  auto right_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData> (
       "right_hip_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
       gains.W_flight_foot, plant_w_spr, plant_w_spr);
-  left_hip_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT, "hip_left");
-  right_hip_tracking_data.AddStateAndPointToTrack(osc_jump::FLIGHT,
+  left_hip_tracking_data->AddStateAndPointToTrack(osc_jump::FLIGHT, "hip_left");
+  right_hip_tracking_data->AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                   "hip_right");
 
-  RelativeTranslationTrackingData left_foot_rel_tracking_data(
+  auto left_foot_rel_tracking_data = std::make_unique<RelativeTranslationTrackingData> (
       "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
-      gains.W_flight_foot, plant_w_spr, plant_w_spr, &left_foot_tracking_data,
-      &left_hip_tracking_data);
-  RelativeTranslationTrackingData right_foot_rel_tracking_data(
+      gains.W_flight_foot, plant_w_spr, plant_w_spr, left_foot_tracking_data.get(),
+      left_hip_tracking_data.get());
+  auto right_foot_rel_tracking_data = std::make_unique<RelativeTranslationTrackingData> (
       "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
-      gains.W_flight_foot, plant_w_spr, plant_w_spr, &right_foot_tracking_data,
-      &right_hip_tracking_data);
+      gains.W_flight_foot, plant_w_spr, plant_w_spr, right_foot_tracking_data.get(),
+      right_hip_tracking_data.get());
 
   // Flight phase hip yaw tracking
-  JointSpaceTrackingData left_hip_yaw_tracking_data(
+  auto left_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData> (
       "swing_hip_yaw_left_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
       gains.W_hip_yaw, plant_w_spr, plant_w_spr);
-  JointSpaceTrackingData right_hip_yaw_tracking_data(
+  auto right_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData> (
       "swing_hip_yaw_right_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
       gains.W_hip_yaw, plant_w_spr, plant_w_spr);
-  left_hip_yaw_tracking_data.AddStateAndJointToTrack(
+  left_hip_yaw_tracking_data->AddStateAndJointToTrack(
       osc_jump::FLIGHT, "hip_yaw_left", "hip_yaw_leftdot");
-  right_hip_yaw_tracking_data.AddStateAndJointToTrack(
+  right_hip_yaw_tracking_data->AddStateAndJointToTrack(
       osc_jump::FLIGHT, "hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&left_hip_yaw_tracking_data, VectorXd::Zero(1));
-  osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
+  osc->AddConstTrackingData(std::move(left_hip_yaw_tracking_data), VectorXd::Zero(1));
+  osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data), VectorXd::Zero(1));
 
   // Flight phase toe pitch tracking
   MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = gains.swing_toe_kp * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = gains.swing_toe_kd * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData left_toe_angle_tracking_data(
+  auto left_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData> (
       "left_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
       plant_w_spr, plant_w_spr);
-  JointSpaceTrackingData right_toe_angle_tracking_data(
+  auto right_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData> (
       "right_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
       plant_w_spr, plant_w_spr);
 
@@ -440,33 +440,33 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), r_toe_trajectory,
           pos_map["toe_right"], right_foot_points, "right_toe_angle_traj");
 
-  left_toe_angle_tracking_data.AddStateAndJointToTrack(
+  left_toe_angle_tracking_data->AddStateAndJointToTrack(
       osc_jump::FLIGHT, "toe_left", "toe_leftdot");
-  right_toe_angle_tracking_data.AddStateAndJointToTrack(
+  right_toe_angle_tracking_data->AddStateAndJointToTrack(
       osc_jump::FLIGHT, "toe_right", "toe_rightdot");
 
-  osc->AddTrackingData(&pelvis_tracking_data);
-  osc->AddTrackingData(&pelvis_rot_tracking_data);
+  osc->AddTrackingData(std::move(pelvis_tracking_data));
+  osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
   if (gains.relative_feet) {
-    left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-    right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-    osc->AddTrackingData(&left_foot_rel_tracking_data);
-    osc->AddTrackingData(&right_foot_rel_tracking_data);
+    left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
+    right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
+    osc->AddTrackingData(std::move(left_foot_rel_tracking_data));
+    osc->AddTrackingData(std::move(right_foot_rel_tracking_data));
   } else {
-    left_foot_tracking_data.SetImpactInvariantProjection(true);
-    right_foot_tracking_data.SetImpactInvariantProjection(true);
-    osc->AddTrackingData(&left_foot_tracking_data);
-    osc->AddTrackingData(&right_foot_tracking_data);
+    left_foot_tracking_data->SetImpactInvariantProjection(true);
+    right_foot_tracking_data->SetImpactInvariantProjection(true);
+    osc->AddTrackingData(std::move(left_foot_tracking_data));
+    osc->AddTrackingData(std::move(right_foot_tracking_data));
   }
-  osc->AddTrackingData(&left_toe_angle_tracking_data);
-  osc->AddTrackingData(&right_toe_angle_tracking_data);
+  osc->AddTrackingData(std::move(left_toe_angle_tracking_data));
+  osc->AddTrackingData(std::move(right_toe_angle_tracking_data));
 
-  left_toe_angle_tracking_data.SetImpactInvariantProjection(true);
-  right_toe_angle_tracking_data.SetImpactInvariantProjection(true);
-  left_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
-  right_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
-  pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
-  pelvis_tracking_data.SetImpactInvariantProjection(true);
+  left_toe_angle_tracking_data->SetImpactInvariantProjection(true);
+  right_toe_angle_tracking_data->SetImpactInvariantProjection(true);
+  left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
+  right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
+  pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
+  pelvis_tracking_data->SetImpactInvariantProjection(true);
 
   osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem

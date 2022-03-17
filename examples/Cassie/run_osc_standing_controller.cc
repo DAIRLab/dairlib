@@ -267,21 +267,21 @@ int DoMain(int argc, char* argv[]) {
   //  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
   //                                      W_com * FLAGS_cost_weight_multiplier,
   //                                      plant_w_springs, plant_wo_springs);
-  TransTaskSpaceTrackingData center_of_mass_traj(
+  auto center_of_mass_traj = std::make_unique<TransTaskSpaceTrackingData>(
       "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
       plant_w_springs, plant_wo_springs);
-  center_of_mass_traj.AddPointToTrack("pelvis");
+  center_of_mass_traj->AddPointToTrack("pelvis");
   //  double cutoff_freq = 5; // in Hz
   //  double tau = 1 / (2 * M_PI * cutoff_freq);
-  center_of_mass_traj.SetLowPassFilter(0.03, {1});
-  osc->AddTrackingData(&center_of_mass_traj);
+  center_of_mass_traj->SetLowPassFilter(0.03, {1});
+  osc->AddTrackingData(std::move(center_of_mass_traj));
   // Pelvis rotation tracking
-  RotTaskSpaceTrackingData pelvis_rot_traj(
+  auto pelvis_rot_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
       W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_wo_springs);
-  pelvis_rot_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_rot_traj);
+  pelvis_rot_traj->AddFrameToTrack("pelvis");
+  osc->AddTrackingData(std::move(pelvis_rot_traj));
 
   // Hip yaw joint tracking
   // We use hip yaw joint tracking instead of pelvis yaw tracking because the
@@ -290,18 +290,18 @@ int DoMain(int argc, char* argv[]) {
   double w_hip_yaw = 0.5;
   double hip_yaw_kp = 40;
   double hip_yaw_kd = 0.5;
-  JointSpaceTrackingData left_hip_yaw_traj(
+  auto left_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
       plant_w_springs, plant_wo_springs);
-  JointSpaceTrackingData right_hip_yaw_traj(
+  auto right_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "right_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
       plant_w_springs, plant_wo_springs);
-  left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
-  right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
+  left_hip_yaw_traj->AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+  osc->AddConstTrackingData(std::move(left_hip_yaw_traj), VectorXd::Zero(1));
+  right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  osc->AddConstTrackingData(std::move(right_hip_yaw_traj), VectorXd::Zero(1));
 
   // Build OSC problem
   osc->Build();

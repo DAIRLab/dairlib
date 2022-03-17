@@ -21,13 +21,13 @@ namespace multibody {
 template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(
     const MultibodyPlant<T>& plant, const Vector3d& pt_A,
-    const Frame<T>& frame_A, const Matrix3d& ground_frame_rotation_mat,
+    const Frame<T>& frame_A, const Matrix3d& R_GW,
     const Vector3d& offset, std::vector<int> active_directions)
     : KinematicEvaluator<T>(plant, 3),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
-      rotation_(ground_frame_rotation_mat.transpose()) {
+      rotation_(R_GW.transpose()) {
   this->set_active_inds(active_directions);
 }
 
@@ -35,13 +35,13 @@ template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(
     const MultibodyPlant<T>& plant, const Vector3d& pt_A,
     const Frame<T>& frame_A, const multibody::ViewFrame<T>& view_frame,
-    const Matrix3d& ground_frame_rotation_mat, const Vector3d& offset,
+    const Matrix3d& R_GW, const Vector3d& offset,
     std::vector<int> active_directions)
     : KinematicEvaluator<T>(plant, 3),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
-      rotation_(ground_frame_rotation_mat.transpose()),
+      rotation_(R_GW.transpose()),
       view_frame_(&view_frame) {
   this->set_active_inds(active_directions);
 }

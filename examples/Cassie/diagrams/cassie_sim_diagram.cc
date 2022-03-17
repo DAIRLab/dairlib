@@ -25,6 +25,7 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
+#include "drake/geometry/drake_visualizer.h"
 
 namespace dairlib {
 namespace examples {
@@ -38,7 +39,7 @@ using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-
+using drake::geometry::DrakeVisualizer;
 using drake::math::RotationMatrix;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
@@ -111,7 +112,7 @@ CassieSimDiagram::CassieSimDiagram(
   builder.ExportOutput(state_sender->get_output_port(0), "x, u, t");
   builder.ExportOutput(sensor_aggregator_->get_output_port(0),
                        "lcmt_cassie_out");
-
+  DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph_);
   builder.BuildInto(this);
   this->set_name("cassie_sim_diagram");
   DrawAndSaveDiagramGraph(*this);

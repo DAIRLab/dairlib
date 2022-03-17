@@ -10,12 +10,12 @@
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
-#include "systems/controllers/osc/osc_gains.h"
-#include "systems/controllers/osc/trans_space_tracking_data.h"
-#include "systems/controllers/osc/rot_space_tracking_data.h"
-#include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/com_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
+#include "systems/controllers/osc/osc_gains.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
+#include "systems/controllers/osc/rot_space_tracking_data.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
 
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/diagram.h"
@@ -26,10 +26,10 @@ namespace dairlib {
 namespace examples {
 namespace controllers {
 
-using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
-using systems::controllers::JointSpaceTrackingData;
+using systems::controllers::TransTaskSpaceTrackingData;
 
 class OSCRunningControllerDiagram final
     : public drake::systems::Diagram<double> {
@@ -39,7 +39,8 @@ class OSCRunningControllerDiagram final
   /// @param[in] osc_gains_filename filepath containing the osc_running_gains.
   /// @param[in] osqp_settings filepath containing the osqp settings.
   OSCRunningControllerDiagram(drake::multibody::MultibodyPlant<double>& plant,
-                              const OSCGains& osc_gains, const OSCRunningGains& osc_running_gains);
+                              const OSCGains& osc_gains,
+                              const OSCRunningGains& osc_running_gains);
 
   /// @return the input port for the plant state.
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -75,6 +76,12 @@ class OSCRunningControllerDiagram final
       right_toe;
   std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>
       right_heel;
+  std::vector<
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
+      left_foot_points;
+  std::vector<
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
+      right_foot_points;
   multibody::WorldYawViewFrame<double> view_frame;
   multibody::WorldPointEvaluator<double> left_toe_evaluator;
   multibody::WorldPointEvaluator<double> left_heel_evaluator;
@@ -110,9 +117,12 @@ class OSCRunningControllerDiagram final
   std::unique_ptr<TransTaskSpaceTrackingData> right_hip_yz_tracking_data;
   std::unique_ptr<RelativeTranslationTrackingData> left_foot_rel_tracking_data;
   std::unique_ptr<RelativeTranslationTrackingData> right_foot_rel_tracking_data;
-  std::unique_ptr<RelativeTranslationTrackingData> left_foot_yz_rel_tracking_data;
-  std::unique_ptr<RelativeTranslationTrackingData> right_foot_yz_rel_tracking_data;
-  std::unique_ptr<RelativeTranslationTrackingData> pelvis_trans_rel_tracking_data;
+  std::unique_ptr<RelativeTranslationTrackingData>
+      left_foot_yz_rel_tracking_data;
+  std::unique_ptr<RelativeTranslationTrackingData>
+      right_foot_yz_rel_tracking_data;
+  std::unique_ptr<RelativeTranslationTrackingData>
+      pelvis_trans_rel_tracking_data;
   std::unique_ptr<RotTaskSpaceTrackingData> pelvis_rot_tracking_data;
   std::unique_ptr<JointSpaceTrackingData> left_toe_angle_tracking_data;
   std::unique_ptr<JointSpaceTrackingData> right_toe_angle_tracking_data;

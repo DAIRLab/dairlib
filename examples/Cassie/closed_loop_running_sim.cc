@@ -60,6 +60,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(sim_diagram->get_cassie_out_output_port_index(),
                   controller_diagram->get_cassie_out_input_port());
 
+
   auto diagram = builder.Build();
   diagram->set_name("cassie_running_gym");
   DrawAndSaveDiagramGraph(*diagram);
@@ -79,6 +80,7 @@ int DoMain(int argc, char* argv[]) {
   //  auto sim = drake::systems::Simulator(diagram);
   std::cout << "advancing simulator: " << std::endl;
   simulator.AdvanceTo(5.0);
+  return 0;
 }
 }}
 

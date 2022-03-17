@@ -11,7 +11,7 @@ namespace dairlib::systems {
 
 OutputVectorFilter::OutputVectorFilter(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const std::vector<double>& tau, std::optional<std::vector<int>> filter_idxs)
+    const std::vector<double> tau, std::optional<std::vector<int>> filter_idxs)
     : n_y_filt_(tau.size()), tau_(tau) {
   int n_y = plant.num_positions() + plant.num_velocities() +
             plant.num_actuators() + 3;

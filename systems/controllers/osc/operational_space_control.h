@@ -168,10 +168,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
   /// a new state)
-  void AddTrackingData(OscTrackingData* tracking_data, double t_lb = 0,
+  void AddTrackingData(std::unique_ptr<OscTrackingData> tracking_data, double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
   void AddConstTrackingData(
-      OscTrackingData* tracking_data, const Eigen::VectorXd& v, double t_lb = 0,
+      std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v, double t_lb = 0,
       double t_ub = std::numeric_limits<double>::infinity());
   std::vector<std::unique_ptr<OscTrackingData>>* GetAllTrackingData() {
     return tracking_data_vec_.get();

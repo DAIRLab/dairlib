@@ -17,15 +17,14 @@ RadioParser::RadioParser() {
 void RadioParser::CalcRadioOutput(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_radio_out* output) const {
-  const BasicVector<double>& data =
-      *this->template EvalVectorInput<BasicVector>(context, data_input_port_);
+  Eigen::VectorXd data = Eigen::VectorXd::Zero(18);
+//  const BasicVector<double>& data =
+//      *this->template EvalVectorInput<BasicVector>(context, data_input_port_);
   output->radioReceiverSignalGood = data[0];
   output->receiverMedullaSignalGood = data[1];
   for (int i = 0; i < 16; ++i) {
-    output->channel[i] = data.value()[2 + i];
-    std::cout << "channel: " << i << output->channel[i] << std::endl;
+    output->channel[i] = data[2 + i];
   }
-  std::cout << "here finally: " << std::endl;
 }
 
 }  // namespace systems

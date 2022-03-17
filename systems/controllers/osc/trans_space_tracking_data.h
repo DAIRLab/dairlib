@@ -23,8 +23,8 @@ class TransTaskSpaceTrackingData final : public OptionsTrackingData {
   TransTaskSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_sp);
+      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>* plant_wo_sp);
   void AddPointToTrack(
       const std::string& body_name,
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());

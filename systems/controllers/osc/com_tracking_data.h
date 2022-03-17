@@ -9,8 +9,8 @@ class ComTrackingData final : public OptionsTrackingData {
  public:
   ComTrackingData(const std::string& name, const Eigen::MatrixXd& K_p,
                   const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-                  const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+                  const drake::multibody::MultibodyPlant<double>* plant_w_spr,
+                  const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
  private:
   void UpdateY(const Eigen::VectorXd& x_w_spr,

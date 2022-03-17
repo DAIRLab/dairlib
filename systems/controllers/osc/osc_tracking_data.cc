@@ -30,12 +30,12 @@ using multibody::makeNameToVelocitiesMap;
 OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
                                  const MatrixXd& K_p, const MatrixXd& K_d,
                                  const MatrixXd& W,
-                                 const MultibodyPlant<double>& plant_w_spr,
-                                 const MultibodyPlant<double>& plant_wo_spr)
+                                 const MultibodyPlant<double>* plant_w_spr,
+                                 const MultibodyPlant<double>* plant_wo_spr)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
-      world_w_spr_(plant_w_spr_.world_frame()),
-      world_wo_spr_(plant_wo_spr_.world_frame()),
+      world_w_spr_(&plant_w_spr_->world_frame()),
+      world_wo_spr_(&plant_wo_spr_->world_frame()),
       name_(name),
       n_y_(n_y),
       n_ydot_(n_ydot),

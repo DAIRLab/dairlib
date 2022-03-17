@@ -223,9 +223,9 @@ int DoMain(int argc, char* argv[]) {
       context_wo_spr.get(), false, FLAGS_print_osc, FLAGS_qp_time_limit);
 
   // Distance constraint
-  multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
-  auto left_loop = LeftLoopClosureEvaluator(plant_wo_springs);
-  auto right_loop = RightLoopClosureEvaluator(plant_wo_springs);
+  multibody::KinematicEvaluatorSet<double> evaluators(&plant_wo_springs);
+  auto left_loop = LeftLoopClosureEvaluator(&plant_wo_springs);
+  auto right_loop = RightLoopClosureEvaluator(&plant_wo_springs);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
   osc->AddKinematicConstraint(&evaluators);
@@ -239,19 +239,19 @@ int DoMain(int argc, char* argv[]) {
   osc->SetContactFriction(mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      &plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   osc->AddContactPoint(&left_toe_evaluator);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      &plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&left_heel_evaluator);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      &plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   osc->AddContactPoint(&right_toe_evaluator);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, right_heel.first, right_heel.second,
+      &plant_wo_springs, right_heel.first, right_heel.second,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&right_heel_evaluator);
   // Cost
@@ -265,7 +265,7 @@ int DoMain(int argc, char* argv[]) {
   //                                      plant_w_springs, plant_wo_springs);
   TransTaskSpaceTrackingData center_of_mass_traj(
       "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
-      plant_w_springs, plant_wo_springs);
+      &plant_w_springs, &plant_wo_springs);
   center_of_mass_traj.AddPointToTrack("pelvis");
   double cutoff_freq = 5; // in Hz
   double tau = 1 / (2 * M_PI * cutoff_freq);
@@ -274,8 +274,8 @@ int DoMain(int argc, char* argv[]) {
   // Pelvis rotation tracking
   RotTaskSpaceTrackingData pelvis_rot_traj(
       "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
-      W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
-      plant_wo_springs);
+      W_pelvis * FLAGS_cost_weight_multiplier, &plant_w_springs,
+      &plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_rot_traj);
 
@@ -288,11 +288,11 @@ int DoMain(int argc, char* argv[]) {
   JointSpaceTrackingData left_hip_yaw_traj(
       "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
-      plant_w_springs, plant_wo_springs);
+      &plant_w_springs, &plant_wo_springs);
   JointSpaceTrackingData right_hip_yaw_traj(
       "right_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
-      plant_w_springs, plant_wo_springs);
+      &plant_w_springs, &plant_wo_springs);
   left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
   right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");

@@ -21,8 +21,8 @@ class OscTrackingData {
   OscTrackingData(const std::string& name, int n_y, int n_ydot,
                   const Eigen::MatrixXd& K_p, const Eigen::MatrixXd& K_d,
                   const Eigen::MatrixXd& W,
-                  const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+                  const drake::multibody::MultibodyPlant<double>* plant_w_spr,
+                  const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
   // Update() updates the caches. It does the following things in order:
   //  - updates the current fsm state
@@ -92,10 +92,10 @@ class OscTrackingData {
   const std::set<int>& GetActiveStates() { return active_fsm_states_; };
   int GetYDim() const { return n_y_; };
   int GetYdotDim() const { return n_ydot_; };
-  const drake::multibody::MultibodyPlant<double>& plant_w_spr() const {
+  const drake::multibody::MultibodyPlant<double>* plant_w_spr() const {
     return plant_w_spr_;
   };
-  const drake::multibody::MultibodyPlant<double>& plant_wo_spr() const {
+  const drake::multibody::MultibodyPlant<double>* plant_wo_spr() const {
     return plant_wo_spr_;
   };
 
@@ -150,12 +150,12 @@ class OscTrackingData {
   /// but in the optimization it uses `plant_wo_spr_`. The reason of using
   /// MultibodyPlant without springs is that the OSC cannot track desired
   /// acceleration instantaneously when springs exist. (relative degrees of 4)
-  const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
-  const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
+  const drake::multibody::MultibodyPlant<double>* plant_w_spr_;
+  const drake::multibody::MultibodyPlant<double>* plant_wo_spr_;
 
   // World frames
-  const drake::multibody::BodyFrame<double>& world_w_spr_;
-  const drake::multibody::BodyFrame<double>& world_wo_spr_;
+  const drake::multibody::BodyFrame<double>* world_w_spr_;
+  const drake::multibody::BodyFrame<double>* world_wo_spr_;
 
  private:
 

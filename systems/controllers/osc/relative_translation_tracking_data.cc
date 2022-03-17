@@ -19,8 +19,8 @@ namespace dairlib::systems::controllers {
 RelativeTranslationTrackingData::RelativeTranslationTrackingData(
     const std::string& name, const Eigen::MatrixXd& K_p,
     const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-    const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-    const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+    const drake::multibody::MultibodyPlant<double>* plant_w_spr,
+    const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
     OptionsTrackingData* to_frame_data, OptionsTrackingData* from_frame_data)
     : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr,
                           plant_wo_spr),

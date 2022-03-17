@@ -63,15 +63,15 @@ KinematicConstraintType DirconMode<T>::get_constraint_type(
 template <typename T>
 void DirconMode<T>::SetImpactScale(int velocity_index, double scale) {
   DRAKE_DEMAND(velocity_index >= 0);
-  DRAKE_DEMAND(velocity_index < evaluators_.plant().num_velocities());
+  DRAKE_DEMAND(velocity_index < evaluators_.plant()->num_velocities());
   impact_scale_[velocity_index] = scale;
 }
 
 template <typename T>
 void DirconMode<T>::SetDynamicsScale(int state_index, double scale) {
   DRAKE_DEMAND(state_index >= 0);
-  DRAKE_DEMAND(state_index < evaluators_.plant().num_velocities()
-      + evaluators_.plant().num_positions());
+  DRAKE_DEMAND(state_index < evaluators_.plant()->num_velocities()
+      + evaluators_.plant()->num_positions());
   dynamics_scale_[state_index] = scale;
 }
 
@@ -165,7 +165,7 @@ DirconModeSequence<T>::DirconModeSequence(const MultibodyPlant<T>& plant)
 
 template <typename T>
 DirconModeSequence<T>::DirconModeSequence(DirconMode<T>* mode)
-    : plant_(mode->evaluators().plant()) {
+    : plant_(*mode->evaluators().plant()) {
   AddMode(mode);
 }
 

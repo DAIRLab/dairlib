@@ -11,12 +11,13 @@ namespace multibody {
 template <typename T>
 class FixedJointEvaluator : public KinematicEvaluator<T> {
  public:
+  DRAKE_DEFAULT_COPY_AND_MOVE_AND_ASSIGN(FixedJointEvaluator)
   /// Constructor for FixedJointEvaluator
   /// @param plant
   /// @param pos_idx index in the generalized positions
   /// @param vel_idx index in the generalized velocities
 
-  FixedJointEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
+  FixedJointEvaluator(const drake::multibody::MultibodyPlant<T>* plant,
                       int pos_idx, int vel_idx, double pos_value);
 
   drake::VectorX<T> EvalFull(
@@ -32,8 +33,8 @@ class FixedJointEvaluator : public KinematicEvaluator<T> {
   using KinematicEvaluator<T>::plant;
 
  private:
-  const int pos_idx_;
-  const double pos_value_;
+  int pos_idx_;
+  double pos_value_;
   drake::MatrixX<T> J_;
 };
 

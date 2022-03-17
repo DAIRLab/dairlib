@@ -18,7 +18,7 @@ template <typename T>
 class KinematicEvaluatorSet {
  public:
   explicit KinematicEvaluatorSet(
-      const drake::multibody::MultibodyPlant<T>& plant);
+      const drake::multibody::MultibodyPlant<T>* plant);
 
   /// Evaluates phi(q), limited only to active rows
   drake::VectorX<T> EvalActive(const drake::systems::Context<T>& context) const;
@@ -170,10 +170,10 @@ class KinematicEvaluatorSet {
   /// not valid
   bool is_active(int index) const;
 
-  const drake::multibody::MultibodyPlant<T>& plant() const { return plant_; };
+  const drake::multibody::MultibodyPlant<T>* plant() const { return plant_; };
 
  private:
-  const drake::multibody::MultibodyPlant<T>& plant_;
+  const drake::multibody::MultibodyPlant<T>* plant_;
   std::vector<KinematicEvaluator<T>*> evaluators_;
 };
 

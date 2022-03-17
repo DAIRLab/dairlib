@@ -49,11 +49,11 @@ RightRodOnHeel(const drake::multibody::MultibodyPlant<T>& plant);
 
 template <typename T>
 multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
-    const drake::multibody::MultibodyPlant<T>& plant);
+    const drake::multibody::MultibodyPlant<T>* plant);
 
 template <typename T>
 multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
-    const drake::multibody::MultibodyPlant<T>& plant);
+    const drake::multibody::MultibodyPlant<T>* plant);
 
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant

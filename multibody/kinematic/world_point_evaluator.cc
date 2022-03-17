@@ -19,7 +19,7 @@ namespace dairlib {
 namespace multibody {
 
 template <typename T>
-WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
+WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>* plant,
                                             Vector3d pt_A,
                                             const Frame<T>& frame_A,
                                             const Matrix3d rotation,
@@ -35,7 +35,7 @@ WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
 
 template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(
-    const MultibodyPlant<T>& plant, Vector3d pt_A, const Frame<T>& frame_A,
+    const MultibodyPlant<T>* plant, Vector3d pt_A, const Frame<T>& frame_A,
     const multibody::ViewFrame<T>& view_frame,
     const Matrix3d rotation, const Vector3d offset,
     std::vector<int> active_directions)
@@ -49,7 +49,7 @@ WorldPointEvaluator<T>::WorldPointEvaluator(
 }
 
 template <typename T>
-WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
+WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>* plant,
                                             const Vector3d pt_A,
                                             const Frame<T>& frame_A,
                                             const Vector3d normal,
@@ -68,9 +68,9 @@ WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
 template <typename T>
 VectorX<T> WorldPointEvaluator<T>::EvalFull(const Context<T>& context) const {
   VectorX<T> pt_world(3);
-  const drake::multibody::Frame<T>& world = plant().world_frame();
+  const drake::multibody::Frame<T>& world = plant()->world_frame();
 
-  plant().CalcPointsPositions(context, frame_A_, pt_A_.template cast<T>(),
+  plant()->CalcPointsPositions(context, frame_A_, pt_A_.template cast<T>(),
                               world, &pt_world);
 
   return rotation_ * (pt_world - offset_);
@@ -79,10 +79,10 @@ VectorX<T> WorldPointEvaluator<T>::EvalFull(const Context<T>& context) const {
 template <typename T>
 void WorldPointEvaluator<T>::EvalFullJacobian(
     const Context<T>& context, drake::EigenPtr<MatrixX<T>> J) const {
-  const drake::multibody::Frame<T>& world = plant().world_frame();
+  const drake::multibody::Frame<T>& world = plant()->world_frame();
 
   // .template cast<T> converts pt_A_, as a double, into type T
-  plant().CalcJacobianTranslationalVelocity(
+  plant()->CalcJacobianTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
       pt_A_.template cast<T>(), world, world, J);
 
@@ -97,9 +97,9 @@ void WorldPointEvaluator<T>::EvalFullJacobian(
 template <typename T>
 VectorX<T> WorldPointEvaluator<T>::EvalFullJacobianDotTimesV(
     const Context<T>& context) const {
-  const drake::multibody::Frame<T>& world = plant().world_frame();
+  const drake::multibody::Frame<T>& world = plant()->world_frame();
 
-  MatrixX<T> Jdot_times_V = plant().CalcBiasTranslationalAcceleration(
+  MatrixX<T> Jdot_times_V = plant()->CalcBiasTranslationalAcceleration(
       context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
       pt_A_.template cast<T>(), world, world);
 

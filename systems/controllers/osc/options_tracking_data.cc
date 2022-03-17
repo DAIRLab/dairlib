@@ -15,8 +15,8 @@ namespace dairlib::systems::controllers {
 OptionsTrackingData::OptionsTrackingData(
     const string& name, int n_y, int n_ydot, const MatrixXd& K_p,
     const MatrixXd& K_d, const MatrixXd& W,
-    const MultibodyPlant<double>& plant_w_spr,
-    const MultibodyPlant<double>& plant_wo_spr)
+    const MultibodyPlant<double>* plant_w_spr,
+    const MultibodyPlant<double>* plant_wo_spr)
     : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant_w_spr,
                       plant_wo_spr) {}
 

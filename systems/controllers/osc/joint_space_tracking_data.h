@@ -23,8 +23,8 @@ class JointSpaceTrackingData final : public OptionsTrackingData {
   JointSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
   // For single joint
   void AddJointToTrack(const std::string& joint_pos_name,

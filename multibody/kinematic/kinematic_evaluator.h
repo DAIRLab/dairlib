@@ -28,7 +28,7 @@ namespace multibody {
 template <typename T>
 class KinematicEvaluator {
  public:
-  explicit KinematicEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
+  explicit KinematicEvaluator(const drake::multibody::MultibodyPlant<T>* plant,
       int length);
 
   virtual ~KinematicEvaluator() = default;
@@ -82,7 +82,7 @@ class KinematicEvaluator {
 
   int num_active() const { return num_active_; }
 
-  const drake::multibody::MultibodyPlant<T>& plant() const { return plant_; }
+  const drake::multibody::MultibodyPlant<T>* plant() const { return plant_; }
 
   const std::vector<int>& active_inds() { return active_inds_; };
 
@@ -117,7 +117,7 @@ class KinematicEvaluator {
   double mu() const { return mu_; };
 
  private:
-  const drake::multibody::MultibodyPlant<T>& plant_;
+  const drake::multibody::MultibodyPlant<T>* plant_;
   int num_active_;
   int length_;
   std::vector<int> active_inds_;

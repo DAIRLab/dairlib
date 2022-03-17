@@ -11,9 +11,9 @@ using drake::systems::Context;
 
 template <typename T>
 KinematicEvaluatorSet<T>::KinematicEvaluatorSet(
-    const drake::multibody::MultibodyPlant<T>& plant)
+    const drake::multibody::MultibodyPlant<T>* plant)
     : plant_(plant) {
-  if (plant.geometry_source_is_registered()) {
+  if (plant->geometry_source_is_registered()) {
     drake::log()->warn(
         "Plant in KinematicEvaluatorSet has an associated SceneGraph. This may "
         "introduce undesired contact forces when using "
@@ -49,7 +49,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalActiveTimeDerivative(
 template <typename T>
 MatrixX<T> KinematicEvaluatorSet<T>::EvalActiveJacobian(
     const Context<T>& context) const {
-  const int num_velocities = plant_.num_velocities();
+  const int num_velocities = plant_->num_velocities();
   MatrixX<T> J(count_active(), num_velocities);
   int ind = 0;
   for (const auto& e : evaluators_) {
@@ -102,7 +102,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFullSecondTimeDerivative(
   const auto& xdot = CalcTimeDerivativesWithForce(context, lambda);
   const auto& J = EvalFullJacobian(*context);
   const auto& Jdotv = EvalFullJacobianDotTimesV(*context);
-  return J * xdot.tail(plant_.num_velocities()) + Jdotv;
+  return J * xdot.tail(plant_->num_velocities()) + Jdotv;
 }
 
 template <typename T>
@@ -111,13 +111,13 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalActiveSecondTimeDerivative(
   const auto& xdot = CalcTimeDerivativesWithForce(context, lambda);
   const auto& J = EvalActiveJacobian(*context);
   const auto& Jdotv = EvalActiveJacobianDotTimesV(*context);
-  return J * xdot.tail(plant_.num_velocities()) + Jdotv;
+  return J * xdot.tail(plant_->num_velocities()) + Jdotv;
 }
 
 template <typename T>
 void KinematicEvaluatorSet<T>::EvalFullJacobian(
     const Context<T>& context, drake::EigenPtr<MatrixX<T>> J) const {
-  const int num_velocities = plant_.num_velocities();
+  const int num_velocities = plant_->num_velocities();
   DRAKE_THROW_UNLESS(J->rows() == count_full());
   DRAKE_THROW_UNLESS(J->cols() == num_velocities);
   int ind = 0;
@@ -131,7 +131,7 @@ void KinematicEvaluatorSet<T>::EvalFullJacobian(
 template <typename T>
 MatrixX<T> KinematicEvaluatorSet<T>::EvalFullJacobian(
     const drake::systems::Context<T>& context) const {
-  MatrixX<T> J(count_full(), plant_.num_velocities());
+  MatrixX<T> J(count_full(), plant_->num_velocities());
   EvalFullJacobian(context, &J);
   return J;
 }
@@ -151,7 +151,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFullJacobianDotTimesV(
 template <typename T>
 int KinematicEvaluatorSet<T>::add_evaluator(KinematicEvaluator<T>* e) {
   // Compare plants for equality by reference
-  DRAKE_DEMAND(&plant_ == &e->plant());
+  DRAKE_DEMAND(plant_ == e->plant());
 
   evaluators_.push_back(e);
   return evaluators_.size() - 1;
@@ -206,16 +206,16 @@ template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
     const Context<T>& context, const VectorX<T>& lambda) const {
   // M(q)vdot + C(q,v) = tau_g(q) + F_app + Bu + J(q)^T lambda
-  VectorX<T> C(plant_.num_velocities());
-  plant_.CalcBiasTerm(context, &C);
+  VectorX<T> C(plant_->num_velocities());
+  plant_->CalcBiasTerm(context, &C);
 
-  VectorX<T> Bu = plant_.MakeActuationMatrix() *
-                  plant_.get_actuation_input_port().Eval(context);
+  VectorX<T> Bu = plant_->MakeActuationMatrix() *
+                  plant_->get_actuation_input_port().Eval(context);
 
-  VectorX<T> tau_g = plant_.CalcGravityGeneralizedForces(context);
+  VectorX<T> tau_g = plant_->CalcGravityGeneralizedForces(context);
 
-  drake::multibody::MultibodyForces<T> f_app(plant_);
-  plant_.CalcForceElementsContribution(context, &f_app);
+  drake::multibody::MultibodyForces<T> f_app(*plant_);
+  plant_->CalcForceElementsContribution(context, &f_app);
 
   VectorX<T> J_transpose_lambda =
       EvalFullJacobian(context).transpose() * lambda;
@@ -226,23 +226,23 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivativesWithForce(
     Context<T>* context, const VectorX<T>& lambda) const {
-  MatrixX<T> J(count_full(), plant_.num_velocities());
+  MatrixX<T> J(count_full(), plant_->num_velocities());
   EvalFullJacobian(*context, &J);
   VectorX<T> J_transpose_lambda = J.transpose() * lambda;
 
-  plant_.get_applied_generalized_force_input_port().FixValue(
+  plant_->get_applied_generalized_force_input_port().FixValue(
       context, J_transpose_lambda);
 
   // N.B. Evaluating the generalized acceleration port rather than the time
   // derivatives to ensure that this supports continuous and discrete plants
   // (discrete plants would not compute time derivatives)
   const VectorX<T>& v_dot =
-      plant_.get_generalized_acceleration_output_port()
+      plant_->get_generalized_acceleration_output_port()
           .template Eval<drake::systems::BasicVector<double>>(*context)
           .CopyToVector();
-  VectorX<T> x_dot(plant_.num_positions() + plant_.num_velocities());
-  VectorX<T> q_dot(plant_.num_positions());
-  plant_.MapVelocityToQDot(*context, plant_.GetVelocities(*context), &q_dot);
+  VectorX<T> x_dot(plant_->num_positions() + plant_->num_velocities());
+  VectorX<T> q_dot(plant_->num_positions());
+  plant_->MapVelocityToQDot(*context, plant_->GetVelocities(*context), &q_dot);
   x_dot << q_dot, v_dot;
   return x_dot;
 }
@@ -264,19 +264,19 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
   //  [J  0 ]]  [lambda]]     [ -Jdotv - kp phi - kd phidot]]
 
   // Evaluate manipulator equation terms
-  MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
-  plant_.CalcMassMatrix(context, &M);
+  MatrixX<T> M(plant_->num_velocities(), plant_->num_velocities());
+  plant_->CalcMassMatrix(context, &M);
 
-  VectorX<T> C(plant_.num_velocities());
-  plant_.CalcBiasTerm(context, &C);
+  VectorX<T> C(plant_->num_velocities());
+  plant_->CalcBiasTerm(context, &C);
 
-  VectorX<T> Bu = plant_.MakeActuationMatrix() *
-                  plant_.get_actuation_input_port().Eval(context);
+  VectorX<T> Bu = plant_->MakeActuationMatrix() *
+                  plant_->get_actuation_input_port().Eval(context);
 
-  VectorX<T> tau_g = plant_.CalcGravityGeneralizedForces(context);
+  VectorX<T> tau_g = plant_->CalcGravityGeneralizedForces(context);
 
-  drake::multibody::MultibodyForces<T> f_app(plant_);
-  plant_.CalcForceElementsContribution(context, &f_app);
+  drake::multibody::MultibodyForces<T> f_app(*plant_);
+  plant_->CalcForceElementsContribution(context, &f_app);
 
   // Evaluate active constraint terms.
   VectorX<T> phi = EvalActive(context);
@@ -293,12 +293,12 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
 
   *lambda = vdot_lambda.tail(J.rows());
 
-  VectorX<T> x_dot(plant_.num_positions() + plant_.num_velocities());
-  VectorX<T> q_dot(plant_.num_positions());
+  VectorX<T> x_dot(plant_->num_positions() + plant_->num_velocities());
+  VectorX<T> q_dot(plant_->num_positions());
 
-  plant_.MapVelocityToQDot(context, plant_.GetVelocities(context), &q_dot);
+  plant_->MapVelocityToQDot(context, plant_->GetVelocities(context), &q_dot);
 
-  x_dot << q_dot, vdot_lambda.head(plant_.num_velocities());
+  x_dot << q_dot, vdot_lambda.head(plant_->num_velocities());
 
   return x_dot;
 }

@@ -9,20 +9,20 @@ namespace dairlib {
 namespace multibody {
 
 template <typename T>
-FixedJointEvaluator<T>::FixedJointEvaluator(const MultibodyPlant<T>& plant,
+FixedJointEvaluator<T>::FixedJointEvaluator(const MultibodyPlant<T>* plant,
                                             int pos_idx, int vel_idx,
                                             double pos_value)
     : KinematicEvaluator<T>(plant, 1),
       pos_idx_(pos_idx),
       pos_value_(pos_value) {
-  J_ = MatrixX<T>::Zero(1, plant.num_velocities());
+  J_ = MatrixX<T>::Zero(1, plant->num_velocities());
   J_(0, vel_idx) = 1;
 }
 
 template <typename T>
 VectorX<T> FixedJointEvaluator<T>::EvalFull(const Context<T>& context) const {
   VectorX<T> difference(1);
-  difference << plant().GetPositions(context)(pos_idx_) - pos_value_;
+  difference << plant()->GetPositions(context)(pos_idx_) - pos_value_;
   return difference;
 }
 

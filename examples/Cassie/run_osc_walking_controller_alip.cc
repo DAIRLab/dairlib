@@ -357,10 +357,11 @@ int DoMain(int argc, char* argv[]) {
   osc->SetInputRegularizationWeight(gains.w_input_reg);
 
   // Constraints in OSC
-  multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
+  multibody::KinematicEvaluatorSet<double> evaluators(&plant_w_spr);
   // 1. fourbar constraint
-  auto left_loop = LeftLoopClosureEvaluator(plant_w_spr);
-  auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
+  auto left_loop = LeftLoopClosureEvaluator(&plant_w_spr);
+  auto right_loop = RightLoopClosureEvaluator(&plant_w_spr);
+  right_loop = left_loop;
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
   // 2. fixed spring constraint
@@ -374,16 +375,16 @@ int DoMain(int argc, char* argv[]) {
     auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
     auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
     left_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
-        plant_w_spr, pos_idx_map.at("knee_joint_left"),
+        &plant_w_spr, pos_idx_map.at("knee_joint_left"),
         vel_idx_map.at("knee_joint_leftdot"), 0);
     right_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
-        plant_w_spr, pos_idx_map.at("knee_joint_right"),
+        &plant_w_spr, pos_idx_map.at("knee_joint_right"),
         vel_idx_map.at("knee_joint_rightdot"), 0);
     left_fixed_ankle_spring = std::make_unique<FixedJointEvaluator<double>>(
-        plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
+        &plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
         vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
     right_fixed_ankle_spring = std::make_unique<FixedJointEvaluator<double>>(
-        plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
+        &plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
         vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
     evaluators.add_evaluator(left_fixed_knee_spring.get());
     evaluators.add_evaluator(right_fixed_knee_spring.get());
@@ -402,16 +403,16 @@ int DoMain(int argc, char* argv[]) {
   const auto& pelvis = plant_w_spr.GetBodyByName("pelvis");
   multibody::WorldYawViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, left_toe.first, left_toe.second, view_frame,
+      &plant_w_spr, left_toe.first, left_toe.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, left_heel.first, left_heel.second, view_frame,
+      &plant_w_spr, left_heel.first, left_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, right_toe.first, right_toe.second, view_frame,
+      &plant_w_spr, right_toe.first, right_toe.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, right_heel.first, right_heel.second, view_frame,
+      &plant_w_spr, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
   osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
@@ -459,24 +460,24 @@ int DoMain(int argc, char* argv[]) {
 
   TransTaskSpaceTrackingData swing_foot_data(
       "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr);
+      gains.W_swing_foot, &plant_w_spr, &plant_w_spr);
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
   ComTrackingData com_data("com_data", gains.K_p_swing_foot,
                            gains.K_d_swing_foot, gains.W_swing_foot,
-                           plant_w_spr, plant_w_spr);
+                           &plant_w_spr, &plant_w_spr);
   com_data.AddFiniteStateToTrack(left_stance_state);
   com_data.AddFiniteStateToTrack(right_stance_state);
   RelativeTranslationTrackingData swing_ft_traj_local(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
+      gains.W_swing_foot, &plant_w_spr, &plant_w_spr, &swing_foot_data,
       &com_data);
   WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
 
   TransTaskSpaceTrackingData swing_ft_traj_global(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr);
+      gains.W_swing_foot, &plant_w_spr, &plant_w_spr);
   swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
 
@@ -499,7 +500,7 @@ int DoMain(int argc, char* argv[]) {
   }
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
-                                      gains.W_com, plant_w_spr, plant_w_spr);
+                                      gains.W_com, &plant_w_spr, &plant_w_spr);
   // FiniteStatesToTrack cannot be empty
   center_of_mass_traj.AddFiniteStateToTrack(-1);
   osc->AddTrackingData(&center_of_mass_traj);
@@ -507,13 +508,13 @@ int DoMain(int argc, char* argv[]) {
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
-      gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
+      gains.W_pelvis_balance, &plant_w_spr, &plant_w_spr);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
   RotTaskSpaceTrackingData pelvis_heading_traj(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
-      gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
+      gains.W_pelvis_heading, &plant_w_spr, &plant_w_spr);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj,
                        gains.period_of_no_heading_control);
@@ -521,10 +522,10 @@ int DoMain(int argc, char* argv[]) {
   // Swing toe joint tracking
   JointSpaceTrackingData swing_toe_traj_left(
       "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
-      gains.W_swing_toe, plant_w_spr, plant_w_spr);
+      gains.W_swing_toe, &plant_w_spr, &plant_w_spr);
   JointSpaceTrackingData swing_toe_traj_right(
       "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
-      gains.W_swing_toe, plant_w_spr, plant_w_spr);
+      gains.W_swing_toe, &plant_w_spr, &plant_w_spr);
   swing_toe_traj_right.AddStateAndJointToTrack(left_stance_state, "toe_right",
                                                "toe_rightdot");
   swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
@@ -535,7 +536,7 @@ int DoMain(int argc, char* argv[]) {
   // Swing hip yaw joint tracking
   JointSpaceTrackingData swing_hip_yaw_traj(
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
-      gains.W_hip_yaw, plant_w_spr, plant_w_spr);
+      gains.W_hip_yaw, &plant_w_spr, &plant_w_spr);
   swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",

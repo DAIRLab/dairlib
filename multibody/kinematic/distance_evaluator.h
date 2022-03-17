@@ -16,6 +16,7 @@ namespace multibody {
 template <typename T>
 class DistanceEvaluator : public KinematicEvaluator<T> {
  public:
+  DRAKE_DEFAULT_COPY_AND_MOVE_AND_ASSIGN(DistanceEvaluator)
   /// Constructor for DistanceEvaluator
   /// @param plant
   /// @param pt_A
@@ -23,7 +24,7 @@ class DistanceEvaluator : public KinematicEvaluator<T> {
   /// @param pt_B
   /// @param frame_B
 
-  DistanceEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
+  DistanceEvaluator(const drake::multibody::MultibodyPlant<T>* plant,
                     const Eigen::Vector3d pt_A,
                     const drake::multibody::Frame<T>& frame_A,
                     const Eigen::Vector3d pt_B,
@@ -46,7 +47,7 @@ class DistanceEvaluator : public KinematicEvaluator<T> {
   const drake::multibody::Frame<T>& frame_A_;
   const Eigen::Vector3d pt_B_;
   const drake::multibody::Frame<T>& frame_B_;
-  const double distance_;
+  double distance_;
 };
 
 }  // namespace multibody

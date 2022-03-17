@@ -173,7 +173,7 @@ class DirconMode {
   double max_T() const { return max_T_; };
 
   const drake::multibody::MultibodyPlant<T>& plant() const {
-    return evaluators_.plant();
+    return *evaluators_.plant();
   };
 
  private:

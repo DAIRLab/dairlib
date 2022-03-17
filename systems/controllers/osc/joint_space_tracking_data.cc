@@ -20,8 +20,8 @@ using multibody::makeNameToVelocitiesMap;
 /**** JointSpaceTrackingData ****/
 JointSpaceTrackingData::JointSpaceTrackingData(
     const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
-    const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
-    const MultibodyPlant<double>& plant_wo_spr)
+    const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
+    const MultibodyPlant<double>* plant_wo_spr)
     : OptionsTrackingData(name, K_p.rows(), K_p.rows(), K_p, K_d, W,
                           plant_w_spr, plant_wo_spr) {
 }
@@ -36,13 +36,13 @@ void JointSpaceTrackingData::AddStateAndJointToTrack(
     const std::string& joint_vel_name) {
   AddFiniteStateToTrack(fsm_state);
   joint_pos_idx_w_spr_[fsm_state] =
-      {makeNameToPositionsMap(plant_w_spr_).at(joint_pos_name)};
+      {makeNameToPositionsMap(*plant_w_spr_).at(joint_pos_name)};
   joint_vel_idx_w_spr_[fsm_state] =
-      {makeNameToVelocitiesMap(plant_w_spr_).at(joint_vel_name)};
+      {makeNameToVelocitiesMap(*plant_w_spr_).at(joint_vel_name)};
   joint_pos_idx_wo_spr_[fsm_state] =
-      {makeNameToPositionsMap(plant_wo_spr_).at(joint_pos_name)};
+      {makeNameToPositionsMap(*plant_wo_spr_).at(joint_pos_name)};
   joint_vel_idx_wo_spr_[fsm_state] =
-      {makeNameToVelocitiesMap(plant_wo_spr_).at(joint_vel_name)};
+      {makeNameToVelocitiesMap(*plant_wo_spr_).at(joint_vel_name)};
 }
 
 void JointSpaceTrackingData::AddJointsToTrack(
@@ -57,22 +57,22 @@ void JointSpaceTrackingData::AddStateAndJointsToTrack(
   AddFiniteStateToTrack(fsm_state);
   std::vector<int> ordered_index_set;
   for (const auto& mem : joint_pos_names) {
-    ordered_index_set.push_back(makeNameToPositionsMap(plant_w_spr_).at(mem));
+    ordered_index_set.push_back(makeNameToPositionsMap(*plant_w_spr_).at(mem));
   }
   joint_pos_idx_w_spr_[fsm_state] = ordered_index_set;
   ordered_index_set.clear();
   for (const auto& mem : joint_vel_names) {
-    ordered_index_set.push_back(makeNameToVelocitiesMap(plant_w_spr_).at(mem));
+    ordered_index_set.push_back(makeNameToVelocitiesMap(*plant_w_spr_).at(mem));
   }
   joint_vel_idx_w_spr_[fsm_state] = ordered_index_set;
   ordered_index_set.clear();
   for (const auto& mem : joint_pos_names) {
-    ordered_index_set.push_back(makeNameToPositionsMap(plant_wo_spr_).at(mem));
+    ordered_index_set.push_back(makeNameToPositionsMap(*plant_wo_spr_).at(mem));
   }
   joint_pos_idx_wo_spr_[fsm_state] = ordered_index_set;
   ordered_index_set.clear();
   for (const auto& mem : joint_vel_names) {
-    ordered_index_set.push_back(makeNameToVelocitiesMap(plant_wo_spr_).at(mem));
+    ordered_index_set.push_back(makeNameToVelocitiesMap(*plant_wo_spr_).at(mem));
   }
   joint_vel_idx_wo_spr_[fsm_state] = ordered_index_set;
 }
@@ -90,7 +90,7 @@ void JointSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
                                         const Context<double>& context_w_spr) {
   VectorXd ydot(GetYdotDim());
   for (int i = 0; i < GetYdotDim(); i++) {
-    ydot(i) = x_w_spr(plant_w_spr_.num_positions() +
+    ydot(i) = x_w_spr(plant_w_spr_->num_positions() +
                       joint_vel_idx_w_spr_.at(fsm_state_).at(i));
   }
   ydot_ = ydot;
@@ -98,7 +98,7 @@ void JointSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
 
 void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                      const Context<double>& context_wo_spr) {
-  MatrixXd J = MatrixXd::Zero(GetYdotDim(), plant_wo_spr_.num_velocities());
+  MatrixXd J = MatrixXd::Zero(GetYdotDim(), plant_wo_spr_->num_velocities());
   for (int i = 0; i < GetYdotDim(); i++) {
     J(i, joint_vel_idx_wo_spr_.at(fsm_state_).at(i)) = 1;
   }

@@ -38,8 +38,8 @@ template <typename T>
 drake::VectorX<T> DynamicsCache<T>::CalcTimeDerivativesWithForce(
     drake::systems::Context<T>* context,
     const drake::VectorX<T>& forces) {
-  CacheKey<T> key{evaluators_.plant().GetPositionsAndVelocities(*context), 
-                  evaluators_.plant().get_actuation_input_port().Eval(*context),
+  CacheKey<T> key{evaluators_.plant()->GetPositionsAndVelocities(*context), 
+                  evaluators_.plant()->get_actuation_input_port().Eval(*context),
                   forces};
   auto it = map_.find(key);
   if (it == map_.end()) {

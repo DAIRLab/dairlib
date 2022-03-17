@@ -83,9 +83,9 @@ std::pair<const Vector3d, const Frame<T>&> RightRodOnHeel(
 
 template <typename T>
 multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
-    const MultibodyPlant<T>& plant) {
-  auto rod_on_thigh = LeftRodOnThigh(plant);
-  auto rod_on_heel = LeftRodOnHeel(plant);
+    const MultibodyPlant<T>* plant) {
+  auto rod_on_thigh = LeftRodOnThigh(*plant);
+  auto rod_on_heel = LeftRodOnHeel(*plant);
   return multibody::DistanceEvaluator<T>(
       plant, rod_on_heel.first, rod_on_heel.second, rod_on_thigh.first,
       rod_on_thigh.second, kCassieAchillesLength);
@@ -93,9 +93,9 @@ multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
 
 template <typename T>
 multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
-    const MultibodyPlant<T>& plant) {
-  auto rod_on_thigh = RightRodOnThigh(plant);
-  auto rod_on_heel = RightRodOnHeel(plant);
+    const MultibodyPlant<T>* plant) {
+  auto rod_on_thigh = RightRodOnThigh(*plant);
+  auto rod_on_heel = RightRodOnHeel(*plant);
   return multibody::DistanceEvaluator<T>(
       plant, rod_on_heel.first, rod_on_heel.second, rod_on_thigh.first,
       rod_on_thigh.second, kCassieAchillesLength);
@@ -250,11 +250,11 @@ template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftRodOnHeel(
 template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightRodOnHeel(
     const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template multibody::DistanceEvaluator<double> LeftLoopClosureEvaluator(
-    const MultibodyPlant<double>& plant);  // NOLINT
+    const MultibodyPlant<double>* plant);  // NOLINT
 template multibody::DistanceEvaluator<double> RightLoopClosureEvaluator(
-    const MultibodyPlant<double>& plant);  // NOLINT
+    const MultibodyPlant<double>* plant);  // NOLINT
 template multibody::DistanceEvaluator<AutoDiffXd> LeftLoopClosureEvaluator(
-    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+    const MultibodyPlant<AutoDiffXd>* plant);  // NOLINT
 template multibody::DistanceEvaluator<AutoDiffXd> RightLoopClosureEvaluator(
-    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+    const MultibodyPlant<AutoDiffXd>* plant);  // NOLINT
 }  // namespace dairlib

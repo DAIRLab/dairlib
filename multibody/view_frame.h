@@ -20,7 +20,7 @@ class ViewFrame {
  public:
   ViewFrame() {}
   virtual drake::Matrix3X<T> CalcWorldToFrameRotation(
-      const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<T>* plant_w_spr,
       const drake::systems::Context<T>& context_w_spr) const = 0;
 };
 
@@ -31,7 +31,7 @@ class WorldYawViewFrame : public ViewFrame<T> {
       : ViewFrame<T>(), body_(body) {}
 
   drake::Matrix3X<T> CalcWorldToFrameRotation(
-      const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<T>* plant_w_spr,
       const drake::systems::Context<T>& context_w_spr) const override;
 
  protected:
@@ -44,7 +44,7 @@ class IdentityViewFrame : public ViewFrame<T> {
   explicit IdentityViewFrame() : ViewFrame<T>() {}
 
   drake::Matrix3X<T> CalcWorldToFrameRotation(
-      const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<T>* plant_w_spr,
       const drake::systems::Context<T>& context_w_spr) const override;
 };
 }  // namespace dairlib::multibody

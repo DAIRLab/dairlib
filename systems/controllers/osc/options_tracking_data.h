@@ -13,8 +13,8 @@ class OptionsTrackingData : public OscTrackingData {
   OptionsTrackingData(
       const std::string& name, int n_y, int n_ydot, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
   // enable the low pass filter
   void SetLowPassFilter(double tau, const std::set<int>& element_idx = {});

@@ -188,7 +188,7 @@ void OperationalSpaceControl::AddContactPoint(
 
 void OperationalSpaceControl::AddStateAndContactPoint(
     int state, const WorldPointEvaluator<double>* evaluator) {
-  DRAKE_DEMAND(&evaluator->plant() == &plant_wo_spr_);
+  DRAKE_DEMAND(evaluator->plant() == &plant_wo_spr_);
 
   // Find the new contact in all_contacts_
   auto it_c = std::find(all_contacts_.begin(), all_contacts_.end(), evaluator);
@@ -212,7 +212,7 @@ void OperationalSpaceControl::AddStateAndContactPoint(
 
 void OperationalSpaceControl::AddKinematicConstraint(
     const multibody::KinematicEvaluatorSet<double>* evaluators) {
-  DRAKE_DEMAND(&evaluators->plant() == &plant_wo_spr_);
+  DRAKE_DEMAND(evaluators->plant() == &plant_wo_spr_);
   kinematic_evaluators_ = evaluators;
 }
 
@@ -272,8 +272,8 @@ void OperationalSpaceControl::Build() {
   CheckConstraintSettings();
   for (auto tracking_data : *tracking_data_vec_) {
     tracking_data->CheckOscTrackingData();
-    DRAKE_DEMAND(&tracking_data->plant_w_spr() == &plant_w_spr_);
-    DRAKE_DEMAND(&tracking_data->plant_wo_spr() == &plant_wo_spr_);
+    DRAKE_DEMAND(tracking_data->plant_w_spr() == &plant_w_spr_);
+    DRAKE_DEMAND(tracking_data->plant_wo_spr() == &plant_wo_spr_);
   }
 
   // Construct QP

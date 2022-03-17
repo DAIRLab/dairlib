@@ -9,7 +9,7 @@ namespace dairlib {
 namespace multibody {
 
 template <typename T>
-KinematicEvaluator<T>::KinematicEvaluator(const MultibodyPlant<T>& plant,
+KinematicEvaluator<T>::KinematicEvaluator(const MultibodyPlant<T>* plant,
                                           int length)
     : plant_(plant), length_(length) {
   std::vector<int> all_inds;
@@ -23,7 +23,7 @@ KinematicEvaluator<T>::KinematicEvaluator(const MultibodyPlant<T>& plant,
 template <typename T>
 MatrixX<T> KinematicEvaluator<T>::EvalFullJacobian(
     const drake::systems::Context<T>& context) const {
-  drake::MatrixX<T> J(length_, plant_.num_velocities());
+  drake::MatrixX<T> J(length_, plant_->num_velocities());
   EvalFullJacobian(context, &J);
   return J;
 }
@@ -97,7 +97,7 @@ VectorX<T> KinematicEvaluator<T>::EvalActiveJacobianDotTimesV(
 template <typename T>
 VectorX<T> KinematicEvaluator<T>::EvalFullTimeDerivative(
     const Context<T>& context) const {
-  return EvalFullJacobian(context) * plant_.GetVelocities(context);
+  return EvalFullJacobian(context) * plant_->GetVelocities(context);
 }
 
 template <typename T>

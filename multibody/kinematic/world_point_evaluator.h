@@ -26,7 +26,7 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
   ////   Default is {0,1,2}.
 
   WorldPointEvaluator(
-      const drake::multibody::MultibodyPlant<T>& plant,
+      const drake::multibody::MultibodyPlant<T>* plant,
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
       const Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
@@ -39,7 +39,7 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
   /// matrix). 
 
   WorldPointEvaluator(
-      const drake::multibody::MultibodyPlant<T>& plant,
+      const drake::multibody::MultibodyPlant<T>* plant,
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
       const multibody::ViewFrame<T>& view_frame,
       const Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity(),
@@ -61,7 +61,7 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
   ///    the "Full" terms, but not the "Active" values
   ///    Note that this defaults to true.
 
-  WorldPointEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
+  WorldPointEvaluator(const drake::multibody::MultibodyPlant<T>* plant,
                       const Eigen::Vector3d pt_A,
                       const drake::multibody::Frame<T>& frame_A,
                       const Eigen::Vector3d normal,

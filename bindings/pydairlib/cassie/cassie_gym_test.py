@@ -13,7 +13,7 @@ def main():
     # osc_gains = yaml_load(filename=osc_gains_filename)
     # import pdb; pdb.set_trace()
 
-    controller_plant = MultibodyPlant(1e-5)
+    controller_plant = MultibodyPlant(8e-5)
     addCassieMultibody(controller_plant, None, True, urdf, False, False)
     controller_plant.Finalize()
     controller = OSCRunningControllerFactory(controller_plant, osc_gains_filename, osqp_settings)

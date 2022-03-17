@@ -18,7 +18,7 @@ CASSIE_NU = 10
 CASSIE_NL = 12
 
 # 10000 dts / 2000Hz = 5 seconds
-CASSIE_EPS_LENGTH = 10000
+CASSIE_EPS_LENGTH = 100000
 
 
 class CassieTraj():

@@ -17,7 +17,7 @@ from pydairlib.cassie.simulators import CassieSimDiagram
 
 class CassieGym():
     def __init__(self, visualize=False):
-        self.sim_dt = 5e-5
+        # self.sim_dt = 8e-5
         self.visualize = visualize
         # hardware logs are 50ms long and start approximately 5ms before impact
         # the simulator will check to make sure ground reaction forces are first detected within 3-7ms
@@ -28,10 +28,10 @@ class CassieGym():
         self.hardware_traj = None
         self.action_dim = 10
         self.state_dim = 45
-        self.x_init = np.array([1, 0, 0, 0, 0, 0, 1,
-                                -0.0304885, 0, 0.466767, -1.15602, -0.037542, 1.45243, -0.0257992, -1.59913,
-                                0.0304885, 0, 0.466767, -1.15602, -0.0374859, 1.45244, -0.0259075, -1.59919,
-                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        self.x_init = np.array(
+            [1, 0, 0, 0, 0, 0, 0.85, -0.0358636, 0, 0.67432, -1.588, -0.0458742, 1.90918,
+             -0.0381073, -1.82312, 0.0358636, 0, 0.67432, -1.588, -0.0457885, 1.90919, -0.0382424, -1.82321,
+             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         self.default_contact_params = {"mu": 0.8,
                                        "stiffness": 4e4,
                                        "dissipation": 0.5}
@@ -39,7 +39,7 @@ class CassieGym():
 
     def make(self, controller, urdf):
         self.builder = DiagramBuilder()
-        self.dt = 5e-5
+        self.dt = 8e-5
         self.plant = MultibodyPlant(self.dt)
         self.controller = controller
         self.simulator = CassieSimDiagram(self.plant, urdf, 0.8, 1e4, 1e2)
@@ -86,7 +86,10 @@ class CassieGym():
 
     def step(self, action=np.zeros(18)):
         next_timestep = self.sim.get_context().get_time() + self.dt
-        action[5] = 1
+        forward_vel = 0.25
+        lateral_vel = 0.1
+        action[2] = forward_vel
+        action[3] = lateral_vel
         # action = lcmt_radio_out
         # self.simulator.get_radio_input_port().FixValue(self.simulator_context, AbstractValue.Make(action))
 

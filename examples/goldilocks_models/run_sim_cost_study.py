@@ -873,6 +873,14 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     # plt.plot(m, z, linewidth=3, label='stride length ' + str(task_slice_value) + " m (Drake sim)")
     # plt.plot(m, z, 'k-', linewidth=3, label="Drake simulation")
 
+    # Log the improvement percentage into a file
+    masked_z = z[~np.isnan(z)]
+    message = "Max cost improvement for task (sl, ph) = (%.2f, %.2f) m is %.1f %%\n" % (task_slice_value[0], task_slice_value[1], float((masked_z[0] - min(masked_z)) / masked_z[0] * 100))
+    print(message)
+    f = open(eval_dir + "costs_info.txt", "a")
+    f.write(message)
+    f.close()
+
   if plot_nominal:
     plt.gca().set_prop_cycle(None)  # reset color cycle
 
@@ -1074,6 +1082,13 @@ def ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_avera
   if save_fig:
     plt.savefig("%save_cost_vs_model_iter_range_%.2fto%.2f_ph%.2f.png" % (eval_dir, stride_length_range_to_average[0], stride_length_range_to_average[1], task_slice_value_ph))
 
+  # Log the improvement percentage into a file
+  message = "Max average cost improvement = %.1f %% over stride length from %.2f to %.2f\n" % (float((averaged_cost[0] - min(averaged_cost)) / averaged_cost[0] * 100), stride_length_range_to_average[0], stride_length_range_to_average[1])
+  print(message)
+  f = open(eval_dir + "costs_info.txt", "a")
+  f.write(message)
+  f.close()
+
 
 def ComputeAchievableTaskRangeOverIter(cmt):
   print("\nPlotting achievable task range over iter...")
@@ -1130,6 +1145,13 @@ def ComputeAchievableTaskRangeOverIter(cmt):
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
     plt.savefig("%stask_space_vs_model_iter_ph%.2f.png" % (eval_dir, task_slice_value_ph))
+
+  # Log the improvement percentage into a file
+  message = "Max achievable task space improvement = %.1f %%\n" % float((max(task_range) - task_range[0]) / task_range[0] * 100)
+  print(message)
+  f = open(eval_dir + "costs_info.txt", "a")
+  f.write(message)
+  f.close()
 
 
 def GetVaryingTaskElementIdx(tasks, nominal_task_names):
@@ -1399,17 +1421,18 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  #RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
+  # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  #EvalCostInMultithread(model_indices, log_indices)
+  # EvalCostInMultithread(model_indices, log_indices)
 
   # Delete all logs but a few successful ones (for analysis later)
-  #DeleteMostLogs(model_indices, log_indices)
+  # DeleteMostLogs(model_indices, log_indices)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
+  RunCommand("rm " + eval_dir + "costs_info.txt", True)
 
   # Parameters for visualization
   max_cost_to_ignore = 100  # 2

@@ -2,8 +2,6 @@
 
 #include <osqp.h>
 
-#include "solvers/osqp_settings_yaml.h"
-
 #include "drake/common/drake_copyable.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solver_base.h"
@@ -38,8 +36,7 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
   //@}
 
   void InitializeSolver(const drake::solvers::MathematicalProgram&,
-                        const solvers::OSQPSettingsYaml& solver_options);
-  void SetOsqpSolverSettingsFromYaml(const solvers::OSQPSettingsYaml&);
+                        const drake::solvers::SolverOptions&);
 
   /// Solver will automatically reenable warm starting after a successful solve
   void DisableWarmStart() const {

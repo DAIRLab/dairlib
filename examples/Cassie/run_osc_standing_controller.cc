@@ -139,9 +139,6 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   auto gains =
       drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_gains_filename);
-  solvers::OSQPSettingsYaml osqp_settings =
-      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-          FindResourceOrThrow(FLAGS_osqp_settings));
 
   MatrixXd K_p_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
@@ -307,7 +304,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
 
   // Build OSC problem
-  osc->Build(osqp_settings);
+  osc->Build();
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());

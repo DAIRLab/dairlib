@@ -2,10 +2,7 @@
 
 #include <vector>
 
-#include <lcm/lcm-cpp.hpp>
 #include <osqp.h>
-
-#include "dairlib/lcmt_qp.hpp"
 
 #include "drake/common/text_logging.h"
 #include "drake/math/eigen_sparse_triplet.h"
@@ -292,9 +289,8 @@ void SetDualSolution(
 
 bool FastOsqpSolver::is_available() { return true; }
 
-void FastOsqpSolver::InitializeSolver(
-    const MathematicalProgram& prog,
-    const solvers::OSQPSettingsYaml& solver_options) {
+void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
+                                      const SolverOptions& solver_options) {
   // Get the cost for the QP.
   Eigen::SparseMatrix<c_float> P_sparse;
   std::vector<c_float> q(prog.num_vars(), 0);
@@ -328,7 +324,7 @@ void FastOsqpSolver::InitializeSolver(
 
   osqp_settings_ = static_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
   osqp_set_default_settings(osqp_settings_);
-  SetOsqpSolverSettingsFromYaml(solver_options);
+  SetFastOsqpSolverSettings(solver_options, osqp_settings_);
 
   // Setup workspace.
   workspace_ = nullptr;
@@ -338,32 +334,6 @@ void FastOsqpSolver::InitializeSolver(
     std::cerr << "Error setting up osqp solver.";
   }
   is_init_ = true;
-}
-
-void FastOsqpSolver::SetOsqpSolverSettingsFromYaml(
-    const solvers::OSQPSettingsYaml& solver_options) {
-  osqp_settings_->rho = solver_options.rho;
-  osqp_settings_->sigma = solver_options.sigma;
-  osqp_settings_->max_iter = solver_options.max_iter;
-  osqp_settings_->eps_abs = solver_options.eps_abs;
-  osqp_settings_->eps_rel = solver_options.eps_rel;
-  osqp_settings_->eps_prim_inf = solver_options.eps_prim_inf;
-  osqp_settings_->eps_dual_inf = solver_options.eps_dual_inf;
-  osqp_settings_->alpha = solver_options.alpha;
-
-  osqp_settings_->delta = solver_options.delta;
-  osqp_settings_->polish = solver_options.polish;
-  osqp_settings_->polish_refine_iter = solver_options.polish_refine_iter;
-  osqp_settings_->verbose = solver_options.verbose;
-  osqp_settings_->scaled_termination = solver_options.scaled_termination;
-  osqp_settings_->check_termination = solver_options.check_termination;
-  osqp_settings_->warm_start = solver_options.warm_start;
-  osqp_settings_->scaling = solver_options.scaling;
-  osqp_settings_->adaptive_rho = solver_options.adaptive_rho;
-  osqp_settings_->adaptive_rho_interval = solver_options.adaptive_rho_interval;
-  osqp_settings_->adaptive_rho_tolerance =
-      solver_options.adaptive_rho_tolerance;
-  osqp_settings_->adaptive_rho_fraction = solver_options.adaptive_rho_fraction;
 }
 
 void FastOsqpSolver::WarmStart(const Eigen::VectorXd& primal,
@@ -423,43 +393,6 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   //  SetFastOsqpSolverSettings(merged_options, osqp_settings_);
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
-
-  if (false) {
-    lcmt_qp msg;
-    msg.n_x = prog.num_vars();
-
-    Eigen::MatrixXd Q(P_sparse);
-
-    // Note: Amessage is transposed, becaues Eigen defaults to column major
-    for (int i = 0; i < prog.num_vars(); i++) {
-      msg.Q.push_back(std::vector<double>(Q.col(i).data(),
-                                          Q.col(i).data() + prog.num_vars()));
-    }
-    msg.w = q;
-
-    Eigen::MatrixXd A(A_sparse);
-
-    // std::cout << A.row(68) << std::endl;
-    msg.n_ineq = A.rows();
-    for (int i = 0; i < A.rows(); i++) {
-      std::vector<double> row(A.cols());
-      for (int j = 0; j < A.cols(); j++) {
-        row[j] = A(i, j);
-      }
-      msg.A_ineq.push_back(row);
-    }
-
-    msg.ineq_lb = l;
-    msg.ineq_ub = u;
-    msg.x_lb = std::vector<double>(prog.num_vars(),
-                                   -std::numeric_limits<double>::infinity());
-    msg.x_ub = std::vector<double>(prog.num_vars(),
-                                   std::numeric_limits<double>::infinity());
-
-    msg.n_eq = 0;
-    lcm::LCM lcm;
-    lcm.publish("QP_LOG", &msg);
-  }
 
   // Solve problem.
   if (!solution_result) {

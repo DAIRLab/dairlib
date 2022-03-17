@@ -62,10 +62,6 @@ OperationalSpaceControl::OperationalSpaceControl(
       qp_time_limit_(qp_time_limit) {
   this->set_name("OSC");
 
-  std::cout << "in constructor" << std::endl;
-  std::cout << plant_w_spr_.num_positions() + plant_w_spr_.num_velocities()
-            << std::endl;
-
   n_q_ = plant_wo_spr.num_positions();
   n_v_ = plant_wo_spr.num_velocities();
   n_u_ = plant_wo_spr.num_actuators();
@@ -267,8 +263,7 @@ void OperationalSpaceControl::CheckConstraintSettings() {
   }
 }
 
-void OperationalSpaceControl::Build(
-    const solvers::OSQPSettingsYaml& osqp_settings) {
+void OperationalSpaceControl::Build() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
@@ -459,7 +454,7 @@ void OperationalSpaceControl::Build(
   }
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  solver_->InitializeSolver(*prog_, osqp_settings);
+  solver_->InitializeSolver(*prog_, solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -583,8 +578,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     row_idx += contact_i->num_active();
   }
 
-  //  std::cout << "JdotV_h" << JdotV_h.transpose() << std::endl;
-  //  std::cout << "JdotV_c" << JdotV_c_active.transpose() << std::endl;
+//  std::cout << "JdotV_h" << JdotV_h.transpose() << std::endl;
+//  std::cout << "JdotV_c" << JdotV_c_active.transpose() << std::endl;
 
   // Update constraints
   // 1. Dynamics constraint
@@ -739,9 +734,9 @@ VectorXd OperationalSpaceControl::SolveQp(
                                               -W_input_smoothing_ * (*u_prev_));
   }
 
-  //  if (!solver_->IsInitialized()) {
-  //    solver_->InitializeSolver(*prog_);
-  //  }
+//  if (!solver_->IsInitialized()) {
+//    solver_->InitializeSolver(*prog_);
+//  }
 
   if (initial_guess_x_.count(fsm_state) > 0) {
     solver_->WarmStart(initial_guess_x_.at(fsm_state),
@@ -761,8 +756,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     initial_guess_x_[fsm_state] = result.GetSolution();
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
-    //    std::cerr << "QP did not solve in time!" << std::endl;
-    //    solver_->DisableWarmStart();
+//    std::cerr << "QP did not solve in time!" << std::endl;
+//    solver_->DisableWarmStart();
     *u_prev_ = VectorXd::Zero(n_u_);
   }
 
@@ -896,7 +891,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
                                 W_lambda_c_reg_ * (*lambda_c_sol_))(0)
                              : 0;
   total_cost_ += input_cost + acceleration_cost + soft_constraint_cost +
-                 input_smoothing_cost + lambda_h_cost + lambda_c_cost;
+                      input_smoothing_cost + lambda_h_cost + lambda_c_cost;
   soft_constraint_cost_ = soft_constraint_cost;
   output->regularization_costs.clear();
   output->regularization_cost_names.clear();
@@ -988,7 +983,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     }
     output->tracking_data[i] = osc_output;
   }
-  //  std::cout << total_cost_ << std::endl;
+//  std::cout << total_cost_ << std::endl;
 
   output->num_tracking_data = output->tracking_data_names.size();
   output->num_regularization_costs = output->regularization_cost_names.size();
@@ -1005,12 +1000,8 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd v_w_spr = robot_output->GetVelocities();
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
                    plant_w_spr_.num_velocities());
-  //  VectorXd x_w_spr(n_q_ + n_v_);
-  std::cout << q_w_spr.size() << std::endl;
-  std::cout << v_w_spr.size() << std::endl;
-  std::cout << plant_w_spr_.num_positions() << std::endl;
-  std::cout << plant_w_spr_.num_velocities() << std::endl;
   x_w_spr << q_w_spr, v_w_spr;
+
 
   double timestamp = robot_output->get_timestamp();
   double current_time = timestamp;
@@ -1021,9 +1012,6 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd x_wo_spr(n_q_ + n_v_);
   x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
       map_velocity_from_spring_to_no_spring_ * v_w_spr;
-  //  std::cout << "In function: " << std::endl;
-  //  std::cout << plant_w_spr_.num_positions() + plant_w_spr_.num_velocities()
-  //            << std::endl;
 
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {
@@ -1034,7 +1022,6 @@ void OperationalSpaceControl::CalcOptimalInput(
       auto clock = this->EvalVectorInput(context, clock_port_);
       clock_time = clock->get_value()(0);
     }
-
     VectorXd fsm_state = fsm_output->get_value();
 
     double alpha = 0;
@@ -1049,17 +1036,8 @@ void OperationalSpaceControl::CalcOptimalInput(
     // Get discrete states
     const auto prev_event_time =
         context.get_discrete_state(prev_event_time_idx_).get_value();
-    //    std::cout << fsm_state(0) << std::endl;
-    //    std::cout << clock_time << std::endl;
-    //    std::cout << prev_event_time(0) << std::endl;
-    //    std::cout << alpha << std::endl;
-    //    std::cout << next_fsm_state << std::endl;
-    //    std::cout << current_time << std::endl;
-    std::cout << x_w_spr.transpose() << std::endl;
-    std::cout << x_wo_spr.transpose() << std::endl;
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, clock_time, fsm_state(0),
                     current_time - prev_event_time(0), alpha, next_fsm_state);
-
   } else {
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time,
                     0, -1);

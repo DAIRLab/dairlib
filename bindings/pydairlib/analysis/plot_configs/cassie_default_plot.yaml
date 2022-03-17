@@ -3,6 +3,9 @@ channel_x: "CASSIE_STATE_DISPATCHER"
 channel_u: "OSC_WALKING"
 channel_osc: "OSC_DEBUG_WALKING"
 
+# Log time to stop at (seconds, -1 for whole log)
+end_time: -1
+
 # Plant properties
 use_springs: true
 use_floating_base: true

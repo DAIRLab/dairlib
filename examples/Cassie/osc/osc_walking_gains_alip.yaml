@@ -9,6 +9,9 @@ vel_scale_rot: -3.5
 vel_scale_trans_sagital: 0.6
 vel_scale_trans_lateral: -0.25
 
+# Filter settings
+pelvis_xyz_vel_filter_tau: [0.01, 0.01, 0.01]
+
 # High level command gains (without radio)
 global_target_position_x: 0
 global_target_position_y: 0
@@ -40,7 +43,7 @@ ds_time: 0.1
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.25
 center_line_offset: 0.03
-mid_foot_height: 0.08
+mid_foot_height: 0.2
 final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 

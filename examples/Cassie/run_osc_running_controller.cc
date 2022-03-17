@@ -138,9 +138,9 @@ int DoMain(int argc, char* argv[]) {
       FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
   OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(
       FindResourceOrThrow(FLAGS_gains_filename));
-  solvers::OSQPSettingsYaml osqp_settings =
-      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-          FindResourceOrThrow(FLAGS_osqp_settings));
+//  solvers::OSQPSettingsYaml osqp_settings =
+//      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
+//          FindResourceOrThrow(FLAGS_osqp_settings));
 
   /**** FSM and contact mode configuration ****/
   int left_stance_state = 0;
@@ -461,8 +461,10 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&left_hip_yaw_tracking_data, VectorXd::Zero(1));
   osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
 
+  osc->SetOsqpSolverOptionsFromYaml(
+      FLAGS_osqp_settings);
   // Build OSC problem
-  osc->Build(osqp_settings);
+  osc->Build();
   std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/

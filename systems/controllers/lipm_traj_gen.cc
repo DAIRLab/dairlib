@@ -100,7 +100,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
 EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  std::cout << "discrete var update:" << std::endl;
+//  std::cout << "discrete var update:" << std::endl;
   // Read in previous touchdown time
   auto prev_touchdown_time =
       discrete_state->get_mutable_vector(prev_touchdown_time_idx_)
@@ -113,7 +113,6 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
 
   // when entering a new stance phase
   if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)) {
-    std::cout << "discrete var update:" << std::endl;
     prev_touchdown_time << touchdown_time;
 
     // Read in current state
@@ -142,7 +141,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
                                  &position);
       stance_foot_pos += position;
     }
-    stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
+    stance_foot_pos *= (1.0 / contact_points_in_each_state_[mode_index].size());
 
     // Get center of mass position and velocity
     Vector3d CoM;
@@ -160,16 +159,15 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
           plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3),
           world_, world_, &J);
     }
+//    std::cout << "updating COM:" << std::endl;
+//    std::cout << this->get_name() << std::endl;
+//    std::cout << CoM << std::endl;
     Vector3d dCoM = J * v;
 
-    discrete_state->get_mutable_vector(stance_foot_pos_idx_).get_mutable_value()
-        << stance_foot_pos;
-    discrete_state->get_mutable_vector(touchdown_com_pos_idx_)
-            .get_mutable_value()
-        << CoM;
-    discrete_state->get_mutable_vector(touchdown_com_vel_idx_)
-            .get_mutable_value()
-        << dCoM;
+    discrete_state->get_mutable_vector(stance_foot_pos_idx_)
+        .set_value(stance_foot_pos);
+    discrete_state->get_mutable_vector(touchdown_com_pos_idx_).set_value(CoM);
+    discrete_state->get_mutable_vector(touchdown_com_vel_idx_).set_value(dCoM);
 
     // Testing
     // Heuristic ratio for LIPM dyanmics (because the centroidal angular
@@ -205,12 +203,6 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
   double dCoM_wrt_foot_x = dCoM(0);
   double dCoM_wrt_foot_y = dCoM(1);
-  std::cout << this->get_name() << std::endl;
-  std::cout << CoM_wrt_foot_x << std::endl;
-  std::cout << CoM_wrt_foot_y << std::endl;
-  std::cout << CoM_wrt_foot_z << std::endl;
-  std::cout << dCoM_wrt_foot_x << std::endl;
-  std::cout << dCoM_wrt_foot_y << std::endl;
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
@@ -347,7 +339,9 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  std::cout << "From current: " << std::endl;
+//  std::cout << "From current: " << std::endl;
+//  std::cout << context.get_discrete_state(touchdown_com_pos_idx_).value() << std::endl;
+//  std::cout << this->get_name() << std::endl;
   *exp_pp_traj =
       ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 }
@@ -378,21 +372,23 @@ void LIPMTrajGenerator::CalcTrajFromTouchdown(
 
   // Get center of mass position and velocity
   const auto CoM_at_touchdown =
-      context.get_discrete_state(touchdown_com_pos_idx_).get_value();
+      context.get_discrete_state(touchdown_com_pos_idx_).value();
   const auto dCoM_at_touchdown =
-      context.get_discrete_state(touchdown_com_vel_idx_).get_value();
+      context.get_discrete_state(touchdown_com_vel_idx_).value();
 
   // Stance foot position
   const auto stance_foot_pos_at_touchdown =
-      context.get_discrete_state(stance_foot_pos_idx_).get_value();
+      context.get_discrete_state(stance_foot_pos_idx_).value();
 
   double prev_touchdown_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+      this->EvalVectorInput(context, touchdown_time_port_)->value()(0);
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  std::cout << "From touchdown: " << std::endl;
+//  std::cout << "From touchdown: " << std::endl;
+//  std::cout << CoM_at_touchdown << std::endl;
+//  std::cout << this->get_name() << std::endl;
   *exp_pp_traj = ConstructLipmTraj(
       CoM_at_touchdown, dCoM_at_touchdown, stance_foot_pos_at_touchdown,
       prev_touchdown_time, end_time_of_this_fsm_state);

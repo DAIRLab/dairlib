@@ -34,9 +34,9 @@ int DoMain(int argc, char* argv[]) {
   std::string osqp_settings =
       "examples/Cassie/osc_run/osc_running_qp_settings.yaml";
   std::unique_ptr<MultibodyPlant<double>> plant =
-      std::make_unique<MultibodyPlant<double>>(1e-5);
+      std::make_unique<MultibodyPlant<double>>(8e-5);
   MultibodyPlant<double> controller_plant =
-      MultibodyPlant<double>(1e-5);
+      MultibodyPlant<double>(8e-5);
   // Built the Cassie MBPs
   addCassieMultibody(&controller_plant, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
@@ -47,12 +47,12 @@ int DoMain(int argc, char* argv[]) {
   auto sim_diagram = builder.AddSystem<examples::CassieSimDiagram>(
       std::move(plant), urdf, 0.4, 1e4, 1e2);
   MultibodyPlant<double>& new_plant = sim_diagram->get_plant();
-//  auto controller_diagram =
-//      builder.AddSystem<examples::controllers::OSCRunningControllerDiagram>(
-//          controller_plant, osc_gains, osqp_settings);
   auto controller_diagram =
-      builder.AddSystem<examples::controllers::OSCWalkingControllerDiagram>(
-          controller_plant, true, osc_walking_gains, osqp_settings);
+      builder.AddSystem<examples::controllers::OSCRunningControllerDiagram>(
+          controller_plant, osc_running_gains, osqp_settings);
+//  auto controller_diagram =
+//      builder.AddSystem<examples::controllers::OSCWalkingControllerDiagram>(
+//          controller_plant, true, osc_walking_gains, osqp_settings);
 
   builder.Connect(controller_diagram->get_control_output_port(),
                   sim_diagram->get_actuation_input_port());
@@ -67,6 +67,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "built diagram: " << std::endl;
   std::unique_ptr<Context<double>> diagram_context =
       diagram->CreateDefaultContext();
+
   VectorXd x_init = VectorXd::Zero(45);
   x_init << 1, 0, 0, 0, 0, 0, 1, -0.0304885, 0, 0.466767, -1.15602, -0.037542,
       1.45243, -0.0257992, -1.59913, 0.0304885, 0, 0.466767, -1.15602,
@@ -76,7 +77,12 @@ int DoMain(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(new_plant, diagram_context.get());
   drake::systems::Simulator<double> simulator(*diagram,
                                               std::move(diagram_context));
+  Context<double>& simulator_context = diagram->GetMutableSubsystemContext(*sim_diagram, &simulator.get_mutable_context());
+
+  sim_diagram->get_radio_input_port().FixValue(&simulator_context, Eigen::VectorXd::Zero(18));
+
   new_plant.SetPositionsAndVelocities(&plant_context, x_init);
+  simulator.Initialize();
   //  auto sim = drake::systems::Simulator(diagram);
   std::cout << "advancing simulator: " << std::endl;
   simulator.AdvanceTo(5.0);

@@ -2,6 +2,7 @@
 #include "cassie_sim_diagram.h"
 
 #include <drake/systems/primitives/constant_vector_source.h>
+#include <drake/systems/primitives/zero_order_hold.h>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -15,6 +16,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
@@ -25,7 +27,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
-#include "drake/geometry/drake_visualizer.h"
 
 namespace dairlib {
 namespace examples {
@@ -74,6 +75,9 @@ CassieSimDiagram::CassieSimDiagram(
   auto constant_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(10));
+  auto input_zero_order_hold =
+      builder.AddSystem<drake::systems::ZeroOrderHold>(
+          0.001, plant_->num_actuators() + 1);
   sensor_aggregator_ = &AddImuAndAggregator(&builder, *plant_,
                                             constant_source->get_output_port());
 
@@ -86,6 +90,8 @@ CassieSimDiagram::CassieSimDiagram(
 
   // connect leaf systems
   builder.Connect(input_receiver->get_output_port(),
+                  input_zero_order_hold->get_input_port());
+  builder.Connect(input_zero_order_hold->get_output_port(),
                   discrete_time_delay->get_input_port());
   builder.Connect(discrete_time_delay->get_output_port(),
                   passthrough->get_input_port());

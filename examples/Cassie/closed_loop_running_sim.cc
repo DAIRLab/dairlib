@@ -7,16 +7,18 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/diagrams/cassie_sim_diagram.h"
 #include "examples/Cassie/diagrams/osc_running_controller_diagram.h"
+#include "examples/Cassie/diagrams/osc_walking_controller_diagram.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "systems/system_utils.h"
+#include "drake/systems/primitives/zero_order_hold.h"
 
 namespace dairlib {
 using drake::multibody::MultibodyPlant;
@@ -27,7 +29,8 @@ namespace examples {
 int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
   std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
-  std::string osc_gains = "examples/Cassie/osc_run/osc_running_gains.yaml";
+  std::string osc_running_gains = "examples/Cassie/osc_run/osc_running_gains.yaml";
+  std::string osc_walking_gains = "examples/Cassie/osc/osc_walking_gains.yaml";
   std::string osqp_settings =
       "examples/Cassie/osc_run/osc_running_qp_settings.yaml";
   std::unique_ptr<MultibodyPlant<double>> plant =
@@ -44,9 +47,12 @@ int DoMain(int argc, char* argv[]) {
   auto sim_diagram = builder.AddSystem<examples::CassieSimDiagram>(
       std::move(plant), urdf, 0.4, 1e4, 1e2);
   MultibodyPlant<double>& new_plant = sim_diagram->get_plant();
+//  auto controller_diagram =
+//      builder.AddSystem<examples::controllers::OSCRunningControllerDiagram>(
+//          controller_plant, osc_gains, osqp_settings);
   auto controller_diagram =
-      builder.AddSystem<examples::controllers::OSCRunningControllerDiagram>(
-          controller_plant, osc_gains, osqp_settings);
+      builder.AddSystem<examples::controllers::OSCWalkingControllerDiagram>(
+          controller_plant, true, osc_walking_gains, osqp_settings);
 
   builder.Connect(controller_diagram->get_control_output_port(),
                   sim_diagram->get_actuation_input_port());

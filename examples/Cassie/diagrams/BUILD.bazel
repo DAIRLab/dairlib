@@ -26,6 +26,7 @@ cc_library(
     name = "diagrams",
     deps = [
         ":osc_running_controller_diagram",
+        ":osc_walking_controller_diagram",
         ":cassie_sim_diagram",
     ],
 )
@@ -46,6 +47,29 @@ cc_library(
         "//systems:system_utils",
         "//systems/filters:floating_base_velocity_filter",
         "//systems/controllers/osc:osc_tracking_datas",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "osc_walking_controller_diagram",
+    srcs = ["osc_walking_controller_diagram.cc"],
+    hdrs = ["osc_walking_controller_diagram.h"],
+    deps = [
+        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc:osc",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/filters:floating_base_velocity_filter",
+        "//systems/controllers/osc:osc_tracking_datas",
+        "//systems/controllers/osc:osc_gains",
+        "//systems/controllers:fsm_event_time",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

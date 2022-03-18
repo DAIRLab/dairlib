@@ -67,7 +67,7 @@ CassieSimDiagram::CassieSimDiagram(
   auto discrete_time_delay =
       builder.AddSystem<drake::systems::DiscreteTimeDelay>(
           actuator_update_rate, actuator_delay / actuator_update_rate,
-          plant_->num_actuators());
+          plant_->num_actuators() + 1);
   auto state_sender =
       builder.AddSystem<systems::RobotOutputSender>(*plant_, true);
 
@@ -86,18 +86,18 @@ CassieSimDiagram::CassieSimDiagram(
 
   // connect leaf systems
   builder.Connect(input_receiver->get_output_port(),
-                  cassie_motor->get_input_port_command());
-  builder.Connect(cassie_motor->get_output_port(),
-                  passthrough->get_input_port());
-  builder.Connect(passthrough->get_output_port(),
                   discrete_time_delay->get_input_port());
   builder.Connect(discrete_time_delay->get_output_port(),
+                  passthrough->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
+                  cassie_motor->get_input_port_command());
+  builder.Connect(cassie_motor->get_output_port(),
                   plant_->get_actuation_input_port());
   builder.Connect(plant_->get_state_output_port(),
                   state_sender->get_input_port_state());
   builder.Connect(plant_->get_state_output_port(),
                   cassie_motor->get_input_port_state());
-  builder.Connect(discrete_time_delay->get_output_port(),
+  builder.Connect(cassie_motor->get_output_port(),
                   state_sender->get_input_port_effort());
   builder.Connect(
       plant_->get_geometry_poses_output_port(),

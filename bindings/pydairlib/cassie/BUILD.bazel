@@ -76,6 +76,7 @@ pybind_py_library(
     cc_deps = [
         "@drake//:drake_shared_library",
         "//examples/Cassie/diagrams:osc_running_controller_diagram",
+        "//examples/Cassie/diagrams:osc_walking_controller_diagram",
     ],
     cc_so_name = "controllers",
     cc_srcs = ["controllers_py.cc"],

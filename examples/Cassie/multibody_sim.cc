@@ -118,7 +118,7 @@ int do_main(int argc, char* argv[]) {
   auto discrete_time_delay =
       builder.AddSystem<drake::systems::DiscreteTimeDelay>(
           1.0 / FLAGS_publish_rate, FLAGS_actuator_delay * FLAGS_publish_rate,
-          plant.num_actuators());
+          plant.num_actuators() + 1);
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
@@ -153,18 +153,18 @@ int do_main(int argc, char* argv[]) {
   // connect leaf systems
   builder.Connect(*input_sub, *input_receiver);
   builder.Connect(input_receiver->get_output_port(),
-                  cassie_motor->get_input_port_command());
-  builder.Connect(cassie_motor->get_output_port(),
-                  passthrough->get_input_port());
-  builder.Connect(passthrough->get_output_port(),
                   discrete_time_delay->get_input_port());
   builder.Connect(discrete_time_delay->get_output_port(),
+                  passthrough->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
+                  cassie_motor->get_input_port_command());
+  builder.Connect(cassie_motor->get_output_port(),
                   plant.get_actuation_input_port());
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
   builder.Connect(plant.get_state_output_port(),
                   cassie_motor->get_input_port_state());
-  builder.Connect(discrete_time_delay->get_output_port(),
+  builder.Connect(cassie_motor->get_output_port(),
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(

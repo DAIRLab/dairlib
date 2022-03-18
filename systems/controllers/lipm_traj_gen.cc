@@ -100,6 +100,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
 EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
+  std::cout << "discrete var update:" << std::endl;
   // Read in previous touchdown time
   auto prev_touchdown_time =
       discrete_state->get_mutable_vector(prev_touchdown_time_idx_)
@@ -112,6 +113,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
 
   // when entering a new stance phase
   if (fsm_state != discrete_state->get_vector(prev_fsm_idx_).GetAtIndex(0)) {
+    std::cout << "discrete var update:" << std::endl;
     prev_touchdown_time << touchdown_time;
 
     // Read in current state
@@ -203,6 +205,12 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
   double dCoM_wrt_foot_x = dCoM(0);
   double dCoM_wrt_foot_y = dCoM(1);
+  std::cout << this->get_name() << std::endl;
+  std::cout << CoM_wrt_foot_x << std::endl;
+  std::cout << CoM_wrt_foot_y << std::endl;
+  std::cout << CoM_wrt_foot_z << std::endl;
+  std::cout << dCoM_wrt_foot_x << std::endl;
+  std::cout << dCoM_wrt_foot_y << std::endl;
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
@@ -339,6 +347,7 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
+  std::cout << "From current: " << std::endl;
   *exp_pp_traj =
       ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 }
@@ -383,6 +392,7 @@ void LIPMTrajGenerator::CalcTrajFromTouchdown(
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
+  std::cout << "From touchdown: " << std::endl;
   *exp_pp_traj = ConstructLipmTraj(
       CoM_at_touchdown, dCoM_at_touchdown, stance_foot_pos_at_touchdown,
       prev_touchdown_time, end_time_of_this_fsm_state);

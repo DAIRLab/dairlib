@@ -193,12 +193,12 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 4 || rom_option == 7 ||
              ((rom_option >= 9) && (rom_option <= 11)) || rom_option == 17 ||
              rom_option == 18 || rom_option == 21 || rom_option == 22 ||
-             rom_option == 23 || rom_option == 24 || rom_option == 25 ||
-             rom_option == 26) {
+             rom_option == 23 || rom_option == 24) {
     // Highest degree = 2
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 5 || rom_option == 6) {
+  } else if (rom_option == 5 || rom_option == 6 || rom_option == 25 ||
+             rom_option == 26) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
   } else if (rom_option == 8) {

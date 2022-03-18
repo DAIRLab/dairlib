@@ -46,6 +46,7 @@ class MonomialFeatures {
   int length() const { return features_.size(); }
 
   int n_order() const { return n_order_; };
+  int n_q() const { return n_q_; };
   const std::vector<int>& skip_inds() const { return skip_inds_; };
   const  std::set<std::multiset<int>>& features() const { return features_; };
   static void PrintMultiset(const std::multiset<int>& set);

@@ -125,7 +125,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     // Note that we shouldn't use pelvis z because it drifts in state estimation
     // Skip pelvis z index
-    if ((rom_option >= 15) && (rom_option <= 24)) {
+    if ((rom_option >= 15) && (rom_option <= 26)) {
       // skip pelvis z
       skip_inds.push_back(6);
     }
@@ -148,7 +148,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||
         (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13)) ||
         rom_option == 17 || rom_option == 18 || rom_option == 21 ||
-        rom_option == 22 || rom_option == 23 || rom_option == 24) {
+        rom_option == 22 || rom_option == 23 || rom_option == 24 ||
+        rom_option == 25 || rom_option == 26) {
       // Second order
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
@@ -192,7 +193,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 4 || rom_option == 7 ||
              ((rom_option >= 9) && (rom_option <= 11)) || rom_option == 17 ||
              rom_option == 18 || rom_option == 21 || rom_option == 22 ||
-             rom_option == 23 || rom_option == 24) {
+             rom_option == 23 || rom_option == 24 || rom_option == 25 ||
+             rom_option == 26) {
     // Highest degree = 2
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
@@ -258,10 +260,10 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 4 || rom_option == 18) {
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3);
-  } else if (rom_option == 5) {
+  } else if ((rom_option == 5) || (rom_option == 25)) {
     rom = std::make_unique<LipmWithSwingFoot>(
         plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis, 3);
-  } else if (rom_option == 6) {
+  } else if ((rom_option == 6) || (rom_option == 26)) {
     // Fix the mapping function of the COM
     std::set<int> invariant_idx = {0, 1, 2};
     rom = std::make_unique<LipmWithSwingFoot>(plant, stance_foot, swing_foot,

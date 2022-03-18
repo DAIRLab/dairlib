@@ -56,20 +56,20 @@ pybind_py_library(
     py_imports = ["."],
 )
 
-#pybind_py_library(
-#    name = "input_supervisor_py",
-#    cc_deps = [
-#        "//examples/Cassie:input_supervisor",
-#        "@drake//:drake_shared_library",
-#    ],
-#    cc_so_name = "input_supervisor",
-#    cc_srcs = ["input_supervisor_py.cc"],
-#    py_deps = [
-#        "@drake//bindings/pydrake",
-#        ":module_py",
-#    ],
-#    py_imports = ["."],
-#)
+pybind_py_library(
+    name = "input_supervisor_py",
+    cc_deps = [
+        "//examples/Cassie:input_supervisor",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "input_supervisor",
+    cc_srcs = ["input_supervisor_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
 
 pybind_py_library(
     name = "controllers_py",

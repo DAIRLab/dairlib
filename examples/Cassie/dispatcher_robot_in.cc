@@ -92,7 +92,7 @@ int do_main(int argc, char* argv[]) {
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(plant);
 
   // Safety Controller
-  auto controller = builder.AddSystem<systems::LinearController>(
+  auto safety_controller = builder.AddSystem<systems::LinearController>(
       plant.num_positions(), plant.num_velocities(), plant.num_actuators());
   // Create config receiver.
   auto config_receiver = builder.AddSystem<systems::PDConfigReceiver>(plant);
@@ -145,10 +145,10 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(cassie_out_receiver->get_output_port(),
                   input_supervisor->get_input_port_cassie());
   builder.Connect(state_receiver->get_output_port(0),
-                  controller->get_input_port_output());
+                  safety_controller->get_input_port_output());
   builder.Connect(config_receiver->get_output_port(0),
-                  controller->get_input_port_config());
-  builder.Connect(controller->get_output_port(0),
+                  safety_controller->get_input_port_config());
+  builder.Connect(safety_controller->get_output_port(0),
                   input_supervisor->get_input_port_safety_controller());
   builder.Connect(input_supervisor->get_output_port_failure(),
                   controller_error_pub->get_input_port());

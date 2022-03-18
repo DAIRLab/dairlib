@@ -224,9 +224,6 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   std::cout << "Creating tracking data. " << std::endl;
 
-  //  auto cassie_out_receiver =
-  //      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
-  //          FLAGS_channel_cassie_out, &lcm));
   cassie::osc::HighLevelCommand* high_level_command;
   high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant, plant_context.get(), osc_running_gains.vel_scale_rot,
@@ -362,14 +359,12 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data->SetImpactInvariantProjection(true);
 
-//  std::cout << "here: " << std::endl;
   osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
   osc->AddTrackingData(std::move(left_foot_rel_tracking_data));
   osc->AddTrackingData(std::move(right_foot_rel_tracking_data));
   osc->AddTrackingData(std::move(left_foot_yz_rel_tracking_data));
   osc->AddTrackingData(std::move(right_foot_yz_rel_tracking_data));
 
-//  std::cout << "here 1: " << std::endl;
   auto heading_traj_generator =
       builder.AddSystem<cassie::osc::HeadingTrajGenerator>(plant,
                                                            plant_context.get());
@@ -389,10 +384,6 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 
   // Swing toe joint trajectory
-//  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
-//      left_heel, left_toe};
-//  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
-//      right_heel, right_toe};
   auto left_toe_angle_traj_gen = builder.AddSystem<SwingToeTrajGenerator>(
       plant, plant_context.get(), pos_map["toe_left"], left_foot_points,
       "left_toe_angle_traj");
@@ -438,8 +429,6 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   left_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   right_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_right",
                                               "hip_yaw_rightdot");
-  //  left_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
-  //  right_hip_yaw_tracking_data.SetImpactInvariantProjection(true);
   osc->AddConstTrackingData(std::move(left_hip_yaw_tracking_data), VectorXd::Zero(1));
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data), VectorXd::Zero(1));
 

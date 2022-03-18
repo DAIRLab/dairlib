@@ -31,11 +31,12 @@ void CassieFixedPointSolver(
     VectorXd* lambda_result, std::string visualize_model_urdf,
     double ground_incline, VectorXd* all_sol) {
   // Get the rotational matrix
-  Eigen::AngleAxisd roll_angle(ground_incline, Eigen::Vector3d::UnitZ());
-  Eigen::AngleAxisd yaw_angle(0, Eigen::Vector3d::UnitY());
-  Eigen::AngleAxisd pitch_angle(0, Eigen::Vector3d::UnitX());
-  Eigen::Quaternion<double> quat = roll_angle * yaw_angle * pitch_angle;
+  Eigen::AngleAxisd yaw_angle(0, Eigen::Vector3d::UnitZ());
+  Eigen::AngleAxisd pitch_angle(ground_incline, Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd roll_angle(0, Eigen::Vector3d::UnitX());
+  Eigen::Quaternion<double> quat = yaw_angle * pitch_angle * roll_angle;
   Eigen::Matrix3d rotation_mat = quat.matrix();
+  rotation_mat = rotation_mat.transpose();
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
@@ -81,8 +82,8 @@ void CassieFixedPointSolver(
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
   auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
-  auto fp_constraint = program.AddFixedPointConstraint(evaluators, q, u,
-      lambda);
+  auto fp_constraint =
+      program.AddFixedPointConstraint(evaluators, q, u, lambda);
   program.AddJointLimitConstraints(q);
 
   // Fix floating base
@@ -97,35 +98,39 @@ void CassieFixedPointSolver(
 
   // Add symmetry constraints, and zero roll/pitch on the hip
   program.AddConstraint(q(positions_map.at("knee_left")) ==
-      q(positions_map.at("knee_right")));
+                        q(positions_map.at("knee_right")));
   program.AddConstraint(q(positions_map.at("hip_pitch_left")) ==
-      q(positions_map.at("hip_pitch_right")));
+                        q(positions_map.at("hip_pitch_right")));
   program.AddConstraint(q(positions_map.at("hip_roll_left")) ==
-      -q(positions_map.at("hip_roll_right")));
+                        -q(positions_map.at("hip_roll_right")));
   program.AddConstraint(q(positions_map.at("hip_yaw_right")) == 0);
   program.AddConstraint(q(positions_map.at("hip_yaw_left")) == 0);
 
   // Add some contact force constraints: linear version
   if (linear_friction_cone) {
-    int num_linear_faces = 40; // try lots of faces!
-    program.AddConstraint(solvers::CreateLinearFrictionConstraint(mu,
-        num_linear_faces), lambda.segment(2, 3));
-    program.AddConstraint(solvers::CreateLinearFrictionConstraint(mu,
-        num_linear_faces), lambda.segment(5, 3));
-    program.AddConstraint(solvers::CreateLinearFrictionConstraint(mu,
-        num_linear_faces), lambda.segment(8, 3));
-    program.AddConstraint(solvers::CreateLinearFrictionConstraint(mu,
-        num_linear_faces), lambda.segment(11, 3));
+    int num_linear_faces = 40;  // try lots of faces!
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+        lambda.segment(2, 3));
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+        lambda.segment(5, 3));
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+        lambda.segment(8, 3));
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+        lambda.segment(11, 3));
   } else {
     // Add some contact force constraints: Lorentz version
     program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
-        lambda.segment(2, 3));
+                          lambda.segment(2, 3));
     program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
-        lambda.segment(5, 3));
+                          lambda.segment(5, 3));
     program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
-        lambda.segment(8, 3));
+                          lambda.segment(8, 3));
     program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
-        lambda.segment(11, 3));
+                          lambda.segment(11, 3));
   }
 
   // Add minimum normal forces on all contact points
@@ -136,7 +141,7 @@ void CassieFixedPointSolver(
 
   // Set initial guess/cost for q using a vaguely neutral position
   Eigen::VectorXd q_guess = Eigen::VectorXd::Zero(plant.num_positions());
-  q_guess(0) = 1; //quaternion
+  q_guess(0) = 1;  // quaternion
   q_guess(positions_map.at("base_z")) = height;
   q_guess(positions_map.at("hip_pitch_left")) = 1;
   q_guess(positions_map.at("knee_left")) = -2;
@@ -147,7 +152,7 @@ void CassieFixedPointSolver(
   q_guess(positions_map.at("ankle_joint_right")) = 2;
   q_guess(positions_map.at("toe_right")) = -2;
 
-  q_guess += .05*Eigen::VectorXd::Random(plant.num_positions());
+  q_guess += .05 * Eigen::VectorXd::Random(plant.num_positions());
 
   // Only cost in this program: u^T u
   program.AddQuadraticCost(u.dot(1.0 * u));
@@ -173,7 +178,7 @@ void CassieFixedPointSolver(
 
   auto start = std::chrono::high_resolution_clock::now();
   const auto result = drake::solvers::Solve(program, guess);
-       auto finish = std::chrono::high_resolution_clock::now();
+  auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Solve time:" << elapsed.count() << std::endl;
 
@@ -186,19 +191,18 @@ void CassieFixedPointSolver(
     visualizer.DrawPoses(result.GetSolution(q));
   }
 
-//  solvers::CheckGenericConstraints(program, result, tol);
+  //  solvers::CheckGenericConstraints(program, result, tol);
 
   *q_result = result.GetSolution(q);
   *u_result = result.GetSolution(u);
   *lambda_result = result.GetSolution(lambda);
-  if(all_sol)
-    *all_sol = result.GetSolution();
+  if (all_sol) *all_sol = result.GetSolution();
 }
 
 void CassieFixedBaseFixedPointSolver(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    VectorXd* q_result, VectorXd* u_result,
-    VectorXd* lambda_result, std::string visualize_model_urdf) {
+    const drake::multibody::MultibodyPlant<double>& plant, VectorXd* q_result,
+    VectorXd* u_result, VectorXd* lambda_result,
+    std::string visualize_model_urdf) {
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
   // Add loop closures
@@ -214,15 +218,15 @@ void CassieFixedBaseFixedPointSolver(
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
   auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
-  auto fp_constraint = program.AddFixedPointConstraint(evaluators, q, u,
-      lambda);
+  auto fp_constraint =
+      program.AddFixedPointConstraint(evaluators, q, u, lambda);
   program.AddJointLimitConstraints(q);
 
   // Add symmetry constraints, and zero roll/pitch on the hip
   program.AddConstraint(q(positions_map.at("knee_left")) ==
-      q(positions_map.at("knee_right")));
+                        q(positions_map.at("knee_right")));
   program.AddConstraint(q(positions_map.at("hip_pitch_left")) ==
-      q(positions_map.at("hip_pitch_right")));
+                        q(positions_map.at("hip_pitch_right")));
   program.AddConstraint(q(positions_map.at("hip_roll_left")) == 0);
   program.AddConstraint(q(positions_map.at("hip_roll_right")) == 0);
   program.AddConstraint(q(positions_map.at("hip_yaw_right")) == 0);
@@ -230,7 +234,7 @@ void CassieFixedBaseFixedPointSolver(
 
   // Set initial guess/cost for q using a vaguely neutral position
   Eigen::VectorXd q_guess = Eigen::VectorXd::Zero(plant.num_positions());
-  q_guess(0) = 1; //quaternion
+  q_guess(0) = 1;  // quaternion
   q_guess(positions_map.at("hip_pitch_left")) = 1;
   q_guess(positions_map.at("knee_left")) = -2;
   q_guess(positions_map.at("ankle_joint_left")) = 2;
@@ -249,7 +253,7 @@ void CassieFixedBaseFixedPointSolver(
 
   auto start = std::chrono::high_resolution_clock::now();
   const auto result = drake::solvers::Solve(program, guess);
-       auto finish = std::chrono::high_resolution_clock::now();
+  auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Solve time:" << elapsed.count() << std::endl;
 

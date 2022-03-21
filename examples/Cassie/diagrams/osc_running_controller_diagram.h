@@ -129,9 +129,6 @@ class OSCRunningControllerDiagram final
   std::unique_ptr<JointSpaceTrackingData> left_hip_yaw_tracking_data;
   std::unique_ptr<JointSpaceTrackingData> right_hip_yaw_tracking_data;
 
-//  OSCGains osc_gains_;
-//  OSCRunningGains osc_running_gains_;
-
   const int state_input_port_index_ = 0;
   const int cassie_out_input_port_index_ = 1;
   const int control_output_port_index_ = 0;

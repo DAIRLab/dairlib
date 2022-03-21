@@ -124,7 +124,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
       {right_toe, right_heel});
 
   /**** OSC Gains ****/
-  OSCWalkingGains osc_walking_gains =
+  auto osc_walking_gains =
       drake::yaml::LoadYamlFile<OSCWalkingGains>(
           FindResourceOrThrow(osc_walking_gains_filename));
 

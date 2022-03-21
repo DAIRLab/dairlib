@@ -29,11 +29,11 @@ namespace controllers {
 
 using drake::multibody::Frame;
 using Eigen::Vector3d;
+using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::ComTrackingData;
 
 class OSCWalkingControllerDiagram final
     : public drake::systems::Diagram<double> {
@@ -89,6 +89,7 @@ class OSCWalkingControllerDiagram final
       left_toe_origin;
   std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>
       right_toe_origin;
+  std::vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot;
   std::vector<
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
       left_foot_points;
@@ -117,7 +118,6 @@ class OSCWalkingControllerDiagram final
   std::unique_ptr<drake::systems::Context<double>> plant_context;
   std::vector<int> left_right_support_fsm_states;
   std::vector<double> left_right_support_state_durations;
-  std::vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot;
   std::vector<double> swing_ft_gain_multiplier_breaks;
   std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples;
   drake::trajectories::PiecewisePolynomial<double>

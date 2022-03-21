@@ -92,7 +92,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   // The stance foot position in the beginning of the swing phase
   stance_foot_pos_idx_ = this->DeclareDiscreteState(3);
   // COM state at touchdown
-  touchdown_com_pos_idx_ = this->DeclareDiscreteState(3);
+  touchdown_com_pos_idx_ = this->DeclareDiscreteState(Vector3d(0, 0, 0.9));
   touchdown_com_vel_idx_ = this->DeclareDiscreteState(3);
   prev_fsm_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
 }
@@ -100,7 +100,6 @@ LIPMTrajGenerator::LIPMTrajGenerator(
 EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-//  std::cout << "discrete var update:" << std::endl;
   // Read in previous touchdown time
   auto prev_touchdown_time =
       discrete_state->get_mutable_vector(prev_touchdown_time_idx_)
@@ -141,7 +140,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
                                  &position);
       stance_foot_pos += position;
     }
-    stance_foot_pos *= (1.0 / contact_points_in_each_state_[mode_index].size());
+    stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
 
     // Get center of mass position and velocity
     Vector3d CoM;
@@ -159,15 +158,16 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
           plant_.GetBodyByName("pelvis").body_frame(), VectorXd::Zero(3),
           world_, world_, &J);
     }
-//    std::cout << "updating COM:" << std::endl;
-//    std::cout << this->get_name() << std::endl;
-//    std::cout << CoM << std::endl;
     Vector3d dCoM = J * v;
 
-    discrete_state->get_mutable_vector(stance_foot_pos_idx_)
-        .set_value(stance_foot_pos);
-    discrete_state->get_mutable_vector(touchdown_com_pos_idx_).set_value(CoM);
-    discrete_state->get_mutable_vector(touchdown_com_vel_idx_).set_value(dCoM);
+    discrete_state->get_mutable_vector(stance_foot_pos_idx_).get_mutable_value()
+        << stance_foot_pos;
+    discrete_state->get_mutable_vector(touchdown_com_pos_idx_)
+            .get_mutable_value()
+        << CoM;
+    discrete_state->get_mutable_vector(touchdown_com_vel_idx_)
+            .get_mutable_value()
+        << dCoM;
 
     // Testing
     // Heuristic ratio for LIPM dyanmics (because the centroidal angular
@@ -339,9 +339,6 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-//  std::cout << "From current: " << std::endl;
-//  std::cout << context.get_discrete_state(touchdown_com_pos_idx_).value() << std::endl;
-//  std::cout << this->get_name() << std::endl;
   *exp_pp_traj =
       ConstructLipmTraj(CoM, dCoM, stance_foot_pos, start_time, end_time);
 }
@@ -372,23 +369,20 @@ void LIPMTrajGenerator::CalcTrajFromTouchdown(
 
   // Get center of mass position and velocity
   const auto CoM_at_touchdown =
-      context.get_discrete_state(touchdown_com_pos_idx_).value();
+      context.get_discrete_state(touchdown_com_pos_idx_).get_value();
   const auto dCoM_at_touchdown =
-      context.get_discrete_state(touchdown_com_vel_idx_).value();
+      context.get_discrete_state(touchdown_com_vel_idx_).get_value();
 
   // Stance foot position
   const auto stance_foot_pos_at_touchdown =
-      context.get_discrete_state(stance_foot_pos_idx_).value();
+      context.get_discrete_state(stance_foot_pos_idx_).get_value();
 
   double prev_touchdown_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->value()(0);
+      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
-//  std::cout << "From touchdown: " << std::endl;
-//  std::cout << CoM_at_touchdown << std::endl;
-//  std::cout << this->get_name() << std::endl;
   *exp_pp_traj = ConstructLipmTraj(
       CoM_at_touchdown, dCoM_at_touchdown, stance_foot_pos_at_touchdown,
       prev_touchdown_time, end_time_of_this_fsm_state);

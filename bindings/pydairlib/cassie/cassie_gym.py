@@ -86,8 +86,10 @@ class CassieGym():
 
     def step(self, action=np.zeros(18)):
         next_timestep = self.sim.get_context().get_time() + self.dt
-        forward_vel = 0.25
-        lateral_vel = 0.1
+        # forward_vel = 0.25
+        # lateral_vel = 0.1
+        forward_vel = 0
+        lateral_vel = 0
         action[2] = forward_vel
         action[3] = lateral_vel
         # action = lcmt_radio_out

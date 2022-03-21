@@ -139,27 +139,32 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   //  vector<int> fsm_states;
   //  vector<double> state_durations;
   if (has_double_stance) {
-    fsm_states = {left_stance_state, right_stance_state};
-    state_durations = {left_support_duration, right_support_duration};
-  } else {
     fsm_states = {left_stance_state, post_left_double_support_state,
                   right_stance_state, post_right_double_support_state};
     state_durations = {left_support_duration, double_support_duration,
                        right_support_duration, double_support_duration};
+    unordered_fsm_states = {left_stance_state, right_stance_state,
+                            post_left_double_support_state,
+                            post_right_double_support_state};
+    unordered_state_durations = {left_support_duration, right_support_duration,
+                                 double_support_duration,
+                                 double_support_duration};
+    contact_points_in_each_state.push_back({left_toe_mid});
+    contact_points_in_each_state.push_back({right_toe_mid});
+    contact_points_in_each_state.push_back({left_toe_mid});
+    contact_points_in_each_state.push_back({right_toe_mid});
+
+  } else {
+    fsm_states = {left_stance_state, right_stance_state};
+    state_durations = {left_support_duration, right_support_duration};
+    unordered_fsm_states = {left_stance_state, right_stance_state};
+    unordered_state_durations = {left_support_duration, right_support_duration};
+    contact_points_in_each_state.push_back({left_toe_mid});
+    contact_points_in_each_state.push_back({right_toe_mid});
   }
   single_support_states = {left_stance_state, right_stance_state};
   double_support_states = {post_left_double_support_state,
                            post_right_double_support_state};
-  unordered_fsm_states = {left_stance_state, right_stance_state,
-                          post_left_double_support_state,
-                          post_right_double_support_state};
-  unordered_state_durations = {left_support_duration, right_support_duration,
-                               double_support_duration,
-                               double_support_duration};
-  contact_points_in_each_state.push_back({left_toe_mid});
-  contact_points_in_each_state.push_back({right_toe_mid});
-  contact_points_in_each_state.push_back({left_toe_mid});
-  contact_points_in_each_state.push_back({right_toe_mid});
   left_right_support_fsm_states = {left_stance_state, right_stance_state};
   left_right_support_state_durations = {left_support_duration,
                                         right_support_duration};
@@ -219,6 +224,24 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
+  if (has_double_stance) {
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &left_toe_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &left_heel_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &right_toe_evaluator);
+    osc->AddStateAndContactPoint(post_left_double_support_state,
+                                 &right_heel_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &left_toe_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &left_heel_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &right_toe_evaluator);
+    osc->AddStateAndContactPoint(post_right_double_support_state,
+                                 &right_heel_evaluator);
+  }
 
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);

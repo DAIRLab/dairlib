@@ -15,13 +15,17 @@ def main():
     controller_plant = MultibodyPlant(8e-5)
     addCassieMultibody(controller_plant, None, True, urdf, False, False)
     controller_plant.Finalize()
-    controller = OSCRunningControllerFactory(controller_plant, osc_running_gains_filename, osqp_settings)
-    # controller = OSCWalkingControllerFactory(controller_plant, True, osc_walking_gains_filename, osqp_settings)
+    # controller = OSCRunningControllerFactory(controller_plant, osc_running_gains_filename, osqp_settings)
+    controller = OSCWalkingControllerFactory(controller_plant, True, osc_walking_gains_filename, osqp_settings)
     gym_env = CassieGym(visualize=True)
 
     gym_env.make(controller, urdf)
-    gym_env.advance_to(10)
 
+
+    action = np.zeros(18)
+    action[2] = 0.25
+    while gym_env.current_time < 10:
+        gym_env.step(action)
 
 if __name__ == '__main__':
     main()

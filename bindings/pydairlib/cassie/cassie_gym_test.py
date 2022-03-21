@@ -25,7 +25,7 @@ def main():
     action = np.zeros(18)
     action[2] = 0.25
     while gym_env.current_time < 10:
-        gym_env.step(action)
+        state = gym_env.step(action)
 
 if __name__ == '__main__':
     main()

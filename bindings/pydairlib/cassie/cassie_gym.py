@@ -81,17 +81,14 @@ class CassieGym():
             self.step()
         return self.traj
 
-    def get_state(self):
-        return self.traj.get_positions()[-1]
-
     def step(self, action=np.zeros(18)):
         next_timestep = self.sim.get_context().get_time() + self.dt
         self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
         self.sim.AdvanceTo(next_timestep)
-        # import pdb; pdb.set_trace()
         cassie_state = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()))
+
         self.current_time = next_timestep
         self.traj.update(next_timestep, cassie_state, action[:10])
         return cassie_state

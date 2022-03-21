@@ -35,6 +35,7 @@ class CassieTraj():
         return int(t * 2000)
 
     def get_positions(self):
+        import pdb; pdb.set_trace()
         return self.x_samples[:, CASSIE_POSITION_SLICE]
 
     def get_orientations(self):

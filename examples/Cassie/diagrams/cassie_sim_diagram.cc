@@ -113,9 +113,9 @@ CassieSimDiagram::CassieSimDiagram(
   builder.Connect(radio_parser->get_output_port(),
                   sensor_aggregator_->get_input_port_radio());
 
-  builder.ExportInput(input_receiver->get_input_port(), "u, t");
+  builder.ExportInput(input_receiver->get_input_port(), "lcmt_robot_input");
   builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
-  builder.ExportOutput(state_sender->get_output_port(0), "x, u, t");
+  builder.ExportOutput(state_sender->get_output_port(0), "lcmt_robot_output");
   builder.ExportOutput(sensor_aggregator_->get_output_port(0),
                        "lcmt_cassie_out");
   DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph_);

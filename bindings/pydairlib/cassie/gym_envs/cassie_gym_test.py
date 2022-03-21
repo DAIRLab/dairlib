@@ -30,8 +30,11 @@ def main():
 
     action = np.zeros(18)
     action[2] = 0.25
+    cumulative_reward = 0
     while gym_env.current_time < 10:
         state, reward = gym_env.step(action)
+        cumulative_reward += reward
+    print(cumulative_reward)
 
 if __name__ == '__main__':
     main()

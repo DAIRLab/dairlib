@@ -55,7 +55,7 @@ class RewardOSUDRL():
         foot_orient_error += 0
 
         # com vel error
-        com_vel_error += np.linalg.norm(com_vel - des_forward_vel)
+        com_vel_error += np.linalg.norm(com_vel[0] - des_forward_vel)
 
         # straight difference penalty
         straight_diff = np.abs(com_pos[1])  # straight difference penalty
@@ -77,4 +77,12 @@ class RewardOSUDRL():
                  0.150 * np.exp(-com_vel_error) + \
                  0.050 * np.exp(-hip_roll_penalty) + \
                  0.025 * np.exp(-torque_penalty)
+
+
+        # print(0.200 * np.exp(-(com_orient_error + foot_orient_error)))
+        # print(0.150 * np.exp(-pelvis_motion))
+        # print(0.150 * np.exp(-com_vel_error))
+        # print(0.050 * np.exp(-hip_roll_penalty))
+        # print(0.025 * np.exp(-torque_penalty))
+        # import pdb; pdb.set_trace()
         return reward

@@ -18,7 +18,7 @@ from pydairlib.cassie.gym_envs.cassie_env_state import CassieEnvState
 
 class CassieGym():
     def __init__(self, reward_func, visualize=False):
-        # self.sim_dt = 8e-5
+        self.sim_dt = 1e-3
         self.visualize = visualize
         self.reward_func = reward_func
         # hardware logs are 50ms long and start approximately 5ms before impact
@@ -59,8 +59,9 @@ class CassieGym():
 
         self.diagram = self.builder.Build()
         self.sim = Simulator(self.diagram)
-        self.plant_context = self.diagram.GetMutableSubsystemContext(self.new_plant, self.sim.get_mutable_context())
         self.simulator_context = self.diagram.GetMutableSubsystemContext(self.simulator, self.sim.get_mutable_context())
+        self.controller_context = self.diagram.GetMutableSubsystemContext(self.controller, self.sim.get_mutable_context())
+        self.controller_output_port = self.controller.get_torque_output_port()
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.reset()
 
@@ -73,7 +74,7 @@ class CassieGym():
                          np.zeros(self.action_dim))
         x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
-                self.sim.get_mutable_context()))
+                self.sim.get_context()))
         u = np.zeros(10)
         self.sim.Initialize()
         self.current_time = self.start_time
@@ -86,16 +87,23 @@ class CassieGym():
         return self.traj
 
     def step(self, action=np.zeros(18)):
-        next_timestep = self.sim.get_context().get_time() + self.dt
+        # next_timestep = self.sim.get_context().get_time() + self.dt
+        next_timestep = self.sim.get_context().get_time() + self.sim_dt
         self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
-        self.sim.AdvanceTo(next_timestep)
+        self.sim.AdvanceTo(np.around(next_timestep, decimals=3))
+        self.current_time = next_timestep
+
         x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
-                self.sim.get_mutable_context()))
-        u = np.zeros(10)
-        self.current_time = next_timestep
+                self.sim.get_context()))
+        # print(next_timestep)
+        u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
+        # u = self.controller_output_port.Eval(self.sim.get_context())[:-1] # remove the timestamp
+        # print(u)
+        # u = np.zeros(10)
         cassie_state = CassieEnvState(self.current_time, x, u, action)
         reward = self.reward_func.compute_reward(cassie_state, self.prev_cassie_state)
+        # reward = 0
         self.prev_cassie_state = cassie_state
         # self.traj.update(next_timestep, cassie_state, action[:10])
         return cassie_state, reward

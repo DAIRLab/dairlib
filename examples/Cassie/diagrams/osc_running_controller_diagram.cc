@@ -111,8 +111,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                               vel_map.at("ankle_spring_joint_leftdot"), 0)),
       right_fixed_ankle_spring(
           FixedJointEvaluator(plant, pos_map.at("ankle_spring_joint_right"),
-                              vel_map.at("ankle_spring_joint_rightdot"), 0)){
-
+                              vel_map.at("ankle_spring_joint_rightdot"), 0)) {
   // Build the controller diagram
   DiagramBuilder<double> builder;
   plant_context = plant.CreateDefaultContext();
@@ -129,8 +128,9 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   OSCGains osc_gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow(osc_gainsfilename), {}, {}, yaml_options);
-  OSCRunningGains osc_running_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(
-      FindResourceOrThrow(osc_gainsfilename));
+  OSCRunningGains osc_running_gains =
+      drake::yaml::LoadYamlFile<OSCRunningGains>(
+          FindResourceOrThrow(osc_gainsfilename));
 
   /**** FSM and contact mode configuration ****/
   int left_stance_state = 0;
@@ -169,12 +169,9 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), true, false);
-  //  auto failure_aggregator =
-  //      builder.AddSystem<systems::ControllerFailureAggregator>(
-  //          control_channel_name_, 1);
-  //  auto passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
-  //      osc->get_output_port(0).size(), 0,
-  //      plant.get_actuation_input_port().size());
+  auto failure_aggregator =
+      builder.AddSystem<systems::ControllerFailureAggregator>(
+          control_channel_name_, 1);
   std::vector<double> tau = {.05, .05, .01};
   auto ekf_filter =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
@@ -182,8 +179,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   /**** OSC setup ****/
   // Cost
   /// REGULARIZATION COSTS
-  osc->SetAccelerationCostWeights(osc_gains.w_accel *
-                                  osc_gains.W_acceleration);
+  osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
   osc->SetInputCostWeights(osc_gains.w_input *
                            osc_gains.W_input_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(
@@ -309,20 +305,22 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       osc_running_gains.K_d_swing_foot, osc_running_gains.W_swing_foot, plant,
       plant);
   left_hip_yz_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                    "hip_left");
+                                                     "hip_left");
   right_hip_yz_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                     "hip_right");
+                                                      "hip_right");
 
   left_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "left_ft_traj", osc_running_gains.K_p_swing_foot,
           osc_running_gains.K_d_swing_foot, osc_running_gains.W_swing_foot,
-          plant, plant, left_foot_tracking_data.get(), left_hip_tracking_data.get());
+          plant, plant, left_foot_tracking_data.get(),
+          left_hip_tracking_data.get());
   right_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "right_ft_traj", osc_running_gains.K_p_swing_foot,
           osc_running_gains.K_d_swing_foot, osc_running_gains.W_swing_foot,
-          plant, plant, right_foot_tracking_data.get(), right_hip_tracking_data.get());
+          plant, plant, right_foot_tracking_data.get(),
+          right_hip_tracking_data.get());
   left_foot_yz_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "left_ft_z_traj", osc_running_gains.K_p_liftoff_swing_foot,
@@ -364,13 +362,14 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       "pelvis_rot_traj", osc_running_gains.K_p_pelvis_rot,
       osc_running_gains.K_d_pelvis_rot, osc_running_gains.W_pelvis_rot, plant,
       plant);
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(left_stance_state, "pelvis");
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(left_stance_state,
+                                                    "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(right_stance_state,
-                                                   "pelvis");
+                                                    "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(left_touchdown_air_phase,
-                                                   "pelvis");
+                                                    "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(right_touchdown_air_phase,
-                                                   "pelvis");
+                                                    "pelvis");
   pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 
@@ -383,11 +382,11 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       "right_toe_angle_traj");
 
   // Swing toe joint tracking
-   left_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData>(
+  left_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "left_toe_angle_traj", osc_running_gains.K_p_swing_toe,
       osc_running_gains.K_d_swing_toe, osc_running_gains.W_swing_toe, plant,
       plant);
-   right_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData>(
+  right_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "right_toe_angle_traj", osc_running_gains.K_p_swing_toe,
       osc_running_gains.K_d_swing_toe, osc_running_gains.W_swing_toe, plant,
       plant);
@@ -409,19 +408,20 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   osc->AddTrackingData(std::move(right_toe_angle_tracking_data));
 
   // Swing hip yaw joint tracking
-   left_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
+  left_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "hip_yaw_left_traj", osc_running_gains.K_p_hip_yaw,
-      osc_running_gains.K_d_hip_yaw, osc_running_gains.W_hip_yaw, plant,
-      plant);
-   right_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
+      osc_running_gains.K_d_hip_yaw, osc_running_gains.W_hip_yaw, plant, plant);
+  right_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "hip_yaw_right_traj", osc_running_gains.K_p_hip_yaw,
-      osc_running_gains.K_d_hip_yaw, osc_running_gains.W_hip_yaw, plant,
-      plant);
-  left_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+      osc_running_gains.K_d_hip_yaw, osc_running_gains.W_hip_yaw, plant, plant);
+  left_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_left",
+                                              "hip_yaw_leftdot");
   right_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_right",
-                                              "hip_yaw_rightdot");
-  osc->AddConstTrackingData(std::move(left_hip_yaw_tracking_data), VectorXd::Zero(1));
-  osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data), VectorXd::Zero(1));
+                                               "hip_yaw_rightdot");
+  osc->AddConstTrackingData(std::move(left_hip_yaw_tracking_data),
+                            VectorXd::Zero(1));
+  osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
+                            VectorXd::Zero(1));
 
   // Build OSC problem
   osc->SetOsqpSolverOptionsFromYaml(osqp_settings_filename);
@@ -491,12 +491,13 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                   command_sender->get_input_port(0));
 
   // Publisher connections
-  builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
+  builder.ExportInput(state_receiver->get_input_port(), "lcmt_robot_output");
   builder.ExportInput(high_level_command->get_cassie_out_input_port(),
                       "lcmt_cassie_out");
-  builder.ExportOutput(command_sender->get_output_port(), "u, t");
-  //  builder.ExportOutput(failure_aggregator->get_status_output_port(),
-  //  "failure_status");
+  builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
+  builder.ExportOutput(osc->get_osc_output_port(), "u, t");
+  builder.ExportOutput(failure_aggregator->get_status_output_port(),
+                       "lcmt_controller_failure");
 
   builder.BuildInto(this);
   this->set_name(("osc_running_controller_diagram"));

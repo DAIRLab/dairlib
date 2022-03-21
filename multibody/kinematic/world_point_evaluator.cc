@@ -20,46 +20,46 @@ namespace multibody {
 
 template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
-                                            Vector3d pt_A,
+                                            const Vector3d& pt_A,
                                             const Frame<T>& frame_A,
-                                            const Matrix3d rotation,
-                                            const Vector3d offset,
+                                            const Matrix3d& R_GW,
+                                            const Vector3d& offset,
                                             std::vector<int> active_directions)
     : KinematicEvaluator<T>(plant, 3),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
-      rotation_(rotation) {
+      R_WB_(R_GW.transpose()) {
   this->set_active_inds(active_directions);
 }
 
 template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(
-    const MultibodyPlant<T>& plant, Vector3d pt_A, const Frame<T>& frame_A,
-    const multibody::ViewFrame<T>& view_frame,
-    const Matrix3d rotation, const Vector3d offset,
+    const MultibodyPlant<T>& plant, const Vector3d& pt_A,
+    const Frame<T>& frame_A, const multibody::ViewFrame<T>& view_frame,
+    const Matrix3d& R_GW, const Vector3d& offset,
     std::vector<int> active_directions)
     : KinematicEvaluator<T>(plant, 3),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
-      rotation_(rotation),
+      R_WB_(R_GW.transpose()),
       view_frame_(&view_frame) {
   this->set_active_inds(active_directions);
 }
 
 template <typename T>
 WorldPointEvaluator<T>::WorldPointEvaluator(const MultibodyPlant<T>& plant,
-                                            const Vector3d pt_A,
+                                            const Vector3d& pt_A,
                                             const Frame<T>& frame_A,
-                                            const Vector3d normal,
-                                            const Vector3d offset,
+                                            const Vector3d& normal,
+                                            const Vector3d& offset,
                                             bool tangent_active)
     : KinematicEvaluator<T>(plant, 3),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
-      rotation_(RotationMatrix<double>::MakeFromOneVector(normal, 2)) {
+      R_WB_(RotationMatrix<double>::MakeFromOneVector(normal, 2).transpose()) {
   if (!tangent_active) {
     this->set_active_inds({2});  // only z is active
   }
@@ -73,7 +73,7 @@ VectorX<T> WorldPointEvaluator<T>::EvalFull(const Context<T>& context) const {
   plant().CalcPointsPositions(context, frame_A_, pt_A_.template cast<T>(),
                               world, &pt_world);
 
-  return rotation_ * (pt_world - offset_);
+  return R_WB_ * (pt_world - offset_);
 }
 
 template <typename T>
@@ -87,10 +87,10 @@ void WorldPointEvaluator<T>::EvalFullJacobian(
       pt_A_.template cast<T>(), world, world, J);
 
   if (view_frame_ == nullptr) {
-    *J = rotation_ * (*J);
+    *J = R_WB_ * (*J);
   } else {
     *J = view_frame_->CalcWorldToFrameRotation(plant(), context) *
-         (rotation_ * (*J));
+         (R_WB_ * (*J));
   }
 }
 
@@ -104,10 +104,10 @@ VectorX<T> WorldPointEvaluator<T>::EvalFullJacobianDotTimesV(
       pt_A_.template cast<T>(), world, world);
 
   if (view_frame_ == nullptr) {
-    return rotation_ * Jdot_times_V;
+    return R_WB_ * Jdot_times_V;
   } else {
     return view_frame_->CalcWorldToFrameRotation(plant(), context) *
-           (rotation_ * Jdot_times_V);
+           (R_WB_ * Jdot_times_V);
   }
 }
 

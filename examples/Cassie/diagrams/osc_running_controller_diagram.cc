@@ -28,7 +28,6 @@
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/filters/floating_base_velocity_filter.h"
-#include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -36,7 +35,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
 
 namespace dairlib {
 
@@ -58,8 +56,6 @@ using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
-using drake::systems::lcm::LcmPublisherSystem;
-using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
 using examples::osc::PelvisPitchTrajGenerator;
 using examples::osc::PelvisRollTrajGenerator;
@@ -168,9 +164,6 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations, 0.0, osc_gains.impact_threshold);
-
-  /**** Initialize all the leaf systems ****/
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);

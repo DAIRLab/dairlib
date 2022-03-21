@@ -13,12 +13,14 @@ from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
 from dairlib import lcmt_radio_out
 from pydairlib.cassie.simulators import CassieSimDiagram
+from pydairlib.cassie.gym_envs.cassie_env_state import CassieEnvState
 
 
 class CassieGym():
-    def __init__(self, visualize=False):
+    def __init__(self, reward_func, visualize=False):
         # self.sim_dt = 8e-5
         self.visualize = visualize
+        self.reward_func = reward_func
         # hardware logs are 50ms long and start approximately 5ms before impact
         # the simulator will check to make sure ground reaction forces are first detected within 3-7ms
         self.start_time = 0.00
@@ -35,6 +37,7 @@ class CassieGym():
         self.default_contact_params = {"mu": 0.8,
                                        "stiffness": 4e4,
                                        "dissipation": 0.5}
+        self.prev_cassie_state = None
         self.controller = None
 
     def make(self, controller, urdf):
@@ -68,12 +71,13 @@ class CassieGym():
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.traj.update(self.start_time, self.x_init,
                          np.zeros(self.action_dim))
-        self.sim.Initialize()
-        cassie_state = self.plant.GetPositionsAndVelocities(
+        x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()))
-
+        u = np.zeros(10)
+        self.sim.Initialize()
         self.current_time = self.start_time
+        self.prev_cassie_state = CassieEnvState(self.current_time, x, u, np.zeros(18))
         return
 
     def advance_to(self, time):
@@ -85,13 +89,16 @@ class CassieGym():
         next_timestep = self.sim.get_context().get_time() + self.dt
         self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
         self.sim.AdvanceTo(next_timestep)
-        cassie_state = self.plant.GetPositionsAndVelocities(
+        x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_mutable_context()))
-
+        u = np.zeros(10)
         self.current_time = next_timestep
-        self.traj.update(next_timestep, cassie_state, action[:10])
-        return cassie_state
+        cassie_state = CassieEnvState(self.current_time, x, u, action)
+        reward = self.reward_func.compute_reward(cassie_state, self.prev_cassie_state)
+        self.prev_cassie_state = cassie_state
+        # self.traj.update(next_timestep, cassie_state, action[:10])
+        return cassie_state, reward
 
     def get_traj(self):
         return self.traj

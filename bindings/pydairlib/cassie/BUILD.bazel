@@ -11,34 +11,6 @@ load(
     "pybind_py_library",
 )
 
-py_library(
-    name = "cassie_gym",
-    srcs = ["cassie_gym.py"],
-    deps = [
-        "//bindings/pydairlib/cassie:cassie",
-        "//bindings/pydairlib",
-        "//bindings/pydairlib/systems:systems",
-        "//bindings/pydairlib/multibody",
-        "//bindings/pydairlib/systems:primitives_py",
-    ],
-)
-
-py_binary(
-    name = "cassie_gym_test",
-    srcs = ["cassie_gym_test.py"],
-    deps = [
-        "//bindings/pydairlib/cassie:cassie_gym",
-        "//bindings/pydairlib/cassie:cassie",
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
-    name = "cassie_traj",
-    srcs = ["cassie_traj.py"],
-    deps = [
-    ],
-)
 
 pybind_py_library(
     name = "cassie_utils_py",
@@ -80,21 +52,6 @@ pybind_py_library(
     ],
     cc_so_name = "controllers",
     cc_srcs = ["controllers_py.cc"],
-    py_deps = [
-        "@drake//bindings/pydrake",
-        ":module_py",
-    ],
-    py_imports = ["."],
-)
-
-pybind_py_library(
-    name = "dairlib_yaml_py",
-    cc_deps = [
-        "@drake//:drake_shared_library",
-        "//examples/Cassie/osc_run:osc_running_gains",
-    ],
-    cc_so_name = "dairlib_yaml",
-    cc_srcs = ["yaml_structs_py.cc"],
     py_deps = [
         "@drake//bindings/pydrake",
         ":module_py",

@@ -39,5 +39,8 @@ cc_binary(
         "@gflags",
         "//common",
         "//systems/controllers:c3_controller",
+        "//systems:system_utils",
+        "//systems/primitives:primitives",
+        "//systems:robot_lcm_systems",
     ],
 )

@@ -93,28 +93,31 @@ int DoMain(int argc, char* argv[]) {
       plant.get_actuation_input_port().size());
 
   /// conversion plant -> controller
-  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
-  auto state_sender =
-      builder.AddSystem<systems::RobotOutputSender>(plant, true);
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
+  auto state_receiver =
+      builder.AddSystem<systems::RobotOutputReceiver>(plant);
+
+  builder.Connect(controller->get_input_port_output(),
+                  passthrough->get_input_port());
 
   builder.Connect(passthrough->get_output_port(),
                   plant.get_actuation_input_port());
 
-  /*
 
+  /*
   builder.Connect(plant.get_state_output_port(),
                   controller->get_input_port_config());
+*/
 
-   */
 
-  builder.Connect(plant.get_state_output_port(),
-                  state_sender->get_input_port_state());
+  builder.Connect(plant.get_state_output_port(), state_sender->get_input_port());
 
-  builder.Connect(state_sender->get_output_port(),
-                  input_receiver->get_input_port());
+  builder.Connect(state_sender->get_output_port(), state_receiver->get_input_port());
 
-  builder.Connect(controller->get_input_port_output(),
-                  passthrough->get_input_port());
+
+  builder.Connect(state_receiver->get_output_port(), controller->get_input_port());
+
+
 
   builder.Connect(
       plant.get_geometry_poses_output_port(),
@@ -123,23 +126,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
 
-  /*
-
-  ///port index?
-  builder.Connect(controller->get_output_port(),
-  plant.get_actuation_input_port());
-
-  builder.Connect(plant.get_state_output_port(),controller->get_input_port());
-
-  builder.Connect(plant.get_geometry_poses_output_port(),scene_graph.get_source_pose_port(plant.get_source_id().value()));
-
-  builder.Connect(scene_graph.get_query_output_port(),plant.get_geometry_query_input_port());
-
-   */
-
-  // DrawAndSaveDiagramGraph(*this);
-
-  /*
 
   auto diagram = builder.Build();
   // Create a context for this system:
@@ -148,6 +134,9 @@ int DoMain(int argc, char* argv[]) {
   diagram->SetDefaultContext(diagram_context.get());
 
 
+  //DrawAndSaveDiagramGraph(*diagram);
+
+  /*
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

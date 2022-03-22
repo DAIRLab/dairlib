@@ -31,7 +31,7 @@ def main():
     action = np.zeros(18)
     action[2] = 0.25
     cumulative_reward = 0
-    while gym_env.current_time < 5.0:
+    while gym_env.current_time < 7.5:
         state, reward = gym_env.step(action)
         cumulative_reward += reward
     gym_env.reset()

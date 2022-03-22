@@ -38,6 +38,9 @@ class CassieGym():
                                        "dissipation": 0.5}
         self.prev_cassie_state = None
         self.controller = None
+        self.terminated = False
+        self.initialized = False
+
 
     def make(self, controller, urdf):
         self.builder = DiagramBuilder()
@@ -63,6 +66,7 @@ class CassieGym():
         self.controller_output_port = self.controller.get_torque_output_port()
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.reset()
+        self.initialized = True
 
     def reset(self):
         # self.traj = CassieTraj()
@@ -78,14 +82,22 @@ class CassieGym():
         self.sim.Initialize()
         self.current_time = self.start_time
         self.prev_cassie_state = CassieEnvState(self.current_time, x, u, np.zeros(18))
+        self.cassie_state = CassieEnvState(self.current_time, x, u, np.zeros(18))
+        self.terminated = False
         return
 
     def advance_to(self, time):
-        while self.current_time < time:
+        while self.current_time < time and not self.terminated:
             self.step()
         return
 
+    def check_termination(self):
+        return self.cassie_state.get_fb_positions()[2] < 0.4
+
+
     def step(self, action=np.zeros(18)):
+        if not self.initialized:
+            print("Call make() before calling step() or advance()")
         # next_timestep = self.sim.get_context().get_time() + self.dt
         next_timestep = self.sim.get_context().get_time() + self.sim_dt
         self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
@@ -100,12 +112,13 @@ class CassieGym():
         # u = self.controller_output_port.Eval(self.sim.get_context())[:-1] # remove the timestamp
         # print(u)
         # u = np.zeros(10)
-        cassie_state = CassieEnvState(self.current_time, x, u, action)
-        reward = self.reward_func.compute_reward(cassie_state, self.prev_cassie_state)
+        self.cassie_state = CassieEnvState(self.current_time, x, u, action)
+        reward = self.reward_func.compute_reward(self.cassie_state, self.prev_cassie_state)
+        self.terminated = self.check_termination()
         # reward = 0
-        self.prev_cassie_state = cassie_state
+        self.prev_cassie_state = self.cassie_state
         # self.traj.update(next_timestep, cassie_state, action[:10])
-        return cassie_state, reward
+        return self.cassie_state, reward
 
     def get_traj(self):
         return self.traj

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "dairlib/lcmt_controller_switch.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
@@ -13,8 +14,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/serializer.h"
-
-#include "dairlib/lcmt_robot_output.hpp"
 
 namespace dairlib {
 namespace systems {

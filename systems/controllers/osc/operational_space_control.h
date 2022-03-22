@@ -13,21 +13,21 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "solvers/fast_osqp_solver.h"
+#include "solvers/osqp_solver_options.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
+#include "common/find_resource.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
-
-// Maximum time limit for each QP solve
-static constexpr double kMaxSolveDuration = 0.1;
 
 namespace dairlib::systems::controllers {
 
@@ -173,6 +173,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                        int right_support_state,
                                        std::vector<int> ds_states);
   void SetInputRegularizationWeight(double w) { w_input_reg_ = w; }
+  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+    solver_options_ = options;
+  }
+  void SetOsqpSolverOptionsFromYaml(const std::string& yaml_string) {
+    SetOsqpSolverOptions(
+        drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+        FindResourceOrThrow(yaml_string)).osqp_options);
+  };
 
   // OSC LeafSystem builder
   void Build();
@@ -279,7 +287,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Solver
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
-  drake::solvers::SolverOptions solver_options_;
+  drake::solvers::SolverOptions solver_options_ =
+      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+          FindResourceOrThrow("solvers/osqp_options_default.yaml"))
+          .osqp_options;
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;

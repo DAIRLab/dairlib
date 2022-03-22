@@ -23,11 +23,13 @@
 #include "systems/controllers/alip_swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_scope_system.h"
 
 namespace dairlib {
 
@@ -47,6 +49,7 @@ using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::lcm::LcmScopeSystem;
 using drake::systems::TriggerTypeSet;
 
 using multibody::WorldYawViewFrame;
@@ -84,6 +87,8 @@ DEFINE_bool(is_two_phase, false,
 DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 DEFINE_bool(spring_model, true, "");
+DEFINE_bool(publish_filtered_state, false,
+            "whether to publish the low pass filtered state");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -133,6 +138,18 @@ int DoMain(int argc, char* argv[]) {
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
+  auto pelvis_filt =
+      builder.AddSystem<systems::FloatingBaseVelocityFilter>(
+          plant_w_spr, gains.pelvis_xyz_vel_filter_tau);
+  builder.Connect(*state_receiver, *pelvis_filt);
+
+  if (FLAGS_publish_filtered_state) {
+    auto [filtered_state_scope, filtered_state_sender]=
+    // AddToBuilder will add the systems to the diagram and connect their ports
+    LcmScopeSystem::AddToBuilder(
+        &builder, &lcm_local,pelvis_filt->get_output_port(),
+        "CASSIE_STATE_FB_FILTERED", 0);
+  }
 
   // Create command sender.
   auto command_pub =
@@ -157,7 +174,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto simulator_drift =
       builder.AddSystem<SimulatorDrift>(plant_w_spr, drift_mean, drift_cov);
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(pelvis_filt->get_output_port(0),
                   simulator_drift->get_input_port_state());
 
   // Create human high-level control
@@ -183,7 +200,7 @@ int DoMain(int argc, char* argv[]) {
         gains.vel_max_lateral, gains.target_pos_offset, global_target_position,
         params_of_no_turning);
   }
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(pelvis_filt->get_output_port(0),
                   high_level_command->get_state_input_port());
 
   // Create heading traj generator
@@ -323,9 +340,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(pelvis_filt->get_output_port(0),
                   left_toe_angle_traj_gen->get_state_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(pelvis_filt->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
 
   // Create Operational space control
@@ -530,6 +547,8 @@ int DoMain(int argc, char* argv[]) {
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
+  osc->SetOsqpSolverOptionsFromYaml(
+      "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
   // Build OSC problem
   osc->Build();
   // Connect ports

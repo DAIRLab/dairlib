@@ -346,7 +346,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
         "OsqpSolver doesn't support the feature of variable scaling.");
   }
 
-  auto solver_details = result->SetSolverDetailsType<OsqpSolverDetails>();
+  OsqpSolverDetails& solver_details = result->SetSolverDetailsType<OsqpSolverDetails>();
 
   // OSQP solves a convex quadratic programming problem
   // min 0.5 xᵀPx + qᵀx

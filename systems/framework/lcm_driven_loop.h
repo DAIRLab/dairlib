@@ -14,6 +14,8 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/serializer.h"
 
+#include "dairlib/lcmt_robot_output.hpp"
+
 namespace dairlib {
 namespace systems {
 

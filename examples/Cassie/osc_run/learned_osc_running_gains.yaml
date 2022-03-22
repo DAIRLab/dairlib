@@ -1,0 +1,40 @@
+FootstepKd: [0.2, 0, 0, 0, 0.45, 0, 0, 0, 0]
+LiftoffSwingFootKd: [1, 0, 0, 0, 1, 0, 0, 0, 0]
+LiftoffSwingFootKp: [50.0, 0, 0, 0, 50.0, 0, 0, 0, 50.0]
+LiftoffSwingFootW: [0.1, 0, 0, 0, 10, 0, 0, 0, 1]
+PelvisKd: [1, 0, 0, 0, 0, 0, 0, 0, 5]
+PelvisKp: [0, 0, 0, 0, 0, 0, 0, 0, 85]
+PelvisRotKd: [9.013098354712552, 0, 0, 0, 5.890550647773381, 0, 0, 0, 0]
+PelvisRotKp: [47.69813767696465, 0, 0, 0, 100.05199703112916, 0, 0, 0, 0]
+PelvisRotW: [1, 0, 0, 0, 2.5, 0, 0, 0, 0.1]
+PelvisW: [0.1, 0, 0, 0, 0, 0, 0, 0, 5]
+SwingFootKd: [4.204174090159518, 0, 0, 0, 6.414419020162894, 0, 0, 0, 2.4081571611097052]
+SwingFootKp: [124.64305393422285, 0, 0, 0, 79.96891548545914, 0, 0, 0, 49.80295035635085]
+SwingFootW: [10, 0, 0, 0, 10, 0, 0, 0, 1]
+W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
+  1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
+W_input_reg: [1, 0.9, 0.5, 0.1, 5, 1, 0.9, 0.5, 0.1, 5]
+W_lambda_c_reg: [1, 0.001, 0.01, 1, 0.001, 0.01, 1, 0.1, 0.01, 1, 0.1, 0.01]
+W_lambda_h_reg: [0.01, 0.01, 0.01, 0.01, 0.02, 0.02]
+center_line_offset: 0.075
+flight_duration: 0.08
+footstep_offset: -0.05
+hip_yaw_kd: 1
+hip_yaw_kp: 40
+impact_threshold: 0.025
+mu: 0.6
+relative_feet: true
+relative_pelvis: true
+rest_length: 0.85
+stance_duration: 0.3
+swing_toe_kd: 10
+swing_toe_kp: 1500
+vel_scale_rot: -0.5
+vel_scale_trans_lateral: -0.15
+vel_scale_trans_sagital: 0.2
+w_accel: 1.0e-05
+w_hip_yaw: 2.5
+w_input: 0.0
+w_input_reg: 0.0007966140696922753
+w_soft_constraint: 100
+w_swing_toe: 1

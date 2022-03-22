@@ -21,7 +21,7 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
 
   /// @param[in] urdf filepath containing the osc_running_gains.
   CassieSimDiagram(std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
-      const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf",
+      const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf", bool visualize = false,
       double mu = 0.8, double stiffness = 1e4, double dissipation_rate = 1e2);
 
   /// @return the input port for the actuation command.

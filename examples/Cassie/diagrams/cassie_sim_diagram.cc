@@ -32,7 +32,9 @@ namespace dairlib {
 namespace examples {
 
 using dairlib::systems::SubvectorPassThrough;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
+using drake::math::RotationMatrix;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
@@ -40,15 +42,13 @@ using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::geometry::DrakeVisualizer;
-using drake::math::RotationMatrix;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 CassieSimDiagram::CassieSimDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
-    const std::string& urdf, double mu, double stiffness,
+    const std::string& urdf, bool visualize, double mu, double stiffness,
     double dissipation_rate) {
   DiagramBuilder<double> builder;
   scene_graph_ = builder.AddSystem<SceneGraph>();
@@ -75,9 +75,8 @@ CassieSimDiagram::CassieSimDiagram(
   auto constant_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(10));
-  auto input_zero_order_hold =
-      builder.AddSystem<drake::systems::ZeroOrderHold>(
-          0.001, plant_->num_actuators() + 1);
+  auto input_zero_order_hold = builder.AddSystem<drake::systems::ZeroOrderHold>(
+      0.001, plant_->num_actuators() + 1);
   sensor_aggregator_ = &AddImuAndAggregator(&builder, *plant_,
                                             constant_source->get_output_port());
 
@@ -118,7 +117,9 @@ CassieSimDiagram::CassieSimDiagram(
   builder.ExportOutput(state_sender->get_output_port(0), "lcmt_robot_output");
   builder.ExportOutput(sensor_aggregator_->get_output_port(0),
                        "lcmt_cassie_out");
-  DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph_);
+  if (visualize) {
+    DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph_);
+  }
   builder.BuildInto(this);
   this->set_name("cassie_sim_diagram");
   DrawAndSaveDiagramGraph(*this);

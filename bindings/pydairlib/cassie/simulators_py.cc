@@ -21,8 +21,8 @@ PYBIND11_MODULE(simulators, m) {
              drake::systems::Diagram<double>>(m, "CassieSimDiagram")
       .def(py::init<
                std::unique_ptr<drake::multibody::MultibodyPlant<double>>,
-               const std::string&, double, double, double>(),
-           py::arg("plant"), py::arg("urdf"), py::arg("mu"), py::arg("stiffness"),
+               const std::string&, bool, double, double, double>(),
+           py::arg("plant"), py::arg("urdf"), py::arg("visualize"), py::arg("mu"), py::arg("stiffness"),
            py::arg("dissipation_rate"))
       .def("get_plant", &CassieSimDiagram::get_plant,
            py_rvp::reference_internal)

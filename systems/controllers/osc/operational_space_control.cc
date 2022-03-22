@@ -1005,7 +1005,6 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   double timestamp = robot_output->get_timestamp();
 
-  std::cout << "t_osc: " << timestamp << std::endl;
   double current_time = timestamp;
   if (print_tracking_info_) {
     cout << "\n\ncurrent_time = " << current_time << endl;

@@ -1,5 +1,4 @@
 import numpy as np
-from cassie_traj import *
 
 from pydrake.multibody.parsing import Parser
 from pydrake.systems.framework import DiagramBuilder
@@ -26,7 +25,7 @@ class CassieGym():
         self.start_time = 0.00
         self.current_time = 0.00
         self.end_time = 0.05
-        self.traj = CassieTraj()
+        # self.traj = CassieTraj()
         self.hardware_traj = None
         self.action_dim = 10
         self.state_dim = 45
@@ -45,7 +44,7 @@ class CassieGym():
         self.dt = 8e-5
         self.plant = MultibodyPlant(self.dt)
         self.controller = controller
-        self.simulator = CassieSimDiagram(self.plant, urdf, 0.8, 1e4, 1e2)
+        self.simulator = CassieSimDiagram(self.plant, urdf, self.visualize, 0.8, 1e4, 1e2)
         self.new_plant = self.simulator.get_plant()
         # self.sensor_aggregator = self.simulator.get_sensor_aggregator()
         self.builder.AddSystem(self.controller)
@@ -66,12 +65,12 @@ class CassieGym():
         self.reset()
 
     def reset(self):
-        self.traj = CassieTraj()
+        # self.traj = CassieTraj()
         self.new_plant.SetPositionsAndVelocities(self.new_plant.GetMyMutableContextFromRoot(
             self.sim.get_mutable_context()), self.x_init)
         self.sim.get_mutable_context().SetTime(self.start_time)
-        self.traj.update(self.start_time, self.x_init,
-                         np.zeros(self.action_dim))
+        # self.traj.update(self.start_time, self.x_init,
+        #                  np.zeros(self.action_dim))
         x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_context()))
@@ -84,7 +83,7 @@ class CassieGym():
     def advance_to(self, time):
         while self.current_time < time:
             self.step()
-        return self.traj
+        return
 
     def step(self, action=np.zeros(18)):
         # next_timestep = self.sim.get_context().get_time() + self.dt

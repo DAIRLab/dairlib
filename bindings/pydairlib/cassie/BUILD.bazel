@@ -77,6 +77,16 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+py_binary(
+    name = "learn_osc_gains",
+    srcs = ["learn_osc_gains.py"],
+    deps = [
+        "//bindings/pydairlib/cassie/gym_envs:cassie_gym_all",
+        "//bindings/pydairlib/cassie:cassie",
+        "@drake//bindings/pydrake",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

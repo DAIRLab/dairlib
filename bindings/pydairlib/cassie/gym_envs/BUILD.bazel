@@ -11,6 +11,15 @@ load(
     "pybind_py_library",
 )
 
+py_library(
+    name = "cassie_gym_all",
+    srcs = [],
+    deps = [
+        ":cassie_gym",
+        ":cassie_env_rewards",
+    ],
+)
+
 
 py_library(
     name = "cassie_gym",

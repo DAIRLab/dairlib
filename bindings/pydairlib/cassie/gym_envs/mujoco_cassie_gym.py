@@ -10,13 +10,15 @@ from pydairlib.cassie.cassie_utils import *
 from pydairlib.multibody import *
 from pydairlib.systems.primitives import *
 # from dairlib import lcmt_radio_out
-from pydairlib.cassie.gym_envs.cassie_env_state import CassieEnvState
-from drake_to_mujoco_converter import DrakeToMujocoConverter
+from pydairlib.cassie.gym_envs.cassie_env_state import CassieEnvState, quat_to_rotation, \
+    reexpress_state_local_to_global_omega, reexpress_state_global_to_local_omega
+from pydairlib.cassie.mujoco.drake_to_mujoco_converter import DrakeToMujocoConverter
+# from drake_to_mujoco_converter import DrakeToMujocoConverter
 
+from pydairlib.cassie.mujoco.cassiemujoco import *
+from pydairlib.cassie.mujoco.mujoco_lcm_utils import *
+from pydairlib.cassie.mujoco.drake_to_mujoco_converter import DrakeToMujocoConverter
 
-from cassiemujoco import *
-from mujoco_lcm_utils import *
-from drake_to_mujoco_converter import DrakeToMujocoConverter
 
 class MuJoCoCassieGym():
     def __init__(self, reward_func, visualize=False):
@@ -54,13 +56,14 @@ class MuJoCoCassieGym():
                                    'knee_right_motor': 8,
                                    'toe_right_motor': 9}
 
-
     def make(self, controller, model_xml='cassie.xml'):
         self.builder = DiagramBuilder()
         self.dt = 8e-5
         self.plant = MultibodyPlant(self.dt)
         self.controller = controller
         self.simulator = CassieSim(self.default_model_directory + model_xml)
+        if self.visualize:
+            self.cassie_vis = CassieVis(self.simulator)
         # self.simulator = CassieSimDiagram(self.plant, urdf, self.visualize, 0.8, 1e4, 1e2)
         # self.new_plant = self.simulator.get_plant()
         # self.sensor_aggregator = self.simulator.get_sensor_aggregator()
@@ -77,9 +80,10 @@ class MuJoCoCassieGym():
         self.diagram = self.builder.Build()
         self.sim = Simulator(self.diagram)
         # self.simulator_context = self.diagram.GetMutableSubsystemContext(self.simulator, self.sim.get_mutable_context())
-        self.controller_context = self.diagram.GetMutableSubsystemContext(self.controller, self.sim.get_mutable_context())
-        self.controller_output_port = self.controller.get_state_input_port()
-        self.controller_state_input_port = self.controller.get_torque_output_port()
+        self.controller_context = self.diagram.GetMutableSubsystemContext(self.controller,
+                                                                          self.sim.get_mutable_context())
+        self.controller_state_input_port = self.controller.get_state_input_port()
+        self.controller_output_port = self.controller.get_torque_output_port()
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.reset()
         self.initialized = True
@@ -110,27 +114,25 @@ class MuJoCoCassieGym():
     def check_termination(self):
         return self.cassie_state.get_fb_positions()[2] < 0.4
 
-
     def step(self, action=np.zeros(18)):
         if not self.initialized:
             print("Call make() before calling step() or advance()")
 
-
         next_timestep = self.sim.get_context().get_time() + self.gym_dt
-        self.simulator.controller_state_input_port().FixValue(self.controller_context, self.cassie_state.x)
-        u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
+        self.controller_state_input_port.FixValue(self.controller_context, self.cassie_state.x)
+        u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
 
         self.sim.AdvanceTo(np.around(next_timestep, decimals=3))
-        while self.cassie_env.time() < next_timestep:
-            self.cassie_env.step(cassie_in)
+        while self.simulator.time() < next_timestep:
+            self.simulator.step(cassie_in)
         if self.visualize:
-            self.cassie_vis.draw(self.cassie_env)
+            self.cassie_vis.draw(self.simulator)
 
         self.current_time = next_timestep
-        t = self.cassie_env.time()
-        q = self.cassie_env.qpos()
-        v = self.cassie_env.qvel()
+        t = self.simulator.time()
+        q = self.simulator.qpos()
+        v = self.simulator.qvel()
         q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
         self.current_time = t
         x = np.hstack((q, v))

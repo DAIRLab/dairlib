@@ -15,11 +15,16 @@ from pydairlib.multibody import MultiposeVisualizer
 class DrakeToMujocoConverter():
 
     def __init__(self, drake_sim_dt=5e-5):
+        self.left_leg_urdf = FindResourceOrThrow('examples/Cassie/urdf/cassie_left_leg.urdf')
+        self.cassie_v2_urdf = FindResourceOrThrow('examples/Cassie/urdf/cassie_v2.urdf')
+        self.foot_crank_urdf = FindResourceOrThrow('examples/Cassie/urdf/cassie_foot_crank.urdf')
+        self.knee_linkage_urdf = FindResourceOrThrow('examples/Cassie/urdf/cassie_knee_linkage.urdf')
+
         self.builder = DiagramBuilder()
         self.drake_sim_dt = drake_sim_dt
         self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, drake_sim_dt)
         addCassieMultibody(self.plant, self.scene_graph, True,
-                           "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+                           'examples/Cassie/urdf/cassie_v2.urdf', False, False)
         self.plant.Finalize()
 
         self.foot_crank_builder = DiagramBuilder()
@@ -27,15 +32,14 @@ class DrakeToMujocoConverter():
                                                                                          drake_sim_dt)
 
         Parser(self.foot_crank_plant).AddModelFromFile(
-            FindResourceOrThrow('examples/Cassie/urdf/cassie_foot_crank.urdf'))
+            self.foot_crank_urdf)
         self.foot_crank_plant.Finalize()
 
         self.knee_linkage_builder = DiagramBuilder()
         self.knee_linkage_plant, self.knee_linkage_scene_graph = AddMultibodyPlantSceneGraph(self.knee_linkage_builder,
                                                                                              drake_sim_dt)
 
-        Parser(self.knee_linkage_plant).AddModelFromFile(
-            FindResourceOrThrow('examples/Cassie/urdf/cassie_knee_linkage.urdf'))
+        Parser(self.knee_linkage_plant).AddModelFromFile(self.knee_linkage_urdf)
         self.knee_linkage_plant.Finalize()
 
         self.diagram = self.builder.Build()
@@ -133,7 +137,7 @@ class DrakeToMujocoConverter():
         plant = MultibodyPlant(self.drake_sim_dt)
         scene_graph = builder.AddSystem(SceneGraph())
 
-        Parser(plant).AddModelFromFile(FindResourceOrThrow('examples/Cassie/urdf/cassie_left_leg.urdf'))
+        Parser(plant).AddModelFromFile(self.left_leg_urdf)
         plant.Finalize()
         self.print_pos_indices(plant)
 
@@ -150,7 +154,7 @@ class DrakeToMujocoConverter():
         left_leg_state[14:17] = left_foot_crank_state[-3:]
         plant.SetPositions(plant_context, left_leg_state)
 
-        visualizer = MultiposeVisualizer('examples/Cassie/urdf/cassie_left_leg.urdf', 1, '')
+        visualizer = MultiposeVisualizer(self.left_leg_urdf, 1, '')
         visualizer.DrawPoses(left_leg_state)
 
     def visualize_state_lower(self, x):

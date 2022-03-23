@@ -12,7 +12,7 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from cassiemujoco_ctypes import *
+from pydairlib.cassie.mujoco.cassiemujoco_ctypes import *
 import os
 import ctypes
 import numpy as np
@@ -189,7 +189,7 @@ class CassieSim:
         rfrc = np.sqrt(np.power(force[6:9], 2).sum())
         return lfrc, rfrc
 
-    # Returns 2 arrays each 6 long, the toe force and heel force. Each array is in order of 
+    # Returns 2 arrays each 6 long, the toe force and heel force. Each array is in order of
     # left foot (3) and then right foot (3)
     def get_heeltoe_forces(self):
         toe_force = np.zeros(6)
@@ -285,10 +285,10 @@ class CassieSim:
         cassie_sim_loop_constraint_info(self.c, J_array, err_array)
         err_return = np.zeros((6,1))
         for i in range(6):
-                err_return[i] = err_array[i]
+            err_return[i] = err_array[i]
         return err_return
 
-    # Return the minimal actuated mass matrix of Cassie. Contains 6 for floating 
+    # Return the minimal actuated mass matrix of Cassie. Contains 6 for floating
     # base, 5 for left leg motors, 5 for right leg motors.
     def minimal_mass_matrix(self):
         ind_full_idx = [0,1,2,3,4,5,6,7,8,12,18,19,20,21,25,31]
@@ -300,8 +300,8 @@ class CassieSim:
         J_c = self.constraint_jacobian()
         J_c[:, 0:6] = 0  # Zero out floating base coordinates
         J_c_div = J_c[:, ind_full_idx + dep_full_idx]
-        J_c_div[J_c_div < 1e-5] = 0 # Zero out very small terms for numerical stabilityL 
-        
+        J_c_div[J_c_div < 1e-5] = 0 # Zero out very small terms for numerical stabilityL
+
         M = self.full_mass_matrix()
         M_div_temp = M[:, ind_full_idx + dep_full_idx]
         M_div = M_div_temp[ind_full_idx + dep_full_idx, :]
@@ -313,7 +313,7 @@ class CassieSim:
         M_minimal = P.T  @ M_div @ P
 
         #J_c_dep = J_c[:, (13,24)]
-        # This gets hard 
+        # This gets hard
         # import sys
         # np.set_printoptions(threshold=sys.maxsize)
         M_print = M_div[:, ind_idx]
@@ -326,7 +326,7 @@ class CassieSim:
 
 
         return M_minimal
-        
+
 
     def foot_quat(self, quat):
         quat_array = (ctypes.c_double * 4)()
@@ -343,7 +343,7 @@ class CassieSim:
         for i in range(self.nv):
             ret[i] = ptr[i]
         return ret
-    
+
     def get_body_mass(self):
         ptr = cassie_sim_body_mass(self.c)
         ret = np.zeros(self.nbody)
@@ -411,7 +411,7 @@ class CassieSim:
             for i in range(self.ngeom * 3):
                 ret[i] = ptr[i]
         return ret
-    
+
     def get_geom_size(self, name=None):
         if name is not None:
             ptr = cassie_sim_geom_name_size(self.c, name.encode())
@@ -431,7 +431,7 @@ class CassieSim:
         if len(data) != self.nv:
             print("SIZE MISMATCH SET_DOF_DAMPING()")
             exit(1)
-        
+
         for i in range(self.nv):
             c_arr[i] = data[i]
 
@@ -446,7 +446,7 @@ class CassieSim:
             if len(data) != self.nbody:
                 print("SIZE MISMATCH SET_BODY_MASS()")
                 exit(1)
-            
+
             for i in range(self.nbody):
                 c_arr[i] = data[i]
 
@@ -458,7 +458,7 @@ class CassieSim:
 
     def set_body_pos(self, name, data):
         if len(data) != 3:
-            print("SIZE MISMATCH SET BODY POS") 
+            print("SIZE MISMATCH SET BODY POS")
             exit(1)
         c_arr = (ctypes.c_double * 3)()
         for i in range(3):
@@ -472,7 +472,7 @@ class CassieSim:
         if len(data) != nbody:
             print("SIZE MISMATCH SET_BODY_IPOS()")
             exit(1)
-        
+
         for i in range(nbody):
             c_arr[i] = data[i]
 
@@ -499,24 +499,24 @@ class CassieSim:
 
     def set_geom_rgba(self, data, name=None):
         if name is None:
-                ngeom = self.ngeom * 4
+            ngeom = self.ngeom * 4
 
-                if len(data) != ngeom:
-                    print("SIZE MISMATCH SET_GEOM_RGBA()")
-                    exit(1)
+            if len(data) != ngeom:
+                print("SIZE MISMATCH SET_GEOM_RGBA()")
+                exit(1)
 
-                c_arr = (ctypes.c_float * ngeom)()
+            c_arr = (ctypes.c_float * ngeom)()
 
-                for i in range(ngeom):
-                    c_arr[i] = data[i]
+            for i in range(ngeom):
+                c_arr[i] = data[i]
 
-                cassie_sim_set_geom_rgba(self.c, c_arr)
+            cassie_sim_set_geom_rgba(self.c, c_arr)
         else:
             rgba_array = (ctypes.c_float * 4)()
             for i in range(4):
                 rgba_array[i] = data[i]
             cassie_sim_set_geom_name_rgba(self.c, name.encode(), rgba_array)
-    
+
     def set_geom_quat(self, data, name=None):
         if name is None:
             ngeom = self.ngeom * 4
@@ -537,7 +537,7 @@ class CassieSim:
                 quat_array[i] = data[i]
             cassie_sim_set_geom_name_quat(self.c, name.encode(), quat_array)
 
-    
+
     def set_geom_pos(self, data, name=None):
         if name is None:
             ngeom = self.ngeom * 3
@@ -612,7 +612,7 @@ class CassieSim:
 
         if vis is not None:
             cassie_vis_remakeSceneCon(vis)
-    
+
     def get_hfield_data(self):
         nhfielddata = self.get_nhfielddata()
         ret = np.zeros(nhfielddata)
@@ -636,7 +636,7 @@ class CassieSim:
         j_filters = cassie_sim_joint_filter(self.c)
         return j_filters
 
-    # Set interal state of the joint filters. Takes in 2 arrays of values (x and y), which should be 6*4 and 6*3 long respectively. 
+    # Set interal state of the joint filters. Takes in 2 arrays of values (x and y), which should be 6*4 and 6*3 long respectively.
     # (6 joints, for each joint x has 4 values y has 3)
     def set_joint_filter(self, x, y):
         x_arr = (ctypes.c_double * (6*4))(*x)
@@ -655,7 +655,7 @@ class CassieSim:
         x_arr = (ctypes.c_int * (10*9))(*x)
         cassie_sim_set_drive_filter(self.c, ctypes.cast(x_arr, ctypes.POINTER(ctypes.c_int)))
 
-    # Get the current state of the torque delay array. Returns a 2d numpy array of size (10, 6), 
+    # Get the current state of the torque delay array. Returns a 2d numpy array of size (10, 6),
     # number of motors by number of delay cycles
     def get_torque_delay(self):
         t_arr = (ctypes.c_double * 60)()
@@ -669,6 +669,40 @@ class CassieSim:
 
     def __del__(self):
         cassie_sim_free(self.c)
+
+class CassieState:
+    def __init__(self):
+        self.s = cassie_state_alloc()
+
+    def time(self):
+        timep = cassie_state_time(self.s)
+        return timep[0]
+
+    def qpos(self):
+        qposp = cassie_state_qpos(self.s)
+        return qposp[:35]
+
+    def qvel(self):
+        qvelp = cassie_state_qvel(self.s)
+        return qvelp[:32]
+
+    def set_time(self, time):
+        timep = cassie_state_time(self.s)
+        timep[0] = time
+
+    def set_qpos(self, qpos):
+        qposp = cassie_state_qpos(self.s)
+        for i in range(min(len(qpos), 35)):
+            qposp[i] = qpos[i]
+
+    def set_qvel(self, qvel):
+        qvelp = cassie_state_qvel(self.s)
+        for i in range(min(len(qvel), 32)):
+            qvelp[i] = qvel[i]
+
+    def __del__(self):
+        cassie_state_free(self.s)
+
 
 class CassieVis:
     def __init__(self, c, offscreen=False):
@@ -688,10 +722,10 @@ class CassieVis:
     def remake(self):
         cassie_vis_remakeSceneCon(self.v)
 
-    # Applies the inputted force to the inputted body. "xfrc_apply" should contain the force/torque to 
-    # apply in Cartesian coords as a 6-long array (first 3 are force, last 3 are torque). "body_name" 
+    # Applies the inputted force to the inputted body. "xfrc_apply" should contain the force/torque to
+    # apply in Cartesian coords as a 6-long array (first 3 are force, last 3 are torque). "body_name"
     # should be a string matching a body name in the XML file. If "body_name" doesn't match an existing
-    # body name, then no force will be applied. 
+    # body name, then no force will be applied.
     def apply_force(self, xfrc_apply, body_name):
         xfrc_array = (ctypes.c_double * 6)()
         for i in range(len(xfrc_apply)):
@@ -795,7 +829,7 @@ class CassieUdp:
         self.inbuf = ctypes.cast(ctypes.byref(self.recvbuf, 2),
                                  ctypes.POINTER(ctypes.c_ubyte))
         self.outbuf = ctypes.cast(ctypes.byref(self.sendbuf, 2),
-                                    ctypes.POINTER(ctypes.c_ubyte))
+                                  ctypes.POINTER(ctypes.c_ubyte))
 
     def send(self, u):
         pack_cassie_user_in_t(u, self.outbuf)
@@ -809,9 +843,9 @@ class CassieUdp:
         nbytes = -1
         while nbytes != self.recvlen:
             nbytes = get_newest_packet(self.sock, self.recvbuf, self.recvlen,
-                                         None, None)
+                                       None, None)
         process_packet_header(self.packet_header_info,
-                                self.recvbuf, self.sendbuf)
+                              self.recvbuf, self.sendbuf)
         cassie_out = cassie_out_t()
         unpack_cassie_out_t(self.inbuf, cassie_out)
         return cassie_out
@@ -820,31 +854,31 @@ class CassieUdp:
         nbytes = -1
         while nbytes != self.recvlen_pd:
             nbytes = get_newest_packet(self.sock, self.recvbuf, self.recvlen_pd,
-                                         None, None)
+                                       None, None)
         process_packet_header(self.packet_header_info,
-                                self.recvbuf, self.sendbuf)
+                              self.recvbuf, self.sendbuf)
         state_out = state_out_t()
         unpack_state_out_t(self.inbuf, state_out)
         return state_out
 
     def recv_newest(self):
         nbytes = get_newest_packet(self.sock, self.recvbuf, self.recvlen,
-                                     None, None)
+                                   None, None)
         if nbytes != self.recvlen:
             return None
         process_packet_header(self.packet_header_info,
-                                self.recvbuf, self.sendbuf)
+                              self.recvbuf, self.sendbuf)
         cassie_out = cassie_out_t()
         unpack_cassie_out_t(self.inbuf, cassie_out)
         return cassie_out
 
     def recv_newest_pd(self):
         nbytes = get_newest_packet(self.sock, self.recvbuf, self.recvlen_pd,
-                                     None, None)
+                                   None, None)
         if nbytes != self.recvlen_pd:
             return None
         process_packet_header(self.packet_header_info,
-                                self.recvbuf, self.sendbuf)
+                              self.recvbuf, self.sendbuf)
         state_out = state_out_t()
         unpack_state_out_t(self.inbuf, state_out)
         return state_out

@@ -60,3 +60,19 @@ class CassieEnvState():
 
     def get_desired_lateral_velocity(self):
         return self.action[3]
+
+
+def quat_to_rotation(q):
+    return R.from_quat([q[1], q[2], q[3], q[0]])
+
+def reexpress_state_local_to_global_omega(state):
+    new_state = state.flatten()
+    rot = quat_to_rotation(new_state[CASSIE_QUATERNION_SLICE])
+    new_state[CASSIE_OMEGA_SLICE] = rot.apply(new_state[CASSIE_OMEGA_SLICE])
+    return new_state
+
+def reexpress_state_global_to_local_omega(state):
+    new_state = state.flatten()
+    rot = quat_to_rotation(new_state[CASSIE_QUATERNION_SLICE])
+    new_state[CASSIE_OMEGA_SLICE] = rot.apply(new_state[CASSIE_OMEGA_SLICE], inverse=True)
+    return new_state

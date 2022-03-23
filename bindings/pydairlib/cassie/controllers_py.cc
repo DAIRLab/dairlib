@@ -54,6 +54,9 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_control_output_port",
            &OSCWalkingControllerDiagram::get_control_output_port,
            py_rvp::reference_internal)
+      .def("get_torque_output_port",
+           &OSCWalkingControllerDiagram::get_torque_output_port,
+           py_rvp::reference_internal)
       .def("get_controller_failure_output_port",
            &OSCWalkingControllerDiagram::get_controller_failure_output_port,
            py_rvp::reference_internal);

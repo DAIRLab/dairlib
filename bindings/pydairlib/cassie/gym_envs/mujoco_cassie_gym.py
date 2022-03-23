@@ -119,6 +119,7 @@ class MuJoCoCassieGym():
             print("Call make() before calling step() or advance()")
 
         next_timestep = self.sim.get_context().get_time() + self.gym_dt
+        import pdb; pdb.set_trace()
         self.controller_state_input_port.FixValue(self.controller_context, self.cassie_state.x)
         u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)

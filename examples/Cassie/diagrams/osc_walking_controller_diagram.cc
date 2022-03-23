@@ -467,7 +467,9 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
   builder.ExportInput(high_level_command->get_cassie_out_input_port(),
                       "lcmt_cassie_out");
-  builder.ExportOutput(command_sender->get_output_port(), "u, t");
+  builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
+  builder.ExportOutput(osc->get_osc_output_port(), "u, t");
+
   //  builder.ExportOutput(failure_aggregator->get_status_output_port(),
   //  "failure_status");
 

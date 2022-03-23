@@ -63,6 +63,11 @@ class OSCWalkingControllerDiagram final
     return this->get_output_port(control_output_port_index_);
   }
 
+  /// @return the output port for the controller torques.
+  const drake::systems::OutputPort<double>& get_torque_output_port() const {
+    return this->get_output_port(torque_output_port_index_);
+  }
+
   /// @return the output port for the failure status of the controller.
   const drake::systems::OutputPort<double>& get_controller_failure_output_port()
       const {
@@ -152,7 +157,8 @@ class OSCWalkingControllerDiagram final
   const int state_input_port_index_ = 0;
   const int cassie_out_input_port_index_ = 1;
   const int control_output_port_index_ = 0;
-  const int controller_failure_port_index_ = 1;
+  const int torque_output_port_index_ = 1;
+  const int controller_failure_port_index_ = 2;
 
   const std::string control_channel_name_ = "OSC_WALKING";
 };

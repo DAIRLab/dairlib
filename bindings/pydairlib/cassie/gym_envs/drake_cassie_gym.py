@@ -102,7 +102,7 @@ class DrakeCassieGym():
         next_timestep = self.sim.get_context().get_time() + self.sim_dt
         self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
         # self.sim.AdvanceTo(np.around(next_timestep, decimals=3))
-        self.sim.AdvanceTo(next_timestep, decimals=3)
+        self.sim.AdvanceTo(next_timestep)
         self.current_time = self.sim.get_context().get_time()
 
         x = self.plant.GetPositionsAndVelocities(
@@ -110,8 +110,6 @@ class DrakeCassieGym():
                 self.sim.get_context()))
         # print(next_timestep)
         u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
-        # u = self.controller_output_port.Eval(self.sim.get_context())[:-1] # remove the timestamp
-        # print(u)
         # u = np.zeros(10)
         self.cassie_state = CassieEnvState(self.current_time, x, u, action)
         reward = self.reward_func.compute_reward(self.cassie_state, self.prev_cassie_state)

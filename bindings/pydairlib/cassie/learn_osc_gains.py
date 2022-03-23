@@ -5,7 +5,7 @@ from json import dump, load
 import concurrent.futures as futures
 import nevergrad as ng
 
-from pydairlib.cassie.gym_envs.cassie_gym import *
+from pydairlib.cassie.gym_envs.drake_cassie_gym import *
 # from cassie_utils import *
 from pydairlib.cassie.controllers import OSCRunningControllerFactory
 from pydairlib.cassie.controllers import OSCWalkingControllerFactory
@@ -64,22 +64,23 @@ class OSCGainsOptimizer():
 
     def get_single_loss(self, params):
         self.write_params(params)
+        gym_env = DrakeCassieGym(self.reward_function, visualize=True)
         controller_plant = MultibodyPlant(8e-5)
         addCassieMultibody(controller_plant, None, True, self.urdf, False, False)
         controller_plant.Finalize()
-        self.controller = OSCRunningControllerFactory(controller_plant, self.osc_running_gains_filename,
+        controller = OSCRunningControllerFactory(controller_plant, self.osc_running_gains_filename,
                                                       self.osqp_settings)
-        self.gym_env.make(self.controller, self.urdf)
+        gym_env.make(controller, self.urdf)
         # rollout a trajectory and compute the loss
         cumulative_reward = 0
-        while self.gym_env.current_time < 7.5 and not self.gym_env.terminated:
-            state, reward = self.gym_env.step(np.zeros(18))
+        while gym_env.current_time < 7.5 and not gym_env.terminated:
+            state, reward = gym_env.step(np.zeros(18))
             cumulative_reward += reward
         self.loss_over_time.append(cumulative_reward)
         print(-cumulative_reward)
         return -cumulative_reward
 
-    def learn_drake_params(self, batch=True):
+    def learn_gains(self, batch=True):
         self.loss_over_time = []
         self.default_params = ng.p.Dict(
             SwingFootKp=ng.p.Array(lower=0., upper=150., shape=(3,)),
@@ -87,11 +88,11 @@ class OSCGainsOptimizer():
             FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
             center_line_offset=ng.p.Scalar(lower=0.01, upper=0.1),
         )
-        self.gym_env = CassieGym(self.reward_function, visualize=True)
         self.default_params.value = self.default_osc_gains
-        optimizer = ng.optimizers.NGOpt(parametrization=self.default_params, budget=self.budget)
-        # with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
-        params = optimizer.minimize(self.get_single_loss)
+        optimizer = ng.optimizers.NGOpt(parametrization=self.default_params, budget=self.budget, num_workers=10)
+        with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
+            # recommendation = optimizer.minimize(square, executor=executor, batch_mode=False)
+            params = optimizer.minimize(self.get_single_loss, executor, batch_mode=True)
         loss_samples = np.array(self.loss_over_time)
         np.save(self.drake_params_folder + 'loss_trajectory_' + str(self.budget), loss_samples)
         self.save_params(self.drake_params_folder, params, budget)
@@ -99,15 +100,15 @@ class OSCGainsOptimizer():
 
 if __name__ == '__main__':
     # budget = 2000
-    budget = 1000
+    budget = 5
 
     reward_function = RewardOSUDRL()
 
     optimizer = OSCGainsOptimizer(budget, reward_function)
-    # optimizer.learn_drake_params()
+    optimizer.learn_gains()
 
-    optimal_params = optimizer.load_params('2022_03_22_12_1000', optimizer.drake_params_folder).value
-    optimizer.write_params(optimal_params)
-    reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_1000.npy')
-    plt.plot(reward_over_time)
-    plt.show()
+    # optimal_params = optimizer.load_params('2022_03_22_12_1000', optimizer.drake_params_folder).value
+    # optimizer.write_params(optimal_params)
+    # reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_1000.npy')
+    # plt.plot(reward_over_time)
+    # plt.show()

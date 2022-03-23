@@ -1,10 +1,12 @@
-from cassie_gym import *
+from drake_cassie_gym import *
+from mujoco_cassie_gym import *
 # from cassie_utils import *
 from pydairlib.cassie.controllers import OSCRunningControllerFactory
 from pydairlib.cassie.controllers import OSCWalkingControllerFactory
 from pydairlib.cassie.simulators import CassieSimDiagram
 from pydairlib.cassie.gym_envs.reward_osudrl import RewardOSUDRL
 from pydrake.common.yaml import yaml_load
+
 
 def main():
     osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
@@ -23,9 +25,11 @@ def main():
     # reward_func = RewardOSUDRL(reward_function_weights)
     reward_func = RewardOSUDRL()
 
-    gym_env = CassieGym(reward_func, visualize=True)
+    # gym_env = DrakeCassieGym(reward_func, visualize=True)
+    gym_env = MuJoCoCassieGym(reward_func, visualize=True)
 
-    gym_env.make(controller, urdf)
+    # gym_env.make(controller, urdf)
+    gym_env.make(controller)
 
 
     action = np.zeros(18)

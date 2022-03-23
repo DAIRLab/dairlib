@@ -15,7 +15,7 @@ from pydairlib.cassie.simulators import CassieSimDiagram
 from pydairlib.cassie.gym_envs.cassie_env_state import CassieEnvState
 
 
-class CassieGym():
+class DrakeCassieGym():
     def __init__(self, reward_func, visualize=False):
         self.sim_dt = 1e-3
         self.visualize = visualize
@@ -42,7 +42,7 @@ class CassieGym():
         self.initialized = False
 
 
-    def make(self, controller, urdf):
+    def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         self.builder = DiagramBuilder()
         self.dt = 8e-5
         self.plant = MultibodyPlant(self.dt)
@@ -101,8 +101,9 @@ class CassieGym():
         # next_timestep = self.sim.get_context().get_time() + self.dt
         next_timestep = self.sim.get_context().get_time() + self.sim_dt
         self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
-        self.sim.AdvanceTo(np.around(next_timestep, decimals=3))
-        self.current_time = next_timestep
+        # self.sim.AdvanceTo(np.around(next_timestep, decimals=3))
+        self.sim.AdvanceTo(next_timestep, decimals=3)
+        self.current_time = self.sim.get_context().get_time()
 
         x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(

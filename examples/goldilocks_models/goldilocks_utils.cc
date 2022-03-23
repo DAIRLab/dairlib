@@ -103,7 +103,7 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
 // * Whenever you add a new model, remember to update the model number in
 //     1. goldilocks_model_traj_opt.cc
 //     2. cassie_rom_planner_system.cc (where we called SetInitialGuess)
-//     3. unit test
+//     3. update unit test in ReducedOrderModelOptionTest
 // * See google sheet for the ROM list
 std::unique_ptr<ReducedOrderModel> CreateRom(
     int rom_option, int robot_option,
@@ -125,7 +125,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     // Note that we shouldn't use pelvis z because it drifts in state estimation
     // Skip pelvis z index
-    if ((rom_option >= 15) && (rom_option <= 26)) {
+    if ((rom_option >= 15) && (rom_option <= 27)) {
       // skip pelvis z
       skip_inds.push_back(6);
     }
@@ -133,7 +133,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
     DRAKE_DEMAND(pos_map.at("base_qw") == 0);  // Assumption
     if (((rom_option >= 10) && (rom_option <= 14)) ||
-        ((rom_option >= 22) && (rom_option <= 24))) {
+        ((rom_option >= 22) && (rom_option <= 24)) || ((rom_option == 27))) {
       // Also skip the right leg joints (swing leg)
       cout << "Joint skipped in mapping function: ";
       for (auto& pair : pos_map) {
@@ -153,7 +153,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       // Second order
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
-    } else if (rom_option == 7) {
+    } else if ((rom_option == 7) || (rom_option == 27)) {
       // Zeroth order
       mapping_basis = std::make_unique<MonomialFeatures>(
           0, plant.num_positions(), skip_inds, "mapping basis");
@@ -204,7 +204,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 8) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3) + 1, empty_inds, "dynamic basis");
-  } else if ((rom_option >= 12) && (rom_option <= 16)) {
+  } else if (((rom_option >= 12) && (rom_option <= 16)) || (rom_option == 27)) {
     // Highest degree = 4
     dynamic_basis = std::make_unique<MonomialFeatures>(
         4, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
@@ -269,13 +269,15 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom = std::make_unique<LipmWithSwingFoot>(plant, stance_foot, swing_foot,
                                               *mapping_basis, *dynamic_basis, 3,
                                               invariant_idx);
-  } else if (rom_option == 7) {
+  } else if ((rom_option == 7) || (rom_option == 27)) {
     // Fix the mapping function of the COM
-    // TODO: rom_option=7 is unfinished. Should we use COM wrt world?
-    DRAKE_UNREACHABLE();
     std::set<int> invariant_idx = {0, 1, 2};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 3, invariant_idx);
+    if (rom_option == 7) {
+      // TODO: rom_option=7 is unfinished. Should we use COM wrt world?
+      DRAKE_UNREACHABLE();
+    }
   } else if (rom_option == 8) {
     // 3D Gip (general inverted pendulum)
     rom = std::make_unique<Gip>(plant, stance_foot, *mapping_basis,

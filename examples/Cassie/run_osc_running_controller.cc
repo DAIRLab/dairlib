@@ -195,10 +195,10 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   /// REGULARIZATION COSTS
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  //  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
+  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
-  //  osc->SetLambdaContactRegularizationWeight(1e-4 *
-  //  gains.W_lambda_c_regularization);
+//  osc->SetLambdaContactRegularizationWeight(1e-4 *
+//                                            gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
                                               gains.W_lambda_h_regularization);
 
@@ -352,9 +352,9 @@ int DoMain(int argc, char* argv[]) {
           "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant);
   left_hip_yz_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                     "hip_left");
+                                                     "pelvis");
   right_hip_yz_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                      "hip_right");
+                                                      "pelvis");
 
   auto left_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
@@ -468,8 +468,8 @@ int DoMain(int argc, char* argv[]) {
                                               "hip_yaw_leftdot");
   right_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_right",
                                                "hip_yaw_rightdot");
-  left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
-  right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
+//  left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
+//  right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
   osc->AddConstTrackingData(std::move(left_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),

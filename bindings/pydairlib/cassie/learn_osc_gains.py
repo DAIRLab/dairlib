@@ -104,10 +104,10 @@ if __name__ == '__main__':
     reward_function = RewardOSUDRL()
 
     optimizer = OSCGainsOptimizer(budget, reward_function)
-    optimizer.learn_drake_params()
+    # optimizer.learn_drake_params()
 
-    # optimal_params = optimizer.load_params('2022_03_22_11_100', optimizer.drake_params_folder).value
-    # optimizer.write_params(optimal_params)
-    # reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_100.npy')
-    # plt.plot(reward_over_time)
-    # plt.show()
+    optimal_params = optimizer.load_params('2022_03_22_12_1000', optimizer.drake_params_folder).value
+    optimizer.write_params(optimal_params)
+    reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_1000.npy')
+    plt.plot(reward_over_time)
+    plt.show()

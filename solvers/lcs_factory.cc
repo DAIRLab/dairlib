@@ -29,20 +29,23 @@ LCS LCSFactory::LinearizePlantToLCS(
     const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
     int num_friction_directions, double mu) {
+
   ///
   /// First, calculate vdot and derivatives from non-contact dynamcs
   ///
-
 
   AutoDiffVecXd C(plant.num_velocities());
   plant_ad.CalcBiasTerm(context_ad, &C);
 
 
-//  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() *
-//                     plant_ad.get_actuation_input_port().Eval(context_ad);
+  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() *
+                     plant_ad.get_actuation_input_port().Eval(context_ad);
+
+  /*
   auto u = plant.get_actuation_input_port().Eval(context);
   auto u_ad = drake::math::InitializeAutoDiff(u);
   AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() * u_ad;
+  */
 
   AutoDiffVecXd tau_g = plant_ad.CalcGravityGeneralizedForces(context_ad);
 
@@ -62,11 +65,11 @@ LCS LCSFactory::LinearizePlantToLCS(
   // Derivatives w.r.t. x and u, AB
   MatrixXd AB_v = ExtractGradient(vdot_no_contact);
 
+
   int n_state = plant.num_positions();
   int n_vel = plant.num_velocities();
   int n_total = plant.num_positions() + plant.num_velocities();
   int k = plant.num_actuators();
-
 
 
   ///
@@ -93,7 +96,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   MatrixXd A(n_total,n_total);
   A.block(0,0,n_state,n_state) = MatrixXd::Identity(n_state,n_state) + AB_v.block(0,0,n_state,n_state);
-  //A.block(0,n_state,n_state,n_vel) = AB_v.block
+  //A.block(0,n_state,)
 
   /// TODO: finish by assembling the terms computed above into the LCS structure
   ///       and returning an LCS object

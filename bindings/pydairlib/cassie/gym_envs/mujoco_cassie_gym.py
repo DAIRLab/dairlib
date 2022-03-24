@@ -19,6 +19,8 @@ from pydairlib.cassie.mujoco.cassiemujoco import *
 from pydairlib.cassie.mujoco.mujoco_lcm_utils import *
 from pydairlib.cassie.mujoco.drake_to_mujoco_converter import DrakeToMujocoConverter
 
+from pydairlib.systems import (RobotOutputSender, RobotOutputReceiver, OutputVector,
+                               TimestampedVector)
 
 class MuJoCoCassieGym():
     def __init__(self, reward_func, visualize=False):
@@ -67,7 +69,9 @@ class MuJoCoCassieGym():
         # self.simulator = CassieSimDiagram(self.plant, urdf, self.visualize, 0.8, 1e4, 1e2)
         # self.new_plant = self.simulator.get_plant()
         # self.sensor_aggregator = self.simulator.get_sensor_aggregator()
+        self.robot_output_sender = RobotOutputSender(self.plant, True)
         self.builder.AddSystem(self.controller)
+        self.builder.AddSystem(self.robot_output_sender)
         # self.builder.AddSystem(self.simulator)
 
         # self.builder.Connect(self.controller.get_control_output_port(), self.simulator.get_actuation_input_port())
@@ -119,7 +123,6 @@ class MuJoCoCassieGym():
             print("Call make() before calling step() or advance()")
 
         next_timestep = self.sim.get_context().get_time() + self.gym_dt
-        import pdb; pdb.set_trace()
         self.controller_state_input_port.FixValue(self.controller_context, self.cassie_state.x)
         u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)

@@ -154,11 +154,9 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   accumulated_state_durations = vector<double>();
   accumulated_state_durations.push_back(0);
-  std::cout << accumulated_state_durations.back() << std::endl;
   for (double state_duration : state_durations) {
     accumulated_state_durations.push_back(accumulated_state_durations.back() +
                                           state_duration);
-    std::cout << accumulated_state_durations.back() << std::endl;
   }
   accumulated_state_durations.pop_back();
 
@@ -172,7 +170,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(
           control_channel_name_, 1);
-  std::vector<double> tau = {.05, .05, .01};
+  std::vector<double> tau = {.05, .1, .01};
   auto ekf_filter =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
 
@@ -208,8 +206,6 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   osc->AddKinematicConstraint(&evaluators);
 
   /**** Tracking Data *****/
-
-  std::cout << "Creating tracking data. " << std::endl;
 
   cassie::osc::HighLevelCommand* high_level_command;
   high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(

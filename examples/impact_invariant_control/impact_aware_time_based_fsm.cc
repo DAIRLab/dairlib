@@ -48,10 +48,10 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
     }
   }
 
-  std::cout << "Impact times: " << std::endl;
-  for(int i = 0; i < impact_times_.size(); ++i){
-    std::cout << impact_times_[i] << std::endl;
-  }
+//  std::cout << "Impact times: " << std::endl;
+//  for(int i = 0; i < impact_times_.size(); ++i){
+//    std::cout << impact_times_[i] << std::endl;
+//  }
 
   period_ = sum;
 }

@@ -26,8 +26,8 @@ def main():
     # reward_func = RewardOSUDRL(reward_function_weights)
     reward_func = RewardOSUDRL()
 
-    gym_env = DrakeCassieGym(reward_func, visualize=True)
-    # gym_env = MuJoCoCassieGym(reward_func, visualize=True)
+    # gym_env = DrakeCassieGym(reward_func, visualize=True)
+    gym_env = MuJoCoCassieGym(reward_func, visualize=True)
 
     gym_env.make(controller)
 

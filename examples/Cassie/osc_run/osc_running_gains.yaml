@@ -42,7 +42,7 @@ hip_yaw_kd: 1
 footstep_offset: -0.05
 center_line_offset: 0.03
 FootstepKd:
-  [  0.3,     0,  0,
+  [  0.2,     0,  0,
      0,     0.45, 0,
      0,        0,  0]
 PelvisW:
@@ -79,7 +79,7 @@ SwingFootKp:
    0,     0,  50.]
 SwingFootKd:
   [5.,   0,   0,
-   0,   4.,   0,
+   0,   5.,   0,
    0,   0,  1.]
 LiftoffSwingFootW:
   [0.1,    0,    0,

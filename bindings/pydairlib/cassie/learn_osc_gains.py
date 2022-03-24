@@ -38,10 +38,17 @@ class OSCGainsOptimizer():
         self.loss_over_time = []
 
         self.default_osc_gains = {
+            # 'PelvisKp': np.array([0, 0, 85]),
+            # 'PelvisKd': np.array([1, 0, 5]),
+            # 'PelvisRotKp': np.array([50, 100, 0]),
+            # 'PelvisRotKd': np.array([10, 5, 1]),
             'SwingFootKp': np.array([125, 80, 50]),
             'SwingFootKd': np.array([5, 5, 1]),
-            'FootstepKd': np.array([0.2, 0.45, 0]),
+            # 'FootstepKd': np.array([0.2, 0.45, 0]),
             'center_line_offset': 0.03,
+            'rest_length': 0.85,
+            'stance_duration': 0.30,
+            'flight_duration': 0.08,
         }
 
     def save_params(self, folder, params, budget):
@@ -64,7 +71,7 @@ class OSCGainsOptimizer():
 
     def get_single_loss(self, params):
         self.write_params(params)
-        gym_env = DrakeCassieGym(self.reward_function, visualize=True)
+        gym_env = DrakeCassieGym(self.reward_function, visualize=False)
         controller_plant = MultibodyPlant(8e-5)
         addCassieMultibody(controller_plant, None, True, self.urdf, False, False)
         controller_plant.Finalize()
@@ -83,16 +90,23 @@ class OSCGainsOptimizer():
     def learn_gains(self, batch=True):
         self.loss_over_time = []
         self.default_params = ng.p.Dict(
-            SwingFootKp=ng.p.Array(lower=0., upper=150., shape=(3,)),
+            # PelvisKp=ng.p.Array(lower=50., upper=150., shape=(3,)),
+            # PelvisKd=ng.p.Array(lower=0., upper=10., shape=(3,)),
+            # PelvisRotKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
+            # PelvisRotKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
+            SwingFootKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
             SwingFootKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
-            FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
-            center_line_offset=ng.p.Scalar(lower=0.01, upper=0.1),
+            # FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
+            center_line_offset=ng.p.Scalar(lower=0.03, upper=0.075),
+            rest_length=ng.p.Scalar(lower=0.8, upper=0.9),
+            stance_duration=ng.p.Scalar(lower=0.25, upper=0.40),
+            flight_duration=ng.p.Scalar(lower=0.05, upper=0.15),
         )
         self.default_params.value = self.default_osc_gains
-        optimizer = ng.optimizers.NGOpt(parametrization=self.default_params, budget=self.budget, num_workers=10)
-        with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
+        optimizer = ng.optimizers.NGOpt(parametrization=self.default_params, budget=self.budget)
+        # with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
             # recommendation = optimizer.minimize(square, executor=executor, batch_mode=False)
-            params = optimizer.minimize(self.get_single_loss, executor, batch_mode=True)
+        params = optimizer.minimize(self.get_single_loss)
         loss_samples = np.array(self.loss_over_time)
         np.save(self.drake_params_folder + 'loss_trajectory_' + str(self.budget), loss_samples)
         self.save_params(self.drake_params_folder, params, budget)
@@ -100,15 +114,15 @@ class OSCGainsOptimizer():
 
 if __name__ == '__main__':
     # budget = 2000
-    budget = 5
+    budget = 1000
 
     reward_function = RewardOSUDRL()
 
     optimizer = OSCGainsOptimizer(budget, reward_function)
-    optimizer.learn_gains()
+    # optimizer.learn_gains()
 
-    # optimal_params = optimizer.load_params('2022_03_22_12_1000', optimizer.drake_params_folder).value
-    # optimizer.write_params(optimal_params)
-    # reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_1000.npy')
-    # plt.plot(reward_over_time)
-    # plt.show()
+    optimal_params = optimizer.load_params('2022_03_23_16_1000', optimizer.drake_params_folder).value
+    optimizer.write_params(optimal_params)
+    reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_1000.npy')
+    plt.plot(reward_over_time)
+    plt.show()

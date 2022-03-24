@@ -61,7 +61,7 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
   const int radio_input_port_index_ = 1;
   const int state_output_port_index_ = 0;
   const int cassie_out_output_port_index_ = 1;
-  const double actuator_delay = 3e-3;        // 3ms
+  const double actuator_delay = 5e-3;        // 5ms
   const double actuator_update_rate = 1e-3;  // 1ms
   const double dt_ = 8e-5;
 };

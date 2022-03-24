@@ -187,7 +187,7 @@ int DoMain(int argc, char* argv[]) {
   auto controller_failure_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
           "CONTROLLER_ERROR", &lcm, TriggerTypeSet({TriggerType::kForced})));
-  std::vector<double> tau = {.05, .05, .01};
+  std::vector<double> tau = {.05, .1, .01};
   auto ekf_filter =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
 

@@ -74,7 +74,8 @@ namespace controllers {
 OSCRunningControllerDiagram::OSCRunningControllerDiagram(
     drake::multibody::MultibodyPlant<double>& plant,
     const string& osc_gainsfilename, const string& osqp_settings_filename)
-    : pos_map(multibody::makeNameToPositionsMap(plant)),
+    : plant_(&plant),
+      pos_map(multibody::makeNameToPositionsMap(plant)),
       vel_map(multibody::makeNameToVelocitiesMap(plant)),
       act_map(multibody::makeNameToActuatorsMap(plant)),
       left_toe(LeftToeFront(plant)),

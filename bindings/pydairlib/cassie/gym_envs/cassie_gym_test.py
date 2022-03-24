@@ -20,8 +20,8 @@ def main():
     controller_plant = MultibodyPlant(8e-5)
     addCassieMultibody(controller_plant, None, True, urdf, False, False)
     controller_plant.Finalize()
-    # controller = OSCRunningControllerFactory(controller_plant, osc_running_gains_filename, osqp_settings)
-    controller = OSCWalkingControllerFactory(controller_plant, True, osc_walking_gains_filename, osqp_settings)
+    controller = OSCRunningControllerFactory(controller_plant, osc_running_gains_filename, osqp_settings)
+    # controller = OSCWalkingControllerFactory(controller_plant, True, osc_walking_gains_filename, osqp_settings)
 
     # reward_func = RewardOSUDRL(reward_function_weights)
     reward_func = RewardOSUDRL()

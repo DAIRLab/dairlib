@@ -69,7 +69,12 @@ class OSCRunningControllerDiagram final
     return this->get_output_port(controller_failure_port_index_);
   }
 
+  drake::multibody::MultibodyPlant<double>& get_plant() {
+    return *plant_;
+  }
+
  private:
+  drake::multibody::MultibodyPlant<double>* plant_;
   std::map<std::string, int> pos_map;
   std::map<std::string, int> vel_map;
   std::map<std::string, int> act_map;

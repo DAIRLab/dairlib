@@ -19,8 +19,7 @@ from pydairlib.cassie.mujoco.cassiemujoco import *
 from pydairlib.cassie.mujoco.mujoco_lcm_utils import *
 from pydairlib.cassie.mujoco.drake_to_mujoco_converter import DrakeToMujocoConverter
 
-from pydairlib.systems import (RobotOutputSender, RobotOutputReceiver, OutputVector,
-                               TimestampedVector)
+from pydairlib.systems import (RobotOutputSender, RobotOutputReceiver)
 
 class MuJoCoCassieGym():
     def __init__(self, reward_func, visualize=False):
@@ -36,7 +35,8 @@ class MuJoCoCassieGym():
 
         self.default_model_directory = '/home/yangwill/workspace/cassie-mujoco-sim/model/'
         self.default_model_file = '/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
-
+        self.cassie_in = cassie_user_in_t()
+        self.cassie_out = cassie_out_t()
         self.action_dim = 10
         self.state_dim = 45
         self.x_init = np.array(
@@ -61,32 +61,24 @@ class MuJoCoCassieGym():
     def make(self, controller, model_xml='cassie.xml'):
         self.builder = DiagramBuilder()
         self.dt = 8e-5
-        self.plant = MultibodyPlant(self.dt)
+        # self.plant = MultibodyPlant(self.dt)
         self.controller = controller
         self.simulator = CassieSim(self.default_model_directory + model_xml)
         if self.visualize:
             self.cassie_vis = CassieVis(self.simulator)
-        # self.simulator = CassieSimDiagram(self.plant, urdf, self.visualize, 0.8, 1e4, 1e2)
-        # self.new_plant = self.simulator.get_plant()
-        # self.sensor_aggregator = self.simulator.get_sensor_aggregator()
-        self.robot_output_sender = RobotOutputSender(self.plant, True)
         self.builder.AddSystem(self.controller)
+        self.robot_output_sender = RobotOutputSender(self.controller.get_plant(), True)
         self.builder.AddSystem(self.robot_output_sender)
-        # self.builder.AddSystem(self.simulator)
 
-        # self.builder.Connect(self.controller.get_control_output_port(), self.simulator.get_actuation_input_port())
-        # self.builder.Connect(self.simulator.get_state_output_port(), self.controller.get_state_input_port())
-        # self.builder.Connect(self.simulator.get_cassie_out_output_port_index(),
-        #                      self.controller.get_cassie_out_input_port())
-        # self.builder.Connect(self.controller, self.simulator.get_radio_input_port())
+        self.builder.Connect(self.robot_output_sender.get_output_port(), self.controller.get_state_input_port())
         self.drake_to_mujoco_converter = DrakeToMujocoConverter(self.sim_dt)
 
         self.diagram = self.builder.Build()
         self.sim = Simulator(self.diagram)
-        # self.simulator_context = self.diagram.GetMutableSubsystemContext(self.simulator, self.sim.get_mutable_context())
+        self.robot_output_sender_context = self.diagram.GetMutableSubsystemContext(self.robot_output_sender,
+                                                                          self.sim.get_mutable_context())
         self.controller_context = self.diagram.GetMutableSubsystemContext(self.controller,
                                                                           self.sim.get_mutable_context())
-        self.controller_state_input_port = self.controller.get_state_input_port()
         self.controller_output_port = self.controller.get_torque_output_port()
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.reset()
@@ -123,11 +115,11 @@ class MuJoCoCassieGym():
             print("Call make() before calling step() or advance()")
 
         next_timestep = self.sim.get_context().get_time() + self.gym_dt
-        self.controller_state_input_port.FixValue(self.controller_context, self.cassie_state.x)
+        self.robot_output_sender.get_input_port_state().FixValue(self.robot_output_sender_context, self.cassie_state.x)
+        import pdb; pdb.set_trace()
         u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
-
-        self.sim.AdvanceTo(np.around(next_timestep, decimals=3))
+        self.sim.AdvanceTo(next_timestep)
         while self.simulator.time() < next_timestep:
             self.simulator.step(cassie_in)
         if self.visualize:

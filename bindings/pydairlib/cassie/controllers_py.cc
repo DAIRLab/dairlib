@@ -25,6 +25,8 @@ PYBIND11_MODULE(controllers, m) {
       m, "OSCRunningControllerFactory")
       .def(py::init<drake::multibody::MultibodyPlant<double>&, const std::string&, const std::string&>(),
            py::arg("plant"), py::arg("osc_gains_filename"), py::arg("osqp_settings_filename"))
+      .def("get_plant", &OSCRunningControllerDiagram::get_plant,
+           py_rvp::reference_internal)
       .def("get_state_input_port",
            &OSCRunningControllerDiagram::get_state_input_port,
            py_rvp::reference_internal)

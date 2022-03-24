@@ -17,6 +17,7 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
 
   using drake::multibody::MultibodyPlant;
   using systems::RobotOutputSender;
+  using py_rvp = py::return_value_policy;
 
   py::class_<systems::RobotOutputReceiver, drake::systems::LeafSystem<double>>(
       m, "RobotOutputReceiver")
@@ -27,9 +28,9 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
   py::class_<RobotOutputSender, drake::systems::LeafSystem<double>>(
       m, "RobotOutputSender")
       .def(py::init<const MultibodyPlant<double>&, bool>())
-      .def("get_input_port_state", &RobotOutputSender::get_input_port_state)
-      .def("get_input_port_effort", &RobotOutputSender::get_input_port_effort)
-      .def("get_input_port_imu", &RobotOutputSender::get_input_port_imu);
+      .def("get_input_port_state", &RobotOutputSender::get_input_port_state, py_rvp::reference_internal)
+      .def("get_input_port_effort", &RobotOutputSender::get_input_port_effort, py_rvp::reference_internal)
+      .def("get_input_port_imu", &RobotOutputSender::get_input_port_imu, py_rvp::reference_internal);
   py::class_<systems::RobotCommandSender, drake::systems::LeafSystem<double>>(
       m, "RobotCommandSender")
       .def(py::init<const MultibodyPlant<double>&>());

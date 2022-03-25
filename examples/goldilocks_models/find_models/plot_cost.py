@@ -138,6 +138,12 @@ for i in range(len(directory_list)):
                 cost = []
                 iteration = iter_start
                 while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name2):
+                    # For some reason, sometimes the cost file exists but empty. (it looks to happen only in the last iteration, so it's probably the training was stopped unexpected, or reached the max hard drive capacity)
+                    # For now, whenever I see an empty cost file, I set it as the final iteration. You can comment the following 3 lines off, if you don't want to do this.
+                    file_content = open(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name2, "r").read()
+                    if len(file_content) == 0:
+                        break
+
                     cost.append(np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name2, delimiter=",") / nominal_cost)
                     if is_iter_end & (iteration == iter_end):
                         break
@@ -165,7 +171,7 @@ for i in range(len(directory_list)):
 
                     # plot cost for each sample
                     length = len(cost)
-                    t = range(iter_start, length+iter_start)
+                    t = list(range(iter_start, length+iter_start))
                     if not only_plot_average_cost:
                         sl = np.loadtxt(directory+str(iter_start)+'_'+str(sample_i)+'_task.csv')[0]
                         task_criteria_satisfied = True if (target_stride_length is None) else (abs(sl-target_stride_length) < target_stride_length_tol)
@@ -182,11 +188,19 @@ for i in range(len(directory_list)):
                     else:
                         is_success = [1] * iteration_length
 
+                    # For some reason, sometimes the cost file exists but empty. (it looks to happen only in the last iteration, so it's probably the training was stopped unexpected, or reached the max hard drive capacity)
+                    # I only need this code if I didn't set the final iteration to not include empty cost file
+                    for idx in range(iteration_length):
+                        if not (cost[idx] >= 0):
+                            is_success[idx] = 0
+                            cost[idx] = 0
+
                     # Add to accumulated success
                     n_successful_sample_each_iter = [x + y for x, y in zip(n_successful_sample_each_iter, is_success)]
 
                     # Add to total cost
                     filtered_cost = [x * y for x, y in zip(is_success, cost[0:iteration_length])]
+
                     total_cost = [x + y for x, y in zip(total_cost, filtered_cost[0:iteration_length])]
 
                 # 2. Plot average cost

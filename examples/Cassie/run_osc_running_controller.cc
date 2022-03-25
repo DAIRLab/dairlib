@@ -23,6 +23,7 @@
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/cassie_out_to_radio.h"
 #include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -184,6 +185,8 @@ int DoMain(int argc, char* argv[]) {
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(FLAGS_channel_u,
                                                               1);
+  auto cassie_out_to_radio =
+      builder.AddSystem<systems::CassieOutToRadio>();
   auto controller_failure_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
           "CONTROLLER_ERROR", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -267,8 +270,6 @@ int DoMain(int argc, char* argv[]) {
   high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant, plant_context.get(), osc_gains.vel_scale_rot,
       osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
-  builder.Connect(cassie_out_receiver->get_output_port(),
-                  high_level_command->get_cassie_out_input_port());
 
   auto default_traj = PiecewisePolynomial<double>(Vector3d{0, 0, 0});
   auto pelvis_trans_traj_generator =
@@ -541,6 +542,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
 
   // Publisher connections
+  builder.Connect(cassie_out_receiver->get_output_port(),
+                  cassie_out_to_radio->get_input_port());
+  builder.Connect(cassie_out_to_radio->get_output_port(),
+                  high_level_command->get_radio_input_port());
   builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),

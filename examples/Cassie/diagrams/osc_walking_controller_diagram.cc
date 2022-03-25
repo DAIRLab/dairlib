@@ -465,7 +465,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
 
   // Publisher connections
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
-  builder.ExportInput(high_level_command->get_cassie_out_input_port(),
+  builder.ExportInput(high_level_command->get_radio_input_port(),
                       "lcmt_cassie_out");
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");

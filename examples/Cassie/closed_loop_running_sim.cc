@@ -45,7 +45,7 @@ int DoMain(int argc, char* argv[]) {
 //  auto controller_context = controller_plant.CreateDefaultContext();
 
   auto sim_diagram = builder.AddSystem<examples::CassieSimDiagram>(
-      std::move(plant), urdf, 0.4, 1e4, 1e2);
+      std::move(plant), urdf, 0.4, 1e5, 1e2);
   MultibodyPlant<double>& new_plant = sim_diagram->get_plant();
   auto controller_diagram =
       builder.AddSystem<examples::controllers::OSCRunningControllerDiagram>(
@@ -58,8 +58,8 @@ int DoMain(int argc, char* argv[]) {
                   sim_diagram->get_actuation_input_port());
   builder.Connect(sim_diagram->get_state_output_port(),
                   controller_diagram->get_state_input_port());
-  builder.Connect(sim_diagram->get_cassie_out_output_port_index(),
-                  controller_diagram->get_cassie_out_input_port());
+//  builder.Connect(sim_diagram->get_cassie_out_output_port_index(),
+//                  controller_diagram->get_cassie_out_input_port());
 
   auto diagram = builder.Build();
   diagram->set_name("cassie_running_gym");
@@ -69,17 +69,18 @@ int DoMain(int argc, char* argv[]) {
       diagram->CreateDefaultContext();
 
   VectorXd x_init = VectorXd::Zero(45);
-  x_init << 1, 0, 0, 0, 0, 0, 1, -0.0304885, 0, 0.466767, -1.15602, -0.037542,
-      1.45243, -0.0257992, -1.59913, 0.0304885, 0, 0.466767, -1.15602,
-      -0.0374859, 1.45244, -0.0259075, -1.59919, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+  x_init << 1, 0, 0, 0, 0, 0, 0.85, -0.0358636, 0, 0.67432, -1.588, -0.0458742, 1.90918,
+      -0.0381073, -1.82312, 0.0358636, 0, 0.67432, -1.588, -0.0457885, 1.90919, -0.0382424, -1.82321,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(new_plant, diagram_context.get());
   drake::systems::Simulator<double> simulator(*diagram,
                                               std::move(diagram_context));
   Context<double>& simulator_context = diagram->GetMutableSubsystemContext(*sim_diagram, &simulator.get_mutable_context());
+  Context<double>& controller_context = diagram->GetMutableSubsystemContext(*controller_diagram, &simulator.get_mutable_context());
 
   sim_diagram->get_radio_input_port().FixValue(&simulator_context, Eigen::VectorXd::Zero(18));
+  controller_diagram->get_radio_input_port().FixValue(&controller_context, Eigen::VectorXd::Zero(18));
 
   new_plant.SetPositionsAndVelocities(&plant_context, x_init);
   simulator.Initialize();

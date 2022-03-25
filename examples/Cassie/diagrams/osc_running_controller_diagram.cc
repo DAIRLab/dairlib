@@ -28,6 +28,7 @@
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/filters/floating_base_velocity_filter.h"
+#include "systems/primitives/radio_parser.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -168,6 +169,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), true, false);
+  auto radio_parser = builder.AddSystem<systems::RadioParser>();
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(
           control_channel_name_, 1);
@@ -486,11 +488,13 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
   builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));
+  builder.Connect(radio_parser->get_output_port(),
+                  high_level_command->get_radio_input_port());
 
   // Publisher connections
   builder.ExportInput(state_receiver->get_input_port(), "lcmt_robot_output");
-  builder.ExportInput(high_level_command->get_cassie_out_input_port(),
-                      "lcmt_cassie_out");
+  builder.ExportInput(radio_parser->get_input_port(),
+                      "raw_radio");
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
   builder.ExportOutput(failure_aggregator->get_status_output_port(),

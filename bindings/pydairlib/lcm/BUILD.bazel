@@ -17,6 +17,7 @@ pybind_py_library(
     cc_deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//bindings/pydrake/systems:lcm_pybind",
+        "@drake//bindings/pydrake/common:value_pybind",
     ],
     cc_srcs = [
         "lcm_py.cc",

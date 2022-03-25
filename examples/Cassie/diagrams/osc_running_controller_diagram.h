@@ -49,8 +49,8 @@ class OSCRunningControllerDiagram final
 
   /// @return the input port for the cassie_out struct (containing radio
   /// commands).
-  const drake::systems::InputPort<double>& get_cassie_out_input_port() const {
-    return this->get_input_port(cassie_out_input_port_index_);
+  const drake::systems::InputPort<double>& get_radio_input_port() const {
+    return this->get_input_port(radio_input_port_index_);
   }
 
   /// @return the output port for the controller torques.
@@ -140,7 +140,7 @@ class OSCRunningControllerDiagram final
   std::unique_ptr<JointSpaceTrackingData> right_hip_yaw_tracking_data;
 
   const int state_input_port_index_ = 0;
-  const int cassie_out_input_port_index_ = 1;
+  const int radio_input_port_index_ = 1;
   const int control_output_port_index_ = 0;
   const int torque_output_port_index_ = 1;
   const int controller_failure_port_index_ = 2;

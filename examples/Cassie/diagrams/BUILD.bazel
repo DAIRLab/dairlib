@@ -49,6 +49,7 @@ cc_library(
         "//systems/controllers/osc:osc_tracking_datas",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
+        "//systems/primitives:radio_parser",
         "@drake//:drake_shared_library",
     ],
 )

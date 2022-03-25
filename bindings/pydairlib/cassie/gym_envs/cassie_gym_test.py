@@ -9,8 +9,8 @@ from pydrake.common.yaml import yaml_load
 
 
 def main():
-    # osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
-    osc_running_gains_filename = 'examples/Cassie/osc_run/osc_running_gains.yaml'
+    osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
+    # osc_running_gains_filename = 'examples/Cassie/osc_run/osc_running_gains.yaml'
     osc_walking_gains_filename = 'examples/Cassie/osc/osc_walking_gains.yaml'
     osqp_settings = 'examples/Cassie/osc_run/osc_running_qp_settings.yaml'
     default_osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
@@ -28,13 +28,12 @@ def main():
 
     # gym_env = DrakeCassieGym(reward_func, visualize=True)
     gym_env = MuJoCoCassieGym(reward_func, visualize=True)
-
     gym_env.make(controller)
 
     action = np.zeros(18)
     action[2] = 0.25
     cumulative_reward = 0
-    while gym_env.current_time < 20.0:
+    while gym_env.current_time < 50.0:
         state, reward = gym_env.step(action)
         cumulative_reward += reward
     # gym_env.reset()

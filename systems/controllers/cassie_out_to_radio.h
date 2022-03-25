@@ -1,10 +1,36 @@
-//
-// Created by yangwill on 3/24/22.
-//
+#pragma once
+#include "dairlib/lcmt_cassie_out.hpp"
+#include "dairlib/lcmt_radio_out.hpp"
+#include <memory>
 
-#ifndef DAIRLIB_SYSTEMS_CONTROLLERS_CASSIE_OUT_TO_RADIO_H_
-#define DAIRLIB_SYSTEMS_CONTROLLERS_CASSIE_OUT_TO_RADIO_H_
+#include "drake/systems/framework/leaf_system.h"
 
-class cassie_out_to_radio {};
+namespace dairlib {
+namespace systems {
 
-#endif  // DAIRLIB_SYSTEMS_CONTROLLERS_CASSIE_OUT_TO_RADIO_H_
+class CassieOutToRadio : public drake::systems::LeafSystem<double> {
+ public:
+  CassieOutToRadio();
+
+  const drake::systems::InputPort<double>& get_input_port() const {
+    return drake::systems::LeafSystem<double>::get_input_port(0);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port() const {
+    return drake::systems::LeafSystem<double>::get_output_port(0);
+  }
+
+ protected:
+  void CalcRadioOut(
+      const drake::systems::Context<double>& context,
+      dairlib::lcmt_radio_out* output) const;
+
+ private:
+  bool is_abstract() const { return false;}
+
+  int cassie_out_input_port_;
+  int radio_output_port_;
+};
+
+}  // namespace systems
+}  // namespace dairlib

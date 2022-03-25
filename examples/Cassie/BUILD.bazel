@@ -380,6 +380,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/filters:floating_base_velocity_filter",
         "//systems/controllers/osc:osc_tracking_datas",
+        "//systems/controllers:controllers_all",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

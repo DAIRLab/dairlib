@@ -30,8 +30,8 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_state_input_port",
            &OSCRunningControllerDiagram::get_state_input_port,
            py_rvp::reference_internal)
-      .def("get_cassie_out_input_port",
-           &OSCRunningControllerDiagram::get_cassie_out_input_port,
+      .def("get_radio_input_port",
+           &OSCRunningControllerDiagram::get_radio_input_port,
            py_rvp::reference_internal)
       .def("get_control_output_port",
            &OSCRunningControllerDiagram::get_control_output_port,
@@ -50,7 +50,7 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_state_input_port",
            &OSCWalkingControllerDiagram::get_state_input_port,
            py_rvp::reference_internal)
-      .def("get_cassie_out_input_port",
+      .def("get_radio_input_port",
            &OSCWalkingControllerDiagram::get_cassie_out_input_port,
            py_rvp::reference_internal)
       .def("get_control_output_port",

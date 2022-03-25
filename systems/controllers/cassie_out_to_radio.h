@@ -1,0 +1,10 @@
+//
+// Created by yangwill on 3/24/22.
+//
+
+#ifndef DAIRLIB_SYSTEMS_CONTROLLERS_CASSIE_OUT_TO_RADIO_H_
+#define DAIRLIB_SYSTEMS_CONTROLLERS_CASSIE_OUT_TO_RADIO_H_
+
+class cassie_out_to_radio {};
+
+#endif  // DAIRLIB_SYSTEMS_CONTROLLERS_CASSIE_OUT_TO_RADIO_H_

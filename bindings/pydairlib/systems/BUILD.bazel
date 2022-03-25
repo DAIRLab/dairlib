@@ -41,6 +41,25 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+
+pybind_py_library(
+    name = "framework_py",
+    cc_deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "framework",
+    cc_srcs = ["framework_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -59,6 +78,7 @@ py_library(
 PY_LIBRARIES = [
     ":robot_lcm_systems_py",
     ":primitives_py",
+    ":framework_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

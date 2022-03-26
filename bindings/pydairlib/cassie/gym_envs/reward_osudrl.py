@@ -18,6 +18,11 @@ class RewardOSUDRL():
     def __init__(self, weights_filename=None):
         if weights_filename:
             weights = self.load_weights(weights_filename)
+        self.neutral_foot_orient = np.array([-0.24790886454547323, -0.24679713195445646, -0.6609396704367185, 0.663921021343526])
+        self.l_foot_orient = 0
+        self.r_foot_orient = 0
+
+
         return
 
     def load_weights(self, filename):

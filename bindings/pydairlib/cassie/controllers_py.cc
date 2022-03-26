@@ -47,11 +47,13 @@ PYBIND11_MODULE(controllers, m) {
       m, "OSCWalkingControllerFactory")
       .def(py::init<drake::multibody::MultibodyPlant<double>&, bool, const std::string&, const std::string&>(),
            py::arg("plant"), py::arg("has_double_stance"), py::arg("osc_gains_filename"), py::arg("osqp_settings_filename"))
+      .def("get_plant", &OSCWalkingControllerDiagram::get_plant,
+           py_rvp::reference_internal)
       .def("get_state_input_port",
            &OSCWalkingControllerDiagram::get_state_input_port,
            py_rvp::reference_internal)
       .def("get_radio_input_port",
-           &OSCWalkingControllerDiagram::get_cassie_out_input_port,
+           &OSCWalkingControllerDiagram::get_radio_input_port,
            py_rvp::reference_internal)
       .def("get_control_output_port",
            &OSCWalkingControllerDiagram::get_control_output_port,

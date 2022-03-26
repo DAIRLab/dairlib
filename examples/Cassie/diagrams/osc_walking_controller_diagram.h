@@ -54,8 +54,8 @@ class OSCWalkingControllerDiagram final
 
   /// @return the input port for the cassie_out struct (containing radio
   /// commands).
-  const drake::systems::InputPort<double>& get_cassie_out_input_port() const {
-    return this->get_input_port(cassie_out_input_port_index_);
+  const drake::systems::InputPort<double>& get_radio_input_port() const {
+    return this->get_input_port(radio_input_port_index_);
   }
 
   /// @return the output port for the controller torques.
@@ -74,7 +74,12 @@ class OSCWalkingControllerDiagram final
     return this->get_output_port(controller_failure_port_index_);
   }
 
+  drake::multibody::MultibodyPlant<double>& get_plant() {
+    return *plant_;
+  }
+
  private:
+  drake::multibody::MultibodyPlant<double>* plant_;
   std::map<std::string, int> pos_map;
   std::map<std::string, int> vel_map;
   std::map<std::string, int> act_map;
@@ -155,7 +160,7 @@ class OSCWalkingControllerDiagram final
   std::unique_ptr<JointSpaceTrackingData> swing_hip_yaw_traj;
 
   const int state_input_port_index_ = 0;
-  const int cassie_out_input_port_index_ = 1;
+  const int radio_input_port_index_ = 1;
   const int control_output_port_index_ = 0;
   const int torque_output_port_index_ = 1;
   const int controller_failure_port_index_ = 2;

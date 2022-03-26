@@ -73,6 +73,7 @@ cc_library(
         "//systems/controllers:fsm_event_time",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
+        "//systems/primitives:radio_parser",
         "@drake//:drake_shared_library",
     ],
 )

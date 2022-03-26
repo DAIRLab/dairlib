@@ -24,6 +24,7 @@
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
@@ -66,7 +67,8 @@ namespace controllers {
 OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
     drake::multibody::MultibodyPlant<double>& plant, bool has_double_stance,
     const string& osc_walking_gains_filename, const string& osqp_settings_filename)
-    : pos_map(multibody::makeNameToPositionsMap(plant)),
+    : plant_(&plant),
+      pos_map(multibody::makeNameToPositionsMap(plant)),
       vel_map(multibody::makeNameToVelocitiesMap(plant)),
       act_map(multibody::makeNameToActuatorsMap(plant)),
       left_toe(LeftToeFront(plant)),
@@ -204,6 +206,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   auto touchdown_event_time =
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
           plant, double_support_states);
+  auto radio_parser = builder.AddSystem<systems::RadioParser>();
   liftoff_event_time->set_name("liftoff_time");
   touchdown_event_time->set_name("touchdown_time");
   /**** OSC setup ****/
@@ -462,11 +465,13 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+  builder.Connect(radio_parser->get_output_port(),
+                  high_level_command->get_radio_input_port());
 
   // Publisher connections
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
-  builder.ExportInput(high_level_command->get_radio_input_port(),
-                      "lcmt_cassie_out");
+  builder.ExportInput(radio_parser->get_input_port(),
+                      "raw_radio");
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
 

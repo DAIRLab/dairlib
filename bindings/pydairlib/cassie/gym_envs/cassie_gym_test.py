@@ -9,8 +9,8 @@ from pydrake.common.yaml import yaml_load
 
 
 def main():
-    osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
-    # osc_running_gains_filename = 'examples/Cassie/osc_run/osc_running_gains.yaml'
+    # osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
+    osc_running_gains_filename = 'examples/Cassie/osc_run/osc_running_gains.yaml'
     osc_walking_gains_filename = 'examples/Cassie/osc/osc_walking_gains.yaml'
     osqp_settings = 'examples/Cassie/osc_run/osc_running_qp_settings.yaml'
     default_osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
@@ -20,8 +20,8 @@ def main():
     controller_plant = MultibodyPlant(8e-5)
     addCassieMultibody(controller_plant, None, True, urdf, False, False)
     controller_plant.Finalize()
-    controller = OSCRunningControllerFactory(controller_plant, osc_running_gains_filename, osqp_settings)
-    # controller = OSCWalkingControllerFactory(controller_plant, True, osc_walking_gains_filename, osqp_settings)
+    # controller = OSCRunningControllerFactory(controller_plant, osc_running_gains_filename, osqp_settings)
+    controller = OSCWalkingControllerFactory(controller_plant, True, osc_walking_gains_filename, osqp_settings)
 
     # reward_func = RewardOSUDRL(reward_function_weights)
     reward_func = RewardOSUDRL()

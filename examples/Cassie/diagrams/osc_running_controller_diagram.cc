@@ -425,7 +425,6 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   // Build OSC problem
   osc->SetOsqpSolverOptionsFromYaml(osqp_settings_filename);
   osc->Build();
-  std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/
 
@@ -503,7 +502,6 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   builder.BuildInto(this);
   this->set_name(("osc_running_controller_diagram"));
   DrawAndSaveDiagramGraph(*this);
-  std::cout << "Built controller" << std::endl;
 }
 
 }  // namespace controllers

@@ -3,39 +3,39 @@ LiftoffSwingFootKd: [1, 0, 0, 0, 1, 0, 0, 0, 0]
 LiftoffSwingFootKp: [50.0, 0, 0, 0, 50.0, 0, 0, 0, 50.0]
 LiftoffSwingFootW: [0.1, 0, 0, 0, 10, 0, 0, 0, 1]
 PelvisKd: [1, 0, 0, 0, 0, 0, 0, 0, 5]
-PelvisKp: [85.74429563681282, 0.0, 0.0, 0.0, 21.57873464698917, 0.0, 0.0, 0.0, 137.43739267179197]
+PelvisKp: [0, 0, 0, 0, 0, 0, 0, 0, 85]
 PelvisRotKd: [10.0, 0, 0, 0, 5.0, 0, 0, 0, 0.0]
-PelvisRotKp: [50.0, 0, 0, 0, 100.0, 0, 0, 0, 0.0]
+PelvisRotKp: [50.0, 0, 0, 0, 100.0, 0, 0, 0, 1.0]
 PelvisRotW: [1, 0, 0, 0, 2.5, 0, 0, 0, 0.1]
 PelvisW: [0.1, 0, 0, 0, 0, 0, 0, 0, 5]
-SwingFootKd: [8.078917410827255, 0.0, 0.0, 0.0, 12.576529765299595, 0.0, 0.0, 0.0,
-  2.431152422425895]
-SwingFootKp: [101.03127214896419, 0.0, 0.0, 0.0, 59.42442696850133, 0.0, 0.0, 0.0,
-  63.23743619668404]
+SwingFootKd: [7.470159439828845, 0.0, 0.0, 0.0, 12.580856772920194, 0.0, 0.0, 0.0,
+  2.082002568974916]
+SwingFootKp: [114.16480444536955, 0.0, 0.0, 0.0, 100.03932909749986, 0.0, 0.0, 0.0,
+  54.79286331701048]
 SwingFootW: [10, 0, 0, 0, 10, 0, 0, 0, 1]
 W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
   1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
 W_input_reg: [1, 0.9, 0.5, 0.1, 5, 1, 0.9, 0.5, 0.1, 5]
 W_lambda_c_reg: [1, 0.001, 0.01, 1, 0.001, 0.01, 1, 0.1, 0.01, 1, 0.1, 0.01]
 W_lambda_h_reg: [0.01, 0.01, 0.01, 0.01, 0.02, 0.02]
-center_line_offset: 0.03547263514242609
-flight_duration: 0.07371200188107095
-footstep_offset: -0.05
+center_line_offset: 0.03977871878316904
+flight_duration: 0.07977287590217821
+footstep_offset: -0.06099934134060533
 hip_yaw_kd: 1
-hip_yaw_kp: 40
+hip_yaw_kp: 50.15472945993452
 impact_threshold: 0.025
-mu: 0.6
+mu: 0.7552292632842741
 relative_feet: true
 relative_pelvis: true
-rest_length: 0.8473166415309785
-stance_duration: 0.2885407656243229
+rest_length: 0.85
+stance_duration: 0.2976513438348498
 swing_toe_kd: 10
 swing_toe_kp: 1500
 vel_scale_rot: -0.5
 vel_scale_trans_lateral: -0.15
 vel_scale_trans_sagital: 0.2
 w_accel: 1.0e-05
-w_hip_yaw: 2.5
+w_hip_yaw: 1.9711914198221558
 w_input: 0.0
 w_input_reg: 0.001
 w_soft_constraint: 100

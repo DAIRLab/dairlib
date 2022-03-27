@@ -43,6 +43,10 @@ class OptionsTrackingData : public OscTrackingData {
     idx_zero_feedforward_accel_ = indices;
   };
 
+  // Ignore a joint to ignore in jacobian calculation.
+  // State must be added to the tracking data already
+  void AddJointAndStateToIgnoreInJacobian(int joint_vel_idx, int fsm_state);
+
  private:
   void UpdateActual(
       const Eigen::VectorXd& x_w_spr,
@@ -64,6 +68,7 @@ class OptionsTrackingData : public OscTrackingData {
   Eigen::VectorXd filtered_ydot_;
   double tau_ = -1;
   std::set<int> low_pass_filter_element_idx_;
+  std::map<int, std::vector<int>> joint_idx_to_ignore_;
   double last_timestamp_ = -1;
 };
 

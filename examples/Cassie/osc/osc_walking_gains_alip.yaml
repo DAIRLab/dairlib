@@ -6,8 +6,8 @@ relative_swing_ft: true
 
 # High level command gains (with radio)
 vel_scale_rot: -3.5
-vel_scale_trans_sagital: 0.6
-vel_scale_trans_lateral: -0.25
+vel_scale_trans_sagital: 1.5
+vel_scale_trans_lateral: -0.5
 
 # Filter settings
 pelvis_xyz_vel_filter_tau: [0.01, 0.01, 0.01]
@@ -29,7 +29,7 @@ kd_pos_lateral: 0  # 0.3
 vel_max_lateral: 0  # 0.3
 target_pos_offset: 0  # -0.16
 
-# Speed control gains
+# Speed control gains (Not used for ALIP control)
 k_ff_sagittal: 0
 k_fb_sagittal: 0.2
 k_ff_lateral: 0

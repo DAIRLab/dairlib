@@ -1,0 +1,14 @@
+package dairlib;
+
+struct lcmt_ekf_debug_out
+{
+  int32_t n_x;
+  int32_t n_theta;
+  int32_t n_p;
+  double X_prop[n_x][n_x];
+  double Theta_prop[n_theta];
+  double P_prop[n_p][n_p];
+  double X_corr[n_x][n_x];
+  double Theta_corr[n_theta];
+  double P_corr[n_p][n_p];
+}

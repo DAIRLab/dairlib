@@ -1,5 +1,5 @@
 #include "examples/Cassie/cassie_state_estimator.h"
-
+#include "dairlib/lcmt_ekf_debug_out.hpp"
 #include <math.h>
 
 #include <chrono>
@@ -9,6 +9,7 @@
 #include "drake/solvers/equality_constrained_qp_solver.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
+#include <lcm/lcm-cpp.hpp>
 
 namespace dairlib {
 namespace systems {
@@ -36,6 +37,8 @@ using drake::systems::UnrestrictedUpdateEvent;
 
 using multibody::KinematicEvaluatorSet;
 using systems::OutputVector;
+
+using std::vector;
 
 static const int SPACE_DIM = 3;
 
@@ -847,7 +850,51 @@ EventStatus CassieStateEstimator::Update(
   //  std::ofstream outfile;
   //  outfile.open("../ekf_error.txt", std::ios_base::app);
   //  outfile << current_time << ", ";
-  ekf.CorrectKinematics(measured_kinematics);
+
+
+
+  if (publish_debug_) {
+    const int nx = 5;
+    const int ntheta = 6;
+    const int np = 15;
+    inekf::EkfUpdatePair debug {Eigen::Matrix<double, nx, nx>::Zero(),
+                                Eigen::Matrix<double, ntheta, 1>::Zero(),
+                                Eigen::Matrix<double, np, np>::Zero(),
+                                Eigen::Matrix<double, nx, nx>::Zero(),
+                                Eigen::Matrix<double, ntheta, 1>::Zero(),
+                                Eigen::Matrix<double, np, np>::Zero()};
+
+    ekf.CorrectKinematics(measured_kinematics, &debug);
+
+    lcmt_ekf_debug_out msg;
+    msg.n_x = nx;
+    msg.n_theta = ntheta;
+    msg.n_p = np;
+    msg.X_prop = vector<vector<double>>(nx, vector<double>(nx));
+    msg.X_corr = vector<vector<double>>(nx, vector<double>(nx));
+    msg.P_prop = vector<vector<double>>(np, vector<double>(np));
+    msg.P_corr = vector<vector<double>>(np, vector<double>(np));
+    msg.Theta_prop = vector<double>(ntheta);
+    msg.Theta_corr = vector<double>(ntheta);
+    for (int i = 0; i < nx; i++) {
+      memcpy(msg.X_prop[i].data(), debug.X_prop.row(i).data(),
+             sizeof(double)*nx);
+      memcpy(msg.X_corr[i].data(), debug.X_corr.row(i).data(),
+             sizeof(double)*nx);
+    }
+    for (int i = 0; i < np; i++) {
+      memcpy(msg.P_prop[i].data(), debug.P_prop.row(i).data(),
+             sizeof(double) * np);
+      memcpy(msg.P_corr[i].data(), debug.P_corr.row(i).data(),
+             sizeof(double) * np);
+    }
+    memcpy(msg.Theta_prop.data(), debug.Theta_prop.data(),
+           sizeof(double) * ntheta);
+    memcpy(msg.Theta_corr.data(), debug.Theta_corr.data(),
+           sizeof(double) * ntheta);
+    lcm::LCM lcm;
+    lcm.publish("EKF_DEBUG_OUT", &msg);
+  }
 
   if (print_info_to_terminal_) {
     // Print for debugging
@@ -866,6 +913,8 @@ EventStatus CassieStateEstimator::Update(
     // cout << ekf.getState().getTheta() << endl;
     // cout << "P: " << endl;
     // cout << ekf.getState().getP() << endl;
+  } else {
+    ekf.CorrectKinematics(measured_kinematics, {});
   }
   if (test_with_ground_truth_state_) {
     if (print_info_to_terminal_) {

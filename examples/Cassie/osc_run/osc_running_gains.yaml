@@ -43,7 +43,7 @@ footstep_offset: -0.05
 center_line_offset: 0.03
 FootstepKd:
   [  0.2,     0,  0,
-     0,     0.45, 0,
+     0,     0.6, 0,
      0,        0,  0]
 PelvisW:
   [0.1,     0,    0,

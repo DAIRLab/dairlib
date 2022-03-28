@@ -24,7 +24,7 @@ from pydairlib.systems import (RobotOutputSender, RobotOutputReceiver)
 
 
 class MuJoCoCassieGym():
-    def __init__(self, reward_func, visualize=False):
+    def __init__(self, reward_func, visualize=False, model_xml='cassie.xml', dynamics_randomization=True):
         self.sim_dt = 8e-5
         self.gym_dt = 1e-3
         self.visualize = visualize
@@ -37,6 +37,54 @@ class MuJoCoCassieGym():
 
         self.default_model_directory = '/home/yangwill/workspace/cassie-mujoco-sim/model/'
         self.default_model_file = '/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
+
+        self.simulator = CassieSim(self.default_model_directory + model_xml)
+        if self.visualize:
+            self.cassie_vis = CassieVis(self.simulator)
+
+        '''
+        Copied from apex/cassie.py 
+        '''
+        self.max_simrate = 1.2 * self.gym_dt
+        self.min_simrate = 0.8 * self.gym_dt
+        self.dynamics_randomization = dynamics_randomization
+        self.dynamics_randomization = dynamics_randomization
+        self.slope_rand = dynamics_randomization
+        self.joint_rand = dynamics_randomization
+
+        self.max_pitch_incline = 0.03
+        self.max_roll_incline = 0.03
+
+        self.encoder_noise = 0.01
+
+        # self.damping_low = 0.3
+        self.damping_low = 0.8
+        # self.damping_high = 5.0
+        self.damping_high = 2.0
+
+        # self.mass_low = 0.5
+        self.mass_low = 0.8
+        # self.mass_high = 1.5
+        self.mass_high = 1.2
+
+        # self.fric_low = 0.4
+        self.fric_low = 0.6
+        self.fric_high = 1.1
+
+        self.speed = 0
+        self.side_speed = 0
+        self.orient_add = 0
+
+        self.default_damping = self.simulator.get_dof_damping()
+        self.default_mass = self.simulator.get_body_mass()
+        self.default_ipos = self.simulator.get_body_ipos()
+        self.default_fric = self.simulator.get_geom_friction()
+        self.default_rgba = self.simulator.get_geom_rgba()
+        self.default_quat = self.simulator.get_geom_quat()
+
+        self.motor_encoder_noise = np.zeros(10)
+        self.joint_encoder_noise = np.zeros(6)
+
         self.cassie_in = cassie_user_in_t()
         self.cassie_out = cassie_out_t()
         self.cassie_out_lcm = lcmt_cassie_out()
@@ -61,53 +109,11 @@ class MuJoCoCassieGym():
                                    'knee_right_motor': 8,
                                    'toe_right_motor': 9}
 
-    def make(self, controller, model_xml='cassie.xml', dynamics_randomization=True):
+    def make(self, controller):
         self.builder = DiagramBuilder()
         self.controller = controller
-        self.simulator = CassieSim(self.default_model_directory + model_xml)
-        if self.visualize:
-            self.cassie_vis = CassieVis(self.simulator)
-
-        '''
-        Copied from apex/cassie.py 
-        '''
-        self.max_simrate = 1.2 * self.gym_dt
-        self.min_simrate = 0.8 * self.gym_dt
-        self.dynamics_randomization = dynamics_randomization
-        self.dynamics_randomization = dynamics_randomization
-        self.slope_rand = dynamics_randomization
-        self.joint_rand = dynamics_randomization
-
-        self.max_pitch_incline = 0.03
-        self.max_roll_incline = 0.03
-
-        self.encoder_noise = 0.01
-
-        self.damping_low = 0.3
-        self.damping_high = 5.0
-
-        self.mass_low = 0.5
-        self.mass_high = 1.5
-
-        self.fric_low = 0.4
-        self.fric_high = 1.1
-
-        self.speed = 0
-        self.side_speed = 0
-        self.orient_add = 0
-
-        self.default_damping = self.simulator.get_dof_damping()
-        self.default_mass = self.simulator.get_body_mass()
-        self.default_ipos = self.simulator.get_body_ipos()
-        self.default_fric = self.simulator.get_geom_friction()
-        self.default_rgba = self.simulator.get_geom_rgba()
-        self.default_quat = self.simulator.get_geom_quat()
-
-        self.motor_encoder_noise = np.zeros(10)
-        self.joint_encoder_noise = np.zeros(6)
 
         self.builder.AddSystem(self.controller)
-        # self.robot_output_sender = RobotOutputSender(self.controller.get_plant(), True)
         self.robot_output_sender = RobotOutputSender(self.controller.get_plant(), False)
         self.builder.AddSystem(self.robot_output_sender)
 
@@ -127,7 +133,149 @@ class MuJoCoCassieGym():
         self.initialized = True
 
     def reset(self):
+        self.randomize_sim_params()
 
+        q_mujoco, v_mujoco = self.drake_to_mujoco_converter.convert_to_mujoco(
+            reexpress_state_global_to_local_omega(self.x_init))
+        mujoco_state = self.simulator.get_state()
+        mujoco_state.set_qpos(q_mujoco)
+        mujoco_state.set_qvel(v_mujoco)
+        mujoco_state.set_time(self.start_time)
+        self.simulator.set_state(mujoco_state)
+
+        self.drake_sim.get_mutable_context().SetTime(self.start_time)
+        u = np.zeros(10)
+        self.drake_sim.Initialize()
+        self.current_time = self.start_time
+        self.prev_cassie_state = CassieEnvState(self.current_time, self.x_init, u, np.zeros(18))
+        self.cassie_state = CassieEnvState(self.current_time, self.x_init, u, np.zeros(18))
+        cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
+        self.cassie_out = self.simulator.step(cassie_in)
+        self.cassie_out_lcm = self.pack_cassie_out(self.cassie_out)
+        self.terminated = False
+        return
+
+    def advance_to(self, time):
+        cumulative_reward = 0
+        while self.current_time < time and not self.terminated:
+            _, reward = self.step()
+            cumulative_reward += reward
+        return cumulative_reward
+
+    def check_termination(self):
+        return self.cassie_state.get_fb_positions()[2] < 0.4
+
+    def step(self, action=np.zeros(18)):
+        if not self.initialized:
+            print("Call make() before calling step() or advance()")
+
+        if self.dynamics_randomization:
+            timestep = np.random.uniform(self.max_simrate, self.min_simrate)
+        else:
+            timestep = self.gym_dt
+        next_timestep = self.drake_sim.get_context().get_time() + timestep
+
+        self.robot_output_sender.get_input_port_state().FixValue(self.robot_output_sender_context, self.cassie_state.x)
+        self.radio_input_port.FixValue(self.controller_context, action)
+
+        u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
+        cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
+        self.drake_sim.AdvanceTo(next_timestep)
+        while self.simulator.time() < next_timestep:
+            self.simulator.step(cassie_in)
+        if self.visualize:
+            self.cassie_vis.draw(self.simulator)
+
+        self.current_time = next_timestep
+        t = self.simulator.time()
+        q = self.simulator.qpos()
+        v = self.simulator.qvel()
+        q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
+        self.current_time = t
+        x = np.hstack((q, v))
+        x = reexpress_state_local_to_global_omega(x)
+        self.cassie_state = CassieEnvState(self.current_time, x, u, action)
+        reward = self.reward_func.compute_reward(self.cassie_state, self.prev_cassie_state)
+        self.terminated = self.check_termination()
+        self.prev_cassie_state = self.cassie_state
+        return self.cassie_state, reward
+
+    def pack_input(self, cassie_in, u_drake):
+        act_map = self.drake_to_mujoco_converter.act_map
+        # Set control parameters
+        u_mujoco = np.zeros(10)
+        for u_name in act_map:
+            cassie_in.torque[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
+            u_mujoco[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
+        return cassie_in, u_mujoco
+
+    def pack_cassie_out(self, cassie_out):
+        cassie_out_lcm = lcmt_cassie_out()
+        cassie_out_lcm.utime = self.current_time * 1e6
+        cassie_out_lcm.pelvis.targetPc.etherCatStatus = cassie_out.pelvis.targetPc.etherCatStatus
+        cassie_out_lcm.pelvis.targetPc.etherCatNotifications = cassie_out.pelvis.targetPc.etherCatNotifications
+        cassie_out_lcm.pelvis.targetPc.taskExecutionTime = cassie_out.pelvis.targetPc.taskExecutionTime
+        cassie_out_lcm.pelvis.targetPc.overloadCounter = cassie_out.pelvis.targetPc.overloadCounter
+        cassie_out_lcm.pelvis.targetPc.cpuTemperature = cassie_out.pelvis.targetPc.cpuTemperature
+        cassie_out_lcm.pelvis.battery.dataGood = cassie_out.pelvis.battery.dataGood
+        cassie_out_lcm.pelvis.battery.stateOfCharge = cassie_out.pelvis.battery.stateOfCharge
+        cassie_out_lcm.pelvis.battery.current = cassie_out.pelvis.battery.current
+        cassie_out_lcm.pelvis.battery.voltage = cassie_out.pelvis.battery.voltage
+        cassie_out_lcm.pelvis.battery.temperature = cassie_out.pelvis.battery.temperature
+        cassie_out_lcm.pelvis.radio.radioReceiverSignalGood = cassie_out.pelvis.radio.radioReceiverSignalGood
+        cassie_out_lcm.pelvis.radio.receiverMedullaSignalGood = cassie_out.pelvis.radio.receiverMedullaSignalGood
+        cassie_out_lcm.pelvis.radio.channel = cassie_out.pelvis.radio.channel
+        cassie_out_lcm.pelvis.radio.receiverMedullaSignalGood = cassie_out.pelvis.radio.receiverMedullaSignalGood
+        cassie_out_lcm.pelvis.battery.temperature = cassie_out.pelvis.battery.temperature
+        cassie_out_lcm.pelvis.vectorNav.dataGood = cassie_out.pelvis.vectorNav.dataGood
+        cassie_out_lcm.pelvis.vectorNav.vpeStatus = cassie_out.pelvis.vectorNav.vpeStatus
+        cassie_out_lcm.pelvis.vectorNav.pressure = cassie_out.pelvis.vectorNav.pressure
+        cassie_out_lcm.pelvis.vectorNav.temperature = cassie_out.pelvis.vectorNav.temperature
+        cassie_out_lcm.pelvis.vectorNav.magneticField = cassie_out.pelvis.vectorNav.magneticField
+        cassie_out_lcm.pelvis.vectorNav.angularVelocity = cassie_out.pelvis.vectorNav.angularVelocity
+        cassie_out_lcm.pelvis.vectorNav.linearAcceleration = cassie_out.pelvis.vectorNav.linearAcceleration
+        cassie_out_lcm.pelvis.vectorNav.orientation = cassie_out.pelvis.vectorNav.orientation
+        cassie_out_lcm.pelvis.medullaCounter = cassie_out.pelvis.medullaCounter
+        cassie_out_lcm.pelvis.medullaCpuLoad = cassie_out.pelvis.medullaCpuLoad
+        cassie_out_lcm.pelvis.bleederState = cassie_out.pelvis.bleederState
+        cassie_out_lcm.pelvis.leftReedSwitchState = cassie_out.pelvis.leftReedSwitchState
+        cassie_out_lcm.pelvis.rightReedSwitchState = cassie_out.pelvis.rightReedSwitchState
+        cassie_out_lcm.pelvis.vtmTemperature = cassie_out.pelvis.vtmTemperature
+
+        cassie_out_lcm.isCalibrated = cassie_out.isCalibrated
+        cassie_out_lcm.pelvis.vectorNav.temperature = cassie_out.pelvis.vectorNav.temperature
+
+        self.copy_leg(cassie_out_lcm.leftLeg, cassie_out.leftLeg)
+        self.copy_leg(cassie_out_lcm.rightLeg, cassie_out.rightLeg)
+        return cassie_out_lcm
+
+    def copy_leg(self, cassie_leg_out_lcm, cassie_leg_out):
+        self.copy_elmo(cassie_leg_out_lcm.hipRollDrive, cassie_leg_out.hipRollDrive)
+        self.copy_elmo(cassie_leg_out_lcm.hipYawDrive, cassie_leg_out.hipYawDrive)
+        self.copy_elmo(cassie_leg_out_lcm.hipPitchDrive, cassie_leg_out.hipPitchDrive)
+        self.copy_elmo(cassie_leg_out_lcm.kneeDrive, cassie_leg_out.kneeDrive)
+        self.copy_elmo(cassie_leg_out_lcm.footDrive, cassie_leg_out.footDrive)
+        cassie_leg_out_lcm.shinJoint.position = cassie_leg_out.shinJoint.position
+        cassie_leg_out_lcm.shinJoint.velocity = cassie_leg_out.shinJoint.velocity
+        cassie_leg_out_lcm.tarsusJoint.position = cassie_leg_out.tarsusJoint.position
+        cassie_leg_out_lcm.tarsusJoint.velocity = cassie_leg_out.tarsusJoint.velocity
+        cassie_leg_out_lcm.footJoint.position = cassie_leg_out.footJoint.position
+        cassie_leg_out_lcm.footJoint.velocity = cassie_leg_out.footJoint.velocity
+        cassie_leg_out_lcm.medullaCounter = cassie_leg_out.medullaCounter
+        cassie_leg_out_lcm.medullaCpuLoad = cassie_leg_out.medullaCpuLoad
+        cassie_leg_out_lcm.reedSwitchState = cassie_leg_out.reedSwitchState
+
+    def copy_elmo(self, elmo_out_lcm, elmo_out):
+        elmo_out_lcm.statusWord = elmo_out.statusWord
+        elmo_out_lcm.position = elmo_out.position
+        elmo_out_lcm.velocity = elmo_out.velocity
+        elmo_out_lcm.torque = elmo_out.torque
+        elmo_out_lcm.driveTemperature = elmo_out.driveTemperature
+        elmo_out_lcm.dcLinkVoltage = elmo_out.dcLinkVoltage
+        elmo_out_lcm.torqueLimit = elmo_out.torqueLimit
+        elmo_out_lcm.gearRatio = elmo_out.gearRatio
+
+    def randomize_sim_params(self):
         if self.dynamics_randomization:
             damp = self.default_damping
 
@@ -204,165 +352,25 @@ class MuJoCoCassieGym():
             self.simulator.set_dof_damping(self.default_damping)
             self.simulator.set_geom_friction(self.default_fric)
 
-        if self.slope_rand:
-            geom_plane = [np.random.uniform(-self.max_roll_incline, self.max_roll_incline),
-                          np.random.uniform(-self.max_pitch_incline, self.max_pitch_incline), 0]
-            quat_plane = euler2quat(z=geom_plane[2], y=geom_plane[1], x=geom_plane[0])
-            geom_quat = list(quat_plane) + list(self.default_quat[4:])
-            self.simulator.set_geom_quat(geom_quat)
-        else:
-            self.simulator.set_geom_quat(self.default_quat)
+            if self.slope_rand:
+                geom_plane = [np.random.uniform(-self.max_roll_incline, self.max_roll_incline),
+                              np.random.uniform(-self.max_pitch_incline, self.max_pitch_incline), 0]
+                quat_plane = euler2quat(z=geom_plane[2], y=geom_plane[1], x=geom_plane[0])
+                geom_quat = list(quat_plane) + list(self.default_quat[4:])
+                self.simulator.set_geom_quat(geom_quat)
+            else:
+                self.simulator.set_geom_quat(self.default_quat)
 
-        if self.joint_rand:
-            self.motor_encoder_noise = np.random.uniform(-self.encoder_noise, self.encoder_noise, size=10)
-            self.joint_encoder_noise = np.random.uniform(-self.encoder_noise, self.encoder_noise, size=6)
-        else:
-            self.motor_encoder_noise = np.zeros(10)
-            self.joint_encoder_noise = np.zeros(6)
+            if self.joint_rand:
+                self.motor_encoder_noise = np.random.uniform(-self.encoder_noise, self.encoder_noise, size=10)
+                self.joint_encoder_noise = np.random.uniform(-self.encoder_noise, self.encoder_noise, size=6)
+            else:
+                self.motor_encoder_noise = np.zeros(10)
+                self.joint_encoder_noise = np.zeros(6)
 
-        q_mujoco, v_mujoco = self.drake_to_mujoco_converter.convert_to_mujoco(
-            reexpress_state_global_to_local_omega(self.x_init))
-        mujoco_state = self.simulator.get_state()
-        mujoco_state.set_qpos(q_mujoco)
-        mujoco_state.set_qvel(v_mujoco)
-        mujoco_state.set_time(self.start_time)
-        self.simulator.set_state(mujoco_state)
-        self.drake_sim.get_mutable_context().SetTime(self.start_time)
-        u = np.zeros(10)
-        self.drake_sim.Initialize()
-        self.current_time = self.start_time
-        self.prev_cassie_state = CassieEnvState(self.current_time, self.x_init, u, np.zeros(18))
-        self.cassie_state = CassieEnvState(self.current_time, self.x_init, u, np.zeros(18))
-        cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
-        self.cassie_out = self.simulator.step(cassie_in)
-        self.cassie_out_lcm = self.pack_cassie_out(self.cassie_out)
-        self.terminated = False
-        return
 
-    def advance_to(self, time):
-        while self.current_time < time and not self.terminated:
-            self.step()
-        return
-
-    def check_termination(self):
-        return self.cassie_state.get_fb_positions()[2] < 0.4
-
-    def step(self, action=np.zeros(18)):
-        if not self.initialized:
-            print("Call make() before calling step() or advance()")
-
-        if self.dynamics_randomization:
-            timestep = np.random.uniform(self.max_simrate, self.min_simrate)
-        else:
-            timestep = self.gym_dt
-        next_timestep = self.drake_sim.get_context().get_time() + timestep
-        # action[2] = 0.75
-        self.robot_output_sender.get_input_port_state().FixValue(self.robot_output_sender_context, self.cassie_state.x)
-        self.radio_input_port.FixValue(self.controller_context, action)
-
-        u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
-        cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
-        self.drake_sim.AdvanceTo(next_timestep)
-        while self.simulator.time() < next_timestep:
-            self.simulator.step(cassie_in)
-        if self.visualize:
-            self.cassie_vis.draw(self.simulator)
-
-        self.current_time = next_timestep
-        t = self.simulator.time()
-        q = self.simulator.qpos()
-        v = self.simulator.qvel()
-        q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
-        self.current_time = t
-        x = np.hstack((q, v))
-        x = reexpress_state_local_to_global_omega(x)
-        self.cassie_state = CassieEnvState(self.current_time, x, u, action)
-        reward = self.reward_func.compute_reward(self.cassie_state, self.prev_cassie_state)
-        self.terminated = self.check_termination()
-        self.prev_cassie_state = self.cassie_state
-        return self.cassie_state, reward
-
-    def pack_input(self, cassie_in, u_drake):
-        act_map = self.drake_to_mujoco_converter.act_map
-        # Set control parameters
-        u_mujoco = np.zeros(10)
-        for u_name in act_map:
-            cassie_in.torque[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
-            u_mujoco[self.actuator_index_map[u_name]] = u_drake[act_map[u_name]]
-        return cassie_in, u_mujoco
-
-    def pack_cassie_out(self, cassie_out):
-        cassie_out_lcm = lcmt_cassie_out()
-        cassie_out_lcm.utime = self.current_time * 1e6
-        cassie_out_lcm.pelvis.targetPc.etherCatStatus = cassie_out.pelvis.targetPc.etherCatStatus
-        cassie_out_lcm.pelvis.targetPc.etherCatNotifications = cassie_out.pelvis.targetPc.etherCatNotifications
-        cassie_out_lcm.pelvis.targetPc.taskExecutionTime = cassie_out.pelvis.targetPc.taskExecutionTime
-        cassie_out_lcm.pelvis.targetPc.overloadCounter = cassie_out.pelvis.targetPc.overloadCounter
-        cassie_out_lcm.pelvis.targetPc.cpuTemperature = cassie_out.pelvis.targetPc.cpuTemperature
-        cassie_out_lcm.pelvis.battery.dataGood = cassie_out.pelvis.battery.dataGood
-        cassie_out_lcm.pelvis.battery.stateOfCharge = cassie_out.pelvis.battery.stateOfCharge
-        cassie_out_lcm.pelvis.battery.current = cassie_out.pelvis.battery.current
-        cassie_out_lcm.pelvis.battery.voltage = cassie_out.pelvis.battery.voltage
-        cassie_out_lcm.pelvis.battery.temperature = cassie_out.pelvis.battery.temperature
-        cassie_out_lcm.pelvis.radio.radioReceiverSignalGood = cassie_out.pelvis.radio.radioReceiverSignalGood
-        cassie_out_lcm.pelvis.radio.receiverMedullaSignalGood = cassie_out.pelvis.radio.receiverMedullaSignalGood
-        cassie_out_lcm.pelvis.radio.channel = cassie_out.pelvis.radio.channel
-        cassie_out_lcm.pelvis.radio.receiverMedullaSignalGood = cassie_out.pelvis.radio.receiverMedullaSignalGood
-        cassie_out_lcm.pelvis.battery.temperature = cassie_out.pelvis.battery.temperature
-        cassie_out_lcm.pelvis.vectorNav.dataGood = cassie_out.pelvis.vectorNav.dataGood
-        cassie_out_lcm.pelvis.vectorNav.vpeStatus = cassie_out.pelvis.vectorNav.vpeStatus
-        cassie_out_lcm.pelvis.vectorNav.pressure = cassie_out.pelvis.vectorNav.pressure
-        cassie_out_lcm.pelvis.vectorNav.temperature = cassie_out.pelvis.vectorNav.temperature
-        cassie_out_lcm.pelvis.vectorNav.magneticField = cassie_out.pelvis.vectorNav.magneticField
-        cassie_out_lcm.pelvis.vectorNav.angularVelocity = cassie_out.pelvis.vectorNav.angularVelocity
-        cassie_out_lcm.pelvis.vectorNav.linearAcceleration = cassie_out.pelvis.vectorNav.linearAcceleration
-        cassie_out_lcm.pelvis.vectorNav.orientation = cassie_out.pelvis.vectorNav.orientation
-        cassie_out_lcm.pelvis.medullaCounter = cassie_out.pelvis.medullaCounter
-        cassie_out_lcm.pelvis.medullaCpuLoad = cassie_out.pelvis.medullaCpuLoad
-        cassie_out_lcm.pelvis.bleederState = cassie_out.pelvis.bleederState
-        cassie_out_lcm.pelvis.leftReedSwitchState = cassie_out.pelvis.leftReedSwitchState
-        cassie_out_lcm.pelvis.rightReedSwitchState = cassie_out.pelvis.rightReedSwitchState
-        cassie_out_lcm.pelvis.vtmTemperature = cassie_out.pelvis.vtmTemperature
-
-        cassie_out_lcm.isCalibrated = cassie_out.isCalibrated
-        cassie_out_lcm.pelvis.vectorNav.temperature = cassie_out.pelvis.vectorNav.temperature
-
-        self.copy_leg(cassie_out_lcm.leftLeg, cassie_out.leftLeg)
-        self.copy_leg(cassie_out_lcm.rightLeg, cassie_out.rightLeg)
-
-        # import pdb; pdb.set_trace()
-
-        # copy_vector_int16(cassie_out->messages,
-        #                               message->messages, 4);
-
-    def copy_leg(self, cassie_leg_out_lcm, cassie_leg_out):
-        self.copy_elmo(cassie_leg_out_lcm.hipRollDrive, cassie_leg_out.hipRollDrive)
-        self.copy_elmo(cassie_leg_out_lcm.hipYawDrive, cassie_leg_out.hipYawDrive)
-        self.copy_elmo(cassie_leg_out_lcm.hipPitchDrive, cassie_leg_out.hipPitchDrive)
-        self.copy_elmo(cassie_leg_out_lcm.kneeDrive, cassie_leg_out.kneeDrive)
-        self.copy_elmo(cassie_leg_out_lcm.footDrive, cassie_leg_out.footDrive)
-        cassie_leg_out_lcm.shinJoint.position = cassie_leg_out.shinJoint.position
-        cassie_leg_out_lcm.shinJoint.velocity = cassie_leg_out.shinJoint.velocity
-        cassie_leg_out_lcm.tarsusJoint.position = cassie_leg_out.tarsusJoint.position
-        cassie_leg_out_lcm.tarsusJoint.velocity = cassie_leg_out.tarsusJoint.velocity
-        cassie_leg_out_lcm.footJoint.position = cassie_leg_out.footJoint.position
-        cassie_leg_out_lcm.footJoint.velocity = cassie_leg_out.footJoint.velocity
-        cassie_leg_out_lcm.medullaCounter = cassie_leg_out.medullaCounter
-        cassie_leg_out_lcm.medullaCpuLoad = cassie_leg_out.medullaCpuLoad
-        cassie_leg_out_lcm.reedSwitchState = cassie_leg_out.reedSwitchState
-
-    def copy_elmo(self, elmo_out_lcm, elmo_out):
-        elmo_out_lcm.statusWord = elmo_out.statusWord
-        elmo_out_lcm.position = elmo_out.position
-        elmo_out_lcm.velocity = elmo_out.velocity
-        elmo_out_lcm.torque = elmo_out.torque
-        elmo_out_lcm.driveTemperature = elmo_out.driveTemperature
-        elmo_out_lcm.dcLinkVoltage = elmo_out.dcLinkVoltage
-        elmo_out_lcm.torqueLimit = elmo_out.torqueLimit
-        elmo_out_lcm.gearRatio = elmo_out.gearRatio
-
-    def free_sim(self):
-        del self.cassie_env
+def free_sim(self):
+    del self.cassie_env
 
 
 def euler2quat(z=0, y=0, x=0):

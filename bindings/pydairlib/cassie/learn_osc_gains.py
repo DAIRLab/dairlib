@@ -8,7 +8,6 @@ import nevergrad as ng
 from pydairlib.cassie.gym_envs.drake_cassie_gym import *
 from pydairlib.cassie.gym_envs.mujoco_cassie_gym import *
 
-# from cassie_utils import *
 from pydairlib.cassie.controllers import OSCRunningControllerFactory
 from pydairlib.cassie.controllers import OSCWalkingControllerFactory
 from pydairlib.cassie.simulators import CassieSimDiagram
@@ -42,15 +41,17 @@ class OSCGainsOptimizer():
         self.loss_over_time = []
 
         self.default_osc_gains = {
+            'w_soft_constraint': 100,
+            'w_input_reg': 0.001,
             'mu': 0.6,
             'w_hip_yaw': 2.5,
             'hip_yaw_kp': 40,
             # 'PelvisKp': np.array([0, 0, 85]),
             # 'PelvisKd': np.array([1, 0, 5]),
             # 'PelvisRotKp': np.array([50, 100, 0]),
-            # 'PelvisRotKd': np.array([10, 5, 1]),
-            'SwingFootKp': np.array([125, 80, 50]),
-            'SwingFootKd': np.array([5, 5, 1]),
+            'PelvisRotKd': np.array([10, 5, 1]),
+            # 'SwingFootKp': np.array([125, 80, 50]),
+            # 'SwingFootKd': np.array([5, 5, 1]),
             # 'FootstepKd': np.array([0.2, 0.45, 0]),
             'center_line_offset': 0.03,
             # 'rest_length': 0.85,
@@ -77,6 +78,14 @@ class OSCGainsOptimizer():
                 new_gains[key] = params[key]
         yaml_dump(new_gains, filename=self.osc_running_gains_filename)
 
+    def get_batch_loss(self, params):
+        batch_size = 5
+        batch_reward = 0
+        for i in range(batch_size):
+            batch_reward += self.get_single_loss(params)
+        self.loss_over_time.append(batch_reward)
+        return -batch_reward
+
     def get_single_loss(self, params):
         self.write_params(params)
         if np.random.random() < 0.0:
@@ -96,21 +105,22 @@ class OSCGainsOptimizer():
         while gym_env.current_time < 7.5 and not gym_env.terminated:
             state, reward = gym_env.step(np.zeros(18))
             cumulative_reward += reward
-        self.loss_over_time.append(cumulative_reward)
         # print(-cumulative_reward)
         return -cumulative_reward
 
     def learn_gains(self, batch=True):
         self.default_params = ng.p.Dict(
+            w_soft_constraint=ng.p.Log(lower=1.0, upper=1000.0),
+            w_input_reg=ng.p.Log(lower=1e-5, upper=1e-1),
             mu=ng.p.Scalar(lower=0.4, upper=1.0),
             w_hip_yaw=ng.p.Scalar(lower=0, upper=10),
             hip_yaw_kp=ng.p.Scalar(lower=20, upper=80),
             # PelvisKp=ng.p.Array(lower=0., upper=150., shape=(3,)),
             # PelvisKd=ng.p.Array(lower=0., upper=10., shape=(3,)),
             # PelvisRotKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
-            # PelvisRotKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
-            SwingFootKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
-            SwingFootKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
+            PelvisRotKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
+            # SwingFootKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
+            # SwingFootKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
             # FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
             center_line_offset=ng.p.Scalar(lower=0.03, upper=0.075),
             # rest_length=ng.p.Scalar(lower=0.8, upper=0.9),
@@ -120,11 +130,13 @@ class OSCGainsOptimizer():
         )
         self.loss_over_time = []
         self.default_params.value = self.default_osc_gains
-        optimizer = ng.optimizers.NGOpt(parametrization=self.default_params, budget=self.budget)
+        # optimizer = ng.optimizers.NGOpt(parametrization=self.default_params, budget=self.budget)
+        optimizer = ng.optimizers.CMandAS3(parametrization=self.default_params, budget=self.budget)
         optimizer.register_callback("tell", ng.callbacks.ProgressBar())
         # with futures.ThreadPoolExecutor(max_workers=optimizer.num_workers) as executor:
         # recommendation = optimizer.minimize(square, executor=executor, batch_mode=False)
-        params = optimizer.minimize(self.get_single_loss)
+        # params = optimizer.minimize(self.get_single_loss)
+        params = optimizer.minimize(self.get_batch_loss)
         loss_samples = np.array(self.loss_over_time)
         np.save(self.drake_params_folder + 'loss_trajectory_' + str(self.budget), loss_samples)
         self.save_params(self.drake_params_folder, params, budget)
@@ -132,15 +144,15 @@ class OSCGainsOptimizer():
 
 if __name__ == '__main__':
     # budget = 2000
-    budget = 2000
+    budget = 400
 
     reward_function = RewardOSUDRL()
 
     optimizer = OSCGainsOptimizer(budget, reward_function, visualize=False)
     optimizer.learn_gains()
 
-    # optimal_params = optimizer.load_params('2022_03_25_17_1000', optimizer.drake_params_folder).value
+    # optimal_params = optimizer.load_params('2022_03_28_10_2000', optimizer.drake_params_folder).value
     # optimizer.write_params(optimal_params)
-    # reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_1000.npy')
+    # reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_2000.npy')
     # plt.plot(reward_over_time)
     # plt.show()

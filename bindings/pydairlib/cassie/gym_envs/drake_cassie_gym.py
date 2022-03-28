@@ -20,12 +20,9 @@ class DrakeCassieGym():
         self.sim_dt = 1e-3
         self.visualize = visualize
         self.reward_func = reward_func
-        # hardware logs are 50ms long and start approximately 5ms before impact
-        # the simulator will check to make sure ground reaction forces are first detected within 3-7ms
         self.start_time = 0.00
         self.current_time = 0.00
         self.end_time = 0.05
-        # self.traj = CassieTraj()
         self.hardware_traj = None
         self.action_dim = 10
         self.state_dim = 45
@@ -33,9 +30,6 @@ class DrakeCassieGym():
             [1, 0, 0, 0, 0, 0, 0.85, -0.0358636, 0, 0.67432, -1.588, -0.0458742, 1.90918,
              -0.0381073, -1.82312, 0.0358636, 0, 0.67432, -1.588, -0.0457885, 1.90919, -0.0382424, -1.82321,
              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        self.default_contact_params = {"mu": 0.8,
-                                       "stiffness": 4e4,
-                                       "dissipation": 0.5}
         self.prev_cassie_state = None
         self.controller = None
         self.terminated = False
@@ -49,7 +43,6 @@ class DrakeCassieGym():
         self.controller = controller
         self.simulator = CassieSimDiagram(self.plant, urdf, self.visualize, 0.8, 1e4, 1e2)
         self.new_plant = self.simulator.get_plant()
-        # self.sensor_aggregator = self.simulator.get_sensor_aggregator()
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.simulator)
 
@@ -69,12 +62,9 @@ class DrakeCassieGym():
         self.initialized = True
 
     def reset(self):
-        # self.traj = CassieTraj()
         self.new_plant.SetPositionsAndVelocities(self.new_plant.GetMyMutableContextFromRoot(
             self.sim.get_mutable_context()), self.x_init)
         self.sim.get_mutable_context().SetTime(self.start_time)
-        # self.traj.update(self.start_time, self.x_init,
-        #                  np.zeros(self.action_dim))
         x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_context()))
@@ -98,26 +88,20 @@ class DrakeCassieGym():
     def step(self, action=np.zeros(18)):
         if not self.initialized:
             print("Call make() before calling step() or advance()")
-        # next_timestep = self.sim.get_context().get_time() + self.dt
         next_timestep = self.sim.get_context().get_time() + self.sim_dt
         self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
         self.controller.get_radio_input_port().FixValue(self.controller_context, action)
-        # self.sim.AdvanceTo(np.around(next_timestep, decimals=3))
         self.sim.AdvanceTo(next_timestep)
         self.current_time = self.sim.get_context().get_time()
 
         x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_context()))
-        # print(next_timestep)
         u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
-        # u = np.zeros(10)
         self.cassie_state = CassieEnvState(self.current_time, x, u, action)
         reward = self.reward_func.compute_reward(self.cassie_state, self.prev_cassie_state)
         self.terminated = self.check_termination()
-        # reward = 0
         self.prev_cassie_state = self.cassie_state
-        # self.traj.update(next_timestep, cassie_state, action[:10])
         return self.cassie_state, reward
 
     def get_traj(self):

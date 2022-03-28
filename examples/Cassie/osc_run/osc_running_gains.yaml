@@ -40,10 +40,11 @@ hip_yaw_kp: 40
 hip_yaw_kd: 1
 # Foot placement parameters
 footstep_offset: -0.05
-center_line_offset: 0.075
+center_line_offset: 0.03
+ekf_filter_tau: [0.05, 0.1, 0.01]
 FootstepKd:
   [  0.2,     0,  0,
-     0,     0.45, 0,
+     0,     0.6, 0,
      0,        0,  0]
 PelvisW:
   [0.1,     0,    0,
@@ -62,13 +63,13 @@ PelvisRotW:
    0,  2.5,   0,
    0,   0,  0.1]
 PelvisRotKp:
-  [40,   0,   0,
-   0,  20,   0,
-   0,    0,  1]
+  [50.,   0,   0,
+   0,  100.,   0,
+   0,    0,  1.]
 PelvisRotKd:
-  [7.5,   0,  0,
-   0,   2.5,  0,
-   0,    0,  0]
+  [10.,   0,  0,
+   0,   5.,  0,
+   0,    0,  0.]
 SwingFootW:
   [10,    0,    0,
    0,   10,    0,
@@ -78,9 +79,9 @@ SwingFootKp:
    0,   80,    0,
    0,     0,  50]
 SwingFootKd:
-  [5,   0,   0,
-   0,   1.5,   0,
-   0,   0,  1]
+  [5.,   0,   0,
+   0,   5.,   0,
+   0,   0,  1.]
 LiftoffSwingFootW:
   [0.1,    0,    0,
    0,   10,    0,
@@ -92,5 +93,5 @@ LiftoffSwingFootKp:
 LiftoffSwingFootKd:
   [ 1,   0,   0,
     0,  1,   0,
-    0,   0,  2]
+    0,   0,  0]
 

@@ -30,6 +30,8 @@ struct OSCRunningGains : OSCGains {
   double center_line_offset;
   double footstep_offset;
 
+  std::vector<double> ekf_filter_tau;
+
   // swing foot tracking
   std::vector<double> SwingFootW;
   std::vector<double> SwingFootKp;
@@ -90,6 +92,7 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(flight_duration));
     a->Visit(DRAKE_NVP(center_line_offset));
     a->Visit(DRAKE_NVP(footstep_offset));
+    a->Visit(DRAKE_NVP(ekf_filter_tau));
 
     a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(PelvisKp));

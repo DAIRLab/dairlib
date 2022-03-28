@@ -88,10 +88,6 @@ DEFINE_string(osqp_settings,
 DEFINE_string(
     channel_cassie_out, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
-DEFINE_double(
-    fsm_time_offset, 0.0,
-    "Time (s) in the fsm to move from the stance phase to the flight phase");
-DEFINE_double(qp_time_limit, 0.0, "Time limit (s) for the OSC QP");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -142,9 +138,9 @@ int DoMain(int argc, char* argv[]) {
       FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
   OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(
       FindResourceOrThrow(FLAGS_gains_filename));
-//  solvers::OSQPSettingsYaml osqp_settings =
-//      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-//          FindResourceOrThrow(FLAGS_osqp_settings));
+  //  solvers::OSQPSettingsYaml osqp_settings =
+  //      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
+  //          FindResourceOrThrow(FLAGS_osqp_settings));
 
   /**** FSM and contact mode configuration ****/
   int left_stance_state = 0;
@@ -181,8 +177,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true, false,
-      FLAGS_qp_time_limit);
+      plant, plant, plant_context.get(), plant_context.get(), true, false);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_RUNNING", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -192,15 +187,14 @@ int DoMain(int argc, char* argv[]) {
   auto controller_failure_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
           "CONTROLLER_ERROR", &lcm, TriggerTypeSet({TriggerType::kForced})));
-  std::vector<double> tau = {.05, .05, .01};
-  auto ekf_filter =
-      builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
+  auto ekf_filter = builder.AddSystem<systems::FloatingBaseVelocityFilter>(
+      plant, osc_gains.ekf_filter_tau);
 
   /**** OSC setup ****/
   // Cost
   /// REGULARIZATION COSTS
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  //  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
+  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
   //  osc->SetLambdaContactRegularizationWeight(1e-4 *
   //  gains.W_lambda_c_regularization);
@@ -354,9 +348,9 @@ int DoMain(int argc, char* argv[]) {
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
   left_hip_yz_tracking_data.AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                    "hip_left");
+                                                    "pelvis");
   right_hip_yz_tracking_data.AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                     "hip_right");
+                                                     "pelvis");
 
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -386,8 +380,8 @@ int DoMain(int argc, char* argv[]) {
 
   left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
-  //  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
-  //  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+  left_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
+  right_foot_yz_rel_tracking_data.SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data.SetImpactInvariantProjection(true);
   //  left_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
   //  right_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
@@ -466,8 +460,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&left_hip_yaw_tracking_data, VectorXd::Zero(1));
   osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
 
-  osc->SetOsqpSolverOptionsFromYaml(
-      FLAGS_osqp_settings);
+  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;

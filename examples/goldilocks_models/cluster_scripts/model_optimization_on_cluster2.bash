@@ -66,6 +66,7 @@ zero_ending_pelvis_angular_vel=false
 no_model_update=false  # used to re-evaluate different task while fixing model
 
 # Other parameters
+h_step=0.001
 final_iter=300
 
 iter_start=1
@@ -160,7 +161,7 @@ then
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
    --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
-   --fix_node_number=true 2>&1 \
+   --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
@@ -172,7 +173,7 @@ then
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
    --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
-   --fix_node_number=true 2>&1 \
+   --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits =====
@@ -187,7 +188,7 @@ then
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
    --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
-   --fix_node_number=true 2>&1 \
+   --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
@@ -199,7 +200,7 @@ then
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
    --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
-   --fix_node_number=true 2>&1 \
+   --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits with cubic swing foot constraint =====
@@ -214,7 +215,7 @@ then
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
    --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
-   --fix_node_number=true 2>&1 \
+   --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate nomial traj with com accel constraint \(with snopt scaling\) =====
@@ -226,7 +227,7 @@ then
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
    --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
-   --fix_node_number=true 2>&1 \
+   --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
 
@@ -239,7 +240,7 @@ then
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
    --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
-   --fix_node_number=true 2>&1 \
+   --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
   echo ===== evaluate \(with snopt scaling\) =====
@@ -252,7 +253,7 @@ then
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
    --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
-   --fix_node_number=true 2>&1 \
+   --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
 else
@@ -274,7 +275,7 @@ else
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
    --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
-   --fix_node_number=true 2>&1 \
+   --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
 fi

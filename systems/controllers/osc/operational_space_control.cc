@@ -53,7 +53,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
     bool used_with_finite_state_machine, bool print_tracking_info,
-    double qp_time_limit, bool use_new_qp_setting)
+    double qp_time_limit, bool use_new_qp_setting, bool is_rom_modification)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_w_spr_(context_w_spr),
@@ -63,7 +63,8 @@ OperationalSpaceControl::OperationalSpaceControl(
       used_with_finite_state_machine_(used_with_finite_state_machine),
       print_tracking_info_(print_tracking_info),
       qp_time_limit_(qp_time_limit),
-      use_new_qp_setting_(use_new_qp_setting) {
+      use_new_qp_setting_(use_new_qp_setting),
+      is_rom_modification_(is_rom_modification) {
   this->set_name("OSC");
 
   n_q_ = plant_wo_spr.num_positions();
@@ -485,47 +486,69 @@ void OperationalSpaceControl::Build() {
   }
 
   // Testing 8. Regularization for all variable
-  // // Target 0
-  //  const auto& w = prog_->decision_variables();
-  //  prog_->AddQuadraticCost(1e-8 * MatrixXd::Identity(w.size(), w.size()),
-  //                          VectorXd::Zero(w.size()), w);
-  // Target previous solution
-  const auto& w = prog_->decision_variables();
-  W_reg_ = 1e-6 * MatrixXd::Identity(w.size(), w.size());
-  W_reg_0_ = 0 * MatrixXd::Identity(w.size(), w.size());
-  reg_cost_ =
-      prog_->AddQuadraticErrorCost(W_reg_0_, VectorXd::Zero(w.size()), w)
-          .evaluator()
-          .get();
+  if (is_rom_modification_) {
+    // // Target 0
+    //  const auto& w = prog_->decision_variables();
+    //  prog_->AddQuadraticCost(1e-8 * MatrixXd::Identity(w.size(), w.size()),
+    //                          VectorXd::Zero(w.size()), w);
+    // Target previous solution
+    const auto& w = prog_->decision_variables();
+    W_reg_ = 1e-6 * MatrixXd::Identity(w.size(), w.size());
+    W_reg_0_ = 0 * MatrixXd::Identity(w.size(), w.size());
+    reg_cost_ =
+        prog_->AddQuadraticErrorCost(W_reg_0_, VectorXd::Zero(w.size()), w)
+            .evaluator()
+            .get();
+  }
 
-  solver_options_.SetOption(OsqpSolver::id(), "verbose", 0);
-  solver_options_.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-  solver_options_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
-  solver_options_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
-  //  solver_options_.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
-  //  solver_options_.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
-  //  solver_options_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
-  //  solver_options_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
-  solver_options_.SetOption(OsqpSolver::id(), "polish", 1);
-  solver_options_.SetOption(OsqpSolver::id(), "polish_refine_iter", 5);
-  solver_options_.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  //    solver_options_.SetOption(OsqpSolver::id(), "scaling", 500);
-  solver_options_.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
-  //  solver_options_.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  std::cout << solver_options_ << std::endl;
 
-  solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  solver_->InitializeSolver(*prog_, solver_options_);
+  if (is_rom_modification_) {
+    solver_options_.SetOption(OsqpSolver::id(), "verbose", 0);
+    solver_options_.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+    solver_options_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+    solver_options_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-5);
+    solver_options_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-5);
+    //  solver_options_.SetOption(OsqpSolver::id(), "eps_abs", 1e-5);
+    //  solver_options_.SetOption(OsqpSolver::id(), "eps_rel", 1e-5);
+    //  solver_options_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-4);
+    //  solver_options_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-4);
+    solver_options_.SetOption(OsqpSolver::id(), "polish", 1);
+    solver_options_.SetOption(OsqpSolver::id(), "polish_refine_iter", 5);
+    solver_options_.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+    //    solver_options_.SetOption(OsqpSolver::id(), "scaling", 500);
+    solver_options_.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
+    //  solver_options_.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+    std::cout << solver_options_ << std::endl;
 
-  osqp_solver_ = std::make_unique<drake::solvers::OsqpSolver>();
-  prog_->SetSolverOptions(solver_options_);
+    solver_ = std::make_unique<solvers::FastOsqpSolver>();
+    solver_->InitializeSolver(*prog_, solver_options_);
 
-  snopt_solver_ = std::make_unique<drake::solvers::SnoptSolver>();
-  //  prog_->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-  //                         "../snopt_in_osc.out");
-  /*prog_->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                         2);  // snopt doc said try 2 if seeing snopta exit 40*/
+    // Drake's OSQP and Snopt solver
+    osqp_solver_ = std::make_unique<drake::solvers::OsqpSolver>();
+    prog_->SetSolverOptions(solver_options_);
+
+    snopt_solver_ = std::make_unique<drake::solvers::SnoptSolver>();
+    //  prog_->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+    //                         "../snopt_in_osc.out");
+    /*prog_->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
+                           2);  // snopt doc said try 2 if seeing snopta exit
+       40*/
+  } else {
+
+    drake::solvers::SolverOptions solver_options;
+    solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
+    //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+    solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+    solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+    solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+    solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+    solver_options.SetOption(OsqpSolver::id(), "polish", 1);
+    solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+    solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
+    std::cout << solver_options << std::endl;
+    solver_ = std::make_unique<solvers::FastOsqpSolver>();
+    solver_->InitializeSolver(*prog_, solver_options);
+  }
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -804,24 +827,27 @@ VectorXd OperationalSpaceControl::SolveQp(
                                         -W_input_reg_ * (*u_sol_));
   }
 
-  // 8. Regularization cost
-  if (counter_ == 0) {
-    reg_cost_->UpdateCoefficients(
-        W_reg_0_, VectorXd::Zero(prog_->decision_variables().size()));
-  } else {
-    reg_cost_->UpdateCoefficients(2 * W_reg_, -2 * W_reg_ * prev_sol_);
-  }
+  if (is_rom_modification_) {
+    // 8. Regularization cost
+    if (counter_ == 0) {
+      reg_cost_->UpdateCoefficients(
+          W_reg_0_, VectorXd::Zero(prog_->decision_variables().size()));
+    } else {
+      reg_cost_->UpdateCoefficients(2 * W_reg_, -2 * W_reg_ * prev_sol_);
+    }
 
-  // Testing -- set scaling (For OSQP, make sure that you are using the Drake
-  // where you implement the scaling)
-  if (counter_ == 0) {
-    prog_->ClearVariableScaling();
-  } else if (counter_ == 1 /*counter_ >= 1*/) {
-    const auto& w = prog_->decision_variables();
-    for (int i = 0; i < prev_sol_.size(); i++) {
-      //      if (prev_sol_(i) != 0) {
-      if (abs(prev_sol_(i)) > 1e-3) {
-        prog_->SetVariableScaling(w(i), abs(prev_sol_(i)));
+
+    // Testing -- set scaling (For OSQP, make sure that you are using the Drake
+    // where you implement the scaling)
+    if (counter_ == 0) {
+      prog_->ClearVariableScaling();
+    } else if (counter_ == 1 /*counter_ >= 1*/) {
+      const auto& w = prog_->decision_variables();
+      for (int i = 0; i < prev_sol_.size(); i++) {
+        //      if (prev_sol_(i) != 0) {
+        if (abs(prev_sol_(i)) > 1e-3) {
+          prog_->SetVariableScaling(w(i), abs(prev_sol_(i)));
+        }
       }
     }
   }
@@ -829,29 +855,36 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Solve the QP
   MathematicalProgramResult result;
 
-  if (counter_ == 0 || use_osqp_) {
-    //    result = osqp_solver_->Solve(*prog_);  // no warm start
-    if (counter_ == 0) {
-      // Could be more efficient
-      solver_->InitializeSolver(*prog_, solver_options_);
+  if (is_rom_modification_) {
+    if (counter_ == 0 || use_osqp_) {
+      //    result = osqp_solver_->Solve(*prog_);  // no warm start
+      if (counter_ == 0) {
+        // Could be more efficient
+        solver_->InitializeSolver(*prog_, solver_options_);
+      }
+      result = solver_->Solve(*prog_);
+      solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+    } else {
+      // Solve with snopt
+      auto start = std::chrono::high_resolution_clock::now();
+      result = prev_sol_.norm() == 0 ? snopt_solver_->Solve(*prog_)
+                                     : snopt_solver_->Solve(*prog_, prev_sol_);
+      auto finish = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed = finish - start;
+      solve_time_ = elapsed.count();
     }
+    // cout << result.get_solution_result() << endl;
+    if (result.is_success()) {
+      prev_sol_ = result.GetSolution();
+    }
+    counter_++;
+    //  cout << "prev_sol_= \n " << prev_sol_ << endl;
+  } else {
+
     result = solver_->Solve(*prog_);
     solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
-  } else {
-    // Solve with snopt
-    auto start = std::chrono::high_resolution_clock::now();
-    result = prev_sol_.norm() == 0 ? snopt_solver_->Solve(*prog_)
-                                   : snopt_solver_->Solve(*prog_, prev_sol_);
-    auto finish = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = finish - start;
-    solve_time_ = elapsed.count();
   }
-  // cout << result.get_solution_result() << endl;
-  if (result.is_success()) {
-    prev_sol_ = result.GetSolution();
-  }
-  counter_++;
-  //  cout << "prev_sol_= \n " << prev_sol_ << endl;
+
 
   if (!result.is_success()) {
     std::cout << "reverting to old sol" << std::endl;
@@ -1068,13 +1101,16 @@ void OperationalSpaceControl::CalcOptimalInput(
       map_velocity_from_spring_to_no_spring_ * v_w_spr;
 
   // Testing -- translating the knee spring to knee joint
-  /*if (two_models_) {
+  /*
+  if (is_rom_modification_) {
+   if (two_models_) {
     x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[0]) +=
         x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
     x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[1]) +=
         x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
     // TODO: also do this for velocity?
-  }*/
+  }}
+   */
 
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {

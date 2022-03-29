@@ -10,10 +10,10 @@ vel_scale_trans_sagital: 0.1
 vel_scale_trans_lateral: -0.1
 
 # High level command gains (without radio)
-global_target_position_x: -15
+global_target_position_x: 0
 global_target_position_y: 0
 yaw_deadband_blur: 1
-yaw_deadband_radius: 1
+yaw_deadband_radius: 3
 kp_yaw: 1
 kd_yaw: 0.2
 vel_max_yaw: 0.5

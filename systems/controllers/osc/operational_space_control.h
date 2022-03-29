@@ -103,7 +103,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true,
       bool print_tracking_info = false, double qp_time_limit = 0,
-      bool use_new_qp_setting = false);
+      bool use_new_qp_setting = false, bool is_rom_modification = false);
 
   const drake::systems::OutputPort<double>& get_osc_output_port() const {
     return this->get_output_port(osc_output_port_);
@@ -275,6 +275,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Solver
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
 
+  ///////////////////// My own ROM branch's modification ///////////////////////
+  bool is_rom_modification_;
+
   // Testing
   drake::solvers::SolverOptions solver_options_;
   std::unique_ptr<drake::solvers::OsqpSolver> osqp_solver_;
@@ -287,6 +290,19 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* reg_cost_;
   Eigen::MatrixXd W_reg_;
   Eigen::MatrixXd W_reg_0_;
+
+  // testing
+  bool use_new_qp_setting_;
+
+  // Testing
+  std::vector<int> knee_ankle_pos_idx_list_;
+  std::vector<int> knee_ankle_vel_idx_list_;
+
+  // Testing -- translating knee spring deflection to knee joint
+  bool two_models_;
+  std::vector<int> knee_ankle_pos_idx_list_wo_spr_;
+  std::vector<int> spring_pos_idx_list_w_spr_;
+  //////////////////////////////////////////////////////////////////////////////
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
@@ -369,18 +385,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* input_reg_cost_;
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
-
-  // testing
-  bool use_new_qp_setting_;
-
-  // Testing
-  std::vector<int> knee_ankle_pos_idx_list_;
-  std::vector<int> knee_ankle_vel_idx_list_;
-
-  // Testing -- translating knee spring deflection to knee joint
-  bool two_models_;
-  std::vector<int> knee_ankle_pos_idx_list_wo_spr_;
-  std::vector<int> spring_pos_idx_list_w_spr_;
 };
 
 }  // namespace dairlib::systems::controllers

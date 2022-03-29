@@ -626,7 +626,8 @@ int DoMain(int argc, char* argv[]) {
     // Create Operational space control
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
-        context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/);
+        context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
+        false, true);
 
     // Scaling weight for testing
     // Didn't help. Might need to use the new osqp solver to see improvement
@@ -1044,7 +1045,8 @@ int DoMain(int argc, char* argv[]) {
     // Create Operational space control
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
-        context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/);
+        context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
+        false, true);
 
     // Cost
     int n_v = plant_wo_springs.num_velocities();

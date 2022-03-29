@@ -287,10 +287,12 @@ int DoMain(int argc, char* argv[]) {
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(osc_gains.rest_length,
                                                  osc_gains.center_line_offset,
-                                                 osc_gains.footstep_offset);
+                                                 osc_gains.footstep_offset,
+                                                 osc_gains.mid_foot_height);
   r_foot_traj_generator->SetFootPlacementOffsets(osc_gains.rest_length,
                                                  osc_gains.center_line_offset,
-                                                 osc_gains.footstep_offset);
+                                                 osc_gains.footstep_offset,
+                                                 osc_gains.mid_foot_height);
 
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,

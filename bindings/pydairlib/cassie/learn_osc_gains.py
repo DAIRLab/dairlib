@@ -50,9 +50,9 @@ class OSCGainsOptimizer():
             # 'PelvisKd': np.array([1, 0, 5]),
             # 'PelvisRotKp': np.array([50, 100, 0]),
             'PelvisRotKd': np.array([10, 5, 1]),
-            # 'SwingFootKp': np.array([125, 80, 50]),
-            # 'SwingFootKd': np.array([5, 5, 1]),
-            # 'FootstepKd': np.array([0.2, 0.45, 0]),
+            'SwingFootKp': np.array([125, 80, 50]),
+            'SwingFootKd': np.array([5, 5, 1]),
+            'FootstepKd': np.array([0.2, 0.45, 0]),
             'center_line_offset': 0.03,
             # 'rest_length': 0.85,
             'footstep_offset': -0.05,
@@ -84,7 +84,7 @@ class OSCGainsOptimizer():
         for i in range(batch_size):
             batch_reward += self.get_single_loss(params)
         self.loss_over_time.append(batch_reward)
-        return -batch_reward
+        return batch_reward
 
     def get_single_loss(self, params):
         self.write_params(params)
@@ -119,9 +119,9 @@ class OSCGainsOptimizer():
             # PelvisKd=ng.p.Array(lower=0., upper=10., shape=(3,)),
             # PelvisRotKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
             PelvisRotKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
-            # SwingFootKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
-            # SwingFootKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
-            # FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
+            SwingFootKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
+            SwingFootKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
+            FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
             center_line_offset=ng.p.Scalar(lower=0.03, upper=0.075),
             # rest_length=ng.p.Scalar(lower=0.8, upper=0.9),
             footstep_offset=ng.p.Scalar(lower=-0.1, upper=0.05),
@@ -144,15 +144,15 @@ class OSCGainsOptimizer():
 
 if __name__ == '__main__':
     # budget = 2000
-    budget = 400
+    budget = 2000
 
     reward_function = RewardOSUDRL()
 
     optimizer = OSCGainsOptimizer(budget, reward_function, visualize=False)
-    optimizer.learn_gains()
+    # optimizer.learn_gains()
 
-    # optimal_params = optimizer.load_params('2022_03_28_10_2000', optimizer.drake_params_folder).value
-    # optimizer.write_params(optimal_params)
-    # reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_2000.npy')
-    # plt.plot(reward_over_time)
-    # plt.show()
+    optimal_params = optimizer.load_params('2022_03_28_18_2000', optimizer.drake_params_folder).value
+    optimizer.write_params(optimal_params)
+    reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_2000.npy')
+    plt.plot(reward_over_time)
+    plt.show()

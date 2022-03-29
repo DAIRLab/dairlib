@@ -442,6 +442,7 @@ cc_binary(
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
         "//systems/controllers/osc:operational_space_control",
+        "//systems/controllers/osc:osc_gains",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

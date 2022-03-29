@@ -31,6 +31,9 @@ struct OSCRunningGains : OSCGains {
 
   double center_line_offset;
   double footstep_offset;
+  double mid_foot_height;
+
+  std::vector<double> ekf_filter_tau;
 
   // swing foot tracking
   std::vector<double> SwingFootW;
@@ -70,12 +73,6 @@ struct OSCRunningGains : OSCGains {
   MatrixXd W_hip_yaw;
   MatrixXd K_p_hip_yaw;
   MatrixXd K_d_hip_yaw;
-//  MatrixXd W_hip_pitch;
-//  MatrixXd K_p_hip_pitch;
-//  MatrixXd K_d_hip_pitch;
-//  MatrixXd W_hip_roll;
-//  MatrixXd K_p_hip_roll;
-//  MatrixXd K_d_hip_roll;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -92,6 +89,8 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(flight_duration));
     a->Visit(DRAKE_NVP(center_line_offset));
     a->Visit(DRAKE_NVP(footstep_offset));
+    a->Visit(DRAKE_NVP(mid_foot_height));
+    a->Visit(DRAKE_NVP(ekf_filter_tau));
 
     a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(PelvisKp));
@@ -112,12 +111,6 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(w_hip_yaw));
     a->Visit(DRAKE_NVP(hip_yaw_kp));
     a->Visit(DRAKE_NVP(hip_yaw_kd));
-//    a->Visit(DRAKE_NVP(w_hip_pitch));
-//    a->Visit(DRAKE_NVP(hip_pitch_kp));
-//    a->Visit(DRAKE_NVP(hip_pitch_kd));
-//    a->Visit(DRAKE_NVP(w_hip_roll));
-//    a->Visit(DRAKE_NVP(hip_roll_kp));
-//    a->Visit(DRAKE_NVP(hip_roll_kd));
     // High level command gains (with radio)
     a->Visit(DRAKE_NVP(vel_scale_rot));
     a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
@@ -169,11 +162,5 @@ struct OSCRunningGains : OSCGains {
     W_hip_yaw = this->w_hip_yaw * MatrixXd::Identity(1, 1);
     K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
     K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
-//    W_hip_pitch = this->w_hip_pitch * MatrixXd::Identity(1, 1);
-//    K_p_hip_pitch = this->hip_pitch_kp * MatrixXd::Identity(1, 1);
-//    K_d_hip_pitch = this->hip_pitch_kd * MatrixXd::Identity(1, 1);
-//    W_hip_roll = this->w_hip_roll * MatrixXd::Identity(1, 1);
-//    K_p_hip_roll = this->hip_roll_kp * MatrixXd::Identity(1, 1);
-//    K_d_hip_roll = this->hip_roll_kd * MatrixXd::Identity(1, 1);
   }
 };

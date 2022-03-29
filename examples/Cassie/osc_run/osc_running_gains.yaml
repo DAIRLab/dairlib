@@ -18,6 +18,7 @@ w_input_reg: 0.001
 impact_threshold: 0.025
 relative_feet: true
 relative_pelvis: true
+ekf_filter_tau: [0.05, 0.1, 0.01]
 
 # High level command gains (with radio)
 vel_scale_rot: -0.5
@@ -40,7 +41,8 @@ hip_yaw_kp: 40
 hip_yaw_kd: 1
 # Foot placement parameters
 footstep_offset: -0.05
-center_line_offset: 0.03
+center_line_offset: 0.05
+mid_foot_height: 0.05
 FootstepKd:
   [  0.2,     0,  0,
      0,     0.6, 0,

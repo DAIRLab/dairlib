@@ -232,10 +232,10 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   r_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
       osc_running_gains.rest_length, osc_running_gains.center_line_offset,
-      osc_running_gains.footstep_offset);
+      osc_running_gains.footstep_offset, osc_running_gains.mid_foot_height);
   r_foot_traj_generator->SetFootPlacementOffsets(
       osc_running_gains.rest_length, osc_running_gains.center_line_offset,
-      osc_running_gains.footstep_offset);
+      osc_running_gains.footstep_offset, osc_running_gains.mid_foot_height);
 
   pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", osc_running_gains.K_p_pelvis,

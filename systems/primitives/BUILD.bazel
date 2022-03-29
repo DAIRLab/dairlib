@@ -38,6 +38,21 @@ cc_library(
 )
 
 cc_library(
+    name = "radio_parser",
+    srcs = [
+        "radio_parser.cc",
+    ],
+    hdrs = [
+        "radio_parser.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "gaussian_noise_pass_through",
     srcs = ["gaussian_noise_pass_through.cc"],
     hdrs = [

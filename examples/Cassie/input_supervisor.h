@@ -110,7 +110,6 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   void CheckRadio(const drake::systems::Context<double>& context,
                   drake::systems::DiscreteValues<double>* discrete_state) const;
 
- private:
   const drake::multibody::MultibodyPlant<double>& plant_;
   const int num_actuators_;
   const int num_positions_;

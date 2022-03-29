@@ -154,7 +154,7 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> pos_map_wo_spr = multibody::makeNameToPositionsMap(plant);
 
   std::vector<BasicTrajectoryPassthrough*> joint_trajs;
-  std::vector<std::shared_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;
+  std::vector<std::unique_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;
 
   std::vector<std::string> actuated_joint_names = {
       "left_hip_pin", "right_hip_pin", "left_knee_pin", "right_knee_pin"};
@@ -165,7 +165,7 @@ int DoMain(int argc, char* argv[]) {
     MatrixXd W = gains.JointW[joint_idx] * MatrixXd::Identity(1, 1);
     MatrixXd K_p = gains.JointKp[joint_idx] * MatrixXd::Identity(1, 1);
     MatrixXd K_d = gains.JointKd[joint_idx] * MatrixXd::Identity(1, 1);
-    joint_tracking_data_vec.push_back(std::make_shared<JointSpaceTrackingData>(
+    joint_tracking_data_vec.push_back(std::make_unique<JointSpaceTrackingData>(
         joint_name + "_traj", K_p, K_d, W, plant, plant));
     joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
                                                         joint_name + "dot");
@@ -174,7 +174,7 @@ int DoMain(int argc, char* argv[]) {
     auto joint_traj_generator = builder.AddSystem<BasicTrajectoryPassthrough>(
         joint_traj, joint_name + "_traj");
     joint_trajs.push_back(joint_traj_generator);
-    osc->AddTrackingData(joint_tracking_data_vec[joint_idx].get());
+    osc->AddTrackingData(std::move(joint_tracking_data_vec[joint_idx]));
 
     builder.Connect(joint_trajs[joint_idx]->get_output_port(),
                     osc->get_tracking_data_input_port(joint_name + "_traj"));

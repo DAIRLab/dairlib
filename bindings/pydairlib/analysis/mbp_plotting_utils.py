@@ -369,7 +369,7 @@ def plot_qp_costs(osc_debug, time_slice):
         {key: [key] for key in regularization_cost.keys()},
         {'xlabel': 'Time',
          'ylabel': 'Cost',
-         'title': 'tracking_costs'}, ps)
+         'title': 'regularization_costs'}, ps)
     return ps
 
 

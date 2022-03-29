@@ -168,16 +168,16 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
   /// a new state)
-  void AddTrackingData(OscTrackingData* tracking_data, double t_lb = 0,
+  void AddTrackingData(std::unique_ptr<OscTrackingData> tracking_data, double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
   void AddConstTrackingData(
-      OscTrackingData* tracking_data, const Eigen::VectorXd& v, double t_lb = 0,
+      std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v, double t_lb = 0,
       double t_ub = std::numeric_limits<double>::infinity());
-  std::vector<OscTrackingData*>* GetAllTrackingData() {
+  std::vector<std::unique_ptr<OscTrackingData>>* GetAllTrackingData() {
     return tracking_data_vec_.get();
   }
   OscTrackingData* GetTrackingDataByIndex(int index) {
-    return tracking_data_vec_->at(index);
+    return tracking_data_vec_->at(index).get();
   }
 
   // Optional features
@@ -382,8 +382,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_y_ = {};
 
   // OSC tracking data (stored as a pointer because of caching)
-  std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =
-      std::make_unique<std::vector<OscTrackingData*>>();
+  std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
+      tracking_data_vec_ =
+          std::make_unique<std::vector<std::unique_ptr<OscTrackingData>>>();
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;

@@ -1,4 +1,4 @@
-# -*- python -*-
+    # -*- python -*-
 load("@drake//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
@@ -10,6 +10,27 @@ load(
     "get_pybind_package_info",
     "pybind_py_library",
 )
+
+
+pybind_py_library(
+    name = "lcm_py",
+    cc_deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//bindings/pydrake/systems:lcm_pybind",
+        "@drake//bindings/pydrake/common:value_pybind",
+    ],
+    cc_srcs = [
+        "lcm_py.cc",
+        "lcm_py_bind_cpp_serializers.h",
+        "lcm_py_bind_cpp_serializers.cc",
+    ],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+    py_imports = ["."],
+)
+
 
 pybind_py_library(
     name = "lcm_trajectory_py",
@@ -65,6 +86,7 @@ PY_LIBRARIES = [
     ":dircon_trajectory_plotter",
     ":lcm_trajectory_plotter",
     ":lcm_trajectory_py",
+    ":lcm_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

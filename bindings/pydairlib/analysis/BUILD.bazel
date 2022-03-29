@@ -69,7 +69,7 @@ py_library(
         "@lcm//:lcm-python",
     ],
     deps = [
-        "//bindings/pydairlib/cassie:cassie_utils",
+        "//bindings/pydairlib/cassie:cassie",
         "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/multibody:kinematic_py",
         "//bindings/pydairlib/multibody:multibody_py",

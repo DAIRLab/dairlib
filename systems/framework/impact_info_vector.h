@@ -12,12 +12,6 @@ using drake::VectorX;
 using std::string;
 using std::vector;
 
-/// OutputVector stores the robot output as a TimestampedVector
-///    * positions
-///    * velocities
-///    * efforts
-///    * imu accelerations
-/// Can be later extended if more information is desired in here
 template <typename T>
 class ImpactInfoVector : public TimestampedVector<T> {
  public:
@@ -25,8 +19,6 @@ class ImpactInfoVector : public TimestampedVector<T> {
 
   ImpactInfoVector() = default;
 
-  /// Initializes with the given @p size using the drake::dummy_value<T>, which
-  /// is NaN when T = double.
   explicit ImpactInfoVector(int num_contact, int num_holonomic, int space_dim)
       : TimestampedVector<T>(3 + num_contact + num_holonomic),
         has_impulse_info_(num_contact != 0),

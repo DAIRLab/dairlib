@@ -1,0 +1,85 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_library(
+    name = "cassie_gym_all",
+    srcs = [],
+    deps = [
+        ":drake_cassie_gym",
+        ":mujoco_cassie_gym",
+        ":cassie_env_rewards",
+    ],
+)
+
+
+py_library(
+    name = "drake_cassie_gym",
+    srcs = ["drake_cassie_gym.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie",
+        "//bindings/pydairlib",
+        "//bindings/pydairlib/systems:systems",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems:primitives_py",
+        ":cassie_env_state",
+    ],
+)
+
+py_binary(
+    name = "cassie_gym_test",
+    srcs = ["cassie_gym_test.py"],
+    deps = [
+        ":cassie_gym_all",
+        ":cassie_env_rewards",
+        "//bindings/pydairlib/cassie:cassie",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "cassie_traj",
+    srcs = ["cassie_traj.py"],
+    deps = [
+    ],
+)
+
+py_library(
+    name = "cassie_env_state",
+    srcs = ["cassie_env_state.py"],
+    deps = [
+    ],
+)
+
+py_library(
+    name = "cassie_env_rewards",
+    srcs = ["reward_base.py",
+            "reward_osudrl.py"],
+    deps = [
+        ":cassie_env_state"
+    ],
+)
+
+
+py_library(
+    name = "mujoco_cassie_gym",
+    srcs = ["mujoco_cassie_gym.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie",
+        "//bindings/pydairlib/cassie/mujoco:cassie_mujoco_all",
+        "//bindings/pydairlib",
+        "//bindings/pydairlib/systems:systems",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems:primitives_py",
+        ":cassie_env_state",
+    ],
+)

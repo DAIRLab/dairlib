@@ -10,6 +10,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
         "@lcm",
     ],

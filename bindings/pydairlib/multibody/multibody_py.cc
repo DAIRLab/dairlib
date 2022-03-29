@@ -14,7 +14,7 @@ namespace pydairlib {
 using multibody::MultiposeVisualizer;
 
 PYBIND11_MODULE(multibody, m) {
-  py::module::import("pydrake.all");
+//  py::module::import("pydrake.all");
 
   m.doc() = "Binding utility functions for MultibodyPlant";
 

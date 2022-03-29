@@ -24,6 +24,8 @@ class OscTrackingData {
                   const drake::multibody::MultibodyPlant<double>& plant_w_spr,
                   const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
+//  virtual ~OscTrackingData();
+
   // Update() updates the caches. It does the following things in order:
   //  - updates the current fsm state
   //  - update the actual outputs

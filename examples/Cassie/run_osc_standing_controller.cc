@@ -5,6 +5,7 @@
 #include "dairlib/lcmt_target_standing_height.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/standing_com_traj.h"
+#include "examples/Cassie/osc/osc_standing_gains.h"
 #include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
@@ -12,6 +13,7 @@
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/options_tracking_data.h"
+#include "systems/controllers/osc/osc_gains.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -58,8 +60,8 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_double(cost_weight_multiplier, 1.0,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, .8, "The initial COM height (m)");
-DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
-              "Filepath containing gains");
+DEFINE_string(osc_gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
+              "Filepath containing osc_gains");
 DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
               "Filepath containing qp settings");
 DEFINE_bool(use_radio, false, "use the radio to set height or not");
@@ -70,41 +72,6 @@ DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
 // Maybe we need to update the lcm driven loop to clear the queue of lcm message
 // if it's more than one message?
-
-struct OSCStandingGains {
-  int rows;
-  int cols;
-  double w_input;
-  double w_accel;
-  double w_soft_constraint;
-  double HipYawKp;
-  double HipYawKd;
-  double HipYawW;
-  std::vector<double> CoMKp;
-  std::vector<double> CoMKd;
-  std::vector<double> PelvisRotKp;
-  std::vector<double> PelvisRotKd;
-  std::vector<double> CoMW;
-  std::vector<double> PelvisW;
-
-  template <typename Archive>
-  void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(rows));
-    a->Visit(DRAKE_NVP(cols));
-    a->Visit(DRAKE_NVP(w_input));
-    a->Visit(DRAKE_NVP(w_accel));
-    a->Visit(DRAKE_NVP(w_soft_constraint));
-    a->Visit(DRAKE_NVP(CoMKp));
-    a->Visit(DRAKE_NVP(CoMKd));
-    a->Visit(DRAKE_NVP(PelvisRotKp));
-    a->Visit(DRAKE_NVP(PelvisRotKd));
-    a->Visit(DRAKE_NVP(HipYawKp));
-    a->Visit(DRAKE_NVP(HipYawKd));
-    a->Visit(DRAKE_NVP(CoMW));
-    a->Visit(DRAKE_NVP(PelvisW));
-    a->Visit(DRAKE_NVP(HipYawW));
-  }
-};
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -137,39 +104,36 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
-  auto gains =
-      drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_gains_filename);
+//  auto osc_gains =
+//      drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_osc_gains_filename);
+  drake::yaml::YamlReadArchive::Options yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
+  OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
+      FindResourceOrThrow(FLAGS_osc_gains_filename), {}, {}, yaml_options);
+  OSCStandingGains osc_gains = drake::yaml::LoadYamlFile<OSCStandingGains>(
+      FindResourceOrThrow(FLAGS_osc_gains_filename));
 
   MatrixXd K_p_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMKp.data(), gains.rows, gains.cols);
+      osc_gains.CoMKp.data(), osc_gains.rows, osc_gains.cols);
   MatrixXd K_d_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMKd.data(), gains.rows, gains.cols);
+      osc_gains.CoMKd.data(), osc_gains.rows, osc_gains.cols);
   MatrixXd K_p_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisRotKp.data(), gains.rows, gains.cols);
+      osc_gains.PelvisRotKp.data(), osc_gains.rows, osc_gains.cols);
   MatrixXd K_d_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisRotKd.data(), gains.rows, gains.cols);
-  MatrixXd K_p_hip_yaw = gains.HipYawKp * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = gains.HipYawKd * MatrixXd::Identity(1, 1);
+      osc_gains.PelvisRotKd.data(), osc_gains.rows, osc_gains.cols);
+  MatrixXd K_p_hip_yaw = osc_gains.HipYawKp * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_hip_yaw = osc_gains.HipYawKd * MatrixXd::Identity(1, 1);
   MatrixXd W_com = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMW.data(), gains.rows, gains.cols);
+      osc_gains.CoMW.data(), osc_gains.rows, osc_gains.cols);
   MatrixXd W_pelvis = Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisW.data(), gains.rows, gains.cols);
-  MatrixXd W_hip_yaw = gains.HipYawW * MatrixXd::Identity(1, 1);
-  std::cout << "w input (not used): \n" << gains.w_input << std::endl;
-  std::cout << "w accel: \n" << gains.w_accel << std::endl;
-  std::cout << "w soft constraint: \n" << gains.w_soft_constraint << std::endl;
-  std::cout << "COM Kp: \n" << K_p_com << std::endl;
-  std::cout << "COM Kd: \n" << K_d_com << std::endl;
-  std::cout << "Pelvis Rot Kp: \n" << K_p_pelvis << std::endl;
-  std::cout << "Pelvis Rot Kd: \n" << K_d_pelvis << std::endl;
-  std::cout << "COM W: \n" << W_com << std::endl;
-  std::cout << "Pelvis W: \n" << W_pelvis << std::endl;
+      osc_gains.PelvisW.data(), osc_gains.rows, osc_gains.cols);
+  MatrixXd W_hip_yaw = osc_gains.HipYawW * MatrixXd::Identity(1, 1);
 
   // Create Lcm subsriber for lcmt_target_standing_height
   auto target_height_receiver = builder.AddSystem(
@@ -233,14 +197,9 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
   osc->AddKinematicConstraint(&evaluators);
-  // Soft constraint
-  // We don't want w_contact_relax to be too big, cause we want tracking
-  // error to be important
-  double w_contact_relax = gains.w_soft_constraint;
-  osc->SetSoftConstraintWeight(w_contact_relax);
+
   // Friction coefficient
-  double mu = 0.8;
-  osc->SetContactFriction(mu);
+  osc->SetContactFriction(gains.mu);
   // Add contact points
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
@@ -260,28 +219,33 @@ int DoMain(int argc, char* argv[]) {
   osc->AddContactPoint(&right_heel_evaluator);
   // Cost
   int n_v = plant_wo_springs.num_velocities();
-  MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
-  osc->SetAccelerationCostWeights(Q_accel);
+
+  osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
+  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
+  osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
+//  osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
+//                                              gains.W_lambda_h_regularization);
+
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
   //  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
   //                                      W_com * FLAGS_cost_weight_multiplier,
   //                                      plant_w_springs, plant_wo_springs);
-  TransTaskSpaceTrackingData center_of_mass_traj(
+  auto center_of_mass_traj = std::make_unique<TransTaskSpaceTrackingData>(
       "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
       plant_w_springs, plant_wo_springs);
-  center_of_mass_traj.AddPointToTrack("pelvis");
+  center_of_mass_traj->AddPointToTrack("pelvis");
   //  double cutoff_freq = 5; // in Hz
   //  double tau = 1 / (2 * M_PI * cutoff_freq);
-  center_of_mass_traj.SetLowPassFilter(0.03, {1});
-  osc->AddTrackingData(&center_of_mass_traj);
+  center_of_mass_traj->SetLowPassFilter(0.03, {1});
+  osc->AddTrackingData(std::move(center_of_mass_traj));
   // Pelvis rotation tracking
-  RotTaskSpaceTrackingData pelvis_rot_traj(
+  auto pelvis_rot_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
       W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_wo_springs);
-  pelvis_rot_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_rot_traj);
+  pelvis_rot_traj->AddFrameToTrack("pelvis");
+  osc->AddTrackingData(std::move(pelvis_rot_traj));
 
   // Hip yaw joint tracking
   // We use hip yaw joint tracking instead of pelvis yaw tracking because the
@@ -290,18 +254,18 @@ int DoMain(int argc, char* argv[]) {
   double w_hip_yaw = 0.5;
   double hip_yaw_kp = 40;
   double hip_yaw_kd = 0.5;
-  JointSpaceTrackingData left_hip_yaw_traj(
+  auto left_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
       plant_w_springs, plant_wo_springs);
-  JointSpaceTrackingData right_hip_yaw_traj(
+  auto right_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "right_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
       plant_w_springs, plant_wo_springs);
-  left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
-  right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
+  left_hip_yaw_traj->AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+  osc->AddConstTrackingData(std::move(left_hip_yaw_traj), VectorXd::Zero(1));
+  right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  osc->AddConstTrackingData(std::move(right_hip_yaw_traj), VectorXd::Zero(1));
 
   // Build OSC problem
   osc->Build();

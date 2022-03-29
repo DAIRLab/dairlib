@@ -11,14 +11,8 @@
 namespace dairlib {
 namespace systems {
 
-/// This class is copied from drake/systems/primitives/PassThrough
-/// with the modification that it only passes through a subset of the vector
 class GearedMotor : public drake::systems::LeafSystem<double> {
  public:
-  /// Constructs a pass through system (`y = u.segment(start,length)`).
-  /// @param vector_size the length of the input vector
-  /// @param start the initial index of the subvector
-  /// @param length number of elements in the subvector
   GearedMotor(const drake::multibody::MultibodyPlant<double>& plant, const std::vector<double>& max_motor_speeds);
 
   const drake::systems::InputPort<double>& get_input_port_command() const {
@@ -29,7 +23,6 @@ class GearedMotor : public drake::systems::LeafSystem<double> {
     return drake::systems::LeafSystem<double>::get_input_port(state_input_port_);
   }
 
-  /// Returns the sole output port.
   const drake::systems::OutputPort<double>& get_output_port() const {
     return drake::systems::LeafSystem<double>::get_output_port(0);
   }
@@ -37,7 +30,7 @@ class GearedMotor : public drake::systems::LeafSystem<double> {
  protected:
   void CalcTorqueOutput(
       const drake::systems::Context<double>& context,
-      systems::TimestampedVector<double>* output) const;
+      systems::BasicVector<double>* output) const;
 
  private:
   bool is_abstract() const { return false;}

@@ -210,16 +210,16 @@ void OperationalSpaceControl::AddKinematicConstraint(
 }
 
 // Tracking data methods
-void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
+void OperationalSpaceControl::AddTrackingData(std::unique_ptr<OscTrackingData> tracking_data,
                                               double t_lb, double t_ub) {
-  tracking_data_vec_->push_back(tracking_data);
+  tracking_data_vec_->push_back(std::move(tracking_data));
   fixed_position_vec_.push_back(VectorXd::Zero(0));
   t_s_vec_.push_back(t_lb);
   t_e_vec_.push_back(t_ub);
 
   // Construct input ports and add element to traj_name_to_port_index_map_ if
   // the port for the traj is not created yet
-  string traj_name = tracking_data->GetName();
+  string traj_name = tracking_data_vec_->back()->GetName();
   if (traj_name_to_port_index_map_.find(traj_name) ==
       traj_name_to_port_index_map_.end()) {
     PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
@@ -232,9 +232,9 @@ void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
   }
 }
 void OperationalSpaceControl::AddConstTrackingData(
-    OscTrackingData* tracking_data, const VectorXd& v, double t_lb,
+    std::unique_ptr<OscTrackingData> tracking_data, const VectorXd& v, double t_lb,
     double t_ub) {
-  tracking_data_vec_->push_back(tracking_data);
+  tracking_data_vec_->push_back(std::move(tracking_data));
   fixed_position_vec_.push_back(v);
   t_s_vec_.push_back(t_lb);
   t_e_vec_.push_back(t_ub);
@@ -267,7 +267,7 @@ void OperationalSpaceControl::Build() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
-  for (auto tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : *tracking_data_vec_) {
     tracking_data->CheckOscTrackingData();
     DRAKE_DEMAND(&tracking_data->plant_w_spr() == &plant_w_spr_);
     DRAKE_DEMAND(&tracking_data->plant_wo_spr() == &plant_wo_spr_);
@@ -641,7 +641,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Update costs
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    auto tracking_data = tracking_data_vec_->at(i);
+    auto tracking_data = tracking_data_vec_->at(i).get();
 
     if (tracking_data->IsActive(fsm_state) &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
@@ -763,7 +763,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
-  for (auto tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {
       tracking_data->StoreYddotCommandSol(*dv_sol_);
     }
@@ -800,7 +800,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
 
   int active_tracking_data_dim = 0;
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    auto tracking_data = tracking_data_vec_->at(i);
+    auto tracking_data = tracking_data_vec_->at(i).get();
 
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
@@ -830,7 +830,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_constraint_dim);
   VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
   int start_row = 0;
-  for (auto tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
       A.block(start_row, 0, tracking_data->GetYdotDim(),
@@ -935,7 +935,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       std::vector<std::string>(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    auto tracking_data = tracking_data_vec_->at(i);
+    auto tracking_data = tracking_data_vec_->at(i).get();
     output->tracking_data_names[i] = tracking_data->GetName();
 
     lcmt_osc_tracking_data osc_output;
@@ -1004,6 +1004,7 @@ void OperationalSpaceControl::CalcOptimalInput(
 
 
   double timestamp = robot_output->get_timestamp();
+
   double current_time = timestamp;
   if (print_tracking_info_) {
     cout << "\n\ncurrent_time = " << current_time << endl;

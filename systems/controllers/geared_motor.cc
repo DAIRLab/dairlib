@@ -22,8 +22,8 @@ GearedMotor::GearedMotor(const MultibodyPlant<double>& plant,
     actuator_ranges.push_back(joint_actuator.effort_limit());
     actuator_max_speeds.push_back(max_motor_speeds[i]);
   }
-  systems::TimestampedVector<double> input(plant.num_actuators());
-  systems::TimestampedVector<double> output(plant.num_actuators());
+  systems::BasicVector<double> input(plant.num_actuators());
+  systems::BasicVector<double> output(plant.num_actuators());
 
   command_input_port_ =
       this->DeclareVectorInputPort("u_cmd", input).get_index();
@@ -36,9 +36,9 @@ GearedMotor::GearedMotor(const MultibodyPlant<double>& plant,
 
 void GearedMotor::CalcTorqueOutput(
     const drake::systems::Context<double>& context,
-    systems::TimestampedVector<double>* output) const {
-  const systems::TimestampedVector<double>& u =
-      *this->template EvalVectorInput<TimestampedVector>(context,
+    systems::BasicVector<double>* output) const {
+  const systems::BasicVector<double>& u =
+      *this->template EvalVectorInput<BasicVector>(context,
                                                          command_input_port_);
   const systems::BasicVector<double>& x =
       *this->template EvalVectorInput<BasicVector>(context, state_input_port_);
@@ -58,8 +58,7 @@ void GearedMotor::CalcTorqueOutput(
     //    tau[i] = copysign(fmin(fabs(u[i] / ratio), tlim), u[i]);
     tau[i] = copysign(fmin(fabs(u[i]), tlim), u[i]);
   }
-  output->SetDataVector(tau);
-  output->set_timestamp(u.get_timestamp());
+  output->SetFromVector(tau);
 }
 
 }  // namespace systems

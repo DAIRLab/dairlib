@@ -2,6 +2,19 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
+
+cc_library(
+    name = "controllers_all",
+    srcs = [],
+    deps = [
+        ":affine_controller",
+        ":geared_motor",
+        ":cassie_out_to_radio",
+        ":controller_failure_aggregator",
+        ":fsm_event_time",
+    ],
+)
+
 cc_library(
     name = "control_utils",
     srcs = [
@@ -24,6 +37,16 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+cc_library(
+    name = "cassie_out_to_radio",
+    srcs = ["cassie_out_to_radio.cc"],
+    hdrs = ["cassie_out_to_radio.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@lcm",
     ],

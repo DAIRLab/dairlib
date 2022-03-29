@@ -30,10 +30,11 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   void SetFootstepGains(const Eigen::MatrixXd& Kd) { Kd_ = Kd; };
 
   void SetFootPlacementOffsets(double rest_length, double center_line_offset,
-                               double footstep_offset) {
+                               double footstep_offset, double mid_foot_height) {
     rest_length_ = rest_length;
     center_line_offset_ = center_line_offset;
     footstep_offset_ = footstep_offset;
+    mid_foot_height_ = mid_foot_height;
   }
 
  private:
@@ -59,6 +60,7 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   double rest_length_;
   double center_line_offset_;
   double footstep_offset_;
+  double mid_foot_height_;
 
   // Raibert Footstep Gains
   Eigen::MatrixXd Kd_ = Eigen::MatrixXd::Zero(3, 3);

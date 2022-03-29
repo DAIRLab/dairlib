@@ -106,9 +106,17 @@ cd /scratch/$USER/dairlib
 
 # Note that you need to bazel build the binary, because not all machines/nodes have it. (even though it's the same file path...)
 # Build the program
+# Bazel threw an error about socket if multiple nodes try to build at the same time, so I use bazel_flag to avoid some of them (this might not prevent in the case where two jobs are run at the same time)
+bazel_flag="/home/${USER}/bazel_is_building"
+while [ -f "$bazel_flag" ]
+do
+  sleep 1
+done
+touch $bazel_flag
 printf "\n\n\n"
 bazel build --jobs=$SLURM_CPUS_PER_TASK examples/goldilocks_models:find_goldilocks_models
 printf "\n\n\n"
+rm $bazel_flag
 
 ### Count the lastest iteration (I wrote this becasuse the job can get preempted if run at low QOS
 iter_max=1000  # The code is untested. Just in case we created an infinity loop

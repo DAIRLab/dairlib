@@ -372,8 +372,10 @@ def EndSim(working_threads, idx, recycle_idx=True):
 
 def BlockAndDeleteTheLatestThread(working_threads):
   # It is always the last one in the list because we just appended it.
-  while working_threads[-1][0][0].poll() is None and \
-      not InitPoseSolverFailed(working_threads[-1][1][0]):
+  # Question (20220329): why did I have a condition `not InitPoseSolverFailed` (see below)? I found today this was a bug to me, because it ended the process too early and no init_file was created for the planner.
+    # while working_threads[-1][0][0].poll() is None and \
+    #     not InitPoseSolverFailed(working_threads[-1][1][0]):
+  while working_threads[-1][0][0].poll() is None:
     time.sleep(0.1)
   EndSim(working_threads, -1, False)
 

@@ -221,20 +221,20 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       builder.AddSystem<PelvisTransTrajGenerator>(
           plant, plant_context.get(), default_traj, feet_contact_points,
           osc_running_gains.relative_pelvis);
-  pelvis_trans_traj_generator->SetSLIPParams(osc_running_gains.slip_rest_length);
+  pelvis_trans_traj_generator->SetSLIPParams(osc_running_gains.rest_length);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_left", "thigh_left",
+      plant, plant_context.get(), "toe_left", "pelvis",
       osc_running_gains.relative_feet, 0, accumulated_state_durations);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_right", "thigh_right",
+      plant, plant_context.get(), "toe_right", "pelvis",
       osc_running_gains.relative_feet, 1, accumulated_state_durations);
   l_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
-      osc_running_gains.leg_rest_length, osc_running_gains.center_line_offset,
+      osc_running_gains.rest_length, osc_running_gains.center_line_offset,
       osc_running_gains.footstep_offset, osc_running_gains.mid_foot_height);
   r_foot_traj_generator->SetFootPlacementOffsets(
-      osc_running_gains.leg_rest_length, osc_running_gains.center_line_offset,
+      osc_running_gains.rest_length, osc_running_gains.center_line_offset,
       osc_running_gains.footstep_offset, osc_running_gains.mid_foot_height);
 
   pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
@@ -288,12 +288,12 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       "right_hip_traj", osc_running_gains.K_p_swing_foot,
       osc_running_gains.K_d_swing_foot, osc_running_gains.W_swing_foot, plant,
       plant);
-  left_hip_tracking_data->AddStateAndPointToTrack(right_stance_state, "thigh_left");
-  right_hip_tracking_data->AddStateAndPointToTrack(left_stance_state, "thigh_right");
-  left_hip_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                  "thigh_left");
+  left_hip_tracking_data->AddStateAndPointToTrack(right_stance_state, "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(left_stance_state, "pelvis");
   right_hip_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                   "thigh_right");
+                                                   "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
+                                                  "pelvis");
 
   left_hip_yz_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_hip_traj", osc_running_gains.K_p_swing_foot,
@@ -304,9 +304,9 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       osc_running_gains.K_d_swing_foot, osc_running_gains.W_swing_foot, plant,
       plant);
   left_hip_yz_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                     "thigh_left");
+                                                     "hip_left");
   right_hip_yz_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                      "thigh_right");
+                                                      "hip_right");
 
   left_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(

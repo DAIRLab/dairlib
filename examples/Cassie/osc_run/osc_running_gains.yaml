@@ -22,14 +22,13 @@ ekf_filter_tau: [0.05, 0.1, 0.01]
 
 # High level command gains (with radio)
 vel_scale_rot: -0.5
-vel_scale_trans_sagital: 0.6
+vel_scale_trans_sagital: 0.2
 vel_scale_trans_lateral: -0.15
 
 # SLIP parameters
-slip_rest_length: 0.9
-leg_rest_length: 0.75
+rest_length: 0.85
 stance_duration: 0.30
-flight_duration: 0.10
+flight_duration: 0.08
 
 mu: 0.6
 
@@ -41,57 +40,57 @@ w_hip_yaw: 2.5
 hip_yaw_kp: 40
 hip_yaw_kd: 1
 # Foot placement parameters
-footstep_offset: 0
-center_line_offset: -0.04
-mid_foot_height: 0.1
+footstep_offset: -0.05
+center_line_offset: 0.05
+mid_foot_height: 0.05
 FootstepKd:
-  [  0.25,     0,  0,
-     0,     0.25, 0,
-     0,        0,  0]
+  [ 0.2,     0,  0,
+    0,     0.6, 0,
+    0,        0,  0 ]
 PelvisW:
-  [0.1,     0,    0,
-   0,    0,    0,
-   0,     0,    5]
+  [ 0.1,     0,    0,
+    0,    0,    0,
+    0,     0,    5 ]
 PelvisKp:
   [ 0,    0,    0,
     0,    0,    0,
-    0,    0,   50]
+    0,    0,   85 ]
 PelvisKd:
   [  1,    0,   0,
      0,    0,   0,
      0,    0,  5]
 PelvisRotW:
-  [1.0,  0,   0,
-   0,  2.5,   0,
-   0,   0,  0.1]
+  [ 1,  0,   0,
+    0,  2.5,   0,
+    0,   0,  0.1 ]
 PelvisRotKp:
   [50.,   0,   0,
    0,  100.,   0,
    0,    0,  1.]
 PelvisRotKd:
-  [10.,   0,  0,
-   0,   5.,  0,
-   0,    0,  1.]
+  [ 10.,   0,  0,
+    0,   5.,  0,
+    0,    0,  0. ]
 SwingFootW:
-  [10,    0,    0,
-   0,   50,    0,
-   0,    0,   1]
+  [ 10,    0,    0,
+    0,   10,    0,
+    0,    0,   1 ]
 SwingFootKp:
-  [125.,    0,    0,
-   0,   80.,    0,
-   0,     0,  100.]
+  [ 125.,    0,    0,
+    0,   80.,    0,
+    0,     0,  50. ]
 SwingFootKd:
   [5.,   0,   0,
    0,   5.,   0,
    0,   0,  1.]
 LiftoffSwingFootW:
-  [0.1,    0,    0,
-   0,   10,    0,
-   0,    0,   2.0]
+  [ 0.1,    0,    0,
+    0,   10,    0,
+    0,    0,    1 ]
 LiftoffSwingFootKp:
-  [50.,    0,    0,
-   0,   50.,    0,
-   0,    0,  25.]
+  [ 50.,    0,    0,
+    0,   50.,    0,
+    0,    0,  50. ]
 LiftoffSwingFootKd:
   [ 1,   0,   0,
     0,  1,   0,

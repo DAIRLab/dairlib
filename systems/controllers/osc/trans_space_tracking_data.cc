@@ -62,7 +62,13 @@ void TransTaskSpaceTrackingData::UpdateJ(
       context_wo_spr, JacobianWrtVariable::kV,
       *body_frames_wo_spr_.at(fsm_state_), pts_on_body_[fsm_state_],
       world_wo_spr_, world_wo_spr_, &J_);
-  if(J_.hasNaN()){
+  if (fsm_state_ < 2) {
+    J_(2, 8) = 0;
+    J_(2, 16) = 0;
+    J_(2, 6) = 0;
+    J_(2, 14) = 0;
+  }
+  if (J_.hasNaN()) {
     std::cout << "Jacobian has NaNs" << std::endl;
   }
 }

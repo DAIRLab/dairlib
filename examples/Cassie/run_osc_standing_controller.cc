@@ -8,9 +8,7 @@
 #include "examples/Cassie/osc/standing_com_traj.h"
 #include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -48,7 +46,6 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using multibody::FixedJointEvaluator;
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -80,30 +77,35 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Build Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant, nullptr, true /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2_conservative.urdf",
+  drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
+  addCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
+                     "examples/Cassie/urdf/cassie_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
-  plant.Finalize();
+  plant_w_springs.Finalize();
   // Build fix-spring Cassie MBP
+  drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
+  addCassieMultibody(&plant_wo_springs, nullptr, true,
+                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                     false);
+  plant_wo_springs.Finalize();
 
-  auto context_w_spr = plant.CreateDefaultContext();
-  auto context_wo_spr = plant.CreateDefaultContext();
+  auto context_w_spr = plant_w_springs.CreateDefaultContext();
+  auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
 
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_springs or plant_wo_springs because the contact frames exit in both
   // plants)
-  auto left_toe = LeftToeFront(plant);
-  auto left_heel = LeftToeRear(plant);
-  auto right_toe = RightToeFront(plant);
-  auto right_heel = RightToeRear(plant);
+  auto left_toe = LeftToeFront(plant_wo_springs);
+  auto left_heel = LeftToeRear(plant_wo_springs);
+  auto right_toe = RightToeFront(plant_wo_springs);
+  auto right_heel = RightToeRear(plant_wo_springs);
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
-//  auto osc_gains =
-//      drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_osc_gains_filename);
+  //  auto osc_gains =
+  //      drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_osc_gains_filename);
   drake::yaml::YamlReadArchive::Options yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
@@ -140,7 +142,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create state receiver.
   auto state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant);
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
 
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
@@ -151,7 +153,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant);
+      builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
@@ -161,23 +163,16 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_STANDING", &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
-  auto failure_aggregator =
-      builder.AddSystem<systems::ControllerFailureAggregator>(FLAGS_channel_u,
-                                                              1);
-  auto controller_failure_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
-          "CONTROLLER_ERROR", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
-
 
   // Create desired center of mass traj
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
-      plant, context_w_spr.get(), feet_contact_points, FLAGS_height,
+      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height,
       FLAGS_use_radio);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
-          plant, context_w_spr.get(), feet_contact_points,
+          plant_w_springs, context_w_spr.get(), feet_contact_points,
           "pelvis_rot_traj");
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
@@ -192,64 +187,44 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, context_w_spr.get(),
+      plant_w_springs, plant_wo_springs, context_w_spr.get(),
       context_wo_spr.get(), false, FLAGS_print_osc, FLAGS_qp_time_limit);
 
   // Distance constraint
-  multibody::KinematicEvaluatorSet<double> evaluators(plant);
-  auto left_loop = LeftLoopClosureEvaluator(plant);
-  auto right_loop = RightLoopClosureEvaluator(plant);
+  multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
+  auto left_loop = LeftLoopClosureEvaluator(plant_wo_springs);
+  auto right_loop = RightLoopClosureEvaluator(plant_wo_springs);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
+  osc->AddKinematicConstraint(&evaluators);
 
   // Friction coefficient
   osc->SetContactFriction(gains.mu);
   // Add contact points
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
-  auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, left_heel.first, left_heel.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
-  auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, right_toe.first, right_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
-  auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, right_heel.first, right_heel.second,
-      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&left_toe_evaluator);
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&left_heel_evaluator);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
   osc->AddContactPoint(&right_toe_evaluator);
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_heel.first, right_heel.second,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&right_heel_evaluator);
-
-  auto pos_idx_map = multibody::makeNameToPositionsMap(plant);
-  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant);
-  auto left_fixed_knee_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("knee_joint_left"),
-                          vel_idx_map.at("knee_joint_leftdot"), 0);
-  auto right_fixed_knee_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("knee_joint_right"),
-                          vel_idx_map.at("knee_joint_rightdot"), 0);
-  auto left_fixed_ankle_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("ankle_spring_joint_left"),
-                          vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
-  auto right_fixed_ankle_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("ankle_spring_joint_right"),
-                          vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
-  evaluators.add_evaluator(&left_fixed_knee_spring);
-  evaluators.add_evaluator(&right_fixed_knee_spring);
-  evaluators.add_evaluator(&left_fixed_ankle_spring);
-  evaluators.add_evaluator(&right_fixed_ankle_spring);
-  osc->AddKinematicConstraint(&evaluators);
-
   // Cost
-  int n_v = plant.num_velocities();
+  int n_v = plant_wo_springs.num_velocities();
 
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
   osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
-  osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
-                                              gains.W_lambda_h_regularization);
+  //  osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
+  //                                              gains.W_lambda_h_regularization);
 
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
@@ -257,8 +232,8 @@ int DoMain(int argc, char* argv[]) {
   //                                      W_com * FLAGS_cost_weight_multiplier,
   //                                      plant_w_springs, plant_wo_springs);
   auto center_of_mass_traj = std::make_unique<TransTaskSpaceTrackingData>(
-      "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier, plant,
-      plant);
+      "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
+      plant_w_springs, plant_wo_springs);
   center_of_mass_traj->AddPointToTrack("pelvis");
   //  double cutoff_freq = 5; // in Hz
   //  double tau = 1 / (2 * M_PI * cutoff_freq);
@@ -267,7 +242,8 @@ int DoMain(int argc, char* argv[]) {
   // Pelvis rotation tracking
   auto pelvis_rot_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
-      W_pelvis * FLAGS_cost_weight_multiplier, plant, plant);
+      W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
+      plant_wo_springs);
   pelvis_rot_traj->AddFrameToTrack("pelvis");
   osc->AddTrackingData(std::move(pelvis_rot_traj));
 
@@ -281,11 +257,11 @@ int DoMain(int argc, char* argv[]) {
   auto left_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
-      plant, plant);
+      plant_w_springs, plant_wo_springs);
   auto right_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "right_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
-      plant, plant);
+      plant_w_springs, plant_wo_springs);
   left_hip_yaw_traj->AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   osc->AddConstTrackingData(std::move(left_hip_yaw_traj), VectorXd::Zero(1));
   right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
@@ -303,10 +279,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("com_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_rot_traj"));
-  builder.Connect(osc->get_failure_output_port(),
-                  failure_aggregator->get_input_port(0));
-  builder.Connect(failure_aggregator->get_status_output_port(),
-                  controller_failure_pub->get_input_port());
 
   // Create the diagram
   auto owned_diagram = builder.Build();

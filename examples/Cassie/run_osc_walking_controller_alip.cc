@@ -60,6 +60,8 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::FixedJointEvaluator;
+using multibody::makeNameToVelocitiesMap;
+using multibody::makeNameToPositionsMap;
 
 using drake::trajectories::PiecewisePolynomial;
 
@@ -462,6 +464,13 @@ int DoMain(int argc, char* argv[]) {
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+
+  auto vel_map = makeNameToVelocitiesMap<double>(plant_w_spr);
+  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
+      vel_map["hip_yaw_right"], left_stance_state);
+  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
+      vel_map["hip_yaw_left"], right_stance_state);
+
   ComTrackingData com_data("com_data", gains.K_p_swing_foot,
                            gains.K_d_swing_foot, gains.W_swing_foot,
                            plant_w_spr, plant_w_spr);
@@ -550,6 +559,11 @@ int DoMain(int argc, char* argv[]) {
   osc->SetOsqpSolverOptionsFromYaml(
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
   // Build OSC problem
+
+  osc->AddInputCostByJointAndFsmState("toe_left_motor", left_stance_state, 1.0);
+  osc->AddInputCostByJointAndFsmState("toe_left_motor", post_right_double_support_state, 1.0);
+  osc->AddInputCostByJointAndFsmState("toe_rightr_motor", right_stance_state, 1.0);
+  osc->AddInputCostByJointAndFsmState("toe_right_motor", post_left_double_support_state, 1.0);
   osc->Build();
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),

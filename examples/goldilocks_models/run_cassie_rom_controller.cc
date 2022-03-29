@@ -157,6 +157,8 @@ DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
 // Testing
+DEFINE_bool(close_sim_gap, true,
+            "Modify to close the gap between open loop and closed loop sim");
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
 DEFINE_string(path_wait_identifier, "", "");
 
@@ -627,7 +629,7 @@ int DoMain(int argc, char* argv[]) {
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
         context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
-        false, true);
+        false, FLAGS_close_sim_gap);
 
     // Scaling weight for testing
     // Didn't help. Might need to use the new osqp solver to see improvement
@@ -638,7 +640,9 @@ int DoMain(int argc, char* argv[]) {
     MatrixXd Q_accel =
         weight_scale * osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
     osc->SetAccelerationCostForAllJoints(Q_accel);
-//    osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
+    if (!FLAGS_close_sim_gap) {
+      //      osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
+    }
 
     // Constraints in OSC
     osc->AddKinematicConstraint(&evaluators);
@@ -855,9 +859,11 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&swing_toe_traj_right);
 
     // Set double support duration for force blending
-//    osc->SetUpDoubleSupportPhaseBlending(
-//        double_support_duration, left_stance_state, right_stance_state,
-//        {post_left_double_support_state, post_right_double_support_state});
+    if (!FLAGS_close_sim_gap) {
+      /*osc->SetUpDoubleSupportPhaseBlending(
+          double_support_duration, left_stance_state, right_stance_state,
+          {post_left_double_support_state, post_right_double_support_state});*/
+    }
 
     // Build OSC problem
     osc->Build();
@@ -1046,7 +1052,7 @@ int DoMain(int argc, char* argv[]) {
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
         context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
-        false, true);
+        false, FLAGS_close_sim_gap);
 
     // Cost
     int n_v = plant_wo_springs.num_velocities();

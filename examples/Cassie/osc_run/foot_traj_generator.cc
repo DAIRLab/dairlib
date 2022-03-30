@@ -157,7 +157,8 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   desired_pelvis_vel << desired_pelvis_vel_xy, 0;
   VectorXd pelvis_vel = v.segment(3, 3);
   pelvis_vel(0) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(0);
-//  pelvis_vel(1) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(1);
+//  pelvis_vel(1) *= 0.75;
+//  pelvis_vel(1) += 0.25 * context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(1);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
   VectorXd footstep_correction = Kd_ * (pelvis_vel_err);
   if (is_left_foot_) {

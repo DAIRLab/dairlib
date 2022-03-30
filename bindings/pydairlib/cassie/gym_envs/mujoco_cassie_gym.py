@@ -369,8 +369,9 @@ class MuJoCoCassieGym():
                 self.joint_encoder_noise = np.zeros(6)
 
 
-def free_sim(self):
-    del self.cassie_env
+    def free_sim(self):
+        del self.simulator
+        del self.cassie_vis
 
 
 def euler2quat(z=0, y=0, x=0):

@@ -157,8 +157,8 @@ script "jumping_integration_test" {
     start cmd "cassie_mujoco_sim";
     wait ms 10000;
     stop cmd "state_visualizer (dispatcher)";
-    stop group "1.controllers-and-dispatchers";
-    stop group "2.simulators";
+    stop group "1.controllers (standalone)";
+    stop group "2.simulators-and-dispatchers";
 }
 
 script "mujoco_standing" {
@@ -197,8 +197,8 @@ script "standing_integration_test" {
     start cmd "cassie_mujoco_sim";
     wait ms 10000;
     stop cmd "state_visualizer (dispatcher)";
-    stop group "1.controllers-and-dispatchers";
-    stop group "2.simulators";
+    stop group "1.controllers (standalone)";
+    stop group "2.simulators-and-dispatchers";
 }
 
 script "walking_integration_test" {
@@ -232,6 +232,6 @@ script "walking_integration_test" {
     start cmd "cassie_mujoco_sim";
     wait ms 10000;
     stop cmd "state_visualizer (dispatcher)";
-    stop group "1.controllers-and-dispatchers";
-    stop group "2.simulators";
+    stop group "1.controllers (standalone)";
+    stop group "2.simulators-and-dispatchers";
 }

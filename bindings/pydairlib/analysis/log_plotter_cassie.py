@@ -73,8 +73,10 @@ def main():
                                         t_x_slice)
     # Plot specific velocities
     if plot_config.vel_names:
-        mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
+        plot = mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
                                           t_x_slice, vel_map)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
+
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
@@ -94,8 +96,9 @@ def main():
         for traj_name, config in plot_config.tracking_datas_to_plot.items():
             for deriv in config['derivs']:
                 for dim in config['dims']:
-                    mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
+                    plot = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
                                                      deriv, t_osc_slice)
+                    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
 
     ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:
@@ -108,7 +111,7 @@ def main():
             dims['toe_' + pos] = plot_config.foot_xyz_to_plot[pos]
             pts['toe_' + pos] = pts_map[plot_config.pt_on_foot_to_plot]
 
-        mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
+        plot = mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
                                         foot_frames, pts, dims)
 
     if plot_config.plot_qp_solve_time:

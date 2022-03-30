@@ -854,15 +854,17 @@ EventStatus CassieStateEstimator::Update(
 
 
   if (publish_debug_) {
-    const int nx = 5;
-    const int ntheta = 6;
-    const int np = 15;
-    inekf::EkfUpdatePair debug {Eigen::Matrix<double, nx, nx>::Zero(),
-                                Eigen::Matrix<double, ntheta, 1>::Zero(),
-                                Eigen::Matrix<double, np, np>::Zero(),
-                                Eigen::Matrix<double, nx, nx>::Zero(),
-                                Eigen::Matrix<double, ntheta, 1>::Zero(),
-                                Eigen::Matrix<double, np, np>::Zero()};
+    inekf::RobotState ekf_state = ekf.getState();
+    int nx = ekf_state.dimX();
+    int ntheta = ekf_state.dimTheta();
+    int np = ekf_state.dimP();
+
+    inekf::EkfUpdatePair debug {MatrixXd::Zero(nx, nx),
+                                VectorXd::Zero(ntheta),
+                                MatrixXd::Zero(np, np),
+                                MatrixXd::Zero(nx, nx),
+                                VectorXd::Zero(ntheta),
+                                MatrixXd::Zero(np, np)};
 
     ekf.CorrectKinematics(measured_kinematics, &debug);
 
@@ -876,6 +878,8 @@ EventStatus CassieStateEstimator::Update(
     msg.P_corr = vector<vector<double>>(np, vector<double>(np));
     msg.Theta_prop = vector<double>(ntheta);
     msg.Theta_corr = vector<double>(ntheta);
+    msg.utime = current_time * 1e6;
+
     for (int i = 0; i < nx; i++) {
       memcpy(msg.X_prop[i].data(), debug.X_prop.row(i).data(),
              sizeof(double)*nx);

@@ -562,7 +562,7 @@ int DoMain(int argc, char* argv[]) {
 
   osc->AddInputCostByJointAndFsmState("toe_left_motor", left_stance_state, 1.0);
   osc->AddInputCostByJointAndFsmState("toe_left_motor", post_right_double_support_state, 1.0);
-  osc->AddInputCostByJointAndFsmState("toe_rightr_motor", right_stance_state, 1.0);
+  osc->AddInputCostByJointAndFsmState("toe_right_motor", right_stance_state, 1.0);
   osc->AddInputCostByJointAndFsmState("toe_right_motor", post_left_double_support_state, 1.0);
   osc->Build();
   // Connect ports

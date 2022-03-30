@@ -4,7 +4,7 @@ channel_u: "OSC_WALKING"
 channel_osc: "OSC_DEBUG_WALKING"
 
 # Log time to stop at (seconds, -1 for whole log)
-end_time: -1
+end_time: 20
 
 # Plant properties
 use_springs: true
@@ -15,9 +15,9 @@ plot_floating_base_positions: false
 plot_floating_base_velocities: false
 plot_joint_positions: false
 plot_joint_velocities: false
-plot_measured_efforts: false
-special_positions_to_plot: ['base_y', 'base_x']
-special_velocities_to_plot: ['base_vy', 'base_vx']
+plot_measured_efforts: true
+special_positions_to_plot: []
+special_velocities_to_plot: []
 special_efforts_to_plot: []
 
 # Foot position plots
@@ -31,4 +31,4 @@ plot_tracking_costs: true
 plot_qp_solve_time: true
 tracking_datas_to_plot:
 #  alip_com_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
-  swing_ft_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+  swing_ft_traj: {'dims': [0], 'derivs': ['pos']}

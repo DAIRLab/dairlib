@@ -33,7 +33,7 @@ DEFINE_string(fsm_trigger_channel, "MPC_SWITCH",
 DEFINE_string(switch_channel, "INPUT_SWITCH",
               "The name of the channel which sends the channel name that "
               "dispatcher_in listens to");
-DEFINE_string(new_channel, "PD_CONTROLLER",
+DEFINE_string(new_channel, "ROM_WALKING",
               "The name of the new lcm channel that dispatcher_in listens to "
               "after switch");
 DEFINE_double(blend_duration, 1.0,

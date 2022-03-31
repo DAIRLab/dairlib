@@ -195,6 +195,11 @@ int DoMain(int argc, char* argv[]) {
       YAML::LoadFile(FindResourceOrThrow(osc_gains_filename));
   drake::yaml::YamlReadArchive(root2).Accept(&osc_gains);
 
+  if (gains.use_virtual_radio) {
+    cout << "Set `use_radio` to true because `use_virtual_radio` = true\n\n";
+    gains.use_radio = true;
+  }
+
   if (FLAGS_stride_length > -100) {
     gains.set_constant_walking_speed = true;
     gains.constant_step_length_x = FLAGS_stride_length;
@@ -381,7 +386,9 @@ int DoMain(int argc, char* argv[]) {
         gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
     auto cassie_out_receiver =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
-            FLAGS_cassie_out_channel, &lcm_local));
+            gains.use_virtual_radio ? "CASSIE_OUTPUT"
+                                    : FLAGS_cassie_out_channel,
+            &lcm_local));
     builder.Connect(cassie_out_receiver->get_output_port(),
                     high_level_command->get_cassie_output_port());
   } else {

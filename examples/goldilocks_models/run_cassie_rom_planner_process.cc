@@ -176,6 +176,12 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_run_one_loop_to_get_init_file) {
     DRAKE_DEMAND(FLAGS_log_data);
   }
+
+  if (gains.use_virtual_radio) {
+    cout << "Set `use_radio` to true because `use_virtual_radio` = true\n\n";
+    gains.use_radio = true;
+  }
+
   if (FLAGS_stride_length > -100) {
     gains.set_constant_walking_speed = true;
     gains.constant_step_length_x = FLAGS_stride_length;

@@ -12,12 +12,12 @@ W_lambda_c_reg: [1, 0.001, 0.01,
                  1, 0.1, 0.01]
 W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
-w_input_reg: 0.01
+w_input_reg: 0.001
 w_soft_constraint: 100
-x_offset: -0.0
+x_offset: -0.02
 relative_feet: true
 
-mu: 0.8
+mu: 0.4
 
 w_swing_toe: 1
 swing_toe_kp: 2000
@@ -43,7 +43,7 @@ FlightFootW:
    0,   1,    0,
    0,   0,   1]
 CoMKp:
-  [25,   0,    0,
+  [30,   0,    0,
    0,   50,    0,
    0,    0,  50]
 CoMKd:
@@ -59,11 +59,11 @@ PelvisRotKd:
    0,   10,  0,
    0,    0,  0]
 FlightFootKp:
-  [50,   0,    0,
+  [100,   0,    0,
    0,   100,    0,
    0,     0,  100]
 FlightFootKd:
-  [20,   0,    0,
-    0,   0,     0,
+  [10,   0,    0,
+    0,   10,     0,
     0,   0,    0]
 

@@ -28,7 +28,7 @@ vel_scale_trans_lateral: -0.15
 # SLIP parameters
 rest_length: 0.85
 stance_duration: 0.30
-flight_duration: 0.15
+flight_duration: 0.08
 
 mu: 0.6
 

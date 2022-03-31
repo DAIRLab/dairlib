@@ -35,6 +35,10 @@ group "1.rom-space-controller" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --n_step=2 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=true --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER  --knots_per_mode=5";
         host = "localhost";
     }
+    cmd "1.original-walking-controller; with radio" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio --cassie_out_channel=CASSIE_OUTPUT";
+        host = "localhost";
+    }
 }
 
 group "1.0.dispatchers" {
@@ -89,6 +93,10 @@ group "3.drake-simulator" {
     }
     cmd "0.simulator(realtime)" {
         exec = "bazel-bin/examples/Cassie/multibody_sim_w_ground_incline --floating_base=true --channel_u=ROM_WALKING --init_height=1 --pause_second=4 --target_realtime_rate=1 --spring_model=true --end_time=10000 --pelvis_y_vel=0 --toe_spread=0.05";
+        host = "localhost";
+    }
+    cmd "1.joystick" {
+        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
         host = "localhost";
     }
 }

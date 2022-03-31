@@ -5,6 +5,7 @@
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
@@ -72,6 +73,8 @@ DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_bool(visualize, true, "Set to true to visualize the platform");
 DEFINE_double(actuator_delay, 0.0,
               "Duration of actuator delay. Set to 0.0 by default.");
+DEFINE_bool(use_traj_state, false,
+              "Whether to intialize the sim from a specific state");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -201,7 +204,35 @@ int do_main(int argc, char* argv[]) {
 
   Eigen::VectorXd x_traj_init = state_traj.value(FLAGS_start_time);
 
-  plant.SetPositionsAndVelocities(&plant_context, x_traj_init);
+  if (FLAGS_use_traj_state){
+    plant.SetPositionsAndVelocities(&plant_context, x_traj_init);
+  }else{
+    Eigen::VectorXd q_init, u_init, lambda_init;
+    double mu_fp = 0;
+    double min_normal_fp = 70;
+    double toe_spread = 0.1;
+    // Create a plant for CassieFixedPointSolver.
+    // Note that we cannot use the plant from the above diagram, because after the
+    // diagram is built, plant.get_actuation_input_port().HasValue(*context)
+    // throws a segfault error
+    drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
+    addCassieMultibody(&plant_for_solver, nullptr,
+                       FLAGS_floating_base /*floating base*/, urdf,
+                       FLAGS_spring_model, true);
+    plant_for_solver.Finalize();
+    if (FLAGS_floating_base) {
+      CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
+                             min_normal_fp, true, toe_spread, &q_init, &u_init,
+                             &lambda_init);
+    } else {
+      CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
+                                      &lambda_init);
+    }
+    plant.SetPositions(&plant_context, q_init);
+    plant.SetVelocities(&plant_context, Eigen::VectorXd::Zero(plant.num_velocities()));
+  }
+
+
 
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

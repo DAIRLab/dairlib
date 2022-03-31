@@ -9,7 +9,7 @@ from pydrake.common.yaml import yaml_load
 
 
 def main():
-    osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
+    osc_running_gains_filename = 'examples/Cassie/osc_run/new_learned_osc_running_gains.yaml'
     # osc_running_gains_filename = 'examples/Cassie/osc_run/osc_running_gains.yaml'
     osc_walking_gains_filename = 'examples/Cassie/osc/osc_walking_gains.yaml'
     osqp_settings = 'examples/Cassie/osc_run/osc_running_qp_settings.yaml'

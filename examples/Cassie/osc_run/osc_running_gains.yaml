@@ -28,7 +28,7 @@ vel_scale_trans_lateral: -0.15
 # SLIP parameters
 rest_length: 0.85
 stance_duration: 0.30
-flight_duration: 0.08
+flight_duration: 0.15
 
 mu: 0.6
 
@@ -41,7 +41,7 @@ hip_yaw_kp: 40
 hip_yaw_kd: 1
 # Foot placement parameters
 footstep_offset: -0.05
-center_line_offset: 0.05
+center_line_offset: 0.08
 mid_foot_height: 0.03
 FootstepKd:
   [  0.2,     0,  0,

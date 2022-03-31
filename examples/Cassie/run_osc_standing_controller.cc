@@ -4,11 +4,12 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_target_standing_height.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc/standing_com_traj.h"
 #include "examples/Cassie/osc/osc_standing_gains.h"
+#include "examples/Cassie/osc/standing_com_traj.h"
 #include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -79,7 +80,7 @@ int DoMain(int argc, char* argv[]) {
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
   addCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant_w_springs.Finalize();
   // Build fix-spring Cassie MBP
@@ -163,6 +164,13 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_STANDING", &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
+  auto failure_aggregator =
+      builder.AddSystem<systems::ControllerFailureAggregator>(FLAGS_channel_u,
+                                                              1);
+  auto controller_failure_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
+          "CONTROLLER_ERROR", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+
 
   // Create desired center of mass traj
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
@@ -279,6 +287,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("com_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_rot_traj"));
+  builder.Connect(osc->get_failure_output_port(),
+                  failure_aggregator->get_input_port(0));
+  builder.Connect(failure_aggregator->get_status_output_port(),
+                  controller_failure_pub->get_input_port());
 
   // Create the diagram
   auto owned_diagram = builder.Build();

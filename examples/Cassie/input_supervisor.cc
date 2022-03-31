@@ -145,6 +145,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   /// 2. safety_pd_controller
   /// 3. blended efforts from switching control signals
   /// 4. command from controller
+  auto prev_efforts = context.get_discrete_state(prev_efforts_index_).value();
 
   // If the soft estop signal is triggered, applying only damping regardless of
   // any other controller signal
@@ -173,6 +174,10 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     } else if (command_value < -input_limit_(i)) {
       command_value = -input_limit_(i);
     }
+//    if(i < 2){
+//      command_value += -0.2 * K_.row(i) * state->GetVelocities();
+//      command_value = 0.95 * command_value + 0.05 * prev_efforts(i);
+//    }
     output->get_mutable_data()(i) = command_value;
   }
 }

@@ -233,7 +233,7 @@ int DoMain(int argc, char* argv[]) {
   // We don't want w_contact_relax to be too big, cause we want tracking
   // error to be important
   double w_contact_relax = gains.w_soft_constraint;
-  osc->SetSoftConstraintWeight(w_contact_relax);
+  osc->SetContactSoftConstraintWeight(w_contact_relax);
   // Friction coefficient
   double mu = 0.8;
   osc->SetContactFriction(mu);

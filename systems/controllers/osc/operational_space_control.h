@@ -138,7 +138,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetInputSmoothingWeights(const Eigen::MatrixXd& W) {
     W_input_smoothing_ = W;
   }
-  void SetSoftConstraintWeight(double w_soft_constraint) {
+  void SetContactSoftConstraintWeight(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
 

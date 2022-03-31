@@ -379,7 +379,7 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
-  osc->SetSoftConstraintWeight(gains.w_soft_constraint);
+  osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
   // Friction coefficient
   osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)

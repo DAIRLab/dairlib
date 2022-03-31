@@ -112,7 +112,10 @@ def make_point_positions_from_q(
 
 def process_osc_channel(data):
     t_osc = []
-    regularization_costs = osc_regularlization_tracking_cost(data[0].regularization_cost_names)
+    if hasattr(data[0], 'regularization_cost_names'):
+        regularization_costs = osc_regularlization_tracking_cost(data[0].regularization_cost_names)
+    else:
+        regularization_costs = osc_regularlization_tracking_cost(['input_cost', 'acceleration_cost', 'soft_constraint_cost'])
     qp_solve_time = []
     u_sol = []
     lambda_c_sol = []
@@ -125,7 +128,12 @@ def process_osc_channel(data):
 
     for msg in data:
         t_osc.append(msg.utime / 1e6)
-        regularization_costs.append(msg.regularization_cost_names, msg.regularization_costs)
+        if hasattr(msg, 'regularization_cost_names'):
+            regularization_costs.append(msg.regularization_cost_names, msg.regularization_costs)
+        else:
+            regularization_cost_names = ['input_cost', 'acceleration_cost', 'soft_constraint_cost']
+            regularization_cost_list = [msg.input_cost, msg.acceleration_cost, msg.soft_constraint_cost]
+            regularization_costs.append(regularization_cost_names, regularization_cost_list)
         qp_solve_time.append(msg.qp_output.solve_time)
         u_sol.append(msg.qp_output.u_sol)
         lambda_c_sol.append(msg.qp_output.lambda_c_sol)
@@ -145,7 +153,7 @@ def process_osc_channel(data):
 
     tracking_cost_handler = osc_tracking_cost(osc_debug_tracking_datas.keys())
     for msg in data:
-        tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_costs)
+        tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_cost)
     tracking_cost = tracking_cost_handler.convertToNP()
 
     for name in osc_debug_tracking_datas:
@@ -297,7 +305,7 @@ def plot_tracking_costs(osc_debug, time_slice):
         {key: [key] for key in osc_debug['tracking_cost'].keys()},
         {'xlabel': 'Time',
          'ylabel': 'Cost',
-         'title': 'tracking_costs'}, ps)
+         'title': 'tracking_cost'}, ps)
     return ps
 
 
@@ -342,7 +350,6 @@ def plot_qp_costs(osc_debug, time_slice):
     data_dict = \
         {key: val for key, val in regularization_cost.items()}
     data_dict['t_osc'] = osc_debug['t_osc']
-    import pdb; pdb.set_trace()
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
         data_dict,
@@ -359,13 +366,9 @@ def plot_qp_costs(osc_debug, time_slice):
 
 def plot_qp_solve_time(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()
-    regularization_cost = osc_debug['regularization_costs'].regularization_costs
-    data_dict = \
-        {key: val for key, val in regularization_cost.items()}
-    data_dict['t_osc'] = osc_debug['t_osc']
 
     plotting_utils.make_plot(
-        data_dict,
+        osc_debug,
         't_osc',
         time_slice,
         ['qp_solve_time'],

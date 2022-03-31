@@ -288,7 +288,7 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(Q_accel);
   // Soft constraint on contacts
   double w_contact_relax = gains.w_soft_constraint;
-  osc->SetSoftConstraintWeight(w_contact_relax);
+  osc->SetContactSoftConstraintWeight(w_contact_relax);
   // Soft constraint on contacts
   double w_input_reg = gains.w_input_reg;
   osc->SetInputSmoothingWeights(gains.w_input_reg * MatrixXd::Identity(n_u, n_u));

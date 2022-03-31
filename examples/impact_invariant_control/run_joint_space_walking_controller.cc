@@ -131,7 +131,7 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(Q_accel);
   // Soft constraint on contacts
   double w_contact_relax = gains.w_soft_constraint;
-  osc->SetSoftConstraintWeight(w_contact_relax);
+  osc->SetContactSoftConstraintWeight(w_contact_relax);
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);

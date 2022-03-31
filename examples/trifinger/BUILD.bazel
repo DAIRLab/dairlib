@@ -25,3 +25,24 @@ py_binary(
 	],
 	data = [":trifinger_urdf"],
 )
+
+
+py_binary(
+    name = "simulate_trifinger_lcm",
+    srcs = ["simulate_trifinger_lcm.py"],
+    deps = [
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+    data = [":trifinger_urdf"],
+)
+
+py_binary(
+    name = "lcm_control_demo",
+    srcs = ["lcm_control_demo.py"],
+    deps = [
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+    data = [":trifinger_urdf"],
+)

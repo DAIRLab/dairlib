@@ -491,7 +491,6 @@ Eigen::MatrixXd JwrtqdotToJwrtv(
   return ret;
 }
 
-
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT

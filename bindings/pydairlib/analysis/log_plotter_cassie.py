@@ -35,9 +35,11 @@ def main():
     robot_output, robot_input, osc_debug = \
         get_log_data(log,                                       # log
                      cassie_plots.cassie_default_channels,      # lcm channels
+                     plot_config.end_time,
                      mbp_plots.load_default_channels,           # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
+    print('Finished processing log - making plots')
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)

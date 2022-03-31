@@ -8,7 +8,15 @@ cc_library(
     deps = [
         ":constraint_factory",
         ":nonlinear_constraint",
-    ]
+    ],
+)
+
+cc_library(
+    name = "osqp_solver_options",
+    hdrs = ["osqp_solver_options.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
 )
 
 cc_library(
@@ -83,8 +91,8 @@ cc_test(
     size = "small",
     srcs = ["test/cost_constraint_approximation_test.cc"],
     deps = [
-        "@drake//common/test_utilities:eigen_matrix_compare",
         ":optimization_utils",
+        "@drake//common/test_utilities:eigen_matrix_compare",
         "@gtest//:main",
     ],
 )

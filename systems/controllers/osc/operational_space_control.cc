@@ -98,6 +98,11 @@ OperationalSpaceControl::OperationalSpaceControl(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
           .get_index();
 
+  failure_port_ =
+      this->DeclareVectorOutputPort("failure_signal", TimestampedVector<double>(1),
+                                    &OperationalSpaceControl::CheckTracking)
+          .get_index();
+
   const std::map<string, int>& vel_map_wo_spr =
       multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
@@ -435,18 +440,7 @@ void OperationalSpaceControl::Build() {
   }
 
   solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  drake::solvers::SolverOptions solver_options;
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
-  solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-  solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
-  std::cout << solver_options << std::endl;
-  solver_->InitializeSolver(*prog_, solver_options);
+  solver_->InitializeSolver(*prog_, solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -869,7 +863,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
-  output->tracking_costs.clear();
+  output->tracking_cost.clear();
 
   lcmt_osc_qp_output qp_output;
   qp_output.solve_time = solve_time_;
@@ -886,7 +880,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->qp_output = qp_output;
 
   output->tracking_data.reserve(tracking_data_vec_->size());
-  output->tracking_costs = std::vector<double>(tracking_data_vec_->size());
+  output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -921,7 +915,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       const MatrixXd& W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-      output->tracking_costs[i] =
+      output->tracking_cost[i] =
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
            (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
     }
@@ -985,6 +979,18 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());
+}
+
+void OperationalSpaceControl::CheckTracking(
+    const drake::systems::Context<double>& context,
+    TimestampedVector<double>* output) const {
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  output->set_timestamp(robot_output->get_timestamp());
+  output->get_mutable_value()(0) = 0.0;
+  if (soft_constraint_cost_ > 1e2 || isnan(soft_constraint_cost_)) {
+    output->get_mutable_value()(0) = 1.0;
+  }
 }
 
 }  // namespace dairlib::systems::controllers

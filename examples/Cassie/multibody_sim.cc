@@ -24,7 +24,6 @@
 #include "drake/systems/primitives/discrete_time_delay.h"
 
 namespace dairlib {
-using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
@@ -61,6 +60,7 @@ DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
 DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
+DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
 DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO" ,"LCM channel for virtual radio command");
@@ -100,22 +100,10 @@ int do_main(int argc, char* argv[]) {
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
-  auto input_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, lcm));
-  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
-  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-      input_receiver->get_output_port(0).size(), 0,
-      plant.get_actuation_input_port().size());
-  auto discrete_time_delay =
-      builder.AddSystem<drake::systems::DiscreteTimeDelay>(
-          1.0 / FLAGS_publish_rate, FLAGS_actuator_delay * FLAGS_publish_rate,
-          plant.num_actuators());
-  auto state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
-      plant, FLAGS_publish_efforts);
+
+  auto passthrough = systems::AddActuationRecieverAndStateSenderLcm(
+      &builder, plant, lcm, FLAGS_channel_u, "CASSIE_STATE_SIMULATION",
+      FLAGS_publish_rate, FLAGS_publish_efforts, FLAGS_actuator_delay);
 
   // Contact Information
   ContactResultsToLcmSystem<double>& contact_viz =
@@ -137,17 +125,6 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
 
   // connect leaf systems
-  builder.Connect(*input_sub, *input_receiver);
-  builder.Connect(*input_receiver, *passthrough);
-  builder.Connect(passthrough->get_output_port(),
-                  discrete_time_delay->get_input_port());
-  builder.Connect(discrete_time_delay->get_output_port(),
-                  plant.get_actuation_input_port());
-  builder.Connect(plant.get_state_output_port(),
-                  state_sender->get_input_port_state());
-  builder.Connect(discrete_time_delay->get_output_port(),
-                  state_sender->get_input_port_effort());
-  builder.Connect(*state_sender, *state_pub);
   builder.Connect(
       plant.get_geometry_poses_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
@@ -176,7 +153,7 @@ int do_main(int argc, char* argv[]) {
   VectorXd q_init, u_init, lambda_init;
   double mu_fp = 0;
   double min_normal_fp = 70;
-  double toe_spread = .2;
+  double toe_spread = FLAGS_toe_spread;
   // Create a plant for CassieFixedPointSolver.
   // Note that we cannot use the plant from the above diagram, because after the
   // diagram is built, plant.get_actuation_input_port().HasValue(*context)

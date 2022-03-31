@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "dairlib/lcmt_controller_switch.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
@@ -88,7 +89,8 @@ class LcmDrivenLoop {
                 const drake::systems::LeafSystem<double>* lcm_parser,
                 std::vector<std::string> input_channels,
                 const std::string& active_channel,
-                const std::string& switch_channel, bool is_forced_publish)
+                const std::string& switch_channel, bool is_forced_publish,
+                const std::string& backup_drive_channel = "")
       : drake_lcm_(drake_lcm),
         lcm_parser_(lcm_parser),
         is_forced_publish_(is_forced_publish) {
@@ -99,6 +101,7 @@ class LcmDrivenLoop {
     diagram_ptr_ = diagram.get();
     simulator_ =
         std::make_unique<drake::systems::Simulator<double>>(std::move(diagram));
+    simulator_->set_publish_at_initialization(false);
 
     // Create subscriber for the switch (in the case of multi-input)
     DRAKE_DEMAND(!input_channels.empty());
@@ -127,6 +130,11 @@ class LcmDrivenLoop {
     DRAKE_DEMAND(is_name_match);
 
     active_channel_ = active_channel;
+
+    if (!backup_drive_channel.empty()) {
+      state_sub_ = std::make_unique<drake::lcm::Subscriber<lcmt_robot_output>>(
+          drake_lcm_, backup_drive_channel);
+    }
   };
 
   /// Constructor for single-input LcmDrivenLoop without lcm_parser
@@ -154,7 +162,7 @@ class LcmDrivenLoop {
     auto& diagram_context = simulator_->get_mutable_context();
 
     // Wait for the first message.
-    drake::log()->info("Waiting for first lcm input message");
+    drake::log()->info("Waiting for the first lcm input messages");
     LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
       return name_to_input_sub_map_.at(active_channel_).count() > 0;
     });
@@ -192,6 +200,7 @@ class LcmDrivenLoop {
       // Wait for new InputMessageType messages and SwitchMessageType messages.
       bool is_new_input_message = false;
       bool is_new_switch_message = false;
+      bool is_new_state_message = false;
       LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
         if (name_to_input_sub_map_.at(active_channel_).count() > 0) {
           is_new_input_message = true;
@@ -201,11 +210,23 @@ class LcmDrivenLoop {
             is_new_switch_message = true;
           }
         }
-        return is_new_input_message || is_new_switch_message;
+        // Check the backup signal used to drive the system
+        if (state_sub_ != nullptr) {
+          if (state_sub_->count() > 0) {
+            if (state_sub_->message().utime * 1e-6 - last_input_msg_time_ >
+                0.1) {
+              too_long_between_input_messages_ = true;
+            }
+            is_new_state_message = too_long_between_input_messages_;
+          }
+        }
+
+        return is_new_input_message || is_new_switch_message ||
+            is_new_state_message;
       });
 
       // Update the diagram context when there is new input message
-      if (is_new_input_message) {
+      if (is_new_input_message || too_long_between_input_messages_) {
         // Write the InputMessageType message into the context if lcm_parser is
         // provided
         if (lcm_parser_ != nullptr) {
@@ -216,8 +237,15 @@ class LcmDrivenLoop {
         }
 
         // Get message time from the active channel to advance
-        time =
-            name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
+        if (is_new_input_message) {
+          time =
+              name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
+          last_input_msg_time_ = time;
+        } else {
+          // use the robot state to advance
+          time = state_sub_->message().utime * 1e-6;
+          state_sub_->clear();
+        }
 
         // Check if we are very far ahead or behind
         // (likely due to a restart of the driving clock)
@@ -231,7 +259,6 @@ class LcmDrivenLoop {
           simulator_->get_mutable_context().SetTime(time);
           simulator_->Initialize();
         }
-
         simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram
@@ -291,8 +318,11 @@ class LcmDrivenLoop {
       nullptr;
   std::map<std::string, drake::lcm::Subscriber<InputMessageType>>
       name_to_input_sub_map_;
+  std::unique_ptr<drake::lcm::Subscriber<lcmt_robot_output>> state_sub_;
 
   bool is_forced_publish_;
+  bool too_long_between_input_messages_ = false;
+  double last_input_msg_time_;
 };
 
 }  // namespace systems

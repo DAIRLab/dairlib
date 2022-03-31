@@ -8,9 +8,11 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
+#include "systems/primitives/subvector_pass_through.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -111,6 +113,39 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   std::vector<std::string> ordered_actuator_names_;
   std::map<std::string, int> actuatorIndexMap_;
 };
+
+
+///
+/// Convenience method to add and connect leaf systems for controlling
+/// a MultibodyPlant via LCM. Makes two prmary connections:
+///  (1) connects the state output from the plant to a RobotOutputSender and
+///      LCM publisher, publishing lcmt_robot_output
+///  (2) connects the actuation input port of the plant to a RobotInputReceiver
+///      and LCM receiver, receiving lcmt_robot_input
+///
+/// If an actuator delay is specified, also adds a DiscreteTimeDelay block
+/// between the input receiver and plant. This delay will also be applied to the
+/// efforts sent to the RobotOutputSender (if publish_efforts = true).
+///
+/// @param builder
+/// @param lcm The LcmInterfaceSystem to publish and receive on. Typically
+///        from `builder.AddSystem(LcmInterfaceSystem(...))`;
+/// @param actuator_channel The LCM channel name for the lcmt_robot_input
+/// @param state_channel The LCM channel name for the lcmt_robot_output
+/// @param publish_rate The frequency, in Hz, to publish at
+/// @param publish_efforts If true, the RobotOutputSender will also publish
+///        actuator efforts.
+/// @param actuator_delay The delay, in seconds, will be discretized according
+///        to publish_rate
+SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
+    drake::systems::DiagramBuilder<double>* builder,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::lcm::LcmInterfaceSystem* lcm,
+    std::string actuator_channel,
+    std::string state_channel,
+    double publish_rate,
+    bool publish_efforts = true,
+    double actuator_delay = 0);
 
 }  // namespace systems
 }  // namespace dairlib

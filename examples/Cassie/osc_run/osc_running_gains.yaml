@@ -22,12 +22,12 @@ ekf_filter_tau: [0.05, 0.1, 0.01]
 
 # High level command gains (with radio)
 vel_scale_rot: -0.5
-vel_scale_trans_sagital: 0.2
+vel_scale_trans_sagital: 0.6
 vel_scale_trans_lateral: -0.15
 
 # SLIP parameters
 slip_rest_length: 0.85
-leg_rest_length: 0.70
+leg_rest_length: 0.73
 stance_duration: 0.29
 flight_duration: 0.08
 
@@ -42,10 +42,10 @@ hip_yaw_kp: 40
 hip_yaw_kd: 1
 # Foot placement parameters
 footstep_offset: 0
-center_line_offset: -0.05
-mid_foot_height: 0.03
+center_line_offset: -0.07
+mid_foot_height: 0.05
 FootstepKd:
-  [  0.2,     0,  0,
+  [  0.3,     0,  0,
      0,     0.4, 0,
      0,        0,  0]
 PelvisW:
@@ -55,13 +55,13 @@ PelvisW:
 PelvisKp:
   [ 0,    0,    0,
     0,    0,    0,
-    0,    0,   75]
+    0,    0,   85]
 PelvisKd:
   [  1,    0,   0,
      0,    0,   0,
      0,    0,  5]
 PelvisRotW:
-  [0.5,  0,   0,
+  [1.0,  0,   0,
    0,  2.5,   0,
    0,   0,  0.1]
 PelvisRotKp:
@@ -75,7 +75,7 @@ PelvisRotKd:
 SwingFootW:
   [10,    0,    0,
    0,   50,    0,
-   0,    0,   1]
+   0,    0,   0.1]
 SwingFootKp:
   [125.,    0,    0,
    0,   80.,    0,

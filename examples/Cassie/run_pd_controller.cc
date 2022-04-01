@@ -5,8 +5,6 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/diagrams/cassie_sim_diagram.h"
-#include "examples/Cassie/diagrams/osc_running_controller_diagram.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
 #include "systems/robot_lcm_systems.h"

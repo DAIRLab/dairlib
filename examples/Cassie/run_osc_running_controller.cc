@@ -276,20 +276,20 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<PelvisTransTrajGenerator>(
           plant, plant_context.get(), default_traj, feet_contact_points,
           osc_gains.relative_pelvis);
-  pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length);
+  pelvis_trans_traj_generator->SetSLIPParams(osc_gains.slip_rest_length);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_left", "pelvis", osc_gains.relative_feet,
+      plant, plant_context.get(), "toe_left", "thigh_left", osc_gains.relative_feet,
       0, accumulated_state_durations);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_right", "pelvis",
+      plant, plant_context.get(), "toe_right", "thigh_right",
       osc_gains.relative_feet, 1, accumulated_state_durations);
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
-  l_foot_traj_generator->SetFootPlacementOffsets(osc_gains.rest_length,
+  l_foot_traj_generator->SetFootPlacementOffsets(osc_gains.leg_rest_length,
                                                  osc_gains.center_line_offset,
                                                  osc_gains.footstep_offset,
                                                  osc_gains.mid_foot_height);
-  r_foot_traj_generator->SetFootPlacementOffsets(osc_gains.rest_length,
+  r_foot_traj_generator->SetFootPlacementOffsets(osc_gains.leg_rest_length,
                                                  osc_gains.center_line_offset,
                                                  osc_gains.footstep_offset,
                                                  osc_gains.mid_foot_height);
@@ -340,12 +340,12 @@ int DoMain(int argc, char* argv[]) {
   auto right_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  left_hip_tracking_data->AddStateAndPointToTrack(right_stance_state, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(left_stance_state, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                   "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(right_stance_state, "thigh_left");
+  right_hip_tracking_data->AddStateAndPointToTrack(left_stance_state, "thigh_right");
   left_hip_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                  "pelvis");
+                                                  "thigh_left");
+  right_hip_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
+                                                   "thigh_right");
 
   auto left_hip_yz_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -355,9 +355,9 @@ int DoMain(int argc, char* argv[]) {
           "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant);
   left_hip_yz_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
-                                                     "pelvis");
+                                                     "thigh_left");
   right_hip_yz_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
-                                                      "pelvis");
+                                                      "thigh_right");
 
   auto left_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(

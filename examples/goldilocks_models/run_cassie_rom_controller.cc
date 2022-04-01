@@ -234,12 +234,14 @@ int DoMain(int argc, char* argv[]) {
   addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/, urdf,
                      FLAGS_spring_model, false /*loop closure*/);
   plant_w_spr.Finalize();
+  plant_w_spr.set_name("cassie_with_spring");
   // Build fix-spring Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
   addCassieMultibody(&plant_wo_springs, nullptr, true,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false);
   plant_wo_springs.Finalize();
+  plant_wo_springs.set_name("cassie_without_spring");
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
   auto context_wo_spr = plant_wo_springs.CreateDefaultContext();
@@ -650,7 +652,7 @@ int DoMain(int argc, char* argv[]) {
         weight_scale * osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
     osc->SetAccelerationCostForAllJoints(Q_accel);
     if (!FLAGS_close_sim_gap) {
-      //      osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
+      osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
     }
 
     // Constraints in OSC
@@ -869,9 +871,9 @@ int DoMain(int argc, char* argv[]) {
 
     // Set double support duration for force blending
     if (!FLAGS_close_sim_gap) {
-      /*osc->SetUpDoubleSupportPhaseBlending(
+      osc->SetUpDoubleSupportPhaseBlending(
           double_support_duration, left_stance_state, right_stance_state,
-          {post_left_double_support_state, post_right_double_support_state});*/
+          {post_left_double_support_state, post_right_double_support_state});
     }
 
     // Build OSC problem

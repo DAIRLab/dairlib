@@ -460,17 +460,19 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);*/
   // 3. Contact points (The position doesn't matter. It's not used in OSC)
+  const auto& pelvis = plant_wo_springs.GetBodyByName("pelvis");
+  multibody::WorldYawViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
+      plant_wo_springs, left_toe.first, left_toe.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
+      plant_wo_springs, left_heel.first, left_heel.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
+      plant_wo_springs, right_toe.first, right_toe.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_springs, right_heel.first, right_heel.second,
+      plant_wo_springs, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
 
   if (!FLAGS_use_IK) {

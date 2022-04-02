@@ -226,11 +226,19 @@ int DoMain(int argc, char* argv[]) {
   //  20220103 Update: There were two causes. Fixed in master.
   // DRAKE_DEMAND(!gains.set_constant_turning_rate);
 
+  // Some checks for sim gap heurisitc
   bool close_sim_gap = FLAGS_close_sim_gap;
   if (FLAGS_hardware) {
     cout << "Since we are running on hardware, we set `close_sim_gap` to "
             "false\n";
     close_sim_gap = false;
+  }
+  if (close_sim_gap) {
+    // Currently open loop traj doesn't have double support phase, so I added a
+    // check here. The double support phase contributes to the sim gap.
+    DRAKE_DEMAND(gains.double_support_duration == 0);
+    // TODO: you can add more checks here if you find important factors in the
+    //  future
   }
 
   // Build Cassie MBP

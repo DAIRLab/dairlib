@@ -100,7 +100,8 @@ DEFINE_bool(hardware, false, "");
 DEFINE_bool(use_hardware_osc_gains, false, "");
 
 //
-DEFINE_bool(evalulating_sim_cost, false, "");
+DEFINE_bool(close_sim_gap, true,
+            "Modify to close the gap between open loop and closed loop sim");
 
 //
 
@@ -157,8 +158,6 @@ DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
 // Testing
-DEFINE_bool(close_sim_gap, true,
-            "Modify to close the gap between open loop and closed loop sim");
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
 DEFINE_string(path_wait_identifier, "", "");
 
@@ -180,10 +179,15 @@ int DoMain(int argc, char* argv[]) {
         "examples/goldilocks_models/controller/"
         "osc_rom_walking_gains_hardware.yaml";
   } else {
-    if (FLAGS_evalulating_sim_cost) {
+    if (FLAGS_close_sim_gap) {
+      // TODO: we haven't found the optimal gains (if we replan from previous
+      //  solution, then we don't need to have strong gains)
       osc_gains_filename =
           "examples/goldilocks_models/controller/"
           "osc_rom_walking_gains_simulation_for_sim_eval.yaml";
+      //      osc_gains_filename =
+      //          "examples/goldilocks_models/controller/"
+      //          "osc_rom_walking_gains_simulation.yaml";
     } else {
       osc_gains_filename =
           "examples/goldilocks_models/controller/"
@@ -237,6 +241,7 @@ int DoMain(int argc, char* argv[]) {
     // Currently open loop traj doesn't have double support phase, so I added a
     // check here. The double support phase contributes to the sim gap.
     DRAKE_DEMAND(gains.double_support_duration == 0);
+    DRAKE_DEMAND(FLAGS_get_swing_foot_from_planner);
     // TODO: you can add more checks here if you find important factors in the
     //  future
   }
@@ -671,7 +676,7 @@ int DoMain(int argc, char* argv[]) {
         weight_scale * osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
     osc->SetAccelerationCostForAllJoints(Q_accel);
     if (!close_sim_gap) {
-      //      osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
+      osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
     }
 
     // Constraints in OSC
@@ -890,9 +895,9 @@ int DoMain(int argc, char* argv[]) {
 
     // Set double support duration for force blending
     if (!close_sim_gap) {
-      /*osc->SetUpDoubleSupportPhaseBlending(
+      osc->SetUpDoubleSupportPhaseBlending(
           double_support_duration, left_stance_state, right_stance_state,
-          {post_left_double_support_state, post_right_double_support_state});*/
+          {post_left_double_support_state, post_right_double_support_state});
     }
 
     // Build OSC problem

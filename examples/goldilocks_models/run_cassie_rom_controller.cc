@@ -226,6 +226,13 @@ int DoMain(int argc, char* argv[]) {
   //  20220103 Update: There were two causes. Fixed in master.
   // DRAKE_DEMAND(!gains.set_constant_turning_rate);
 
+  bool close_sim_gap = FLAGS_close_sim_gap;
+  if (FLAGS_hardware) {
+    cout << "Since we are running on hardware, we set `close_sim_gap` to "
+            "false\n";
+    close_sim_gap = false;
+  }
+
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model
                          ? "examples/Cassie/urdf/cassie_v2.urdf"
@@ -324,6 +331,11 @@ int DoMain(int argc, char* argv[]) {
   double right_support_duration = gains.right_support_duration;
   double double_support_duration = gains.double_support_duration;
   bool is_two_phase = FLAGS_is_two_phase || (double_support_duration == 0);
+  if (FLAGS_hardware) {
+    // We need double support phase for hardware (at least some sort of command
+    // blending)
+    DRAKE_DEMAND(!is_two_phase);
+  }
   vector<int> fsm_states;
   vector<double> state_durations;
   double stride_period = left_support_duration + double_support_duration;
@@ -353,7 +365,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
   if (FLAGS_hardware) {
-    // Create Lcm subsriber for lcmt_target_standing_height
+    // Create Lcm subsriber for lcmt_target_standing_height. This is used to
+    // trigger the FSM
     auto trigger_receiver = builder.AddSystem(
         LcmSubscriberSystem::Make<dairlib::lcmt_target_standing_height>(
             "MPC_SWITCH", &lcm_local));
@@ -638,7 +651,7 @@ int DoMain(int argc, char* argv[]) {
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
         context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
-        false, FLAGS_close_sim_gap);
+        false, close_sim_gap);
 
     // Scaling weight for testing
     // Didn't help. Might need to use the new osqp solver to see improvement
@@ -649,7 +662,7 @@ int DoMain(int argc, char* argv[]) {
     MatrixXd Q_accel =
         weight_scale * osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
     osc->SetAccelerationCostForAllJoints(Q_accel);
-    if (!FLAGS_close_sim_gap) {
+    if (!close_sim_gap) {
       //      osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
     }
 
@@ -868,7 +881,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&swing_toe_traj_right);
 
     // Set double support duration for force blending
-    if (!FLAGS_close_sim_gap) {
+    if (!close_sim_gap) {
       /*osc->SetUpDoubleSupportPhaseBlending(
           double_support_duration, left_stance_state, right_stance_state,
           {post_left_double_support_state, post_right_double_support_state});*/
@@ -1061,7 +1074,7 @@ int DoMain(int argc, char* argv[]) {
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
         context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
-        false, FLAGS_close_sim_gap);
+        false, close_sim_gap);
 
     // Cost
     int n_v = plant_wo_springs.num_velocities();

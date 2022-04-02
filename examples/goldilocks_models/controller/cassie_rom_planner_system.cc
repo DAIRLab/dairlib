@@ -723,6 +723,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       left_stance = !left_stance;
     }
   }
+  // Print outs
+  //  cout << "reg_x_FOM = \n";
+  //  for (auto& vec : reg_x_FOM) {
+  //    cout << vec.transpose() << endl;
+  //  }
+  //  cout << endl;
 
   ///
   /// Construct rom traj opt
@@ -1163,6 +1169,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift,
                                      local_regu_state_augmented,
                                      &global_regularization_state);
+    //    cout << "global_regularization_state = \n"
+    //         << global_regularization_state << endl;
+    //    cout << "local_regu_state_augmented = \n"
+    //         << local_regu_state_augmented << endl;
 
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, global_fsm_idx, x_init, init_phase,
@@ -1688,6 +1698,40 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
     rotated_x_FOM->col(j).segment<3>(nq_ + 3)
         << relative_rot_mat * original_x_FOM.col(j).segment<3>(nq_ + 3);
   }
+
+  // TODO (20220401): minor bug, the planner problem seems to be wrong when
+  //  Cassie faces backward (-z world axis).
+  //  I did the following change, but it didn't fix the bug -- Make sure that
+  //  the quaternion doesn't pick the other solution of the same rotation.
+  //  TODO: I will need to turn off constraints gradually to find where the bug
+  //   is
+  // Make sure that the quaternion doesn't pick the other solution of the same
+  // rotation.
+  // Hacks: Not sure what's the best the way to deal with this.
+  // Currently, I'm just checking the sign of the largest element.
+  /*auto abs_vec = rotated_x_FOM->col(0).head<4>().cwiseAbs();
+  double max_value = abs_vec.maxCoeff();
+  int index_of_max_value = 0;
+  for (int i = 0; i < 4; i++) {
+    if (abs_vec(i) == max_value) {
+      index_of_max_value = i;
+      break;
+    }
+  }
+  bool positive_of_big_value = (rotated_x_FOM->col(0)(index_of_max_value) > 0);
+  if (positive_of_big_value) {
+    for (int j = 0; j < original_x_FOM.cols(); j++) {
+      if (rotated_x_FOM->col(j)(index_of_max_value) < 0) {
+        rotated_x_FOM->col(j).head<4>() *= -1;
+      }
+    }
+  } else {
+    for (int j = 0; j < original_x_FOM.cols(); j++) {
+      if (rotated_x_FOM->col(j)(index_of_max_value) > 0) {
+        rotated_x_FOM->col(j).head<4>() *= -1;
+      }
+    }
+  }*/
 }
 
 void CassiePlannerWithMixedRomFom::RotatePosBetweenGlobalAndLocalFrame(

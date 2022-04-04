@@ -124,7 +124,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   float dt = 0.1;
   auto n_contact = 2 * contact_geoms.size() + 2 * contact_geoms.size() * num_friction_directions;
 
-  std::cout << "nc:" << n_contact  << std::endl;
+  //std::cout << "nc:" << n_contact  << std::endl;
 
   MatrixXd A(n_total,n_total);
   MatrixXd B(n_total, n_input);

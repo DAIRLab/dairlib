@@ -67,7 +67,8 @@ template <typename T>
 void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     drake::geometry::SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
-                    Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1));
+                    Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1),
+                    bool show_ground = true);
 
 /// Given a MultiBodyTree, builds a map from position name to position index
 template <typename T>

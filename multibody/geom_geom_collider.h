@@ -13,51 +13,68 @@ class GeomGeomCollider {
  public:
   /// Default constructor
   /// Specifies the MultibodyPlant object, as well as the two geometries
-  /// Additionally specifies the number of friction directions, used to
-  /// construct a polytope representation of friction with
-  /// (2 * num_friction_dirctions) faces.
-  /// Setting this to 0 is acceptable for frictionless contact
-  /// With this constructor, it cannot be set to "1", as this would not be
-  /// well-defined in 3D. See alternate constructor below.
   ///
   /// @param plant
   /// @param geometry_id_A
   /// @param geometry_id_B
-  /// @param num_friction_directions
   GeomGeomCollider(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const drake::SortedPair<drake::geometry::GeometryId> geometry_pair,
-      const int num_friction_directions);
+      const drake::SortedPair<drake::geometry::GeometryId> geometry_pair);
 
-  /// This is an alternate constructor for planar systems
-  /// Sets num_friction_directions_ = 1
-  /// The planar system is defined by a vector, in the world frame,
-  /// which is normal to the plane of interest.
-  ///
-  /// @param plant
-  /// @param geometry_id_A
-  /// @param geometry_id_B
-  /// @param planar_normal
-  GeomGeomCollider(
-      const drake::multibody::MultibodyPlant<T>& plant,
-      const drake::SortedPair<drake::geometry::GeometryId> geometry_pair,
-      const Eigen::Vector3d planar_normal);
-
-  /// Calculates the distance and contact Jacobian, set via pointer
-  /// Jacobian is ordered [J_n; J_t], and has shape
-  /// (1 + 2 * num_friction_directions_) x (nq)
-  /// @param context
-  /// @param J
-  /// @return the distance as a scalar
+  /// Calculates the distance and contact frame Jacobian.
+  /// Jacobian is ordered [J_n; J_t], and has shape 3 x (nq or nv), depending
+  /// on the choice of JacobianWrtVariable.
+  /// @param context The context for the MultibodyPlant
+  /// @return A pair with <distance as a scalar, J>
   std::pair<T, drake::MatrixX<T>> Eval(
-      const drake::systems::Context<T>& context);
+      const drake::systems::Context<T>& context,
+      drake::multibody::JacobianWrtVariable wrt =
+          drake::multibody::JacobianWrtVariable::kV);
+
+
+  /// Calculates the distance and contact frame Jacobian.
+  /// Jacobian is ordered [J_n; J_t], and has shape
+  ////   (2*num_friction_directions + 1) x (nq or nv), depending
+  /// on the choice of JacobianWrtVariable.
+  ///
+  /// Specifies the number of friction directions, used to
+  /// construct a polytope representation of friction with
+  /// (2 * num_friction_directions) faces.
+  /// Setting this to 0 is acceptable for frictionless contact
+  /// num_friction_directions != 1, as this would not be
+  /// well-defined in 3D.
+  ///
+  /// @param context The context for the MultibodyPlant
+  /// @param num_friction_directions
+  /// @return A pair with <distance as a scalar, J>
+  std::pair<T, drake::MatrixX<T>> EvalPolytope(
+      const drake::systems::Context<T>& context,
+      int num_friction_directions,
+      drake::multibody::JacobianWrtVariable wrt =
+          drake::multibody::JacobianWrtVariable::kV);
+
+
+  /// Calculates the distance and contact frame Jacobian for a 2D planar problem
+  /// Jacobian is ordered [J_n; +J_t; -J_t], and has shape 3 x (nq).
+  /// J_t refers to the (contact_normal x planar_normal) direction
+  /// @param context The context for the MultibodyPlant
+  /// @param planar_normal The normal vector to the planar system
+  /// @return A pair with <distance as a scalar, J>
+  std::pair<T, drake::MatrixX<T>> EvalPlanar(
+      const drake::systems::Context<T>& context,
+      const Eigen::Vector3d& planar_normal,
+      drake::multibody::JacobianWrtVariable wrt =
+          drake::multibody::JacobianWrtVariable::kV);
 
  private:
+  std::pair<T, drake::MatrixX<T>> DoEval(
+      const drake::systems::Context<T>& context,
+      Eigen::Matrix<double, Eigen::Dynamic, 3> force_basis,
+      drake::multibody::JacobianWrtVariable wrt, bool planar = false);
+
   const drake::multibody::MultibodyPlant<T>& plant_;
   const drake::geometry::GeometryId geometry_id_A_;
   const drake::geometry::GeometryId geometry_id_B_;
-  const int num_friction_directions_;
-  const Eigen::Vector3d planar_normal_;
 };
 
 }  // namespace multibody

@@ -1,0 +1,10 @@
+package dairlib;
+
+struct lcmt_controller_failure
+{
+  int64_t utime;
+  // determines which kind of failure mitigation (1: complete shutdown, 2: pure damping)
+  int32_t error_code;
+  string error_name;
+  string controller_channel;
+}

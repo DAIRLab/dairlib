@@ -15,7 +15,7 @@ class CassiePlotConfig():
         self.channel_osc = data['channel_osc']
         self.use_floating_base = data['use_floating_base']
         self.use_springs = data['use_springs']
-
+        self.end_time = data['end_time']
         self.plot_floating_base_positions = data['plot_floating_base_positions']
         self.plot_floating_base_velocities = \
             data['plot_floating_base_velocities']

@@ -310,6 +310,7 @@ cc_binary(
     name = "dispatcher_robot_in",
     srcs = ["dispatcher_robot_in.cc"],
     deps = [
+        ":cassie_lcm_driven_loop",
         ":cassie_state_estimator",
         ":cassie_urdf",
         ":cassie_utils",
@@ -317,9 +318,23 @@ cc_binary(
         "//examples/Cassie/networking:cassie_udp_pub_sub",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:linear_controller",
+        "//systems/controllers:pd_config_lcm",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+cc_library(
+    name = "cassie_lcm_driven_loop",
+    srcs = [
+    ],
+    hdrs = [
+        "cassie_lcm_driven_loop.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -366,9 +381,9 @@ cc_binary(
         "//lcm:trajectory_saver",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
+        "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
-        "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -387,6 +402,7 @@ cc_binary(
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
+        "//systems/filters:floating_base_velocity_filter",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -405,8 +421,10 @@ cc_binary(
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",
+        "//solvers:osqp_solver_options",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
+        "//systems/filters:floating_base_velocity_filter",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -478,10 +496,10 @@ cc_binary(
         "//lcm:dircon_trajectory_saver",
         "//lcm:lcm_trajectory_saver",
         "//multibody:visualization_utils",
+        "//solvers:nonlinear_cost",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
-        "//solvers:nonlinear_cost",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -536,6 +554,7 @@ cc_library(
         "cassie_encoder.h",
     ],
     deps = [
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

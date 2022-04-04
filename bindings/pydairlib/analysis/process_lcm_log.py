@@ -1,4 +1,4 @@
-def get_log_data(lcm_log, lcm_channels, data_processing_callback, *args,
+def get_log_data(lcm_log, lcm_channels, end_time, data_processing_callback, *args,
                  **kwargs):
     """
     Parses an LCM log and returns data as specified by a callback function
@@ -14,6 +14,9 @@ def get_log_data(lcm_log, lcm_channels, data_processing_callback, *args,
     """
 
     data_to_process = {}
+    print('Processing LCM log (this may take a while)...')
+    t = lcm_log.read_next_event().timestamp
+    lcm_log.seek(0)
     for event in lcm_log:
         if event.channel in lcm_channels:
             if event.channel in data_to_process:
@@ -23,6 +26,12 @@ def get_log_data(lcm_log, lcm_channels, data_processing_callback, *args,
                 data_to_process[event.channel] = \
                     [lcm_channels[event.channel].decode(event.data)]
 
+        if event.eventnum % 50000 == 0:
+            print(f'processed {(event.timestamp - t)*1e-6:.1f}'
+                  f' seconds of log data')
+
+        if 0 < end_time <= (event.timestamp - t)*1e-6:
+            break
     return data_processing_callback(data_to_process, *args, *kwargs)
 
 

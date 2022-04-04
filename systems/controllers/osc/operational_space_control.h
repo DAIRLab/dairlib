@@ -13,21 +13,21 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "solvers/fast_osqp_solver.h"
+#include "solvers/osqp_solver_options.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
+#include "common/find_resource.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
-
-// Maximum time limit for each QP solve
-static constexpr double kMaxSolveDuration = 0.1;
 
 namespace dairlib::systems::controllers {
 
@@ -109,6 +109,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_osc_debug_port() const {
     return this->get_output_port(osc_debug_port_);
   }
+  const drake::systems::OutputPort<double>& get_failure_output_port() const {
+    return this->get_output_port(failure_port_);
+  }
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -170,6 +173,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                        int right_support_state,
                                        std::vector<int> ds_states);
   void SetInputRegularizationWeight(double w) { w_input_reg_ = w; }
+  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+    solver_options_ = options;
+  }
+  void SetOsqpSolverOptionsFromYaml(const std::string& yaml_string) {
+    SetOsqpSolverOptions(
+        drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+        FindResourceOrThrow(yaml_string)).osqp_options);
+  };
 
   // OSC LeafSystem builder
   void Build();
@@ -201,6 +212,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AssignOscLcmOutput(const drake::systems::Context<double>& context,
                           dairlib::lcmt_osc_output* output) const;
 
+  void CheckTracking(const drake::systems::Context<double>& context,
+                     TimestampedVector<double>* output) const;
+
   // Output function
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
@@ -211,6 +225,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int state_port_;
   int fsm_port_;
   int near_impact_port_;
+  int failure_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;
@@ -272,7 +287,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Solver
   std::unique_ptr<solvers::FastOsqpSolver> solver_;
-  drake::solvers::SolverOptions solver_options_;
+  drake::solvers::SolverOptions solver_options_ =
+      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+          FindResourceOrThrow("solvers/osqp_options_default.yaml"))
+          .osqp_options;
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
@@ -355,6 +373,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* input_reg_cost_;
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
+
+  // store costs for failure checking
+  mutable double total_cost_ = 0;
+  mutable double soft_constraint_cost_ = 0;
 };
 
 }  // namespace dairlib::systems::controllers

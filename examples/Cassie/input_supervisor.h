@@ -1,8 +1,10 @@
 #pragma once
 #include <limits>
 
-#include "systems/framework/timestamped_vector.h"
 #include "dairlib/lcmt_input_supervisor_status.hpp"
+#include "dairlib/lcmt_controller_failure.hpp"
+#include "systems/framework/timestamped_vector.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -40,24 +42,35 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // replaced with a joint-specific vectors.
   explicit InputSupervisor(
       const drake::multibody::MultibodyPlant<double>& plant,
-      double max_joint_velocity, double update_period,
-      int min_consecutive_failures = 1,
-      double input_limit = std::numeric_limits<double>::max());
+      const std::string& initial_channel, double max_joint_velocity,
+      double update_period, Eigen::VectorXd& input_limit,
+      int min_consecutive_failures = 1);
 
   const drake::systems::InputPort<double>& get_input_port_command() const {
     return this->get_input_port(command_input_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_safety_controller()
+      const {
+    return this->get_input_port(safety_command_input_port_);
   }
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_controller_switch() const {
+  const drake::systems::InputPort<double>& get_input_port_controller_switch()
+      const {
     return this->get_input_port(controller_switch_input_port_);
   }
 
   const drake::systems::InputPort<double>& get_input_port_cassie() const {
     return this->get_input_port(cassie_input_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_controller_error()
+      const {
+    return this->get_input_port(controller_error_port_);
   }
 
   const drake::systems::OutputPort<double>& get_output_port_command() const {
@@ -66,6 +79,10 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
 
   const drake::systems::OutputPort<double>& get_output_port_status() const {
     return this->get_output_port(status_output_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_failure() const {
+    return this->get_output_port(failure_output_port_);
   }
 
   void SetMotorTorques(const drake::systems::Context<double>& context,
@@ -83,38 +100,58 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   void SetStatus(const drake::systems::Context<double>& context,
                  dairlib::lcmt_input_supervisor_status* output) const;
 
-  void CheckVelocities(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
-  void CheckRadio(const drake::systems::Context<double> &context, drake::systems::DiscreteValues<double>* discrete_state) const;
+  // Output a failure message when any error is triggered
+  void SetFailureStatus(const drake::systems::Context<double>& context,
+                 dairlib::lcmt_controller_failure* output) const;
+
+  void CheckVelocities(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+  void CheckRadio(const drake::systems::Context<double>& context,
+                  drake::systems::DiscreteValues<double>* discrete_state) const;
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
   const int num_actuators_;
   const int num_positions_;
   const int num_velocities_;
+
+  // active controller channel
+  mutable std::string active_channel_;
+
   // supervisor settings
   const int min_consecutive_failures_;
   double max_joint_velocity_;
-  double input_limit_;
+  mutable Eigen::VectorXd input_limit_;
   mutable double blend_duration_ = 0.0;
 
-  int soft_estop_trigger_index_;
-  int is_nan_index_;
-
-  int status_vars_index_;
+  // For keeping track of things that require multiple failures
   int n_fails_index_;
-  int status_index_;
+
   // for blending controller efforts
   int switch_time_index_;
   int prev_efforts_index_;
   int prev_efforts_time_index_;
 
+  // for keeping track of all sources of error
+  int shutdown_index_;
+  int error_indices_index_;
+
+  // map of all possible error flags that we check
+  // string: name of error to check
+  // int: index in the discrete state
+  std::unordered_map<std::string, int> error_indices_;
+
   // leafsystem ports
   int state_input_port_;
   int command_input_port_;
+  int safety_command_input_port_;
   int controller_switch_input_port_;
   int cassie_input_port_;
+  int controller_error_port_;
   int command_output_port_;
   int status_output_port_;
+  int failure_output_port_;
 
   Eigen::MatrixXd K_;
 };

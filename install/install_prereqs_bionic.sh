@@ -21,6 +21,7 @@ wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/se
 # skipping drake's "install_prereqs_user_environment.sh"
 touch install_prereqs_user_environment.sh
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}.txt"
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}-clang.txt"
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}-test-only.txt"
 cd ..
 mkdir binary_distribution

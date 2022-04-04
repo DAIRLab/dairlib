@@ -5,12 +5,12 @@ cols: 3
 relative_swing_ft: true
 
 # High level command gains (with radio)
-vel_scale_rot: -3.5
-vel_scale_trans_sagital: 1.5
+vel_scale_rot: -1.5
+vel_scale_trans_sagital: 2.0
 vel_scale_trans_lateral: -0.5
 
 # Filter settings
-pelvis_xyz_vel_filter_tau: [0.01, 0.01, 0.01]
+pelvis_xyz_vel_filter_tau: [0.001, 0.001, 0.001]
 
 # High level command gains (without radio)
 global_target_position_x: 0
@@ -36,11 +36,11 @@ k_ff_lateral: 0
 k_fb_lateral: 0.1
 
 # Finite state machine
-ss_time: 0.275
-ds_time: 0.075
+ss_time: 0.3
+ds_time: 0.05
 
 # Swing foot trajectory
-max_CoM_to_footstep_dist: 0.5
+max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.2
 center_line_offset: 0.04
 mid_foot_height: 0.15
@@ -48,7 +48,7 @@ final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
-lipm_height: 0.8
+lipm_height: 0.7
 
 # OSC gains
 mu: 0.75

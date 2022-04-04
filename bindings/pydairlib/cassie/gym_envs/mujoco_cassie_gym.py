@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import math
 
@@ -45,8 +47,8 @@ class MuJoCoCassieGym():
         '''
         Copied from apex/cassie.py 
         '''
-        self.max_simrate = 1.2 * self.gym_dt
-        self.min_simrate = 0.8 * self.gym_dt
+        self.max_simrate = 1.3 * self.gym_dt
+        self.min_simrate = 0.7 * self.gym_dt
         self.dynamics_randomization = dynamics_randomization
         self.dynamics_randomization = dynamics_randomization
         self.slope_rand = dynamics_randomization
@@ -108,6 +110,16 @@ class MuJoCoCassieGym():
                                    'hip_pitch_right_motor': 7,
                                    'knee_right_motor': 8,
                                    'toe_right_motor': 9}
+        # sim states
+        self.l_foot_frc = 0
+        self.r_foot_frc = 0
+        foot_pos = np.zeros(6)
+        self.l_foot_pos = np.zeros(3)
+        self.r_foot_pos = np.zeros(3)
+        self.l_foot_orient_cost = 0
+        self.r_foot_orient_cost = 0
+        self.neutral_foot_orient = np.array(
+            [-0.24790886454547323, -0.24679713195445646, -0.6609396704367185, 0.663921021343526])
 
     def make(self, controller):
         self.builder = DiagramBuilder()
@@ -181,21 +193,26 @@ class MuJoCoCassieGym():
         u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
         self.drake_sim.AdvanceTo(next_timestep)
+        self.reward_func.reset_clock_reward()
         while self.simulator.time() < next_timestep:
             self.simulator.step(cassie_in)
+            foot_pos = self.simulator.foot_pos()
+            self.reward_func.update_clock_reward(self.simulator.get_foot_forces(), foot_pos,
+                                                 self.simulator.xquat("left-foot"), self.simulator.xquat("right-foot"))
+
         if self.visualize:
             self.cassie_vis.draw(self.simulator)
 
         self.current_time = next_timestep
         t = self.simulator.time()
-        q = self.simulator.qpos()
-        v = self.simulator.qvel()
+        q = np.copy(self.simulator.qpos())
+        v = np.copy(self.simulator.qvel())
         q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
         self.current_time = t
         x = np.hstack((q, v))
         x = reexpress_state_local_to_global_omega(x)
         self.cassie_state = CassieEnvState(self.current_time, x, u, action)
-        reward = self.reward_func.compute_reward(self.cassie_state, self.prev_cassie_state)
+        reward = self.reward_func.compute_reward(timestep, self.cassie_state, self.prev_cassie_state)
         self.terminated = self.check_termination()
         self.prev_cassie_state = self.cassie_state
         return self.cassie_state, reward
@@ -367,7 +384,6 @@ class MuJoCoCassieGym():
             else:
                 self.motor_encoder_noise = np.zeros(10)
                 self.joint_encoder_noise = np.zeros(6)
-
 
     def free_sim(self):
         del self.simulator

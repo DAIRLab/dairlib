@@ -71,11 +71,11 @@ PelvisRotKp:
 PelvisRotKd:
   [10.,   0,  0,
    0,   5.,  0,
-   0,    0,  0.]
+   0,    0,  1.]
 SwingFootW:
   [10,    0,    0,
    0,   50,    0,
-   0,    0,   0.1]
+   0,    0,   1]
 SwingFootKp:
   [125.,    0,    0,
    0,   80.,    0,
@@ -87,11 +87,11 @@ SwingFootKd:
 LiftoffSwingFootW:
   [0.1,    0,    0,
    0,   10,    0,
-   0,    0,    1]
+   0,    0,   2.0]
 LiftoffSwingFootKp:
   [50.,    0,    0,
    0,   50.,    0,
-   0,    0,  50.]
+   0,    0,  25.]
 LiftoffSwingFootKd:
   [ 1,   0,   0,
     0,  1,   0,

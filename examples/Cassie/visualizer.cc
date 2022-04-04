@@ -9,6 +9,8 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/geometry/drake_visualizer.h"
+#include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -113,6 +115,11 @@ int do_main(int argc, char* argv[]) {
 
   DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
 
+  drake::geometry::MeshcatVisualizerParams params;
+  params.publish_period = 1.0/30.0;
+  auto meshcat = std::make_shared<drake::geometry::Meshcat>();
+  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+      &builder, scene_graph, meshcat, std::move(params));
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();

@@ -12,7 +12,6 @@
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
-#include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_run/foot_traj_generator.h"
 #include "examples/Cassie/osc_run/osc_running_gains.h"
 #include "examples/Cassie/osc_run/pelvis_pitch_traj_generator.h"
@@ -110,8 +109,6 @@ int DoMain(int argc, char* argv[]) {
   auto left_heel = LeftToeRear(plant);
   auto right_toe = RightToeFront(plant);
   auto right_heel = RightToeRear(plant);
-
-  int nv = plant.num_velocities();
 
   // Create maps for joints
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);

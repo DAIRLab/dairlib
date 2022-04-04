@@ -30,7 +30,7 @@ void OptionsTrackingData::UpdateActual(
 
   if (with_view_frame_) {
     view_frame_rot_T_ =
-        view_frame_->CalcWorldToFrameRotation(plant_w_spr_, context_wo_spr);
+        view_frame_->CalcWorldToFrameRotation(plant_w_spr_, context_w_spr);
     y_ = view_frame_rot_T_ * y_;
     ydot_ = view_frame_rot_T_ * ydot_;
     J_ = view_frame_rot_T_ * J_;

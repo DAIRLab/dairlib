@@ -119,10 +119,12 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());
   MatrixXd MinvJ_t_T = M_ldlt.solve(J_t.transpose());
 
-  std::cout << MinvJ_t_T.cols() << std::endl;
+  ///std::cout << MinvJ_t_T.cols() << std::endl;
 
   float dt = 0.1;
-  auto n_contact = contact_geoms.size() + 2 * contact_geoms.size() * num_friction_directions;
+  auto n_contact = 2 * contact_geoms.size() + 2 * contact_geoms.size() * num_friction_directions;
+
+  std::cout << "nc:" << n_contact  << std::endl;
 
   MatrixXd A(n_total,n_total);
   MatrixXd B(n_total, n_input);
@@ -133,35 +135,71 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd H(n_contact, n_input);
   VectorXd c(n_contact);
 
+  MatrixXd AB_v_q = AB_v.block(0,0,n_vel,n_state);
+  MatrixXd AB_v_v = AB_v.block(0,n_state, n_vel, n_vel);
+  MatrixXd AB_v_u = AB_v.block(0,n_total, n_vel, n_input);
 
+  A.block(0,0,n_state,n_state) = MatrixXd::Identity(n_state,n_state) + dt * dt * Nq * AB_v_q;
+  A.block(0,n_state,n_state,n_vel) = dt * Nq + dt * dt * Nq * AB_v_v;
+  A.block(n_state,0,n_vel,n_state) = dt * AB_v_q;
+  A.block(n_state,n_state, n_vel, n_vel) = dt * AB_v_v + MatrixXd::Identity(n_vel,n_vel);
 
+  //std::cout << "A:" << A.rows() << 'x' << A.cols() << std::endl;
 
-  MatrixXd hold = dt * AB_q;
-  MatrixXd hold2 = dt * AB_v;
-  A.block(0,0,n_state,n_state) = MatrixXd::Identity(n_state,n_state) + hold.block(0,0,n_state,n_state);
-  A.block(0,n_state,n_state,n_vel) = hold.block(0,n_state,n_state,n_vel);
-  A.block(n_state,0,n_vel,n_state) = hold2.block(0,0,n_vel,n_state);
-  A.block(n_state,n_state, n_vel, n_vel) = hold2.block(0,n_state, n_vel, n_vel) + MatrixXd::Identity(n_vel,n_vel);
+  B.block(0,0,n_state,n_input) = dt * dt * Nq * AB_v_u;
+  B.block(n_state,0,n_vel,n_input) = dt * AB_v_u;
 
-  B.block(0,0,n_state,n_input) = dt * AB_q.block(0,n_total,n_state,n_input);
-  B.block(n_state,0,n_vel,n_input) = dt * AB_v.block(0,n_total,n_state,n_input);
+  //std::cout << "B:" <<  B.rows() << 'x' << B.cols() << std::endl;
 
-  MatrixXd hold3 = dt * dt * Nq * MinvJ_t_T;
-  D.block(0,0,n_state,n_contact) = hold3;
-  D.block(n_state,0,n_vel,n_contact) = MinvJ_t_T * dt;
+  D = MatrixXd::Zero(n_total,n_contact);
+  D.block(0, 2 * contact_geoms.size(), n_state, 2 * contact_geoms.size() * num_friction_directions) = dt * dt * Nq *MinvJ_t_T;
+  D.block(n_state,2 * contact_geoms.size(), n_vel, 2 * contact_geoms.size() * num_friction_directions) = dt * MinvJ_t_T;
 
-  d.head(n_state) = d_q;
-  d.tail(n_vel) = d_v;
+  //std::cout << "D:" <<  D.rows() << 'x' << D.cols() << std::endl;
 
+  //std::cout << "D:" <<  D << std::endl;
 
+  d.head(n_state) = dt * dt * Nq * d_v;
+  d.tail(n_vel) = dt * d_v;
 
+  //std::cout << "d:" <<  d.rows() << 'x' << d.cols() << std::endl;
 
-  //std::cout << MinvJ_t_T.rows() << std::endl;
+  E = MatrixXd::Zero(n_contact,n_total);
+  E.block(contact_geoms.size(), 0, contact_geoms.size(), n_state ) = dt * dt * J_n * AB_v_q;
+  E.block(2 * contact_geoms.size(), 0, 2 * contact_geoms.size() * num_friction_directions, n_state ) = dt * J_t * AB_v_q;
+  E.block(contact_geoms.size(), n_state, contact_geoms.size(), n_vel) =  dt * J_n + dt * dt * J_n * AB_v_v;
+  E.block(2 * contact_geoms.size(), n_state, 2 * contact_geoms.size() * num_friction_directions, n_vel) = J_t + dt * J_t * AB_v_v;
 
-  //std::cout << (Nq * AB_v).rows() << std::endl;
+  //std::cout << "E:" <<  E.rows() << 'x' << E.cols() << std::endl;
+  //std::cout << "E:" <<  E << std::endl;
 
+  MatrixXd E_t = MatrixXd::Zero(contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions);
+  for (int i = 0; i < contact_geoms.size(); i++) {
+      E_t.block(i,i*(2*num_friction_directions),1,2*num_friction_directions) = MatrixXd::Ones(1,2*num_friction_directions);
+  };
 
-  //A.block(0,n_state,)
+  //std::cout <<  E_t << std::endl;
+
+  F = MatrixXd::Zero(n_contact,n_contact);
+  F.block(0,contact_geoms.size(), contact_geoms.size(), contact_geoms.size()) = mu * MatrixXd::Identity(contact_geoms.size(),contact_geoms.size());
+  F.block(0, 2 * contact_geoms.size(), contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions) = -E_t;
+  F.block(contact_geoms.size(), 2*contact_geoms.size(), contact_geoms.size(),2 * contact_geoms.size() * num_friction_directions ) = dt * dt * J_n * MinvJ_t_T;
+  F.block(2*contact_geoms.size(), 0, 2 * contact_geoms.size() * num_friction_directions, contact_geoms.size()) = E_t.transpose();
+  F.block(2*contact_geoms.size(), 2*contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions, 2 * contact_geoms.size() * num_friction_directions) = dt * J_t * MinvJ_t_T;
+
+  //std::cout <<  F << std::endl;
+
+  H = MatrixXd::Zero(n_contact,n_input);
+  H.block(contact_geoms.size(),0, contact_geoms.size(), n_input) = dt * dt * J_n * AB_v_u;
+  H.block(2*contact_geoms.size(),0, 2 * contact_geoms.size() * num_friction_directions, n_input) = dt * J_t * AB_v_u;
+
+  //std::cout << H << std::endl;
+
+  c = VectorXd::Zero(n_contact);
+  c.segment(contact_geoms.size(), contact_geoms.size()) = phi + dt * dt * J_n * d_v;
+  c.segment(2*contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions ) = J_t * dt * d_v;
+
+  //std::cout << c << std::endl;
 
   /// TODO: finish by assembling the terms computed above into the LCS structure
   ///       and returning an LCS object

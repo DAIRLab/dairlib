@@ -22,11 +22,8 @@ namespace systems {
 /// (see https://doi.org/10.1109/ICRA48506.2021.9560821)
 ///
 /// In the z direction, the start point is the
-/// swing foot position before it leaves the ground, and the mid point and end
-/// point are both specified by the user. The footstep location, x_fs, can be
-/// modified with two flags
-///  - `add_speed_regularization`
-///  - `is_feet_collision_avoid`
+/// swing foot position it leaves the ground, and the mid point and end
+/// point are both specified by the user.
 ///
 /// Arguments of the constructor:
 /// - MultibodyPlant of the robot

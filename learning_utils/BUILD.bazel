@@ -1,0 +1,13 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "parametrized_system",
+    srcs = ["parametrized_system.cc"],
+    hdrs = ["parametrized_system.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

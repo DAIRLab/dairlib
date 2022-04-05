@@ -1,9 +1,6 @@
 rows: 3
 cols: 3
 
-# TrackingDataSettings
-relative_swing_ft: true
-
 # High level command gains (with radio)
 vel_scale_rot: -1.5
 vel_scale_trans_sagital: 2.0
@@ -29,19 +26,13 @@ kd_pos_lateral: 0  # 0.3
 vel_max_lateral: 0  # 0.3
 target_pos_offset: 0  # -0.16
 
-# Speed control gains (Not used for ALIP control)
-k_ff_sagittal: 0
-k_fb_sagittal: 0.2
-k_ff_lateral: 0
-k_fb_lateral: 0.1
-
 # Finite state machine
 ss_time: 0.3
 ds_time: 0.05
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55
-footstep_offset: 0.2
+footstep_offset: 0.17
 center_line_offset: 0.04
 mid_foot_height: 0.15
 final_foot_height: 0.0
@@ -77,19 +68,6 @@ CoMKd:
   [   0,    0,     0,
       0,    0,     0,
       0,    0,     5]
-#CoMW:
-#  [   1,    0,     0,
-#      0,    1,     0,
-#      0,    0,    10]
-#CoMKp:
-#  [  50,    0,     0,
-#      0,   50,     0,
-#      0,    0,    50]
-#CoMKd:
-#  [   5,    0,     0,
-#      0,    5,     0,
-#      0,    0,     5]
-
 PelvisBalanceW:
   [ 2,    0,     0,
     0,    4,     0,
@@ -129,3 +107,9 @@ SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,
       0,    0,     1]
+
+AlipKalmanQ:
+  [.001, .001, .01, .01]
+
+AlipKalmanR:
+  [.0001, .0001, .01, .01]

@@ -41,7 +41,8 @@ ALIPTrajGenerator::ALIPTrajGenerator(
     const vector<double>& unordered_state_durations,
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
-    contact_points_in_each_state)
+    contact_points_in_each_state, const Eigen::MatrixXd& Q,
+    const Eigen::MatrixXd& R)
     : plant_(plant),
       context_(context),
       desired_com_height_(desired_com_height),
@@ -49,7 +50,7 @@ ALIPTrajGenerator::ALIPTrajGenerator(
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
       world_(plant_.world_frame()) {
-  
+
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() == contact_points_in_each_state.size());
 
@@ -86,8 +87,6 @@ ALIPTrajGenerator::ALIPTrajGenerator(
   MatrixXd B = -MatrixXd::Identity(4,2);
   MatrixXd C = MatrixXd::Identity(4,4);
   MatrixXd G = MatrixXd::Identity(4,4);
-  MatrixXd Q = Vector4d(1e-4, 1e-4, 1e-3, 1e-3).asDiagonal();
-  MatrixXd R = Vector4d(1e-4, 1e-4, 1e-1, 1e-1).asDiagonal();
 
   S2SKalmanFilterData filter_data = {A, B, C, Q, R, G};
   S2SKalmanFilter filter = S2SKalmanFilter(filter_data);

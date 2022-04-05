@@ -5,7 +5,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
-#include "examples/Cassie/osc/osc_walking_gains.h"
+#include "examples/Cassie/osc/osc_walking_gains_alip.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -96,7 +96,7 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Read-in the parameters
-  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGains>(FLAGS_gains_filename);
+  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -287,7 +287,8 @@ int DoMain(int argc, char* argv[]) {
   auto alip_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state);
+      contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
+      gains.R_alip_kalman_filter.asDiagonal());
 
   builder.Connect(fsm->get_output_port(0),
                   alip_traj_generator->get_input_port_fsm());
@@ -303,7 +304,6 @@ int DoMain(int argc, char* argv[]) {
   // to the hardware testing.
   // Additionally, implementing a double support phase might mitigate the
   // instability around state transition.
-  bool wrt_com_in_local_frame = gains.relative_swing_ft;
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
@@ -317,7 +317,7 @@ int DoMain(int argc, char* argv[]) {
           double_support_duration, gains.mid_foot_height,
           gains.final_foot_height, gains.final_foot_velocity_z,
           gains.max_CoM_to_footstep_dist, gains.footstep_offset,
-          gains.center_line_offset, wrt_com_in_local_frame);
+          gains.center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
@@ -490,23 +490,11 @@ int DoMain(int argc, char* argv[]) {
   swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  if (FLAGS_spring_model) {
-    // swing_ft_traj.DisableFeedforwardAccel({2});
-  }
-
-  if (wrt_com_in_local_frame) {
-    swing_ft_traj_local.SetTimeVaryingGains(
+  swing_ft_traj_local.SetTimeVaryingGains(
         swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);
-    osc->AddTrackingData(&swing_ft_traj_local);
-  } else {
-    swing_ft_traj_global.SetTimeVaryingGains(
-        swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_global.SetFeedforwardAccelMultiplier(
-        swing_ft_accel_gain_multiplier_gain_multiplier);
-    osc->AddTrackingData(&swing_ft_traj_global);
-  }
+  osc->AddTrackingData(&swing_ft_traj_local);
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);

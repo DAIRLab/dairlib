@@ -44,7 +44,7 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
-      contact_points_in_each_state);
+      contact_points_in_each_state, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R);
 
   // Input port getters
   const drake::systems::InputPort<double>& get_input_port_state() const {

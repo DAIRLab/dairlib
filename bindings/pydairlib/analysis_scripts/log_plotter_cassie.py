@@ -517,6 +517,16 @@ def PlotVdot(x, t_x, x_datatypes, low_pass_filter = True):
   for i in range(len(dt)):
     vdot_numerical[i, :] /= dt[i]
 
+  # Remove the spikes in the acceleration (IMPORTANT: we assume the velocity is not filtered)
+  # row_wise_maximum = np.amax(vdot_numerical, axis=1)
+  # big_value_occurances = row_wise_maximum > 500
+  # for i in range(len(big_value_occurances)):
+  #   if (big_value_occurances[i]):
+  #     if i == 0:
+  #       vdot_numerical[i,:] = 0
+  #     else:
+  #       vdot_numerical[i,:] = vdot_numerical[i-1,:]
+
   # Testing -- Apply low pass filter to vdot as well
   if low_pass_filter:
     vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x[1:], 100)

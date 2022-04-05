@@ -100,7 +100,8 @@ DEFINE_bool(hardware, false, "");
 DEFINE_bool(use_hardware_osc_gains, false, "");
 
 //
-DEFINE_bool(evalulating_sim_cost, false, "");
+DEFINE_bool(close_sim_gap, true,
+            "Modify to close the gap between open loop and closed loop sim");
 
 //
 
@@ -157,8 +158,6 @@ DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
 // Testing
-DEFINE_bool(close_sim_gap, true,
-            "Modify to close the gap between open loop and closed loop sim");
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
 DEFINE_string(path_wait_identifier, "", "");
 
@@ -180,10 +179,15 @@ int DoMain(int argc, char* argv[]) {
         "examples/goldilocks_models/controller/"
         "osc_rom_walking_gains_hardware.yaml";
   } else {
-    if (FLAGS_evalulating_sim_cost) {
+    if (FLAGS_close_sim_gap) {
+      // TODO: we haven't found the optimal gains (if we replan from previous
+      //  solution, then we don't need to have strong gains)
       osc_gains_filename =
           "examples/goldilocks_models/controller/"
           "osc_rom_walking_gains_simulation_for_sim_eval.yaml";
+      //      osc_gains_filename =
+      //          "examples/goldilocks_models/controller/"
+      //          "osc_rom_walking_gains_simulation.yaml";
     } else {
       osc_gains_filename =
           "examples/goldilocks_models/controller/"
@@ -225,6 +229,22 @@ int DoMain(int argc, char* argv[]) {
   //  walking turning rate.
   //  20220103 Update: There were two causes. Fixed in master.
   // DRAKE_DEMAND(!gains.set_constant_turning_rate);
+
+  // Some checks for sim gap heurisitc
+  bool close_sim_gap = FLAGS_close_sim_gap;
+  if (FLAGS_hardware) {
+    cout << "Since we are running on hardware, we set `close_sim_gap` to "
+            "false\n";
+    close_sim_gap = false;
+  }
+  if (close_sim_gap) {
+    // Currently open loop traj doesn't have double support phase, so I added a
+    // check here. The double support phase contributes to the sim gap.
+    DRAKE_DEMAND(gains.double_support_duration == 0);
+    DRAKE_DEMAND(FLAGS_get_swing_foot_from_planner);
+    // TODO: you can add more checks here if you find important factors in the
+    //  future
+  }
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model
@@ -326,6 +346,11 @@ int DoMain(int argc, char* argv[]) {
   double right_support_duration = gains.right_support_duration;
   double double_support_duration = gains.double_support_duration;
   bool is_two_phase = FLAGS_is_two_phase || (double_support_duration == 0);
+  if (FLAGS_hardware) {
+    // We need double support phase for hardware (at least some sort of command
+    // blending)
+    DRAKE_DEMAND(!is_two_phase);
+  }
   vector<int> fsm_states;
   vector<double> state_durations;
   double stride_period = left_support_duration + double_support_duration;
@@ -355,7 +380,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
   if (FLAGS_hardware) {
-    // Create Lcm subsriber for lcmt_target_standing_height
+    // Create Lcm subsriber for lcmt_target_standing_height. This is used to
+    // trigger the FSM
     auto trigger_receiver = builder.AddSystem(
         LcmSubscriberSystem::Make<dairlib::lcmt_target_standing_height>(
             "MPC_SWITCH", &lcm_local));
@@ -640,7 +666,7 @@ int DoMain(int argc, char* argv[]) {
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
         context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
-        false, FLAGS_close_sim_gap);
+        false, close_sim_gap);
 
     // Scaling weight for testing
     // Didn't help. Might need to use the new osqp solver to see improvement
@@ -651,7 +677,7 @@ int DoMain(int argc, char* argv[]) {
     MatrixXd Q_accel =
         weight_scale * osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
     osc->SetAccelerationCostForAllJoints(Q_accel);
-    if (!FLAGS_close_sim_gap) {
+    if (!close_sim_gap) {
       osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
     }
 
@@ -870,7 +896,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&swing_toe_traj_right);
 
     // Set double support duration for force blending
-    if (!FLAGS_close_sim_gap) {
+    if (!close_sim_gap) {
       osc->SetUpDoubleSupportPhaseBlending(
           double_support_duration, left_stance_state, right_stance_state,
           {post_left_double_support_state, post_right_double_support_state});
@@ -1063,7 +1089,7 @@ int DoMain(int argc, char* argv[]) {
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
         context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
-        false, FLAGS_close_sim_gap);
+        false, close_sim_gap);
 
     // Cost
     int n_v = plant_wo_springs.num_velocities();

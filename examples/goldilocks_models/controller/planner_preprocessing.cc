@@ -604,7 +604,17 @@ EventStatus InitialStateForPlanner::AdjustState(
     relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x_);
   }
   Quaterniond rotated_quat = relative_qaut * quat;
-  x_adjusted3.head(4) << rotated_quat.w(), rotated_quat.vec();
+  x_adjusted3.head<4>() << rotated_quat.w(), rotated_quat.vec();
+  // TODO (20220401): minor bug, the planner problem seems to be wrong when
+  //  Cassie faces backward (-z world axis).
+  //  I did the following change, but it didn't fix the bug:
+  //  "Hacks" -- always make the first quaternion element to be positive.
+  //  TODO: I will need to turn off constraints gradually to find where the bug
+  //   is
+  /*if (rotated_quat.w() < 0) {
+    x_adjusted3.head<4>() *= -1;
+  }*/
+
   // cout << "pelvis_Rxyz = \n" << quat.toRotationMatrix() << endl;
   // cout << "rotated_pelvis_Rxyz = \n" << rotated_quat.toRotationMatrix() <<
   // endl;

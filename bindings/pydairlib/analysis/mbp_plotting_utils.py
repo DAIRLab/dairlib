@@ -407,8 +407,7 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
     return ps
 
 
-def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
-    ps.plot(fsm_time, scale*fsm_signal)
+def add_fsm_to_plot(ps, fsm_time, fsm_signal):
     ax = ps.fig.axes[0]
     ymin, ymax = ax.get_ylim()
 

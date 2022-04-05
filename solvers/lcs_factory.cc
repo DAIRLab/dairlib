@@ -104,15 +104,17 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd J_n(contact_geoms.size(), plant.num_velocities());
   MatrixXd J_t(2 * contact_geoms.size() * num_friction_directions,
                plant.num_velocities());
+
   for (int i = 0; i < contact_geoms.size(); i++) {
-    multibody::GeomGeomCollider collider(plant, contact_geoms[i],
-                                         num_friction_directions);
+    multibody::GeomGeomCollider collider(plant, contact_geoms[i]); //deleted num_fricton_directions (check with Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.Eval(context);
     phi(i) = phi_i;
+
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
               plant.num_velocities()) =
         J_i.block(1, 0, 2 * num_friction_directions, plant.num_velocities());
+
   }
 
   auto M_ldlt = ExtractValue(M).ldlt();

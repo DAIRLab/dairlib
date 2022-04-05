@@ -115,6 +115,7 @@ void C3Controller::CalcControl(const Context<double>& context,
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
+
   control->SetDataVector(input);
 }
 }  // namespace controllers

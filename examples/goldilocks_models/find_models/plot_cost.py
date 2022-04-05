@@ -153,6 +153,8 @@ for i in range(len(directory_list)):
                 print("There is at least one sample in Iteration %d that's not evaluated. Stop plotting." % iter_start)
                 break
 
+            cost_iter_1 = 0.0
+            cost_min = 10000.0  # just a random big value
             for file_name in file_name_list:
                 # Initialize total_cost and n_successful_sample_each_iter
                 total_cost = [0] * iteration_length
@@ -207,6 +209,10 @@ for i in range(len(directory_list)):
                 average_cost = [x / y for x, y in zip(total_cost, n_successful_sample_each_iter)]
                 ax.plot(t[0:iteration_length], average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label + "; " + file_name)
 
+                # Get the cost of first iter and min cost
+                cost_iter_1 = max(cost_iter_1, average_cost[0])
+                cost_min = min(cost_min, min(average_cost))
+
                 # Write jobs into file
                 if file_name == "c_main.csv":
                     f = open(directory + "../costs_info.txt", "w")
@@ -235,6 +241,7 @@ for i in range(len(directory_list)):
 
             # Set limit
             # ax.set_ylim(1, 2.5)
+            ax.set_ylim(cost_min * 0.95, cost_iter_1 * 1.05)
 
             plt.grid()
             plt.title("Traj opt cost over model iteration")

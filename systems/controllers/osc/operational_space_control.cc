@@ -753,13 +753,14 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
+    u_sol_->row(0) = 0.95 * u_sol_->row(0) + 0.05 * u_prev_->row(0);
+    u_sol_->row(1) = 0.95 * u_sol_->row(1) + 0.05 * u_prev_->row(1);
     *u_prev_ = *u_sol_;
     initial_guess_x_[fsm_state] = result.GetSolution();
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
-    //    std::cerr << "QP did not solve in time!" << std::endl;
-    //    solver_->DisableWarmStart();
-    *u_prev_ = VectorXd::Zero(n_u_);
+//    *u_prev_ = VectorXd::Zero(n_u_);
+    *u_prev_ = 0.9 * *u_sol_ + VectorXd::Random(n_u_);
   }
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;

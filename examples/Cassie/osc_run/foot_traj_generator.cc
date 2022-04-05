@@ -190,11 +190,13 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   std::vector<MatrixXd> Y(T_waypoints.size(), VectorXd::Zero(3));
   VectorXd start_pos = foot_pos - hip_pos;
   Y[0] = start_pos;
-  Y[0](2) = -rest_length_;
+  if(start_pos(2) == 0){
+    Y[0](2) = -rest_length_;
+  }
   Y[1] = start_pos + 0.85 * footstep_correction;
   Y[1](2) = -rest_length_ + mid_foot_height_;
   Y[2] = footstep_correction;
-  Y[2](2) = -rest_length_ + mid_foot_height_ / 2;
+  Y[2](2) = -rest_length_;
 
   // corrections
   if (is_left_foot_) {

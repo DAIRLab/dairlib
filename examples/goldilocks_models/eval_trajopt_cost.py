@@ -333,7 +333,7 @@ def Generate2dCostLandscapeComparison(cmt):
         z[i] = -1e-8
     else:
       if np.isnan(z2[i]):
-        z[i] = np.inf
+        z[i] = 1000000 # np.inf # a very big number
       else:
         z[i] = z2[i]/z1[i]
 
@@ -354,6 +354,9 @@ def Generate2dCostLandscapeComparison(cmt):
   surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
   cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
   cbar.ax.set_yticklabels(['0', '0.7', '0.8', '0.9', '1', 'Inf'])
+  # import pdb;pdb.set_trace()
+  # surf = ax.tricontourf(x, y, z)
+  # import pdb;pdb.set_trace()
 
   # plt.xlim([0, 135])
   plt.xlabel(name_with_unit[task_to_plot[0]])
@@ -545,6 +548,7 @@ if __name__ == "__main__":
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/trajopt_cost_eval/20220218_explore_task_boundary--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/trajopt_cost_eval/20220224_explore_task_boundary_2D--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/trajopt_cost_eval/20220302_explore_task_boundary_2D_gi_tr--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
+  # trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220316_rom24_big_range/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -559,8 +563,8 @@ if __name__ == "__main__":
 
   ### Parameters for plotting
   model_iter_idx_start = 1
-  model_iter_idx_end = 231
-  model_iter_idx_delta = 10
+  model_iter_idx_end = 150
+  model_iter_idx_delta = 20
   model_indices = list(range(model_iter_idx_start, model_iter_idx_end+1, model_iter_idx_delta))
 
   log_indices = list(range(int(np.loadtxt(trajopt_data_dir + "n_sample.csv"))))
@@ -596,15 +600,16 @@ if __name__ == "__main__":
 
   # 2D plot (cost vs task)
   # model_slices = []
-  model_slices = [1, 50, 100, 150]
-  # model_slices = [1, 25, 50, 75, 100]
+  # model_slices = [1, 50, 100, 150]
+  model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
   # 2D landscape (task1 vs task2)
   # model_slices_cost_landsacpe = []
-  model_slices_cost_landsacpe = [1, 2, 11, 200]
+  model_slices_cost_landsacpe = [1, 2, 11, 110]
+  # model_slices_cost_landsacpe = [50]
 
   # Expected (averaged) cost over a task range
   task_ranges_to_average_over = {}

@@ -421,4 +421,13 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
 
 
 def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
-    ps.plot(fsm_time, scale * fsm_signal)
+    ax = ps.fig.axes[0]
+    ymin, ymax = ax.get_ylim()
+
+    ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == 0), alpha=0.1, color=ps.blue)
+    ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == 1), alpha=0.1, color=ps.blue)
+    ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == 2), alpha=0.1, color=ps.grey)
+    ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == 3), alpha=0.1, color=ps.grey)
+    ax.relim()
+
+    # ps.plot(fsm_time, scale * fsm_signal)

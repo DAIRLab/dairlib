@@ -32,13 +32,13 @@ class OSCGainsOptimizer():
 
         self.urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
         self.controller_urdf = 'examples/Cassie/urdf/cassie_v2_conservative.urdf'
-        self.default_osc_running_gains_filename = 'examples/Cassie/osc_run/osc_running_gains.yaml'
+        self.default_osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
         # self.osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
-        self.osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
         self.osqp_settings = 'examples/Cassie/osc_run/osc_running_qp_settings.yaml'
 
         self.drake_params_folder = "bindings/pydairlib/cassie/optimal_gains/"
         self.date_prefix = time.strftime("%Y_%m_%d_%H")
+        self.osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains_' + self.date_prefix + '.yaml'
         self.loss_over_time = []
 
         self.default_osc_gains = {
@@ -60,7 +60,7 @@ class OSCGainsOptimizer():
             # 'PelvisRotKd': np.array([10, 5, 1]),
             # 'FootstepKd': np.array([0.2, 0.45, 0]),
             'center_line_offset': -0.05,
-            'mid_foot_height': 0.05,
+            # 'mid_foot_height': 0.05,
             # 'slip_rest_length': 0.85,
             'leg_rest_length': 0.73,
             'footstep_offset': -0.05,
@@ -138,11 +138,11 @@ class OSCGainsOptimizer():
             # ekf_filter_tau=ng.p.Array(lower=0., upper=0.1, shape=(3,)),
             # FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
             center_line_offset=ng.p.Scalar(lower=-0.1, upper=0.1),
-            mid_foot_height=ng.p.Scalar(lower=0.00, upper=0.2),
+            # mid_foot_height=ng.p.Scalar(lower=0.00, upper=0.2),
             # slip_rest_length=ng.p.Scalar(lower=0.8, upper=0.9),
             leg_rest_length=ng.p.Scalar(lower=0.65, upper=0.85),
             footstep_offset=ng.p.Scalar(lower=-0.1, upper=0.05),
-            impact_threshold=ng.p.Scalar(lower=0.0, upper=0.05),
+            impact_threshold=ng.p.Scalar(lower=0.025, upper=0.05),
             stance_duration=ng.p.Scalar(lower=0.25, upper=0.40),
             # flight_duration=ng.p.Scalar(lower=0.05, upper=0.15),
         )

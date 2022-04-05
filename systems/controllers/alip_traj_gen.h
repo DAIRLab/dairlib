@@ -8,6 +8,7 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "systems/filters/s2s_kalman_filter.h"
 
 namespace dairlib {
 namespace systems {
@@ -98,6 +99,8 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   void CalcAlipTrajFromCurrent(const drake::systems::Context<double>& context,
                                drake::trajectories::Trajectory<double>* traj) const;
 
+  Eigen::MatrixXd CalcA(double com_z) const;
+
   // Port indices
   int state_port_;
   int fsm_port_;
@@ -127,6 +130,9 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::Frame<double>& pelvis_frame_;
   const drake::multibody::Frame<double>& toe_left_frame_;
   const drake::multibody::Frame<double>& toe_right_frame_;
+  mutable systems::S2SKalmanFilter
+      alip_filter_ = systems::S2SKalmanFilter(systems::S2SKalmanFilterData());
+  mutable S2SKalmanFilterData filter_data_;
 };
 
 }  // namespace systems

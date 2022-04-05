@@ -84,6 +84,11 @@ ALIPTrajGenerator::ALIPTrajGenerator(
           .get_index();
 
   m_ = plant_.CalcTotalMass(*context_);
+  MatrixXd Q = Vector4d(1e-4, 1e-4, 1e-3, 1e-3).diagonal();
+  MatrixXd R = Vector4d(1e-4, 1e-1, 1e-1, 1e-1).diagonal();
+  filter_data_ = {{CalcA(desired_com_height), -MatrixXd::Identity(4,2),
+                  MatrixXd::Identity(4, 4), Q, R}, MatrixXd::Identity(4, 4)};
+  alip_filter_ = S2SKalmanFilter(filter_data_);
 }
 
 
@@ -96,19 +101,7 @@ std::pair<MatrixXd, VectorXd> ALIPTrajGenerator::MakeExponentialTrajAandXi(
   double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
-  // Dynamics of ALIP: (eqn 6) https://arxiv.org/pdf/2109.14862.pdf
-  const double g = 9.81;
-  double a1x = 1.0 / (m_ * CoM_wrt_foot_z);
-  double a2x = -m_ * g;
-  double a1y = -1.0 / (m_ * CoM_wrt_foot_z);
-  double a2y = m_ * g;
-
-  // Sum of two exponential + one-segment 3D polynomial
-  MatrixXd A = MatrixXd::Zero(4, 4);
-  A(0, 3) = a1x;
-  A(1, 2) = a1y;
-  A(2, 1) = a2x;
-  A(3, 0) = a2y;
+  MatrixXd A = CalcA(CoM_wrt_foot_z);
 
   Vector4d alpha = Vector4d::Zero();
   alpha.head(2) = CoM_wrt_foot_xy;
@@ -153,6 +146,23 @@ ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTr
   auto [A, alpha] = MakeExponentialTrajAandXi(CoM, L, stance_foot_pos);
 
   return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
+}
+
+
+Eigen::MatrixXd ALIPTrajGenerator::CalcA(double com_z) const {
+  // Dynamics of ALIP: (eqn 6) https://arxiv.org/pdf/2109.14862.pdf
+  const double g = 9.81;
+  double a1x = 1.0 / (m_ * com_z);
+  double a2x = -m_ * g;
+  double a1y = -1.0 / (m_ * com_z);
+  double a2y = m_ * g;
+
+  // Sum of two exponential + one-segment 3D polynomial
+  MatrixXd A = MatrixXd::Zero(4, 4);
+  A(0, 3) = a1x;
+  A(1, 2) = a1y;
+  A(2, 1) = a2x;
+  A(3, 0) = a2y;
 }
 
 ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipStateTraj(

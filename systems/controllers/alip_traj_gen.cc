@@ -49,7 +49,7 @@ ALIPTrajGenerator::ALIPTrajGenerator(
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
       world_(plant_.world_frame()) {
-
+  
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() == contact_points_in_each_state.size());
 
@@ -80,21 +80,22 @@ ALIPTrajGenerator::ALIPTrajGenerator(
                                       &ALIPTrajGenerator::CalcAlipTrajFromCurrent)
           .get_index();
 
-  m_ = plant_.CalcTotalMass(*context_);
+  m_ = plant_.CalcTotalMass(*context);
 
-  MatrixXd Q = Vector4d(1e-4, 1e-4, 1e-3, 1e-3).diagonal();
-  MatrixXd R = Vector4d(1e-4, 1e-1, 1e-1, 1e-1).diagonal();
-  S2SKalmanFilterData filter_data =
-      {{CalcA(desired_com_height),
-        -MatrixXd::Identity(4,2),
-        MatrixXd::Identity(4, 4), Q, R},
-       MatrixXd::Identity(4, 4)};
+  MatrixXd A = CalcA(desired_com_height);
+  MatrixXd B = -MatrixXd::Identity(4,2);
+  MatrixXd C = MatrixXd::Identity(4,4);
+  MatrixXd G = MatrixXd::Identity(4,4);
+  MatrixXd Q = Vector4d(1e-4, 1e-4, 1e-3, 1e-3).asDiagonal();
+  MatrixXd R = Vector4d(1e-4, 1e-4, 1e-1, 1e-1).asDiagonal();
+
+  S2SKalmanFilterData filter_data = {A, B, C, Q, R, G};
   S2SKalmanFilter filter = S2SKalmanFilter(filter_data);
-
   std::pair<S2SKalmanFilter, S2SKalmanFilterData> model_filter = {filter, filter_data};
-  alip_filter_idx_ = this->DeclareAbstractState(
+    alip_filter_idx_ = this->DeclareAbstractState(
       drake::Value<std::pair<S2SKalmanFilter,
                                S2SKalmanFilterData>>(model_filter));
+
   prev_foot_idx_ = this->DeclareDiscreteState(Vector2d::Zero());
   prev_fsm_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
   com_z_idx_ = this->DeclareDiscreteState(
@@ -204,6 +205,7 @@ Eigen::MatrixXd ALIPTrajGenerator::CalcA(double com_z) const {
   A(1, 2) = a1y;
   A(2, 1) = a2x;
   A(3, 0) = a2y;
+  return A;
 }
 
 ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipStateTraj(

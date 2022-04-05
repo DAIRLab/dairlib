@@ -1,3 +1,5 @@
+import numpy as np
+
 from pydrake.all import *
 
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
@@ -58,6 +60,26 @@ plant.Finalize()
 
 # Build and connect the controller
 # controller = builder.AddSystem(TrifingerDemoController(plant))
+
+mu = 0.1
+Q = np.eye(31)
+R = np.eye(9)
+G = 0.1*np.eye(58)
+U = np.eye(58)
+num_friction_directions = 2
+
+#const std::vector<GeometryId>& finger_lower_link_0_geoms =
+#plant.GetCollisionGeometriesForBody(
+#    plant.GetBodyByName("finger_lower_link_0"));
+
+
+finger_lower_link_0_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_0"))
+finger_lower_link_120_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_120"))
+finger_lower_link_240_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_240"))
+cube_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"))
+
+SortedPair(finger_lower_link_0_geoms,cube)
+
 controller = builder.AddSystem(
     C3Controller(plant, context, plant_ad, context_ad, contact_geoms, num_friction_directions,
                  mu, Q, R, G, U))

@@ -62,6 +62,7 @@ void LcsTest() {
   contact_geoms.push_back(
       SortedPair(finger_lower_link_240_geoms[0], cube_geoms[0]));
 
+
   auto diagram_context = diagram->CreateDefaultContext();
   auto& context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());

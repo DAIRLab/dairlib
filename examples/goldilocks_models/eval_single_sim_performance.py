@@ -31,7 +31,7 @@ def PrintAndLogStatus(msg):
 
 def IsSimLogGood(x, t_x, desried_sim_end_time):
   # Check if the simulation ended early
-  sim_time_tolerance = 0.5  # Sometimes the script stopped the logger too early
+  sim_time_tolerance = 2  # Sometimes the script stopped the logger too early
   if desried_sim_end_time > 0:
     if abs(t_x[-1] - desried_sim_end_time) > sim_time_tolerance:
       msg = msg_first_column + ": sim end time (" + str(
@@ -623,21 +623,33 @@ def main():
     x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
 
   # Apply low pass filter to vel
-  if low_pass_filter:
-    x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted,
-      100)
+  cutoff_freq = 100 #100
+  # if low_pass_filter:
+  #   x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted,
+  #     cutoff_freq)
 
   # Get joint acceleration
   dx = np.diff(x_extracted, axis=0)
   vdot_numerical = dx[:, nq:]
   for i in range(len(dt_x)):
     vdot_numerical[i, :] /= dt_x[i]
+
+  # Remove the spikes in the acceleration (IMPORTANT: we assume the velocity is not filtered)
+  row_wise_maximum = np.amax(vdot_numerical, axis=1)
+  big_value_occurances = row_wise_maximum > 500
+  for i in range(len(big_value_occurances)):
+    if (big_value_occurances[i]):
+      if i == 0:
+        vdot_numerical[i,:] = 0
+      else:
+        vdot_numerical[i,:] = vdot_numerical[i-1,:]
+
   if low_pass_filter:
-    vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x_extracted[1:], 100)
-    vdot_numerical[:, vel_map["ankle_joint_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_rightdot"]], t_x_extracted[1:], 100)
-    vdot_numerical[:, vel_map["ankle_joint_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_leftdot"]], t_x_extracted[1:], 100)
-    vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x_extracted[1:], 100)
-    vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted[1:], 100)
+    vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x_extracted[1:], cutoff_freq)
+    # vdot_numerical[:, vel_map["ankle_joint_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_rightdot"]], t_x_extracted[1:], cutoff_freq)
+    # vdot_numerical[:, vel_map["ankle_joint_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_leftdot"]], t_x_extracted[1:], cutoff_freq)
+    # vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x_extracted[1:], cutoff_freq)
+    # vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted[1:], cutoff_freq)
 
   # import pdb; pdb.set_trace()
   # Testing -- set the toe vel to 0

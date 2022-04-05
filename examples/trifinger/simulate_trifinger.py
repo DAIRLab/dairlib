@@ -1,6 +1,7 @@
 import numpy as np
 
 from pydrake.all import *
+import pydrake
 
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 import pydairlib.common
@@ -62,11 +63,27 @@ plant.Finalize()
 # controller = builder.AddSystem(TrifingerDemoController(plant))
 
 mu = 0.1
-Q = np.eye(31)
-R = np.eye(9)
-G = 0.1*np.eye(58)
-U = np.eye(58)
+Qinit = np.eye(31)
+Rinit = np.eye(9)
+Ginit = 0.1*np.eye(58)
+Uinit = np.eye(58)
+xdesiredinit = np.zeros((31,1))
+
 num_friction_directions = 2
+N = 10
+Q = []
+R = []
+G = []
+U = []
+xdesired = []
+
+for i in range(1):
+    Q.append(Qinit)
+    R.append(Rinit)
+    G.append(Ginit)
+    U.append(Uinit)
+    xdesired.append(xdesiredinit)
+Q.append(Qinit) #add QN
 
 #const std::vector<GeometryId>& finger_lower_link_0_geoms =
 #plant.GetCollisionGeometriesForBody(
@@ -78,11 +95,26 @@ finger_lower_link_120_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyB
 finger_lower_link_240_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_240"))
 cube_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"))
 
-SortedPair(finger_lower_link_0_geoms,cube)
+contact_geoms = []
+contact_geoms.append( (finger_lower_link_0_geoms,cube_geoms   )   )
+contact_geoms.append( (finger_lower_link_120_geoms,cube_geoms   )   )
+contact_geoms.append( (finger_lower_link_240_geoms,cube_geoms   )   )
+
+gm_id = pydrake.geometry.GeometryId.get_new_id()
+
+contact_geoms = [(gm_id,gm_id)]
+
+#import pdb;pdb.set_trace()
+
+
+plant_ad = plant.ToAutoDiffXd()
+
+context = plant.CreateDefaultContext()
+context_ad = plant_ad.CreateDefaultContext()
 
 controller = builder.AddSystem(
-    C3Controller(plant, context, plant_ad, context_ad, contact_geoms, num_friction_directions,
-                 mu, Q, R, G, U))
+    C3Controller(plant, context, plant_ad, context_ad,contact_geoms))  #, num_friction_directions,
+                 #mu, Q, R, G, U))
 
 builder.Connect(plant.get_state_output_port(), controller.get_input_port(0))
 builder.Connect(controller.get_output_port(0), plant.get_actuation_input_port())

@@ -33,23 +33,24 @@ C3Controller::C3Controller(
     const drake::systems::Context<double>& context,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     const drake::systems::Context<drake::AutoDiffXd>& context_ad,
-    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-        contact_geoms,
-    int num_friction_directions, double mu, const vector<MatrixXd>& Q,
-    const vector<MatrixXd>& R, const vector<MatrixXd>& G,
-    const vector<MatrixXd>& U, const vector<VectorXd>& xdesired)
+    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>& contact_geoms
+    //int num_friction_directions, double mu, const vector<MatrixXd>& Q,
+    //const vector<MatrixXd>& R, const vector<MatrixXd>& G,
+    //const vector<MatrixXd>& U, const vector<VectorXd>& xdesired
+    )
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
       context_ad_(context_ad),
-      contact_geoms_(contact_geoms),
-      num_friction_directions_(num_friction_directions),
-      mu_(mu),
-      Q_(Q),
-      R_(R),
-      G_(G),
-      U_(U),
-      xdesired_(xdesired) {
+      contact_geoms_(contact_geoms)
+      //num_friction_directions_(num_friction_directions),
+      //mu_(mu),
+      //Q_(Q),
+      //R_(R),
+      //G_(G),
+      //U_(U),
+      //xdesired_(xdesired)
+      {
   int num_positions = plant_.num_positions();
   int num_velocities = plant_.num_velocities();
   int num_inputs = plant_.num_actuators();
@@ -74,49 +75,49 @@ void C3Controller::CalcControl(const Context<double>& context,
   //   (OutputVector<double> *) this->EvalVectorInput(context,
   //   state_input_port_);
 
-  auto robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
-  double timestamp = robot_output->get_timestamp();
-  VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << robot_output->GetPositions(), robot_output->GetVelocities();
-
-  solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
-      plant_, context_, plant_ad_, context_ad_, contact_geoms_,
-      num_friction_directions_, mu_);
-
-  C3Options options;
-  int N = (system_.A_).size();
-  int n = ((system_.A_)[0].cols());
-  int m = ((system_.D_)[0].cols());
-  int k = ((system_.B_)[0].cols());
-
-  /// initialize ADMM variables (delta, w)
-  std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
-
-  /// initialize ADMM reset variables (delta, w are reseted to these values)
-  std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
-
-  if (options.delta_option == 1) {
-    /// reset delta and w (option 1)
-    delta = delta_reset;
-    w = w_reset;
-    for (int j = 0; j < N; j++) {
-      delta[j].head(n) = state;
-    }
-  } else {
-    /// reset delta and w (default option)
-    delta = delta_reset;
-    w = w_reset;
-  }
-
-  solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
-
-  /// calculate the input given x[i]
-  VectorXd input = opt.Solve(state, delta, w);
-
-  control->SetDataVector(input);
+//  auto robot_output =
+//      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+//  double timestamp = robot_output->get_timestamp();
+//  VectorXd state(plant_.num_positions() + plant_.num_velocities());
+//  state << robot_output->GetPositions(), robot_output->GetVelocities();
+//
+//  solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
+//      plant_, context_, plant_ad_, context_ad_, contact_geoms_,
+//      num_friction_directions_, mu_);
+//
+//  C3Options options;
+//  int N = (system_.A_).size();
+//  int n = ((system_.A_)[0].cols());
+//  int m = ((system_.D_)[0].cols());
+//  int k = ((system_.B_)[0].cols());
+//
+//  /// initialize ADMM variables (delta, w)
+//  std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
+//  std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
+//
+//  /// initialize ADMM reset variables (delta, w are reseted to these values)
+//  std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
+//  std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
+//
+//  if (options.delta_option == 1) {
+//    /// reset delta and w (option 1)
+//    delta = delta_reset;
+//    w = w_reset;
+//    for (int j = 0; j < N; j++) {
+//      delta[j].head(n) = state;
+//    }
+//  } else {
+//    /// reset delta and w (default option)
+//    delta = delta_reset;
+//    w = w_reset;
+//  }
+//
+//  solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
+//
+//  /// calculate the input given x[i]
+//  VectorXd input = opt.Solve(state, delta, w);
+//
+//  control->SetDataVector(input);
 }
 }  // namespace controllers
 }  // namespace systems

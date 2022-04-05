@@ -23,6 +23,7 @@ class LinearKalmanFilter {
   Eigen::VectorXd Update(const KalmanFilterData& sys,
                          const Eigen::VectorXd& u,
                          const Eigen::VectorXd& y, double t);
+  [[nodiscard]] Eigen::VectorXd x() const { return x_; };
 
  protected:
   void Predict(const KalmanFilterData& sys, const Eigen::VectorXd& u, double t);

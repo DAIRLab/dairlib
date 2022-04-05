@@ -288,6 +288,7 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
       contact_points_in_each_state);
+
   builder.Connect(fsm->get_output_port(0),
                   alip_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),

@@ -48,10 +48,7 @@ ALIPTrajGenerator::ALIPTrajGenerator(
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_durations_(unordered_state_durations),
       contact_points_in_each_state_(contact_points_in_each_state),
-      world_(plant_.world_frame()),
-      pelvis_frame_(plant.GetFrameByName("pelvis")),
-      toe_left_frame_(plant.GetFrameByName("toe_left")),
-      toe_right_frame_(plant.GetFrameByName("toe_right")) {
+      world_(plant_.world_frame()) {
 
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() == contact_points_in_each_state.size());
@@ -84,33 +81,76 @@ ALIPTrajGenerator::ALIPTrajGenerator(
           .get_index();
 
   m_ = plant_.CalcTotalMass(*context_);
+
   MatrixXd Q = Vector4d(1e-4, 1e-4, 1e-3, 1e-3).diagonal();
   MatrixXd R = Vector4d(1e-4, 1e-1, 1e-1, 1e-1).diagonal();
-  filter_data_ = {{CalcA(desired_com_height), -MatrixXd::Identity(4,2),
-                  MatrixXd::Identity(4, 4), Q, R}, MatrixXd::Identity(4, 4)};
-  alip_filter_ = S2SKalmanFilter(filter_data_);
+  S2SKalmanFilterData filter_data =
+      {{CalcA(desired_com_height),
+        -MatrixXd::Identity(4,2),
+        MatrixXd::Identity(4, 4), Q, R},
+       MatrixXd::Identity(4, 4)};
+  S2SKalmanFilter filter = S2SKalmanFilter(filter_data);
+
+  std::pair<S2SKalmanFilter, S2SKalmanFilterData> model_filter = {filter, filter_data};
+  alip_filter_idx_ = this->DeclareAbstractState(
+      drake::Value<std::pair<S2SKalmanFilter,
+                               S2SKalmanFilterData>>(model_filter));
+  prev_foot_idx_ = this->DeclareDiscreteState(Vector2d::Zero());
+  prev_fsm_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
+  com_z_idx_ = this->DeclareDiscreteState(
+      desired_com_height * VectorXd::Ones(1));
+
+  this->DeclarePerStepUnrestrictedUpdateEvent(
+      &ALIPTrajGenerator::UnrestrictedUpdate);
 }
 
+drake::systems::EventStatus ALIPTrajGenerator::UnrestrictedUpdate(
+    const drake::systems::Context<double> &context,
+    drake::systems::State<double> *state) const {
 
+  int prev_fsm = state->get_discrete_state(prev_fsm_idx_).value()(0);
+  auto& [filter, filter_data] =
+      state->get_mutable_abstract_state<std::pair<S2SKalmanFilter,
+                                        S2SKalmanFilterData>>(alip_filter_idx_);
 
-std::pair<MatrixXd, VectorXd> ALIPTrajGenerator::MakeExponentialTrajAandXi(
-    const Eigen::Vector3d &CoM, const Eigen::Vector3d &L,
-    const Eigen::Vector3d &stance_foot_pos) const {
+  // Read in current state
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  VectorXd v = robot_output->GetVelocities();
 
-  Vector2d CoM_wrt_foot_xy = CoM.head(2) - stance_foot_pos.head(2);
-  double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
-  DRAKE_DEMAND(CoM_wrt_foot_z > 0);
+  // Read in finite state machine
+  const BasicVector<double>* fsm_output =
+      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+  VectorXd fsm_state = fsm_output->get_value();
+  int mode_index = GetModeIdx((int)fsm_state(0));
 
-  MatrixXd A = CalcA(CoM_wrt_foot_z);
+  // calculate current estimate of ALIP state
+  Vector3d CoM, L, stance_foot_pos;
+  CalcAlipState(robot_output->GetState(), mode_index,
+                &CoM, &L, &stance_foot_pos);
 
-  Vector4d alpha = Vector4d::Zero();
-  alpha.head(2) = CoM_wrt_foot_xy;
-  alpha.tail(2) = L.head(2);
-  return {A, alpha};
+  Vector4d x_alip;
+  x_alip.head(2) = CoM.head(2) - stance_foot_pos.head(2);
+  x_alip.tail(2) = L.head(2);
+
+  // Filter the alip state
+  filter_data.A = CalcA(CoM(2));
+  if ((int)fsm_state(0) == prev_fsm) {
+    filter.Update(filter_data, Vector2d::Zero(), x_alip,
+                  robot_output->get_timestamp());
+  } else {
+    Vector2d prev_stance_pos = state->get_discrete_state(prev_foot_idx_).value();
+    filter.Update(filter_data, stance_foot_pos.head<2>() - prev_stance_pos, x_alip,
+                  robot_output->get_timestamp());
+    state->get_mutable_discrete_state(prev_fsm_idx_).get_mutable_value() << fsm_state;
+  }
+  state->get_mutable_discrete_state(com_z_idx_).get_mutable_value() << CoM.tail(1) - stance_foot_pos.tail(1);
+  state->get_mutable_discrete_state(prev_foot_idx_).get_mutable_value() << stance_foot_pos.head<2>();
+  return EventStatus::Succeeded();
 }
 
 ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTraj(
-    const Vector3d& CoM, const Vector3d& L, const Vector3d& stance_foot_pos,
+    const Vector3d& CoM, const Vector3d& stance_foot_pos, const Vector4d& x_alip,
     double start_time, double end_time_of_this_fsm_state) const {
 
   double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
@@ -143,9 +183,10 @@ ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTr
 
   MatrixXd K = MatrixXd::Zero(3,4);
   K.topLeftCorner(2,2) = MatrixXd::Identity(2,2);
-  auto [A, alpha] = MakeExponentialTrajAandXi(CoM, L, stance_foot_pos);
+  auto A = CalcA(CoM_wrt_foot_z);
 
-  return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
+  return ExponentialPlusPiecewisePolynomial<double>(
+      K, A, x_alip, pp_part);
 }
 
 
@@ -166,8 +207,8 @@ Eigen::MatrixXd ALIPTrajGenerator::CalcA(double com_z) const {
 }
 
 ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipStateTraj(
-    const Vector3d& CoM, const Vector3d& L, const Vector3d& stance_foot_pos,
-    double start_time, double end_time_of_this_fsm_state) const {
+    const Eigen::Vector4d& x_alip, double com_z, double start_time,
+    double end_time_of_this_fsm_state) const {
 
   Vector2d breaks = {start_time, end_time_of_this_fsm_state};
   PiecewisePolynomial<double> pp_part =
@@ -175,8 +216,9 @@ ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipState
           breaks, MatrixXd::Zero(4,2),
           Vector4d::Zero(), Vector4d::Zero());
   MatrixXd K = MatrixXd::Identity(4,4);
-  auto [A, alpha] = MakeExponentialTrajAandXi(CoM, L, stance_foot_pos);
-  return ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
+
+  return ExponentialPlusPiecewisePolynomial<double>(
+      K, CalcA(com_z), x_alip, pp_part);
 }
 
 void ALIPTrajGenerator::CalcAlipState(
@@ -212,16 +254,15 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd v = robot_output->GetVelocities();
+
   // Read in finite state machine
-  const BasicVector<double>* fsm_output =
-  (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
+  int fsm_state = this->EvalVectorInput(context, fsm_port_)->value()(0);
+
   // Read in finite state machine switch time
   VectorXd prev_event_time =
       this->EvalVectorInput(context, touchdown_time_port_)->get_value();
 
-  int mode_index = GetModeIdx((int)fsm_state(0));
+  int mode_index = GetModeIdx(fsm_state);
 
   // Get time
   double timestamp = robot_output->get_timestamp();
@@ -236,11 +277,15 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
       robot_output->GetState(), mode_index,
       &CoM, &L, &stance_foot_pos);
 
+  Vector4d x_alip =
+      context.get_abstract_state<std::pair<S2SKalmanFilter,
+      S2SKalmanFilterData>>(alip_filter_idx_).first.x();
+
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
   *exp_pp_traj =
-      ConstructAlipComTraj(CoM, L, stance_foot_pos, start_time, end_time);
+      ConstructAlipComTraj(CoM, stance_foot_pos, x_alip, start_time, end_time);
 }
 
 void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
@@ -248,16 +293,15 @@ void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd v = robot_output->GetVelocities();
+
   // Read in finite state machine
-  const BasicVector<double>* fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
+  int fsm_state = this->EvalVectorInput(context, fsm_port_)->value()(0);
+
   // Read in finite state machine switch time
   VectorXd prev_event_time =
       this->EvalVectorInput(context, touchdown_time_port_)->get_value();
 
-  int mode_index = GetModeIdx((int)fsm_state(0));
+  int mode_index = GetModeIdx(fsm_state);
 
   // Get time
   double timestamp = robot_output->get_timestamp();
@@ -267,16 +311,18 @@ void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
                                      -std::numeric_limits<double>::infinity(),
                                      end_time - 0.001);
 
-  Vector3d CoM, L, stance_foot_pos;
-  CalcAlipState(
-      robot_output->GetState(), mode_index,
-      &CoM, &L, &stance_foot_pos);
-
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
+
+  Vector4d x_alip =
+      context.get_abstract_state<std::pair<S2SKalmanFilter,
+                                           S2SKalmanFilterData>>(
+                                               alip_filter_idx_).first.x();
+  double com_z = context.get_discrete_state(com_z_idx_).value()(0);
+
   *exp_pp_traj =
-      ConstructAlipStateTraj(CoM, L, stance_foot_pos, start_time, end_time);
+      ConstructAlipStateTraj(x_alip, com_z, start_time, end_time);
 }
 
 int ALIPTrajGenerator::GetModeIdx(int fsm_state) const {

@@ -37,8 +37,8 @@ class MuJoCoCassieGym():
         self.current_time = 0.00
         self.end_time = 7.5
 
-        self.default_model_directory = '/home/yangwill/workspace/cassie-mujoco-sim/model/'
-        self.default_model_file = '/home/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
+        self.default_model_directory = '/homef/yangwill/workspace/cassie-mujoco-sim/model/'
+        self.default_model_file = '/homef/yangwill/workspace/cassie-mujoco-sim/model/cassie.xml'
 
         self.simulator = CassieSim(self.default_model_directory + model_xml)
         if self.visualize:

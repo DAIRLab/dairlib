@@ -624,9 +624,10 @@ def main():
 
   # Apply low pass filter to vel
   cutoff_freq = 100 #100
-  # if low_pass_filter:
-  #   x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted,
-  #     cutoff_freq)
+  if is_hardware:
+    if low_pass_filter:
+      x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted,
+        cutoff_freq)
 
   # Get joint acceleration
   dx = np.diff(x_extracted, axis=0)
@@ -635,14 +636,15 @@ def main():
     vdot_numerical[i, :] /= dt_x[i]
 
   # Remove the spikes in the acceleration (IMPORTANT: we assume the velocity is not filtered)
-  row_wise_maximum = np.amax(vdot_numerical, axis=1)
-  big_value_occurances = row_wise_maximum > 500
-  for i in range(len(big_value_occurances)):
-    if (big_value_occurances[i]):
-      if i == 0:
-        vdot_numerical[i,:] = 0
-      else:
-        vdot_numerical[i,:] = vdot_numerical[i-1,:]
+  if not is_hardware:
+    row_wise_maximum = np.amax(vdot_numerical, axis=1)
+    big_value_occurances = row_wise_maximum > 500
+    for i in range(len(big_value_occurances)):
+      if (big_value_occurances[i]):
+        if i == 0:
+          vdot_numerical[i,:] = 0
+        else:
+          vdot_numerical[i,:] = vdot_numerical[i-1,:]
 
   if low_pass_filter:
     vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x_extracted[1:], cutoff_freq)

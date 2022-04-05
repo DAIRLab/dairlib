@@ -2,33 +2,38 @@ from pydrake.all import *
 
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 import pydairlib.common
+# from pydairlib.solvers import LCS
+# from pydairlib.solvers import C3MIQP
+# from pydairlib.solvers import C3Options
+from pydairlib.systems.controllers import C3Controller
 
 # A demo controller system
 class TrifingerDemoController(LeafSystem):
-  def __init__(self, plant):
-    LeafSystem.__init__(self)
+    def __init__(self, plant):
+        LeafSystem.__init__(self)
 
-    self.plant = plant
+        self.plant = plant
 
-    # Input is state, output is torque (control action)
-    self.DeclareVectorInputPort("x", plant.num_positions() +
-        plant.num_velocities())
-    self.DeclareVectorOutputPort("u", plant.num_actuators(), self.CalcControl)
+        # Input is state, output is torque (control action)
+        self.DeclareVectorInputPort("x", plant.num_positions() +
+                                    plant.num_velocities())
+        self.DeclareVectorOutputPort("u", plant.num_actuators(), self.CalcControl)
 
-  def CalcControl(self, context, output):
-    x = self.EvalVectorInput(context, 0).get_value()
-    # q and v are [fingers; cube]
-    # cube position is [quat; xyz] and velocity [ang_vel; xyz]
-    q = x[0:self.plant.num_positions()]
-    v = x[self.plant.num_positions():]
-    # u = -.03*np.ones(self.plant.num_actuators())
+    def CalcControl(self, context, output):
+        x = self.EvalVectorInput(context, 0).get_value()
+        # q and v are [fingers; cube]
+        # cube position is [quat; xyz] and velocity [ang_vel; xyz]
+        q = x[0:self.plant.num_positions()]
+        v = x[self.plant.num_positions():]
+        # u = -.03*np.ones(self.plant.num_actuators())
 
-    # use a simple PD controller with constant setpoint
-    kp = 10
-    kd = 2
-    q_des = np.array([.1, 0, -1, .1, -.5, -1, .1, -.5, -1])
-    u = kp*(q_des - q[0:9]) - kd * v[0:9]
-    output.SetFromVector(u)
+        # use a simple PD controller with constant setpoint
+        kp = 10
+        kd = 2
+        q_des = np.array([.1, 0, -1, .1, -.5, -1, .1, -.5, -1])
+        u = kp * (q_des - q[0:9]) - kd * v[0:9]
+        output.SetFromVector(u)
+
 
 # Load the URDF and the cube
 builder = DiagramBuilder()
@@ -52,7 +57,11 @@ plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI)
 plant.Finalize()
 
 # Build and connect the controller
-controller = builder.AddSystem(TrifingerDemoController(plant))
+# controller = builder.AddSystem(TrifingerDemoController(plant))
+controller = builder.AddSystem(
+    C3Controller(plant, context, plant_ad, context_ad, contact_geoms, num_friction_directions,
+                 mu, Q, R, G, U))
+
 builder.Connect(plant.get_state_output_port(), controller.get_input_port(0))
 builder.Connect(controller.get_output_port(0), plant.get_actuation_input_port())
 
@@ -72,7 +81,6 @@ mux = builder.AddSystem(Multiplexer([nq + nv, nu]))
 builder.Connect(plant.get_state_output_port(), mux.get_input_port(0))
 builder.Connect(controller.get_output_port(0), mux.get_input_port(1))
 builder.Connect(mux.get_output_port(0), logger.get_input_port(0))
-
 
 diagram = builder.Build()
 

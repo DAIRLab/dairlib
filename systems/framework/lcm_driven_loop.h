@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "dairlib/lcmt_controller_switch.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
@@ -100,6 +101,7 @@ class LcmDrivenLoop {
     diagram_ptr_ = diagram.get();
     simulator_ =
         std::make_unique<drake::systems::Simulator<double>>(std::move(diagram));
+    simulator_->set_publish_at_initialization(false);
 
     // Create subscriber for the switch (in the case of multi-input)
     DRAKE_DEMAND(!input_channels.empty());
@@ -160,7 +162,7 @@ class LcmDrivenLoop {
     auto& diagram_context = simulator_->get_mutable_context();
 
     // Wait for the first message.
-    drake::log()->info("Waiting for first lcm input message");
+    drake::log()->info("Waiting for the first lcm input messages");
     LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
       return name_to_input_sub_map_.at(active_channel_).count() > 0;
     });
@@ -257,7 +259,6 @@ class LcmDrivenLoop {
           simulator_->get_mutable_context().SetTime(time);
           simulator_->Initialize();
         }
-
         simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram

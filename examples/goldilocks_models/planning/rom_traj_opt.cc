@@ -62,7 +62,7 @@ RomTrajOpt::RomTrajOpt(
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
     const PlannerSetting& param, std::vector<int> initialize_with_rom_state,
-    bool print_status)
+    bool constant_rom_vel_during_double_support, bool print_status)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -1102,13 +1102,13 @@ RomTrajOptCassie::RomTrajOptCassie(
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
     const PlannerSetting& param, std::vector<int> initialize_with_rom_state,
-    bool print_status)
-    : RomTrajOpt(num_time_samples, Q, R, rom, plant, state_mirror,
-                 left_contacts, right_contacts, left_origin, right_origin,
-                 fom_joint_name_lb_ub, x_init, rom_state_init,
-                 max_swing_distance, start_with_left_stance,
-                 zero_touchdown_impact, relax_index, param,
-                 initialize_with_rom_state, print_status) {
+    bool constant_rom_vel_during_double_support, bool print_status)
+    : RomTrajOpt(
+          num_time_samples, Q, R, rom, plant, state_mirror, left_contacts,
+          right_contacts, left_origin, right_origin, fom_joint_name_lb_ub,
+          x_init, rom_state_init, max_swing_distance, start_with_left_stance,
+          zero_touchdown_impact, relax_index, param, initialize_with_rom_state,
+          constant_rom_vel_during_double_support, print_status) {
   quat_identity_ = VectorX<double>(4);
   quat_identity_ << 1, 0, 0, 0;
 }

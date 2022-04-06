@@ -52,6 +52,7 @@ class RomTrajOpt
              bool start_with_left_stance, bool zero_touchdown_impact,
              const std::set<int>& relax_index, const PlannerSetting& param,
              std::vector<int> initialize_with_rom_state,
+             bool constant_rom_vel_during_double_support = false,
              bool print_status = true);
   ~RomTrajOpt() override {}
 
@@ -215,21 +216,25 @@ class RomTrajOpt
 
 class RomTrajOptCassie : public RomTrajOpt {
  public:
-  RomTrajOptCassie(
-      const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
-      const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const StateMirror& state_mirror,
-      const std::vector<BodyPoint>& left_contacts,
-      const std::vector<BodyPoint>& right_contacts,
-      const BodyPoint& left_origin, const BodyPoint& right_origin,
-      const std::vector<std::tuple<std::string, double, double>>&
-          fom_joint_name_lb_ub,
-      const Eigen::VectorXd& x_init, const Eigen::VectorXd& rom_state_init,
-      const std::vector<double>& max_swing_distance,
-      bool start_with_left_stance, bool zero_touchdown_impact,
-      const std::set<int>& relax_index, const PlannerSetting& param,
-      std::vector<int> initialize_with_rom_state, bool print_status = true);
+  RomTrajOptCassie(const std::vector<int>& num_time_samples,
+                   const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
+                   const ReducedOrderModel& rom,
+                   const drake::multibody::MultibodyPlant<double>& plant,
+                   const StateMirror& state_mirror,
+                   const std::vector<BodyPoint>& left_contacts,
+                   const std::vector<BodyPoint>& right_contacts,
+                   const BodyPoint& left_origin, const BodyPoint& right_origin,
+                   const std::vector<std::tuple<std::string, double, double>>&
+                       fom_joint_name_lb_ub,
+                   const Eigen::VectorXd& x_init,
+                   const Eigen::VectorXd& rom_state_init,
+                   const std::vector<double>& max_swing_distance,
+                   bool start_with_left_stance, bool zero_touchdown_impact,
+                   const std::set<int>& relax_index,
+                   const PlannerSetting& param,
+                   std::vector<int> initialize_with_rom_state,
+                   bool constant_rom_vel_during_double_support = false,
+                   bool print_status = true);
 
   void AddFomRegularizationCost(const std::vector<Eigen::VectorXd>& reg_x_FOM,
                                 double w_reg_quat, double w_reg_xy,

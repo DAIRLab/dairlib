@@ -785,12 +785,14 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Construct
   PrintStatus("\nConstructing optimization problem...");
-  RomTrajOptCassie trajopt(
-      num_time_samples, Q_, R_, *rom_, plant_control_, state_mirror_,
-      left_contacts_, right_contacts_, left_origin_, right_origin_,
-      joint_name_lb_ub_, x_init, init_rom_state, max_swing_distance_,
-      start_with_left_stance, param_.zero_touchdown_impact, relax_index_,
-      param_, initialize_with_rom_state, print_level_ > 1 /*print_status*/);
+  RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_control_,
+                           state_mirror_, left_contacts_, right_contacts_,
+                           left_origin_, right_origin_, joint_name_lb_ub_,
+                           x_init, init_rom_state, max_swing_distance_,
+                           start_with_left_stance, param_.zero_touchdown_impact,
+                           relax_index_, param_, initialize_with_rom_state,
+                           param_.gains.constant_rom_vel_during_double_support,
+                           print_level_ > 1 /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints

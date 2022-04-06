@@ -51,6 +51,7 @@ DEFINE_bool(simulation, false,
 DEFINE_bool(test_with_ground_truth_state, false,
             "Get floating base from ground truth state for testing");
 DEFINE_bool(print_ekf_info, false, "Print ekf information to the terminal");
+DEFINE_bool(publish_debug, false, "publich debugging lcm channel");
 
 // TODO(yminchen): delete the flag state_channel_name after finishing testing
 // cassie_state_estimator
@@ -202,7 +203,8 @@ int do_main(int argc, char* argv[]) {
   // Create state estimator
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
-      &right_contact_evaluator, FLAGS_test_with_ground_truth_state,
+      &right_contact_evaluator, FLAGS_publish_debug,
+      FLAGS_test_with_ground_truth_state,
       FLAGS_print_ekf_info, FLAGS_test_mode, FLAGS_contact_force_threshold);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
@@ -257,6 +259,14 @@ int do_main(int argc, char* argv[]) {
             {TriggerType::kForced}));
     builder.Connect(state_estimator->get_gm_contact_output_port(),
                     gm_contact_pub->get_input_port());
+  }
+
+  if (FLAGS_publish_debug) {
+    auto ekf_debug_pub = builder.AddSystem(
+        LcmPublisherSystem::Make<dairlib::lcmt_ekf_debug_out>(
+            "EKF_DEBUG_OUT", &lcm_local, {TriggerType::kForced}));
+    builder.Connect(state_estimator->get_ekf_debug_out_port(),
+                    ekf_debug_pub->get_input_port());
   }
 
   // Pass through to drop all but positions and velocities

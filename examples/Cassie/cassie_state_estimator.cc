@@ -43,12 +43,13 @@ using std::vector;
 static const int SPACE_DIM = 3;
 
 CassieStateEstimator::CassieStateEstimator(
-    const MultibodyPlant<double>& plant,
-    const KinematicEvaluatorSet<double>* fourbar_evaluator,
-    const KinematicEvaluatorSet<double>* left_contact_evaluator,
-    const KinematicEvaluatorSet<double>* right_contact_evaluator,
-    bool test_with_ground_truth_state, bool print_info_to_terminal,
-    int hardware_test_mode, double contact_force_threshold)
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator,
+    const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
+    const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
+    bool publish_debug, bool test_with_ground_truth_state,
+    bool print_info_to_terminal, int hardware_test_mode,
+    double contact_force_threshold)
     : plant_(plant),
       fourbar_evaluator_(fourbar_evaluator),
       left_contact_evaluator_(left_contact_evaluator),
@@ -64,6 +65,7 @@ CassieStateEstimator::CassieStateEstimator(
       rod_on_heel_springs_({LeftRodOnHeel(plant), RightRodOnHeel(plant)}),
       rod_length_(kCassieAchillesLength),
       context_gt_(plant_.CreateDefaultContext()),
+      publish_debug_(publish_debug),
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),
       hardware_test_mode_(hardware_test_mode),
@@ -114,6 +116,15 @@ CassieStateEstimator::CassieStateEstimator(
           this->DeclareVectorInputPort("x, u, t",
                                        OutputVector<double>(n_q_, n_v_, n_u_))
               .get_index();
+    }
+
+    if (publish_debug_) {
+      ekf_debug_ouput_port_ = this->DeclareAbstractOutputPort(
+          "EKF Debug",
+          &CassieStateEstimator::CopyEkfDebugOut)
+      .get_index();
+      ekf_debug_idx_ = this->DeclareAbstractState(
+          *AbstractValue::Make<lcmt_ekf_debug_out>());
     }
 
     // a state which stores previous timestamp
@@ -868,36 +879,37 @@ EventStatus CassieStateEstimator::Update(
 
     ekf.CorrectKinematics(measured_kinematics, &debug);
 
-    lcmt_ekf_debug_out msg;
+    lcmt_ekf_debug_out msg =
+        state->get_mutable_abstract_state<lcmt_ekf_debug_out>(ekf_debug_idx_);
     msg.n_x = nx;
     msg.n_theta = ntheta;
     msg.n_p = np;
-    msg.X_prop = vector<vector<double>>(nx, vector<double>(nx));
-    msg.X_corr = vector<vector<double>>(nx, vector<double>(nx));
-    msg.P_prop = vector<vector<double>>(np, vector<double>(np));
-    msg.P_corr = vector<vector<double>>(np, vector<double>(np));
-    msg.Theta_prop = vector<double>(ntheta);
-    msg.Theta_corr = vector<double>(ntheta);
+    msg.X_prop = vector<vector<float>>(3, vector<float>(nx));
+    msg.X_corr = vector<vector<float>>(3, vector<float>(nx));
+    msg.P_prop = vector<vector<float>>(np, vector<float>(np));
+    msg.P_corr = vector<vector<float>>(np, vector<float>(np));
+    msg.Theta_prop = vector<float>(ntheta);
+    msg.Theta_corr = vector<float>(ntheta);
     msg.utime = current_time * 1e6;
 
-    for (int i = 0; i < nx; i++) {
+    for (int i = 0; i < 3; i++) {
       memcpy(msg.X_prop[i].data(), debug.X_prop.row(i).data(),
-             sizeof(double)*nx);
+             sizeof(float)*nx);
       memcpy(msg.X_corr[i].data(), debug.X_corr.row(i).data(),
-             sizeof(double)*nx);
+             sizeof(float)*nx);
     }
     for (int i = 0; i < np; i++) {
       memcpy(msg.P_prop[i].data(), debug.P_prop.row(i).data(),
-             sizeof(double) * np);
+             sizeof(float) * np);
       memcpy(msg.P_corr[i].data(), debug.P_corr.row(i).data(),
-             sizeof(double) * np);
+             sizeof(float) * np);
     }
     memcpy(msg.Theta_prop.data(), debug.Theta_prop.data(),
-           sizeof(double) * ntheta);
+           sizeof(float) * ntheta);
     memcpy(msg.Theta_corr.data(), debug.Theta_corr.data(),
-           sizeof(double) * ntheta);
-    lcm::LCM lcm;
-    lcm.publish("EKF_DEBUG_OUT", &msg);
+           sizeof(float) * ntheta);
+  } else {
+    ekf.CorrectKinematics(measured_kinematics, {});
   }
 
   if (print_info_to_terminal_) {
@@ -917,8 +929,6 @@ EventStatus CassieStateEstimator::Update(
     // cout << ekf.getState().getTheta() << endl;
     // cout << "P: " << endl;
     // cout << ekf.getState().getP() << endl;
-  } else {
-    ekf.CorrectKinematics(measured_kinematics, {});
   }
   if (test_with_ground_truth_state_) {
     if (print_info_to_terminal_) {
@@ -1028,6 +1038,12 @@ void CassieStateEstimator::CopyEstimatedContactForces(
            SPACE_DIM * sizeof(double));
     contact_msg->point_pair_contact_info.push_back(contact_info);
   }
+}
+
+void CassieStateEstimator::CopyEkfDebugOut(
+    const drake::systems::Context<double> &context,
+    dairlib::lcmt_ekf_debug_out *debug_msg) const {
+  *debug_msg = context.get_abstract_state<lcmt_ekf_debug_out>(ekf_debug_idx_);
 }
 
 void CassieStateEstimator::setPreviousTime(Context<double>* context,

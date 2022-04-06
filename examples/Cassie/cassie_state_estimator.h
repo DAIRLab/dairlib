@@ -9,6 +9,7 @@
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 #include "dairlib/lcmt_contact.hpp"
+#include "dairlib/lcmt_ekf_debug_out.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/datatypes/cassie_out_t.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -62,8 +63,11 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator,
       const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
+      bool publish_debug = false,
       bool test_with_ground_truth_state = false,
-      bool print_info_to_terminal = false, int hardware_test_mode = -1, double contact_force_threshold = 60);
+      bool print_info_to_terminal = false,
+      int hardware_test_mode = -1,
+      double contact_force_threshold = 60);
 
   const drake::systems::OutputPort<double>& get_robot_output_port() const {
     return this->get_output_port(estimated_state_output_port_);
@@ -73,6 +77,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::OutputPort<double>& get_gm_contact_output_port() const {
     return this->get_output_port(contact_forces_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_ekf_debug_out_port() const {
+    return this->get_output_port(ekf_debug_ouput_port_);
   }
 
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
@@ -142,6 +149,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   void CopyEstimatedContactForces(
       const drake::systems::Context<double>& context,
       drake::lcmt_contact_results_for_viz* contact_msg) const;
+  void CopyEkfDebugOut(const drake::systems::Context<double>& context,
+                       dairlib::lcmt_ekf_debug_out* debug_msg) const;
 
   int n_q_;
   int n_v_;
@@ -171,6 +180,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   int estimated_state_output_port_;
   int contact_output_port_;
   int contact_forces_output_port_;
+  int ekf_debug_ouput_port_;
 
   // Below are indices of system states:
   // A state which stores previous timestamp
@@ -178,6 +188,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // States related to EKF
   drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::AbstractStateIndex ekf_idx_;
+  drake::systems::AbstractStateIndex ekf_debug_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;
   drake::systems::DiscreteStateIndex contact_idx_;
   drake::systems::DiscreteStateIndex contact_forces_idx_;
@@ -235,7 +246,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Contacts
   const int num_contacts_ = 2;
   const std::vector<std::string> contact_names_ = {"left", "right"};
-  const bool publish_debug_ = true;
+  const bool publish_debug_;
 };
 
 }  // namespace systems

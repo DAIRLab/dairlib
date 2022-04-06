@@ -125,7 +125,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     // Note that we shouldn't use pelvis z because it drifts in state estimation
     // Skip pelvis z index
-    if ((rom_option >= 15) && (rom_option <= 27)) {
+    if ((rom_option >= 15) && (rom_option <= 29)) {
       // skip pelvis z
       skip_inds.push_back(6);
     }
@@ -133,7 +133,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     std::map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
     DRAKE_DEMAND(pos_map.at("base_qw") == 0);  // Assumption
     if (((rom_option >= 10) && (rom_option <= 14)) ||
-        ((rom_option >= 22) && (rom_option <= 24)) || ((rom_option == 27))) {
+        ((rom_option >= 22) && (rom_option <= 24)) ||
+        ((rom_option >= 27) && (rom_option <= 29))) {
       // Also skip the right leg joints (swing leg)
       cout << "Joint skipped in mapping function: ";
       for (auto& pair : pos_map) {
@@ -149,7 +150,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         (rom_option == 9) || ((rom_option >= 10) && (rom_option <= 13)) ||
         rom_option == 17 || rom_option == 18 || rom_option == 21 ||
         rom_option == 22 || rom_option == 23 || rom_option == 24 ||
-        rom_option == 25 || rom_option == 26) {
+        rom_option == 25 || rom_option == 26 || rom_option == 28 ||
+        rom_option == 29) {
       // Second order
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
@@ -177,7 +179,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
 
   /// Basis for dynamic function
   std::unique_ptr<MonomialFeatures> dynamic_basis;
-  if (rom_option == 0) {
+  if ((rom_option == 0) || (rom_option == 28) || (rom_option == 29)) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(2), empty_inds, "dynamic basis");
   } else if (rom_option == 1) {
@@ -245,9 +247,15 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
 
   /// Construct reduced-order model
   std::unique_ptr<ReducedOrderModel> rom;
-  if (rom_option == 0) {
+  if ((rom_option == 0) || (rom_option == 28)) {
+    // 2D LIPM
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
                                  *dynamic_basis, 2);
+  } else if (rom_option == 29) {
+    // 2D LIPM with fixed x component mapping function.
+    std::set<int> invariant_idx = {0};
+    rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
+                                 *dynamic_basis, 2, invariant_idx);
   } else if (rom_option == 1) {
     rom = std::make_unique<LipmWithSwingFoot>(
         plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis, 2);

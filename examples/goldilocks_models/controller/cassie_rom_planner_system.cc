@@ -886,7 +886,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Default initial guess to avoid singularity (which messes with gradient)
   for (int i = 0; i < num_time_samples.size(); i++) {
     for (int j = 0; j < num_time_samples.at(i); j++) {
-      if ((param_.rom_option == 0) || (param_.rom_option == 1)) {
+      if ((param_.rom_option == 0) || (param_.rom_option == 1) ||
+          (param_.rom_option == 28) || (param_.rom_option == 29)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
       } else if ((param_.rom_option == 4) ||
                  ((param_.rom_option >= 8) && (param_.rom_option <= 27))) {

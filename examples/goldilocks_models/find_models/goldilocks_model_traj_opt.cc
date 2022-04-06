@@ -149,7 +149,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
       // have effective accuracy
       double rom_scale = 1;
       // clang-format off
-      if (rom_option == 0) {
+      if ((rom_option == 0) || (rom_option == 28) || (rom_option == 29)) {
         constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 260.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 32.0 * rom_scale));
       } else if (rom_option == 1) {

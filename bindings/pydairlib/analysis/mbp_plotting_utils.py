@@ -421,4 +421,10 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
 
 
 def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
-    ps.plot(fsm_time, scale * fsm_signal)
+    ax = ps.fig.axes[0]
+    ymin, ymax = ax.get_ylim()
+
+    # uses default color map
+    for i in np.unique(fsm_signal):
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), alpha=0.2)
+    ax.relim()

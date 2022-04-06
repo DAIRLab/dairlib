@@ -34,38 +34,39 @@ class OSCGainsOptimizer():
         self.controller_urdf = 'examples/Cassie/urdf/cassie_v2_conservative.urdf'
         self.default_osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
         # self.osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
-        self.osc_running_gains_filename = 'examples/Cassie/osc_run/new_learned_osc_running_gains.yaml'
         self.osqp_settings = 'examples/Cassie/osc_run/osc_running_qp_settings.yaml'
 
         self.drake_params_folder = "bindings/pydairlib/cassie/optimal_gains/"
         self.date_prefix = time.strftime("%Y_%m_%d_%H")
+        self.osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains_' + self.date_prefix + '.yaml'
         self.loss_over_time = []
 
         self.default_osc_gains = {
-
-            'mu': 0.6,
-            'w_hip_yaw': 2.5,
-            'PelvisRotW': np.array([1, 2.5, 0.1]),
-            'SwingFootW': np.array([10, 10, 1]),
-            'LiftoffSwingFootW': np.array([0.1, 10, 1]),
             'w_accel': 1e-5,
             'w_soft_constraint': 100,
             'w_input_reg': 0.001,
-            'w_swing_toe': 1,
+            # 'w_swing_toe': 1,
+            # 'mu': 0.6,
+            'w_hip_yaw': 2.5,
+            'PelvisRotW': np.array([1, 2.5, 0.1]),
+            'SwingFootW': np.array([10, 10, 1]),
+            # 'SwingFootKp': np.array([125, 80, 50]),
+            # 'SwingFootKd': np.array([5, 5, 1]),
+            'LiftoffSwingFootW': np.array([0.1, 10, 1]),
             # 'hip_yaw_kp': 40,
             # 'PelvisKp': np.array([0, 0, 85]),
             # 'PelvisKd': np.array([1, 0, 5]),
             # 'PelvisRotKp': np.array([50, 100, 0]),
             # 'PelvisRotKd': np.array([10, 5, 1]),
-            'SwingFootKp': np.array([125, 80, 50]),
-            'SwingFootKd': np.array([5, 5, 1]),
             # 'FootstepKd': np.array([0.2, 0.45, 0]),
-            # 'center_line_offset': 0.03,
-            # 'rest_length': 0.85,
+            'center_line_offset': -0.05,
+            # 'mid_foot_height': 0.05,
+            # 'slip_rest_length': 0.85,
+            'leg_rest_length': 0.73,
             'footstep_offset': -0.05,
             'impact_threshold': 0.025,
             # 'ekf_filter_tau': np.array([0.05, 0.1, 0.01]),
-            # 'stance_duration': 0.30,
+            'stance_duration': 0.30,
             # 'flight_duration': 0.08,
         }
 
@@ -122,8 +123,8 @@ class OSCGainsOptimizer():
             w_accel=ng.p.Log(lower=1e-5, upper=1e-1),
             w_soft_constraint=ng.p.Log(lower=1.0, upper=1000.0),
             w_input_reg=ng.p.Log(lower=1e-5, upper=1e-1),
-            w_swing_toe=ng.p.Log(lower=1e-1, upper=1e2),
-            mu=ng.p.Scalar(lower=0.4, upper=1.0),
+            # w_swing_toe=ng.p.Log(lower=1e-1, upper=1e2),
+            # mu=ng.p.Scalar(lower=0.4, upper=1.0),
             w_hip_yaw=ng.p.Scalar(lower=0, upper=10),
             # hip_yaw_kp=ng.p.Scalar(lower=20, upper=80),
             # PelvisKp=ng.p.Array(lower=0., upper=150., shape=(3,)),
@@ -131,16 +132,18 @@ class OSCGainsOptimizer():
             PelvisRotW=ng.p.Array(lower=0., upper=10., shape=(3,)),
             # PelvisRotKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
             SwingFootW=ng.p.Array(lower=0., upper=10., shape=(3,)),
-            SwingFootKp=ng.p.Array(lower=25., upper=200., shape=(3,)),
-            SwingFootKd=ng.p.Array(lower=0.1, upper=10., shape=(3,)),
+            # SwingFootKp=ng.p.Array(lower=25., upper=200., shape=(3,)),
+            # SwingFootKd=ng.p.Array(lower=0.1, upper=10., shape=(3,)),
             LiftoffSwingFootW=ng.p.Array(lower=0., upper=10., shape=(3,)),
             # ekf_filter_tau=ng.p.Array(lower=0., upper=0.1, shape=(3,)),
             # FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
-            # center_line_offset=ng.p.Scalar(lower=0.03, upper=0.075),
-            # rest_length=ng.p.Scalar(lower=0.8, upper=0.9),
+            center_line_offset=ng.p.Scalar(lower=-0.1, upper=0.1),
+            # mid_foot_height=ng.p.Scalar(lower=0.00, upper=0.2),
+            # slip_rest_length=ng.p.Scalar(lower=0.8, upper=0.9),
+            leg_rest_length=ng.p.Scalar(lower=0.65, upper=0.85),
             footstep_offset=ng.p.Scalar(lower=-0.1, upper=0.05),
-            impact_threshold=ng.p.Scalar(lower=0.0, upper=0.05),
-            # stance_duration=ng.p.Scalar(lower=0.25, upper=0.40),
+            impact_threshold=ng.p.Scalar(lower=0.025, upper=0.05),
+            stance_duration=ng.p.Scalar(lower=0.25, upper=0.40),
             # flight_duration=ng.p.Scalar(lower=0.05, upper=0.15),
         )
         self.loss_over_time = []
@@ -166,9 +169,8 @@ if __name__ == '__main__':
     optimizer = OSCGainsOptimizer(budget, reward_function, visualize=False)
     # optimizer.learn_gains()
 
-    optimal_params = optimizer.load_params('2022_03_30_16_1000', optimizer.drake_params_folder).value
+    optimal_params = optimizer.load_params('2022_04_01_13_1000', optimizer.drake_params_folder).value
     optimizer.write_params(optimal_params)
     reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_1000.npy')
-    import pdb; pdb.set_trace()
     plt.plot(reward_over_time)
     plt.show()

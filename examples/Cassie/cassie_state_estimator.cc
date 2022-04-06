@@ -778,9 +778,9 @@ EventStatus CassieStateEstimator::Update(
 
   std::vector<std::pair<int, bool>> contacts;
   contacts.push_back(std::pair<int, bool>(0, left_contact));
-  contacts.push_back(std::pair<int, bool>(1, left_contact));
+//  contacts.push_back(std::pair<int, bool>(1, left_contact));
   contacts.push_back(std::pair<int, bool>(2, right_contact));
-  contacts.push_back(std::pair<int, bool>(3, right_contact));
+//  contacts.push_back(std::pair<int, bool>(3, right_contact));
   ekf.setContacts(contacts);
 
   // Step 4 - EKF (measurement step)
@@ -834,14 +834,14 @@ EventStatus CassieStateEstimator::Update(
         J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
     inekf::Kinematics rear_frame(2 * i, rear_toe_pose, rear_covariance);
     measured_kinematics.push_back(rear_frame);
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
-        front_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
-    J_wrt_joints = J.block(0, 6, 3, 16);
-    front_covariance.block<3, 3>(3, 3) =
-        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
-    inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
-    measured_kinematics.push_back(front_frame);
+//    plant_.CalcJacobianTranslationalVelocity(
+//        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
+//        front_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
+//    J_wrt_joints = J.block(0, 6, 3, 16);
+//    front_covariance.block<3, 3>(3, 3) =
+//        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
+//    inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
+//    measured_kinematics.push_back(front_frame);
 
     if (print_info_to_terminal_) {
       cout << "covariance.block<3, 3>(3, 3) = \n"

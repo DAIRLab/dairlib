@@ -265,12 +265,11 @@ class CassieLcmDrivenLoop {
                     << ", but stepping to " << time << std::endl;
           std::cout << "Difference is too large, resetting " + diagram_name_ +
                            " time.\n";
-//          simulator_->get_mutable_context().SetTime(time);
-//          simulator_->Initialize();
-        }else{
-          simulator_->AdvanceTo(time);
+          simulator_->get_mutable_context().SetTime(time);
+          simulator_->Initialize();
         }
 
+        simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->Publish(diagram_context);

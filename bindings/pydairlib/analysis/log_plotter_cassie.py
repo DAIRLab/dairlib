@@ -80,7 +80,9 @@ def main():
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
-        mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
+        plot = mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
+
     if plot_config.act_names:
         mbp_plots.plot_measured_efforts_by_name(robot_output,
                                                 plot_config.act_names,
@@ -113,6 +115,7 @@ def main():
 
         plot = mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
                                         foot_frames, pts, dims)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
 
     if plot_config.plot_qp_solve_time:
         mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)

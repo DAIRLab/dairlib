@@ -34,8 +34,6 @@ LCS LCSFactory::LinearizePlantToLCS(
   /// First, calculate vdot and derivatives from non-contact dynamcs
   ///
 
-
-
   AutoDiffVecXd C(plant.num_velocities());
 
   //0std::cout << ExtractGradient(C).cols() << std::endl;
@@ -44,14 +42,12 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   //std::cout << ExtractGradient(C).cols() << std::endl;
 
-  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() *
-                     plant_ad.get_actuation_input_port().Eval(context_ad);
+//  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() *
+//                     plant_ad.get_actuation_input_port().Eval(context_ad);
 
-  /*
   auto u = plant.get_actuation_input_port().Eval(context);
   auto u_ad = drake::math::InitializeAutoDiff(u);
   AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() * u_ad;
-  */
 
   AutoDiffVecXd tau_g = plant_ad.CalcGravityGeneralizedForces(context_ad);
 
@@ -77,7 +73,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   int n_input = plant_ad.num_actuators();
 
   //std::cout << n_state << std::endl;
-  //std::cout << n_vel << std::endl;
+  std::cout << n_vel << std::endl;
 
   ///////////
   AutoDiffVecXd qdot_no_contact(plant.num_positions());

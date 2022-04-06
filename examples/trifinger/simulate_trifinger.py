@@ -10,6 +10,7 @@ import pydairlib.common
 # from pydairlib.solvers import C3Options
 from pydairlib.systems.controllers import C3Controller
 
+
 # A demo controller system
 class TrifingerDemoController(LeafSystem):
     def __init__(self, plant):
@@ -60,9 +61,9 @@ plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI)
 plant.Finalize()
 
 # Build and connect the controller
-# controller = builder.AddSystem(TrifingerDemoController(plant))
+#controller = builder.AddSystem(TrifingerDemoController(plant))
 
-mu = 0.1
+mu = 1.0
 Qinit = np.eye(31)
 Rinit = np.eye(9)
 Ginit = 0.1*np.eye(58)
@@ -77,44 +78,31 @@ G = []
 U = []
 xdesired = []
 
-for i in range(1):
+for i in range(N):
     Q.append(Qinit)
     R.append(Rinit)
     G.append(Ginit)
     U.append(Uinit)
     xdesired.append(xdesiredinit)
-Q.append(Qinit) #add QN
+Q.append(Qinit)
 
-#const std::vector<GeometryId>& finger_lower_link_0_geoms =
-#plant.GetCollisionGeometriesForBody(
-#    plant.GetBodyByName("finger_lower_link_0"));
+finger_lower_link_0_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_0"))[0]
+finger_lower_link_120_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_120"))[0]
+finger_lower_link_240_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_240"))[0]
+cube_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"))[0]
 
-
-finger_lower_link_0_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_0"))
-finger_lower_link_120_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_120"))
-finger_lower_link_240_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_240"))
-cube_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"))
-
-contact_geoms = []
-contact_geoms.append( (finger_lower_link_0_geoms,cube_geoms   )   )
-contact_geoms.append( (finger_lower_link_120_geoms,cube_geoms   )   )
-contact_geoms.append( (finger_lower_link_240_geoms,cube_geoms   )   )
-
-gm_id = pydrake.geometry.GeometryId.get_new_id()
-
-contact_geoms = [(gm_id,gm_id)]
-
-#import pdb;pdb.set_trace()
-
+contact_geoms = [finger_lower_link_0_geoms, finger_lower_link_120_geoms, finger_lower_link_240_geoms, cube_geoms]
 
 plant_ad = plant.ToAutoDiffXd()
 
 context = plant.CreateDefaultContext()
+
 context_ad = plant_ad.CreateDefaultContext()
 
+# print(context)
+
 controller = builder.AddSystem(
-    C3Controller(plant, context, plant_ad, context_ad,contact_geoms))  #, num_friction_directions,
-                 #mu, Q, R, G, U))
+    C3Controller(plant, context, plant_ad, context_ad, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired))
 
 builder.Connect(plant.get_state_output_port(), controller.get_input_port(0))
 builder.Connect(controller.get_output_port(0), plant.get_actuation_input_port())
@@ -140,7 +128,7 @@ diagram = builder.Build()
 
 simulator = Simulator(diagram)
 simulator.Initialize()
-
+#
 # Change the real-time rate to above 1 to simulate faster
 simulator.set_target_realtime_rate(1)
 

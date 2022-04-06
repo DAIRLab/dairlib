@@ -298,12 +298,15 @@ def Generate2dPlots(model_indices, cmt):
     Generate2dCostLandscape(cmt, model_slice_value)
 
   ### 2D plot; cost landscape comparison (task1 vs task2; cost visualized in contours)
-  Generate2dCostLandscapeComparison(cmt)
+  for model_slice_value in model_slices_cost_landsacpe:
+    if model_slice_value == 1:
+      continue
+    Generate2dCostLandscapeComparison(cmt, model_slice_value)
 
 
-def Generate2dCostLandscapeComparison(cmt):
+def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   iter1 = 1
-  iter2 = model_slices_cost_landsacpe[-1]
+  iter2 = model_slice_value
 
   ct1 = Generate2dCostLandscape(cmt, iter1, True)
   ct2 = Generate2dCostLandscape(cmt, iter2, True)
@@ -561,6 +564,7 @@ if __name__ == "__main__":
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/trajopt_cost_eval/20220224_explore_task_boundary_2D--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/trajopt_cost_eval/20220302_explore_task_boundary_2D_gi_tr--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   # trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220316_rom24_big_range/"
+  trajopt_base_dir = "/home/yuming/Desktop/temp/0405/20220108_big_vel_weight_and_grad_main_cost_and_big_range_0_pelvis_omega/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -621,6 +625,10 @@ if __name__ == "__main__":
   # 2D landscape (task1 vs task2)
   # model_slices_cost_landsacpe = []
   model_slices_cost_landsacpe = [1, 2, 11, 110]
+  model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
+  model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
+  model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
+  model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [50]
 
   # Expected (averaged) cost over a task range

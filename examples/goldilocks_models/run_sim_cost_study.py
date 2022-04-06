@@ -985,12 +985,15 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     Generate2dCostLandscape(cmt, model_slice_value)
 
   ### 2D plot; cost landscape comparison (task1 vs task2; cost visualized in contours)
-  Generate2dCostLandscapeComparison(cmt)
+  for model_slice_value in model_slices_cost_landsacpe:
+    if model_slice_value == 1:
+      continue
+    Generate2dCostLandscapeComparison(cmt, model_slice_value)
 
 
-def Generate2dCostLandscapeComparison(cmt):
+def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   iter1 = 1
-  iter2 = model_slices_cost_landsacpe[-1]
+  iter2 = model_slice_value
 
   ct1 = Generate2dCostLandscape(cmt, iter1, True)
   ct2 = Generate2dCostLandscape(cmt, iter2, True)
@@ -1365,7 +1368,10 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
   # eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
-  # eval_dir = "/home/yuming/Desktop/temp/0405/_20220329_sim_eval_20220316_rom24_big_range/1_without_accel_cost_and_5_seconds_sim_tolerance/sim_cost_eval/"
+  eval_dir = "/home/yuming/Desktop/temp/0405/_20220329_sim_eval_20220316_rom24_big_range/1_without_accel_cost_and_5_seconds_sim_tolerance/sim_cost_eval/"
+  eval_dir = "/home/yuming/Desktop/temp/0405/20220105_sim_eval_20211229_model_using_stance_hip_from_planner/1_first_try/sim_cost_eval/"
+  eval_dir = "/home/yuming/Desktop/temp/0405/_20220122_sim_eval_20220105_model_again/sim_cost_eval/"
+  eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1384,7 +1390,7 @@ if __name__ == "__main__":
   # Model iteration list
   model_iter_idx_start = 1  # 0
   model_iter_idx_end = 200
-  idx_spacing = 10
+  idx_spacing = 5
 
   # Task list
   n_task_sl = 30
@@ -1441,6 +1447,8 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = []
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
+  model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
+  # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [75]
 
   # Expected (averaged) cost over a task range

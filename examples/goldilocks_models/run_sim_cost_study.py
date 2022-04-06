@@ -1060,7 +1060,7 @@ def Generate2dCostLandscapeComparison(cmt):
   # plt.xlim([0, 135])
   plt.xlabel('stride length (m)')
   plt.ylabel('pelvis height (m)')
-  plt.title('Cost comparison between iteration %d and %d ' % (iter1, iter2) + "(Open loop)")
+  plt.title('Cost comparison between iteration %d and %d' % (iter1, iter2))
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
@@ -1070,7 +1070,7 @@ def Generate2dCostLandscapeComparison(cmt):
 
 def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
   data_list = [cmt]
-  title_list = ["(Open loop)", ""]
+  title_list = ["", ""]
   app_list = ["", "_nom"]
   for i in range(1):
     data = copy.deepcopy(data_list[i])

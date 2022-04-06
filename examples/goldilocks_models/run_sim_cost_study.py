@@ -750,6 +750,8 @@ def AdjustSlices(model_slices):
   if len(model_slices) == 0:
     n_slice = 5
     model_slices = list(range(1, max_model_iter_in_slices, int(max_model_iter_in_slices/n_slice)))
+  else:
+    model_slices = [m for m in model_slices if m <= max_model_iter_in_slices]
 
   return model_slices
 
@@ -994,7 +996,7 @@ def Generate2dCostLandscapeComparison(cmt):
   ct2 = Generate2dCostLandscape(cmt, iter2, True)
 
   # Grid of the whole task space
-  nx, ny = (100, 100)
+  nx, ny = (500, 500)
   first_task_vec = np.linspace(task_boundary_outer_box[task_to_plot[0]][0], task_boundary_outer_box[task_to_plot[0]][1], nx)
   second_task_vec = np.linspace(task_boundary_outer_box[task_to_plot[1]][0], task_boundary_outer_box[task_to_plot[1]][1], ny)
   x, y = np.meshgrid(first_task_vec, second_task_vec)
@@ -1029,8 +1031,17 @@ def Generate2dCostLandscapeComparison(cmt):
   z = z[~np.isnan(z)]
 
   # discrete color map
-  levels = [0, 0.7, 0.8, 0.9, 1, 2]
-  colors = ['darkgreen', 'green', 'seagreen', 'mediumseagreen', 'blue']
+  n_level = 3
+  min_nonzero_ratio = min(z[z > 0])
+  delta_level = (1-min_nonzero_ratio) / n_level
+  levels = [0]
+  for i in range(n_level)[::-1]:
+    levels.append(round(1 - i * delta_level, 3))
+  levels.append(2)
+  # levels = [0, 0.7, 0.8, 0.9, 1, 2]
+  # levels = [0, 0.85, 0.9, 0.95, 1, 2]
+  # colors = ['darkgreen', 'green', 'seagreen', 'mediumseagreen', 'blue']
+  colors = ['darkgreen', 'green', 'mediumseagreen', 'blue']
   cmap, norm = matplotlib.colors.from_levels_and_colors(levels, colors)
   cmap.set_over('yellow')
   cmap.set_under('red')
@@ -1039,9 +1050,11 @@ def Generate2dCostLandscapeComparison(cmt):
   fig, ax = plt.subplots()
   surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
   cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
-  cbar.ax.set_yticklabels(['0', '0.7', '0.8', '0.9', '1', 'Inf'])
+  levels_string = [str(m) for m in levels]
+  levels_string[-1] = "Inf"
+  cbar.ax.set_yticklabels(levels_string)
   # import pdb;pdb.set_trace()
-  # surf = ax.tricontourf(x, y, z)
+  # surf = ax.tricontourf(x, y, z, cmap='coolwarm')
   # import pdb;pdb.set_trace()
 
   # plt.xlim([0, 135])
@@ -1371,7 +1384,7 @@ if __name__ == "__main__":
   # Model iteration list
   model_iter_idx_start = 1  # 0
   model_iter_idx_end = 200
-  idx_spacing = 5
+  idx_spacing = 10
 
   # Task list
   n_task_sl = 30
@@ -1426,8 +1439,9 @@ if __name__ == "__main__":
 
   # 2D landscape (task1 vs task2)
   # model_slices_cost_landsacpe = []
-  model_slices_cost_landsacpe = [1, 2, 11, 110]
-  # model_slices_cost_landsacpe = [50]
+  model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
+  model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
+  # model_slices_cost_landsacpe = [75]
 
   # Expected (averaged) cost over a task range
   stride_length_range_to_average = [-0.4, 0.4]
@@ -1555,6 +1569,7 @@ if __name__ == "__main__":
 
   # Adjust slices value (for 2D plots)
   model_slices = AdjustSlices(model_slices)
+  model_slices_cost_landsacpe = AdjustSlices(model_slices_cost_landsacpe)
 
   # Plot
   Generate4dPlots(cmt, nominal_cmt, plot_nominal)

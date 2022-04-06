@@ -34,9 +34,9 @@ tracking_datas_to_plot:
   #  pelvis_trans_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
 #  pelvis_rot_traj: {'dims': [0, 1], 'derivs': ['vel']}
 #  hip_yaw_left_traj: {'dims': [0], 'derivs': ['vel']}
-  left_ft_traj: {'dims': [2], 'derivs': ['pos']}
-  right_ft_traj: {'dims': [2], 'derivs': ['pos']}
-  left_ft_z_traj: {'dims': [2], 'derivs': ['pos']}
-  right_ft_z_traj: {'dims': [2], 'derivs': ['pos']}
+  left_ft_traj: {'dims': [1, 2], 'derivs': ['pos']}
+  right_ft_traj: {'dims': [1, 2], 'derivs': ['pos']}
+  left_ft_z_traj: {'dims': [1, 2], 'derivs': ['pos']}
+  right_ft_z_traj: {'dims': [1, 2], 'derivs': ['pos']}
 #  left_toe_angle_traj: {'dims': [0], 'derivs': ['accel']}
 #  right_toe_angle_traj: {'dims': [0], 'derivs': ['accel']}

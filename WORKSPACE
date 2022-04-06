@@ -71,7 +71,6 @@ load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
 
 pydrake_repository(name = "pydrake_pegged")
 
-
 # Prebuilt ROS workspace
 new_local_repository(
     name = "ros",
@@ -121,6 +120,8 @@ environ_repository(
 )
 
 load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
+
+DAIRLIB_LOCAL_INEKF_PATH = "/home/brian/workspace/invariant-ekf/"
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named

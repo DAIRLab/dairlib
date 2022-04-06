@@ -25,8 +25,7 @@ struct OSCRunningGains : OSCGains {
   double vel_scale_trans_lateral;
   bool relative_feet;
   bool relative_pelvis;
-  double slip_rest_length;
-  double leg_rest_length;
+  double rest_length;
   double stance_duration;
   double flight_duration;
 
@@ -85,8 +84,7 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(relative_feet));
     a->Visit(DRAKE_NVP(relative_pelvis));
-    a->Visit(DRAKE_NVP(slip_rest_length));
-    a->Visit(DRAKE_NVP(leg_rest_length));
+    a->Visit(DRAKE_NVP(rest_length));
     a->Visit(DRAKE_NVP(stance_duration));
     a->Visit(DRAKE_NVP(flight_duration));
     a->Visit(DRAKE_NVP(center_line_offset));

@@ -156,9 +156,6 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   Vector3d desired_pelvis_vel;
   desired_pelvis_vel << desired_pelvis_vel_xy, 0;
   VectorXd pelvis_vel = v.segment(3, 3);
-//  pelvis_vel(0) = context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(0);
-//  pelvis_vel(1) *= 0.75;
-//  pelvis_vel(1) += 0.25 * context.get_discrete_state(pelvis_vel_est_idx_).GetAtIndex(1);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
   VectorXd footstep_correction = Kd_ * (pelvis_vel_err);
   if (is_left_foot_) {
@@ -201,12 +198,10 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   // corrections
   if (is_left_foot_) {
     Y[1](1) -= 0.25 * center_line_offset_;
-    //    Y[0](1) = drake::math::saturate(Y[2](1), 0.05, 0.2);
     Y[1](1) = drake::math::saturate(Y[1](1), center_line_offset_, 0.2);
     Y[2](1) = drake::math::saturate(Y[2](1), center_line_offset_, 0.2);
   } else {
     Y[1](1) += 0.25 * center_line_offset_;
-    //    Y[0](1) = drake::math::saturate(Y[2](1), -0.2, -0.05);
     Y[1](1) = drake::math::saturate(Y[1](1), -0.2, -center_line_offset_);
     Y[2](1) = drake::math::saturate(Y[2](1), -0.2, -center_line_offset_);
   }

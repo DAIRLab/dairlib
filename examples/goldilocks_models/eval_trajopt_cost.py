@@ -91,18 +91,17 @@ def GetSamplesToPlot(model_indices, log_indices):
 
 
 def AdjustSlices(model_slices):
-  max_model_iter = model_indices[-1]
-  for i in range(len(model_indices)):
-    model_iter = model_indices[i]
-    if len(cmt[cmt[:, 1] == model_iter, 2]) == 0:
-      max_model_iter = model_indices[i - 1]  # this is general to 1-element case
+  max_model_iter_in_successful_samples = int(max(cmt[:, 1]))
+  max_model_iter_in_slices = model_slices[-1]
+  for i in range(len(model_slices)):
+    if model_slices[i] > max_model_iter_in_successful_samples:
+      max_model_iter_in_slices = model_slices[i - 1]  # this is general to 1-element case
       break
 
+  print("max_model_iter_in_slices = ", max_model_iter_in_slices)
   if len(model_slices) == 0:
     n_slice = 5
-    model_slices = list(range(1, max_model_iter, int(max_model_iter/n_slice)))
-  elif model_slices[-1] > max_model_iter:
-    model_slices = list(range(1, max_model_iter, int(max_model_iter/len(model_slices))))
+    model_slices = list(range(1, max_model_iter_in_slices, int(max_model_iter_in_slices/n_slice)))
 
   return model_slices
 

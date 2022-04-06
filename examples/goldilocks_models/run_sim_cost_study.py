@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import matplotlib.tri as mtri
+import matplotlib
 from scipy.interpolate import LinearNDInterpolator
 import codecs
 import math
@@ -738,18 +739,17 @@ def GetNominalSamplesToPlot(model_indices):
   return nominal_cmt
 
 def AdjustSlices(model_slices):
-  max_model_iter = model_indices[-1]
-  for i in range(len(model_indices)):
-    model_iter = model_indices[i]
-    if len(cmt[cmt[:, 1] == model_iter, 2]) == 0:
-      max_model_iter = model_indices[i - 1]  # this is general to 1-element case
+  max_model_iter_in_successful_samples = int(max(cmt[:, 1]))
+  max_model_iter_in_slices = model_slices[-1]
+  for i in range(len(model_slices)):
+    if model_slices[i] > max_model_iter_in_successful_samples:
+      max_model_iter_in_slices = model_slices[i - 1]  # this is general to 1-element case
       break
 
+  print("max_model_iter_in_slices = ", max_model_iter_in_slices)
   if len(model_slices) == 0:
     n_slice = 5
-    model_slices = list(range(1, max_model_iter, int(max_model_iter/n_slice)))
-  elif model_slices[-1] > max_model_iter:
-    model_slices = list(range(1, max_model_iter, int(max_model_iter/len(model_slices))))
+    model_slices = list(range(1, max_model_iter_in_slices, int(max_model_iter_in_slices/n_slice)))
 
   return model_slices
 
@@ -978,25 +978,103 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
       plt.savefig("%scost_landscape_iter%s_ph%.2f.png" % (eval_dir, app_list[i], task_slice_value_ph))
 
   ### 2D plot; cost landscape (task1 vs task2; cost visualized in contours)
-  print("\nPlotting 2D cost landscape (task1 vs task2)...")
+  print("\nPlotting 2D cost landscape (task1 vs task2)..." )
+  for model_slice_value in model_slices_cost_landsacpe:
+    Generate2dCostLandscape(cmt, model_slice_value)
 
-  data_list = [cmt, nominal_cmt]
-  title_list = ["(Drake sim)", "(traj opt)"]
+  ### 2D plot; cost landscape comparison (task1 vs task2; cost visualized in contours)
+  Generate2dCostLandscapeComparison(cmt)
+
+
+def Generate2dCostLandscapeComparison(cmt):
+  iter1 = 1
+  iter2 = model_slices_cost_landsacpe[-1]
+
+  ct1 = Generate2dCostLandscape(cmt, iter1, True)
+  ct2 = Generate2dCostLandscape(cmt, iter2, True)
+
+  # Grid of the whole task space
+  nx, ny = (100, 100)
+  first_task_vec = np.linspace(task_boundary_outer_box[task_to_plot[0]][0], task_boundary_outer_box[task_to_plot[0]][1], nx)
+  second_task_vec = np.linspace(task_boundary_outer_box[task_to_plot[1]][0], task_boundary_outer_box[task_to_plot[1]][1], ny)
+  x, y = np.meshgrid(first_task_vec, second_task_vec)
+  x = x.flatten()
+  y = y.flatten()
+
+  # Interpolate landscape1
+  interpolator = LinearNDInterpolator(ct1[:, 1:3], ct1[:, 0])
+  z1 = interpolator(np.vstack((x, y)).T)
+
+  # Interpolate landscape2
+  interpolator = LinearNDInterpolator(ct2[:, 1:3], ct2[:, 0])
+  z2 = interpolator(np.vstack((x, y)).T)
+
+  # z = z2/z1
+  z = np.zeros(x.size)
+  for i in range(x.size):
+    if np.isnan(z1[i]):
+      if np.isnan(z2[i]):
+        z[i] = z2[i]
+      else:
+        z[i] = -1e-8
+    else:
+      if np.isnan(z2[i]):
+        z[i] = 1000000 # np.inf # a very big number
+      else:
+        z[i] = z2[i]/z1[i]
+
+  # Remove the rows correponding to nan cost (from interpolation outside the region)
+  x = x[~np.isnan(z)]
+  y = y[~np.isnan(z)]
+  z = z[~np.isnan(z)]
+
+  # discrete color map
+  levels = [0, 0.7, 0.8, 0.9, 1, 2]
+  colors = ['darkgreen', 'green', 'seagreen', 'mediumseagreen', 'blue']
+  cmap, norm = matplotlib.colors.from_levels_and_colors(levels, colors)
+  cmap.set_over('yellow')
+  cmap.set_under('red')
+
+  plt.rcParams.update({'font.size': 14})
+  fig, ax = plt.subplots()
+  surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
+  cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
+  cbar.ax.set_yticklabels(['0', '0.7', '0.8', '0.9', '1', 'Inf'])
+  # import pdb;pdb.set_trace()
+  # surf = ax.tricontourf(x, y, z)
+  # import pdb;pdb.set_trace()
+
+  # plt.xlim([0, 135])
+  plt.xlabel('stride length (m)')
+  plt.ylabel('pelvis height (m)')
+  plt.title('Cost comparison between iteration %d and %d ' % (iter1, iter2) + "(Open loop)")
+  plt.gcf().subplots_adjust(bottom=0.15)
+  plt.gcf().subplots_adjust(left=0.15)
+  if save_fig:
+    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d.png" % (eval_dir, iter1, iter2))
+
+
+
+def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
+  data_list = [cmt]
+  title_list = ["(Open loop)", ""]
   app_list = ["", "_nom"]
-  for i in range(2 if plot_nominal else 1):
-    plt.rcParams.update({'font.size': 14})
-    fig, ax = plt.subplots()
-
+  for i in range(1):
     data = copy.deepcopy(data_list[i])
 
-    # Interpolate to get the cost at specific pelvis height
-    interpolator = LinearNDInterpolator(data[:, 1:], data[:, 0]) if i == 0 else LinearNDInterpolator(data[:, 1:2+num_task_dim], data[:, 0])
-    z = interpolator(np.vstack((model_slice_value_cost_landsacpe * np.ones(len(data[:, 1])), data[:, 2], data[:, 3])).T) if i == 0 else interpolator(np.vstack((data[:, 1], data[:, 2])).T)
+    # Interpolate to get the cost at specific value of the second task
+    interpolator = LinearNDInterpolator(data[:, 1:], data[:, 0])
+    z = interpolator(np.vstack((model_slice_value * np.ones(len(data[:, 1])), data[:, 2], data[:, 3])).T)
 
     # Remove the rows correponding to nan cost (from interpolation outside the region)
     data = data[~np.isnan(z), :]
     z = z[~np.isnan(z)]
 
+    if no_plotting:
+      # Return [task1, task2, cost] with shape (N, 3)
+      return copy.deepcopy(np.vstack([z, data[:, 2], data[:, 3]]).T)
+
+    # get levels for contour plots
     n_levels = 50
     levels = list(set(
       np.linspace(min(z), max(z), n_levels).round(
@@ -1006,17 +1084,20 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     levels[-1] += 0.01
     # levels = list(set(np.linspace(0.4, 3, n_levels)))
     # levels.sort()
+
+    plt.rcParams.update({'font.size': 14})
+    fig, ax = plt.subplots()
     surf = ax.tricontourf(data[:, 2], data[:, 3], z, levels=levels, cmap='coolwarm')
     fig.colorbar(surf, shrink=0.9, aspect=15)
 
     # plt.xlim([0, 135])
     plt.xlabel('stride length (m)')
     plt.ylabel('pelvis height (m)')
-    plt.title('Cost landscape at iteration %d ' % model_slice_value_cost_landsacpe + title_list[i])
+    plt.title('Cost landscape at iteration %d ' % model_slice_value + title_list[i])
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
-      plt.savefig("%scost_landscape%s_model_iter_%d.png" % (eval_dir, app_list[i], model_slice_value_cost_landsacpe))
+      plt.savefig("%scost_landscape%s_model_iter_%d.png" % (eval_dir, app_list[i], model_slice_value))
 
 
 def ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_average):
@@ -1254,6 +1335,7 @@ class Tasks:
     return name_list
 
 
+# TODO (yuming): Generalize this to select any pair of task. Reference: https://github.com/DAIRLab/dairlib/commit/f61df0c583e0b67e00483477b01b1062e38375c7
 
 if __name__ == "__main__":
   # Read the controller parameters
@@ -1270,6 +1352,7 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
   # eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/0405/_20220329_sim_eval_20220316_rom24_big_range/1_without_accel_cost_and_5_seconds_sim_tolerance/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1287,7 +1370,7 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 100
+  model_iter_idx_end = 200
   idx_spacing = 5
 
   # Task list
@@ -1324,6 +1407,8 @@ if __name__ == "__main__":
   plot_main_cost = True  # main cost is the cost of which we take gradient during model optimization
 
   # 2D plot (cost vs model)
+  task_to_plot = ['stride_length', 'pelvis_height']
+  # task_to_plot = ['ground_incline', 'turning_rate']
   # task_slice_value_sl = [-0.16, 0, 0.16]
   # task_slice_value_sl = [-0.2, -0.1, 0, 0.1, 0.2]
   # task_slice_value_sl = [-0.4, -0.2, 0, 0.2, 0.4]
@@ -1341,7 +1426,8 @@ if __name__ == "__main__":
 
   # 2D landscape (task1 vs task2)
   # model_slices_cost_landsacpe = []
-  model_slice_value_cost_landsacpe = 1
+  model_slices_cost_landsacpe = [1, 2, 11, 110]
+  # model_slices_cost_landsacpe = [50]
 
   # Expected (averaged) cost over a task range
   stride_length_range_to_average = [-0.4, 0.4]
@@ -1447,6 +1533,13 @@ if __name__ == "__main__":
   min_max_task_filter_for_viz = {}
   min_max_task_filter_for_viz['stride_length'] = (min_sl, max_sl)
   min_max_task_filter_for_viz['pelvis_height'] = (0, 2)
+  min_max_task_filter_for_viz['ground_incline'] = (-2, 2)
+  min_max_task_filter_for_viz['turning_rate'] = (-5, 5)
+  task_boundary_outer_box = {}
+  task_boundary_outer_box['stride_length'] = (-0.8, 0.8)
+  task_boundary_outer_box['pelvis_height'] = (0.3, 1.3)
+  task_boundary_outer_box['ground_incline'] = (-2, 2)
+  task_boundary_outer_box['turning_rate'] = (-5, 5)
 
   # Manual overwrite log_indices for plotting
   if len(log_indices_for_plot) != 0:

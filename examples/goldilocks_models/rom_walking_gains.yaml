@@ -89,6 +89,9 @@ double_support_duration: 0.05 #0.02
 
 
 ### For planner only
+
+constant_rom_vel_during_double_support: false
+
 # max_foot_speed should be more than two times bigger than the desired walking speed.
 # (maybe leave at least 0.5m/s margin for it to catch up with the body when falling forward)
 max_foot_speed: 3  # used to restrict swing foot travel distance

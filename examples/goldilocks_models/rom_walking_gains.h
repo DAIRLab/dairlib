@@ -43,6 +43,7 @@ struct RomWalkingGains {
   double left_support_duration;
   double right_support_duration;
   double double_support_duration;
+  bool constant_rom_vel_during_double_support;
   double max_foot_speed;
   double max_step_length;
   double max_desired_step_length;
@@ -149,6 +150,7 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(left_support_duration));
     a->Visit(DRAKE_NVP(right_support_duration));
     a->Visit(DRAKE_NVP(double_support_duration));
+    a->Visit(DRAKE_NVP(constant_rom_vel_during_double_support));
     a->Visit(DRAKE_NVP(max_foot_speed));
     a->Visit(DRAKE_NVP(max_step_length));
     a->Visit(DRAKE_NVP(max_desired_step_length));

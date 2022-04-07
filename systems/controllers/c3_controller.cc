@@ -82,80 +82,80 @@ void C3Controller::CalcControl(const Context<double>& context,
                                drake::systems::BasicVector<double>* control) const {
 
 
-  VectorXd xu(plant_.num_positions()+plant_.num_velocities()+plant_.num_actuators());
-  VectorXd q = VectorXd::Zero(plant_.num_positions());
-  VectorXd v = VectorXd::Zero(plant_.num_velocities());
-  VectorXd u = VectorXd::Zero(plant_.num_actuators());
-  xu << q, v, u;
-  auto xu_ad = drake::math::InitializeAutoDiff(xu);
-
-  plant_ad_.SetPositionsAndVelocities(
-      &context_ad_,
-      xu_ad.head(plant_.num_positions() + plant_.num_velocities()));
-
-  multibody::SetInputsIfNew<AutoDiffXd>(
-      plant_ad_, xu_ad.tail(plant_.num_actuators()), &context_ad_);
-
-  VectorXd state = this->EvalVectorInput(context, state_input_port_)->value();
-
-  //std::cout << "assinging contact geoms" << std::endl;
-  ///figure out a nice way to do this as SortedPairs with pybind is not working (potentially pass a matrix 2xnum_pairs?)
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-
-//std::cout << contact_geoms_[0] << std::endl;
-
-
-  contact_pairs.push_back(
-      SortedPair(contact_geoms_[0], contact_geoms_[3]));
-  contact_pairs.push_back(
-      SortedPair(contact_geoms_[1], contact_geoms_[3]));
-  contact_pairs.push_back(
-      SortedPair(contact_geoms_[2], contact_geoms_[3]));
-
-  //std::cout << context_ << std::endl;
-
-  //std::cout << "before lcs " << std::endl;
-  //multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, &state, &context_);
-  solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
-      plant_, context_, plant_ad_, context_ad_, contact_pairs,
-      num_friction_directions_, mu_);
-
-  //std::cout << system_.A_[0] << std::endl;
-
-  C3Options options;
-  int N = (system_.A_).size();
-  int n = ((system_.A_)[0].cols());
-  int m = ((system_.D_)[0].cols());
-  int k = ((system_.B_)[0].cols());
-
-  /// initialize ADMM variables (delta, w)
-  std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
-
-  /// initialize ADMM reset variables (delta, w are reseted to these values)
-  std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
-
-  if (options.delta_option == 1) {
-    /// reset delta and w (option 1)
-    delta = delta_reset;
-    w = w_reset;
-    for (int j = 0; j < N; j++) {
-      delta[j].head(n) = state;
-    }
-  } else {
-    /// reset delta and w (default option)
-    delta = delta_reset;
-    w = w_reset;
-  }
-
-  solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
-
-  /// calculate the input given x[i]
-  VectorXd input = opt.Solve(state, delta, w);
-
-
-  control->SetFromVector(input);
+//  VectorXd xu(plant_.num_positions()+plant_.num_velocities()+plant_.num_actuators());
+//  VectorXd q = VectorXd::Zero(plant_.num_positions());
+//  VectorXd v = VectorXd::Zero(plant_.num_velocities());
+//  VectorXd u = VectorXd::Zero(plant_.num_actuators());
+//  xu << q, v, u;
+//  auto xu_ad = drake::math::InitializeAutoDiff(xu);
+//
+//  plant_ad_.SetPositionsAndVelocities(
+//      &context_ad_,
+//      xu_ad.head(plant_.num_positions() + plant_.num_velocities()));
+//
+//  multibody::SetInputsIfNew<AutoDiffXd>(
+//      plant_ad_, xu_ad.tail(plant_.num_actuators()), &context_ad_);
+//
+//  VectorXd state = this->EvalVectorInput(context, state_input_port_)->value();
+//
+//  //std::cout << "assinging contact geoms" << std::endl;
+//  ///figure out a nice way to do this as SortedPairs with pybind is not working (potentially pass a matrix 2xnum_pairs?)
+//  std::vector<SortedPair<GeometryId>> contact_pairs;
+//
+////std::cout << contact_geoms_[0] << std::endl;
+//
+//
+//  contact_pairs.push_back(
+//      SortedPair(contact_geoms_[0], contact_geoms_[3]));
+//  contact_pairs.push_back(
+//      SortedPair(contact_geoms_[1], contact_geoms_[3]));
+//  contact_pairs.push_back(
+//      SortedPair(contact_geoms_[2], contact_geoms_[3]));
+//
+//  //std::cout << context_ << std::endl;
+//
+//  //std::cout << "before lcs " << std::endl;
+//  //multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, &state, &context_);
+//  solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
+//      plant_, context_, plant_ad_, context_ad_, contact_pairs,
+//      num_friction_directions_, mu_);
+//
+//  //std::cout << system_.A_[0] << std::endl;
+//
+//  C3Options options;
+//  int N = (system_.A_).size();
+//  int n = ((system_.A_)[0].cols());
+//  int m = ((system_.D_)[0].cols());
+//  int k = ((system_.B_)[0].cols());
+//
+//  /// initialize ADMM variables (delta, w)
+//  std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
+//  std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
+//
+//  /// initialize ADMM reset variables (delta, w are reseted to these values)
+//  std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
+//  std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
+//
+//  if (options.delta_option == 1) {
+//    /// reset delta and w (option 1)
+//    delta = delta_reset;
+//    w = w_reset;
+//    for (int j = 0; j < N; j++) {
+//      delta[j].head(n) = state;
+//    }
+//  } else {
+//    /// reset delta and w (default option)
+//    delta = delta_reset;
+//    w = w_reset;
+//  }
+//
+//  solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
+//
+//  /// calculate the input given x[i]
+//  VectorXd input = opt.Solve(state, delta, w);
+//
+//
+//  control->SetFromVector(input);
 }
 }  // namespace controllers
 }  // namespace systems

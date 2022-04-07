@@ -91,7 +91,8 @@ finger_lower_link_120_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyB
 finger_lower_link_240_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_240"))[0]
 cube_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"))[0]
 
-contact_geoms = [finger_lower_link_0_geoms, finger_lower_link_120_geoms, finger_lower_link_240_geoms, cube_geoms]
+#contact_geoms = [finger_lower_link_0_geoms, finger_lower_link_120_geoms, finger_lower_link_240_geoms, cube_geoms]
+contact_geoms = (finger_lower_link_0_geoms, finger_lower_link_120_geoms)
 
 plant_ad = plant.ToAutoDiffXd()
 

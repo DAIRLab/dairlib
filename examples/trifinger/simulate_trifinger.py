@@ -107,6 +107,11 @@ controller = builder.AddSystem(
 builder.Connect(plant.get_state_output_port(), controller.get_input_port(0))
 builder.Connect(controller.get_output_port(0), plant.get_actuation_input_port())
 
+# builder.Connect(
+#     scene_graph.get_query_output_port(),
+#     plant.get_geometry_query_input_port())
+
+
 # Constuct the simulator and visualizer
 DrakeVisualizer.AddToBuilder(builder=builder, scene_graph=scene_graph)
 

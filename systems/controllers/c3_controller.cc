@@ -72,7 +72,7 @@ C3Controller::C3Controller(
                                  &C3Controller::CalcControl)
                              .get_index();
   DRAKE_DEMAND(contact_geoms_.size() >= 4);
-  std::cout << "constructed c3controller" <<std::endl;
+  //std::cout << "constructed c3controller" <<std::endl;
 
   //std::cout << contact_geoms_[0] << std::endl;
 
@@ -82,19 +82,23 @@ void C3Controller::CalcControl(const Context<double>& context,
                                drake::systems::BasicVector<double>* control) const {
 
 
-//  VectorXd xu(plant_.num_positions()+plant_.num_velocities()+plant_.num_actuators());
-//  VectorXd q = VectorXd::Zero(plant_.num_positions());
-//  VectorXd v = VectorXd::Zero(plant_.num_velocities());
-//  VectorXd u = VectorXd::Zero(plant_.num_actuators());
-//  xu << q, v, u;
-//  auto xu_ad = drake::math::InitializeAutoDiff(xu);
-//
-//  multibody::SetInputsIfNew<AutoDiffXd>(
-//      plant_ad_, xu_ad.tail(plant_.num_actuators()), &context_ad_);
+  VectorXd xu(plant_.num_positions()+plant_.num_velocities()+plant_.num_actuators());
+  VectorXd q = VectorXd::Zero(plant_.num_positions());
+  VectorXd v = VectorXd::Zero(plant_.num_velocities());
+  VectorXd u = VectorXd::Zero(plant_.num_actuators());
+  xu << q, v, u;
+  auto xu_ad = drake::math::InitializeAutoDiff(xu);
+
+  plant_ad_.SetPositionsAndVelocities(
+      &context_ad_,
+      xu_ad.head(plant_.num_positions() + plant_.num_velocities()));
+
+  multibody::SetInputsIfNew<AutoDiffXd>(
+      plant_ad_, xu_ad.tail(plant_.num_actuators()), &context_ad_);
 
   VectorXd state = this->EvalVectorInput(context, state_input_port_)->value();
 
-  std::cout << "assinging contact geoms" << std::endl;
+  //std::cout << "assinging contact geoms" << std::endl;
   ///figure out a nice way to do this as SortedPairs with pybind is not working (potentially pass a matrix 2xnum_pairs?)
   std::vector<SortedPair<GeometryId>> contact_pairs;
 
@@ -110,7 +114,7 @@ void C3Controller::CalcControl(const Context<double>& context,
 
   //std::cout << context_ << std::endl;
 
-  std::cout << "before lcs " << std::endl;
+  //std::cout << "before lcs " << std::endl;
   //multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, &state, &context_);
   solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, context_, plant_ad_, context_ad_, contact_pairs,
@@ -149,6 +153,7 @@ void C3Controller::CalcControl(const Context<double>& context,
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
+
 
   control->SetFromVector(input);
 }

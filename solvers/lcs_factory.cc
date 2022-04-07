@@ -42,12 +42,12 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   //std::cout << ExtractGradient(C).cols() << std::endl;
 
-//  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() *
-//                     plant_ad.get_actuation_input_port().Eval(context_ad);
+  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() *
+                     plant_ad.get_actuation_input_port().Eval(context_ad);
 
-  auto u = plant.get_actuation_input_port().Eval(context);
-  auto u_ad = drake::math::InitializeAutoDiff(u);
-  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() * u_ad;
+//  auto u = plant.get_actuation_input_port().Eval(context);
+//  auto u_ad = drake::math::InitializeAutoDiff(u);
+//  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() * u_ad;
 
   AutoDiffVecXd tau_g = plant_ad.CalcGravityGeneralizedForces(context_ad);
 
@@ -73,22 +73,39 @@ LCS LCSFactory::LinearizePlantToLCS(
   int n_input = plant_ad.num_actuators();
 
   //std::cout << n_state << std::endl;
-  std::cout << n_vel << std::endl;
+  //std::cout << n_vel << std::endl;
 
   ///////////
   AutoDiffVecXd qdot_no_contact(plant.num_positions());
+
+  //std::cout << "here1" << std::endl;
+
+
   AutoDiffVecXd state = plant_ad.get_state_output_port().Eval(context_ad);
+
+
+
   AutoDiffVecXd vel = state.tail(n_vel);
   //std::cout << std::size(state) << std::endl;
+
   plant_ad.MapVelocityToQDot(context_ad, vel, &qdot_no_contact);
+
+
   MatrixXd AB_q = ExtractGradient(qdot_no_contact);
+
+
   MatrixXd d_q = ExtractValue(qdot_no_contact);
+
+
+
 
   //std::cout << AB_q.rows() << "x" << AB_q.cols() << std::endl;
 
   //std::cout << AB_q.block(0,n_state, n_state, n_vel) << std::endl;
 
   MatrixXd Nq = AB_q.block(0,n_state, n_state, n_vel);
+
+
 
   ///////////
 

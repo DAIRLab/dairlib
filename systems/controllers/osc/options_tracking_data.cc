@@ -127,7 +127,7 @@ void OptionsTrackingData::AddJointAndStateToIgnoreInJacobian(int joint_vel_idx,
   if (joint_idx_to_ignore_.count(fsm_state)) {
     joint_idx_to_ignore_[fsm_state_].push_back(joint_vel_idx);
   } else {
-    joint_idx_to_ignore_[fsm_state_] = {fsm_state};
+    joint_idx_to_ignore_[fsm_state_] = {joint_vel_idx};
   }
 }
 

@@ -37,7 +37,8 @@ C3Controller::C3Controller(
     drake::systems::Context<double>& context,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>& context_ad,
-    std::vector<drake::geometry::GeometryId>  contact_geoms,
+    //std::vector<drake::geometry::GeometryId>  contact_geoms,
+    const drake::SortedPair<drake::geometry::GeometryId> contact_geoms,
     int num_friction_directions, double mu, const vector<MatrixXd>& Q,
     const vector<MatrixXd>& R, const vector<MatrixXd>& G,
     const vector<MatrixXd>& U, const vector<VectorXd>& xdesired
@@ -46,7 +47,7 @@ C3Controller::C3Controller(
       context_(context),
       plant_ad_(plant_ad),
       context_ad_(context_ad),
-      contact_geoms_(std::move(contact_geoms)),
+      contact_geoms_(contact_geoms),
       num_friction_directions_(num_friction_directions),
       mu_(mu),
       Q_(Q),
@@ -71,7 +72,7 @@ C3Controller::C3Controller(
                                  "u, t", num_inputs,
                                  &C3Controller::CalcControl)
                              .get_index();
-  DRAKE_DEMAND(contact_geoms_.size() >= 4);
+  //DRAKE_DEMAND(contact_geoms_.size() >= 4);
   //std::cout << "constructed c3controller" <<std::endl;
 
   //std::cout << contact_geoms_[0] << std::endl;
@@ -155,7 +156,8 @@ void C3Controller::CalcControl(const Context<double>& context,
 //  VectorXd input = opt.Solve(state, delta, w);
 //
 //
-//  control->SetFromVector(input);
+  VectorXd input = VectorXd::Zero(9);
+  control->SetFromVector(input);
 }
 }  // namespace controllers
 }  // namespace systems

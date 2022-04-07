@@ -462,7 +462,7 @@
 
   <!--
       **************************************************************
-      lumped masses for the foot crank and plantar rods--attaching them
+      lumped masses for the foot crank and plantar rods-attaching them
       to the foot at the heel location
       **************************************************************
   -->
@@ -529,7 +529,7 @@
       </geometry>
       <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
     </collision>
-   <visual>
+    <visual>
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
@@ -541,7 +541,7 @@
       </geometry>
       <origin xyz="0.088 0 0" rpy="0 0 0"/>
     </collision>
-   </link>
+  </link>
 
   <link name="toe_right">
     <inertial>
@@ -569,7 +569,7 @@
         <color rgba="0.4 0.4 0.4 1" />
       </material>
     </visual>
-        <visual>
+    <visual>
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
@@ -581,7 +581,7 @@
       </geometry>
       <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
     </collision>
-   <visual>
+    <visual>
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
@@ -596,17 +596,17 @@
   </link>
 
 
- 
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
 
 
   <joint name="hip_roll_left" type="revolute">
@@ -615,7 +615,7 @@
     <child link="yaw_left" />
     <axis xyz="0 0 1" />
     <limit lower="-0.262" upper="0.393" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
   <joint name="hip_roll_right" type="revolute">
@@ -624,8 +624,8 @@
     <child link="yaw_right" />
     <axis xyz="0 0 1" />
     <limit lower="-0.393" upper="0.262" effort="300"/>
-    <dynamics damping="1" /> 
-  </joint> 
+    <dynamics damping="1" />
+  </joint>
 
 
   <joint name="hip_yaw_left" type="revolute">
@@ -634,16 +634,16 @@
     <child link="hip_left" />
     <axis xyz="0 0 1" />
     <limit lower="-0.393" upper="0.393" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
-   <joint name="hip_yaw_right" type="revolute">
+  <joint name="hip_yaw_right" type="revolute">
     <origin xyz="0 0 -0.07" rpy="0 -1.570796 0" />
     <parent link="yaw_right" />
     <child link="hip_right" />
     <axis xyz="0 0 1" />
     <limit lower="-0.393" upper="0.393" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
 
@@ -653,7 +653,7 @@
     <child link="thigh_left" />
     <axis xyz="0 0 1" />
     <limit lower="-0.873" upper="1.396" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
   <joint name="hip_pitch_right" type="revolute">
@@ -662,7 +662,7 @@
     <child link="thigh_right" />
     <axis xyz="0 0 1" />
     <limit lower="-0.873" upper="1.396" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
   <joint name="knee_left" type="revolute">
@@ -731,13 +731,13 @@
     <origin xyz="0.06068 0.08241 0" rpy="0 0 0" />
     <parent link="knee_left" />
     <child link="knee_spring_left" />
-  </joint> 
+  </joint>
 
   <joint name="knee_spring_right_fixed" type="fixed">
     <origin xyz="0.06068 0.08241 0" rpy="0 0 0" />
     <parent link="knee_right" />
     <child link="knee_spring_right" />
-  </joint> 
+  </joint>
 
 
   <joint name="ankle_joint_left" type="revolute">
@@ -746,7 +746,7 @@
     <child link="tarsus_left" />
     <axis xyz="0 0 1" />
     <limit lower=".8" upper="3"/>
-    <dynamics damping="0.1" /> 
+    <dynamics damping="0.1" />
   </joint>
 
   <joint name="ankle_joint_right" type="revolute">
@@ -758,7 +758,7 @@
     <dynamics damping="0.1" />
   </joint>
 
-<!-- rpy="-0.0689 -0.0370 2.7208"-->
+  <!-- rpy="-0.0689 -0.0370 2.7208"-->
   <joint name="ankle_spring_joint_left" type="revolute">
     <origin xyz="-.01269 -.03059 .00092" rpy="0.0780 0.00549 2.7192" />
     <parent link="tarsus_left" />
@@ -766,9 +766,9 @@
     <limit lower="-1" upper="0.5"/>
     <axis xyz="0 0 1" />
     <dynamics damping="10" /> <!-- made up value -->
-  </joint> 
+  </joint>
 
-<!-- rpy="0.0734 0.0269 2.7201"-->
+  <!-- rpy="0.0734 0.0269 2.7201"-->
   <joint name="ankle_spring_joint_right" type="revolute">
     <origin xyz="-.01269 -.03059 -.00092" rpy="-0.0780 -0.00549 2.7192" />
     <parent link="tarsus_right" />
@@ -776,7 +776,7 @@
     <limit lower="-1" upper="0.5"/>
     <axis xyz="0 0 1" />
     <dynamics damping="10" /> <!-- made up value -->
-  </joint> 
+  </joint>
 
 
   <joint name="toe_left" type="revolute">
@@ -785,7 +785,7 @@
     <child link="toe_left" />
     <axis xyz="0 0 1" />
     <limit lower="-2.8" upper="0" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
   <joint name="toe_right" type="revolute">
@@ -794,19 +794,19 @@
     <child link="toe_right" />
     <axis xyz="0 0 1" />
     <limit lower="-2.8" upper="0" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
 
   <transmission name="hip_roll_left_trans" type="transmission_interface/SimpleTransmission">
     <actuator name="hip_roll_left_motor"/>
@@ -868,16 +868,16 @@
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
 
   <!-- Real springs -->
   <force_element name="left_knee_spring">

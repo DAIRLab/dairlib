@@ -13,7 +13,6 @@ For more usages in Python, see the following in `_lcm_extra.py`:
 - _make_lcm_publisher / LcmPublisherSystem.Make
 */
 
-#include <pybind11/pytypes.h>
 namespace dairlib {
 namespace pydairlib {
 //namespace pysystems {

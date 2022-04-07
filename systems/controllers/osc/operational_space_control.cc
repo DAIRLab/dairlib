@@ -525,7 +525,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
   bias = bias - grav;
   // TODO (yangwill): Characterize damping in cassie model
-  //  bias = bias - f_app.generalized_forces();
+//  bias = bias - f_app.generalized_forces();
 
   //  Invariant Impacts
   //  Only update when near an impact
@@ -755,11 +755,11 @@ VectorXd OperationalSpaceControl::SolveQp(
     *epsilon_sol_ = result.GetSolution(epsilon_);
     u_sol_->row(0) = 0.95 * u_sol_->row(0) + 0.05 * u_prev_->row(0);
     u_sol_->row(1) = 0.95 * u_sol_->row(1) + 0.05 * u_prev_->row(1);
-    *u_prev_ = *u_sol_;
+    //    *u_prev_ = *u_sol_;
     initial_guess_x_[fsm_state] = result.GetSolution();
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
-//    *u_prev_ = VectorXd::Zero(n_u_);
+    //    *u_prev_ = VectorXd::Zero(n_u_);
     *u_prev_ = 0.9 * *u_sol_ + VectorXd::Random(n_u_);
   }
 
@@ -986,7 +986,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     output->tracking_data[i] = osc_output;
   }
   //  std::cout << total_cost_ << std::endl;
-
+  *u_prev_ = *u_sol_;
   output->num_tracking_data = output->tracking_data_names.size();
   output->num_regularization_costs = output->regularization_cost_names.size();
 }
@@ -1058,14 +1058,15 @@ void OperationalSpaceControl::CheckTracking(
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
   //  std::cout << "total cost: " << total_cost_ << std::endl;
-//  bool joint_error = false;
-//  auto q =
-//      (map_position_from_spring_to_no_spring_ * robot_output->GetPositions())
-//          .segment(7, n_revolute_joints_);
-//  for (int i = 0; i < n_revolute_joints_; ++i) {
-//    joint_error = joint_error || q(i) < q_min_(i);
-//    joint_error = joint_error || q(i) > q_max_(i);
-//  }
+  //  bool joint_error = false;
+  //  auto q =
+  //      (map_position_from_spring_to_no_spring_ *
+  //      robot_output->GetPositions())
+  //          .segment(7, n_revolute_joints_);
+  //  for (int i = 0; i < n_revolute_joints_; ++i) {
+  //    joint_error = joint_error || q(i) < q_min_(i);
+  //    joint_error = joint_error || q(i) > q_max_(i);
+  //  }
   if (soft_constraint_cost_ > 5e2 || isnan(soft_constraint_cost_)) {
     output->get_mutable_value()(0) = 1.0;
   }

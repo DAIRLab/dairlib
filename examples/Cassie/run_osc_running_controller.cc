@@ -200,8 +200,8 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
   osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
-//  osc->SetLambdaContactRegularizationWeight(1e-4 *
-//                                            gains.W_lambda_c_regularization);
+  osc->SetLambdaContactRegularizationWeight(1e-4 *
+                                            gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
                                               gains.W_lambda_h_regularization);
 

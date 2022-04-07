@@ -1,3 +1,4 @@
+
 from dairlib import (lcmt_robot_output, lcmt_robot_input)
 
 import pydairlib.common
@@ -8,18 +9,24 @@ from pydairlib.systems import (RobotCommandSender, RobotOutputReceiver,
 
 from pydrake.all import (AbstractValue, DiagramBuilder, DrakeLcm, LeafSystem,
                          MultibodyPlant, Parser, RigidTransform, Subscriber,
-                         LcmPublisherSystem, TriggerType)
+                         LcmPublisherSystem, TriggerType, AddMultibodyPlantSceneGraph)
+#import pydairlib.common
+
+
+from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
+import pydairlib.common
+from pydairlib.systems.controllers import C3Controller
 
 import numpy as np
 
-# A demo controller system
+#A demo controller system
 class TrifingerDemoController(LeafSystem):
   def __init__(self, plant):
     LeafSystem.__init__(self)
 
     self.plant = plant
 
-    # Input is state, output is torque (control action)
+#Input is state, output is torque(control action)
     self.DeclareVectorInputPort("x, u, t", OutputVector(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
@@ -30,7 +37,7 @@ class TrifingerDemoController(LeafSystem):
     q = self.EvalVectorInput(context, 0).GetPositions()
     v = self.EvalVectorInput(context, 0).GetVelocities()
 
-    # use a simple PD controller with constant setpoint
+#use a simple PD controller with constant setpoint
     kp = 8
     kd = 1
     q_des = np.array([.1, 0, -1, .1, -.5, -1, .1, -.5, -1])
@@ -41,9 +48,15 @@ class TrifingerDemoController(LeafSystem):
 
 lcm = DrakeLcm()
 
-plant = MultibodyPlant(0.0)
+builder = DiagramBuilder()
+sim_dt = 2e-4
+plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
+addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
+               mu_kinetic=1.0)
 
-# The package addition here seems necessary due to how the URDF is defined
+#plant = MultibodyPlant(0.0)
+
+#The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
 parser.package_map().Add("robot_properties_fingers",
                          "examples/trifinger/robot_properties_fingers")
@@ -52,15 +65,57 @@ parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf"))
 
-# Fix the base of the finger to the world
+#Fix the base of the finger to the world
 X_WI = RigidTransform.Identity()
 plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI)
 plant.Finalize()
 
-builder = DiagramBuilder()
+#builder = DiagramBuilder()
 
 state_receiver = builder.AddSystem(RobotOutputReceiver(plant))
-controller = builder.AddSystem(TrifingerDemoController(plant))
+#controller = builder.AddSystem(TrifingerDemoController(plant))
+
+
+mu = 1.0
+Qinit = np.eye(31)
+Rinit = np.eye(9)
+Ginit = 0.1*np.eye(58)
+Uinit = np.eye(58)
+xdesiredinit = np.zeros((31,1))
+
+num_friction_directions = 2
+N = 10
+Q = []
+R = []
+G = []
+U = []
+xdesired = []
+
+for i in range(N):
+    Q.append(Qinit)
+    R.append(Rinit)
+    G.append(Ginit)
+    U.append(Uinit)
+    xdesired.append(xdesiredinit)
+Q.append(Qinit)
+
+finger_lower_link_0_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_0"))[0]
+finger_lower_link_120_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_120"))[0]
+finger_lower_link_240_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_240"))[0]
+cube_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"))[0]
+
+contact_geoms = [finger_lower_link_0_geoms, finger_lower_link_120_geoms, finger_lower_link_240_geoms, cube_geoms]
+
+plant_ad = plant.ToAutoDiffXd()
+
+context = plant.CreateDefaultContext()
+
+context_ad = plant_ad.CreateDefaultContext()
+
+controller = builder.AddSystem(
+    C3Controller(plant, context, plant_ad, context_ad, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired))
+
+
 builder.Connect(state_receiver.get_output_port(0), controller.get_input_port(0))
 
 control_sender = builder.AddSystem(RobotCommandSender(plant))

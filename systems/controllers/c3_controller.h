@@ -47,16 +47,13 @@ class C3Controller : public LeafSystem<double> {
       drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       drake::systems::Context<drake::AutoDiffXd>& context_ad,
-      //std::vector<drake::geometry::GeometryId>
-        //  contact_geoms,
-      drake::SortedPair<drake::geometry::GeometryId> contact_geoms,
+      std::vector<drake::geometry::GeometryId> contact_geoms,
       int num_friction_directions, double mu,
       const std::vector<Eigen::MatrixXd>& Q,
       const std::vector<Eigen::MatrixXd>& R,
       const std::vector<Eigen::MatrixXd>& G,
       const std::vector<Eigen::MatrixXd>& U,
-      const std::vector<Eigen::VectorXd>& xdesired
-      );
+      const std::vector<Eigen::VectorXd>& xdesired);
 
   const drake::systems::InputPort<double>& get_input_port_config() const {
     return this->get_input_port(state_input_port_);
@@ -70,7 +67,7 @@ class C3Controller : public LeafSystem<double> {
 
  private:
   void CalcControl(const drake::systems::Context<double>& context,
-                   drake::systems::BasicVector<double>* output) const;
+                   TimestampedVector<double>* output) const;
 
   int state_input_port_;
   int control_output_port_;
@@ -78,8 +75,7 @@ class C3Controller : public LeafSystem<double> {
   const MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   drake::systems::Context<double>& context_;
   drake::systems::Context<drake::AutoDiffXd>& context_ad_;
-  //const std::vector<drake::geometry::GeometryId> contact_geoms_;
-  const drake::SortedPair<drake::geometry::GeometryId> contact_geoms_;
+  const std::vector<drake::geometry::GeometryId> contact_geoms_;
   int num_friction_directions_;
   double mu_;
   const std::vector<Eigen::MatrixXd> Q_;

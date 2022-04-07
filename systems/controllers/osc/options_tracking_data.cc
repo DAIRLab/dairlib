@@ -37,6 +37,12 @@ void OptionsTrackingData::UpdateActual(
     JdotV_ = view_frame_rot_T_ * JdotV_;
   }
 
+  if (joint_idx_to_ignore_.count(fsm_state_)) {
+    for (int idx : joint_idx_to_ignore_[fsm_state_]) {
+      J_.col(idx) = VectorXd::Zero(J_.rows());
+    }
+  }
+
   UpdateFilters(t);
 }
 
@@ -110,6 +116,18 @@ void OptionsTrackingData::SetLowPassFilter(double tau,
     }
   } else {
     low_pass_filter_element_idx_ = element_idx;
+  }
+}
+
+void OptionsTrackingData::AddJointAndStateToIgnoreInJacobian(int joint_vel_idx,
+                                                             int fsm_state) {
+  DRAKE_DEMAND(std::find(active_fsm_states_.begin(),
+                         active_fsm_states_.end(),
+                         fsm_state) != active_fsm_states_.end());
+  if (joint_idx_to_ignore_.count(fsm_state)) {
+    joint_idx_to_ignore_[fsm_state_].push_back(joint_vel_idx);
+  } else {
+    joint_idx_to_ignore_[fsm_state_] = {fsm_state};
   }
 }
 

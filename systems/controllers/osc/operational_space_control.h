@@ -135,6 +135,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Cost methods
   void SetInputCost(const Eigen::MatrixXd& W) { W_input_ = W; }
+  void AddInputCostByJointAndFsmState(
+      const std::string& joint_u_name, int fsm, double w);
   void SetAccelerationCostForAllJoints(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
   }
@@ -306,6 +308,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+  drake::solvers::QuadraticCost* input_cost_;
   std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
 
   // OSC solution
@@ -325,6 +328,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   /// could consider using acceleration cost instead.
   Eigen::MatrixXd W_input_;        // Input cost weight
   Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
+  std::map<int, std::pair<int, double>> fsm_to_w_input_map_; // each pair is (joint index, weight)
 
   // OSC constraint members
   bool with_input_constraints_ = true;

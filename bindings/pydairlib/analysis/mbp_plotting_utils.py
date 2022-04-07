@@ -7,6 +7,8 @@ from pydairlib.multibody import makeNameToPositionsMap, \
     makeNameToVelocitiesMap, makeNameToActuatorsMap, \
     createStateNameVectorFromMap, createActuatorNameVectorFromMap
 
+ps = plot_styler.PlotStyler()
+ps.set_default_styling()
 
 def make_name_to_mbp_maps(plant):
     return makeNameToPositionsMap(plant), \

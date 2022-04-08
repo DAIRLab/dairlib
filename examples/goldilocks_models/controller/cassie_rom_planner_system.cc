@@ -581,8 +581,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //      0.292816, -0.0255519, 0.885733, 0.961515;
 
   // Testing -- start the init ROM state form the previous plan
-  vector<int> initialize_with_rom_state =
-      {};  // {2, 5};  // for state, not only pos
+  vector<int> initialize_with_rom_state = {
+      2, 5};  // {2, 5};  // for state, not only pos
   VectorXd init_rom_state(2 * n_y_);
   if (!initialize_with_rom_state.empty()) {
     if (counter_ == 0) {

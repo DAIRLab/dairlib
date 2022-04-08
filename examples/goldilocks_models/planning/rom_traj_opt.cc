@@ -311,6 +311,15 @@ RomTrajOpt::RomTrajOpt(
     // Add dynamics constraints at collocation points
     PrintStatus("Adding constraint -- dynamics");
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
+      // TODO: this is the only place in this class that needs changes for the
+      //  double support phase.
+      //  The second place is outside this class, where we have to create the
+      //  know points for both single support and double support phase. (we want
+      //  the transition time from single to double support phase to be fixed in
+      //  time globally!)
+      //      bool in_double_support = false;
+      //      if (constant_rom_vel_during_double_support) {
+      //      }
       auto dyn_constraint = std::make_shared<planning::DynamicsConstraint>(
           rom, "rom_dyn_" + std::to_string(i) + "_" + std::to_string(j));
       DRAKE_DEMAND(static_cast<int>(dyn_constraint->num_constraints()) ==

@@ -505,6 +505,11 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   DRAKE_DEMAND(pos_map_.at("ankle_joint_left") == 7 + 8);
   DRAKE_DEMAND(pos_map_.at("ankle_joint_right") == 7 + 9);
 
+  // Some checks -- we don't have double support phase in the LIPM MPC yet.
+  if (use_lipm_mpc_and_ik_) {
+    DRAKE_DEMAND(!param_.gains.constant_rom_vel_during_double_support);
+  }
+
   /// Save data for (offline) debug mode
   writeCSV(param.dir_data + "rom_option.csv",
            param.rom_option * VectorXd::Ones(1));

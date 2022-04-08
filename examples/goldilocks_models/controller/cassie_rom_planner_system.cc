@@ -411,6 +411,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // Default timestep and number of knot points
   for (int i = 0; i < param_.n_step; i++) {
     num_time_samples_.push_back(param_.knots_per_mode);
+    num_time_samples_ds_.push_back(knots_per_double_support_);
     min_dt_.push_back(.01);
     max_dt_.push_back(.3);
   }

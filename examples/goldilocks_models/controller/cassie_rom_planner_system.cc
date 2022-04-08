@@ -402,6 +402,19 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   min_solve_time_preserved_for_next_loop_ =
       ((param_.n_step - 1) * stride_period) / 2;
 
+  // double support phase's number of kont points
+  knots_per_double_support_ =
+      int(param_.knots_per_mode * double_support_duration_ /
+          (single_support_duration_ + double_support_duration_));
+  knots_per_single_support_ = param_.knots_per_mode - knots_per_double_support_;
+
+  // Default timestep and number of knot points
+  for (int i = 0; i < param_.n_step; i++) {
+    num_time_samples_.push_back(param_.knots_per_mode);
+    min_dt_.push_back(.01);
+    max_dt_.push_back(.3);
+  }
+
   // Cost weight
   Q_ = param_.gains.w_Q * MatrixXd::Identity(n_y_, n_y_);
   R_ = param_.gains.w_R * MatrixXd::Identity(n_tau_, n_tau_);
@@ -741,22 +754,16 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   auto break2 = std::chrono::high_resolution_clock::now();
 
   // Prespecify the number of knot points
-  std::vector<int> num_time_samples;
-  std::vector<double> min_dt;
-  std::vector<double> max_dt;
-  for (int i = 0; i < param_.n_step; i++) {
-    num_time_samples.push_back(param_.knots_per_mode);
-    min_dt.push_back(.01);
-    max_dt.push_back(.3);
-  }
   // We use int() to round down the index because we need to have at least one
   // timestep in the first mode, i.e. 2 knot points.
+  // TODO:
+  //  1) need to update the number of knot points based on
+  //  knots_per_single_support_ and knots_per_double_support_
+  //  2) need to update the time duration limit
   int first_mode_knot_idx = int((param_.knots_per_mode - 1) * init_phase);
   int n_knots_first_mode = param_.knots_per_mode - first_mode_knot_idx;
-  num_time_samples[0] = n_knots_first_mode;
-  if (n_knots_first_mode == 2) {
-    min_dt[0] = 1e-3;
-  }
+  num_time_samples_[0] = n_knots_first_mode;
+  min_dt_[0] = (n_knots_first_mode == 2) ? 1e-3 : 1e-2;
   PrintEssentialStatus("start_with_left_stance  = " +
                        to_string(start_with_left_stance));
   PrintEssentialStatus("init_phase  = " + to_string(init_phase));
@@ -790,7 +797,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Construct
   PrintStatus("\nConstructing optimization problem...");
-  RomTrajOptCassie trajopt(num_time_samples, Q_, R_, *rom_, plant_control_,
+  RomTrajOptCassie trajopt(num_time_samples_, Q_, R_, *rom_, plant_control_,
                            state_mirror_, left_contacts_, right_contacts_,
                            left_origin_, right_origin_, joint_name_lb_ub_,
                            x_init, init_rom_state, max_swing_distance_,
@@ -801,7 +808,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints
-  trajopt.AddTimeStepConstraint(min_dt, max_dt, param_.fix_duration,
+  trajopt.AddTimeStepConstraint(min_dt_, max_dt_, param_.fix_duration,
                                 param_.equalize_timestep_size,
                                 first_mode_duration, stride_period_);
 
@@ -812,7 +819,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // use a model without spring in the planner (while in the sim and real life,
   // we use model with springs). The constraint here will conflict the initial
   // FOM pose constraint
-  for (int i = 0; i < num_time_samples.size(); i++) {
+  for (int i = 0; i < num_time_samples_.size(); i++) {
     auto xf = trajopt.xf_vars_by_mode(i);
     trajopt.AddLinearEqualityConstraint(
         Aeq_fourbar_, angle_fourbar_,
@@ -876,7 +883,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     // penalize on q so it get close to a certain configuration
     MatrixXd Id = MatrixXd::Identity(3, 3);
     VectorXd zero_vec = VectorXd::Zero(3);
-    for (int i = 0; i < num_time_samples.size(); i++) {
+    for (int i = 0; i < num_time_samples_.size(); i++) {
       trajopt.AddQuadraticErrorCost(Id, zero_vec,
                                     trajopt.xf_vars_by_mode(i).segment(1, 3));
     }
@@ -891,8 +898,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   }
 
   // Default initial guess to avoid singularity (which messes with gradient)
-  for (int i = 0; i < num_time_samples.size(); i++) {
-    for (int j = 0; j < num_time_samples.at(i); j++) {
+  for (int i = 0; i < num_time_samples_.size(); i++) {
+    for (int j = 0; j < num_time_samples_.at(i); j++) {
       if ((param_.rom_option == 0) || (param_.rom_option == 1) ||
           (param_.rom_option == 28) || (param_.rom_option == 29)) {
         trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);

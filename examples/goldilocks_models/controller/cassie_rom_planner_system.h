@@ -233,6 +233,14 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   // equally for the current and the next loop)
   double min_solve_time_preserved_for_next_loop_;
 
+  // Default timestep and number of knot points
+  mutable std::vector<int> num_time_samples_;
+  mutable std::vector<int> num_time_samples_ds_;
+  mutable std::vector<double> min_dt_;
+  std::vector<double> max_dt_;
+  int knots_per_single_support_;  // single support's number of kont points
+  int knots_per_double_support_;  // double support's number of kont points
+
   // Swing foot distance
   mutable std::vector<double> max_swing_distance_;
 

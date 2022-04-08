@@ -761,6 +761,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //  1) need to update the number of knot points based on
   //  knots_per_single_support_ and knots_per_double_support_
   //  2) need to update the time duration limit
+  // double remaining_single_support_duration =
+  //     first_mode_duration - double_support_duration_;
   int first_mode_knot_idx = int((param_.knots_per_mode - 1) * init_phase);
   int n_knots_first_mode = param_.knots_per_mode - first_mode_knot_idx;
   num_time_samples_[0] = n_knots_first_mode;

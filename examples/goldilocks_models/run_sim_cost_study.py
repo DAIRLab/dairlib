@@ -1368,10 +1368,10 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
   # eval_dir = "/home/yuming/Desktop/temp/3/sim_cost_eval_20210507/sim_cost_eval/"
-  eval_dir = "/home/yuming/Desktop/temp/0405/_20220329_sim_eval_20220316_rom24_big_range/1_without_accel_cost_and_5_seconds_sim_tolerance/sim_cost_eval/"
-  eval_dir = "/home/yuming/Desktop/temp/0405/20220105_sim_eval_20211229_model_using_stance_hip_from_planner/1_first_try/sim_cost_eval/"
-  eval_dir = "/home/yuming/Desktop/temp/0405/_20220122_sim_eval_20220105_model_again/sim_cost_eval/"
-  eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/0405/_20220329_sim_eval_20220316_rom24_big_range/1_without_accel_cost_and_5_seconds_sim_tolerance/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/0405/20220105_sim_eval_20211229_model_using_stance_hip_from_planner/1_first_try/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/0405/_20220122_sim_eval_20220105_model_again/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0

@@ -19,6 +19,8 @@ class CassiePlotConfig():
         self.plot_floating_base_positions = data['plot_floating_base_positions']
         self.plot_floating_base_velocities = \
             data['plot_floating_base_velocities']
+        self.plot_floating_base_velocity_body_frame = \
+            data['plot_floating_base_velocity_body_frame']
         self.plot_joint_positions = data['plot_joint_positions']
         self.plot_joint_velocities = data['plot_joint_velocities']
         self.plot_measured_efforts = data['plot_measured_efforts']

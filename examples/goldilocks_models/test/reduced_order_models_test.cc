@@ -481,7 +481,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
 
   // clang-format off
 
-  rom = CreateRom(0, robot_option, plant_);
+  rom = CreateRom(0, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -490,7 +490,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "2D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
 
-  rom = CreateRom(1, robot_option, plant_);
+  rom = CreateRom(1, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -499,7 +499,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->dynamic_basis().n_q() == 8);
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
 
-  rom = CreateRom(2, robot_option, plant_);
+  rom = CreateRom(2, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -508,7 +508,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "Fixed COM vertical acceleration");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
 
-  rom = CreateRom(3, robot_option, plant_);
+  rom = CreateRom(3, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -517,7 +517,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "Fixed COM vertical acceleration + 2D swing foot");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
 
-  rom = CreateRom(4, robot_option, plant_);
+  rom = CreateRom(4, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -526,7 +526,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
 
-  rom = CreateRom(5, robot_option, plant_);
+  rom = CreateRom(5, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -535,7 +535,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->dynamic_basis().n_q() == 12);
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
 
-  rom = CreateRom(6, robot_option, plant_);
+  rom = CreateRom(6, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -544,7 +544,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->dynamic_basis().n_q() == 12);
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
 
-  /*rom = CreateRom(7, robot_option, plant_);
+  /*rom = CreateRom(7, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 0);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -553,7 +553,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));*/
 
-  /*rom = CreateRom(8, robot_option, plant_);
+  /*rom = CreateRom(8, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -562,7 +562,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D GIP");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));*/
 
-  rom = CreateRom(9, robot_option, plant_);
+  rom = CreateRom(9, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -571,7 +571,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(10, robot_option, plant_);
+  rom = CreateRom(10, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -580,7 +580,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(11, robot_option, plant_);
+  rom = CreateRom(11, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -589,7 +589,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
 
-  rom = CreateRom(12, robot_option, plant_);
+  rom = CreateRom(12, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -598,7 +598,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(13, robot_option, plant_);
+  rom = CreateRom(13, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -607,7 +607,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
 
-  rom = CreateRom(14, robot_option, plant_);
+  rom = CreateRom(14, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 4);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -616,7 +616,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(15, robot_option, plant_);
+  rom = CreateRom(15, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 4);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -625,7 +625,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(16, robot_option, plant_);
+  rom = CreateRom(16, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 4);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -634,7 +634,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(17, robot_option, plant_);
+  rom = CreateRom(17, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -643,7 +643,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(18, robot_option, plant_);
+  rom = CreateRom(18, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -652,7 +652,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
 
-  rom = CreateRom(19, robot_option, plant_);
+  rom = CreateRom(19, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 6);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -661,7 +661,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(20, robot_option, plant_);
+  rom = CreateRom(20, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 4);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -670,7 +670,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(21, robot_option, plant_);
+  rom = CreateRom(21, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -679,7 +679,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(22, robot_option, plant_);
+  rom = CreateRom(22, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -688,7 +688,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
 
-  rom = CreateRom(23, robot_option, plant_);
+  rom = CreateRom(23, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -697,7 +697,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm (pelvis)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(24, robot_option, plant_);
+  rom = CreateRom(24, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -706,7 +706,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1}));
 
-  rom = CreateRom(25, robot_option, plant_);
+  rom = CreateRom(25, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -715,7 +715,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm with swing foot");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
 
-  rom = CreateRom(26, robot_option, plant_);
+  rom = CreateRom(26, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -724,7 +724,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm with swing foot");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
 
-  rom = CreateRom(27, robot_option, plant_);
+  rom = CreateRom(27, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 0);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -733,7 +733,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "3D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
 
-  rom = CreateRom(28, robot_option, plant_);
+  rom = CreateRom(28, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
@@ -742,7 +742,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "2D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({}));
 
-  rom = CreateRom(29, robot_option, plant_);
+  rom = CreateRom(29, robot_option, plant_, false);
   EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6, 16, 12, 8, 10, 14, 18}));
   EXPECT_TRUE(rom->mapping_basis().n_order() == 2);
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());

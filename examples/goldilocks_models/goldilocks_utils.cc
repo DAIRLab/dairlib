@@ -136,14 +136,20 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
         ((rom_option >= 22) && (rom_option <= 24)) ||
         ((rom_option >= 27) && (rom_option <= 29))) {
       // Also skip the right leg joints (swing leg)
-      cout << "Joint skipped in mapping function: ";
       for (auto& pair : pos_map) {
         if (pair.first.find("right") != std::string::npos) {
-          cout << pair.first << ", ";
           skip_inds.push_back(pair.second);
         }
       }
-      cout << endl;
+      if (print_info) {
+        cout << "Joint skipped in mapping function: ";
+        for (auto& pair : pos_map) {
+          if (pair.first.find("right") != std::string::npos) {
+            cout << pair.first << ", ";
+          }
+        }
+        cout << endl;
+      }
     }
     // Basis
     if ((0 <= rom_option && rom_option <= 6) || (rom_option == 8) ||

@@ -269,6 +269,11 @@ cc_binary(
 )
 
 cc_library(
+    name = "rom_gain_file",
+    data = glob(["rom_walking_gains.yaml"]),  # you cannot use "examples/goldilocks_models/rom_walking_gains.yaml"
+)
+
+cc_library(
     name = "rom_walking_gains",
     hdrs = ["rom_walking_gains.h"],
     deps = [

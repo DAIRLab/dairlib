@@ -46,15 +46,11 @@ class TrifingerDemoController(LeafSystem):
     output.SetDataVector(u)
     output.set_timestamp(context.get_time())
 
+
 lcm = DrakeLcm()
 
-builder = DiagramBuilder()
-sim_dt = 2e-4
-plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
-addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
-               mu_kinetic=1.0)
+plant = MultibodyPlant(0.0)
 
-#plant = MultibodyPlant(0.0)
 
 #The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
@@ -70,10 +66,45 @@ X_WI = RigidTransform.Identity()
 plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI)
 plant.Finalize()
 
-#builder = DiagramBuilder()
+builder = DiagramBuilder()
 
 state_receiver = builder.AddSystem(RobotOutputReceiver(plant))
-#controller = builder.AddSystem(TrifingerDemoController(plant))
+
+#############################################################################################
+
+
+builder_f = DiagramBuilder()
+sim_dt = 2e-4
+plant_f, scene_graph = AddMultibodyPlantSceneGraph(builder_f, 0.0)
+addFlatTerrain(plant=plant_f, scene_graph=scene_graph, mu_static=1.0,
+               mu_kinetic=1.0)
+
+# The package addition here seems necessary due to how the URDF is defined
+parser_f = Parser(plant_f)
+parser_f.package_map().Add("robot_properties_fingers",
+                         "examples/trifinger/robot_properties_fingers")
+parser_f.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/trifinger/robot_properties_fingers/urdf/trifinger_minimal_collision.urdf"))
+parser_f.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf"))
+
+# Fix the base of the finger to the world
+X_WI_f = RigidTransform.Identity()
+plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("base_link"), X_WI_f)
+plant_f.Finalize()
+
+
+context_f = plant_f.CreateDefaultContext()
+
+plant_ad_f = plant_f.ToAutoDiffXd()
+
+context_ad_f = plant_ad_f.CreateDefaultContext()
+
+diagram_f = builder_f.Build()
+
+
+#############################################################################################
+
 
 
 mu = 1.0
@@ -99,12 +130,12 @@ for i in range(N):
     xdesired.append(xdesiredinit)
 Q.append(Qinit)
 
-finger_lower_link_0_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_0"))[0]
-finger_lower_link_120_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_120"))[0]
-finger_lower_link_240_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("finger_lower_link_240"))[0]
-cube_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"))[0]
-
+finger_lower_link_0_geoms = plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("finger_lower_link_0"))[0]
+finger_lower_link_120_geoms = plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("finger_lower_link_120"))[0]
+finger_lower_link_240_geoms = plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("finger_lower_link_240"))[0]
+cube_geoms = plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("cube"))[0]
 contact_geoms = [finger_lower_link_0_geoms, finger_lower_link_120_geoms, finger_lower_link_240_geoms, cube_geoms]
+
 
 plant_ad = plant.ToAutoDiffXd()
 
@@ -113,7 +144,10 @@ context = plant.CreateDefaultContext()
 context_ad = plant_ad.CreateDefaultContext()
 
 controller = builder.AddSystem(
-    C3Controller(plant, context, plant_ad, context_ad, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired))
+    C3Controller(plant, plant_f, context, context_f, plant_ad, plant_ad_f, context_ad, context_ad_f, scene_graph, diagram_f, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired))
+
+
+#controller = builder.AddSystem(TrifingerDemoController(plant))
 
 
 builder.Connect(state_receiver.get_output_port(0), controller.get_input_port(0))
@@ -130,8 +164,8 @@ builder.Connect(control_sender.get_output_port(),
 
 diagram = builder.Build()
 
-context = diagram.CreateDefaultContext()
-receiver_context = diagram.GetMutableSubsystemContext(state_receiver, context)
+context_d = diagram.CreateDefaultContext()
+receiver_context = diagram.GetMutableSubsystemContext(state_receiver, context_d)
 
 loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                           lcm_parser=state_receiver,

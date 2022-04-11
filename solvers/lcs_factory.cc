@@ -110,7 +110,7 @@ LCS LCSFactory::LinearizePlantToLCS(
     multibody::GeomGeomCollider collider(
         plant, contact_geoms[i]);  // deleted num_fricton_directions (check with
                                    // Michael about changes in geomgeom)
-    auto [phi_i, J_i] = collider.Eval(context);
+    auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
     phi(i) = phi_i;
 
     J_n.row(i) = J_i.row(0);
@@ -118,6 +118,10 @@ LCS LCSFactory::LinearizePlantToLCS(
               plant.num_velocities()) =
         J_i.block(1, 0, 2 * num_friction_directions, plant.num_velocities());
   }
+
+
+  //std::cout << "here" << std::endl;
+
 
   auto M_ldlt = ExtractValue(M).ldlt();
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());

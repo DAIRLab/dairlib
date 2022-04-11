@@ -34,18 +34,30 @@ namespace controllers {
 
 C3Controller::C3Controller(
     const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::multibody::MultibodyPlant<double>& plant_f,
     drake::systems::Context<double>& context,
+    drake::systems::Context<double>& context_f,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_f,
     drake::systems::Context<drake::AutoDiffXd>& context_ad,
+    drake::systems::Context<drake::AutoDiffXd>& context_ad_f,
+    const drake::geometry::SceneGraph<double>& scene_graph,
+    const drake::systems::Diagram<double>& diagram,
     std::vector<drake::geometry::GeometryId> contact_geoms,
     int num_friction_directions, double mu, const vector<MatrixXd>& Q,
     const vector<MatrixXd>& R, const vector<MatrixXd>& G,
     const vector<MatrixXd>& U, const vector<VectorXd>& xdesired)
     : plant_(plant),
+      plant_f_(plant_f),
       context_(context),
+      context_f_(context_f),
       plant_ad_(plant_ad),
+      plant_ad_f_(plant_ad_f),
       context_ad_(context_ad),
-      contact_geoms_(std::move(contact_geoms)),
+      context_ad_f_(context_ad_f),
+      scene_graph_(scene_graph),
+      diagram_(diagram),
+      contact_geoms_(contact_geoms),
       num_friction_directions_(num_friction_directions),
       mu_(mu),
       Q_(Q),
@@ -75,6 +87,11 @@ C3Controller::C3Controller(
 
 void C3Controller::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
+
+//  auto diagram_context = diagram_.CreateDefaultContext();
+//  auto& context_diag =
+//      diagram_.GetMutableSubsystemContext(plant_, diagram_context.get());
+
   VectorXd xu(plant_.num_positions() + plant_.num_velocities() +
               plant_.num_actuators());
   VectorXd q = VectorXd::Zero(plant_.num_positions());
@@ -83,12 +100,12 @@ void C3Controller::CalcControl(const Context<double>& context,
   xu << q, v, u;
   auto xu_ad = drake::math::InitializeAutoDiff(xu);
 
-  plant_ad_.SetPositionsAndVelocities(
-      &context_ad_,
-      xu_ad.head(plant_.num_positions() + plant_.num_velocities()));
+  plant_ad_f_.SetPositionsAndVelocities(
+      &context_ad_f_,
+      xu_ad.head(plant_f_.num_positions() + plant_f_.num_velocities()));
 
   multibody::SetInputsIfNew<AutoDiffXd>(
-      plant_ad_, xu_ad.tail(plant_.num_actuators()), &context_ad_);
+      plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
 
   // VectorXd state = this->EvalVectorInput(context,
   // state_input_port_)->value();
@@ -102,22 +119,28 @@ void C3Controller::CalcControl(const Context<double>& context,
   // std::cout << "assinging contact geoms" << std::endl;
   /// figure out a nice way to do this as SortedPairs with pybind is not working
   /// (potentially pass a matrix 2xnum_pairs?)
-  std::vector<SortedPair<GeometryId>> contact_pairs;
 
-  // std::cout << contact_geoms_[0] << std::endl;
-
+std::vector<SortedPair<GeometryId>> contact_pairs;
+//
+//  // std::cout << contact_geoms_[0] << std::endl;
+//
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[3]));
   contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[3]));
-
+//
   // std::cout << context_ << std::endl;
 
   // std::cout << "before lcs " << std::endl;
   // multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, &state,
   // &context_);
+
+  std::cout << "here" << std::endl;
+
   solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
-      plant_, context_, plant_ad_, context_ad_, contact_pairs,
+      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_);
+
+  std::cout << "here2" << std::endl;
 
   // std::cout << system_.A_[0] << std::endl;
 
@@ -153,7 +176,7 @@ void C3Controller::CalcControl(const Context<double>& context,
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
 
-  // VectorXd input = VectorXd::Zero(9);
+  //VectorXd input = VectorXd::Zero(9);
 
   control->SetDataVector(input);
 }

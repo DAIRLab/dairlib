@@ -95,6 +95,12 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
   this->DeclareAbstractOutputPort("swing_foot_xyz", traj_instance,
                                   &AlipSwingFootTrajGenerator::CalcTrajs);
 
+  if (learn_params_) {
+    swing_foot_params_port_ =
+        this->DeclareAbstractInputPort(
+            "swing foot parameters",
+            drake::Value<lcmt_swing_foot_spline_params>{}).get_index();
+  }
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(
       &AlipSwingFootTrajGenerator::DiscreteVariableUpdate);
@@ -246,7 +252,7 @@ PiecewisePolynomial<double> AlipSwingFootTrajGenerator::CreateSplineForSwingFoot
     const double start_time_of_this_interval,
     const double end_time_of_this_interval, const double stance_duration,
     const Vector3d& init_swing_foot_pos, const Vector2d& x_fs,
-    double stance_foot_height) const {
+    double stance_foot_height, lcmt_swing_foot_spline_params params) const {
   // Two segment of cubic polynomial with velocity constraints
   std::vector<double> T_waypoint = {
       start_time_of_this_interval,
@@ -316,6 +322,11 @@ void AlipSwingFootTrajGenerator::CalcTrajs(
     const OutputVector<double>* robot_output =
         (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
+    const auto spline_params = learn_params_ ?
+        this->EvalAbstractInput(
+            context, swing_foot_params_port_)->
+            get_value<lcmt_swing_foot_spline_params>() : default_spline_params_;
+
     // Get the start time and the end time of the current stance phase
     double start_time_of_this_interval = liftoff_time(0);
     double end_time_of_this_interval =
@@ -343,7 +354,7 @@ void AlipSwingFootTrajGenerator::CalcTrajs(
     *pp_traj = CreateSplineForSwingFoot(
         start_time_of_this_interval, end_time_of_this_interval,
         duration_map_.at(fsm_state), init_swing_foot_pos, x_fs,
-        stance_foot_height);
+        stance_foot_height, spline_params);
   } else {
     // Assign a constant traj
     *pp_traj = PiecewisePolynomial<double>(Vector3d::Zero());

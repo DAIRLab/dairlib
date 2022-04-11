@@ -168,6 +168,7 @@ cc_library(
     hdrs = ["alip_swing_ft_traj_gen.h"],
     deps = [
         ":control_utils",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

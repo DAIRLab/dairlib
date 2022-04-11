@@ -3,6 +3,7 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
+#include "dairlib/lcmt_swing_foot_spline_params.hpp"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -94,7 +95,7 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       const double start_time_of_this_interval,
       const double end_time_of_this_interval, const double stance_duration,
       const Eigen::Vector3d& init_swing_foot_pos, const Eigen::Vector2d& x_fs,
-      double stance_foot_height) const;
+      double stance_foot_height, lcmt_swing_foot_spline_params params) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;
@@ -104,6 +105,7 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   int liftoff_time_port_;
   int alip_state_port_;
   int vdes_port_;
+  int swing_foot_params_port_;
 
   int liftoff_swing_foot_pos_idx_;
   int prev_fsm_state_idx_;
@@ -125,6 +127,7 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   double max_com_to_footstep_dist_;
   const double footstep_offset_;     // in meters
   const double center_line_offset_;  // in meters
+  lcmt_swing_foot_spline_params default_spline_params_;
 
   // Maps
   std::map<int, std::pair<const Eigen::Vector3d,
@@ -134,6 +137,7 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
                           const drake::multibody::Frame<double>&>>
       swing_foot_map_;
   std::map<int, double> duration_map_;
+  bool learn_params_ = false;
 };
 
 }  // namespace systems

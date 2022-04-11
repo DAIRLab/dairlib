@@ -403,10 +403,13 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       ((param_.n_step - 1) * stride_period) / 2;
 
   // double support phase's number of kont points
+  phase_from_ss_to_ds_ = single_support_duration_ /
+                         (single_support_duration_ + double_support_duration_);
   knots_per_double_support_ =
       int(param_.knots_per_mode * double_support_duration_ /
           (single_support_duration_ + double_support_duration_));
-  knots_per_single_support_ = param_.knots_per_mode - knots_per_double_support_;
+  knots_per_single_support_ =
+      param_.knots_per_mode - knots_per_double_support_ + 1;
 
   // Default timestep and number of knot points
   for (int i = 0; i < param_.n_step; i++) {
@@ -754,38 +757,27 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   auto break2 = std::chrono::high_resolution_clock::now();
 
+  // Remaining single support duration
+  double remaining_single_support_duration =
+      std::max(0.0, first_mode_duration - double_support_duration_);
+
   // Prespecify the number of knot points
-  // We use int() to round down the index because we need to have at least one
-  // timestep in the first mode, i.e. 2 knot points.
-  // TODO:
-  //  1) need to update the number of knot points based on
-  //  knots_per_single_support_ and knots_per_double_support_
-  //  2) need to update the time duration limit
-  // double remaining_single_support_duration =
-  //     first_mode_duration - double_support_duration_;
-  int first_mode_knot_idx = int((param_.knots_per_mode - 1) * init_phase);
-  int n_knots_first_mode = param_.knots_per_mode - first_mode_knot_idx;
-  num_time_samples_[0] = n_knots_first_mode;
-  min_dt_[0] = (n_knots_first_mode == 2) ? 1e-3 : 1e-2;
+  int first_mode_knot_idx = DetermineNumberOfKnotPoints(
+      init_phase, first_mode_duration, remaining_single_support_duration);
   PrintEssentialStatus("start_with_left_stance  = " +
                        to_string(start_with_left_stance));
   PrintEssentialStatus("init_phase  = " + to_string(init_phase));
-  PrintEssentialStatus("n_knots_first_mode  = " +
-                       to_string(n_knots_first_mode));
   PrintEssentialStatus("first_mode_knot_idx  = " +
                        to_string(first_mode_knot_idx));
 
   // Maximum swing foot travel distance
-  double remaining_time_til_touchdown = first_mode_duration;
   // Update date the step length of the first mode
   // Take into account the double stance duration
-  remaining_time_til_touchdown =
-      std::max(0.0, remaining_time_til_touchdown - double_support_duration_);
   // Linearly decrease the max speed to 0 after mid-swing
   double max_foot_speed_first_mode =
       param_.gains.max_foot_speed *
-      std::min(1.0,
-               2 * remaining_time_til_touchdown / single_support_duration_);
+      std::min(1.0, 2 * remaining_single_support_duration /
+                        single_support_duration_);
   // We need a bit of slack because the swing foot travel distance constraint is
   // imposed on toe origin, while stance foot position stitching constraint is
   // imposed on the two contact points.
@@ -794,9 +786,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   double slack_to_avoid_overconstraint = 0.01;  // 0.01;
   max_swing_distance_[0] =
       std::max(slack_to_avoid_overconstraint,
-               max_foot_speed_first_mode * remaining_time_til_touchdown);
+               max_foot_speed_first_mode * remaining_single_support_duration);
   PrintEssentialStatus("remaining_time_til_touchdown  = " +
-                       to_string(remaining_time_til_touchdown));
+                       to_string(remaining_single_support_duration));
 
   // Construct
   PrintStatus("\nConstructing optimization problem...");
@@ -1241,6 +1233,48 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   ///
   counter_++;
+}
+
+int CassiePlannerWithMixedRomFom::DetermineNumberOfKnotPoints(
+    double init_phase, double first_mode_duration,
+    double remaining_single_support_duration) const {
+  // Prespecify the number of knot points
+  // We use int() to round down the index because we need to have at least one
+  // timestep in the first mode, i.e. 2 knot points.
+
+  // TODO:
+  //  1) need to update the number of knot points based on
+  //  knots_per_single_support_ and knots_per_double_support_
+  //  2) need to update the time duration limit
+  int first_mode_knot_idx;
+  if (param_.gains.constant_rom_vel_during_double_support) {
+    //  int n_knots_ss;
+    //  int n_knots_ds;
+    if (init_phase < phase_from_ss_to_ds_) {
+      double phase_in_ss =
+          1 - remaining_single_support_duration / single_support_duration_;
+      int ss_knot_idx = int((knots_per_single_support_ - 1) * phase_in_ss);
+      //    n_knots_ss = knots_per_single_support_ - ss_knot_idx;
+      //    n_knots_ds = knots_per_double_support_;
+      first_mode_knot_idx = ss_knot_idx;
+      num_time_samples_ds_[0] = knots_per_double_support_;
+    } else {
+      double phase_in_ds = 1 - first_mode_duration / double_support_duration_;
+      int ds_knot_idx = int((knots_per_double_support_ - 1) * phase_in_ds);
+      first_mode_knot_idx = knots_per_single_support_ + ds_knot_idx;
+      num_time_samples_ds_[0] = knots_per_double_support_ - ds_knot_idx;
+    }
+  } else {
+    first_mode_knot_idx = int((param_.knots_per_mode - 1) * init_phase);
+  }
+
+  int n_knots_first_mode = param_.knots_per_mode - first_mode_knot_idx;
+  num_time_samples_[0] = n_knots_first_mode;
+  min_dt_[0] = (n_knots_first_mode == 2) ? 1e-3 : 1e-2;
+  PrintEssentialStatus("n_knots_first_mode  = " +
+                       to_string(n_knots_first_mode));
+
+  return first_mode_knot_idx;
 }
 
 bool CassiePlannerWithMixedRomFom::RunLipmMPC(

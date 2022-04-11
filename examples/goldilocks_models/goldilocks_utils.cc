@@ -169,6 +169,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       mapping_basis = std::make_unique<MonomialFeatures>(
           6, plant.num_positions(), skip_inds, "mapping basis");
     } else {
+      cout << "rom_option = " << rom_option << endl;
       DRAKE_UNREACHABLE();
     }
   }
@@ -324,6 +325,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
 void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
                          int model_iter) {
   // Check that we are using the correct model
+  DRAKE_DEMAND(dir.back() == '/');
   DRAKE_DEMAND(rom->n_y() == readCSV(dir + string("rom_n_y.csv"))(0, 0));
   DRAKE_DEMAND(rom->n_tau() == readCSV(dir + string("rom_n_tau.csv"))(0, 0));
   DRAKE_DEMAND(rom->n_feature_y() ==

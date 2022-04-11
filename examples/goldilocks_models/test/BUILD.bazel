@@ -9,6 +9,8 @@ cc_test(
         "//examples/Cassie:cassie_utils",
         "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:reduced_order_models",
+        "//examples/goldilocks_models/controller:cassie_rom_planner_system",
+        "//examples/goldilocks_models/controller:control_parameters",
         "@drake//:drake_shared_library",
         "@gtest//:main",
     ],

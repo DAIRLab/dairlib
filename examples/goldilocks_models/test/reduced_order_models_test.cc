@@ -8,6 +8,8 @@
 #include <gtest/gtest.h>
 
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
+#include "examples/goldilocks_models/controller/control_parameters.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "multibody/multibody_utils.h"
 
@@ -750,6 +752,126 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0}));
 
   // clang-format on
+}
+
+class CassieRomPlannerSystemTest : public ::testing::Test {
+ protected:
+  CassieRomPlannerSystemTest()
+      : plant_(drake::multibody::MultibodyPlant<double>(1e-3)) {
+    addCassieMultibody(&plant_, nullptr, true /*floating base*/,
+                       "examples/Cassie/urdf/cassie_fixed_springs.urdf",
+                       false /*spring model*/, false /*loop closure*/);
+    plant_.Finalize();
+  };
+  drake::multibody::MultibodyPlant<double> plant_;
+
+  static PlannerSetting ConstructPlannerSetting(
+      double single_support_duration, double double_support_duration) {
+    // Read-in the parameters
+    RomWalkingGains gains;
+    const YAML::Node& root =
+        YAML::LoadFile(FindResourceOrThrow(GAINS_FILENAME));
+    drake::yaml::YamlReadArchive(root).Accept(&gains);
+    gains.left_support_duration = single_support_duration;
+    gains.double_support_duration = double_support_duration;
+
+    PlannerSetting param;
+    param.rom_option = 24;
+    param.iter = 1;
+    param.sample = 40;
+    param.n_step = 2;
+    param.n_step_lipm = 0;
+    param.knots_per_mode = 10;
+    param.zero_touchdown_impact = true;
+    param.use_double_contact_points = true;
+    param.equalize_timestep_size = true;
+    param.fix_duration = true;
+    param.feas_tol = 1e-2;
+    param.opt_tol = 1e-2;
+    param.max_iter = 200;
+    param.use_ipopt = false;
+    param.switch_to_snopt_after_first_loop = true;
+    param.log_solver_info = false;
+    param.time_limit = 1;
+    param.realtime_rate_for_time_limit = 1;
+    param.dir_model = "examples/goldilocks_models/test/rom24/";
+    param.dir_data = "";
+    param.init_file = "";
+    param.dir_and_prefix_FOM = "";
+    param.solve_idx_for_read_from_file = -1;
+    param.gains = gains;
+
+    return param;
+  };
+
+  std::unique_ptr<CassiePlannerWithMixedRomFom> RunDetermineNumberOfKnotPoints(
+      double single_support_duration, double double_support_duration,
+      double init_phase) {
+    PlannerSetting param = ConstructPlannerSetting(single_support_duration,
+                                                   double_support_duration);
+    double stride_period = single_support_duration + double_support_duration;
+
+    auto rom_planner = std::make_unique<CassiePlannerWithMixedRomFom>(
+        plant_, stride_period, param, false, false, 0);
+    double first_mode_duration = stride_period * (1 - init_phase);
+    double remaining_single_support_duration =
+        std::max(0.0, first_mode_duration - double_support_duration);
+    int first_mode_knot_idx = rom_planner->DetermineNumberOfKnotPoints(
+        init_phase, first_mode_duration, remaining_single_support_duration);
+    cout << "first_mode_knot_idx = " << first_mode_knot_idx << endl;
+
+    return rom_planner;
+  }
+};
+
+TEST_F(CassieRomPlannerSystemTest, TestNumberOfKnotPointsWithoutDoubleSupport) {
+  double single_support_duration = 0.35;
+  double double_support_duration = 0.0;
+
+  std::unique_ptr<CassiePlannerWithMixedRomFom> rom_planner;
+
+  // Inputs
+  std::vector<double> init_phases = {0,   0.1, 0.2, 0.3, 0.4,  0.5,
+                                     0.6, 0.7, 0.8, 0.9, 0.999};
+  // Expected outputs
+  std::vector<int> n_knots_first_mode = {10, 10, 9, 8, 7, 6, 5, 4, 3, 2, 2};
+  std::vector<double> min_dt = {1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2,
+                                1e-2, 1e-2, 1e-2, 1e-3, 1e-3};
+
+  EXPECT_TRUE(init_phases.size() == n_knots_first_mode.size());
+  EXPECT_TRUE(init_phases.size() == min_dt.size());
+  for (int i = 0; i < init_phases.size(); i++) {
+    double init_phase = init_phases[i];
+    rom_planner = RunDetermineNumberOfKnotPoints(
+        single_support_duration, double_support_duration, init_phase);
+    EXPECT_TRUE(rom_planner->num_time_samples()[0] == n_knots_first_mode[i]);
+    EXPECT_TRUE(rom_planner->min_dt()[0] == min_dt[i]);
+  }
+}
+
+TEST_F(CassieRomPlannerSystemTest, TestNumberOfKnotPointsWithDoubleSupport) {
+  double single_support_duration = 0.30;
+  double double_support_duration = 0.05;
+
+  std::unique_ptr<CassiePlannerWithMixedRomFom> rom_planner;
+
+  // Inputs
+  std::vector<double> init_phases = {0,   0.1, 0.2, 0.3, 0.4,  0.5,
+                                     0.6, 0.7, 0.8, 0.9, 0.999};
+  // Expected outputs
+  /*std::vector<int> n_knots_first_mode = {10, 10, 9, 8, 7, 6, 5, 4, 3, 2, 2};
+  std::vector<double> min_dt = {1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2,
+                                1e-2, 1e-2, 1e-2, 1e-3, 1e-3};
+
+  EXPECT_TRUE(init_phases.size() == n_knots_first_mode.size());
+  EXPECT_TRUE(init_phases.size() == min_dt.size());
+  for (int i = 0; i < init_phases.size(); i++) {
+    double init_phase = init_phases[i];
+    rom_planner = RunDetermineNumberOfKnotPoints(
+        single_support_duration, double_support_duration, init_phase);
+    EXPECT_TRUE(rom_planner->num_time_samples()[0] == n_knots_first_mode[i]);
+    EXPECT_TRUE(rom_planner->min_dt()[0] == min_dt[i]);
+  }*/
 }
 
 }  // namespace

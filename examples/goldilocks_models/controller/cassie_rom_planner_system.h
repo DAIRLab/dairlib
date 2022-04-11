@@ -70,6 +70,14 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
     completely_use_trajs_from_model_opt_as_target_ = true;
   }
 
+  // Made this function public for testing
+  int DetermineNumberOfKnotPoints(
+      double init_phase, double first_mode_duration,
+      double remaining_single_support_duration) const;
+  const std::vector<int>& num_time_samples() const { return num_time_samples_; }
+
+  const std::vector<double>& min_dt() const { return min_dt_; }
+
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
                     dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
@@ -240,6 +248,7 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   std::vector<double> max_dt_;
   int knots_per_single_support_;  // single support's number of kont points
   int knots_per_double_support_;  // double support's number of kont points
+  double phase_from_ss_to_ds_;
 
   // Swing foot distance
   mutable std::vector<double> max_swing_distance_;

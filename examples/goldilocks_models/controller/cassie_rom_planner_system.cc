@@ -548,6 +548,14 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
       DRAKE_DEMAND(element >= rom_->n_y());  // idx is of state
       DRAKE_DEMAND(element < 2 * rom_->n_y());
     }
+    // Enforce that the constant vel is on the physically interpretable element
+    const auto& rom_invariant_elements = rom_->invariant_elements();
+    for (auto& element : idx_const_rom_vel_during_double_support_) {
+      bool is_part_of_invariant_elements =
+          (rom_invariant_elements.find(element - rom_->n_y()) !=
+           rom_invariant_elements.end());
+      DRAKE_DEMAND(is_part_of_invariant_elements);
+    }
   }
 
   /// Save data for (offline) debug mode

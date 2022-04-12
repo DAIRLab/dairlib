@@ -132,7 +132,7 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
     std::vector<double>& xyz = default_spline_params_.knot_xyz.at(i);
     xyz[0] = 0.5 * (sin(M_PI * (t - 0.5)) + 1);
     xyz[1] = 0.5 * (sin(M_PI * (t - 0.5)) + 1);
-    xyz[2] = mid_foot_height * cos(M_PI * (t - 0.5));
+    xyz[2] = (mid_foot_height / 0.58) * cos(M_PI * (t - 0.5))*t;
   }
   for (int i = 0; i < 3; i++) {
     default_spline_params_.swing_foot_vel_initial[i] = 0;

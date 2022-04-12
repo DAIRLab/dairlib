@@ -89,6 +89,8 @@ DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 DEFINE_bool(spring_model, true, "");
 DEFINE_bool(publish_filtered_state, false,
             "whether to publish the low pass filtered state");
+DEFINE_bool(learn_swing_foot_path, false,
+            "whether to learn the swing foot path");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -300,7 +302,6 @@ int DoMain(int argc, char* argv[]) {
   // to the hardware testing.
   // Additionally, implementing a double support phase might mitigate the
   // instability around state transition.
-  bool wrt_com_in_local_frame = gains.relative_swing_ft;
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
@@ -314,7 +315,8 @@ int DoMain(int argc, char* argv[]) {
           double_support_duration, gains.mid_foot_height,
           gains.final_foot_height, gains.final_foot_velocity_z,
           gains.max_CoM_to_footstep_dist, gains.footstep_offset,
-          gains.center_line_offset, wrt_com_in_local_frame);
+          gains.center_line_offset, FLAGS_learn_swing_foot_path);
+
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
@@ -480,23 +482,13 @@ int DoMain(int argc, char* argv[]) {
   swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  if (FLAGS_spring_model) {
-    // swing_ft_traj.DisableFeedforwardAccel({2});
-  }
+  // Feed forward Z gain disable
+  swing_ft_traj_local.SetTimeVaryingGains(
+      swing_ft_gain_multiplier_gain_multiplier);
+  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+      swing_ft_accel_gain_multiplier_gain_multiplier);
+  osc->AddTrackingData(&swing_ft_traj_local);
 
-  if (wrt_com_in_local_frame) {
-    swing_ft_traj_local.SetTimeVaryingGains(
-        swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_local.SetFeedforwardAccelMultiplier(
-        swing_ft_accel_gain_multiplier_gain_multiplier);
-    osc->AddTrackingData(&swing_ft_traj_local);
-  } else {
-    swing_ft_traj_global.SetTimeVaryingGains(
-        swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_global.SetFeedforwardAccelMultiplier(
-        swing_ft_accel_gain_multiplier_gain_multiplier);
-    osc->AddTrackingData(&swing_ft_traj_global);
-  }
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);

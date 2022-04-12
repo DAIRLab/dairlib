@@ -45,7 +45,7 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
     double mid_foot_height, double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
     double max_com_to_footstep_dist, double footstep_offset,
-    double center_line_offset, bool wrt_com_in_local_frame)
+    double center_line_offset, bool learn_params)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
@@ -58,16 +58,13 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
       max_com_to_footstep_dist_(max_com_to_footstep_dist),
       footstep_offset_(footstep_offset),
       center_line_offset_(center_line_offset),
+      learn_params_(learn_params),
       double_support_duration_(double_support_duration) {
   this->set_name("swing_ft_traj");
 
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
   DRAKE_DEMAND(left_right_support_durations.size() == 2);
   DRAKE_DEMAND(left_right_foot.size() == 2);
-  if (!wrt_com_in_local_frame) {
-    std::cerr << "ALIP swing foot trajectory only supports relative to CoM\n";
-  }
-  DRAKE_DEMAND(wrt_com_in_local_frame);
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -125,6 +122,23 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
       {left_right_support_fsm_states.at(1), left_right_foot.at(0)});
 
   m_ = plant_.CalcTotalMass(*context_);
+
+  // Make default spline parameters
+  default_spline_params_.n_knot = 5;
+  std::vector<double> xyz;
+  for (int i = 0; i < default_spline_params_.n_knot; i++) {
+    double t =  (double) i / (default_spline_params_.n_knot - 1);
+    xyz.push_back(0.5 * (sin(M_PI * (t - 0.5)) + 1));
+    xyz.push_back(0.5 * (sin(M_PI * (t - 0.5)) + 1));
+    xyz.push_back(mid_foot_height * cos(M_PI * (t - 0.5)));
+    default_spline_params_.knot_xyz.push_back(xyz);
+  }
+  for(int i = 0; i < 3; i++) {
+    default_spline_params_.swing_foot_vel_initial[i] = 0;
+    default_spline_params_.swing_foot_vel_final[i] = 0;
+  }
+  default_spline_params_.swing_foot_vel_final[2] =
+      desired_final_vertical_foot_velocity;
 }
 
 EventStatus AlipSwingFootTrajGenerator::DiscreteVariableUpdate(
@@ -254,33 +268,22 @@ PiecewisePolynomial<double> AlipSwingFootTrajGenerator::CreateSplineForSwingFoot
     const Vector3d& init_swing_foot_pos, const Vector2d& x_fs,
     double stance_foot_height, lcmt_swing_foot_spline_params params) const {
   // Two segment of cubic polynomial with velocity constraints
-  std::vector<double> T_waypoint = {
-      start_time_of_this_interval,
-      (start_time_of_this_interval + end_time_of_this_interval) / 2,
-      end_time_of_this_interval};
+  std::vector<double> T_waypoint(params.n_knot);
+  std::vector<MatrixXd> Y(params.n_knot, MatrixXd::Zero(3, 1));
+  for (int i = 0; i < params.n_knot; i++) {
+    T_waypoint[i] = start_time_of_this_interval +
+        ((double) i) / params.n_knot *
+            (end_time_of_this_interval - start_time_of_this_interval);
+    Vector3d knot = Eigen::Map<Eigen::Matrix<double, 3, 1>>(
+        params.knot_xyz[i].data());
+     knot.head<2>() = knot.head<2>().cwiseProduct(
+         x_fs - init_swing_foot_pos.head<2>()) + init_swing_foot_pos.head<2>();
+     knot(2) += stance_foot_height;
+     Y[i] = knot;
+  }
+  Vector3d Y_dot_start = Eigen::Map<Vector3d>(params.swing_foot_vel_initial);
+  Vector3d Y_dot_end = Eigen::Map<Vector3d>(params.swing_foot_vel_final);
 
-  std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
-  // x
-  Y[0](0, 0) = init_swing_foot_pos(0);
-  Y[1](0, 0) = (init_swing_foot_pos(0) + x_fs(0)) / 2;
-  Y[2](0, 0) = x_fs(0);
-  // y
-  Y[0](1, 0) = init_swing_foot_pos(1);
-  Y[1](1, 0) = (init_swing_foot_pos(1) + x_fs(1)) / 2;
-  Y[2](1, 0) = x_fs(1);
-  // z
-  /// We added stance_foot_height because we want the desired trajectory to be
-  /// relative to the stance foot in case the floating base state estimation
-  /// drifts.
-  Y[0](2, 0) = init_swing_foot_pos(2);
-  Y[1](2, 0) = mid_foot_height_ + stance_foot_height;
-  Y[2](2, 0) = desired_final_foot_height_ + stance_foot_height;
-
-  MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-  MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
-  Y_dot_end(2) = desired_final_vertical_foot_velocity_;
-
-  // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to make
   // the traj smooth at the mid point
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(

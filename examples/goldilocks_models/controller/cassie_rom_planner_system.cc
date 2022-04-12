@@ -1776,7 +1776,7 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
   //  I did the following change, but it didn't fix the bug -- Make sure that
   //  the quaternion doesn't pick the other solution of the same rotation.
   //  TODO: I will need to turn off constraints gradually to find where the bug
-  //   is
+  //   is. I think the quaternion constraint in rom_traj_opt could be the bug.
   // Make sure that the quaternion doesn't pick the other solution of the same
   // rotation.
   // Hacks: Not sure what's the best the way to deal with this.

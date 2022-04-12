@@ -44,8 +44,8 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"                # rom_option 17
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20220131_rom17_smaller_range__only_walking_forward/"                   # rom_option 17
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20220208_reeval_this_with_big_task--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"                  # rom_option 17
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220316_rom24_big_range/robot_1/"                                            # rom_option 24
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220406_rom28_big_range_big_vel_weight/robot_1/"                             # rom_option 28
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220316_rom24_big_range/robot_1/"                                            # rom_option 24
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220406_rom28_big_range_big_vel_weight/robot_1/"                             # rom_option 28
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220406_rom29_big_range_big_vel_weight/robot_1/"                             # rom_option 29
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 

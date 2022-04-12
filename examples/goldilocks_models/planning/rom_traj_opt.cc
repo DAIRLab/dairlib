@@ -99,9 +99,11 @@ RomTrajOpt::RomTrajOpt(
       left_origin_(left_origin),
       right_origin_(right_origin),
       num_time_samples_ds_(num_time_samples_ds),
+      use_double_support_mode_in_planner_(num_time_samples_ds.at(0) > 0),
       start_in_double_support_phase_(start_in_double_support_phase),
       constant_rom_vel_during_double_support_(
           !idx_constant_rom_vel_during_double_support.empty()),
+      single_support_duration_(param.gains.left_support_duration),
       double_support_duration_(param.gains.double_support_duration),
       print_status_(print_status) {
   DRAKE_DEMAND(max_swing_distance.size() == num_time_samples.size());
@@ -831,11 +833,8 @@ void RomTrajOpt::AddTimeStepConstraint(
     bool fix_duration, bool equalize_timestep_size, double first_mode_duration,
     double remaining_mode_duration_per_mode) {
   if (fix_duration && equalize_timestep_size) {
-    // TODO: fix the bug -- the double support phase time constriant should also
-    //  be apply to the rest of the mode
-
     // 1. The first mode
-    if (num_time_samples_ds_.at(0) > 0) {
+    if (use_double_support_mode_in_planner_) {
       // a. if there is double support phase
       double dt_ss =
           (first_mode_duration - double_support_duration_) /
@@ -868,16 +867,40 @@ void RomTrajOpt::AddTimeStepConstraint(
         this->SetInitialGuess(timestep(i)(0), dt_first_mode);
       }
     }
+
     // 2. Rest of the modes
     if (num_modes_ > 1) {
-      double dt_rest_of_modes =
-          remaining_mode_duration_per_mode / (mode_lengths_[1] - 1);
-      PrintStatus("Fix all timestep size in the rest of the modes to " +
-                  std::to_string(dt_rest_of_modes));
-      for (int i = mode_lengths_[0] - 1; i < this->N() - 1; i++) {
-        AddBoundingBoxConstraint(dt_rest_of_modes, dt_rest_of_modes,
-                                 timestep(i));
-        this->SetInitialGuess(timestep(i)(0), dt_rest_of_modes);
+      if (use_double_support_mode_in_planner_) {
+        // a. if there is double support phase
+        double dt_ss = single_support_duration_ /
+                       (mode_lengths_[1] - num_time_samples_ds_[1]);
+        double dt_ds = double_support_duration_ / (num_time_samples_ds_[1] - 1);
+
+        for (int i = 1; i < num_modes_; i++) {
+          for (int j = 0; j < mode_lengths_[i] - 1; j++) {
+            int time_idx = mode_start_[i] + j;
+            if (j < mode_lengths_[1] - num_time_samples_ds_[1]) {
+              // in single support
+              AddBoundingBoxConstraint(dt_ss, dt_ss, timestep(time_idx));
+              this->SetInitialGuess(timestep(time_idx)(0), dt_ss);
+            } else {
+              // in double support
+              AddBoundingBoxConstraint(dt_ds, dt_ds, timestep(time_idx));
+              this->SetInitialGuess(timestep(time_idx)(0), dt_ds);
+            }
+          }
+        }
+      } else {
+        // b. if there is only single support phase
+        double dt_rest_of_modes =
+            remaining_mode_duration_per_mode / (mode_lengths_[1] - 1);
+        PrintStatus("Fix all timestep size in the rest of the modes to " +
+                    std::to_string(dt_rest_of_modes));
+        for (int i = mode_lengths_[0] - 1; i < this->N() - 1; i++) {
+          AddBoundingBoxConstraint(dt_rest_of_modes, dt_rest_of_modes,
+                                   timestep(i));
+          this->SetInitialGuess(timestep(i)(0), dt_rest_of_modes);
+        }
       }
     }
   } else {

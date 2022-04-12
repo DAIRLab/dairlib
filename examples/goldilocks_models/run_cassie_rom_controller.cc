@@ -241,6 +241,7 @@ int DoMain(int argc, char* argv[]) {
     // Currently open loop traj doesn't have double support phase, so I added a
     // check here. The double support phase contributes to the sim gap.
     DRAKE_DEMAND(gains.double_support_duration == 0);
+    DRAKE_DEMAND(!gains.constant_rom_vel_during_double_support);
     DRAKE_DEMAND(FLAGS_get_swing_foot_from_planner);
     // TODO: you can add more checks here if you find important factors in the
     //  future

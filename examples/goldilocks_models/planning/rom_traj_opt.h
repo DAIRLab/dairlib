@@ -212,8 +212,10 @@ class RomTrajOpt
 
   // Double support phase related
   const std::vector<int>& num_time_samples_ds_;
+  bool use_double_support_mode_in_planner_;
   bool start_in_double_support_phase_;
   bool constant_rom_vel_during_double_support_;
+  double single_support_duration_;
   double double_support_duration_;
 
   void PrintStatus(const std::string& msg) const {

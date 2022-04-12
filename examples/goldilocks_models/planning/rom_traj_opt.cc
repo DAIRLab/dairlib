@@ -831,6 +831,9 @@ void RomTrajOpt::AddTimeStepConstraint(
     bool fix_duration, bool equalize_timestep_size, double first_mode_duration,
     double remaining_mode_duration_per_mode) {
   if (fix_duration && equalize_timestep_size) {
+    // TODO: fix the bug -- the double support phase time constriant should also
+    //  be apply to the rest of the mode
+
     // 1. The first mode
     if (num_time_samples_ds_.at(0) > 0) {
       // a. if there is double support phase

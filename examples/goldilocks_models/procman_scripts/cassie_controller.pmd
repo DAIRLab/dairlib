@@ -4,7 +4,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "2.1.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=false";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=false --close_sim_gap=false";
         host = "localhost";
     }
     cmd "3.2.rom-planner" {

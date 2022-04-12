@@ -453,4 +453,5 @@ Either no control or
     <drake:member link="finger_lower_link_240"/>
     <drake:ignored_collision_filter_group name="finger_240_group"/>
   </drake:collision_filter_group>
+
 </robot>

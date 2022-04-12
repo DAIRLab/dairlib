@@ -39,16 +39,29 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   plant_ad.CalcBiasTerm(context_ad, &C);
 
+//  std::cout << "C" << std::endl;
+//  std::cout << ExtractValue(C) << std::endl;
+//  std::cout << "C" << std::endl;
+
   // std::cout << ExtractGradient(C).cols() << std::endl;
 
   AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() *
                      plant_ad.get_actuation_input_port().Eval(context_ad);
+
+//  std::cout << "Bu" << std::endl;
+//  std::cout << ExtractValue(Bu) << std::endl;
+//  std::cout << "Bu" << std::endl;
 
   //  auto u = plant.get_actuation_input_port().Eval(context);
   //  auto u_ad = drake::math::InitializeAutoDiff(u);
   //  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() * u_ad;
 
   AutoDiffVecXd tau_g = plant_ad.CalcGravityGeneralizedForces(context_ad);
+//
+
+//  std::cout << "tau_g" << std::endl;
+//  std::cout << ExtractValue(tau_g) << std::endl;
+//  std::cout << "tau_g" << std::endl;
 
   drake::multibody::MultibodyForces<AutoDiffXd> f_app(plant_ad);
   plant_ad.CalcForceElementsContribution(context_ad, &f_app);
@@ -56,12 +69,20 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixX<AutoDiffXd> M(plant.num_velocities(), plant.num_velocities());
   plant_ad.CalcMassMatrix(context_ad, &M);
 
+//    std::cout << "M" << std::endl;
+//  std::cout << ExtractValue(M) << std::endl;
+//  std::cout << "M" << std::endl;
+
   // If this ldlt is slow, there are alternate formulations which avoid it
   AutoDiffVecXd vdot_no_contact =
       M.ldlt().solve(tau_g + f_app.generalized_forces() + Bu - C);
 
   // Constant term in dynamics, d
   VectorXd d_v = ExtractValue(vdot_no_contact);
+
+//    std::cout << "vdot" << std::endl;
+//  std::cout << d_v << std::endl;
+//  std::cout << "vdot" << std::endl;
 
   // Derivatives w.r.t. x and u, AB
   MatrixXd AB_v = ExtractGradient(vdot_no_contact);
@@ -98,6 +119,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   ///////////
 
+
   ///
   /// Contact-related terms
   ///
@@ -111,6 +133,9 @@ LCS LCSFactory::LinearizePlantToLCS(
         plant, contact_geoms[i]);  // deleted num_fricton_directions (check with
                                    // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+
+    //std::cout << J_i << std::endl;
+
     phi(i) = phi_i;
 
     J_n.row(i) = J_i.row(0);
@@ -119,9 +144,7 @@ LCS LCSFactory::LinearizePlantToLCS(
         J_i.block(1, 0, 2 * num_friction_directions, plant.num_velocities());
   }
 
-
   //std::cout << "here" << std::endl;
-
 
   auto M_ldlt = ExtractValue(M).ldlt();
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());
@@ -246,9 +269,36 @@ LCS LCSFactory::LinearizePlantToLCS(
   ///  phi_{k+1} = phi + J_n * dt * v_{k+1}
   ///  tangential velocity: J_t * v_{k+1}
 
-  int N = 10;
+  int N = 2;
 
-  LCS system(A, B, D, d, E, F, H, c, N);
+  std::vector<MatrixXd> A_lcs(N, A);
+  std::vector<MatrixXd> B_lcs(N, B);
+  std::vector<MatrixXd> D_lcs(N, D*0);
+  std::vector<VectorXd> d_lcs(N, d);
+  std::vector<MatrixXd> E_lcs(N, E*100);
+  std::vector<MatrixXd> F_lcs(N, F);
+  std::vector<VectorXd> c_lcs(N, c*100);
+  std::vector<MatrixXd> H_lcs(N, H*100);
+
+//  std::cout << "Astahp" << std::endl;
+//  std::cout << A << std::endl;
+//  std::cout << "Astahp" << std::endl;
+//
+//  std::cout << "Bstahp" << std::endl;
+//  std::cout << B << std::endl;
+//  std::cout << "Bstahp" << std::endl;
+
+//  std::cout << "Jt" << std::endl;
+//  std::cout << J_t.transpose() << std::endl;
+//  std::cout << "Jt" << std::endl;
+
+//  std::cout << "dstahp" << std::endl;
+//  std::cout << d << std::endl;
+//  std::cout << "dstahp" << std::endl;
+
+
+
+  LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs);
 
   return system;
 }

@@ -21,12 +21,12 @@ PYBIND11_MODULE(controllers, m) {
 
   py::class_<C3Controller, drake::systems::LeafSystem<double>>(m,
                                                                "C3Controller")
-      .def(py::init<drake::multibody::MultibodyPlant<double>&,
+      .def(py::init<const drake::multibody::MultibodyPlant<double>&,
                     drake::multibody::MultibodyPlant<double>&,
                     drake::systems::Context<double>&,
                     drake::systems::Context<double>&,
                     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>&,
-                    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>&,
+                    drake::multibody::MultibodyPlant<drake::AutoDiffXd>&,
                     drake::systems::Context<drake::AutoDiffXd>&,
                     drake::systems::Context<drake::AutoDiffXd>&,
                     const drake::geometry::SceneGraph<double>&,

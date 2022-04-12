@@ -19,33 +19,6 @@ from pydairlib.systems.controllers import C3Controller
 
 import numpy as np
 
-#A demo controller system
-class TrifingerDemoController(LeafSystem):
-  def __init__(self, plant):
-    LeafSystem.__init__(self)
-
-    self.plant = plant
-
-#Input is state, output is torque(control action)
-    self.DeclareVectorInputPort("x, u, t", OutputVector(plant.num_positions(),
-                                                        plant.num_velocities(),
-                                                        plant.num_actuators()))
-    self.DeclareVectorOutputPort("u", TimestampedVector(plant.num_actuators()),
-                                 self.CalcControl)
-
-  def CalcControl(self, context, output):
-    q = self.EvalVectorInput(context, 0).GetPositions()
-    v = self.EvalVectorInput(context, 0).GetVelocities()
-
-#use a simple PD controller with constant setpoint
-    kp = 8
-    kd = 1
-    q_des = np.array([.1, 0, -1, .1, -.5, -1, .1, -.5, -1])
-    u = kp*(q_des - q[0:9]) - kd * v[0:9]
-
-    output.SetDataVector(u)
-    output.set_timestamp(context.get_time())
-
 
 lcm = DrakeLcm()
 
@@ -94,7 +67,7 @@ plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("base_link"), X
 plant_f.Finalize()
 
 
-context_f = plant_f.CreateDefaultContext()
+#context_f = plant_f.CreateDefaultContext()
 
 plant_ad_f = plant_f.ToAutoDiffXd()
 
@@ -102,20 +75,49 @@ context_ad_f = plant_ad_f.CreateDefaultContext()
 
 diagram_f = builder_f.Build()
 
+diagram_context = diagram_f.CreateDefaultContext()
+
+context_f = diagram_f.GetMutableSubsystemContext(plant_f, diagram_context)
 
 #############################################################################################
 
+# Set the initial state
+#q = [0.0594048, -0.663454, -0.925483, 0.0594048, -0.663454, -0.925483, 0.0594048, -0.663454,-0.925483, 0.999988, 0, 0, -0.00480895, 0, 4.16845e-07, 0.0324052]
+#q = np.reshape(q, (16,1))
 
+q = np.zeros((16,1))
+q_map = makeNameToPositionsMap(plant)
+q[q_map['finger_base_to_upper_joint_0']] = 0
+q[q_map['finger_upper_to_middle_joint_0']] = -1
+q[q_map['finger_middle_to_lower_joint_0']] = -1.5
+q[q_map['finger_base_to_upper_joint_0']] = 0
+q[q_map['finger_upper_to_middle_joint_120']] = -1
+q[q_map['finger_middle_to_lower_joint_120']] = -1.5
+q[q_map['finger_base_to_upper_joint_240']] = 0
+q[q_map['finger_upper_to_middle_joint_240']] = -1
+q[q_map['finger_middle_to_lower_joint_240']] = -1.5
+q[q_map['base_qw']] = 1
+q[q_map['base_qx']] = 0
+q[q_map['base_qz']] = 0
+q[q_map['base_x']] = 0
+q[q_map['base_y']] = 0
+q[q_map['base_z']] = .05
 
 mu = 1.0
-Qinit = np.eye(31)
-Rinit = np.eye(9)
-Ginit = 0.1*np.eye(58)
-Uinit = np.eye(58)
+Qinit = 1000*np.eye(31)
+Qinit[9:16,9:16] = 0.001*np.eye(7)
+Qinit[16:31,16:31] = 100*np.eye(15)
+Rinit = 1*np.eye(9)
+Ginit = 0.001*np.eye(58)
+Ginit[31:49,31:49] = 0.001*np.eye(18)
+Uinit = 1*np.eye(58)
+Uinit[0:31,0:31] = 1000*np.eye(31)
 xdesiredinit = np.zeros((31,1))
+xdesiredinit[:16] = q
+
 
 num_friction_directions = 2
-N = 10
+N = 2
 Q = []
 R = []
 G = []
@@ -129,6 +131,7 @@ for i in range(N):
     U.append(Uinit)
     xdesired.append(xdesiredinit)
 Q.append(Qinit)
+xdesired.append(xdesiredinit)
 
 finger_lower_link_0_geoms = plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("finger_lower_link_0"))[0]
 finger_lower_link_120_geoms = plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("finger_lower_link_120"))[0]

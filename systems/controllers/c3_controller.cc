@@ -34,11 +34,11 @@ namespace controllers {
 
 C3Controller::C3Controller(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::multibody::MultibodyPlant<double>& plant_f,
+    drake::multibody::MultibodyPlant<double>& plant_f,
     drake::systems::Context<double>& context,
     drake::systems::Context<double>& context_f,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_f,
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_f,
     drake::systems::Context<drake::AutoDiffXd>& context_ad,
     drake::systems::Context<drake::AutoDiffXd>& context_ad_f,
     const drake::geometry::SceneGraph<double>& scene_graph,
@@ -88,15 +88,24 @@ C3Controller::C3Controller(
 void C3Controller::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
 
-//  auto diagram_context = diagram_.CreateDefaultContext();
-//  auto& context_diag =
-//      diagram_.GetMutableSubsystemContext(plant_, diagram_context.get());
+  /// get values
+  auto robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+  double timestamp = robot_output->get_timestamp();
+  VectorXd state(plant_.num_positions() + plant_.num_velocities());
+  state << robot_output->GetPositions(), robot_output->GetVelocities();
+  VectorXd q = robot_output->GetPositions();
+  VectorXd v = robot_output->GetVelocities();
+  VectorXd u = robot_output->GetEfforts();
 
-  VectorXd xu(plant_.num_positions() + plant_.num_velocities() +
-              plant_.num_actuators());
-  VectorXd q = VectorXd::Zero(plant_.num_positions());
-  VectorXd v = VectorXd::Zero(plant_.num_velocities());
-  VectorXd u = VectorXd::Zero(plant_.num_actuators());
+  //std::cout << u << std::endl;
+
+  /// update autodiff
+  VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
+              plant_f_.num_actuators());
+  //VectorXd q = VectorXd::Zero(plant_f_.num_positions());
+  //VectorXd v = VectorXd::Zero(plant_f_.num_velocities());
+  //VectorXd u = VectorXd::Zero(plant_f_.num_actuators());
   xu << q, v, u;
   auto xu_ad = drake::math::InitializeAutoDiff(xu);
 
@@ -107,14 +116,17 @@ void C3Controller::CalcControl(const Context<double>& context,
   multibody::SetInputsIfNew<AutoDiffXd>(
       plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
 
+
+  /// upddate context
+
+  //std::cout << q << std::endl;
+
+  plant_f_.SetPositions(&context_f_, q);
+  plant_f_.SetVelocities(&context_f_, v);
+  multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
+
   // VectorXd state = this->EvalVectorInput(context,
   // state_input_port_)->value();
-
-  auto robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
-  double timestamp = robot_output->get_timestamp();
-  VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << robot_output->GetPositions(), robot_output->GetVelocities();
 
   // std::cout << "assinging contact geoms" << std::endl;
   /// figure out a nice way to do this as SortedPairs with pybind is not working
@@ -134,13 +146,11 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   // multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, &state,
   // &context_);
 
-  std::cout << "here" << std::endl;
 
   solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_);
 
-  std::cout << "here2" << std::endl;
 
   // std::cout << system_.A_[0] << std::endl;
 
@@ -171,14 +181,18 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
     w = w_reset;
   }
 
+
   solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
 
-  //VectorXd input = VectorXd::Zero(9);
+  //std::cout << "here" << std::endl;
 
-  control->SetDataVector(input);
+  VectorXd input2 = VectorXd::Zero(9);
+
+  control->SetDataVector(input2);
+  control->set_timestamp(timestamp);
 }
 }  // namespace controllers
 }  // namespace systems

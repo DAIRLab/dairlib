@@ -44,11 +44,11 @@ class C3Controller : public LeafSystem<double> {
  public:
   C3Controller(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const drake::multibody::MultibodyPlant<double>& plant_f,
+      drake::multibody::MultibodyPlant<double>& plant_f,
       drake::systems::Context<double>& context,
       drake::systems::Context<double>& context_f,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_f,
+      drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_f,
       drake::systems::Context<drake::AutoDiffXd>& context_ad,
       drake::systems::Context<drake::AutoDiffXd>& context_ad_f,
       const drake::geometry::SceneGraph<double>& scene_graph,
@@ -78,11 +78,11 @@ class C3Controller : public LeafSystem<double> {
   int state_input_port_;
   int control_output_port_;
   const MultibodyPlant<double>& plant_;
-  const MultibodyPlant<double>& plant_f_;
-  const MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
-  const MultibodyPlant<drake::AutoDiffXd>& plant_ad_f_;
+  MultibodyPlant<double>& plant_f_;
   drake::systems::Context<double>& context_;
   drake::systems::Context<double>& context_f_;
+  const MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  MultibodyPlant<drake::AutoDiffXd>& plant_ad_f_;
   drake::systems::Context<drake::AutoDiffXd>& context_ad_;
   drake::systems::Context<drake::AutoDiffXd>& context_ad_f_;
   const drake::geometry::SceneGraph<double>& scene_graph_;
@@ -92,8 +92,8 @@ class C3Controller : public LeafSystem<double> {
   double mu_;
   const std::vector<Eigen::MatrixXd> Q_;
   const std::vector<Eigen::MatrixXd> R_;
-  const std::vector<Eigen::MatrixXd> U_;
   const std::vector<Eigen::MatrixXd> G_;
+  const std::vector<Eigen::MatrixXd> U_;
   const std::vector<Eigen::VectorXd> xdesired_;
 };
 

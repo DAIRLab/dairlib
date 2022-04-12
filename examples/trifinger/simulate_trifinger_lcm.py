@@ -4,14 +4,16 @@ from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 from pydairlib.systems import AddActuationRecieverAndStateSenderLcm
 import pydairlib.common
 
+import matplotlib.pyplot as plt
+
 # Load the URDF and the cube
 builder = DiagramBuilder()
 sim_dt = 1e-4
 output_dt = 5e-4
 
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
-addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
-               mu_kinetic=1.0)
+# addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
+#               mu_kinetic=1.0)
 
 # The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
@@ -68,22 +70,25 @@ plant_context = diagram.GetMutableSubsystemContext(
 # Set the initial state
 q = np.zeros(nq)
 q_map = makeNameToPositionsMap(plant)
-q[q_map['finger_base_to_upper_joint_0']] = 0
-q[q_map['finger_upper_to_middle_joint_0']] = -1
-q[q_map['finger_middle_to_lower_joint_0']] = -1.5
-q[q_map['finger_base_to_upper_joint_0']] = 0
-q[q_map['finger_upper_to_middle_joint_120']] = -1
-q[q_map['finger_middle_to_lower_joint_120']] = -1.5
-q[q_map['finger_base_to_upper_joint_240']] = 0
-q[q_map['finger_upper_to_middle_joint_240']] = -1
-q[q_map['finger_middle_to_lower_joint_240']] = -1.5
+# q[q_map['finger_base_to_upper_joint_0']] = 0
+# q[q_map['finger_upper_to_middle_joint_0']] = -1
+# q[q_map['finger_middle_to_lower_joint_0']] = -1.5
+# q[q_map['finger_base_to_upper_joint_0']] = 0
+# q[q_map['finger_upper_to_middle_joint_120']] = -1
+# q[q_map['finger_middle_to_lower_joint_120']] = -1.5
+# q[q_map['finger_base_to_upper_joint_240']] = 0
+# q[q_map['finger_upper_to_middle_joint_240']] = -1
+#q[q_map['finger_middle_to_lower_joint_240']] = -1.5
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 0
+q[q_map['base_x']] = 1
 q[q_map['base_y']] = 0
 q[q_map['base_z']] = .05
 plant.SetPositions(plant_context, q)
+
+v = np.zeros(nv)
+plant.SetVelocities(plant_context, v)
 
 simulator.Initialize()
 # Simulate for 10 seconds
@@ -91,3 +96,26 @@ simulator.AdvanceTo(10)
 
 # numpy array of data (nq+nv+nu) x n_time
 data = logger.FindLog(simulator.get_context()).data()
+
+row, col = data.shape
+time = range(col)
+
+fig, ax = plt.subplots(3)
+ax[0].plot(time, np.transpose( data[nq+nv:nq+nv+nu,:] ) )
+ax[0].set_title('Input')
+ax[1].plot(time, np.transpose( data[nq:nq+nv-7,:] ) )
+ax[1].set_title('Velocity')
+ax[2].plot(time, np.transpose( data[0:nq-7,:] ) )
+ax[2].set_title('Position')
+
+plt.show()
+
+# plt.plot(data[nq+nv:nq+nv+nu,:]  )
+#
+#
+# plt.plot(data[nq:nq+nv,:]  )
+#
+# plt.plot(data[0:nq,:]  )
+# plt.show()
+
+

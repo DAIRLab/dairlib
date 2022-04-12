@@ -74,9 +74,13 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   int DetermineNumberOfKnotPoints(
       double init_phase, double first_mode_duration,
       double remaining_single_support_duration) const;
-  const std::vector<int>& num_time_samples() const { return num_time_samples_; }
-
   const std::vector<double>& min_dt() const { return min_dt_; }
+  const std::vector<int>& num_time_samples() const { return num_time_samples_; }
+  const std::vector<int>& num_time_samples_ds() const {
+    return num_time_samples_ds_;
+  }
+  int knots_per_double_support() const { return knots_per_double_support_; }
+  int knots_per_single_support() const { return knots_per_single_support_; }
 
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
@@ -229,6 +233,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   // Init state relaxation (relax the mapping function)
   std::set<int> relax_index_ = {5};  //{3, 4, 5};
+
+  // Constant vel index for double support phase
+  // Note that this is the index in state
+  std::set<int> idx_const_rom_vel_during_double_support_ = {3, 4};  //{3, 4, 5};
 
   // Time limit
   bool fixed_time_limit_;

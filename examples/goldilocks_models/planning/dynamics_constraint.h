@@ -5,6 +5,7 @@
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/nonlinear_constraint.h"
+
 #include "drake/common/drake_assert.h"
 #include "drake/common/drake_throw.h"
 #include "drake/math/autodiff_gradient.h"
@@ -18,6 +19,7 @@ namespace planning {
 class DynamicsConstraint : public solvers::NonlinearConstraint<double> {
  public:
   DynamicsConstraint(const ReducedOrderModel& rom,
+                     const std::set<int>& idx_constant_rom_vel,
                      const std::string& description = "rom_dyn_constraint");
 
  private:
@@ -33,6 +35,8 @@ class DynamicsConstraint : public solvers::NonlinearConstraint<double> {
   int n_y_;
   int n_z_;
   int n_tau_;
+
+  const std::set<int>& idx_constant_rom_vel_;
 };
 }  // namespace planning
 }  // namespace goldilocks_models

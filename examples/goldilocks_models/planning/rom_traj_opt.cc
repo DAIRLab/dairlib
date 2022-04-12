@@ -61,8 +61,10 @@ RomTrajOpt::RomTrajOpt(
     const VectorXd& x_init, const VectorXd& rom_state_init,
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
-    const PlannerSetting& param, std::vector<int> initialize_with_rom_state,
-    bool constant_rom_vel_during_double_support, bool print_status)
+    const PlannerSetting& param, const vector<int>& initialize_with_rom_state,
+    const vector<int>& num_time_samples_ds, bool start_in_double_support_phase,
+    const std::set<int>& idx_constant_rom_vel_during_double_support,
+    bool print_status)
     : MultipleShooting(
           rom.n_tau(), 2 * rom.n_y(),
           std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
@@ -96,6 +98,11 @@ RomTrajOpt::RomTrajOpt(
       start_with_left_stance_(start_with_left_stance),
       left_origin_(left_origin),
       right_origin_(right_origin),
+      num_time_samples_ds_(num_time_samples_ds),
+      start_in_double_support_phase_(start_in_double_support_phase),
+      constant_rom_vel_during_double_support_(
+          !idx_constant_rom_vel_during_double_support.empty()),
+      double_support_duration_(param.gains.double_support_duration),
       print_status_(print_status) {
   DRAKE_DEMAND(max_swing_distance.size() == num_time_samples.size());
 
@@ -311,17 +318,13 @@ RomTrajOpt::RomTrajOpt(
     // Add dynamics constraints at collocation points
     PrintStatus("Adding constraint -- dynamics");
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
-      // TODO: this is the only place in this class that needs changes for the
-      //  double support phase.
-      //  The second place is outside this class, where we have to create the
-      //  know points for both single support and double support phase. (we want
-      //  the transition time from single to double support phase to be fixed in
-      //  time globally!)
-      //      bool in_double_support = false;
-      //      if (constant_rom_vel_during_double_support) {
-      //      }
+      bool set_zero_accel = (constant_rom_vel_during_double_support_ &&
+                             (j >= mode_lengths_[i] - num_time_samples_ds_[i]));
       auto dyn_constraint = std::make_shared<planning::DynamicsConstraint>(
-          rom, "rom_dyn_" + std::to_string(i) + "_" + std::to_string(j));
+          rom,
+          set_zero_accel ? idx_constant_rom_vel_during_double_support
+                         : empty_idx_set_,
+          "rom_dyn_" + std::to_string(i) + "_" + std::to_string(j));
       DRAKE_DEMAND(static_cast<int>(dyn_constraint->num_constraints()) ==
                    num_states());
       dyn_constraint->SetConstraintScaling(rom_dyn_constraint_scaling_);
@@ -828,13 +831,41 @@ void RomTrajOpt::AddTimeStepConstraint(
     bool fix_duration, bool equalize_timestep_size, double first_mode_duration,
     double remaining_mode_duration_per_mode) {
   if (fix_duration && equalize_timestep_size) {
-    double dt_first_mode = first_mode_duration / (mode_lengths_[0] - 1);
-    PrintStatus("Fix all timestep size in the first mode " +
-                std::to_string(dt_first_mode));
-    for (int i = 0; i < mode_lengths_[0] - 1; i++) {
-      AddBoundingBoxConstraint(dt_first_mode, dt_first_mode, timestep(i));
-      this->SetInitialGuess(timestep(i)(0), dt_first_mode);
+    // 1. The first mode
+    if (num_time_samples_ds_.at(0) > 0) {
+      // a. if there is double support phase
+      double dt_ss =
+          (first_mode_duration - double_support_duration_) /
+          (mode_lengths_[0] -
+           num_time_samples_ds_[0]);  // It's fine to be negative, since we are
+                                      // not going to use this variable when
+                                      // it's negative anyway
+      double dt_ds =
+          start_in_double_support_phase_
+              ? first_mode_duration / (num_time_samples_ds_[0] - 1)
+              : double_support_duration_ / (num_time_samples_ds_[0] - 1);
+      for (int i = 0; i < mode_lengths_[0] - 1; i++) {
+        if (i < mode_lengths_[0] - num_time_samples_ds_[0]) {
+          // In single support
+          AddBoundingBoxConstraint(dt_ss, dt_ss, timestep(i));
+          this->SetInitialGuess(timestep(i)(0), dt_ss);
+        } else {
+          // In double support
+          AddBoundingBoxConstraint(dt_ds, dt_ds, timestep(i));
+          this->SetInitialGuess(timestep(i)(0), dt_ds);
+        }
+      }
+    } else {
+      // b. if there is only single support phase
+      double dt_first_mode = first_mode_duration / (mode_lengths_[0] - 1);
+      PrintStatus("Fix all timestep size in the first mode " +
+                  std::to_string(dt_first_mode));
+      for (int i = 0; i < mode_lengths_[0] - 1; i++) {
+        AddBoundingBoxConstraint(dt_first_mode, dt_first_mode, timestep(i));
+        this->SetInitialGuess(timestep(i)(0), dt_first_mode);
+      }
     }
+    // 2. Rest of the modes
     if (num_modes_ > 1) {
       double dt_rest_of_modes =
           remaining_mode_duration_per_mode / (mode_lengths_[1] - 1);
@@ -847,6 +878,9 @@ void RomTrajOpt::AddTimeStepConstraint(
       }
     }
   } else {
+    // TODO: I didn't finish modify minimum_timestep for the case when we use
+    //  double support phase
+
     for (int i = 0; i < num_modes_; i++) {
       // Set timestep bounds
       for (int j = 0; j < mode_lengths_[i] - 1; j++) {
@@ -1110,14 +1144,19 @@ RomTrajOptCassie::RomTrajOptCassie(
     const VectorXd& x_init, const VectorXd& rom_state_init,
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
-    const PlannerSetting& param, std::vector<int> initialize_with_rom_state,
-    bool constant_rom_vel_during_double_support, bool print_status)
+    const PlannerSetting& param,
+    const std::vector<int>& initialize_with_rom_state,
+    const std::vector<int>& num_time_samples_ds,
+    bool start_in_double_support_phase,
+    const std::set<int>& idx_constant_rom_vel_during_double_support,
+    bool print_status)
     : RomTrajOpt(
           num_time_samples, Q, R, rom, plant, state_mirror, left_contacts,
           right_contacts, left_origin, right_origin, fom_joint_name_lb_ub,
           x_init, rom_state_init, max_swing_distance, start_with_left_stance,
           zero_touchdown_impact, relax_index, param, initialize_with_rom_state,
-          constant_rom_vel_during_double_support, print_status) {
+          num_time_samples_ds, start_in_double_support_phase,
+          idx_constant_rom_vel_during_double_support, print_status) {
   quat_identity_ = VectorX<double>(4);
   quat_identity_ << 1, 0, 0, 0;
 }

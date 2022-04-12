@@ -406,10 +406,15 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   phase_from_ss_to_ds_ = single_support_duration_ /
                          (single_support_duration_ + double_support_duration_);
   knots_per_double_support_ =
-      int(param_.knots_per_mode * double_support_duration_ /
-          (single_support_duration_ + double_support_duration_));
+      (double_support_duration_ == 0)
+          ? 0
+          : int((param_.knots_per_mode - 2) * double_support_duration_ /
+                (single_support_duration_ + double_support_duration_)) +
+                2;  // +2 because we need at least 2 knot points
   knots_per_single_support_ =
-      param_.knots_per_mode - knots_per_double_support_ + 1;
+      (double_support_duration_ == 0)
+          ? param_.knots_per_mode
+          : param_.knots_per_mode - knots_per_double_support_ + 1;
 
   // Default timestep and number of knot points
   for (int i = 0; i < param_.n_step; i++) {
@@ -525,6 +530,17 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   // Some checks -- we don't have double support phase in the LIPM MPC yet.
   if (use_lipm_mpc_and_ik_) {
     DRAKE_DEMAND(!param_.gains.constant_rom_vel_during_double_support);
+  }
+  // Checks for idx_const_rom_vel_during_double_support_
+  if (param_.gains.constant_rom_vel_during_double_support) {
+    DRAKE_DEMAND(idx_const_rom_vel_during_double_support_.size() > 0);
+  }
+  if (idx_const_rom_vel_during_double_support_.size() > 0) {
+    DRAKE_DEMAND(param_.gains.constant_rom_vel_during_double_support);
+    for (auto& element : idx_const_rom_vel_during_double_support_) {
+      DRAKE_DEMAND(element >= rom_->n_y());  // idx is of state
+      DRAKE_DEMAND(element < 2 * rom_->n_y());
+    }
   }
 
   /// Save data for (offline) debug mode
@@ -792,14 +808,15 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
 
   // Construct
   PrintStatus("\nConstructing optimization problem...");
-  RomTrajOptCassie trajopt(num_time_samples_, Q_, R_, *rom_, plant_control_,
-                           state_mirror_, left_contacts_, right_contacts_,
-                           left_origin_, right_origin_, joint_name_lb_ub_,
-                           x_init, init_rom_state, max_swing_distance_,
-                           start_with_left_stance, param_.zero_touchdown_impact,
-                           relax_index_, param_, initialize_with_rom_state,
-                           param_.gains.constant_rom_vel_during_double_support,
-                           print_level_ > 1 /*print_status*/);
+  RomTrajOptCassie trajopt(
+      num_time_samples_, Q_, R_, *rom_, plant_control_, state_mirror_,
+      left_contacts_, right_contacts_, left_origin_, right_origin_,
+      joint_name_lb_ub_, x_init, init_rom_state, max_swing_distance_,
+      start_with_left_stance, param_.zero_touchdown_impact, relax_index_,
+      param_, initialize_with_rom_state, num_time_samples_ds_,
+      first_mode_duration <= double_support_duration_,
+      idx_const_rom_vel_during_double_support_,
+      print_level_ > 1 /*print_status*/);
 
   PrintStatus("Other constraints and costs ===============");
   // Time step constraints
@@ -1241,27 +1258,18 @@ int CassiePlannerWithMixedRomFom::DetermineNumberOfKnotPoints(
   // Prespecify the number of knot points
   // We use int() to round down the index because we need to have at least one
   // timestep in the first mode, i.e. 2 knot points.
-
-  // TODO:
-  //  1) need to update the number of knot points based on
-  //  knots_per_single_support_ and knots_per_double_support_
-  //  2) need to update the time duration limit
   int first_mode_knot_idx;
   if (param_.gains.constant_rom_vel_during_double_support) {
-    //  int n_knots_ss;
-    //  int n_knots_ds;
     if (init_phase < phase_from_ss_to_ds_) {
       double phase_in_ss =
           1 - remaining_single_support_duration / single_support_duration_;
       int ss_knot_idx = int((knots_per_single_support_ - 1) * phase_in_ss);
-      //    n_knots_ss = knots_per_single_support_ - ss_knot_idx;
-      //    n_knots_ds = knots_per_double_support_;
       first_mode_knot_idx = ss_knot_idx;
       num_time_samples_ds_[0] = knots_per_double_support_;
     } else {
       double phase_in_ds = 1 - first_mode_duration / double_support_duration_;
       int ds_knot_idx = int((knots_per_double_support_ - 1) * phase_in_ds);
-      first_mode_knot_idx = knots_per_single_support_ + ds_knot_idx;
+      first_mode_knot_idx = (knots_per_single_support_ - 1) + ds_knot_idx;
       num_time_samples_ds_[0] = knots_per_double_support_ - ds_knot_idx;
     }
   } else {
@@ -1270,7 +1278,13 @@ int CassiePlannerWithMixedRomFom::DetermineNumberOfKnotPoints(
 
   int n_knots_first_mode = param_.knots_per_mode - first_mode_knot_idx;
   num_time_samples_[0] = n_knots_first_mode;
-  min_dt_[0] = (n_knots_first_mode == 2) ? 1e-3 : 1e-2;
+  // TODO: we should have two min_dt_, one for single support and the other one
+  //  for double support. This is not urgent, because it's not used when we fix
+  //  the timestep
+  min_dt_[0] = ((n_knots_first_mode == 2) ||
+                (first_mode_knot_idx == knots_per_single_support_ - 2))
+                   ? 1e-3
+                   : 1e-2;
   PrintEssentialStatus("n_knots_first_mode  = " +
                        to_string(n_knots_first_mode));
 

@@ -764,9 +764,11 @@ class CassieRomPlannerSystemTest : public ::testing::Test {
     plant_.Finalize();
   };
   drake::multibody::MultibodyPlant<double> plant_;
+  int knots_per_mode_ = 10;
 
-  static PlannerSetting ConstructPlannerSetting(
-      double single_support_duration, double double_support_duration) {
+  PlannerSetting ConstructPlannerSetting(
+      double single_support_duration, double double_support_duration,
+      bool constant_rom_vel_during_double_support) {
     // Read-in the parameters
     RomWalkingGains gains;
     const YAML::Node& root =
@@ -774,6 +776,8 @@ class CassieRomPlannerSystemTest : public ::testing::Test {
     drake::yaml::YamlReadArchive(root).Accept(&gains);
     gains.left_support_duration = single_support_duration;
     gains.double_support_duration = double_support_duration;
+    gains.constant_rom_vel_during_double_support =
+        constant_rom_vel_during_double_support;
 
     PlannerSetting param;
     param.rom_option = 24;
@@ -781,7 +785,7 @@ class CassieRomPlannerSystemTest : public ::testing::Test {
     param.sample = 40;
     param.n_step = 2;
     param.n_step_lipm = 0;
-    param.knots_per_mode = 10;
+    param.knots_per_mode = knots_per_mode_;
     param.zero_touchdown_impact = true;
     param.use_double_contact_points = true;
     param.equalize_timestep_size = true;
@@ -806,9 +810,10 @@ class CassieRomPlannerSystemTest : public ::testing::Test {
 
   std::unique_ptr<CassiePlannerWithMixedRomFom> RunDetermineNumberOfKnotPoints(
       double single_support_duration, double double_support_duration,
-      double init_phase) {
-    PlannerSetting param = ConstructPlannerSetting(single_support_duration,
-                                                   double_support_duration);
+      double init_phase, bool constant_rom_vel_during_double_support) {
+    PlannerSetting param = ConstructPlannerSetting(
+        single_support_duration, double_support_duration,
+        constant_rom_vel_during_double_support);
     double stride_period = single_support_duration + double_support_duration;
 
     auto rom_planner = std::make_unique<CassiePlannerWithMixedRomFom>(
@@ -843,13 +848,13 @@ TEST_F(CassieRomPlannerSystemTest, TestNumberOfKnotPointsWithoutDoubleSupport) {
   for (int i = 0; i < init_phases.size(); i++) {
     double init_phase = init_phases[i];
     rom_planner = RunDetermineNumberOfKnotPoints(
-        single_support_duration, double_support_duration, init_phase);
+        single_support_duration, double_support_duration, init_phase, false);
     EXPECT_TRUE(rom_planner->num_time_samples()[0] == n_knots_first_mode[i]);
     EXPECT_TRUE(rom_planner->min_dt()[0] == min_dt[i]);
   }
 }
 
-TEST_F(CassieRomPlannerSystemTest, TestNumberOfKnotPointsWithDoubleSupport) {
+TEST_F(CassieRomPlannerSystemTest, TestNumberOfKnotPointsWithDoubleSupport1) {
   double single_support_duration = 0.30;
   double double_support_duration = 0.05;
 
@@ -859,19 +864,97 @@ TEST_F(CassieRomPlannerSystemTest, TestNumberOfKnotPointsWithDoubleSupport) {
   std::vector<double> init_phases = {0,   0.1, 0.2, 0.3, 0.4,  0.5,
                                      0.6, 0.7, 0.8, 0.9, 0.999};
   // Expected outputs
-  /*std::vector<int> n_knots_first_mode = {10, 10, 9, 8, 7, 6, 5, 4, 3, 2, 2};
+  std::vector<int> n_knots_first_mode = {10, 10, 9, 8, 7, 6, 6, 5, 4, 3, 2};
+  std::vector<int> n_knots_first_ds = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2};
   std::vector<double> min_dt = {1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2,
-                                1e-2, 1e-2, 1e-2, 1e-3, 1e-3};
+                                1e-2, 1e-2, 1e-2, 1e-2, 1e-3};
+
+  // Print outs
+  double stride_duration = single_support_duration + double_support_duration;
+  for (double init_phase : init_phases) {
+    cout << stride_duration * init_phase << endl;
+  }
+  //  0
+  //  0.035
+  //  0.07
+  //  0.105
+  //  0.14
+  //  0.175
+  //  0.21
+  //  0.245
+  //  0.28
+  //  0.315
+  //  0.34965
 
   EXPECT_TRUE(init_phases.size() == n_knots_first_mode.size());
+  EXPECT_TRUE(init_phases.size() == n_knots_first_ds.size());
   EXPECT_TRUE(init_phases.size() == min_dt.size());
   for (int i = 0; i < init_phases.size(); i++) {
     double init_phase = init_phases[i];
     rom_planner = RunDetermineNumberOfKnotPoints(
-        single_support_duration, double_support_duration, init_phase);
+        single_support_duration, double_support_duration, init_phase, true);
     EXPECT_TRUE(rom_planner->num_time_samples()[0] == n_knots_first_mode[i]);
+    EXPECT_TRUE(rom_planner->num_time_samples_ds()[0] == n_knots_first_ds[i]);
     EXPECT_TRUE(rom_planner->min_dt()[0] == min_dt[i]);
-  }*/
+  }
+}
+
+TEST_F(CassieRomPlannerSystemTest, TestNumberOfKnotPointsWithDoubleSupport2) {
+  double stride_duration = 0.35;
+
+  // Inputs
+  std::vector<double> single_support_durations = {0.35, 0.3, 0.25, 0.2,
+                                                  0.15, 0.1, 0.05, 0.001};
+  // Expected outputs
+  std::vector<int> knots_per_single_support = {10, 8, 7, 6, 5, 4, 3, 2};
+
+  EXPECT_TRUE(single_support_durations.size() ==
+              knots_per_single_support.size());
+
+  // Construct knots_per_double_support
+  std::vector<int> knots_per_double_support;
+  cout << "knots_per_double_support = \n";
+  for (int i = 0; i < single_support_durations.size(); i++) {
+    EXPECT_TRUE(single_support_durations[i] !=
+                0);  // we don't allow the test case of 0 single duration
+    if (single_support_durations[i] == stride_duration) {
+      knots_per_double_support.push_back(0);
+    } else {
+      knots_per_double_support.push_back(knots_per_mode_ -
+                                         knots_per_single_support[i] + 1);
+    }
+    cout << knots_per_double_support.back() << endl;
+  }
+  EXPECT_TRUE(single_support_durations.size() ==
+              knots_per_double_support.size());
+
+  std::unique_ptr<CassiePlannerWithMixedRomFom> rom_planner;
+  for (int i = 0; i < single_support_durations.size(); i++) {
+    double single_support_duration = single_support_durations[i];
+    double double_support_duration = stride_duration - single_support_duration;
+    double init_phase = 0;
+    EXPECT_TRUE(std::abs(single_support_duration + double_support_duration -
+                         stride_duration) < 1e-15);
+    rom_planner = RunDetermineNumberOfKnotPoints(
+        single_support_duration, double_support_duration, init_phase, true);
+
+    //    cout << "rom_planner->knots_per_single_support() = "
+    //         << rom_planner->knots_per_single_support() << endl;
+    EXPECT_TRUE(rom_planner->knots_per_single_support() ==
+                knots_per_single_support[i]);
+    if (single_support_durations[i] == stride_duration) {
+      EXPECT_TRUE(rom_planner->knots_per_double_support() == 0);
+      EXPECT_TRUE(rom_planner->knots_per_single_support() +
+                      rom_planner->knots_per_double_support() ==
+                  knots_per_mode_);
+    } else {
+      EXPECT_TRUE(rom_planner->knots_per_double_support() ==
+                  knots_per_mode_ - knots_per_single_support[i] + 1);
+      EXPECT_TRUE(rom_planner->knots_per_single_support() +
+                      rom_planner->knots_per_double_support() ==
+                  knots_per_mode_ + 1);
+    }
+  }
 }
 
 }  // namespace

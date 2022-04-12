@@ -37,23 +37,25 @@ class RomTrajOpt
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RomTrajOpt)
 
-  RomTrajOpt(const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
-             const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
-             const drake::multibody::MultibodyPlant<double>& plant,
-             const StateMirror& state_mirror,
-             const std::vector<BodyPoint>& left_contacts,
-             const std::vector<BodyPoint>& right_contacts,
-             const BodyPoint& left_origin, const BodyPoint& right_origin,
-             const std::vector<std::tuple<std::string, double, double>>&
-                 fom_joint_name_lb_ub,
-             const Eigen::VectorXd& x_init,
-             const Eigen::VectorXd& rom_state_init,
-             const std::vector<double>& max_swing_distance,
-             bool start_with_left_stance, bool zero_touchdown_impact,
-             const std::set<int>& relax_index, const PlannerSetting& param,
-             std::vector<int> initialize_with_rom_state,
-             bool constant_rom_vel_during_double_support = false,
-             bool print_status = true);
+  RomTrajOpt(
+      const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
+      const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const StateMirror& state_mirror,
+      const std::vector<BodyPoint>& left_contacts,
+      const std::vector<BodyPoint>& right_contacts,
+      const BodyPoint& left_origin, const BodyPoint& right_origin,
+      const std::vector<std::tuple<std::string, double, double>>&
+          fom_joint_name_lb_ub,
+      const Eigen::VectorXd& x_init, const Eigen::VectorXd& rom_state_init,
+      const std::vector<double>& max_swing_distance,
+      bool start_with_left_stance, bool zero_touchdown_impact,
+      const std::set<int>& relax_index, const PlannerSetting& param,
+      const std::vector<int>& initialize_with_rom_state,
+      const std::vector<int>& num_time_samples_ds = {},
+      bool start_in_double_support_phase = false,
+      const std::set<int>& idx_constant_rom_vel_during_double_support = {},
+      bool print_status = true);
   ~RomTrajOpt() override {}
 
   void AddConstraintAndCostForLastFootStep(
@@ -208,6 +210,12 @@ class RomTrajOpt
   std::set<int> empty_idx_set_ = {};
   std::vector<int> empty_idx_vec_ = {};
 
+  // Double support phase related
+  const std::vector<int>& num_time_samples_ds_;
+  bool start_in_double_support_phase_;
+  bool constant_rom_vel_during_double_support_;
+  double double_support_duration_;
+
   void PrintStatus(const std::string& msg) const {
     if (print_status_) std::cout << msg << std::endl;
   };
@@ -216,25 +224,25 @@ class RomTrajOpt
 
 class RomTrajOptCassie : public RomTrajOpt {
  public:
-  RomTrajOptCassie(const std::vector<int>& num_time_samples,
-                   const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
-                   const ReducedOrderModel& rom,
-                   const drake::multibody::MultibodyPlant<double>& plant,
-                   const StateMirror& state_mirror,
-                   const std::vector<BodyPoint>& left_contacts,
-                   const std::vector<BodyPoint>& right_contacts,
-                   const BodyPoint& left_origin, const BodyPoint& right_origin,
-                   const std::vector<std::tuple<std::string, double, double>>&
-                       fom_joint_name_lb_ub,
-                   const Eigen::VectorXd& x_init,
-                   const Eigen::VectorXd& rom_state_init,
-                   const std::vector<double>& max_swing_distance,
-                   bool start_with_left_stance, bool zero_touchdown_impact,
-                   const std::set<int>& relax_index,
-                   const PlannerSetting& param,
-                   std::vector<int> initialize_with_rom_state,
-                   bool constant_rom_vel_during_double_support = false,
-                   bool print_status = true);
+  RomTrajOptCassie(
+      const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
+      const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const StateMirror& state_mirror,
+      const std::vector<BodyPoint>& left_contacts,
+      const std::vector<BodyPoint>& right_contacts,
+      const BodyPoint& left_origin, const BodyPoint& right_origin,
+      const std::vector<std::tuple<std::string, double, double>>&
+          fom_joint_name_lb_ub,
+      const Eigen::VectorXd& x_init, const Eigen::VectorXd& rom_state_init,
+      const std::vector<double>& max_swing_distance,
+      bool start_with_left_stance, bool zero_touchdown_impact,
+      const std::set<int>& relax_index, const PlannerSetting& param,
+      const std::vector<int>& initialize_with_rom_state,
+      const std::vector<int>& num_time_samples_ds,
+      bool start_in_double_support_phase,
+      const std::set<int>& idx_constant_rom_vel_during_double_support,
+      bool print_status = true);
 
   void AddFomRegularizationCost(const std::vector<Eigen::VectorXd>& reg_x_FOM,
                                 double w_reg_quat, double w_reg_xy,

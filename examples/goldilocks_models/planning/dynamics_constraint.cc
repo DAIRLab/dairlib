@@ -33,8 +33,9 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-DynamicsConstraint::DynamicsConstraint(const ReducedOrderModel& rom,
-                                       const std::string& description)
+DynamicsConstraint::DynamicsConstraint(
+    const ReducedOrderModel& rom, const std::set<int>& idx_constant_rom_vel,
+    const std::string& description)
     : NonlinearConstraint<double>(2 * rom.n_y(),
                                   2 * (2 * rom.n_y() + rom.n_tau()) + 1,
                                   VectorXd::Zero(2 * rom.n_y()),
@@ -42,7 +43,8 @@ DynamicsConstraint::DynamicsConstraint(const ReducedOrderModel& rom,
       rom_(rom),
       n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
-      n_tau_(rom.n_tau()) {}
+      n_tau_(rom.n_tau()),
+      idx_constant_rom_vel_(idx_constant_rom_vel) {}
 
 void DynamicsConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<double>>& ztzth,
@@ -82,6 +84,12 @@ VectorX<double> DynamicsConstraint::g(const VectorX<double>& z,
                                       const VectorX<double>& tau) const {
   VectorX<double> zdot(2 * n_y_);
   zdot << z.tail(n_y_), rom_.EvalDynamicFunc(z.head(n_y_), z.tail(n_y_), tau);
+
+  // Set some acceleration to 0 (heuristic)
+  for (const auto& idx : idx_constant_rom_vel_) {
+    zdot(idx) = 0;
+  }
+
   return zdot;
 }
 

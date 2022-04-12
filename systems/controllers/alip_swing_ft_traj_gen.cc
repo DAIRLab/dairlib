@@ -125,15 +125,16 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
 
   // Make default spline parameters
   default_spline_params_.n_knot = 5;
-  std::vector<double> xyz;
+  default_spline_params_.knot_xyz = std::vector<std::vector<double>>(
+      default_spline_params_.n_knot, std::vector<double>(3));
   for (int i = 0; i < default_spline_params_.n_knot; i++) {
     double t =  (double) i / (default_spline_params_.n_knot - 1);
-    xyz.push_back(0.5 * (sin(M_PI * (t - 0.5)) + 1));
-    xyz.push_back(0.5 * (sin(M_PI * (t - 0.5)) + 1));
-    xyz.push_back(mid_foot_height * cos(M_PI * (t - 0.5)));
-    default_spline_params_.knot_xyz.push_back(xyz);
+    std::vector<double>& xyz = default_spline_params_.knot_xyz.at(i);
+    xyz[0] = 0.5 * (sin(M_PI * (t - 0.5)) + 1);
+    xyz[1] = 0.5 * (sin(M_PI * (t - 0.5)) + 1);
+    xyz[2] = mid_foot_height * cos(M_PI * (t - 0.5));
   }
-  for(int i = 0; i < 3; i++) {
+  for (int i = 0; i < 3; i++) {
     default_spline_params_.swing_foot_vel_initial[i] = 0;
     default_spline_params_.swing_foot_vel_final[i] = 0;
   }
@@ -266,13 +267,13 @@ PiecewisePolynomial<double> AlipSwingFootTrajGenerator::CreateSplineForSwingFoot
     const double start_time_of_this_interval,
     const double end_time_of_this_interval, const double stance_duration,
     const Vector3d& init_swing_foot_pos, const Vector2d& x_fs,
-    double stance_foot_height, lcmt_swing_foot_spline_params params) const {
+    double stance_foot_height, lcmt_swing_foot_spline_params& params) const {
   // Two segment of cubic polynomial with velocity constraints
   std::vector<double> T_waypoint(params.n_knot);
   std::vector<MatrixXd> Y(params.n_knot, MatrixXd::Zero(3, 1));
   for (int i = 0; i < params.n_knot; i++) {
     T_waypoint[i] = start_time_of_this_interval +
-        ((double) i) / params.n_knot *
+        ((double) i) / (params.n_knot - 1)*
             (end_time_of_this_interval - start_time_of_this_interval);
     Vector3d knot = Eigen::Map<Eigen::Matrix<double, 3, 1>>(
         params.knot_xyz[i].data());
@@ -325,10 +326,10 @@ void AlipSwingFootTrajGenerator::CalcTrajs(
     const OutputVector<double>* robot_output =
         (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
-    const auto spline_params = learn_params_ ?
-        this->EvalAbstractInput(
-            context, swing_foot_params_port_)->
-            get_value<lcmt_swing_foot_spline_params>() : default_spline_params_;
+    lcmt_swing_foot_spline_params spline_params = learn_params_ ?
+        this->EvalAbstractInput(context, swing_foot_params_port_)->
+            get_value<lcmt_swing_foot_spline_params>()
+                : default_spline_params_;
 
     // Get the start time and the end time of the current stance phase
     double start_time_of_this_interval = liftoff_time(0);

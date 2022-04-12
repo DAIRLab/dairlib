@@ -92,7 +92,7 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       const double start_time_of_this_interval,
       const double end_time_of_this_interval, const double stance_duration,
       const Eigen::Vector3d& init_swing_foot_pos, const Eigen::Vector2d& x_fs,
-      double stance_foot_height, lcmt_swing_foot_spline_params params) const;
+      double stance_foot_height, lcmt_swing_foot_spline_params& params) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;

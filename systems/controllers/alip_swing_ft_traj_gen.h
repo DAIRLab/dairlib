@@ -76,6 +76,9 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_vdes() const {
     return this->get_input_port(vdes_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_params() const {
+    return this->get_input_port(swing_foot_params_port_);
+  }
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(

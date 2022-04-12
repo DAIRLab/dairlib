@@ -321,6 +321,16 @@ int DoMain(int argc, char* argv[]) {
           gains.final_foot_height, gains.final_foot_velocity_z,
           gains.max_CoM_to_footstep_dist, gains.footstep_offset,
           gains.center_line_offset, FLAGS_learn_swing_foot_path);
+
+  auto swing_foot_params_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_swing_foot_spline_params>(
+          "SWING_FOOT_PARAMS", &lcm_local));
+
+  if (FLAGS_learn_swing_foot_path) {
+    builder.Connect(swing_foot_params_sub->get_output_port(),
+                    swing_ft_traj_generator->get_input_port_params());
+  }
+
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),

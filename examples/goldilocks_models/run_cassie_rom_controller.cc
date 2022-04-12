@@ -246,6 +246,12 @@ int DoMain(int argc, char* argv[]) {
     // TODO: you can add more checks here if you find important factors in the
     //  future
   }
+  // More checks for hardware setting
+  if (FLAGS_hardware) {
+    if (gains.double_support_duration > 0) {
+      DRAKE_DEMAND(gains.constant_rom_vel_during_double_support);
+    }
+  }
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model

@@ -5,7 +5,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
-#include "examples/Cassie/osc/osc_walking_gains.h"
+#include "examples/Cassie/osc/osc_walking_gains_alip.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -60,6 +60,8 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::FixedJointEvaluator;
+using multibody::makeNameToVelocitiesMap;
+using multibody::makeNameToPositionsMap;
 
 using drake::trajectories::PiecewisePolynomial;
 
@@ -96,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Read-in the parameters
-  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGains>(FLAGS_gains_filename);
+  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -287,7 +289,9 @@ int DoMain(int argc, char* argv[]) {
   auto alip_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state);
+      contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
+      gains.R_alip_kalman_filter.asDiagonal());
+
   builder.Connect(fsm->get_output_port(0),
                   alip_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
@@ -316,7 +320,6 @@ int DoMain(int argc, char* argv[]) {
           gains.final_foot_height, gains.final_foot_velocity_z,
           gains.max_CoM_to_footstep_dist, gains.footstep_offset,
           gains.center_line_offset, FLAGS_learn_swing_foot_path);
-
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
@@ -464,6 +467,13 @@ int DoMain(int argc, char* argv[]) {
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+
+  auto vel_map = makeNameToVelocitiesMap<double>(plant_w_spr);
+  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
+      vel_map["hip_yaw_right"], left_stance_state);
+  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
+      vel_map["hip_yaw_left"], right_stance_state);
+
   ComTrackingData com_data("com_data", gains.K_p_swing_foot,
                            gains.K_d_swing_foot, gains.W_swing_foot,
                            plant_w_spr, plant_w_spr);
@@ -488,7 +498,6 @@ int DoMain(int argc, char* argv[]) {
   swing_ft_traj_local.SetFeedforwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);
   osc->AddTrackingData(&swing_ft_traj_local);
-
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);
@@ -542,6 +551,11 @@ int DoMain(int argc, char* argv[]) {
   osc->SetOsqpSolverOptionsFromYaml(
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
   // Build OSC problem
+
+  osc->AddInputCostByJointAndFsmState("toe_left_motor", left_stance_state, 1.0);
+  osc->AddInputCostByJointAndFsmState("toe_left_motor", post_right_double_support_state, 1.0);
+  osc->AddInputCostByJointAndFsmState("toe_right_motor", right_stance_state, 1.0);
+  osc->AddInputCostByJointAndFsmState("toe_right_motor", post_left_double_support_state, 1.0);
   osc->Build();
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),

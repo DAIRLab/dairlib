@@ -40,8 +40,11 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
 
   CassiePlannerWithMixedRomFom(
       const drake::multibody::MultibodyPlant<double>& plant_control,
-      double stride_period, const PlannerSetting& param, bool singel_eval_mode,
-      bool log_data, int print_level = 1);
+      double stride_period, const PlannerSetting& param,
+      const std::set<int>& relax_index,
+      const std::vector<int>& initialize_with_rom_state,
+      const std::set<int>& idx_const_rom_vel_during_double_support,
+      bool singel_eval_mode, bool log_data, int print_level = 1);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);
@@ -232,11 +235,14 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   mutable Eigen::MatrixXd global_preprocess_u_lipm_;
 
   // Init state relaxation (relax the mapping function)
-  std::set<int> relax_index_ = {5};  //{3, 4, 5};
+  std::set<int> relax_index_;
+
+  // Initialize the MPC initial state with previous ROM traj solution
+  std::vector<int> initialize_with_rom_state_;
 
   // Constant vel index for double support phase
   // Note that this is the index in state
-  std::set<int> idx_const_rom_vel_during_double_support_ = {3, 4};  //{3, 4, 5};
+  std::set<int> idx_const_rom_vel_during_double_support_;
 
   // Time limit
   bool fixed_time_limit_;

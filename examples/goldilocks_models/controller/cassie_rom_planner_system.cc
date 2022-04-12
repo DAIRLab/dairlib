@@ -25,6 +25,7 @@ typedef std::numeric_limits<double> dbl;
 
 using std::cout;
 using std::endl;
+using std::set;
 using std::string;
 using std::to_string;
 using std::vector;
@@ -63,8 +64,10 @@ namespace goldilocks_models {
 
 CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     const MultibodyPlant<double>& plant_control, double stride_period,
-    const PlannerSetting& param, bool singel_eval_mode, bool log_data,
-    int print_level)
+    const PlannerSetting& param, const set<int>& relax_index,
+    const vector<int>& initialize_with_rom_state,
+    const set<int>& idx_const_rom_vel_during_double_support,
+    bool singel_eval_mode, bool log_data, int print_level)
     : nq_(plant_control.num_positions()),
       nv_(plant_control.num_velocities()),
       nx_(plant_control.num_positions() + plant_control.num_velocities()),
@@ -86,6 +89,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
                                2,
                            plant_control.GetFrameByName("toe_right"))),
       param_(param),
+      relax_index_(relax_index),
+      initialize_with_rom_state_(initialize_with_rom_state),
+      idx_const_rom_vel_during_double_support_(
+          idx_const_rom_vel_during_double_support),
       single_eval_mode_(singel_eval_mode),
       log_data_and_check_solution_(log_data) {
   this->set_name("planner_traj");
@@ -619,8 +626,7 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   //      0.292816, -0.0255519, 0.885733, 0.961515;
 
   // Testing -- start the init ROM state form the previous plan
-  vector<int> initialize_with_rom_state = {
-      2, 5};  // {2, 5};  // for state, not only pos
+  vector<int> initialize_with_rom_state = initialize_with_rom_state_;
   VectorXd init_rom_state(2 * n_y_);
   if (!initialize_with_rom_state.empty()) {
     if (counter_ == 0) {

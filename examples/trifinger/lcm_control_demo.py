@@ -87,37 +87,78 @@ context_f = diagram_f.GetMutableSubsystemContext(plant_f, diagram_context)
 
 q = np.zeros((16,1))
 q_map = makeNameToPositionsMap(plant)
+# q[q_map['finger_base_to_upper_joint_0']] = 0
+# q[q_map['finger_upper_to_middle_joint_0']] = -0.7
+# q[q_map['finger_middle_to_lower_joint_0']] = -1.2
+# q[q_map['finger_base_to_upper_joint_0']] = 0
+# q[q_map['finger_upper_to_middle_joint_120']] = -0.7
+# q[q_map['finger_middle_to_lower_joint_120']] = -1.2
+# q[q_map['finger_base_to_upper_joint_240']] = 0
+# q[q_map['finger_upper_to_middle_joint_240']] = -0.7
+# q[q_map['finger_middle_to_lower_joint_240']] = -1.2
+# q[q_map['base_qw']] = 1
+# q[q_map['base_qx']] = 0
+# q[q_map['base_qz']] = 0
+# q[q_map['base_x']] = 0
+# q[q_map['base_y']] = 1
+# q[q_map['base_z']] = 0.05 #.05
+# q[0] = 0
+# q[3] = 0
+# q[6] = 0
+#red
 q[q_map['finger_base_to_upper_joint_0']] = 0
 q[q_map['finger_upper_to_middle_joint_0']] = -1
-q[q_map['finger_middle_to_lower_joint_0']] = -1.5
-q[q_map['finger_base_to_upper_joint_0']] = 0
-q[q_map['finger_upper_to_middle_joint_120']] = -1
-q[q_map['finger_middle_to_lower_joint_120']] = -1.5
-q[q_map['finger_base_to_upper_joint_240']] = 0
-q[q_map['finger_upper_to_middle_joint_240']] = -1
-q[q_map['finger_middle_to_lower_joint_240']] = -1.5
+q[q_map['finger_middle_to_lower_joint_0']] = -1.2
+#green
+q[q_map['finger_base_to_upper_joint_120']] = 0.4
+q[q_map['finger_upper_to_middle_joint_120']] = -0.5
+q[q_map['finger_middle_to_lower_joint_120']] = -1.2
+#blue
+q[q_map['finger_base_to_upper_joint_240']] = -0.15
+q[q_map['finger_upper_to_middle_joint_240']] = -0.25
+q[q_map['finger_middle_to_lower_joint_240']] = -1.2
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
 q[q_map['base_x']] = 0
-q[q_map['base_y']] = 0
+q[q_map['base_y']] = 0.1
 q[q_map['base_z']] = .05
 
+
 mu = 1.0
-Qinit = 1000*np.eye(31)
-Qinit[9:16,9:16] = 0.001*np.eye(7)
-Qinit[16:31,16:31] = 100*np.eye(15)
-Rinit = 1*np.eye(9)
-Ginit = 0.001*np.eye(58)
-Ginit[31:49,31:49] = 0.001*np.eye(18)
+
+
+Qinit = 1*np.eye(31)
+Qinit[0:9,0:9] = 0*np.eye(9) #trifinger
+Qinit[9:16,9:16] = 100*np.eye(7) #cube
+Qinit[16:31,16:31] = 0*np.eye(15) #velocities
+Qinit[16:25,16:25] = 10*np.eye(9) #vel
+#Qinit[16,16] = 1
+Rinit = 1*np.eye(9) #torques
+#admm_params
+Ginit = 0.1*np.eye(58)
+Ginit[0:9,0:9] = 0*np.eye(9)
+#Ginit[31:49,31:49] = 0.1*np.eye(18)
 Uinit = 1*np.eye(58)
 Uinit[0:31,0:31] = 1000*np.eye(31)
+Uinit[49:58,49:58] = 1*np.eye(9)
 xdesiredinit = np.zeros((31,1))
 xdesiredinit[:16] = q
 
+#Qinit[14,14] = 100
+
+# Ginit = 0.1*np.eye(46)
+# Uinit = 0.1*np.eye(46)
+
+
+# Qinit[0,0] = 10000
+# Qinit[3,3] = 10000
+# Qinit[6,6] = 10000
+
+
 
 num_friction_directions = 2
-N = 2
+N = 5
 Q = []
 R = []
 G = []

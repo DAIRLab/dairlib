@@ -32,8 +32,28 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
   // calculate force
   drake::solvers::MobyLCPSolver<double> LCPSolver;
   VectorXd force;
-  LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * input,
+
+  ///adding distrubance to LCS sim
+  VectorXd disturbance = VectorXd::Zero(18);
+//  disturbance[3] = -5;
+//  disturbance[4] = -5;
+//  disturbance[5] = -5;
+
+  LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * input + disturbance,
                           &force);
+
+  //print force
+//  std::cout << "LCS force estimate" << std::endl;
+//  std::cout << force << std::endl;
+
+//  double count = 0;
+//  for (int i = 3; i < 5; i++) {
+//    count = count + force(i);
+//  }
+//
+//  if ( count >= 0.00001){
+//    std::cout << "here" << std::endl;
+//  }
 
   // update
   x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];

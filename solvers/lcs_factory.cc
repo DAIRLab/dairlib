@@ -134,7 +134,7 @@ LCS LCSFactory::LinearizePlantToLCS(
                                    // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
 
-    //std::cout << J_i << std::endl;
+    //std::cout << phi_i << std::endl;
 
     phi(i) = phi_i;
 
@@ -152,7 +152,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   /// std::cout << MinvJ_t_T.cols() << std::endl;
 
-  float dt = 0.1;
+  float dt = 0.01;
   auto n_contact = 2 * contact_geoms.size() +
                    2 * contact_geoms.size() * num_friction_directions;
 
@@ -198,6 +198,9 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   d.head(n_state) = dt * dt * Nq * d_v;
   d.tail(n_vel) = dt * d_v;
+
+  ///separate timescale for complementarity part
+  //dt =0.01;
 
   // std::cout << "d:" <<  d.rows() << 'x' << d.cols() << std::endl;
 
@@ -260,7 +263,8 @@ LCS LCSFactory::LinearizePlantToLCS(
             2 * contact_geoms.size() * num_friction_directions) =
       J_t * dt * d_v;
 
-  // std::cout << c << std::endl;
+//    std::cout << "here" << std::endl;
+//   std::cout << c.segment(contact_geoms.size(), contact_geoms.size()) << std::endl;
 
   /// TODO: finish by assembling the terms computed above into the LCS structure
   ///       and returning an LCS object
@@ -269,16 +273,21 @@ LCS LCSFactory::LinearizePlantToLCS(
   ///  phi_{k+1} = phi + J_n * dt * v_{k+1}
   ///  tangential velocity: J_t * v_{k+1}
 
-  int N = 2;
+  int N = 5;
+
+  auto Dn = D.squaredNorm();
+  auto An = A.squaredNorm();
+  auto AnDn = An / Dn;
+
 
   std::vector<MatrixXd> A_lcs(N, A);
   std::vector<MatrixXd> B_lcs(N, B);
-  std::vector<MatrixXd> D_lcs(N, D*0);
+  std::vector<MatrixXd> D_lcs(N, D * AnDn );
   std::vector<VectorXd> d_lcs(N, d);
-  std::vector<MatrixXd> E_lcs(N, E*100);
+  std::vector<MatrixXd> E_lcs(N, E / AnDn);
   std::vector<MatrixXd> F_lcs(N, F);
-  std::vector<VectorXd> c_lcs(N, c*100);
-  std::vector<MatrixXd> H_lcs(N, H*100);
+  std::vector<VectorXd> c_lcs(N, c / AnDn);
+  std::vector<MatrixXd> H_lcs(N, H / AnDn);
 
 //  std::cout << "Astahp" << std::endl;
 //  std::cout << A << std::endl;
@@ -291,14 +300,22 @@ LCS LCSFactory::LinearizePlantToLCS(
 //  std::cout << "Jt" << std::endl;
 //  std::cout << J_t.transpose() << std::endl;
 //  std::cout << "Jt" << std::endl;
-
+//
 //  std::cout << "dstahp" << std::endl;
 //  std::cout << d << std::endl;
 //  std::cout << "dstahp" << std::endl;
 
-
-
   LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs);
+
+  ///check LCS predictions
+  VectorXd inp = plant.get_actuation_input_port().Eval(context);
+
+//  std::cout << inp << std::endl;
+
+  VectorXd x0(plant.num_positions() + plant.num_velocities());
+  x0 << plant.GetPositions(context), plant.GetVelocities(context);
+
+  VectorXd asd = system.Simulate(  x0 ,inp);
 
   return system;
 }

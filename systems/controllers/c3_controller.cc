@@ -173,7 +173,7 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
     delta = delta_reset;
     w = w_reset;
     for (int j = 0; j < N; j++) {
-      delta[j].head(n) = state;
+      delta[j].head(n) = xdesired_[0]; //state
     }
   } else {
     /// reset delta and w (default option)
@@ -182,16 +182,71 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   }
 
 
+
+
   solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
+
+  ///trifinger constraints
+  ///input
+  opt.RemoveConstraints();
+  RowVectorXd LinIneq = RowVectorXd::Zero(9);
+  RowVectorXd LinIneq_r = RowVectorXd::Zero(9);
+  double lowerbound = -0.1;
+  double upperbound = 0.1;
+  int inputconstraint = 2;
+
+  for (int i = 0; i < 9; i++) {
+    LinIneq_r = LinIneq;
+    LinIneq_r(i) = 1;
+    opt.AddLinearConstraint(LinIneq_r, lowerbound, upperbound, inputconstraint);
+  }
+
+  ///force
+  RowVectorXd LinIneqf = RowVectorXd::Zero(18);
+  RowVectorXd LinIneqf_r = RowVectorXd::Zero(18);
+  double lowerboundf = 0;
+  double upperboundf = 50;  ///was 0.1
+  int forceconstraint = 3;
+
+//  for (int i = 0; i < 18; i++) {
+//    LinIneqf_r = LinIneqf;
+//    LinIneqf_r(i) = 1;
+//    opt.AddLinearConstraint(LinIneqf_r, lowerboundf, upperboundf, forceconstraint);
+//  }
+
+  ///state (velocity)
+  int stateconstraint = 1;
+  RowVectorXd LinIneqs = RowVectorXd::Zero(31);
+  RowVectorXd LinIneqs_r = RowVectorXd::Zero(31);
+  double lowerbounds = -8;
+  double upperbounds = 8;
+//
+//  LinIneqs_r = LinIneqs;
+//  LinIneqs_r(0) = 1;
+//  opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
+//  LinIneqs_r = LinIneqs;
+//  LinIneqs_r(3) = 1;
+//  opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
+//  LinIneqs_r = LinIneqs;
+//  LinIneqs_r(6) = 1;
+//  opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
+
+  for (int i = 16; i < 31; i++) {
+    LinIneqs_r = LinIneqs;
+    LinIneqs_r(i) = 1;
+    opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
+  }
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
 
+
+
   //std::cout << "here" << std::endl;
 
-  VectorXd input2 = VectorXd::Zero(9);
+  //VectorXd input2 = VectorXd::Zero(9);
 
-  control->SetDataVector(input2);
+  control->SetDataVector(input);
   control->set_timestamp(timestamp);
 }
 }  // namespace controllers

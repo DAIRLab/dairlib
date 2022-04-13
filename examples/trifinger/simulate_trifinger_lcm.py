@@ -12,8 +12,8 @@ sim_dt = 1e-4
 output_dt = 5e-4
 
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
-# addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
-#               mu_kinetic=1.0)
+addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
+              mu_kinetic=1.0)
 
 # The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
@@ -36,7 +36,7 @@ lcm = builder.AddSystem(LcmInterfaceSystem(drake_lcm))
 passthrough = AddActuationRecieverAndStateSenderLcm(
     builder=builder, plant=plant, lcm=lcm, actuator_channel="TRIFINGER_INPUT",
     state_channel="TRIFINGER_OUTPUT", publish_rate=1/output_dt,
-    publish_efforts=True, actuator_delay=0.0)
+    publish_efforts=True, actuator_delay=0.0)   #1/output_dt
 # Constuct the simulator and visualizer
 DrakeVisualizer.AddToBuilder(builder=builder, scene_graph=scene_graph)
 
@@ -62,7 +62,7 @@ simulator.set_publish_every_time_step(False);
 simulator.set_publish_at_initialization(False);
 
 # Change the real-time rate to above 1 to simulate faster
-simulator.set_target_realtime_rate(1)
+simulator.set_target_realtime_rate(0.1)
 
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
@@ -78,13 +78,29 @@ q_map = makeNameToPositionsMap(plant)
 # q[q_map['finger_middle_to_lower_joint_120']] = -1.5
 # q[q_map['finger_base_to_upper_joint_240']] = 0
 # q[q_map['finger_upper_to_middle_joint_240']] = -1
-#q[q_map['finger_middle_to_lower_joint_240']] = -1.5
+# q[q_map['finger_middle_to_lower_joint_240']] = -1.5
+
+#red
+q[q_map['finger_base_to_upper_joint_0']] = 0
+q[q_map['finger_upper_to_middle_joint_0']] = -0.7
+q[q_map['finger_middle_to_lower_joint_0']] = -1.2
+#green
+q[q_map['finger_base_to_upper_joint_120']] = 0
+q[q_map['finger_upper_to_middle_joint_120']] = -0.7
+q[q_map['finger_middle_to_lower_joint_120']] = -1.2
+#blue
+q[q_map['finger_base_to_upper_joint_240']] = 0
+q[q_map['finger_upper_to_middle_joint_240']] = -0.7
+q[q_map['finger_middle_to_lower_joint_240']] = -1.2
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 1
+q[q_map['base_x']] = 0
 q[q_map['base_y']] = 0
 q[q_map['base_z']] = .05
+
+
+
 plant.SetPositions(plant_context, q)
 
 v = np.zeros(nv)
@@ -92,7 +108,7 @@ plant.SetVelocities(plant_context, v)
 
 simulator.Initialize()
 # Simulate for 10 seconds
-simulator.AdvanceTo(10)
+simulator.AdvanceTo(5)
 
 # numpy array of data (nq+nv+nu) x n_time
 data = logger.FindLog(simulator.get_context()).data()
@@ -100,22 +116,20 @@ data = logger.FindLog(simulator.get_context()).data()
 row, col = data.shape
 time = range(col)
 
-fig, ax = plt.subplots(3)
+fig, ax = plt.subplots(4)
 ax[0].plot(time, np.transpose( data[nq+nv:nq+nv+nu,:] ) )
 ax[0].set_title('Input')
 ax[1].plot(time, np.transpose( data[nq:nq+nv-7,:] ) )
-ax[1].set_title('Velocity')
+ax[1].set_title('Velocity_Trifinger')
 ax[2].plot(time, np.transpose( data[0:nq-7,:] ) )
-ax[2].set_title('Position')
-
+ax[2].set_title('Position_Trifinger')
+ax[3].plot(time, np.transpose( data[14,:] ) )
+ax[3].set_title('Position_Cube')
 plt.show()
 
-# plt.plot(data[nq+nv:nq+nv+nu,:]  )
-#
-#
-# plt.plot(data[nq:nq+nv,:]  )
-#
-# plt.plot(data[0:nq,:]  )
-# plt.show()
+# plt.plot(time,np.transpose( data[14,:] ))
+# plt.show
+
+
 
 

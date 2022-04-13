@@ -97,7 +97,33 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
   for (int i = 0; i < options_.admm_iter; i++) {
     z = ADMMStep(x0, &delta, &w, &Gv);
+// std::cout << "new delta" << i <<  std::endl;
+//std::cout << delta.at(0).segment(n_,m_) << std::endl;
+//    std::cout << "w" << i <<  std::endl;
+//    std::cout << w.at(0) << std::endl;
   }
+
+//  std::cout << "delta" << std::endl;
+//  std::cout << delta.at(0).segment(n_,m_) << std::endl;
+
+//VectorXd hold = delta.at(0).segment(n_,m_);
+  VectorXd hold = z.segment(n_,m_);
+
+//  double count = 0;
+//
+//  for (int i = 3; i < 5; i++) {
+//    count = count + hold(i);
+//  }
+//
+//  if ( count >= 0.001){
+//    std::cout << "guessing_contact" << std::endl;
+//  }
+
+//  std::cout << "w" << std::endl;
+//  std::cout << w.at(0).segment(n_+3,3) << std::endl;
+
+//      std::cout <<  "contact prediction" << std::endl;
+//      std::cout << z.segment(n_, m_) << std::endl;
 
   return z.segment(n_ + m_, k_);
 }
@@ -127,6 +153,9 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
   for (int i = 0; i < N_; i++) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
+
+    //w->at(i) = VectorXd::Zero(58);
+
     Gv->at(i) = Gv->at(i) * options_.rho_scale;
   }
 
@@ -181,10 +210,13 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
     zz.at(i).segment(n_, m_) = result.GetSolution(lambda_[i]);
     zz.at(i).segment(n_ + m_, k_) = result.GetSolution(u_[i]);
 
+//    std::cout << i << std::endl;
 //    std::cout << "Prediction x" << std::endl;
 //    std::cout << zz.at(i).segment(0,16) ;
 //    std::cout << "Prediction u" << std::endl;
 //    std::cout << zz.at(i).segment(n_+m_,k_) ;
+//    std::cout << "Prediction lam" << std::endl;
+//    std::cout << zz.at(i).segment(n_,m_) << std::endl;
 
   }
 

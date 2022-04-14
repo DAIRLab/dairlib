@@ -121,8 +121,8 @@ q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
 q[q_map['base_x']] = 0
-q[q_map['base_y']] = 0.1
-q[q_map['base_z']] = .05
+q[q_map['base_y']] = 0.05 #0.05
+q[q_map['base_z']] = 0.05 #.05
 
 
 mu = 1.0
@@ -130,17 +130,18 @@ mu = 1.0
 
 Qinit = 1*np.eye(31)
 Qinit[0:9,0:9] = 0*np.eye(9) #trifinger
-Qinit[9:16,9:16] = 100*np.eye(7) #cube
+Qinit[9:16,9:16] = 1*np.eye(7) #cube
 Qinit[16:31,16:31] = 0*np.eye(15) #velocities
-Qinit[16:25,16:25] = 10*np.eye(9) #vel
+Qinit[16:25,16:25] = 10000*np.eye(9) #vel
 #Qinit[16,16] = 1
-Rinit = 1*np.eye(9) #torques
+Rinit = 10000*np.eye(9) #torques
 #admm_params
 Ginit = 0.1*np.eye(58)
 Ginit[0:9,0:9] = 0*np.eye(9)
+Ginit[9:16,9:16] = 0.1*np.eye(7)
 #Ginit[31:49,31:49] = 0.1*np.eye(18)
 Uinit = 1*np.eye(58)
-Uinit[0:31,0:31] = 1000*np.eye(31)
+Uinit[0:31,0:31] = 100*np.eye(31)
 Uinit[49:58,49:58] = 1*np.eye(9)
 xdesiredinit = np.zeros((31,1))
 xdesiredinit[:16] = q
@@ -216,4 +217,4 @@ loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                           input_channel="TRIFINGER_OUTPUT",
                           is_forced_publish=True)
 
-loop.Simulate(10)
+loop.Simulate(5)

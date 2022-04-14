@@ -1,6 +1,8 @@
 #include "c3_controller.h"
 
 #include <utility>
+#include <chrono>
+
 
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
@@ -87,6 +89,10 @@ C3Controller::C3Controller(
 
 void C3Controller::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
+
+
+  auto start = std::chrono::high_resolution_clock::now();
+
 
   /// get values
   auto robot_output =
@@ -191,8 +197,8 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   opt.RemoveConstraints();
   RowVectorXd LinIneq = RowVectorXd::Zero(9);
   RowVectorXd LinIneq_r = RowVectorXd::Zero(9);
-  double lowerbound = -0.1;
-  double upperbound = 0.1;
+  double lowerbound = -0.2;
+  double upperbound = 0.2;
   int inputconstraint = 2;
 
   for (int i = 0; i < 9; i++) {
@@ -205,21 +211,21 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   RowVectorXd LinIneqf = RowVectorXd::Zero(18);
   RowVectorXd LinIneqf_r = RowVectorXd::Zero(18);
   double lowerboundf = 0;
-  double upperboundf = 50;  ///was 0.1
+  double upperboundf = 1000;
   int forceconstraint = 3;
 
-//  for (int i = 0; i < 18; i++) {
-//    LinIneqf_r = LinIneqf;
-//    LinIneqf_r(i) = 1;
-//    opt.AddLinearConstraint(LinIneqf_r, lowerboundf, upperboundf, forceconstraint);
-//  }
+  for (int i = 0; i < 18; i++) {
+    LinIneqf_r = LinIneqf;
+    LinIneqf_r(i) = 1;
+    opt.AddLinearConstraint(LinIneqf_r, lowerboundf, upperboundf, forceconstraint);
+  }
 
   ///state (velocity)
   int stateconstraint = 1;
   RowVectorXd LinIneqs = RowVectorXd::Zero(31);
   RowVectorXd LinIneqs_r = RowVectorXd::Zero(31);
-  double lowerbounds = -8;
-  double upperbounds = 8;
+  double lowerbounds = -5;
+  double upperbounds = 5;
 //
 //  LinIneqs_r = LinIneqs;
 //  LinIneqs_r(0) = 1;
@@ -237,10 +243,14 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
     opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
   }
 
+
+
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
 
-
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+// std::cout << "Solve time:" << elapsed.count() << std::endl;
 
   //std::cout << "here" << std::endl;
 

@@ -1,4 +1,5 @@
 #include "solvers/c3.h"
+#include <chrono>
 
 #include <omp.h>
 
@@ -143,12 +144,18 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
     ZW[i] = w->at(i) + z[i];
   }
 
+//  auto start = std::chrono::high_resolution_clock::now();
+
   if (U_[0].isZero(0) == 0) {
     vector<MatrixXd> Uv = U_;
     *delta = SolveProjection(Uv, ZW);
   } else {
     *delta = SolveProjection(*Gv, ZW);
   }
+
+//  auto finish = std::chrono::high_resolution_clock::now();
+//  std::chrono::duration<double> elapsed = finish - start;
+//  std::cout << "Solve time:" << elapsed.count() << std::endl;
 
   for (int i = 0; i < N_; i++) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);

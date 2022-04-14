@@ -12,13 +12,13 @@ cc_binary(
 )
 
 
-py_binary(
-    name = "c3_py_test",
-    srcs = ["test/c3_py_test.py"],
-    deps = [
-        "//bindings/pydairlib/solvers:c3_py"
-    ]
-)
+#py_binary(
+#    name = "c3_py_test",
+#    srcs = ["test/c3_py_test.py"],
+#    deps = [
+#        "//bindings/pydairlib/solvers:c3_py"
+#    ]
+#)
 
 cc_library(
     name = "c3",

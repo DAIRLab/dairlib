@@ -73,8 +73,10 @@ drake::systems::EventStatus SwingFootRewardCalculator::StateUpdate(
   Vector3d y_dd = Eigen::Map<Vector3d>(swing_ft_data.yddot_command.data());
   Vector3d y_dd_cmd  = Eigen::Map<Vector3d>(swing_ft_data.yddot_command_sol.data());
 
+  // Inner product between swing foot trajectory and desired swing foot traj
   VectorXd tracking_reward = dt *
       (y.transpose() * y_des / (y.norm() * y_des.norm()));
+  // Inner product between desired and realized swing foot acceleration
   VectorXd smooth_reward =  dt *
       (y_dd.transpose() * y_dd_cmd / (y_dd.norm() * y_dd_cmd.norm()));
 

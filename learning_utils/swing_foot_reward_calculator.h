@@ -40,6 +40,6 @@ class SwingFootRewardCalculator : public drake::systems::LeafSystem<double> {
   const Eigen::Matrix3d& W_swing_foot_tracking_;
   const Eigen::Matrix3d& W_swing_foot_smoothness_;
   const std::vector<int>& single_support_fsm_states_;
-  const std::string& traj_name_;
+  std::string traj_name_;
 };
 }

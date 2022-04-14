@@ -345,7 +345,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto reward_calc = builder.AddSystem<learning::SwingFootRewardCalculator>(
       Matrix3d::Identity(), Matrix3d::Identity(),
-      left_right_support_fsm_states, "swing_ft_traj");
+      single_support_states, "swing_ft_traj");
 
   // Swing toe joint trajectory
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
@@ -502,17 +502,13 @@ int DoMain(int argc, char* argv[]) {
   WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
 
-  TransTaskSpaceTrackingData swing_ft_traj_global(
-      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr);
-  swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
-
   // Feed forward Z gain disable
   swing_ft_traj_local.SetTimeVaryingGains(
       swing_ft_gain_multiplier_gain_multiplier);
   swing_ft_traj_local.SetFeedforwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);
+
+  // Add swing foot traj to osc
   osc->AddTrackingData(&swing_ft_traj_local);
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
@@ -596,7 +592,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(osc->get_osc_debug_port(),
                   reward_calc->get_osc_debug_input_port());
   builder.Connect(fsm->get_output_port_fsm(), reward_calc->get_fsm_input_port());
-  
+
   auto [reward_scope, reward_pub] = LcmScopeSystem::AddToBuilder(
       &builder, &lcm_local, reward_calc->get_reward_output_port(), "SWING_FOOT_REWARD", 0);
 

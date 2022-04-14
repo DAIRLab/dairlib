@@ -13,6 +13,8 @@ LinearKalmanFilter::LinearKalmanFilter(const KalmanFilterData& sys) :
   DRAKE_DEMAND(sys.C.cols() == nx_);
   DRAKE_DEMAND(sys.Q.rows() == nx_ && sys.Q.cols() == nx_);
   DRAKE_DEMAND(sys.R.rows() == ny_ && sys.R.cols() == ny_);
+
+  Initialize(0, VectorXd::Zero(nx_), sys.Q);
 }
 
 void LinearKalmanFilter::Initialize(double t, VectorXd x, MatrixXd P) {
@@ -28,7 +30,8 @@ void LinearKalmanFilter::Predict(
   if (dt > 100* rate_) {
     dt = rate_;
     Initialize(t, VectorXd::Zero(nx_), sys.Q);
-  };
+  }
+
   Eigen::MatrixXd A = MatrixXd::Identity(nx_, nx_) + dt * sys.A;
   Eigen::MatrixXd B = dt * sys.B;
 

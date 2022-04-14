@@ -224,24 +224,22 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   int stateconstraint = 1;
   RowVectorXd LinIneqs = RowVectorXd::Zero(31);
   RowVectorXd LinIneqs_r = RowVectorXd::Zero(31);
-  double lowerbounds = -5;
-  double upperbounds = 5;
-//
-//  LinIneqs_r = LinIneqs;
-//  LinIneqs_r(0) = 1;
-//  opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
-//  LinIneqs_r = LinIneqs;
-//  LinIneqs_r(3) = 1;
-//  opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
-//  LinIneqs_r = LinIneqs;
-//  LinIneqs_r(6) = 1;
-//  opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
-
-  for (int i = 16; i < 31; i++) {
+  double lowerbounds = -20;
+  double upperbounds = 20;
+  for (int i = 16; i < 25; i++) {
     LinIneqs_r = LinIneqs;
     LinIneqs_r(i) = 1;
     opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
   }
+
+//  ///state (q)
+//  double lowerboundsq = -2;
+//  double upperboundsq = 2;
+//  for (int i = 0; i < 9; i++) {
+//    LinIneqs_r = LinIneqs;
+//    LinIneqs_r(i) = 1;
+//    opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
+//  }
 
 
 

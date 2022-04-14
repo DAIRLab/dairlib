@@ -137,14 +137,21 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
     WD.at(i) = delta->at(i) - w->at(i);
   }
 
+
+//  auto start = std::chrono::high_resolution_clock::now();
+
   vector<VectorXd> z = SolveQP(x0, *Gv, WD);
+
+//  auto finish = std::chrono::high_resolution_clock::now();
+//std::chrono::duration<double> elapsed = finish - start;
+//std::cout << "Solve time:" << elapsed.count() << std::endl;
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {
     ZW[i] = w->at(i) + z[i];
   }
 
-//  auto start = std::chrono::high_resolution_clock::now();
+//auto start = std::chrono::high_resolution_clock::now();
 
   if (U_[0].isZero(0) == 0) {
     vector<MatrixXd> Uv = U_;
@@ -153,9 +160,9 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
     *delta = SolveProjection(*Gv, ZW);
   }
 
-//  auto finish = std::chrono::high_resolution_clock::now();
-//  std::chrono::duration<double> elapsed = finish - start;
-//  std::cout << "Solve time:" << elapsed.count() << std::endl;
+//auto finish = std::chrono::high_resolution_clock::now();
+//std::chrono::duration<double> elapsed = finish - start;
+//std::cout << "Solve time:" << elapsed.count() << std::endl;
 
   for (int i = 0; i < N_; i++) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);

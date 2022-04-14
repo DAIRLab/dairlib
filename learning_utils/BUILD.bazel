@@ -11,3 +11,13 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "swing_foot_reward_calculator",
+    srcs = ["swing_foot_reward_calculator.cc"],
+    hdrs = ["swing_foot_reward_calculator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)

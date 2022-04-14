@@ -25,6 +25,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/robot_lcm_systems.h"
+#include "learning_utils/swing_foot_reward_calculator.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -342,6 +343,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(high_level_command->get_xy_output_port(),
                   swing_ft_traj_generator->get_input_port_vdes());
 
+  auto reward_calc = builder.AddSystem<learning::SwingFootRewardCalculator>(
+      Matrix3d::Identity(), Matrix3d::Identity(),
+      single_support_states, "swing_ft_traj");
+
   // Swing toe joint trajectory
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
@@ -497,17 +502,13 @@ int DoMain(int argc, char* argv[]) {
   WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
 
-  TransTaskSpaceTrackingData swing_ft_traj_global(
-      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr);
-  swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
-
   // Feed forward Z gain disable
   swing_ft_traj_local.SetTimeVaryingGains(
       swing_ft_gain_multiplier_gain_multiplier);
   swing_ft_traj_local.SetFeedforwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);
+
+  // Add swing foot traj to osc
   osc->AddTrackingData(&swing_ft_traj_local);
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
@@ -585,6 +586,16 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+
+
+  // Connect learning ports
+  builder.Connect(osc->get_osc_debug_port(),
+                  reward_calc->get_osc_debug_input_port());
+  builder.Connect(fsm->get_output_port_fsm(), reward_calc->get_fsm_input_port());
+
+  auto [reward_scope, reward_pub] = LcmScopeSystem::AddToBuilder(
+      &builder, &lcm_local, reward_calc->get_reward_output_port(), "SWING_FOOT_REWARD", 0);
+
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.
     auto osc_debug_pub =

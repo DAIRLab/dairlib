@@ -418,6 +418,7 @@ cc_binary(
         ":cassie_utils",
         ":simulator_drift",
         "//examples/Cassie/osc",
+        "//learning_utils:swing_foot_reward_calculator",
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",

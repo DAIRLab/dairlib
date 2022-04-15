@@ -1,10 +1,6 @@
 group "1.rom-space-controller" {
-    cmd "3.2.rom-planner (debug a given solve_idx)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=10 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=false --n_step=2 --log_solver_info=true --debug_mode=true --solve_idx_for_read_from_file=188";
-        host = "localhost";
-    }
     cmd "3.1.rom-planner (wireless)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=false --fix_duration=true --knots_per_mode=5 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "localhost";
     }
     cmd "1.dispatcher-robot-out (wireless)" {
@@ -20,7 +16,7 @@ group "1.rom-space-controller" {
         host = "dair-cassie";
     }
     cmd "3.1.rom-planner (run local)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --use_ipopt=true --broadcast=false --log_data=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=5 --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --use_ipopt=true --broadcast=false --log_data=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "dair-cassie";
     }
     cmd "2.2.optimal-rom-walking-controller (wireless)" {
@@ -47,7 +43,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=7";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=374";
         host = "localhost";
     }
     cmd "2.2. cassie planner pose (multi-pose); files with debug_ prefix" {
@@ -59,7 +55,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --realtime_rate=1 --visualize_all_solves=true --solve_idx=0 --solve_idx_end=0";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --realtime_rate=1 --visualize_all_solves=true --solve_idx=180 --solve_idx_end=400";
         host = "localhost";
     }
     cmd "0.drake-director (with pd panel)" {
@@ -67,7 +63,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "3.0.switch-to-rom-mpc" {
-        exec = "bazel-bin/examples/goldilocks_models/run_rom_controller_switch --blend_duration=0";
+        exec = "bazel-bin/examples/goldilocks_models/run_rom_controller_switch --blend_duration=0.15";
         host = "dair-cassie";
     }
     cmd "4.0.controller-switch-to-standing" {
@@ -96,6 +92,10 @@ group "4.lcm-tools" {
 }
 
 group "1.rom-space-controller (wired ethernet)" {
+    cmd "3.3.rom-planner (debug a given solve_idx)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --knots_per_mode=5 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=true --n_step=2 --log_solver_info=true --debug_mode=true --solve_idx_for_read_from_file=375";
+        host = "localhost";
+    }
     cmd "2.2.rom-planner (wired); generate init file" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --use_ipopt=true --fix_duration=true --knots_per_mode=5 --n_step=2 --feas_tol=1e-2 --log_solver_info=false --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --broadcast=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
         host = "localhost";

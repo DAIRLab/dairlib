@@ -596,6 +596,9 @@ int DoMain(int argc, char* argv[]) {
   auto [reward_scope, reward_pub] = LcmScopeSystem::AddToBuilder(
       &builder, &lcm_local, reward_calc->get_reward_output_port(), "SWING_FOOT_REWARD", 0);
 
+  auto [fsm_scope, fsm_pub] =LcmScopeSystem::AddToBuilder(
+      &builder, &lcm_local,fsm->get_output_port_fsm(), "FINITE_STATE_MACHINE", 0);
+
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.
     auto osc_debug_pub =

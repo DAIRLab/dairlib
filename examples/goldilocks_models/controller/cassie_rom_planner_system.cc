@@ -1108,11 +1108,13 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // TODO: maybe I should not assign the new desired traj to controller thread
   //  when the solver didn't find optimal solution (unless it's going to run out
   //  of traj to use)? We should just use the old previous_output_msg_
-  // if (!result.is_success()) {
-  //    *traj_msg = previous_output_msg_;
-  //    // TODO: It's still good to do some bookkeeping, so that I can resolve
-  //    it. return;
-  // }
+  if (!result.is_success() && (result.GetSolution(trajopt.xf_vars_by_mode(
+                                   param_.n_step - 1))(6) < 0.6)) {
+    *traj_msg = previous_output_msg_;
+    cout << "Bad solution. Skip this one.\n";
+    // TODO: It's still good to do some bookkeeping, so that I can resolve it.
+    return;
+  }
 
   ///
   /// Pack traj into lcm message (traj_msg)

@@ -466,9 +466,7 @@ RomTrajOpt::RomTrajOpt(
     PrintStatus(
         "Adding constraint -- full-order model floating base pos (with "
         "heuristics!)");
-    // TODO: make a bound on the quaternion. E.g. We don't want the robot to
-    //  turn to the back.
-    AddBoundingBoxConstraint(-1, 1, xf(0));              // qw
+    AddBoundingBoxConstraint(-1, 1, xf(0));             // qw
     AddBoundingBoxConstraint(-1, 1, xf.segment<3>(1));  // qx, qy, qz
     AddBoundingBoxConstraint(-2, 2, xf.segment<2>(4));  // x,y
     // Heuristics -- prevent the pelvis go too low

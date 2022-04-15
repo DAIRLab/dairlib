@@ -1090,14 +1090,23 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     result.set_x_val(trajopt.initial_guess());*/
   }
 
-  // TODO(yminchen): Note that you will to rotate the coordinates back if the
-  //  ROM is dependent on robot's x, y and yaw.
+  // TODO: maybe I should not assign the new desired traj to controller thread
+  //  when the solver didn't find optimal solution (unless it's going to run out
+  //  of traj to use)? We should just use the old previous_output_msg_
+  // if (!result.is_success()) {
+  //    *traj_msg = previous_output_msg_;
+  //    // TODO: It's still good to do some bookkeeping, so that I can resolve
+  //    it. return;
+  // }
 
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
   // Note that the trajectory is discontinuous between mode (even the position
   // jumps because left vs right stance leg).
+
+  // TODO(yminchen): Note that you will to rotate the coordinates back if the
+  //  ROM is dependent on robot's x, y and yaw.
 
   // Rotate the local state to global state
   MatrixXd local_x0_FOM(nx_, trajopt.num_modes() + 1);
@@ -1124,10 +1133,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
                                    &local_xf_FOM2);
   DRAKE_DEMAND((local_x0_FOM2 - local_x0_FOM).norm() < 1e-14);
   DRAKE_DEMAND((local_xf_FOM2 - local_xf_FOM).norm() < 1e-14);*/
-
-  // TODO: maybe I should not assign the new desired traj to controller thread
-  //  when the solver didn't find optimal solution (unless it's going to run out
-  //  of traj to use)? We should just use the old previous_output_msg_
 
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
@@ -1274,7 +1279,11 @@ int CassiePlannerWithMixedRomFom::DetermineNumberOfKnotPoints(
   // timestep in the first mode, i.e. 2 knot points.
   int first_mode_knot_idx;
   if (param_.gains.constant_rom_vel_during_double_support) {
-    if (init_phase < phase_from_ss_to_ds_) {
+    // I had to add 1e-8 because of a floating point error from somehwere.
+    // Without this epsilon, there would be an invalid constraint bound when the
+    // current time is exactly at the boundary between single support and double
+    // support phase.
+    if (init_phase + 1e-8 < phase_from_ss_to_ds_) {
       double phase_in_ss =
           1 - remaining_single_support_duration / single_support_duration_;
       int ss_knot_idx = int((knots_per_single_support_ - 1) * phase_in_ss);

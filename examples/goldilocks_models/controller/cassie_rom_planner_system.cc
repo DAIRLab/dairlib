@@ -688,6 +688,27 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   string prefix = single_eval_mode_ ? "debug_" : to_string(counter_) + "_";
 
   ///
+  ///
+  ///
+
+  // First mode duration
+  double first_mode_duration = stride_period_ * (1 - init_phase);
+
+  // Remaining single support duration
+  double remaining_single_support_duration =
+      std::max(0.0, first_mode_duration - double_support_duration_);
+
+  // Hacks -- seems like the problem is sometimes overconstrained
+  // when the swing foot is close to touch down, so I just try not solving the
+  // problem during this window (the swing foot constraint which force the swing
+  // foot close to the next time down location)
+  // TODO: look into some failure cases to fix the root of the bug
+  if (remaining_single_support_duration < 0.05) {
+    *traj_msg = previous_output_msg_;
+    return;
+  }
+
+  ///
   /// Get desired xy position and velocity
   ///
   auto break1 = std::chrono::high_resolution_clock::now();
@@ -716,8 +737,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
   ///
-  // First mode duration
-  double first_mode_duration = stride_period_ * (1 - init_phase);
 
   bool lipm_ik_success = false;
   MatrixXd local_regularization_state(nx_, param_.n_step);
@@ -786,10 +805,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   /// Construct rom traj opt
   ///
   auto break2 = std::chrono::high_resolution_clock::now();
-
-  // Remaining single support duration
-  double remaining_single_support_duration =
-      std::max(0.0, first_mode_duration - double_support_duration_);
 
   // Prespecify the number of knot points
   int first_mode_knot_idx = DetermineNumberOfKnotPoints(

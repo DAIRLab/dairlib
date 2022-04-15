@@ -123,6 +123,8 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   contact_info_locs = [[], [], [], []]
   cassie_out = []  # Cassie out types
   osc_output = []
+  u_dispatcher = []
+  t_u_dispatcher = []
   u_pd = []
   t_u_pd = []
   contact_switch = []
@@ -182,6 +184,10 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u.append(msg.efforts)
       t_u.append(msg.utime / 1e6)
+    if event.channel == "NETWORK_CASSIE_INPUT":
+      msg = dairlib.lcmt_robot_input.decode(event.data)
+      u_dispatcher.append(msg.efforts)
+      t_u_dispatcher.append(msg.utime / 1e6)
     if event.channel == "PD_CONTROL":
       msg = dairlib.lcmt_robot_input.decode(event.data)
       u_pd.append(msg.efforts)
@@ -269,6 +275,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   t_controller_switch = np.array(t_controller_switch)
   t_contact_info = np.array(t_contact_info)
   t_vdot = np.array(t_vdot)
+  t_u_dispatcher = np.array(t_u_dispatcher)
   t_pd = np.array(t_pd)
   t_osc_debug = np.array(t_osc_debug)
   fsm = np.array(fsm)
@@ -278,6 +285,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   u_meas = np.array(u_meas)
   imu_aceel = np.array(imu_aceel)
   u = np.array(u)
+  u_dispatcher = np.array(u_dispatcher)
   u_pd = np.array(u_pd)
   kp = np.array(kp)
   kd = np.array(kd)
@@ -308,4 +316,4 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   return x, u_meas, imu_aceel, t_x, u, t_u, contact_switch, t_contact_switch, contact_forces, contact_info_locs, \
          t_contact_info, osc_debug, t_osc_debug, fsm, estop_signal, \
          switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
-         t_u_pd, osc_output, input_supervisor_status, t_input_supervisor, full_log
+         t_u_pd, u_dispatcher, t_u_dispatcher, osc_output, input_supervisor_status, t_input_supervisor, full_log

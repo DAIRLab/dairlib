@@ -23,6 +23,7 @@ def main():
   global t_end
   global t_slice
   global t_u_slice
+  global t_u_dispatcher_slice
   global t_osc_debug_slice
   global filename
   global nq
@@ -90,6 +91,7 @@ def main():
 
   x, u_meas, imu_aceel, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+  u_dispatcher, t_u_dispatcher, \
   osc_output, input_supervisor_status, t_input_supervisor, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
   if ("CASSIE_STATE_DISPATCHER" in full_log and "CASSIE_STATE_SIMULATION" in full_log):
@@ -121,6 +123,9 @@ def main():
   start_time_idx = np.argwhere(np.abs(t_u - t_start) < 1e-3)[0][0]
   end_time_idx = np.argwhere(np.abs(t_u - t_end) < 1e-3)[0][0]
   t_u_slice = slice(start_time_idx, end_time_idx)
+  # start_time_idx = np.argwhere(np.abs(t_u_dispatcher - t_start) < 2e-2)[0][0]
+  # end_time_idx = np.argwhere(np.abs(t_u_dispatcher - t_end) < 2e-2)[0][0]
+  # t_u_dispatcher_slice = slice(start_time_idx, end_time_idx)
   start_time_idx = np.argwhere(np.abs(t_osc_debug - t_start) < 2e-3)[0][0]
   end_time_idx = np.argwhere(np.abs(t_osc_debug - t_end) < 1e-3)[0][0]
   t_osc_debug_slice = slice(start_time_idx, end_time_idx)
@@ -135,6 +140,8 @@ def main():
 
   # plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
   # plt.plot(t_input_supervisor, 10 * input_supervisor_status)
+
+  # plot_dispatcher_torque(t_u, u, t_u_dispatcher, u_dispatcher, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
@@ -957,6 +964,23 @@ def plot_measured_torque(t_u, u, t_x, t_osc_debug, u_meas, u_datatypes, fsm):
   # plt.plot(t_u[t_u_slice], u[t_u_slice])
   # plt.plot(t_u[t_u_slice], 30 * fsm[t_u_slice])
   # plt.plot(t_osc_debug[t_osc_debug_slice], 30 * fsm[t_osc_debug_slice])
+
+
+def plot_dispatcher_torque(t_u, u, t_u_dispatcher, u_dispatcher, t_x, t_osc_debug, u_meas, u_datatypes, fsm):
+  plt.figure("efforts dispatcher-- " + filename)
+
+  # u_indices = slice(0, 8)
+  u_indices = slice(7, 8)
+
+  # plt.figure("efforts meas-- " + filename)
+  # plt.plot(t_x[t_slice], u_meas[t_slice, u_indices])
+  # plt.legend(u_datatypes[u_indices])
+  plt.plot(t_u[t_u_slice], u[t_u_slice, u_indices])
+  # plt.plot(t_u[t_u_slice], 30 * fsm[t_u_slice])
+  plt.plot(t_u_dispatcher[t_u_dispatcher_slice], u_dispatcher[t_u_dispatcher_slice, u_indices])
+  plt.plot(t_osc_debug[t_osc_debug_slice], 30 * fsm[t_osc_debug_slice])
+  plt.legend([m + " controller" for m in u_datatypes[u_indices]] + [m + " dispatcher" for m in u_datatypes[u_indices]] + ["fsm"])
+
 
 def PlotCenterOfMass(x, t_x, plant, world, context, t_osc_debug, fsm):
   # Compute COM and Comdot

@@ -80,7 +80,7 @@ drake::systems::EventStatus SwingFootRewardCalculator::StateUpdate(
   // Inner product between swing foot trajectory and desired swing foot traj
   VectorXd tracking_reward = - dt * y_err.transpose() * y_err;
   // Inner product between desired and realized swing foot acceleration
-  VectorXd smooth_reward =  - dt * y_dd_err.transpose() * W_swing_foot_smoothness_ * y_dd_err;
+  VectorXd smooth_reward =  - dt * y_dd_err.transpose() * y_dd_err;
 
   state->get_mutable_discrete_state(running_reward_idx_).get_mutable_value() <<
       state->get_discrete_state(running_reward_idx_).value() + tracking_reward + smooth_reward;

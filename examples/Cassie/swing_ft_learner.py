@@ -1,14 +1,36 @@
+import torch
 import lcm
-
-# File has three main components:
-# First, the LCM interface
-# Second, the actual optimizer
-# There is an ambiguity. Should we be learning how to actually optimize?
-# Or just have some fixed optimization routine? where does learning get
-# injected into this procedure?
-# Meta-learning? Learn a swing foot that is good after only 1 gradient step?
-# Learn a value function in simulation, try to apply to real? What would the
-# mismatches look like?
+import yaml
 
 
-# Learn what is unsafe in sim, then learn what is optimal in real?
+class SwingFootLearner:
+    def __init__(self, sim_env):
+        self.sim_env = sim_env
+        return
+
+    def select_action(self, state, train):
+        return
+    
+    def learn(self, num_env_steps):
+        return
+
+
+class QFunctionLearner(SwingFootLearner):
+    def __init__(self, sim_env, net_arch, nominal_params):
+        return
+
+    def train(self, data):
+        return
+
+    def select_action(self, train=True):
+        return
+
+
+class EvolutionaryLearner:
+    def __init__(self)
+        return
+
+
+class SACLearner:
+    def __init__(self, net_arch):
+        return

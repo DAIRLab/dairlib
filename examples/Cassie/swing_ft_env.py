@@ -4,7 +4,9 @@ from gym import spaces
 import lcm
 import queue
 import threading
-from pydrake import lcmt_scope
+from drake import lcmt_scope
+import subprocess as sp
+import time 
 
 from dairlib import lcmt_swing_foot_spline_params, lcmt_robot_output
 
@@ -18,6 +20,8 @@ class LCMInterface:
         self.channels = channels
         self.queues = {channel:queue.LifoQueue() for channel in self.channels}
         self.stop_listener = threading.Event()
+        for c in channels:
+            self.lc.subscribe(c, self.handler)
 
     def listener_loop(self):
         while True:
@@ -51,9 +55,11 @@ class CassieSwingFootEnv(gym.Env):
     simulation in Drake, with an action space defined by the lcmt_swing_foot_spline_params
     structure.
     """
-    def __init__(self, lcm_address=None, sim=True):
+    def __init__(self, lcm_address=None, sim=True, viz=True):
         self.reward_channel = "CASSIE_SWING_FOOT_REWARD"
         self.fsm_channel = "FINITE_STATE_MACHINE"
+        self.using_sim = sim
+        self.viz = viz
         if sim:
             self.state_channel = "CASSIE_STATE_SIMULATION"
         else:
@@ -65,20 +71,27 @@ class CassieSwingFootEnv(gym.Env):
         # TODO: define the observation, action spaces if we want to use something like StableBaselines
 
         # Infrastructure definitions
-        self.ctrl, self.sim = None, None
+        self.ctrlr, self.sim = None, None
         self.bin_dir = "./bazel-bin/examples/Cassie/"
         self.controller_p = "run_osc_walking_controller_alip"
-        self.simulation_p = "multibody_sim"
+        self.sim_p = "multibody_sim"
         self.ctrlr_options = ["--learn_swing_foot_path=1"]
         self.sim_options = []
+        self.viz_options = ["--floating_base=true", "--channel="+self.state_channel]
 
-        ### Spawning Director Process ###
+        ### Spawning Director & visualizer Process ###
         if self.viz:
-            self.drake_director = sp.Popen(["bazel-bin/director/drake-director", "--use_builtin_scripts=frame,image", "--script", "examples/Cassie/director_scripts/show_time.py"])
+            # why is this not opening a window?
+            self.drake_director = sp.Popen(["./bazel-bin/director/drake-director", "--use_builtin_scripts=frame,image", "--script=examples/Cassie/director_scripts/show_time.py"])
+            self.visualizer = sp.Popen(["bazel-bin/examples/Cassie/visualizer"] + self.viz_options)
+            # self.visualizer = None
+            print("launched director process")
             time.sleep(5)
         else:
             self.drake_director = None
+            self.visualizer = None
             time.sleep(1)
+
 
     def kill_procs(self):
         if self.sim is not None:
@@ -91,6 +104,8 @@ class CassieSwingFootEnv(gym.Env):
     def kill_director(self):
         if self.drake_director is not None:
             self.drake_director.terminate()
+        if self.visualizer is not None:
+            self.visualizer.terminate()
 
     def step(self, action):
         """ Sends swing foot spline action to Drake, and receives back
@@ -115,7 +130,7 @@ class CassieSwingFootEnv(gym.Env):
             # TODO: change this polling to match the publish rate
             time.sleep(0.001)
         reward = self.lcm_interface.get_latest(self.state_channel).value[0]
-        state = select_states(self.lcm_interface.get_latest(self.state_channel))
+        state = self.select_states(self.lcm_interface.get_latest(self.state_channel))
         # TODO: slice out the appropriate state variables
         # check failure on the state (has the robot fallen over?)
         return state, reward, False
@@ -127,10 +142,11 @@ class CassieSwingFootEnv(gym.Env):
         self.kill_procs()
         self.lcm_interface.stop_reset_listening()
         self.ctrlr = sp.Popen([os.path.join(self.bin_dir, self.controller_p)] + self.ctrlr_options)
-        self.sim = sp.Popen([os.path.join(self.bin_dir, self.sim_p)] + self.sim_options)
-        time.sleep(1.5)  # need to let the initial conditions solve, initialize
+        if self.using_sim:
+            self.sim = sp.Popen([os.path.join(self.bin_dir, self.sim_p)] + self.sim_options)
+            time.sleep(1.5)  # need to let the initial conditions solve, initialize
         self.lcm_interface.start_listening()
-        state = select_states(self.lcm_interface.get_latest(self.reward_channel))
+        state = self.select_states(self.lcm_interface.get_latest(self.reward_channel))
         return state
 
 
@@ -143,3 +159,16 @@ class CassieSwingFootEnv(gym.Env):
 
     def check_failure(self, state):
         return False
+
+
+def main():
+    try:
+        env = CassieSwingFootEnv() 
+        # s = env.reset()
+        time.sleep(10)
+    except KeyboardInterrupt:
+        env.kill_procs()
+        env.kill_director()
+
+if __name__ == "__main__":
+    main()

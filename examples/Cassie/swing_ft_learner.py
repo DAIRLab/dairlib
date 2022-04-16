@@ -1,36 +1,22 @@
-import torch
-import lcm
-import yaml
+class RandomExplorer:
+    def __init__(self, nominal_swing, sigmas):
+        """
+        param nominal_swing: 1 + 3 * n_knots + 3 + 3 array
+        param sigmas: 3 * n_knots + 3 + 3 array
+        """
+        self.nominal_swing = nominal_swing
+        self.sigmas = sigmas
+        
+    def select_action(self):
+        """ Outputs a random deviation from the nominal
+        (excluding the n_knots).
+        """
+
+    def collect_data(self, n_steps, cassie_env):
+        """ Runs the random explorer for n_steps steps,
+        gathering n_steps (s, a, r, s') tuples 
+        """
 
 
-class SwingFootLearner:
-    def __init__(self, sim_env):
-        self.sim_env = sim_env
-        return
-
-    def select_action(self, state, train):
-        return
-    
-    def learn(self, num_env_steps):
-        return
-
-
-class QFunctionLearner(SwingFootLearner):
-    def __init__(self, sim_env, net_arch, nominal_params):
-        return
-
-    def train(self, data):
-        return
-
-    def select_action(self, train=True):
-        return
-
-
-class EvolutionaryLearner:
-    def __init__(self)
-        return
-
-
-class SACLearner:
-    def __init__(self, net_arch):
-        return
+if __name__ == "__main__":
+    main()

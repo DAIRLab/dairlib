@@ -562,6 +562,20 @@ cc_library(
 )
 
 py_binary(
+    name = "swing_ft_env",
+    srcs = ["swing_ft_env.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "swing_ft_env.py",
+    deps = [
+        "@lcm//:lcm-python",
+        "//lcmtypes:lcmtypes_robot_py",
+        "@drake//bindings/pydrake"
+    ],
+)
+
+py_binary(
     name = "cassie_virtual_remote_py",
     srcs = ["cassie_virtual_remote.py"],
     data = [

@@ -428,6 +428,11 @@ int DoMain(int argc, char* argv[]) {
   // Constant vel index for double support phase
   // Note that this is the index in state
   std::set<int> idx_const_rom_vel_during_double_support = {3, 4};  //{3, 4, 5};
+  if (gains.double_support_duration == 0) {
+    cout << "Clearing idx_const_rom_vel_during_double_support, because "
+            "double_support_duration = 0\n";
+    idx_const_rom_vel_during_double_support.clear();
+  }
 
   // Create optimal rom trajectory generator
   auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(

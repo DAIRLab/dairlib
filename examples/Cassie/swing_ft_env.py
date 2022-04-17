@@ -54,7 +54,7 @@ class CassieSwingFootEnv:
     simulation in Drake, with an action space defined by the lcmt_swing_foot_spline_params
     structure.
     """
-    def __init__(self, lcm_address=None, sim=True, viz=True):
+    def __init__(self, lcm_address=None, sim=True):
         self.reward_channel = "CASSIE_SWING_FOOT_REWARD"
         self.fsm_channel = "FINITE_STATE_MACHINE"
         self.using_sim = sim
@@ -81,23 +81,7 @@ class CassieSwingFootEnv:
         ### Spawning Director & visualizer Process ###
         # For now, need to launch director and visualizer separately due to
         # pydrake issues.
-        print("Make sure to separately run visualize.sh if you want to visualize the states") 
-
-        '''
-        if self.viz:
-            # why is this not opening a window?
-            # self.drake_director = sp.Popen(["./bazel-bin/director/drake-director", "--use_builtin_scripts=frame,image", "--script=examples/Cassie/director_scripts/show_time.py"])
-            self.drake_director = sp.Popen(["./bazel-bin/director/drake-director"])
-            self.visualizer = sp.Popen(["bazel-bin/examples/Cassie/visualizer"] + self.viz_options)
-            # self.visualizer = None
-            print("launched director process")
-            time.sleep(5)
-            print("done waiting...")
-        else:
-            self.drake_director = None
-            self.visualizer = None
-            time.sleep(1)
-        '''
+        print("CassieSwingFootEnv::Init: Make sure to run director and visualizer") 
 
 
     def kill_procs(self):
@@ -137,10 +121,10 @@ class CassieSwingFootEnv:
             # TODO: change this polling to match the publish rate
             time.sleep(0.001)
         reward = self.lcm_interface.get_latest(self.state_channel).value[0]
-        state = self.select_states(self.lcm_interface.get_latest(self.state_channel))
-        # TODO: slice out the appropriate state variables
+        self.state = self.select_states(self.lcm_interface.get_latest(self.state_channel))
         # check failure on the state (has the robot fallen over?)
-        return state, reward, False
+        failed = self.check_failure(state)
+        return self.state, reward, failed 
 
 
     def reset(self):
@@ -153,19 +137,21 @@ class CassieSwingFootEnv:
             self.sim = sp.Popen([os.path.join(self.bin_dir, self.sim_p)] + self.sim_options)
             time.sleep(1.5)  # need to let the initial conditions solve, initialize
         self.lcm_interface.start_listening()
-        state = self.select_states(self.lcm_interface.get_latest(self.reward_channel))
-        return state
+        self.state = self.select_states(self.lcm_interface.get_latest(self.reward_channel))
+        return self.state
 
 
     def select_states(self, full_cassie_state):
-        """ Selects relevant states from the full robot_out
-        LCM message
+        """ Selects reduced states from the full robot_out
+        LCM message. For now selecting only CoM pos + vel.
         """
-        return full_cassie_state 
+        return list(full_cassie_state.position)[0:7] + list(full_cassie_state.velocity)[0:6]
 
 
     def check_failure(self, state):
-        return False
+        """ Checks if the robot has fallen down
+        """
+        return state[6] < 0.6:
 
 
 def main():

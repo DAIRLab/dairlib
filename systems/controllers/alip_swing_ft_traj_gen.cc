@@ -270,9 +270,10 @@ PiecewisePolynomial<double> AlipSwingFootTrajGenerator::CreateSplineForSwingFoot
     const double end_time_of_this_interval, const double stance_duration,
     const Vector3d& init_swing_foot_pos, const Vector2d& x_fs,
     double stance_foot_height, lcmt_swing_foot_spline_params& params) const {
-  // Two segment of cubic polynomial with velocity constraints
+
   std::vector<double> T_waypoint(params.n_knot);
   std::vector<MatrixXd> Y(params.n_knot, MatrixXd::Zero(3, 1));
+
   for (int i = 0; i < params.n_knot; i++) {
     T_waypoint[i] = start_time_of_this_interval +
         ((double) i) / (params.n_knot - 1)*
@@ -284,6 +285,7 @@ PiecewisePolynomial<double> AlipSwingFootTrajGenerator::CreateSplineForSwingFoot
      knot(2) += stance_foot_height;
      Y[i] = knot;
   }
+
   Vector3d Y_dot_start = Eigen::Map<Vector3d>(params.swing_foot_vel_initial);
   Vector3d Y_dot_end = Eigen::Map<Vector3d>(params.swing_foot_vel_final);
 

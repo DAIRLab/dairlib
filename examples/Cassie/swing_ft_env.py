@@ -76,9 +76,10 @@ class CassieSwingFootEnv:
         self.bin_dir = "./bazel-bin/examples/Cassie/"
         self.controller_p = "run_osc_walking_controller_alip"
         self.sim_p = "multibody_sim"
-        self.ctrlr_options = ["--learn_swing_foot_path=1"]
+        self.ctrlr_options = ["--learn_swing_foot_path"]
         # self.ctrlr_options = []
-        self.sim_options = []
+        self.sim_options = ["--publish_rate=2000", "--init_height=0.95",
+                            "--target_realtime_rate=1.0"]
         self.viz_options = ["--floating_base=true", "--channel="+self.state_channel]
 
         ### Spawning Director & visualizer Process ###
@@ -104,10 +105,10 @@ class CassieSwingFootEnv:
     def fill_action_message(self, action):
         action_msg = lcmt_swing_foot_spline_params()
         action_msg.n_knot = int(action[0])
-        lst = np.zeros((3, int(action[0])))
-        for k in range(3):
-            for n in range(action[0]):
-                lst[k][n] = action[1 + 3 * n + k]
+        lst = np.zeros((int(action[0]), 3))
+        for k in range(action[0]):
+            for n in range(3):
+                lst[k][n] = action[1 + 3 * k + n]
         action_msg.knot_xyz = lst.tolist()
         action_msg.swing_foot_vel_initial = action[-6:-3]
         action_msg.swing_foot_vel_final = action[-3:]
@@ -136,22 +137,41 @@ class CassieSwingFootEnv:
 
 
     def reset(self):
-        """ Restarts sim & controller, returns state
         """
+        Restarts sim & controller, returns state
+        """
+
+        # Kill controller and sim if running
         self.kill_procs()
+
+        # reset LCM buffer
         self.lcm_interface.stop_reset_listening()
-        self.lcm_interface.publish(self.action_channel, self.fill_action_message(self.default_swing))
-        self.ctrlr = sp.Popen([os.path.join(self.bin_dir, self.controller_p)] + self.ctrlr_options)
+
+        #  Start walking controller process
+        self.ctrlr = sp.Popen(
+            [os.path.join(self.bin_dir, self.controller_p)] + self.ctrlr_options)
+
+        # Wait for controller diagram to build before
+        # sending default swing foot params message
+        time.sleep(0.1)
+        self.lcm_interface.publish(
+            self.action_channel, self.fill_action_message(self.default_swing))
+
+        # start simulation
         if self.using_sim:
-            self.sim = sp.Popen([os.path.join(self.bin_dir, self.sim_p)] + self.sim_options)
-            time.sleep(1.5)  # need to let the initial conditions solve, initialize
+            self.sim = sp.Popen(
+                [os.path.join(self.bin_dir, self.sim_p)] + self.sim_options)
+            # need to let the initial conditions solve, initialize
+            time.sleep(1.5)
         self.lcm_interface.start_listening()
-        self.state = self.select_states(self.lcm_interface.get_latest(self.reward_channel))
+        self.state = self.select_states(
+            self.lcm_interface.get_latest(self.reward_channel))
         return self.state
 
 
     def select_states(self, full_cassie_state):
-        """ Selects reduced states from the full robot_out
+        """
+        Selects reduced states from the full robot_out
         LCM message. For now selecting only CoM pos + vel.
         """
         return list(full_cassie_state.position)[0:7] + list(full_cassie_state.velocity)[0:6]

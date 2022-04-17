@@ -49,6 +49,7 @@ class RandomExplorer:
         data = []
         done = False
         s = cassie_env.reset()
+        print("Reset method finished!")
         for _ in range(n_steps):
             a = self.select_action()
             s_prime, r, d = cassie_env.step(a)
@@ -60,7 +61,6 @@ class RandomExplorer:
 
 def main():
     nominal_swing = get_default_params()
-    print(nominal_swing)
     explorer = RandomExplorer(nominal_swing, np.zeros(len(nominal_swing)))
     cassie_env = CassieSwingFootEnv(nominal_swing)
     data = explorer.collect_data(10, cassie_env)

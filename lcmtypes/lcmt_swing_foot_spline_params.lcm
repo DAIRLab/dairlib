@@ -2,7 +2,7 @@ package dairlib;
 
 struct lcmt_swing_foot_spline_params {
     int32_t n_knot;
-    double knot_xyz[3][n_knot];
+    double knot_xyz[n_knot][3];
     double swing_foot_vel_initial[3];
     double swing_foot_vel_final[3];
 }

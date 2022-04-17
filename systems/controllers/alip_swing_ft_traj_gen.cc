@@ -139,7 +139,7 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
     swing_foot_params_port_ =
         this->DeclareAbstractInputPort(
             "swing foot parameters",
-            drake::Value<lcmt_swing_foot_spline_params>(default_params)).get_index();
+            drake::Value<lcmt_swing_foot_spline_params>(default_spline_params_)).get_index();
   }
 
 }

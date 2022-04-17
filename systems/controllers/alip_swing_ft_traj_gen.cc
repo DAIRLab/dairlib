@@ -92,12 +92,6 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
   this->DeclareAbstractOutputPort("swing_foot_xyz", traj_instance,
                                   &AlipSwingFootTrajGenerator::CalcTrajs);
 
-  if (learn_params_) {
-    swing_foot_params_port_ =
-        this->DeclareAbstractInputPort(
-            "swing foot parameters",
-            drake::Value<lcmt_swing_foot_spline_params>{}).get_index();
-  }
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(
       &AlipSwingFootTrajGenerator::DiscreteVariableUpdate);
@@ -140,6 +134,14 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
   }
   default_spline_params_.swing_foot_vel_final[2] =
       desired_final_vertical_foot_velocity;
+
+  if (learn_params_) {
+    swing_foot_params_port_ =
+        this->DeclareAbstractInputPort(
+            "swing foot parameters",
+            drake::Value<lcmt_swing_foot_spline_params>(default_params)).get_index();
+  }
+
 }
 
 EventStatus AlipSwingFootTrajGenerator::DiscreteVariableUpdate(

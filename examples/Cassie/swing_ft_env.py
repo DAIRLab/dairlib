@@ -7,6 +7,7 @@ import threading
 from drake import lcmt_scope
 import subprocess as sp
 import time 
+import numpy as np
 
 from dairlib import lcmt_swing_foot_spline_params, lcmt_robot_output
 
@@ -31,7 +32,7 @@ class LCMInterface:
  
     def start_listening(self):
         self.stop_listener.clear()
-        self.listener_thread = threading.Thread(target=self.listener_loop) 
+        self.listener_thread = threading.Thread(target=self.listener_loop)
         self.listener_thread.start()
         return
 
@@ -102,11 +103,12 @@ class CassieSwingFootEnv:
 
     def fill_action_message(self, action):
         action_msg = lcmt_swing_foot_spline_params()
-        action_msg.n_knot = action[0]
-        action_msg.knot_xyz = [[0]*int(action[0])] * 3
+        action_msg.n_knot = int(action[0])
+        lst = np.zeros((3, int(action[0])))
         for k in range(3):
             for n in range(action[0]):
-                action_msg.knot_xyz[k][n] = action[1 + 3 * n + k]
+                lst[k][n] = action[1 + 3 * n + k]
+        action_msg.knot_xyz = lst.tolist()
         action_msg.swing_foot_vel_initial = action[-6:-3]
         action_msg.swing_foot_vel_final = action[-3:]
         return action_msg

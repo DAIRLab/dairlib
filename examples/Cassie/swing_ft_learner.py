@@ -10,9 +10,10 @@ def get_default_params(gains_file = "examples/Cassie/osc/osc_walking_gains_alip.
     knots = []
     for i in range(n_knot):
         t = i/(n_knot - 1)
-        knots += [0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
+        x = [0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
                       0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
                       (gains["mid_foot_height"] / 0.58) * np.cos(np.pi * (t - 0.5))*t]
+        knots += x
     vel_initial = [0, 0, 0]
     vel_final = [0, 0, gains["final_foot_velocity_z"]]
     return [n_knot] + knots + vel_initial + vel_final
@@ -59,6 +60,7 @@ class RandomExplorer:
 
 def main():
     nominal_swing = get_default_params()
+    print(nominal_swing)
     explorer = RandomExplorer(nominal_swing, np.zeros(len(nominal_swing)))
     cassie_env = CassieSwingFootEnv(nominal_swing)
     data = explorer.collect_data(10, cassie_env)

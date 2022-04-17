@@ -10,11 +10,11 @@ def get_default_params(gains_file = "examples/Cassie/osc/osc_walking_gains_alip.
     knots = []
     for i in range(n_knot):
         t = i/(n_knot - 1)
-        knots.append([0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
+        knots += [0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
                       0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
-                      (gains["mid_foot_height"] / 0.58) * np.cos(np.pi * (t - 0.5))*t])
+                      (gains["mid_foot_height"] / 0.58) * np.cos(np.pi * (t - 0.5))*t]
     vel_initial = [0, 0, 0]
-    vel_final = [0, 0, gains["final_foot_velocity_z"]
+    vel_final = [0, 0, gains["final_foot_velocity_z"]]
     return [n_knot] + knots + vel_initial + vel_final
 
 
@@ -30,7 +30,8 @@ class RandomExplorer:
         elif len(sigmas) == 3 * nominal_swing[0] + 7:
             self.sigmas = sigmas
         else:
-            print("sigmas must be of the correct length!")
+            print(f"sigmas must be of the correct length! is currently {len(sigmas)}")
+            print(f"needs to be {3 * nominal_swing[0] + 6} or {3 * nominal_swing[0] + 7}")
             self.sigmas = [0] * (3 * nominal_swing[0] + 7)
         
     def select_action(self):
@@ -59,7 +60,7 @@ class RandomExplorer:
 def main():
     nominal_swing = get_default_params()
     explorer = RandomExplorer(nominal_swing, np.zeros(len(nominal_swing)))
-    cassie_env = CassieSwingFootEnv()
+    cassie_env = CassieSwingFootEnv(nominal_swing)
     data = explorer.collect_data(10, cassie_env)
     
 

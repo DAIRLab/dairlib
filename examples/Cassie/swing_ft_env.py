@@ -54,11 +54,11 @@ class CassieSwingFootEnv:
     simulation in Drake, with an action space defined by the lcmt_swing_foot_spline_params
     structure.
     """
-    def __init__(self, lcm_address=None, sim=True):
+    def __init__(self, default_swing, lcm_address=None, sim=True):
         self.reward_channel = "CASSIE_SWING_FOOT_REWARD"
         self.fsm_channel = "FINITE_STATE_MACHINE"
+        self.action_channel = "SWING_FOOT_PARAMS"
         self.using_sim = sim
-        self.viz = viz
         if sim:
             self.state_channel = "CASSIE_STATE_SIMULATION"
         else:
@@ -68,6 +68,7 @@ class CassieSwingFootEnv:
                                           [lcmt_scope, lcmt_scope, lcmt_robot_output])
 
         # TODO: define the observation, action spaces if we want to use something like StableBaselines
+        self.default_swing = default_swing
 
         # Infrastructure definitions
         self.ctrlr, self.sim = None, None
@@ -75,6 +76,7 @@ class CassieSwingFootEnv:
         self.controller_p = "run_osc_walking_controller_alip"
         self.sim_p = "multibody_sim"
         self.ctrlr_options = ["--learn_swing_foot_path=1"]
+        # self.ctrlr_options = []
         self.sim_options = []
         self.viz_options = ["--floating_base=true", "--channel="+self.state_channel]
 
@@ -98,6 +100,17 @@ class CassieSwingFootEnv:
         if self.visualizer is not None:
             self.visualizer.terminate()
 
+    def fill_action_message(self, action):
+        action_msg = lcmt_swing_foot_spline_params()
+        action_msg.n_knot = action[0]
+        action_msg.knot_xyz = [[0]*int(action[0])] * 3
+        for k in range(3):
+            for n in range(action[0]):
+                action_msg.knot_xyz[k][n] = action[1 + 3 * n + k]
+        action_msg.swing_foot_vel_initial = action[-6:-3]
+        action_msg.swing_foot_vel_final = action[-3:]
+        return action_msg
+
     def step(self, action):
         """ Sends swing foot spline action to Drake, and receives back
         the new state and reward. Runs SYNCHRNOUSLY with sim so is 
@@ -106,14 +119,7 @@ class CassieSwingFootEnv:
         param action: 1 + 3*action[0] + 3 + 3 array
         """
         assert (len(action) == 1+3*action[0] + 6), "action length must match # of knot points!"
-        # fill out action message lcm type
-        action_msg = lcmt_swing_foot_spline_params()
-        action_msg.n_knot = action[0]
-        action_msg.knot_xyz = [[0]*3] * int(action[0])
-        for n in range(action[0]):
-            action_msg.knot_xyz[n] = action[1+3*n:1+3*(n+1)]
-        action_msg.swing_foot_vel_initial = action[-6:-3]
-        action_msg.swing_foot_vel_final = action[-3:]
+        action_msg = self.fill_action_message(action)
 
         cur_fsm_state = self.lcm_interface.get_latest(self.fsm_channel).value[0]
         self.lcm_interface.publish(self.action_channel, action_msg)
@@ -132,6 +138,7 @@ class CassieSwingFootEnv:
         """
         self.kill_procs()
         self.lcm_interface.stop_reset_listening()
+        self.lcm_interface.publish(self.action_channel, self.fill_action_message(self.default_swing))
         self.ctrlr = sp.Popen([os.path.join(self.bin_dir, self.controller_p)] + self.ctrlr_options)
         if self.using_sim:
             self.sim = sp.Popen([os.path.join(self.bin_dir, self.sim_p)] + self.sim_options)
@@ -151,7 +158,7 @@ class CassieSwingFootEnv:
     def check_failure(self, state):
         """ Checks if the robot has fallen down
         """
-        return state[6] < 0.6:
+        return state[6] < 0.6
 
 
 def main():

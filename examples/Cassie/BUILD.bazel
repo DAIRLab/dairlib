@@ -571,9 +571,21 @@ py_binary(
     deps = [
         "@lcm//:lcm-python",
         "//lcmtypes:lcmtypes_robot_py",
-        "@drake//bindings/pydrake"
+        "@drake//bindings/pydrake",
     ],
 )
+
+
+py_binary(
+    name = "test_director",
+    srcs = ["test_director.py"],
+    main = "test_director.py",
+    deps = [
+        "@lcm//:lcm-python",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 
 py_binary(
     name = "cassie_virtual_remote_py",

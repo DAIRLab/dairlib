@@ -1,6 +1,6 @@
 import gym
-import os
 from gym import spaces
+import os
 import lcm
 import queue
 import threading
@@ -17,7 +17,6 @@ class LCMInterface:
         self.channels = channels 
         self.message_types = {channels[i]:message_types[i] for i in range(len(channels))}
         self.lc = lcm.LCM()
-        self.channels = channels
         self.queues = {channel:queue.LifoQueue() for channel in self.channels}
         self.stop_listener = threading.Event()
         for c in channels:
@@ -50,7 +49,7 @@ class LCMInterface:
         self.lc.publish(channel, message.encode())
 
 
-class CassieSwingFootEnv(gym.Env):
+class CassieSwingFootEnv:
     """Class that provides and interface to run_osc_walking_controller_alip
     simulation in Drake, with an action space defined by the lcmt_swing_foot_spline_params
     structure.
@@ -80,17 +79,25 @@ class CassieSwingFootEnv(gym.Env):
         self.viz_options = ["--floating_base=true", "--channel="+self.state_channel]
 
         ### Spawning Director & visualizer Process ###
+        # For now, need to launch director and visualizer separately due to
+        # pydrake issues.
+        print("Make sure to separately run visualize.sh if you want to visualize the states") 
+
+        '''
         if self.viz:
             # why is this not opening a window?
-            self.drake_director = sp.Popen(["./bazel-bin/director/drake-director", "--use_builtin_scripts=frame,image", "--script=examples/Cassie/director_scripts/show_time.py"])
+            # self.drake_director = sp.Popen(["./bazel-bin/director/drake-director", "--use_builtin_scripts=frame,image", "--script=examples/Cassie/director_scripts/show_time.py"])
+            self.drake_director = sp.Popen(["./bazel-bin/director/drake-director"])
             self.visualizer = sp.Popen(["bazel-bin/examples/Cassie/visualizer"] + self.viz_options)
             # self.visualizer = None
             print("launched director process")
             time.sleep(5)
+            print("done waiting...")
         else:
             self.drake_director = None
             self.visualizer = None
             time.sleep(1)
+        '''
 
 
     def kill_procs(self):
@@ -164,11 +171,9 @@ class CassieSwingFootEnv(gym.Env):
 def main():
     try:
         env = CassieSwingFootEnv() 
-        # s = env.reset()
-        time.sleep(10)
+        s = env.reset()
     except KeyboardInterrupt:
         env.kill_procs()
-        env.kill_director()
 
 if __name__ == "__main__":
     main()

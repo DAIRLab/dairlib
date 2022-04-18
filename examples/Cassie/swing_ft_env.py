@@ -63,6 +63,7 @@ class CassieSwingFootEnv:
         self.fsm_channel = "FINITE_STATE_MACHINE"
         self.action_channel = "SWING_FOOT_PARAMS"
         self.using_sim = sim
+        self.single_support_states = [0, 1]
         if sim:
             self.state_channel = "CASSIE_STATE_SIMULATION"
         else:
@@ -134,12 +135,16 @@ class CassieSwingFootEnv:
         self.lcm_interface.publish(self.action_channel, action_msg)
         val = cur_fsm_state
         reward = 0
+
+        while int(cur_fsm_state) not in self.single_support_states:
+            cur_fsm_state = self.lcm_interface.get_latest(self.fsm_channel).value[0]
+            time.sleep(.001)
+
         while val == cur_fsm_state:
-            # trying to resolve some timing ambiguities with when we're fetching the reward
-            reward = self.lcm_interface.get_latest(self.reward_channel).value[0]
             val = self.lcm_interface.get_latest(self.fsm_channel).value[0]
             time.sleep(0.001)
-        # reward = self.lcm_interface.get_latest(self.reward_channel).value[0]
+
+        reward = self.lcm_interface.get_latest(self.reward_channel).value[0]
         self.state = self.select_states(self.lcm_interface.get_latest(self.state_channel))
         # check failure on the state (has the robot fallen over?)
         failed = self.check_failure(self.state)

@@ -1438,6 +1438,7 @@ if __name__ == "__main__":
   # 2D plot (cost vs task)
   # model_slices = []
   model_slices = [1, 50, 100, 150]
+  # model_slices = [1, 50, 100, 150, 200, 250, 300]
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
@@ -1448,6 +1449,7 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
   model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
+  # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [75]
 

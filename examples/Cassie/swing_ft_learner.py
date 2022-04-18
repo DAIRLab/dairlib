@@ -52,18 +52,23 @@ class RandomExplorer:
         print("Reset method finished!")
         for _ in range(n_steps):
             a = self.select_action()
+            print(f"sending action {a}")
             s_prime, r, d = cassie_env.step(a)
+            print(f"finished step and got reward {r}")
             data.append([s, a, r, s_prime])
             s = s_prime
             done = d
         return data
-        
+
 
 def main():
     nominal_swing = get_default_params()
-    explorer = RandomExplorer(nominal_swing, np.zeros(len(nominal_swing)))
+    sigmas = np.ones(len(nominal_swing)) * 0.05
+    sigmas[0] = 0
+    explorer = RandomExplorer(nominal_swing, sigmas)
     cassie_env = CassieSwingFootEnv(nominal_swing)
     data = explorer.collect_data(10, cassie_env)
+    cassie_env.kill_procs()
     
 
 if __name__ == "__main__":

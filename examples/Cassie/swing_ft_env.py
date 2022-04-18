@@ -18,7 +18,9 @@ class LCMInterface:
         self.channels = channels 
         self.message_types = {channels[i]:message_types[i] for i in range(len(channels))}
         self.lc = lcm.LCM()
-        self.queues = {channel:queue.LifoQueue() for channel in self.channels}
+        # self.queues = {channel:queue.LifoQueue() for channel in self.channels}
+        # self.values = {channel:None for channel in self.channels}
+        # self.locks = {channel:threading.Lock() for channel in self.channels}
         self.stop_listener = threading.Event()
         for c in channels:
             self.lc.subscribe(c, self.handler)
@@ -56,7 +58,7 @@ class CassieSwingFootEnv:
     structure.
     """
     def __init__(self, default_swing, lcm_address=None, sim=True):
-        self.reward_channel = "CASSIE_SWING_FOOT_REWARD"
+        self.reward_channel = "SWING_FOOT_REWARD"
         self.fsm_channel = "FINITE_STATE_MACHINE"
         self.action_channel = "SWING_FOOT_PARAMS"
         self.using_sim = sim
@@ -106,7 +108,7 @@ class CassieSwingFootEnv:
         action_msg = lcmt_swing_foot_spline_params()
         action_msg.n_knot = int(action[0])
         lst = np.zeros((int(action[0]), 3))
-        for k in range(action[0]):
+        for k in range(int(action[0])):
             for n in range(3):
                 lst[k][n] = action[1 + 3 * k + n]
         action_msg.knot_xyz = lst.tolist()
@@ -126,13 +128,14 @@ class CassieSwingFootEnv:
 
         cur_fsm_state = self.lcm_interface.get_latest(self.fsm_channel).value[0]
         self.lcm_interface.publish(self.action_channel, action_msg)
-        while self.lcm_interface.get_latest(self.fsm_channel).value[0] == cur_fsm_state:
-            # TODO: change this polling to match the publish rate
+        val = cur_fsm_state
+        while val == cur_fsm_state:
+            val = self.lcm_interface.get_latest(self.fsm_channel).value[0]
             time.sleep(0.001)
-        reward = self.lcm_interface.get_latest(self.state_channel).value[0]
+        reward = self.lcm_interface.get_latest(self.reward_channel).value[0]
         self.state = self.select_states(self.lcm_interface.get_latest(self.state_channel))
         # check failure on the state (has the robot fallen over?)
-        failed = self.check_failure(state)
+        failed = self.check_failure(self.state)
         return self.state, reward, failed 
 
 
@@ -165,7 +168,7 @@ class CassieSwingFootEnv:
             time.sleep(1.5)
         self.lcm_interface.start_listening()
         self.state = self.select_states(
-            self.lcm_interface.get_latest(self.reward_channel))
+            self.lcm_interface.get_latest(self.state_channel))
         return self.state
 
 

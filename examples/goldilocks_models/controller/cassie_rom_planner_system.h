@@ -209,6 +209,10 @@ class CassiePlannerWithMixedRomFom : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd x_guess_left_in_front_post_;
   Eigen::VectorXd x_guess_right_in_front_post_;
 
+  // Index of state which we initialize to 1 in order to avoid singularity
+  // (which messes with gradient)
+  int idx_state_init_to_1_;
+
   // For warm start with previous solution
   mutable int prev_global_fsm_idx_ = -1;
   mutable int prev_first_mode_knot_idx_ = -1;

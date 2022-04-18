@@ -751,6 +751,15 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->name() == "2D lipm");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0}));
 
+  rom = CreateRom(30, robot_option, plant_, false);
+  EXPECT_TRUE(rom->mapping_basis().skip_inds() == vector<int>({0, 1, 2, 3, 4, 5, 6, 16, 12, 8, 10, 14, 18}));
+  EXPECT_TRUE(rom->mapping_basis().n_order() == 0);
+  EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
+  EXPECT_TRUE(rom->dynamic_basis().n_order() == 2);
+  EXPECT_TRUE(rom->dynamic_basis().n_q() == 6);
+  EXPECT_TRUE(rom->name() == "3D lipm");
+  EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
+
   // clang-format on
 }
 

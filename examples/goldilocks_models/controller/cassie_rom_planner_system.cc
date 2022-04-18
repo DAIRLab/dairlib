@@ -529,6 +529,19 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     DRAKE_DEMAND(!param_.init_file.empty());
   }
 
+  // Index of state which we initialize to 1 in order to avoid singularity
+  // (which messes with gradient)
+  if ((param_.rom_option == 0) || (param_.rom_option == 1) ||
+      (param_.rom_option == 28) || (param_.rom_option == 29)) {
+    idx_state_init_to_1_ = 1;
+  } else if ((param_.rom_option == 4) ||
+             ((param_.rom_option >= 8) && (param_.rom_option <= 27)) ||
+             (param_.rom_option == 30)) {
+    idx_state_init_to_1_ = 2;
+  } else {
+    DRAKE_UNREACHABLE();
+  }
+
   // Some checks
   // We hard-coded the joint index in RomTrajOptCassie::AddFomRegularizationCost
   DRAKE_DEMAND(pos_map_.at("ankle_joint_left") == 7 + 8);
@@ -941,15 +954,8 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // Default initial guess to avoid singularity (which messes with gradient)
   for (int i = 0; i < num_time_samples_.size(); i++) {
     for (int j = 0; j < num_time_samples_.at(i); j++) {
-      if ((param_.rom_option == 0) || (param_.rom_option == 1) ||
-          (param_.rom_option == 28) || (param_.rom_option == 29)) {
-        trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(1), 1);
-      } else if ((param_.rom_option == 4) ||
-                 ((param_.rom_option >= 8) && (param_.rom_option <= 27))) {
-        trajopt.SetInitialGuess((trajopt.state_vars_by_mode(i, j))(2), 1);
-      } else {
-        DRAKE_UNREACHABLE();
-      }
+      trajopt.SetInitialGuess(
+          (trajopt.state_vars_by_mode(i, j))(idx_state_init_to_1_), 1);
     }
   }
 

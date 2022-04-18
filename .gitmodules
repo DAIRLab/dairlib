@@ -1,0 +1,3 @@
+[submodule "examples/trifinger_manipulation"]
+	path = examples/trifinger_manipulation
+	url = git@github.com:wanxinjin/trifinger_manipulation

@@ -50,8 +50,12 @@ drake::systems::EventStatus SwingFootRewardCalculator::StateUpdate(
   int curr_fsm = osc_debug.fsm_state;
   int prev_fsm = state->get_discrete_state(prev_fsm_state_idx_).value()(0);
 
-  if (curr_fsm != prev_fsm) {
-    state->get_mutable_discrete_state(running_reward_idx_).SetZero();
+  if (curr_fsm != prev_fsm ) {
+    if (std::find(single_support_fsm_states_.begin(),
+              single_support_fsm_states_.end(), curr_fsm) !=
+        single_support_fsm_states_.end()) {
+      state->get_mutable_discrete_state(running_reward_idx_).SetZero();
+    }
   }
   // return if no new messages or double stance or controller just started
   if (prev_time == new_time || prev_time == -1 ||

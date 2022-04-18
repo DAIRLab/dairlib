@@ -53,9 +53,10 @@ class LCMInterface:
 
 
 class CassieSwingFootEnv:
-    """Class that provides and interface to run_osc_walking_controller_alip
-    simulation in Drake, with an action space defined by the lcmt_swing_foot_spline_params
-    structure.
+    """
+        Class that provides and interface to run_osc_walking_controller_alip
+        simulation in Drake, with an action space defined by the
+        lcmt_swing_foot_spline_params structure.
     """
     def __init__(self, default_swing, lcm_address=None, sim=True):
         self.reward_channel = "SWING_FOOT_REWARD"
@@ -67,10 +68,12 @@ class CassieSwingFootEnv:
         else:
             self.state_channel = "CASSIE_STATE_DISPATCHER"
 
-        self.lcm_interface = LCMInterface([self.reward_channel, self.fsm_channel, self.state_channel],
-                                          [lcmt_scope, lcmt_scope, lcmt_robot_output])
+        self.lcm_interface = LCMInterface(
+            [self.reward_channel, self.fsm_channel, self.state_channel],
+            [lcmt_scope, lcmt_scope, lcmt_robot_output])
 
-        # TODO: define the observation, action spaces if we want to use something like StableBaselines
+        # TODO: define the observation, action spaces if we want
+        #  to use something like StableBaselines
         self.default_swing = default_swing
 
         # Infrastructure definitions
@@ -123,7 +126,8 @@ class CassieSwingFootEnv:
 
         param action: 1 + 3*action[0] + 3 + 3 array
         """
-        assert (len(action) == 1+3*action[0] + 6), "action length must match # of knot points!"
+        assert (len(action) == 1+3*action[0] + 6), \
+            "action length must match # of knot points!"
         action_msg = self.fill_action_message(action)
 
         cur_fsm_state = self.lcm_interface.get_latest(self.fsm_channel).value[0]
@@ -140,7 +144,6 @@ class CassieSwingFootEnv:
         # check failure on the state (has the robot fallen over?)
         failed = self.check_failure(self.state)
         return self.state, reward, failed 
-
 
     def reset(self):
         """

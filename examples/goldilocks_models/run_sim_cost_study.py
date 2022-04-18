@@ -689,6 +689,10 @@ def GetSamplesToPlot(model_indices, log_indices):
   cost_threshold = 3
   for i in range(len(cmt)):
     mem = cmt[i]
+    # if mem[1] != 260:
+    #   continue
+    # if mem[2] > 0.3:
+    #   continue
     if mem[0] > cost_threshold:
       print("(iter, log) = (%.0f, %.0f) has high cost %.3f" %
             (mem[1], log[i], mem[0]))
@@ -879,7 +883,11 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
 
     # Log the improvement percentage into a file
     masked_z = z[~np.isnan(z)]
-    message = "Max cost improvement for task (sl, ph) = (%.2f, %.2f) m is %.1f %%\n" % (task_slice_value[0], task_slice_value[1], float((masked_z[0] - min(masked_z)) / masked_z[0] * 100))
+    message = ""
+    if len(masked_z) == 0:
+      message = "Max cost improvement for task (sl, ph) = (%.2f, %.2f) m is NaN, because len(masked_z) = 0\n";
+    else:
+      message = "Max cost improvement for task (sl, ph) = (%.2f, %.2f) m is %.1f %%\n" % (task_slice_value[0], task_slice_value[1], float((masked_z[0] - min(masked_z)) / masked_z[0] * 100))
     print(message)
     f = open(eval_dir + "costs_info.txt", "a")
     f.write(message)

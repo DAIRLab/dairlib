@@ -24,6 +24,12 @@ py_library(
 )
 
 py_library(
+    name = "ekf_debug",
+    srcs = ["ekf_debug.py"],
+    deps = [],
+)
+
+py_library(
     name = "cassie_plot_config",
     srcs = ["cassie_plot_config.py"],
     deps = [],

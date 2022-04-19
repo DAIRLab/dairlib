@@ -879,8 +879,8 @@ EventStatus CassieStateEstimator::Update(
 
     ekf.CorrectKinematics(measured_kinematics, &debug);
 
-    lcmt_ekf_debug_out msg =
-        state->get_mutable_abstract_state<lcmt_ekf_debug_out>(ekf_debug_idx_);
+    lcmt_ekf_debug_out msg;
+
     msg.n_x = nx;
     msg.n_theta = ntheta;
     msg.n_p = np;
@@ -908,6 +908,7 @@ EventStatus CassieStateEstimator::Update(
            sizeof(float) * ntheta);
     memcpy(msg.Theta_corr.data(), debug.Theta_corr.data(),
            sizeof(float) * ntheta);
+    state->get_mutable_abstract_state<lcmt_ekf_debug_out>(ekf_debug_idx_) = msg;
   } else {
     ekf.CorrectKinematics(measured_kinematics, {});
   }

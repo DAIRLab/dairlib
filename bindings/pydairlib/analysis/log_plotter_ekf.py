@@ -7,6 +7,7 @@ import numpy as np
 
 import dairlib
 from process_lcm_log import get_log_data
+from mbp_plotting_utils import process_ekf_channel
 from pydairlib.common import plot_styler, plotting_utils
 
 ekf_channel = {'EKF_DEBUG_OUT': dairlib.lcmt_ekf_debug_out}
@@ -51,8 +52,10 @@ def animate_covariance(P):
 def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
-    ekf_data = get_log_data(log, ekf_channel, -1, process_ekf)
-    anim = animate_covariance(ekf_data['P_prop'])
+    ekf_data = get_log_data(log, ekf_channel, -1, process_ekf_channel, "EKF_DEBUG_OUT")
+    plt.plot(ekf_data['t'], ekf_data['v_prop'])
+
+    # anim = animate_covariance(ekf_data['P_prop'])
     plt.show()
 
 

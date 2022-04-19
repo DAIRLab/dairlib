@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 from pydairlib.common import plot_styler, plotting_utils
 from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost
+from ekf_debug import ekf_robot_state_history
 from pydairlib.multibody import makeNameToPositionsMap, \
     makeNameToVelocitiesMap, makeNameToActuatorsMap, \
     createStateNameVectorFromMap, createActuatorNameVectorFromMap
@@ -110,6 +111,16 @@ def make_point_positions_from_q(
                                            frame_to_calc_position_in).ravel()
 
     return pos
+
+
+def process_ekf_channel(data, ekf_channel):
+    ekf = ekf_robot_state_history()
+    for msg in data[ekf_channel]:
+        ekf.append(msg)
+    ekf.convert()
+
+    return {'t': ekf.t,
+            'v_prop': ekf.v_prop}
 
 
 def process_osc_channel(data):

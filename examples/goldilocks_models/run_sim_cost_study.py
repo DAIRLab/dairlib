@@ -181,7 +181,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--channel_y=%s' % ch.channel_y,
     '--channel_u=%s' % ch.channel_u,
     '--lcm_url_port=%d' % port_idx,
-    '--close_sim_gap=true',
+    '--close_sim_gap=%s' % str(close_sim_gap).lower(),
     '--stride_length=%.3f' % task_sl,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--iter=%d' % rom_iter_idx,
@@ -1384,6 +1384,7 @@ if __name__ == "__main__":
   ### global parameters
   sim_end_time = 10.0
   spring_model = False
+  close_sim_gap = True
   # Parameters that are modified often
   target_realtime_rate = 0.1  # 0.04
   foot_step_from_planner = True

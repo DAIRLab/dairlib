@@ -657,16 +657,19 @@ void RomTrajOpt::AddConstraintAndCostForLastFootStep(
                 {x0_vars_by_mode(num_modes_), predicted_com_vel_var_});
 
   // Desired value for predicted velocity
-  // It looks like the constraint version is solved much faster
+  // 20211109: It looks like the constraint version is solved much faster
+  // 20220420: Cannot use the constraint version because it sometimes caused
+  // overconstraining (see 20220420 folder of mpc improvement). Also, the speed
+  // doesn't seem to be affected in some solves, so maybe it's not too bad.
   // 1. via cost
-  /*PrintStatus("Adding cost -- predicted com vel one step after horizon");
+  PrintStatus("Adding cost -- predicted com vel one step after horizon");
   predict_lipm_v_bindings_.push_back(
       AddQuadraticErrorCost(w_predict_lipm_v * MatrixXd::Identity(2, 2),
-                            des_predicted_xy_vel, predicted_com_vel_var_));*/
+                            des_predicted_xy_vel, predicted_com_vel_var_));
   // 2. via constraint
-  PrintStatus("Adding constraint -- predicted com vel one step after horizon");
-  AddBoundingBoxConstraint(des_predicted_xy_vel, des_predicted_xy_vel,
-                           predicted_com_vel_var_);
+  /*PrintStatus("Adding constraint -- predicted com vel one step after
+  horizon"); AddBoundingBoxConstraint(des_predicted_xy_vel,
+  des_predicted_xy_vel, predicted_com_vel_var_);*/
 }
 
 void RomTrajOpt::AddCascadedLipmMPC(

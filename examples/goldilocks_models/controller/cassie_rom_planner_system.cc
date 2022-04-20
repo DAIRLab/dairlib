@@ -732,16 +732,6 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   double remaining_single_support_duration =
       std::max(0.0, first_mode_duration - double_support_duration_);
 
-  // Hacks -- seems like the problem is sometimes overconstrained
-  // when the swing foot is close to touch down, so I just try not solving the
-  // problem during this window (the swing foot constraint which force the swing
-  // foot close to the next time down location)
-  // TODO: look into some failure cases to fix the root of the bug
-  //  if (remaining_single_support_duration < 0.05) {
-  //    *traj_msg = previous_output_msg_;
-  //    return;
-  //  }
-
   ///
   /// Get desired xy position and velocity
   ///

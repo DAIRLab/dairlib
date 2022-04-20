@@ -52,7 +52,7 @@ def animate_covariance(P):
 def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
-    ekf_data = get_log_data(log, ekf_channel, -1, process_ekf_channel, "EKF_DEBUG_OUT")
+    ekf_data = get_log_data(log, ekf_channel, 10, process_ekf_channel, "EKF_DEBUG_OUT")
     plt.plot(ekf_data['t'], ekf_data['v_prop'])
 
     # anim = animate_covariance(ekf_data['P_prop'])

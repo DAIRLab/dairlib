@@ -181,22 +181,43 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
           readCSV(model_dir_n_pref + string("tau_samples0.csv")));
     }
 
-    double duration = y_traj.end_time();
-    if (std::abs(duration - stride_period) > 1e-15) {
-      cout << "duration = " << duration << endl;
-      cout << "stride_period = " << stride_period << endl;
-      DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
+    double traj_duration = y_traj.end_time();
+    if (std::abs(traj_duration - stride_period) > 1e-15) {
+      cout << "WARNING: trajectory duration is different from stride length!\n";
+      cout << "  traj_duration = " << traj_duration << endl;
+      cout << "  stride_period = " << stride_period << endl;
+      bool close_sim_gap = (double_support_duration_ == 0);
+      if (close_sim_gap) {
+        DRAKE_DEMAND(std::abs(traj_duration - stride_period) < 1e-15);
+      }
     }
     for (int i = 0; i < param_.knots_per_mode; i++) {
-      h_guess_(i) = duration / (param_.knots_per_mode - 1) * i;
+      // Note that if we evaluate the traj at a time outside the segment we
+      // constructed the traj with, it's going to return the value at the
+      // closest time. So it's not too bad if stride_period > traj_duration.
+      h_guess_(i) = stride_period / (param_.knots_per_mode - 1) * i;
       y_guess_.col(i) = y_traj.value(h_guess_(i));
       dy_guess_.col(i) = y_traj.EvalDerivative(h_guess_(i), 1);
       if (n_tau_ != 0) {
         tau_guess_.col(i) = tau_traj.value(h_guess_(i));
       }
+
+      // Heuristic -- constant ydot outside outside the single support duration
+      // (extend to outside the nominal traj time duration)
+      if (h_guess_(i) > traj_duration) {
+        dy_guess_.col(i) = y_traj.EvalDerivative(traj_duration, 1);
+      } else if (h_guess_(i) > single_support_duration_) {
+        for (auto idx : idx_const_rom_vel_during_double_support) {
+          dy_guess_.col(i)(idx) =
+              y_traj.EvalDerivative(single_support_duration_, 1)(idx);
+        }
+      }
+      //      cout << "t = " << h_guess_(i) << endl;
+      //      cout << "y = " << y_guess_.col(i)(0) << endl;
+      //      cout << "dy = " << dy_guess_.col(i)(0) << endl;
     }
   } else {
-    cout << "Construct rom regularization from ROM traj: " + model_dir_n_pref +
+    cout << "Construct rom regularization from FOM traj: " + model_dir_n_pref +
                 "x_samples0.csv\n";
     DRAKE_DEMAND(rom_->n_tau() == 0);
     DRAKE_DEMAND(file_exist(model_dir_n_pref + "t_breaks0.csv"));
@@ -716,10 +737,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   // problem during this window (the swing foot constraint which force the swing
   // foot close to the next time down location)
   // TODO: look into some failure cases to fix the root of the bug
-  if (remaining_single_support_duration < 0.05) {
-    *traj_msg = previous_output_msg_;
-    return;
-  }
+  //  if (remaining_single_support_duration < 0.05) {
+  //    *traj_msg = previous_output_msg_;
+  //    return;
+  //  }
 
   ///
   /// Get desired xy position and velocity

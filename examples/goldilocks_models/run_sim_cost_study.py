@@ -1048,14 +1048,23 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   levels = [0]
   for i in range(n_level)[::-1]:
     levels.append(round(1 - i * delta_level, 3))
-  levels.append(2)
+  levels.append(100)
   # levels = [0, 0.7, 0.8, 0.9, 1, 2]
   # levels = [0, 0.85, 0.9, 0.95, 1, 2]
   # colors = ['darkgreen', 'green', 'seagreen', 'mediumseagreen', 'blue']
   colors = ['darkgreen', 'green', 'mediumseagreen', 'blue']
+
+  if min_nonzero_ratio >= 1 or delta_level < 0.01:
+    levels = [0, 1, 100]
+    colors = ['green', 'blue']
+
   cmap, norm = matplotlib.colors.from_levels_and_colors(levels, colors)
   cmap.set_over('yellow')
   cmap.set_under('red')
+
+  # print("delta_level = ", delta_level)
+  # print("levels = ", levels)
+  # print("colors = ", colors)
 
   plt.rcParams.update({'font.size': 14})
   fig, ax = plt.subplots()

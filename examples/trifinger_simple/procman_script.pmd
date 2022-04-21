@@ -1,0 +1,15 @@
+group "director" {
+    cmd "drake-director" {
+        exec = "bazel-bin/director/drake-director";
+        host = "localhost";
+    }
+}
+cmd "lcm_control_demo" {
+    exec = "bazel-bin/examples/trifinger_simple/lcm_control_demo";
+    host = "localhost";
+}
+cmd "simulate_trifinger_lcm" {
+    exec = "bazel-bin/examples/trifinger_simple/simulate_trifinger_lcm";
+    host = "localhost";
+}
+

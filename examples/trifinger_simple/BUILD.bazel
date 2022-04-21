@@ -1,0 +1,48 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "trifinger_urdf",
+    data = glob([
+    	"robot_properties_fingers/urdf/**",
+    	"robot_properties_fingers/urdf/pro/**",
+    	"robot_properties_fingers/urdf/edu/**",
+    	"robot_properties_fingers/meshes/**",
+    	"robot_properties_fingers/meshes/pro/**",
+    	"robot_properties_fingers/meshes/pro/detailed/**",
+    	"robot_properties_fingers/meshes/edu/**",
+        "robot_properties_fingers/cube/**"])
+)
+
+py_binary(
+	name = "simulate_trifinger",
+	srcs = ["simulate_trifinger.py"],
+	deps = [
+		"//bindings/pydairlib",
+		"@drake//bindings/pydrake",
+	],
+	data = [":trifinger_urdf"],
+)
+
+
+py_binary(
+    name = "simulate_trifinger_lcm",
+    srcs = ["simulate_trifinger_lcm.py"],
+    deps = [
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+    data = [":trifinger_urdf"],
+)
+
+py_binary(
+    name = "lcm_control_demo",
+    srcs = ["lcm_control_demo.py"],
+    deps = [
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+    data = [":trifinger_urdf"],
+)

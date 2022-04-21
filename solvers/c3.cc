@@ -108,7 +108,7 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 //  std::cout << delta.at(0).segment(n_,m_) << std::endl;
 
 //VectorXd hold = delta.at(0).segment(n_,m_);
-  VectorXd hold = z.segment(n_,m_);
+  //VectorXd hold = z.segment(n_,m_);
 
 //  double count = 0;
 //
@@ -122,6 +122,9 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
 //  std::cout << "w" << std::endl;
 //  std::cout << w.at(0).segment(n_+3,3) << std::endl;
+
+//      std::cout <<  "input" << std::endl;
+//      std::cout << z.segment(n_+m_, k_) << std::endl;
 
 //      std::cout <<  "contact prediction" << std::endl;
 //      std::cout << z.segment(n_, m_) << std::endl;

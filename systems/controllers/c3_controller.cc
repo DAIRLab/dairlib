@@ -104,7 +104,7 @@ void C3Controller::CalcControl(const Context<double>& context,
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
 
-  //std::cout << u << std::endl;
+//  std::cout << v << std::endl;
 
   /// update autodiff
   VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
@@ -142,9 +142,10 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
 //
 //  // std::cout << contact_geoms_[0] << std::endl;
 //
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[3]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[3]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+//  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[3]));
+  //contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
 //
   // std::cout << context_ << std::endl;
 
@@ -158,13 +159,14 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
       num_friction_directions_, mu_);
 
 
-  // std::cout << system_.A_[0] << std::endl;
+  //std::cout << system_.d_[0] << std::endl;
 
   C3Options options;
   int N = (system_.A_).size();
   int n = ((system_.A_)[0].cols());
   int m = ((system_.D_)[0].cols());
   int k = ((system_.B_)[0].cols());
+
 
   /// initialize ADMM variables (delta, w)
   std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
@@ -179,7 +181,8 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
     delta = delta_reset;
     w = w_reset;
     for (int j = 0; j < N; j++) {
-      delta[j].head(n) = xdesired_[0]; //state
+      //delta[j].head(n) = xdesired_[0]; //state
+      delta[j].head(n) << state; //state
     }
   } else {
     /// reset delta and w (default option)
@@ -195,56 +198,73 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   ///trifinger constraints
   ///input
   opt.RemoveConstraints();
-  RowVectorXd LinIneq = RowVectorXd::Zero(9);
-  RowVectorXd LinIneq_r = RowVectorXd::Zero(9);
-  double lowerbound = -0.2;
-  double upperbound = 0.2;
+  RowVectorXd LinIneq = RowVectorXd::Zero(k);
+  RowVectorXd LinIneq_r = RowVectorXd::Zero(k);
+  double lowerbound = -100;
+  double upperbound = 100;
   int inputconstraint = 2;
 
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i < k; i++) {
     LinIneq_r = LinIneq;
     LinIneq_r(i) = 1;
     opt.AddLinearConstraint(LinIneq_r, lowerbound, upperbound, inputconstraint);
   }
 
+
+
   ///force
-  RowVectorXd LinIneqf = RowVectorXd::Zero(18);
-  RowVectorXd LinIneqf_r = RowVectorXd::Zero(18);
+  RowVectorXd LinIneqf = RowVectorXd::Zero(m);
+  RowVectorXd LinIneqf_r = RowVectorXd::Zero(m);
   double lowerboundf = 0;
-  double upperboundf = 1000;
+  double upperboundf = 100;
   int forceconstraint = 3;
 
-  for (int i = 0; i < 18; i++) {
+  for (int i = 0; i < m; i++) {
     LinIneqf_r = LinIneqf;
     LinIneqf_r(i) = 1;
     opt.AddLinearConstraint(LinIneqf_r, lowerboundf, upperboundf, forceconstraint);
   }
 
+
   ///state (velocity)
   int stateconstraint = 1;
-  RowVectorXd LinIneqs = RowVectorXd::Zero(31);
-  RowVectorXd LinIneqs_r = RowVectorXd::Zero(31);
+  RowVectorXd LinIneqs = RowVectorXd::Zero(n);
+  RowVectorXd LinIneqs_r = RowVectorXd::Zero(n);
   double lowerbounds = -20;
   double upperbounds = 20;
-  for (int i = 16; i < 25; i++) {
-    LinIneqs_r = LinIneqs;
-    LinIneqs_r(i) = 1;
-    opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
-  }
 
-//  ///state (q)
-//  double lowerboundsq = -2;
-//  double upperboundsq = 2;
+//  for (int i = 16; i < 25; i++) {
+//    LinIneqs_r = LinIneqs;
+//    LinIneqs_r(i) = 1;
+//    opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
+//  }
+
+  ///state (q)
+  double lowerboundsq = 0;
+  double upperboundsq = 0.03;
 //  for (int i = 0; i < 9; i++) {
 //    LinIneqs_r = LinIneqs;
 //    LinIneqs_r(i) = 1;
 //    opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
 //  }
 
+//int i = 2;
+//LinIneqs_r = LinIneqs;
+//LinIneqs_r(i) = 1;
+//opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
+//i = 5;
+//LinIneqs_r = LinIneqs;
+//LinIneqs_r(i) = 1;
+//opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
+//i = 8;
+//LinIneqs_r = LinIneqs;
+//LinIneqs_r(i) = 1;
+//opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
 
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
+
 
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
@@ -252,7 +272,9 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
 
   //std::cout << "here" << std::endl;
 
-  //VectorXd input2 = VectorXd::Zero(9);
+//  VectorXd input2 = VectorXd::Zero(k);
+//  input2(0) = 0.1;
+  //VectorXd input2 = 12*VectorXd::Ones(9);
 
   control->SetDataVector(input);
   control->set_timestamp(timestamp);

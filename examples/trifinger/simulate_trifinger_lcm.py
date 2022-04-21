@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 # Load the URDF and the cube
 builder = DiagramBuilder()
 sim_dt = 1e-4
-output_dt = 5e-4
+output_dt = 1e-4
 
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
-addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
-              mu_kinetic=1.0)
+# addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
+#               mu_kinetic=1.0)
 
 # The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
@@ -62,7 +62,7 @@ simulator.set_publish_every_time_step(False)
 simulator.set_publish_at_initialization(False)
 
 # Change the real-time rate to above 1 to simulate faster
-simulator.set_target_realtime_rate(0.1)
+simulator.set_target_realtime_rate(1)
 
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
@@ -95,7 +95,7 @@ q[q_map['finger_middle_to_lower_joint_240']] = -1.2
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 0
+q[q_map['base_x']] = 1
 q[q_map['base_y']] = 0
 q[q_map['base_z']] = .05
 
@@ -108,7 +108,7 @@ plant.SetVelocities(plant_context, v)
 
 simulator.Initialize()
 # Simulate for 10 seconds
-simulator.AdvanceTo(5)
+simulator.AdvanceTo(2)
 
 # numpy array of data (nq+nv+nu) x n_time
 data = logger.FindLog(simulator.get_context()).data()
@@ -116,10 +116,13 @@ data = logger.FindLog(simulator.get_context()).data()
 row, col = data.shape
 time = range(col)
 
+asd = np.diff(np.transpose( data[nq:nq+nv-7,:] )/sim_dt)
+
 fig, ax = plt.subplots(4)
 ax[0].plot(time, np.transpose( data[nq+nv:nq+nv+nu,:] ) )
 ax[0].set_title('Input')
 ax[1].plot(time, np.transpose( data[nq:nq+nv-7,:] ) )
+#ax[1].plot(time, asd)
 ax[1].set_title('Velocity_Trifinger')
 ax[2].plot(time, np.transpose( data[0:nq-7,:] ) )
 ax[2].set_title('Position_Trifinger')

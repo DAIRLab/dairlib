@@ -33,6 +33,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   /// First, calculate vdot and derivatives from non-contact dynamcs
   ///
 
+
   AutoDiffVecXd C(plant.num_velocities());
 
   // 0std::cout << ExtractGradient(C).cols() << std::endl;
@@ -66,6 +67,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   drake::multibody::MultibodyForces<AutoDiffXd> f_app(plant_ad);
   plant_ad.CalcForceElementsContribution(context_ad, &f_app);
 
+
   MatrixX<AutoDiffXd> M(plant.num_velocities(), plant.num_velocities());
   plant_ad.CalcMassMatrix(context_ad, &M);
 
@@ -77,20 +79,29 @@ LCS LCSFactory::LinearizePlantToLCS(
   AutoDiffVecXd vdot_no_contact =
       M.ldlt().solve(tau_g + f_app.generalized_forces() + Bu - C);
 
-  // Constant term in dynamics, d
-  VectorXd d_v = ExtractValue(vdot_no_contact);
-
-//    std::cout << "vdot" << std::endl;
-//  std::cout << d_v << std::endl;
-//  std::cout << "vdot" << std::endl;
+  // Constant term in dynamics, d_vv = d + A x_0 + B u_0
+  VectorXd d_vv = ExtractValue(vdot_no_contact);
 
   // Derivatives w.r.t. x and u, AB
   MatrixXd AB_v = ExtractGradient(vdot_no_contact);
+
+  VectorXd inp_dvv = plant.get_actuation_input_port().Eval(context);
+  VectorXd x_dvv(plant.num_positions() + plant.num_velocities() + plant.num_actuators());
+  x_dvv << plant.GetPositions(context), plant.GetVelocities(context), inp_dvv;
+  VectorXd x_dvvcomp = AB_v * x_dvv;
+
+  VectorXd d_v = d_vv - x_dvvcomp;
+
+
+//  std::cout << "d_v" << std::endl;
+//  std::cout << d_v << std::endl;
+//  std::cout << "d_v" << std::endl;
 
   int n_state = plant_ad.num_positions();
   int n_vel = plant_ad.num_velocities();
   int n_total = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_input = plant_ad.num_actuators();
+
 
   // std::cout << n_state << std::endl;
   // std::cout << n_vel << std::endl;
@@ -120,6 +131,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   ///////////
 
 
+
   ///
   /// Contact-related terms
   ///
@@ -134,7 +146,10 @@ LCS LCSFactory::LinearizePlantToLCS(
                                    // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
 
-    //std::cout << phi_i << std::endl;
+//    std::cout << "phi_i" << std::endl;
+//    std::cout << phi_i << std::endl;
+//    std::cout << "phi_i" << std::endl;
+
 
     phi(i) = phi_i;
 
@@ -152,7 +167,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   /// std::cout << MinvJ_t_T.cols() << std::endl;
 
-  float dt = 0.01;
+  float dt = 0.1;
   auto n_contact = 2 * contact_geoms.size() +
                    2 * contact_geoms.size() * num_friction_directions;
 
@@ -254,7 +269,9 @@ LCS LCSFactory::LinearizePlantToLCS(
           2 * contact_geoms.size() * num_friction_directions, n_input) =
       dt * J_t * AB_v_u;
 
-  // std::cout << H << std::endl;
+//  std::cout << "here" << std::endl;
+//  std::cout << d_v << std::endl;
+//  std::cout << "here" << std::endl
 
   c = VectorXd::Zero(n_contact);
   c.segment(contact_geoms.size(), contact_geoms.size()) =
@@ -278,12 +295,13 @@ LCS LCSFactory::LinearizePlantToLCS(
   auto Dn = D.squaredNorm();
   auto An = A.squaredNorm();
   auto AnDn = An / Dn;
+  //AnDn = 1;
 
 
   std::vector<MatrixXd> A_lcs(N, A);
   std::vector<MatrixXd> B_lcs(N, B);
-  std::vector<MatrixXd> D_lcs(N, D * AnDn );
-  std::vector<VectorXd> d_lcs(N, d);
+  std::vector<MatrixXd> D_lcs(N, D * AnDn);
+  std::vector<VectorXd> d_lcs(N, d );
   std::vector<MatrixXd> E_lcs(N, E / AnDn);
   std::vector<MatrixXd> F_lcs(N, F);
   std::vector<VectorXd> c_lcs(N, c / AnDn);
@@ -307,15 +325,22 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs);
 
+//
   ///check LCS predictions
   VectorXd inp = plant.get_actuation_input_port().Eval(context);
 
-//  std::cout << inp << std::endl;
+  //std::cout << inp << std::endl;
 
   VectorXd x0(plant.num_positions() + plant.num_velocities());
   x0 << plant.GetPositions(context), plant.GetVelocities(context);
-
+//
+//  std::cout << "real" << std::endl;
+// std::cout << plant_ad.GetVelocities(context_ad) << std::endl;
+//
   VectorXd asd = system.Simulate(  x0 ,inp);
+//
+// std::cout << "prediction" << std::endl;
+// std::cout << asd.tail(15) << std::endl;
 
   return system;
 }

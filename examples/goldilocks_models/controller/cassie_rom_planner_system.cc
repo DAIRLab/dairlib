@@ -208,8 +208,8 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
         dy_guess_.col(i) = y_traj.EvalDerivative(traj_duration, 1);
       } else if (h_guess_(i) > single_support_duration_) {
         for (auto idx : idx_const_rom_vel_during_double_support) {
-          dy_guess_.col(i)(idx) =
-              y_traj.EvalDerivative(single_support_duration_, 1)(idx);
+          dy_guess_.col(i)(idx - n_y_) =
+              y_traj.EvalDerivative(single_support_duration_, 1)(idx - n_y_);
         }
       }
       //      cout << "t = " << h_guess_(i) << endl;

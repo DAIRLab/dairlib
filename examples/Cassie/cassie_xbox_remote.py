@@ -1,5 +1,6 @@
 import pygame
 import dairlib.lcmt_radio_out
+import dairlib.lcmt_cassie_out
 import lcm
 
 # colors
@@ -99,8 +100,13 @@ def main():
         radio_msg.channel[3] = joystick.get_axis(3)
         radio_msg.channel[6] = radio_channel_6_pos
 
+        # Method 1 -- send radio message to cassie simultion which packs the message into lcmt_cassie_out
+        # publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())
 
-        publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())
+        # Method 2 -- send lcmt_cassie_out which contains only radio message
+        cassie_out_msg = dairlib.lcmt_cassie_out()
+        cassie_out_msg.pelvis.radio = radio_msg
+        publisher.publish("CASSIE_OUTPUT_ONLY_RADIO", cassie_out_msg.encode())
 
         # Limit to 20 frames per second
         clock.tick(20)

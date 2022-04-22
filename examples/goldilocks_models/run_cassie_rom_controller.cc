@@ -421,7 +421,7 @@ int DoMain(int argc, char* argv[]) {
         gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
     auto cassie_out_receiver =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
-            gains.use_virtual_radio ? "CASSIE_OUTPUT"
+            gains.use_virtual_radio ? "CASSIE_OUTPUT_ONLY_RADIO"
                                     : FLAGS_cassie_out_channel,
             &lcm_local));
     builder.Connect(cassie_out_receiver->get_output_port(),

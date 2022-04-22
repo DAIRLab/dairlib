@@ -269,9 +269,6 @@ LCS LCSFactory::LinearizePlantToLCS(
           2 * contact_geoms.size() * num_friction_directions, n_input) =
       dt * J_t * AB_v_u;
 
-//  std::cout << "here" << std::endl;
-//  std::cout << d_v << std::endl;
-//  std::cout << "here" << std::endl
 
   c = VectorXd::Zero(n_contact);
   c.segment(contact_geoms.size(), contact_geoms.size()) =
@@ -279,6 +276,11 @@ LCS LCSFactory::LinearizePlantToLCS(
   c.segment(2 * contact_geoms.size(),
             2 * contact_geoms.size() * num_friction_directions) =
       J_t * dt * d_v;
+
+
+//  std::cout << "here" << std::endl;
+//  std::cout << c << std::endl;
+//  std::cout << "here" << std::endl;
 
 //    std::cout << "here" << std::endl;
 //   std::cout << c.segment(contact_geoms.size(), contact_geoms.size()) << std::endl;
@@ -325,6 +327,10 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs);
 
+//    std::cout << "dstahp" << std::endl;
+//  std::cout << c_lcs[0] << std::endl;
+//  std::cout << "dstahp" << std::endl;
+
 //
   ///check LCS predictions
   VectorXd inp = plant.get_actuation_input_port().Eval(context);
@@ -337,7 +343,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 //  std::cout << "real" << std::endl;
 // std::cout << plant_ad.GetVelocities(context_ad) << std::endl;
 //
-  VectorXd asd = system.Simulate(  x0 ,inp);
+  VectorXd asd = system.Simulate(x0 ,inp);
 //
 // std::cout << "prediction" << std::endl;
 // std::cout << asd.tail(15) << std::endl;

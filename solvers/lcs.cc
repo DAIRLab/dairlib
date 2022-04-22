@@ -39,8 +39,16 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
 
 //VectorXd dummy_input = VectorXd::Zero(9);
 
-  LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * input,
+  auto flag = LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * input,
                           &force);
+
+//  std::cout << "eig" << std::endl;
+//  std::cout << (F_[0] + F_[0].transpose()).eigenvalues() << std::endl;
+//  std::cout << "eig" << std::endl;
+
+//  std::cout << "gap" << std::endl;
+//  std::cout << E_[0] * x_init + c_[0] + H_[0] * input + F_[0] * force << std::endl;
+//  std::cout << "gap" << std::endl;
 
 //  //print force
 //  std::cout << "LCS force estimate" << std::endl;

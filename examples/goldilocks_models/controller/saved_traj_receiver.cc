@@ -178,6 +178,12 @@ SavedTrajReceiver::SavedTrajReceiver(
   swing_hip_yaw_vel_map2_.insert(
       {false, nq_ + vel_idx_map.at("hip_yaw_leftdot")});
 
+  // Not sure why sometimes in the beginning of single support phase, the 0
+  // desired traj was read (it evaluates the traj in previous double support
+  // phase). As a quick fix, I just shift the time a bit.
+  // TODO: fix this
+  eps_hack_ = std::min(0.01, double_support_duration_);
+
   // // [Test sim gap] -- use trajopt's traj directly in OSC
   //  std::string dir = gains.dir_model + std::to_string(gains.model_iter) + "_"
   //  +
@@ -357,11 +363,6 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   //  const VectorXd& xf_time = xf_time_;
   //  const VectorXd& stance_foot = stance_foot_;
 
-  // Not sure why sometimes in the beginning of single support phase, the 0
-  // desired traj was read. As a quick fix, I just shift the time a bit.
-  // TODO: fix this
-  double eps_hack = double_support_duration_ == 0 ? 0 : 0.001;
-
   // Construct PP (concatenate the PP of each mode)
   // WARNING: we assume each mode in the planner is "single support" + "double
   // support"
@@ -381,7 +382,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
         // T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
         T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
                                           double_support_duration_
-                                    : x0_time(j) - eps_hack;
+                                    : x0_time(j) - eps_hack_;
         T_waypoint.at(2) = xf_time(j) - double_support_duration_;
         T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
         plant_control_.SetPositionsAndVelocities(context_control_.get(),
@@ -431,7 +432,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
       // Fill in the double support phase with a constant zero traj
       if (double_support_duration_ > 0) {
         VectorXd T_double_support(2);
-        T_double_support << T_waypoint.at(2), xf_time(j) - eps_hack;
+        T_double_support << T_waypoint.at(2), xf_time(j) - eps_hack_;
         /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
         cout << "xf_time(j) = " << xf_time(j) << endl;*/
         MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
@@ -444,6 +445,21 @@ void SavedTrajReceiver::CalcSwingFootTraj(
 
     left_stance = !left_stance;
   }
+
+  // Testing -- trying to find the bug that the desired swing foot position traj
+  // was evaluated 0 at start of mode sometimes in the OSC
+  //  cout << "x0_time = " << x0_time.transpose() << endl;
+  //  cout << "xf_time = " << xf_time.transpose() << endl;
+  //  cout << "pp start = ";
+  //  for (int i = 0; i < x0_time.size(); i++) {
+  //    cout << pp.value(x0_time(i)).transpose() << endl;
+  //  }
+  //  cout << "pp end = ";
+  //  for (int i = 0; i < xf_time.size(); i++) {
+  //    cout << pp.value(xf_time(i)).transpose() << endl;
+  //  }
+  //  DRAKE_DEMAND(pp.value(x0_time(1)).norm() != 0);
+  //  DRAKE_DEMAND(pp.value(xf_time(0)).norm() != 0);
 
   // Assign traj
   *traj_casted = pp;

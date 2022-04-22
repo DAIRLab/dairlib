@@ -62,12 +62,10 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
                    drake::trajectories::Trajectory<double>* traj) const;
   void CalcSwingFootTraj(const drake::systems::Context<double>& context,
                          drake::trajectories::Trajectory<double>* traj) const;
-  void CalcStanceHipTraj(
-      const drake::systems::Context<double>& context,
-      drake::trajectories::Trajectory<double>* traj) const;
-  void CalcSwingHipTraj(
-      const drake::systems::Context<double>& context,
-      drake::trajectories::Trajectory<double>* traj) const;
+  void CalcStanceHipTraj(const drake::systems::Context<double>& context,
+                         drake::trajectories::Trajectory<double>* traj) const;
+  void CalcSwingHipTraj(const drake::systems::Context<double>& context,
+                        drake::trajectories::Trajectory<double>* traj) const;
 
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -124,6 +122,12 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   // hacks
   double single_support_duration_;
   double double_support_duration_;
+
+  // Not sure why sometimes in the beginning of single support phase, the 0
+  // desired traj was read (it evaluates the traj in previous double support
+  // phase). As a quick fix, I just shift the time a bit.
+  // TODO: fix this
+  double eps_hack_;
 
   // swing foot traj parameter
   double desired_mid_foot_height_;

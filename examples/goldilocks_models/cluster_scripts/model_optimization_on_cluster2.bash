@@ -51,10 +51,12 @@ stride_length_center=0
 ground_incline_center=0
 turning_rate_center=0
 pelvis_height_center=0.95
+swing_margin_center=0.03
 stride_length_delta=0.03
 ground_incline_delta=0.05
 turning_rate_delta=0.125
 pelvis_height_delta=0.05
+swing_margin_delta=0.02
 
 # main cost weights
 Q=0.1    # big weight: 0.1; small weight 0.005
@@ -167,8 +169,8 @@ then
    --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
-   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta --swing_margin_delta=$swing_margin_delta \
    --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
@@ -179,8 +181,8 @@ then
    --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
-   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta --swing_margin_delta=$swing_margin_delta \
    --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
@@ -194,8 +196,8 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
-   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta --swing_margin_delta=$swing_margin_delta \
    --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
@@ -206,8 +208,8 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
-   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta --swing_margin_delta=$swing_margin_delta \
    --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
@@ -221,8 +223,8 @@ then
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
-   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta --swing_margin_delta=$swing_margin_delta \
    --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
@@ -233,8 +235,8 @@ then
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
-   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta --swing_margin_delta=$swing_margin_delta \
    --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
@@ -246,8 +248,8 @@ then
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --no_model_update=$no_model_update \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
-   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta --swing_margin_delta=$swing_margin_delta \
    --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
@@ -259,8 +261,8 @@ then
    --rom_option=$model --robot_option=$robot \
    --delta_iter=$iter_delta \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
-   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta --swing_margin_delta=$swing_margin_delta \
    --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 
@@ -281,8 +283,8 @@ else
    --rom_option=$model --robot_option=$robot \
    --delta_iter=$iter_delta \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
-   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center \
-   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta \
+   --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
+   --stride_length_delta=$stride_length_delta --ground_incline_delta=$ground_incline_delta --turning_rate_delta=$turning_rate_delta --pelvis_height_delta=$pelvis_height_delta --swing_margin_delta=$swing_margin_delta \
    --fix_node_number=true 2>&1 --h_step=$h_step \
    | tee -a "$directory"terminal_log
 

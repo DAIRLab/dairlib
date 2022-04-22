@@ -302,6 +302,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool two_models_;
   std::vector<int> knee_ankle_pos_idx_list_wo_spr_;
   std::vector<int> spring_pos_idx_list_w_spr_;
+  std::vector<int> knee_ankle_vel_idx_list_wo_spr_;
+  std::vector<int> spring_vel_idx_list_w_spr_;
   //////////////////////////////////////////////////////////////////////////////
 
   // MathematicalProgram

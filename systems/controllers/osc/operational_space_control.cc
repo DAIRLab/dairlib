@@ -174,6 +174,12 @@ OperationalSpaceControl::OperationalSpaceControl(
   two_models_ = (plant_w_spr.num_positions() == 23) &&
                 (plant_wo_spr.num_positions() == 19);
   if (two_models_) {
+    if (!is_rom_modification) {
+      cout << "WARNING: we have a local modification (not in master branch) by "
+              "translating the knee spring deflection to knee motor "
+              "position/vel when we use two different models in OSC\n";
+    }
+
     const std::map<string, int>& pos_map_w_spr =
         multibody::makeNameToPositionsMap(plant_w_spr);
     const std::map<string, int>& pos_map_wo_spr =
@@ -186,6 +192,18 @@ OperationalSpaceControl::OperationalSpaceControl(
                                   pos_map_w_spr.at("knee_joint_right"),
                                   pos_map_w_spr.at("ankle_spring_joint_left"),
                                   pos_map_w_spr.at("ankle_spring_joint_right")};
+
+    const std::map<string, int>& vel_map_w_spr =
+        multibody::makeNameToVelocitiesMap(plant_w_spr);
+    knee_ankle_vel_idx_list_wo_spr_ = {
+        vel_map_wo_spr.at("knee_leftdot"), vel_map_wo_spr.at("knee_rightdot"),
+        vel_map_wo_spr.at("ankle_joint_leftdot"),
+        vel_map_wo_spr.at("ankle_joint_rightdot")};
+    spring_vel_idx_list_w_spr_ = {
+        vel_map_w_spr.at("knee_joint_leftdot"),
+        vel_map_w_spr.at("knee_joint_rightdot"),
+        vel_map_w_spr.at("ankle_spring_joint_leftdot"),
+        vel_map_w_spr.at("ankle_spring_joint_rightdot")};
   }
 }
 
@@ -1101,16 +1119,29 @@ void OperationalSpaceControl::CalcOptimalInput(
       map_velocity_from_spring_to_no_spring_ * v_w_spr;
 
   // Testing -- translating the knee spring to knee joint
-  /*
-  if (is_rom_modification_) {
-   if (two_models_) {
+  //  if (is_rom_modification_) {
+  if (two_models_) {
     x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[0]) +=
         x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
     x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[1]) +=
         x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
-    // TODO: also do this for velocity?
-  }}
-   */
+
+    // Testing -- also do this for velocity
+    x_wo_spr.segment<1>(n_q_ + knee_ankle_vel_idx_list_wo_spr_[0]) +=
+        x_w_spr.segment<1>(n_q_ + spring_vel_idx_list_w_spr_[0]);
+    x_wo_spr.segment<1>(n_q_ + knee_ankle_vel_idx_list_wo_spr_[1]) +=
+        x_w_spr.segment<1>(n_q_ + spring_vel_idx_list_w_spr_[1]);
+
+    //    cout << "x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]) = "
+    //         << x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]) << endl;
+    //    cout << "x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]) = "
+    //         << x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]) << endl;
+    //    cout << "x_w_spr.segment<1>(spring_vel_idx_list_w_spr_[0]) = "
+    //         << x_w_spr.segment<1>(spring_vel_idx_list_w_spr_[0]) << endl;
+    //    cout << "x_w_spr.segment<1>(spring_vel_idx_list_w_spr_[1]) = "
+    //         << x_w_spr.segment<1>(spring_vel_idx_list_w_spr_[1]) << endl;
+  }
+  //  }
 
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {

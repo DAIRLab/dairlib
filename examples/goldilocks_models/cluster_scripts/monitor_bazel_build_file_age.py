@@ -11,7 +11,7 @@ import os, time
 def file_age(filepath):
   return time.time() - os.path.getmtime(filepath)
 
-file_path = '~/bazel_is_building'
+file_path = "/home/yminchen/bazel_is_building"  # for some reason, we need full path
 
 while True:
   if os.path.exists(file_path):

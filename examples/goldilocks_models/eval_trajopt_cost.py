@@ -347,20 +347,29 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   z = z[~np.isnan(z)]
 
   # discrete color map
-  n_level = 3
+  n_level = 6
   min_nonzero_ratio = min(z[z > 0])
+  # min_nonzero_ratio = 0.5
   delta_level = (1-min_nonzero_ratio) / n_level
   levels = [0]
   for i in range(n_level)[::-1]:
     levels.append(round(1 - i * delta_level, 3))
-  levels.append(2)
+  levels.append(100)
   # levels = [0, 0.7, 0.8, 0.9, 1, 2]
   # levels = [0, 0.85, 0.9, 0.95, 1, 2]
-  # colors = ['darkgreen', 'green', 'seagreen', 'mediumseagreen', 'blue']
-  colors = ['darkgreen', 'green', 'mediumseagreen', 'blue']
+  # colors = [(0.2, min(1, 0.2 + 0.8 * i / (n_level - 1)), 0.2) for i in range(n_level)]
+  start_color = np.array([0., 0., 0.5])
+  end_color = np.array([0., 0., 1])
+  colors = [tuple(start_color + (end_color - start_color) * i / (n_level - 1)) for i in range(n_level)]
+  colors.append('red')
+
+  # print("levels = ", levels)
+  # print("colors = ", colors)
   cmap, norm = matplotlib.colors.from_levels_and_colors(levels, colors)
-  cmap.set_over('yellow')
-  cmap.set_under('red')
+  cmap.set_over('darkred')
+  cmap.set_under('black')
+  # cmap.set_over('black')
+  # cmap.set_under('darkblue')
 
   plt.rcParams.update({'font.size': 14})
   fig, ax = plt.subplots()
@@ -369,11 +378,16 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   levels_string = [str(m) for m in levels]
   levels_string[-1] = "Inf"
   cbar.ax.set_yticklabels(levels_string)
+  # print("levels_string = ", levels_string)
+
   # import pdb;pdb.set_trace()
   # surf = ax.tricontourf(x, y, z)
+  # surf = ax.tricontourf(x, y, z, extend='both')
+  # surf = ax.tricontourf(x, y, z, levels=levels, cmap='coolwarm')
   # import pdb;pdb.set_trace()
 
-  # plt.xlim([0, 135])
+  # plt.xlim([-1, 1])
+  plt.ylim([0.65, 1.05])
   plt.xlabel(name_with_unit[task_to_plot[0]])
   plt.ylabel(name_with_unit[task_to_plot[1]])
   plt.title('Cost comparison between iteration %d and %d ' % (iter1, iter2) + "(Open loop)")
@@ -565,6 +579,7 @@ if __name__ == "__main__":
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/trajopt_cost_eval/20220302_explore_task_boundary_2D_gi_tr--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   # trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220316_rom24_big_range/"
   trajopt_base_dir = "/home/yuming/Desktop/temp/0405/20220108_big_vel_weight_and_grad_main_cost_and_big_range_0_pelvis_omega/"
+  trajopt_base_dir = "/home/yuming/Desktop/temp/20220224_explore_task_boundary_2D--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -579,7 +594,7 @@ if __name__ == "__main__":
 
   ### Parameters for plotting
   model_iter_idx_start = 1
-  model_iter_idx_end = 150
+  model_iter_idx_end = 300
   model_iter_idx_delta = 20
   model_indices = list(range(model_iter_idx_start, model_iter_idx_end+1, model_iter_idx_delta))
 
@@ -616,8 +631,8 @@ if __name__ == "__main__":
 
   # 2D plot (cost vs task)
   # model_slices = []
-  # model_slices = [1, 50, 100, 150]
-  model_slices = [1, 25, 50, 75, 100]
+  model_slices = [1, 50, 100, 150, 200]
+  # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
@@ -626,9 +641,9 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = []
   model_slices_cost_landsacpe = [1, 2, 11, 110]
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
-  model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
-  model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
-  model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
+  # model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
+  # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
+  # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [50]
 
   # Expected (averaged) cost over a task range

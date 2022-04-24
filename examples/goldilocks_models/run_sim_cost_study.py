@@ -1042,7 +1042,7 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   z = z[~np.isnan(z)]
 
   # discrete color map
-  n_level = 3
+  n_level = 6
   min_nonzero_ratio = min(z[z > 0])
   delta_level = (1-min_nonzero_ratio) / n_level
   levels = [0]
@@ -1051,16 +1051,21 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   levels.append(100)
   # levels = [0, 0.7, 0.8, 0.9, 1, 2]
   # levels = [0, 0.85, 0.9, 0.95, 1, 2]
-  # colors = ['darkgreen', 'green', 'seagreen', 'mediumseagreen', 'blue']
-  colors = ['darkgreen', 'green', 'mediumseagreen', 'blue']
+  # colors = [(0.2, min(1, 0.2 + 0.8 * i / (n_level - 1)), 0.2) for i in range(n_level)]
+  start_color = np.array([0.1, 0.1, 0.5])
+  end_color = np.array([0.3, 0.3, 1])
+  colors = [tuple(start_color + (end_color - start_color) * i / (n_level - 1)) for i in range(n_level)]
+  colors.append('red')
 
   if min_nonzero_ratio >= 1 or delta_level < 0.01:
     levels = [0, 1, 100]
-    colors = ['green', 'blue']
+    colors = ['blue', 'red']
 
   cmap, norm = matplotlib.colors.from_levels_and_colors(levels, colors)
-  cmap.set_over('yellow')
-  cmap.set_under('red')
+  cmap.set_over('darkred')
+  cmap.set_under('black')
+  # cmap.set_over('black')
+  # cmap.set_under('darkblue')
 
   # print("delta_level = ", delta_level)
   # print("levels = ", levels)
@@ -1070,14 +1075,18 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   fig, ax = plt.subplots()
   surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
   cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
+
   levels_string = [str(m) for m in levels]
   levels_string[-1] = "Inf"
+  # print("levels_string = ", levels_string)
   cbar.ax.set_yticklabels(levels_string)
+
   # import pdb;pdb.set_trace()
   # surf = ax.tricontourf(x, y, z, cmap='coolwarm')
   # import pdb;pdb.set_trace()
 
-  # plt.xlim([0, 135])
+  # plt.xlim([-1, 1])
+  # plt.ylim([0.85, 1.05])
   plt.xlabel('stride length (m)')
   plt.ylabel('pelvis height (m)')
   plt.title('Cost comparison between iteration %d and %d' % (iter1, iter2))
@@ -1389,6 +1398,7 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0405/20220105_sim_eval_20211229_model_using_stance_hip_from_planner/1_first_try/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0405/_20220122_sim_eval_20220105_model_again/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
+  eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1407,8 +1417,8 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 200
-  idx_spacing = 5
+  model_iter_idx_end = 360
+  idx_spacing = 10
 
   # Task list
   n_task_sl = 30
@@ -1456,7 +1466,7 @@ if __name__ == "__main__":
   # 2D plot (cost vs task)
   # model_slices = []
   model_slices = [1, 50, 100, 150]
-  # model_slices = [1, 50, 100, 150, 200, 250, 300]
+  model_slices = [1, 50, 100, 150, 200, 250, 300]
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
@@ -1467,7 +1477,7 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
   model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
-  # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320]
+  model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [75]
 

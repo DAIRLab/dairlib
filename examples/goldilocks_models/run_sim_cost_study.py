@@ -1054,6 +1054,7 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   # colors = [(0.2, min(1, 0.2 + 0.8 * i / (n_level - 1)), 0.2) for i in range(n_level)]
   start_color = np.array([0.1, 0.1, 0.5])
   end_color = np.array([0.3, 0.3, 1])
+  # end_color = np.array([0.1, 0.1, 1])
   colors = [tuple(start_color + (end_color - start_color) * i / (n_level - 1)) for i in range(n_level)]
   colors.append('red')
 

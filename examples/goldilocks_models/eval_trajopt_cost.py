@@ -22,6 +22,7 @@ import matplotlib
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import matplotlib.tri as mtri
+import matplotlib.patches as mpatches
 from scipy.interpolate import LinearNDInterpolator
 import codecs
 import math
@@ -328,16 +329,18 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   z2 = interpolator(np.vstack((x, y)).T)
 
   # z = z2/z1
+  big_val = 1000000
+  small_val = -1e-8
   z = np.zeros(x.size)
   for i in range(x.size):
     if np.isnan(z1[i]):
       if np.isnan(z2[i]):
         z[i] = z2[i]
       else:
-        z[i] = -1e-8
+        z[i] = small_val
     else:
       if np.isnan(z2[i]):
-        z[i] = 1000000 # np.inf # a very big number
+        z[i] = big_val  # np.inf # a very big number
       else:
         z[i] = z2[i]/z1[i]
 
@@ -346,45 +349,73 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   y = y[~np.isnan(z)]
   z = z[~np.isnan(z)]
 
+  # Colors for 0 and inf
+  color_0 = (0, 0.6, 0, 0.5)  # translucent green
+  color_inf = 'darkred'
+
+  min_nonzero_ratio = min(z[np.logical_and(z > 0, z < big_val)])
+  max_nonzero_ratio = max(z[np.logical_and(z > 0, z < big_val)])
+  # min_nonzero_ratio = 0.5
+
+  # Flags
+  plot_the_ratio_bigger_than_1 = max_nonzero_ratio > 1
+  plot_the_ratio_bigger_than_1 = True  # sometimes we want to manually set this to false because the ratio bigger than 1 was from bad solves at boundary
+  plot_lost_task = True
+
   # discrete color map
   n_level = 6
-  min_nonzero_ratio = min(z[z > 0])
-  # min_nonzero_ratio = 0.5
-  delta_level = (1-min_nonzero_ratio) / n_level
-  levels = [0]
+  delta_level = (min(1, max_nonzero_ratio) - min_nonzero_ratio) / (n_level - 1)
+
+  order = 3
+  levels = []
   for i in range(n_level)[::-1]:
-    levels.append(round(1 - i * delta_level, 3))
-  levels.append(100)
-  # levels = [0, 0.7, 0.8, 0.9, 1, 2]
-  # levels = [0, 0.85, 0.9, 0.95, 1, 2]
-  # colors = [(0.2, min(1, 0.2 + 0.8 * i / (n_level - 1)), 0.2) for i in range(n_level)]
+    levels.append(round(min(1, max_nonzero_ratio) - i * delta_level, order))
+  levels[0] = levels[0] - 0.1**order
+  # levels[-1] = levels[-1] + 0.1**order
+
   start_color = np.array([0.1, 0.1, 0.5])
   end_color = np.array([0.3, 0.3, 1])
-  colors = [tuple(start_color + (end_color - start_color) * i / (n_level - 1)) for i in range(n_level)]
-  colors.append('red')
+  colors = [tuple(start_color + (end_color - start_color) * i / (n_level - 2)) for i in range(n_level - 1)]
+
+
+  # Extend levels and colors for values bigger than 1
+  if plot_the_ratio_bigger_than_1:
+    levels.append(round(max_nonzero_ratio, order) + 0.1**order)
+    colors.append('red')
+
+  # # Extend levels and colors to include 0 and inf if we want to do it manually
+  # colors.insert(0, color_0)
+  # levels.insert(0, small_val-0.1)
+  # colors.append(color_inf)
+  # levels.append(big_val+0.1)
 
   # print("levels = ", levels)
   # print("colors = ", colors)
   cmap, norm = matplotlib.colors.from_levels_and_colors(levels, colors)
-  cmap.set_over('darkred')
-  cmap.set_under('black')
-  # cmap.set_over('black')
-  # cmap.set_under('darkblue')
+  cmap.set_under(color_0)
+  if plot_lost_task:
+    cmap.set_over(color_inf)
 
   plt.rcParams.update({'font.size': 14})
   fig, ax = plt.subplots()
-  surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
-  cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
-  levels_string = [str(m) for m in levels]
-  levels_string[-1] = "Inf"
-  cbar.ax.set_yticklabels(levels_string)
-  # print("levels_string = ", levels_string)
 
-  # import pdb;pdb.set_trace()
-  # surf = ax.tricontourf(x, y, z)
-  # surf = ax.tricontourf(x, y, z, extend='both')
-  # surf = ax.tricontourf(x, y, z, levels=levels, cmap='coolwarm')
-  # import pdb;pdb.set_trace()
+  surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
+  # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
+
+  # cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
+  # cbar = fig.colorbar(surf, shrink=0.9, aspect=10)
+  cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extendfrac=0)  # remove the extended part from the color bar
+
+  # Add extended color into legend manually
+  new_skill_patch = mpatches.Patch(color=color_0, label='new tasks')
+  if plot_lost_task:
+    lost_skill_patch = mpatches.Patch(color=color_inf, label='lost tasks')
+    plt.legend(handles=[new_skill_patch, lost_skill_patch])
+  else:
+    plt.legend(handles=[new_skill_patch])
+
+  cbar.set_ticks([round(m, 3) for m in levels])
+  cbar.ax.set_yticklabels([round(m, 3) for m in levels])
 
   # plt.xlim([-1, 1])
   plt.ylim([0.65, 1.05])

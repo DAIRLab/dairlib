@@ -89,6 +89,7 @@ def main():
 
   matplotlib.rcParams["savefig.directory"] = path
 
+  # Load the main log file
   x, u_meas, imu_aceel, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
   osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   u_dispatcher, t_u_dispatcher, \
@@ -171,7 +172,7 @@ def main():
   # PlotJointPosVelTorque(x, t_x, u_meas, x_datatypes, u_datatypes)
 
 
-  # Save a state into csv
+  ### Save a state into csv
   # t_idx = np.argwhere(np.abs(t_x - 8.425) < 1e-3)[0][0]
   # print("x[t_idx, :] = ")
   # print(x[t_idx, :])
@@ -180,6 +181,21 @@ def main():
   # print("x[t_idx, :] = ")
   # print(x[t_idx, :])
   # np.savetxt("../init_state_next_mode.csv", x[t_idx, :], delimiter=",")
+
+
+  ### Compare two lcm logs
+  compare_two_lcm_log = False
+  if compare_two_lcm_log:
+    # Load a second log if we want to compare two logs
+    filename2 = "/home/yuming/Desktop/temp/0424/20210617_sim_cost_study/lcmlogs/lcmlog-idx_150_49"
+    log2 = lcm.EventLog(filename2, "r")
+    x2, u_meas, imu_aceel, t_x2, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
+    osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+    u_dispatcher, t_u_dispatcher, \
+    osc_output, input_supervisor_status, t_input_supervisor, full_log = process_lcm_log.process_log(log2, pos_map, vel_map, act_map, controller_channel)
+
+    # Plots
+    PlotTwoCenterOfMassAceel(x, t_x, x2, t_x2, plant_w_spr)
 
   plt.show()
 
@@ -1041,6 +1057,7 @@ def PlotCenterOfMassAceel(x, t_x, plant, t_osc_debug, fsm):
   plt.plot(t_x[1:], ddcom_filtered)
   # plt.plot(t_osc_debug, 1 * fsm)
   plt.xlabel('time (s)')
+  # plt.legend(["x", "y", "z"])
   # plt.legend(["x", "y", "z", "fsm"])
 
   ### Get LIPM com acceleration
@@ -1081,6 +1098,44 @@ def PlotCenterOfMassAceel(x, t_x, plant, t_osc_debug, fsm):
   # plt.xlabel('time (s)')
   # plt.legend(["x", "y", "z", "fsm"])
   plt.legend(["x_actual", "y_actual", "z_actual", "x_lipm", "y_lipm", "z_lipm", "fsm"])
+
+
+def PlotTwoCenterOfMassAceel(x1, t_x1, x2, t_x2, plant):
+  ### Get actual com acceleration
+  ddcom_filtered = []
+  for x, t_x in [[x1, t_x1], [x2, t_x2]]:
+    com = np.zeros((t_x.shape[0], 3))
+    comdot = np.zeros((t_x.shape[0], 3))
+    for i in range(t_x.shape[0]):
+      xi = x[i, :]
+      plant.SetPositionsAndVelocities(context, xi)
+      com[i, :] = plant.CalcCenterOfMassPositionInWorld(context)
+      J = plant.CalcJacobianCenterOfMassTranslationalVelocity(context,
+        JacobianWrtVariable.kV, world, world)
+      comdot[i, :] = J @ x[i, nq:]
+
+    ddcom = np.diff(comdot, axis=0)
+    dt = np.diff(t_x)
+    for i in range(len(dt)):
+      if dt[i] == 0:
+        ddcom[i] = 0
+        print("set ddcom[%d] to 0" % i)
+      else:
+        ddcom[i] /= dt[i]
+
+    ddcom_filtered.append(ApplyLowPassFilter(ddcom, t_x[1:], 20))
+
+  figname = "comddot traj"
+  plt.figure(figname)
+  plt.plot(t_x1[1:], ddcom_filtered[0], "--")
+  plt.gca().set_prop_cycle(None)  # reset color cycle
+  plt.plot(t_x2[1:], ddcom_filtered[1])
+  # plt.plot(t_osc_debug, 1 * fsm)
+  plt.xlabel('time (s)')
+  plt.ylabel('center of mass acceleration (m/s^2)')
+  plt.legend(["x (initial)", "y (initial)", "z (initial)", "x (optimal)", "y (optimal)", "z (optimal)"])
+  # plt.legend(["x", "y", "z"])
+  # plt.legend(["x", "y", "z", "fsm"])
 
 if __name__ == "__main__":
   main()

@@ -9,7 +9,7 @@ import subprocess as sp
 import time 
 import numpy as np
 
-from dairlib import lcmt_swing_foot_spline_params, lcmt_robot_output
+from dairlib import lcmt_swing_foot_spline_params, lcmt_robot_output, lcmt_radio_out
 
 
 class LCMInterface:
@@ -58,16 +58,21 @@ class CassieSwingFootEnv:
         simulation in Drake, with an action space defined by the
         lcmt_swing_foot_spline_params structure.
     """
-    def __init__(self, default_swing, lcm_address=None, sim=True):
+    def __init__(self, default_swing,
+                 lcm_address=None,
+                 use_radio=False,
+                 sim=True):
         self.reward_channel = "SWING_FOOT_REWARD"
         self.fsm_channel = "FINITE_STATE_MACHINE"
         self.action_channel = "SWING_FOOT_PARAMS"
-        self.using_sim = sim
-        self.single_support_states = [0, 1]
         if sim:
             self.state_channel = "CASSIE_STATE_SIMULATION"
         else:
             self.state_channel = "CASSIE_STATE_DISPATCHER"
+        self.radio_channel = "CASSIE_VIRTUAL_RADIO"
+        self.using_sim = sim
+        self.use_radio = use_radio
+        self.single_support_states = [0, 1]
 
         self.lcm_interface = LCMInterface(
             [self.reward_channel, self.fsm_channel, self.state_channel],
@@ -82,7 +87,9 @@ class CassieSwingFootEnv:
         self.bin_dir = "./bazel-bin/examples/Cassie/"
         self.controller_p = "run_osc_walking_controller_alip"
         self.sim_p = "multibody_sim"
-        self.ctrlr_options = ["--learn_swing_foot_path"]
+        self.ctrlr_options = ["--learn_swing_foot_path=true"]
+        if self.use_radio:
+            self.ctrlr_options.append("--use_radio=true")
         # self.ctrlr_options = []
         self.sim_options = ["--publish_rate=2000", "--init_height=0.95",
                             "--target_realtime_rate=1.0"]
@@ -90,7 +97,7 @@ class CassieSwingFootEnv:
 
         ### Spawning Director & visualizer Process ###
         # For now, need to launch director and visualizer separately due to
-        # pydrake issues.
+        # vtk issues.
         print("CassieSwingFootEnv::Init: Make sure to run director and visualizer") 
 
 
@@ -120,7 +127,12 @@ class CassieSwingFootEnv:
         action_msg.swing_foot_vel_final = action[-3:]
         return action_msg
 
-    def step(self, action):
+    def fill_radio_message(self, radio):
+        radio_msg = lcmt_radio_out()
+        radio_msg.channel[0:4] = radio 
+        return radio_msg
+
+    def step(self, action, radio=None):
         """ Sends swing foot spline action to Drake, and receives back
         the new state and reward. Runs SYNCHRNOUSLY with sim so is 
         runtime-sensitive.
@@ -129,20 +141,33 @@ class CassieSwingFootEnv:
         """
         assert (len(action) == 1+3*action[0] + 6), \
             "action length must match # of knot points!"
+
+        # publish action, radio messages
         action_msg = self.fill_action_message(action)
+        self.lcm_interface.publish(self.action_channel, action_msg)
+        if self.use_radio and radio is not None:
+            radio_msg = self.fill_radio_message(radio)
+            self.lcm_interface.publish(self.radio_channel, radio_msg)
 
         cur_fsm_state = self.lcm_interface.get_latest(self.fsm_channel).value[0]
-        self.lcm_interface.publish(self.action_channel, action_msg)
         val = cur_fsm_state
-        reward = 0
-
+        start_t = time.time()
         while int(cur_fsm_state) not in self.single_support_states:
             cur_fsm_state = self.lcm_interface.get_latest(self.fsm_channel).value[0]
             time.sleep(.001)
+            if time.time() - start_t > 2:
+                self.state = self.select_states(self.lcm_interface.get_latest(self.state_channel))
+                r = self.lcm_interface.get_latest(self.reward_channel).value[0]
+                return self.state, r, True 
 
+        start_t = time.time()
         while val == cur_fsm_state:
             val = self.lcm_interface.get_latest(self.fsm_channel).value[0]
             time.sleep(0.001)
+            if time.time() - start_t > 2:
+                self.state = self.select_states(self.lcm_interface.get_latest(self.state_channel))
+                r = self.lcm_interface.get_latest(self.reward_channel).value[0]
+                return self.state, r, True 
 
         reward = self.lcm_interface.get_latest(self.reward_channel).value[0]
         self.state = self.select_states(self.lcm_interface.get_latest(self.state_channel))
@@ -158,7 +183,7 @@ class CassieSwingFootEnv:
         # Kill controller and sim if running
         self.kill_procs()
 
-        # reset LCM buffer
+        # reset LCM buffers
         self.lcm_interface.stop_reset_listening()
 
         #  Start walking controller process
@@ -194,7 +219,12 @@ class CassieSwingFootEnv:
     def check_failure(self, state):
         """ Checks if the robot has fallen down
         """
-        return state[6] < 0.6
+        cond = False
+        if self.ctrlr is not None:
+            cond = self.ctrlr.poll() is not None
+        if self.sim is not None:
+            cond = self.sim.poll() is not None
+        return state[6] < 0.6 or self.ctrlr is None or self.sim is None or cond
 
 
 def main():

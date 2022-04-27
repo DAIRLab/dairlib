@@ -59,10 +59,11 @@ def main():
 
   # Build MBP
   global plant, context, world, nq, nv, nx, nu
+  global model_instance
   mut.set_log_level("err")  # ignore warnings about joint limits
   builder = DiagramBuilder()
   plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  Parser(plant).AddModelFromFile(
+  model_instance = Parser(plant).AddModelFromFile(
     FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"))
   plant.mutable_gravity_field().set_gravity_vector(-9.81 * np.array([0, 0, 1]))
   plant.Finalize()
@@ -117,6 +118,11 @@ def main():
   Dynamic error
   """
   # PlotDynamicError(dircon_traj, nq + 6, nx)
+
+  """
+  Centroidal angular momentum
+  """
+  ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant)
 
   """
   Print impulse
@@ -664,6 +670,76 @@ def PlotStateAtKnots(dircon_traj, x_idx_start=0, x_idx_end=19):
   plt.xlabel('time (s)')
   plt.legend(state_datatypes[x_idx_start:x_idx_end])
 
+
+
+def ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant):
+  t_x = dircon_traj.GetStateBreaks(0)
+  x = dircon_traj.GetStateSamples(0).T
+  # import pdb;pdb.set_trace()
+
+  ### Total centroidal angular momentum
+  centroidal_angular_momentum = np.zeros((t_x.size, 3))
+  for i in range(t_x.size):
+    plant.SetPositionsAndVelocities(context, x[i])
+    com = plant.CalcCenterOfMassPositionInWorld(context)
+
+    h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
+    centroidal_angular_momentum[i] = h_WC_eval.rotational()
+
+  plt.figure("Centroidal angular momentum")
+  plt.plot(t_x, centroidal_angular_momentum)
+  plt.legend(["x", "y", "z"])
+
+  ### Individual momentum (reference: CalcSpatialMomentumInWorldAboutPoint)
+  body_indices = plant.GetBodyIndices(model_instance)
+  dictionary_centroidal_angular_momentum_per_body = {}
+  for body_idx in body_indices:
+    # No contribution from the world body.
+    if body_idx == 0:
+      continue
+    # Ensure MultibodyPlant method contains a valid body_index.
+    if int(body_idx) >= plant.num_bodies():
+      raise ValueError("wrong index. Bug somewhere")
+
+    body = plant.get_body(body_idx)
+    print(body.name())
+
+    angular_momentum_per_body = np.zeros((t_x.size, 3))
+    for i in range(t_x.size):
+      plant.SetPositionsAndVelocities(context, x[i])
+      com = plant.CalcCenterOfMassPositionInWorld(context)
+
+      body_pose = plant.EvalBodyPoseInWorld(context, body)
+
+      R_AE = body_pose.rotation()
+      M_BBo_W = body.default_spatial_inertia().ReExpress(R_AE)
+      V_WBo_W = plant.EvalBodySpatialVelocityInWorld(context, body)
+      L_WBo_W = M_BBo_W * V_WBo_W
+
+      # SpatialMomentumInWorldAboutWo
+      p_WoBo_W = body_pose.translation()
+      L_WS_W = L_WBo_W.Shift(-p_WoBo_W)
+
+      # SpatialMomentumInWorldAboutCOM
+      L_WS_W = L_WS_W.Shift(com)
+
+      angular_momentum_per_body[i] = L_WS_W.rotational()
+    dictionary_centroidal_angular_momentum_per_body[body.name()] = angular_momentum_per_body
+
+  dim = 0
+  plt.figure("Centroidal angular momentum per body")
+  legend_list = []
+  i = 0
+  linestyle = '-'
+  for key in dictionary_centroidal_angular_momentum_per_body:
+    plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body[key][:,dim], linestyle)
+    legend_list += [key]
+    if i == 9:
+      linestyle = '--'
+    if i == 19:
+      linestyle = '-.'
+    i+=1
+  plt.legend(legend_list)
 
 if __name__ == "__main__":
   main()

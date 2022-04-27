@@ -105,14 +105,19 @@ def main():
     y = np.array([d[2] for d in data if d[2] > -0.3]).reshape(-1, 1)
     print(f"labels shape {y.shape}")
 
-    kernel = RBF(0.1)  # this is a hyperparameter to tune
+    kernel = RBF(0.01)  # this is a hyperparameter to tune
     gpr = GaussianProcessRegressor(kernel).fit(X, y)
     
     # plot the fit
     x = np.arange(nominal_swing[-1]-0.02, nominal_swing[-1]+0.02, 0.0001).reshape(-1, 1)
-    y = gpr.predict(x)
+    y_, std = gpr.predict(x, return_std=True)
 
-    plt.plot(x, y)
+    ax = plt.figure().gca()
+    ax.set_xlim([min(x), max(x)])
+    ax.scatter(X, y, s=5)
+    ax.scatter([nominal_swing[-1]], [0], s=20, color="green")
+    ax.plot(x, y_, color="orange")
+    ax.fill_between(x.ravel(), y_.ravel()-std, y_.ravel()+std, alpha = 0.2, color="orange")
     plt.show()
     
 

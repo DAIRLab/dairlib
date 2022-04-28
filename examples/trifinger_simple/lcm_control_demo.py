@@ -19,6 +19,7 @@ from pydairlib.systems.controllers import C3Controller
 import numpy as np
 
 
+
 lcm = DrakeLcm()
 
 plant = MultibodyPlant(0.0)
@@ -96,13 +97,12 @@ nv = plant.num_velocities()
 nu = plant.num_actuators()
 nc = 2
 
-print(nq)
 
 q = np.zeros((nq,1))
 q_map = makeNameToPositionsMap(plant)
 q[0] = 0
-q[1] = -0.1
-q[2] = 0.02
+q[1] = 0
+q[2] = 0.05
 # q[3] = 0.2
 # q[4] = 0
 # q[5] = 0.02
@@ -112,8 +112,8 @@ q[2] = 0.02
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 1
-q[q_map['base_y']] = 0
+q[q_map['base_x']] = -0.1
+q[q_map['base_y']] = -0.1
 q[q_map['base_z']] = 0
 
 mu = 1.0
@@ -122,7 +122,11 @@ mu = 1.0
 
 
 Qinit = 0*np.eye(nq+nv)
-Qinit[7:9,7:9] = 1*np.eye(2)
+#Qinit[7:9,7:9] = 1000*np.eye(2)
+Qinit[2,2] = 100
+Qinit[7,7] = 10000
+Qinit[8,8] = 10000
+#Qinit[7] = 100
 #print(Qinit)
 
 # Qinit[0:9,0:9] = 0*np.eye(9) #trifinger
@@ -131,27 +135,33 @@ Qinit[7:9,7:9] = 1*np.eye(2)
 # #Qinit[5] = 10
 # #Qinit[8] = 10
 # Qinit[9:16,9:16] = 100*np.eye(7) #cube
-# Qinit[16:31,16:31] = 0*np.eye(15) #velocities
+Qinit[10:10+nv,10:10+nv] = 1*np.eye(nv) #velocities
+#print(Qinit)
 # Qinit[16:25,16:25] = 1*np.eye(9) #vel
 # Qinit[15,15] = 1000
 #print(Qinit)
 Rinit = 0.01*np.eye(nu) #torques
 #admm_params
-Ginit = 0.01*np.eye(nq+nv+nu+6*nc)
-Ginit[0:3,0:3] = 0*np.eye(3)
+Ginit = 0.01*np.eye(nq+nv+nu+6*nc)   #0.01
+#Ginit[0:3,0:3] = 0.01*np.eye(3)
 
 #Ginit[0:9,0:9] = 0*np.eye(9)
 #Ginit[16:31,16:31] = 0*np.eye(15)
 # Ginit[9:16,9:16] = 0*np.eye(7)
 # Ginit[31:49,31:49] = 0*np.eye(18)
 Uinit = 1*np.eye(nq+nv+nu+6*nc)
-Uinit[0:nq,0:nq] = 100*np.eye(nq)
+#Uinit[0:nq,0:nq] = 100*np.eye(nq)
+Uinit[0:nq+nv,0:nq+nv] = 100*np.eye(nq+nv)   #10
+Uinit[nq+nv+6*nc:nq+nv+nu+6*nc, nq+nv+6*nc:nq+nv+nu+6*nc] = 1*np.eye(nu)
+
+#print(Qinit)
 
 #Uinit[9:16,9:16] = 100*np.eye(7)
 #Uinit[0:31,0:31] = 100*np.eye(31)
 #Uinit[55:64,55:64] = 1*np.eye(9)
 xdesiredinit = np.zeros((nq+nv,1))
 xdesiredinit[:nq] = q
+#print(xdesiredinit)
 
 #Qinit[14,14] = 100
 
@@ -179,6 +189,8 @@ for i in range(N):
     G.append(Ginit)
     U.append(Uinit)
     xdesired.append(xdesiredinit)
+
+#Qinit[nv-3:nv,nv-3:nv] = 1*np.eye(3) #penalize final velocities
 Q.append(Qinit)
 xdesired.append(xdesiredinit)
 
@@ -227,4 +239,4 @@ loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                           input_channel="TRIFINGER_OUTPUT",
                           is_forced_publish=True)
 
-loop.Simulate(20)
+loop.Simulate(60)

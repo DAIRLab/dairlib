@@ -46,6 +46,10 @@
       <geometry>
         <sphere radius=".01"/>
       </geometry>
+                  <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
     </collision>
   </link>
   
@@ -111,6 +115,10 @@
       <geometry>
         <box size="5 5 0.1"/>
       </geometry>
+                  <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
     </collision>
     <contact>
             <!-- TODO: not sure if these values make sense -->

@@ -4,6 +4,10 @@ from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 from pydairlib.systems import AddActuationRecieverAndStateSenderLcm
 import pydairlib.common
 
+import pydrake.geometry as mut
+
+
+
 import matplotlib.pyplot as plt
 
 # Load the URDF and the cube
@@ -26,6 +30,10 @@ parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/trifinger_simple/robot_properties_fingers/urdf/sphere.urdf"))
 
+
+#props = mut.ProximityProperties()
+
+#props.AddProperty("material", "point_contact_stiffness", 1000)
 
 # Fix the base of the finger to the world
 X_WI = RigidTransform.Identity()
@@ -65,7 +73,7 @@ simulator.set_publish_every_time_step(False)
 simulator.set_publish_at_initialization(False)
 
 # Change the real-time rate to above 1 to simulate faster
-simulator.set_target_realtime_rate(0.1)
+simulator.set_target_realtime_rate(0.2)
 
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
@@ -73,9 +81,9 @@ plant_context = diagram.GetMutableSubsystemContext(
 # Set the initial state
 q = 0*np.ones(nq)
 q_map = makeNameToPositionsMap(plant)
-q[0] = -0.1
-q[1] = 0
-q[2] = 0.02
+q[0] = 0.1
+q[1] = 0.1
+q[2] = 0.3
 # q[3] = -0.01
 # q[4] = 0
 # q[5] = 0.02
@@ -121,7 +129,7 @@ plant.SetVelocities(plant_context, v)
 
 simulator.Initialize()
 # Simulate for 10 seconds
-simulator.AdvanceTo(20)
+simulator.AdvanceTo(60)
 
 # numpy array of data (nq+nv+nu) x n_time
 data = logger.FindLog(simulator.get_context()).data()

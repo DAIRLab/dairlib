@@ -91,7 +91,7 @@ void C3Controller::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
 
 
-  auto start = std::chrono::high_resolution_clock::now();
+  //auto start = std::chrono::high_resolution_clock::now();
 
 
   /// get values
@@ -149,7 +149,7 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
 //
   // std::cout << context_ << std::endl;
 
-  // std::cout << "before lcs " << std::endl;
+  // std::cout << "before lcs " << std::endl;s
   // multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, &state,
   // &context_);
 
@@ -196,34 +196,34 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
 
   ///trifinger constraints
-  ///input
-  opt.RemoveConstraints();
-  RowVectorXd LinIneq = RowVectorXd::Zero(k);
-  RowVectorXd LinIneq_r = RowVectorXd::Zero(k);
-  double lowerbound = -100;
-  double upperbound = 100;
-  int inputconstraint = 2;
-
-  for (int i = 0; i < k; i++) {
-    LinIneq_r = LinIneq;
-    LinIneq_r(i) = 1;
-    opt.AddLinearConstraint(LinIneq_r, lowerbound, upperbound, inputconstraint);
-  }
-
-
-
-  ///force
-  RowVectorXd LinIneqf = RowVectorXd::Zero(m);
-  RowVectorXd LinIneqf_r = RowVectorXd::Zero(m);
-  double lowerboundf = 0;
-  double upperboundf = 100;
-  int forceconstraint = 3;
-
-  for (int i = 0; i < m; i++) {
-    LinIneqf_r = LinIneqf;
-    LinIneqf_r(i) = 1;
-    opt.AddLinearConstraint(LinIneqf_r, lowerboundf, upperboundf, forceconstraint);
-  }
+//  ///input
+//  opt.RemoveConstraints();
+//  RowVectorXd LinIneq = RowVectorXd::Zero(k);
+//  RowVectorXd LinIneq_r = RowVectorXd::Zero(k);
+//  double lowerbound = -100;
+//  double upperbound = 100;
+//  int inputconstraint = 2;
+//
+//  for (int i = 0; i < k; i++) {
+//    LinIneq_r = LinIneq;
+//    LinIneq_r(i) = 1;
+//    opt.AddLinearConstraint(LinIneq_r, lowerbound, upperbound, inputconstraint);
+//  }
+//
+//
+//
+//  ///force
+//  RowVectorXd LinIneqf = RowVectorXd::Zero(m);
+//  RowVectorXd LinIneqf_r = RowVectorXd::Zero(m);
+//  double lowerboundf = 0;
+//  double upperboundf = 100;
+//  int forceconstraint = 3;
+//
+//  for (int i = 0; i < m; i++) {
+//    LinIneqf_r = LinIneqf;
+//    LinIneqf_r(i) = 1;
+//    opt.AddLinearConstraint(LinIneqf_r, lowerboundf, upperboundf, forceconstraint);
+//  }
 
 
   ///state (velocity)
@@ -266,13 +266,13 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   VectorXd input = opt.Solve(state, delta, w);
 
 
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
+//  auto finish = std::chrono::high_resolution_clock::now();
+//  std::chrono::duration<double> elapsed = finish - start;
 // std::cout << "Solve time:" << elapsed.count() << std::endl;
 
   //std::cout << "here" << std::endl;
 
-//  VectorXd input2 = VectorXd::Zero(k);
+//VectorXd input2 = VectorXd::Zero(k);
 //  input2(0) = 0.1;
   //VectorXd input2 = 12*VectorXd::Ones(9);
 

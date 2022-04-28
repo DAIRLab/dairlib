@@ -42,6 +42,21 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
   auto flag = LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * input,
                           &force);
 
+//  VectorXd qval = E_[0] * x_init + c_[0] + H_[0] * input;
+//  MatrixXd Fval = F_[0];
+////
+////
+//  auto flag = LCPSolver.SolveLcpLemkeRegularized(Fval,qval, &force);
+
+//  std::cout << flag << std::endl;
+
+//  if (flag == 1){
+//
+//      std::cout << "LCS force estimate" << std::endl;
+//    std::cout << force << std::endl;
+//    std::cout << "LCS force estimate" << std::endl;
+//  }
+
 //  std::cout << "eig" << std::endl;
 //  std::cout << (F_[0] + F_[0].transpose()).eigenvalues() << std::endl;
 //  std::cout << "eig" << std::endl;
@@ -66,6 +81,36 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
 
   // update
   x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
+
+    if (flag == 1){
+
+
+
+
+//      std::cout << "Next state prediction" << std::endl;
+//    std::cout << x_final<< std::endl;
+//    std::cout << "Next state prediction" << std::endl;
+
+//    std::cout << "Jn * v" << std::endl;
+//   std::cout << D_[0].block(10,0,9,9) * x_final_v << std::endl;
+//    std::cout << "Jn * v" << std::endl;
+
+//
+//    std::cout << "LCS force estimate" << std::endl;
+//   std::cout << force << std::endl;
+//    std::cout << "LCS force estimate" << std::endl;
+
+//      std::cout << "D" << std::endl;
+//    std::cout << D_[0] << std::endl;
+//      std::cout << "D" << std::endl;
+
+//      std::cout << "D times LCS force estimate" << std::endl;
+//    std::cout << D_[0] * force + d_[0] << std::endl;
+//    std::cout << "D times LCS force estimate" << std::endl;
+
+
+  }
+
 
   return x_final;
 }

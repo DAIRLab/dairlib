@@ -2,6 +2,7 @@
 
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "drake/solvers/moby_lcp_solver.h"
 
 #include "drake/math/autodiff_gradient.h"
 
@@ -207,6 +208,11 @@ LCS LCSFactory::LinearizePlantToLCS(
   D.block(n_state, 2 * contact_geoms.size(), n_vel,
           2 * contact_geoms.size() * num_friction_directions) = dt * MinvJ_t_T;
 
+  D.block(0, contact_geoms.size(), n_state, contact_geoms.size() )  =  dt * dt * Nq * MinvJ_n_T;
+
+  D.block(n_state, contact_geoms.size(), n_vel, contact_geoms.size() ) = dt * MinvJ_n_T;
+
+
   // std::cout << "D:" <<  D.rows() << 'x' << D.cols() << std::endl;
 
   // std::cout << "D:" <<  D << std::endl;
@@ -249,12 +255,19 @@ LCS LCSFactory::LinearizePlantToLCS(
       mu * MatrixXd::Identity(contact_geoms.size(), contact_geoms.size());
   F.block(0, 2 * contact_geoms.size(), contact_geoms.size(),
           2 * contact_geoms.size() * num_friction_directions) = -E_t;
+
+  F.block(contact_geoms.size(), contact_geoms.size(), contact_geoms.size(), contact_geoms.size() ) = dt * dt * J_n * MinvJ_n_T;
+
   F.block(contact_geoms.size(), 2 * contact_geoms.size(), contact_geoms.size(),
           2 * contact_geoms.size() * num_friction_directions) =
       dt * dt * J_n * MinvJ_t_T;
+
   F.block(2 * contact_geoms.size(), 0,
           2 * contact_geoms.size() * num_friction_directions,
           contact_geoms.size()) = E_t.transpose();
+
+  F.block(2 * contact_geoms.size(), contact_geoms.size(), contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions ) = dt * J_t * MinvJ_t_T;
+
   F.block(2 * contact_geoms.size(), 2 * contact_geoms.size(),
           2 * contact_geoms.size() * num_friction_directions,
           2 * contact_geoms.size() * num_friction_directions) =
@@ -297,8 +310,9 @@ LCS LCSFactory::LinearizePlantToLCS(
   auto Dn = D.squaredNorm();
   auto An = A.squaredNorm();
   auto AnDn = An / Dn;
-  //AnDn = 1;
 
+  //AnDn = 1;
+  //std::cout << AnDn << std::endl;
 
   std::vector<MatrixXd> A_lcs(N, A);
   std::vector<MatrixXd> B_lcs(N, B);
@@ -331,19 +345,55 @@ LCS LCSFactory::LinearizePlantToLCS(
 //  std::cout << c_lcs[0] << std::endl;
 //  std::cout << "dstahp" << std::endl;
 
+////
+//  ///check LCS predictions
+//  VectorXd inp = plant.get_actuation_input_port().Eval(context);
 //
-  ///check LCS predictions
-  VectorXd inp = plant.get_actuation_input_port().Eval(context);
+//  //std::cout << inp << std::endl;
+//
+//  VectorXd x0(plant.num_positions() + plant.num_velocities());
+//  x0 << plant.GetPositions(context), plant.GetVelocities(context);
+////
+////  std::cout << "real" << std::endl;
+//// std::cout << plant_ad.GetVelocities(context_ad) << std::endl;
+////
+//  VectorXd asd = system.Simulate(x0 ,inp);
+//
+//  // calculate force
+//  drake::solvers::MobyLCPSolver<double> LCPSolver;
+//  VectorXd force;
+//
+//  VectorXd x_init = x0;
+//  VectorXd input = inp;
+//
+//
+//  auto flag = LCPSolver.SolveLcpLemke(F, E * x_init + c + H * input,
+//                                      &force);
+//
+//  VectorXd x_final = A * x_init + B * input + D * force + d;
+//
+//  if (flag == 1){
+//
+//      std::cout << "LCS force estimate" << std::endl;
+//    std::cout << force << std::endl;
+//    std::cout << "LCS force estimate" << std::endl;
+////
+////
+////        std::cout << "Jn * v" << std::endl;
+////   std::cout << J_n * x_final.tail(9) << std::endl;
+////    std::cout << "Jn * v" << std::endl;
+//
+////        std::cout << "gap" << std::endl;
+////   std::cout << E * x_init + c + H * input + F * force << std::endl;
+////    std::cout << "gap" << std::endl;
+//
+//    std::cout << "phi" << std::endl;
+//    std::cout << phi << std::endl;
+//    std::cout << "phi" << std::endl;
+//
+//
+//  }
 
-  //std::cout << inp << std::endl;
-
-  VectorXd x0(plant.num_positions() + plant.num_velocities());
-  x0 << plant.GetPositions(context), plant.GetVelocities(context);
-//
-//  std::cout << "real" << std::endl;
-// std::cout << plant_ad.GetVelocities(context_ad) << std::endl;
-//
-  VectorXd asd = system.Simulate(x0 ,inp);
 //
 // std::cout << "prediction" << std::endl;
 // std::cout << asd.tail(15) << std::endl;

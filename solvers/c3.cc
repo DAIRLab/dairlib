@@ -129,6 +129,10 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 //      std::cout <<  "contact prediction" << std::endl;
 //      std::cout << z.segment(n_, m_) << std::endl;
 
+//      std::cout <<  "prediction state" << std::endl;
+  //    std::cout << z.segment(0, n_) << std::endl;
+
+
   return z.segment(n_ + m_, k_);
 }
 
@@ -227,9 +231,9 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
     zz.at(i).segment(n_, m_) = result.GetSolution(lambda_[i]);
     zz.at(i).segment(n_ + m_, k_) = result.GetSolution(u_[i]);
 
-//    std::cout << i << std::endl;
+//    std::cout << "Step" << i << std::endl;
 //    std::cout << "Prediction x" << std::endl;
-//    std::cout << zz.at(i).segment(0,16) ;
+//    std::cout << zz.at(i).segment(0,n_) ;
 //    std::cout << "Prediction u" << std::endl;
 //    std::cout << zz.at(i).segment(n_+m_,k_) ;
 //    std::cout << "Prediction lam" << std::endl;

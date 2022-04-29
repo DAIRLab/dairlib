@@ -100,7 +100,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double> plant(0.0);
   addCassieMultibody(&plant, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
-                     false /*spring model*/, false /*loop closure*/);
+                     true /*spring model*/, false /*loop closure*/);
   plant.Finalize();
 
   auto plant_context = plant.CreateDefaultContext();
@@ -256,6 +256,10 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);
+//  osc->AddStateAndContactPoint(left_stance_state, &left_fixed_knee_spring);
+//  osc->AddStateAndContactPoint(right_stance_state, &right_fixed_knee_spring);
+//  osc->AddStateAndContactPoint(left_stance_state, &left_fixed_ankle_spring);
+//  osc->AddStateAndContactPoint(right_stance_state, &right_fixed_ankle_spring);
 
   osc->AddKinematicConstraint(&evaluators);
 
@@ -389,6 +393,33 @@ int DoMain(int argc, char* argv[]) {
   left_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
   right_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
+
+//  left_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
+//      vel_map["hip_yaw_leftdot"], right_stance_state);
+//  left_foot_yz_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
+//      vel_map["hip_yaw_leftdot"], right_touchdown_air_phase);
+//  right_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
+//        vel_map["hip_yaw_rightdot"], left_stance_state);
+//  right_foot_yz_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
+//        vel_map["hip_yaw_rightdot"], left_touchdown_air_phase);
+  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_leftdot"], left_stance_state);
+  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"], right_stance_state);
+  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"], left_stance_state);
+  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_rightdot"], right_stance_state);
+
+//  left_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
+//      pos_map["hip_pitch_left"], right_stance_state);
+//  left_foot_yz_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
+//      pos_map["hip_pitch_left"], right_touchdown_air_phase);
+//  right_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
+//        pos_map["hip_pitch_right"], left_stance_state);
+//  right_foot_yz_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
+//        pos_map["hip_pitch_right"], left_touchdown_air_phase);
+
+//  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
+//  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});
+  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
 
   left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data->SetImpactInvariantProjection(true);

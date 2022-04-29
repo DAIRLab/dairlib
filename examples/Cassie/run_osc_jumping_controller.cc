@@ -87,7 +87,7 @@ DEFINE_string(traj_name, "jumping_0.15h_0.3d",
               "File to load saved trajectories from");
 DEFINE_string(gains_filename, "examples/Cassie/osc_jump/osc_jumping_gains.yaml",
               "Filepath containing gains");
-DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
+DEFINE_string(osqp_settings, "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
               "Filepath containing qp settings");
 
 int DoMain(int argc, char* argv[]) {
@@ -100,7 +100,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   addCassieMultibody(&plant_w_spr, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
-                     false /*spring model*/, false /*loop closure*/);
+                     true /*spring model*/, false /*loop closure*/);
   plant_w_spr.Finalize();
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();

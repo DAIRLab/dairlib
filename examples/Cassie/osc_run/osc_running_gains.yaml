@@ -1,15 +1,15 @@
-w_input: 0.00000
-w_accel: 0.00001
+w_input: 0.0001
+w_accel: 0.0001
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
 W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
-W_input_reg: [1, 0.9, 0.5, 0.1, 10,
-              1, 0.9, 0.5, 0.1, 10]
+W_input_reg: [1, 0.9, 0.5, 0.1, 5,
+              1, 0.9, 0.5, 0.1, 5]
 W_lambda_c_reg: [1, 0.001, 0.01,
                  1, 0.001, 0.01,
-                 1, 0.001, 0.01,
-                 1, 0.001, 0.01]
+                 1, 0.1, 0.01,
+                 1, 0.1, 0.01]
 W_lambda_h_reg: [0.01, 0.01, 0.01,
                0.01, 0.02, 0.02]
 #w_soft_constraint: 1000000
@@ -28,7 +28,7 @@ vel_scale_trans_lateral: -0.15
 # SLIP parameters
 rest_length: 0.85
 stance_duration: 0.30
-flight_duration: 0.08
+flight_duration: 0.1
 
 mu: 0.6
 
@@ -40,8 +40,8 @@ w_hip_yaw: 2.5
 hip_yaw_kp: 40
 hip_yaw_kd: 1
 # Foot placement parameters
-footstep_offset: -0.00
-center_line_offset: 0.05
+footstep_offset: -0.05
+center_line_offset: 0.04
 mid_foot_height: 0.05
 FootstepKd:
   [  0.2,     0,  0,
@@ -54,30 +54,30 @@ PelvisW:
 PelvisKp:
   [ 0,    0,    0,
     0,    0,    0,
-    0,    0,   75]
+    0,    0,   70]
 PelvisKd:
   [  1,    0,   0,
      0,    0,   0,
      0,    0,  5]
 PelvisRotW:
   [1,  0,   0,
-   0,  2.5,   0,
-   0,   0,  20]
+   0,  10,   0,
+   0,   0,  0]
 PelvisRotKp:
-  [50.,   0,   0,
+  [100.,   0,   0,
    0,  100.,   0,
    0,    0,  0.]
 PelvisRotKd:
-  [4.,   0,  0,
+  [10.,   0,  0,
    0,   5.,  0,
    0,    0,  1.]
 SwingFootW:
   [10,    0,    0,
-   0,   10,    0,
-   0,    0,   1]
+   0,   100,    0,
+   0,    0,   5]
 SwingFootKp:
   [125,    0,    0,
-   0,  100,    0,
+   0,  50,    0,
    0,     0,  50]
 SwingFootKd:
   [5.,   0,   0,
@@ -85,7 +85,7 @@ SwingFootKd:
    0,   0,  1.]
 LiftoffSwingFootW:
   [0.1,    0,    0,
-   0,   10,    0,
+   0,   100,    0,
    0,    0,    1]
 LiftoffSwingFootKp:
   [50,    0,    0,
@@ -93,6 +93,6 @@ LiftoffSwingFootKp:
    0,    0,  50]
 LiftoffSwingFootKd:
   [ 1,   0,   0,
-    0,  1,   0,
-    0,   0,  0]
+    0,  5,   0,
+    0,   0,  1]
 

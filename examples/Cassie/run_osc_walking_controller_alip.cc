@@ -214,7 +214,7 @@ int DoMain(int argc, char* argv[]) {
     state_durations = {left_support_duration, double_support_duration,
                        right_support_duration, double_support_duration};
   }
-  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
+  auto fsm = builder.AddSystem<systems::ImpactTimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
@@ -448,11 +448,13 @@ int DoMain(int argc, char* argv[]) {
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
+  swing_foot_data->SetImpactInvariantProjection(true);
   auto com_data = std::make_unique<ComTrackingData> ("com_data", gains.K_p_swing_foot,
                            gains.K_d_swing_foot, gains.W_swing_foot,
                            plant_w_spr, plant_w_spr);
   com_data->AddFiniteStateToTrack(left_stance_state);
   com_data->AddFiniteStateToTrack(right_stance_state);
+  com_data->SetImpactInvariantProjection(true);
   auto swing_ft_traj_local = std::make_unique<RelativeTranslationTrackingData> (
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data.get(),
@@ -496,12 +498,14 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
       gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
   pelvis_balance_traj->AddFrameToTrack("pelvis");
+  pelvis_balance_traj->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_balance_traj));
   // Pelvis rotation tracking (yaw)
   auto pelvis_heading_traj = std::make_unique<RotTaskSpaceTrackingData> (
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
       gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
   pelvis_heading_traj->AddFrameToTrack("pelvis");
+  pelvis_heading_traj->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_heading_traj),
                        gains.period_of_no_heading_control);
 

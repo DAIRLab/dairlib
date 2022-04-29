@@ -376,13 +376,15 @@ Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(
     bool successfully_added = false;
     for (auto pos_pair_w_spr : pos_map_w_spr) {
       if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
-        ret(pos_pair_wo_spr.second, pos_pair_w_spr.second) = 1;
+//        if (pos_pair_w_spr.first.find("ankle_spring") == std::string::npos && pos_pair_w_spr.first.find("knee_joint") == std::string::npos){
+          ret(pos_pair_wo_spr.second, pos_pair_w_spr.second) = 1;
+//        }
         successfully_added = true;
       }
     }
     DRAKE_DEMAND(successfully_added);
   }
-
+//  std::cout << ret << std::endl;
   return ret;
 }
 
@@ -402,13 +404,15 @@ Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(
     bool successfully_added = false;
     for (auto vel_pair_w_spr : vel_map_w_spr) {
       if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
-        ret(vel_pair_wo_spr.second, vel_pair_w_spr.second) = 1;
+//        if (vel_pair_w_spr.first.find("ankle_spring") == std::string::npos && vel_pair_w_spr.first.find("knee_joint") == std::string::npos){
+          ret(vel_pair_wo_spr.second, vel_pair_w_spr.second) = 1;
+//        }
         successfully_added = true;
       }
     }
     DRAKE_DEMAND(successfully_added);
   }
-
+//  std::cout << ret << std::endl;
   return ret;
 }
 

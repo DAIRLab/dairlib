@@ -615,7 +615,7 @@
         <child link="yaw_left" />
         <axis xyz="0 0 1" />
         <limit lower="-0.05" upper="0.100" effort="90"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
     <joint name="hip_roll_right" type="revolute">
@@ -624,7 +624,7 @@
         <child link="yaw_right" />
         <axis xyz="0 0 1" />
         <limit lower="-0.100" upper="0.05" effort="90"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
 
@@ -634,7 +634,7 @@
         <child link="hip_left" />
         <axis xyz="0 0 1" />
         <limit lower="0.0" upper="0.2" effort="60"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
     <joint name="hip_yaw_right" type="revolute">
@@ -643,7 +643,7 @@
         <child link="hip_right" />
         <axis xyz="0 0 1" />
         <limit lower="-0.2" upper="0.0" effort="60"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
 
@@ -654,7 +654,7 @@
         <axis xyz="0 0 1" />
         <!--        <limit lower="-0.72" upper="1.24" effort="300"/>-->
         <limit lower="0.2" upper="1.24" effort="90"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
     <joint name="hip_pitch_right" type="revolute">
@@ -664,7 +664,7 @@
         <axis xyz="0 0 1" />
         <!--        <limit lower="-0.72" upper="1.24" effort="300"/>-->
         <limit lower="0.2" upper="1.24" effort="90"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
     <joint name="knee_left" type="revolute">
@@ -673,7 +673,7 @@
         <child link="knee_left" />
         <axis xyz="0 0 1" />
         <limit lower="-2.862" upper="-0.646" effort="200"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
     <joint name="knee_right" type="revolute">
@@ -682,7 +682,7 @@
         <child link="knee_right" />
         <axis xyz="0 0 1" />
         <limit lower="-2.862" upper="-0.646" effort="200"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
 
@@ -716,7 +716,7 @@
         <child link="shin_left" />
         <axis xyz="0 0 1" />
         <limit lower="-.1" upper="0.075"/>
-        <dynamics damping=".1" />
+        <dynamics damping="0" />
     </joint>
 
     <joint name="knee_joint_right" type="revolute">
@@ -725,7 +725,7 @@
         <child link="shin_right" />
         <axis xyz="0 0 1" />
         <limit lower="-.1" upper="0.075"/>
-        <dynamics damping=".1" />
+        <dynamics damping="0" />
     </joint>
 
 
@@ -748,7 +748,7 @@
         <child link="tarsus_left" />
         <axis xyz="0 0 1" />
         <limit lower=".8" upper="3"/>
-        <dynamics damping="0.1" />
+        <dynamics damping="0" />
     </joint>
 
     <joint name="ankle_joint_right" type="revolute">
@@ -757,7 +757,7 @@
         <child link="tarsus_right" />
         <axis xyz="0 0 1" />
         <limit lower=".8" upper="3"/>
-        <dynamics damping="0.1" />
+        <dynamics damping="0" />
     </joint>
 
     <!-- rpy="-0.0689 -0.0370 2.7208"-->
@@ -767,7 +767,7 @@
         <child link="heel_spring_left" />
         <limit lower="-.1" upper="0.1"/>
         <axis xyz="0 0 1" />
-        <dynamics damping="10" /> <!-- made up value -->
+        <dynamics damping="0" /> <!-- made up value -->
     </joint>
 
     <!-- rpy="0.0734 0.0269 2.7201"-->
@@ -777,7 +777,7 @@
         <child link="heel_spring_right" />
         <limit lower="-.1" upper="0.1"/>
         <axis xyz="0 0 1" />
-        <dynamics damping="10" /> <!-- made up value -->
+        <dynamics damping="0" /> <!-- made up value -->
     </joint>
 
 
@@ -787,7 +787,7 @@
         <child link="toe_left" />
         <axis xyz="0 0 1" />
         <limit lower="-2.0" upper="-0.74" effort="40"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
     <joint name="toe_right" type="revolute">
@@ -796,7 +796,7 @@
         <child link="toe_right" />
         <axis xyz="0 0 1" />
         <limit lower="-2.0" upper="-0.74" effort="40"/>
-        <dynamics damping="1" />
+        <dynamics damping="0" />
     </joint>
 
     <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->

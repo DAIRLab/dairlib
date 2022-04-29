@@ -295,6 +295,7 @@ void OperationalSpaceControl::Build() {
             all_contacts_[i]->EvalFullJacobian(*context_wo_spr_).rows();
       }
     }
+//    std::cout << contact_map.first << ", " << active_contact_dim << std::endl;
     active_contact_dim_[contact_map.first] = active_contact_dim;
   }
 
@@ -525,7 +526,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
   bias = bias - grav;
   // TODO (yangwill): Characterize damping in cassie model
-//  bias = bias - f_app.generalized_forces();
+//  std::cout << f_app.generalized_forces().transpose() << std::endl;
+  bias = bias - f_app.generalized_forces();
 
   //  Invariant Impacts
   //  Only update when near an impact
@@ -537,6 +539,7 @@ VectorXd OperationalSpaceControl::SolveQp(
                                     next_fsm_state, M);
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
+//    std::cout << v_proj.transpose() << std::endl;
   }
   //  SetVelocitiesIfNew<double>(
   //      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
@@ -610,8 +613,13 @@ VectorXd OperationalSpaceControl::SolveQp(
       /// -> [J_c_active, I]* [dv, epsilon]^T == -JdotV_c_active
       MatrixXd A_c = MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_);
       A_c.block(0, 0, n_c_active_, n_v_) = J_c_active;
+      MatrixXd weight = 0.001 * MatrixXd::Identity(n_c_active_, n_c_active_);
+      weight(0, 0) *= 1e-3;
+      weight(1, 1) *= 1e-3;
+      weight(3, 3) *= 1e-3;
+      weight(4, 4) *= 1e-3;
       A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-          0.001 * MatrixXd::Identity(n_c_active_, n_c_active_);
+          weight;
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
@@ -779,15 +787,20 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     int fsm_state, int next_fsm_state, const MatrixXd& M) const {
   auto map_iterator = contact_indices_map_.find(next_fsm_state);
   if (map_iterator == contact_indices_map_.end()) {
-    throw std::out_of_range("Contact mode: " + std::to_string(next_fsm_state) +
-                            " was not found in the OSC");
+    ii_lambda_sol_ = VectorXd::Zero(n_c_ + n_h_);
+    M_Jt_ = MatrixXd::Zero(n_v_, n_c_ + n_h_);
+    return;
+//    throw std::out_of_range("Contact mode: " + std::to_string(next_fsm_state) +
+//                            " was not found in the OSC");
   }
   std::set<int> next_contact_set = map_iterator->second;
   int active_constraint_dim = active_contact_dim_.at(next_fsm_state) + n_h_;
+//  std::cout << "active constraint dim: " << active_constraint_dim << std::endl;
   MatrixXd J_next = MatrixXd::Zero(active_constraint_dim, n_v_);
   int row_start = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
     if (next_contact_set.find(i) != next_contact_set.end()) {
+//      std::cout << i << std::endl;
       J_next.block(row_start, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
       row_start += kSpaceDim;
@@ -798,6 +811,8 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     J_next.block(row_start, 0, n_h_, n_v_) =
         kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
   }
+//  std::cout << "J: " << std::endl;
+//  std::cout << J_next << std::endl;
   M_Jt_ = M.llt().solve(J_next.transpose());
 
   int active_tracking_data_dim = 0;
@@ -843,7 +858,26 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     }
   }
 
-  ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
+//  int n_holonomic_constraints = n_h_;
+  MatrixXd J_h = kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
+  MatrixXd A_constrained = MatrixXd::Zero(active_constraint_dim + n_h_, active_constraint_dim + n_h_);
+  MatrixXd C = J_h * M_Jt_;
+  VectorXd Ab = A.transpose() * ydot_err_vec;
+  VectorXd d = J_h * x_w_spr.tail(n_v_);
+  A_constrained.block(0, 0, active_constraint_dim, active_constraint_dim) = A.transpose() * A;
+  A_constrained.block(active_constraint_dim, 0, n_h_, active_constraint_dim) = C;
+  A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_) = C.transpose();
+  VectorXd b_constrained = VectorXd::Zero(active_constraint_dim + n_h_);
+  b_constrained << Ab, d;
+  //  A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_) = MatriXd;
+
+//  ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
+  ii_lambda_sol_ = A_constrained.completeOrthogonalDecomposition().solve(b_constrained).head(active_constraint_dim);
+
+//  std::cout << "constraint velocity: " << (J_h * (x_w_spr.tail(n_v_))).transpose() << std::endl;
+//  std::cout << "projected velocity: " << (J_h * (x_w_spr.tail(n_v_) + M_Jt_ * ii_lambda_sol_)).transpose() << std::endl;
+
+//  std::cout << ii_lambda_sol_.transpose() << std::endl;
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
@@ -1034,6 +1068,25 @@ void OperationalSpaceControl::CalcOptimalInput(
       alpha = impact_info->GetAlpha();
       next_fsm_state = impact_info->GetCurrentContactMode();
     }
+
+//    if(fsm_state(0) == 0){
+//      x_wo_spr[19] = 0;
+//      x_wo_spr[21] = 0;
+//      x_wo_spr[33] = 0;
+//      x_wo_spr[41] = 0;
+//    }
+//    else if(fsm_state(0) == 1){
+//      x_wo_spr[11] = 0;
+//      x_wo_spr[13] = 0;
+//      x_wo_spr[33] = 0;
+//      x_wo_spr[41] = 0;
+//    }
+//    else{
+//      x_wo_spr[11] = 0;
+//      x_wo_spr[13] = 0;
+//      x_wo_spr[19] = 0;
+//      x_wo_spr[21] = 0;
+//    }
 
     // Get discrete states
     const auto prev_event_time =

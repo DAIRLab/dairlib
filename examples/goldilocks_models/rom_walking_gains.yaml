@@ -47,11 +47,12 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220316_rom24_big_range/robot_1/"                                            # rom_option 24
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220406_rom28_big_range_big_vel_weight/robot_1/"                             # rom_option 28
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220406_rom29_big_range_big_vel_weight/robot_1/"                             # rom_option 29
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220323_rom27_big_range_bigger_step_size_5e-3/robot_1/"                      # rom_option 27
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220323_rom27_big_range_bigger_step_size_5e-3/robot_1/"                      # rom_option 27
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
-rom_option: 27  # 4, 9
+rom_option: 30  # 4, 9
 #The iteration number of the theta that you use.has to be >= 1
 model_iter: 1 #150  #1 #30
 #The sample that we use to initialize planner
@@ -71,7 +72,7 @@ constant_turning_rate: 0
 
 # when use_radio=true, the above high level command parameters are discarded
 use_radio: false
-use_virtual_radio: false  # use xbox controller in the simulation
+use_virtual_radio: true  # use xbox controller in the simulation
 vel_scale_rot: -0.5
 vel_scale_trans_sagital: 0.3
 vel_scale_trans_lateral: -0.2
@@ -88,12 +89,12 @@ post_right_double_support: 4
 # Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
 left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
 right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4
-double_support_duration: 0.05 #0.02
+double_support_duration: 0.1 #0.02
 
 
 ### For planner only
 
-constant_rom_vel_during_double_support: false
+constant_rom_vel_during_double_support: true
 
 # max_foot_speed should be more than two times bigger than the desired walking speed.
 # (maybe leave at least 0.5m/s margin for it to catch up with the body when falling forward)
@@ -196,7 +197,7 @@ ds_time: 0.
 max_CoM_to_footstep_dist: 0.5
 footstep_offset: 0.0
 center_line_offset: 0.03
-mid_foot_height: 0.05  #0.03
+mid_foot_height: 0.10  #0.03   # The robot sometimes cannot catch itself when this foot height is small (e.g. 5cm)
 final_foot_height: -0.0
 final_foot_velocity_z: 0.0
 

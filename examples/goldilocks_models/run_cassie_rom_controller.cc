@@ -240,6 +240,7 @@ int DoMain(int argc, char* argv[]) {
   if (close_sim_gap) {
     // Currently open loop traj doesn't have double support phase, so I added a
     // check here. The double support phase contributes to the sim gap.
+    DRAKE_DEMAND(gains.mid_foot_height == 0.05);
     DRAKE_DEMAND(gains.double_support_duration == 0);
     DRAKE_DEMAND(!gains.constant_rom_vel_during_double_support);
     DRAKE_DEMAND(FLAGS_get_swing_foot_from_planner);

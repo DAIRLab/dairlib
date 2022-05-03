@@ -87,7 +87,8 @@ VectorX<double> DynamicsConstraint::g(const VectorX<double>& z,
 
   // Set some acceleration to 0 (heuristic)
   for (const auto& idx : idx_constant_rom_vel_) {
-    zdot(idx) = 0;
+    //    zdot(idx) = 0;
+    zdot(idx) = -2 * zdot(idx - n_y_);  // heuristic
   }
 
   return zdot;

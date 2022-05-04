@@ -55,6 +55,7 @@ struct RomWalkingGains {
   std::string dir_model;
   std::string dir_data;
 
+  bool relative_swing_ft;
   double max_CoM_to_footstep_dist;
   double center_line_offset;
   double footstep_offset;
@@ -162,6 +163,7 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(dir_model));
     a->Visit(DRAKE_NVP(dir_data));
 
+    a->Visit(DRAKE_NVP(relative_swing_ft));
     // swing foot heuristics
     a->Visit(DRAKE_NVP(max_CoM_to_footstep_dist));
     a->Visit(DRAKE_NVP(center_line_offset));

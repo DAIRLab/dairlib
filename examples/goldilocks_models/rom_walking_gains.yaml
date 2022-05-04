@@ -166,6 +166,9 @@ w_v_lipm_mpc: 0.1
 
 ### For controller only
 
+# TrackingDataSettings
+relative_swing_ft: true
+
 #High level command gains(without radio)
 yaw_deadband_blur: 5
 yaw_deadband_radius: 5  # intentionally made this big to not track pelvis yaw

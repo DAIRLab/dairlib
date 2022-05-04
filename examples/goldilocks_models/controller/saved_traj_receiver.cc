@@ -39,7 +39,10 @@ SavedTrajReceiver::SavedTrajReceiver(
     double single_support_duration, double double_support_duration,
     double desired_mid_foot_height, double desired_final_foot_height,
     const RomWalkingGains& gains,
-    const StateMirror& state_mirror /*Only use for sim gap testing*/)
+    const StateMirror& state_mirror /*Only use for sim gap testing*/,
+    const multibody::WorldYawViewFrame<double>& view_frame_feedback,
+    const multibody::WorldYawViewFrame<double>& view_frame_control,
+    bool wrt_com_in_local_frame)
     : ny_(rom.n_y()),
       plant_feedback_(plant_feedback),
       plant_control_(plant_control),
@@ -53,7 +56,10 @@ SavedTrajReceiver::SavedTrajReceiver(
       single_support_duration_(single_support_duration),
       double_support_duration_(double_support_duration),
       desired_mid_foot_height_(desired_mid_foot_height),
-      desired_final_foot_height_(desired_final_foot_height) {
+      desired_final_foot_height_(desired_final_foot_height),
+      view_frame_feedback_(view_frame_feedback),
+      view_frame_control_(view_frame_control),
+      wrt_com_in_local_frame_(wrt_com_in_local_frame) {
   saved_traj_lcm_port_ =
       this->DeclareAbstractInputPort(
               "saved_traj_lcm",
@@ -286,6 +292,15 @@ EventStatus SavedTrajReceiver::DiscreteVariableUpdate(
         *context_feedback_, swing_foot.second, swing_foot.first,
         plant_feedback_.world_frame(), &swing_foot_pos_at_liftoff);
 
+    // Make swing foot pos relative to COM
+    if (wrt_com_in_local_frame_) {
+      swing_foot_pos_at_liftoff =
+          view_frame_feedback_.CalcWorldToFrameRotation(plant_feedback_,
+                                                        *context_feedback_) *
+          (swing_foot_pos_at_liftoff -
+           plant_feedback_.CalcCenterOfMassPositionInWorld(*context_feedback_));
+    }
+
     // Stance hip joints
     discrete_state->get_mutable_vector(liftoff_stance_hip_pos_idx_)
             .get_mutable_value()
@@ -371,7 +386,8 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   PiecewisePolynomial<double> pp;
   std::vector<double> T_waypoint = std::vector<double>(3, 0);
   std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
-  Vector3d foot_pos;
+  Vector3d start_foot_pos;
+  Vector3d end_foot_pos;
   bool init_step = true;
   bool left_stance = abs(stance_foot(0)) < 1e-12;
   for (int j = 0; j < n_mode; j++) {
@@ -379,44 +395,58 @@ void SavedTrajReceiver::CalcSwingFootTraj(
     // happen when the planner starts planning close the end of mode), we skip
     if (current_time < xf_time(j)) {
       if (xf_time(j) - double_support_duration_ > x0_time(j)) {
+        // Set the time
         // T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
         T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
                                           double_support_duration_
                                     : x0_time(j) - eps_hack_;
         T_waypoint.at(2) = xf_time(j) - double_support_duration_;
         T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
+
+        // Start pos
         plant_control_.SetPositionsAndVelocities(context_control_.get(),
                                                  x0.col(j));
-        // Start pos
         if (init_step) {
-          foot_pos = context.get_discrete_state(liftoff_swing_foot_pos_idx_)
-                         .get_value();
+          start_foot_pos =
+              context.get_discrete_state(liftoff_swing_foot_pos_idx_)
+                  .get_value();
         } else {
           plant_control_.CalcPointsPositions(
               *context_control_,
               left_right_foot_.at(left_stance ? 1 : 0).second,
               left_right_foot_.at(left_stance ? 1 : 0).first,
-              plant_control_.world_frame(), &foot_pos);
+              plant_control_.world_frame(), &start_foot_pos);
+          if (wrt_com_in_local_frame_) {
+            start_foot_pos = view_frame_control_.CalcWorldToFrameRotation(
+                                 plant_control_, *context_control_) *
+                             (start_foot_pos -
+                              plant_control_.CalcCenterOfMassPositionInWorld(
+                                  *context_control_));
+          }
         }
-        Y.at(0) = foot_pos;
-        double init_foot_pos_height = foot_pos(2);
+        Y.at(0) = start_foot_pos;
         // End pos
         plant_control_.SetPositionsAndVelocities(context_control_.get(),
                                                  xf.col(j));
         plant_control_.CalcPointsPositions(
             *context_control_, left_right_foot_.at(left_stance ? 1 : 0).second,
             left_right_foot_.at(left_stance ? 1 : 0).first,
-            plant_control_.world_frame(), &foot_pos);
-        Y.at(2) = foot_pos;
+            plant_control_.world_frame(), &end_foot_pos);
+        if (wrt_com_in_local_frame_) {
+          end_foot_pos =
+              view_frame_control_.CalcWorldToFrameRotation(plant_control_,
+                                                           *context_control_) *
+              (end_foot_pos - plant_control_.CalcCenterOfMassPositionInWorld(
+                                  *context_control_));
+        }
+        Y.at(2) = end_foot_pos;
         // Mid pos
         Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
 
         // Foot height
         if (init_step) {
-          Y.at(1)(2) = init_foot_pos_height + desired_mid_foot_height_;
-          Y.at(2)(2) = init_foot_pos_height + desired_final_foot_height_;
-          //          Y.at(1)(2) += desired_mid_foot_height_;
-          //          Y.at(2)(2) += desired_final_foot_height_;
+          Y.at(1)(2) = start_foot_pos(2) + desired_mid_foot_height_;
+          Y.at(2)(2) = start_foot_pos(2) + desired_final_foot_height_;
         } else {
           Y.at(1)(2) += desired_mid_foot_height_;
           Y.at(2)(2) += desired_final_foot_height_;

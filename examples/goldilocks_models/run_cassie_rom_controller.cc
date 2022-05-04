@@ -86,6 +86,7 @@ using systems::OutputVector;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::OptimalRomTrackingData;
+using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
@@ -244,6 +245,7 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(gains.double_support_duration == 0);
     DRAKE_DEMAND(!gains.constant_rom_vel_during_double_support);
     DRAKE_DEMAND(FLAGS_get_swing_foot_from_planner);
+    DRAKE_DEMAND(!gains.relative_swing_ft);  // I guess this doesn't matter
     // TODO: you can add more checks here if you find important factors in the
     //  future
   }
@@ -496,8 +498,10 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);*/
   // 3. Contact points (The position doesn't matter. It's not used in OSC)
-  const auto& pelvis = plant_wo_springs.GetBodyByName("pelvis");
-  multibody::WorldYawViewFrame view_frame(pelvis);
+  multibody::WorldYawViewFrame view_frame(
+      plant_wo_springs.GetBodyByName("pelvis"));
+  multibody::WorldYawViewFrame view_frame_w_spring(
+      plant_w_spr.GetBodyByName("pelvis"));
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_toe.first, left_toe.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
@@ -516,6 +520,8 @@ int DoMain(int argc, char* argv[]) {
     /// Non IK conroller
     ///
 
+    bool wrt_com_in_local_frame = gains.relative_swing_ft;
+
     // Create Lcm subscriber for MPC's output
     auto planner_output_subscriber = builder.AddSystem(
         LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -530,7 +536,8 @@ int DoMain(int argc, char* argv[]) {
         *rom, plant_w_spr, plant_wo_springs, context_w_spr.get(),
         left_right_foot, left_right_support_fsm_states, left_support_duration,
         double_support_duration, gains.mid_foot_height, gains.final_foot_height,
-        gains, state_mirror);
+        gains, state_mirror, view_frame_w_spring, view_frame,
+        wrt_com_in_local_frame);
     builder.Connect(planner_output_subscriber->get_output_port(),
                     planner_traj_receiver->get_input_port_lcm_traj());
     builder.Connect(fsm->get_output_port(0),
@@ -588,7 +595,8 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem<cassie::osc::WalkingSpeedControl>(
             plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
             gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
-            left_support_duration, gains.speed_control_offset_sagittal);
+            left_support_duration, gains.speed_control_offset_sagittal,
+            wrt_com_in_local_frame);
     if (!gains.set_constant_walking_speed) {
       builder.Connect(high_level_command->get_xy_output_port(),
                       walking_speed_control->get_input_port_des_hor_vel());
@@ -610,7 +618,7 @@ int DoMain(int argc, char* argv[]) {
             double_support_duration, gains.mid_foot_height,
             gains.final_foot_height, gains.final_foot_velocity_z,
             gains.max_CoM_to_footstep_dist, gains.footstep_offset,
-            gains.center_line_offset);
+            gains.center_line_offset, wrt_com_in_local_frame);
     builder.Connect(fsm->get_output_port(0),
                     swing_ft_traj_generator->get_input_port_fsm());
     builder.Connect(event_time->get_output_port_event_time_of_interest(),
@@ -747,19 +755,41 @@ int DoMain(int argc, char* argv[]) {
             swing_ft_accel_gain_multiplier_samples);
 
     // Swing foot tracking
-    TransTaskSpaceTrackingData swing_foot_traj(
+    TransTaskSpaceTrackingData swing_foot_data(
+        "swing_ft_data", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+        osc_gains.W_swing_foot, plant_w_spr, plant_wo_springs);
+    swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
+    swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+    ComTrackingData com_data("com_data", osc_gains.K_p_swing_foot,
+                             osc_gains.K_d_swing_foot, osc_gains.W_swing_foot,
+                             plant_w_spr, plant_wo_springs);
+    com_data.AddFiniteStateToTrack(left_stance_state);
+    com_data.AddFiniteStateToTrack(right_stance_state);
+    RelativeTranslationTrackingData swing_ft_traj_local(
         "swing_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-        weight_scale * osc_gains.W_swing_foot, plant_w_spr, plant_wo_springs);
-    swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
-    swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
-    std::vector<double> swing_ft_ratio_breaks{0, left_support_duration / 2,
-                                              left_support_duration};
+        osc_gains.W_swing_foot, plant_w_spr, plant_wo_springs, &swing_foot_data,
+        &com_data);
+    swing_ft_traj_local.SetViewFrame(view_frame_w_spring);
 
-    swing_foot_traj.SetTimeVaryingGains(swing_ft_gain_multiplier);
-    swing_foot_traj.SetFeedforwardAccelMultiplier(
-        swing_ft_accel_gain_multiplier);
-    //    swing_foot_traj.DisableFeedforwardAccel({2});
-    osc->AddTrackingData(&swing_foot_traj);
+    TransTaskSpaceTrackingData swing_ft_traj_global(
+        "swing_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
+        osc_gains.W_swing_foot, plant_w_spr, plant_wo_springs);
+    swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state,
+                                                 "toe_right");
+    swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state,
+                                                 "toe_left");
+
+    if (wrt_com_in_local_frame) {
+      swing_ft_traj_local.SetTimeVaryingGains(swing_ft_gain_multiplier);
+      swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+          swing_ft_accel_gain_multiplier);
+      osc->AddTrackingData(&swing_ft_traj_local);
+    } else {
+      swing_ft_traj_global.SetTimeVaryingGains(swing_ft_gain_multiplier);
+      swing_ft_traj_global.SetFeedforwardAccelMultiplier(
+          swing_ft_accel_gain_multiplier);
+      osc->AddTrackingData(&swing_ft_traj_global);
+    }
 
     // "Center of mass" tracking (Using RomTrackingData with initial ROM being
     // COM)

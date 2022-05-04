@@ -6,6 +6,7 @@
 #include "examples/goldilocks_models/rom_walking_gains.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/view_frame.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
@@ -31,7 +32,10 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
       double single_support_duration, double double_support_duration,
       double desired_mid_foot_height, double desired_final_foot_height,
       const RomWalkingGains& gains,
-      const StateMirror& state_mirror /*Only use for sim gap testing*/);
+      const StateMirror& state_mirror /*Only use for sim gap testing*/,
+      const multibody::WorldYawViewFrame<double>& view_frame_feedback,
+      const multibody::WorldYawViewFrame<double>& view_frame_control,
+      bool wrt_com_in_local_frame);
 
   const drake::systems::InputPort<double>& get_input_port_lcm_traj() const {
     return this->get_input_port(saved_traj_lcm_port_);
@@ -141,6 +145,11 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd xf_;
   Eigen::VectorXd xf_time_;
   Eigen::VectorXd stance_foot_;
+
+  //
+  const multibody::WorldYawViewFrame<double>& view_frame_feedback_;
+  const multibody::WorldYawViewFrame<double>& view_frame_control_;
+  bool wrt_com_in_local_frame_;
 };
 
 // We have IKTrajReceiver beside SavedTrajReceiver, because it also extracts the

@@ -13,7 +13,24 @@ import traceback
 import logging
 import argparse
 
-from examples.goldilocks_models.py_utils import FindVarValueInString
+# I copied this function from examples/goldilocks_models/py_utils.py, because I had a path issue when running this on cluster
+def FindVarValueInString(file_string, string_to_search):
+    # We search from the end of the file
+    word_location = file_string.rfind(string_to_search)
+    number_idx_start = 0
+    number_idx_end = 0
+    idx = word_location
+    while True:
+        if file_string[idx] == '=':
+            number_idx_start = idx
+        elif file_string[idx] == '\n':
+            number_idx_end = idx
+            break
+        idx += 1
+    value = float(file_string[number_idx_start + 1: number_idx_end])
+    return value
+
+
 
 plt.rcParams.update({'font.size': 18})
 

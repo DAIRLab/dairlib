@@ -254,6 +254,7 @@ int DoMain(int argc, char* argv[]) {
     if (gains.double_support_duration > 0) {
       DRAKE_DEMAND(gains.constant_rom_vel_during_double_support);
     }
+    DRAKE_DEMAND(!gains.use_virtual_radio);
   }
 
   // Build Cassie MBP

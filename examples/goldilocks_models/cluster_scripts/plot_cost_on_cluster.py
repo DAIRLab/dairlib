@@ -12,7 +12,7 @@ while True:
   print(datetime.now())
 
   # Call plotting script with srun
-  RunCommand("srun --qos=low --nodes=1 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=2G --pty python3 examples/goldilocks_models/find_models/plot_cost.py", True)
+  RunCommand("srun --qos=low --nodes=1 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=2G --time=2:00:00 --pty python3 examples/goldilocks_models/find_models/plot_cost.py", True)
   # RunCommand("srun --partition=debug --qos=debug --nodes=1 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=2G --pty python3 examples/goldilocks_models/find_models/plot_cost.py", True)
 
   print("sleep for a while")

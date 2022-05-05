@@ -16,6 +16,7 @@ file_path = "/home/yminchen/bazel_is_building"  # for some reason, we need full 
 while True:
   if os.path.exists(file_path):
     seconds = file_age(file_path)
+    print(seconds)
     if seconds / 3600 > 2:
       print("file is too old, deleting")
       os.remove(file_path)

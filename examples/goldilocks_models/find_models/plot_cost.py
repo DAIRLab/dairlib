@@ -170,6 +170,7 @@ for i in range(len(directory_list)):
             if iteration_length == 0:
                 print("There is at least one sample in Iteration %d that's not evaluated. Stop plotting." % iter_start)
                 break
+            t = list(range(iter_start, iteration_length+iter_start))
 
             cost_iter_1 = 0.0
             cost_min = 10000.0  # just a random big value
@@ -184,11 +185,11 @@ for i in range(len(directory_list)):
             # 1. Plot each sample
             for sample_i in range(N_sample):
                 # read in cost
-                cost_all = [0] * iteration_length
-                cost_x = [0] * iteration_length
-                cost_u = [0] * iteration_length
-                cost_accel = [0] * iteration_length
-                cost_main = [0] * iteration_length
+                cost_all = [0.0] * iteration_length
+                cost_x = [0.0] * iteration_length
+                cost_u = [0.0] * iteration_length
+                cost_accel = [0.0] * iteration_length
+                cost_main = [0.0] * iteration_length
                 iteration = iter_start
                 idx = 0
                 while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
@@ -209,8 +210,6 @@ for i in range(len(directory_list)):
                     idx += 1
 
                 # plot cost for each sample
-                length = len(cost_main)
-                t = list(range(iter_start, length+iter_start))
                 if not only_plot_average_cost:
                     sl = np.loadtxt(directory+str(iter_start)+'_'+str(sample_i)+'_task.csv')[0]
                     task_criteria_satisfied = True if (target_stride_length is None) else (abs(sl-target_stride_length) < target_stride_length_tol)
@@ -220,12 +219,12 @@ for i in range(len(directory_list)):
                         # TODO: not very important, but you can read the task value and use it as a label
 
                 # Read in is_success
-                is_success = []
+                is_success = [1] * iteration_length
                 if only_add_successful_samples_to_average_cost:
+                    idx = 0
                     for iter_i in range(iter_start, iter_start + iteration_length):
-                        is_success.append(np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=","))
-                else:
-                    is_success = [1] * iteration_length
+                        is_success[idx] = int(np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=","))
+                        idx += 1
 
                 # For some reason, sometimes the cost file exists but empty. (it looks to happen only in the last iteration, so it's probably the training was stopped unexpected, or reached the max hard drive capacity)
                 # I only need this code if I didn't set the final iteration to not include empty cost file

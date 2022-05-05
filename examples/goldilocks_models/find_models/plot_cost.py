@@ -338,7 +338,7 @@ for i in range(len(directory_list)):
                     affix = "_new" if os.path.exists(directory + "../subcost.png") else ""
                     plt.savefig("%s../subcost%s.png" % (directory, affix))
                     plt.savefig("../subcost_%s.png" % unique_folder_name)
-                    print(";  figure saved")
+                    # print(";  figure saved")
                     # print("  figure saved for %s" % unique_folder_name)
                     plt.close()
 

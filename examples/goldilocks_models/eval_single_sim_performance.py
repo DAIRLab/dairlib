@@ -489,9 +489,10 @@ def main():
 
   # File setting
   global directory, path_status_log
-  directory = "../dairlib_data/goldilocks_models/hardware_cost_eval/" \
-    if is_hardware else "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  directory = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # directory = "/media/yuming/data/dairlib_data/sim_cost_eval/"
+  if is_hardware:
+    directory = "../dairlib_data/goldilocks_models/hardware_cost_eval/"
   Path(directory).mkdir(parents=True, exist_ok=True)
   path_status_log = directory + (
     "hardware_status.txt" if is_hardware else "sim_status.txt")
@@ -504,6 +505,7 @@ def main():
   msg_first_column = "hardware_" + filename if is_hardware else \
     "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx)
   file_prefix = filename if is_hardware else "%d_%d" % (rom_iter_idx, log_idx)
+  print("file_prefix = ", file_prefix)
 
   # Build plant
   mut.set_log_level("err")  # ignore warnings about joint limits

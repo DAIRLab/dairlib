@@ -1,4 +1,5 @@
 import sys
+import os
 
 import yaml
 import lcm
@@ -59,7 +60,7 @@ def IsSimLogGood(x, t_x, desried_sim_end_time):
 
 
 ### Check if it's close to steady state
-def CheckSteadyState(x, t_x, td_times, Print=True,
+def CheckSteadyStateAndSaveTasks(x, t_x, td_times, Print=True,
     separate_left_right_leg=False):
   is_steady_state = True
 
@@ -104,19 +105,18 @@ def CheckSteadyState(x, t_x, td_times, Print=True,
             "tolerance is " + str(pelvis_height_variation_tol) + "\n"
       PrintAndLogStatus(msg)
 
-  global ave_stride_length, ave_pelvis_height
+  # Save average tasks
   ave_stride_length = np.average(np.diff(pelvis_x_at_td))
   ave_pelvis_height = np.average(pelvis_z_at_td)
+  ave_tasks = {"ave_stride_length": ave_stride_length,
+               "ave_pelvis_height": ave_pelvis_height}
 
-  return is_steady_state, max_step_diff + max_pelvis_height_diff
+  return is_steady_state, max_step_diff + max_pelvis_height_diff, ave_tasks
 
 
-def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
-  is_steady_state = False
-
-  # Default time window values, can override
-  t_start = t_u[10]
-  t_end = t_u[-10]
+def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug, pick_single_best_window=False):
+  list_of_start_time_end_time_pair = []
+  list_of_ave_tasks = []
 
   # Override t_start and t_end here
   if is_hardware:
@@ -125,8 +125,9 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
     post_left_double_support = parsed_yaml.get('post_left_double_support')
     post_right_double_support = parsed_yaml.get('post_right_double_support')
 
-    max_diff_list = []
     start_end_time_list = []
+    max_diff_list = []
+    ave_tasks_list = []
     prev_fsm_state = -1
     for i in range(len(fsm)):
       if t_osc_debug[i] + n_step * stride_period > t_shutoff:
@@ -146,31 +147,42 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
           for _ in range(n_step):
             td_times.append(td_times[-1] + stride_period)
 
-          sub_window_is_ss, max_diff = CheckSteadyState(x, t_x, td_times, False)
+          sub_window_is_ss, max_diff, ave_tasks = CheckSteadyStateAndSaveTasks(x, t_x, td_times, False)
           if sub_window_is_ss:
+            start_end_time_list.append((td_times[0], td_times[-1]))
             max_diff_list.append(max_diff)
-            start_end_time_list.append([td_times[0], td_times[-1]])
+            ave_tasks_list.append(ave_tasks)
       prev_fsm_state = fsm_state
 
     # start_end_time_list would be non-empty when there is a steady state window
     is_steady_state = len(start_end_time_list) > 0
     if is_steady_state:
-      idx = np.argmin(max_diff_list).item()
-      t_start = start_end_time_list[idx][0]
-      t_end = start_end_time_list[idx][1]
-      print("max_diff_list = ", max_diff_list)
-      print("idx = ", idx)
-      max_diff_list.sort()
-      print("sorted = ", max_diff_list)
+      if pick_single_best_window:
+        # We pick the window that has the smallest steady state error
+        idx = np.argmin(max_diff_list).item()
+        list_of_start_time_end_time_pair.append(start_end_time_list[idx])
+        list_of_ave_tasks.append(ave_tasks_list[idx])
+
+        print("max_diff_list = ", max_diff_list)
+        print("idx = ", idx)
+        max_diff_list.sort()
+        print("sorted = ", max_diff_list)
+      else:
+        list_of_start_time_end_time_pair = start_end_time_list
+        list_of_ave_tasks = ave_tasks_list
     else:
       msg = msg_first_column + ": not close to steady state."
       PrintAndLogStatus(msg)
 
   else:
+    t_start = t_u[10]
+    t_end = t_u[-10]
+
     step_idx_start = int(t_end / stride_period) - n_step
     step_idx_end = int(t_end / stride_period)
     # step_idx_start = 14
     # step_idx_end = step_idx_start + n_step
+
     t_start = stride_period * step_idx_start
     t_end = stride_period * step_idx_end
 
@@ -178,12 +190,14 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
     td_times = []
     for idx in range(step_idx_start, step_idx_end + 1):
       td_times.append(stride_period * idx)
-    is_steady_state, _ = CheckSteadyState(x, t_x, td_times)
+    is_steady_state, _, ave_tasks = CheckSteadyStateAndSaveTasks(x, t_x, td_times)
 
-  if is_steady_state:
-    return t_start, t_end
-  else:
-    return -1, -1
+    if is_steady_state:
+      list_of_start_time_end_time_pair.append((t_start, t_end))
+      list_of_ave_tasks.append(ave_tasks)
+
+  return list_of_start_time_end_time_pair, list_of_ave_tasks
+
 
 
 # cutoff_freq is in Hz
@@ -274,8 +288,8 @@ def GetCostWeight(nq, nv, nu):
                  "w_reg": w_reg}
 
   # Printing
-  for key in weight_dict:
-    print(key, " = \n", weight_dict[key])
+  # for key in weight_dict:
+  #   print(key, " = \n", weight_dict[key])
 
   return weight_dict
 
@@ -435,8 +449,8 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
     cost_dict[key] /= n_step
 
   # Printing
-  for key in cost_dict:
-    print(key, " = ", cost_dict[key])
+  # for key in cost_dict:
+  #   print(key, " = ", cost_dict[key])
 
   return cost_dict
 
@@ -481,6 +495,10 @@ def main():
     else:
       eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
 
+  if is_hardware:
+    if len(sys.argv) >= 6:
+      rom_iter_idx = int(sys.argv[5])
+
   # Parameters
   global n_step
   n_step = 4  #1  # steps to average over
@@ -492,9 +510,6 @@ def main():
 
   # Some parameters
   low_pass_filter = True
-
-  #
-  global ave_pelvis_height
 
   # Read the controller parameters
   global parsed_yaml, stride_period
@@ -521,8 +536,14 @@ def main():
   global msg_first_column
   msg_first_column = "hardware_" + filename if is_hardware else \
     "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx)
+
+  # File prefix
   file_prefix = filename if is_hardware else "%d_%d" % (rom_iter_idx, log_idx)
   print("file_prefix = ", file_prefix)
+  starting_log_idx = 0
+  if is_hardware:
+    while os.path.exists(eval_dir + file_prefix + "_%d_%d" % (rom_iter_idx, starting_log_idx) + "_cost_values.csv"):
+      starting_log_idx += 1
 
   # Build plant
   mut.set_log_level("err")  # ignore warnings about joint limits
@@ -598,27 +619,41 @@ def main():
       return
 
   # Pick the start and end time
-  t_start, t_end = GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug)
-  # print("t_start, t_end = ", t_start, t_end)
-  if t_start < 0:
-    return
+  list_of_start_time_end_time_pair, list_of_ave_tasks = GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug)
 
   # Set start and end time manually
-  # t_start, t_end = 0.001, 0.35
+  # list_of_start_time_end_time_pair = [(0.001, 0.35)]
 
-  # list_of_start_time_end_time_pair = [(t_start, t_end)]
-  #
-  # for t_start, t_end in list_of_start_time_end_time_pair:
-  #
-  #   import pdb; pdb.set_trace()
-  cost_dict = ProcessDataGivenStartTimeAndEndTime(t_start, t_end,
-    is_hardware, spring_model, low_pass_filter, n_step,
-    x, u, fsm, t_x, t_u, t_osc_debug, nq, nu, nv, vel_map)
+  if len(list_of_start_time_end_time_pair) == 0:
+    return
 
-  SaveData(cost_dict, file_prefix, ave_stride_length, ave_pelvis_height, eval_dir)
+  # Some checks -- currently we don't support many windows for simulation log,
+  # because of file_prefix
+  if not is_hardware:
+    if len(list_of_start_time_end_time_pair) > 1:
+      raise ValueError("We currently don't support multiple windows for sim log")
+
+  # Weight used in model optimization
+  weight_dict = GetCostWeight(nq, nv, nu)
+
+  for i in range(len(list_of_start_time_end_time_pair)):
+    t_start, t_end = list_of_start_time_end_time_pair[i]
+    ave_tasks = list_of_ave_tasks[i]
+
+    cost_dict = ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict,
+      is_hardware, spring_model, low_pass_filter, n_step,
+      x, u, fsm, t_x, t_u, t_osc_debug, nq, nu, nv, vel_map)
+
+    # Get a file_prefix name
+    file_prefix_this_loop = file_prefix
+    if is_hardware:
+      file_prefix_this_loop += "_%d_%d" % (rom_iter_idx, starting_log_idx)
+      starting_log_idx += 1
+
+    SaveData(cost_dict, file_prefix_this_loop, ave_tasks)
 
 
-def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, is_hardware, spring_model,
+def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware, spring_model,
     low_pass_filter, n_step,
     x, u, fsm, t_x, t_u, t_osc_debug, nq, nu, nv, vel_map):
   ### Get indices from time
@@ -700,9 +735,6 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, is_hardware, spring_mode
   # max_accel = 750
   # vdot_numerical = np.clip(vdot_numerical, -max_accel, max_accel)
 
-  # Weight used in model optimization
-  weight_dict = GetCostWeight(nq, nv, nu)
-
   # Compute all costs
   cost_dict = CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
     u_extracted, vdot_numerical, fsm_tx_extracted, fsm_tu_extracted, weight_dict)
@@ -730,7 +762,7 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, is_hardware, spring_mode
   return cost_dict
 
 
-def SaveData(cost_dict, file_prefix, ave_stride_length, ave_pelvis_height, eval_dir):
+def SaveData(cost_dict, file_prefix, ave_tasks):
   # Store into files
   names = ['cost_x',
            'cost_u',
@@ -764,13 +796,13 @@ def SaveData(cost_dict, file_prefix, ave_stride_length, ave_pelvis_height, eval_
   path = eval_dir + "%s_ave_stride_length.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
-  f.write(str(ave_stride_length))
+  f.write(str(ave_tasks["ave_stride_length"]))
   f.close()
 
   path = eval_dir + "%s_ave_pelvis_height.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
-  f.write(str(ave_pelvis_height))
+  f.write(str(ave_tasks["ave_pelvis_height"]))
   f.close()
 
   path = eval_dir + "%s_success.csv" % file_prefix

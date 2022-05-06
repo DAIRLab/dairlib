@@ -268,7 +268,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
 # sim_end_time is used to check if the simulation ended early
 def EvalCost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
   eval_cost_cmd = [
-    'bazel-bin/examples/goldilocks_models/eval_single_sim_performance',
+    'bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance',
     LcmlogFilePath(rom_iter_idx, log_idx),
     'ROM_WALKING',
     str(rom_iter_idx),
@@ -516,7 +516,7 @@ def EvalCostInMultithread(model_indices, log_indices):
   n_max_thread = psutil.cpu_count()
 
   ### Build files just in case forgetting
-  BuildFiles('examples/goldilocks_models:eval_single_sim_performance')
+  BuildFiles('examples/goldilocks_models:eval_single_closedloop_performance')
 
   n_total_sim = len(model_indices) * len(log_indices)
   counter = 0
@@ -525,6 +525,9 @@ def EvalCostInMultithread(model_indices, log_indices):
       print("\n===========\n")
       print("progress %.1f%%" % (float(counter) / n_total_sim * 100))
       print("run sim for model %d and log %d" % (rom_iter, idx))
+
+      # if not (rom_iter == 1 and idx == 70):
+      #   continue
 
       # Evaluate the cost
       path = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)

@@ -221,8 +221,8 @@ cc_binary(
 )
 
 py_binary(
-    name = "eval_single_sim_performance",
-    srcs = ["eval_single_sim_performance.py"],
+    name = "eval_single_closedloop_performance",
+    srcs = ["eval_single_closedloop_performance.py"],
     data = [
         "@lcm//:lcm-python",
     ],

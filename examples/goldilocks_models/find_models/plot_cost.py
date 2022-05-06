@@ -60,6 +60,9 @@ iter_end = args.iter_end
 is_iter_end = (args.iter_end > 1)
 robot_option = args.robot_option
 
+# Checks
+if args.path[-1] == "/":
+    args.path = args.path[:-1]
 
 ### Some path settings
 base = '../dairlib_data/goldilocks_models/find_models'

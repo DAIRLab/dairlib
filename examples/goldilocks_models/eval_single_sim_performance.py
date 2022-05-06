@@ -440,6 +440,11 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
   return cost_dict
 
 
+def EnforceSlashEnding(dir):
+  if len(dir) > 0 and dir[-1] != "/":
+    raise ValueError("Directory path name should end with slash")
+
+
 # TODO: maybe we should use pelvis height wrt stance foot in CheckSteadyState()
 
 def main():
@@ -460,6 +465,18 @@ def main():
     log_idx = int(sys.argv[4])       # doesn't affect cost calculation
     desried_sim_end_time = float(sys.argv[5])
     spring_model = (sys.argv[6].lower() == "true")
+
+  global eval_dir
+  if is_hardware:
+    if len(sys.argv) >= 5:
+      eval_dir = sys.argv[4]
+    else:
+      eval_dir = "../dairlib_data/goldilocks_models/hardware_cost_eval/"
+  else:
+    if len(sys.argv) >= 8:
+      eval_dir = sys.argv[7]
+    else:
+      eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
 
   # Parameters
   global n_step
@@ -488,16 +505,13 @@ def main():
   const_walking_speed_x = stride_length_x / stride_period
 
   # File setting
-  global directory, path_status_log
-  directory = "../dairlib_data/goldilocks_models/sim_cost_eval/"
-  # directory = "/media/yuming/data/dairlib_data/sim_cost_eval/"
-  if is_hardware:
-    directory = "../dairlib_data/goldilocks_models/hardware_cost_eval/"
-  Path(directory).mkdir(parents=True, exist_ok=True)
-  path_status_log = directory + (
+  global path_status_log
+  EnforceSlashEnding(eval_dir)
+  Path(eval_dir).mkdir(parents=True, exist_ok=True)
+  path_status_log = eval_dir + (
     "hardware_status.txt" if is_hardware else "sim_status.txt")
   filename = file_path.split("/")[-1]
-  print("directory = ", directory)
+  print("eval_dir = ", eval_dir)
   print("path_status_log = ", path_status_log)
 
   # Message first column
@@ -713,31 +727,31 @@ def main():
 
   values = ', '.join(values)
 
-  path = directory + "cost_names.csv"
+  path = eval_dir + "cost_names.csv"
   # print("writing to " + path)
   f = open(path, "w")
   f.write(', '.join(names))
   f.close()
 
-  path = directory + "%s_cost_values.csv" % file_prefix
+  path = eval_dir + "%s_cost_values.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
   f.write(values)
   f.close()
 
-  path = directory + "%s_ave_stride_length.csv" % file_prefix
+  path = eval_dir + "%s_ave_stride_length.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
   f.write(str((x_extracted[-1, 4] - x_extracted[0, 4]) / n_step))
   f.close()
 
-  path = directory + "%s_ave_pelvis_height.csv" % file_prefix
+  path = eval_dir + "%s_ave_pelvis_height.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
   f.write(str(ave_pelvis_height))
   f.close()
 
-  path = directory + "%s_success.csv" % file_prefix
+  path = eval_dir + "%s_success.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
   f.write("1")

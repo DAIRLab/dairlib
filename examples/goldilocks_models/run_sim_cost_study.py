@@ -275,6 +275,7 @@ def EvalCost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
     str(log_idx),
     str(sim_end_time),
     str(spring_model),
+    eval_dir,
   ]
   print(' '.join(eval_cost_cmd))
   eval_cost_process = subprocess.Popen(eval_cost_cmd)
@@ -424,6 +425,8 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   working_threads = []
   n_max_thread = min(int(psutil.cpu_count() / 3) - 1, len(task_list))  # TODO: check if the min is necessary
   n_max_thread = min(int(psutil.cpu_count() / 2), len(task_list)) if target_realtime_rate == 0.1 else n_max_thread
+  if target_realtime_rate == 1:
+    n_max_thread = 1
 
   global thread_idx_set
   thread_idx_set = set()
@@ -1423,6 +1426,7 @@ if __name__ == "__main__":
   FOM_model_dir = ""
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  # eval_dir = "/media/yuming/sata-ssd/dairlib_data/sim_cost_eval/"
   # eval_dir = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
@@ -1431,14 +1435,14 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0405/20220105_sim_eval_20211229_model_using_stance_hip_from_planner/1_first_try/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0405/_20220122_sim_eval_20220105_model_again/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
-  eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
   spring_model = False
   close_sim_gap = True
   # Parameters that are modified often
-  target_realtime_rate = 0.1  # 0.04
+  target_realtime_rate = 1  # 0.04
   foot_step_from_planner = True
   stance_hip_angles_from_planner = True
   swing_hip_angle_from_planner = False
@@ -1510,8 +1514,9 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
   model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
-  model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320]
+  # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
+  #model_slices_cost_landsacpe = [1, 11, 50, 70]
   # model_slices_cost_landsacpe = [75]
 
   # Expected (averaged) cost over a task range

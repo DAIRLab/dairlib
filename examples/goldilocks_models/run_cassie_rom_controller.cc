@@ -203,6 +203,11 @@ int DoMain(int argc, char* argv[]) {
   if (gains.use_virtual_radio) {
     cout << "Set `use_radio` to true because `use_virtual_radio` = true\n\n";
     gains.use_radio = true;
+
+    if (FLAGS_hardware) {
+      cout << "Set `use_virtual_radio` to false due to hardware experiment\n\n";
+      gains.use_virtual_radio = false;
+    }
   }
 
   if (FLAGS_stride_length > -100) {
@@ -254,7 +259,6 @@ int DoMain(int argc, char* argv[]) {
     if (gains.double_support_duration > 0) {
       DRAKE_DEMAND(gains.constant_rom_vel_during_double_support);
     }
-    DRAKE_DEMAND(!gains.use_virtual_radio);
   }
 
   // Build Cassie MBP

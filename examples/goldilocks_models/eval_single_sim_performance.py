@@ -104,7 +104,8 @@ def CheckSteadyState(x, t_x, td_times, Print=True,
             "tolerance is " + str(pelvis_height_variation_tol) + "\n"
       PrintAndLogStatus(msg)
 
-  global ave_pelvis_height
+  global ave_stride_length, ave_pelvis_height
+  ave_stride_length = np.average(np.diff(pelvis_x_at_td))
   ave_pelvis_height = np.average(pelvis_z_at_td)
 
   return is_steady_state, max_step_diff + max_pelvis_height_diff
@@ -126,17 +127,17 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
 
     max_diff_list = []
     start_end_time_list = []
-    prev_state = -1
+    prev_fsm_state = -1
     for i in range(len(fsm)):
       if t_osc_debug[i] + n_step * stride_period > t_shutoff:
         break
 
-      state = fsm[i]
+      fsm_state = fsm[i]
       # At the start of the double support state
-      if ((prev_state == left_support) and
-          (state == post_left_double_support)) or \
-          ((prev_state == right_support) and
-           (state == post_right_double_support)):
+      if ((prev_fsm_state == left_support) and
+          (fsm_state == post_left_double_support)) or \
+          ((prev_fsm_state == right_support) and
+           (fsm_state == post_right_double_support)):
         t_fsm_start = t_osc_debug[i]
 
         if t_fsm_start + n_step * stride_period <= t_x[-1]:
@@ -149,7 +150,7 @@ def GetStartTimeAndEndTime(x, t_x, u, t_u, fsm, t_osc_debug):
           if sub_window_is_ss:
             max_diff_list.append(max_diff)
             start_end_time_list.append([td_times[0], td_times[-1]])
-      prev_state = state
+      prev_fsm_state = fsm_state
 
     # start_end_time_list would be non-empty when there is a steady state window
     is_steady_state = len(start_end_time_list) > 0
@@ -447,6 +448,8 @@ def EnforceSlashEnding(dir):
 
 # TODO: maybe we should use pelvis height wrt stance foot in CheckSteadyState()
 
+# TODO: we also need to add horizontal steady state check (currently it has to be close to 0)
+
 def main():
   # Script input arguments
   global is_hardware
@@ -603,6 +606,21 @@ def main():
   # Set start and end time manually
   # t_start, t_end = 0.001, 0.35
 
+  # list_of_start_time_end_time_pair = [(t_start, t_end)]
+  #
+  # for t_start, t_end in list_of_start_time_end_time_pair:
+  #
+  #   import pdb; pdb.set_trace()
+  cost_dict = ProcessDataGivenStartTimeAndEndTime(t_start, t_end,
+    is_hardware, spring_model, low_pass_filter, n_step,
+    x, u, fsm, t_x, t_u, t_osc_debug, nq, nu, nv, vel_map)
+
+  SaveData(cost_dict, file_prefix, ave_stride_length, ave_pelvis_height, eval_dir)
+
+
+def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, is_hardware, spring_model,
+    low_pass_filter, n_step,
+    x, u, fsm, t_x, t_u, t_osc_debug, nq, nu, nv, vel_map):
   ### Get indices from time
   global t_slice, t_u_slice
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
@@ -709,6 +727,10 @@ def main():
   # cost_accel_except_toe_ankle *= (w_accel / n_step)
   # print("cost_accel_except_toe_ankle = " + str(cost_accel_except_toe_ankle))
 
+  return cost_dict
+
+
+def SaveData(cost_dict, file_prefix, ave_stride_length, ave_pelvis_height, eval_dir):
   # Store into files
   names = ['cost_x',
            'cost_u',
@@ -742,7 +764,7 @@ def main():
   path = eval_dir + "%s_ave_stride_length.csv" % file_prefix
   # print("writing to " + path)
   f = open(path, "w")
-  f.write(str((x_extracted[-1, 4] - x_extracted[0, 4]) / n_step))
+  f.write(str(ave_stride_length))
   f.close()
 
   path = eval_dir + "%s_ave_pelvis_height.csv" % file_prefix

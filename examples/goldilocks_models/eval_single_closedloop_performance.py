@@ -464,6 +464,8 @@ def EnforceSlashEnding(dir):
 
 # TODO: we also need to add horizontal steady state check (currently it has to be close to 0)
 
+# TODO: also need to make the stride length local to pelvis heading
+
 def main():
   # Script input arguments
   global is_hardware

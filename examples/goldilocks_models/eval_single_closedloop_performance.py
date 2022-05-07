@@ -3,6 +3,7 @@ import os
 
 import yaml
 import lcm
+import math
 import scipy
 from scipy.interpolate import interp1d
 import matplotlib
@@ -22,6 +23,24 @@ import pydrake.common as mut
 
 from py_utils import FindVarValueInString
 
+
+# WorldYawViewFrame is directly translated from c++ code
+class WorldYawViewFrame:
+  def __init__(self, body):
+    self.body_ = body
+  def CalcWorldToFrameRotation3D(self, plant, context):
+    # Get approximated heading angle of pelvis and rotational matrix
+    body_x_axis = plant.EvalBodyPoseInWorld(context, self.body_).rotation().matrix()[:, 0]
+    approx_body_yaw = math.atan2(body_x_axis[1], body_x_axis[0])
+    return np.array([[math.cos(approx_body_yaw), -math.sin(approx_body_yaw), 0],
+                     [math.sin(approx_body_yaw), math.cos(approx_body_yaw), 0],
+                     [0, 0, 1]]).T
+  def CalcWorldToFrameRotation2D(self, plant, context):
+    # Get approximated heading angle of pelvis and rotational matrix
+    body_x_axis = plant.EvalBodyPoseInWorld(context, self.body_).rotation().matrix()[:, 0]
+    approx_body_yaw = math.atan2(body_x_axis[1], body_x_axis[0])
+    return np.array([[math.cos(approx_body_yaw), -math.sin(approx_body_yaw)],
+                     [math.sin(approx_body_yaw), math.cos(approx_body_yaw)]]).T
 
 def PrintAndLogStatus(msg):
   print(msg)
@@ -61,7 +80,7 @@ def IsSimLogGood(x, t_x, desried_sim_end_time):
 
 ### Check if it's close to steady state
 def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
-    Print=True, separate_left_right_leg=False):
+    Print=True):
   is_steady_state = True
 
   t_x_touchdown_indices = []
@@ -69,25 +88,40 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
     t_x_touchdown_indices.append(np.argwhere(np.abs(t_x - time) < 2e-3)[0][0])
 
   # 1. stride length
-  max_step_diff = 0.0
-  pelvis_x_at_td = np.zeros(len(t_x_touchdown_indices))
+  pelvis_xy_at_td = np.zeros((len(t_x_touchdown_indices), 2))
   for i in range(len(t_x_touchdown_indices)):
-    pelvis_x_at_td[i] = x[t_x_touchdown_indices[i], 4]
-  pelvis_x_at_td_list = [pelvis_x_at_td[0::2], pelvis_x_at_td[1::2]] \
-    if separate_left_right_leg else [pelvis_x_at_td]
-  for i in range(len(pelvis_x_at_td_list)):
-    step_lengths = np.diff(pelvis_x_at_td_list[i])
-    min_step_length = min(step_lengths)
-    max_step_length = max(step_lengths)
-    max_step_diff = max(max_step_diff, abs(max_step_length - min_step_length))
-    if abs(max_step_length - min_step_length) > step_length_variation_tol:
-      is_steady_state = False
-      if Print:
-        msg = msg_first_column + \
-              ": not close to steady state. min and max stride length are " + \
-              "%.3f, %.3f. " % (min_step_length, max_step_length) + \
-              "tolerance is " + str(step_length_variation_tol) + "\n"
-        PrintAndLogStatus(msg)
+    pelvis_xy_at_td[i] = x[t_x_touchdown_indices[i], 4:6]
+
+  step_lengths = np.diff(pelvis_xy_at_td, axis=0)
+  for i in range(len(t_x_touchdown_indices) - 1):
+    plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[0], :])
+    step_lengths[i, :] = view_frame.CalcWorldToFrameRotation2D(plant, context) @ step_lengths[i, :]
+  step_lengths_x = step_lengths[:, 0]
+  step_lengths_y = step_lengths[:, 1]
+
+  # 1a. stride length in x
+  min_step_length = min(step_lengths_x)
+  max_step_length = max(step_lengths_x)
+  max_step_diff = abs(max_step_length - min_step_length)
+  if abs(max_step_length - min_step_length) > step_length_variation_tol:
+    is_steady_state = False
+    if Print:
+      msg = msg_first_column + \
+            ": not close to steady state. min and max stride length are " + \
+            "%.3f, %.3f. " % (min_step_length, max_step_length) + \
+            "tolerance is " + str(step_length_variation_tol) + "\n"
+      PrintAndLogStatus(msg)
+
+  # 1b. stride length in y
+  max_side_stepping = max(abs(step_lengths_y))
+  if max_side_stepping > side_stepping_tol:
+    is_steady_state = False
+    if Print:
+      msg = msg_first_column + \
+            ": not close to steady state. max side stepping is " + \
+            "%.3f. " % max_side_stepping + \
+            "tolerance is " + str(side_stepping_tol) + "\n"
+      PrintAndLogStatus(msg)
 
   # 2. pelvis height
   pelvis_z_at_td = np.zeros(len(t_x_touchdown_indices))
@@ -114,12 +148,12 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
       PrintAndLogStatus(msg)
 
   # Save average tasks
-  ave_stride_length = np.average(np.diff(pelvis_x_at_td))
+  ave_stride_length = np.average(step_lengths_x)
   ave_pelvis_height = np.average(pelvis_z_at_td)
   ave_tasks = {"ave_stride_length": ave_stride_length,
                "ave_pelvis_height": ave_pelvis_height}
 
-  return is_steady_state, max_step_diff + max_pelvis_height_diff, ave_tasks
+  return is_steady_state, max_step_diff + max_side_stepping + max_pelvis_height_diff, ave_tasks
 
 
 def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
@@ -451,10 +485,6 @@ def EnforceSlashEnding(dir):
     raise ValueError("Directory path name should end with slash")
 
 
-# TODO: we also need to add horizontal steady state check (currently it has to be close to 0)
-
-# TODO: also need to make the stride length local to pelvis heading
-
 def main():
   # Script input arguments
   global is_hardware
@@ -495,8 +525,9 @@ def main():
   n_step = 4  #1  # steps to average over
 
   # Steady state parameters
-  global step_length_variation_tol, pelvis_height_variation_tol
+  global step_length_variation_tol, side_stepping_tol, pelvis_height_variation_tol
   step_length_variation_tol = 0.05 if is_hardware else 0.02
+  side_stepping_tol = 0.05  # not tuned
   pelvis_height_variation_tol = 0.05 if is_hardware else 0.05
 
   # Some parameters
@@ -555,7 +586,8 @@ def main():
   nx = plant.num_positions() + plant.num_velocities()
   nu = plant.num_actuators()
 
-  global l_toe_frame, r_toe_frame, world, context
+  global pelvis, l_toe_frame, r_toe_frame, world, context
+  pelvis = plant.GetBodyByName("pelvis")
   l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
   world = plant.world_frame()
@@ -565,6 +597,9 @@ def main():
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
   mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2
+
+  global view_frame
+  view_frame = WorldYawViewFrame(pelvis)
 
   pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
   vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)

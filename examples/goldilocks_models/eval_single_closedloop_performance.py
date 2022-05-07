@@ -60,8 +60,8 @@ def IsSimLogGood(x, t_x, desried_sim_end_time):
 
 
 ### Check if it's close to steady state
-def CheckSteadyStateAndSaveTasks(x, t_x, td_times, Print=True,
-    separate_left_right_leg=False):
+def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
+    Print=True, separate_left_right_leg=False):
   is_steady_state = True
 
   t_x_touchdown_indices = []
@@ -114,90 +114,74 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, Print=True,
   return is_steady_state, max_step_diff + max_pelvis_height_diff, ave_tasks
 
 
-def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug, pick_single_best_window=False):
+def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
+    check_only_one_window=False, pick_single_best_window=False):
   list_of_start_time_end_time_pair = []
   list_of_ave_tasks = []
 
-  # Override t_start and t_end here
-  if is_hardware:
-    left_support = parsed_yaml.get('left_support')
-    right_support = parsed_yaml.get('right_support')
-    post_left_double_support = parsed_yaml.get('post_left_double_support')
-    post_right_double_support = parsed_yaml.get('post_right_double_support')
+  # Get start time and end time
+  left_support = parsed_yaml.get('left_support')
+  right_support = parsed_yaml.get('right_support')
 
-    start_end_time_list = []
-    max_diff_list = []
-    ave_tasks_list = []
-    prev_fsm_state = -1
-    for i in range(len(fsm)):
-      if t_osc_debug[i] + n_step * stride_period > t_shutoff:
-        break
+  t_end = t_shutoff if is_hardware else t_u[-10]
 
-      fsm_state = fsm[i]
-      # At the start of the double support state
-      if ((prev_fsm_state == left_support) and
-          (fsm_state == post_left_double_support)) or \
-          ((prev_fsm_state == right_support) and
-           (fsm_state == post_right_double_support)):
-        t_fsm_start = t_osc_debug[i]
+  # Check if the start time and end time are valid (e.g. at steady state)
+  start_end_time_list = []
+  max_diff_list = []
+  ave_tasks_list = []
+  prev_fsm_state = -1
 
-        if t_fsm_start + n_step * stride_period <= t_x[-1]:
-          # Create a list of times at touchdown
-          td_times = [t_fsm_start]
-          for _ in range(n_step):
-            td_times.append(td_times[-1] + stride_period)
+  n = len(fsm)
+  for j in range(len(fsm)):
+    i = n - j - 1  # Reverse the index (from last to first)
 
-          sub_window_is_ss, max_diff, ave_tasks = CheckSteadyStateAndSaveTasks(x, t_x, td_times, False)
-          if sub_window_is_ss:
-            start_end_time_list.append((td_times[0], td_times[-1]))
-            max_diff_list.append(max_diff)
-            ave_tasks_list.append(ave_tasks)
-      prev_fsm_state = fsm_state
+    if t_osc_debug[i] + n_step * stride_period > t_end:
+      continue
 
-    # start_end_time_list would be non-empty when there is a steady state window
-    is_steady_state = len(start_end_time_list) > 0
-    if is_steady_state:
-      if pick_single_best_window:
-        # We pick the window that has the smallest steady state error
-        idx = np.argmin(max_diff_list).item()
-        list_of_start_time_end_time_pair.append(start_end_time_list[idx])
-        list_of_ave_tasks.append(ave_tasks_list[idx])
+    fsm_state = fsm[i]
+    # At the start of the single support state
+    if prev_fsm_state != -1 and \
+        (((prev_fsm_state == left_support) and (fsm_state != left_support)) or
+         ((prev_fsm_state == right_support) and (fsm_state != right_support))):
+      start_with_left_stance = (prev_fsm_state == left_support)
+      t_fsm_start = t_osc_debug[i+1]
 
-        print("max_diff_list = ", max_diff_list)
-        print("idx = ", idx)
-        max_diff_list.sort()
-        print("sorted = ", max_diff_list)
-      else:
-        list_of_start_time_end_time_pair = start_end_time_list
-        list_of_ave_tasks = ave_tasks_list
+      if t_fsm_start + n_step * stride_period <= t_x[-1]:
+        # Create a list of times at touchdown
+        td_times = [t_fsm_start]
+        for _ in range(n_step):
+          td_times.append(td_times[-1] + stride_period)
+
+        sub_window_is_ss, max_diff, ave_tasks = CheckSteadyStateAndSaveTasks(
+          x, t_x, td_times, start_with_left_stance)
+        if sub_window_is_ss:
+          start_end_time_list.append((td_times[0], td_times[-1]))
+          max_diff_list.append(max_diff)
+          ave_tasks_list.append(ave_tasks)
+
+        if check_only_one_window:
+          break
+
+    prev_fsm_state = fsm_state
+
+  # start_end_time_list would be non-empty when there is a steady state window
+  is_steady_state = len(start_end_time_list) > 0
+  if is_steady_state:
+    if pick_single_best_window:
+      # We pick the window that has the smallest steady state error
+      idx = np.argmin(max_diff_list).item()
+      list_of_start_time_end_time_pair.append(start_end_time_list[idx])
+      list_of_ave_tasks.append(ave_tasks_list[idx])
+
+      print("max_diff_list = ", max_diff_list)
+      print("idx = ", idx)
+      max_diff_list.sort()
+      print("sorted = ", max_diff_list)
     else:
-      msg = msg_first_column + ": not close to steady state."
-      PrintAndLogStatus(msg)
-
-  else:
-    t_start = t_u[10]
-    t_end = t_u[-10]
-
-    step_idx_start = int(t_end / stride_period) - n_step
-    step_idx_end = int(t_end / stride_period)
-    # step_idx_start = 14
-    # step_idx_end = step_idx_start + n_step
-
-    t_start = stride_period * step_idx_start
-    t_end = stride_period * step_idx_end
-
-    # Create a list of times at touchdown
-    td_times = []
-    for idx in range(step_idx_start, step_idx_end + 1):
-      td_times.append(stride_period * idx)
-    is_steady_state, _, ave_tasks = CheckSteadyStateAndSaveTasks(x, t_x, td_times)
-
-    if is_steady_state:
-      list_of_start_time_end_time_pair.append((t_start, t_end))
-      list_of_ave_tasks.append(ave_tasks)
+      list_of_start_time_end_time_pair = start_end_time_list
+      list_of_ave_tasks = ave_tasks_list
 
   return list_of_start_time_end_time_pair, list_of_ave_tasks
-
 
 
 # cutoff_freq is in Hz
@@ -518,11 +502,9 @@ def main():
   # tip: change full_load() to safe_load() if there is a yaml version issue
   parsed_yaml = yaml.safe_load(open(
     "examples/goldilocks_models/rom_walking_gains.yaml"))
-  stride_length_x = parsed_yaml.get('constant_step_length_x')
   left_support_duration = parsed_yaml.get('left_support_duration')
   double_support_duration = parsed_yaml.get('double_support_duration')
   stride_period = left_support_duration + double_support_duration
-  const_walking_speed_x = stride_length_x / stride_period
 
   # File setting
   global path_status_log
@@ -621,7 +603,8 @@ def main():
       return
 
   # Pick the start and end time
-  list_of_start_time_end_time_pair, list_of_ave_tasks = GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug)
+  check_only_one_window = not is_hardware
+  list_of_start_time_end_time_pair, list_of_ave_tasks = GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug, check_only_one_window)
 
   # Set start and end time manually
   # list_of_start_time_end_time_pair = [(0.001, 0.35)]

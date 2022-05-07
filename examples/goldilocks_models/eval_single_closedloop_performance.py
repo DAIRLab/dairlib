@@ -87,13 +87,17 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
   for time in td_times:
     t_x_touchdown_indices.append(np.argwhere(np.abs(t_x - time) < 2e-3)[0][0])
 
+  n_poses = len(t_x_touchdown_indices)
+  if n_poses != n_step + 1:
+    raise ValueError("there is a bug somewhere")
+
   # 1. stride length
-  pelvis_xy_at_td = np.zeros((len(t_x_touchdown_indices), 2))
-  for i in range(len(t_x_touchdown_indices)):
+  pelvis_xy_at_td = np.zeros((n_poses, 2))
+  for i in range(n_poses):
     pelvis_xy_at_td[i] = x[t_x_touchdown_indices[i], 4:6]
 
   step_lengths = np.diff(pelvis_xy_at_td, axis=0)
-  for i in range(len(t_x_touchdown_indices) - 1):
+  for i in range(n_step):
     plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[0], :])
     step_lengths[i, :] = view_frame.CalcWorldToFrameRotation2D(plant, context) @ step_lengths[i, :]
   step_lengths_x = step_lengths[:, 0]
@@ -113,7 +117,12 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
       PrintAndLogStatus(msg)
 
   # 1b. stride length in y
-  max_side_stepping = max(abs(step_lengths_y))
+  # Since the period in the y direction is 2 step, we should compare two steps
+  # instead of single step
+  step_lengths_y_2steps = np.zeros(n_step - 1)
+  for i in range(n_step - 1):
+    step_lengths_y_2steps[i] = step_lengths_y[i] + step_lengths_y[i+1]
+  max_side_stepping = max(abs(step_lengths_y_2steps))
   if max_side_stepping > side_stepping_tol:
     is_steady_state = False
     if Print:
@@ -124,9 +133,9 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
       PrintAndLogStatus(msg)
 
   # 2. pelvis height
-  pelvis_z_at_td = np.zeros(len(t_x_touchdown_indices))
+  pelvis_z_at_td = np.zeros(n_poses)
   left_stance = start_with_left_stance
-  for i in range(len(t_x_touchdown_indices)):
+  for i in range(n_poses):
     toe_frame = l_toe_frame if left_stance else r_toe_frame
 
     plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[i], :])
@@ -527,7 +536,7 @@ def main():
   # Steady state parameters
   global step_length_variation_tol, side_stepping_tol, pelvis_height_variation_tol
   step_length_variation_tol = 0.05 if is_hardware else 0.02
-  side_stepping_tol = 0.05  # not tuned
+  side_stepping_tol = 0.05 if is_hardware else 0.02  # not tuned
   pelvis_height_variation_tol = 0.05 if is_hardware else 0.05
 
   # Some parameters

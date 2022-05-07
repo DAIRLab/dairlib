@@ -8,7 +8,7 @@
 ################################################################################
 
 eval_dir=../dairlib_data/goldilocks_models/hardware_cost_eval/
-rm -rf eval_dir
+rm -rf $eval_dir
 
 bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance /home/yuming/Desktop/temp/0507/lcmlog-02 ROM_WALKING true $eval_dir 1
 bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance /home/yuming/Desktop/temp/0507/lcmlog-03 ROM_WALKING true $eval_dir 20

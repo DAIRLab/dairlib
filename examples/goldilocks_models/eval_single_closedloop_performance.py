@@ -567,11 +567,18 @@ def main():
     "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx)
 
   # File prefix
-  file_prefix = filename if is_hardware else "%d_%d" % (rom_iter_idx, log_idx)
+  file_prefix = ""
+  if is_hardware:
+    if rom_iter_idx < 0:
+      file_prefix = filename
+    else:
+      file_prefix = "%d" % rom_iter_idx  # We do this so that we can use run_sim_cost_study.py to plot hardware cost
+  else:
+    file_prefix = "%d_%d" % (rom_iter_idx, log_idx)
   print("file_prefix = ", file_prefix)
   starting_log_idx = 0
   if is_hardware:
-    while os.path.exists(eval_dir + file_prefix + "_%d_%d" % (rom_iter_idx, starting_log_idx) + "_cost_values.csv"):
+    while os.path.exists(eval_dir + file_prefix + "_%d" % starting_log_idx + "_cost_values.csv"):
       starting_log_idx += 1
 
   # Build plant
@@ -685,7 +692,7 @@ def main():
     # Get a file_prefix name
     file_prefix_this_loop = file_prefix
     if is_hardware:
-      file_prefix_this_loop += "_%d_%d" % (rom_iter_idx, starting_log_idx)
+      file_prefix_this_loop += "_%d" % starting_log_idx
       starting_log_idx += 1
 
     SaveData(cost_dict, file_prefix_this_loop, ave_tasks)

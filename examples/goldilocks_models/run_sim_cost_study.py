@@ -1439,6 +1439,7 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0405/_20220122_sim_eval_20220105_model_again/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
+  # eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1457,8 +1458,8 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 360
-  idx_spacing = 10
+  model_iter_idx_end = 60
+  idx_spacing = 20
 
   # Task list
   n_task_sl = 30
@@ -1507,6 +1508,7 @@ if __name__ == "__main__":
   # model_slices = []
   model_slices = [1, 50, 100, 150]
   model_slices = [1, 50, 100, 150, 200, 250, 300]
+  # model_slices = [1, 10, 20, 30, 40, 50, 60]
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]

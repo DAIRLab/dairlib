@@ -85,14 +85,22 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
       if Print:
         msg = msg_first_column + \
               ": not close to steady state. min and max stride length are " + \
-              str(min_step_length) + ", " + str(max_step_length) + \
+              "%.3f, %.3f. " % (min_step_length, max_step_length) + \
               "tolerance is " + str(step_length_variation_tol) + "\n"
         PrintAndLogStatus(msg)
 
   # 2. pelvis height
   pelvis_z_at_td = np.zeros(len(t_x_touchdown_indices))
+  left_stance = start_with_left_stance
   for i in range(len(t_x_touchdown_indices)):
-    pelvis_z_at_td[i] = x[t_x_touchdown_indices[i], 6]
+    toe_frame = l_toe_frame if left_stance else r_toe_frame
+
+    plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[i], :])
+    foot_pos = plant.CalcPointsPositions(context, toe_frame,
+      mid_contact_disp, world)
+    pelvis_z_at_td[i] = x[t_x_touchdown_indices[i], 6] - foot_pos[2]
+
+    left_stance = not left_stance
   min_pelvis_height = min(pelvis_z_at_td)
   max_pelvis_height = max(pelvis_z_at_td)
   max_pelvis_height_diff = abs(max_pelvis_height - min_pelvis_height)
@@ -119,13 +127,12 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
   list_of_start_time_end_time_pair = []
   list_of_ave_tasks = []
 
-  # Get start time and end time
   left_support = parsed_yaml.get('left_support')
   right_support = parsed_yaml.get('right_support')
 
   t_end = t_shutoff if is_hardware else t_u[-10]
 
-  # Check if the start time and end time are valid (e.g. at steady state)
+  # Get valid windows (start time and end time)
   start_end_time_list = []
   max_diff_list = []
   ave_tasks_list = []
@@ -444,8 +451,6 @@ def EnforceSlashEnding(dir):
     raise ValueError("Directory path name should end with slash")
 
 
-# TODO: maybe we should use pelvis height wrt stance foot in CheckSteadyState()
-
 # TODO: we also need to add horizontal steady state check (currently it has to be close to 0)
 
 # TODO: also need to make the stride length local to pelvis heading
@@ -530,6 +535,7 @@ def main():
       starting_log_idx += 1
 
   # Build plant
+  global plant
   mut.set_log_level("err")  # ignore warnings about joint limits
   builder = DiagramBuilder()
   plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
@@ -549,13 +555,16 @@ def main():
   nx = plant.num_positions() + plant.num_velocities()
   nu = plant.num_actuators()
 
+  global l_toe_frame, r_toe_frame, world, context
   l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
   world = plant.world_frame()
   context = plant.CreateDefaultContext()
 
+  global front_contact_disp, rear_contact_disp, mid_contact_disp
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
+  mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2
 
   pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
   vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)

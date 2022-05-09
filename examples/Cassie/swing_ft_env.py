@@ -61,7 +61,9 @@ class CassieSwingFootEnv:
     def __init__(self, default_swing,
                  lcm_address=None,
                  use_radio=False,
-                 sim=True):
+                 sim=True,
+                 viz=True):
+
         self.reward_channel = "SWING_FOOT_REWARD"
         self.fsm_channel = "FINITE_STATE_MACHINE"
         self.action_channel = "SWING_FOOT_PARAMS"
@@ -93,13 +95,12 @@ class CassieSwingFootEnv:
         # self.ctrlr_options = []
         self.sim_options = ["--publish_rate=2000", "--init_height=0.95",
                             "--target_realtime_rate=1.0"]
-        self.viz_options = ["--floating_base=true", "--channel="+self.state_channel]
-
-        ### Spawning Director & visualizer Process ###
-        # For now, need to launch director and visualizer separately due to
-        # vtk issues.
-        print("CassieSwingFootEnv::Init: Make sure to run director and visualizer") 
-
+        self.viz = viz
+        if self.viz:
+            self.viz_options = \
+                ["--floating_base=true", "--channel="+self.state_channel]
+            self.visualizer = sp.Popen(["bazel-bin/examples/Cassie/visualizer"]
+                                       + self.viz_options)
 
     def kill_procs(self):
         if self.sim is not None:

@@ -6,7 +6,9 @@ from sklearn.gaussian_process.kernels import RBF
 import matplotlib.pyplot as plt
 import argparse
 
-def get_default_params(gains_file = "examples/Cassie/osc/osc_walking_gains_alip.yaml"):
+
+def get_default_params(
+        gains_file="examples/Cassie/osc/osc_walking_gains_alip.yaml"):
     with open(gains_file, 'r') as f:
         gains = yaml.safe_load(f)
     
@@ -15,8 +17,8 @@ def get_default_params(gains_file = "examples/Cassie/osc/osc_walking_gains_alip.
     for i in range(n_knot):
         t = i/(n_knot - 1)
         x = [0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
-                      0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
-                      (gains["mid_foot_height"] / 0.58) * np.cos(np.pi * (t - 0.5))*t]
+             0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
+             (gains["mid_foot_height"] / 0.58) * np.cos(np.pi * (t - 0.5))*t]
         knots += x
     vel_initial = [0, 0, 0]
     vel_final = [0, 0, gains["final_foot_velocity_z"]]
@@ -64,7 +66,7 @@ class RandomExplorer:
                 s_prime, r, d = cassie_env.step(a, radio)
             else:
                 s_prime, r, d = cassie_env.step(a)
-            print(f"finished step and got reward {r}")
+            # print(f"finished step and got reward {r}")
             data.append([s, a, r, s_prime, radio])
             s = s_prime
             done = d
@@ -87,7 +89,7 @@ def main():
         sigmas[0] = 0
         explorer = RandomExplorer(nominal_swing, sigmas)
         cassie_env = CassieSwingFootEnv(nominal_swing, use_radio=False)
-        data = explorer.collect_data(300, cassie_env, num_steps_same_radio = 20)
+        data = explorer.collect_data(2000, cassie_env, num_steps_same_radio = 20)
         np.save("swing_foot_reward_data.npy", data)
 
         cassie_env.kill_procs()
@@ -117,7 +119,8 @@ def main():
     ax.scatter(X, y, s=5)
     ax.scatter([nominal_swing[-1]], [0], s=20, color="green")
     ax.plot(x, y_, color="orange")
-    ax.fill_between(x.ravel(), y_.ravel()-std, y_.ravel()+std, alpha = 0.2, color="orange")
+    ax.fill_between(x.ravel(), y_.ravel()-std, y_.ravel()+std, alpha=0.2,
+                    color="orange")
     plt.show()
     
 

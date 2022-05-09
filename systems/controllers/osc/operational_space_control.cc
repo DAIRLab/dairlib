@@ -751,7 +751,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   if (!result.is_success()) {
-    std::cout << "reverting to old sol" << std::endl;
+    //std::cout << "reverting to old sol" << std::endl;
     return *u_sol_;
   }
 

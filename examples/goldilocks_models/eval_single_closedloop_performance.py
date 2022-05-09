@@ -181,6 +181,22 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
 
   t_end = t_shutoff if is_hardware else t_u[-10]
 
+  # Sanity check on stride period
+  prev_fsm_state = -1
+  t_fsm_start_pair = []
+  for i in range(len(fsm)):
+    fsm_state = fsm[i]
+    # At the start of the single support state
+    if prev_fsm_state != -1 and \
+        (((prev_fsm_state != left_support) and (fsm_state == left_support))):
+      t_fsm_start_pair.append(t_osc_debug[i])
+    prev_fsm_state = fsm_state
+    if len(t_fsm_start_pair) == 2:
+      if abs((t_fsm_start_pair[1] - t_fsm_start_pair[0])/2 - stride_period) > 0.01:
+        raise ValueError("The stride period is not consistent. " +
+                         "Actual stride period is about %.4f, and the nominal one is %.4f" % ((t_fsm_start_pair[1] - t_fsm_start_pair[0])/2, stride_period))
+      break
+
   # Get valid windows (start time and end time)
   start_end_time_list = []
   max_diff_list = []

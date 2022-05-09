@@ -37,8 +37,10 @@ class RandomExplorer:
         elif len(sigmas) == 3 * nominal_swing[0] + 7:
             self.sigmas = sigmas
         else:
-            print(f"sigmas must be of the correct length! is currently {len(sigmas)}")
-            print(f"needs to be {3 * nominal_swing[0] + 6} or {3 * nominal_swing[0] + 7}")
+            print(f"sigmas must be of the correct length! "
+                  f"is currently {len(sigmas)}")
+            print(f"needs to be "
+                  f"{3 * nominal_swing[0] + 6} or {3 * nominal_swing[0] + 7}")
             self.sigmas = [0] * (3 * nominal_swing[0] + 7)
         
     def select_action(self):
@@ -58,7 +60,7 @@ class RandomExplorer:
         # print("Reset method finished!")
         step_counter = 0
         # vary forward velocity command
-        radio = [np.random.uniform(low = -1, high = 1), 0, 0, 0]
+        radio = [np.random.uniform(low=-1, high=1), 0, 0, 0]
         for _ in range(n_steps):
             a = self.select_action()
             # print(f"sending action {a}")
@@ -66,7 +68,7 @@ class RandomExplorer:
                 s_prime, r, d = cassie_env.step(a, radio)
             else:
                 s_prime, r, d = cassie_env.step(a)
-            # print(f"finished step and got reward {r}")
+            print(f"finished step and got reward {r}")
             data.append([s, a, r, s_prime, radio])
             s = s_prime
             done = d
@@ -75,7 +77,7 @@ class RandomExplorer:
             step_counter += 1
             if step_counter > num_steps_same_radio:
                 step_counter = 0
-                radio = [np.random.uniform(low = -1, high = 1), 0, 0, 0]
+                radio = [np.random.uniform(low=-1, high=1), 0, 0, 0]
         return data
 
 
@@ -89,7 +91,7 @@ def main():
         sigmas[0] = 0
         explorer = RandomExplorer(nominal_swing, sigmas)
         cassie_env = CassieSwingFootEnv(nominal_swing, use_radio=False)
-        data = explorer.collect_data(2000, cassie_env, num_steps_same_radio = 20)
+        data = explorer.collect_data(2000, cassie_env, num_steps_same_radio=20)
         np.save("swing_foot_reward_data.npy", data)
 
         cassie_env.kill_procs()

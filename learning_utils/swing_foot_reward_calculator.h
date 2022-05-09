@@ -9,6 +9,7 @@ class SwingFootRewardCalculator : public drake::systems::LeafSystem<double> {
   SwingFootRewardCalculator(const Eigen::Matrix3d& W_swing_foot_tracking,
                             const Eigen::Matrix3d& W_swing_foot_smoothness,
                             const std::vector<int>& single_support_fsm_states,
+                            const double single_support_duration,
                             const std::string& swing_foot_traj_name);
 
   const drake::systems::InputPort<double>& get_osc_debug_input_port(){
@@ -16,6 +17,9 @@ class SwingFootRewardCalculator : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_fsm_input_port() {
     return this->get_input_port(fsm_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_switch_time_input_port() {
+    return this->get_input_port(switch_time_port_);
   }
   const drake::systems::OutputPort<double>& get_reward_output_port() {
     return this->get_output_port(reward_output_port_);
@@ -30,7 +34,8 @@ class SwingFootRewardCalculator : public drake::systems::LeafSystem<double> {
                   drake::systems::BasicVector<double>* reward) const;
 
   drake::systems::InputPortIndex osc_debug_input_port_;
-  drake::systems::InputPortIndex  fsm_input_port_;
+  drake::systems::InputPortIndex fsm_input_port_;
+  drake::systems::InputPortIndex switch_time_port_;
   drake::systems::OutputPortIndex reward_output_port_;
 
   drake::systems::DiscreteStateIndex running_reward_idx_;
@@ -40,6 +45,7 @@ class SwingFootRewardCalculator : public drake::systems::LeafSystem<double> {
   const Eigen::Matrix3d& W_swing_foot_tracking_;
   const Eigen::Matrix3d& W_swing_foot_smoothness_;
   const std::vector<int>& single_support_fsm_states_;
+  const double single_support_duration_;
   std::string traj_name_;
 };
 }

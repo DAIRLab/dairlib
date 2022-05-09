@@ -5,6 +5,7 @@
 using Eigen::Matrix3d;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::Vector2d;
 using Eigen::RowVector3d;
 using Eigen::MatrixXd;
 
@@ -16,16 +17,20 @@ SwingFootRewardCalculator::SwingFootRewardCalculator(
     const Matrix3d& W_swing_foot_tracking,
     const Matrix3d& W_swing_foot_smoothness,
     const std::vector<int>& single_support_fsm_states,
+    const double single_support_duration,
     const std::string& swing_foot_traj_name) :
     W_swing_foot_tracking_(W_swing_foot_tracking),
     W_swing_foot_smoothness_(W_swing_foot_smoothness),
     single_support_fsm_states_(single_support_fsm_states),
+    single_support_duration_(single_support_duration),
     traj_name_(swing_foot_traj_name){
 
   osc_debug_input_port_ = this->DeclareAbstractInputPort(
       "osc_debug",drake::Value<lcmt_osc_output>()).get_index();
   fsm_input_port_ = this->DeclareVectorInputPort(
       "fsm", BasicVector<double>(1)).get_index();
+  switch_time_port_ = this->DeclareVectorInputPort(
+      "fsm_switch", BasicVector<double>(1)).get_index();
   reward_output_port_ = this->DeclareVectorOutputPort(
       "reward out",1,
       &SwingFootRewardCalculator::CopyReward).get_index();
@@ -46,9 +51,12 @@ drake::systems::EventStatus SwingFootRewardCalculator::StateUpdate(
   lcmt_osc_output osc_debug = this->EvalAbstractInput(
       context, osc_debug_input_port_)->get_value<lcmt_osc_output>();
   double new_time = osc_debug.utime * 1e-6;
+  double switch_time = this->EvalVectorInput(
+      context, switch_time_port_)->value()(0);
 
   int curr_fsm = osc_debug.fsm_state;
-  int prev_fsm = state->get_discrete_state(prev_fsm_state_idx_).value()(0);
+  int prev_fsm =
+      state->get_discrete_state(prev_fsm_state_idx_).value()(0);
 
   if (curr_fsm != prev_fsm ) {
     if (std::find(single_support_fsm_states_.begin(),
@@ -82,7 +90,9 @@ drake::systems::EventStatus SwingFootRewardCalculator::StateUpdate(
   Vector3d y_dd_err = y_dd - y_dd_cmd;
 
   // Inner product between swing foot trajectory and desired swing foot traj
-  VectorXd tracking_reward = - dt * y_err.transpose() * y_err;
+  // scaled to be large near end of stance
+  VectorXd tracking_reward = - dt * y_err.head(2).transpose() * y_err.head(2);
+  tracking_reward *= 100 * pow((new_time - switch_time) / single_support_duration_, 2);
   // Inner product between desired and realized swing foot acceleration
   VectorXd smooth_reward =  - dt * y_dd_err.transpose() * y_dd_err;
 

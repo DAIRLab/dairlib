@@ -345,7 +345,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto reward_calc = builder.AddSystem<learning::SwingFootRewardCalculator>(
       Matrix3d::Identity(), Matrix3d::Identity(),
-      single_support_states, "swing_ft_traj");
+      single_support_states, gains.ss_time + gains.ds_time, "swing_ft_traj");
 
   // Swing toe joint trajectory
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
@@ -591,7 +591,10 @@ int DoMain(int argc, char* argv[]) {
   // Connect learning ports
   builder.Connect(osc->get_osc_debug_port(),
                   reward_calc->get_osc_debug_input_port());
-  builder.Connect(fsm->get_output_port_fsm(), reward_calc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  reward_calc->get_fsm_input_port());
+  builder.Connect(touchdown_event_time->get_output_port_event_time_of_interest(),
+                  reward_calc->get_switch_time_input_port());
 
   auto [reward_scope, reward_pub] = LcmScopeSystem::AddToBuilder(
       &builder, &lcm_local, reward_calc->get_reward_output_port(), "SWING_FOOT_REWARD", 0);

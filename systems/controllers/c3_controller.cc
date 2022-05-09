@@ -91,7 +91,7 @@ void C3Controller::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
 
 
-  //auto start = std::chrono::high_resolution_clock::now();
+//  auto start = std::chrono::high_resolution_clock::now();
 
 
   /// get values
@@ -104,7 +104,8 @@ void C3Controller::CalcControl(const Context<double>& context,
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
 
-//  std::cout << v << std::endl;
+//  std::cout << "state" << std::endl;
+//  std::cout << state << std::endl;
 
   /// update autodiff
   VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
@@ -191,17 +192,30 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   }
 
 
+//  auto xtop = xdesired_[0];
+//  xtop[0] = xtop[16];
+//  xtop[1] = xtop[17];
+//
+//  const std::vector<VectorXd> xdes(N + 1, xtop);
+
+//  for (int j = 0; j < N; j++) {
+//    xdes[j] << xtop;
+//  }
 
 
+//  auto asd2 = asd[0];
+  //std::cout << asd << std::endl;
+
+  //solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdes, options);
   solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
 
-  ///trifinger constraints
+//  ///trifinger constraints
 //  ///input
 //  opt.RemoveConstraints();
 //  RowVectorXd LinIneq = RowVectorXd::Zero(k);
 //  RowVectorXd LinIneq_r = RowVectorXd::Zero(k);
-//  double lowerbound = -100;
-//  double upperbound = 100;
+//  double lowerbound = -10;
+//  double upperbound = 10;
 //  int inputconstraint = 2;
 //
 //  for (int i = 0; i < k; i++) {
@@ -265,10 +279,10 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
 
-
+//
 //  auto finish = std::chrono::high_resolution_clock::now();
 //  std::chrono::duration<double> elapsed = finish - start;
-// std::cout << "Solve time:" << elapsed.count() << std::endl;
+//   std::cout << "Solve time:" << elapsed.count() << std::endl;
 
   //std::cout << "here" << std::endl;
 

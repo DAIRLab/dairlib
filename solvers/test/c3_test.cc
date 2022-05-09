@@ -41,7 +41,7 @@ namespace dairlib {
 namespace solvers {
 
 int DoMain(int argc, char* argv[]) {
-  int example = 0;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
+  int example = 2;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
 
   /// dimensions (n: state dimension, m: complementarity variable dimension, k:
   /// input dimension, N: MPC horizon)
@@ -124,6 +124,7 @@ int DoMain(int argc, char* argv[]) {
     opt.AddLinearConstraint(LinIneq2, lowerbound, upperbound, stateconstraint);
   }
 
+
   /// initialize ADMM variables (delta, w)
   std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
@@ -132,7 +133,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
 
-  int timesteps = 500;  // number of timesteps for the simulation
+  int timesteps = 10;  // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
@@ -156,6 +157,7 @@ int DoMain(int argc, char* argv[]) {
       w = w_reset;
     }
 
+
     if (example == 2) {
       init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd,
                     &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
@@ -163,19 +165,22 @@ int DoMain(int argc, char* argv[]) {
       C3MIQP opt(system, Q, R, G, U, xdesired, options);
     }
 
+
     auto start = std::chrono::high_resolution_clock::now();
     /// calculate the input given x[i]
     input[i] = opt.Solve(x[i], delta, w);
+
+
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
-    // std::cout << "Solve time:" << elapsed.count() << std::endl;
+    std::cout << "Solve time:" << elapsed.count() << std::endl;
     total_time = total_time + elapsed.count();
 
     /// simulate the LCS
     x[i + 1] = system.Simulate(x[i], input[i]);
 
     /// print the state
-    std::cout << "state: " << x[i + 1] << std::endl;
+    //std::cout << "state: " << x[i + 1] << std::endl;
   }
   std::cout << "Average time: " << total_time / (timesteps - 1) << std::endl;
   return 0;

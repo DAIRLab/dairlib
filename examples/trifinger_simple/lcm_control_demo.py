@@ -102,7 +102,7 @@ q = np.zeros((nq,1))
 q_map = makeNameToPositionsMap(plant)
 q[0] = 0
 q[1] = 0
-q[2] = 0.05
+q[2] = 0.05  #0.05
 # q[3] = 0.2
 # q[4] = 0
 # q[5] = 0.02
@@ -112,8 +112,8 @@ q[2] = 0.05
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
-q[q_map['base_x']] = -0.1
-q[q_map['base_y']] = -0.1
+q[q_map['base_x']] = 0.1
+q[q_map['base_y']] = 0.1
 q[q_map['base_z']] = 0
 
 mu = 1.0
@@ -123,9 +123,11 @@ mu = 1.0
 
 Qinit = 0*np.eye(nq+nv)
 #Qinit[7:9,7:9] = 1000*np.eye(2)
-Qinit[2,2] = 100
-Qinit[7,7] = 10000
-Qinit[8,8] = 10000
+Qinit[0,0] = 0
+Qinit[1,1] = 0
+Qinit[2,2] = 10   #100
+Qinit[7,7] = 10000 #10000
+Qinit[8,8] = 10000    #10000
 #Qinit[7] = 100
 #print(Qinit)
 
@@ -136,6 +138,7 @@ Qinit[8,8] = 10000
 # #Qinit[8] = 10
 # Qinit[9:16,9:16] = 100*np.eye(7) #cube
 Qinit[10:10+nv,10:10+nv] = 1*np.eye(nv) #velocities
+Qinit[10:13,10:13] = 10*np.eye(3)
 #print(Qinit)
 # Qinit[16:25,16:25] = 1*np.eye(9) #vel
 # Qinit[15,15] = 1000

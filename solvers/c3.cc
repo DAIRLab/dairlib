@@ -89,6 +89,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+  OSQPoptions_.SetOption(drake::solvers::OsqpSolver::id(), "max_iter",  50);
   prog_.SetSolverOptions(OSQPoptions_);
 }
 
@@ -96,13 +97,21 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
   vector<MatrixXd> Gv = G_;
   VectorXd z;
 
+
   for (int i = 0; i < options_.admm_iter; i++) {
+
+    //std::cout << "Iteration" << i <<  std::endl;
+
     z = ADMMStep(x0, &delta, &w, &Gv);
 // std::cout << "new delta" << i <<  std::endl;
 //std::cout << delta.at(0).segment(n_,m_) << std::endl;
 //    std::cout << "w" << i <<  std::endl;
 //    std::cout << w.at(0) << std::endl;
+
   }
+
+//    std::cout << "violation" << std::endl;
+//  std::cout << delta.at(0) << std::endl;
 
 //  std::cout << "delta" << std::endl;
 //  std::cout << delta.at(0).segment(n_,m_) << std::endl;
@@ -149,6 +158,7 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD);
 
+
 //  auto finish = std::chrono::high_resolution_clock::now();
 //std::chrono::duration<double> elapsed = finish - start;
 //std::cout << "Solve time:" << elapsed.count() << std::endl;
@@ -162,10 +172,15 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
 
   if (U_[0].isZero(0) == 0) {
     vector<MatrixXd> Uv = U_;
+
+    //std::cout << "W:" << w->at(0) << std::endl;
+
+
     *delta = SolveProjection(Uv, ZW);
   } else {
     *delta = SolveProjection(*Gv, ZW);
   }
+
 
 //auto finish = std::chrono::high_resolution_clock::now();
 //std::chrono::duration<double> elapsed = finish - start;
@@ -179,6 +194,9 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
 
     Gv->at(i) = Gv->at(i) * options_.rho_scale;
   }
+
+ //std::cout << "Viol:" << z[1] - delta->at(1) << std::endl;
+  //std::cout << "Z" << z[1] << std::endl;
 
   return z[0];
 }

@@ -730,14 +730,17 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware
   dt_x = np.diff(t_x_extracted)
   dt_u = np.diff(t_u_extracted)
 
-  # Get rid of spring joints
+  # Translate knee spring joint vel to knee motor joint vel and then get rid of spring joint velocities
   if spring_model:
+    x_extracted[:, nq + vel_map["knee_leftdot"]] += x_extracted[:, nq + vel_map["knee_joint_leftdot"]]
+    x_extracted[:, nq + vel_map["knee_rightdot"]] += x_extracted[:, nq + vel_map["knee_joint_rightdot"]]
+
     x_extracted[:, nq + vel_map["knee_joint_leftdot"]] = 0
     x_extracted[:, nq + vel_map["ankle_spring_joint_leftdot"]] = 0
     x_extracted[:, nq + vel_map["knee_joint_rightdot"]] = 0
     x_extracted[:, nq + vel_map["ankle_spring_joint_rightdot"]] = 0
 
-  # Apply low pass filter to vel
+  # Apply low pass filter to velocity
   cutoff_freq = 100 #100
   if is_hardware:
     if low_pass_filter:

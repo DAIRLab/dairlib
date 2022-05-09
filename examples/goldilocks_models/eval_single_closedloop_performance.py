@@ -85,7 +85,12 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
 
   t_x_touchdown_indices = []
   for time in td_times:
-    t_x_touchdown_indices.append(np.argwhere(np.abs(t_x - time) < 2e-3)[0][0])
+    for i in [1, 2, 3, 4, 5]:
+      if np.any(np.abs(t_x - time) < i * 1e-3):
+        t_x_touchdown_indices.append(np.argwhere(np.abs(t_x - time) < i * 1e-3)[0][0])
+        break
+      elif i == 5:
+        return False, None, None
 
   n_poses = len(t_x_touchdown_indices)
   if n_poses != n_step + 1:

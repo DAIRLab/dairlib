@@ -169,6 +169,7 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
     check_only_one_window=False, pick_single_best_window=False):
   list_of_start_time_end_time_pair = []
   list_of_ave_tasks = []
+  list_of_start_time = []
 
   left_support = parsed_yaml.get('left_support')
   right_support = parsed_yaml.get('right_support')
@@ -179,6 +180,7 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
   start_end_time_list = []
   max_diff_list = []
   ave_tasks_list = []
+  start_time_list = []
   prev_fsm_state = -1
 
   n = len(fsm)
@@ -208,6 +210,7 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
           start_end_time_list.append((td_times[0], td_times[-1]))
           max_diff_list.append(max_diff)
           ave_tasks_list.append(ave_tasks)
+          start_time_list.append(t_fsm_start)
 
         if check_only_one_window:
           break
@@ -222,6 +225,7 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
       idx = np.argmin(max_diff_list).item()
       list_of_start_time_end_time_pair.append(start_end_time_list[idx])
       list_of_ave_tasks.append(ave_tasks_list[idx])
+      list_of_start_time.append(start_time_list[idx])
 
       print("max_diff_list = ", max_diff_list)
       print("idx = ", idx)
@@ -230,8 +234,9 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
     else:
       list_of_start_time_end_time_pair = start_end_time_list
       list_of_ave_tasks = ave_tasks_list
+      list_of_start_time = start_time_list
 
-  return list_of_start_time_end_time_pair, list_of_ave_tasks
+  return list_of_start_time_end_time_pair, list_of_ave_tasks, list_of_start_time
 
 
 # cutoff_freq is in Hz
@@ -664,7 +669,7 @@ def main():
 
   # Pick the start and end time
   check_only_one_window = not is_hardware
-  list_of_start_time_end_time_pair, list_of_ave_tasks = GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug, check_only_one_window)
+  list_of_start_time_end_time_pair, list_of_ave_tasks, list_of_start_time = GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug, check_only_one_window)
 
   # Set start and end time manually
   # list_of_start_time_end_time_pair = [(0.001, 0.35)]
@@ -684,6 +689,7 @@ def main():
   for i in range(len(list_of_start_time_end_time_pair)):
     t_start, t_end = list_of_start_time_end_time_pair[i]
     ave_tasks = list_of_ave_tasks[i]
+    start_time = list_of_start_time[i]
 
     cost_dict = ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict,
       is_hardware, spring_model, low_pass_filter, n_step,
@@ -695,7 +701,7 @@ def main():
       file_prefix_this_loop += "_%d" % starting_log_idx
       starting_log_idx += 1
 
-    SaveData(cost_dict, file_prefix_this_loop, ave_tasks)
+    SaveData(cost_dict, file_prefix_this_loop, ave_tasks, start_time)
 
 
 def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware, spring_model,
@@ -810,7 +816,7 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware
   return cost_dict
 
 
-def SaveData(cost_dict, file_prefix, ave_tasks):
+def SaveData(cost_dict, file_prefix, ave_tasks, start_time):
   # Store into files
   names = ['cost_x',
            'cost_u',
@@ -851,6 +857,12 @@ def SaveData(cost_dict, file_prefix, ave_tasks):
   # print("writing to " + path)
   f = open(path, "w")
   f.write(str(ave_tasks["ave_pelvis_height"]))
+  f.close()
+
+  path = eval_dir + "%s_start_time.csv" % file_prefix
+  # print("writing to " + path)
+  f = open(path, "w")
+  f.write(str(start_time))
   f.close()
 
   path = eval_dir + "%s_success.csv" % file_prefix

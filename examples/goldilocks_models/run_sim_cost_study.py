@@ -944,10 +944,19 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     z = interpolator(np.vstack((m, t_sl, t_ph)).T)
     plt.plot(t_sl, z, '-',  # color=color_names[i],
              linewidth=3, label="iter " + str(model_iter))
-    # if plot_nominal:
-    #   interpolator = LinearNDInterpolator(nominal_cmt[:, 1:], nominal_cmt[:, 0])
-    #   z = interpolator(np.vstack((m, t_sl, t_ph)).T)
-    #   plt.plot(m, z, 'k--', linewidth=3, label="trajectory optimization")
+
+  if plot_nominal:
+    plt.gca().set_prop_cycle(None)  # reset color cycle
+    for i in range(len(model_slices)):
+      model_iter = model_slices[i]
+      # The line along which we evaluate the cost (using interpolation)
+      m = model_iter * np.ones(500)
+      t_sl = np.linspace(-0.8, 0.8, 500)
+      t_ph = task_slice_value_ph * np.ones(500)
+
+      interpolator = LinearNDInterpolator(nominal_cmt[:, 1:], nominal_cmt[:, 0])
+      z = interpolator(np.vstack((m, t_sl, t_ph)).T)
+      plt.plot(t_sl, z, '--', linewidth=3, label="trajectory optimization")
 
   plt.xlabel('stride length (m)')
   plt.ylabel('total cost')
@@ -971,7 +980,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
 
     # Interpolate to get the cost at specific pelvis height
     interpolator = LinearNDInterpolator(data[:, 1:], data[:, 0]) if i == 0 else LinearNDInterpolator(data[:, 1:2+num_task_dim], data[:, 0])
-    z = interpolator(np.vstack((data[:, 1], data[:, 2], task_slice_value_ph * np.ones(len(data[:, 2])))).T) if i == 0 else interpolator(np.vstack((data[:, 1], data[:, 2])).T)
+    z = interpolator(np.vstack((data[:, 1], data[:, 2], task_slice_value_ph * np.ones(len(data[:, 2])))).T)
 
     # Remove the rows correponding to nan cost (from interpolation outside the region)
     data = data[~np.isnan(z), :]
@@ -1444,6 +1453,7 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
   #eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/0510/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1462,8 +1472,8 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 200
-  idx_spacing = 50
+  model_iter_idx_end = 440
+  idx_spacing = 20
 
   # Task list
   n_task_sl = 30

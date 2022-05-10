@@ -55,6 +55,7 @@ class InnerLoopSetting {
   bool cubic_spline_in_rom_constraint;
   bool swing_foot_cublic_spline_constraint;
   bool zero_ending_pelvis_angular_vel;
+  bool com_at_center_of_support_polygon;
 };
 
 // SubQpData stores all the data about the QPs in the SQP algorithm

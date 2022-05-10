@@ -215,6 +215,7 @@ DEFINE_bool(com_accel_constraint, false, "");
 DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
 DEFINE_bool(swing_foot_cublic_spline, false, "");
 DEFINE_bool(zero_ending_pelvis_angular_vel, false, "");
+DEFINE_bool(com_at_center_of_support_polygon, false, "");
 
 DEFINE_bool(only_update_wrt_main_cost, false, "");
 
@@ -1890,6 +1891,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       FLAGS_swing_foot_cublic_spline;  // for testing
   inner_loop_setting.zero_ending_pelvis_angular_vel =
       FLAGS_zero_ending_pelvis_angular_vel;  // for testing
+  inner_loop_setting.com_at_center_of_support_polygon =
+      FLAGS_com_at_center_of_support_polygon;  // for testing
   cout << "mu = " << inner_loop_setting.mu << endl;
   cout << "directory = " << dir << endl;
   cout << "com_accel_constraint = " << inner_loop_setting.com_accel_constraint
@@ -1900,6 +1903,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << inner_loop_setting.swing_foot_cublic_spline_constraint << endl;
   cout << "zero_ending_pelvis_angular_vel = "
        << inner_loop_setting.zero_ending_pelvis_angular_vel << endl;
+  cout << "com_at_center_of_support_polygon = "
+       << inner_loop_setting.com_at_center_of_support_polygon << endl;
   if (inner_loop_setting.snopt_log) {
     cout << "WARNING: you are printing snopt log for Cassie (could slow down "
             "the optimization)!\n";

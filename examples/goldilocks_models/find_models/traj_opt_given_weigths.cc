@@ -208,10 +208,11 @@ class SupportPolygonCetnerConstraint : public NonlinearConstraint<double> {
  public:
   SupportPolygonCetnerConstraint(const MultibodyPlant<double>& plant,
                                  const std::vector<string>& body_name,
-                                 const std::vector<Vector3d>& point_wrt_body)
-      : NonlinearConstraint<double>(1, plant.num_positions(), VectorXd::Zero(1),
-                                    VectorXd::Zero(1),
-                                    "com_support_polygon_constraint"),
+                                 const std::vector<Vector3d>& point_wrt_body,
+                                 double eps = 0)
+      : NonlinearConstraint<double>(
+            1, plant.num_positions(), -eps * VectorXd::Ones(1),
+            eps * VectorXd::Ones(1), "com_support_polygon_constraint"),
         plant_(plant),
         context_(plant.CreateDefaultContext()),
         point_wrt_body_(point_wrt_body) {
@@ -238,8 +239,8 @@ class SupportPolygonCetnerConstraint : public NonlinearConstraint<double> {
     }
     ave_ft_pt /= body_.size();
 
-    *y = ave_ft_pt.head(1) -
-         plant_.CalcCenterOfMassPositionInWorld(*context_).head(1);
+    *y = ave_ft_pt.head<1>() -
+         plant_.CalcCenterOfMassPositionInWorld(*context_).head<1>();
   };
 
  private:
@@ -2048,7 +2049,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing
   bool zero_com_height_vel_difference = false;
   bool zero_pelvis_height_vel = false;
-  bool com_at_center_of_support_polygon = false;
+  bool com_at_center_of_support_polygon =
+      setting.com_at_center_of_support_polygon;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -2209,6 +2211,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   const Body<double>& toe_right = plant.GetBodyByName("toe_right");
   Vector3d pt_front_contact(-0.0457, 0.112, 0);
   Vector3d pt_rear_contact(0.088, 0, 0);
+  Vector3d pt_mid_contact = (pt_front_contact + pt_rear_contact) / 2;
   bool isXZ = false;
   auto left_toe_front_constraint = DirconPositionData<double>(
       plant, toe_left, pt_front_contact, isXZ, ground_normal);
@@ -2814,11 +2817,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   if (com_at_center_of_support_polygon) {
     cout << "Adding constraint that COM stays at the center of support "
             "polygon\n";
+    double eps = 0.02;
     vector<string> body_names = {"toe_left", "toe_right"};
-    vector<Vector3d> point_wrt_body = {Vector3d::Zero(), Vector3d::Zero()};
+    vector<Vector3d> point_wrt_body = {pt_mid_contact, pt_mid_contact};
     auto com_center_polygon_constraint =
         std::make_shared<SupportPolygonCetnerConstraint>(plant, body_names,
-                                                         point_wrt_body);
+                                                         point_wrt_body, eps);
     trajopt.AddConstraint(com_center_polygon_constraint, x0.head(n_q));
   }
 

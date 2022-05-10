@@ -73,7 +73,7 @@ simulator.set_publish_every_time_step(False)
 simulator.set_publish_at_initialization(False)
 
 # Change the real-time rate to above 1 to simulate faster
-simulator.set_target_realtime_rate(1)
+simulator.set_target_realtime_rate(0.5)
 
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
@@ -129,7 +129,7 @@ plant.SetVelocities(plant_context, v)
 
 simulator.Initialize()
 # Simulate for 10 seconds
-simulator.AdvanceTo(60)
+simulator.AdvanceTo(100)
 
 # numpy array of data (nq+nv+nu) x n_time
 data = logger.FindLog(simulator.get_context()).data()

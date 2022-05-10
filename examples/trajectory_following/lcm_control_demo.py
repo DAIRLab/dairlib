@@ -103,8 +103,8 @@ nc = 2
 
 q = np.zeros((nq,1))
 q_map = makeNameToPositionsMap(plant)
-q[0] = 0
-q[1] = 0.2
+q[0] = -0.05
+q[1] = 0.22
 q[2] = 0.07 #0.05
 # q[3] = 0.2
 # q[4] = 0
@@ -126,11 +126,11 @@ mu = 1.0
 
 Qinit = 0*np.eye(nq+nv)
 #Qinit[7:9,7:9] = 1000*np.eye(2)
-Qinit[0,0] = 10
-Qinit[1,1] = 10
-Qinit[2,2] = 10   #100
+Qinit[0,0] = 100
+Qinit[1,1] = 100
+Qinit[2,2] = 100  #100
 Qinit[7,7] = 10000 #10000
-Qinit[8,8] = 10000    #10000
+Qinit[8,8] = 10000   #10000
 #Qinit[7] = 100
 #print(Qinit)
 
@@ -140,8 +140,8 @@ Qinit[8,8] = 10000    #10000
 # #Qinit[5] = 10
 # #Qinit[8] = 10
 # Qinit[9:16,9:16] = 100*np.eye(7) #cube
-Qinit[10:10+nv,10:10+nv] = 1*np.eye(nv) #velocities
-Qinit[10:13,10:13] = 10*np.eye(3)
+Qinit[10:10+nv,10:10+nv] = 0.1*np.eye(nv) #velocities
+Qinit[10:13,10:13] = 10*np.eye(3) #10
 #print(Qinit)
 # Qinit[16:25,16:25] = 1*np.eye(9) #vel
 # Qinit[15,15] = 1000
@@ -157,7 +157,7 @@ Ginit = 0.01*np.eye(nq+nv+nu+6*nc)   #0.01
 # Ginit[31:49,31:49] = 0*np.eye(18)
 Uinit = 1*np.eye(nq+nv+nu+6*nc)
 #Uinit[0:nq,0:nq] = 100*np.eye(nq)
-Uinit[0:nq+nv,0:nq+nv] = 100*np.eye(nq+nv)   #10
+Uinit[0:nq+nv,0:nq+nv] = 10*np.eye(nq+nv)   #10
 Uinit[nq+nv+6*nc:nq+nv+nu+6*nc, nq+nv+6*nc:nq+nv+nu+6*nc] = 1*np.eye(nu)
 
 #print(Qinit)
@@ -194,8 +194,8 @@ xdesiredinit[:nq] = q
 # #print(len(xtraj))
 
 r = 0.2
-degree_increment = 10
-theta = np.arange(0, 360, degree_increment)
+degree_increment = 20
+theta = np.arange(0, 400, degree_increment)
 xtraj = []
 for i in theta:
     x = r * np.sin(math.radians(i))
@@ -208,7 +208,7 @@ for i in theta:
 
 
 
-increment = 10.0
+increment = 2.0
 timings = np.arange(0, increment*len(xtraj), increment )
 
 pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
@@ -278,4 +278,4 @@ loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                           input_channel="TRIFINGER_OUTPUT",
                           is_forced_publish=True)
 
-loop.Simulate(60)
+loop.Simulate(100)

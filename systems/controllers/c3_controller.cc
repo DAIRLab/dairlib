@@ -107,6 +107,16 @@ void C3Controller::CalcControl(const Context<double>& context,
 
   VectorXd traj_desired_vector = pp_.value(timestamp);
 
+
+//  std::cout << "state" << std::endl;
+//  std::cout << state << std::endl;
+
+  traj_desired_vector[0] = state[7]; //- 0.05;
+  traj_desired_vector[1] = state[8]; //+ 0.01;
+
+  //  xtop[0] = xtop[16];
+//  xtop[1] = xtop[17];
+
   //std::cout << Q_.size() << std::endl;
   //std::cout << "test" << test[8] << std::endl;
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
@@ -216,7 +226,23 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
 
   //solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdes, options);
 
-  solvers::C3MIQP opt(system_, Q_, R_, G_, U_, traj_desired, options);
+  int ts = round(timestamp);
+
+  //std::cout << ts % 3 << std::endl;
+
+  //if (round(timestamp)  == )
+
+  MatrixXd Qnew;
+  Qnew = Q_[0];
+
+  if (ts % 3 == 0){
+    Qnew(7,7) = 1;
+    Qnew(8,8) = 1;
+  }
+
+  std::vector<MatrixXd> Qha(Q_.size(), Qnew);
+
+  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options);
   //solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
 
 //  ///trifinger constraints

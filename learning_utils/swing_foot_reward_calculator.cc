@@ -63,6 +63,9 @@ drake::systems::EventStatus SwingFootRewardCalculator::StateUpdate(
               single_support_fsm_states_.end(), curr_fsm) !=
         single_support_fsm_states_.end()) {
       state->get_mutable_discrete_state(running_reward_idx_).SetZero();
+    } else {
+      // Calculate impact related reward terms here
+
     }
   }
   // return if no new messages or double stance or controller just started
@@ -86,15 +89,13 @@ drake::systems::EventStatus SwingFootRewardCalculator::StateUpdate(
   Vector3d y_err = Eigen::Map<Vector3d>(swing_ft_data.error_y.data());
   Vector3d y_des = Eigen::Map<Vector3d>(swing_ft_data.y_des.data());
   Vector3d y_dd = Eigen::Map<Vector3d>(swing_ft_data.yddot_command.data());
-  Vector3d y_dd_cmd  = Eigen::Map<Vector3d>(swing_ft_data.yddot_command_sol.data());
-  Vector3d y_dd_err = y_dd - y_dd_cmd;
 
   // Inner product between swing foot trajectory and desired swing foot traj
   // scaled to be large near end of stance
   VectorXd tracking_reward = - dt * y_err.head(2).transpose() * y_err.head(2);
-  tracking_reward *= 100 * pow((new_time - switch_time) / single_support_duration_, 2);
+  tracking_reward *= 1000 * pow((new_time - switch_time) / single_support_duration_, 2);
   // Inner product between desired and realized swing foot acceleration
-  VectorXd smooth_reward =  - dt * y_dd_err.transpose() * y_dd_err;
+  VectorXd smooth_reward =  - dt * y_dd.transpose() * y_dd;
 
   state->get_mutable_discrete_state(running_reward_idx_).get_mutable_value() <<
       state->get_discrete_state(running_reward_idx_).value() + tracking_reward + smooth_reward;

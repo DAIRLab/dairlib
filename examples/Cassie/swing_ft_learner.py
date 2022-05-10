@@ -63,7 +63,7 @@ class RandomExplorer:
         radio = [np.random.uniform(low=-1, high=1), 0, 0, 0]
         for _ in range(n_steps):
             a = self.select_action()
-            # print(f"sending action {a}")
+            print(f"sending action {a}")
             if num_steps_same_radio > 0:
                 s_prime, r, d = cassie_env.step(a, radio)
             else:

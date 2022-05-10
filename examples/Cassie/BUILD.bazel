@@ -425,6 +425,7 @@ cc_binary(
         "//solvers:osqp_solver_options",
         "//systems:robot_lcm_systems",
         "//systems/controllers:fsm_event_time",
+        "//systems/controllers:controllers_all",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

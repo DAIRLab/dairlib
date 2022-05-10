@@ -1069,24 +1069,24 @@ void OperationalSpaceControl::CalcOptimalInput(
       next_fsm_state = impact_info->GetCurrentContactMode();
     }
 
-    if (fsm_state(0) == 0) {
-      x_wo_spr[19] = 0;
-      x_wo_spr[21] = 0;
-      x_wo_spr[33] = 0;
-      x_wo_spr[41] = 0;
-    } else if (fsm_state(0) == 1) {
-      x_wo_spr[11] = 0;
-      x_wo_spr[13] = 0;
-      x_wo_spr[33] = 0;
-      x_wo_spr[41] = 0;
-    } else {
-      x_wo_spr[11] = 0;
-      x_wo_spr[13] = 0;
-      x_wo_spr[19] = 0;
-      x_wo_spr[21] = 0;
-      x_wo_spr[33] = 0;
-      x_wo_spr[41] = 0;
-    }
+//    if (fsm_state(0) == 0) {
+//      x_wo_spr[19] = 0;
+//      x_wo_spr[21] = 0;
+//      x_wo_spr[33] = 0;
+//      x_wo_spr[41] = 0;
+//    } else if (fsm_state(0) == 1) {
+//      x_wo_spr[11] = 0;
+//      x_wo_spr[13] = 0;
+//      x_wo_spr[33] = 0;
+//      x_wo_spr[41] = 0;
+//    } else {
+//      x_wo_spr[11] = 0;
+//      x_wo_spr[13] = 0;
+//      x_wo_spr[19] = 0;
+//      x_wo_spr[21] = 0;
+//      x_wo_spr[33] = 0;
+//      x_wo_spr[41] = 0;
+//    }
 
     // Get discrete states
     const auto prev_event_time =

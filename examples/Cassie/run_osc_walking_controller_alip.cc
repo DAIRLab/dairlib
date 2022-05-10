@@ -15,6 +15,7 @@
 #include "systems/controllers/alip_swing_ft_traj_gen.h"
 #include "systems/controllers/alip_traj_gen.h"
 #include "systems/controllers/fsm_event_time.h"
+#include "systems/controllers/cassie_out_to_radio.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -97,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   if (FLAGS_spring_model) {
     addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
-                       "examples/Cassie/urdf/cassie_v2.urdf",
+                       "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                        true /*spring model*/, false /*loop closure*/);
   } else {
     addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
@@ -142,6 +143,8 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_spr);
+  auto cassie_out_to_radio =
+      builder.AddSystem<systems::CassieOutToRadio>();
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
@@ -176,6 +179,8 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
             FLAGS_cassie_out_channel, &lcm_local));
     builder.Connect(cassie_out_receiver->get_output_port(),
+                    cassie_out_to_radio->get_input_port());
+    builder.Connect(cassie_out_to_radio->get_output_port(),
                     high_level_command->get_radio_input_port());
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(

@@ -18,6 +18,8 @@ from pydairlib.systems.controllers import C3Controller
 
 import numpy as np
 
+from pydrake.trajectories import PiecewisePolynomial
+
 
 
 lcm = DrakeLcm()
@@ -102,7 +104,7 @@ q = np.zeros((nq,1))
 q_map = makeNameToPositionsMap(plant)
 q[0] = 0
 q[1] = 0
-q[2] = 0.05  #0.05
+q[2] = 0.05 #0.05
 # q[3] = 0.2
 # q[4] = 0
 # q[5] = 0.02
@@ -112,8 +114,8 @@ q[2] = 0.05  #0.05
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 0.1
-q[q_map['base_y']] = 0.1
+q[q_map['base_x']] = 0.05
+q[q_map['base_y']] = 0.05
 q[q_map['base_z']] = 0
 
 mu = 1.0
@@ -123,8 +125,8 @@ mu = 1.0
 
 Qinit = 0*np.eye(nq+nv)
 #Qinit[7:9,7:9] = 1000*np.eye(2)
-Qinit[0,0] = 0
-Qinit[1,1] = 0
+Qinit[0,0] = 10
+Qinit[1,1] = 10
 Qinit[2,2] = 10   #100
 Qinit[7,7] = 10000 #10000
 Qinit[8,8] = 10000    #10000
@@ -170,12 +172,29 @@ xdesiredinit[:nq] = q
 
 # Ginit = 0.1*np.eye(46)
 # Uinit = 0.1*np.eye(46)
-
-
 # Qinit[0,0] = 10000
 # Qinit[3,3] = 10000
 # Qinit[6,6] = 10000
 
+xtraj1 = np.zeros((nq+nv,1))
+xtraj1[:nq] = q
+
+q[0] = -0.02
+q[1] = -0.02
+# q[2] = 0.05 #0.05
+q[q_map['base_x']] = 0
+q[q_map['base_y']] = 0
+q[q_map['base_z']] = 0
+
+xtraj2 = np.zeros((nq+nv,1))
+xtraj2[:nq] = q
+
+xtraj = [xtraj1, xtraj2, xtraj1, xtraj2, xtraj1, xtraj2, xtraj1, xtraj2, xtraj1, xtraj2]
+#print(len(xtraj))
+increment = 5.0
+timings = np.arange(0, increment*len(xtraj), increment )
+
+pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
 
 
 num_friction_directions = 2
@@ -214,7 +233,7 @@ context = plant.CreateDefaultContext()
 context_ad = plant_ad.CreateDefaultContext()
 
 controller = builder.AddSystem(
-    C3Controller(plant, plant_f, context, context_f, plant_ad, plant_ad_f, context_ad, context_ad_f, scene_graph, diagram_f, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired))
+    C3Controller(plant, plant_f, context, context_f, plant_ad, plant_ad_f, context_ad, context_ad_f, scene_graph, diagram_f, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired, pp))
 
 
 #controller = builder.AddSystem(TrifingerDemoController(plant))

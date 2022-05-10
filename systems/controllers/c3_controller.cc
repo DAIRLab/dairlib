@@ -48,7 +48,7 @@ C3Controller::C3Controller(
     std::vector<drake::geometry::GeometryId> contact_geoms,
     int num_friction_directions, double mu, const vector<MatrixXd>& Q,
     const vector<MatrixXd>& R, const vector<MatrixXd>& G,
-    const vector<MatrixXd>& U, const vector<VectorXd>& xdesired)
+    const vector<MatrixXd>& U, const vector<VectorXd>& xdesired, const drake::trajectories::PiecewisePolynomial<double>& pp)
     : plant_(plant),
       plant_f_(plant_f),
       context_(context),
@@ -66,7 +66,8 @@ C3Controller::C3Controller(
       R_(R),
       G_(G),
       U_(U),
-      xdesired_(xdesired) {
+      xdesired_(xdesired),
+      pp_(pp){
   int num_positions = plant_.num_positions();
   int num_velocities = plant_.num_velocities();
   int num_inputs = plant_.num_actuators();
@@ -103,6 +104,13 @@ void C3Controller::CalcControl(const Context<double>& context,
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
+
+  VectorXd traj_desired_vector = pp_.value(timestamp);
+
+  //std::cout << Q_.size() << std::endl;
+  //std::cout << "test" << test[8] << std::endl;
+  std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
+
 
 //  std::cout << "state" << std::endl;
 //  std::cout << state << std::endl;
@@ -207,7 +215,9 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   //std::cout << asd << std::endl;
 
   //solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdes, options);
-  solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
+
+  solvers::C3MIQP opt(system_, Q_, R_, G_, U_, traj_desired, options);
+  //solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
 
 //  ///trifinger constraints
 //  ///input

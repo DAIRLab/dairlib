@@ -30,6 +30,8 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 
+#include "drake/common/trajectories/piecewise_polynomial.h"
+
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
@@ -59,7 +61,8 @@ class C3Controller : public LeafSystem<double> {
       const std::vector<Eigen::MatrixXd>& R,
       const std::vector<Eigen::MatrixXd>& G,
       const std::vector<Eigen::MatrixXd>& U,
-      const std::vector<Eigen::VectorXd>& xdesired);
+      const std::vector<Eigen::VectorXd>& xdesired,
+      const drake::trajectories::PiecewisePolynomial<double>& pp);
 
   const drake::systems::InputPort<double>& get_input_port_config() const {
     return this->get_input_port(state_input_port_);
@@ -95,6 +98,7 @@ class C3Controller : public LeafSystem<double> {
   const std::vector<Eigen::MatrixXd> G_;
   const std::vector<Eigen::MatrixXd> U_;
   const std::vector<Eigen::VectorXd> xdesired_;
+  const drake::trajectories::PiecewisePolynomial<double> pp_;
 };
 
 }  // namespace controllers

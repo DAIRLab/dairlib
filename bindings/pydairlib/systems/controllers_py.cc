@@ -36,11 +36,12 @@ PYBIND11_MODULE(controllers, m) {
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
-                    const std::vector<Eigen::VectorXd>&>(),
+                    const std::vector<Eigen::VectorXd>&,
+                    const drake::trajectories::PiecewisePolynomial<double>&>(),
            py::arg("plant"), py::arg("plant_f"), py::arg("context"), py::arg("context_f"), py::arg("plant_ad"), py::arg("plant_ad_f"),
            py::arg("context_ad"),  py::arg("context_ad_f"), py::arg("scene_graph"), py::arg("diagram"),  py::arg("contact_geoms"),
            py::arg("num_friction_directions"), py::arg("mu"), py::arg("Q"),
-           py::arg("R"), py::arg("G"), py::arg("U"), py::arg("xdesired"))
+           py::arg("R"), py::arg("G"), py::arg("U"), py::arg("xdesired"), py::arg("pp"))
       .def("get_input_port_config", &C3Controller::get_input_port_config,
            py_rvp::reference_internal)
       .def("get_input_port_output", &C3Controller::get_input_port_output,

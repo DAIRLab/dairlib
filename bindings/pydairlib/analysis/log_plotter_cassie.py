@@ -34,10 +34,10 @@ def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
     robot_output, robot_input, osc_debug = \
-        get_log_data(log,                                       # log
-                     cassie_plots.cassie_default_channels,      # lcm channels
+        get_log_data(log,  # log
+                     cassie_plots.cassie_default_channels,  # lcm channels
                      plot_config.end_time,
-                     mbp_plots.load_default_channels,           # processing callback
+                     mbp_plots.load_default_channels,  # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
     print('Finished processing log - making plots')
@@ -75,13 +75,13 @@ def main():
     if plot_config.vel_names:
         plot = mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
                                           t_x_slice, vel_map)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
         plot = mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.act_names:
         mbp_plots.plot_measured_efforts_by_name(robot_output,
@@ -99,8 +99,8 @@ def main():
             for deriv in config['derivs']:
                 for dim in config['dims']:
                     plot = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
-                                                     deriv, t_osc_slice)
-                    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
+                                                            deriv, t_osc_slice)
+                    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:
@@ -115,7 +115,7 @@ def main():
 
         plot = mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
                                         foot_frames, pts, dims)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], scale=0.05)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_qp_solve_time:
         mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)

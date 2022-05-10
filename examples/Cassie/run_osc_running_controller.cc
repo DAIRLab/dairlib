@@ -290,11 +290,11 @@ int DoMain(int argc, char* argv[]) {
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
-      osc_gains.rest_length, osc_gains.center_line_offset,
-      osc_gains.footstep_offset, osc_gains.mid_foot_height);
+      osc_gains.rest_length, osc_gains.footstep_lateral_offset,
+      osc_gains.footstep_sagital_offset, osc_gains.mid_foot_height);
   r_foot_traj_generator->SetFootPlacementOffsets(
-      osc_gains.rest_length, osc_gains.center_line_offset,
-      osc_gains.footstep_offset, osc_gains.mid_foot_height);
+      osc_gains.rest_length, osc_gains.footstep_lateral_offset,
+      osc_gains.footstep_sagital_offset, osc_gains.mid_foot_height);
 
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
@@ -542,6 +542,11 @@ int DoMain(int argc, char* argv[]) {
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
+
+  builder.Connect(fsm->get_output_port_clock(),
+                  l_foot_traj_generator->get_clock_input_port());
+  builder.Connect(fsm->get_output_port_clock(),
+                  r_foot_traj_generator->get_clock_input_port());
   builder.Connect(fsm->get_output_port_fsm(),
                   l_foot_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port_fsm(),

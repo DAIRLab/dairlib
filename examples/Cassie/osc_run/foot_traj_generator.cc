@@ -8,6 +8,7 @@ using Eigen::Map;
 using Eigen::MatrixXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
 using std::string;
 
@@ -67,6 +68,9 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
   fsm_port_ = this->DeclareVectorInputPort(
                       "fsm", BasicVector<double>(VectorXd::Zero(1)))
                   .get_index();
+  clock_port_ = this->DeclareVectorInputPort(
+                        "clock", BasicVector<double>(VectorXd::Zero(1)))
+                    .get_index();
 
   // The swing foot position in the beginning of the swing phase
   initial_foot_pos_idx_ = this->DeclareDiscreteState(3);
@@ -76,6 +80,8 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
 
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(&FootTrajGenerator::DiscreteVariableUpdate);
+
+  m_ = plant_.CalcTotalMass(*context_);
 }
 
 EventStatus FootTrajGenerator::DiscreteVariableUpdate(
@@ -135,6 +141,7 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
       this->template EvalVectorInput<OutputVector>(context, state_port_);
   const auto desired_pelvis_vel_xy =
       this->EvalVectorInput(context, target_vel_port_)->get_value();
+  double clock = this->EvalVectorInput(context, clock_port_)->get_value()(0);
 
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
@@ -153,18 +160,55 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
 
   // TODO(yangwill): should not use estimated pelvis velocity - from discussion
   // with OSU DRL
+
   Vector3d desired_pelvis_vel;
   desired_pelvis_vel << desired_pelvis_vel_xy, 0;
+  /// ALIP
+  // x refers to sagital plane
+  // y refers to the lateral plane
+  auto foot_pos = context.get_discrete_state(initial_foot_pos_idx_).get_value();
+  Vector3d pelvis_pos;
+  plant_.CalcPointsPositions(*context_, hip_frame_, Vector3d::Zero(), world_,
+                             &pelvis_pos);
+  //  double L_y_des = desired_pelvis_vel(0) * (pelvis_pos(2) - foot_pos(2)) *
+  //  m_; double L_x_offset =
+  //      -desired_pelvis_vel(1) * (pelvis_pos(2) - foot_pos(2)) * m_;
+  //  Vector3d L = plant_.CalcSpatialMomentumInWorldAboutPoint(*context_,
+  //  foot_pos)
+  //                   .rotational();
+  //  double H = pelvis_pos(2) - foot_pos(2);
+  //  double omega = sqrt(9.81 / H);
+  //  double T = state_durations_[4] - state_durations_[1];
+  //  Vector3d L_pred = m_ * H * omega * sinh(omega * (T - clock)) * pelvis_pos
+  //  +
+  //                    cosh(omega * (T - clock)) * L;
+  //  double L_x_n = 0.5 * m_ * H * lateral_offset_ *
+  //                 (omega * sinh(omega * T) / (1 + cosh(omega * T)));
+  //  Vector2d L_i = multibody::ReExpressWorldVector2InBodyYawFrame<double>(
+  //      plant_, *context_, "pelvis", L_pred.head(2));
+  //  double p_x_ft_to_com =
+  //      (L_y_des - cosh(omega * T) * L_i(1)) / (m_ * H * omega * sinh(omega *
+  //      T));
+  //  double p_y_ft_to_com = -(L_x_offset + L_x_n - cosh(omega * T) * L_i(0)) /
+  //                         (m_ * H * omega * sinh(omega * T));
+  //  Vector2d foot_end_pos_xy = Vector2d(-p_x_ft_to_com, p_y_ft_to_com);
+  //
+  //  Vector3d foot_end_pos_des = Vector3d::Zero();
+  //  foot_end_pos_des << foot_end_pos_xy, 0;
+
+  //  /// ALIP
+  //
   VectorXd pelvis_vel = v.segment(3, 3);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
-  VectorXd footstep_correction = Kd_ * (pelvis_vel_err);
+  VectorXd foot_end_pos_des = Kd_ * (pelvis_vel_err);
+
   if (is_left_foot_) {
-    footstep_correction(1) += center_line_offset_;
+    foot_end_pos_des(1) += lateral_offset_;
   } else {
-    footstep_correction(1) -= center_line_offset_;
+    foot_end_pos_des(1) -= lateral_offset_;
   }
-  footstep_correction(0) += footstep_offset_;
-  footstep_correction(2) = 0;
+  foot_end_pos_des(0) += sagital_offset_;
+  foot_end_pos_des(2) = 0;
 
   std::vector<double> T_waypoints;
   std::vector<double> T_waypoints_0;
@@ -182,28 +226,29 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   T_waypoints_1 = {state_durations_[2], state_durations_[3]};
   T_waypoints_2 = {state_durations_[3], state_durations_[4]};
 
-  auto foot_pos = context.get_discrete_state(initial_foot_pos_idx_).get_value();
+  //  auto foot_pos =
+  //  context.get_discrete_state(initial_foot_pos_idx_).get_value();
   auto hip_pos = context.get_discrete_state(initial_hip_pos_idx_).get_value();
   std::vector<MatrixXd> Y(T_waypoints.size(), VectorXd::Zero(3));
   VectorXd start_pos = foot_pos - hip_pos;
   Y[0] = start_pos;
-  if(start_pos(2) == 0){
+  if (start_pos(2) == 0) {
     Y[0](2) = -rest_length_;
   }
-  Y[1] = start_pos + 0.85 * footstep_correction;
+  Y[1] = start_pos + 0.85 * foot_end_pos_des;
   Y[1](2) = -rest_length_ + mid_foot_height_;
-  Y[2] = footstep_correction;
+  Y[2] = foot_end_pos_des;
   Y[2](2) = -rest_length_ + mid_foot_height_ / 2;
 
   // corrections
   if (is_left_foot_) {
-    Y[1](1) -= 0.25 * center_line_offset_;
-    Y[1](1) = drake::math::saturate(Y[1](1), center_line_offset_, 0.2);
-    Y[2](1) = drake::math::saturate(Y[2](1), center_line_offset_, 0.2);
+    Y[1](1) -= 0.25 * lateral_offset_;
+    Y[1](1) = drake::math::saturate(Y[1](1), lateral_offset_, 0.2);
+    Y[2](1) = drake::math::saturate(Y[2](1), lateral_offset_, 0.2);
   } else {
-    Y[1](1) += 0.25 * center_line_offset_;
-    Y[1](1) = drake::math::saturate(Y[1](1), -0.2, -center_line_offset_);
-    Y[2](1) = drake::math::saturate(Y[2](1), -0.2, -center_line_offset_);
+    Y[1](1) += 0.25 * lateral_offset_;
+    Y[1](1) = drake::math::saturate(Y[1](1), -0.2, -lateral_offset_);
+    Y[2](1) = drake::math::saturate(Y[2](1), -0.2, -lateral_offset_);
   }
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);

@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 from pydairlib.common import plot_styler, plotting_utils
 from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost, osc_regularlization_tracking_cost
@@ -268,6 +269,7 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         data_dict[name] = make_point_positions_from_q(robot_output['q'],
                                                       plant, context, frame, pt)
         legend_entries[name] = [name + dim_map[dim] for dim in dims[name]]
+
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
         data_dict,
@@ -276,9 +278,20 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         frame_names,
         dims,
         legend_entries,
-        {'title': 'Point Positions',
+        {'title': 'Running',
          'xlabel': 'time (s)',
-         'ylabel': 'pos (m)'}, ps)
+         'ylabel': 'foot vertical position (m)'}, ps)
+
+    import matplotlib
+    legend_elements = [matplotlib.patches.Patch(facecolor=ps.cmap(0), alpha=0.3, label='Left Stance (LS)'),
+                       matplotlib.patches.Patch(facecolor=ps.cmap(4), alpha=0.3, label='Left Liftoff (LF)'),
+                       matplotlib.patches.Patch(facecolor=ps.cmap(2), alpha=0.3, label='Right Stance (RS)'),
+                       matplotlib.patches.Patch(facecolor=ps.cmap(6), alpha=0.3, label='Right Liftoff (RF)')]
+    legend = plt.legend(legend_elements, ['Left Stance (LS)',
+                                          'Left Liftoff (LF)',
+                                          'Right Stance (RS)',
+                                          'Right Liftoff (RF)'], loc=1)
+    plt.gca().add_artist(legend)
 
     return ps
 
@@ -420,11 +433,21 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
     return ps
 
 
-def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
+def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names = []):
     ax = ps.fig.axes[0]
     ymin, ymax = ax.get_ylim()
 
+
     # uses default color map
+    legend_elements = []
     for i in np.unique(fsm_signal):
-        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), alpha=0.2)
-    ax.relim()
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2*i), alpha=0.2)
+        if len(fsm_state_names) == np.unique(fsm_signal).shape[0]:
+            legend_elements.append(Patch(facecolor=ps.cmap(2*i), alpha=0.3, label=fsm_state_names[i]))
+
+    if len(legend_elements) > 0:
+        legend = ax.legend(legend_elements, fsm_state_names, loc=4)
+        # ps.add_legend(legend, loc=4)
+        # ax.add_artist(legend)
+        # ax.add_artist(legend)
+        ax.relim()

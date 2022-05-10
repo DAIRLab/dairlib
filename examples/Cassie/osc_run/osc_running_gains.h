@@ -29,8 +29,8 @@ struct OSCRunningGains : OSCGains {
   double stance_duration;
   double flight_duration;
 
-  double center_line_offset;
-  double footstep_offset;
+  double footstep_lateral_offset;
+  double footstep_sagital_offset;
   double mid_foot_height;
 
   std::vector<double> ekf_filter_tau;
@@ -87,8 +87,8 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(rest_length));
     a->Visit(DRAKE_NVP(stance_duration));
     a->Visit(DRAKE_NVP(flight_duration));
-    a->Visit(DRAKE_NVP(center_line_offset));
-    a->Visit(DRAKE_NVP(footstep_offset));
+    a->Visit(DRAKE_NVP(footstep_lateral_offset));
+    a->Visit(DRAKE_NVP(footstep_sagital_offset));
     a->Visit(DRAKE_NVP(mid_foot_height));
     a->Visit(DRAKE_NVP(ekf_filter_tau));
 

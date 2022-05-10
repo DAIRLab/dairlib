@@ -8,6 +8,7 @@
 #include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
@@ -214,7 +215,7 @@ int DoMain(int argc, char* argv[]) {
     state_durations = {left_support_duration, double_support_duration,
                        right_support_duration, double_support_duration};
   }
-  auto fsm = builder.AddSystem<systems::ImpactTimeBasedFiniteStateMachine>(
+  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());

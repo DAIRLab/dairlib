@@ -418,6 +418,7 @@ cc_binary(
         ":cassie_utils",
         ":simulator_drift",
         "//examples/Cassie/osc",
+        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",

@@ -40,17 +40,18 @@ w_hip_yaw: 2.5
 hip_yaw_kp: 40
 hip_yaw_kd: 1
 # Foot placement parameters
-footstep_offset: -0.05
-center_line_offset: 0.04
+#footstep_offset: -0.05
+footstep_sagital_offset: -0.05
+footstep_lateral_offset: 0.04
 mid_foot_height: 0.05
 FootstepKd:
-  [  0.2,     0,  0,
-     0,     0.6, 0,
-     0,        0,  0]
+  [ 0.2,     0,  0,
+    0,     0.6, 0,
+    0,        0,  0 ]
 PelvisW:
-  [0.1,     0,    0,
-   0,    0,    0,
-   0,     0,    5]
+  [ 0.1,     0,    0,
+    0,    0,    0,
+    0,     0,    5 ]
 PelvisKp:
   [ 0,    0,    0,
     0,    0,    0,
@@ -76,7 +77,7 @@ SwingFootW:
    0,   100,    0,
    0,    0,   5]
 SwingFootKp:
-  [125,    0,    0,
+  [50,    0,    0,
    0,  50,    0,
    0,     0,  50]
 SwingFootKd:
@@ -92,7 +93,7 @@ LiftoffSwingFootKp:
    0,   50,    0,
    0,    0,  50]
 LiftoffSwingFootKd:
-  [ 1,   0,   0,
+  [ 5,   0,   0,
     0,  5,   0,
     0,   0,  1]
 

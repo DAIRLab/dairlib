@@ -539,7 +539,7 @@ VectorXd OperationalSpaceControl::SolveQp(
                                     next_fsm_state, M);
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
-//    std::cout << v_proj.transpose() << std::endl;
+    //    std::cout << v_proj.transpose() << std::endl;
   }
   //  SetVelocitiesIfNew<double>(
   //      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
@@ -761,8 +761,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
-    u_sol_->row(0) = 0.95 * u_sol_->row(0) + 0.05 * u_prev_->row(0);
-    u_sol_->row(1) = 0.95 * u_sol_->row(1) + 0.05 * u_prev_->row(1);
+    //    u_sol_->row(0) = 0.95 * u_sol_->row(0) + 0.05 * u_prev_->row(0);
+    //    u_sol_->row(1) = 0.95 * u_sol_->row(1) + 0.05 * u_prev_->row(1);
     //    *u_prev_ = *u_sol_;
     initial_guess_x_[fsm_state] = result.GetSolution();
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
@@ -1069,24 +1069,24 @@ void OperationalSpaceControl::CalcOptimalInput(
       next_fsm_state = impact_info->GetCurrentContactMode();
     }
 
-//    if(fsm_state(0) == 0){
-//      x_wo_spr[19] = 0;
-//      x_wo_spr[21] = 0;
-//      x_wo_spr[33] = 0;
-//      x_wo_spr[41] = 0;
-//    }
-//    else if(fsm_state(0) == 1){
-//      x_wo_spr[11] = 0;
-//      x_wo_spr[13] = 0;
-//      x_wo_spr[33] = 0;
-//      x_wo_spr[41] = 0;
-//    }
-//    else{
-//      x_wo_spr[11] = 0;
-//      x_wo_spr[13] = 0;
-//      x_wo_spr[19] = 0;
-//      x_wo_spr[21] = 0;
-//    }
+    if (fsm_state(0) == 0) {
+      x_wo_spr[19] = 0;
+      x_wo_spr[21] = 0;
+      x_wo_spr[33] = 0;
+      x_wo_spr[41] = 0;
+    } else if (fsm_state(0) == 1) {
+      x_wo_spr[11] = 0;
+      x_wo_spr[13] = 0;
+      x_wo_spr[33] = 0;
+      x_wo_spr[41] = 0;
+    } else {
+      x_wo_spr[11] = 0;
+      x_wo_spr[13] = 0;
+      x_wo_spr[19] = 0;
+      x_wo_spr[21] = 0;
+      x_wo_spr[33] = 0;
+      x_wo_spr[41] = 0;
+    }
 
     // Get discrete states
     const auto prev_event_time =

@@ -23,6 +23,9 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
     return this->get_input_port(fsm_port_);
   }
+  const drake::systems::InputPort<double>& get_clock_input_port() const {
+    return this->get_input_port(clock_port_);
+  }
   const drake::systems::InputPort<double>& get_target_vel_input_port() const {
     return this->get_input_port(target_vel_port_);
   }
@@ -32,8 +35,8 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   void SetFootPlacementOffsets(double rest_length, double center_line_offset,
                                double footstep_offset, double mid_foot_height) {
     rest_length_ = rest_length;
-    center_line_offset_ = center_line_offset;
-    footstep_offset_ = footstep_offset;
+    lateral_offset_ = center_line_offset;
+    sagital_offset_ = footstep_offset;
     mid_foot_height_ = mid_foot_height;
   }
 
@@ -58,9 +61,10 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
 
   // Foot placement constants
   double rest_length_;
-  double center_line_offset_;
-  double footstep_offset_;
+  double lateral_offset_;
+  double sagital_offset_;
   double mid_foot_height_;
+  double m_;
 
   // Raibert Footstep Gains
   Eigen::MatrixXd Kd_ = Eigen::MatrixXd::Zero(3, 3);
@@ -72,6 +76,7 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   int state_port_;
   int target_vel_port_;
   int fsm_port_;
+  int clock_port_;
   int initial_foot_pos_idx_;
   int initial_hip_pos_idx_;
   int pelvis_yaw_idx_;

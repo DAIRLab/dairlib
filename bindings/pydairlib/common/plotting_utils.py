@@ -31,7 +31,7 @@ def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
         if key in legend_entries:
             legend.extend(legend_entries[key])
 
-    plt.legend(legend)
+    plt.legend(legend, loc=1)
     plt.xlabel(plot_labels['xlabel'])
     plt.ylabel(plot_labels['ylabel'])
     plt.title(plot_labels['title'])

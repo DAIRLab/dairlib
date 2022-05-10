@@ -7,7 +7,7 @@
 
 ################################################################################
 
-log_dir=/home/yuming/Desktop/data_on_desktop/20220509_hardware_rom/05_09_22/
+log_dir=/home/yuming/Desktop/data_on_desktop/20220509_hardware_rom_and_cost_eval/05_09_22/
 output_dir=../dairlib_data/goldilocks_models/hardware_cost_eval/
 rm -rf $output_dir
 

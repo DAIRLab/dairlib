@@ -47,8 +47,8 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220316_rom24_big_range/robot_1/"                                            # rom_option 24
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220406_rom28_big_range_big_vel_weight/robot_1/"                             # rom_option 28
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220406_rom29_big_range_big_vel_weight/robot_1/"                             # rom_option 29
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220323_rom27_big_range_bigger_step_size_5e-3/robot_1/"                      # rom_option 27
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/"                      # rom_option 27
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220323_rom27_big_range_bigger_step_size_5e-3/robot_1/"                      # rom_option 27
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/"                      # rom_option 27
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 

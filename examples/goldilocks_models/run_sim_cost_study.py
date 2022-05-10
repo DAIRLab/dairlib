@@ -441,11 +441,15 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
     for j in range(len(task_list)):
       counter += 1
 
-      # # Testing
-      # if i == 1 and j == 45:  #42
-      #   skip_this_iter = False
-      # if skip_this_iter:
-      #   continue
+      ## Testing
+      #if i == 1 and j == 45:  #42
+      #  skip_this_iter = False
+      #if skip_this_iter:
+      #  continue
+      #if i == 0:
+      #  continue
+      #if i == 1 and j <= 40:
+      #  continue
 
       rom_iter = model_indices[i]
       task = task_list[j]
@@ -693,7 +697,7 @@ def GetSamplesToPlot(model_indices, log_indices):
   print("cmt.shape = " + str(cmt.shape))
 
   ### Testing -- find the log idx with high cost
-  cost_threshold = 3
+  cost_threshold = 2
   for i in range(len(cmt)):
     mem = cmt[i]
     # if mem[1] != 260:
@@ -1429,7 +1433,7 @@ if __name__ == "__main__":
   FOM_model_dir = ""
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
-  # eval_dir = "/media/yuming/sata-ssd/dairlib_data/sim_cost_eval/"
+  eval_dir = "/media/yuming/sata-ssd/dairlib_data/sim_cost_eval/"
   # eval_dir = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
@@ -1439,7 +1443,7 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0405/_20220122_sim_eval_20220105_model_again/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
-  # eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
+  #eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1458,8 +1462,8 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 60
-  idx_spacing = 20
+  model_iter_idx_end = 200
+  idx_spacing = 50
 
   # Task list
   n_task_sl = 30
@@ -1507,8 +1511,9 @@ if __name__ == "__main__":
   # 2D plot (cost vs task)
   # model_slices = []
   model_slices = [1, 50, 100, 150]
-  model_slices = [1, 50, 100, 150, 200, 250, 300]
+  # model_slices = [1, 50, 100, 150, 200, 250, 300]
   # model_slices = [1, 10, 20, 30, 40, 50, 60]
+  model_slices = [5, 50, 95]
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
@@ -1520,7 +1525,8 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
   model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
-  # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
+  #model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
+  model_slices_cost_landsacpe = [5, 50, 95]
   #model_slices_cost_landsacpe = [1, 11, 50, 70]
   # model_slices_cost_landsacpe = [75]
 
@@ -1553,7 +1559,7 @@ if __name__ == "__main__":
   if model_indices[0] == 0:
     model_indices[0] += 1
   # example list: [1, 5, 10, 15]
-  # model_indices = [1]  # Overwrite
+  #model_indices = [1, 100]  # Overwrite
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list

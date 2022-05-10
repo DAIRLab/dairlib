@@ -38,6 +38,7 @@ k_fb_lateral: 0.1
 # Finite state machine
 ss_time: 0.3
 ds_time: 0.1
+impact_threshold: 0.025
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55

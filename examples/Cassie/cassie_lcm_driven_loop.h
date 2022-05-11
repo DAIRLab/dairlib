@@ -214,7 +214,7 @@ class CassieLcmDrivenLoop {
         if (state_sub_ != nullptr) {
           if (state_sub_->count() > 0) {
             if (state_sub_->message().utime * 1e-6 - last_input_msg_time_ >
-                0.02) {
+                0.1) {
               too_long_between_input_messages_ = true;
             }
             is_new_state_message = too_long_between_input_messages_;

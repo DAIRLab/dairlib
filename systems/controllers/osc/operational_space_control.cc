@@ -527,7 +527,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   bias = bias - grav;
   // TODO (yangwill): Characterize damping in cassie model
 //  std::cout << f_app.generalized_forces().transpose() << std::endl;
-  bias = bias - f_app.generalized_forces();
+//  bias = bias - f_app.generalized_forces();
 
   //  Invariant Impacts
   //  Only update when near an impact
@@ -1071,17 +1071,18 @@ void OperationalSpaceControl::CalcOptimalInput(
       next_fsm_state = impact_info->GetCurrentContactMode();
     }
 
-//    if (fsm_state(0) == 0) {
-//      x_wo_spr[19] = 0;
-//      x_wo_spr[21] = 0;
-//      x_wo_spr[33] = 0;
-//      x_wo_spr[41] = 0;
-//    } else if (fsm_state(0) == 1) {
-//      x_wo_spr[11] = 0;
-//      x_wo_spr[13] = 0;
-//      x_wo_spr[33] = 0;
-//      x_wo_spr[41] = 0;
-//    } else {
+    if (fsm_state(0) == 0) {
+      x_wo_spr[19] = 0;
+      x_wo_spr[21] = 0;
+      x_wo_spr[33] = 0;
+      x_wo_spr[41] = 0;
+    } else if (fsm_state(0) == 1) {
+      x_wo_spr[11] = 0;
+      x_wo_spr[13] = 0;
+      x_wo_spr[33] = 0;
+      x_wo_spr[41] = 0;
+    }
+//    else {
 //      x_wo_spr[11] = 0;
 //      x_wo_spr[13] = 0;
 //      x_wo_spr[19] = 0;

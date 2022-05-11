@@ -44,25 +44,31 @@ impact_threshold: 0.025
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.25
 center_line_offset: 0.03
-mid_foot_height: 0.1
-final_foot_height: 0.00
+mid_foot_height: 0.2
+final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
 lipm_height: 0.75
 
 # OSC gains
-mu: 0.75
+mu: 0.4
 
 w_accel: 0.00000001
-w_soft_constraint: 80
+w_soft_constraint: 150
 w_input_reg: 0.0000003
+W_lambda_c_reg: [1, 0.001, 0.01,
+                 1, 0.001, 0.01,
+                 1, 0.1, 0.01,
+                 1, 0.1, 0.01]
+W_lambda_h_reg: [0.01, 0.01, 0.01,
+                 0.01, 0.02, 0.02]
 
 w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 2.5
+w_hip_yaw: 0.5
 hip_yaw_kp: 40
 hip_yaw_kd: 0.5
 

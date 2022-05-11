@@ -84,6 +84,11 @@ struct OSCWalkingGains {
   MatrixXd K_p_hip_yaw;
   MatrixXd K_d_hip_yaw;
 
+  std::vector<double> W_lambda_c_reg;
+  std::vector<double> W_lambda_h_reg;
+  MatrixXd W_lambda_c_regularization;
+  MatrixXd W_lambda_h_regularization;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(rows));
@@ -193,5 +198,16 @@ struct OSCWalkingGains {
     W_hip_yaw = this->w_hip_yaw * MatrixXd::Identity(1, 1);
     K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
     K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
+
+    a->Visit(DRAKE_NVP(W_lambda_c_reg));
+    a->Visit(DRAKE_NVP(W_lambda_h_reg));
+    Eigen::VectorXd w_lambda_c_regularization =
+        Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+            this->W_lambda_c_reg.data(), this->W_lambda_c_reg.size());
+    Eigen::VectorXd w_lambda_h_regularization =
+        Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+            this->W_lambda_h_reg.data(), this->W_lambda_h_reg.size());
+    W_lambda_c_regularization = w_lambda_c_regularization.asDiagonal();
+    W_lambda_h_regularization = w_lambda_h_regularization.asDiagonal();
   }
 };

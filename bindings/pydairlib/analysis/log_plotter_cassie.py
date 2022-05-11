@@ -12,7 +12,8 @@ import mbp_plotting_utils as mbp_plots
 
 
 def main():
-    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
+    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
+    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
     # config_file = \
     #     'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
     plot_config = CassiePlotConfig(config_file)

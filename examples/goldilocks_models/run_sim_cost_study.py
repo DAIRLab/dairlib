@@ -1075,7 +1075,7 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
 
   # Flags
   plot_the_ratio_bigger_than_1 = max_nonzero_ratio > 1
-  plot_the_ratio_bigger_than_1 = True  # sometimes we want to manually set this to false because the ratio bigger than 1 was from bad solves at boundary
+  # plot_the_ratio_bigger_than_1 = False  # sometimes we want to manually set this to false because the ratio bigger than 1 was from bad solves at boundary
   plot_lost_task = True
 
   # discrete color map

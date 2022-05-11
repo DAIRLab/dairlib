@@ -1210,6 +1210,10 @@ def ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_r
   # Trim model iteration list with final_iter_ave_cost
   model_indices_cp = [i for i in model_indices if i <= final_iter_ave_cost]
 
+  # Avoid boundary -- for some reason I got a nan value from interpolator within the range in a experiment
+  if model_indices_cp[0] == 1:
+    model_indices_cp[0] = 1.01
+
   # Correct the range so that it's within the achieveable task space for all model iter
   viable_min = -math.inf
   viable_max = math.inf

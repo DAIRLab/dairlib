@@ -78,7 +78,7 @@ DEFINE_string(
     "The name of the channel to receive the cassie out structure from.");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains_alip.yaml",
               "Filepath containing gains");
-DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
+DEFINE_string(osqp_settings, "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml",
               "Filepath containing qp settings");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");

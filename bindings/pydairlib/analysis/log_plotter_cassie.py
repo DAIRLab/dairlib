@@ -12,8 +12,8 @@ import mbp_plotting_utils as mbp_plots
 
 
 def main():
-    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
-    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
+    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
+    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
     # config_file = \
     #     'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
@@ -69,9 +69,11 @@ def main():
 
     # Plot all joint velocities
     if plot_config.plot_joint_positions:
-        mbp_plots.plot_joint_velocities(robot_output, vel_names,
+        plot = mbp_plots.plot_joint_velocities(robot_output, vel_names,
                                         6 if use_floating_base else 0,
                                         t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
     # Plot specific velocities
     if plot_config.vel_names:
         plot = mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,

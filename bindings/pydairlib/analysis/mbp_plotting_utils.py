@@ -471,9 +471,9 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names = []):
         if len(fsm_state_names) == np.unique(fsm_signal).shape[0]:
             legend_elements.append(Patch(facecolor=ps.cmap(2*i), alpha=0.3, label=fsm_state_names[i]))
 
-    if len(legend_elements) > 0:
-        legend = ax.legend(legend_elements, fsm_state_names, loc=4)
+    # if len(legend_elements) > 0:
+    #     legend = ax.legend(legend_elements, fsm_state_names, loc=4)
         # ps.add_legend(legend, loc=4)
         # ax.add_artist(legend)
         # ax.add_artist(legend)
-        ax.relim()
+        # ax.relim()

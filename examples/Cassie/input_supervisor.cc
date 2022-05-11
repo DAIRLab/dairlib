@@ -149,7 +149,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
 
   // If the soft estop signal is triggered, applying only damping regardless of
   // any other controller signal
-  if (cassie_out->pelvis.radio.channel[15] == -1) {
+  if (cassie_out->pelvis.radio.channel[15] == -1 || cassie_out->pelvis.radio.channel[12] == -1) {
     Eigen::VectorXd u = -K_ * state->GetVelocities();
     input_limit_ = 100 * Eigen::VectorXd::Ones(num_actuators_);
     output->set_timestamp(state->get_timestamp());

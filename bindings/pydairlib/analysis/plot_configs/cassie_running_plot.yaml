@@ -1,8 +1,8 @@
 # LCM channels to read data from
 #channel_x: "CASSIE_STATE_SIMULATION"
 channel_x: "CASSIE_STATE_DISPATCHER"
-channel_u: "OSC_RUNNING"
-#channel_u: "CASSIE_INPUT"
+#channel_u: "OSC_RUNNING"
+channel_u: "CASSIE_INPUT"
 channel_osc: "OSC_DEBUG_RUNNING"
 
 # Log time to stop at (seconds, -1 for whole log)

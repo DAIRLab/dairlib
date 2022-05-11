@@ -26,7 +26,7 @@ vel_scale_trans_sagital: 0.2
 vel_scale_trans_lateral: -0.15
 
 # SLIP parameters
-rest_length: 0.85
+rest_length: 0.87
 stance_duration: 0.30
 flight_duration: 0.1
 
@@ -57,7 +57,7 @@ PelvisKp:
     0,    0,    0,
     0,    0,   70]
 PelvisKd:
-  [  1,    0,   0,
+  [  0,    0,   0,
      0,    0,   0,
      0,    0,  5]
 PelvisRotW:

@@ -207,6 +207,27 @@ def plot_q_or_v_or_u(
          'title': title}, ps)
     return ps
 
+def plot_u_cmd(
+    robot_input, key, x_names, x_slice, time_slice,
+    ylabel=None, title=None):
+    ps = plot_styler.PlotStyler()
+    if ylabel is None:
+        ylabel = key
+    if title is None:
+        title = key
+
+    plotting_utils.make_plot(
+        robot_input,  # data dict
+        't_u',  # time channel
+        time_slice,
+        [key],  # key to plot
+        {key: x_slice},  # slice of key to plot
+        {key: x_names},  # legend entries
+        {'xlabel': 'Time',
+         'ylabel': ylabel,
+         'title': title}, ps)
+    return ps
+
 
 def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):
     return plot_q_or_v_or_u(robot_output, 'q', q_names[:fb_dim], slice(fb_dim),
@@ -250,6 +271,11 @@ def plot_measured_efforts(robot_output, u_names, time_slice):
     return plot_q_or_v_or_u(robot_output, 'u', u_names, slice(len(u_names)),
                             time_slice, ylabel='Efforts (Nm)',
                             title='Joint Efforts')
+
+def plot_commanded_efforts(robot_input, u_names, time_slice):
+    return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
+                            time_slice, ylabel='Efforts (Nm)',
+                            title='Commanded Joint Efforts')
 
 
 def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):

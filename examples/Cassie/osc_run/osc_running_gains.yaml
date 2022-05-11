@@ -14,7 +14,7 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
                0.01, 0.02, 0.02]
 #w_soft_constraint: 1000000
 w_soft_constraint: 100
-w_input_reg: 0.001
+w_input_reg: 0.1
 impact_threshold: 0.025
 relative_feet: true
 relative_pelvis: true
@@ -45,7 +45,7 @@ footstep_sagital_offset: -0.05
 footstep_lateral_offset: 0.04
 mid_foot_height: 0.05
 FootstepKd:
-  [ 0.2,     0,  0,
+  [ 0.25,     0,  0,
     0,     0.6, 0,
     0,        0,  0 ]
 PelvisW:
@@ -85,7 +85,7 @@ SwingFootKd:
    0,   5.,   0,
    0,   0,  1.]
 LiftoffSwingFootW:
-  [0.1,    0,    0,
+  [1,    0,    0,
    0,   100,    0,
    0,    0,    1]
 LiftoffSwingFootKp:

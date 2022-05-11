@@ -346,7 +346,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
-  std::unique_ptr<Eigen::VectorXd> u_prev_;
+//  std::unique_ptr<Eigen::VectorXd> u_prev_;
   mutable double solve_time_;
 
   mutable Eigen::VectorXd ii_lambda_sol_;
@@ -380,6 +380,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_x_ = {};
   mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_y_ = {};
+  mutable std::unordered_map<int, Eigen::VectorXd> u_prev_ = {};
 
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>

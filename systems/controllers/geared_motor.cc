@@ -55,8 +55,8 @@ void GearedMotor::CalcTorqueOutput(
     tlim = fmax(fmin(tlim, tmax), 0);
 
     // Compute motor-side torque
-    //    tau[i] = copysign(fmin(fabs(u[i] / ratio), tlim), u[i]);
-    tau[i] = copysign(fmin(fabs(u[i]), tlim), u[i]);
+    tau[i] = copysign(fmin(fabs(u[i] / ratio), tlim), u[i]);
+//    tau[i] = copysign(fmin(fabs(u[i]), tlim), u[i]);
   }
   output->SetFromVector(tau);
 }

@@ -22,6 +22,7 @@ class CassiePlotConfig():
         self.plot_joint_positions = data['plot_joint_positions']
         self.plot_joint_velocities = data['plot_joint_velocities']
         self.plot_measured_efforts = data['plot_measured_efforts']
+        self.plot_commanded_efforts = data['plot_commanded_efforts']
         self.pos_names = \
             data['special_positions_to_plot'] if \
             data['special_positions_to_plot'] else []

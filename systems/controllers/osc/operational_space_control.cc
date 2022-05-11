@@ -305,10 +305,10 @@ void OperationalSpaceControl::Build() {
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
-  u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
+//  u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
   dv_sol_->setZero();
   u_sol_->setZero();
-  u_prev_->setZero();
+//  u_prev_->setZero();
   lambda_c_sol_->setZero();
   lambda_h_sol_->setZero();
   epsilon_sol_->setZero();
@@ -738,9 +738,11 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // (Testing) 7. Cost for staying close to the previous input
-  if (W_input_smoothing_.size() > 0) {
+  if (W_input_smoothing_.size() > 0 && initial_guess_x_.count(fsm_state) > 0) {
+//    input_smoothing_cost_->UpdateCoefficients(W_input_smoothing_,
+//                                              -W_input_smoothing_ * (*u_prev_));
     input_smoothing_cost_->UpdateCoefficients(W_input_smoothing_,
-                                              -W_input_smoothing_ * (*u_prev_));
+                                              -W_input_smoothing_ * u_prev_[fsm_state]);
   }
 
   //  if (!solver_->IsInitialized()) {
@@ -763,12 +765,12 @@ VectorXd OperationalSpaceControl::SolveQp(
     *epsilon_sol_ = result.GetSolution(epsilon_);
     //    u_sol_->row(0) = 0.95 * u_sol_->row(0) + 0.05 * u_prev_->row(0);
     //    u_sol_->row(1) = 0.95 * u_sol_->row(1) + 0.05 * u_prev_->row(1);
-    //    *u_prev_ = *u_sol_;
+    u_prev_[fsm_state] = *u_sol_;
     initial_guess_x_[fsm_state] = result.GetSolution();
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
     //    *u_prev_ = VectorXd::Zero(n_u_);
-    *u_prev_ = 0.9 * *u_sol_ + VectorXd::Random(n_u_);
+    u_prev_[fsm_state] = 0.9 * *u_sol_ + VectorXd::Random(n_u_);
   }
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
@@ -915,8 +917,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           : 0;
   double input_smoothing_cost =
       (W_input_smoothing_.size() > 0)
-          ? (0.5 * (*u_sol_ - *u_prev_).transpose() * W_input_smoothing_ *
-             (*u_sol_ - *u_prev_))(0)
+          ? (0.5 * (*u_sol_ - u_prev_[fsm_state]).transpose() * W_input_smoothing_ *
+             (*u_sol_ - u_prev_[fsm_state]))(0)
           : 0;
   double lambda_h_cost = (W_lambda_h_reg_.size() > 0)
                              ? (0.5 * (*lambda_h_sol_).transpose() *
@@ -1020,7 +1022,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     output->tracking_data[i] = osc_output;
   }
   //  std::cout << total_cost_ << std::endl;
-  *u_prev_ = *u_sol_;
+//  *u_prev_ = *u_sol_;
   output->num_tracking_data = output->tracking_data_names.size();
   output->num_regularization_costs = output->regularization_cost_names.size();
 }

@@ -1194,7 +1194,7 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
       plt.savefig("%scost_landscape%s_model_iter_%d.png" % (eval_dir, app_list[i], model_slice_value))
 
 
-def ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_average):
+def ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_range_to_average):
   if len(stride_length_range_to_average) == 0:
     return
   elif len(stride_length_range_to_average) != 2:
@@ -1205,6 +1205,7 @@ def ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_avera
   print("\nPlotting expected cost over task...")
 
   interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
+  interpolator_nominal = LinearNDInterpolator(nominal_cmt[:, 1:], nominal_cmt[:, 0]) if plot_nominal else None
 
   # Trim model iteration list with final_iter_ave_cost
   model_indices_cp = [i for i in model_indices if i <= final_iter_ave_cost]
@@ -1222,9 +1223,15 @@ def ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_avera
       t_ph = task_slice_value_ph * np.ones(n_sample)
       z = interpolator(np.vstack((m, t_sl, t_ph)).T)
       t_sl_masked = t_sl[~np.isnan(z)]
-
       viable_min = max(viable_min, min(t_sl_masked))
       viable_max = min(viable_max, max(t_sl_masked))
+
+      if plot_nominal:
+        z_nominal = interpolator_nominal(np.vstack((m, t_sl, t_ph)).T)
+        t_sl_masked = t_sl[~np.isnan(z_nominal)]
+        viable_min = max(viable_min, min(t_sl_masked))
+        viable_max = min(viable_max, max(t_sl_masked))
+
     except ValueError:
       effective_length = i + 1
       print("Iteration %d doesn't have successful sample, so we stop plotting expected cost after this iter" % model_iter)
@@ -1239,6 +1246,7 @@ def ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_avera
   ### 2D plot (averaged cost vs iteration)
   n_sample = 500
   averaged_cost = np.zeros(effective_length)
+  averaged_cost_nominal = np.zeros(effective_length)
   for i in range(effective_length):
     model_iter = model_indices_cp[i]
     # The line along which we evaluate the cost (using interpolation)
@@ -1246,11 +1254,18 @@ def ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_avera
     t_sl = np.linspace(stride_length_range_to_average[0], stride_length_range_to_average[1], n_sample)
     t_ph = task_slice_value_ph * np.ones(n_sample)
     z = interpolator(np.vstack((m, t_sl, t_ph)).T)
-
     averaged_cost[i] = z.sum() / n_sample
+    if plot_nominal:
+      z_nominal = interpolator_nominal(np.vstack((m, t_sl, t_ph)).T)
+      averaged_cost_nominal[i] = z_nominal.sum() / n_sample
 
   plt.figure(figsize=(6.4, 4.8))
-  plt.plot(model_indices_cp[:effective_length], averaged_cost, 'k-', linewidth=3)
+
+  plt.plot(model_indices_cp[:effective_length], averaged_cost, 'k-', linewidth=3, label="closed loop")
+  if plot_nominal:
+    plt.plot(model_indices_cp[:effective_length], averaged_cost_nominal, 'k--', linewidth=3, label="open loop")
+    plt.legend()
+
   plt.xlabel('model iteration')
   plt.ylabel('averaged cost')
   plt.title("Cost averaged over stride length [%.3f, %.3f] m" % tuple(stride_length_range_to_average))
@@ -1473,7 +1488,7 @@ if __name__ == "__main__":
   # Model iteration list
   model_iter_idx_start = 1  # 0
   model_iter_idx_end = 440
-  idx_spacing = 20
+  idx_spacing = 40
 
   # Task list
   n_task_sl = 30
@@ -1521,9 +1536,9 @@ if __name__ == "__main__":
   # 2D plot (cost vs task)
   # model_slices = []
   model_slices = [1, 50, 100, 150]
-  # model_slices = [1, 50, 100, 150, 200, 250, 300]
+  model_slices = [1, 50, 100, 150, 200, 250, 300]
   # model_slices = [1, 10, 20, 30, 40, 50, 60]
-  model_slices = [5, 50, 95]
+  # model_slices = [5, 50, 95]
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
@@ -1534,9 +1549,9 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
   model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
   model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
-  # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
+  model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
   #model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
-  model_slices_cost_landsacpe = [5, 50, 95]
+  # model_slices_cost_landsacpe = [5, 50, 95]
   #model_slices_cost_landsacpe = [1, 11, 50, 70]
   # model_slices_cost_landsacpe = [75]
 
@@ -1620,10 +1635,10 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
+  #RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  # EvalCostInMultithread(model_indices, log_indices)
+  #EvalCostInMultithread(model_indices, log_indices)
 
   # Delete all logs but a few successful ones (for analysis later)
   # DeleteMostLogs(model_indices, log_indices)
@@ -1674,7 +1689,7 @@ if __name__ == "__main__":
   Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal)
 
   ### Compute expected (averaged) cost
-  ComputeExpectedCostOverTask(model_indices, cmt, stride_length_range_to_average)
+  ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_range_to_average)
 
   ### Compute task range over iteration
   ComputeAchievableTaskRangeOverIter(cmt)

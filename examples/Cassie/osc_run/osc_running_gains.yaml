@@ -15,8 +15,8 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
 #w_soft_constraint: 1000000
 w_soft_constraint: 100
 w_input_reg: 0.1
-impact_threshold: 0.1
-impact_tau: 0.05
+impact_threshold: 0.05
+impact_tau: 0.025
 relative_feet: true
 relative_pelvis: true
 ekf_filter_tau: [0.05, 0.1, 0.01]
@@ -73,7 +73,7 @@ PelvisRotKp:
    0,  100.,   0,
    0,    0,  0.]
 PelvisRotKd:
-  [5.,   0,  0,
+  [1.,   0,  0,
    0,   5.,  0,
    0,    0,  1.]
 SwingFootW:

@@ -762,6 +762,8 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
+  solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+
   if (result.is_success()) {
     // Extract solutions
     *dv_sol_ = result.GetSolution(dv_);
@@ -769,8 +771,25 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
-    //    u_sol_->row(0) = 0.95 * u_sol_->row(0) + 0.05 * u_prev_->row(0);
-    //    u_sol_->row(1) = 0.95 * u_sol_->row(1) + 0.05 * u_prev_->row(1);
+    if(fsm_state >= 2 && initial_guess_x_.size() == 4){
+      double clock_time;
+      if (this->get_input_port(clock_port_).HasValue(context)) {
+        auto clock = this->EvalVectorInput(context, clock_port_);
+        clock_time = clock->get_value()(0);
+      }
+      if(fsm_state == 2){
+        double blend = 1 - exp(-((clock_time - 0.3) + 0.01) / 0.015);
+        solve_time_ = blend;
+        u_sol_->row(6) = blend * u_sol_->row(6) + (1 - blend) * u_prev_[0].row(6);
+//        u_sol_->row(0) = blend * u_sol_->row(0) + (1 - blend) * u_prev_[0].row(0);
+      }
+      if(fsm_state == 3){
+        double blend = 1 - exp(-((clock_time - 0.7) + 0.01) / 0.015);
+        solve_time_ = blend;
+        u_sol_->row(7) = blend * u_sol_->row(7) + (1 - blend) * u_prev_[1].row(7);
+//        u_sol_->row(1) = blend * u_sol_->row(1) + (1 - blend) * u_prev_[1].row(1);
+      }
+    }
     u_prev_[fsm_state] = *u_sol_;
     initial_guess_x_[fsm_state] = result.GetSolution();
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
@@ -779,7 +798,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     u_prev_[fsm_state] = 0.9 * *u_sol_ + VectorXd::Random(n_u_);
   }
 
-  solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   for (auto& tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {

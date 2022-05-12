@@ -43,10 +43,11 @@ hip_yaw_kd: 1
 # Foot placement parameters
 #footstep_offset: -0.05
 footstep_sagital_offset: -0.05
-footstep_lateral_offset: 0.04
+footstep_lateral_offset: 0.055 # mujoco
+#footstep_lateral_offset: 0.045
 mid_foot_height: 0.05
 FootstepKd:
-  [ 0.25,     0,  0,
+  [ 0.3,     0,  0,
     0,     0.6, 0,
     0,        0,  0 ]
 PelvisW:
@@ -56,7 +57,7 @@ PelvisW:
 PelvisKp:
   [ 0,    0,    0,
     0,    0,    0,
-    0,    0,   70]
+    0,    0,   60]
 PelvisKd:
   [  0,    0,   0,
      0,    0,   0,
@@ -70,7 +71,7 @@ PelvisRotKp:
    0,  100.,   0,
    0,    0,  0.]
 PelvisRotKd:
-  [10.,   0,  0,
+  [5.,   0,  0,
    0,   5.,  0,
    0,    0,  1.]
 SwingFootW:
@@ -87,7 +88,7 @@ SwingFootKd:
    0,   0,  1.]
 LiftoffSwingFootW:
   [1,    0,    0,
-   0,   100,    0,
+   0,   1,    0,
    0,    0,    1]
 LiftoffSwingFootKp:
   [50,    0,    0,

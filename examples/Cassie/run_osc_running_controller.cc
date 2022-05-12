@@ -420,8 +420,8 @@ int DoMain(int argc, char* argv[]) {
 
 //  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
 //  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});
-  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
-  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+//  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+//  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
 //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
 //  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
 

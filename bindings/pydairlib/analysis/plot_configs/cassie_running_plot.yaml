@@ -28,10 +28,10 @@ special_efforts_to_plot: [ ]
 fsm_state_names: ['Left Stance (LS)', 'Left Flight (LF)', 'Right Stance (RS)', 'Right Flight (RF)']
 
 # Foot position plots
-#foot_positions_to_plot: [ 'right', 'left' ]
-foot_positions_to_plot: []
-#foot_xyz_to_plot: { 'right': [ 0, 2 ], 'left': [ 0, 2 ] }
-foot_xyz_to_plot: { }
+foot_positions_to_plot: [ 'right', 'left' ]
+#foot_positions_to_plot: []
+foot_xyz_to_plot: { 'right': [ 0, 2 ], 'left': [ 0, 2 ] }
+#foot_xyz_to_plot: { }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots

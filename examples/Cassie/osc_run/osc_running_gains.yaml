@@ -15,8 +15,8 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
 #w_soft_constraint: 1000000
 w_soft_constraint: 100
 w_input_reg: 0.1
-impact_threshold: 0.05
-impact_tau: 0.025
+impact_threshold: 0.1
+impact_tau: 0.05
 relative_feet: true
 relative_pelvis: true
 ekf_filter_tau: [0.05, 0.1, 0.01]
@@ -47,7 +47,7 @@ hip_yaw_kd: 1
 footstep_sagital_offset: -0.05
 footstep_lateral_offset: 0.055 # mujoco
 #footstep_lateral_offset: 0.04 # drake
-mid_foot_height: 0.05
+mid_foot_height: 0.07
 FootstepKd:
   [ 0.3,     0,  0,
     0,     0.6, 0,

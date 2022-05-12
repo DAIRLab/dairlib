@@ -313,7 +313,7 @@ void InputSupervisor::CheckRadio(
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
       context, cassie_input_port_);
-  if (cassie_out->pelvis.radio.channel[15] == -1 || cassie_out->pelvis.radio.channel[13]) {
+  if (cassie_out->pelvis.radio.channel[15] == -1 || cassie_out->pelvis.radio.channel[13] == -1) {
     discrete_state->get_mutable_value(
         error_indices_index_)[error_indices_.at("soft_estop")] = 1;
   }

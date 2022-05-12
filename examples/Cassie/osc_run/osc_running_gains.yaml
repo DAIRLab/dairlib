@@ -30,6 +30,8 @@ vel_scale_trans_lateral: -0.15
 rest_length: 0.87
 stance_duration: 0.30
 flight_duration: 0.10
+#stance_duration: 0.7
+#flight_duration: 0.09
 
 mu: 0.6
 
@@ -44,7 +46,7 @@ hip_yaw_kd: 1
 #footstep_offset: -0.05
 footstep_sagital_offset: -0.05
 footstep_lateral_offset: 0.055 # mujoco
-#footstep_lateral_offset: 0.045
+#footstep_lateral_offset: 0.04 # drake
 mid_foot_height: 0.05
 FootstepKd:
   [ 0.3,     0,  0,
@@ -57,11 +59,11 @@ PelvisW:
 PelvisKp:
   [ 0,    0,    0,
     0,    0,    0,
-    0,    0,   60]
+    0,    0,   65]
 PelvisKd:
   [  0,    0,   0,
      0,    0,   0,
-     0,    0,  5]
+     0,    0,  4]
 PelvisRotW:
   [1,  0,   0,
    0,  10,   0,

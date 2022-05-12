@@ -290,6 +290,12 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
         readCSV(dir_and_prefix_FOM + string("x_samples0.csv")).rightCols(1);
     VectorXd x_guess_right_in_front_post =
         readCSV(dir_and_prefix_FOM + string("x_samples1.csv")).col(0);
+
+    //    x_guess_right_in_front_pre(pos_map_.at("hip_roll_left")) = 0;
+    //    x_guess_right_in_front_pre(pos_map_.at("hip_roll_right")) = 0;
+    //    x_guess_right_in_front_post(pos_map_.at("hip_roll_left")) = 0;
+    //    x_guess_right_in_front_post(pos_map_.at("hip_roll_right")) = 0;
+
     VectorXd x_guess_left_in_front_pre(nx_);
     x_guess_left_in_front_pre
         << state_mirror_.MirrorPos(x_guess_right_in_front_pre.head(nq_)),
@@ -814,6 +820,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       reg_x_FOM.at(2 * i + 1).segment<2>(4) = des_xy_pos.at(i + 1);
       reg_x_FOM.at(2 * i).segment<2>(nq_ + 3) = des_xy_vel.at(i);
       reg_x_FOM.at(2 * i + 1).segment<2>(nq_ + 3) = des_xy_vel.at(i);
+
+      //      cout << "des_xy_pos.at(i) = " << des_xy_pos.at(i) << endl;
+      //      cout << "des_xy_vel.at(i) = " << des_xy_vel.at(i) << endl;
 
       left_stance = !left_stance;
     }
@@ -1722,7 +1731,7 @@ void CassiePlannerWithMixedRomFom::CreateDesiredBodyPosAndVel(
     double init_phase, const VectorXd& final_position,
     vector<VectorXd>* des_xy_pos, vector<VectorXd>* des_xy_vel) const {
   // Parameters
-  double y_vel_offset = 0.1;  // This affects the foot spread
+  double y_vel_offset = param_.gains.y_vel_offset;
 
   double total_phase_length = n_total_step - init_phase;
 

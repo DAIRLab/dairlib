@@ -150,6 +150,9 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   const multibody::WorldYawViewFrame<double>& view_frame_feedback_;
   const multibody::WorldYawViewFrame<double>& view_frame_control_;
   bool wrt_com_in_local_frame_;
+
+  // Heuristic
+  double swing_foot_target_offset_x_;
 };
 
 // We have IKTrajReceiver beside SavedTrajReceiver, because it also extracts the

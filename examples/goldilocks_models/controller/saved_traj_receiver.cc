@@ -190,6 +190,13 @@ SavedTrajReceiver::SavedTrajReceiver(
   // TODO: fix this
   eps_hack_ = std::min(0.01, double_support_duration_);
 
+  // Heuristic for spring model
+  if (plant_feedback.num_velocities() == plant_control.num_velocities()) {
+    swing_foot_target_offset_x_ = 0;
+  } else {
+    swing_foot_target_offset_x_ = gains.swing_foot_target_offset_x;
+  }
+
   // // [Test sim gap] -- use trajopt's traj directly in OSC
   //  std::string dir = gains.dir_model + std::to_string(gains.model_iter) + "_"
   //  +
@@ -438,6 +445,9 @@ void SavedTrajReceiver::CalcSwingFootTraj(
                                                            *context_control_) *
               (end_foot_pos - plant_control_.CalcCenterOfMassPositionInWorld(
                                   *context_control_));
+
+          // Heuristics for spring model
+          end_foot_pos(0) += swing_foot_target_offset_x_;
         }
         Y.at(2) = end_foot_pos;
         // Mid pos

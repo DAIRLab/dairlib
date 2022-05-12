@@ -97,6 +97,11 @@ double_support_duration: 0.1 #0.02
 
 constant_rom_vel_during_double_support: true
 
+# Parameters that affect the foot spread
+y_vel_offset: 0.5  # 0.1  # during normal walking, y_vel is about 0.1 to 0.2 m/s
+# `constant_rom_vel_during_double_support` also affects
+# the "nominal FOM hip roll position" and cost weight also affect
+
 # max_foot_speed should be more than two times bigger than the desired walking speed.
 # (maybe leave at least 0.5m/s margin for it to catch up with the body when falling forward)
 max_foot_speed: 3  # used to restrict swing foot travel distance
@@ -169,6 +174,10 @@ w_v_lipm_mpc: 0.1
 
 # TrackingDataSettings
 relative_swing_ft: true
+
+# Swing foot tracking heurisitcs for spring model
+swing_foot_target_offset_x: -0.01  # note that we only use this when relative_swing_ft is true because it's in local frame
+
 
 #High level command gains(without radio)
 yaw_deadband_blur: 5

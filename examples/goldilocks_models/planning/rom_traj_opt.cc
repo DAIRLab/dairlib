@@ -670,6 +670,16 @@ void RomTrajOpt::AddConstraintAndCostForLastFootStep(
   /*PrintStatus("Adding constraint -- predicted com vel one step after
   horizon"); AddBoundingBoxConstraint(des_predicted_xy_vel,
   des_predicted_xy_vel, predicted_com_vel_var_);*/
+
+  // 3. half half
+  //  PrintStatus("Adding cost -- predicted com vel one step after horizon");
+  //  predict_lipm_v_bindings_.push_back(AddQuadraticErrorCost(
+  //      w_predict_lipm_v * MatrixXd::Identity(1, 1),
+  //      des_predicted_xy_vel.tail<1>(), predicted_com_vel_var_.tail<1>()));
+  //  PrintStatus("Adding constraint -- predicted com vel one step after
+  //  horizon"); AddBoundingBoxConstraint(des_predicted_xy_vel.head<1>(),
+  //                           des_predicted_xy_vel.head<1>(),
+  //                           predicted_com_vel_var_.head<1>());
 }
 
 void RomTrajOpt::AddCascadedLipmMPC(
@@ -1201,8 +1211,8 @@ void RomTrajOptCassie::AddFomRegularizationCost(
   MatrixXd Id_xy = w_reg_xy * MatrixXd::Identity(2, 2);
   MatrixXd Id_z = w_reg_z * MatrixXd::Identity(1, 1);
   MatrixXd Id_joints = w_reg_joints * MatrixXd::Identity(n_q_ - 7, n_q_ - 7);
-  //  Id_joints(0, 0) *= 10;            // left hip roll
-  //  Id_joints(1, 1) *= 10;            // right hip roll
+  //  Id_joints(0, 0) *= 100;           // left hip roll
+  //  Id_joints(1, 1) *= 100;           // right hip roll
   Id_joints(2, 2) = w_reg_hip_yaw;  // left hip yaw
   Id_joints(3, 3) = w_reg_hip_yaw;  // right hip yaw
   //  Id_joints(6, 6) *= 0.1;           // left knee

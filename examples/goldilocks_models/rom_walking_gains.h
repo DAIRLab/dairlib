@@ -1,6 +1,7 @@
 #pragma once
 
 #include "yaml-cpp/yaml.h"
+
 #include "drake/common/yaml/yaml_read_archive.h"
 
 using Eigen::MatrixXd;
@@ -44,6 +45,7 @@ struct RomWalkingGains {
   double right_support_duration;
   double double_support_duration;
   bool constant_rom_vel_during_double_support;
+  double y_vel_offset;
   double max_foot_speed;
   double max_step_length;
   double max_desired_step_length;
@@ -56,6 +58,7 @@ struct RomWalkingGains {
   std::string dir_data;
 
   bool relative_swing_ft;
+  double swing_foot_target_offset_x;
   double max_CoM_to_footstep_dist;
   double center_line_offset;
   double footstep_offset;
@@ -152,6 +155,7 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(right_support_duration));
     a->Visit(DRAKE_NVP(double_support_duration));
     a->Visit(DRAKE_NVP(constant_rom_vel_during_double_support));
+    a->Visit(DRAKE_NVP(y_vel_offset));
     a->Visit(DRAKE_NVP(max_foot_speed));
     a->Visit(DRAKE_NVP(max_step_length));
     a->Visit(DRAKE_NVP(max_desired_step_length));
@@ -164,6 +168,7 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(dir_data));
 
     a->Visit(DRAKE_NVP(relative_swing_ft));
+    a->Visit(DRAKE_NVP(swing_foot_target_offset_x));
     // swing foot heuristics
     a->Visit(DRAKE_NVP(max_CoM_to_footstep_dist));
     a->Visit(DRAKE_NVP(center_line_offset));

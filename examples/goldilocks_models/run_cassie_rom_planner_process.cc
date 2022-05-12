@@ -427,7 +427,7 @@ int DoMain(int argc, char* argv[]) {
   vector<int> initialize_with_rom_state = {2, 5};  // for state, not only pos
   // Constant vel index for double support phase
   // Note that this is the index in state
-  std::set<int> idx_const_rom_vel_during_double_support = {3, 4};  //{3, 4, 5};
+  std::set<int> idx_const_rom_vel_during_double_support = {3, 4};  // {3};  //{3, 4};  //{3, 4, 5};
   if (gains.double_support_duration == 0) {
     cout << "Clearing idx_const_rom_vel_during_double_support, because "
             "double_support_duration = 0\n";

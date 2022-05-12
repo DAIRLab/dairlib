@@ -24,7 +24,8 @@ W_lambda_h_reg: [ 0.01, 0.01, 0.01,
                   0.01, 0.02, 0.02 ]
 w_soft_constraint: 100
 w_input_reg: 0.001
-impact_threshold: 0.025
+impact_threshold: 0.00
+impact_tau: 0.00
 mu: 0.6
 HipYawKp: 10
 HipYawKd: 1

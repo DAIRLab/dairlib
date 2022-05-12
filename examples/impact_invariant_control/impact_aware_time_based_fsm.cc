@@ -16,7 +16,7 @@ using systems::ImpactInfoVector;
 ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::vector<int>& states, const std::vector<double>& state_durations,
-    double t0, double near_impact_threshold, BLEND_FUNC blend_func)
+    double t0, double near_impact_threshold, double tau, BLEND_FUNC blend_func)
     : TimeBasedFiniteStateMachine(plant, states, state_durations, t0),
       states_(states),
       state_durations_(state_durations),
@@ -83,9 +83,6 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   // Get current finite state
   if (current_time >= t0_) {
     for (int i = 0; i < impact_states_.size(); ++i) {
-//      if (impact_states_[i] > 2) {
-//        continue;
-//      }
       double blend_window = blend_func_ == SIGMOID
                                 ? 1.5 * near_impact_threshold_
                                 : near_impact_threshold_;

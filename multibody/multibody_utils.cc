@@ -156,8 +156,8 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
 
   // Add visual for the ground.
   if (show_ground) {
-    plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
-                                  "visual");
+//    plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
+//                                  "visual");
   }
 }
 

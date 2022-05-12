@@ -411,6 +411,19 @@ def plot_qp_costs(osc_debug, time_slice):
          'title': 'regularization_costs'}, ps)
     return ps
 
+def plot_qp_solutions(osc_debug, time_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['lambda_c_sol'],
+        {},
+        {},
+        {'xlabel': 'Timestamp',
+         'ylabel': 'Solve Time ',
+         'title': 'OSC Lambda Solutions'}, ps)
+    return ps
 
 def plot_qp_solve_time(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()

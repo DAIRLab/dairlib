@@ -98,6 +98,8 @@ def main():
     ''' Plot OSC '''
     if plot_config.plot_qp_costs:
         mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
+    if plot_config.plot_qp_solutions:
+        mbp_plots.plot_qp_solutions(osc_debug, t_osc_slice)
     if plot_config.plot_tracking_costs:
         mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
 

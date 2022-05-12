@@ -13,6 +13,7 @@ struct OSCGains {
   double w_accel;
   double w_soft_constraint;
   double impact_threshold;
+  double impact_tau;
   double mu;
   std::vector<double> W_accel;
   std::vector<double> W_input_reg;
@@ -31,6 +32,7 @@ struct OSCGains {
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(impact_threshold));
+    a->Visit(DRAKE_NVP(impact_tau));
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(W_accel));
     a->Visit(DRAKE_NVP(W_input_reg));

@@ -167,7 +167,7 @@ int DoMain(int argc, char* argv[]) {
   accumulated_state_durations.pop_back();
 
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, 0.0, gains.impact_threshold);
+      plant, fsm_states, state_durations, 0.0, gains.impact_threshold, gains.impact_tau);
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
@@ -406,6 +406,8 @@ int DoMain(int argc, char* argv[]) {
   pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"], right_stance_state);
   pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"], left_stance_state);
   pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_rightdot"], right_stance_state);
+  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_leftdot"], left_stance_state);
+  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_rightdot"], right_stance_state);
 
 //  left_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
 //      pos_map["hip_pitch_left"], right_stance_state);
@@ -420,14 +422,14 @@ int DoMain(int argc, char* argv[]) {
 //  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});
   left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
   right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+//  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
+//  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
 
   left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
   left_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
   right_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data->SetImpactInvariantProjection(true);
-  //  left_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
-  //  right_foot_yz_rel_tracking_data.DisableFeedforwardAccel({0, 1, 2});
 
   osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
   osc->AddTrackingData(std::move(left_foot_rel_tracking_data));

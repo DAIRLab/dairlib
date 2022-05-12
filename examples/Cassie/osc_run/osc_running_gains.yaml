@@ -15,7 +15,8 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
 #w_soft_constraint: 1000000
 w_soft_constraint: 100
 w_input_reg: 0.1
-impact_threshold: 0.025
+impact_threshold: 0.1
+impact_tau: 0.05
 relative_feet: true
 relative_pelvis: true
 ekf_filter_tau: [0.05, 0.1, 0.01]
@@ -28,7 +29,7 @@ vel_scale_trans_lateral: -0.15
 # SLIP parameters
 rest_length: 0.87
 stance_duration: 0.30
-flight_duration: 0.1
+flight_duration: 0.10
 
 mu: 0.6
 
@@ -65,7 +66,7 @@ PelvisRotW:
    0,  10,   0,
    0,   0,  0]
 PelvisRotKp:
-  [100.,   0,   0,
+  [20.,   0,   0,
    0,  100.,   0,
    0,    0,  0.]
 PelvisRotKd:

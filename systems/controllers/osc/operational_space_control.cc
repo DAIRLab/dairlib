@@ -295,7 +295,8 @@ void OperationalSpaceControl::Build() {
             all_contacts_[i]->EvalFullJacobian(*context_wo_spr_).rows();
       }
     }
-//    std::cout << contact_map.first << ", " << active_contact_dim << std::endl;
+    //    std::cout << contact_map.first << ", " << active_contact_dim <<
+    //    std::endl;
     active_contact_dim_[contact_map.first] = active_contact_dim;
   }
 
@@ -305,10 +306,10 @@ void OperationalSpaceControl::Build() {
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
-//  u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
+  //  u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
   dv_sol_->setZero();
   u_sol_->setZero();
-//  u_prev_->setZero();
+  //  u_prev_->setZero();
   lambda_c_sol_->setZero();
   lambda_h_sol_->setZero();
   epsilon_sol_->setZero();
@@ -394,7 +395,11 @@ void OperationalSpaceControl::Build() {
   // 3. contact force cost
   if (W_lambda_c_reg_.size() > 0) {
     DRAKE_DEMAND(W_lambda_c_reg_.rows() == n_c_);
-    prog_->AddQuadraticCost(W_lambda_c_reg_, VectorXd::Zero(n_c_), lambda_c_);
+    lambda_c_smoothing_cost_ =
+        prog_
+            ->AddQuadraticCost(W_lambda_c_reg_, VectorXd::Zero(n_c_), lambda_c_)
+            .evaluator()
+            .get();
   }
   // 3. constraint force cost
   if (W_lambda_h_reg_.size() > 0) {
@@ -526,8 +531,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
   bias = bias - grav;
   // TODO (yangwill): Characterize damping in cassie model
-//  std::cout << f_app.generalized_forces().transpose() << std::endl;
-//  bias = bias - f_app.generalized_forces();
+  //  std::cout << f_app.generalized_forces().transpose() << std::endl;
+  //  bias = bias - f_app.generalized_forces();
 
   //  Invariant Impacts
   //  Only update when near an impact
@@ -618,8 +623,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       weight(1, 1) *= 1e-3;
       weight(3, 3) *= 1e-3;
       weight(4, 4) *= 1e-3;
-      A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-          weight;
+      A_c.block(0, n_v_, n_c_active_, n_c_active_) = weight;
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
@@ -739,10 +743,12 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0 && initial_guess_x_.count(fsm_state) > 0) {
-//    input_smoothing_cost_->UpdateCoefficients(W_input_smoothing_,
-//                                              -W_input_smoothing_ * (*u_prev_));
-    input_smoothing_cost_->UpdateCoefficients(W_input_smoothing_,
-                                              -W_input_smoothing_ * u_prev_[fsm_state]);
+    input_smoothing_cost_->UpdateCoefficients(
+        W_input_smoothing_, -W_input_smoothing_ * u_prev_[fsm_state]);
+  }
+  if (W_lambda_c_reg_.size() > 0) {
+    lambda_c_smoothing_cost_->UpdateCoefficients(100 * alpha * W_lambda_c_reg_,
+                                                 VectorXd::Zero(n_c_));
   }
 
   //  if (!solver_->IsInitialized()) {
@@ -792,17 +798,19 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     ii_lambda_sol_ = VectorXd::Zero(n_c_ + n_h_);
     M_Jt_ = MatrixXd::Zero(n_v_, n_c_ + n_h_);
     return;
-//    throw std::out_of_range("Contact mode: " + std::to_string(next_fsm_state) +
-//                            " was not found in the OSC");
+    //    throw std::out_of_range("Contact mode: " +
+    //    std::to_string(next_fsm_state) +
+    //                            " was not found in the OSC");
   }
   std::set<int> next_contact_set = map_iterator->second;
   int active_constraint_dim = active_contact_dim_.at(next_fsm_state) + n_h_;
-//  std::cout << "active constraint dim: " << active_constraint_dim << std::endl;
+  //  std::cout << "active constraint dim: " << active_constraint_dim <<
+  //  std::endl;
   MatrixXd J_next = MatrixXd::Zero(active_constraint_dim, n_v_);
   int row_start = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
     if (next_contact_set.find(i) != next_contact_set.end()) {
-//      std::cout << i << std::endl;
+      //      std::cout << i << std::endl;
       J_next.block(row_start, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
       row_start += kSpaceDim;
@@ -813,8 +821,8 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     J_next.block(row_start, 0, n_h_, n_v_) =
         kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
   }
-//  std::cout << "J: " << std::endl;
-//  std::cout << J_next << std::endl;
+  //  std::cout << "J: " << std::endl;
+  //  std::cout << J_next << std::endl;
   M_Jt_ = M.llt().solve(J_next.transpose());
 
   int active_tracking_data_dim = 0;
@@ -860,26 +868,35 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     }
   }
 
-//  int n_holonomic_constraints = n_h_;
+  //  int n_holonomic_constraints = n_h_;
   MatrixXd J_h = kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
-  MatrixXd A_constrained = MatrixXd::Zero(active_constraint_dim + n_h_, active_constraint_dim + n_h_);
+  MatrixXd A_constrained = MatrixXd::Zero(active_constraint_dim + n_h_,
+                                          active_constraint_dim + n_h_);
   MatrixXd C = J_h * M_Jt_;
   VectorXd Ab = A.transpose() * ydot_err_vec;
   VectorXd d = J_h * x_w_spr.tail(n_v_);
-  A_constrained.block(0, 0, active_constraint_dim, active_constraint_dim) = A.transpose() * A;
-  A_constrained.block(active_constraint_dim, 0, n_h_, active_constraint_dim) = C;
-  A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_) = C.transpose();
+  A_constrained.block(0, 0, active_constraint_dim, active_constraint_dim) =
+      A.transpose() * A;
+  A_constrained.block(active_constraint_dim, 0, n_h_, active_constraint_dim) =
+      C;
+  A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_) =
+      C.transpose();
   VectorXd b_constrained = VectorXd::Zero(active_constraint_dim + n_h_);
   b_constrained << Ab, d;
-  //  A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_) = MatriXd;
+  //  A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_)
+  //  = MatriXd;
 
-//  ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
-  ii_lambda_sol_ = A_constrained.completeOrthogonalDecomposition().solve(b_constrained).head(active_constraint_dim);
+  //  ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
+  ii_lambda_sol_ = A_constrained.completeOrthogonalDecomposition()
+                       .solve(b_constrained)
+                       .head(active_constraint_dim);
 
-//  std::cout << "constraint velocity: " << (J_h * (x_w_spr.tail(n_v_))).transpose() << std::endl;
-//  std::cout << "projected velocity: " << (J_h * (x_w_spr.tail(n_v_) + M_Jt_ * ii_lambda_sol_)).transpose() << std::endl;
+  //  std::cout << "constraint velocity: " << (J_h *
+  //  (x_w_spr.tail(n_v_))).transpose() << std::endl; std::cout << "projected
+  //  velocity: " << (J_h * (x_w_spr.tail(n_v_) + M_Jt_ *
+  //  ii_lambda_sol_)).transpose() << std::endl;
 
-//  std::cout << ii_lambda_sol_.transpose() << std::endl;
+  //  std::cout << ii_lambda_sol_.transpose() << std::endl;
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
@@ -917,8 +934,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           : 0;
   double input_smoothing_cost =
       (W_input_smoothing_.size() > 0)
-          ? (0.5 * (*u_sol_ - u_prev_[fsm_state]).transpose() * W_input_smoothing_ *
-             (*u_sol_ - u_prev_[fsm_state]))(0)
+          ? (0.5 * (*u_sol_ - u_prev_[fsm_state]).transpose() *
+             W_input_smoothing_ * (*u_sol_ - u_prev_[fsm_state]))(0)
           : 0;
   double lambda_h_cost = (W_lambda_h_reg_.size() > 0)
                              ? (0.5 * (*lambda_h_sol_).transpose() *
@@ -1022,7 +1039,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     output->tracking_data[i] = osc_output;
   }
   //  std::cout << total_cost_ << std::endl;
-//  *u_prev_ = *u_sol_;
+  //  *u_prev_ = *u_sol_;
   output->num_tracking_data = output->tracking_data_names.size();
   output->num_regularization_costs = output->regularization_cost_names.size();
 }
@@ -1082,14 +1099,14 @@ void OperationalSpaceControl::CalcOptimalInput(
       x_wo_spr[33] = 0;
       x_wo_spr[41] = 0;
     }
-//    else {
-//      x_wo_spr[11] = 0;
-//      x_wo_spr[13] = 0;
-//      x_wo_spr[19] = 0;
-//      x_wo_spr[21] = 0;
-//      x_wo_spr[33] = 0;
-//      x_wo_spr[41] = 0;
-//    }
+    //    else {
+    //      x_wo_spr[11] = 0;
+    //      x_wo_spr[13] = 0;
+    //      x_wo_spr[19] = 0;
+    //      x_wo_spr[21] = 0;
+    //      x_wo_spr[33] = 0;
+    //      x_wo_spr[41] = 0;
+    //    }
 
     // Get discrete states
     const auto prev_event_time =

@@ -16,7 +16,7 @@ use_floating_base: true
 # Desired RobotOutput plots
 plot_floating_base_positions: false
 plot_floating_base_velocities: false
-plot_joint_positions: true
+plot_joint_positions: false
 plot_joint_velocities: false
 plot_measured_efforts: true
 plot_commanded_efforts: true
@@ -35,9 +35,10 @@ foot_xyz_to_plot: { }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: true
-plot_qp_solve_time: true
-plot_tracking_costs: true
+plot_qp_costs: false
+plot_qp_solve_time: false
+plot_qp_solutions: true
+plot_tracking_costs: false
 tracking_datas_to_plot:
 #  pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': [ 'vel' ] }
   #  pelvis_trans_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}

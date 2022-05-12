@@ -561,6 +561,15 @@ cc_library(
 )
 
 py_binary(
+    name = "radio_sheriff",
+    srcs = ["radio_sheriff.py"],
+    deps = [
+        "@lcm//:lcm-python",
+        "@libbot2//:libbot2_py",
+    ],
+)
+
+py_binary(
     name = "cassie_virtual_remote_py",
     srcs = ["cassie_virtual_remote.py"],
     data = [

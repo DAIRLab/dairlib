@@ -269,7 +269,7 @@ int DoMain(int argc, char* argv[]) {
   param.dir_and_prefix_FOM = FLAGS_dir_and_prefix_FOM;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
-  if (param.time_limit < 0.1) {
+  if (0 < param.time_limit && param.time_limit < 0.1) {
     cout << "WARNING: small time_limit! (I tried 0.7s solve time for the mpc "
             "in sim without dispatcher on my 12700k desktop, and I noticed "
             "that there were a few solves that didn't reach optimal solution "

@@ -146,6 +146,10 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   dir_and_prefix_FOM_reg = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx)
   path_init_state = "%s%d_%d_x_samples0.csv" % (model_dir, rom_iter_idx, trajopt_sample_idx) if set_sim_init_state_from_trajopt else ""
 
+  # Overwrite `trajopt_sample_idx` for cost regularization term if using a fixed cost function
+  if use_single_cost_function_for_all_tasks:
+    trajopt_sample_idx = trajopt_sample_idx_for_cost_reg
+
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
     '--channel_x=%s' % ch.channel_x,
@@ -417,6 +421,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
   ### Construct sample indices from the task list for simulation
   # `trajopt_sample_idx` is for planner's initial guess and cost regularization term
+  # `trajopt_sample_idx` is also used to initialize simulation state
   trajopt_sample_indices = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices,
                                                                           task_list)
   print("trajopt_sample_indices = \n" + str(trajopt_sample_indices))
@@ -1461,7 +1466,7 @@ if __name__ == "__main__":
   FOM_model_dir = ""
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
-  eval_dir = "/media/yuming/sata-ssd/dairlib_data/sim_cost_eval/"
+  eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
   # eval_dir = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
@@ -1472,7 +1477,7 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
   #eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
-  # eval_dir = "/home/yuming/Desktop/temp/0510/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/0511/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1487,12 +1492,13 @@ if __name__ == "__main__":
   use_nominal_traj_pool = True
   set_sim_init_state_from_trajopt = True
   completely_use_trajs_from_model_opt_as_target = True
+  use_single_cost_function_for_all_tasks = False
 
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
   model_iter_idx_end = 440
-  idx_spacing = 40
+  idx_spacing = 20
 
   # Task list
   n_task_sl = 30
@@ -1523,7 +1529,7 @@ if __name__ == "__main__":
   # log_indices_for_plot = list(range(log_idx_offset + tasks.get_n_task()))
   # log_indices_for_plot = list(range(240))
   save_fig = True
-  plot_nominal = False
+  plot_nominal = True
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
   plot_main_cost = True  # main cost is the cost of which we take gradient during model optimization
 
@@ -1566,6 +1572,11 @@ if __name__ == "__main__":
   # final_iter_ave_cost = 30
 
   ### Set up environment
+
+  if use_single_cost_function_for_all_tasks:
+    completely_use_trajs_from_model_opt_as_target = False
+    FOM_model_dir = ""
+    trajopt_sample_idx_for_cost_reg = parsed_yaml_file.get('sample_idx')
 
   # Check directory names
   EnforceSlashEnding(model_dir)
@@ -1639,10 +1650,10 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  #RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
+  # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  #EvalCostInMultithread(model_indices, log_indices)
+  # EvalCostInMultithread(model_indices, log_indices)
 
   # Delete all logs but a few successful ones (for analysis later)
   # DeleteMostLogs(model_indices, log_indices)

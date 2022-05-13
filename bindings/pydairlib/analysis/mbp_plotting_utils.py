@@ -308,16 +308,16 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
          'xlabel': 'time (s)',
          'ylabel': 'foot vertical position (m)'}, ps)
 
-    import matplotlib
-    legend_elements = [matplotlib.patches.Patch(facecolor=ps.cmap(0), alpha=0.3, label='Left Stance (LS)'),
-                       matplotlib.patches.Patch(facecolor=ps.cmap(4), alpha=0.3, label='Left Liftoff (LF)'),
-                       matplotlib.patches.Patch(facecolor=ps.cmap(2), alpha=0.3, label='Right Stance (RS)'),
-                       matplotlib.patches.Patch(facecolor=ps.cmap(6), alpha=0.3, label='Right Liftoff (RF)')]
-    legend = plt.legend(legend_elements, ['Left Stance (LS)',
-                                          'Left Liftoff (LF)',
-                                          'Right Stance (RS)',
-                                          'Right Liftoff (RF)'], loc=1)
-    plt.gca().add_artist(legend)
+    # import matplotlib
+    # legend_elements = [matplotlib.patches.Patch(facecolor=ps.cmap(0), alpha=0.3, label='Left Stance (LS)'),
+    #                    matplotlib.patches.Patch(facecolor=ps.cmap(4), alpha=0.3, label='Left Liftoff (LF)'),
+    #                    matplotlib.patches.Patch(facecolor=ps.cmap(2), alpha=0.3, label='Right Stance (RS)'),
+    #                    matplotlib.patches.Patch(facecolor=ps.cmap(6), alpha=0.3, label='Right Liftoff (RF)')]
+    # legend = plt.legend(legend_elements, ['Left Stance (LS)',
+    #                                       'Left Liftoff (LF)',
+    #                                       'Right Stance (RS)',
+    #                                       'Right Liftoff (RF)'], loc=1)
+    # plt.gca().add_artist(legend)
 
     return ps
 

@@ -27,7 +27,6 @@ int do_main(int argc, char* argv[]) {
   SimpleCassieUdpSubscriber udp_sub(FLAGS_address, FLAGS_port);
   udp_sub.Poll();
   double t_last = udp_sub.message_time();
-
   auto lc = new lcm::LCM();
 
   while (true) {

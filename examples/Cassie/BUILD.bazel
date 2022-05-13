@@ -307,6 +307,17 @@ cc_binary(
 )
 
 cc_binary(
+    name = "cassie_heartbeat",
+    srcs = ["cassie_heartbeat.cc"],
+    deps = [
+        "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "dispatcher_robot_in",
     srcs = ["dispatcher_robot_in.cc"],
     deps = [
@@ -564,8 +575,18 @@ py_binary(
     name = "radio_sheriff",
     srcs = ["radio_sheriff.py"],
     deps = [
+        "//lcmtypes:lcmtypes_robot_py",
         "@lcm//:lcm-python",
         "@libbot2//:libbot2_py",
+    ],
+)
+
+py_binary(
+    name = "publish_pd",
+    srcs = ["procman/publish_pd.py"],
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+        "@lcm//:lcm-python",
     ],
 )
 

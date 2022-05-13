@@ -1232,14 +1232,20 @@ def ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_r
       t_ph = task_slice_value_ph * np.ones(n_sample)
       z = interpolator(np.vstack((m, t_sl, t_ph)).T)
       t_sl_masked = t_sl[~np.isnan(z)]
-      viable_min = max(viable_min, min(t_sl_masked))
-      viable_max = min(viable_max, max(t_sl_masked))
+      if len(t_sl_masked) > 0:
+        viable_min = max(viable_min, min(t_sl_masked))
+        viable_max = min(viable_max, max(t_sl_masked))
+      else:
+        print("The interpolation is empty for iter %.1f" % model_iter)
 
       if plot_nominal:
         z_nominal = interpolator_nominal(np.vstack((m, t_sl, t_ph)).T)
         t_sl_masked = t_sl[~np.isnan(z_nominal)]
-        viable_min = max(viable_min, min(t_sl_masked))
-        viable_max = min(viable_max, max(t_sl_masked))
+        if len(t_sl_masked) > 0:
+          viable_min = max(viable_min, min(t_sl_masked))
+          viable_max = min(viable_max, max(t_sl_masked))
+        else:
+          print("The interpolation is empty for iter %.1f" % model_iter)
 
     except ValueError:
       effective_length = i + 1

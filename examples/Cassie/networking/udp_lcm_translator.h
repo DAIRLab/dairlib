@@ -17,4 +17,8 @@ void cassieOutFromLcm(const lcmt_cassie_out& message,
 // is a required additional input
 void cassieInToLcm(const cassie_user_in_t& cassie_in, double time_seconds,
     lcmt_cassie_in* message);
+
+void cassieOutToLcm(const cassie_out_t& cassie_out, double time_seconds,
+                         lcmt_cassie_out* message);
+
 }  // namespace dairlib

@@ -311,9 +311,10 @@ cc_binary(
     srcs = ["cassie_heartbeat.cc"],
     deps = [
         "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//examples/Cassie/networking:udp_lcm_translator",
         "//lcmtypes:lcmt_robot",
-        "@drake//:drake_shared_library",
         "@gflags",
+        "@lcm",
     ],
 )
 

@@ -41,7 +41,8 @@ namespace osc {
 HighLevelCommand::HighLevelCommand(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context, double vel_scale_rot,
-    double vel_scale_trans_sagital, double vel_scale_trans_lateral)
+    double vel_scale_trans_sagital, double vel_scale_trans_lateral,
+    double stick_filter_dt)
     : HighLevelCommand(plant, context) {
   cassie_out_port_ =
       this->DeclareAbstractInputPort("lcmt_cassie_output",
@@ -52,6 +53,7 @@ HighLevelCommand::HighLevelCommand(
   vel_scale_rot_ = vel_scale_rot;
   vel_scale_trans_sagital_ = vel_scale_trans_sagital;
   vel_scale_trans_lateral_ = vel_scale_trans_lateral;
+  stick_filter_dt_ = stick_filter_dt;
 }
 
 HighLevelCommand::HighLevelCommand(
@@ -117,11 +119,16 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     // des_vel indices: 0: yaw_vel (right joystick left/right)
     //                  1: saggital_vel (left joystick up/down)
     //                  2: lateral_vel (left joystick left/right)
+    double a = .001 / (stick_filter_dt_ + .001); // approximately 1KHz sampling rate - no need to be too precise
+    Vector3d des_vel_prev = discrete_state->get_value(des_vel_idx_);
     Vector3d des_vel;
     des_vel << vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
         vel_scale_trans_sagital_ * cassie_out->pelvis.radio.channel[0],
         vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1];
-    discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
+    Vector3d des_vel_filt;
+    des_vel_filt(0) = des_vel(0);
+    des_vel_filt.tail(2) = a * des_vel.tail(2) + (1 - a) * des_vel_prev.tail(2);
+    discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel_filt);
   } else {
     discrete_state->get_mutable_vector(des_vel_idx_)
         .set_value(CalcCommandFromTargetPosition(context));

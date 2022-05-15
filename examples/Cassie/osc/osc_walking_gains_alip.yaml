@@ -3,7 +3,7 @@ cols: 3
 
 # High level command gains (with radio)
 vel_scale_rot: -1.5
-vel_scale_trans_sagital: 2.0
+vel_scale_trans_sagital: 1.5
 vel_scale_trans_lateral: -0.5
 
 # Filter settings
@@ -29,6 +29,9 @@ target_pos_offset: 0  # -0.16
 # Finite state machine
 ss_time: 0.3
 ds_time: 0.1
+
+# Distance of contact point from foot rear (0 is heel, 1 is toe)
+contact_point_pos: 0.4
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55

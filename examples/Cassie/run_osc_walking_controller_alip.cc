@@ -127,7 +127,8 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel = RightToeRear(plant_w_spr);
 
   // Get body frames and points
-  Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
+  Vector3d mid_contact_point = left_heel.first +
+      gains.contact_point_pos * (left_toe.first - left_heel.first);
   auto left_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
       mid_contact_point, plant_w_spr.GetFrameByName("toe_left"));
   auto right_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
@@ -188,7 +189,7 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_use_radio) {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
-        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
+        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral, 0.4);
     auto cassie_out_receiver =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
             FLAGS_cassie_out_channel, &lcm_local));

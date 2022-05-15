@@ -59,7 +59,7 @@ struct OSCWalkingGainsALIP {
   double vel_scale_rot;
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
-
+  double contact_point_pos;
 
   MatrixXd W_com;
   MatrixXd K_p_com;
@@ -118,6 +118,7 @@ struct OSCWalkingGainsALIP {
     a->Visit(DRAKE_NVP(mid_foot_height));
     a->Visit(DRAKE_NVP(final_foot_height));
     a->Visit(DRAKE_NVP(final_foot_velocity_z));
+    a->Visit(DRAKE_NVP(contact_point_pos));
     // lipm heursitics
     a->Visit(DRAKE_NVP(lipm_height));
     // stance times

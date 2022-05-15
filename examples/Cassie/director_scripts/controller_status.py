@@ -16,10 +16,9 @@ class InputSupervisorVisualizer(object):
         self._current_channel_ = ""
 
         # self.text_box = vis.PolyDataItem('safety_info', 'safety_info', view)
-        text_box = vis.TextItem('safety_info', 'safety_info', view)
-        self.text_box = vis.PolyDataItem('safety_info', text_box, view)
+        self.text_box = vis.TextItem('safety_info', 'safety_info', view)
         self.text_box.setProperty('Font Size', 24)
-        self.text_box.setProperty('Position', [0, 800])
+        self.text_box.setProperty('Position', [0, 600])
         self.text_box.setProperty('Bold', True)
 
         self.set_enabled(True)

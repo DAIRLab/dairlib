@@ -14,16 +14,16 @@ def main():
         f"{os.getenv('HOME')}/workspace/logs/cassie_simulation/{year}/{curr_date}" \
             if sim else f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
 
-    dair = f"{os.getenv('HOME')}/workspace/dairlib/"
-    standing_gains = dair + "examples/Cassie/osc/osc_standing_gains.yaml"
-    walking_gains = dair + "examples/Cassie/osc/osc_walking_gains.yaml"
-    alip_gains = dair + "examples/Cassie/osc/osc_walking_gains_alip.yaml"
+    current_dair_dir = f"{os.getcwd()}/"
+    standing_gains = current_dair_dir + "examples/Cassie/osc/osc_standing_gains.yaml"
+    walking_gains = current_dair_dir + "examples/Cassie/osc/osc_walking_gains.yaml"
+    alip_gains = current_dair_dir + "examples/Cassie/osc/osc_walking_gains_alip.yaml"
 
     if not os.path.isdir(logdir):
         os.mkdir(logdir)
 
-    git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
-    commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
+    git_diff = subprocess.check_output(['git', 'diff'], cwd=current_dair_dir)
+    commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=current_dair_dir)
 
     os.chdir(logdir)
     current_logs = sorted(glob.glob('lcmlog-*'))

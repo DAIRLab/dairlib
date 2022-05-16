@@ -5,11 +5,11 @@ group "director" {
     }
 }
 cmd "lcm_control_demo" {
-    exec = "bazel-bin/examples/trajectory_following/lcm_control_demo";
+    exec = "bazel-bin/examples/franka/lcm_control_demo";
     host = "localhost";
 }
 cmd "simulate_trifinger_lcm" {
-    exec = "bazel-bin/examples/trajectory_following/simulate_trifinger_lcm";
+    exec = "bazel-bin/examples/franka/simulate_trifinger_lcm";
     host = "localhost";
 }
 

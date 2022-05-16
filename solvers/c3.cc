@@ -89,7 +89,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-  OSQPoptions_.SetOption(drake::solvers::OsqpSolver::id(), "max_iter",  50);
+  OSQPoptions_.SetOption(drake::solvers::OsqpSolver::id(), "max_iter",  30);
   prog_.SetSolverOptions(OSQPoptions_);
 }
 
@@ -98,7 +98,7 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
   VectorXd z;
 
 
-  for (int i = 0; i < options_.admm_iter; i++) {
+  for (int i = 0; i < options_.admm_iter-1; i++) {
 
     //std::cout << "Iteration" << i <<  std::endl;
 
@@ -109,6 +109,14 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 //    std::cout << w.at(0) << std::endl;
 
   }
+
+  vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
+  for (int i = 0; i < N_; i++) {
+    WD.at(i) = delta.at(i) - w.at(i);
+  }
+
+  vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
+  z = zfin[0];
 
 //    std::cout << "violation" << std::endl;
 //  std::cout << delta.at(0) << std::endl;

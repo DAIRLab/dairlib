@@ -54,6 +54,7 @@ struct RomWalkingGains {
   double front_limit_wrt_pelvis;
   double right_limit_wrt_pelvis;
   double left_limit_wrt_pelvis;
+  double right_limit_wrt_stance_ft;
   std::string dir_model;
   std::string dir_data;
 
@@ -164,6 +165,7 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(front_limit_wrt_pelvis));
     a->Visit(DRAKE_NVP(right_limit_wrt_pelvis));
     a->Visit(DRAKE_NVP(left_limit_wrt_pelvis));
+    a->Visit(DRAKE_NVP(right_limit_wrt_stance_ft));
     a->Visit(DRAKE_NVP(dir_model));
     a->Visit(DRAKE_NVP(dir_data));
 

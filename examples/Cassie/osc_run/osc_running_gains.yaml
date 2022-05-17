@@ -47,7 +47,7 @@ hip_yaw_kd: 1
 footstep_sagital_offset: -0.05
 footstep_lateral_offset: 0.055 # mujoco
 #footstep_lateral_offset: 0.04 # drake
-mid_foot_height: 0.07
+mid_foot_height: 0.1
 FootstepKd:
   [ 0.3,     0,  0,
     0,     0.6, 0,
@@ -95,7 +95,7 @@ LiftoffSwingFootW:
 LiftoffSwingFootKp:
   [50,    0,    0,
    0,   50,    0,
-   0,    0,  50]
+   0,    0,  35]
 LiftoffSwingFootKd:
   [ 5,   0,   0,
     0,  5,   0,

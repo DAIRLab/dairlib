@@ -771,6 +771,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
+    double window = 0.01;
+    double tau = 0.01;
     if(fsm_state >= 2 && initial_guess_x_.size() == 4){
       double clock_time;
       if (this->get_input_port(clock_port_).HasValue(context)) {
@@ -778,16 +780,16 @@ VectorXd OperationalSpaceControl::SolveQp(
         clock_time = clock->get_value()(0);
       }
       if(fsm_state == 2){
-        double blend_in = 1 - exp(-((0.4 - clock_time) + 0.01) / 0.010);
-        double blend_out = 1 - exp(-((clock_time - 0.3) + 0.01) / 0.010);
+        double blend_in = 1 - exp(-((0.4 - clock_time) + window) / tau);
+        double blend_out = 1 - exp(-((clock_time - 0.3) + window) / (2*tau));
         u_sol_->row(6) = blend_out * u_sol_->row(6) + (1 - blend_out) * u_prev_[0].row(6);
         u_sol_->row(7) = blend_in * u_sol_->row(7) + (1 - blend_in) * u_prev_[1].row(7);
         u_sol_->row(0) = blend_out * u_sol_->row(0) + (1 - blend_out) * u_prev_[0].row(0);
 //        u_sol_->row(1) = blend_in * u_sol_->row(1) + (1 - blend_in) * u_prev_[1].row(1);
       }
       if(fsm_state == 3){
-        double blend_in = 1 - exp(-((0.8 - clock_time) + 0.01) / 0.010);
-        double blend_out = 1 - exp(-((clock_time - 0.7) + 0.01) / 0.010);
+        double blend_in = 1 - exp(-((0.8 - clock_time) + window) / tau);
+        double blend_out = 1 - exp(-((clock_time - 0.7) + window) / (2*tau));
         u_sol_->row(6) = blend_in * u_sol_->row(6) + (1 - blend_in) * u_prev_[0].row(6);
         u_sol_->row(7) = blend_out * u_sol_->row(7) + (1 - blend_out) * u_prev_[1].row(7);
 //        u_sol_->row(0) = blend_in * u_sol_->row(0) + (1 - blend_in) * u_prev_[0].row(0);

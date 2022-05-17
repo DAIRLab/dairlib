@@ -146,14 +146,14 @@ def main():
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
-  #   t_x, t_slice, "left foot", True)
+  #   t_x, t_slice, t_osc_debug, fsm, "left foot", True)
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, front_contact_disp, world,
-  #   t_x, t_slice, "left foot", True)
+  #   t_x, t_slice, t_osc_debug, fsm, "left foot", True)
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, rear_contact_disp, world,
-  #   t_x, t_slice, "left foot", True)
+  #   t_x, t_slice, t_osc_debug, fsm, "left foot", True)
 
   # plot_state_customized(x, t_x, u, t_u, x_datatypes, u_datatypes)
   # plt.plot(t_osc_debug, 0.1 * fsm)
@@ -666,7 +666,7 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
              list(tracking_cost_map))
   osc_traj00 = "swing_ft_traj"
-  osc_traj00 = "stance_hip_rpy_traj"
+  # osc_traj00 = "stance_hip_rpy_traj"
   # osc_traj0 = "swing_ft_traj"
   osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller
@@ -823,7 +823,7 @@ def plot_osc(osc_debug, osc_traj, dim, derivative):
 
 
 def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
-                        t_x, t_x_slice, foot_type, wrt_pelvis=False):
+                        t_x, t_x_slice, t_osc_debug, fsm, foot_type, wrt_pelvis=False):
   foot_x = np.zeros((6, t_x.size))
   for i in range(t_x.size):
     plant.SetPositionsAndVelocities(context, x[i, :])
@@ -849,13 +849,15 @@ def plot_feet_positions(plant, context, x, toe_frame, contact_point, world,
   string_wrt_pelvis = ' wrt pelvis' if wrt_pelvis else ''
   fig = plt.figure('foot pos' + string_wrt_pelvis + '-- ' + filename)
   # state_indices = slice(4, 5)
-  # state_indices = slice(1, 6, 3) # only the z component
-  state_indices = slice(5, 6)
+  state_indices = slice(2, 6, 3) # only the z component
+  # state_indices = slice(5, 6)
   state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
   state_names = [foot_type + name for name in state_names]
-  plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices], label=contact_name)
-  # plt.legend(state_names[state_indices])
-  plt.legend()
+  plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices])
+  # plt.plot(t_x[t_x_slice], foot_x.T[t_x_slice, state_indices], label=contact_name)
+  plt.plot(t_osc_debug, fsm)
+  plt.legend(state_names[state_indices])
+  # plt.legend()
 
 
 def compare_ekf(log, pos_map, vel_map):

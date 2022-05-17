@@ -144,6 +144,9 @@ DEFINE_string(path_wait_identifier, "", "");
 
 DEFINE_bool(completely_use_trajs_from_model_opt_as_target, false, "");
 
+DEFINE_bool(close_sim_gap, false,
+            "Modify to close the gap between open loop and closed loop sim");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -194,6 +197,13 @@ int DoMain(int argc, char* argv[]) {
   if (!FLAGS_dir_and_prefix_FOM.empty()) {
     cout << "dir_and_prefix_FOM is specified, so we won't have any target ROM "
             "traj in the regularization term\n";
+  }
+
+  if (FLAGS_close_sim_gap) {
+    if (gains.right_limit_wrt_pelvis > 0.02) {
+      cout << "set right_limit_wrt_pelvis to 0.02 because we want to close sim gap\n";
+      gains.right_limit_wrt_pelvis = 0.02;
+    }
   }
 
   // We only create new data folders for hardware experiment (broadcast case)

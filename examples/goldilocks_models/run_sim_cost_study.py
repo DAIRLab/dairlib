@@ -178,6 +178,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--path_wait_identifier=%s' % planner_wait_identifier,
     '--print_level=0',
     '--completely_use_trajs_from_model_opt_as_target=%s' % str(completely_use_trajs_from_model_opt_as_target).lower(),
+    '--close_sim_gap=%s' % str(close_sim_gap).lower(),
     ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',

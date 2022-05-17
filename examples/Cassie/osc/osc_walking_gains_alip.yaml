@@ -3,8 +3,8 @@ cols: 3
 
 # High level command gains (with radio)
 vel_scale_rot: -1.5
-vel_scale_trans_sagital: 1.5
-vel_scale_trans_lateral: -0.5
+vel_scale_trans_sagital: 1.0
+vel_scale_trans_lateral: -0.4
 
 # Filter settings
 pelvis_xyz_vel_filter_tau: [0.001, 0.001, 0.001]
@@ -31,11 +31,11 @@ ss_time: 0.3
 ds_time: 0.1
 
 # Distance of contact point from foot rear (0 is heel, 1 is toe)
-contact_point_pos: 0.4
+contact_point_pos: 0.35
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55
-footstep_offset: 0.17
+footstep_offset: 0.18
 center_line_offset: 0.04
 mid_foot_height: 0.15
 final_foot_height: 0.0
@@ -45,7 +45,7 @@ final_foot_velocity_z: 0.0
 lipm_height: 0.85
 
 # OSC gains
-mu: 0.7
+mu: 0.6
 
 w_accel: 0.00000001
 w_soft_constraint: 80

@@ -1,0 +1,15 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "cassie_out_to_radio",
+    srcs = ["cassie_out_to_radio.cc"],
+    hdrs = ["cassie_out_to_radio.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)

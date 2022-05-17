@@ -71,6 +71,7 @@ load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
 
 pydrake_repository(name = "pydrake_pegged")
 
+
 # Prebuilt ROS workspace
 new_local_repository(
     name = "ros",
@@ -147,18 +148,4 @@ print("Using DAIRLIB_LOCAL_INEKF_PATH={}".format(DAIRLIB_LOCAL_INEKF_PATH)) if D
 local_repository(
     name = _local_inekf_repo_name,
     path = DAIRLIB_LOCAL_INEKF_PATH,
-)
-
-# Use a local copy of libbot2
-environ_repository(
-    name = "environ_libbot2",
-    vars = ["DAIRLIB_LIBBOT2_PATH"],
-)
-
-load("@environ_libbot2//:environ.bzl", "DAIRLIB_LIBBOT2_PATH")
-
-new_local_repository(
-    name = "libbot2",
-    build_file = "tools/workspace/libbot2/libbot2.BUILD",
-    path = DAIRLIB_LIBBOT2_PATH,
 )

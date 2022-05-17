@@ -75,8 +75,8 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_yaw_output_port() const {
     return this->get_output_port(yaw_port_);
   }
-  const drake::systems::InputPort<double>& get_cassie_output_port() const {
-    return this->get_input_port(cassie_out_port_);
+  const drake::systems::InputPort<double>& get_radio_port() const {
+    return this->get_input_port(radio_port_);
   }
   const drake::systems::OutputPort<double>& get_xy_output_port() const {
     return this->get_output_port(xy_port_);
@@ -110,7 +110,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   int state_port_;
   int yaw_port_;
   int xy_port_;
-  int cassie_out_port_ = -1;
+  int radio_port_ = -1;
 
   // Indices for the discrete states of this leafsystem
   drake::systems::DiscreteStateIndex des_vel_idx_;

@@ -44,9 +44,9 @@ HighLevelCommand::HighLevelCommand(
     double vel_scale_trans_sagital, double vel_scale_trans_lateral,
     double stick_filter_dt)
     : HighLevelCommand(plant, context) {
-  cassie_out_port_ =
+  radio_port_ =
       this->DeclareAbstractInputPort("lcmt_cassie_output",
-                                     drake::Value<dairlib::lcmt_cassie_out>{})
+                                     drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
   use_radio_command_ = true;
 
@@ -113,18 +113,21 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   if (use_radio_command_) {
-    const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
-        context, cassie_out_port_);
+    const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
+        context, radio_port_);
     // TODO(yangwill) make sure there is a message available
     // des_vel indices: 0: yaw_vel (right joystick left/right)
     //                  1: saggital_vel (left joystick up/down)
     //                  2: lateral_vel (left joystick left/right)
+
+    double vel_scale_trans_sagital =
+        (radio_out->channel[5] + 1.0) * vel_scale_trans_sagital_;
     double a = .001 / (stick_filter_dt_ + .001); // approximately 1KHz sampling rate - no need to be too precise
     Vector3d des_vel_prev = discrete_state->get_value(des_vel_idx_);
     Vector3d des_vel;
-    des_vel << vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
-        vel_scale_trans_sagital_ * cassie_out->pelvis.radio.channel[0],
-        vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1];
+    des_vel << vel_scale_rot_ * radio_out->channel[3],
+        vel_scale_trans_sagital * radio_out->channel[0],
+        vel_scale_trans_lateral_ * radio_out->channel[1];
     Vector3d des_vel_filt;
     des_vel_filt(0) = des_vel(0);
     des_vel_filt.tail(2) = a * des_vel.tail(2) + (1 - a) * des_vel_prev.tail(2);

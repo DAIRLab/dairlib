@@ -74,6 +74,21 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "ji_controllers_py",
+    cc_deps = [
+        "@drake//:drake_shared_library",
+        "//systems/controllers:ji_controller",
+    ],
+    cc_so_name = "ji_controllers",
+    cc_srcs = ["ji_controllers_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

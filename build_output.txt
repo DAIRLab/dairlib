@@ -1,0 +1,33 @@
+Starting local Bazel server and connecting to it...
+Loading: 
+Loading: 0 packages loaded
+DEBUG: /home/adam/dairlib/WORKSPACE:52:6: Using DAIRLIB_LOCAL_DRAKE_PATH=/home/adam/drake
+Loading: 46 packages loaded
+Analyzing: 220 targets (46 packages loaded, 0 targets configured)
+Analyzing: 220 targets (126 packages loaded, 667 targets configured)
+Analyzing: 220 targets (202 packages loaded, 2866 targets configured)
+Analyzing: 220 targets (226 packages loaded, 6853 targets configured)
+Analyzing: 220 targets (283 packages loaded, 11400 targets configured)
+INFO: Analyzed 220 targets (295 packages loaded, 12697 targets configured).
+INFO: Found 220 targets...
+INFO: Deleting stale sandbox base /home/adam/.cache/bazel/_bazel_adam/4d357739f9f29be9c79f65309985276e/sandbox
+
+[9 / 166] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+[2,464 / 3,019] [Scann] Compiling multibody/tree/multibody_tree.cc
+[4,596 / 4,626] Compiling multibody/tree/multibody_tree.cc; 1s linux-sandbox ... (4 actions, 2 running)
+[4,652 / 4,669] Compiling multibody/tree/multibody_tree.cc; 3s linux-sandbox ... (8 actions running)
+[4,652 / 4,669] Compiling multibody/tree/multibody_tree.cc; 14s linux-sandbox ... (8 actions running)
+[4,653 / 4,739] Compiling multibody/tree/multibody_tree.cc; 18s linux-sandbox ... (8 actions, 7 running)
+[4,669 / 4,753] Compiling multibody/tree/multibody_tree.cc; 23s linux-sandbox ... (8 actions, 7 running)
+[4,678 / 4,765] Compiling multibody/tree/multibody_tree.cc; 30s linux-sandbox ... (8 actions running)
+[4,733 / 4,857] Compiling multibody/tree/multibody_tree.cc; 36s linux-sandbox ... (8 actions running)
+[4,764 / 4,926] Compiling multibody/tree/multibody_tree.cc; 43s linux-sandbox ... (8 actions running)
+INFO: From Compiling systems/controllers/controller_failure_aggregator.cc:
+systems/controllers/controller_failure_aggregator.cc: In member function 'void dairlib::systems::ControllerFailureAggregator::AggregateFailureSignals(const drake::systems::Context<double>&, dairlib::lcmt_controller_failure*) const':
+systems/controllers/controller_failure_aggregator.cc:52:29: warning: 'timestamp' may be used uninitialized in this function [-Wmaybe-uninitialized]
+   52 |   output->utime = timestamp * 1e6;
+      |                   ~~~~~~~~~~^~~~~
+[4,766 / 4,926] Compiling multibody/tree/multibody_tree.cc; 50s linux-sandbox ... (8 actions running)
+[4,766 / 4,926] Compiling multibody/tree/multibody_tree.cc; 62s linux-sandbox ... (8 actions running)
+[4,766 / 4,926] Compiling multibody/tree/multibody_tree.cc; 93s linux-sandbox ... (8 actions running)
+[4,766 / 4,926] Compiling multibody/tree/multibody_tree.cc; 110s linux-sandbox ... (8 actions running)

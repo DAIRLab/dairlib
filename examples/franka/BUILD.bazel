@@ -39,11 +39,12 @@ py_binary(
 )
 
 py_binary(
-    name = "lcm_control_demo",
-    srcs = ["lcm_control_demo.py"],
+    name = "lcm_control_impedence",
+    srcs = ["lcm_control_impedence.py"],
     deps = [
         "//bindings/pydairlib",
         "@drake//bindings/pydrake",
     ],
-    data = [":trifinger_urdf"],
+    data = [":trifinger_urdf",
+            "@drake//manipulation/models/franka_description:models"],
 )

@@ -73,6 +73,10 @@ void JIController::CalcControl(const Context<double>& context,
 
   //std::cout <<"states" << state.size() << std::endl;
 
+  VectorXd C(plant_.num_velocities());
+
+  //update the context_
+  plant_.CalcBiasTerm(context_, &C);
 
   VectorXd input = 0*VectorXd::Ones(7);
 

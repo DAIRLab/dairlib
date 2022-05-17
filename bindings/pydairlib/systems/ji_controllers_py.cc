@@ -14,7 +14,7 @@ namespace pydairlib {
 
 using systems::controllers::JIController;
 
-PYBIND11_MODULE(controllers, m) {
+PYBIND11_MODULE(ji_controllers, m) {
   m.doc() = "Binding controller factories for Cassie";
 
   using py_rvp = py::return_value_policy;
@@ -30,6 +30,7 @@ PYBIND11_MODULE(controllers, m) {
            py_rvp::reference_internal)
       .def("get_input_port_output", &JIController::get_input_port_output,
            py_rvp::reference_internal);
+
 }
 }  // namespace pydairlib
 }  // namespace dairlib

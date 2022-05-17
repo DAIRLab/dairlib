@@ -61,9 +61,6 @@ void JIController::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
 
 
-//  auto start = std::chrono::high_resolution_clock::now();
-
-
   /// get values
   auto robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
@@ -74,6 +71,7 @@ void JIController::CalcControl(const Context<double>& context,
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
 
+  //std::cout <<"states" << state.size() << std::endl;
 
 
   VectorXd input = 0*VectorXd::Ones(7);

@@ -6,15 +6,17 @@ from pydairlib.systems import (RobotCommandSender, RobotOutputReceiver,
                                LcmOutputDrivenLoop, OutputVector,
                                TimestampedVector)
 
-from pydrake.all import (AbstractValue, DiagramBuilder, DrakeLcm, LeafSystem,
-                          MultibodyPlant, Parser, RigidTransform, Subscriber,
-                          LcmPublisherSystem, TriggerType, AddMultibodyPlantSceneGraph)
+# from pydrake.all import (AbstractValue, DiagramBuilder, DrakeLcm, LeafSystem,
+#                           MultibodyPlant, Parser, RigidTransform, Subscriber,
+#                           LcmPublisherSystem, TriggerType, AddMultibodyPlantSceneGraph)
 #import pydairlib.common
+from pydrake.all import *
 
 
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 import pydairlib.common
-from pydairlib.systems.controllers import JIController
+from pydairlib.systems.controllers import C3Controller
+from pydairlib.systems.ji_controllers import JIController
 
 import numpy as np
 

@@ -5,7 +5,7 @@ group "director" {
     }
 }
 cmd "lcm_control_demo" {
-    exec = "bazel-bin/examples/franka/lcm_control_demo";
+    exec = "bazel-bin/examples/franka/lcm_control_impedence";
     host = "localhost";
 }
 cmd "simulate_trifinger_lcm" {

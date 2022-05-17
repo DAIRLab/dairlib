@@ -109,6 +109,7 @@ PY_LIBRARIES = [
     ":primitives_py",
     ":framework_py",
     ":controllers_py",
+    ":ji_controllers_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

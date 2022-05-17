@@ -544,6 +544,10 @@ int DoMain(int argc, char* argv[]) {
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
+  builder.Connect(cassie_out_to_radio->get_output_port(),
+                  l_foot_traj_generator->get_radio_input_port());
+  builder.Connect(cassie_out_to_radio->get_output_port(),
+                  r_foot_traj_generator->get_radio_input_port());
 
   builder.Connect(fsm->get_output_port_clock(),
                   l_foot_traj_generator->get_clock_input_port());

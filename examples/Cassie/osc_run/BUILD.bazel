@@ -97,6 +97,7 @@ cc_library(
     hdrs = ["foot_traj_generator.h"],
     deps = [
         "//multibody:utils",
+        "//lcmtypes:lcmt_robot",
         "//systems/controllers/osc:osc_gains",
         "//systems/primitives",
         "@drake//:drake_shared_library",

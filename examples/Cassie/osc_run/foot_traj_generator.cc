@@ -2,6 +2,7 @@
 
 #include <drake/math/saturate.h>
 
+#include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 
 using Eigen::Map;
@@ -71,6 +72,10 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
   clock_port_ = this->DeclareVectorInputPort(
                         "clock", BasicVector<double>(VectorXd::Zero(1)))
                     .get_index();
+  radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
+          .get_index();
 
   // The swing foot position in the beginning of the swing phase
   initial_foot_pos_idx_ = this->DeclareDiscreteState(3);
@@ -143,6 +148,15 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
       this->EvalVectorInput(context, target_vel_port_)->get_value();
   double clock = this->EvalVectorInput(context, clock_port_)->get_value()(0);
 
+  double lateral_radio_tuning = 1.0;
+  double sagital_radio_tuning = 1.0;
+  if (this->get_input_port(radio_port_).HasValue(context)) {
+    const auto& radio_out =
+        this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+    lateral_radio_tuning += radio_out->channel[4];
+    sagital_radio_tuning += radio_out->channel[5];
+  }
+
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
   multibody::SetPositionsAndVelocitiesIfNew<double>(
@@ -203,11 +217,11 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   VectorXd foot_end_pos_des = Kd_ * (pelvis_vel_err);
 
   if (is_left_foot_) {
-    foot_end_pos_des(1) += lateral_offset_;
+    foot_end_pos_des(1) += lateral_radio_tuning * lateral_offset_;
   } else {
-    foot_end_pos_des(1) -= lateral_offset_;
+    foot_end_pos_des(1) -= lateral_radio_tuning * lateral_offset_;
   }
-  foot_end_pos_des(0) += sagital_offset_;
+  foot_end_pos_des(0) += sagital_radio_tuning * sagital_offset_;
   foot_end_pos_des(2) = 0;
 
   std::vector<double> T_waypoints;

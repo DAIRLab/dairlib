@@ -53,6 +53,12 @@ def main():
     radio_channel_6_pos = 0
     radio_channel_6_delta = 0.05
 
+    radio_channel_4_pos = 0
+    radio_channel_4_delta = 0.05
+
+    radio_channel_5_pos = 0
+    radio_channel_5_delta = 0.05
+
     if (pygame.joystick.get_count() != 1):
         raise RuntimeError("Please connect exactly one controller")
 
@@ -82,8 +88,15 @@ def main():
                 radio_channel_6_pos += radio_channel_6_delta * hat_val[1]
                 # saturate between -1 and 1
                 radio_channel_6_pos = min(max(radio_channel_6_pos, -1), 1)
+            if event.type == pygame.JOYBUTTONDOWN:
+                radio_channel_4_pos += -radio_channel_5_delta * joystick.get_button(2) + radio_channel_5_delta * joystick.get_button(1)
+                radio_channel_5_pos += -radio_channel_4_delta * joystick.get_button(0) + radio_channel_4_delta * joystick.get_button(3)
+                # for i in range(joystick.get_numbuttons()):
+                #     print(i)
+                #     print(joystick.get_button(i))
 
-
+        textPrint.print(screen, "Left Knob position: {:.2f}".format(radio_channel_4_pos))
+        textPrint.print(screen, "Right Knob position: {:.2f}".format(radio_channel_5_pos))
         textPrint.print(screen, "Side dial position: {:.2f}".format(radio_channel_6_pos))
 
         # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
@@ -98,6 +111,8 @@ def main():
         radio_msg.channel[1] = joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
         radio_msg.channel[3] = joystick.get_axis(3)
+        radio_msg.channel[4] = radio_channel_4_pos
+        radio_msg.channel[5] = radio_channel_5_pos
         radio_msg.channel[6] = radio_channel_6_pos
 
         radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))

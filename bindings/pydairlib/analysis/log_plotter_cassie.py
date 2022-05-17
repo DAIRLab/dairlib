@@ -40,6 +40,7 @@ def main():
                      plot_config.end_time,
                      mbp_plots.load_default_channels,  # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
+    import pdb; pdb.set_trace()
 
     print('Finished processing log - making plots')
     # Define x time slice

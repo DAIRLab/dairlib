@@ -78,7 +78,10 @@ void JIController::CalcControl(const Context<double>& context,
   VectorXd C(plant_.num_velocities());
 
   //update the context_
+  plant_.SetPositions(&context_, q);
+  plant_.SetVelocities(&context_, v);
   plant_.CalcBiasTerm(context_, &C);
+  VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
 
   // compute the control input, tau
   VectorXd tau = 0*VectorXd::Ones(7);
@@ -86,9 +89,9 @@ void JIController::CalcControl(const Context<double>& context,
   // arbitary target position
   VectorXd q_target = 0*VectorXd::Ones(7);
 
-  double Kp = 150;
+  double Kp = 125;
   double Kd = 5;
-  tau = Kp*(q_target - q) + Kd*(-1.0*v);
+  tau = Kp*(q_target - q) + Kd*(-1.0*v) + C;// - tau_g;
 
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);

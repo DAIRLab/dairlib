@@ -23,6 +23,16 @@ cc_library(
 )
 
 cc_library(
+    name = "hip_yaw_traj_gen",
+    srcs = ["hip_yaw_traj_gen.cc"],
+    hdrs = ["hip_yaw_traj_gen.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "walking_speed_control",
     srcs = ["walking_speed_control.cc"],
     hdrs = ["walking_speed_control.h"],

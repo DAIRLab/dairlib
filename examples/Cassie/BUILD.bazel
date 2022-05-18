@@ -425,6 +425,7 @@ cc_binary(
         "//multibody/kinematic",
         "//solvers:osqp_solver_options",
         "//systems:robot_lcm_systems",
+        "//systems:system_utils",
         "//systems/controllers:fsm_event_time",
         "//systems/filters:floating_base_velocity_filter",
         "//systems/framework:lcm_driven_loop",

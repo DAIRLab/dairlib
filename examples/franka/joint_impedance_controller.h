@@ -19,8 +19,7 @@ namespace systems{
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
-template <typename T>
-class JointImpedanceController : public drake::systems::LeafSystem<T> {
+class JointImpedanceController : public drake::systems::LeafSystem<double> {
 
     public:
     JointImpedanceController(const MatrixXd& K, const MatrixXd& B);

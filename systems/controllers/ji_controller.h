@@ -32,6 +32,9 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
+// Adam's includes
+#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
+
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
@@ -70,8 +73,9 @@ class JIController : public LeafSystem<double> {
   drake::systems::Context<double>& context_;
   const Eigen::MatrixXd K_;
   const Eigen::MatrixXd B_;
+
 };
 
-}  // namespace controllers
+}  // namespace controller
 }  // namespace systems
 }  // namespace dairlib

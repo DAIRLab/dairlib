@@ -34,8 +34,9 @@ namespace controllers {
 
 JIController::JIController(
     const drake::multibody::MultibodyPlant<double>& plant,
-   drake::systems::Context<double>& context,
-    const MatrixXd& K, const MatrixXd& B)
+    drake::systems::Context<double>& context,
+    const MatrixXd& K, 
+    const MatrixXd& B)
     : plant_(plant),
       context_(context),
       K_(K),
@@ -65,7 +66,8 @@ void JIController::CalcControl(const Context<double>& context,
   auto robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
-  VectorXd state(plant_.num_positions() + plant_.num_velocities());
+  int state_dim = plant_.num_positions() + plant_.num_velocities();
+  VectorXd state(state_dim);
   state << robot_output->GetPositions(), robot_output->GetVelocities();
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
@@ -78,9 +80,17 @@ void JIController::CalcControl(const Context<double>& context,
   //update the context_
   plant_.CalcBiasTerm(context_, &C);
 
-  VectorXd input = 0*VectorXd::Ones(7);
+  // compute the control input, tau
+  VectorXd tau = 0*VectorXd::Ones(7);
 
-  control->SetDataVector(input);
+  // arbitary target position
+  VectorXd q_target = 0*VectorXd::Ones(7);
+
+  double Kp = 150;
+  double Kd = 5;
+  tau = Kp*(q_target - q) + Kd*(-1.0*v);
+
+  control->SetDataVector(tau);
   control->set_timestamp(timestamp);
 }
 }  // namespace controllers

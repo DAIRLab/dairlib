@@ -121,7 +121,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     //                  2: lateral_vel (left joystick left/right)
 
     double vel_scale_trans_sagital =
-        (radio_out->channel[5] + 1.0) * vel_scale_trans_sagital_;
+        (radio_out->channel[6] + 1.0) * vel_scale_trans_sagital_;
     double a = .001 / (stick_filter_dt_ + .001); // approximately 1KHz sampling rate - no need to be too precise
     Vector3d des_vel_prev = discrete_state->get_value(des_vel_idx_);
     Vector3d des_vel;

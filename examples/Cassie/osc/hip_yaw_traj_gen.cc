@@ -8,6 +8,9 @@ namespace dairlib::cassie {
 
 HipYawTrajGen::HipYawTrajGen(int left_stance_state) :
  left_stance_state_(left_stance_state) {
+  fsm_port_ = this->DeclareVectorInputPort(
+      "fsm", drake::systems::BasicVector<double>(1))
+          .get_index();
   radio_port_ =
       this->DeclareAbstractInputPort("radio",
                                      drake::Value<dairlib::lcmt_radio_out>{})

@@ -5,7 +5,7 @@
 
 namespace dairlib::cassie {
 
-class HipYawTrajGen : drake::systems::LeafSystem<double>{
+class HipYawTrajGen : public drake::systems::LeafSystem<double>{
  public:
   HipYawTrajGen(int left_stance_state);
 

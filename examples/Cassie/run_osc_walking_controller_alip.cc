@@ -4,6 +4,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "examples/Cassie/osc/hip_yaw_traj_gen.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/osc_walking_gains_alip.h"
@@ -536,6 +537,10 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&swing_toe_traj_left);
   osc->AddTrackingData(&swing_toe_traj_right);
 
+
+  auto hip_yaw_traj_gen =
+      builder.AddSystem<cassie::HipYawTrajGen>(left_stance_state);
+
   // Swing hip yaw joint tracking
   JointSpaceTrackingData swing_hip_yaw_traj(
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
@@ -544,7 +549,16 @@ int DoMain(int argc, char* argv[]) {
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
                                              "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+
+  if (FLAGS_use_radio) {
+    builder.Connect(cassie_out_to_radio->get_output_port(),
+                    hip_yaw_traj_gen->get_radio_input_port());
+    builder.Connect(fsm->get_output_port_fsm(),
+                    hip_yaw_traj_gen->get_fsm_input_port());
+    osc->AddTrackingData(&swing_hip_yaw_traj);
+  } else {
+    osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+  }
 
   // Set double support duration for force blending
   osc->SetUpDoubleSupportPhaseBlending(
@@ -576,6 +590,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
+  if (FLAGS_use_radio) {
+    builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
+                    osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
+  }
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.

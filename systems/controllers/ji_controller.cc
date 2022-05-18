@@ -17,6 +17,7 @@ using std::vector;
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::MatrixX;
+using drake::VectorX;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 //using drake::math::ExtractGradient;
@@ -27,6 +28,7 @@ using Eigen::MatrixXd;
 using Eigen::RowVectorXd;
 using Eigen::VectorXd;
 using std::vector;
+using drake::multibody::JacobianWrtVariable;
 
 // really really jank spline function
 vector<VectorXd> compute_target_vector(double t){
@@ -83,6 +85,11 @@ JIController::JIController(
                                  &JIController::CalcControl)
                              .get_index();
 
+  // define end effector
+  EE_offset_ << 0, 0, 0;
+  // TODO: check if these need to be updated everytime
+  EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
+  world_frame_ = &plant_.world_frame();
 }
 
 void JIController::CalcControl(const Context<double>& context,
@@ -99,19 +106,46 @@ void JIController::CalcControl(const Context<double>& context,
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
-
-  VectorXd C(plant_.num_velocities());
-
+  
   //update the context_
+  VectorXd C(plant_.num_velocities());
   plant_.SetPositions(&context_, q);
   plant_.SetVelocities(&context_, v);
+
+  // calculate corriolis and gravity terms
   plant_.CalcBiasTerm(context_, &C);
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
 
-/*
-  // CODE FOR PID CONTROLLER
+  // forward kinematics
+
+  const drake::math::RigidTransform<double> H = 
+    plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
+  
+  auto x = H.translation();
+  //std::cout << "x: " << x << std::endl;
+  
+  // compute jacobian
+  MatrixXd J(6, plant_.num_velocities());
+  plant_.CalcJacobianSpatialVelocity(
+      context_, JacobianWrtVariable::kV, // TODO: confirm if we want kV or the other
+      *EE_frame_, EE_offset_,
+      *world_frame_, *world_frame_, &J);
+
   // compute the control input, tau
   VectorXd tau = 0*VectorXd::Ones(7);
+  VectorXd x_d = 0.3*VectorXd::Ones(3);
+  VectorXd xtilde = x_d - (VectorXd)x;
+
+  tau = J.transpose() * xtilde + C - tau_g;
+
+  control->SetDataVector(tau);
+  control->set_timestamp(timestamp);
+
+/*
+  // CODE FOR PID CONTROLLER
+
+  // compute the control input, tau
+  //VectorXd tau = 0*VectorXd::Ones(7);
 
   // arbitary target position
   vector<VectorXd> target = compute_target_vector(timestamp);
@@ -125,13 +159,10 @@ void JIController::CalcControl(const Context<double>& context,
   double Kd = 5;
   double Ki = 2;
   tau = Kp*(target[0] - q) + Kd*(target[1]-v) + Ki * integral + C - tau_g;
-*/
-  
-  // compute the control input, tau
-  VectorXd tau = 0*VectorXd::Ones(7);  
 
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
+*/
 }
 
 /*

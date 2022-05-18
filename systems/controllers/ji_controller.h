@@ -34,9 +34,11 @@
 
 // Adam's includes
 #include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
-#include <drake/systems/framework/witness_function.h>
 #include <drake/systems/framework/continuous_state.h>
 #include <drake/systems/framework/vector_base.h>
+#include <drake/math/rigid_transform.h>
+
+
 
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
@@ -63,10 +65,12 @@ class JIController : public LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_input_port_output() const {
     return this->get_output_port(control_output_port_);
   }
+  
+  // void AddConstraint() const;
+  // for PID
   //void DoCalcTimeDerivatives(const Context<double>& context,
   //                           drake::systems::ContinuousState<double>* derivatives) const;
-  // void AddConstraint() const;
-
+  
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
@@ -77,6 +81,11 @@ class JIController : public LeafSystem<double> {
   drake::systems::Context<double>& context_;
   const Eigen::MatrixXd K_;
   const Eigen::MatrixXd B_;
+
+  // frame & point info
+  const drake::multibody::BodyFrame<double>* EE_frame_;
+  const drake::multibody::BodyFrame<double>* world_frame_;
+  Eigen::Vector3d EE_offset_;
 
 };
 

@@ -28,6 +28,30 @@ using Eigen::RowVectorXd;
 using Eigen::VectorXd;
 using std::vector;
 
+// really really jank spline function
+vector<VectorXd> compute_target_vector(double t){
+    VectorXd start = 0*VectorXd::Ones(7);
+    start(3) = -0.0698;
+    VectorXd end = 1.57*VectorXd::Ones(7);
+    end(3) = -1.57;
+
+    double start_time = 5.0;
+    double duration = 20.0;
+    double end_time = start_time+duration;
+
+    if (t < start_time) {
+        return {start, 0*VectorXd::Ones(7)};
+    }
+    else if (t > end_time){
+        return {end, 0*VectorXd::Ones(7)};
+    }    
+    else {
+        VectorXd v = (end-start) / duration;
+        double a = (t-start_time) / duration;
+        return {(1-a)*start + a*end, v};
+    }
+}
+
 namespace dairlib {
 namespace systems {
 namespace controllers {
@@ -89,7 +113,7 @@ void JIController::CalcControl(const Context<double>& context,
   VectorXd tau = 0*VectorXd::Ones(7);
 
   // arbitary target position
-  VectorXd q_target = 0*VectorXd::Ones(7);
+  vector<VectorXd> target = compute_target_vector(timestamp);
 
   // integral term (hopefully)
    const VectorX<double>& integral =
@@ -99,13 +123,7 @@ void JIController::CalcControl(const Context<double>& context,
   double Kp = 125;
   double Kd = 5;
   double Ki = 2;
-  tau = Kp*(q_target - q) + Kd*(-1.0*v) + Ki * integral + C - tau_g;
-
-//   std::cout << "tau:\n" << tau << std::endl << std::endl;
-//   std::cout << "integral:\n" << integral << std::endl << std::endl;
-//   std::cout << "C:\n" << C << std::endl << std::endl;
-//   std::cout << "g:\n" << tau_g << std::endl << std::endl;
-
+  tau = Kp*(target[0] - q) + Kd*(target[1]-v) + Ki * integral + C - tau_g;
 
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
@@ -117,10 +135,11 @@ void JIController::DoCalcTimeDerivatives(
   auto robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   VectorXd q = robot_output->GetPositions();
+  double timestamp = robot_output->get_timestamp();
 
   // The derivative of the continuous state is the instantaneous position error.
   drake::systems::VectorBase<double>& derivatives_vector = derivatives->get_mutable_vector();
-  derivatives_vector.SetFromVector(-1*q);
+  derivatives_vector.SetFromVector(compute_target_vector(timestamp)[0] - q);
 }
 
 

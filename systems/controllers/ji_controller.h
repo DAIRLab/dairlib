@@ -63,8 +63,8 @@ class JIController : public LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_input_port_output() const {
     return this->get_output_port(control_output_port_);
   }
-  void DoCalcTimeDerivatives(const Context<double>& context,
-                             drake::systems::ContinuousState<double>* derivatives) const;
+  //void DoCalcTimeDerivatives(const Context<double>& context,
+  //                           drake::systems::ContinuousState<double>* derivatives) const;
   // void AddConstraint() const;
 
  private:

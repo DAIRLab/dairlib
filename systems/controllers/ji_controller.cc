@@ -69,7 +69,8 @@ JIController::JIController(
   int num_velocities = plant_.num_velocities();
   int num_inputs = plant_.num_actuators();
 
-  this->DeclareContinuousState(num_positions);
+  // integral term for PID controller
+  // this->DeclareContinuousState(num_positions);
 
   state_input_port_ =
       this->DeclareVectorInputPort(
@@ -99,8 +100,6 @@ void JIController::CalcControl(const Context<double>& context,
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
 
-  //std::cout <<"states" << state.size() << std::endl;
-
   VectorXd C(plant_.num_velocities());
 
   //update the context_
@@ -109,6 +108,8 @@ void JIController::CalcControl(const Context<double>& context,
   plant_.CalcBiasTerm(context_, &C);
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
 
+/*
+  // CODE FOR PID CONTROLLER
   // compute the control input, tau
   VectorXd tau = 0*VectorXd::Ones(7);
 
@@ -124,11 +125,17 @@ void JIController::CalcControl(const Context<double>& context,
   double Kd = 5;
   double Ki = 2;
   tau = Kp*(target[0] - q) + Kd*(target[1]-v) + Ki * integral + C - tau_g;
+*/
+  
+  // compute the control input, tau
+  VectorXd tau = 0*VectorXd::Ones(7);  
 
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
 }
 
+/*
+// FOR PID CONTROLLERS
 void JIController::DoCalcTimeDerivatives(
     const Context<double>& context, drake::systems::ContinuousState<double>* derivatives) const {
   /// get values
@@ -141,7 +148,7 @@ void JIController::DoCalcTimeDerivatives(
   drake::systems::VectorBase<double>& derivatives_vector = derivatives->get_mutable_vector();
   derivatives_vector.SetFromVector(compute_target_vector(timestamp)[0] - q);
 }
-
+*/
 
 }  // namespace controllers
 }  // namespace systems

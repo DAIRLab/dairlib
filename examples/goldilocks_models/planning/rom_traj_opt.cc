@@ -115,7 +115,8 @@ RomTrajOpt::RomTrajOpt(
   const double front_limit_wrt_pelvis = param.gains.front_limit_wrt_pelvis;
   const double right_limit_wrt_pelvis = param.gains.right_limit_wrt_pelvis;
   const double left_limit_wrt_pelvis = param.gains.left_limit_wrt_pelvis;
-  const double right_limit_wrt_stance_ft = param.gains.right_limit_wrt_stance_ft;
+  const double right_limit_wrt_stance_ft =
+      param.gains.right_limit_wrt_stance_ft;
   const double left_limit_wrt_stance_ft =
       std::numeric_limits<double>::infinity();
 
@@ -662,24 +663,24 @@ void RomTrajOpt::AddConstraintAndCostForLastFootStep(
   // overconstraining (see 20220420 folder of mpc improvement). Also, the speed
   // doesn't seem to be affected in some solves, so maybe it's not too bad.
   // 1. via cost
-  PrintStatus("Adding cost -- predicted com vel one step after horizon");
+  /*PrintStatus("Adding cost -- predicted com vel one step after horizon");
   predict_lipm_v_bindings_.push_back(
       AddQuadraticErrorCost(w_predict_lipm_v * MatrixXd::Identity(2, 2),
-                            des_predicted_xy_vel, predicted_com_vel_var_));
+                            des_predicted_xy_vel, predicted_com_vel_var_));*/
   // 2. via constraint
   /*PrintStatus("Adding constraint -- predicted com vel one step after
   horizon"); AddBoundingBoxConstraint(des_predicted_xy_vel,
   des_predicted_xy_vel, predicted_com_vel_var_);*/
 
   // 3. half half
-  //  PrintStatus("Adding cost -- predicted com vel one step after horizon");
-  //  predict_lipm_v_bindings_.push_back(AddQuadraticErrorCost(
-  //      w_predict_lipm_v * MatrixXd::Identity(1, 1),
-  //      des_predicted_xy_vel.tail<1>(), predicted_com_vel_var_.tail<1>()));
-  //  PrintStatus("Adding constraint -- predicted com vel one step after
-  //  horizon"); AddBoundingBoxConstraint(des_predicted_xy_vel.head<1>(),
-  //                           des_predicted_xy_vel.head<1>(),
-  //                           predicted_com_vel_var_.head<1>());
+  PrintStatus("Adding cost -- predicted com vel one step after horizon");
+  predict_lipm_v_bindings_.push_back(AddQuadraticErrorCost(
+      w_predict_lipm_v * MatrixXd::Identity(1, 1),
+      des_predicted_xy_vel.tail<1>(), predicted_com_vel_var_.tail<1>()));
+  PrintStatus("Adding constraint -- predicted com vel one step after horizon");
+  AddBoundingBoxConstraint(des_predicted_xy_vel.head<1>(),
+                           des_predicted_xy_vel.head<1>(),
+                           predicted_com_vel_var_.head<1>());
 }
 
 void RomTrajOpt::AddCascadedLipmMPC(

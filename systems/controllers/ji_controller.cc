@@ -45,6 +45,8 @@ JIController::JIController(
   int num_velocities = plant_.num_velocities();
   int num_inputs = plant_.num_actuators();
 
+  this->DeclareContinuousState(num_positions);
+
   state_input_port_ =
       this->DeclareVectorInputPort(
               "x, u, t",
@@ -89,13 +91,39 @@ void JIController::CalcControl(const Context<double>& context,
   // arbitary target position
   VectorXd q_target = 0*VectorXd::Ones(7);
 
+  // integral term (hopefully)
+   const VectorX<double>& integral =
+       dynamic_cast<const BasicVector<double>&>(context.get_continuous_state_vector())
+           .value();
+
   double Kp = 125;
   double Kd = 5;
-  tau = Kp*(q_target - q) + Kd*(-1.0*v) + C;// - tau_g;
+  double Ki = 2;
+  tau = Kp*(q_target - q) + Kd*(-1.0*v) + Ki * integral + C - tau_g;
+
+//   std::cout << "tau:\n" << tau << std::endl << std::endl;
+//   std::cout << "integral:\n" << integral << std::endl << std::endl;
+//   std::cout << "C:\n" << C << std::endl << std::endl;
+//   std::cout << "g:\n" << tau_g << std::endl << std::endl;
+
 
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
 }
+
+void JIController::DoCalcTimeDerivatives(
+    const Context<double>& context, drake::systems::ContinuousState<double>* derivatives) const {
+  /// get values
+  auto robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+  VectorXd q = robot_output->GetPositions();
+
+  // The derivative of the continuous state is the instantaneous position error.
+  drake::systems::VectorBase<double>& derivatives_vector = derivatives->get_mutable_vector();
+  derivatives_vector.SetFromVector(-1*q);
+}
+
+
 }  // namespace controllers
 }  // namespace systems
 }  // namespace dairlib

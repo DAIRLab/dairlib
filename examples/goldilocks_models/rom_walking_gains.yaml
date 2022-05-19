@@ -98,7 +98,7 @@ double_support_duration: 0.1 #0.02
 constant_rom_vel_during_double_support: true
 
 # Parameters that affect the foot spread
-y_vel_offset: 0.3  # 0.1  # during normal walking, y_vel is about 0.1 to 0.2 m/s
+y_vel_offset: 0.1  # 0.1  # during normal walking, y_vel is about 0.1 to 0.2 m/s
 # `constant_rom_vel_during_double_support` also affects
 # the "nominal FOM hip roll position" and cost weight also affect
 
@@ -116,9 +116,9 @@ max_lipm_step_length: 0.8
 
 back_limit_wrt_pelvis: -0.6   # -0.5
 front_limit_wrt_pelvis: 0.6   # 0.5
-right_limit_wrt_pelvis: 0.06  #0.02 # 0.06  # This cannot be too big if we want to get desired pose as close to FOM trajopt's as possible (used in planner's regularization cost)
+right_limit_wrt_pelvis: 0.02  #0.02 # 0.06  # This cannot be too big if we want to get desired pose as close to FOM trajopt's as possible (used in planner's regularization cost)
 left_limit_wrt_pelvis: 0.5    # 0.4
-right_limit_wrt_stance_ft: 0.06  #0.02 # 0.06  # This cannot be too big if we want to get desired pose as close to FOM trajopt's as possible (used in planner's regularization cost)
+right_limit_wrt_stance_ft: 0.02  #0.02 # 0.06  # This cannot be too big if we want to get desired pose as close to FOM trajopt's as possible (used in planner's regularization cost)
 
 ### Planner cost weight
 use_lipm_mpc_and_ik: false

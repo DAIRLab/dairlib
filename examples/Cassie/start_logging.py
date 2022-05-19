@@ -12,12 +12,14 @@ def main():
 
     logdir = \
         f"{os.getenv('HOME')}/workspace/logs/cassie_simulation/{year}/{curr_date}" \
-            if sim else f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
+            if sim else f"{os.getenv('HOME')}/logs/{year}/{curr_date}/yuming_rom_walking"
 
     current_dair_dir = f"{os.getcwd()}/"
     standing_gains = current_dair_dir + "examples/Cassie/osc/osc_standing_gains.yaml"
     walking_gains = current_dair_dir + "examples/Cassie/osc/osc_walking_gains.yaml"
     alip_gains = current_dair_dir + "examples/Cassie/osc/osc_walking_gains_alip.yaml"
+    rom_walking_gains1 = current_dair_dir + "examples/goldilocks_models/rom_walking_gains.yaml"
+    rom_walking_gains2 = current_dair_dir + "examples/goldilocks_models/controller/osc_rom_walking_gains_hardware.yaml"
 
     if not os.path.isdir(logdir):
         os.mkdir(logdir)
@@ -41,6 +43,8 @@ def main():
     subprocess.run(['cp', standing_gains, 'standing_gains_%s.yaml' % log_num])
     subprocess.run(['cp', walking_gains, 'walking_gains_%s.yaml' % log_num])
     subprocess.run(['cp', alip_gains, 'walking_gains_alip%s.yaml' % log_num])
+    subprocess.run(['cp', rom_walking_gains1, 'rom_walking_gains%s.yaml' % log_num])
+    subprocess.run(['cp', rom_walking_gains2, 'osc_rom_walking_gains_hardware%s.yaml' % log_num])
     subprocess.run(['lcm-logger', '-f', 'lcmlog-%s' % log_num])
 
 

@@ -13,3 +13,51 @@ cc_library(
         "@lcm",
     ],
 )
+
+cc_library(
+    name = "sim_cassie_sensor_aggregator",
+    srcs = ["sim_cassie_sensor_aggregator.cc"],
+    hdrs = ["sim_cassie_sensor_aggregator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "simulator_drift",
+    srcs = ["simulator_drift.cc"],
+    hdrs = ["simulator_drift.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "input_supervisor",
+    srcs = ["input_supervisor.cc"],
+    hdrs = ["input_supervisor.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "cassie_encoder",
+    srcs = ["cassie_encoder.cc"],
+    hdrs = [
+        "cassie_encoder.h",
+    ],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

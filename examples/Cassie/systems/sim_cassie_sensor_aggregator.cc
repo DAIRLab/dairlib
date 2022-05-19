@@ -1,4 +1,4 @@
-#include "examples/Cassie/sim_cassie_sensor_aggregator.h"
+#include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 
 namespace dairlib {
 namespace systems {

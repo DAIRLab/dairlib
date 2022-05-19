@@ -27,10 +27,10 @@ cc_library(
     srcs = ["cassie_utils.cc"],
     hdrs = ["cassie_utils.h"],
     deps = [
-        ":cassie_encoder",
         ":cassie_urdf",
-        ":sim_cassie_sensor_aggregator",
         "//common",
+        "//examples/Cassie/systems:cassie_encoder",
+        "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
@@ -75,34 +75,12 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "simulator_drift",
-    srcs = ["simulator_drift.cc"],
-    hdrs = ["simulator_drift.h"],
-    deps = [
-        "//common",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
 cc_binary(
     name = "run_udp_dummy_server",
     srcs = ["run_udp_dummy_server.c"],
     deps = [
         "//examples/Cassie/datatypes:cassie_out_t",
         "//examples/Cassie/datatypes:cassie_user_in_t",
-    ],
-)
-
-cc_library(
-    name = "input_supervisor",
-    srcs = ["input_supervisor.cc"],
-    hdrs = ["input_supervisor.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
     ],
 )
 
@@ -113,23 +91,10 @@ cc_test(
     deps = [
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
-        "//examples/Cassie:input_supervisor",
+        "//examples/Cassie/systems:input_supervisor",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gtest//:main",
-    ],
-)
-
-cc_library(
-    name = "sim_cassie_sensor_aggregator",
-    srcs = ["sim_cassie_sensor_aggregator.cc"],
-    hdrs = ["sim_cassie_sensor_aggregator.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "@lcm",
     ],
 )
 
@@ -230,10 +195,10 @@ cc_binary(
     name = "multibody_sim",
     srcs = ["multibody_sim.cc"],
     deps = [
-        ":cassie_encoder",
         ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
+        "//examples/Cassie/systems:cassie_encoder",
         "//solvers:optimization_utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:vector",
@@ -263,10 +228,10 @@ cc_binary(
     name = "multibody_sim_w_ground_incline",
     srcs = ["multibody_sim_w_ground_incline.cc"],
     deps = [
-        ":cassie_encoder",
         ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
+        "//examples/Cassie/systems:cassie_encoder",
         "//solvers:optimization_utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:vector",
@@ -314,8 +279,8 @@ cc_binary(
         ":cassie_state_estimator",
         ":cassie_urdf",
         ":cassie_utils",
-        ":input_supervisor",
         "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//examples/Cassie/systems:input_supervisor",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
         "//systems/controllers:linear_controller",
@@ -395,9 +360,9 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        ":simulator_drift",
         "//examples/Cassie/osc",
         "//examples/Cassie/systems:cassie_out_to_radio",
+        "//examples/Cassie/systems:simulator_drift",
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",
@@ -417,9 +382,9 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        ":simulator_drift",
         "//examples/Cassie/osc",
         "//examples/Cassie/systems:cassie_out_to_radio",
+        "//examples/Cassie/systems:simulator_drift",
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",
@@ -460,8 +425,8 @@ cc_binary(
     tags = ["manual"],
     deps = [
         ":cassie_urdf",
-        ":sim_cassie_sensor_aggregator",
         "//common",
+        "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
@@ -548,19 +513,6 @@ cc_binary(
         "//multibody:visualization_utils",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
-)
-
-cc_library(
-    name = "cassie_encoder",
-    srcs = ["cassie_encoder.cc"],
-    hdrs = [
-        "cassie_encoder.h",
-    ],
-    deps = [
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
     ],
 )
 

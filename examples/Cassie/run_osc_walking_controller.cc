@@ -3,7 +3,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/simulator_drift.h"
+#include "examples/Cassie/systems/simulator_drift.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/osc_walking_gains.h"

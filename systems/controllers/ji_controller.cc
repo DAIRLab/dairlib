@@ -117,26 +117,48 @@ void JIController::CalcControl(const Context<double>& context,
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
 
   // forward kinematics
-
+  // TODO: is this the right EE?
   const drake::math::RigidTransform<double> H = 
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
   
-  auto x = H.translation();
-  //std::cout << "x: " << x << std::endl;
+  auto p = H.translation();
+  //std::cout << "p: " << p << std::endl;
+  VectorXd x = VectorXd::Ones(6);
+  x << p(1), p(2), p(3), 0, 0, 0; //  currently position (don't worr about orientation
+                                  //  for the time being)
   
   // compute jacobian
   MatrixXd J(6, plant_.num_velocities());
   plant_.CalcJacobianSpatialVelocity(
-      context_, JacobianWrtVariable::kV, // TODO: confirm if we want kV or the other
+      context_, JacobianWrtVariable::kV,
       *EE_frame_, EE_offset_,
       *world_frame_, *world_frame_, &J);
+  VectorXd x_dot = J * v;
+  
+  // compute mass matrix
+  //MatrixXd M = MatrixXd::Zero(plant_.num_velocities(), plant_.num_velocities()); 
+  //plant_.CalcMassMatrix(context_, &M);
 
   // compute the control input, tau
   VectorXd tau = 0*VectorXd::Ones(7);
-  VectorXd x_d = 0.3*VectorXd::Ones(3);
-  VectorXd xtilde = x_d - (VectorXd)x;
+ 
+  // TODO: fix these awful constructors, make them more elegant
+  VectorXd xd = 0*VectorXd::Ones(6);
+  xd << -0.43, 0.60, 0.31, 0, 0, 0; // desired position is roughly straight up
+  VectorXd xd_dot = 0*VectorXd::Ones(6);
+  VectorXd xtilde = xd - x;
+  VectorXd xtilde_dot = xd_dot - x_dot;
 
-  tau = J.transpose() * xtilde + C - tau_g;
+  // testing gains
+  MatrixXd K = MatrixXd::Zero(6, 6);
+  K(0,0) = 5; K(1,1) = 5; K(2,2) = 10;
+  MatrixXd B = MatrixXd::Zero(6, 6);
+  B(0,0) = 5; B(1,1) = 5; B(2,2) = 5;
+  
+  //double K = 10;
+  //double B = 5; 
+
+  tau = J.transpose() * (K*xtilde + B*xtilde_dot) + C - tau_g;
 
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);

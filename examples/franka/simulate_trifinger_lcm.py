@@ -75,6 +75,7 @@ plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
 
 q = 0*np.ones(nq)
+q[4] = -0.07 # joint can't go to 0
 plant.SetPositions(plant_context, q)
 
 v = np.zeros(nv)

@@ -38,7 +38,7 @@ vector<VectorXd> compute_target_vector(double t){
     end(3) = -1.57;
 
     double start_time = 5.0;
-    double duration = 20.0;
+    double duration = 10.0;
     double end_time = start_time+duration;
 
     if (t < start_time) {
@@ -115,7 +115,9 @@ void JIController::CalcControl(const Context<double>& context,
   // calculate corriolis and gravity terms
   plant_.CalcBiasTerm(context_, &C);
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
-
+  
+/*
+  // TASK SPACE CONTROLLER
   // forward kinematics
   // TODO: is this the right EE?
   const drake::math::RigidTransform<double> H = 
@@ -152,7 +154,7 @@ void JIController::CalcControl(const Context<double>& context,
 
   // testing gains
   MatrixXd K = MatrixXd::Zero(6, 6);
-  K(0,0) = 5; K(1,1) = 5; K(2,2) = 10;
+  K(0,0) = 10; K(1,1) = 10; K(2,2) = 15;
   MatrixXd B = MatrixXd::Zero(6, 6);
   B(0,0) = 5; B(1,1) = 5; B(2,2) = 5;
   
@@ -163,8 +165,8 @@ void JIController::CalcControl(const Context<double>& context,
 
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
+*/
 
-/*
   // CODE FOR PID CONTROLLER
 
   // compute the control input, tau
@@ -177,15 +179,36 @@ void JIController::CalcControl(const Context<double>& context,
    const VectorX<double>& integral =
        dynamic_cast<const BasicVector<double>&>(context.get_continuous_state_vector())
            .value();
+  
+//   // scalar gains that work
+//   double Kp = 125;
+//   double Kd = 5;
+//   double Ki = 0; // no I term as per Brian's suggestion
+  
+  // generate gain matrices
+  int num_joints = plant_.num_positions();
+  MatrixXd Kp = MatrixXd::Zero(num_joints, num_joints);
+  MatrixXd Kd = MatrixXd::Zero(num_joints, num_joints);
+  MatrixXd Ki = MatrixXd::Zero(num_joints, num_joints);
 
-  double Kp = 125;
-  double Kd = 5;
-  double Ki = 2;
-  tau = Kp*(target[0] - q) + Kd*(target[1]-v) + Ki * integral + C - tau_g;
+  std::vector<double> P_gains = {600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0};
+  std::vector<double> D_gains = {50.0, 50.0, 50.0, 50.0, 30.0, 25.0, 15.0};
+  std::vector<double> I_gains = {0, 0, 0, 0, 0, 0, 0};
+  double ratio = 0.25;
+  for (int i = 0; i < num_joints; i++){
+      Kp(i,i) = P_gains[i]*ratio;
+      Kd(i,i) = D_gains[i]*ratio;
+      Ki(i,i) = I_gains[i]; // should just be 0
+  }
+  
+  // not using integral term as per Brian's suggestion
+  tau = Kp*(target[0] - q) + Kd*(target[1] - v) + Ki * integral + C - tau_g;
+
+  // TODO: add limited on tau?
 
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
-*/
+
 }
 
 

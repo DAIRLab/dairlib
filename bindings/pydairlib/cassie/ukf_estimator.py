@@ -1,12 +1,14 @@
 import numpy as np
 import scipy.linalg
 from scipy.spatial.transform import Rotation
+
+
 class UKF:
     def __init__(self, init_cov, init_mean, R, Q):
         """
         Initialize the states and covariance matrices.
 
-        The initial states are in the form of [q, v, lambda_c, C],
+        The initial states are in the form of [q, v, lambda_c, lambda_h, C],
         where the q[:4] are orientation of pelvis expressed in quaternion form.
         """
         self.mean = init_mean
@@ -21,8 +23,13 @@ class UKF:
         # Dim of v, the C should also in the dimension
         self.nv = 22
         # Dim of lambda_c 
-        self.nl = 12
+        self.nlc = 12
+        # Dim of lambda_h
+        self.nlh = 2
+        # Total dim
+        self.n = self.nq + self.nv *2 + self.nlc + self.nlh
 
+        # Initialize for drake
         self.plant = initialize_plant()
         self.world = self.plant.world_frame()
         self.left_loop = LeftLoopClosureEvaluator()
@@ -39,8 +46,7 @@ class UKF:
         
         # Comupte the sqrt of covariance by cholesky
         L = np.linalg.cholesky(self.cov + self.R)
-        n = L.shape[0]
-        div = n**0.5 * L
+        div = self.n**0.5 * L
 
         # Deal with part with quaternion
         # First get deviation as rotation vector
@@ -59,13 +65,16 @@ class UKF:
 
         # Assemble different parts together
         sigma_points = np.hstack((ori_sigma_points, other_sigma_points))
+        
+        # Also include the self.mean into sigma point
+        sigma_points = np.vstack((self.mean, sigma_points))
 
         return sigma_points
 
     def dynamics_updates(self, sigma_points, u, dt):
         """
         Get the nominal sigma points after dynamics,
-        sigma points are in form of [q, v, lambda_c, C]
+        sigma points are in form of [q, v, lambda_c, lambda_h, C]
         paras:
             sigma_points: 2n+1 X n, where each row represent a sigma point
             dt: scalar, the time diff since last update
@@ -75,7 +84,8 @@ class UKF:
         
         q = sigma_points[:,:self.nq]
         v = sigma_points[:,self.nq:self.nq+self.nv]
-        lambda_c = sigma_points[:,self.nq+self.nv:-self.nv]
+        lambda_c = sigma_points[:,self.nq+self.nv: self.nq + self.nv + self.nlc]
+        lambda_h = sigma_points[:,self.nq + self.nv + self.nlc:-self.nv]
         C = sigma_points[:,-self.nv:]
 
         """ 
@@ -83,7 +93,7 @@ class UKF:
             The dotx_k is given by [q_dot, v_dot, 0, 0]
             The q_dot is v with additional process for quaternion,
             The v_dot can be compute by other formulation 
-            The dotlambda_c is hard to model, we alternative model it by some high covariance
+            The dotlambda_c and dotlambda_h is hard to model, we alternative model it by some high covariance
             We assume C to be constant
         """
 
@@ -99,29 +109,31 @@ class UKF:
 
         # Cal the v_next
         # Cal vdot
-        v_dot = self.cal_vdot(q, v, lambda_c, C, u)
+        v_dot = self.cal_vdot(q, v, lambda_c, lambda_h, C, u)
         # Cal v_next
         v_next = v + v_dot * dt
 
         # Assemble all the stuff
-        sigma_points_next = np.hstack((q_next, v_next, lambda_c, C))
+        sigma_points_next = np.hstack((q_next, v_next, lambda_c, lambda_h, C))
 
         return sigma_points_next
 
-    def cal_vdot(self, q, v, lambda_c, C, u):
+    def cal_vdot(self, q, v, lambda_c, lambda_h, C, u):
         """
         The dynamics is given by:
         M @ v_dot + bias == J_c^T @ lambda_c + J_h^T @ lambda_h + B @ u + dig(C) @ v
         paras:
             q: 2n+1 X 23, each row represents a sigma point of the position vector
             v: 2n+1 X 22, each row represents a sigma point of the velocity vector
-            lambda_C: 2n+1 X 12, each row represents a sigma point of the ground force vector
+            lambda_c: 2n+1 X 12, each row represents a sigma point of the ground force vector
+            lambda_h: 2n+1 X 2, constraint force of four bar linkage
             C: 2n+1 X 22, each row presents a sigma point of the damping ratio parameter vector 
             u: (10,), the input torque
         returns:
             vdot: 2n+1 X 22, where each row represents a sigma point of acceleration
         """
-        for i in range(2n+1):
+        vdot = np.zeros((2*self.n+1, ))
+        for i in range(2*self.n+1):
             q_v = np.hstack((q, v))
             plant.SetPositionsAndVelocities(context, q_v)
 
@@ -249,7 +261,8 @@ class UKF:
 
         q = sigma_points[:,:self.nq]
         v = sigma_points[:,self.nq:self.nq+self.nv]
-        lambda_c = sigma_points[:,self.nq+self.nv:-self.nv]
+        lambda_c = sigma_points[:,self.nq+self.nv: self.nq + self.nv + self.nlc]
+        lambda_h = sigma_points[:,self.nq + self.nv + self.nlc:-self.nv]
         C = sigma_points[:,-self.nv:]
         
         # Deal with IMU part
@@ -260,7 +273,7 @@ class UKF:
         """
         # Calculate the accelerometer readings
         gravity_in_world_frame = [0, 0, -9.8]
-        vdot = self.cal_vdot(q, v, lambda_c, C, u) # TODO, u here assume to be perfect, which can cause problem or we can store the input noise to observation noise Q instead
+        vdot = self.cal_vdot(q, v, lambda_c, lambda_h, C, u) # TODO, u here assume to be perfect, which can cause problem or we can store the input noise to observation noise Q instead
         acc_of_body = vdot[:, 3:6]
         rot_matrice = Rotation.from_quat(q[:,:4][:,[1,2,3,0]]).as_matrix()
         total_acc_in_world_frame = gravity_in_world_frame + acc_of_body

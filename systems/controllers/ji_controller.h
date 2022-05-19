@@ -68,8 +68,8 @@ class JIController : public LeafSystem<double> {
   
   // void AddConstraint() const;
   // for PID
-  //void DoCalcTimeDerivatives(const Context<double>& context,
-  //                           drake::systems::ContinuousState<double>* derivatives) const;
+  void DoCalcTimeDerivatives(const Context<double>& context,
+                             drake::systems::ContinuousState<double>* derivatives) const;
   
  private:
   void CalcControl(const drake::systems::Context<double>& context,

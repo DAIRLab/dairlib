@@ -72,7 +72,7 @@ JIController::JIController(
   int num_inputs = plant_.num_actuators();
 
   // integral term for PID controller
-  // this->DeclareContinuousState(num_positions);
+  this->DeclareContinuousState(num_positions);
 
   state_input_port_ =
       this->DeclareVectorInputPort(
@@ -123,6 +123,7 @@ void JIController::CalcControl(const Context<double>& context,
   
   auto p = H.translation();
   //std::cout << "p: " << p << std::endl;
+
   VectorXd x = VectorXd::Ones(6);
   x << p(1), p(2), p(3), 0, 0, 0; //  currently position (don't worr about orientation
                                   //  for the time being)
@@ -167,7 +168,7 @@ void JIController::CalcControl(const Context<double>& context,
   // CODE FOR PID CONTROLLER
 
   // compute the control input, tau
-  //VectorXd tau = 0*VectorXd::Ones(7);
+  VectorXd tau = 0*VectorXd::Ones(7);
 
   // arbitary target position
   vector<VectorXd> target = compute_target_vector(timestamp);
@@ -187,7 +188,7 @@ void JIController::CalcControl(const Context<double>& context,
 */
 }
 
-/*
+
 // FOR PID CONTROLLERS
 void JIController::DoCalcTimeDerivatives(
     const Context<double>& context, drake::systems::ContinuousState<double>* derivatives) const {
@@ -201,7 +202,7 @@ void JIController::DoCalcTimeDerivatives(
   drake::systems::VectorBase<double>& derivatives_vector = derivatives->get_mutable_vector();
   derivatives_vector.SetFromVector(compute_target_vector(timestamp)[0] - q);
 }
-*/
+
 
 }  // namespace controllers
 }  // namespace systems

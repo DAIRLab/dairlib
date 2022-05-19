@@ -85,9 +85,13 @@ group "4.lcm-tools" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
         host = "localhost";
     }
-    cmd "2. lcm-logger" {
-        exec = "lcm-logger -f /home/yuming/Desktop/temp/log";
+    cmd "record_video" {
+        exec = "python3 record_video.py";
         host = "localhost";
+    }
+    cmd "0.cassie-lcm-logger" {
+        exec = "python3 examples/Cassie/start_logging.py";
+        host = "dair-cassie";
     }
 }
 
@@ -202,6 +206,15 @@ script "switch to standing" {
 }
 
 script "switch to walking" {
+    start cmd "3.0.switch-to-rom-mpc";
+    wait ms 1000;
+    stop cmd "3.standing-controller-real-robot";
+}
+
+script "switch to walking start logging" {
+    start cmd "0.cassie-lcm-logger";
+    start cmd "record_video";
+    wait ms 100;
     start cmd "3.0.switch-to-rom-mpc";
     wait ms 1000;
     stop cmd "3.standing-controller-real-robot";

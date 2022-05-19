@@ -13,3 +13,4 @@ fort.*
 .vscode
 *.csv
 /examples/Cassie/saved_trajectories/
+*.mp4

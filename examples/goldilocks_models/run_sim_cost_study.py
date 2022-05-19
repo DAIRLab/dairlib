@@ -1483,7 +1483,7 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0405/_20220122_sim_eval_20220105_model_again/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
-  #eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
+  # eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0511/sim_cost_eval/"
 
   ### global parameters
@@ -1555,7 +1555,10 @@ if __name__ == "__main__":
   model_slices = [1, 50, 100, 150]
   model_slices = [1, 50, 100, 150, 200, 250, 300]
   # model_slices = [1, 10, 20, 30, 40, 50, 60]
-  # model_slices = [5, 50, 95]
+  model_slices = [5, 50, 95]
+  model_slices = [5, 95]
+  model_slices = [1, 50, 100]
+  # model_slices = [1, 60]
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
@@ -1568,7 +1571,10 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
   model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
   #model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
-  # model_slices_cost_landsacpe = [5, 50, 95]
+  model_slices_cost_landsacpe = [5, 50, 95]
+  model_slices_cost_landsacpe = [5, 95]
+  model_slices_cost_landsacpe = [1, 50, 100]
+  # model_slices_cost_landsacpe = [1, 60]
   #model_slices_cost_landsacpe = [1, 11, 50, 70]
   # model_slices_cost_landsacpe = [75]
 
@@ -1606,7 +1612,9 @@ if __name__ == "__main__":
   if model_indices[0] == 0:
     model_indices[0] += 1
   # example list: [1, 5, 10, 15]
-  #model_indices = [1, 100]  # Overwrite
+  # model_indices = [1, 60]  # Overwrite
+  # model_indices = [1, 100]  # Overwrite
+  # model_indices = [1, 60, 100]  # Overwrite
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -1707,17 +1715,21 @@ if __name__ == "__main__":
 
   # Plot
   Generate4dPlots(cmt, nominal_cmt, plot_nominal)
-  Generate3dPlots(cmt, nominal_cmt, plot_nominal)
-  Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal)
+  try:
+    Generate3dPlots(cmt, nominal_cmt, plot_nominal)
+    Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal)
 
-  ### Compute expected (averaged) cost
-  ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_range_to_average)
+    ### Compute expected (averaged) cost
+    ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_range_to_average)
 
-  ### Compute task range over iteration
-  ComputeAchievableTaskRangeOverIter(cmt)
+    ### Compute task range over iteration
+    ComputeAchievableTaskRangeOverIter(cmt)
 
-  ### Success percentage vs iteration
-  # TODO: Plot one wrt all sample numbers
-  # TODO: Plot other one wrt samples within task range
+    ### Success percentage vs iteration
+    # TODO: Plot one wrt all sample numbers
+    # TODO: Plot other one wrt samples within task range
+  except RuntimeError:
+    print("It's possible that we need to adjust the height (task_slice_value_ph) to get a non-zero area slice. Look at the 4D plot to decide the task value for slicing")
+
 
   plt.show()

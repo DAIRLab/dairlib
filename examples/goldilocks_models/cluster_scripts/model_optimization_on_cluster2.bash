@@ -188,7 +188,8 @@ then
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits =====
-  cp -n "$directory"0_* "$directory"nominal_no_constraint_traj/
+  # The following line does this (without limit in number of *): cp -n "$directory"0_* "$directory"nominal_no_constraint_traj/
+  for i in "$directory"0_* ; do cp -n "$i" "$directory"nominal_no_constraint_traj/; done
 
   echo ===== evaluate nomial traj \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
@@ -215,7 +216,8 @@ then
    | tee -a "$directory"terminal_log
 
   echo ===== copy files for nomial gaits with cubic swing foot constraint =====
-  cp -n "$directory"0_* "$directory"nominal_traj_cubic_swing_foot/
+  # The following line does this (without limit in number of *): cp -n "$directory"0_* "$directory"nominal_traj_cubic_swing_foot/
+  for i in "$directory"0_* ; do cp -n "$i" "$directory"nominal_traj_cubic_swing_foot/; done
 
   echo ===== evaluate nomial traj with com accel constraint  \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \

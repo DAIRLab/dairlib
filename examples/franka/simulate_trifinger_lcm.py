@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 
 # Load the URDF and the cube
 builder = DiagramBuilder()
-sim_dt = 1e-4
-output_dt = 1e-4
+sim_dt = 2e-4
+output_dt = 2e-4
 
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
 # addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
@@ -82,8 +82,8 @@ v = np.zeros(nv)
 plant.SetVelocities(plant_context, v)
 
 simulator.Initialize()
-# Simulate for 10 seconds
-simulator.AdvanceTo(100)
+# Simulate for 50 seconds
+simulator.AdvanceTo(50)
 
 # numpy array of data (nq+nv+nu) x n_time
 data = logger.FindLog(simulator.get_context()).data()

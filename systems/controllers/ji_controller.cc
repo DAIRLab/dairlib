@@ -8,6 +8,11 @@
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
 #include "multibody/multibody_utils.h"
 
+#include "drake/solvers/choose_best_solver.h"
+#include "drake/solvers/constraint.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
+
 
 //#include
 //"external/drake/common/_virtual_includes/autodiff/drake/common/eigen_autodiff_types.h"
@@ -22,23 +27,25 @@ using drake::SortedPair;
 using drake::geometry::GeometryId;
 //using drake::math::ExtractGradient;
 using drake::math::ExtractValue;
+using drake::math::RotationMatrix;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::MatrixXd;
 using Eigen::RowVectorXd;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 using std::vector;
 using drake::multibody::JacobianWrtVariable;
 
 // really really jank spline function
-vector<VectorXd> compute_target_vector(double t){
+vector<VectorXd> compute_target_joint_space_vector(double t){
     VectorXd start = 0*VectorXd::Ones(7);
     start(3) = -0.0698;
     VectorXd end = 1.57*VectorXd::Ones(7);
     end(3) = -1.57;
 
     double start_time = 5.0;
-    double duration = 10.0;
+    double duration = 5.0;
     double end_time = start_time+duration;
 
     if (t < start_time) {
@@ -52,6 +59,43 @@ vector<VectorXd> compute_target_vector(double t){
         double a = (t-start_time) / duration;
         return {(1-a)*start + a*end, v};
     }
+}
+
+// TODO: make this track a circle or some interesting path
+Vector3d compute_target_task_space_vector(double t){
+    double radius = 0.2;
+    double center = 0.35;
+    Vector3d start(center, center+radius, 0.2);
+    double start_time = 10.0;
+    if (t < start_time){
+      return start;
+    }
+    else{
+      return Vector3d(center + radius*sin(t-start_time), center + radius*cos(t-start_time), 0.3);
+    }
+}
+
+// TODO: include orientation constraints
+VectorXd inverse_kinematics(const drake::multibody::MultibodyPlant<double>& plant, 
+    const Vector3d& x){
+    
+    drake::multibody::InverseKinematics ik(plant);
+    double eps = 1e-4;
+    
+    // define frames
+    const auto& world_frame = plant.world_frame();
+    const auto& EE_frame = plant.GetFrameByName("panda_link8");
+
+    ik.AddPositionConstraint(EE_frame, Vector3d(0,0,0), world_frame, 
+            x - eps*VectorXd::Ones(3),
+            x + eps*VectorXd::Ones(3));
+    // TODO: add orientation constraint
+    // TODO: figure out how to warm start this
+    //ik.get_mutable_prog()->SetInitialGuess(ik.q(), warm_start);
+    const auto result = Solve(ik.prog());
+    const auto q_sol = result.GetSolution(ik.q());
+
+    return q_sol;
 }
 
 namespace dairlib {
@@ -115,100 +159,159 @@ void JIController::CalcControl(const Context<double>& context,
   // calculate corriolis and gravity terms
   plant_.CalcBiasTerm(context_, &C);
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
-  
-/*
+
   // TASK SPACE CONTROLLER
-  // forward kinematics
-  // TODO: is this the right EE?
-  const drake::math::RigidTransform<double> H = 
-    plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
+  int flag = 0;
+  if (timestamp >= 0) {
+    // forward kinematics
+    const drake::math::RigidTransform<double> H = 
+      plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
+    
+    auto d = H.translation();
+    auto R = H.rotation();
+
+    Eigen::Matrix3f Rd_eigen; // TODO: check the type of the rotation matrix
+    Rd_eigen << 
+      1,  0,  0,
+      0, -1,  0,
+      0,  0, -1;
+    //RotationMatrix<double> Rd(Rd_eigen);
+    
+    //std::cout << timestamp << "\nd: " << d << std::endl;
+
+    VectorXd x = VectorXd::Ones(6);
+    x << 0, 0, 0, d(0), d(1), d(2); //  currently position (don't worry about orientation
+                                    //  for the time being)
+    
+    // compute jacobian
+    MatrixXd J(6, plant_.num_velocities());
+    plant_.CalcJacobianSpatialVelocity(
+        context_, JacobianWrtVariable::kV,
+        *EE_frame_, EE_offset_,
+        *world_frame_, *world_frame_, &J);
+    VectorXd x_dot = J * v;
+    
+    // compute mass matrix
+    //MatrixXd M = MatrixXd::Zero(plant_.num_velocities(), plant_.num_velocities()); 
+    //plant_.CalcMassMatrix(context_, &M);
+
+    // compute the control input, tau
+    VectorXd tau = 0*VectorXd::Ones(7);
   
-  auto p = H.translation();
-  //std::cout << "p: " << p << std::endl;
+    // TODO: fix these awful constructors, make them more elegant
+    VectorXd xd = 0*VectorXd::Ones(6);
+    Vector3d dp = compute_target_task_space_vector(timestamp); // desired_position
+    xd << 0, 0, 0, dp(0), dp(1), dp(2); // desired position is roughly straight up
+    VectorXd xd_dot = 0*VectorXd::Ones(6); // TODO: set this to the actualy xd_dot
+    VectorXd xtilde = xd - x;
+    VectorXd xtilde_dot = xd_dot - x_dot;
 
-  VectorXd x = VectorXd::Ones(6);
-  x << p(1), p(2), p(3), 0, 0, 0; //  currently position (don't worr about orientation
-                                  //  for the time being)
-  
-  // compute jacobian
-  MatrixXd J(6, plant_.num_velocities());
-  plant_.CalcJacobianSpatialVelocity(
-      context_, JacobianWrtVariable::kV,
-      *EE_frame_, EE_offset_,
-      *world_frame_, *world_frame_, &J);
-  VectorXd x_dot = J * v;
-  
-  // compute mass matrix
-  //MatrixXd M = MatrixXd::Zero(plant_.num_velocities(), plant_.num_velocities()); 
-  //plant_.CalcMassMatrix(context_, &M);
+    // if (trunc(timestamp*10) / 10.0 == timestamp){
+    //    std::cout << timestamp << "\n--------------\nx: \n" << x << std::endl;
+    //    std::cout << "x_des:\n" << xd << std::endl;
+    //    std::cout << "x_dot:\n" << x_dot << std::endl;
+    // }
 
-  // compute the control input, tau
-  VectorXd tau = 0*VectorXd::Ones(7);
- 
-  // TODO: fix these awful constructors, make them more elegant
-  VectorXd xd = 0*VectorXd::Ones(6);
-  xd << -0.43, 0.60, 0.31, 0, 0, 0; // desired position is roughly straight up
-  VectorXd xd_dot = 0*VectorXd::Ones(6);
-  VectorXd xtilde = xd - x;
-  VectorXd xtilde_dot = xd_dot - x_dot;
+    // compute rotational components and add it to the error vectors
 
-  // testing gains
-  MatrixXd K = MatrixXd::Zero(6, 6);
-  K(0,0) = 10; K(1,1) = 10; K(2,2) = 15;
-  MatrixXd B = MatrixXd::Zero(6, 6);
-  B(0,0) = 5; B(1,1) = 5; B(2,2) = 5;
-  
-  //double K = 10;
-  //double B = 5; 
 
-  tau = J.transpose() * (K*xtilde + B*xtilde_dot) + C - tau_g;
+    // testing gains
+    // parameter code taken directly from:
+    // https://github.com/frankaemika/libfranka/blob/master/examples/cartesian_impedance_control.cpp
+    
+    // Compliance parameters
+    double ratio = 2;
+    double translational_stiffness = 250.0 / ratio;
+    double rotational_stiffness = 10.0 / ratio;
+    Eigen::MatrixXd stiffness(6, 6), damping(6, 6);
+    stiffness.setZero();
+    stiffness.topLeftCorner(3, 3) << rotational_stiffness * Eigen::MatrixXd::Identity(3, 3);
+    stiffness.bottomRightCorner(3, 3) << translational_stiffness * Eigen::MatrixXd::Identity(3, 3);
+    damping.setZero();
+    damping.topLeftCorner(3, 3) << 1.0 * sqrt(rotational_stiffness) *
+                                      Eigen::MatrixXd::Identity(3, 3);
+    damping.bottomRightCorner(3, 3) << 1.0 * sqrt(translational_stiffness) *
+                                          Eigen::MatrixXd::Identity(3, 3);
 
-  control->SetDataVector(tau);
-  control->set_timestamp(timestamp);
-*/
+    tau = J.transpose() * (stiffness*xtilde + damping*xtilde_dot) + C - tau_g;
+
+    control->SetDataVector(tau);
+    control->set_timestamp(timestamp);
+  }
 
   // CODE FOR PID CONTROLLER
+  else {
+    // print position
+    // const drake::math::RigidTransform<double> H = 
+    // plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
+    
+    // auto d = H.translation();
+    // //RotationMatrix<double> Rd(Rd_eigen);
 
-  // compute the control input, tau
-  VectorXd tau = 0*VectorXd::Ones(7);
+    // // compute jacobian????
+    // MatrixXd J(6, plant_.num_velocities());
+    // plant_.CalcJacobianSpatialVelocity(
+    //     context_, JacobianWrtVariable::kV,
+    //     *EE_frame_, EE_offset_,
+    //     *world_frame_, *world_frame_, &J);
+    // VectorXd x_dot = J * v;
 
-  // arbitary target position
-  vector<VectorXd> target = compute_target_vector(timestamp);
+    // auto spatial_velocity = plant_.EvalBodySpatialVelocityInWorld(context_, plant_.GetBodyByName("panda_link8"));
+    // VectorXd x_dot_drake = spatial_velocity.translational();
+    
+    // if (trunc(timestamp*10) / 10.0 == timestamp){
+    //   std::cout << timestamp << "\n--------------\nd: \n" << d << std::endl;
+    //   std::cout << "x_dot: \n" << x_dot << std::endl;
+    //   std::cout << "x_dot_drake: \n" << x_dot_drake << std::endl;
+    // }
 
-  // integral term (hopefully)
-   const VectorX<double>& integral =
-       dynamic_cast<const BasicVector<double>&>(context.get_continuous_state_vector())
-           .value();
-  
-//   // scalar gains that work
-//   double Kp = 125;
-//   double Kd = 5;
-//   double Ki = 0; // no I term as per Brian's suggestion
-  
-  // generate gain matrices
-  int num_joints = plant_.num_positions();
-  MatrixXd Kp = MatrixXd::Zero(num_joints, num_joints);
-  MatrixXd Kd = MatrixXd::Zero(num_joints, num_joints);
-  MatrixXd Ki = MatrixXd::Zero(num_joints, num_joints);
+    // compute the control input, tau
+    VectorXd tau = 0*VectorXd::Ones(7);
 
-  std::vector<double> P_gains = {600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0};
-  std::vector<double> D_gains = {50.0, 50.0, 50.0, 50.0, 30.0, 25.0, 15.0};
-  std::vector<double> I_gains = {0, 0, 0, 0, 0, 0, 0};
-  double ratio = 0.25;
-  for (int i = 0; i < num_joints; i++){
-      Kp(i,i) = P_gains[i]*ratio;
-      Kd(i,i) = D_gains[i]*ratio;
-      Ki(i,i) = I_gains[i]; // should just be 0
+    // arbitary target position
+    vector<VectorXd> target = compute_target_joint_space_vector(timestamp);
+    VectorXd qd = target[0];
+    VectorXd qd_dot = target[1];
+
+    // IK
+    // Vector3d xd = compute_target_task_space_vector(timestamp);
+    // VectorXd qd = inverse_kinematics(plant_, xd);
+    // VectorXd qd_dot = VectorXd::Ones(7); // set joint velocities to 0 for now
+
+    // integral term (hopefully)
+    const VectorX<double>& integral =
+        dynamic_cast<const BasicVector<double>&>(context.get_continuous_state_vector())
+            .value();
+    
+  //   // scalar gains that work
+  //   double Kp = 125;
+  //   double Kd = 5;
+  //   double Ki = 0; // no I term as per Brian's suggestion
+    
+    // generate gain matrices
+    int num_joints = plant_.num_positions();
+    MatrixXd Kp = MatrixXd::Zero(num_joints, num_joints);
+    MatrixXd Kd = MatrixXd::Zero(num_joints, num_joints);
+    MatrixXd Ki = MatrixXd::Zero(num_joints, num_joints);
+
+    std::vector<double> P_gains = {600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0};
+    std::vector<double> D_gains = {50.0, 50.0, 50.0, 50.0, 30.0, 25.0, 15.0};
+    std::vector<double> I_gains = {0, 0, 0, 0, 0, 0, 0};
+    double ratio = 0.25;
+    for (int i = 0; i < num_joints; i++){
+        Kp(i,i) = P_gains[i]*ratio;
+        Kd(i,i) = D_gains[i]*ratio;
+        Ki(i,i) = I_gains[i]; // should just be 0
+    }
+    
+    // not using integral term as per Brian's suggestion
+    tau = Kp*(qd - q) + Kd*(qd_dot - v) + Ki * integral + C - tau_g;
+
+    // TODO: add limited on tau?
+
+    control->SetDataVector(tau);
+    control->set_timestamp(timestamp);
   }
-  
-  // not using integral term as per Brian's suggestion
-  tau = Kp*(target[0] - q) + Kd*(target[1] - v) + Ki * integral + C - tau_g;
-
-  // TODO: add limited on tau?
-
-  control->SetDataVector(tau);
-  control->set_timestamp(timestamp);
-
 }
 
 
@@ -223,7 +326,7 @@ void JIController::DoCalcTimeDerivatives(
 
   // The derivative of the continuous state is the instantaneous position error.
   drake::systems::VectorBase<double>& derivatives_vector = derivatives->get_mutable_vector();
-  derivatives_vector.SetFromVector(compute_target_vector(timestamp)[0] - q);
+  derivatives_vector.SetFromVector(compute_target_joint_space_vector(timestamp)[0] - q);
 }
 
 

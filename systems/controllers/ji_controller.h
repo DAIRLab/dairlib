@@ -37,6 +37,8 @@
 #include <drake/systems/framework/continuous_state.h>
 #include <drake/systems/framework/vector_base.h>
 #include <drake/math/rigid_transform.h>
+#include <drake/solvers/mathematical_program.h>
+#include <drake/multibody/math/spatial_velocity.h>
 
 
 

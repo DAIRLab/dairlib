@@ -72,21 +72,24 @@ vector<VectorXd> compute_target_joint_space_vector(double t){
 
 // motion planning test for the cartesian impedance controller
 // traces a small horizontal circle
-Vector3d compute_target_task_space_vector(double t){
+std::vector<Vector3d> compute_target_task_space_vector(double t){
     // tracks a cirle in task sapce
     double r = 0.125;
-    double x_c = 0.5;
+    double x_c = 0.6; // set this to be 0.4 or 0.5 to see the effect of the middle joint swaying
     double y_c = 0;
     double z_c = 0.4;
     double w = 1;
     Vector3d start(x_c+r, y_c, z_c);
     double start_time = 10.0;
 
+    // return x_des and x_dot_des
     if (t < start_time){ // wait for controller to stabilize
-      return start;
+      return {start, VectorXd::Zero(3)};
     }
     else{
-      return Vector3d(x_c + r*cos(w*(t-start_time)), y_c + r*sin(w*(t-start_time)), z_c);
+      Vector3d x_des(x_c + r*cos(w*(t-start_time)), y_c + r*sin(w*(t-start_time)), z_c);
+      Vector3d x_dot_des(-r*w*sin(w*(t-start_time)), r*w*cos(w*(t-start_time)), 0);
+      return {x_des, x_dot_des};
     }
 }
 
@@ -190,9 +193,11 @@ void JIController::CalcControl(const Context<double>& context,
   VectorXd x_dot = J * v;
 
   // TODO: get desired x and x_dot from input ports
+  std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
   VectorXd xd = VectorXd::Zero(6);
-  xd.tail(3) << compute_target_task_space_vector(timestamp);
+  xd.tail(3) << target[0];
   VectorXd xd_dot = VectorXd::Zero(6);
+  xd_dot.tail(3) << target[1];
 
   // TODO: using fixed Rd for the time being, this is subject to change
   Matrix3d Rd_eigen;

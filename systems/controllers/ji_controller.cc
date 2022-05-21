@@ -61,17 +61,22 @@ vector<VectorXd> compute_target_joint_space_vector(double t){
     }
 }
 
-// TODO: make this track a circle or some interesting path
 Vector3d compute_target_task_space_vector(double t){
-    double radius = 0.2;
-    double center = 0.35;
-    Vector3d start(center, center+radius, 0.2);
+    //return Vector3d(0.1, 0, 0.925);
+
+    // tracks a cirle in task sapce
+    double r = 0.125;
+    double x_c = 0.5;
+    double y_c = 0;
+    double z_c = 0.4;
+    double w = 1;
+    Vector3d start(x_c+r, y_c, z_c);
     double start_time = 10.0;
     if (t < start_time){
       return start;
     }
     else{
-      return Vector3d(center + radius*sin(t-start_time), center + radius*cos(t-start_time), 0.3);
+      return Vector3d(x_c + r*cos(w*(t-start_time)), y_c + r*sin(w*(t-start_time)), z_c);
     }
 }
 
@@ -170,17 +175,15 @@ void JIController::CalcControl(const Context<double>& context,
     auto d = H.translation();
     auto R = H.rotation();
 
-    Eigen::Matrix3f Rd_eigen; // TODO: check the type of the rotation matrix
+    Eigen::Matrix3d Rd_eigen; // TODO: check the type of the rotation matrix
     Rd_eigen << 
       1,  0,  0,
       0, -1,  0,
       0,  0, -1;
-    //RotationMatrix<double> Rd(Rd_eigen);
+    RotationMatrix<double> Rd(Rd_eigen);
     
-    //std::cout << timestamp << "\nd: " << d << std::endl;
-
     VectorXd x = VectorXd::Ones(6);
-    x << 0, 0, 0, d(0), d(1), d(2); //  currently position (don't worry about orientation
+    x.tail(3) << d; //  currently position (don't worry about orientation
                                     //  for the time being)
     
     // compute jacobian
@@ -200,14 +203,30 @@ void JIController::CalcControl(const Context<double>& context,
   
     // TODO: fix these awful constructors, make them more elegant
     VectorXd xd = 0*VectorXd::Ones(6);
-    Vector3d dp = compute_target_task_space_vector(timestamp); // desired_position
-    xd << 0, 0, 0, dp(0), dp(1), dp(2); // desired position is roughly straight up
+    xd.tail(3) << compute_target_task_space_vector(timestamp);
     VectorXd xd_dot = 0*VectorXd::Ones(6); // TODO: set this to the actualy xd_dot
     VectorXd xtilde = xd - x;
+
+    // compute rotational error
+    Eigen::Quaterniond orientation = R.ToQuaternion();
+    Eigen::Quaterniond orientation_d = Rd.ToQuaternion();
+
+    // orientation error
+    // "difference" quaternion
+    if (orientation_d.coeffs().dot(orientation.coeffs()) < 0.0) {
+      orientation.coeffs() << -orientation.coeffs();
+    }
+    // "difference" quaternion
+    Eigen::Quaterniond error_quaternion(orientation.inverse() * orientation_d);
+    xtilde.head(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
+    // Transform to base frame
+    xtilde.head(3) << R.matrix() * xtilde.head(3);
+
     VectorXd xtilde_dot = xd_dot - x_dot;
 
     // if (trunc(timestamp*10) / 10.0 == timestamp){
-    //    std::cout << timestamp << "\n--------------\nx: \n" << x << std::endl;
+    //   std::cout << timestamp << "\n--------------\nR: \n" << R.matrix() << std::endl;
+    //   std::cout << "error:\n" << rotation_error << std::endl;
     //    std::cout << "x_des:\n" << xd << std::endl;
     //    std::cout << "x_dot:\n" << x_dot << std::endl;
     // }
@@ -220,17 +239,16 @@ void JIController::CalcControl(const Context<double>& context,
     // https://github.com/frankaemika/libfranka/blob/master/examples/cartesian_impedance_control.cpp
     
     // Compliance parameters
-    double ratio = 2;
-    double translational_stiffness = 250.0 / ratio;
-    double rotational_stiffness = 10.0 / ratio;
+    double translational_stiffness = 125;
+    double rotational_stiffness = 5;
     Eigen::MatrixXd stiffness(6, 6), damping(6, 6);
     stiffness.setZero();
     stiffness.topLeftCorner(3, 3) << rotational_stiffness * Eigen::MatrixXd::Identity(3, 3);
     stiffness.bottomRightCorner(3, 3) << translational_stiffness * Eigen::MatrixXd::Identity(3, 3);
     damping.setZero();
-    damping.topLeftCorner(3, 3) << 1.0 * sqrt(rotational_stiffness) *
+    damping.topLeftCorner(3, 3) << 1 * sqrt(rotational_stiffness) *
                                       Eigen::MatrixXd::Identity(3, 3);
-    damping.bottomRightCorner(3, 3) << 1.0 * sqrt(translational_stiffness) *
+    damping.bottomRightCorner(3, 3) << 1 * sqrt(translational_stiffness) *
                                           Eigen::MatrixXd::Identity(3, 3);
 
     tau = J.transpose() * (stiffness*xtilde + damping*xtilde_dot) + C - tau_g;

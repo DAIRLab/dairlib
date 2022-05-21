@@ -68,11 +68,6 @@ class JIController : public LeafSystem<double> {
     return this->get_output_port(control_output_port_);
   }
   
-  // void AddConstraint() const;
-  // for PID
-  void DoCalcTimeDerivatives(const Context<double>& context,
-                             drake::systems::ContinuousState<double>* derivatives) const;
-  
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;

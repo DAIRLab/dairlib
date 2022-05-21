@@ -37,7 +37,10 @@ using Eigen::Vector3d;
 using std::vector;
 using drake::multibody::JacobianWrtVariable;
 
-// really really jank spline function
+// test functions for the joint and cartesian impedance controllers
+
+// motion planning test for the joint impedance controller
+// bends all joints to right angles
 vector<VectorXd> compute_target_joint_space_vector(double t){
     VectorXd start = 0*VectorXd::Ones(7);
     start(3) = -0.0698;
@@ -61,6 +64,8 @@ vector<VectorXd> compute_target_joint_space_vector(double t){
     }
 }
 
+// motion planning test for the cartesian impedance controller
+// traces a small horizontal circle
 Vector3d compute_target_task_space_vector(double t){
     //return Vector3d(0.1, 0, 0.925);
 
@@ -80,7 +85,7 @@ Vector3d compute_target_task_space_vector(double t){
     }
 }
 
-// TODO: include orientation constraints
+// TODO: IK function (INCOMPLETE)
 VectorXd inverse_kinematics(const drake::multibody::MultibodyPlant<double>& plant, 
     const Vector3d& x){
     

@@ -151,6 +151,19 @@ JIController::JIController(
   EE_offset_ << 0, 0, 0;
   EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
   world_frame_ = &plant_.world_frame();
+
+  // parameter tuning
+  double translational_stiffness = 125;
+  double rotational_stiffness = 5;
+  MatrixXd stiffness = MatrixXd::Zero(6,6);
+  MatrixXd damping = MatrixXd::Zero(6,6);
+  stiffness.topLeftCorner(3, 3) << rotational_stiffness * MatrixXd::Identity(3, 3);
+  stiffness.bottomRightCorner(3, 3) << translational_stiffness * MatrixXd::Identity(3, 3);
+  damping.topLeftCorner(3, 3) << 1 * sqrt(rotational_stiffness) * MatrixXd::Identity(3, 3);
+  damping.bottomRightCorner(3, 3) << 1 * sqrt(translational_stiffness) * MatrixXd::Identity(3, 3);
+
+  K_ = stiffness;
+  B_ = damping;
 }
 
 // CARTESIAN IMPEDANCE CONTROLLER
@@ -227,17 +240,9 @@ void JIController::CalcControl(const Context<double>& context,
   // TODO: tune parameters
   // parameter code takenfrom:
   // https://github.com/frankaemika/libfranka/blob/master/examples/cartesian_impedance_control.cpp
-  double translational_stiffness = 125;
-  double rotational_stiffness = 5;
-  MatrixXd stiffness = MatrixXd::Zero(6,6);
-  MatrixXd damping = MatrixXd::Zero(6,6);
-  stiffness.topLeftCorner(3, 3) << rotational_stiffness * MatrixXd::Identity(3, 3);
-  stiffness.bottomRightCorner(3, 3) << translational_stiffness * MatrixXd::Identity(3, 3);
-  damping.topLeftCorner(3, 3) << 1 * sqrt(rotational_stiffness) * MatrixXd::Identity(3, 3);
-  damping.bottomRightCorner(3, 3) << 1 * sqrt(translational_stiffness) * MatrixXd::Identity(3, 3);
 
   // compute the input
-  VectorXd tau = J.transpose() * (stiffness*xtilde + damping*xtilde_dot) + C - tau_g;
+  VectorXd tau = J.transpose() * (K_*xtilde + B_*xtilde_dot) + C - tau_g;
   
   // compute nullspace projection for joint 2
   MatrixXd J_inv = J.transpose() * (J * J.transpose()).inverse();

@@ -76,8 +76,11 @@ class JIController : public LeafSystem<double> {
   int control_output_port_;
   const MultibodyPlant<double>& plant_;
   drake::systems::Context<double>& context_;
-  const Eigen::MatrixXd K_;
-  const Eigen::MatrixXd B_;
+  // TODO: makes these const
+  // const Eigen::MatrixXd K_;
+  // const Eigen::MatrixXd B_;
+  Eigen::MatrixXd K_;
+  Eigen::MatrixXd B_;
 
   // frame & point info
   const drake::multibody::BodyFrame<double>* EE_frame_;

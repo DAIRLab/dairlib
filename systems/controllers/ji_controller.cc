@@ -231,15 +231,25 @@ void JIController::CalcControl(const Context<double>& context,
   double rotational_stiffness = 5;
   MatrixXd stiffness = MatrixXd::Zero(6,6);
   MatrixXd damping = MatrixXd::Zero(6,6);
-  stiffness.topLeftCorner(3, 3) << rotational_stiffness * Eigen::MatrixXd::Identity(3, 3);
-  stiffness.bottomRightCorner(3, 3) << translational_stiffness * Eigen::MatrixXd::Identity(3, 3);
-  damping.topLeftCorner(3, 3) << 1 * sqrt(rotational_stiffness) * Eigen::MatrixXd::Identity(3, 3);
-  damping.bottomRightCorner(3, 3) << 1 * sqrt(translational_stiffness) * Eigen::MatrixXd::Identity(3, 3);
+  stiffness.topLeftCorner(3, 3) << rotational_stiffness * MatrixXd::Identity(3, 3);
+  stiffness.bottomRightCorner(3, 3) << translational_stiffness * MatrixXd::Identity(3, 3);
+  damping.topLeftCorner(3, 3) << 1 * sqrt(rotational_stiffness) * MatrixXd::Identity(3, 3);
+  damping.bottomRightCorner(3, 3) << 1 * sqrt(translational_stiffness) * MatrixXd::Identity(3, 3);
 
   // compute the input
-  // TODO: add limit on tau?
   VectorXd tau = J.transpose() * (stiffness*xtilde + damping*xtilde_dot) + C - tau_g;
-  control->SetDataVector(tau);
+  
+  // compute nullspace projection for joint 2
+  MatrixXd J_inv = J.transpose() * (J * J.transpose()).inverse();
+  MatrixXd N = MatrixXd::Identity(7, 7) - J.transpose() * J_inv.transpose();
+
+  double K_null = 1;
+  double B_null = 1;
+  double q2_des = 0;
+  VectorXd tau_null = VectorXd::Zero(7);
+  tau_null(1) = K_null*(q2_des - q(1)) - B_null*v(1);
+
+  control->SetDataVector(tau + N*tau_null);
   control->set_timestamp(timestamp);
 
   // debug prints every 10th of a second

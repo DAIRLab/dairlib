@@ -74,8 +74,8 @@ simulator.set_target_realtime_rate(1)
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
 
-q = 0*np.ones(nq)
-q[4] = -0.07 # joint can't go to 0
+# initialize close to {0.6, 0, 0.2}[m] in task space
+q = np.array([0, 0.82, 0, -1.44, 0, 2.26, 0])
 plant.SetPositions(plant_context, q)
 
 v = np.zeros(nv)

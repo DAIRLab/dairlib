@@ -75,12 +75,12 @@ vector<VectorXd> compute_target_joint_space_vector(double t){
 std::vector<Vector3d> compute_target_task_space_vector(double t){
     // tracks a cirle in task sapce
     double r = 0.125;
-    double x_c = 0.6; // set this to be 0.4 or 0.5 to see the effect of the middle joint swaying
+    double x_c = 0.6; // smaller x_c performs worse
     double y_c = 0;
-    double z_c = 0.4;
-    double w = 1;
+    double z_c = 0.2;
+    double w = 2;
     Vector3d start(x_c+r, y_c, z_c);
-    double start_time = 10.0;
+    double start_time = 1.0;
 
     // return x_des and x_dot_des
     if (t < start_time){ // wait for controller to stabilize
@@ -170,6 +170,7 @@ JIController::JIController(
   B_ = damping;
 }
 
+
 // CARTESIAN IMPEDANCE CONTROLLER
 void JIController::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
@@ -239,28 +240,34 @@ void JIController::CalcControl(const Context<double>& context,
   // compute xtilde and xtilde_dot
   VectorXd xtilde = xd - x;
   xtilde.head(3) << rotational_error;
+  // TODO: will I get xd_dot?
   VectorXd xtilde_dot = xd_dot - x_dot;
+  //VectorXd xtilde_dot = -x_dot;
 
   // compute the input
   VectorXd tau = J.transpose() * (K_*xtilde + B_*xtilde_dot) + C - tau_g;
   
-  // compute nullspace projection for joint 2
+  // compute nullspace projection
   MatrixXd J_pinv = J.completeOrthogonalDecomposition().pseudoInverse();
   MatrixXd N = MatrixXd::Identity(7, 7) - J.transpose() * J_pinv.transpose();
 
-  double K_null = 1;
-  double B_null = 1;
-  double q2_des = 0;
-  VectorXd tau_null = VectorXd::Zero(7);
-  tau_null(1) = K_null*(q2_des - q(1)) - B_null*v(1);
+  VectorXd qd = VectorXd::Zero(7);
+  // TODO: which qd do I use?
+  qd << 0, 0, 0, -1.57, q.tail(3); // task-specific
+  //qd << 0, 0, 0, -1.57, 0, 1.57, 0;; // middle of range of motion
+  
+  // TODO: parameter tune these if necessary
+  MatrixXd K_null = MatrixXd::Identity(7, 7);
+  MatrixXd B_null = MatrixXd::Identity(7, 7);
+  VectorXd tau_null = K_null*(qd-q) - B_null*v;
 
   control->SetDataVector(tau + N*tau_null);
   control->set_timestamp(timestamp);
 
   // debug prints every 10th of a second
   // if (trunc(timestamp*10) / 10.0 == timestamp){
-  //   std::cout << timestamp << "\n--------------- << std::endl;
-  //   std::cout << "xtilde:\n" << xtilde << std::endl
+  //   std::cout << timestamp << "\n---------------" << std::endl;
+  //   std::cout << "q:\n" << q << std::endl;
   // }
 }
 

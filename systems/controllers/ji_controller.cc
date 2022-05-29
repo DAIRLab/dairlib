@@ -152,6 +152,10 @@ JIController::JIController(
   EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
   world_frame_ = &plant_.world_frame();
 
+  // TODO: tune parameters
+  // parameter code takenfrom:
+  // https://github.com/frankaemika/libfranka/blob/master/examples/cartesian_impedance_control.cpp
+
   // parameter tuning
   double translational_stiffness = 125;
   double rotational_stiffness = 5;
@@ -237,16 +241,12 @@ void JIController::CalcControl(const Context<double>& context,
   xtilde.head(3) << rotational_error;
   VectorXd xtilde_dot = xd_dot - x_dot;
 
-  // TODO: tune parameters
-  // parameter code takenfrom:
-  // https://github.com/frankaemika/libfranka/blob/master/examples/cartesian_impedance_control.cpp
-
   // compute the input
   VectorXd tau = J.transpose() * (K_*xtilde + B_*xtilde_dot) + C - tau_g;
   
   // compute nullspace projection for joint 2
-  MatrixXd J_inv = J.transpose() * (J * J.transpose()).inverse();
-  MatrixXd N = MatrixXd::Identity(7, 7) - J.transpose() * J_inv.transpose();
+  MatrixXd J_pinv = J.completeOrthogonalDecomposition().pseudoInverse();
+  MatrixXd N = MatrixXd::Identity(7, 7) - J.transpose() * J_pinv.transpose();
 
   double K_null = 1;
   double B_null = 1;

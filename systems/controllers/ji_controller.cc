@@ -93,6 +93,7 @@ void JIController::CalcControl(const Context<double>& context,
   double Kd = 5;
   tau = Kp*(q_target - q) + Kd*(-1.0*v) + C;// - tau_g;
 
+
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
 }

@@ -59,6 +59,22 @@ cc_library(
 )
 
 cc_library(
+    name = "c3_controller_franka",
+    srcs = [
+        "c3_controller_franka.cc",
+    ],
+    hdrs = [
+        "c3_controller_franka.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "//solvers:c3",
+        "//solvers:lcs",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "ji_controller",
     srcs = [
         "ji_controller.cc",

@@ -75,6 +75,21 @@ pybind_py_library(
 )
 
 pybind_py_library(
+    name = "controllers_franka_py",
+    cc_deps = [
+        "@drake//:drake_shared_library",
+        "//systems/controllers:c3_controller_franka",
+    ],
+    cc_so_name = "controllers_franka",
+    cc_srcs = ["controllers_franka_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
     name = "ji_controllers_py",
     cc_deps = [
         "@drake//:drake_shared_library",
@@ -110,6 +125,7 @@ PY_LIBRARIES = [
     ":framework_py",
     ":controllers_py",
     ":ji_controllers_py",
+    ":controllers_franka_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

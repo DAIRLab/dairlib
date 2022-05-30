@@ -1,7 +1,9 @@
 import numpy as np
 import scipy.linalg
 from scipy.spatial.transform import Rotation
-
+from pydrake.systems.framework import DiagramBuilder
+from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
+from pydairlib.cassie.cassie_utils import *
 
 class UKF:
     def __init__(self, init_cov, init_mean, R, Q):
@@ -30,10 +32,17 @@ class UKF:
         self.n = self.nq + self.nv *2 + self.nlc + self.nlh
 
         # Initialize for drake
-        self.plant = initialize_plant()
+        self.builder = DiagramBuilder()
+        self.drake_sim_dt = 5e-5
+        self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, self.drake_sim_dt)
+        AddCassieMultibody(self.plant, self.scene_graph, True, 
+                            "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+        self.plant.Finalize()
         self.world = self.plant.world_frame()
-        self.left_loop = LeftLoopClosureEvaluator()
-        self.right_loop = RightLoopClosureEvaluator()
+        self.context = self.plant.CreateDefaultContext()
+        
+        self.left_loop = LeftLoopClosureEvaluator(self.plant)
+        self.right_loop = RightLoopClosureEvaluator(self.plant)
 
     def get_sigma_points(self):
         """
@@ -132,32 +141,30 @@ class UKF:
         returns:
             vdot: 2n+1 X 22, where each row represents a sigma point of acceleration
         """
-        vdot = np.zeros((2*self.n+1, ))
+
+        vdot = np.zeros((2*self.n+1, 22))
+        
         for i in range(2*self.n+1):
-            q_v = np.hstack((q, v))
-            plant.SetPositionsAndVelocities(context, q_v)
+            q_v = np.hstack((q[i,:], v[i,:]))
+            self.plant.SetPositionsAndVelocities(self.context, q_v)
 
             # get M matrix TODO
-            # M = np.zeros(1)
-            M = plant.CalcMassMatrix(context)
+            M = self.plant.CalcMassMatrix(self.context)
 
             # get bias term TODO
-            # bias = np.zeros(1)
-            bias = plant.CalcBiasTerm(context)
+            bias = self.plant.CalcBiasTerm(self.context)
 
             # get the J_c TODO
             J_c = np.zeros((3 * num_contacts, self.nv))
             for i in range(num_contacts):
-                J_c[3*i:3*(i+1), :] = plant.CalcJacobianTranslationalVelocity(context, JacobianWrt.kV, foot_frame, point_on_foot, self.world, self.world)
-
+                # TODO get the foot_frame
+                # get point of contact
+                J_c[3*i:3*(i+1), :] = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrt.kV, foot_frame, point_on_foot, self.world, self.world)
 
             # get the J_h TODO
             J_h = np.zeros((2, self.nv))
             J_h[0, :] = self.left_loop.CalcJacobian()
-
-
-            # get the lambda_h TODO
-            lambda_h = np.zeros(1)
+            J_h[1, :] = self.right_loop.CalcJacobian()
 
             # get the B matrix TODO
             B = np.zeros(1)

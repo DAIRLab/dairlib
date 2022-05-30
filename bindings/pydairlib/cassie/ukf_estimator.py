@@ -1,5 +1,7 @@
+import sys
 import numpy as np
 import scipy.linalg
+import scipy.io
 from scipy.spatial.transform import Rotation
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
@@ -30,6 +32,9 @@ class UKF:
         self.nlh = 2
         # Total dim
         self.n = self.nq + self.nv *2 + self.nlc + self.nlh
+
+        # Number of points for the foot to contacts for the ground
+        self.num_contacts = 4
 
         # Initialize for drake
         self.builder = DiagramBuilder()
@@ -63,7 +68,7 @@ class UKF:
         # Get orientation div into Rotation class
         ori_div = Rotation.from_rotvec(rot_vectors_div)
         # Get the mean of orientation into Rotation class
-        ori_mean = Rotation.from_quat(self.mean[:4][1,2,3,0]) # The quaternion in drake is represent as scalar first, while the library use scalar last
+        ori_mean = Rotation.from_quat(self.mean[:4][[1,2,3,0]]) # The quaternion in drake is represent as scalar first, while the library use scalar last
         # Get the sigma points for quaternion
         ori_sigma_points = (ori_mean * ori_div).as_quat()[:, [3,0,1,2]] # From scalar last to scalar first
 
@@ -148,20 +153,31 @@ class UKF:
             q_v = np.hstack((q[i,:], v[i,:]))
             self.plant.SetPositionsAndVelocities(self.context, q_v)
 
-            # get M matrix TODO
+            # get M matrix
             M = self.plant.CalcMassMatrix(self.context)
 
-            # get bias term TODO
+            # get bias term
             bias = self.plant.CalcBiasTerm(self.context)
 
-            # get the J_c TODO
-            J_c = np.zeros((3 * num_contacts, self.nv))
-            for i in range(num_contacts):
-                # TODO get the foot_frame
-                # get point of contact
+            # get the J_c
+            J_c = np.zeros((3 * self.num_contacts, self.nv))
+            for i in range(self.num_contacts):
+                # get the contact point and foot frame
+                if i == 0:
+                    point_on_foot, foot_frame = LeftToeFront(self.plant) # left toe front
+                elif i == 1:
+                    point_on_foot, foot_frame =  RightToeFront(self.plant) # right toe front
+                elif i == 2:
+                    point_on_foot, foot_frame = LeftToeRear(self.plant) # left toe back
+                elif i == 3:
+                    point_on_foot, foot_frame = RightToeRear(self.plant) # right toe back
+                else:
+                    raise ValueError("num_of_contacts should not be more than 4")
+
+                # calculate the J_c for one contact point
                 J_c[3*i:3*(i+1), :] = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrt.kV, foot_frame, point_on_foot, self.world, self.world)
 
-            # get the J_h TODO
+            # get the J_h
             J_h = np.zeros((2, self.nv))
             J_h[0, :] = self.left_loop.CalcJacobian()
             J_h[1, :] = self.right_loop.CalcJacobian()
@@ -169,10 +185,10 @@ class UKF:
             # get the B matrix TODO
             B = np.zeros(1)
 
-            # compute the v_dot TODO Should in parallel and figure out the dimension of each pre-computed term
-            v_dot = scipy.linalg.pinv(M) @ (-bias + J_c.T @ lambda_c + J_h.T @ lambda_h + B @ u + C * v)
+            # compute the v_dot
+            vdot[i,:] = scipy.linalg.pinv(M) @ (-bias + J_c.T @ lambda_c + J_h.T @ lambda_h + B @ u + C * v)
 
-        return v_dot
+        return vdot
 
     def cal_diviation_vectors_from_sigma_points(self, sigma_points_quat, nominal_quat_mean):
         """
@@ -186,11 +202,11 @@ class UKF:
             error vector in (2n+1, 3), the deviation of each sigma_point from the nominal mean in rotation vector form
         """
 
-        error_rot_vecs = (Rotation.from_quat(nominal_quat_mean[1,2,3,0]).inv() * Rotation.from_quat(sigma_points_quat[1,2,3,0])).as_rotvec() # From scalar first to scalar last
+        error_rot_vecs = (Rotation.from_quat(nominal_quat_mean[[1,2,3,0]]).inv() * Rotation.from_quat(sigma_points_quat[:,[1,2,3,0]])).as_rotvec() # From scalar first to scalar last
 
         return error_rot_vecs
 
-    def cal_mean_of_sigma_points(self, sigma_points, initial_guess_of_quaternion=Rotation.identity().as_quat()[3,0,1,2], threshold = 1e-5):
+    def cal_mean_of_sigma_points(self, sigma_points, initial_guess_of_quaternion=Rotation.identity().as_quat()[[3,0,1,2]], threshold = 1e-5):
         """
         Calculate the mean of sigma_points.
         
@@ -213,7 +229,7 @@ class UKF:
         diviation_vectors = self.cal_diviation_vectors_from_sigma_points(self, sigma_points_quat, nominal_quat_mean)
         error_rot_vector = np.mean(diviation_vectors, axis=0)
         while np.linalg.norm(error_rot_vector) > threshold:
-            nominal_quat_mean = (Rotation.from_quat(nominal_quat_mean[1,2,3,0]) * Rotation.from_rotvec(error_rot_vector)).as_quat()[3,0,1,2]
+            nominal_quat_mean = (Rotation.from_quat(nominal_quat_mean[[1,2,3,0]]) * Rotation.from_rotvec(error_rot_vector)).as_quat()[:,[3,0,1,2]]
             diviation_vectors = self.cal_diviation_vectors_from_sigma_points(self, sigma_points_quat, nominal_quat_mean)
             error_rot_vector = np.mean(diviation_vectors, axis=0)
         
@@ -238,7 +254,7 @@ class UKF:
 
         # Compute the spread of quaternion for sigma points
         mean_quat = mean[:4]
-        rot_vec_spread = self.cal_diviation_vectors_from_sigma_points(sigma_points, mean_quat)
+        rot_vec_spread = self.cal_diviation_vectors_from_sigma_points(sigma_points[:,:4], mean_quat)
 
         # Compute other parts
         other_parts_spread = sigma_points[:,4:] - mean[4:]
@@ -346,7 +362,7 @@ class UKF:
         correction_term = kalman_gain @ innovation # For the correction term the orientation is represented as rotation vector
         # Update the mean
         # Correct the quaternion part
-        self.mean[:4] = Rotation.from_rotvec(Rotation.from_quat(self.mean[:4][1,2,3,0]).as_rotvec() + correction_term[:3]).as_quat()[3,0,1,2] # Convert the quatertion convention between libarary and drake
+        self.mean[:4] = Rotation.from_rotvec(Rotation.from_quat(self.mean[:4][[1,2,3,0]]).as_rotvec() + correction_term[:3]).as_quat()[[3,0,1,2]] # Convert the quatertion convention between libarary and drake
         # Correct the other part
         self.mean[4:] = self.mean[4:] + correction_term[3:]
         # Update the covariance
@@ -354,8 +370,26 @@ class UKF:
 
         return self.mean
 
+def processing_raw_data(raw_data, R, Q):
+    start_time = 6.5
+    end_time = 10
+    t = raw_data["t_x"][0]
+    start_index = np.argwhere(t > start_time)[0][0]
+    end_index = np.argwhere(t < end_time)[-1][0]
+    t = t[start_index:end_index]
+    import pdb; pdb.set_trace()
+
 def main():
-    pass
+    data_path = "log/20220530_1.mat"
+    data_raw = scipy.io.loadmat(data_path)
+    
+    # dynamics noise for generate fake data
+    R_motor = np.eye(10) * 0.1
+    # observation noise for generate fake data 
+    Q = np.eye(22) * 0.1
+
+    # make the fake data 
+    data = processing_raw_data(data_raw, R_motor, Q)
 
 if __name__ == "__main__":
     main()

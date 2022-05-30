@@ -1,6 +1,6 @@
-#include "examples/franka/joint_impedance_controller.h"
+#include "examples/franka/impedance_controller.h"
 
-JointImpedanceController::JointImpedanceController(const MatrixXd& K, const MatrixXd& B){
+ImpedanceController::ImpedanceController(const MatrixXd& K, const MatrixXd& B){
     // TODO: add in exception throwing if sizes don't match
     K_ = K;
     B_ = B;

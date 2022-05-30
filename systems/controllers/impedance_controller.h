@@ -52,9 +52,9 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-class JIController : public LeafSystem<double> {
+class ImpedanceController : public LeafSystem<double> {
  public:
-  JIController(
+  ImpedanceController(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>& context,
       const Eigen::MatrixXd& K,

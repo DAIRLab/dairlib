@@ -75,13 +75,13 @@ pybind_py_library(
 )
 
 pybind_py_library(
-    name = "ji_controllers_py",
+    name = "impedance_controllers_py",
     cc_deps = [
         "@drake//:drake_shared_library",
-        "//systems/controllers:ji_controller",
+        "//systems/controllers:impedance_controller",
     ],
-    cc_so_name = "ji_controllers",
-    cc_srcs = ["ji_controllers_py.cc"],
+    cc_so_name = "impedance_controllers",
+    cc_srcs = ["impedance_controllers_py.cc"],
     py_deps = [
         "@drake//bindings/pydrake",
         ":module_py",
@@ -109,7 +109,7 @@ PY_LIBRARIES = [
     ":primitives_py",
     ":framework_py",
     ":controllers_py",
-    ":ji_controllers_py",
+    ":impedance_controllers_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

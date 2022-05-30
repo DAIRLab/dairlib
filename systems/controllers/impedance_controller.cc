@@ -1,4 +1,4 @@
-#include "ji_controller.h"
+#include "impedance_controller.h"
 
 #include <utility>
 #include <chrono>
@@ -120,7 +120,7 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-JIController::JIController(
+ImpedanceController::ImpedanceController(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>& context,
     const MatrixXd& K, 
@@ -144,7 +144,7 @@ JIController::JIController(
 
   control_output_port_ = this->DeclareVectorOutputPort(
                                  "u, t", TimestampedVector<double>(num_inputs),
-                                 &JIController::CalcControl)
+                                 &ImpedanceController::CalcControl)
                              .get_index();
 
   // define end effector
@@ -172,7 +172,7 @@ JIController::JIController(
 
 
 // CARTESIAN IMPEDANCE CONTROLLER
-void JIController::CalcControl(const Context<double>& context,
+void ImpedanceController::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
 
   // get values
@@ -281,7 +281,7 @@ void JIController::CalcControl(const Context<double>& context,
 
 /*
 // JOINT IMPEDANCE CONTROLLER
-void JIController::CalcControl(const Context<double>& context,
+void ImpedanceController::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
 
   /// get values

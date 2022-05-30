@@ -129,12 +129,12 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel = RightToeRear(plant_w_spr);
 
   // Get body frames and points
-  Vector3d mid_contact_point = left_heel.first +
+  Vector3d center_of_pressure = left_heel.first +
       gains.contact_point_pos * (left_toe.first - left_heel.first);
   auto left_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
-      mid_contact_point, plant_w_spr.GetFrameByName("toe_left"));
+      center_of_pressure, plant_w_spr.GetFrameByName("toe_left"));
   auto right_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
-      mid_contact_point, plant_w_spr.GetFrameByName("toe_right"));
+      center_of_pressure, plant_w_spr.GetFrameByName("toe_right"));
   auto left_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
       Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_left"));
   auto right_toe_origin = std::pair<const Vector3d, const Frame<double>&>(

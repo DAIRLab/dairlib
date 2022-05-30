@@ -60,8 +60,17 @@ q = np.zeros((nq,1))
 
 context = plant.CreateDefaultContext()
 
-K = np.zeros(1)
-B = np.zeros(1)
+# gains
+translational_stiffness = 125;
+rotational_stiffness = 5;
+coeff = 1
+
+K = np.zeros((6,6))
+B = np.zeros((6,6))
+K[0:3, 0:3] = rotational_stiffness * np.identity(3)
+K[3:6, 3:6] = translational_stiffness * np.identity(3)
+B[0:3, 0:3] = coeff * math.sqrt(rotational_stiffness) * np.identity(3)
+B[3:6, 3:6] = coeff * math.sqrt(translational_stiffness) * np.identity(3)
 
 controller = builder.AddSystem(
     ImpedanceController(plant, context, K, B))

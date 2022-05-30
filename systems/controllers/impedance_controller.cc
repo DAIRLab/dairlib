@@ -151,23 +151,7 @@ ImpedanceController::ImpedanceController(
   EE_offset_ << 0, 0, 0;
   EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
   world_frame_ = &plant_.world_frame();
-
-  // TODO: tune parameters
-  // parameter code takenfrom:
-  // https://github.com/frankaemika/libfranka/blob/master/examples/cartesian_impedance_control.cpp
-
-  // parameter tuning
-  double translational_stiffness = 125;
-  double rotational_stiffness = 5;
-  MatrixXd stiffness = MatrixXd::Zero(6,6);
-  MatrixXd damping = MatrixXd::Zero(6,6);
-  stiffness.topLeftCorner(3, 3) << rotational_stiffness * MatrixXd::Identity(3, 3);
-  stiffness.bottomRightCorner(3, 3) << translational_stiffness * MatrixXd::Identity(3, 3);
-  damping.topLeftCorner(3, 3) << 1 * sqrt(rotational_stiffness) * MatrixXd::Identity(3, 3);
-  damping.bottomRightCorner(3, 3) << 1 * sqrt(translational_stiffness) * MatrixXd::Identity(3, 3);
-
-  K_ = stiffness;
-  B_ = damping;
+  
 }
 
 
@@ -176,6 +160,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
 
   // get values
+  const int n = 7;
   auto robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
@@ -192,12 +177,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   plant_.CalcBiasTerm(context_, &C);
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
 
-  // forward kinematics
-  const drake::math::RigidTransform<double> H = 
-    plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
-  auto d = H.translation();
-  auto R = H.rotation();
-
   // compute jacobian
   MatrixXd J(6, plant_.num_velocities());
   plant_.CalcJacobianSpatialVelocity(
@@ -205,10 +184,23 @@ void ImpedanceController::CalcControl(const Context<double>& context,
       *EE_frame_, EE_offset_,
       *world_frame_, *world_frame_, &J);
 
+  // perform all truncations
+  VectorXd q_franka = q.head(n);
+  VectorXd v_franka = v.head(n);
+  VectorXd C_franka = C.head(n);
+  VectorXd tau_g_franka = tau_g.head(n);
+  MatrixXd J_franka = J.block(0, 0, 6, n);
+  
+  // forward kinematics
+  const drake::math::RigidTransform<double> H = 
+    plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
+  auto d = H.translation();
+  auto R = H.rotation();
+
   // build task space state vectors
   VectorXd x = VectorXd::Zero(6);
   x.tail(3) << d;
-  VectorXd x_dot = J * v;
+  VectorXd x_dot = J_franka * v_franka;
 
   // TODO: get desired x and x_dot from input ports
   std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
@@ -245,29 +237,30 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   //VectorXd xtilde_dot = -x_dot;
 
   // compute the input with feedforward contact term
-  VectorXd tau = J.transpose() * (K_*xtilde + B_*xtilde_dot) + C - tau_g;
+  VectorXd tau = J_franka.transpose() * (K_*xtilde + B_*xtilde_dot) 
+                  + C_franka - tau_g_franka;
   // TODO: get J_c = dphi(q)/dq, need to add ball and EE to the urdf
   // For now, just adding lambda_d in the positive x direction
   // after 5 seconds as proof of concept
   if (timestamp > 5.0){
     VectorXd lambda_des = VectorXd::Zero(6);
     lambda_des(5) = 20; // set desired force in z direction
-    tau += J.transpose() * lambda_des;
+    tau += J_franka.transpose() * lambda_des;
   }
   
   // compute nullspace projection
-  MatrixXd J_pinv = J.completeOrthogonalDecomposition().pseudoInverse();
-  MatrixXd N = MatrixXd::Identity(7, 7) - J.transpose() * J_pinv.transpose();
+  MatrixXd J_franka_pinv = J_franka.completeOrthogonalDecomposition().pseudoInverse();
+  MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_franka_pinv.transpose();
 
   VectorXd qd = VectorXd::Zero(7);
   // TODO: which qd do I use?
-  qd << 0, 0, 0, -1.57, q.tail(3); // task-specific
+  qd << 0, 0, 0, -1.57, q_franka.tail(3); // task-specific
   //qd << 0, 0, 0, -1.57, 0, 1.57, 0;; // middle of range of motion
   
   // TODO: parameter tune these if necessary
   MatrixXd K_null = MatrixXd::Identity(7, 7);
   MatrixXd B_null = MatrixXd::Identity(7, 7);
-  VectorXd tau_null = K_null*(qd-q) - B_null*v;
+  VectorXd tau_null = K_null*(qd-q_franka) - B_null*v_franka;
 
   control->SetDataVector(tau + N*tau_null);
   control->set_timestamp(timestamp);

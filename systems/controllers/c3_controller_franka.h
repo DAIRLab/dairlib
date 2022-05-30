@@ -32,9 +32,6 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
-// Adam's includes
-#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
-
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
@@ -45,21 +42,37 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-class JIController : public LeafSystem<double> {
+class C3Controller_franka : public LeafSystem<double> {
  public:
-  JIController(
+  C3Controller_franka(
       const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::MultibodyPlant<double>& plant_f,
       drake::systems::Context<double>& context,
-      const Eigen::MatrixXd& K,
-      const Eigen::MatrixXd& B);
+      drake::systems::Context<double>& context_f,
+      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_f,
+      drake::systems::Context<drake::AutoDiffXd>& context_ad,
+      drake::systems::Context<drake::AutoDiffXd>& context_ad_f,
+      const drake::geometry::SceneGraph<double>& scene_graph,
+      const drake::systems::Diagram<double>& diagram,
+      std::vector<drake::geometry::GeometryId> contact_geoms,
+      int num_friction_directions, double mu,
+      const std::vector<Eigen::MatrixXd>& Q,
+      const std::vector<Eigen::MatrixXd>& R,
+      const std::vector<Eigen::MatrixXd>& G,
+      const std::vector<Eigen::MatrixXd>& U,
+      const std::vector<Eigen::VectorXd>& xdesired,
+      const drake::trajectories::PiecewisePolynomial<double>& pp);
 
   const drake::systems::InputPort<double>& get_input_port_config() const {
     return this->get_input_port(state_input_port_);
   }
 
   const drake::systems::OutputPort<double>& get_input_port_output() const {
-    return this->get_output_port(control_output_port_);
+    return this->get_output_port(state_output_port_);
+
   }
+
 
   // void AddConstraint() const;
 
@@ -68,14 +81,28 @@ class JIController : public LeafSystem<double> {
                    TimestampedVector<double>* output) const;
 
   int state_input_port_;
-  int control_output_port_;
+  int state_output_port_;
   const MultibodyPlant<double>& plant_;
+  MultibodyPlant<double>& plant_f_;
   drake::systems::Context<double>& context_;
-  const Eigen::MatrixXd K_;
-  const Eigen::MatrixXd B_;
-
+  drake::systems::Context<double>& context_f_;
+  const MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  MultibodyPlant<drake::AutoDiffXd>& plant_ad_f_;
+  drake::systems::Context<drake::AutoDiffXd>& context_ad_;
+  drake::systems::Context<drake::AutoDiffXd>& context_ad_f_;
+  const drake::geometry::SceneGraph<double>& scene_graph_;
+  const drake::systems::Diagram<double>& diagram_;
+  std::vector<drake::geometry::GeometryId> contact_geoms_;
+  int num_friction_directions_;
+  double mu_;
+  const std::vector<Eigen::MatrixXd> Q_;
+  const std::vector<Eigen::MatrixXd> R_;
+  const std::vector<Eigen::MatrixXd> G_;
+  const std::vector<Eigen::MatrixXd> U_;
+  const std::vector<Eigen::VectorXd> xdesired_;
+  const drake::trajectories::PiecewisePolynomial<double> pp_;
 };
 
-}  // namespace controller
+}  // namespace controllers
 }  // namespace systems
 }  // namespace dairlib

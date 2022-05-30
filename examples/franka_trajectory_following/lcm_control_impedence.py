@@ -16,7 +16,7 @@ from pydrake.all import *
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 import pydairlib.common
 from pydairlib.systems.controllers import C3Controller
-from pydairlib.systems.impedance_controllers import ImpedanceController
+from pydairlib.systems.ji_controllers import JIController
 
 import numpy as np
 
@@ -64,7 +64,7 @@ K = np.zeros(1)
 B = np.zeros(1)
 
 controller = builder.AddSystem(
-    ImpedanceController(plant, context, K, B))
+    JIController(plant, context, K, B))
 
 
 

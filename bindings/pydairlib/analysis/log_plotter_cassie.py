@@ -75,10 +75,6 @@ def main():
         mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
                                           t_x_slice, vel_map)
 
-    if plot_config.plot_floating_base_velocity_body_frame:
-        mbp_plots.plot_floating_base_body_frame_velocities(
-            robot_output, t_x_slice, plant, context, "pelvis")
-
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
         mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)

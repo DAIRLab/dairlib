@@ -7,9 +7,6 @@ from pydairlib.multibody import makeNameToPositionsMap, \
     makeNameToVelocitiesMap, makeNameToActuatorsMap, \
     createStateNameVectorFromMap, createActuatorNameVectorFromMap
 
-ps = plot_styler.PlotStyler()
-ps.set_default_styling()
-
 
 def make_name_to_mbp_maps(plant):
     return makeNameToPositionsMap(plant), \
@@ -111,19 +108,6 @@ def make_point_positions_from_q(
                                            frame_to_calc_position_in).ravel()
 
     return pos
-
-
-def get_floating_base_velocity_in_body_frame(
-        robot_output, plant, context, fb_frame):
-
-    vel = np.zeros((robot_output['q'].shape[0], 3))
-    for i, (q, v) in enumerate(zip(robot_output['q'], robot_output['v'])):
-        plant.SetPositions(context, q)
-        plant.SetVelocities(context, v)
-        vel[i] = fb_frame.CalcSpatialVelocity(
-            context, plant.world_frame(), fb_frame).translational()
-
-    return vel
 
 
 def process_osc_channel(data):
@@ -300,28 +284,6 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         {'title': 'Point Positions',
          'xlabel': 'time (s)',
          'ylabel': 'pos (m)'}, ps)
-
-    return ps
-
-
-def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
-                                             context, fb_frame_name):
-    data_dict = {'t': robot_output['t_x']}
-    data_dict['base_vel'] = get_floating_base_velocity_in_body_frame(
-        robot_output, plant, context,
-        plant.GetBodyByName(fb_frame_name).body_frame())
-    legend_entries = {'base_vel': ['base_vx', 'base_vy', 'base_vz']}
-    ps = plot_styler.PlotStyler()
-    plotting_utils.make_plot(
-        data_dict,
-        't',
-        time_slice,
-        ['base_vel'],
-        {},
-        legend_entries,
-        {'title': 'Floating Base Velocity (Body Frame)',
-         'xlabel': 'time (s)',
-         'ylabel': 'Velocity (m/s)'}, ps)
 
     return ps
 

@@ -78,7 +78,7 @@ std::vector<Vector3d> compute_target_task_space_vector(double t){
     double x_c = 0.6; // smaller x_c performs worse
     double y_c = 0;
     double z_c = 0.2;
-    double w = 1;
+    double w = 2;
     Vector3d start(x_c+r, y_c, z_c);
     double start_time = 1.0;
 
@@ -151,7 +151,7 @@ ImpedanceController::ImpedanceController(
   EE_offset_ << 0, 0, 0;
   EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
   world_frame_ = &plant_.world_frame();
-  
+
 }
 
 
@@ -242,11 +242,11 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // TODO: get J_c = dphi(q)/dq, need to add ball and EE to the urdf
   // For now, just adding lambda_d in the positive x direction
   // after 5 seconds as proof of concept
-  if (timestamp > 5.0){
-    VectorXd lambda_des = VectorXd::Zero(6);
-    lambda_des(5) = 20; // set desired force in z direction
-    tau += J_franka.transpose() * lambda_des;
-  }
+  // if (timestamp > 5.0){
+  //   VectorXd lambda_des = VectorXd::Zero(6);
+  //   lambda_des(5) = 20; // set desired force in z direction
+  //   tau += J_franka.transpose() * lambda_des;
+  // }
   
   // compute nullspace projection
   MatrixXd J_franka_pinv = J_franka.completeOrthogonalDecomposition().pseudoInverse();
@@ -267,8 +267,8 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // debug prints every 10th of a second
   // if (trunc(timestamp*10) / 10.0 == timestamp){
-  //   std::cout << timestamp << "\n---------------" << std::endl;
-  //   std::cout << "virtual force:\n" << K_*xtilde + B_*xtilde_dot << std::endl;
+  //   //std::cout << timestamp << "\n---------------" << std::endl;
+  //   std::cout << xtilde.tail(3).norm() << std::endl;
   // }
 }
 

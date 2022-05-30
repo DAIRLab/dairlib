@@ -63,8 +63,8 @@ q = np.zeros((nq,1))
 context = plant.CreateDefaultContext()
 
 # gains
-translational_stiffness = 125;
-rotational_stiffness = 5;
+translational_stiffness = 1000
+rotational_stiffness = 5
 coeff = 1
 
 K = np.zeros((6,6))

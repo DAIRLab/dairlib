@@ -35,6 +35,8 @@ parser = Parser(plant)
 
 parser.AddModelFromFile(FindResourceOrThrow(
     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/franka/robot_properties_fingers/urdf/sphere.urdf"))
 
 
 # Fix the base of the finger to the world
@@ -99,4 +101,4 @@ loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                           input_channel="TRIFINGER_OUTPUT",
                           is_forced_publish=True)
 
-loop.Simulate(100)
+loop.Simulate(50)

@@ -16,8 +16,8 @@ sim_dt = 2e-4
 output_dt = 2e-4
 
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
-# addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
-#               mu_kinetic=1.0)
+addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
+              mu_kinetic=1.0)
 
 # The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
@@ -25,6 +25,8 @@ parser = Parser(plant)
 #                          "examples/trajectory_following/robot_properties_fingers")
 parser.AddModelFromFile(FindResourceOrThrow(
     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/franka/robot_properties_fingers/urdf/sphere.urdf"))
 
 
 #props = mut.ProximityProperties()
@@ -74,8 +76,25 @@ simulator.set_target_realtime_rate(1)
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
 
+q = np.zeros(nq)
+q_map = makeNameToPositionsMap(plant)
 # initialize close to {0.6, 0, 0.2}[m] in task space
-q = np.array([0, 0.82, 0, -1.44, 0, 2.26, 0])
+q[q_map["panda_joint1"]] = 0
+q[q_map["panda_joint2"]] = 0.82
+q[q_map["panda_joint3"]] = 0
+q[q_map["panda_joint4"]] = -1.44
+q[q_map["panda_joint5"]] = 0
+q[q_map["panda_joint6"]] = 2.26
+q[q_map["panda_joint7"]] = 0
+
+# initialize ball
+q[q_map['base_qw']] = 1
+q[q_map['base_qx']] = 0
+q[q_map['base_qz']] = 0
+q[q_map['base_x']] = 0.5
+q[q_map['base_y']] = 0
+q[q_map['base_z']] = 0
+
 plant.SetPositions(plant_context, q)
 
 v = np.zeros(nv)

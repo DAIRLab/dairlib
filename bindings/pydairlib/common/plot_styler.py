@@ -85,9 +85,11 @@ class PlotStyler():
     plt.savefig(self.directory + filename, dpi=200)
     return
 
-  def add_legend(self, legend, loc=0):
+  def add_legend(self, labels, loc=0):
     plt.figure(self.fig_id)
-    plt.legend(legend, loc=loc)
+    ax = plt.gca()
+    legend = ax.legend(labels, loc=loc)
+    ax.add_artist(legend)
     return
 
   def annotate(self, text, x, y, x_text, y_text, arrowprops=None):

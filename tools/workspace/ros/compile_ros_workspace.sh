@@ -11,13 +11,15 @@ PACKAGES="roscpp rospy"
 rm -rf bundle_ws
 mkdir bundle_ws
 pushd bundle_ws
+mkdir src
 
 rosinstall_generator \
+    --rosdistro noetic \
     --deps \
     --tar \
     --flat \
     $PACKAGES > ws.rosinstall
-wstool init -j1 src ws.rosinstall
+vcs import src < ws.rosinstall
 
 catkin config \
     --install \

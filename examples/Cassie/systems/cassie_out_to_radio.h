@@ -8,17 +8,13 @@
 namespace dairlib {
 namespace systems {
 
+ /// Convenience system to separate out the radio lcm struct from the larger
+ /// lcmt_cassie_out struct. THe output port of this system will pass through
+ /// the pelvis.radio field of the lcmt_cassie_out message at the system's
+ /// input port
 class CassieOutToRadio : public drake::systems::LeafSystem<double> {
  public:
   CassieOutToRadio();
-
-  const drake::systems::InputPort<double> &get_input_port() const {
-    return drake::systems::LeafSystem<double>::get_input_port(0);
-  }
-
-  const drake::systems::OutputPort<double> &get_output_port() const {
-    return drake::systems::LeafSystem<double>::get_output_port(0);
-  }
 
  protected:
   void CalcRadioOut(
@@ -26,8 +22,6 @@ class CassieOutToRadio : public drake::systems::LeafSystem<double> {
       dairlib::lcmt_radio_out *output) const;
 
  private:
-  bool is_abstract() const { return false; }
-
   int cassie_out_input_port_;
   int radio_output_port_;
 };

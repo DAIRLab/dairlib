@@ -6,24 +6,19 @@ from datetime import date
 
 
 def main():
-    sim = (os.getlogin() == 'brian')
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
-
-    logdir = \
-        f"{os.getenv('HOME')}/workspace/logs/cassie_simulation/{year}/{curr_date}" \
-            if sim else f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
-
-    current_dair_dir = f"{os.getcwd()}/"
-    standing_gains = current_dair_dir + "examples/Cassie/osc/osc_standing_gains.yaml"
-    walking_gains = current_dair_dir + "examples/Cassie/osc/osc_walking_gains.yaml"
-    alip_gains = current_dair_dir + "examples/Cassie/osc/osc_walking_gains_alip.yaml"
+    logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
+    dair = f"{os.getenv('HOME')}/workspace/dairlib/"
+    standing_gains = dair + "examples/Cassie/osc/osc_standing_gains.yaml"
+    walking_gains = dair + "examples/Cassie/osc/osc_walking_gains.yaml"
+    alip_walking_gains = dair + "examples/Cassie/osc/alip_osc_walking_gains.yaml"
 
     if not os.path.isdir(logdir):
         os.mkdir(logdir)
 
-    git_diff = subprocess.check_output(['git', 'diff'], cwd=current_dair_dir)
-    commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=current_dair_dir)
+    git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
+    commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
 
     os.chdir(logdir)
     current_logs = sorted(glob.glob('lcmlog-*'))
@@ -40,7 +35,8 @@ def main():
 
     subprocess.run(['cp', standing_gains, 'standing_gains_%s.yaml' % log_num])
     subprocess.run(['cp', walking_gains, 'walking_gains_%s.yaml' % log_num])
-    subprocess.run(['cp', alip_gains, 'walking_gains_alip%s.yaml' % log_num])
+    subprocess.run(['cp', alip_walking_gains,
+                    'walking_gains_alip_%s.yaml' % log_num])
     subprocess.run(['lcm-logger', '-f', 'lcmlog-%s' % log_num])
 
 

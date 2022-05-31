@@ -567,13 +567,19 @@ int DoMain(int argc, char* argv[]) {
 
   osc->SetOsqpSolverOptionsFromYaml(
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
-  // Build OSC problem
 
-  osc->AddInputCostByJointAndFsmState("toe_left_motor", left_stance_state, 1.0);
-  osc->AddInputCostByJointAndFsmState("toe_left_motor", post_right_double_support_state, 1.0);
-  osc->AddInputCostByJointAndFsmState("toe_right_motor", right_stance_state, 1.0);
-  osc->AddInputCostByJointAndFsmState("toe_right_motor", post_left_double_support_state, 1.0);
+  if (gains.W_com(0,0) == 0){
+    osc->AddInputCostByJointAndFsmState(
+        "toe_left_motor", left_stance_state, 1.0);
+    osc->AddInputCostByJointAndFsmState(
+        "toe_left_motor", post_right_double_support_state, 1.0);
+    osc->AddInputCostByJointAndFsmState(
+        "toe_right_motor", right_stance_state, 1.0);
+    osc->AddInputCostByJointAndFsmState(
+        "toe_right_motor", post_left_double_support_state, 1.0);
+  }
   osc->Build();
+
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());

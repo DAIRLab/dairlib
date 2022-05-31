@@ -1,12 +1,12 @@
 #pragma once
 #include <limits>
 
-#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_input_supervisor_status.hpp"
-#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_controller_failure.hpp"
+#include "dairlib/lcmt_input_supervisor_status.hpp"
+#include "dairlib/lcmt_controller_failure.hpp"
 #include "systems/framework/timestamped_vector.h"
 
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/leaf_system.h"
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/leaf_system.h"
 
 static constexpr double kMaxControllerDelay = 0.1;
 static constexpr double kEStopGain = 5.0;

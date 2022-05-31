@@ -4,12 +4,12 @@
 #include <string>
 #include <vector>
 
-#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_cassie_joint_out.hpp"
-#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_cassie_leg_out.hpp"
-#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_cassie_out.hpp"
-#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_cassie_pelvis_out.hpp"
-#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_elmo_out.hpp"
-#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_vectornav_out.hpp"
+#include "dairlib/lcmt_cassie_joint_out.hpp"
+#include "dairlib/lcmt_cassie_leg_out.hpp"
+#include "dairlib/lcmt_cassie_out.hpp"
+#include "dairlib/lcmt_cassie_pelvis_out.hpp"
+#include "dairlib/lcmt_elmo_out.hpp"
+#include "dairlib/lcmt_vectornav_out.hpp"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"

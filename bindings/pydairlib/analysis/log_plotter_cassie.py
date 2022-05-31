@@ -3,6 +3,8 @@ import lcm
 import matplotlib.pyplot as plt
 import code
 import numpy as np
+import scipy.io
+from pydrake.multibody.tree import JointIndex
 
 import dairlib
 from process_lcm_log import get_log_data
@@ -31,7 +33,13 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
-    import time
+
+    ''' Get damping'''
+    C = np.zeros(22,)
+    for joint_idx in range(plant.num_joints()):
+        joint = plant.get_joint(JointIndex(joint_idx))
+        if joint.num_velocities() > 0:
+            C[vel_map[joint.name() + 'dot']] = joint.damping()
 
     ''' Read the log '''
     filename = sys.argv[1]
@@ -48,8 +56,18 @@ def main():
                                   plot_config.end_time,
                                   mbp_plots.load_force_channels,  # processing callback
                                   'CASSIE_CONTACT_DRAKE')  # processing callback arguments
+    print("Finish parse logging")
 
-    print('Finished processing log - making plots')
+    if len(sys.argv) == 3:
+        output_path = sys.argv[2]
+        print("output to "+output_path)
+        data_to_output = {"robot_output":robot_output, "robot_input":robot_input, 
+                        "contact_output":contact_output, 'damping_ratio':C,
+                        "osc_output":{"t_osc":osc_debug["t_osc"], "lambda_h_sol":osc_debug["lambda_h_sol"]}
+                        }
+        scipy.io.savemat(output_path, data_to_output)
+
+    print('making plots')
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
@@ -138,7 +156,6 @@ def main():
         mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
 
     plt.show()
-
 
 if __name__ == '__main__':
     main()

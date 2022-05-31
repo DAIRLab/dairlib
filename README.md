@@ -50,25 +50,48 @@ These dependencies are necessary for some advanced visualization and process man
 Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation from Drake should add the proper repo for these. (This likely require's Drake's prerequisites to be installed from a source copy).
 
 #### ROS
-To integrate with ROS (tested on ROS Melodic), the following steps are required.
-1. Install ROS http://wiki.ros.org/ROS/Installation
-2. Do not forget to setup your environment. For instance, add these lines to `~/.bashrc`
+To integrate Dairlib with ROS (tested on ROS Noetic), the following steps are required.
+1. Install ROS http://wiki.ros.org/noetic/Installation/Ubuntu
+2. Add these lines to `~/.bashrc`,
 ```
-export ROS_MASTER_URI=http://localhost:11311
-source /opt/ros/melodic/setup.bash 
+source /opt/ros/noetic/setup.bash 
 ```
+and then run `source ~/.bashrc`
+
 3. Install additional dependencies
 ```
-sudo apt install python-rosinstall-generator python-catkin-tools
+sudo apt install python3-rosinstall-generator python3-catkin-tools
 ```
 4. Build the ROS workspace using catkin. From `dairlib/`,
 ```
 cd tools/workspace/ros
 ./compile_ros_workspace.sh
 ```
-5. Set the environment variable `DAIRLIB_WITH_ROS` to `ON`. For instance, add to `~/.bashrc`
+5. Set the environment variable `DAIRLIB_WITH_ROS` to `ON` by Adding to `~/.bashrc`
 ```
 export DAIRLIB_WITH_ROS=ON
+```
+#### Setup elevation_mapping ros node
+Move up to the workspace directory and make a catkin workspace:
+```
+cd ~/workspace
+mkdir catkin_workspace
+cd catkin_workspace
+```
+Add elevation mapping and it's dependencies to src, and install ros prereqs. From `catkin_workspace/`,
+```
+mkdir src
+cd src
+git clone git@github.com:anybotics/elevation_mapping.git
+git clone git@github.com:anybotics/kindr.git
+git clone git@github.com:anybotics/kindr_ros.git
+sudo apt install ros-noetic-pcl-ros
+```
+Build the elevation mapping software:
+```
+cd ..
+catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
+catkin build
 ```
 
 #### Invariant-EKF

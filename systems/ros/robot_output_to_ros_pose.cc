@@ -25,7 +25,6 @@ void RobotOutputToRosPose::CopyPose(
   auto& pose_msg = pose->get_mutable_value();
 
   // Copy pose from robot state into pose message here
-
 }
 
 }

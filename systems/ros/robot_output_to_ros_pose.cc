@@ -14,16 +14,14 @@ RobotOutputToRosPose::RobotOutputToRosPose(const MultibodyPlant<double>& plant)
       OutputVector<double>(plant_.num_positions(),
           plant.num_velocities(), plant.num_actuators()));
 
-  this->DeclareAbstractOutputPort("ros_pose",
+  Pose pose;
+  this->DeclareAbstractOutputPort("ros_pose", pose,
       &RobotOutputToRosPose::CopyPose);
 }
 
 void RobotOutputToRosPose::CopyPose(
     const drake::systems::Context<double> &context,
-    drake::Value<geometry_msgs::Pose> *pose) const {
-
-  auto& pose_msg = pose->get_mutable_value();
-
+    geometry_msgs::Pose *pose) const {
   // Copy pose from robot state into pose message here
 }
 

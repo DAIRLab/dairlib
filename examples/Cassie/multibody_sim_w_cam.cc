@@ -160,8 +160,10 @@ int do_main(int argc, char* argv[]) {
   const std::optional<drake::geometry::FrameId> parent_body_id =
       plant.GetBodyFrameIdIfExists(plant.GetFrameByName("pelvis").body().index());
 
-  drake::math::RigidTransform<double> cam_transform = drake::math::RigidTransform<double>(drake::math::RollPitchYaw<double>(-2.6, 0.0, -1.57),
-                                                                                          Eigen::Vector3d(0.05, 0, -0.15));
+  drake::math::RigidTransform<double> cam_transform =
+      drake::math::RigidTransform<double>(
+          drake::math::RollPitchYaw<double>(-2.6, 0.0, -1.57),
+              Eigen::Vector3d(0.05, 0, -0.15));
 
   auto camera = builder.AddSystem<drake::systems::sensors::RgbdSensor>(
       parent_body_id.value(), cam_transform, color_camera, depth_camera);

@@ -18,6 +18,7 @@ cc_library(
     srcs = ["robot_output_to_ros_pose.cc"],
     hdrs = ["robot_output_to_ros_pose.h"],
     deps = [
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@ros",
     ],

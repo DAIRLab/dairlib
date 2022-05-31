@@ -19,7 +19,7 @@ class RobotOutputToRosPose : public drake::systems::LeafSystem<double> {
   RobotOutputToRosPose(const drake::multibody::MultibodyPlant<double> &plant);
  private:
   void CopyPose(const drake::systems::Context<double> &context,
-                drake::Value<geometry_msgs::Pose> *pose) const;
+                geometry_msgs::Pose *pose) const;
   const drake::multibody::MultibodyPlant<double> &plant_;
 };
 

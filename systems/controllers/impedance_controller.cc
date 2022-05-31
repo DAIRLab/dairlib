@@ -124,11 +124,15 @@ ImpedanceController::ImpedanceController(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>& context,
     const MatrixXd& K, 
-    const MatrixXd& B)
+    const MatrixXd& B,
+    const std::vector<drake::geometry::GeometryId>& contact_geoms,
+    int num_friction_directions)
     : plant_(plant),
       context_(context),
       K_(K),
-      B_(B){
+      B_(B),
+      contact_geoms_(contact_geoms),
+      num_friction_directions_(num_friction_directions){
   
   // plant parameters
   int num_positions = plant_.num_positions();
@@ -247,6 +251,36 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   //   lambda_des(5) = 20; // set desired force in z direction
   //   tau += J_franka.transpose() * lambda_des;
   // }
+
+  // feedforward force term
+  // TODO: check that this is done properly
+  std::vector<SortedPair<GeometryId>> contact_pairs;
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+  
+  VectorXd phi(contact_pairs.size());
+  MatrixXd J_n(contact_pairs.size(), plant.num_velocities());
+  MatrixXd J_t(2 * contact_pairs.size() * num_friction_directions_,
+               plant.num_velocities());
+
+  for (int i = 0; i < contact_pairs.size(); i++) {
+    multibody::GeomGeomCollider collider(
+        plant, contact_pairs[i]);  // deleted num_fricton_directions (check with
+                                   // Michael about changes in geomgeom)
+    auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions_);
+
+//    std::cout << "phi_i" << std::endl;
+//    std::cout << phi_i << std::endl;
+//    std::cout << "phi_i" << std::endl;
+
+
+    phi(i) = phi_i;
+
+    J_n.row(i) = J_i.row(0);
+    J_t.block(2 * i * num_friction_directions_, 0, 2 * num_friction_directions_,
+              plant.num_velocities()) =
+        J_i.block(1, 0, 2 * num_friction_directions_, plant.num_velocities());
+  }
   
   // compute nullspace projection
   MatrixXd J_franka_pinv = J_franka.completeOrthogonalDecomposition().pseudoInverse();

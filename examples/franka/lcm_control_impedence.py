@@ -74,8 +74,16 @@ K[3:6, 3:6] = translational_stiffness * np.identity(3)
 B[0:3, 0:3] = coeff * math.sqrt(rotational_stiffness) * np.identity(3)
 B[3:6, 3:6] = coeff * math.sqrt(translational_stiffness) * np.identity(3)
 
+# TODO: confirm that this is right
+EE_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName(""))[0]
+sphere_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0]
+ground_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("box"))[0]
+
+contact_geoms = [EE_geoms, sphere_geoms, ground_geoms] #finger_lower_link_120_geoms, finger_lower_link_240_geoms,
+
+# TODO: fix the pybinding
 controller = builder.AddSystem(
-    ImpedanceController(plant, context, K, B))
+    ImpedanceController(plant, context, K, B, contact_geoms))
 
 
 

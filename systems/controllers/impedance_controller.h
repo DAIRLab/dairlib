@@ -58,7 +58,9 @@ class ImpedanceController : public LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>& context,
       const Eigen::MatrixXd& K,
-      const Eigen::MatrixXd& B);
+      const Eigen::MatrixXd& B,
+      const std::vector<drake::geometry::GeometryId>& contact_geoms,
+      int num_friction_directions);
 
   const drake::systems::InputPort<double>& get_input_port_config() const {
     return this->get_input_port(state_input_port_);
@@ -76,6 +78,7 @@ class ImpedanceController : public LeafSystem<double> {
   int control_output_port_;
   const MultibodyPlant<double>& plant_;
   drake::systems::Context<double>& context_;
+  std::vector<drake::geometry::GeometryId> contact_geoms_;
   // TODO: makes these const
   // const Eigen::MatrixXd K_;
   // const Eigen::MatrixXd B_;
@@ -86,6 +89,7 @@ class ImpedanceController : public LeafSystem<double> {
   const drake::multibody::BodyFrame<double>* EE_frame_;
   const drake::multibody::BodyFrame<double>* world_frame_;
   Eigen::Vector3d EE_offset_;
+  int num_friction_directions_;
 
 };
 

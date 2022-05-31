@@ -6,7 +6,7 @@ cd $(dirname "$BASH_SOURCE")
 
 set -e
 
-PACKAGES="roscpp rospy"
+PACKAGES="roscpp rospy geometry_msgs"
 
 rm -rf bundle_ws
 mkdir bundle_ws

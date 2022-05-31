@@ -80,10 +80,15 @@ sphere_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere")
 ground_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("box"))[0]
 
 contact_geoms = [EE_geoms, sphere_geoms, ground_geoms] #finger_lower_link_120_geoms, finger_lower_link_240_geoms,
+num_friction_directions = 2
 
 # TODO: fix the pybinding
 controller = builder.AddSystem(
-    ImpedanceController(plant, context, K, B, contact_geoms))
+    ImpedanceController(plant,
+                        context,
+                        K, B,
+                        contact_geoms,
+                        num_friction_directions))
 
 
 

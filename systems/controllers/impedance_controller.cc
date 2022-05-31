@@ -7,6 +7,8 @@
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/geom_geom_collider.h"
+#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
 
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/constraint.h"
@@ -254,18 +256,19 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // feedforward force term
   // TODO: check that this is done properly
+  // ex. confirm dimensions of everything
   std::vector<SortedPair<GeometryId>> contact_pairs;
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
   
   VectorXd phi(contact_pairs.size());
-  MatrixXd J_n(contact_pairs.size(), plant.num_velocities());
+  MatrixXd J_n(contact_pairs.size(), plant_.num_velocities());
   MatrixXd J_t(2 * contact_pairs.size() * num_friction_directions_,
-               plant.num_velocities());
+               plant_.num_velocities());
 
-  for (int i = 0; i < contact_pairs.size(); i++) {
+  for (int i = 0; i < (int) contact_pairs.size(); i++) {
     multibody::GeomGeomCollider collider(
-        plant, contact_pairs[i]);  // deleted num_fricton_directions (check with
+        plant_, contact_pairs[i]);  // deleted num_fricton_directions (check with
                                    // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions_);
 
@@ -278,8 +281,8 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions_, 0, 2 * num_friction_directions_,
-              plant.num_velocities()) =
-        J_i.block(1, 0, 2 * num_friction_directions_, plant.num_velocities());
+              plant_.num_velocities()) =
+        J_i.block(1, 0, 2 * num_friction_directions_, plant_.num_velocities());
   }
   
   // compute nullspace projection

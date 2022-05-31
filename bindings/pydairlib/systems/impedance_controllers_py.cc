@@ -24,8 +24,13 @@ PYBIND11_MODULE(impedance_controllers, m) {
       .def(py::init<const drake::multibody::MultibodyPlant<double>&,
                     drake::systems::Context<double>&,
                     const Eigen::MatrixXd&,
-                    const Eigen::MatrixXd&>(),
-           py::arg("plant"), py::arg("context"), py::arg("K"), py::arg("B"))
+                    const Eigen::MatrixXd&,
+                    const std::vector<drake::geometry::GeometryId>&,
+                    int>(),
+           py::arg("plant"), py::arg("context"),
+           py::arg("K"), py::arg("B"),
+           py::arg("contact_geoms"),
+           py::arg("num_friction_directions"))
       .def("get_input_port_config", &ImpedanceController::get_input_port_config,
            py_rvp::reference_internal)
       .def("get_input_port_output", &ImpedanceController::get_input_port_output,

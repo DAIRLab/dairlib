@@ -74,22 +74,22 @@ class ImpedanceController : public LeafSystem<double> {
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
 
+  // ports
   int state_input_port_;
   int control_output_port_;
+  
+  // constructor variables
   const MultibodyPlant<double>& plant_;
   drake::systems::Context<double>& context_;
+  const Eigen::MatrixXd K_;
+  const Eigen::MatrixXd B_;
   std::vector<drake::geometry::GeometryId> contact_geoms_;
-  // TODO: makes these const
-  // const Eigen::MatrixXd K_;
-  // const Eigen::MatrixXd B_;
-  Eigen::MatrixXd K_;
-  Eigen::MatrixXd B_;
+  int num_friction_directions_;
 
-  // frame & point info
+  // frame and EE info
   const drake::multibody::BodyFrame<double>* EE_frame_;
   const drake::multibody::BodyFrame<double>* world_frame_;
   Eigen::Vector3d EE_offset_;
-  int num_friction_directions_;
 
 };
 

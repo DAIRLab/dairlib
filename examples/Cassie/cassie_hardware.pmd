@@ -1,11 +1,26 @@
 group "0.operator" {
     cmd "0.drake-director-real-robot" {
-        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time_hardware.py --script examples/Cassie/director_scripts/set_channel_network.py --script examples/Cassie/director_scripts/controller_status.py";
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=point_pair_contact --script=examples/Cassie/director_scripts/show_time.py --script=examples/Cassie/director_scripts/controller_status.py --script=examples/Cassie/director_scripts/pd_panel.py";
         host = "localhost";
     }
     cmd "1.state-visualizer-real-robot" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel NETWORK_CASSIE_STATE_DISPATCHER";
         host = "localhost";
+    }
+}
+
+group "3.lcm-tools" {
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+    cmd "0.cassie-lcm-logger" {
+        exec = "python3 examples/Cassie/start_logging.py";
+        host = "dair-cassie";
     }
 }
 
@@ -15,35 +30,35 @@ group "1.cassie-robot" {
         host = "dair-cassie";
     }
     cmd "1.dispatcher-robot-in-real-robot" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3 --floating_base=true";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3 --floating_base=true --control_channel_name_initial=PD_CONTROL";
         host = "dair-cassie";
     }
     cmd "2.pd-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=PD_CONTROL";
+        exec = "bazel-bin/examples/Cassie/run_pd_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=PD_CONTROL";
         host = "dair-cassie";
     }
     cmd "3.0 standing-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cost_weight_multiplier=1.0";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cost_weight_multiplier=1.0";
         host = "dair-cassie";
     }
     cmd "3.1 standing-controller-real-robot (radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cost_weight_multiplier=1.0";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_STANDING --cost_weight_multiplier=1.0";
         host = "dair-cassie";
     }
     cmd "4.0 walking-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
         host = "dair-cassie";
     }
     cmd "4.1 walking-controller-real-robot (radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
         host = "dair-cassie";
     }
-    cmd "4.0 alip-walking-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller_alip --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
+    cmd "4.2 walking-controller-real-robot-alip (radio)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller_alip --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
         host = "dair-cassie";
     }
-    cmd "4.1 alip-walking-controller-real-robot (radio)" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller_alip --use_radio --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_WALKING";
+    cmd "5.0 running-controller-real-robot" {
+        exec = "bazel-bin/examples/Cassie/run_osc_running_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=OSC_RUNNING --gains_filename=examples/Cassie/osc_run/osc_running_gains.yaml";
         host = "dair-cassie";
     }
 }
@@ -58,7 +73,11 @@ group "2.controller-switch-commands" {
         host = "dair-cassie";
     }
     cmd "controller-switch-to-jumping" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_JUMPING --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_JUMPING --n_publishes=1 --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.38 --fsm_offset=0.01 --blend_duration=0.52 --n_period_delay=1";
+        host = "dair-cassie";
+    }
+    cmd "controller-switch-to-running" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_RUNNING --n_publishes=1 --channel_x=CASSIE_STATE_DISPATCHER --fsm_period=0.37 --fsm_offset=0.01 --blend_duration=0.50 --n_period_delay=1";
         host = "dair-cassie";
     }
     cmd "controller-switch-to-pd" {
@@ -67,24 +86,10 @@ group "2.controller-switch-commands" {
     }
 }
 
-group "3.lcm-tools" {
-    cmd "0.cassie-lcm-logger" {
-        exec = "python3 examples/Cassie/start_logging.py";
-        host = "dair-cassie";
-    }
-    cmd "0.lcm-spy" {
-        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
-        host = "localhost";
-    }
-    cmd "1.signal-scope" {
-        exec = "bazel-bin/signalscope/signal-scope";
-        host = "localhost";
-    }
-}
 
 script "initialize_standing" {
     stop group "1.cassie-robot";
-    stop cmd  "0.cassie-lcm-logger";
+    stop cmd "0.cassie-lcm-logger";
     start cmd "0.dispatcher-robot-out-real-robot";
     start cmd "1.dispatcher-robot-in-real-robot";
     start cmd "2.pd-controller-real-robot";
@@ -98,6 +103,15 @@ script "setup_from_pd_to_osc_standing" {
 script "setup_from_pd_to_osc_standing (radio)" {
     restart cmd "0.dispatcher-robot-out-real-robot";
     start cmd "3.1 standing-controller-real-robot (radio)";
+}
+
+script "switch_to_running_start_logging" {
+    start cmd "0.cassie-lcm-logger";
+    wait ms 100;
+    start cmd "controller-switch-to-running";
+    wait ms 2000;
+    stop cmd "3.0 standing-controller-real-robot";
+    stop cmd "3.1 standing-controller-real-robot (radio)";
 }
 
 script "switch_to_standing" {

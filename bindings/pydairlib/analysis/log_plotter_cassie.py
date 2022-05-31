@@ -31,6 +31,8 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
+    import time
+
     ''' Read the log '''
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
@@ -40,7 +42,12 @@ def main():
                      plot_config.end_time,
                      mbp_plots.load_default_channels,  # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
-    import pdb; pdb.set_trace()
+
+    contact_output = get_log_data(log,  # log
+                                  cassie_plots.cassie_contact_channels,  # lcm channels
+                                  plot_config.end_time,
+                                  mbp_plots.load_force_channels,  # processing callback
+                                  'CASSIE_CONTACT_DRAKE')  # processing callback arguments
 
     print('Finished processing log - making plots')
     # Define x time slice

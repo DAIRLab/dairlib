@@ -15,8 +15,9 @@ def get_log_data(lcm_log, lcm_channels, end_time, data_processing_callback, *arg
 
     data_to_process = {}
     print('Processing LCM log (this may take a while)...')
-    t = lcm_log.read_next_event().timestamp
+    # import pdb; pdb.set_trace()
     lcm_log.seek(0)
+    t = lcm_log.read_next_event().timestamp
     for event in lcm_log:
         if event.channel in lcm_channels:
             if event.channel in data_to_process:

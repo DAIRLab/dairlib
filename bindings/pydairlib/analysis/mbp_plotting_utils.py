@@ -168,6 +168,59 @@ def process_osc_channel(data):
             'osc_output': osc_output}
 
 
+def process_contact_channel(data):
+    t_contact_info = []
+    contact_forces = [[], [], [], []]  # Allocate space for all 4 point contacts
+    contact_info_locs = [[], [], [], []]
+    for msg in data:
+        t_contact_info.append(msg.timestamp / 1e6)
+        num_left_contacts = 0
+        num_right_contacts = 0
+        for i in range(msg.num_point_pair_contacts):
+            if "toe_left" in msg.point_pair_contact_info[i].body2_name:
+                if (num_left_contacts >= 2):
+                    continue
+                contact_info_locs[num_left_contacts].append(
+                    msg.point_pair_contact_info[i].contact_point)
+                contact_forces[num_left_contacts].append(
+                    msg.point_pair_contact_info[i].contact_force)
+                num_left_contacts += 1
+            elif "toe_right" in msg.point_pair_contact_info[i].body2_name:
+                if (num_right_contacts >= 2):
+                    continue
+                contact_info_locs[2 + num_right_contacts].append(
+                    msg.point_pair_contact_info[i].contact_point)
+                contact_forces[2 + num_right_contacts].append(
+                    msg.point_pair_contact_info[i].contact_force)
+                num_right_contacts += 1
+        while num_left_contacts != 2:
+            contact_forces[num_left_contacts].append((0.0, 0.0, 0.0))
+            contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))
+            num_left_contacts += 1
+        while num_right_contacts != 2:
+            contact_forces[2 + num_right_contacts].append((0.0, 0.0, 0.0))
+            contact_info_locs[2 + num_right_contacts].append((0.0, 0.0,
+                                                              0.0))
+            num_right_contacts += 1
+
+    t_contact_info = np.array(t_contact_info)
+    contact_forces = np.array(contact_forces)
+    contact_info_locs = np.array(contact_info_locs)
+
+    for i in range(contact_info_locs.shape[1]):
+        # Swap front and rear contacts if necessary
+        # Order will be front contact in index 1
+        if contact_info_locs[0, i, 0] > contact_info_locs[1, i, 0]:
+            contact_forces[[0, 1], i, :] = contact_forces[[1, 0], i, :]
+            contact_info_locs[[0, 1], i, :] = contact_info_locs[[1, 0], i, :]
+        if contact_info_locs[2, i, 0] > contact_info_locs[3, i, 0]:
+            contact_forces[[2, 3], i, :] = contact_forces[[3, 2], i, :]
+            contact_info_locs[[2, 3], i, :] = contact_info_locs[[3, 2], i, :]
+    return {'t_lambda': t_contact_info,
+            'lambda_c': contact_forces,
+            'p_lambda_c': contact_info_locs}
+
+
 def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
     _, vperm, uperm = make_joint_order_permutations(robot_output_msg, plant)
     osc_data['u_sol'] = (osc_data['u_sol'] @ uperm.T)
@@ -185,6 +238,10 @@ def load_default_channels(data, plant, state_channel, input_channel,
 
     return robot_output, robot_input, osc_debug
 
+
+def load_force_channels(data, contact_force_channel):
+    contact_info = process_contact_channel(data[contact_force_channel])
+    return contact_info
 
 def plot_q_or_v_or_u(
     robot_output, key, x_names, x_slice, time_slice,
@@ -206,6 +263,7 @@ def plot_q_or_v_or_u(
          'ylabel': ylabel,
          'title': title}, ps)
     return ps
+
 
 def plot_u_cmd(
     robot_input, key, x_names, x_slice, time_slice,
@@ -272,10 +330,11 @@ def plot_measured_efforts(robot_output, u_names, time_slice):
                             time_slice, ylabel='Efforts (Nm)',
                             title='Joint Efforts')
 
+
 def plot_commanded_efforts(robot_input, u_names, time_slice):
     return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
-                            time_slice, ylabel='Efforts (Nm)',
-                            title='Commanded Joint Efforts')
+                      time_slice, ylabel='Efforts (Nm)',
+                      title='Commanded Joint Efforts')
 
 
 def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
@@ -411,6 +470,7 @@ def plot_qp_costs(osc_debug, time_slice):
          'title': 'regularization_costs'}, ps)
     return ps
 
+
 def plot_qp_solutions(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
@@ -424,6 +484,7 @@ def plot_qp_solutions(osc_debug, time_slice):
          'ylabel': 'Solve Time ',
          'title': 'OSC Lambda Solutions'}, ps)
     return ps
+
 
 def plot_qp_solve_time(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()
@@ -472,21 +533,20 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
     return ps
 
 
-def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names = []):
+def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names=[]):
     ax = ps.fig.axes[0]
     ymin, ymax = ax.get_ylim()
-
 
     # uses default color map
     legend_elements = []
     for i in np.unique(fsm_signal):
-        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2*i), alpha=0.2)
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
         if len(fsm_state_names) == np.unique(fsm_signal).shape[0]:
-            legend_elements.append(Patch(facecolor=ps.cmap(2*i), alpha=0.3, label=fsm_state_names[i]))
+            legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
 
     # if len(legend_elements) > 0:
     #     legend = ax.legend(legend_elements, fsm_state_names, loc=4)
-        # ps.add_legend(legend, loc=4)
-        # ax.add_artist(legend)
-        # ax.add_artist(legend)
-        # ax.relim()
+    # ps.add_legend(legend, loc=4)
+    # ax.add_artist(legend)
+    # ax.add_artist(legend)
+    # ax.relim()

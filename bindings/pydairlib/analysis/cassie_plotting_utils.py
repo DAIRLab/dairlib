@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 # dairlib imports
 import dairlib
+import drake
 from pydairlib.cassie.cassie_utils import addCassieMultibody
 
 # drake imports
@@ -28,6 +29,9 @@ cassie_default_channels = \
      'OSC_DEBUG_WALKING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_RUNNING': dairlib.lcmt_osc_output}
+
+cassie_contact_channels = \
+    {'CASSIE_CONTACT_DRAKE': drake.lcmt_contact_results_for_viz}
 
 
 def make_plant_and_context(floating_base=True, springs=True):

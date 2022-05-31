@@ -258,8 +258,8 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // TODO: check that this is done properly
   // ex. confirm dimensions of everything
   std::vector<SortedPair<GeometryId>> contact_pairs;
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2])); // Sphere <-> Ground
   
   VectorXd phi(contact_pairs.size());
   MatrixXd J_n(contact_pairs.size(), plant_.num_velocities());
@@ -271,11 +271,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
         plant_, contact_pairs[i]);  // deleted num_fricton_directions (check with
                                    // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions_);
-
-//    std::cout << "phi_i" << std::endl;
-//    std::cout << phi_i << std::endl;
-//    std::cout << "phi_i" << std::endl;
-
 
     phi(i) = phi_i;
 
@@ -304,8 +299,10 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // debug prints every 10th of a second
   // if (trunc(timestamp*10) / 10.0 == timestamp){
-  //   //std::cout << timestamp << "\n---------------" << std::endl;
-  //   std::cout << xtilde.tail(3).norm() << std::endl;
+  //   std::cout << timestamp << "\n---------------" << std::endl;
+  //   std::cout << "phi\n:" << phi << std::endl;
+  //   std::cout << J_n.rows() << " " << J_n.cols() << std::endl;
+  //   std::cout << J_t.rows() << " " << J_t.cols() << std::endl;
   // }
 }
 

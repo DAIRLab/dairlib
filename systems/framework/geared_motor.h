@@ -12,12 +12,16 @@
 namespace dairlib {
 namespace systems {
 
+/// Class to model the relationship between motor speed and torque. This uses
+/// the basic torque speed curve and is implemented identically to the motor
+/// model in cassie-mujoco-sim provided by Agility Robotics
 class GearedMotor final : public drake::systems::LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(GearedMotor)
 
-  explicit GearedMotor(const drake::multibody::MultibodyPlant<double>& plant,
-              const std::unordered_map<std::string, double>& max_motor_speeds);
+  explicit GearedMotor(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::unordered_map<std::string, double>& max_motor_speeds);
 
   const drake::systems::InputPort<double>& get_input_port_command() const {
     return drake::systems::LeafSystem<double>::get_input_port(

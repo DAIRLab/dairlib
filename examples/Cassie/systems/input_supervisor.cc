@@ -1,4 +1,4 @@
-#include "examples/Cassie/input_supervisor.h"
+#include "examples/Cassie/systems/input_supervisor.h"
 
 #include <dairlib/lcmt_cassie_out.hpp>
 #include <dairlib/lcmt_controller_failure.hpp>

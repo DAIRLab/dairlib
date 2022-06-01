@@ -1,4 +1,4 @@
-#include "cassie_encoder.h"
+#include "examples/Cassie/systems/cassie_encoder.h"
 
 #include <drake/common/eigen_types.h>
 

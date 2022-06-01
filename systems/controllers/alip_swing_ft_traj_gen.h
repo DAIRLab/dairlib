@@ -22,11 +22,8 @@ namespace systems {
 /// (see https://doi.org/10.1109/ICRA48506.2021.9560821)
 ///
 /// In the z direction, the start point is the
-/// swing foot position before it leaves the ground, and the mid point and end
-/// point are both specified by the user. The footstep location, x_fs, can be
-/// modified with two flags
-///  - `add_speed_regularization`
-///  - `is_feet_collision_avoid`
+/// swing foot position it leaves the ground, and the mid point and end
+/// point are both specified by the user.
 ///
 /// Arguments of the constructor:
 /// - MultibodyPlant of the robot
@@ -60,7 +57,7 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       double mid_foot_height, double desired_final_foot_height,
       double desired_final_vertical_foot_velocity,
       double max_com_to_x_footstep_dist, double footstep_offset,
-      double center_line_offset, bool wrt_com_in_local_frame = false);
+      double center_line_offset);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);

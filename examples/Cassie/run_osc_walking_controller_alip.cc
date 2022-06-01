@@ -3,11 +3,13 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/systems/simulator_drift.h"
+#include "examples/Cassie/osc/hip_yaw_traj_gen.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
-#include "examples/Cassie/osc/osc_walking_gains.h"
+#include "examples/Cassie/osc/osc_walking_gains_alip.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
-#include "examples/Cassie/simulator_drift.h"
+#include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
@@ -60,6 +62,8 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::FixedJointEvaluator;
+using multibody::makeNameToVelocitiesMap;
+using multibody::makeNameToPositionsMap;
 
 using drake::trajectories::PiecewisePolynomial;
 
@@ -94,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Read-in the parameters
-  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGains>(FLAGS_gains_filename);
+  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -125,11 +129,12 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel = RightToeRear(plant_w_spr);
 
   // Get body frames and points
-  Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
+  Vector3d center_of_pressure = left_heel.first +
+      gains.contact_point_pos * (left_toe.first - left_heel.first);
   auto left_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
-      mid_contact_point, plant_w_spr.GetFrameByName("toe_left"));
+      center_of_pressure, plant_w_spr.GetFrameByName("toe_left"));
   auto right_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
-      mid_contact_point, plant_w_spr.GetFrameByName("toe_right"));
+      center_of_pressure, plant_w_spr.GetFrameByName("toe_right"));
   auto left_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
       Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_left"));
   auto right_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
@@ -177,6 +182,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(pelvis_filt->get_output_port(0),
                   simulator_drift->get_input_port_state());
 
+  auto cassie_out_to_radio =
+      builder.AddSystem<systems::CassieOutToRadio>();
+
   // Create human high-level control
   Eigen::Vector2d global_target_position(gains.global_target_position_x,
                                          gains.global_target_position_y);
@@ -186,12 +194,13 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_use_radio) {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
-        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
+        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral, 0.4);
     auto cassie_out_receiver =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
             FLAGS_cassie_out_channel, &lcm_local));
-    builder.Connect(cassie_out_receiver->get_output_port(),
-                    high_level_command->get_cassie_output_port());
+    builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
+    builder.Connect(cassie_out_to_radio->get_output_port(),
+                    high_level_command->get_radio_port());
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
@@ -285,7 +294,9 @@ int DoMain(int argc, char* argv[]) {
   auto alip_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
       plant_w_spr, context_w_spr.get(), desired_com_height,
       unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state);
+      contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
+      gains.R_alip_kalman_filter.asDiagonal());
+
   builder.Connect(fsm->get_output_port(0),
                   alip_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
@@ -300,7 +311,6 @@ int DoMain(int argc, char* argv[]) {
   // to the hardware testing.
   // Additionally, implementing a double support phase might mitigate the
   // instability around state transition.
-  bool wrt_com_in_local_frame = gains.relative_swing_ft;
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
@@ -314,7 +324,7 @@ int DoMain(int argc, char* argv[]) {
           double_support_duration, gains.mid_foot_height,
           gains.final_foot_height, gains.final_foot_velocity_z,
           gains.max_CoM_to_footstep_dist, gains.footstep_offset,
-          gains.center_line_offset, wrt_com_in_local_frame);
+          gains.center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
@@ -462,6 +472,13 @@ int DoMain(int argc, char* argv[]) {
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+
+  auto vel_map = makeNameToVelocitiesMap<double>(plant_w_spr);
+  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
+      vel_map["hip_yaw_right"], left_stance_state);
+  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
+      vel_map["hip_yaw_left"], right_stance_state);
+
   ComTrackingData com_data("com_data", gains.K_p_swing_foot,
                            gains.K_d_swing_foot, gains.W_swing_foot,
                            plant_w_spr, plant_w_spr);
@@ -480,23 +497,11 @@ int DoMain(int argc, char* argv[]) {
   swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  if (FLAGS_spring_model) {
-    // swing_ft_traj.DisableFeedforwardAccel({2});
-  }
-
-  if (wrt_com_in_local_frame) {
-    swing_ft_traj_local.SetTimeVaryingGains(
+  swing_ft_traj_local.SetTimeVaryingGains(
         swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);
-    osc->AddTrackingData(&swing_ft_traj_local);
-  } else {
-    swing_ft_traj_global.SetTimeVaryingGains(
-        swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_global.SetFeedforwardAccelMultiplier(
-        swing_ft_accel_gain_multiplier_gain_multiplier);
-    osc->AddTrackingData(&swing_ft_traj_global);
-  }
+  osc->AddTrackingData(&swing_ft_traj_local);
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);
@@ -532,6 +537,10 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&swing_toe_traj_left);
   osc->AddTrackingData(&swing_toe_traj_right);
 
+
+  auto hip_yaw_traj_gen =
+      builder.AddSystem<cassie::HipYawTrajGen>(left_stance_state);
+
   // Swing hip yaw joint tracking
   JointSpaceTrackingData swing_hip_yaw_traj(
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
@@ -540,7 +549,16 @@ int DoMain(int argc, char* argv[]) {
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
                                              "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+
+  if (FLAGS_use_radio) {
+    builder.Connect(cassie_out_to_radio->get_output_port(),
+                    hip_yaw_traj_gen->get_radio_input_port());
+    builder.Connect(fsm->get_output_port_fsm(),
+                    hip_yaw_traj_gen->get_fsm_input_port());
+    osc->AddTrackingData(&swing_hip_yaw_traj);
+  } else {
+    osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+  }
 
   // Set double support duration for force blending
   osc->SetUpDoubleSupportPhaseBlending(
@@ -549,8 +567,19 @@ int DoMain(int argc, char* argv[]) {
 
   osc->SetOsqpSolverOptionsFromYaml(
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
-  // Build OSC problem
+
+  if (gains.W_com(0,0) == 0){
+    osc->AddInputCostByJointAndFsmState(
+        "toe_left_motor", left_stance_state, 1.0);
+    osc->AddInputCostByJointAndFsmState(
+        "toe_left_motor", post_right_double_support_state, 1.0);
+    osc->AddInputCostByJointAndFsmState(
+        "toe_right_motor", right_stance_state, 1.0);
+    osc->AddInputCostByJointAndFsmState(
+        "toe_right_motor", post_left_double_support_state, 1.0);
+  }
   osc->Build();
+
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
@@ -567,6 +596,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
+  if (FLAGS_use_radio) {
+    builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
+                    osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
+  }
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.

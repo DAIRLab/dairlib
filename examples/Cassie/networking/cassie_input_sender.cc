@@ -27,7 +27,7 @@ void CassieInputSender::Output(const Context<double>& context,
   const cassie_user_in_t& cassie_in =
     EvalAbstractInput(context, 0)->get_value<cassie_user_in_t>();
   // using the time from the context
-  cassieInToLcm(cassie_in, context.get_time(), output);
+  CassieInToLcm(cassie_in, context.get_time(), output);
 }
 
 }  // namespace systems

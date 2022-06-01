@@ -195,8 +195,7 @@ for i in range(len(directory_list)):
                 cost_accel = [0.0] * iteration_length
                 cost_main = [0.0] * iteration_length
                 iteration = iter_start
-                idx = 0
-                while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
+                for idx in range(iteration_length):
                     # Read all costs
                     cost_all[idx] = np.genfromtxt(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
 
@@ -211,7 +210,6 @@ for i in range(len(directory_list)):
                     if is_iter_end & (iteration == iter_end):
                         break
                     iteration += 1
-                    idx += 1
 
                 # plot cost for each sample
                 if not only_plot_average_cost:

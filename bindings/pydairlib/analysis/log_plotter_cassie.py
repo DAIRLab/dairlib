@@ -31,8 +31,6 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
-    import time
-
     ''' Read the log '''
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
@@ -78,16 +76,15 @@ def main():
     # Plot all joint velocities
     if plot_config.plot_joint_positions:
         plot = mbp_plots.plot_joint_velocities(robot_output, vel_names,
-                                        6 if use_floating_base else 0,
-                                        t_x_slice)
+                                               6 if use_floating_base else 0,
+                                               t_x_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     # Plot specific velocities
     if plot_config.vel_names:
         plot = mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
-                                          t_x_slice, vel_map)
+                                                 t_x_slice, vel_map)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
@@ -131,7 +128,7 @@ def main():
             pts['toe_' + pos] = pts_map[plot_config.pt_on_foot_to_plot]
 
         plot = mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
-                                        foot_frames, pts, dims)
+                                               foot_frames, pts, dims)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_qp_solve_time:

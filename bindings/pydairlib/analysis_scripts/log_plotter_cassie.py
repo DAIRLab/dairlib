@@ -34,6 +34,8 @@ def main():
   global act_map
 
   filename = sys.argv[1]
+  # filename = "/home/yuming/Downloads/sim_cost_eval/lcmlog-idx_1_49"
+
   controller_channel = ""  # sys.argv[2]  #I'm not using this argument now
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
@@ -187,7 +189,7 @@ def main():
   compare_two_lcm_log = False
   if compare_two_lcm_log:
     # Load a second log if we want to compare two logs
-    filename2 = "/home/yuming/Desktop/temp/0424/20210617_sim_cost_study/lcmlogs/lcmlog-idx_150_49"
+    filename2 = "/home/yuming/Downloads/sim_cost_eval/lcmlog-idx_160_49"
     log2 = lcm.EventLog(filename2, "r")
     x2, u_meas, imu_aceel, t_x2, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
     osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
@@ -195,7 +197,8 @@ def main():
     osc_output, input_supervisor_status, t_input_supervisor, full_log = process_lcm_log.process_log(log2, pos_map, vel_map, act_map, controller_channel)
 
     # Plots
-    PlotTwoCenterOfMassAceel(x, t_x, x2, t_x2, plant_w_spr)
+    # PlotTwoCenterOfMassAceel(x, t_x, x2, t_x2, plant_w_spr)
+    PlotTwoCentroidalAngularMomentum(x, t_x, x2, t_x2, plant_w_spr)
 
   plt.show()
 
@@ -1138,6 +1141,35 @@ def PlotTwoCenterOfMassAceel(x1, t_x1, x2, t_x2, plant):
   plt.legend(["x (initial)", "y (initial)", "z (initial)", "x (optimal)", "y (optimal)", "z (optimal)"])
   # plt.legend(["x", "y", "z"])
   # plt.legend(["x", "y", "z", "fsm"])
+
+def PlotTwoCentroidalAngularMomentum(x1, t_x1, x2, t_x2, plant):
+  ### Total centroidal angular momentum
+  centroidal_angular_momentum1 = np.zeros((t_x1.size, 3))
+  for i in range(t_x1.size):
+    plant.SetPositionsAndVelocities(context, x1[i])
+    com = plant.CalcCenterOfMassPositionInWorld(context)
+    h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
+    centroidal_angular_momentum1[i] = h_WC_eval.rotational()
+  centroidal_angular_momentum2 = np.zeros((t_x2.size, 3))
+  for i in range(t_x2.size):
+    plant.SetPositionsAndVelocities(context, x2[i])
+    com = plant.CalcCenterOfMassPositionInWorld(context)
+    h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
+    centroidal_angular_momentum2[i] = h_WC_eval.rotational()
+
+  plt.rcParams.update({'font.size': 15.5})
+  plt.figure("Centroidal angular momentum")
+  plt.plot(t_x1, centroidal_angular_momentum1[:,0], color="#990000", linewidth=2)
+  plt.gca().set_prop_cycle(None)  # reset color cycle
+  plt.plot(t_x2, centroidal_angular_momentum2[:,0], color="#0000D1", linewidth=2)
+  # plt.plot(t_osc_debug, 0.1 * fsm)
+  plt.xlabel('time (s)')
+  plt.ylabel('angular momentum ($kg \cdot m^2 / s$)')
+  # plt.legend(["x (initial)", "y (initial)", "z (initial)", "x (optimal)", "y (optimal)", "z (optimal)"])
+  plt.legend(["Initial model", "Optimal model"])
+  plt.gcf().subplots_adjust(bottom=0.15)
+  plt.gcf().subplots_adjust(left=0.17)
+
 
 if __name__ == "__main__":
   main()

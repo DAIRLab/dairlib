@@ -10,7 +10,7 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::kUseDefaultName;
 
 GearedMotor::GearedMotor(const MultibodyPlant<double>& plant,
-                         const std::vector<double>& max_motor_speeds)
+                         const std::unordered_map<std::string, double>& max_motor_speeds)
     : n_q(plant.num_positions()),
       n_v(plant.num_velocities()),
       n_u(plant.num_actuators()),
@@ -20,7 +20,7 @@ GearedMotor::GearedMotor(const MultibodyPlant<double>& plant,
         plant.get_joint_actuator(drake::multibody::JointActuatorIndex(i));
     actuator_gear_ratios.push_back(joint_actuator.default_gear_ratio());
     actuator_ranges.push_back(joint_actuator.effort_limit() / joint_actuator.default_gear_ratio());
-    actuator_max_speeds.push_back(max_motor_speeds[i]);
+    actuator_max_speeds.push_back(max_motor_speeds.at(joint_actuator.name()));
   }
   systems::BasicVector<double> input(plant.num_actuators());
   systems::BasicVector<double> output(plant.num_actuators());

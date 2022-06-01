@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import matplotlib.pyplot as plt
 import scipy.linalg
 import scipy.io
 from scipy.spatial.transform import Rotation
@@ -8,7 +9,7 @@ from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydairlib.cassie.cassie_utils import *
 
 class UKF:
-    def __init__(self, init_cov, init_mean, R, Q):
+    def __init__(self,init_mean, init_cov, R, Q):
         """
         Initialize the states and covariance matrices.
 
@@ -29,7 +30,7 @@ class UKF:
         # Dim of lambda_c 
         self.nlc = 12
         # Dim of lambda_h
-        self.nlh = 2
+        self.nlh = 6
         # Total dim
         self.n = self.nq + self.nv *2 + self.nlc + self.nlh
 
@@ -52,13 +53,13 @@ class UKF:
     def get_sigma_points(self):
         """
         Get 2n+1 sigma points based on covariance.
-        #TODO whether or not store the dynamics into this process. Current implementation is store them into the sigma points
         
         return:
             a 2n+1 X n matrix where each represent a sigma point
         """
         
         # Comupte the sqrt of covariance by cholesky
+        # TODO self.R is only for motor, need also sampling this noise
         L = np.linalg.cholesky(self.cov + self.R)
         div = self.n**0.5 * L
 
@@ -166,9 +167,9 @@ class UKF:
                 if i == 0:
                     point_on_foot, foot_frame = LeftToeFront(self.plant) # left toe front
                 elif i == 1:
-                    point_on_foot, foot_frame =  RightToeFront(self.plant) # right toe front
-                elif i == 2:
                     point_on_foot, foot_frame = LeftToeRear(self.plant) # left toe back
+                elif i == 2:
+                    point_on_foot, foot_frame =  RightToeFront(self.plant) # right toe front
                 elif i == 3:
                     point_on_foot, foot_frame = RightToeRear(self.plant) # right toe back
                 else:
@@ -186,7 +187,7 @@ class UKF:
             B = np.zeros(1)
 
             # compute the v_dot
-            vdot[i,:] = scipy.linalg.pinv(M) @ (-bias + J_c.T @ lambda_c + J_h.T @ lambda_h + B @ u + C * v)
+            vdot[i,:] = scipy.linalg.pinv(M) @ (-bias + J_c.T @ lambda_c + J_h.T @ lambda_h + B @ u - C * v)
 
         return vdot
 
@@ -370,26 +371,153 @@ class UKF:
 
         return self.mean
 
+def interploation(t,t1,t2,v1,v2):
+    ratio = (t - t1)/(t2-t1)
+    v = v1 + ratio * (v2 -v1)
+    return v
+
 def processing_raw_data(raw_data, R, Q):
+    """
+    Process the data given raw_data and noise. 
+    Time was synchronized to t_x by interpolation to other value that do not use t_x.
+    return a dict contained processed data
+    addtional infos for returned data:
+    keys in dict:
+        u: the ground truth input to the robot plus fake noise.
+        obs: the observation [imu acc, gyro, encoder reading] plus fake noise, 
+            the imu acc is obtained by acc_gt which is taken by finite difference of v
+        lambda_c_gt: ground truth contact force by interpolation, order should be [left front, left rear, right front, right rear] TODO make sure this
+        lambda_h_guess: the lambda_h solved by osc optimization, should be a very rough value of what it should be
+    """
+    # Initialization
     start_time = 6.5
     end_time = 10
-    t = raw_data["t_x"][0]
-    start_index = np.argwhere(t > start_time)[0][0]
-    end_index = np.argwhere(t < end_time)[-1][0]
-    t = t[start_index:end_index]
-    import pdb; pdb.set_trace()
+
+    # processing robot output
+    robot_output = raw_data['robot_output']
+    t_robot_output = robot_output["t_x"][0][0][0]
+    start_index = np.argwhere(t_robot_output > start_time)[0][0]
+    end_index = np.argwhere(t_robot_output < end_time)[-1][0]
+    t_robot_output = t_robot_output[start_index:end_index]
+    q = robot_output['q'][0][0][start_index:end_index,:]
+    v = robot_output['v'][0][0][start_index:end_index,:]
+    u = robot_output['u'][0][0][start_index:end_index,:]
+    # obtained acc by finite diff
+    acc = (robot_output['v'][0][0][start_index+1:end_index+1,:] - robot_output['v'][0][0][start_index-1:end_index-1,:])\
+        /(robot_output["t_x"][0][0][0][start_index+1:end_index+1] - robot_output["t_x"][0][0][0][start_index-1:end_index-1])[:,None]
+    
+    # processing contact force
+    contact_output = raw_data['contact_output']
+    t_contact = contact_output['t_lambda'][0][0][0]
+    start_index = np.argwhere(t_contact > start_time - 0.01)[0][0] # make sure contact force period range cover the output states
+    end_index = np.argwhere(t_contact < end_time + 0.01)[-1][0]
+    t_contact = t_contact[start_index: end_index]
+    contact_force = contact_output['lambda_c'][0][0]
+    left_toe_front = contact_force[0,start_index:end_index,:]
+    left_toe_rear = contact_force[1,start_index:end_index,:]
+    right_toe_front = contact_force[2,start_index:end_index,:]
+    right_toe_rear = contact_force[3,start_index:end_index,:]
+    contact_force_processed = []
+    pointer = 0
+    for t in t_robot_output:
+        while not (t_contact[pointer] <= t and t_contact[pointer+1] >=t):
+            pointer+=1
+        left_toe_front_interpolated = interploation(t, t_contact[pointer], t_contact[pointer+1], 
+                                                    left_toe_front[pointer,:], left_toe_front[pointer+1,:])
+        left_toe_rear_interpolated = interploation(t, t_contact[pointer], t_contact[pointer+1],
+                                                    left_toe_rear[pointer,:], left_toe_rear[pointer+1,:])
+        right_toe_front_interpolated = interploation(t, t_contact[pointer], t_contact[pointer+1],
+                                                    right_toe_front[pointer,:], right_toe_front[pointer+1,:])
+        right_toe_rear_interpolated = interploation(t, t_contact[pointer], t_contact[pointer+1],
+                                                    right_toe_rear[pointer,:], right_toe_rear[pointer+1,:])
+        joined_forces = np.hstack((left_toe_front_interpolated, left_toe_rear_interpolated, right_toe_front_interpolated, right_toe_rear_interpolated))
+        contact_force_processed.append(joined_forces)
+    contact_force_processed = np.array(contact_force_processed)
+
+    # processing osc output
+    osc_output = raw_data['osc_output']
+    t_osc = osc_output['t_osc'][0][0][0]
+    start_index = np.argwhere(t_osc > start_time - 0.01)[0][0] # make sure constraint force period range cover the output states
+    end_index = np.argwhere(t_osc < end_time + 0.01)[-1][0]
+    t_osc = t_osc[start_index:end_index]
+    lambda_h_sol = osc_output['lambda_h_sol'][0][0][start_index:end_index,:]
+    lambda_h_guess = []
+    pointer = 0
+    for t in t_robot_output:
+        while not (t_osc[pointer] <= t and t_osc[pointer+1] >=t):
+            pointer+=1
+        lambda_h_interpolation = interploation(t, t_osc[pointer], t_osc[pointer+1],
+                                                lambda_h_sol[pointer,:], lambda_h_sol[pointer+1,:])
+        lambda_h_guess.append(lambda_h_interpolation)
+    lambda_h_guess = np.array(lambda_h_guess)
+
+    # Get damping ratio
+    damping_ratio = raw_data['damping_ratio'][0]
+
+    # construct observation by adding noise to ground truth 
+    accelerometer_gt = acc[:,3:6]
+    gyro_gt = v[:,0:3]
+    encoder_gt = q[:,7:]
+    obs_gt = np.hstack((accelerometer_gt, gyro_gt, encoder_gt))
+    n = obs_gt.shape[0]
+    noise = np.random.multivariate_normal(np.zeros(Q.shape[0]),Q,n)
+    obs_processed = obs_gt + noise
+
+    # construct noisy input
+    n = u.shape[0]
+    noise = np.random.multivariate_normal(np.zeros(R.shape[0]),R,n)
+    u_processed = u + noise
+
+    processed_data = {
+        't':t_robot_output,
+        'u':u_processed,
+        'obs':obs_processed,
+        'lambda_c_gt':contact_force_processed,
+        'lambda_h_guess':lambda_h_guess,
+        'q_gt':q,
+        'v_gt':v,
+        'acc_gt':acc,
+        'obs_gt':obs_gt,
+        'u_gt':u,
+        'damping_ratio':damping_ratio
+    }
+
+    return processed_data
 
 def main():
+    np.random.seed(0)
     data_path = "log/20220530_1.mat"
-    data_raw = scipy.io.loadmat(data_path)
+    raw_data = scipy.io.loadmat(data_path)
     
-    # dynamics noise for generate fake data
-    R_motor = np.eye(10) * 0.1
-    # observation noise for generate fake data 
+    # dynamics noise
+    R = np.eye(10) * 1
+    # observation noise
     Q = np.eye(22) * 0.1
+    # initial noise
+    init_cov = np.eye(85) * 0.1
+    init_cov[57:69,57:69] = np.eye(12) * 200 # lambda_h
 
-    # make the fake data 
-    data = processing_raw_data(data_raw, R_motor, Q)
+    # processing raw data
+    processed_data = processing_raw_data(raw_data, R, Q)
+    t = processed_data['t'];u = processed_data['u'];obs = processed_data['obs']
+    lambda_c_gt = processed_data['lambda_c_gt'];lambda_h_guess = processed_data['lambda_h_guess'];q_gt = processed_data['q_gt']
+    v_gt = processed_data['v_gt'];acc_gt = processed_data['acc_gt'];obs_gt = processed_data['obs_gt']
+    u_gt = processed_data['u_gt'];damping_ratio = processed_data['damping_ratio']
+
+    # get initial value 
+    init_mean = np.hstack((
+                        q_gt[0,:],
+                        v_gt[0,:],
+                        lambda_c_gt[0,:],
+                        lambda_h_guess[0,:],
+                        damping_ratio
+                        ))
+    noise = np.random.multivariate_normal(np.zeros_like(init_mean), init_cov)
+    init_mean += noise
+
+    # initial ukf
+    estimator = UKF(init_mean, init_cov, R, Q)
+    import pdb; pdb.set_trace()
 
 if __name__ == "__main__":
     main()

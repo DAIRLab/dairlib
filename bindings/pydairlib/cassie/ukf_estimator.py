@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydairlib.cassie.cassie_utils import *
+from pydairlib.multibody import kinematic
 
 class UKF:
     def __init__(self,init_mean, init_cov, R, Q):
@@ -15,6 +16,8 @@ class UKF:
 
         The initial states are in the form of [q, v, lambda_c, lambda_h, C],
         where the q[:4] are orientation of pelvis expressed in quaternion form.
+
+        R is the dynamics noise in order of [motor noise, lambda_c noise, lambda_h noise]
         """
         self.mean = init_mean
         self.cov = init_cov
@@ -30,7 +33,7 @@ class UKF:
         # Dim of lambda_c 
         self.nlc = 12
         # Dim of lambda_h
-        self.nlh = 6
+        self.nlh = 2
         # Total dim
         self.n = self.nq + self.nv *2 + self.nlc + self.nlh
 
@@ -41,15 +44,23 @@ class UKF:
         self.builder = DiagramBuilder()
         self.drake_sim_dt = 5e-5
         self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, self.drake_sim_dt)
-        AddCassieMultibody(self.plant, self.scene_graph, True, 
-                            "examples/Cassie/urdf/cassie_v2.urdf", False, False)
+        addCassieMultibody(self.plant, self.scene_graph, True, 
+                            "examples/Cassie/urdf/cassie_v2.urdf", True, True)
         self.plant.Finalize()
         self.world = self.plant.world_frame()
         self.context = self.plant.CreateDefaultContext()
         
-        self.left_loop = LeftLoopClosureEvaluator(self.plant)
-        self.right_loop = RightLoopClosureEvaluator(self.plant)
-
+        left_rod_on_thigh = LeftRodOnThigh(self.plant)
+        left_rod_on_heel = LeftRodOnHeel(self.plant)
+        self.left_loop = kinematic.DistanceEvaluator(
+                        self.plant, left_rod_on_heel[0], left_rod_on_heel[1], left_rod_on_thigh[0],
+                        left_rod_on_thigh[1], 0.5012)
+        right_rod_on_thigh = RightRodOnThigh(self.plant)
+        right_rod_on_heel = RightRodOnHeel(self.plant)
+        self.right_loop = kinematic.DistanceEvaluator(
+                        self.plant, right_rod_on_heel[0], right_rod_on_heel[1], right_rod_on_thigh[0],
+                        right_rod_on_thigh[1], 0.5012)
+                    
     def get_sigma_points(self):
         """
         Get 2n+1 sigma points based on covariance.
@@ -180,11 +191,11 @@ class UKF:
 
             # get the J_h
             J_h = np.zeros((2, self.nv))
-            J_h[0, :] = self.left_loop.CalcJacobian()
-            J_h[1, :] = self.right_loop.CalcJacobian()
+            J_h[0, :] = self.left_loop.EvalFullJacobian(self.context)
+            J_h[1, :] = self.right_loop.EvalFullJacobian(self.context)
 
             # get the B matrix TODO
-            B = np.zeros(1)
+            B = self.plant.MakeActuationMatrix()
 
             # compute the v_dot
             vdot[i,:] = scipy.linalg.pinv(M) @ (-bias + J_c.T @ lambda_c + J_h.T @ lambda_h + B @ u - C * v)
@@ -440,7 +451,7 @@ def processing_raw_data(raw_data, R, Q):
     start_index = np.argwhere(t_osc > start_time - 0.01)[0][0] # make sure constraint force period range cover the output states
     end_index = np.argwhere(t_osc < end_time + 0.01)[-1][0]
     t_osc = t_osc[start_index:end_index]
-    lambda_h_sol = osc_output['lambda_h_sol'][0][0][start_index:end_index,:]
+    lambda_h_sol = osc_output['lambda_h_sol'][0][0][start_index:end_index,0:2] # only the first two contribute to closure force
     lambda_h_guess = []
     pointer = 0
     for t in t_robot_output:
@@ -490,15 +501,15 @@ def main():
     raw_data = scipy.io.loadmat(data_path)
     
     # dynamics noise
-    R = np.eye(10) * 1
+    R_motor = np.eye(10) * 1
     # observation noise
     Q = np.eye(22) * 0.1
     # initial noise
-    init_cov = np.eye(85) * 0.1
-    init_cov[57:69,57:69] = np.eye(12) * 200 # lambda_h
+    init_cov = np.eye(81) * 0.1
+    init_cov[57:59,57:59] = np.eye(2) * 200 # lambda_h
 
     # processing raw data
-    processed_data = processing_raw_data(raw_data, R, Q)
+    processed_data = processing_raw_data(raw_data, R_motor, Q)
     t = processed_data['t'];u = processed_data['u'];obs = processed_data['obs']
     lambda_c_gt = processed_data['lambda_c_gt'];lambda_h_guess = processed_data['lambda_h_guess'];q_gt = processed_data['q_gt']
     v_gt = processed_data['v_gt'];acc_gt = processed_data['acc_gt'];obs_gt = processed_data['obs_gt']

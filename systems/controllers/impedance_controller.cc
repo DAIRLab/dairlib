@@ -63,7 +63,7 @@ std::vector<Vector3d> compute_target_task_space_vector(double t){
     double x_c = 0.6; // smaller x_c performs worse
     double y_c = 0;
     double z_c = 0.2;
-    double w = 2;
+    double w = 1;
     Vector3d start(x_c+r, y_c, z_c);
     double start_time = 1.0;
 
@@ -101,19 +101,28 @@ VectorXd inverse_kinematics(const MultibodyPlant<double>& plant,
     return q_sol;
 }
 
+bool isZeroVector(const VectorXd& a, double eps = 1e-6){
+  assert(eps > 0);
+  return (a.array().abs() <= eps*VectorXd::Ones(a.size()).array()).all();
+}
+
 namespace dairlib {
 namespace systems {
 namespace controllers {
 
 ImpedanceController::ImpedanceController(
     const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::multibody::MultibodyPlant<double>& plant_f,
     drake::systems::Context<double>& context,
+    drake::systems::Context<double>& context_f,
     const MatrixXd& K, 
     const MatrixXd& B,
     const std::vector<drake::geometry::GeometryId>& contact_geoms,
     int num_friction_directions)
     : plant_(plant),
+      plant_f_(plant_f),
       context_(context),
+      context_f_(context_f),
       K_(K),
       B_(B),
       contact_geoms_(contact_geoms),
@@ -161,7 +170,9 @@ ImpedanceController::ImpedanceController(
 // CARTESIAN IMPEDANCE CONTROLLER
 void ImpedanceController::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
-
+                                 
+  auto start = std::chrono::high_resolution_clock::now();
+  
   // get values
   const int n = 7;
   auto robot_output =
@@ -172,11 +183,14 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd u = robot_output->GetEfforts();
   
   //update the context_
-  VectorXd C(plant_.num_velocities());
   plant_.SetPositions(&context_, q);
   plant_.SetVelocities(&context_, v);
+  plant_f_.SetPositions(&context_f_, q);
+  plant_f_.SetVelocities(&context_f_, v);
+  //multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
 
   // calculate corriolis and gravity terms
+  VectorXd C(plant_.num_velocities());
   plant_.CalcBiasTerm(context_, &C);
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
 
@@ -220,16 +234,25 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // compute the input
   VectorXd tau = J_franka.transpose() * (K_*xtilde + B_*xtilde_dot) + C_franka - tau_g_franka;
 
-  // add feedforward force term
-  // TODO: check that this is done properly ex. confirm dimensions of everything
+  // add feedforward force term   
+  std::vector<SortedPair<GeometryId>> contact_pairs;
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
+  //contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2])); // Sphere <-> Ground
   
-  // std::vector<SortedPair<GeometryId>> contact_pairs;
-  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
-  // // contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2])); // Sphere <-> Ground
-  
-  // MatrixXd J_n(contact_pairs.size(), plant_.num_velocities());
-  // MatrixXd J_t(2 * contact_pairs.size() * num_friction_directions_, plant_.num_velocities());
-  // this->CalcContactJacobians(context, contact_pairs, J_n, J_t);
+  VectorXd phi(contact_pairs.size());
+  MatrixXd J_n(contact_pairs.size(), plant_.num_velocities());
+  MatrixXd J_t(2 * contact_pairs.size() * num_friction_directions_, plant_.num_velocities());
+  this->CalcContactJacobians(contact_pairs, phi, J_n, J_t);
+  MatrixXd Jc(J_n.rows() + J_t.rows(), n);
+  Jc << J_n.block(0, 0, J_n.rows(), n),
+        J_t.block(0, 0, J_t.rows(), n);
+
+  // TODO: get lambda from Alp's controller
+  VectorXd lambda = VectorXd::Zero(6);
+  if (timestamp > 10.0 && timestamp < 20.0){
+    lambda << 0, 100, 0, 0, 0, 0;
+  }
+  tau -= Jc.transpose() * lambda.tail(5); // TODO: check if this should be +/-
   
   // compute nullspace projection
   MatrixXd J_franka_pinv = J_franka.completeOrthogonalDecomposition().pseudoInverse();
@@ -238,18 +261,28 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd qd = VectorXd::Zero(7);
   qd << 0, 0, 0, -1.57, q_franka.tail(3); // task-specific
   //qd << 0, 0, 0, -1.57, 0, 1.57, 0;; // middle of range of motion
-  VectorXd tau_null = K_null_*(qd-q_franka) - B_null_*v_franka;
+  VectorXd tau_null = N * (K_null_*(qd-q_franka) - B_null_*v_franka);
 
-  control->SetDataVector(tau + N*tau_null);
+  // project into the null space of the contact jacobian if contact is desired
+  if (!isZeroVector(lambda.tail(5))){
+    MatrixXd Jc_pinv = Jc.completeOrthogonalDecomposition().pseudoInverse();
+    MatrixXd Nc = MatrixXd::Identity(7, 7) - Jc.transpose() * Jc_pinv.transpose();
+    tau_null = Nc * tau_null;
+  }
+
+  control->SetDataVector(tau + tau_null);
   control->set_timestamp(timestamp);
+  
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
 
   // debug prints every 10th of a second
-  // if (trunc(timestamp*10) / 10.0 == timestamp){
-  //   std::cout << timestamp << "\n---------------" << std::endl;
-  //   std::cout << "phi\n:" << phi << std::endl;
-  //   std::cout << J_n.rows() << " " << J_n.cols() << std::endl;
-  //   std::cout << J_t.rows() << " " << J_t.cols() << std::endl;
-  // }
+  int print_enabled = 0; // print flag
+  if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp){
+    std::cout << timestamp << "\n---------------" << std::endl;
+    std::cout << "zero:" << isZeroVector(lambda.tail(5)) << std::endl;    
+    std::cout << std::endl;
+  }
 }
 
 Vector3d ImpedanceController::CalcRotationalError(const RotationMatrix<double>& R) const {
@@ -265,22 +298,19 @@ Vector3d ImpedanceController::CalcRotationalError(const RotationMatrix<double>& 
   return R.matrix() * error_quaternion_no_w;
 }
 
-void ImpedanceController::CalcContactJacobians(const Context<double>& context,
-                            const std::vector<SortedPair<GeometryId>>& contact_pairs,
-                            MatrixXd& J_n, MatrixXd& J_t) const {
-  VectorXd phi(contact_pairs.size());
+void ImpedanceController::CalcContactJacobians(const std::vector<SortedPair<GeometryId>>& contact_pairs,
+                            VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const {
   for (int i = 0; i < (int) contact_pairs.size(); i++) {
     multibody::GeomGeomCollider collider(
-        plant_, contact_pairs[i]);  // deleted num_fricton_directions (check with
+        plant_f_, contact_pairs[i]);  // deleted num_fricton_directions (check with
                                    // Michael about changes in geomgeom)
-    auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions_);
-
+    auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
     phi(i) = phi_i;
 
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions_, 0, 2 * num_friction_directions_,
-              plant_.num_velocities()) =
-        J_i.block(1, 0, 2 * num_friction_directions_, plant_.num_velocities());
+              plant_f_.num_velocities()) =
+        J_i.block(1, 0, 2 * num_friction_directions_, plant_f_.num_velocities());
   }
 }
 

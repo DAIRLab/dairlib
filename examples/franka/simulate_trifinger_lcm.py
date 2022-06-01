@@ -90,7 +90,7 @@ q[q_map["panda_joint7"]] = 0
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 0.5
+q[q_map['base_x']] = 0.6
 q[q_map['base_y']] = 0
 q[q_map['base_z']] = 0
 

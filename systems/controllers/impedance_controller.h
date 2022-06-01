@@ -3,6 +3,8 @@
 #include <vector>
 #include <utility>
 #include <chrono>
+#include <assert.h>
+
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -74,7 +76,9 @@ class ImpedanceController : public LeafSystem<double> {
  public:
   ImpedanceController(
       const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::multibody::MultibodyPlant<double>& plant_contact,
       drake::systems::Context<double>& context,
+      drake::systems::Context<double>& context_contact,
       const Eigen::MatrixXd& K,
       const Eigen::MatrixXd& B,
       const std::vector<drake::geometry::GeometryId>& contact_geoms,
@@ -95,9 +99,8 @@ class ImpedanceController : public LeafSystem<double> {
   // computes the rotational error of the rotational matrix R w.r.t orientation_d_
   Vector3d CalcRotationalError(const RotationMatrix<double>& R) const;
   // computes the contact jacobians in J_n and J_t
-  void CalcContactJacobians(const Context<double>& context,
-                    const std::vector<SortedPair<GeometryId>>& contact_pairs,
-                    MatrixXd& J_n, MatrixXd& J_t) const;
+  void CalcContactJacobians(const std::vector<SortedPair<GeometryId>>& contact_pairs,
+                    VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;
 
   // ports
   int state_input_port_;
@@ -105,7 +108,9 @@ class ImpedanceController : public LeafSystem<double> {
   
   // constructor variables
   const MultibodyPlant<double>& plant_;
+  const MultibodyPlant<double>& plant_f_;
   drake::systems::Context<double>& context_;
+  drake::systems::Context<double>& context_f_;
   const Eigen::MatrixXd K_;
   const Eigen::MatrixXd B_;
   std::vector<drake::geometry::GeometryId> contact_geoms_;

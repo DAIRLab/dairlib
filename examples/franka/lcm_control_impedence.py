@@ -45,18 +45,22 @@ builder = DiagramBuilder()
 state_receiver = builder.AddSystem(RobotOutputReceiver(plant))
 
 # intialize plant for contact_geoms
-unused_builder = DiagramBuilder()
-unused_plant, scene_graph = AddMultibodyPlantSceneGraph(unused_builder, 0.0)
+builder_f = DiagramBuilder()
+plant_f, scene_graph = AddMultibodyPlantSceneGraph(builder_f, 0.0)
 
-parser = Parser(unused_plant)
+parser = Parser(plant_f)
 parser.AddModelFromFile(FindResourceOrThrow(
     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/franka/robot_properties_fingers/urdf/sphere.urdf"))
 
 X_WI = RigidTransform.Identity()
-unused_plant.WeldFrames(unused_plant.world_frame(), unused_plant.GetFrameByName("panda_link0"), X_WI)
-unused_plant.Finalize()
+plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("panda_link0"), X_WI)
+plant_f.Finalize()
+
+diagram_f = builder_f.Build()
+diagram_context_f = diagram_f.CreateDefaultContext()
+context_f = diagram_f.GetMutableSubsystemContext(plant_f, diagram_context_f)
 
 ################################################################################################33
 
@@ -70,7 +74,7 @@ q = np.zeros((nq,1))
 context = plant.CreateDefaultContext()
 
 # gains
-translational_stiffness = 1000
+translational_stiffness = 250
 rotational_stiffness = 5
 coeff = 1
 
@@ -81,18 +85,16 @@ K[3:6, 3:6] = translational_stiffness * np.identity(3)
 B[0:3, 0:3] = coeff * math.sqrt(rotational_stiffness) * np.identity(3)
 B[3:6, 3:6] = coeff * math.sqrt(translational_stiffness) * np.identity(3)
 
-# TODO: confirm that this is right
-# ground_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("box"))[0]
-sphere_geoms = unused_plant.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0]
-EE_geoms = unused_plant.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link8"))[0]
-
-# contact_geoms = [EE_geoms, sphere_geoms, ground_geoms] #finger_lower_link_120_geoms, finger_lower_link_240_geoms,
+sphere_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0]
+EE_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link8"))[0]
 contact_geoms = [EE_geoms, sphere_geoms]
 num_friction_directions = 2
 
 controller = builder.AddSystem(
     ImpedanceController(plant,
+                        plant_f,
                         context,
+                        context_f,
                         K, B,
                         contact_geoms,
                         num_friction_directions))

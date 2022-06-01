@@ -1,3 +1,4 @@
+from mimetypes import init
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -63,16 +64,40 @@ class UKF:
                     
     def get_sigma_points(self):
         """
-        Get 2n+1 sigma points based on covariance.
+        Get 2n+1 sigma points and dynamics noise based on covariance.
         
         return:
             a 2n+1 X n matrix where each represent a sigma point
+            2n+1 motor noises
+            2n+1 lambda_c_noises
+            2n+1 lambda_h_noises
         """
         
+        # stack self.cov and noise cov to a whole_cov term
+
+        whole_cov = np.zeros((self.cov.shape[0]+self.R.shape[0],self.cov.shape[0]+self.R.shape[0]))
+        whole_cov[0:self.cov.shape[0],0:self.cov.shape[0]] = self.cov
+        whole_cov[-self.R.shape[0]:,-self.R.shape[0]:] = self.R
+
         # Comupte the sqrt of covariance by cholesky
-        # TODO self.R is only for motor, need also sampling this noise
-        L = np.linalg.cholesky(self.cov + self.R)
-        div = self.n**0.5 * L
+        L = np.linalg.cholesky(whole_cov)
+        # diviation for all states
+        div = (self.cov.shape[0] + self.R.shape[0])**0.5 * L[:,0:self.cov.shape[0]]
+        # motor noise
+        motor_noise = (self.cov.shape[0] + self.R.shape[0])**0.5 * \
+                        np.vstack((np.zeros(10),
+                                whole_cov[:,self.cov.shape[0]:self.cov.shape[0]+10], 
+                                -whole_cov[:,self.cov.shape[0]:self.cov.shape[0]+10]))
+        # lambda_c random walking
+        lambda_c_noise = (self.cov.shape[0] + self.R.shape[0])**0.5 * \
+                        np.vstack((np.zeros(self.nlc), 
+                        whole_cov[:,self.cov.shape[0]+10:self.cov.shape[0]+10+self.nlc], 
+                        -whole_cov[:,self.cov.shape[0]+10:self.cov.shape[0]+10+self.nlc]))
+        # lambda_h random walking
+        lambda_h_noise = (self.cov.shape[0] + self.R.shape[0])**0.5 * \
+                        np.vstack((np.zeros(self.nlh), 
+                        whole_cov[:, -self.nlh:], 
+                        -whole_cov[:, -self.nlh:]))
 
         # Deal with part with quaternion
         # First get deviation as rotation vector
@@ -91,11 +116,13 @@ class UKF:
 
         # Assemble different parts together
         sigma_points = np.hstack((ori_sigma_points, other_sigma_points))
-        
+
         # Also include the self.mean into sigma point
         sigma_points = np.vstack((self.mean, sigma_points))
 
-        return sigma_points
+        import pdb;pdb.set_trace()
+
+        return sigma_points, motor_noise, lambda_c_noise, lambda_h_noise
 
     def dynamics_updates(self, sigma_points, u, dt):
         """
@@ -348,7 +375,7 @@ class UKF:
         """
         
         # Sample the sigma points
-        sigma_points = self.get_sigma_points()
+        sigma_points, motor_noise, lambda_c_noise, lambda_h_noise = self.get_sigma_points()
 
         # Dynamics process for sigma points
         sigma_points = self.dynamics_updates(sigma_points, u, dt)
@@ -505,7 +532,7 @@ def main():
     # observation noise
     Q = np.eye(22) * 0.1
     # initial noise
-    init_cov = np.eye(81) * 0.1
+    init_cov = np.eye(80) * 0.1
     init_cov[57:59,57:59] = np.eye(2) * 200 # lambda_h
 
     # processing raw data
@@ -523,12 +550,20 @@ def main():
                         lambda_h_guess[0,:],
                         damping_ratio
                         ))
-    noise = np.random.multivariate_normal(np.zeros_like(init_mean), init_cov)
-    init_mean += noise
+    noise = np.random.multivariate_normal(np.zeros(init_mean.shape[0]-1), init_cov)
+    init_mean[4:] += noise[3:]
+    init_mean[:4] = (Rotation.from_quat(init_mean[:4][[1,2,3,0]]) * Rotation.from_rotvec(noise[0:3])).as_quat()[[3,0,1,2]]
 
     # initial ukf
+    R_lambda_c = np.eye(12) * 200
+    R_lambda_h = np.eye(2) * 200
+    R = np.zeros((24,24))
+    R[0:10,0:10] = R_motor
+    R[10:22,10:22] = R_lambda_c
+    R[22:24,22:24] = R_lambda_h
     estimator = UKF(init_mean, init_cov, R, Q)
-    import pdb; pdb.set_trace()
+    for i in range(1,t.shape[0]):
+        estimator.update(u[i],obs[i],t[i]-t[i-1])
 
 if __name__ == "__main__":
     main()

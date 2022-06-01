@@ -259,9 +259,7 @@ def load_force_channels(data, contact_force_channel):
     return contact_info
 
 
-def plot_q_or_v_or_u(
-    robot_output, key, x_names, x_slice, time_slice,
-    ylabel=None, title=None):
+def plot_q_or_v_or_u(robot_output, key, x_names, x_slice, time_slice, ylabel=None, title=None):
     ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key
@@ -281,9 +279,7 @@ def plot_q_or_v_or_u(
     return ps
 
 
-def plot_u_cmd(
-    robot_input, key, x_names, x_slice, time_slice,
-    ylabel=None, title=None):
+def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None, title=None):
     ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key

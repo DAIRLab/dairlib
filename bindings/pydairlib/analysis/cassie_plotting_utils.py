@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 # lcmtype imports
 import dairlib
 import drake
+
+# dairlib python binding imports
 from pydairlib.cassie.cassie_utils import addCassieMultibody
 
 # drake imports

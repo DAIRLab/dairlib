@@ -544,7 +544,6 @@ VectorXd OperationalSpaceControl::SolveQp(
                                     next_fsm_state, M);
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
-    //    std::cout << v_proj.transpose() << std::endl;
   }
   //  SetVelocitiesIfNew<double>(
   //      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
@@ -586,9 +585,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
     row_idx += contact_i->num_active();
   }
-
-  //  std::cout << "JdotV_h" << JdotV_h.transpose() << std::endl;
-  //  std::cout << "JdotV_c" << JdotV_c_active.transpose() << std::endl;
 
   // Update constraints
   // 1. Dynamics constraint
@@ -747,7 +743,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         W_input_smoothing_, -W_input_smoothing_ * u_prev_[fsm_state]);
   }
   if (W_lambda_c_reg_.size() > 0) {
-    lambda_c_smoothing_cost_->UpdateCoefficients(100 * alpha * W_lambda_c_reg_,
+    lambda_c_smoothing_cost_->UpdateCoefficients(1000 * alpha * W_lambda_c_reg_,
                                                  VectorXd::Zero(n_c_));
   }
 
@@ -780,19 +776,19 @@ VectorXd OperationalSpaceControl::SolveQp(
         clock_time = clock->get_value()(0);
       }
       if(fsm_state == 2){
-        double blend_in = 1 - exp(-((0.4 - clock_time) + window) / tau);
-        double blend_out = 1 - exp(-((clock_time - 0.3) + window) / (2*tau));
+        double blend_in = 1 - exp(-((0.3 - clock_time) + window) / tau);
+        double blend_out = 1 - exp(-((clock_time - 0.2) + window) / tau);
         u_sol_->row(6) = blend_out * u_sol_->row(6) + (1 - blend_out) * u_prev_[0].row(6);
         u_sol_->row(7) = blend_in * u_sol_->row(7) + (1 - blend_in) * u_prev_[1].row(7);
         u_sol_->row(0) = blend_out * u_sol_->row(0) + (1 - blend_out) * u_prev_[0].row(0);
-//        u_sol_->row(1) = blend_in * u_sol_->row(1) + (1 - blend_in) * u_prev_[1].row(1);
+        u_sol_->row(1) = blend_in * u_sol_->row(1) + (1 - blend_in) * u_prev_[1].row(1);
       }
       if(fsm_state == 3){
-        double blend_in = 1 - exp(-((0.8 - clock_time) + window) / tau);
-        double blend_out = 1 - exp(-((clock_time - 0.7) + window) / (2*tau));
+        double blend_in = 1 - exp(-((0.6 - clock_time) + window) / tau);
+        double blend_out = 1 - exp(-((clock_time - 0.5) + window) / tau);
         u_sol_->row(6) = blend_in * u_sol_->row(6) + (1 - blend_in) * u_prev_[0].row(6);
         u_sol_->row(7) = blend_out * u_sol_->row(7) + (1 - blend_out) * u_prev_[1].row(7);
-//        u_sol_->row(0) = blend_in * u_sol_->row(0) + (1 - blend_in) * u_prev_[0].row(0);
+        u_sol_->row(0) = blend_in * u_sol_->row(0) + (1 - blend_in) * u_prev_[0].row(0);
         u_sol_->row(1) = blend_out * u_sol_->row(1) + (1 - blend_out) * u_prev_[1].row(1);
       }
     }
@@ -822,14 +818,9 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     ii_lambda_sol_ = VectorXd::Zero(n_c_ + n_h_);
     M_Jt_ = MatrixXd::Zero(n_v_, n_c_ + n_h_);
     return;
-    //    throw std::out_of_range("Contact mode: " +
-    //    std::to_string(next_fsm_state) +
-    //                            " was not found in the OSC");
   }
   std::set<int> next_contact_set = map_iterator->second;
   int active_constraint_dim = active_contact_dim_.at(next_fsm_state) + n_h_;
-  //  std::cout << "active constraint dim: " << active_constraint_dim <<
-  //  std::endl;
   MatrixXd J_next = MatrixXd::Zero(active_constraint_dim, n_v_);
   int row_start = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
@@ -845,8 +836,6 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     J_next.block(row_start, 0, n_h_, n_v_) =
         kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
   }
-  //  std::cout << "J: " << std::endl;
-  //  std::cout << J_next << std::endl;
   M_Jt_ = M.llt().solve(J_next.transpose());
 
   int active_tracking_data_dim = 0;
@@ -907,20 +896,10 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
       C.transpose();
   VectorXd b_constrained = VectorXd::Zero(active_constraint_dim + n_h_);
   b_constrained << Ab, d;
-  //  A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_)
-  //  = MatriXd;
 
-  //  ii_lambda_sol_ = A.completeOrthogonalDecomposition().solve(ydot_err_vec);
   ii_lambda_sol_ = A_constrained.completeOrthogonalDecomposition()
                        .solve(b_constrained)
                        .head(active_constraint_dim);
-
-  //  std::cout << "constraint velocity: " << (J_h *
-  //  (x_w_spr.tail(n_v_))).transpose() << std::endl; std::cout << "projected
-  //  velocity: " << (J_h * (x_w_spr.tail(n_v_) + M_Jt_ *
-  //  ii_lambda_sol_)).transpose() << std::endl;
-
-  //  std::cout << ii_lambda_sol_.transpose() << std::endl;
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(

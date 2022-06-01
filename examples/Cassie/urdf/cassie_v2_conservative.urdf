@@ -672,7 +672,7 @@
         <parent link="thigh_left" />
         <child link="knee_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.862" upper="-0.646" effort="200"/>
+        <limit lower="-2.862" upper="-0.646" effort="195.2"/>
         <dynamics damping="0" />
     </joint>
 
@@ -681,7 +681,7 @@
         <parent link="thigh_right" />
         <child link="knee_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.862" upper="-0.646" effort="200"/>
+        <limit lower="-2.862" upper="-0.646" effort="195.2"/>
         <dynamics damping="0" />
     </joint>
 

@@ -138,17 +138,17 @@ int do_main(int argc, char* argv[]) {
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           FLAGS_radio_channel, lcm));
+  // Order of joint actuators is not depth-first
+  std::vector<double> omega_max = {303.687, 303.687, 303.687, 303.687, 136.136,
+                                   136.135, 136.136, 136.135, 575.958, 575.958};
+
+  auto cassie_motor = builder.AddSystem<systems::GearedMotor>(plant, omega_max);
   const auto& sensor_aggregator =
-      AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
+      AddImuAndAggregator(&builder, plant, cassie_motor->get_output_port());
 
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
-
-  std::vector<double> omega_max = {303.687, 303.687, 136.136, 136.135, 575.958,
-                                   303.687, 303.687, 136.136, 136.135, 575.958};
-
-  auto cassie_motor = builder.AddSystem<systems::GearedMotor>(plant, omega_max);
 
   // connect leaf systems
   builder.Connect(*input_sub, *input_receiver);

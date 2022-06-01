@@ -19,7 +19,7 @@ GearedMotor::GearedMotor(const MultibodyPlant<double>& plant,
     const JointActuator<double>& joint_actuator =
         plant.get_joint_actuator(drake::multibody::JointActuatorIndex(i));
     actuator_gear_ratios.push_back(joint_actuator.default_gear_ratio());
-    actuator_ranges.push_back(joint_actuator.effort_limit());
+    actuator_ranges.push_back(joint_actuator.effort_limit() / joint_actuator.default_gear_ratio());
     actuator_max_speeds.push_back(max_motor_speeds[i]);
   }
   systems::BasicVector<double> input(plant.num_actuators());
@@ -47,7 +47,7 @@ void GearedMotor::CalcTorqueOutput(
   for (int i = 0; i < n_u; ++i) {
     double ratio = actuator_gear_ratios[i];
     double tmax = actuator_ranges[i];
-    double w = actuator_velocities[i];
+    double w = actuator_velocities[i] * ratio;
     double wmax = actuator_max_speeds[i];
 
     // Calculate torque limit based on motor speed
@@ -56,8 +56,6 @@ void GearedMotor::CalcTorqueOutput(
 
     // Compute motor-side torque
     tau[i] = copysign(fmin(fabs(u[i] / ratio), tlim), u[i]) * ratio;
-
-//    tau[i] = copysign(fmin(fabs(u[i]), tlim), u[i]);
   }
   output->SetFromVector(tau);
 }

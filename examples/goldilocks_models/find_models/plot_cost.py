@@ -32,7 +32,7 @@ def FindVarValueInString(file_string, string_to_search):
 
 
 
-plt.rcParams.update({'font.size': 18})
+plt.rcParams.update({'font.size': 15.5})
 
 save_figure = True
 
@@ -77,8 +77,9 @@ if "/scratch/yminchen" in os.getcwd():
         if os.path.exists(data_folder):
             directory_list.append(data_folder)
 else:
-    directory_list.append('%s/robot_%d/' % (base if len(args.path) == 0 else args.path, robot_option))
+    # directory_list.append('%s/robot_%d/' % (base if len(args.path) == 0 else args.path, robot_option))
     #directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range/robot_1/')
+    directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/')
 ## Manually add more folders here (note that the path needs to end with "/")
 # directory_list.append('/')
 ## Sort and print
@@ -98,8 +99,8 @@ folder_name_nominal_cost = "nominal_traj_cubic_swing_foot/"
 
 ### visualization setting
 ave_cost_prop = "k-" if only_plot_average_cost else "k--"
-ave_cost_label = "Averaged cost (excluding failed samples)" if only_add_successful_samples_to_average_cost else "Averaged cost"
-
+ave_cost_label = "Averaged cost (excluding failed samples) " if only_add_successful_samples_to_average_cost else "Averaged cost "
+# ave_cost_label = ""
 
 for i in range(len(directory_list)):
     directory = directory_list[i]
@@ -313,15 +314,15 @@ for i in range(len(directory_list)):
                 ax = fig2.gca()
                 average_cost_all = [x / y for x, y in zip(sum_cost_all, n_successful_sample_each_iter)]
                 ax.plot(t[0:iteration_length], average_cost_all, linewidth=3.0, label=ave_cost_label + " (all)")
-                average_cost_x = [x / y for x, y in zip(sum_cost_x, n_successful_sample_each_iter)]
-                ax.plot(t[0:iteration_length], average_cost_x, linewidth=3.0, label=ave_cost_label + " (x)")
                 average_cost_u = [x / y for x, y in zip(sum_cost_u, n_successful_sample_each_iter)]
-                ax.plot(t[0:iteration_length], average_cost_u, linewidth=3.0, label=ave_cost_label + " (u)")
+                ax.plot(t[0:iteration_length], average_cost_u, linewidth=3.0, label=ave_cost_label + "$u$")
+                average_cost_x = [x / y for x, y in zip(sum_cost_x, n_successful_sample_each_iter)]
+                ax.plot(t[0:iteration_length], average_cost_x, linewidth=3.0, label=ave_cost_label + "$v$")
                 average_cost_accel = [x / y for x, y in zip(sum_cost_accel, n_successful_sample_each_iter)]
-                ax.plot(t[0:iteration_length], average_cost_accel, linewidth=3.0, label=ave_cost_label + " (accel)")
+                ax.plot(t[0:iteration_length], average_cost_accel, linewidth=3.0, label=ave_cost_label + "$\dot{v}$")
                 average_cost_main = [x / y for x, y in zip(sum_cost_main, n_successful_sample_each_iter)]
-                ax.plot(t[0:iteration_length], average_cost_main, linewidth=3.0, label=ave_cost_label + " (main)")
-                plt.legend()
+                ax.plot(t[0:iteration_length], average_cost_main, linewidth=3.0, label=ave_cost_label + "main", color="k")
+                plt.legend(loc='upper right')
                 plt.xlabel('Iteration')
                 if only_plot_average_cost & only_add_successful_samples_to_average_cost:
                     plt.ylabel('Averaged (successful) task cost')
@@ -347,8 +348,9 @@ for i in range(len(directory_list)):
             if save_figure:
                 break
             else:
-                plt.pause(60)
-                plt.clf()
+                # plt.pause(60)
+                # plt.clf()
+                plt.show()
 
     except Exception as e:
         logging.error(traceback.format_exc())  # Logs the error appropriately.

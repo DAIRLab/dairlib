@@ -27,12 +27,35 @@ import math
 
 lcm = DrakeLcm()
 
-plant = MultibodyPlant(0.0)
+# plant = MultibodyPlant(0.0)
+
+# #The package addition here seems necessary due to how the URDF is defined
+# parser = Parser(plant)
+
+# parser.AddModelFromFile(FindResourceOrThrow(
+#     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+# parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+#     "examples/franka/robot_properties_fingers/urdf/sphere.urdf"))
 
 
-#The package addition here seems necessary due to how the URDF is defined
+# # Fix the base of the finger to the world
+# X_WI = RigidTransform.Identity()
+# plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI)
+# plant.Finalize()
+
+#############################################################################################
+
+builder = DiagramBuilder()
+sim_dt = 2e-4
+
+plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
+# addFlatTerrain(plant=plant_f, scene_graph=scene_graph, mu_static=1.0,
+#                mu_kinetic=1.0)
+
+# The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
-
+parser.package_map().Add("robot_properties_fingers",
+                         "examples/franka/robot_properties_fingers")                         
 parser.AddModelFromFile(FindResourceOrThrow(
     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
@@ -40,22 +63,17 @@ parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
 
 
 # Fix the base of the finger to the world
-X_WI = RigidTransform.Identity()
-plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI)
+X_WI_f = RigidTransform.Identity()
+plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI_f)
 plant.Finalize()
-
-
-builder = DiagramBuilder()
 
 state_receiver = builder.AddSystem(RobotOutputReceiver(plant))
 
 #############################################################################################
 
-
 nq = plant.num_positions()
 nv = plant.num_velocities()
 nu = plant.num_actuators()
-
 
 q = np.zeros((nq,1))
 
@@ -76,10 +94,11 @@ B[3:6, 3:6] = coeff * math.sqrt(translational_stiffness) * np.identity(3)
 
 # TODO: confirm that this is right
 sphere_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0]
-ground_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("box"))[0]
 EE_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link8"))[0]
+# ground_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("box"))[0]
 
-contact_geoms = [EE_geoms, sphere_geoms, ground_geoms] #finger_lower_link_120_geoms, finger_lower_link_240_geoms,
+# contact_geoms = [EE_geoms, sphere_geoms, ground_geoms] #finger_lower_link_120_geoms, finger_lower_link_240_geoms,
+contact_geoms = [EE_geoms, sphere_geoms]
 num_friction_directions = 2
 
 controller = builder.AddSystem(
@@ -90,6 +109,7 @@ controller = builder.AddSystem(
                         num_friction_directions))
 
 
+# connections
 
 builder.Connect(state_receiver.get_output_port(0), controller.get_input_port(0))
 

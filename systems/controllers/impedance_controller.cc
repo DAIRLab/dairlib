@@ -259,7 +259,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // ex. confirm dimensions of everything
   std::vector<SortedPair<GeometryId>> contact_pairs;
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2])); // Sphere <-> Ground
+  // contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2])); // Sphere <-> Ground
   
   VectorXd phi(contact_pairs.size());
   MatrixXd J_n(contact_pairs.size(), plant_.num_velocities());

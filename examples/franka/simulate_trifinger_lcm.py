@@ -7,7 +7,6 @@ import pydairlib.common
 import pydrake.geometry as mut
 
 
-
 import matplotlib.pyplot as plt
 
 # Load the URDF and the cube

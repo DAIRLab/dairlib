@@ -1,21 +1,5 @@
 #include "impedance_controller.h"
 
-#include <utility>
-#include <chrono>
-
-
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
-#include "multibody/multibody_utils.h"
-#include "multibody/geom_geom_collider.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
-
-#include "drake/solvers/choose_best_solver.h"
-#include "drake/solvers/constraint.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/solve.h"
-
-
 //#include
 //"external/drake/common/_virtual_includes/autodiff/drake/common/eigen_autodiff_types.h"
 
@@ -33,7 +17,6 @@ using drake::math::RotationMatrix;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::JacobianWrtVariable;
 using drake::systems::Context;
-
 
 using Eigen::MatrixXd;
 using Eigen::Matrix3d;
@@ -158,6 +141,20 @@ ImpedanceController::ImpedanceController(
   EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
   world_frame_ = &plant_.world_frame();
 
+  // control-related variables
+  // TODO: using fixed Rd for the time being
+  Matrix3d Rd_eigen;
+  Rd_eigen << 
+    1,  0,  0,
+    0, -1,  0,
+    0,  0, -1;
+  RotationMatrix<double> Rd(Rd_eigen);
+  orientation_d_ = Rd.ToQuaternion();
+
+  // null space variables
+  // TODO: parameter tune these if necessary
+  K_null_ = MatrixXd::Identity(7, 7);
+  B_null_ = MatrixXd::Identity(7, 7);
 }
 
 
@@ -200,72 +197,78 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // forward kinematics
   const drake::math::RigidTransform<double> H = 
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
-  auto d = H.translation();
-  auto R = H.rotation();
+  Vector3d d = H.translation();
+  const RotationMatrix<double> R = H.rotation();
 
   // build task space state vectors
   VectorXd x = VectorXd::Zero(6);
   x.tail(3) << d;
   VectorXd x_dot = J_franka * v_franka;
 
-  // TODO: get desired x and x_dot from input ports
+  // TODO: get desired x and x_dot from input ports instead
   std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
   VectorXd xd = VectorXd::Zero(6);
   xd.tail(3) << target[0];
   VectorXd xd_dot = VectorXd::Zero(6);
   xd_dot.tail(3) << target[1];
-
-  // TODO: using fixed Rd for the time being, this is subject to change
-  Matrix3d Rd_eigen;
-  Rd_eigen << 
-    1,  0,  0,
-    0, -1,  0,
-    0,  0, -1;
-  RotationMatrix<double> Rd(Rd_eigen);
-
-  // compute rotational error, computational steps taken from
-  // https://github.com/frankaemika/libfranka/blob/master/examples/cartesian_impedance_control.cpp
-  Quaterniond orientation = R.ToQuaternion();
-  Quaterniond orientation_d = Rd.ToQuaternion();
-
-  if (orientation_d.coeffs().dot(orientation.coeffs()) < 0.0){
-    orientation.coeffs() << -orientation.coeffs();
-  }
-  Quaterniond error_quaternion(orientation.inverse() * orientation_d);
-  Vector3d error_quaternion_no_w(error_quaternion.x(), error_quaternion.y(), error_quaternion.z());
-  Vector3d rotational_error = R.matrix() * error_quaternion_no_w;
   
   // compute xtilde and xtilde_dot
   VectorXd xtilde = xd - x;
-  xtilde.head(3) << rotational_error;
-  // TODO: will I get xd_dot?
+  xtilde.head(3) << this->CalcRotationalError(R);
   VectorXd xtilde_dot = xd_dot - x_dot;
-  //VectorXd xtilde_dot = -x_dot;
 
-  // compute the input with feedforward contact term
-  VectorXd tau = J_franka.transpose() * (K_*xtilde + B_*xtilde_dot) 
-                  + C_franka - tau_g_franka;
-  // TODO: get J_c = dphi(q)/dq, need to add ball and EE to the urdf
-  // For now, just adding lambda_d in the positive x direction
-  // after 5 seconds as proof of concept
-  // if (timestamp > 5.0){
-  //   VectorXd lambda_des = VectorXd::Zero(6);
-  //   lambda_des(5) = 20; // set desired force in z direction
-  //   tau += J_franka.transpose() * lambda_des;
-  // }
+  // compute the input
+  VectorXd tau = J_franka.transpose() * (K_*xtilde + B_*xtilde_dot) + C_franka - tau_g_franka;
 
-  // feedforward force term
-  // TODO: check that this is done properly
-  // ex. confirm dimensions of everything
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
-  // contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2])); // Sphere <-> Ground
+  // add feedforward force term
+  // TODO: check that this is done properly ex. confirm dimensions of everything
   
-  VectorXd phi(contact_pairs.size());
-  MatrixXd J_n(contact_pairs.size(), plant_.num_velocities());
-  MatrixXd J_t(2 * contact_pairs.size() * num_friction_directions_,
-               plant_.num_velocities());
+  // std::vector<SortedPair<GeometryId>> contact_pairs;
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
+  // // contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2])); // Sphere <-> Ground
+  
+  // MatrixXd J_n(contact_pairs.size(), plant_.num_velocities());
+  // MatrixXd J_t(2 * contact_pairs.size() * num_friction_directions_, plant_.num_velocities());
+  // this->CalcContactJacobians(context, contact_pairs, J_n, J_t);
+  
+  // compute nullspace projection
+  MatrixXd J_franka_pinv = J_franka.completeOrthogonalDecomposition().pseudoInverse();
+  MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_franka_pinv.transpose();
 
+  VectorXd qd = VectorXd::Zero(7);
+  qd << 0, 0, 0, -1.57, q_franka.tail(3); // task-specific
+  //qd << 0, 0, 0, -1.57, 0, 1.57, 0;; // middle of range of motion
+  VectorXd tau_null = K_null_*(qd-q_franka) - B_null_*v_franka;
+
+  control->SetDataVector(tau + N*tau_null);
+  control->set_timestamp(timestamp);
+
+  // debug prints every 10th of a second
+  // if (trunc(timestamp*10) / 10.0 == timestamp){
+  //   std::cout << timestamp << "\n---------------" << std::endl;
+  //   std::cout << "phi\n:" << phi << std::endl;
+  //   std::cout << J_n.rows() << " " << J_n.cols() << std::endl;
+  //   std::cout << J_t.rows() << " " << J_t.cols() << std::endl;
+  // }
+}
+
+Vector3d ImpedanceController::CalcRotationalError(const RotationMatrix<double>& R) const {
+  // compute rotational error, computational steps taken from
+  // https://github.com/frankaemika/libfranka/blob/master/examples/cartesian_impedance_control.cpp
+  Quaterniond orientation = R.ToQuaternion();
+
+  if (orientation_d_.coeffs().dot(orientation.coeffs()) < 0.0){
+    orientation.coeffs() << -orientation.coeffs();
+  }
+  Quaterniond error_quaternion(orientation.inverse() * orientation_d_);
+  Vector3d error_quaternion_no_w(error_quaternion.x(), error_quaternion.y(), error_quaternion.z());
+  return R.matrix() * error_quaternion_no_w;
+}
+
+void ImpedanceController::CalcContactJacobians(const Context<double>& context,
+                            const std::vector<SortedPair<GeometryId>>& contact_pairs,
+                            MatrixXd& J_n, MatrixXd& J_t) const {
+  VectorXd phi(contact_pairs.size());
   for (int i = 0; i < (int) contact_pairs.size(); i++) {
     multibody::GeomGeomCollider collider(
         plant_, contact_pairs[i]);  // deleted num_fricton_directions (check with
@@ -279,31 +282,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
               plant_.num_velocities()) =
         J_i.block(1, 0, 2 * num_friction_directions_, plant_.num_velocities());
   }
-  
-  // compute nullspace projection
-  MatrixXd J_franka_pinv = J_franka.completeOrthogonalDecomposition().pseudoInverse();
-  MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_franka_pinv.transpose();
-
-  VectorXd qd = VectorXd::Zero(7);
-  // TODO: which qd do I use?
-  qd << 0, 0, 0, -1.57, q_franka.tail(3); // task-specific
-  //qd << 0, 0, 0, -1.57, 0, 1.57, 0;; // middle of range of motion
-  
-  // TODO: parameter tune these if necessary
-  MatrixXd K_null = MatrixXd::Identity(7, 7);
-  MatrixXd B_null = MatrixXd::Identity(7, 7);
-  VectorXd tau_null = K_null*(qd-q_franka) - B_null*v_franka;
-
-  control->SetDataVector(tau + N*tau_null);
-  control->set_timestamp(timestamp);
-
-  // debug prints every 10th of a second
-  // if (trunc(timestamp*10) / 10.0 == timestamp){
-  //   std::cout << timestamp << "\n---------------" << std::endl;
-  //   std::cout << "phi\n:" << phi << std::endl;
-  //   std::cout << J_n.rows() << " " << J_n.cols() << std::endl;
-  //   std::cout << J_t.rows() << " " << J_t.cols() << std::endl;
-  // }
 }
 
 /*

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <utility>
+#include <chrono>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -40,13 +42,29 @@
 #include <drake/solvers/mathematical_program.h>
 #include <drake/multibody/math/spatial_velocity.h>
 
+#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
+#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
+#include "multibody/multibody_utils.h"
+#include "multibody/geom_geom_collider.h"
+
+#include "drake/solvers/choose_best_solver.h"
+#include "drake/solvers/constraint.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
+
 
 
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
+using drake::SortedPair;
+using drake::geometry::GeometryId;
+using drake::math::RotationMatrix;
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
+using Eigen::Quaterniond;
 
 namespace dairlib {
 namespace systems {
@@ -71,8 +89,15 @@ class ImpedanceController : public LeafSystem<double> {
   }
   
  private:
+  // computes the control input
   void CalcControl(const drake::systems::Context<double>& context,
-                   TimestampedVector<double>* output) const;
+                    TimestampedVector<double>* output) const;
+  // computes the rotational error of the rotational matrix R w.r.t orientation_d_
+  Vector3d CalcRotationalError(const RotationMatrix<double>& R) const;
+  // computes the contact jacobians in J_n and J_t
+  void CalcContactJacobians(const Context<double>& context,
+                    const std::vector<SortedPair<GeometryId>>& contact_pairs,
+                    MatrixXd& J_n, MatrixXd& J_t) const;
 
   // ports
   int state_input_port_;
@@ -90,6 +115,12 @@ class ImpedanceController : public LeafSystem<double> {
   const drake::multibody::BodyFrame<double>* EE_frame_;
   const drake::multibody::BodyFrame<double>* world_frame_;
   Eigen::Vector3d EE_offset_;
+
+  // control related variables
+  Quaterniond orientation_d_;
+  MatrixXd K_null_;
+  MatrixXd B_null_;
+
 
 };
 

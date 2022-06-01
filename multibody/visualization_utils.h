@@ -22,12 +22,12 @@ std::unique_ptr<drake::multibody::MultibodyPlant<double>> ConstructBallPlant(
 ///  2. if you want to visualize the center of mass position, provide ball_plant
 ///     as an input. The ball can be constructed by the function
 ///     ConstructBallPlant().
-void connectTrajectoryVisualizer(
+void ConnectTrajectoryVisualizer(
     const drake::multibody::MultibodyPlant<double>* plant,
     drake::systems::DiagramBuilder<double>* builder,
     drake::geometry::SceneGraph<double>* scene_graph,
     const drake::trajectories::Trajectory<double>& trajectory);
-void connectTrajectoryVisualizer(
+void ConnectTrajectoryVisualizer(
     const drake::multibody::MultibodyPlant<double>* plant,
     drake::systems::DiagramBuilder<double>* builder,
     drake::geometry::SceneGraph<double>* scene_graph,

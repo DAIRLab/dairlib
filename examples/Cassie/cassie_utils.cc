@@ -104,7 +104,7 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
-void addCassieMultibody(MultibodyPlant<double>* plant,
+void AddCassieMultibody(MultibodyPlant<double>* plant,
                         SceneGraph<double>* scene_graph, bool floating_base,
                         std::string filename, bool add_leaf_springs,
                         bool add_loop_closure) {

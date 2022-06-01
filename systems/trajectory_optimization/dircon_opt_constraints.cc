@@ -52,7 +52,7 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
   // If the MBP is in quaternion floating-base, demand that the quaternion
   // is located at the first four element of the generalized position
   if (is_quaternion) {
-    map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
+    map<string, int> positions_map = multibody::MakeNameToPositionsMaps(plant);
     DRAKE_DEMAND(positions_map.at("base_qw") == 0);
     DRAKE_DEMAND(positions_map.at("base_qx") == 1);
     DRAKE_DEMAND(positions_map.at("base_qy") == 2);
@@ -119,11 +119,11 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
                 num_kinematic_constraints_wo_skipping_);
   const VectorX<T> gamma = x.tail(num_quat_slack_);
 
-  multibody::setContext<T>(plant_, x0, u0, context_.get());
+  multibody::SetContext<T>(plant_, x0, u0, context_.get());
   constraints_->updateData(*context_, l0);
   const VectorX<T> xdot0 = constraints_->getXDot();
 
-  multibody::setContext<T>(plant_, x1, u1, context_.get());
+  multibody::SetContext<T>(plant_, x1, u1, context_.get());
   constraints_->updateData(*context_, l1);
   const VectorX<T> xdot1 = constraints_->getXDot();
 
@@ -132,7 +132,7 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   const VectorX<T> xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
   const VectorX<T> ucol = 0.5 * (u0 + u1);
 
-  multibody::setContext<T>(plant_, xcol, ucol, context_.get());
+  multibody::SetContext<T>(plant_, xcol, ucol, context_.get());
   constraints_->updateData(*context_, lc);
   auto g = constraints_->getXDot();
   VectorX<T> vc_in_qdot_space(num_positions_);
@@ -294,7 +294,7 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
   const VectorX<T> offset = x.segment(
       num_states_ + num_inputs_ + num_kinematic_constraints_wo_skipping_,
       n_relative_);
-  multibody::setContext<T>(plant_, state, input, context_.get());
+  multibody::SetContext<T>(plant_, state, input, context_.get());
   constraints_->updateData(*context_, force);
   switch (type_) {
     case kAll:
@@ -364,7 +364,7 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   const VectorX<T> u =
       VectorXd::Zero(plant_.num_actuators()).template cast<T>();
 
-  multibody::setContext<T>(plant_, x0, u, context_.get());
+  multibody::SetContext<T>(plant_, x0, u, context_.get());
 
   constraints_->updateData(*context_, impulse);
 

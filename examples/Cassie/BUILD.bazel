@@ -34,6 +34,7 @@ cc_library(
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
+        "//systems/framework:geared_motor",
         "@drake//:drake_shared_library",
     ],
 )
@@ -221,6 +222,7 @@ cc_binary(
         "//systems/cameras:camera_utils",
         "//systems/framework:vector",
         "//systems/primitives",
+        "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

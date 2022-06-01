@@ -3,8 +3,10 @@ channel_x: "CASSIE_STATE_DISPATCHER"
 channel_u: "OSC_WALKING"
 channel_osc: "OSC_DEBUG_WALKING"
 
-# Log time to stop at (seconds, -1 for whole log)
-end_time: -1
+# Approximate log time to start at relative to the first timestamp in the log
+start_time: 0
+# Duration of time to plot (seconds, -1 for whole log)
+duration: 2
 
 # Plant properties
 use_springs: true

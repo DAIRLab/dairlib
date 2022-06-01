@@ -39,7 +39,18 @@ def main():
     filepath = FindResourceOrThrow(
       '../dairlib_data/goldilocks_models/find_models/robot_1/1_0_dircon_trajectory')
 
+  filepath2 = ""
+  filepath3 = ""
+
+  # Manually specify file paths to plots multiple samples on the same plot
+  # filepath = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/0_40_dircon_trajectory"
+  # filepath2 = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/1_40_dircon_trajectory"
+  # filepath3 = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/160_40_dircon_trajectory"
+
   dircon_traj = pydairlib.lcm.lcm_trajectory.DirconTrajectory(filepath)
+  if filepath2 != "":
+    dircon_traj2 = pydairlib.lcm.lcm_trajectory.DirconTrajectory(filepath2)
+    dircon_traj3 = pydairlib.lcm.lcm_trajectory.DirconTrajectory(filepath3)
 
   # For saving figures
   global savefig, figsize, save_path
@@ -122,7 +133,7 @@ def main():
   """
   Centroidal angular momentum
   """
-  ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant)
+  # ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant)
 
   """
   Print impulse
@@ -136,6 +147,22 @@ def main():
 
   # print(dircon_traj.GetStateSamples(1))
   # import pdb; pdb.set_trace()
+
+  """
+  Compare multiple samples
+  """
+  if filepath2 != "":
+    plt.rcParams.update({'font.size': 15.5})
+    ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant, True, "--", "k")
+    ComputeAndPlotCentroidalAngularMomentum(dircon_traj2, plant, True, "-", "#990000")
+    ComputeAndPlotCentroidalAngularMomentum(dircon_traj3, plant, True, "-", "#0000D1")
+    plt.legend(["Nominal (without ROM)", "Initial model", "Optimized model"])
+    # plt.title("Centroidal Angular Momentum about x Axis")
+    plt.xlabel('time (s)')
+    # plt.rcParams['text.usetex'] = True
+    plt.ylabel('angular momentum ($kg \cdot m^2 / s$)')
+    plt.gcf().subplots_adjust(bottom=0.15)
+    plt.gcf().subplots_adjust(left=0.16)
 
   if not savefig:
     plt.show()
@@ -672,7 +699,11 @@ def PlotStateAtKnots(dircon_traj, x_idx_start=0, x_idx_end=19):
 
 
 
-def ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant):
+def ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant, multi_samples_on_single_plot=False, linestyle = "", color="k", indices=[0]):
+  if multi_samples_on_single_plot:
+    if linestyle == "":
+      raise ValueError("Need to specify linestyle")
+
   t_x = dircon_traj.GetStateBreaks(0)
   x = dircon_traj.GetStateSamples(0).T
   # import pdb;pdb.set_trace()
@@ -687,59 +718,64 @@ def ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant):
     centroidal_angular_momentum[i] = h_WC_eval.rotational()
 
   plt.figure("Centroidal angular momentum")
-  plt.plot(t_x, centroidal_angular_momentum)
   plt.legend(["x", "y", "z"])
 
+  if not multi_samples_on_single_plot:
+    plt.plot(t_x, centroidal_angular_momentum)
+  else:
+    plt.plot(t_x, centroidal_angular_momentum[:,indices], linestyle=linestyle, color=color, linewidth=3)
+
   ### Individual momentum (reference: CalcSpatialMomentumInWorldAboutPoint)
-  body_indices = plant.GetBodyIndices(model_instance)
-  dictionary_centroidal_angular_momentum_per_body = {}
-  for body_idx in body_indices:
-    # No contribution from the world body.
-    if body_idx == 0:
-      continue
-    # Ensure MultibodyPlant method contains a valid body_index.
-    if int(body_idx) >= plant.num_bodies():
-      raise ValueError("wrong index. Bug somewhere")
+  if not multi_samples_on_single_plot:
+    body_indices = plant.GetBodyIndices(model_instance)
+    dictionary_centroidal_angular_momentum_per_body = {}
+    for body_idx in body_indices:
+      # No contribution from the world body.
+      if body_idx == 0:
+        continue
+      # Ensure MultibodyPlant method contains a valid body_index.
+      if int(body_idx) >= plant.num_bodies():
+        raise ValueError("wrong index. Bug somewhere")
 
-    body = plant.get_body(body_idx)
-    print(body.name())
+      body = plant.get_body(body_idx)
+      print(body.name())
 
-    angular_momentum_per_body = np.zeros((t_x.size, 3))
-    for i in range(t_x.size):
-      plant.SetPositionsAndVelocities(context, x[i])
-      com = plant.CalcCenterOfMassPositionInWorld(context)
+      angular_momentum_per_body = np.zeros((t_x.size, 3))
+      for i in range(t_x.size):
+        plant.SetPositionsAndVelocities(context, x[i])
+        com = plant.CalcCenterOfMassPositionInWorld(context)
 
-      body_pose = plant.EvalBodyPoseInWorld(context, body)
+        body_pose = plant.EvalBodyPoseInWorld(context, body)
 
-      R_AE = body_pose.rotation()
-      M_BBo_W = body.default_spatial_inertia().ReExpress(R_AE)
-      V_WBo_W = plant.EvalBodySpatialVelocityInWorld(context, body)
-      L_WBo_W = M_BBo_W * V_WBo_W
+        R_AE = body_pose.rotation()
+        M_BBo_W = body.default_spatial_inertia().ReExpress(R_AE)
+        V_WBo_W = plant.EvalBodySpatialVelocityInWorld(context, body)
+        L_WBo_W = M_BBo_W * V_WBo_W
 
-      # SpatialMomentumInWorldAboutWo
-      p_WoBo_W = body_pose.translation()
-      L_WS_W = L_WBo_W.Shift(-p_WoBo_W)
+        # SpatialMomentumInWorldAboutWo
+        p_WoBo_W = body_pose.translation()
+        L_WS_W = L_WBo_W.Shift(-p_WoBo_W)
 
-      # SpatialMomentumInWorldAboutCOM
-      L_WS_W = L_WS_W.Shift(com)
+        # SpatialMomentumInWorldAboutCOM
+        L_WS_W = L_WS_W.Shift(com)
 
-      angular_momentum_per_body[i] = L_WS_W.rotational()
-    dictionary_centroidal_angular_momentum_per_body[body.name()] = angular_momentum_per_body
+        angular_momentum_per_body[i] = L_WS_W.rotational()
+      dictionary_centroidal_angular_momentum_per_body[body.name()] = angular_momentum_per_body
 
-  dim = 0
-  plt.figure("Centroidal angular momentum per body")
-  legend_list = []
-  i = 0
-  linestyle = '-'
-  for key in dictionary_centroidal_angular_momentum_per_body:
-    plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body[key][:,dim], linestyle)
-    legend_list += [key]
-    if i == 9:
-      linestyle = '--'
-    if i == 19:
-      linestyle = '-.'
-    i+=1
-  plt.legend(legend_list)
+    dim = 0
+    plt.figure("Centroidal angular momentum per body")
+    legend_list = []
+    i = 0
+    linestyle = '-'
+    for key in dictionary_centroidal_angular_momentum_per_body:
+      plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body[key][:,dim], linestyle)
+      legend_list += [key]
+      if i == 9:
+        linestyle = '--'
+      if i == 19:
+        linestyle = '-.'
+      i+=1
+    plt.legend(legend_list)
 
 if __name__ == "__main__":
   main()

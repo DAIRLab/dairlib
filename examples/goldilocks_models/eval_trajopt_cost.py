@@ -359,7 +359,7 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
 
   # Flags
   plot_the_ratio_bigger_than_1 = max_nonzero_ratio > 1
-  plot_the_ratio_bigger_than_1 = True  # sometimes we want to manually set this to false because the ratio bigger than 1 was from bad solves at boundary
+  # plot_the_ratio_bigger_than_1 = False  # sometimes we want to manually set this to false because the ratio bigger than 1 was from bad solves at boundary
   plot_lost_task = True
 
   # discrete color map
@@ -418,7 +418,9 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   cbar.ax.set_yticklabels([round(m, 3) for m in levels])
 
   # plt.xlim([-1, 1])
-  plt.ylim([0.65, 1.05])
+  # plt.ylim([0.65, 1.05])
+  plt.ylim([0.65, 1.])
+  # plt.ylim([0.9, 1.])
   plt.xlabel(name_with_unit[task_to_plot[0]])
   plt.ylabel(name_with_unit[task_to_plot[1]])
   plt.title('Cost comparison between iteration %d and %d ' % (iter1, iter2) + "(Open loop)")
@@ -611,6 +613,7 @@ if __name__ == "__main__":
   # trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220316_rom24_big_range/"
   trajopt_base_dir = "/home/yuming/Desktop/temp/0405/20220108_big_vel_weight_and_grad_main_cost_and_big_range_0_pelvis_omega/"
   trajopt_base_dir = "/home/yuming/Desktop/temp/20220224_explore_task_boundary_2D--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
+  trajopt_base_dir = "/home/yuming/Desktop/temp/0601/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -625,8 +628,8 @@ if __name__ == "__main__":
 
   ### Parameters for plotting
   model_iter_idx_start = 1
-  model_iter_idx_end = 300
-  model_iter_idx_delta = 20
+  model_iter_idx_end = 500
+  model_iter_idx_delta = 50
   model_indices = list(range(model_iter_idx_start, model_iter_idx_end+1, model_iter_idx_delta))
 
   log_indices = list(range(int(np.loadtxt(trajopt_data_dir + "n_sample.csv"))))
@@ -676,6 +679,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [50]
+  # model_slices_cost_landsacpe = [1, 100, 150, 200, 250, 300, 320, 350, 400, 450, 500]
 
   # Expected (averaged) cost over a task range
   task_ranges_to_average_over = {}
@@ -688,7 +692,7 @@ if __name__ == "__main__":
   # final_iter_ave_cost = 30
 
   # Parameters for visualization
-  max_cost_to_ignore = 10  # 2
+  max_cost_to_ignore = 2  # 2
   # mean_sl = 0.2
   # delta_sl = 0.1  # 0.1 #0.005
   # min_sl = mean_sl - delta_sl
@@ -703,6 +707,7 @@ if __name__ == "__main__":
   task_boundary_outer_box = {}
   task_boundary_outer_box['stride_length'] = (-0.8, 0.8)
   task_boundary_outer_box['pelvis_height'] = (0.3, 1.3)
+  # task_boundary_outer_box['pelvis_height'] = (0.6, 1.02)
   task_boundary_outer_box['ground_incline'] = (-2, 2)
   task_boundary_outer_box['turning_rate'] = (-5, 5)
 

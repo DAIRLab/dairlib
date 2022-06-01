@@ -174,7 +174,8 @@ int do_main(int argc, char* argv[]) {
   auto image_to_lcm_image_array =
       builder.AddSystem<drake::systems::sensors::ImageToLcmImageArrayT>();
   image_to_lcm_image_array->set_name("converter");
-  const auto& cam_port = image_to_lcm_image_array->DeclareImageInputPort<drake::systems::sensors::PixelType::kDepth16U>(
+  const auto& cam_port = image_to_lcm_image_array->
+      DeclareImageInputPort<drake::systems::sensors::PixelType::kDepth16U>(
       "camera_0");
   builder.Connect(camera->depth_image_16U_output_port(), cam_port);
 

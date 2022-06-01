@@ -19,7 +19,7 @@ HipYawTrajGen::HipYawTrajGen(int left_stance_state) :
   drake::trajectories::Trajectory<double>& traj_inst = pp;
 
   hip_yaw_traj_port_ = this->DeclareAbstractOutputPort(
-          "hip_yaw_left", traj_inst, &HipYawTrajGen::CalcYawTraj)
+          "hip_yaw_traj", traj_inst, &HipYawTrajGen::CalcYawTraj)
       .get_index();
 }
 
@@ -32,8 +32,8 @@ void HipYawTrajGen::CalcYawTraj(
       context, radio_port_)->get_value<lcmt_radio_out>();
   int fsm = this->EvalVectorInput(context, fsm_port_)->value()(0);
 
-  yaw(0) = (fsm == left_stance_state_) ?
-      -0.5 * radio.channel[7] : 0.5 * radio.channel[7];
+  double sign = (fsm == left_stance_state_) ? -1.0 : 1.0;
+  yaw(0) = sign * 0.5 * radio.channel[7];
   const auto pp = PiecewisePolynomial<double>(yaw);
   // Assign traj
   auto* pp_traj =

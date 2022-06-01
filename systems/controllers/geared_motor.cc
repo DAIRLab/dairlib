@@ -24,11 +24,12 @@ GearedMotor::GearedMotor(const MultibodyPlant<double>& plant,
   }
   systems::BasicVector<double> input(plant.num_actuators());
   systems::BasicVector<double> output(plant.num_actuators());
+  systems::BasicVector<double> state(n_q + n_v);
 
   command_input_port_ =
       this->DeclareVectorInputPort("u_cmd", input).get_index();
   state_input_port_ =
-      this->DeclareVectorInputPort("x", BasicVector<double>(n_q + n_v))
+      this->DeclareVectorInputPort("x", state)
           .get_index();
   this->DeclareVectorOutputPort("u_motor", output,
                                 &GearedMotor::CalcTorqueOutput);
@@ -42,6 +43,7 @@ void GearedMotor::CalcTorqueOutput(
                                                          command_input_port_);
   const systems::BasicVector<double>& x =
       *this->template EvalVectorInput<BasicVector>(context, state_input_port_);
+
   Eigen::VectorXd actuator_velocities = B_.transpose() * x.value().tail(n_v);
   Eigen::VectorXd tau = Eigen::VectorXd::Zero(n_u);
   for (int i = 0; i < n_u; ++i) {

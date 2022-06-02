@@ -56,5 +56,6 @@ py_binary(
         "//bindings/pydairlib",
         "@drake//bindings/pydrake",
     ],
-    data = [":trifinger_urdf"],
+    data = [":trifinger_urdf",
+            "@drake//manipulation/models/franka_description:models"],
 )

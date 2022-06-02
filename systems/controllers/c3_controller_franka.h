@@ -47,8 +47,10 @@ class C3Controller_franka : public LeafSystem<double> {
   C3Controller_franka(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::multibody::MultibodyPlant<double>& plant_f,
+      const drake::multibody::MultibodyPlant<double>& plant_franka,
       drake::systems::Context<double>& context,
       drake::systems::Context<double>& context_f,
+      drake::systems::Context<double>& context_franka,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_f,
       drake::systems::Context<drake::AutoDiffXd>& context_ad,
@@ -84,8 +86,10 @@ class C3Controller_franka : public LeafSystem<double> {
   int state_output_port_;
   const MultibodyPlant<double>& plant_;
   MultibodyPlant<double>& plant_f_;
+  const MultibodyPlant<double>& plant_franka_;
   drake::systems::Context<double>& context_;
   drake::systems::Context<double>& context_f_;
+  drake::systems::Context<double>& context_franka_;
   const MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   MultibodyPlant<drake::AutoDiffXd>& plant_ad_f_;
   drake::systems::Context<drake::AutoDiffXd>& context_ad_;

@@ -103,7 +103,8 @@ void C3Controller::CalcControl(const Context<double>& context,
   state << robot_output->GetPositions(), robot_output->GetVelocities();
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
-  VectorXd u = robot_output->GetEfforts();
+  //VectorXd u = robot_output->GetEfforts();
+  VectorXd u = VectorXd::Zero(3);
 
   VectorXd traj_desired_vector = pp_.value(timestamp);
 

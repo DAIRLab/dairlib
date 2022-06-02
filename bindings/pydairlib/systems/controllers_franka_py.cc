@@ -23,6 +23,8 @@ PYBIND11_MODULE(controllers_franka, m) {
                                                                "C3Controller_franka")
       .def(py::init<const drake::multibody::MultibodyPlant<double>&,
                     drake::multibody::MultibodyPlant<double>&,
+                    const drake::multibody::MultibodyPlant<double>&,
+                    drake::systems::Context<double>&,
                     drake::systems::Context<double>&,
                     drake::systems::Context<double>&,
                     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>&,
@@ -38,7 +40,7 @@ PYBIND11_MODULE(controllers_franka, m) {
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::VectorXd>&,
                     const drake::trajectories::PiecewisePolynomial<double>&>(),
-           py::arg("plant"), py::arg("plant_f"), py::arg("context"), py::arg("context_f"), py::arg("plant_ad"), py::arg("plant_ad_f"),
+           py::arg("plant"), py::arg("plant_f"), py::arg("plant_franka"), py::arg("context"), py::arg("context_f"), py::arg("context_franka"), py::arg("plant_ad"), py::arg("plant_ad_f"),
            py::arg("context_ad"),  py::arg("context_ad_f"), py::arg("scene_graph"), py::arg("diagram"),  py::arg("contact_geoms"),
            py::arg("num_friction_directions"), py::arg("mu"), py::arg("Q"),
            py::arg("R"), py::arg("G"), py::arg("U"), py::arg("xdesired"), py::arg("pp"))

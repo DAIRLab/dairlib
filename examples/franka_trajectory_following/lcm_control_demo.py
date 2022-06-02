@@ -11,7 +11,6 @@ from pydrake.all import (AbstractValue, DiagramBuilder, DrakeLcm, LeafSystem,
                          LcmPublisherSystem, TriggerType, AddMultibodyPlantSceneGraph)
 #import pydairlib.common
 
-
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 import pydairlib.common
 from pydairlib.systems.controllers_franka import C3Controller_franka
@@ -46,8 +45,6 @@ plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI)
 plant.Finalize()
 
 builder = DiagramBuilder()
-
-state_receiver = builder.AddSystem(RobotOutputReceiver(plant))
 
 #############################################################################################
 
@@ -89,6 +86,42 @@ diagram_context = diagram_f.CreateDefaultContext()
 context_f = diagram_f.GetMutableSubsystemContext(plant_f, diagram_context)
 
 #############################################################################################
+
+builder_franka = DiagramBuilder()
+sim_dt = 1e-4
+output_dt = 1e-4
+
+plant_franka, scene_graph_franka = AddMultibodyPlantSceneGraph(builder_franka, sim_dt)
+# addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
+#               mu_kinetic=1.0)
+
+# The package addition here seems necessary due to how the URDF is defined
+parser_franka = Parser(plant_franka)
+# parser.package_map().Add("robot_properties_fingers",
+#                          "examples/trajectory_following/robot_properties_fingers")
+# parser.AddModelFromFile(FindResourceOrThrow(
+#     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+parser_franka.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf"))
+parser_franka.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf"))
+
+
+
+#props = mut.ProximityProperties()
+
+#props.AddProperty("material", "point_contact_stiffness", 1000)
+
+# Fix the base of the finger to the world
+X_WI_franka = RigidTransform.Identity()
+plant_franka.WeldFrames(plant_franka.world_frame(), plant_franka.GetFrameByName("panda_link0"), X_WI_franka)
+plant_franka.Finalize()
+
+context_franka = plant_franka.CreateDefaultContext()
+
+state_receiver = builder.AddSystem(RobotOutputReceiver(plant_franka))
+
+
 
 nq = plant.num_positions()
 nv = plant.num_velocities()
@@ -137,7 +170,7 @@ xtraj = []
 for i in theta:
     x = r * np.sin(math.radians(i))
     y = r * np.cos(math.radians(i))
-    q[q_map['base_x']] = x
+    q[q_map['base_x']] = x + 0.5
     q[q_map['base_y']] = y
     xtraj_hold = np.zeros((nq+nv,1))
     xtraj_hold[:nq] = q
@@ -187,13 +220,13 @@ context = plant.CreateDefaultContext()
 context_ad = plant_ad.CreateDefaultContext()
 
 controller = builder.AddSystem(
-    C3Controller_franka(plant, plant_f, context, context_f, plant_ad, plant_ad_f, context_ad, context_ad_f, scene_graph, diagram_f, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired, pp))
+    C3Controller_franka(plant, plant_f, plant_franka, context, context_f, context_franka, plant_ad, plant_ad_f, context_ad, context_ad_f, scene_graph, diagram_f, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired, pp))
 
 
 builder.Connect(state_receiver.get_output_port(0), controller.get_input_port(0))
 
-control_sender = builder.AddSystem(RobotCommandSender(plant))
-#builder.Connect(controller.get_output_port(), control_sender.get_input_port(0))
+control_sender = builder.AddSystem(RobotCommandSender(plant_franka))
+builder.Connect(controller.get_output_port(), control_sender.get_input_port(0))
 
 control_publisher = builder.AddSystem(LcmPublisherSystem.Make(
     channel="TRIFINGER_INPUT", lcm_type=lcmt_robot_input, lcm=lcm,

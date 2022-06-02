@@ -23,8 +23,13 @@ plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
 parser = Parser(plant)
 # parser.package_map().Add("robot_properties_fingers",
 #                          "examples/trajectory_following/robot_properties_fingers")
-parser.AddModelFromFile(FindResourceOrThrow(
-    "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+# parser.AddModelFromFile(FindResourceOrThrow(
+#     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf"))
+parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf"))
+
 
 
 #props = mut.ProximityProperties()
@@ -74,7 +79,25 @@ simulator.set_target_realtime_rate(1)
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
 
-q = 0*np.ones(nq)
+q = np.zeros(nq)
+q_map = makeNameToPositionsMap(plant)
+# initialize close to {0.6, 0, 0.2}[m] in task space
+q[q_map["panda_joint1"]] = 0
+q[q_map["panda_joint2"]] = 0.82
+q[q_map["panda_joint3"]] = 0
+q[q_map["panda_joint4"]] = -1.44
+q[q_map["panda_joint5"]] = 0
+q[q_map["panda_joint6"]] = 2.26
+q[q_map["panda_joint7"]] = 0
+
+# initialize ball
+q[q_map['base_qw']] = 1
+q[q_map['base_qx']] = 0
+q[q_map['base_qz']] = 0
+q[q_map['base_x']] = 0.5
+q[q_map['base_y']] = 0.2
+q[q_map['base_z']] = 0.05
+
 plant.SetPositions(plant_context, q)
 
 v = np.zeros(nv)

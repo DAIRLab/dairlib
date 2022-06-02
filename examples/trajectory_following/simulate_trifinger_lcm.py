@@ -81,7 +81,7 @@ plant_context = diagram.GetMutableSubsystemContext(
 # Set the initial state
 q = 0*np.ones(nq)
 q_map = makeNameToPositionsMap(plant)
-q[0] = 0    #0.1
+q[0] = 0.5    #0.1
 q[1] = 0.2    #0.1
 q[2] = 0.1
 # q[3] = -0.01
@@ -116,7 +116,7 @@ q[2] = 0.1
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 0
+q[q_map['base_x']] = 0.5
 q[q_map['base_y']] = 0.2
 q[q_map['base_z']] = .05
 

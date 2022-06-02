@@ -33,9 +33,16 @@ def main():
   global vel_map
   global act_map
 
-  filename = sys.argv[1]
-  # filename = "/home/yuming/Downloads/sim_cost_eval/lcmlog-idx_1_49"
+  filename = ""
+  filename2 = ""
 
+  # # Manual specifying log files' names
+  # filename = "/home/yuming/Downloads/2_/sim_cost_eval/lcmlog-idx_1_49"
+  # # Load a second log if we want to compare two logs
+  # filename2 = "/home/yuming/Downloads/2_/sim_cost_eval/lcmlog-idx_160_49"
+
+  if filename == "":
+    filename = sys.argv[1]
   controller_channel = ""  # sys.argv[2]  #I'm not using this argument now
   log = lcm.EventLog(filename, "r")
   path = pathlib.Path(filename).parent
@@ -146,9 +153,9 @@ def main():
 
   # plot_dispatcher_torque(t_u, u, t_u_dispatcher, u_dispatcher, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, t_osc_debug, fsm, "left foot", True)
@@ -164,7 +171,7 @@ def main():
   # PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
   # PlotVdot(x, t_x, x_datatypes, True)
 
-  PlotOscQpSol(t_osc_debug, osc_output, fsm)
+  # PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
   # PlotSwingFootData(t_osc_debug, fsm)
   # PlotCentroidalAngularMomentum(t_osc_debug, fsm)
@@ -186,10 +193,7 @@ def main():
 
 
   ### Compare two lcm logs
-  compare_two_lcm_log = False
-  if compare_two_lcm_log:
-    # Load a second log if we want to compare two logs
-    filename2 = "/home/yuming/Downloads/sim_cost_eval/lcmlog-idx_160_49"
+  if filename2 != "":
     log2 = lcm.EventLog(filename2, "r")
     x2, u_meas, imu_aceel, t_x2, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
     osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
@@ -198,9 +202,24 @@ def main():
 
     # Plots
     # PlotTwoCenterOfMassAceel(x, t_x, x2, t_x2, plant_w_spr)
-    PlotTwoCentroidalAngularMomentum(x, t_x, x2, t_x2, plant_w_spr)
+    PlotTwoCentroidalAngularMomentum(x, t_x, x2, t_x2, t_osc_debug, fsm, plant_w_spr)
 
   plt.show()
+
+
+def PlotFsmBackground(t_osc_debug, fsm):
+  # Fsm color
+  fsm_colors = {0: "b", 1: "r", 2: "g", 3: "g", 4: "g"}
+
+  # Identify fsm switch
+  prev_switch_idx = 0
+  prev_fsm = fsm[0]
+  for idx in range(1, len(fsm)):
+    if prev_fsm != fsm[idx]:
+      plt.axvspan(t_osc_debug[prev_switch_idx], t_osc_debug[idx], facecolor=fsm_colors[int(prev_fsm)], alpha=0.2)
+      prev_fsm = fsm[idx]
+      prev_switch_idx = idx
+
 
 def PlotJointPosVelTorque(x, t_x, u_meas, x_datatypes, u_datatypes):
 
@@ -1142,7 +1161,7 @@ def PlotTwoCenterOfMassAceel(x1, t_x1, x2, t_x2, plant):
   # plt.legend(["x", "y", "z"])
   # plt.legend(["x", "y", "z", "fsm"])
 
-def PlotTwoCentroidalAngularMomentum(x1, t_x1, x2, t_x2, plant):
+def PlotTwoCentroidalAngularMomentum(x1, t_x1, x2, t_x2, t_osc_debug, fsm, plant):
   ### Total centroidal angular momentum
   centroidal_angular_momentum1 = np.zeros((t_x1.size, 3))
   for i in range(t_x1.size):
@@ -1169,6 +1188,9 @@ def PlotTwoCentroidalAngularMomentum(x1, t_x1, x2, t_x2, plant):
   plt.legend(["Initial model", "Optimal model"])
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.17)
+
+  ### Plotting finite state machine
+  PlotFsmBackground(t_osc_debug, fsm)
 
 
 if __name__ == "__main__":

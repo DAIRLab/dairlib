@@ -79,7 +79,10 @@ if "/scratch/yminchen" in os.getcwd():
 else:
     # directory_list.append('%s/robot_%d/' % (base if len(args.path) == 0 else args.path, robot_option))
     #directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range/robot_1/')
-    directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/')
+    # directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/')
+    directory_list.append('/home/yuming/Downloads/model_opt/20220128_rom16_small_weight_and_grad_main_cost_and_big_range_and_high_order/robot_1/')
+    directory_list.append('/home/yuming/Downloads/model_opt/20220129_rom17_small_weight_and_grad_main_cost_and_big_range/robot_1/')
+    directory_list.append('/home/yuming/Downloads/model_opt/20220510_rom17_big_range_bigger_step_size_5e-3_torque_weight_dominate_4d_tasks_space/robot_1/')
 ## Manually add more folders here (note that the path needs to end with "/")
 # directory_list.append('/')
 ## Sort and print
@@ -106,8 +109,8 @@ for i in range(len(directory_list)):
     directory = directory_list[i]
     print("%d/%d " % (i, len(directory_list)), end='')
     # Checks for the director_list
-    if len(directory_list) > 1 and not save_figure:
-        raise ValueError("save_figure has to be true. Otherwise this script won't go through the list")
+    # if len(directory_list) > 1 and not save_figure:
+    #     raise ValueError("save_figure has to be true. Otherwise this script won't go through the list")
     if not os.path.exists(directory):
         print(directory, " doesn't exist, so we skip to the next one")
         continue
@@ -253,10 +256,27 @@ for i in range(len(directory_list)):
                 sum_cost_main = [x + y for x, y in zip(sum_cost_main, filtered_cost_main[0:iteration_length])]
 
             # 2. Plot average cost
+            # Average cost
             average_cost_all = [x / y for x, y in zip(sum_cost_all, n_successful_sample_each_iter)]
-            ax.plot(t[0:iteration_length], average_cost_all, ave_cost_prop, linewidth=3.0, label=ave_cost_label + " (all)")
             average_cost_main = [x / y for x, y in zip(sum_cost_main, n_successful_sample_each_iter)]
-            ax.plot(t[0:iteration_length], average_cost_main, ave_cost_prop, linewidth=3.0, label=ave_cost_label + " (main)")
+
+            # # Clean-up -- Remove the big spikes (which I believe is from bad solves)
+            # delta_cost_threshold = 0.05
+            # list_of_idx_to_be_remove = []
+            # for delta_iter in [1, 2]:
+            #     for idx in range(delta_iter, iteration_length):
+            #         if average_cost_main[idx] - average_cost_main[idx-delta_iter] > delta_cost_threshold:
+            #             list_of_idx_to_be_remove.append(idx)
+            # list_of_idx_to_be_remove = list(set(list_of_idx_to_be_remove))
+            # list_of_idx_to_be_remove.sort()
+            # list_of_idx_to_be_remove.reverse()
+            # for idx in list_of_idx_to_be_remove:
+            #     t.pop(idx)
+            #     average_cost_main.pop(idx)
+
+            ax.plot(t, average_cost_all, ave_cost_prop, linewidth=3.0, label=ave_cost_label + " (all)")
+            ax.plot(t, average_cost_main, ave_cost_prop, linewidth=3.0, label=ave_cost_label + " (main)")
+            # ax.plot(t, average_cost_main, linewidth=3.0)
 
             # Get the cost of first iter and min cost
             cost_iter_1 = max(cost_iter_1, average_cost_all[0])
@@ -350,7 +370,13 @@ for i in range(len(directory_list)):
             else:
                 # plt.pause(60)
                 # plt.clf()
-                plt.show()
+                # plt.show()
+                break
 
     except Exception as e:
         logging.error(traceback.format_exc())  # Logs the error appropriately.
+
+if not save_figure:
+    plt.legend(["Ex#1: 2nd order; 2D task", "Ex#2: 4th order; 2D task", "Ex#3: 2nd order; 4D task"])
+    plt.show()
+

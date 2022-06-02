@@ -5,6 +5,7 @@ import code
 import numpy as np
 import scipy.io
 from pydrake.multibody.tree import JointIndex
+from pydrake.multibody.tree import ForceElementIndex
 
 import dairlib
 from process_lcm_log import get_log_data
@@ -34,7 +35,14 @@ def main():
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
 
-    ''' Get damping'''
+    '''' Get Stiffness '''
+    K = np.zeros(23,)
+    for force_element_idx in range(plant.num_force_elements()):
+        force_element = plant.get_force_element(ForceElementIndex(force_element_idx))
+        if hasattr(force_element, 'joint') and hasattr(force_element, 'stiffness'):
+            K[pos_map[force_element.joint().name()]] = force_element.stiffness()
+
+    ''' Get damping '''
     C = np.zeros(22,)
     for joint_idx in range(plant.num_joints()):
         joint = plant.get_joint(JointIndex(joint_idx))
@@ -62,7 +70,7 @@ def main():
         output_path = sys.argv[2]
         print("output to "+output_path)
         data_to_output = {"robot_output":robot_output, "robot_input":robot_input, 
-                        "contact_output":contact_output, 'damping_ratio':C,
+                        "contact_output":contact_output, 'damping_ratio':C, 'spring_stiffness':K,
                         "osc_output":{"t_osc":osc_debug["t_osc"], "lambda_h_sol":osc_debug["lambda_h_sol"]}
                         }
         scipy.io.savemat(output_path, data_to_output)

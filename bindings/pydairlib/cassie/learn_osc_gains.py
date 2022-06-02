@@ -46,18 +46,18 @@ class OSCGainsOptimizer():
             'mu': 0.6,
             'w_hip_yaw': 2.5,
             'hip_yaw_kp': 40,
-            # 'PelvisKp': np.array([0, 0, 85]),
-            # 'PelvisKd': np.array([1, 0, 5]),
+            'PelvisKp': np.array([0, 0, 50]),
+            'PelvisKd': np.array([0, 0, 5]),
             # 'PelvisRotKp': np.array([50, 100, 0]),
             'PelvisRotKd': np.array([10, 5, 1]),
             'SwingFootKp': np.array([125, 80, 50]),
             'SwingFootKd': np.array([5, 5, 1]),
             'FootstepKd': np.array([0.2, 0.45, 0]),
-            'center_line_offset': 0.03,
+            # 'center_line_offset': 0.03,
             # 'rest_length': 0.85,
-            'footstep_offset': -0.05,
-            'stance_duration': 0.30,
-            'flight_duration': 0.08,
+            # 'footstep_offset': -0.05,
+            # 'stance_duration': 0.30,
+            # 'flight_duration': 0.08,
         }
 
     def save_params(self, folder, params, budget):
@@ -115,18 +115,18 @@ class OSCGainsOptimizer():
             mu=ng.p.Scalar(lower=0.4, upper=1.0),
             w_hip_yaw=ng.p.Scalar(lower=0, upper=10),
             hip_yaw_kp=ng.p.Scalar(lower=20, upper=80),
-            # PelvisKp=ng.p.Array(lower=0., upper=150., shape=(3,)),
-            # PelvisKd=ng.p.Array(lower=0., upper=10., shape=(3,)),
+            PelvisKp=ng.p.Array(lower=0., upper=75., shape=(3,)),
+            PelvisKd=ng.p.Array(lower=0., upper=10., shape=(3,)),
             # PelvisRotKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
             PelvisRotKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
             SwingFootKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
             SwingFootKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
             FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
-            center_line_offset=ng.p.Scalar(lower=0.03, upper=0.075),
+            # center_line_offset=ng.p.Scalar(lower=0.03, upper=0.075),
             # rest_length=ng.p.Scalar(lower=0.8, upper=0.9),
-            footstep_offset=ng.p.Scalar(lower=-0.1, upper=0.05),
-            stance_duration=ng.p.Scalar(lower=0.25, upper=0.40),
-            flight_duration=ng.p.Scalar(lower=0.05, upper=0.15),
+            # footstep_offset=ng.p.Scalar(lower=-0.1, upper=0.05),
+            # stance_duration=ng.p.Scalar(lower=0.25, upper=0.40),
+            # flight_duration=ng.p.Scalar(lower=0.05, upper=0.15),
         )
         self.loss_over_time = []
         self.default_params.value = self.default_osc_gains
@@ -149,7 +149,7 @@ if __name__ == '__main__':
     reward_function = RewardOSUDRL()
 
     optimizer = OSCGainsOptimizer(budget, reward_function, visualize=False)
-    # optimizer.learn_gains()
+    optimizer.learn_gains()
 
     optimal_params = optimizer.load_params('2022_03_28_18_2000', optimizer.drake_params_folder).value
     optimizer.write_params(optimal_params)

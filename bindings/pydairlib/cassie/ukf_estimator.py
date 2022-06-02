@@ -1,8 +1,8 @@
-from mimetypes import init
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from pyrsistent import v
+from pandas import value_counts
+import pydairlib
 import scipy.linalg
 import scipy.io
 from scipy.spatial.transform import Rotation
@@ -12,7 +12,7 @@ from pydairlib.cassie.cassie_utils import *
 from pydairlib.multibody import kinematic
 from pydrake.multibody.tree import JacobianWrtVariable
 
-index = 10
+spring_stiffness = np.zeros(23,)
 
 class UKF:
     def __init__(self,init_mean, init_cov, R, Q):
@@ -37,10 +37,8 @@ class UKF:
         self.nv = 22
         # Dim of lambda_c 
         self.nlc = 12
-        # Dim of lambda_h
-        self.nlh = 2
         # Total dim
-        self.n = self.nq + self.nv *2 + self.nlc + self.nlh
+        self.n = self.nq + self.nv *2 + self.nlc
 
         # Number of points for the foot to contacts for the ground
         self.num_contacts = 4
@@ -97,11 +95,6 @@ class UKF:
                         np.vstack((np.zeros(self.nlc), 
                         whole_cov[:,self.cov.shape[0]+10:self.cov.shape[0]+10+self.nlc], 
                         -whole_cov[:,self.cov.shape[0]+10:self.cov.shape[0]+10+self.nlc]))
-        # lambda_h random walking
-        lambda_h_noise = (self.cov.shape[0] + self.R.shape[0])**0.5 * \
-                        np.vstack((np.zeros(self.nlh), 
-                        whole_cov[:, -self.nlh:], 
-                        -whole_cov[:, -self.nlh:]))
 
         # Deal with part with quaternion
         # First get deviation as rotation vector
@@ -124,27 +117,25 @@ class UKF:
         # Also include the self.mean into sigma point
         sigma_points = np.vstack((self.mean, sigma_points))
 
-        return sigma_points, motor_noise, lambda_c_noise, lambda_h_noise
+        return sigma_points, motor_noise, lambda_c_noise
 
-    def dynamics_updates(self, sigma_points, u, motor_noise, lambda_c_noise, lambda_h_noise, dt):
+    def dynamics_updates(self, sigma_points, u, motor_noise, lambda_c_noise, dt):
         """
         Get the nominal sigma points after dynamics,
-        sigma points are in form of [q, v, lambda_c, lambda_h, C]
+        sigma points are in form of [q, v, lambda_c, C]
         paras:
-            sigma_points: 2(n+self.u.size+self.nlc+self.nlh)+1 X n, where each row represent a sigma point
+            sigma_points: 2(n+self.u.size+self.nlc)+1 X n, where each row represent a sigma point
             u: (10,) motor toque
-            motor_noise: 2(n+self.u.size+self.nlc+self.nlh)+1 X 10, motor noise to be added in
-            lambda_c_noise: 2(n+self.u.size+self.nlc+self.nlh)+1 X nlc, the incremental for lambda_c
-            lambda_h_noise: 2(n+self.u.size+self.nlc+self.nlh)+1 X nlh, the incremental for lambda_h_noise
+            motor_noise: 2(n+self.u.size+self.nlc)+1 X 10, motor noise to be added in
+            lambda_c_noise: 2(n+self.u.size+self.nlc)+1 X nlc, the incremental for lambda_c
             dt: scalar, the time diff since last update
         return:
-            sigma_points: 2(n+self.u.size+self.nlc+self.nlh)+1 X n sigma_points after dynamics  
+            sigma_points: 2(n+self.u.size+self.nlc)+1 X n sigma_points after dynamics  
         """
         
         q = sigma_points[:,:self.nq]
         v = sigma_points[:,self.nq:self.nq+self.nv]
         lambda_c = sigma_points[:,self.nq+self.nv: self.nq + self.nv + self.nlc]
-        lambda_h = sigma_points[:,self.nq + self.nv + self.nlc:-self.nv]
         C = sigma_points[:,-self.nv:]
 
         """ 
@@ -152,7 +143,7 @@ class UKF:
             The dotx_k is given by [q_dot, v_dot, 0, 0]
             The q_dot is v with additional process for quaternion,
             The v_dot can be compute by other formulation 
-            The dotlambda_c and dotlambda_h is hard to model, we alternative model it by some high covariance
+            The dot_lambda_c and is hard to model, we alternative model it by some high covariance
             We assume C to be constant
         """
 
@@ -168,34 +159,30 @@ class UKF:
 
         # Cal the v_next
         # Cal vdot
-        v_dot = self.cal_vdot(q, v, lambda_c, lambda_h, C, u+motor_noise)
+        v_dot = self.cal_vdot(q, v, lambda_c, C, u+motor_noise)
         # Cal v_next
         v_next = v + v_dot * dt
 
         # Cal lambda_c next
         lambda_c_next = lambda_c + lambda_c_noise
 
-        # Cal lambda_h next
-        lambda_h_next = lambda_h + lambda_h_noise
-
         # Assemble all the stuff
-        sigma_points_next = np.hstack((q_next, v_next, lambda_c_next, lambda_h_next, C))
+        sigma_points_next = np.hstack((q_next, v_next, lambda_c_next, C))
 
         return sigma_points_next
 
-    def cal_vdot(self, q, v, lambda_c, lambda_h, C, u):
+    def cal_vdot(self, q, v, lambda_c, C, u):
         """
         The dynamics is given by:
         M @ v_dot + bias == J_c^T @ lambda_c + J_h^T @ lambda_h + B @ u + dig(C) @ v
         paras:
-            q: 2(n+self.u.size+self.nlc+self.nlh)+1+1 X 23, each row represents a sigma point of the position vector
-            v: 2(n+self.u.size+self.nlc+self.nlh)+1+1 X 22, each row represents a sigma point of the velocity vector
-            lambda_c: 2(n+self.u.size+self.nlc+self.nlh)+1+1 X 12, each row represents a sigma point of the ground force vector
-            lambda_h: 2(n+self.u.size+self.nlc+self.nlh)+1+1 X 2, constraint force of four bar linkage
-            C: 2(n+self.u.size+self.nlc+self.nlh)+1+1 X 22, each row presents a sigma point of the damping ratio parameter vector 
-            u: 2(n+self.u.size+self.nlc+self.nlh)+1 X 10 the input torque
+            q: 2(n+self.u.size+self.nlc)+1+1 X 23, each row represents a sigma point of the position vector
+            v: 2(n+self.u.size+self.nlc)+1+1 X 22, each row represents a sigma point of the velocity vector
+            lambda_c: 2(n+self.u.size+self.nlc)+1+1 X 12, each row represents a sigma point of the ground force vector
+            C: 2(n+self.u.size+self.nlc)+1+1 X 22, each row presents a sigma point of the damping ratio parameter vector 
+            u: 2(n+self.u.size+self.nlc)+1 X 10 the input torque
         returns:
-            vdot: 2n+1 X 22, where each row represents a sigma point of acceleration
+            vdot: 2(n+self.u.size+self.nlc)+1 X 22, where each row represents a sigma point of acceleration
         """
 
         vdot = np.zeros((q.shape[0], 22))
@@ -210,6 +197,7 @@ class UKF:
 
             # get M matrix
             M = self.plant.CalcMassMatrix(self.context)
+            M_inv = scipy.linalg.pinv(M)
 
             # get bias term
             bias = self.plant.CalcBiasTerm(self.context)
@@ -240,18 +228,24 @@ class UKF:
             # get the B matrix 
             B = self.plant.MakeActuationMatrix()
 
+            # get the gravity_force
+            gravity_force = self.plant.CalcGravityGeneralizedForces(self.context)
+
+            # Calculate the J_h_dot_times_v for constraint force later 
+            J_h_dot_times_v = np.zeros(2,)
+            J_h_dot_times_v[0] = self.left_loop.EvalFullJacobianDotTimesV(self.context)
+            J_h_dot_times_v[1] = self.right_loop.EvalFullJacobianDotTimesV(self.context)
+
             # compute the v_dot
             if q.ndim == 1:
-                vdot = scipy.linalg.pinv(M) @ (-bias + J_c.T @ lambda_c - J_h.T @ lambda_h + B @ u - C * v)
-                print("vdot:", vdot[index])
-                print("bias contribution:", (scipy.linalg.pinv(M) @ (-bias))[index])
-                print("contact force contribution", (scipy.linalg.pinv(M) @ (J_c.T @ lambda_c))[index])
-                print("constraint_force contribution", (scipy.linalg.pinv(M) @ (J_h.T @ lambda_h))[index])
-                print("input contribution", (scipy.linalg.pinv(M) @ B @ u)[index])
-                print("damping", (scipy.linalg.pinv(M) @ (C*v))[index])
-                import pdb; pdb.set_trace()
+                # calculate the constraint force 
+                lambda_h = -scipy.linalg.pinv(J_h @ M_inv @ J_h.T) @ (J_h @ M_inv @ (-bias + gravity_force + J_c.T @ lambda_c + B @ u -(spring_stiffness * q)[1:] -C*v) - J_h_dot_times_v)
+                # calculate the vdot 
+                vdot = M_inv @ (-bias + gravity_force + J_c.T @ lambda_c + J_h.T @ lambda_h + B @ u -(spring_stiffness * q)[1:] - C * v)
+                # import pdb; pdb.set_trace()
             else:
-                vdot[i,:] = scipy.linalg.pinv(M) @ (-bias + J_c.T @ lambda_c[i,:] + J_h.T @ lambda_h[i,:] + B @ u[i,:] - C[i,:] * v[i,:])
+                lambda_h = -scipy.linalg.pinv(J_h @ M_inv @ J_h.T) @ (J_h @ M_inv @ (-bias + gravity_force + J_c.T @ lambda_c[i,:] + B @ u[i,:] -(spring_stiffness * q[i,:])[1:] -C[i,:]*v[i,:]) - J_h_dot_times_v)
+                vdot[i,:] = M_inv @ (-bias + gravity_force + J_c.T @ lambda_c[i,:] + J_h.T @ lambda_h + B @ u[i,:] -(spring_stiffness * q[i,:])[1:] - C[i,:] * v[i,:])
 
         return vdot
 
@@ -401,10 +395,10 @@ class UKF:
         """
         
         # Sample the sigma points
-        sigma_points, motor_noise, lambda_c_noise, lambda_h_noise = self.get_sigma_points()
+        sigma_points, motor_noise, lambda_c_noise = self.get_sigma_points()
 
         # Dynamics process for sigma points
-        sigma_points = self.dynamics_updates(sigma_points, u, motor_noise, lambda_c_noise, lambda_h_noise, dt)
+        sigma_points = self.dynamics_updates(sigma_points, u, motor_noise, lambda_c_noise, dt)
         # Update the mean and covariance after dynamics
         self.mean = self.cal_mean_of_sigma_points(sigma_points)
         self.cov = self.cal_cov_of_sigma_points(sigma_points)
@@ -518,6 +512,10 @@ def processing_raw_data(raw_data, R, Q):
     # Get damping ratio
     damping_ratio = raw_data['damping_ratio'][0]
 
+    # Get spring stiffness
+    global spring_stiffness 
+    spring_stiffness = raw_data['spring_stiffness'][0]
+
     # construct observation by adding noise to ground truth 
     accelerometer_gt = acc[:,3:6]
     gyro_gt = v[:,0:3]
@@ -558,8 +556,7 @@ def main():
     # observation noise
     Q = np.eye(22) * 0.1
     # initial noise
-    init_cov = np.eye(80) * 0.1
-    init_cov[57:59,57:59] = np.eye(2) * 200 # lambda_h
+    init_cov = np.eye(78) * 0.1
 
     # processing raw data
     print("Begin processing raw data for test")
@@ -575,33 +572,45 @@ def main():
                         q_gt[0,:],
                         v_gt[0,:],
                         lambda_c_gt[0,:],
-                        lambda_h_guess[0,:],
                         damping_ratio
                         ))
     noise = np.random.multivariate_normal(np.zeros(init_mean.shape[0]-1), init_cov)
     init_mean[4:] += noise[3:]
     init_mean[:4] = (Rotation.from_quat(init_mean[:4][[1,2,3,0]]) * Rotation.from_rotvec(noise[0:3])).as_quat()[[3,0,1,2]]
 
+    # initial robot plant
+    builder = DiagramBuilder()
+    drake_sim_dt = 5e-5
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, drake_sim_dt)
+    addCassieMultibody(plant, scene_graph, True, 
+                        "examples/Cassie/urdf/cassie_v2.urdf", True, True)
+    plant.Finalize()
+    vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)
+    vel_map_inverse = {value:key for (key, value) in vel_map.items()}
+
     # initial ukf
     R_lambda_c = np.eye(12) * 200
-    R_lambda_h = np.eye(2) * 200
-    R = np.zeros((24,24))
+    R = np.zeros((22,22))
     R[0:10,0:10] = R_motor
     R[10:22,10:22] = R_lambda_c
-    R[22:24,22:24] = R_lambda_h
     estimator = UKF(init_mean, init_cov, R, Q)
 
-    acc_est = []
-    interested_range = range(2300,2800)
-    for i in interested_range:
-        print("gt_acc", acc_gt[i,index])
-        acc_est.append(estimator.cal_vdot(q_gt[i,:],v_gt[i,:],lambda_c_gt[i,:], lambda_h_guess[i,:], damping_ratio, u_gt[i,:]))
-    acc_est = np.array(acc_est)
+    # acc_est = []
+    # interested_range = range(1000,3000)
+    # for i in interested_range:
+    #     acc_est.append(estimator.cal_vdot(q_gt[i,:],v_gt[i,:],lambda_c_gt[i,:], damping_ratio, u_gt[i,:]))
+    # acc_est = np.array(acc_est)
     
-    plt.plot(acc_est[:,index],'r')
-    plt.plot(acc_gt[interested_range,index],'g')
-    plt.ylim(-500,500)
-    plt.show()
+    # for index in range(22):
+    #     path = "bindings/pydairlib/cassie/ukf_experienments/dynamics_check/" + vel_map_inverse[index] + ".png" 
+    #     plt.clf()
+    #     plt.plot(t[interested_range], acc_est[:,index],'r')
+    #     plt.plot(t[interested_range], acc_gt[interested_range,index],'g')
+    #     plt.legend(["calculated","ground_truth"])
+    #     plt.xlabel("time(s)")
+    #     plt.title(vel_map_inverse[index])
+    #     plt.ylim(-500,500)
+    #     plt.savefig(path)
 
     # update the belief
     for i in range(1,t.shape[0]):

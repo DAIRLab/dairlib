@@ -145,10 +145,11 @@ ImpedanceController::ImpedanceController(
                                  &ImpedanceController::CalcControl)
                              .get_index();
 
-  // define end effector
+  // define end effector and contact
   EE_offset_ << 0, 0, 0;
   EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
   world_frame_ = &plant_.world_frame();
+  contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
 
   // control-related variables
   // TODO: using fixed Rd for the time being
@@ -189,12 +190,13 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   plant_f_.SetVelocities(&context_f_, v);
   //multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
 
-  // calculate corriolis and gravity terms
+  // calculate manipulator equation terms and Jacobian
+  MatrixXd M(plant_.num_velocities(), plant_.num_velocities());
+  plant_.CalcMassMatrix(context_, &M);
   VectorXd C(plant_.num_velocities());
   plant_.CalcBiasTerm(context_, &C);
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
 
-  // compute jacobian
   MatrixXd J(6, plant_.num_velocities());
   plant_.CalcJacobianSpatialVelocity(
       context_, JacobianWrtVariable::kV,
@@ -204,6 +206,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // perform all truncations
   VectorXd q_franka = q.head(n);
   VectorXd v_franka = v.head(n);
+  MatrixXd M_franka = M.block(0 ,0, n, n);
   VectorXd C_franka = C.head(n);
   VectorXd tau_g_franka = tau_g.head(n);
   MatrixXd J_franka = J.block(0, 0, 6, n);
@@ -226,49 +229,50 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd xd_dot = VectorXd::Zero(6);
   xd_dot.tail(3) << target[1];
   
-  // compute xtilde and xtilde_dot
+  // compute position control input
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R);
   VectorXd xtilde_dot = xd_dot - x_dot;
-
-  // compute the input
   VectorXd tau = J_franka.transpose() * (K_*xtilde + B_*xtilde_dot) + C_franka - tau_g_franka;
 
-  // add feedforward force term   
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
-  //contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2])); // Sphere <-> Ground
-  
-  VectorXd phi(contact_pairs.size());
-  MatrixXd J_n(contact_pairs.size(), plant_.num_velocities());
-  MatrixXd J_t(2 * contact_pairs.size() * num_friction_directions_, plant_.num_velocities());
-  this->CalcContactJacobians(contact_pairs, phi, J_n, J_t);
-  MatrixXd Jc(J_n.rows() + J_t.rows(), n);
-  Jc << J_n.block(0, 0, J_n.rows(), n),
-        J_t.block(0, 0, J_t.rows(), n);
-
-  // TODO: get lambda from Alp's controller
+  // add feedforward force term if contact is desired
+  // Artificially added contact TODO: get contact from alps controller instead
   VectorXd lambda = VectorXd::Zero(6);
   if (timestamp > 10.0 && timestamp < 20.0){
     lambda << 0, 100, 0, 0, 0, 0;
   }
-  tau -= Jc.transpose() * lambda.tail(5); // TODO: check if this should be +/-
-  
-  // compute nullspace projection
-  MatrixXd J_franka_pinv = J_franka.completeOrthogonalDecomposition().pseudoInverse();
-  MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_franka_pinv.transpose();
+  bool in_contact = !isZeroVector(lambda.tail(5));
 
+  MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n);
+  if (in_contact){
+    // compute contact jacobian
+    VectorXd phi(contact_pairs_.size());
+    MatrixXd J_n(contact_pairs_.size(), plant_.num_velocities());
+    MatrixXd J_t(2 * contact_pairs_.size() * num_friction_directions_, plant_.num_velocities());
+    this->CalcContactJacobians(contact_pairs_, phi, J_n, J_t);
+    Jc << J_n.block(0, 0, J_n.rows(), n),
+          J_t.block(0, 0, J_t.rows(), n);
+
+    tau -= Jc.transpose() * lambda.tail(5); // TODO: check if this should be +/-
+  }
+
+  // compute nullspace projection
   VectorXd qd = VectorXd::Zero(7);
   qd << 0, 0, 0, -1.57, q_franka.tail(3); // task-specific
   //qd << 0, 0, 0, -1.57, 0, 1.57, 0;; // middle of range of motion
+
+  MatrixXd M_inv = M_franka.inverse();
+  MatrixXd J_ginv_tranpose = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
+  MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_ginv_tranpose;
   VectorXd tau_null = N * (K_null_*(qd-q_franka) - B_null_*v_franka);
 
+  // TODO: figure out how to do this
   // project into the null space of the contact jacobian if contact is desired
-  if (!isZeroVector(lambda.tail(5))){
-    MatrixXd Jc_pinv = Jc.completeOrthogonalDecomposition().pseudoInverse();
-    MatrixXd Nc = MatrixXd::Identity(7, 7) - Jc.transpose() * Jc_pinv.transpose();
-    tau_null = Nc * tau_null;
-  }
+  // if (in_contact){
+  //   MatrixXd Jc_ginv_transpose = (Jc * M_inv * Jc.transpose()).inverse() * Jc * M_inv;
+  //   MatrixXd Nc = MatrixXd::Identity(7, 7) - Jc.transpose() * Jc_ginv_transpose;
+  //   tau_null = Nc * tau_null;
+  // }
 
   control->SetDataVector(tau + tau_null);
   control->set_timestamp(timestamp);

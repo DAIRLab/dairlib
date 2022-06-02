@@ -116,10 +116,11 @@ class ImpedanceController : public LeafSystem<double> {
   std::vector<drake::geometry::GeometryId> contact_geoms_;
   int num_friction_directions_;
 
-  // frame and EE info
+  // frame, EE, and contact info
   const drake::multibody::BodyFrame<double>* EE_frame_;
   const drake::multibody::BodyFrame<double>* world_frame_;
   Eigen::Vector3d EE_offset_;
+  std::vector<SortedPair<GeometryId>> contact_pairs_;
 
   // control related variables
   Quaterniond orientation_d_;

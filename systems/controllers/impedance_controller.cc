@@ -153,7 +153,7 @@ ImpedanceController::ImpedanceController(
                              .get_index();
 
   // define end effector and contact
-  EE_offset_ << 0, 0, 0;
+  EE_offset_ << 0, 0, 0.05;
   EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
   world_frame_ = &plant_.world_frame();
   contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
@@ -192,22 +192,22 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   
 
   // TODO: uncomment to get info from port
-  auto c3_output =
-      (TimestampedVector<double>*) this->EvalVectorInput(context, c3_state_input_port_);
-  VectorXd state = c3_output->get_data();
-  VectorXd xd = state.head(3);
-  VectorXd xd_dot = state.segment(10, 12);
-  VectorXd lambda = state.tail(5); // does not contain the slack variable
+  // auto c3_output =
+  //     (TimestampedVector<double>*) this->EvalVectorInput(context, c3_state_input_port_);
+  // VectorXd state = c3_output->get_data();
+  // VectorXd xd = state.head(3);
+  // VectorXd xd_dot = state.segment(10, 12);
+  // VectorXd lambda = state.tail(5); // does not contain the slack variable
 
-  // std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
-  // VectorXd xd = VectorXd::Zero(6);
-  // xd.tail(3) << target[0];
-  // VectorXd xd_dot = VectorXd::Zero(6);
-  // xd_dot.tail(3) << target[1];
-  // VectorXd lambda = VectorXd::Zero(5);
-  // if (timestamp > 10.0 && timestamp < 20.0){
-  //   lambda << 100, 0, 0, 0, 0;
-  // }
+  std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
+  VectorXd xd = VectorXd::Zero(6);
+  xd.tail(3) << target[0];
+  VectorXd xd_dot = VectorXd::Zero(6);
+  xd_dot.tail(3) << target[1];
+  VectorXd lambda = VectorXd::Zero(5);
+  if (timestamp > 10.0 && timestamp < 20.0){
+    lambda << 100, 0, 0, 0, 0;
+  }
 
   bool in_contact = !isZeroVector(lambda);
   
@@ -242,8 +242,8 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // forward kinematics
   const drake::math::RigidTransform<double> H = 
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
-  Vector3d d = H.translation();
   const RotationMatrix<double> R = H.rotation();
+  Vector3d d = H.translation() + R*EE_offset_;
 
   // build task space state vectors
   VectorXd x = VectorXd::Zero(6);

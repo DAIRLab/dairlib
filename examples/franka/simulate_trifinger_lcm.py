@@ -22,8 +22,10 @@ addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
 parser = Parser(plant)
 # parser.package_map().Add("robot_properties_fingers",
 #                          "examples/trajectory_following/robot_properties_fingers")
-parser.AddModelFromFile(FindResourceOrThrow(
-    "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+# parser.AddModelFromFile(FindResourceOrThrow(
+#     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/franka/robot_properties_fingers/urdf/franka_box.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/franka/robot_properties_fingers/urdf/sphere.urdf"))
 

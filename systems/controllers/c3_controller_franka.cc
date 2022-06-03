@@ -102,7 +102,7 @@ C3Controller_franka::C3Controller_franka(
 
 
   state_output_port_ = this->DeclareVectorOutputPort(
-                                 "x_lambda, t", TimestampedVector<double>((int) 25),
+                                 "x_lambda, t", TimestampedVector<double>(25),
                                  &C3Controller_franka::CalcControl)
                              .get_index();
 
@@ -361,7 +361,7 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
 VectorXd force_des = force.head(6);
 
 VectorXd st_desired(force_des.size() + state_next.size() );
-st_desired << force_des.head(6), state_next;
+st_desired << state_next, force_des.head(6);
 
 ////2 (connected to franka)
 //VectorXd st_desired = VectorXd::Zero(7);

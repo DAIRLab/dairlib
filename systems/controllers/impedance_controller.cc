@@ -144,7 +144,7 @@ ImpedanceController::ImpedanceController(
   c3_state_input_port_ =
       this->DeclareVectorInputPort(
               "xee, xball, xee_dot, xball_dot, lambda",
-              OutputVector<double>(10, 9, 6))
+              TimestampedVector<double>(25))
           .get_index();
 
   control_output_port_ = this->DeclareVectorOutputPort(
@@ -192,22 +192,23 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   
 
   // TODO: uncomment to get info from port
-  // auto c3_output =
-  //     (OutputVector<double>*)this->EvalVectorInput(context, c3_state_input_port_);
-  // VectorXd xd = c3_output->GetPositions().head(3);
-  // VectorXd xd_dot = c3_output->GetVelocities().head(3);
-  // VectorXd lambda = c3_output->GetEfforts().tail(5); // does not contain the slack variable
+  auto c3_output =
+      (TimestampedVector<double>*) this->EvalVectorInput(context, c3_state_input_port_);
+  VectorXd state = c3_output->get_data();
+  VectorXd xd = state.head(3);
+  VectorXd xd_dot = state.segment(10, 12);
+  VectorXd lambda = state.tail(5); // does not contain the slack variable
 
-  std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
-  VectorXd xd = VectorXd::Zero(6);
-  xd.tail(3) << target[0];
-  VectorXd xd_dot = VectorXd::Zero(6);
-  xd_dot.tail(3) << target[1];
+  // std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
+  // VectorXd xd = VectorXd::Zero(6);
+  // xd.tail(3) << target[0];
+  // VectorXd xd_dot = VectorXd::Zero(6);
+  // xd_dot.tail(3) << target[1];
+  // VectorXd lambda = VectorXd::Zero(5);
+  // if (timestamp > 10.0 && timestamp < 20.0){
+  //   lambda << 100, 0, 0, 0, 0;
+  // }
 
-  VectorXd lambda = VectorXd::Zero(5);
-  if (timestamp > 10.0 && timestamp < 20.0){
-    lambda << 100, 0, 0, 0, 0;
-  }
   bool in_contact = !isZeroVector(lambda);
   
   //update the context_

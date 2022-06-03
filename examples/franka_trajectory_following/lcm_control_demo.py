@@ -2,7 +2,7 @@ from dairlib import (lcmt_robot_output, lcmt_robot_input)
 
 import pydairlib.common
 import pydairlib.lcm
-from pydairlib.systems import (RobotCommandSender, RobotOutputReceiver,
+from pydairlib.systems import (RobotCommandSender, RobotOutputReceiver, RobotOutputSender,
                                LcmOutputDrivenLoop, OutputVector,
                                TimestampedVector)
 
@@ -225,14 +225,14 @@ controller = builder.AddSystem(
 
 builder.Connect(state_receiver.get_output_port(0), controller.get_input_port(0))
 
-control_sender = builder.AddSystem(RobotCommandSender(plant_franka))
-builder.Connect(controller.get_output_port(), control_sender.get_input_port(0))
+state_force_sender = builder.AddSystem(RobotOutputSender(plant, True))
+builder.Connect(controller.get_output_port(), state_force_sender.get_input_port(0))
 
 control_publisher = builder.AddSystem(LcmPublisherSystem.Make(
-    channel="TRIFINGER_INPUT", lcm_type=lcmt_robot_input, lcm=lcm,
+    channel="TRIFINGER_INPUT", lcm_type=lcmt_robot_output, lcm=lcm,
     publish_triggers={TriggerType.kForced},
     publish_period=0.0, use_cpp_serializer=True))
-builder.Connect(control_sender.get_output_port(),
+builder.Connect(state_force_sender.get_output_port(),
     control_publisher.get_input_port())
 
 diagram = builder.Build()

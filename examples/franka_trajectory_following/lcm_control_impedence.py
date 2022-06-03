@@ -62,7 +62,7 @@ diagram_f = builder_f.Build()
 diagram_context_f = diagram_f.CreateDefaultContext()
 context_f = diagram_f.GetMutableSubsystemContext(plant_f, diagram_context_f)
 
-################################################################################################33
+################################################################################################
 
 nq = plant.num_positions()
 nv = plant.num_velocities()

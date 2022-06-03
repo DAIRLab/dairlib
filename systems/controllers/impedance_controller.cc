@@ -134,10 +134,17 @@ ImpedanceController::ImpedanceController(
   int num_inputs = plant_.num_actuators();
 
   // set up input and output ports
-  state_input_port_ =
+  franka_state_input_port_ =
       this->DeclareVectorInputPort(
               "x, u, t",
               OutputVector<double>(num_positions, num_velocities, num_inputs))
+          .get_index();
+  
+  // xee: 3D, xball: 7D, xee_dot: 3D, xball_dot: 6D, lambda: 6D(Total: 25D)
+  c3_state_input_port_ =
+      this->DeclareVectorInputPort(
+              "xee, xball, xee_dot, xball_dot, lambda",
+              OutputVector<double>(10, 9, 6))
           .get_index();
 
   control_output_port_ = this->DeclareVectorOutputPort(
@@ -150,6 +157,7 @@ ImpedanceController::ImpedanceController(
   EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
   world_frame_ = &plant_.world_frame();
   contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
+  n_ = 7;
 
   // control-related variables
   // TODO: using fixed Rd for the time being
@@ -174,14 +182,33 @@ void ImpedanceController::CalcControl(const Context<double>& context,
                                  
   auto start = std::chrono::high_resolution_clock::now();
   
-  // get values
-  const int n = 7;
+  // parse values
   auto robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+      (OutputVector<double>*)this->EvalVectorInput(context, franka_state_input_port_);
   double timestamp = robot_output->get_timestamp();
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
+  
+
+  // TODO: uncomment to get info from port
+  // auto c3_output =
+  //     (OutputVector<double>*)this->EvalVectorInput(context, c3_state_input_port_);
+  // VectorXd xd = c3_output->GetPositions().head(3);
+  // VectorXd xd_dot = c3_output->GetVelocities().head(3);
+  // VectorXd lambda = c3_output->GetEfforts().tail(5); // does not contain the slack variable
+
+  std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
+  VectorXd xd = VectorXd::Zero(6);
+  xd.tail(3) << target[0];
+  VectorXd xd_dot = VectorXd::Zero(6);
+  xd_dot.tail(3) << target[1];
+
+  VectorXd lambda = VectorXd::Zero(5);
+  if (timestamp > 10.0 && timestamp < 20.0){
+    lambda << 100, 0, 0, 0, 0;
+  }
+  bool in_contact = !isZeroVector(lambda);
   
   //update the context_
   plant_.SetPositions(&context_, q);
@@ -204,12 +231,12 @@ void ImpedanceController::CalcControl(const Context<double>& context,
       *world_frame_, *world_frame_, &J);
 
   // perform all truncations
-  VectorXd q_franka = q.head(n);
-  VectorXd v_franka = v.head(n);
-  MatrixXd M_franka = M.block(0 ,0, n, n);
-  VectorXd C_franka = C.head(n);
-  VectorXd tau_g_franka = tau_g.head(n);
-  MatrixXd J_franka = J.block(0, 0, 6, n);
+  VectorXd q_franka = q.head(n_);
+  VectorXd v_franka = v.head(n_);
+  MatrixXd M_franka = M.block(0 ,0, n_, n_);
+  VectorXd C_franka = C.head(n_);
+  VectorXd tau_g_franka = tau_g.head(n_);
+  MatrixXd J_franka = J.block(0, 0, 6, n_);
   
   // forward kinematics
   const drake::math::RigidTransform<double> H = 
@@ -222,13 +249,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   x.tail(3) << d;
   VectorXd x_dot = J_franka * v_franka;
 
-  // TODO: get desired x and x_dot from input ports instead
-  std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
-  VectorXd xd = VectorXd::Zero(6);
-  xd.tail(3) << target[0];
-  VectorXd xd_dot = VectorXd::Zero(6);
-  xd_dot.tail(3) << target[1];
-  
   // compute position control input
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R);
@@ -236,24 +256,17 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd tau = J_franka.transpose() * (K_*xtilde + B_*xtilde_dot) + C_franka - tau_g_franka;
 
   // add feedforward force term if contact is desired
-  // Artificially added contact TODO: get contact from alps controller instead
-  VectorXd lambda = VectorXd::Zero(6);
-  if (timestamp > 10.0 && timestamp < 20.0){
-    lambda << 0, 100, 0, 0, 0, 0;
-  }
-  bool in_contact = !isZeroVector(lambda.tail(5));
-
-  MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n);
+  MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
   if (in_contact){
     // compute contact jacobian
     VectorXd phi(contact_pairs_.size());
     MatrixXd J_n(contact_pairs_.size(), plant_.num_velocities());
     MatrixXd J_t(2 * contact_pairs_.size() * num_friction_directions_, plant_.num_velocities());
     this->CalcContactJacobians(contact_pairs_, phi, J_n, J_t);
-    Jc << J_n.block(0, 0, J_n.rows(), n),
-          J_t.block(0, 0, J_t.rows(), n);
+    Jc << J_n.block(0, 0, J_n.rows(), n_),
+          J_t.block(0, 0, J_t.rows(), n_);
 
-    tau -= Jc.transpose() * lambda.tail(5); // TODO: check if this should be +/-
+    tau -= Jc.transpose() * lambda; // TODO: check if this should be +/-
   }
 
   // compute nullspace projection
@@ -284,7 +297,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp){
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << "zero:" << isZeroVector(lambda.tail(5)) << std::endl;    
+    std::cout << "zero:" << isZeroVector(lambda) << std::endl;    
     std::cout << std::endl;
   }
 }

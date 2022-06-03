@@ -85,7 +85,11 @@ class ImpedanceController : public LeafSystem<double> {
       int num_friction_directions);
 
   const drake::systems::InputPort<double>& get_input_port_config() const {
-    return this->get_input_port(state_input_port_);
+    return this->get_input_port(franka_state_input_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_c3() const {
+    return this->get_input_port(c3_state_input_port_);
   }
 
   const drake::systems::OutputPort<double>& get_input_port_output() const {
@@ -103,7 +107,8 @@ class ImpedanceController : public LeafSystem<double> {
                     VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;
 
   // ports
-  int state_input_port_;
+  int franka_state_input_port_;
+  int c3_state_input_port_;
   int control_output_port_;
   
   // constructor variables
@@ -114,13 +119,14 @@ class ImpedanceController : public LeafSystem<double> {
   const Eigen::MatrixXd K_;
   const Eigen::MatrixXd B_;
   std::vector<drake::geometry::GeometryId> contact_geoms_;
-  int num_friction_directions_;
+  const int num_friction_directions_;
 
   // frame, EE, and contact info
   const drake::multibody::BodyFrame<double>* EE_frame_;
   const drake::multibody::BodyFrame<double>* world_frame_;
   Eigen::Vector3d EE_offset_;
   std::vector<SortedPair<GeometryId>> contact_pairs_;
+  int n_; // franka DoF = 7
 
   // control related variables
   Quaterniond orientation_d_;

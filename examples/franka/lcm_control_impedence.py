@@ -32,8 +32,8 @@ builder = DiagramBuilder()
 plant = MultibodyPlant(0.0)
 
 parser = Parser(plant)
-parser.AddModelFromFile(FindResourceOrThrow(
-    "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/franka/robot_properties_fingers/urdf/franka_box.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/franka/robot_properties_fingers/urdf/sphere.urdf"))
 
@@ -49,8 +49,8 @@ builder_f = DiagramBuilder()
 plant_f, scene_graph = AddMultibodyPlantSceneGraph(builder_f, 0.0)
 
 parser = Parser(plant_f)
-parser.AddModelFromFile(FindResourceOrThrow(
-    "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+    "examples/franka/robot_properties_fingers/urdf/franka_box.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/franka/robot_properties_fingers/urdf/sphere.urdf"))
 

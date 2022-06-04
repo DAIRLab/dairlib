@@ -65,7 +65,7 @@ std::vector<Vector3d> compute_target_task_space_vector(double t){
     double z_c = 0.2;
     double w = 1;
     Vector3d start(x_c+r, y_c, z_c);
-    double start_time = 1.0;
+    double start_time = 3.0;
 
     // return x_des and x_dot_des
     if (t < start_time){ // wait for controller to stabilize

@@ -1,0 +1,9 @@
+package dairlib;
+
+struct lcmt_c3
+{
+  int64_t utime;
+  int32_t data_size;
+
+  double data [data_size];
+}

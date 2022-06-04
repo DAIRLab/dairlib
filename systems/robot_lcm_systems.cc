@@ -259,6 +259,65 @@ void RobotCommandSender::OutputCommand(
   }
 }
 
+/*--------------------------------------------------------------------------*/
+// methods implementation for RobotC3Receiver.
+
+RobotC3Receiver::RobotC3Receiver(int num_positions, int num_velocities,
+                    int lambda_size) {
+  data_size_ = num_positions + num_velocities + lambda_size;
+  this->DeclareAbstractInputPort("lcmt_robot_c3",
+                                 drake::Value<dairlib::lcmt_c3>{});
+  this->DeclareVectorOutputPort("x, xdot, lambda",
+                                TimestampedVector<double>(data_size_),
+                                &RobotC3Receiver::CopyC3Out);
+}
+
+void RobotC3Receiver::CopyC3Out(const Context<double>& context,
+                                      TimestampedVector<double>* output) const {
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& input_msg = input->get_value<dairlib::lcmt_c3>();
+  DRAKE_ASSERT(input_msg.data.size() == data_size_);
+
+  VectorXd input_vector = VectorXd::Zero(data_size_);
+  for (int i = 0; i < data_size_; i++) {
+    input_vector(i) = input_msg.data[i];
+  }
+
+  output->SetDataVector(input_vector);
+  output->set_timestamp(input_msg.utime * 1.0e-6);
+}
+
+/*--------------------------------------------------------------------------*/
+// methods implementation for RobotC3Sender.
+
+RobotC3Sender::RobotC3Sender(int num_positions, int num_velocities,
+                    int lambda_size) {
+  data_size_ = num_positions + num_velocities + lambda_size;
+  this->DeclareVectorInputPort("x, xdot, lambda",
+                               TimestampedVector<double>(data_size_));
+  this->DeclareAbstractOutputPort("lcmt_c3",
+                                  &RobotC3Sender::OutputC3);
+}
+
+void RobotC3Sender::OutputC3(
+    const Context<double>& context,
+    dairlib::lcmt_c3* c3_msg) const {
+  const TimestampedVector<double>* command =
+      (TimestampedVector<double>*)this->EvalVectorInput(context, 0);
+
+  c3_msg->utime = command->get_timestamp() * 1e6;
+  c3_msg->data_size = data_size_;
+  c3_msg->data.resize(data_size_);
+  for (int i = 0; i < data_size_; i++) {
+    if (std::isnan(command->GetAtIndex(i))) {
+      c3_msg->data[i] = 0;
+    } else {
+      c3_msg->data[i] = command->GetAtIndex(i);
+    }
+  }
+}
+
 SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const MultibodyPlant<double>& plant,

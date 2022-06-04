@@ -6,6 +6,7 @@
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_c3.hpp"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -112,6 +113,44 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   int num_actuators_;
   std::vector<std::string> ordered_actuator_names_;
   std::map<std::string, int> actuatorIndexMap_;
+};
+
+/* TODO:
+- Determine better names for the classes and lcm type
+    -> C3 for now
+    -> should "Robot" even be here? Technically there is no plant
+*/
+
+/// Receives the output of an LcmSubsriberSystem that subsribes to the
+/// C3 output channel with LCM type lcmt_robot_c3 and outputs the
+/// state and force information as a TimestampedVector.
+class RobotC3Receiver : public drake::systems::LeafSystem<double> {
+ public:
+  explicit RobotC3Receiver(int num_positions, int num_velocities,
+                    int lambda_size);
+
+ private:
+  // TODO: whose context is this?
+  void CopyC3Out(const drake::systems::Context<double>& context,
+                    TimestampedVector<double>* output) const;
+
+  int data_size_;
+};
+
+/// Receives the output of a C3 controller, and outputs it as an LCM
+/// message with type lcm_robot_c3. Its output port is usually connected to
+/// an LcmPublisherSystem to publish the messages it generates.
+class RobotC3Sender : public drake::systems::LeafSystem<double> {
+ public:
+  explicit RobotC3Sender(int num_positions, int num_velocities,
+                    int lambda_size);
+
+ private:
+   // TODO: whose context is this?
+  void OutputC3(const drake::systems::Context<double>& context,
+                     dairlib::lcmt_c3* c3_msg) const;
+
+  int data_size_;
 };
 
 

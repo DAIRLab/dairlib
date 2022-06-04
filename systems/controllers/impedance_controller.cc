@@ -192,22 +192,22 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   
 
   // TODO: uncomment to get info from port
-  // auto c3_output =
-  //     (TimestampedVector<double>*) this->EvalVectorInput(context, c3_state_input_port_);
-  // VectorXd state = c3_output->get_data();
-  // VectorXd xd = state.head(3);
-  // VectorXd xd_dot = state.segment(10, 12);
-  // VectorXd lambda = state.tail(5); // does not contain the slack variable
+  auto c3_output =
+      (TimestampedVector<double>*) this->EvalVectorInput(context, c3_state_input_port_);
+  VectorXd state = c3_output->get_data();
+  VectorXd xd = state.head(3);
+  VectorXd xd_dot = state.segment(10, 12);
+  VectorXd lambda = state.tail(5); // does not contain the slack variable
 
-  std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
-  VectorXd xd = VectorXd::Zero(6);
-  xd.tail(3) << target[0];
-  VectorXd xd_dot = VectorXd::Zero(6);
-  xd_dot.tail(3) << target[1];
-  VectorXd lambda = VectorXd::Zero(5);
-  if (timestamp > 10.0 && timestamp < 20.0){
-    lambda << 100, 0, 0, 0, 0;
-  }
+  // std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
+  // VectorXd xd = VectorXd::Zero(6);
+  // xd.tail(3) << target[0];
+  // VectorXd xd_dot = VectorXd::Zero(6);
+  // xd_dot.tail(3) << target[1];
+  // VectorXd lambda = VectorXd::Zero(5);
+  // if (timestamp > 10.0 && timestamp < 20.0){
+  //   lambda << 100, 0, 0, 0, 0;
+  // }
 
   bool in_contact = !isZeroVector(lambda);
   
@@ -280,14 +280,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_ginv_tranpose;
   VectorXd tau_null = N * (K_null_*(qd-q_franka) - B_null_*v_franka);
 
-  // TODO: figure out how to do this
-  // project into the null space of the contact jacobian if contact is desired
-  // if (in_contact){
-  //   MatrixXd Jc_ginv_transpose = (Jc * M_inv * Jc.transpose()).inverse() * Jc * M_inv;
-  //   MatrixXd Nc = MatrixXd::Identity(7, 7) - Jc.transpose() * Jc_ginv_transpose;
-  //   tau_null = Nc * tau_null;
-  // }
-
   control->SetDataVector(tau + tau_null);
   control->set_timestamp(timestamp);
   
@@ -297,8 +289,10 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // debug prints every 10th of a second
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp){
+    VectorXd v = VectorXd::Zero(10);
+    v << 0,1,2,3,4,5,6,7,8,9;
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << "zero:" << isZeroVector(lambda) << std::endl;    
+    std::cout << "segment:" << v.segment(1,3) << std::endl;    
     std::cout << std::endl;
   }
 }

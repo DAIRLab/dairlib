@@ -1,8 +1,10 @@
-from dairlib import (lcmt_robot_output, lcmt_robot_input)
+from dairlib import (lcmt_robot_output, lcmt_robot_input, lcmt_c3)
 
 import pydairlib.common
 import pydairlib.lcm
-from pydairlib.systems import (RobotCommandSender, RobotOutputReceiver, RobotOutputSender,
+from pydairlib.systems import (RobotC3Receiver, 
+                               RobotC3Sender,
+                               RobotOutputReceiver, RobotOutputSender,
                                LcmOutputDrivenLoop, OutputVector,
                                TimestampedVector)
 
@@ -225,11 +227,11 @@ controller = builder.AddSystem(
 
 builder.Connect(state_receiver.get_output_port(0), controller.get_input_port(0))
 
-state_force_sender = builder.AddSystem(RobotOutputSender(plant, True))
+state_force_sender = builder.AddSystem(RobotC3Sender(10, 9, 6))
 builder.Connect(controller.get_output_port(), state_force_sender.get_input_port(0))
 
 control_publisher = builder.AddSystem(LcmPublisherSystem.Make(
-    channel="TRIFINGER_INPUT", lcm_type=lcmt_robot_output, lcm=lcm,
+    channel="TRIFINGER_INPUT", lcm_type=lcmt_c3, lcm=lcm,
     publish_triggers={TriggerType.kForced},
     publish_period=0.0, use_cpp_serializer=True))
 builder.Connect(state_force_sender.get_output_port(),

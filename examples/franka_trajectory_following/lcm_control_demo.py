@@ -6,11 +6,13 @@ from pydairlib.systems import (RobotC3Receiver,
                                RobotC3Sender,
                                RobotOutputReceiver, RobotOutputSender,
                                LcmOutputDrivenLoop, OutputVector,
-                               TimestampedVector)
+                               TimestampedVector,
+                               AddActuationRecieverAndStateSenderLcm)
 
 from pydrake.all import (AbstractValue, DiagramBuilder, DrakeLcm, LeafSystem,
                          MultibodyPlant, Parser, RigidTransform, Subscriber,
-                         LcmPublisherSystem, TriggerType, AddMultibodyPlantSceneGraph)
+                         LcmPublisherSystem, TriggerType, AddMultibodyPlantSceneGraph,
+                         LcmInterfaceSystem)
 #import pydairlib.common
 
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
@@ -89,11 +91,11 @@ context_f = diagram_f.GetMutableSubsystemContext(plant_f, diagram_context)
 
 #############################################################################################
 
-builder_franka = DiagramBuilder()
+# builder_franka = DiagramBuilder()
 sim_dt = 1e-4
 output_dt = 1e-4
 
-plant_franka, scene_graph_franka = AddMultibodyPlantSceneGraph(builder_franka, sim_dt)
+plant_franka, scene_graph_franka = AddMultibodyPlantSceneGraph(builder, sim_dt)
 # addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
 #               mu_kinetic=1.0)
 
@@ -231,11 +233,18 @@ state_force_sender = builder.AddSystem(RobotC3Sender(10, 9, 6))
 builder.Connect(controller.get_output_port(), state_force_sender.get_input_port(0))
 
 control_publisher = builder.AddSystem(LcmPublisherSystem.Make(
-    channel="TRIFINGER_INPUT", lcm_type=lcmt_c3, lcm=lcm,
+    channel="CONTROLLER_INPUT", lcm_type=lcmt_c3, lcm=lcm,
     publish_triggers={TriggerType.kForced},
     publish_period=0.0, use_cpp_serializer=True))
 builder.Connect(state_force_sender.get_output_port(),
     control_publisher.get_input_port())
+
+# TODO: check these connections
+lcm_passthrough = builder.AddSystem(LcmInterfaceSystem(lcm))
+passthrough = AddActuationRecieverAndStateSenderLcm(
+    builder=builder, plant=plant_franka, lcm=lcm_passthrough, actuator_channel="FRANKA_INPUT",
+    state_channel="FRANKA_OUTPUT", publish_rate=1/output_dt,
+    publish_efforts=True, actuator_delay=0.0)   #1/output_dt
 
 diagram = builder.Build()
 
@@ -244,7 +253,7 @@ receiver_context = diagram.GetMutableSubsystemContext(state_receiver, context_d)
 
 loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                           lcm_parser=state_receiver,
-                          input_channel="TRIFINGER_OUTPUT",
+                          input_channel="FRANKA_OUTPUT",
                           is_forced_publish=True)
 
 loop.Simulate(100)

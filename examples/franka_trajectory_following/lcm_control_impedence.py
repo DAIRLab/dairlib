@@ -1,8 +1,8 @@
-from dairlib import (lcmt_robot_output, lcmt_robot_input)
+from dairlib import (lcmt_robot_output, lcmt_robot_input, lcmt_c3)
 
 import pydairlib.common
 import pydairlib.lcm
-from pydairlib.systems import (RobotCommandSender, RobotOutputReceiver,
+from pydairlib.systems import (RobotCommandSender, RobotOutputReceiver, RobotC3Receiver,
                                LcmOutputDrivenLoop, OutputVector,
                                TimestampedVector)
 
@@ -108,11 +108,19 @@ control_sender = builder.AddSystem(RobotCommandSender(plant))
 builder.Connect(controller.get_output_port(), control_sender.get_input_port(0))
 
 control_publisher = builder.AddSystem(LcmPublisherSystem.Make(
-    channel="TRIFINGER_INPUT", lcm_type=lcmt_robot_input, lcm=lcm,
+    channel="FRANKA_INPUT", lcm_type=lcmt_robot_input, lcm=lcm,
     publish_triggers={TriggerType.kForced},
     publish_period=0.0, use_cpp_serializer=True))
 builder.Connect(control_sender.get_output_port(),
                 control_publisher.get_input_port())
+
+# TODO: check these connections
+c3_subscriber = builder.AddSystem(LcmSubscriberSystem.Make(
+    channel="CONTROLLER_INPUT", lcm_type=lcmt_c3, lcm=lcm,
+    use_cpp_serializer=True))
+c3_receiver = builder.AddSystem(RobotC3Receiver(10, 9, 6))
+builder.Connect(c3_subscriber.get_output_port(0), c3_receiver.get_input_port(0))
+builder.Connect(c3_receiver.get_output_port(0), controller.get_input_port(1))
 
 diagram = builder.Build()
 
@@ -121,7 +129,7 @@ receiver_context = diagram.GetMutableSubsystemContext(state_receiver, context_d)
 
 loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                            lcm_parser=state_receiver,
-                           input_channel="TRIFINGER_OUTPUT",
+                           input_channel="FRANKA_OUTPUT",
                            is_forced_publish=True)
 
 loop.Simulate(100)

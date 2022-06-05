@@ -17,19 +17,8 @@ cc_library(
 )
 
 py_binary(
-	name = "simulate_trifinger",
-	srcs = ["simulate_trifinger.py"],
-	deps = [
-		"//bindings/pydairlib",
-		"@drake//bindings/pydrake",
-	],
-	data = [":trifinger_urdf"],
-)
-
-
-py_binary(
-    name = "simulate_trifinger_lcm",
-    srcs = ["simulate_trifinger_lcm.py"],
+    name = "simulate_franka_lcm",
+    srcs = ["simulate_franka_lcm.py"],
     deps = [
         "//bindings/pydairlib",
         "@drake//bindings/pydrake",

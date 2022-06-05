@@ -13,12 +13,12 @@
 namespace dairlib {
 namespace examples {
 
-class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
+class CassieSimDiagram : public drake::systems::Diagram<double> {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieVisionSimDiagram)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieSimDiagram)
 
   /// @param[in] urdf filepath containing the osc_running_gains.
-  CassieVisionSimDiagram(
+  CassieSimDiagram(
       std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
       const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf",
       bool visualize = false, double mu = 0.8);
@@ -43,17 +43,12 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
     return this->get_output_port(cassie_out_output_port_index_);
   }
 
-  /// @return the camera image output port.
-  const drake::systems::OutputPort<double>& get_camera_out_output_port() const {
-    return this->get_output_port(camera_out_output_port_index_);
-  }
-
   drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
 
- private:
-
+ protected:
+  void BuildDiagramAndExportPorts();
   drake::multibody::MultibodyPlant<double>* plant_;
   const systems::SimCassieSensorAggregator* sensor_aggregator_;
   drake::geometry::SceneGraph<double>* scene_graph_;
@@ -61,9 +56,8 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
   const int radio_input_port_index_ = 1;
   const int state_output_port_index_ = 0;
   const int cassie_out_output_port_index_ = 1;
-  const int camera_out_output_port_index_ = 2;
   const double actuator_delay = 5e-3;        // 5ms
-  const double actuator_update_rate = 2e-3;  // 1ms
+  const double actuator_update_rate = 2e-3;  // 2ms
 
 };
 }  // namespace examples

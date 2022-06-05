@@ -29,7 +29,8 @@ int DoMain(int argc, char* argv[]){
       plant_w_spr, true, controller_gains, osc_gains);
 
   auto sim_plant = std::make_unique<MultibodyPlant<double>>(8e-5);
-  auto sim_diagram = builder.AddSystem<CassieVisionSimDiagram>(std::move(sim_plant));
+  auto sim_diagram = builder.AddSystem<CassieVisionSimDiagram>(
+      std::move(sim_plant));
   auto& plant = sim_diagram->get_plant();
 
   builder.Connect(sim_diagram->get_state_output_port(),
@@ -41,8 +42,8 @@ int DoMain(int argc, char* argv[]){
 
   // Set initial state and fix radio port
   VectorXd x_init = VectorXd::Zero(45);
-  x_init << 1, 0, 0, 0, 0, 0, 0.85, -0.0358636, 0, 0.67432, -1.588, -0.0458742, 1.90918,
-           -0.0381073, -1.82312, 0.0358636, 0, 0.67432, -1.588, -0.0457885, 1.90919, -0.0382424, -1.82321,
+  x_init << 1, 0, 0, 0, 0, 0, 0.95, -0.0358636, 0, 0.67432, -1.688, -0.0458742, 1.90918,
+           -0.0381073, -1.82312, 0.0358636, 0, 0.67432, -1.688, -0.0457885, 1.90919, -0.0382424, -1.82321,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
   VectorXd radio = VectorXd::Zero(18);
   auto& plant_context =

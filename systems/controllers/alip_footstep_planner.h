@@ -17,8 +17,6 @@ namespace systems {
                       std::vector<std::pair<const Eigen::Vector3d,
                       const drake::multibody::Frame<double>&>> left_right_foot,
                       double double_support_duration,
-                      double mid_foot_height, double desired_final_foot_height,
-                      double desired_final_vertical_foot_velocity,
                       double max_com_to_footstep_dist, double footstep_offset,
                       double center_line_offset);
 

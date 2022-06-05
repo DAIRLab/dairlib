@@ -4,6 +4,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/osc/hip_yaw_traj_gen.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/osc_walking_gains_alip.h"
@@ -23,14 +24,12 @@
 #include "systems/controllers/alip_footstep_planner.h"
 #include "systems/controllers/swing_foot_target_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
-#include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_scope_system.h"
 
 namespace dairlib {
 
@@ -48,9 +47,6 @@ using Eigen::VectorXd;
 using drake::multibody::Frame;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
-//using drake::systems::lcm::LcmPublisherSystem;
-//using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::LcmScopeSystem;
 using drake::systems::TriggerTypeSet;
 
 using multibody::WorldYawViewFrame;
@@ -86,7 +82,9 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
           (left_toe.first + left_heel.first) / 2, plant.GetFrameByName("toe_right"))),
       left_toe_origin(std::pair<const Vector3d, const Frame<double>&>(
           Vector3d::Zero(), plant.GetFrameByName("toe_left"))),
-      left_right_foot({left_toe_mid, right_toe_mid}),
+      right_toe_origin(std::pair<const Vector3d, const Frame<double>&>(
+          Vector3d::Zero(), plant.GetFrameByName("toe_right"))),
+      left_right_foot({left_toe_origin, right_toe_origin}),
       left_foot_points({left_heel, left_toe}),
       right_foot_points({right_heel, right_toe}),
       view_frame(
@@ -159,7 +157,6 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
     contact_points_in_each_state.push_back({left_toe_mid});
     contact_points_in_each_state.push_back({right_toe_mid});
   }
-  left_right_foot = {left_toe_origin, right_toe_origin};
   single_support_states = {left_stance_state, right_stance_state};
   double_support_states = {post_left_double_support_state,
                            post_right_double_support_state};
@@ -218,34 +215,16 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   auto footstep_planner =
       builder.AddSystem<systems::AlipFootstepPlanner>(
           plant, plant_context.get(), left_right_support_fsm_states,
-          left_right_support_state_durations, left_right_foot, "pelvis",
-          double_support_duration, gains.mid_foot_height,
-          gains.final_foot_height, gains.final_foot_velocity_z,
+          left_right_support_state_durations, left_right_foot,
+          double_support_duration,
           gains.max_CoM_to_footstep_dist, gains.footstep_offset,
           gains.center_line_offset);
-
-  builder.Connect(fsm->get_output_port(0),
-                  alip_traj_generator->get_input_port_fsm());
-  builder.Connect(touchdown_event_time->get_output_port_event_time(),
-                  alip_traj_generator->get_input_port_touchdown_time());
-  builder.Connect(fsm->get_output_port(0),
-                  touchdown_event_time->get_input_port_fsm());
-  builder.Connect(fsm->get_output_port(0),
-                  liftoff_event_time->get_input_port_fsm());
-  builder.Connect(high_level_command->get_yaw_output_port(),
-                  head_traj_gen->get_yaw_input_port());
-
-
-  builder.Connect(fsm->get_output_port(0),
-                  swing_ft_traj_generator->get_input_port_fsm());
-  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
-                  swing_ft_traj_generator->get_input_port_fsm_switch_time());
-
-  builder.Connect(alip_traj_generator->get_output_port_alip_state(),
-                  swing_ft_traj_generator->get_input_port_alip_state());
-  builder.Connect(high_level_command->get_xy_output_port(),
-                  swing_ft_traj_generator->get_input_port_vdes());
-
+  auto swing_ft_traj_generator =
+      builder.AddSystem<systems::SwingFootTargetTrajGen>(
+          plant, plant_context.get(), left_right_support_fsm_states,
+          left_right_support_state_durations, left_right_foot,
+          gains.mid_foot_height, gains.final_foot_height,
+          gains.final_foot_velocity_z);
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant, plant_context.get(), pos_map["toe_left"],
@@ -254,10 +233,8 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant, plant_context.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
-  builder.Connect(pelvis_filt->get_output_port(0),
-                  left_toe_angle_traj_gen->get_state_input_port());
-  builder.Connect(pelvis_filt->get_output_port(0),
-                  right_toe_angle_traj_gen->get_state_input_port());
+  auto hip_yaw_traj_gen =
+      builder.AddSystem<cassie::HipYawTrajGen>(left_stance_state);
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -312,105 +289,87 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
                                  &right_heel_evaluator);
   }
 
-
-
-  TransTaskSpaceTrackingData swing_foot_data(
+  /*** Tracking Datas ***/
+  swing_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
       "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant, plant);
-  swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
+  swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
+  swing_foot_data->AddJointAndStateToIgnoreInJacobian(
       vel_map["hip_yaw_right"], left_stance_state);
-  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
+  swing_foot_data->AddJointAndStateToIgnoreInJacobian(
       vel_map["hip_yaw_left"], right_stance_state);
 
-  ComTrackingData com_data("com_data", gains.K_p_swing_foot,
-                           gains.K_d_swing_foot, gains.W_swing_foot,
-                           plant, plant);
-  com_data.AddFiniteStateToTrack(left_stance_state);
-  com_data.AddFiniteStateToTrack(right_stance_state);
-  RelativeTranslationTrackingData swing_ft_traj_local(
-      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant, plant, &swing_foot_data,
-      &com_data);
-  WorldYawViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
-  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
-
-  TransTaskSpaceTrackingData swing_ft_traj_global(
-      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+  com_data = std::make_unique<ComTrackingData>(
+      "com_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant, plant);
-  swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  com_data->AddFiniteStateToTrack(left_stance_state);
+  com_data->AddFiniteStateToTrack(right_stance_state);
+  swing_ft_traj_local = std::make_unique<RelativeTranslationTrackingData>(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant, plant, swing_foot_data.get(),
+      com_data.get());
+  WorldYawViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
+  swing_ft_traj_local->SetViewFrame(view_frame);
 
-  swing_ft_traj_local.SetTimeVaryingGains(
+  swing_ft_traj_local->SetTimeVaryingGains(
       swing_ft_gain_multiplier_gain_multiplier);
-  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+  swing_ft_traj_local->SetFeedforwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);
-  osc->AddTrackingData(&swing_ft_traj_local);
+  osc->AddTrackingData(swing_ft_traj_local.get());
 
-  ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
-                                      gains.W_com, plant, plant);
+  center_of_mass_traj = std::make_unique<ComTrackingData>(
+      "alip_com_traj", gains.K_p_com, gains.K_d_com, gains.W_com, plant, plant);
+
   // FiniteStatesToTrack cannot be empty
-  center_of_mass_traj.AddFiniteStateToTrack(-1);
-  osc->AddTrackingData(&center_of_mass_traj);
+  center_of_mass_traj->AddFiniteStateToTrack(-1);
+  osc->AddTrackingData(center_of_mass_traj.get());
 
   // Pelvis rotation tracking (pitch and roll)
-  RotTaskSpaceTrackingData pelvis_balance_traj(
+  pelvis_balance_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
       gains.W_pelvis_balance, plant, plant);
-  pelvis_balance_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_balance_traj);
+  pelvis_balance_traj->AddFrameToTrack("pelvis");
+  osc->AddTrackingData(pelvis_balance_traj.get());
   // Pelvis rotation tracking (yaw)
-  RotTaskSpaceTrackingData pelvis_heading_traj(
+  pelvis_heading_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
       gains.W_pelvis_heading, plant, plant);
-  pelvis_heading_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_heading_traj,
+  pelvis_heading_traj->AddFrameToTrack("pelvis");
+  osc->AddTrackingData(pelvis_heading_traj.get(),
                        gains.period_of_no_heading_control);
 
   // Swing toe joint tracking
-  JointSpaceTrackingData swing_toe_traj_left(
+  swing_toe_traj_left = std::make_unique<JointSpaceTrackingData>(
       "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
       gains.W_swing_toe, plant, plant);
-  JointSpaceTrackingData swing_toe_traj_right(
+  swing_toe_traj_right = std::make_unique<JointSpaceTrackingData>(
       "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
       gains.W_swing_toe, plant, plant);
-  swing_toe_traj_right.AddStateAndJointToTrack(left_stance_state, "toe_right",
-                                               "toe_rightdot");
-  swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
-                                              "toe_leftdot");
-  osc->AddTrackingData(&swing_toe_traj_left);
-  osc->AddTrackingData(&swing_toe_traj_right);
-
-
-  auto hip_yaw_traj_gen =
-      builder.AddSystem<cassie::HipYawTrajGen>(left_stance_state);
+  swing_toe_traj_right->AddStateAndJointToTrack(
+      left_stance_state, "toe_right","toe_rightdot");
+  swing_toe_traj_left->AddStateAndJointToTrack(
+      right_stance_state, "toe_left","toe_leftdot");
+  osc->AddTrackingData(swing_toe_traj_left.get());
+  osc->AddTrackingData(swing_toe_traj_right.get());
 
   // Swing hip yaw joint tracking
-  JointSpaceTrackingData swing_hip_yaw_traj(
+  swing_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
       gains.W_hip_yaw, plant, plant);
-  swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
-                                             "hip_yaw_rightdot");
-  swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
-                                             "hip_yaw_leftdot");
-
-  if (FLAGS_use_radio) {
-    builder.Connect(cassie_out_to_radio->get_output_port(),
-                    hip_yaw_traj_gen->get_radio_input_port());
-    builder.Connect(fsm->get_output_port_fsm(),
-                    hip_yaw_traj_gen->get_fsm_input_port());
-    osc->AddTrackingData(&swing_hip_yaw_traj);
-  } else {
-    osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
-  }
+  swing_hip_yaw_traj->AddStateAndJointToTrack(left_stance_state,
+      "hip_yaw_right","hip_yaw_rightdot");
+  swing_hip_yaw_traj->AddStateAndJointToTrack(right_stance_state,
+      "hip_yaw_left","hip_yaw_leftdot");
+  osc->AddTrackingData(swing_hip_yaw_traj.get());
 
   // Set double support duration for force blending
   osc->SetUpDoubleSupportPhaseBlending(
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
+  // BUILD OSC
   osc->SetOsqpSolverOptionsFromYaml(
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
 
@@ -426,10 +385,70 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   }
   osc->Build();
 
-  // Connect ports
-  builder.Connect(simulator_drift->get_output_port(0),
+  /*** Connect input and output ports ***/
+  // Connect state receiver output
+  builder.Connect(state_receiver->get_output_port(),
                   osc->get_robot_output_input_port());
-  builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+  builder.Connect(state_receiver->get_output_port(),
+                  fsm->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(),
+                  alip_traj_generator->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(),
+                  swing_ft_traj_generator->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(),
+                  high_level_command->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(),
+                  left_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(),
+                  right_toe_angle_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(),
+                  head_traj_gen->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(),
+                  footstep_planner->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(),
+                  liftoff_event_time->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(),
+                  touchdown_event_time->get_input_port_state());
+
+  // Connect fsm output port
+  builder.Connect(fsm->get_output_port_fsm(),
+                  osc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  liftoff_event_time->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  touchdown_event_time->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  alip_traj_generator->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  footstep_planner->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  swing_ft_traj_generator->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  hip_yaw_traj_gen->get_fsm_input_port());
+
+  // Connect radio
+  builder.Connect(radio_parser->get_output_port(),
+                  high_level_command->get_radio_port());
+  builder.Connect(radio_parser->get_output_port(),
+                  hip_yaw_traj_gen->get_radio_input_port());
+
+  // Connect footstep planning pipeline
+  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+                  alip_traj_generator->get_input_port_touchdown_time());
+  builder.Connect(alip_traj_generator->get_output_port_alip_state(),
+                  footstep_planner->get_input_port_alip_state());
+  builder.Connect(high_level_command->get_xy_output_port(),
+                  footstep_planner->get_input_port_vdes());
+  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
+                  footstep_planner->get_input_port_fsm_switch_time());
+  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
+                  swing_ft_traj_generator->get_input_port_fsm_switch_time());
+  builder.Connect(footstep_planner->get_output_port(),
+                  swing_ft_traj_generator->get_input_port_footstep_target());
+  builder.Connect(high_level_command->get_yaw_output_port(),
+                  head_traj_gen->get_yaw_input_port());
+
+
   builder.Connect(alip_traj_generator->get_output_port_com(),
                   osc->get_tracking_data_input_port("alip_com_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
@@ -442,23 +461,21 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
-  if (FLAGS_use_radio) {
-    builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
-                    osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
-  }
-  builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
-  if (FLAGS_publish_osc_data) {
-    // Create osc debug sender.
-    auto osc_debug_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-            "OSC_DEBUG_WALKING", &lcm_local,
-            TriggerTypeSet({TriggerType::kForced})));
-    builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
-  }
+  builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
+                  osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
+  builder.Connect(osc->get_output_port(0),
+      command_sender->get_input_port(0));
+
+  builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
+  builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
+  builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
+  builder.ExportOutput(osc->get_osc_output_port(), "u, t");
 
   // Create the diagram
-  auto owned_diagram = builder.Build();
-  owned_diagram->set_name("osc walking controller");
+  builder.BuildInto(this);
+  this->set_name(("ALIP_walking_controller_diagram"));
+  DrawAndSaveDiagramGraph(*this);
+  std::cout << "Built controller" << std::endl;
 
 }
 }

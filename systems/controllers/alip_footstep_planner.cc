@@ -42,8 +42,6 @@ AlipFootstepPlanner::AlipFootstepPlanner(
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
     left_right_foot,
     double double_support_duration,
-    double mid_foot_height, double desired_final_foot_height,
-    double desired_final_vertical_foot_velocity,
     double max_com_to_footstep_dist, double footstep_offset,
     double center_line_offset)
     : plant_(plant),

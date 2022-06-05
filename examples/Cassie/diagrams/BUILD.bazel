@@ -1,12 +1,42 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+cc_library(
+    name = "diagrams",
+    deps = [
+        ":alip_walking_controller_diagram",
+        ":cassie_vision_sim_diagram",
+    ],
+)
+
 cc_library(
     name = "alip_walking_controller_diagram",
     srcs = ["alip_walking_controller_diagram.cc"],
     hdrs = ["alip_walking_controller_diagram.h"],
-    tags = ["manual"],
     deps = [
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
-        "//examples/Cassie:simulator_drift",
         "//examples/Cassie/osc",
         "//lcm:trajectory_saver",
         "//multibody:utils",
@@ -18,7 +48,27 @@ cc_library(
         "//systems/controllers/osc:operational_space_control",
         "//systems/controllers/osc:osc_tracking_datas",
         "//systems/filters:floating_base_velocity_filter",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "cassie_vision_sim_diagram",
+    srcs = ["cassie_vision_sim_diagram.cc"],
+    hdrs = ["cassie_vision_sim_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/systems:cassie_encoder",
+        "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/cameras:camera_utils",
+        "//systems/framework:geared_motor",
         "//systems/primitives",
+        "//systems/primitives:radio_parser",
         "@drake//:drake_shared_library",
     ],
 )

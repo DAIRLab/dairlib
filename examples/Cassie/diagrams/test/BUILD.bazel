@@ -1,0 +1,13 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "cassie_diagram_test",
+    srcs = ["cassie_diagram_test.cc"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/diagrams",
+        "@drake//:drake_shared_library",
+    ],
+)

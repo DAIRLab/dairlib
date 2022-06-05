@@ -51,8 +51,7 @@ class AlipWalkingControllerDiagram final
     return this->get_input_port(state_input_port_index_);
   }
 
-  /// @return the input port for the cassie_out struct (containing radio
-  /// commands).
+  /// @return the input port for the raw radio channel values array
   const drake::systems::InputPort<double>& get_radio_input_port() const {
     return this->get_input_port(radio_input_port_index_);
   }

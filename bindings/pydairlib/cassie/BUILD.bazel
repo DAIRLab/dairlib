@@ -81,9 +81,15 @@ PY_LIBRARIES = [
     ":cassie_utils_py",
 ]
 
+PY_LIBRARIES = [
+    ":cassie_utils_py",
+    ":controllers_py",
+    ":simulators_py",
+]
+
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "cassie_utils",
+    name = "cassie",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

@@ -501,17 +501,17 @@
   </joint>
   <link name="panda_link8">
     <collision>
-      <origin rpy="0 0 0" xyz="0.042 0.042 -0.02"/>
+      <origin rpy="0 0 0" xyz="0 0 0.05"/>
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
     </collision>
     <visual>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-               <geometry>
+      <origin rpy="0 0 0" xyz="0 0 0.05"/>
+      <geometry>
         <sphere radius=".01"/>
       </geometry>
-        </visual>
+    </visual>
   </link>
   <joint name="panda_joint8" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0.107"/>

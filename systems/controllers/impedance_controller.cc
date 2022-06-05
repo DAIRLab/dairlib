@@ -181,7 +181,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
                                  
   auto start = std::chrono::high_resolution_clock::now();
-  
   // parse values
   auto robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, franka_state_input_port_);
@@ -189,14 +188,15 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
-  
 
   // TODO: uncomment to get info from port
   auto c3_output =
       (TimestampedVector<double>*) this->EvalVectorInput(context, c3_state_input_port_);
   VectorXd state = c3_output->get_data();
-  VectorXd xd = state.head(3);
-  VectorXd xd_dot = state.segment(10, 12);
+  VectorXd xd = VectorXd::Zero(6);
+  VectorXd xd_dot = VectorXd::Zero(6);
+  xd.tail(3) << state.head(3);
+  xd_dot.tail(3) << state(10), state(11), state(12);
   VectorXd lambda = state.tail(5); // does not contain the slack variable
 
   // std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
@@ -289,10 +289,8 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // debug prints every 10th of a second
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp){
-    VectorXd v = VectorXd::Zero(10);
-    v << 0,1,2,3,4,5,6,7,8,9;
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << "segment:" << v.segment(1,3) << std::endl;    
+    std::cout << "d:\n" << d << std::endl; 
     std::cout << std::endl;
   }
 }

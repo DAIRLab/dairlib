@@ -91,11 +91,11 @@ context_f = diagram_f.GetMutableSubsystemContext(plant_f, diagram_context)
 
 #############################################################################################
 
-# builder_franka = DiagramBuilder()
+builder_franka = DiagramBuilder()
 sim_dt = 1e-4
 output_dt = 1e-4
 
-plant_franka, scene_graph_franka = AddMultibodyPlantSceneGraph(builder, sim_dt)
+plant_franka, scene_graph_franka = AddMultibodyPlantSceneGraph(builder_franka, sim_dt)
 # addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
 #               mu_kinetic=1.0)
 
@@ -240,11 +240,11 @@ builder.Connect(state_force_sender.get_output_port(),
     control_publisher.get_input_port())
 
 # TODO: check these connections
-lcm_passthrough = builder.AddSystem(LcmInterfaceSystem(lcm))
-passthrough = AddActuationRecieverAndStateSenderLcm(
-    builder=builder, plant=plant_franka, lcm=lcm_passthrough, actuator_channel="FRANKA_INPUT",
-    state_channel="FRANKA_OUTPUT", publish_rate=1/output_dt,
-    publish_efforts=True, actuator_delay=0.0)   #1/output_dt
+# lcm_passthrough = builder.AddSystem(LcmInterfaceSystem(lcm))
+# passthrough = AddActuationRecieverAndStateSenderLcm(
+#     builder=builder, plant=plant_franka, lcm=lcm_passthrough, actuator_channel="FRANKA_INPUT",
+#     state_channel="FRANKA_OUTPUT", publish_rate=1/output_dt,
+#     publish_efforts=True, actuator_delay=0.0)   #1/output_dt
 
 diagram = builder.Build()
 

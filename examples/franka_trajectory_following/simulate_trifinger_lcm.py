@@ -46,8 +46,8 @@ lcm = builder.AddSystem(LcmInterfaceSystem(drake_lcm))
 
 
 passthrough = AddActuationRecieverAndStateSenderLcm(
-    builder=builder, plant=plant, lcm=lcm, actuator_channel="TRIFINGER_INPUT",
-    state_channel="TRIFINGER_OUTPUT", publish_rate=1/output_dt,
+    builder=builder, plant=plant, lcm=lcm, actuator_channel="FRANKA_INPUT",
+    state_channel="FRANKA_OUTPUT", publish_rate=1/output_dt,
     publish_efforts=True, actuator_delay=0.0)   #1/output_dt
 # Constuct the simulator and visualizer
 DrakeVisualizer.AddToBuilder(builder=builder, scene_graph=scene_graph)

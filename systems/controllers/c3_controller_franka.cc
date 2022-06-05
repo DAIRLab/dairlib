@@ -115,6 +115,7 @@ C3Controller_franka::C3Controller_franka(
 
 void C3Controller_franka::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* state_contact_desired) const {
+  
 
   //std::cout << "here" << std::endl;
 
@@ -122,6 +123,16 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
 
+  // DEBUG CODE FOR ADAM
+  // TODO: @Alp comment this section out to use actual admm
+  VectorXd debug_state = VectorXd::Zero(25);
+  // track 0.6, 0, 0.2 with no velocities or contact forces
+  debug_state.head(3) << 0.6, 0, 0.2;
+  state_contact_desired->SetDataVector(debug_state);
+  state_contact_desired->set_timestamp(timestamp);
+  return;
+
+/*
   VectorXd state_franka(27);
   state_franka << robot_output->GetPositions(), robot_output->GetVelocities();
 
@@ -370,7 +381,7 @@ st_desired << state_next, force_des.head(6);
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 
-
+*/
 }
 }  // namespace controllers
 }  // namespace systems

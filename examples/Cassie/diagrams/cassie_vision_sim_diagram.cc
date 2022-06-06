@@ -29,7 +29,7 @@
 #include "drake/systems/primitives/discrete_time_delay.h"
 #include "drake/systems/sensors/rgbd_sensor.h"
 #include "drake/geometry/render_vtk/render_engine_vtk_params.h"
-#include "drake/geometry/render/render_engine_vtk_factory.h"
+#include "drake/geometry/render_vtk/factory.h"
 
 namespace dairlib {
 namespace examples {

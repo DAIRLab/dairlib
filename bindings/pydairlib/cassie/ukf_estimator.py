@@ -1,7 +1,6 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from pandas import value_counts
 import pydairlib
 import scipy.linalg
 import scipy.io
@@ -19,7 +18,7 @@ class UKF:
         """
         Initialize the states and covariance matrices.
 
-        The initial states are in the form of [q, v, lambda_c, lambda_h, C],
+        The initial states are in the form of [q, v, lambda_c, C],
         where the q[:4] are orientation of pelvis expressed in quaternion form.
 
         R is the dynamics noise in order of [motor noise, lambda_c noise, lambda_h noise]
@@ -37,8 +36,10 @@ class UKF:
         self.nv = 22
         # Dim of lambda_c 
         self.nlc = 12
+        # Dim of damping ratio
+        self.nd = 16
         # Total dim
-        self.n = self.nq + self.nv *2 + self.nlc
+        self.n = self.nq + self.nv + self.nlc + self.nd
 
         # Number of points for the foot to contacts for the ground
         self.num_contacts = 4
@@ -136,7 +137,7 @@ class UKF:
         q = sigma_points[:,:self.nq]
         v = sigma_points[:,self.nq:self.nq+self.nv]
         lambda_c = sigma_points[:,self.nq+self.nv: self.nq + self.nv + self.nlc]
-        C = sigma_points[:,-self.nv:]
+        C = sigma_points[:,-self.nd:]
 
         """ 
             The dynamics equation is given by x_{k+1} = x_k + dt * dotx_k.
@@ -164,7 +165,7 @@ class UKF:
         v_next = v + v_dot * dt
 
         # Cal lambda_c next
-        lambda_c_next = lambda_c + lambda_c_noise
+        lambda_c_next = lambda_c + lambda_c_noise * dt
 
         # Assemble all the stuff
         sigma_points_next = np.hstack((q_next, v_next, lambda_c_next, C))
@@ -176,10 +177,10 @@ class UKF:
         The dynamics is given by:
         M @ v_dot + bias == J_c^T @ lambda_c + J_h^T @ lambda_h + B @ u + dig(C) @ v
         paras:
-            q: 2(n+self.u.size+self.nlc)+1+1 X 23, each row represents a sigma point of the position vector
-            v: 2(n+self.u.size+self.nlc)+1+1 X 22, each row represents a sigma point of the velocity vector
-            lambda_c: 2(n+self.u.size+self.nlc)+1+1 X 12, each row represents a sigma point of the ground force vector
-            C: 2(n+self.u.size+self.nlc)+1+1 X 22, each row presents a sigma point of the damping ratio parameter vector 
+            q: 2(n+self.u.size+self.nlc)+1 X 23, each row represents a sigma point of the position vector
+            v: 2(n+self.u.size+self.nlc)+1 X 22, each row represents a sigma point of the velocity vector
+            lambda_c: 2(n+self.u.size+self.nlc)+1 X 12, each row represents a sigma point of the ground force vector
+            C: 2(n+self.u.size+self.nlc)+1 X 22, each row presents a sigma point of the damping ratio parameter vector 
             u: 2(n+self.u.size+self.nlc)+1 X 10 the input torque
         returns:
             vdot: 2(n+self.u.size+self.nlc)+1 X 22, where each row represents a sigma point of acceleration
@@ -239,13 +240,12 @@ class UKF:
             # compute the v_dot
             if q.ndim == 1:
                 # calculate the constraint force 
-                lambda_h = -scipy.linalg.pinv(J_h @ M_inv @ J_h.T) @ (J_h @ M_inv @ (-bias + gravity_force + J_c.T @ lambda_c + B @ u -(spring_stiffness * q)[1:] -C*v) - J_h_dot_times_v)
+                lambda_h = -scipy.linalg.pinv(J_h @ M_inv @ J_h.T) @ (J_h @ M_inv @ (-bias + gravity_force + J_c.T @ lambda_c + B @ u -(spring_stiffness * q)[1:] - np.hstack((np.zeros(self.nv - self.nd), C))* v) - J_h_dot_times_v)
                 # calculate the vdot 
-                vdot = M_inv @ (-bias + gravity_force + J_c.T @ lambda_c + J_h.T @ lambda_h + B @ u -(spring_stiffness * q)[1:] - C * v)
-                # import pdb; pdb.set_trace()
+                vdot = M_inv @ (-bias + gravity_force + J_c.T @ lambda_c + J_h.T @ lambda_h + B @ u -(spring_stiffness * q)[1:] - np.hstack((np.zeros(self.nv - self.nd), C)) * v)
             else:
-                lambda_h = -scipy.linalg.pinv(J_h @ M_inv @ J_h.T) @ (J_h @ M_inv @ (-bias + gravity_force + J_c.T @ lambda_c[i,:] + B @ u[i,:] -(spring_stiffness * q[i,:])[1:] -C[i,:]*v[i,:]) - J_h_dot_times_v)
-                vdot[i,:] = M_inv @ (-bias + gravity_force + J_c.T @ lambda_c[i,:] + J_h.T @ lambda_h + B @ u[i,:] -(spring_stiffness * q[i,:])[1:] - C[i,:] * v[i,:])
+                lambda_h = -scipy.linalg.pinv(J_h @ M_inv @ J_h.T) @ (J_h @ M_inv @ (-bias + gravity_force + J_c.T @ lambda_c[i,:] + B @ u[i,:] -(spring_stiffness * q[i,:])[1:] - np.hstack((np.zeros(self.nv - self.nd), C[i,:]))*v[i,:]) - J_h_dot_times_v)
+                vdot[i,:] = M_inv @ (-bias + gravity_force + J_c.T @ lambda_c[i,:] + J_h.T @ lambda_h + B @ u[i,:] -(spring_stiffness * q[i,:])[1:] - np.hstack((np.zeros(self.nv-self.nd), C[i,:])) * v[i,:])
 
         return vdot
 
@@ -285,11 +285,11 @@ class UKF:
         # Calculation for the mean of quaternion
         nominal_quat_mean = initial_guess_of_quaternion
         sigma_points_quat = sigma_points[:,:4]
-        diviation_vectors = self.cal_diviation_vectors_from_sigma_points(self, sigma_points_quat, nominal_quat_mean)
+        diviation_vectors = self.cal_diviation_vectors_from_sigma_points(sigma_points_quat, nominal_quat_mean)
         error_rot_vector = np.mean(diviation_vectors, axis=0)
         while np.linalg.norm(error_rot_vector) > threshold:
-            nominal_quat_mean = (Rotation.from_quat(nominal_quat_mean[[1,2,3,0]]) * Rotation.from_rotvec(error_rot_vector)).as_quat()[:,[3,0,1,2]]
-            diviation_vectors = self.cal_diviation_vectors_from_sigma_points(self, sigma_points_quat, nominal_quat_mean)
+            nominal_quat_mean = (Rotation.from_quat(nominal_quat_mean[[1,2,3,0]]) * Rotation.from_rotvec(error_rot_vector)).as_quat()[[3,0,1,2]]
+            diviation_vectors = self.cal_diviation_vectors_from_sigma_points(sigma_points_quat, nominal_quat_mean)
             error_rot_vector = np.mean(diviation_vectors, axis=0)
         
         # Calculate the mean of other part
@@ -333,7 +333,7 @@ class UKF:
 
         return cov
 
-    def cal_expected_obs_of_sigma_points(self, sigma_points, u):
+    def cal_expected_obs_of_sigma_points(self, sigma_points, u, motor_noise):
         """
         Calculate the expected observation given sigma_points.
         
@@ -344,22 +344,27 @@ class UKF:
         q = sigma_points[:,:self.nq]
         v = sigma_points[:,self.nq:self.nq+self.nv]
         lambda_c = sigma_points[:,self.nq+self.nv: self.nq + self.nv + self.nlc]
-        lambda_h = sigma_points[:,self.nq + self.nv + self.nlc:-self.nv]
-        C = sigma_points[:,-self.nv:]
+        C = sigma_points[:,-self.nd:]
         
         # Deal with IMU part
         """
         The accelerometer read the acceleration of main body plus the gravity expressed in body fixed frame.
         
-        The accelerometer reading is given by R^T @ (vdot_in_world_frame + gravity_in_world_frame)
+        The accelerometer reading is given by R^T @ (vdot_in_world_frame + g_in_world_frame)
         """
         # Calculate the accelerometer readings
-        gravity_in_world_frame = [0, 0, -9.8]
-        vdot = self.cal_vdot(q, v, lambda_c, lambda_h, C, u) # TODO, u here assume to be perfect, which can cause problem or we can store the input noise to observation noise Q instead
+        g_in_world_frame = [0, 0, -9.8]
+        vdot = self.cal_vdot(q, v, lambda_c, C, u+motor_noise)
         acc_of_body = vdot[:, 3:6]
+        # print("acc_of_body", acc_of_body)
+        # print("cov of acc", np.cov(acc_of_body, rowvar=False, bias=True))
         rot_matrice = Rotation.from_quat(q[:,:4][:,[1,2,3,0]]).as_matrix()
-        total_acc_in_world_frame = gravity_in_world_frame + acc_of_body
-        accelerometer_readings = np.moveaxis(rot_matrice, 1, -1) @ total_acc_in_world_frame # moveaxis change the R to R.T
+        total_acc_in_world_frame = g_in_world_frame + acc_of_body
+
+        accelerometer_readings = (np.moveaxis(rot_matrice, 1, -1) @ total_acc_in_world_frame[:,:,None]).squeeze() # moveaxis change the R to R.T
+        # print("accelerometer_readings", accelerometer_readings)
+        # print("accelerometer_readings cov", np.cov(accelerometer_readings, rowvar=False, bias=True))
+        # import pdb; pdb.set_trace()
         # Calculate the gyro readings
         gyro_readings = v[:,:3]
 
@@ -394,17 +399,29 @@ class UKF:
             dt: scalar for diff in time
         """
         
+        print("cov of q", np.diag(self.cov)[:self.nv])
+        print("cov of v", np.diag(self.cov)[self.nv:self.nv*2])
+        print("max uncertainty of q", np.max(np.abs(np.diag(self.cov)[:self.nv])))
+        print("max uncertainty of v", np.max(np.abs(np.diag(self.cov)[self.nv:self.nv*2])))
+        # print("cov of lambda_C", np.diag(self.cov)[self.nv*2:self.nv*2+self.nlc])
+        # print("cov of damping", np.diag(self.cov)[-self.nd:])
+
         # Sample the sigma points
         sigma_points, motor_noise, lambda_c_noise = self.get_sigma_points()
+        # expected_observations = self.cal_expected_obs_of_sigma_points(sigma_points, u, motor_noise)
+        # expected_observations_mean = np.mean(expected_observations, axis=0)
+        # expected_observations_cov = np.cov(expected_observations, rowvar=False, bias=True)
+
+        # print("cov of observation", np.diag(expected_observations_cov))
 
         # Dynamics process for sigma points
         sigma_points = self.dynamics_updates(sigma_points, u, motor_noise, lambda_c_noise, dt)
         # Update the mean and covariance after dynamics
-        self.mean = self.cal_mean_of_sigma_points(sigma_points)
+        self.mean = self.cal_mean_of_sigma_points(sigma_points, self.mean[:4])
         self.cov = self.cal_cov_of_sigma_points(sigma_points)
 
         # Cal expected observation of sigma_points
-        expected_observations = self.cal_expected_obs_of_sigma_points(sigma_points, u)
+        expected_observations = self.cal_expected_obs_of_sigma_points(sigma_points, u, motor_noise)
         expected_observations_mean = np.mean(expected_observations, axis=0)
         expected_observations_cov = np.cov(expected_observations, rowvar=False, bias=True)
 
@@ -413,8 +430,10 @@ class UKF:
         cov_yy = expected_observations_cov + self.Q
         cov_xy = self.cal_cov_xy(sigma_points, expected_observations)
         # Cal Kalman gain
-        kalman_gain = cov_xy @ np.linalg.inv(cov_yy)
+        kalman_gain = cov_xy @ scipy.linalg.pinv(cov_yy)
 
+        import pdb; pdb.set_trace()
+    
         # Incorporate the observation
         # Compute the correction term for dynamics process
         innovation = obs - expected_observations_mean
@@ -525,6 +544,13 @@ def processing_raw_data(raw_data, R, Q):
     noise = np.random.multivariate_normal(np.zeros(Q.shape[0]),Q,n)
     obs_processed = obs_gt + noise
 
+    # plt.plot(acc[:,3],label="x")
+    # plt.plot(acc[:,4],label="y")
+    # plt.plot(acc[:,5],label="z")
+    # plt.ylim(-20,20)
+    # plt.legend()
+    # plt.show()
+
     # construct noisy input
     n = u.shape[0]
     noise = np.random.multivariate_normal(np.zeros(R.shape[0]),R,n)
@@ -556,7 +582,7 @@ def main():
     # observation noise
     Q = np.eye(22) * 0.1
     # initial noise
-    init_cov = np.eye(78) * 0.1
+    init_cov = np.eye(72) * 0.1
 
     # processing raw data
     print("Begin processing raw data for test")
@@ -572,11 +598,11 @@ def main():
                         q_gt[0,:],
                         v_gt[0,:],
                         lambda_c_gt[0,:],
-                        damping_ratio
+                        damping_ratio[6:]
                         ))
     noise = np.random.multivariate_normal(np.zeros(init_mean.shape[0]-1), init_cov)
-    init_mean[4:] += noise[3:]
-    init_mean[:4] = (Rotation.from_quat(init_mean[:4][[1,2,3,0]]) * Rotation.from_rotvec(noise[0:3])).as_quat()[[3,0,1,2]]
+    # init_mean[4:] += noise[3:]
+    # init_mean[:4] = (Rotation.from_quat(init_mean[:4][[1,2,3,0]]) * Rotation.from_rotvec(noise[0:3])).as_quat()[[3,0,1,2]]
 
     # initial robot plant
     builder = DiagramBuilder()
@@ -587,6 +613,8 @@ def main():
     plant.Finalize()
     vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)
     vel_map_inverse = {value:key for (key, value) in vel_map.items()}
+    pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
+    pos_map_inverse = {value:key for (key, value) in pos_map.items()}
 
     # initial ukf
     R_lambda_c = np.eye(12) * 200
@@ -596,25 +624,34 @@ def main():
     estimator = UKF(init_mean, init_cov, R, Q)
 
     # acc_est = []
+    # acc_est_with_lambda_c_noise = []
     # interested_range = range(1000,3000)
     # for i in interested_range:
-    #     acc_est.append(estimator.cal_vdot(q_gt[i,:],v_gt[i,:],lambda_c_gt[i,:], damping_ratio, u_gt[i,:]))
+    #     noise = np.random.multivariate_normal(np.zeros(12), np.eye(12)*200)
+    #     acc_est.append(estimator.cal_vdot(q_gt[i,:],v_gt[i,:],lambda_c_gt[i,:], damping_ratio[6:], u_gt[i,:]))
+        # acc_est_with_lambda_c_noise.append(estimator.cal_vdot(q_gt[i,:],v_gt[i,:],lambda_c_gt[i,:] + noise, damping_ratio[6:], u_gt[i,:]))
     # acc_est = np.array(acc_est)
+    # acc_est_with_lambda_c_noise = np.array(acc_est_with_lambda_c_noise)
     
     # for index in range(22):
     #     path = "bindings/pydairlib/cassie/ukf_experienments/dynamics_check/" + vel_map_inverse[index] + ".png" 
     #     plt.clf()
-    #     plt.plot(t[interested_range], acc_est[:,index],'r')
-    #     plt.plot(t[interested_range], acc_gt[interested_range,index],'g')
-    #     plt.legend(["calculated","ground_truth"])
+    #     plt.plot(t[interested_range], acc_est[:,index],'r',label="est")
+    #     # plt.plot(t[interested_range], acc_est_with_lambda_c_noise[:, index], label="est_with_lambda_c_noise")
+    #     plt.plot(t[interested_range], acc_gt[interested_range,index],'g', label="ground_truth")
     #     plt.xlabel("time(s)")
+    #     plt.ylabel("derivative")
     #     plt.title(vel_map_inverse[index])
     #     plt.ylim(-500,500)
     #     plt.savefig(path)
+    # import pdb; pdb.set_trace()
+
+    est = [init_mean]
 
     # update the belief
     for i in range(1,t.shape[0]):
-        estimator.update(u[i],obs[i],t[i]-t[i-1])
+        states = estimator.update(u_gt[i],obs_gt[i],t[i]-t[i-1])
+        est.append(states)
 
 if __name__ == "__main__":
     main()

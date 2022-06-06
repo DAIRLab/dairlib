@@ -27,14 +27,14 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
-#include "drake/geometry/render/render_engine_vtk_factory.h"
+#include "drake/geometry/render_vtk/factory.h"
 #include "drake/systems/sensors/rgbd_sensor.h"
 #include "drake/systems/sensors/image_to_lcm_image_array_t.h"
 
 namespace dairlib {
 using drake::geometry::SceneGraph;
-using drake::geometry::render::MakeRenderEngineVtk;
-using drake::geometry::render::RenderEngineVtkParams;
+using drake::geometry::MakeRenderEngineVtk;
+using drake::geometry::RenderEngineVtkParams;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
@@ -90,8 +90,8 @@ int do_main(int argc, char* argv[]) {
 
   const std::string renderer_name = "multibody_renderer_vtk";
   scene_graph.AddRenderer(renderer_name,
-                          drake::geometry::render::
-                          MakeRenderEngineVtk(drake::geometry::render::RenderEngineVtkParams()));
+                          drake::geometry::
+                          MakeRenderEngineVtk(drake::geometry::RenderEngineVtkParams()));
 
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);

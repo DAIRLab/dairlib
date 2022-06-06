@@ -17,6 +17,7 @@ cc_library(
     name = "robot_output_to_ros_pose",
     srcs = ["robot_output_to_ros_pose.cc"],
     hdrs = ["robot_output_to_ros_pose.h"],
+    tags = ["ros"],
     deps = [
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

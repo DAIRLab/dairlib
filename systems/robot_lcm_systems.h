@@ -115,12 +115,6 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuatorIndexMap_;
 };
 
-/* TODO:
-- Determine better names for the classes and lcm type
-    -> C3 for now
-    -> should "Robot" even be here? Technically there is no plant
-*/
-
 /// Receives the output of an LcmSubsriberSystem that subsribes to the
 /// C3 output channel with LCM type lcmt_robot_c3 and outputs the
 /// state and force information as a TimestampedVector.
@@ -130,7 +124,6 @@ class RobotC3Receiver : public drake::systems::LeafSystem<double> {
                     int lambda_size);
 
  private:
-  // TODO: whose context is this?
   void CopyC3Out(const drake::systems::Context<double>& context,
                     TimestampedVector<double>* output) const;
 
@@ -146,7 +139,6 @@ class RobotC3Sender : public drake::systems::LeafSystem<double> {
                     int lambda_size);
 
  private:
-   // TODO: whose context is this?
   void OutputC3(const drake::systems::Context<double>& context,
                      dairlib::lcmt_c3* c3_msg) const;
 

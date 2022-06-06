@@ -18,9 +18,9 @@ SimCassieSensorAggregator::SimCassieSensorAggregator(
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
 
-  positionIndexMap_ = multibody::makeNameToPositionsMap(plant);
-  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
-  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
+  positionIndexMap_ = multibody::MakeNameToPositionsMaps(plant);
+  velocityIndexMap_ = multibody::MakeNameToVelocitiesMap(plant);
+  actuatorIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
 
   input_input_port_ =
       this->DeclareVectorInputPort("u", BasicVector<double>(10)).get_index();

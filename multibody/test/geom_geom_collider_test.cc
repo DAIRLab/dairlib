@@ -62,7 +62,7 @@ void GeomGeomColliderTest() {
                                                       diagram_context.get());
 
   VectorXd q = VectorXd::Zero(plant.num_positions());
-  auto q_map = makeNameToPositionsMap(plant);
+  auto q_map = MakeNameToPositionsMaps(plant);
 
   q(q_map.at("finger_base_to_upper_joint_0")) = 0;
   q(q_map.at("finger_upper_to_middle_joint_0")) = -1;

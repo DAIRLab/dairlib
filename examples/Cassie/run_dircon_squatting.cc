@@ -110,9 +110,9 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   plant_vis.Finalize();
 
   // Create maps for joints
-  map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> velocities_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> actuators_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> positions_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> velocities_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> actuators_map = multibody::MakeNameToActuatorsMap(plant);
 
   int base_qw_idx = positions_map.at("base_qw");
   int base_qx_idx = positions_map.at("base_qx");

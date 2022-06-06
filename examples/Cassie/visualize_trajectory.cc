@@ -56,8 +56,8 @@ int DoMain() {
   int nv = plant.num_positions();
   int nx = nq + nv;
 
-  auto pos_map = multibody::makeNameToPositionsMap(plant);
-  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+  auto pos_map = multibody::MakeNameToPositionsMaps(plant);
+  auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
 
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
 
@@ -96,7 +96,7 @@ int DoMain() {
   }
 
   if (FLAGS_visualize_mode == 0 || FLAGS_visualize_mode == 1) {
-    multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+    multibody::ConnectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                            optimal_traj);
 
     auto diagram = builder.Build();

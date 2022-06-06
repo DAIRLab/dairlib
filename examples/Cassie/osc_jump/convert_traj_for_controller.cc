@@ -54,9 +54,9 @@ int DoMain() {
   plant.Finalize();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
 

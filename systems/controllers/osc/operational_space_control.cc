@@ -18,7 +18,7 @@ using Eigen::MatrixXd;
 using Eigen::Vector2d;
 using Eigen::VectorXd;
 
-using dairlib::multibody::createContext;
+using dairlib::multibody::CreateContext;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
@@ -39,7 +39,7 @@ namespace dairlib::systems::controllers {
 
 using multibody::CreateWithSpringsToWithoutSpringsMapPos;
 using multibody::CreateWithSpringsToWithoutSpringsMapVel;
-using multibody::makeNameToVelocitiesMap;
+using multibody::MakeNameToVelocitiesMap;
 using multibody::SetPositionsIfNew;
 using multibody::SetVelocitiesIfNew;
 using multibody::WorldPointEvaluator;
@@ -104,7 +104,7 @@ OperationalSpaceControl::OperationalSpaceControl(
           .get_index();
 
   const std::map<string, int>& vel_map_wo_spr =
-      multibody::makeNameToVelocitiesMap(plant_wo_spr);
+      multibody::MakeNameToVelocitiesMap(plant_wo_spr);
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ =
@@ -154,7 +154,7 @@ OperationalSpaceControl::OperationalSpaceControl(
   q_max_ = q_max;
 
   // Check if the model is floating based
-  is_quaternion_ = multibody::isQuaternion(plant_w_spr);
+  is_quaternion_ = multibody::HasQuaternion(plant_w_spr);
 }
 
 // Optional features
@@ -175,7 +175,7 @@ void OperationalSpaceControl::AddAccelerationCost(
   if (W_joint_accel_.size() == 0) {
     W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
   }
-  int idx = makeNameToVelocitiesMap(plant_wo_spr_).at(joint_vel_name);
+  int idx = MakeNameToVelocitiesMap(plant_wo_spr_).at(joint_vel_name);
   W_joint_accel_(idx, idx) += w;
 }
 

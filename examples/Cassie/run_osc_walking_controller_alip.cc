@@ -99,11 +99,11 @@ int DoMain(int argc, char* argv[]) {
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   if (FLAGS_spring_model) {
-    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_v2.urdf",
                        true /*spring model*/, false /*loop closure*/);
   } else {
-    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_fixed_springs.urdf",
                        false /*spring model*/, false /*loop closure*/);
   }
@@ -327,7 +327,7 @@ int DoMain(int argc, char* argv[]) {
                   swing_ft_traj_generator->get_input_port_vdes());
 
   // Swing toe joint trajectory
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant_w_spr);
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};
   vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
@@ -371,8 +371,8 @@ int DoMain(int argc, char* argv[]) {
   std::unique_ptr<FixedJointEvaluator<double>> left_fixed_ankle_spring;
   std::unique_ptr<FixedJointEvaluator<double>> right_fixed_ankle_spring;
   if (FLAGS_spring_model) {
-    auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
-    auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+    auto pos_idx_map = multibody::MakeNameToPositionsMaps(plant_w_spr);
+    auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
     left_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
         plant_w_spr, pos_idx_map.at("knee_joint_left"),
         vel_idx_map.at("knee_joint_leftdot"), 0);

@@ -6,8 +6,8 @@ from pydairlib.cassie.cassie_utils import *
 from pydairlib.cassie.controllers import AlipWalkingControllerFactory
 from pydairlib.cassie.simulators import CassieSimDiagram
 from pydrake.common.yaml import yaml_load
-
 from pydrake.multibody.plant import MultibodyPlant
+
 
 def main():
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
@@ -26,6 +26,7 @@ def main():
         gym_env.advance_to(0.35)
         gym_env.free_sim()
         gym_env.reset()
+
 
 if __name__ == '__main__':
     main()

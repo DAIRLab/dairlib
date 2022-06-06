@@ -54,6 +54,29 @@ cc_library(
 )
 
 cc_library(
+    name = "footstep_target_controller_diagram",
+    srcs = ["footstep_target_controller_diagram.cc"],
+    hdrs = ["footstep_target_controller_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc",
+        "//lcm:trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:alip_footstep_planner",
+        "//systems/controllers:fsm_event_time",
+        "//systems/controllers:swing_foot_target_traj_gen",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/controllers/osc:osc_tracking_datas",
+        "//systems/filters:floating_base_velocity_filter",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "cassie_vision_sim_diagram",
     srcs = ["cassie_vision_sim_diagram.cc"],
     hdrs = ["cassie_vision_sim_diagram.h"],

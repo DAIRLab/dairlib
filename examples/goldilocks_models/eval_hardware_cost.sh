@@ -11,6 +11,7 @@ log_dir0=/home/yuming/Desktop/data_on_desktop/20220509_hardware_rom_and_cost_eva
 log_dir1=/home/yuming/Desktop/data_on_desktop/20220512_hardware_rom/yuming_rom_walking/
 log_dir2=/home/yuming/Desktop/data_on_desktop/20220517_hardware_rom/yuming_rom_walking/
 log_dir3=/home/yuming/Desktop/data_on_desktop/20220518_hardware_rom/yuming_rom_walking/
+log_dir4=/home/yuming/Desktop/data_on_desktop/20220519_hardware_rom/yuming_rom_walking/
 
 output_dir=../dairlib_data/goldilocks_models/hardware_cost_eval/
 rm -rf $output_dir
@@ -30,3 +31,9 @@ bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_di
 bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir3"lcmlog-01 ROM_WALKING true $output_dir 60
 bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir3"lcmlog-02 ROM_WALKING true $output_dir 60
 bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir3"lcmlog-03 ROM_WALKING true $output_dir 60
+
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir4"lcmlog-01 ROM_WALKING true $output_dir 1
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir4"lcmlog-02 ROM_WALKING true $output_dir 100
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir4"lcmlog-03 ROM_WALKING true $output_dir 100
+
+# Note we you plot the cost, slice at pelvis height = 0.935

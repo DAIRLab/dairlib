@@ -49,7 +49,6 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
-      pelvis_(plant_.GetBodyByName(floating_base_body_name)),
       left_right_support_fsm_states_(left_right_support_fsm_states),
       mid_foot_height_(mid_foot_height),
       desired_final_foot_height_(desired_final_foot_height),
@@ -200,18 +199,16 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
                              world_, &stance_foot_pos);
 
-  Vector3d pelvis_x =
-      plant_.EvalBodyPoseInWorld(*context_, pelvis_)
-      .rotation().col(0);
-  double approx_pelvis_yaw = atan2(pelvis_x(1), pelvis_x(0));
-
   Vector3d CoM_curr = plant_.CalcCenterOfMassPositionInWorld(*context_);
+  double H = CoM_curr(2) - stance_foot_pos(2);
+  double omega = sqrt(9.81 / H);
+  double T = duration_map_.at(fsm_state) + double_support_duration_;
+  double L_x_n = m_ * H * footstep_offset_ *
+      (omega * sinh(omega * T) / (1 + cosh(omega * T)));
 
   Vector2d vdes_xy = this->EvalVectorInput(context, vdes_port_)->get_value();
-  double L_y_des = vdes_xy(0) *
-                  (CoM_curr(2) - stance_foot_pos(2)) * m_;
-  double L_x_offset = -vdes_xy(1) *
-                      (CoM_curr(2) - stance_foot_pos(2)) * m_;
+  double L_y_des = vdes_xy(0) * H * m_;
+  double L_x_offset = -vdes_xy(1) * H * m_;
 
   // com and angular momentum prediction
   const drake::AbstractValue* alip_traj_p =
@@ -222,13 +219,6 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   Vector4d alip_pred = alip_traj.value(end_time_of_this_interval);
 
   bool is_right_support = (fsm_state == left_right_support_fsm_states_[1]);
-
-  double H = CoM_curr(2) - stance_foot_pos(2);
-  double omega = sqrt(9.81 / H);
-  double T = duration_map_.at(fsm_state) + double_support_duration_;
-  double L_x_n = m_ * H * footstep_offset_ *
-      (omega * sinh(omega * T) / (1 + cosh(omega * T)));
-
 
   Vector2d L_i = multibody::ReExpressWorldVector2InBodyYawFrame<double>(
       plant_, *context_,"pelvis", alip_pred.tail<2>());
@@ -242,7 +232,6 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   *x_fs = Vector2d(-p_x_ft_to_com, -p_y_ft_to_com);
 
   /// Imposing guards
-  // Impose half-plane guard
   Vector2d stance_foot_wrt_com_in_local_frame =
       multibody::ReExpressWorldVector2InBodyYawFrame<double>(
           plant_, *context_,"pelvis",  (stance_foot_pos - CoM_curr).head<2>());
@@ -262,7 +251,7 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     (*x_fs) = (*x_fs) * max_com_to_footstep_dist_ / dist;
   }
 
-  *stance_foot_height = stance_foot_pos(2) - CoM_curr(2);
+  *stance_foot_height = -H;
 }
 
 PiecewisePolynomial<double> AlipSwingFootTrajGenerator::CreateSplineForSwingFoot(

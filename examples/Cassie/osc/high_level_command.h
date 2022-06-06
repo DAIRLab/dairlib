@@ -54,7 +54,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
                    double vel_scale_rot, double vel_scale_trans_sagital,
-                   double vel_scale_trans_lateral);
+                   double vel_scale_trans_lateral, double stick_filter_dt=0.0);
   /// Constructor that computes the desired yaw and translational velocities
   /// according to a global target position
   ///
@@ -75,8 +75,8 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_yaw_output_port() const {
     return this->get_output_port(yaw_port_);
   }
-  const drake::systems::InputPort<double>& get_cassie_output_port() const {
-    return this->get_input_port(cassie_out_port_);
+  const drake::systems::InputPort<double>& get_radio_port() const {
+    return this->get_input_port(radio_port_);
   }
   const drake::systems::OutputPort<double>& get_xy_output_port() const {
     return this->get_output_port(xy_port_);
@@ -110,7 +110,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   int state_port_;
   int yaw_port_;
   int xy_port_;
-  int cassie_out_port_ = -1;
+  int radio_port_ = -1;
 
   // Indices for the discrete states of this leafsystem
   drake::systems::DiscreteStateIndex des_vel_idx_;
@@ -137,6 +137,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   double vel_scale_rot_;
   double vel_scale_trans_sagital_;
   double vel_scale_trans_lateral_;
+  double stick_filter_dt_;
 };
 
 }  // namespace osc

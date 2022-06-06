@@ -13,6 +13,6 @@ cc_library(
 
 py_library(
     name='ros_python',
-    srcs=glob(['lib/python2.7/dist-packages/**/*.py']),
-    imports=['lib/python2.7/dist-packages/']
+    srcs=glob(['lib/python3/dist-packages/**/*.py']),
+    imports=['lib/python3/dist-packages/']
 )

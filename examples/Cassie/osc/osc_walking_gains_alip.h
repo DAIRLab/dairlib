@@ -61,7 +61,6 @@ struct OSCWalkingGainsALIP {
   double vel_scale_trans_lateral;
   double contact_point_pos;
 
-
   MatrixXd W_com;
   MatrixXd K_p_com;
   MatrixXd K_d_com;

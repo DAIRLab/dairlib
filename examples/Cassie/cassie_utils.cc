@@ -1,7 +1,7 @@
 #include "examples/Cassie/cassie_utils.h"
 
 #include "common/find_resource.h"
-#include "examples/Cassie/cassie_encoder.h"
+#include "examples/Cassie/systems/cassie_encoder.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/math/rigid_transform.h"
@@ -215,6 +215,19 @@ const systems::SimCassieSensorAggregator& AddImuAndAggregator(
   builder->Connect(gyroscope.get_measurement_output_port(),
                    sensor_aggregator->get_input_port_gyro());
   return *sensor_aggregator;
+}
+
+const systems::GearedMotor& AddMotorModel(
+    drake::systems::DiagramBuilder<double>* builder,
+    const MultibodyPlant<double>& plant) {
+  std::unordered_map<std::string, double> omega_max = {
+      {"hip_roll_left_motor", 303.687},  {"hip_roll_right_motor", 303.687},
+      {"hip_yaw_left_motor", 303.687},   {"hip_yaw_right_motor", 303.687},
+      {"hip_pitch_left_motor", 136.136}, {"hip_pitch_right_motor", 136.136},
+      {"knee_left_motor", 136.136},      {"knee_right_motor", 136.136},
+      {"toe_left_motor", 575.958},       {"toe_right_motor", 575.958}};
+  auto cassie_motor = builder->AddSystem<systems::GearedMotor>(plant, omega_max);
+  return *cassie_motor;
 }
 
 template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(

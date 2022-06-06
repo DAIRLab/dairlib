@@ -6,18 +6,19 @@ cd $(dirname "$BASH_SOURCE")
 
 set -e
 
-PACKAGES="roscpp rospy"
-
+PACKAGES="roscpp rospy geometry_msgs sensor_msgs tf grid_map_core grid_map_msgs grid_map_cv  realsense2_camera realsense2_description "
 rm -rf bundle_ws
 mkdir bundle_ws
 pushd bundle_ws
+mkdir src
 
 rosinstall_generator \
+    --rosdistro noetic \
     --deps \
     --tar \
     --flat \
     $PACKAGES > ws.rosinstall
-wstool init -j1 src ws.rosinstall
+vcs import src < ws.rosinstall
 
 catkin config \
     --install \

@@ -6,8 +6,11 @@ using Eigen::VectorXd;
 
 namespace dairlib::systems {
 
-LinearKalmanFilter::LinearKalmanFilter(const KalmanFilterData& sys) :
-    nx_(sys.A.cols()), nu_(sys.B.cols()), ny_(sys.C.rows()){
+LinearKalmanFilter::LinearKalmanFilter(const KalmanFilterData& sys, double rate,
+                                       int missed_dts_before_reset) :
+
+    nx_(sys.A.cols()), nu_(sys.B.cols()), ny_(sys.C.rows()), rate_(rate),
+    missed_dts_before_reset_(missed_dts_before_reset){
   DRAKE_DEMAND(sys.A.rows() == nx_);
   DRAKE_DEMAND(sys.B.rows() == nx_);
   DRAKE_DEMAND(sys.C.cols() == nx_);
@@ -27,7 +30,7 @@ void LinearKalmanFilter::Predict(
     const KalmanFilterData& sys, const VectorXd& u, double t) {
   double dt  = t - t_;
 
-  if (dt > 100* rate_) {
+  if (dt > missed_dts_before_reset_* rate_) {
     dt = rate_;
     Initialize(t, VectorXd::Zero(nx_), sys.Q);
   }

@@ -1,0 +1,10 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "camera_utils",
+    srcs = ["camera_utils.cc"],
+    hdrs = ["camera_utils.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

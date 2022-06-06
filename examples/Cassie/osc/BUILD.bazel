@@ -7,6 +7,7 @@ cc_library(
     deps = [
         "//examples/Cassie/osc:heading_traj_generator",
         "//examples/Cassie/osc:high_level_command",
+        "//examples/Cassie/osc:hip_yaw_traj_gen",
         "//examples/Cassie/osc:osc_walking_gains",
         "//examples/Cassie/osc:osc_walking_gains_alip",
         "//examples/Cassie/osc:standing_com_traj",
@@ -19,6 +20,16 @@ cc_library(
         "//systems/controllers:swing_ft_traj_gen",
         "//systems/controllers:time_based_fsm",
         "//systems/controllers/osc:operational_space_control",
+    ],
+)
+
+cc_library(
+    name = "hip_yaw_traj_gen",
+    srcs = ["hip_yaw_traj_gen.cc"],
+    hdrs = ["hip_yaw_traj_gen.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
     ],
 )
 

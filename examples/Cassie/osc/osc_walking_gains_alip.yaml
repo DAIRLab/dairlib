@@ -3,8 +3,8 @@ cols: 3
 
 # High level command gains (with radio)
 vel_scale_rot: -1.5
-vel_scale_trans_sagital: 2.0
-vel_scale_trans_lateral: -0.5
+vel_scale_trans_sagital: 0.8
+vel_scale_trans_lateral: -0.4
 
 # Filter settings
 pelvis_xyz_vel_filter_tau: [0.001, 0.001, 0.001]
@@ -45,7 +45,7 @@ final_foot_velocity_z: 0.1
 lipm_height: 0.85
 
 # OSC gains
-mu: 0.75
+mu: 0.6
 
 w_accel: 0.00000001
 w_soft_constraint: 80
@@ -95,7 +95,7 @@ PelvisHeadingKp:
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    10]
+      0,     0,    4]
 period_of_no_heading_control: 0.0
 
 SwingFootW:

@@ -27,6 +27,41 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "controllers_py",
+    cc_deps = [
+        "//examples/Cassie/diagrams:alip_walking_controller_diagram",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "controllers",
+    cc_srcs = ["controllers_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "simulators_py",
+    cc_deps = [
+        "//examples/Cassie/diagrams:cassie_sim_diagram",
+        "//examples/Cassie/diagrams:cassie_vision_sim_diagram",
+        "@drake//:drake_shared_library",
+        "@drake//bindings/pydrake/common:value_pybind",
+    ],
+    cc_so_name = "simulators",
+    cc_srcs = [
+        "simulators_py.cc",
+    ],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        "//bindings/pydairlib/lcm:lcm",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -46,9 +81,15 @@ PY_LIBRARIES = [
     ":cassie_utils_py",
 ]
 
+PY_LIBRARIES = [
+    ":cassie_utils_py",
+    ":controllers_py",
+    ":simulators_py",
+]
+
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "cassie_utils",
+    name = "cassie",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

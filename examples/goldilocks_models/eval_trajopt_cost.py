@@ -541,6 +541,10 @@ def ComputeExpectedCostOverTask(model_indices, cmt, task_range_to_average_over):
   if save_fig:
     plt.savefig("%save_cost_vs_model_iter_range_%.2fto%.2f_%s%.2f.png" % (output_dir, task_range_to_average_over[0], task_range_to_average_over[1], name_abbrev[task_to_plot[1]], second_task_value))
 
+  # Log the improvement percentage into a file
+  message = "Max average cost improvement = %.1f %% over stride length from %.2f to %.2f\n" % (float((averaged_cost[0] - min(averaged_cost)) / averaged_cost[0] * 100), task_range_to_average_over[0], task_range_to_average_over[1])
+  print(message)
+
 
 def ComputeAchievableTaskRangeOverIter(cmt):
   print("\nPlotting achievable task range over iter...")
@@ -597,6 +601,10 @@ def ComputeAchievableTaskRangeOverIter(cmt):
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
     plt.savefig("%stask_space_vs_model_iter_%s%.2f.png" % (output_dir, name_abbrev[task_to_plot[1]], second_task_value))
+
+  # Log the improvement percentage into a file
+  message = "Max achievable task space improvement = %.1f %%\n" % float((max(task_range) - task_range[0]) / task_range[0] * 100)
+  print(message)
 
 
 def GetVaryingTaskElementIdx(nominal_task_names):

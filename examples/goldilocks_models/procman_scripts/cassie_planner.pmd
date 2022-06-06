@@ -19,7 +19,7 @@ group "0.cassie planner (2 foot steps)" {
 
 group "1. visualization" {
     cmd "0. drake visualizer" {
-        exec = "../drake/bazel-bin/tools/drake_visualizer";
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image  ";
         host = "localhost";
     }
     cmd "1. cassie pose" {

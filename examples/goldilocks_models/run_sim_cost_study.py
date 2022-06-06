@@ -109,7 +109,7 @@ def InitPoseSolverFailed(path, enforce_existence = False):
 # planner and controller
 # `trajopt_sample_idx` is used for planner's initial guess and cost regularization term
 def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
-                        trajopt_sample_idx, get_init_file):
+    trajopt_sample_idx_for_sim, trajopt_sample_idx_for_planner, get_init_file):
   # Hacky heuristic parameter
   stride_length_scaling = 1.0
   # stride_length_scaling = 1 + min(rom_iter_idx / 30.0, 1) * 0.15
@@ -143,12 +143,8 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   # Extract tasks
   task_sl = task[tasks.GetDimIdxByName("stride_length")]
 
-  dir_and_prefix_FOM_reg = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx)
-  path_init_state = "%s%d_%d_x_samples0.csv" % (model_dir, rom_iter_idx, trajopt_sample_idx) if set_sim_init_state_from_trajopt else ""
-
-  # Overwrite `trajopt_sample_idx` for cost regularization term if using a fixed cost function
-  if use_single_cost_function_for_all_tasks:
-    trajopt_sample_idx = trajopt_sample_idx_for_cost_reg
+  dir_and_prefix_FOM_reg = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx_for_planner)
+  path_init_state = "%s%d_%d_x_samples0.csv" % (model_dir, rom_iter_idx, trajopt_sample_idx_for_sim) if set_sim_init_state_from_trajopt else ""
 
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
@@ -160,7 +156,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--zero_touchdown_impact=true',
     '--log_solver_info=false',
     '--iter=%d' % rom_iter_idx,
-    '--sample=%d' % trajopt_sample_idx,
+    '--sample=%d' % trajopt_sample_idx_for_planner,
     '--knots_per_mode=%d' % knots_per_mode,
     '--n_step=%d' % n_step,
     '--feas_tol=%.6f' % feas_tol,
@@ -313,19 +309,22 @@ def CollectAllTrajoptSampleIndices():
 
 
 # trajopt_sample_indices for planner (find the most similar tasks)
-def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list):
+def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, zero_stride_length=False):
   trajopt_sample_indices = np.zeros((len(model_indices), len(task_list)),
                                     dtype=np.dtype(int))
   for i in range(len(model_indices)):
     for j in range(len(task_list)):
       trajopt_sample_indices[i, j] = GetTrajoptSampleIndexGivenTask(model_indices[i],
-                                                                    task_list[j])
+                                                                    task_list[j],
+                                                                    zero_stride_length)
   return trajopt_sample_indices
 
 
 # Get trajopt sample idx with the most similar task
-def GetTrajoptSampleIndexGivenTask(rom_iter, task):
+def GetTrajoptSampleIndexGivenTask(rom_iter, task, zero_stride_length=False):
   dir = model_dir if len(FOM_model_dir) == 0 else FOM_model_dir
+
+  stride_length_idx = list(nominal_task_names).index("stride_length")
 
   n_sample_trajopt = int(np.loadtxt(dir + "n_sample.csv"))
   dist_list = []
@@ -335,6 +334,8 @@ def GetTrajoptSampleIndexGivenTask(rom_iter, task):
     # print("try " + path)
     if os.path.exists(path):
       trajopt_task = np.loadtxt(path)
+      if zero_stride_length:
+        trajopt_task[stride_length_idx] = 0.0
       dist_list.append(np.linalg.norm(trajopt_task - task))
   # print("dist_list = ")
   # print(dist_list)
@@ -421,11 +422,11 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   BuildFiles('examples/Cassie:multibody_sim_w_ground_incline')
 
   ### Construct sample indices from the task list for simulation
-  # `trajopt_sample_idx` is for planner's initial guess and cost regularization term
   # `trajopt_sample_idx` is also used to initialize simulation state
-  trajopt_sample_indices = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices,
-                                                                          task_list)
-  print("trajopt_sample_indices = \n" + str(trajopt_sample_indices))
+  # `trajopt_sample_idx` is for planner's initial guess and cost regularization term
+  trajopt_sample_indices_for_sim = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list)
+  trajopt_sample_indices_for_planner = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, use_single_cost_function_for_all_tasks) if use_single_cost_function_for_all_tasks else trajopt_sample_indices_for_sim
+  print("trajopt_sample_indices = \n" + str(trajopt_sample_indices_for_sim))
 
   ### multithreading
   working_threads = []
@@ -459,7 +460,8 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
       rom_iter = model_indices[i]
       task = task_list[j]
-      trajopt_sample_idx = trajopt_sample_indices[i][j]
+      trajopt_sample_idx_for_sim = trajopt_sample_indices_for_sim[i][j]
+      trajopt_sample_idx_for_planner = trajopt_sample_indices_for_planner[i][j]
       log_idx = log_indices[j]
 
       print("\n===========\n")
@@ -474,7 +476,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
         thread_idx = thread_idx_set.pop()
         working_threads.append(
           RunSimAndController(thread_idx, sim_end_time, task, log_idx,
-                              rom_iter, trajopt_sample_idx, True))
+                              rom_iter, trajopt_sample_idx_for_sim, trajopt_sample_idx_for_planner, True))
         # print("2 thread_idx_set = " + str(thread_idx_set))
         # print("len(working_threads) = " + str(len(working_threads)))
         # print("BlockAndDeleteTheLatestThread")
@@ -486,7 +488,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
         # print("len(working_threads) = " + str(len(working_threads)))
         working_threads.append(
           RunSimAndController(thread_idx, sim_end_time, task, log_idx,
-                              rom_iter, trajopt_sample_idx, False))
+                              rom_iter, trajopt_sample_idx_for_sim, trajopt_sample_idx_for_planner, False))
         # print("4 thread_idx_set = " + str(thread_idx_set))
         # print("len(working_threads) = " + str(len(working_threads)))
         # print("CheckSimThreadAndBlockWhenNecessary")
@@ -1505,7 +1507,7 @@ if __name__ == "__main__":
   # Model iteration list
   model_iter_idx_start = 1  # 0
   model_iter_idx_end = 440
-  idx_spacing = 20
+  idx_spacing = 40
 
   # Task list
   n_task_sl = 30
@@ -1571,9 +1573,9 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
   model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
   #model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
-  model_slices_cost_landsacpe = [5, 50, 95]
-  model_slices_cost_landsacpe = [5, 95]
-  model_slices_cost_landsacpe = [1, 50, 100]
+  # model_slices_cost_landsacpe = [5, 50, 95]
+  # model_slices_cost_landsacpe = [5, 95]
+  # model_slices_cost_landsacpe = [1, 50, 100]
   # model_slices_cost_landsacpe = [1, 60]
   #model_slices_cost_landsacpe = [1, 11, 50, 70]
   # model_slices_cost_landsacpe = [75]
@@ -1589,7 +1591,6 @@ if __name__ == "__main__":
   if use_single_cost_function_for_all_tasks:
     completely_use_trajs_from_model_opt_as_target = False
     FOM_model_dir = ""
-    trajopt_sample_idx_for_cost_reg = parsed_yaml_file.get('sample_idx')
 
   # Check directory names
   EnforceSlashEnding(model_dir)

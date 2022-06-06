@@ -253,6 +253,7 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(!gains.relative_swing_ft);  // I guess this doesn't matter
     // TODO: you can add more checks here if you find important factors in the
     //  future
+    // TODO: we probably have to check swing_foot_target_offset_x
   }
   // More checks for hardware setting
   if (FLAGS_hardware) {

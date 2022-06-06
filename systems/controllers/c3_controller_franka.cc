@@ -406,7 +406,7 @@ std::vector<Eigen::Vector3d> compute_target_task_space_vector(double t){
     double r = 0.2;
     double x_c = 0.5; // smaller x_c performs worse
     double y_c = 0;
-    double z_c = 0.09;
+    double z_c = 0.12;
     double w = 1;
     Eigen::Vector3d start(x_c, y_c+r, z_c);
     double start_time = 5.0;

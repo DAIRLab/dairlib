@@ -81,6 +81,9 @@ class ImpedanceController : public LeafSystem<double> {
       drake::systems::Context<double>& context_contact,
       const Eigen::MatrixXd& K,
       const Eigen::MatrixXd& B,
+      const Eigen::MatrixXd& K_null,
+      const Eigen::MatrixXd& B_null,
+      const Eigen::VectorXd& qd,
       const std::vector<drake::geometry::GeometryId>& contact_geoms,
       int num_friction_directions);
 
@@ -118,6 +121,9 @@ class ImpedanceController : public LeafSystem<double> {
   drake::systems::Context<double>& context_f_;
   const Eigen::MatrixXd K_;
   const Eigen::MatrixXd B_;
+  const MatrixXd K_null_;
+  const MatrixXd B_null_;
+  const VectorXd qd_;
   std::vector<drake::geometry::GeometryId> contact_geoms_;
   const int num_friction_directions_;
 
@@ -130,9 +136,6 @@ class ImpedanceController : public LeafSystem<double> {
 
   // control related variables
   Quaterniond orientation_d_;
-  MatrixXd K_null_;
-  MatrixXd B_null_;
-
 
 };
 

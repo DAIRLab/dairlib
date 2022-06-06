@@ -81,14 +81,14 @@ plant_context = diagram.GetMutableSubsystemContext(
 
 q = np.zeros(nq)
 q_map = makeNameToPositionsMap(plant)
-# initialize close to {0.6, 0, 0.2}[m] in task space
-q[q_map["panda_joint1"]] = 0
-q[q_map["panda_joint2"]] = 0.82
-q[q_map["panda_joint3"]] = 0
-q[q_map["panda_joint4"]] = -1.44
-q[q_map["panda_joint5"]] = 0
-q[q_map["panda_joint6"]] = 2.26
-q[q_map["panda_joint7"]] = 0
+# initialize EE close to {0.5, 0.2, 0.08}[m] in task space
+q[q_map["panda_joint1"]] = 0.324
+q[q_map["panda_joint2"]] = 0.429
+q[q_map["panda_joint3"]] = 0.051
+q[q_map["panda_joint4"]] = -2.256
+q[q_map["panda_joint5"]] = -0.049
+q[q_map["panda_joint6"]] = 2.685
+q[q_map["panda_joint7"]] = 0.414
 
 # initialize ball
 q[q_map['base_qw']] = 1

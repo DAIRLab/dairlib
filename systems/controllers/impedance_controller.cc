@@ -117,6 +117,9 @@ ImpedanceController::ImpedanceController(
     drake::systems::Context<double>& context_f,
     const MatrixXd& K, 
     const MatrixXd& B,
+    const MatrixXd& K_null,
+    const MatrixXd& B_null,
+    const VectorXd& qd,
     const std::vector<drake::geometry::GeometryId>& contact_geoms,
     int num_friction_directions)
     : plant_(plant),
@@ -125,6 +128,9 @@ ImpedanceController::ImpedanceController(
       context_f_(context_f),
       K_(K),
       B_(B),
+      K_null_(K_null),
+      B_null_(B_null),
+      qd_(qd),
       contact_geoms_(contact_geoms),
       num_friction_directions_(num_friction_directions){
   
@@ -140,7 +146,7 @@ ImpedanceController::ImpedanceController(
               OutputVector<double>(num_positions, num_velocities, num_inputs))
           .get_index();
   
-  // xee: 3D, xball: 7D, xee_dot: 3D, xball_dot: 6D, lambda: 6D(Total: 25D)
+  // xee: 3D, xball: 7D, xee_dot: 3D, xball_dot: 6D, lambda: 6D (Total: 25D)
   c3_state_input_port_ =
       this->DeclareVectorInputPort(
               "xee, xball, xee_dot, xball_dot, lambda",
@@ -168,11 +174,6 @@ ImpedanceController::ImpedanceController(
     0,  0, -1;
   RotationMatrix<double> Rd(Rd_eigen);
   orientation_d_ = Rd.ToQuaternion();
-
-  // null space variables
-  // TODO: parameter tune these if necessary
-  K_null_ = MatrixXd::Identity(7, 7);
-  B_null_ = MatrixXd::Identity(7, 7);
 }
 
 
@@ -271,14 +272,10 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   }
 
   // compute nullspace projection
-  VectorXd qd = VectorXd::Zero(7);
-  qd << 0, 0, 0, -1.57, q_franka.tail(3); // task-specific
-  //qd << 0, 0, 0, -1.57, 0, 1.57, 0;; // middle of range of motion
-
   MatrixXd M_inv = M_franka.inverse();
   MatrixXd J_ginv_tranpose = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
   MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_ginv_tranpose;
-  VectorXd tau_null = N * (K_null_*(qd-q_franka) - B_null_*v_franka);
+  VectorXd tau_null = N * (K_null_*(qd_-q_franka) - B_null_*v_franka);
 
   control->SetDataVector(tau + tau_null);
   control->set_timestamp(timestamp);
@@ -290,7 +287,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp){
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << "d:\n" << d << std::endl; 
+    std::cout << "q:\n" << q_franka << std::endl; 
     std::cout << std::endl;
   }
 }

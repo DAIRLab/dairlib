@@ -74,7 +74,7 @@ q = np.zeros((nq,1))
 context = plant.CreateDefaultContext()
 
 # gains
-translational_stiffness = 250
+translational_stiffness = 300
 rotational_stiffness = 5
 coeff = 1
 
@@ -84,6 +84,10 @@ K[0:3, 0:3] = rotational_stiffness * np.identity(3)
 K[3:6, 3:6] = translational_stiffness * np.identity(3)
 B[0:3, 0:3] = coeff * math.sqrt(rotational_stiffness) * np.identity(3)
 B[3:6, 3:6] = coeff * math.sqrt(translational_stiffness) * np.identity(3)
+
+K_null = np.identity(7)
+B_null = np.identity(7)
+qd = np.array([0, 0.4, 0, -1.57, 0, 1.57, 0])
 
 sphere_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0]
 EE_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link8"))[0]
@@ -96,6 +100,7 @@ controller = builder.AddSystem(
                         context,
                         context_f,
                         K, B,
+                        K_null, B_null, qd,
                         contact_geoms,
                         num_friction_directions))
 

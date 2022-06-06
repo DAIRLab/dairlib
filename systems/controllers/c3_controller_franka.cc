@@ -43,8 +43,10 @@ using Eigen::Quaterniond;
 using std::vector;
 using drake::multibody::JacobianWrtVariable;
 
-
-
+// TODO: remove this (only used for Adam debugging)
+// task space helper function that generates the target trajectory
+// modified version of code from impedance_controller.cc
+std::vector<Eigen::Vector3d> compute_target_task_space_vector(double t);
 
 namespace dairlib {
 namespace systems {
@@ -97,7 +99,7 @@ C3Controller_franka::C3Controller_franka(
   state_input_port_ =
       this->DeclareVectorInputPort(
               "x, u, t",
-              OutputVector<double>((int)14, (int) 13, (int) 7))
+              OutputVector<double>(14, 13, 7))
           .get_index();
 
 
@@ -119,20 +121,32 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   //std::cout << "here" << std::endl;
 
-  /// get values
+  // get values
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
 
   // DEBUG CODE FOR ADAM
   // TODO: @Alp comment this section out to use actual admm
+  auto target = compute_target_task_space_vector(timestamp);
+
   VectorXd debug_state = VectorXd::Zero(25);
-  // track 0.6, 0, 0.2 with no velocities or contact forces
-  debug_state.head(3) << 0.6, 0, 0.2;
+  debug_state.head(3) << target[0];
+  debug_state(10) = target[1](0);
+  debug_state(11) = target[1](1);
+  debug_state(12) = target[1](2);
+
+  if (timestamp > 10 && timestamp < 20){
+    debug_state.tail(5) << 100, 0, 0, 0, 0;
+  }
+
   state_contact_desired->SetDataVector(debug_state);
   state_contact_desired->set_timestamp(timestamp);
   return;
 
 /*
+  // get values
+  auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+  double timestamp = robot_output->get_timestamp();
   VectorXd state_franka(27);
   state_franka << robot_output->GetPositions(), robot_output->GetVelocities();
 
@@ -386,3 +400,24 @@ st_desired << state_next, force_des.head(6);
 }  // namespace controllers
 }  // namespace systems
 }  // namespace dairlib
+
+std::vector<Eigen::Vector3d> compute_target_task_space_vector(double t){
+    // tracks a cirle in task sapce
+    double r = 0.2;
+    double x_c = 0.5; // smaller x_c performs worse
+    double y_c = 0;
+    double z_c = 0.09;
+    double w = 1;
+    Eigen::Vector3d start(x_c, y_c+r, z_c);
+    double start_time = 5.0;
+
+    // return x_des and x_dot_des
+    if (t < start_time){ // wait for controller to stabilize
+      return {start, VectorXd::Zero(3)};
+    }
+    else{
+      Eigen::Vector3d x_des(x_c + r*sin(w*(t-start_time)), y_c + r*cos(w*(t-start_time)), z_c);
+      Eigen::Vector3d x_dot_des(r*w*cos(w*(t-start_time)), -r*w*sin(w*(t-start_time)), 0);
+      return {x_des, x_dot_des};
+    }
+}

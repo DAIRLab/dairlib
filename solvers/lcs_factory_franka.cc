@@ -1,4 +1,4 @@
-#include "solvers/lcs_factory.h"
+#include "solvers/lcs_factory_franka.h"
 
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -26,7 +26,7 @@ using drake::systems::Context;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-LCS LCSFactory::LinearizePlantToLCS(
+std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
     const MultibodyPlant<double>& plant, const Context<double>& context,
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
@@ -400,8 +400,10 @@ LCS LCSFactory::LinearizePlantToLCS(
 // std::cout << "prediction" << std::endl;
 // std::cout << asd.tail(15) << std::endl;
 
+  std::pair <LCS, double> ret (system, AnDn);
 
-  return system;
+  return ret;
+
 }
 
 }  // namespace solvers

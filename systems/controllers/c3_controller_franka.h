@@ -18,7 +18,7 @@
 #include "common/find_resource.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "solvers/lcs_factory.h"
+#include "solvers/lcs_factory_franka.h"
 
 #include "drake/common/autodiff.h"
 #include "drake/geometry/scene_graph.h"

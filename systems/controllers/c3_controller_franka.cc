@@ -42,6 +42,7 @@ using Eigen::Vector3d;
 using Eigen::Quaterniond;
 using std::vector;
 using drake::multibody::JacobianWrtVariable;
+using drake::math::RotationMatrix;
 
 // TODO: remove this (only used for Adam debugging)
 // task space helper function that generates the target trajectory
@@ -119,31 +120,30 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* state_contact_desired) const {
   
 
-  //std::cout << "here" << std::endl;
 
-  // get values
-  auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
-  double timestamp = robot_output->get_timestamp();
+//  // get values
+//  auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+//  double timestamp = robot_output->get_timestamp();
+//
+//  // DEBUG CODE FOR ADAM
+//  // TODO: @Alp comment this section out to use actual admm
+//  auto target = compute_target_task_space_vector(timestamp);
+//
+//  VectorXd debug_state = VectorXd::Zero(25);
+//  debug_state.head(3) << target[0];
+//  debug_state(10) = target[1](0);
+//  debug_state(11) = target[1](1);
+//  debug_state(12) = target[1](2);
+//
+//  if (timestamp > 10 && timestamp < 20){
+//    debug_state.tail(5) << 100, 0, 0, 0, 0;
+//  }
+//
+//  state_contact_desired->SetDataVector(debug_state);
+//  state_contact_desired->set_timestamp(timestamp);
+//  return;
 
-  // DEBUG CODE FOR ADAM
-  // TODO: @Alp comment this section out to use actual admm
-  auto target = compute_target_task_space_vector(timestamp);
 
-  VectorXd debug_state = VectorXd::Zero(25);
-  debug_state.head(3) << target[0];
-  debug_state(10) = target[1](0);
-  debug_state(11) = target[1](1);
-  debug_state(12) = target[1](2);
-
-  if (timestamp > 10 && timestamp < 20){
-    debug_state.tail(5) << 100, 0, 0, 0, 0;
-  }
-
-  state_contact_desired->SetDataVector(debug_state);
-  state_contact_desired->set_timestamp(timestamp);
-  return;
-
-/*
   // get values
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
@@ -155,12 +155,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
 
   // forward kinematics
+  Vector3d EE_offset_;
+  EE_offset_ << 0, 0, 0.05;
   const drake::math::RigidTransform<double> H_mat =
       plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link8"));
-  VectorXd end_effector = H_mat.translation();
+  const RotationMatrix<double> Rotation = H_mat.rotation();
+  Vector3d end_effector = H_mat.translation() + Rotation*EE_offset_;
 
-  Vector3d EE_offset_;
-  EE_offset_ << 0, 0, 0;
   auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link8").body_frame();
   auto world_frame_ = &plant_franka_.world_frame();
 
@@ -223,9 +224,12 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
 
-  solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
+  auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_);
+
+  solvers::LCS system_ = system_scaling_pair.first;
+  double scaling = system_scaling_pair.second;
 
   C3Options options;
   int N = (system_.A_).size();
@@ -351,6 +355,8 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
                                       &force);
   VectorXd state_next = system_.A_[0] * state + system_.B_[0] * input + system_.D_[0] * force + system_.d_[0];
 
+//  std::cout << "force" << std::endl;
+//  std::cout << force << std::endl;
 
 //  ///subject to change (compute J_c)
 //  VectorXd phi(contact_pairs.size());
@@ -383,19 +389,30 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
 ////switch between two
 ////1 (connected to impedence)
 
-VectorXd force_des = force.head(6);
+VectorXd force_des = VectorXd::Zero(6);
+force_des << force(0), force(2), force(4), force(5), force(6), force(7);
+
+force_des = force_des * scaling;
+
+//std::cout << "force" << std::endl;
+//std::cout << force_des << std::endl;
+
+//std::cout << "scaling" << std::endl;
+//std::cout << scaling << std::endl;
+
+///VectorXd force_des = VectorXd::Zero(10);
 
 VectorXd st_desired(force_des.size() + state_next.size() );
 st_desired << state_next, force_des.head(6);
 
 ////2 (connected to franka)
-//VectorXd st_desired = VectorXd::Zero(7);
+//VectorXd st_desired = VectorXd::Zero( force_des.size() + state_next.size() );
 
 
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 
-*/
+
 }
 }  // namespace controllers
 }  // namespace systems

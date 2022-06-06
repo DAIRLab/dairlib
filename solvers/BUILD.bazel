@@ -50,10 +50,12 @@ cc_library(
     srcs = [
         "lcs.cc",
         "lcs_factory.cc",
+        "lcs_factory_franka.cc"
     ],
     hdrs = [
         "lcs.h",
         "lcs_factory.h",
+        "lcs_factory_franka.h"
     ],
     deps = [
         "//multibody/kinematic",

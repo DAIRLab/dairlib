@@ -196,9 +196,19 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd state = c3_output->get_data();
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);
-  xd.tail(3) << state.head(3);
-  xd_dot.tail(3) << state(10), state(11), state(12);
-  VectorXd lambda = state.tail(5); // does not contain the slack variable
+  //VectorXd lambda = VectorXd::Zero(5);
+
+  //std::cout << "here" << std::endl;
+
+
+  //if (timestamp > 5){
+    xd.tail(3) << state.head(3);
+    xd_dot.tail(3) << state(10), state(11), state(12);
+    VectorXd lambda = state.tail(5); // does not contain the slack variable
+//  }
+//  else{
+//    xd.tail(3) << 0.5, 0.2, 0.12;
+//  }
 
   // std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
   // VectorXd xd = VectorXd::Zero(6);
@@ -287,7 +297,8 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp){
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << "q:\n" << q_franka << std::endl; 
+    std::cout << "Force:\n" << lambda << std::endl;
+    std::cout << "Force_effect_input:\n" << Jc.transpose() * lambda << std::endl;
     std::cout << std::endl;
   }
 }

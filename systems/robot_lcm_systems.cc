@@ -32,9 +32,9 @@ RobotOutputReceiver::RobotOutputReceiver(
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
   num_efforts_ = plant.num_actuators();
-  positionIndexMap_ = multibody::makeNameToPositionsMap(plant);
-  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
-  effortIndexMap_ = multibody::makeNameToActuatorsMap(plant);
+  positionIndexMap_ = multibody::MakeNameToPositionsMap(plant);
+  velocityIndexMap_ = multibody::MakeNameToVelocitiesMap(plant);
+  effortIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(
@@ -91,9 +91,9 @@ RobotOutputSender::RobotOutputSender(
   num_velocities_ = plant.num_velocities();
   num_efforts_ = plant.num_actuators();
 
-  positionIndexMap_ = multibody::makeNameToPositionsMap(plant);
-  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
-  effortIndexMap_ = multibody::makeNameToActuatorsMap(plant);
+  positionIndexMap_ = multibody::MakeNameToPositionsMap(plant);
+  velocityIndexMap_ = multibody::MakeNameToVelocitiesMap(plant);
+  effortIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
 
   // Loop through the maps to extract ordered names
   for (int i = 0; i < num_positions_; ++i) {
@@ -197,7 +197,7 @@ void RobotOutputSender::Output(const Context<double>& context,
 RobotInputReceiver::RobotInputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant) {
   num_actuators_ = plant.num_actuators();
-  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
+  actuatorIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_input",
                                  drake::Value<dairlib::lcmt_robot_input>{});
   this->DeclareVectorOutputPort("u, t",
@@ -227,7 +227,7 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
 RobotCommandSender::RobotCommandSender(
     const drake::multibody::MultibodyPlant<double>& plant) {
   num_actuators_ = plant.num_actuators();
-  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
+  actuatorIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
 
   for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
     ordered_actuator_names_.push_back(plant.get_joint_actuator(i).name());

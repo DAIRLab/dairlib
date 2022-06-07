@@ -12,8 +12,8 @@ CassieEncoder::CassieEncoder(
     const drake::multibody::MultibodyPlant<double>& plant)
     : num_positions_(plant.num_positions()),
       num_velocities_(plant.num_velocities()) {
-  auto pos_map = multibody::makeNameToPositionsMap(plant);
-  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+  auto pos_map = multibody::MakeNameToPositionsMap(plant);
+  auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
 
   for (int i = 0; i < plant.num_joints(); ++i) {
     auto& joint = plant.get_joint(drake::multibody::JointIndex(i));

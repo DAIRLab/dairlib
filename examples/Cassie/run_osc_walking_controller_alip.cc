@@ -63,8 +63,8 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::FixedJointEvaluator;
-using multibody::makeNameToVelocitiesMap;
-using multibody::makeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
+using multibody::MakeNameToPositionsMap;
 
 using drake::trajectories::PiecewisePolynomial;
 
@@ -106,11 +106,11 @@ int DoMain(int argc, char* argv[]) {
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   if (FLAGS_spring_model) {
-    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_v2.urdf",
                        true /*spring model*/, false /*loop closure*/);
   } else {
-    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_fixed_springs.urdf",
                        false /*spring model*/, false /*loop closure*/);
   }
@@ -354,7 +354,7 @@ int DoMain(int argc, char* argv[]) {
       single_support_states, gains.ss_time + gains.ds_time, "swing_ft_traj");
 
   // Swing toe joint trajectory
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};
   vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
@@ -398,8 +398,8 @@ int DoMain(int argc, char* argv[]) {
   std::unique_ptr<FixedJointEvaluator<double>> left_fixed_ankle_spring;
   std::unique_ptr<FixedJointEvaluator<double>> right_fixed_ankle_spring;
   if (FLAGS_spring_model) {
-    auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
-    auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+    auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
+    auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
     left_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
         plant_w_spr, pos_idx_map.at("knee_joint_left"),
         vel_idx_map.at("knee_joint_leftdot"), 0);
@@ -490,7 +490,7 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  auto vel_map = makeNameToVelocitiesMap<double>(plant_w_spr);
+  auto vel_map = MakeNameToVelocitiesMap<double>(plant_w_spr);
   swing_foot_data.AddJointAndStateToIgnoreInJacobian(
       vel_map["hip_yaw_right"], left_stance_state);
   swing_foot_data.AddJointAndStateToIgnoreInJacobian(
@@ -508,13 +508,16 @@ int DoMain(int argc, char* argv[]) {
   WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
 
-  // Feed forward Z gain disable
-  swing_ft_traj_local.SetTimeVaryingGains(
-      swing_ft_gain_multiplier_gain_multiplier);
-  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
-      swing_ft_accel_gain_multiplier_gain_multiplier);
+  TransTaskSpaceTrackingData swing_ft_traj_global(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
+  swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
+  swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  // Add swing foot traj to osc
+  swing_ft_traj_local.SetTimeVaryingGains(
+        swing_ft_gain_multiplier_gain_multiplier);
+  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+        swing_ft_accel_gain_multiplier_gain_multiplier);
   osc->AddTrackingData(&swing_ft_traj_local);
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,

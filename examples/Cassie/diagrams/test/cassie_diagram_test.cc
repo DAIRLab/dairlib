@@ -18,7 +18,7 @@ int DoMain(int argc, char* argv[]){
 
   // Controller
   MultibodyPlant<double> plant_w_spr(0.0);
-  addCassieMultibody(&plant_w_spr, nullptr, true, urdf, true, false );
+  AddCassieMultibody(&plant_w_spr, nullptr, true, urdf, true, false );
   plant_w_spr.Finalize();
   std::string controller_gains =
       "examples/Cassie/osc/osc_walking_gains_alip.yaml";

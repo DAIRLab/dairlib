@@ -35,14 +35,16 @@ def main():
     robot_output, robot_input, osc_debug = \
         get_log_data(log,  # log
                      cassie_plots.cassie_default_channels,  # lcm channels
-                     plot_config.end_time,
+                     plot_config.start_time,
+                     plot_config.duration,
                      mbp_plots.load_default_channels,  # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
     if plot_config.plot_contact_forces:
         contact_output = get_log_data(log,  # log
                                       cassie_plots.cassie_contact_channels,  # lcm channels
-                                      plot_config.end_time,
+                                      plot_config.start_time,
+                                      plot_config.duration,
                                       mbp_plots.load_force_channels,  # processing callback
                                       'CASSIE_CONTACT_DRAKE')  # processing callback arguments
 
@@ -50,6 +52,7 @@ def main():
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
+    print('Log start time: ', robot_output['t_x'][0])
 
     ''' Plot Positions '''
     # Plot floating base positions if applicable

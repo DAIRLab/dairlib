@@ -54,7 +54,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
   DRAKE_ASSERT(constraints.size() == num_modes_);
   DRAKE_ASSERT(options.size() == num_modes_);
 
-  bool is_quaternion = multibody::isQuaternion(plant);
+  bool is_quaternion = multibody::HasQuaternion(plant);
 
   // Initialization is looped over the modes
   int counter = 0;
@@ -385,7 +385,7 @@ void HybridDircon<T>::GetStateAndDerivativeSamples(
 
       VectorX<T> xk = result.GetSolution(state_vars_by_mode(i, j));
       VectorX<T> uk = result.GetSolution(input(k_data));
-      auto context = multibody::createContext<T>(plant_, xk, uk);
+      auto context = multibody::CreateContext<T>(plant_, xk, uk);
       constraints_[i]->updateData(*context, result.GetSolution(force(i, j)));
 
       states_i.col(j) = drake::math::DiscardGradient(xk);
@@ -487,7 +487,7 @@ void HybridDircon<T>::ScaleTimeVariables(double scale) {
 }
 template <typename T>
 void HybridDircon<T>::ScaleQuaternionSlackVariables(double scale) {
-  DRAKE_DEMAND(multibody::isQuaternion(plant_));
+  DRAKE_DEMAND(multibody::HasQuaternion(plant_));
   for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
     for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
       prog().SetVariableScaling(quaternion_slack_vars_[mode](j), scale);

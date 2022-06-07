@@ -67,7 +67,7 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
 ///     Default = true
 /// @param add_loop_closure_springs Whether or not to add the loop closure
 ///     distance constraint via stiff springs. Default = true.
-void addCassieMultibody(
+void AddCassieMultibody(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,

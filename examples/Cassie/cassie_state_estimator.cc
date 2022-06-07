@@ -51,7 +51,7 @@ CassieStateEstimator::CassieStateEstimator(
       left_contact_evaluator_(left_contact_evaluator),
       right_contact_evaluator_(right_contact_evaluator),
       world_(plant_.world_frame()),
-      is_floating_base_(multibody::isQuaternion(plant)),
+      is_floating_base_(multibody::HasQuaternion(plant)),
       context_(plant_.CreateDefaultContext()),
       toe_frames_({&plant.GetFrameByName("toe_left"),
                    &plant.GetFrameByName("toe_right")}),
@@ -84,9 +84,9 @@ CassieStateEstimator::CassieStateEstimator(
           .get_index();
 
   // Initialize index maps
-  actuator_idx_map_ = multibody::makeNameToActuatorsMap(plant);
-  position_idx_map_ = multibody::makeNameToPositionsMap(plant);
-  velocity_idx_map_ = multibody::makeNameToVelocitiesMap(plant);
+  actuator_idx_map_ = multibody::MakeNameToActuatorsMap(plant);
+  position_idx_map_ = multibody::MakeNameToPositionsMap(plant);
+  velocity_idx_map_ = multibody::MakeNameToVelocitiesMap(plant);
 
   if (is_floating_base_) {
     contact_output_port_ =

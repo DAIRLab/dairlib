@@ -85,8 +85,8 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
       x.segment(1 + 2 * (n_x_ + n_u_) + 4 * n_l_, quat_start_indices_.size());
 
   // Evaluate dynamics at k and k+1
-  multibody::setContext<T>(plant_, x0, u0, context_0_);
-  multibody::setContext<T>(plant_, x1, u1, context_1_);
+  multibody::SetContext<T>(plant_, x0, u0, context_0_);
+  multibody::SetContext<T>(plant_, x1, u1, context_1_);
   const auto& xdot0 = CalcTimeDerivativesWithForce(context_0_, l0);
   const auto& xdot1 = CalcTimeDerivativesWithForce(context_1_, l1);
 
@@ -98,7 +98,7 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
   drake::MatrixX<T> J(evaluators_.count_full(), plant_.num_velocities());
 
   // Evaluate dynamics at colocation point
-  multibody::setContext<T>(plant_, xcol, ucol, context_col_.get());
+  multibody::SetContext<T>(plant_, xcol, ucol, context_col_.get());
   auto g = CalcTimeDerivativesWithForce(context_col_.get(), lc);
 
   // Add velocity slack contribution, J^T * gamma
@@ -194,7 +194,7 @@ void CachedAccelerationConstraint<T>::EvaluateConstraint(
   const auto& u = vars.segment(plant_.num_positions() + plant_.num_velocities(),
                                plant_.num_actuators());
   const auto& lambda = vars.tail(evaluators_.count_full());
-  multibody::setContext<T>(plant_, x, u, context_);
+  multibody::SetContext<T>(plant_, x, u, context_);
 
   if (cache_) {
     const auto& xdot = cache_->CalcTimeDerivativesWithForce(context_, lambda);

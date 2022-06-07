@@ -196,19 +196,11 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd state = c3_output->get_data();
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);
-  //VectorXd lambda = VectorXd::Zero(5);
+  Vector3d ball_xyz(state(7), state(8), state(9));
 
-  //std::cout << "here" << std::endl;
-
-
-  //if (timestamp > 5){
-    xd.tail(3) << state.head(3);
-    xd_dot.tail(3) << state(10), state(11), state(12);
-    VectorXd lambda = state.tail(5); // does not contain the slack variable
-//  }
-//  else{
-//    xd.tail(3) << 0.5, 0.2, 0.12;
-//  }
+  xd.tail(3) << state.head(3);
+  xd_dot.tail(3) << state(10), state(11), state(12);
+  VectorXd lambda = state.tail(5); // does not contain the slack variable
 
   // std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
   // VectorXd xd = VectorXd::Zero(6);
@@ -255,6 +247,19 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
   const RotationMatrix<double> R = H.rotation();
   Vector3d d = H.translation() + R*EE_offset_;
+  
+  // modify desired state if no contact desired
+  if (!in_contact){
+    // method 1: add position offset
+    double offset = 0.0;
+    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+    Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
+    xd.tail(3) << xd_new;
+
+    // method 2: add force offset
+    // lambda << 10, 0, 0, 0, 0;
+    // in_contact = true;
+  }
 
   // build task space state vectors
   VectorXd x = VectorXd::Zero(6);
@@ -297,7 +302,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp){
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << "q\n" << q << std::endl;
+    std::cout << "ball_xyz\n" << ball_xyz << std::endl;
     std::cout << std::endl;
   }
 }

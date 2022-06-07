@@ -77,7 +77,7 @@ void CassieFixedPointSolver(
 
   std::cout << "N***** " << evaluators.count_active() << std::endl;
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
@@ -213,7 +213,7 @@ void CassieFixedBaseFixedPointSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
@@ -297,7 +297,7 @@ void VdotConstraint::EvaluateConstraint(
       plant_.num_positions() + plant_.num_velocities() + plant_.num_actuators(),
       evaluators_.count_full());
   const auto& vdot = vars.tail(plant_.num_velocities());
-  multibody::setContext<double>(plant_, x, u, context_.get());
+  multibody::SetContext<double>(plant_, x, u, context_.get());
 
   *y = vdot - evaluators_.EvalActiveSecondTimeDerivative(context_.get(), lambda)
                   .tail(n_v_);
@@ -382,7 +382,7 @@ void CassieInitStateSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
@@ -390,7 +390,7 @@ void CassieInitStateSolver(
   program.AddJointLimitConstraints(q);
 
   // Velocity part
-  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+  auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
   int n_v = plant.num_velocities();
   auto v = program.NewContinuousVariables(n_v, "v");
 

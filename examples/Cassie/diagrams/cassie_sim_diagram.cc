@@ -39,8 +39,8 @@ CassieSimDiagram::CassieSimDiagram(
   scene_graph_->set_name("scene_graph");
 
   plant_ = builder.AddSystem(std::move(plant));
-  addCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  multibody::addFlatTerrain(plant_, scene_graph_, mu, mu,
+  AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
+  multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu,
                             Eigen::Vector3d(0, 0, 1));
   plant_->Finalize();
 

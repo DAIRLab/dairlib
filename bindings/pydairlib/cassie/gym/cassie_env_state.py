@@ -9,18 +9,19 @@ CASSIE_JOINT_VELOCITY_SLICE = slice(29, 45)
 CASSIE_FB_POSITION_SLICE = slice(4, 7)
 CASSIE_FB_VELOCITY_SLICE = slice(26, 29)
 
-CASSIE_NX = 45  # Number of States
-CASSIE_NQ = 23  # Number of Positions
-CASSIE_NV = 22  # Number of Velocities
-CASSIE_NU = 10  # Number of inputs (Motor Torques)
-CASSIE_NL = 12  # Number of contact forces (4 contact points)
+CASSIE_NX = 45
+CASSIE_NQ = 23
+CASSIE_NV = 22
+CASSIE_NU = 10
+CASSIE_NACTION = 18
 
 
 class CassieEnvState():
-    def __init__(self, t, x, u):
+    def __init__(self, t, x, u, action):
         self.t = t
         self.x = x
         self.u = u
+        self.action = action
 
     def get_positions(self):
         return self.x[CASSIE_POSITION_SLICE]
@@ -51,6 +52,12 @@ class CassieEnvState():
 
     def get_joint_velocities(self):
         return self.x[CASSIE_JOINT_VELOCITY_SLICE]
+
+    def get_desired_forward_velocity(self):
+        return self.action[2]
+
+    def get_desired_lateral_velocity(self):
+        return self.action[3]
 
 
 def quat_to_rotation(q):

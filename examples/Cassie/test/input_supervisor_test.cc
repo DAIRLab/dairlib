@@ -18,7 +18,7 @@ class InputSupervisorTest : public ::testing::Test {
  protected:
   InputSupervisorTest()
       : plant_(drake::multibody::MultibodyPlant<double>(0.0)) {
-    addCassieMultibody(&plant_, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_v2.urdf",
                        true /*spring model*/, false /*loop closure*/);
     plant_.Finalize();

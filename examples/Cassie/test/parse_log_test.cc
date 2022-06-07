@@ -23,7 +23,7 @@ using systems::VectorAggregator;
 
 int ParseLog(string filename) {
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant);
+  AddCassieMultibody(&plant);
   
   drake::lcm::DrakeLcmLog r_log(filename, false);
 

@@ -28,7 +28,7 @@ class ContactEstimationTest : public ::testing::Test {
  protected:
   ContactEstimationTest()
       : plant_(drake::multibody::MultibodyPlant<double>(1e-3)) {
-    addCassieMultibody(&plant_, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_v2.urdf",
                        true /*spring model*/, false /*loop closure*/);
     plant_.Finalize();
@@ -117,7 +117,7 @@ TEST_F(ContactEstimationTest, solveFourbarLinkageTest) {
 
   // Get the fix joint indices
   std::map<std::string, int> positionIndexMap =
-      multibody::makeNameToPositionsMap(plant_);
+      multibody::MakeNameToPositionsMap(plant_);
   std::vector<int> fixed_joint_inds;
   fixed_joint_inds.push_back(positionIndexMap.at("knee_left"));
   fixed_joint_inds.push_back(positionIndexMap.at("knee_joint_left"));

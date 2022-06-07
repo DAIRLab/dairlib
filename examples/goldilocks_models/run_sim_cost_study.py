@@ -321,6 +321,7 @@ def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, zer
 
 
 # Get trajopt sample idx with the most similar task
+# TODO: This function is currently not perfect yet. It cannot pick sample accurately if the sampling density is much high in one dimension than the other + we randomize tasks
 def GetTrajoptSampleIndexGivenTask(rom_iter, task, zero_stride_length=False):
   dir = model_dir if len(FOM_model_dir) == 0 else FOM_model_dir
 
@@ -426,7 +427,8 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   # `trajopt_sample_idx` is for planner's initial guess and cost regularization term
   trajopt_sample_indices_for_sim = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list)
   trajopt_sample_indices_for_planner = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, use_single_cost_function_for_all_tasks) if use_single_cost_function_for_all_tasks else trajopt_sample_indices_for_sim
-  print("trajopt_sample_indices = \n" + str(trajopt_sample_indices_for_sim))
+  print("trajopt_sample_indices_for_sim = \n" + str(trajopt_sample_indices_for_sim))
+  print("trajopt_sample_indices_for_planner = \n" + str(trajopt_sample_indices_for_planner))
 
   ### multithreading
   working_threads = []

@@ -1,4 +1,4 @@
-#include "examples/Cassie/sim_cassie_sensor_aggregator.h"
+#include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 
 namespace dairlib {
 namespace systems {
@@ -18,7 +18,7 @@ SimCassieSensorAggregator::SimCassieSensorAggregator(
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
 
-  positionIndexMap_ = multibody::MakeNameToPositionsMaps(plant);
+  positionIndexMap_ = multibody::MakeNameToPositionsMap(plant);
   velocityIndexMap_ = multibody::MakeNameToVelocitiesMap(plant);
   actuatorIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
 

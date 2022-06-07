@@ -7,7 +7,7 @@
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/input_supervisor.h"
+#include "examples/Cassie/systems/input_supervisor.h"
 #include "examples/Cassie/networking/cassie_input_translator.h"
 #include "examples/Cassie/networking/cassie_udp_publisher.h"
 #include "multibody/multibody_utils.h"

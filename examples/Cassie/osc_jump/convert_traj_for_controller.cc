@@ -54,7 +54,7 @@ int DoMain() {
   plant.Finalize();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 

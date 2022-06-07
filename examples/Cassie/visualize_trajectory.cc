@@ -56,7 +56,7 @@ int DoMain() {
   int nv = plant.num_positions();
   int nx = nq + nv;
 
-  auto pos_map = multibody::MakeNameToPositionsMaps(plant);
+  auto pos_map = multibody::MakeNameToPositionsMap(plant);
   auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
 
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();

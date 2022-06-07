@@ -77,7 +77,7 @@ void CassieFixedPointSolver(
 
   std::cout << "N***** " << evaluators.count_active() << std::endl;
 
-  auto positions_map = multibody::MakeNameToPositionsMaps(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
@@ -213,7 +213,7 @@ void CassieFixedBaseFixedPointSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  auto positions_map = multibody::MakeNameToPositionsMaps(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
@@ -382,7 +382,7 @@ void CassieInitStateSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  auto positions_map = multibody::MakeNameToPositionsMaps(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);

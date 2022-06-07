@@ -85,7 +85,7 @@ CassieStateEstimator::CassieStateEstimator(
 
   // Initialize index maps
   actuator_idx_map_ = multibody::MakeNameToActuatorsMap(plant);
-  position_idx_map_ = multibody::MakeNameToPositionsMaps(plant);
+  position_idx_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_idx_map_ = multibody::MakeNameToVelocitiesMap(plant);
 
   if (is_floating_base_) {

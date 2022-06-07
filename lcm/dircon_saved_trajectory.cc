@@ -451,7 +451,7 @@ void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant
   // Finished loading in trajectories, now constructing maps to be compatible
   // with old trajectories
 
-  auto pos_map = multibody::MakeNameToPositionsMaps(plant);
+  auto pos_map = multibody::MakeNameToPositionsMap(plant);
   auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
   auto act_map = multibody::MakeNameToActuatorsMap(plant);
   state_map_ = MatrixXd::Zero(plant.num_positions() + plant.num_velocities(),

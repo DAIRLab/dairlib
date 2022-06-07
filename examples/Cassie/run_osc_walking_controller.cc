@@ -3,12 +3,13 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/systems/simulator_drift.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
-#include "examples/Cassie/simulator_drift.h"
+#include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
@@ -169,15 +170,21 @@ int DoMain(int argc, char* argv[]) {
   Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
                                        gains.yaw_deadband_radius);
   cassie::osc::HighLevelCommand* high_level_command;
+
+  auto cassie_out_to_radio =
+      builder.AddSystem<systems::CassieOutToRadio>();
+
   if (FLAGS_use_radio) {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
         gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
+
     auto cassie_out_receiver =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
             FLAGS_cassie_out_channel, &lcm_local));
-    builder.Connect(cassie_out_receiver->get_output_port(),
-                    high_level_command->get_cassie_output_port());
+    builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
+    builder.Connect(cassie_out_to_radio->get_output_port(),
+                    high_level_command->get_radio_port());
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
@@ -344,7 +351,7 @@ int DoMain(int argc, char* argv[]) {
                   swing_ft_traj_generator->get_input_port_sc());
 
   // Swing toe joint trajectory
-  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant_w_spr);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};
   vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
@@ -388,7 +395,7 @@ int DoMain(int argc, char* argv[]) {
   std::unique_ptr<FixedJointEvaluator<double>> left_fixed_ankle_spring;
   std::unique_ptr<FixedJointEvaluator<double>> right_fixed_ankle_spring;
   if (FLAGS_spring_model) {
-    auto pos_idx_map = multibody::MakeNameToPositionsMaps(plant_w_spr);
+    auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
     auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
     left_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
         plant_w_spr, pos_idx_map.at("knee_joint_left"),

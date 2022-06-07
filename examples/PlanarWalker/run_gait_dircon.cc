@@ -62,7 +62,7 @@ void runDircon(
   SceneGraph<double>& scene_graph =
       *builder.AddSystem(std::move(scene_graph_ptr));
 
-  auto positions_map = multibody::MakeNameToPositionsMaps(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto velocities_map = multibody::MakeNameToVelocitiesMap(plant);
 
   for (auto const& element : positions_map)

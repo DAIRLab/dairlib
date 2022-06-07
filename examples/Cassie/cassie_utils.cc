@@ -1,7 +1,7 @@
 #include "examples/Cassie/cassie_utils.h"
 
 #include "common/find_resource.h"
-#include "examples/Cassie/cassie_encoder.h"
+#include "examples/Cassie/systems/cassie_encoder.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/math/rigid_transform.h"

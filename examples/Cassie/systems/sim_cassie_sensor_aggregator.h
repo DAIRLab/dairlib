@@ -14,8 +14,8 @@
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 
-#include "drake/multibody/plant/multibody_plant.h"
-#include "drake/systems/framework/leaf_system.h"
+#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
+#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {

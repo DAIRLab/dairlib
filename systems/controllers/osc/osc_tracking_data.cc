@@ -23,7 +23,7 @@ using std::vector;
 
 namespace dairlib::systems::controllers {
 
-using multibody::MakeNameToPositionsMaps;
+using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
 /**** OscTrackingData ****/

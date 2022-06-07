@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "common/find_resource.h"
-#include "examples/Cassie/sim_cassie_sensor_aggregator.h"
+#include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 #include "multibody/kinematic/distance_evaluator.h"
 #include "systems/framework/geared_motor.h"
 

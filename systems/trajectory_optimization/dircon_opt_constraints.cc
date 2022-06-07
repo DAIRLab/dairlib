@@ -52,7 +52,7 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
   // If the MBP is in quaternion floating-base, demand that the quaternion
   // is located at the first four element of the generalized position
   if (is_quaternion) {
-    map<string, int> positions_map = multibody::MakeNameToPositionsMaps(plant);
+    map<string, int> positions_map = multibody::MakeNameToPositionsMap(plant);
     DRAKE_DEMAND(positions_map.at("base_qw") == 0);
     DRAKE_DEMAND(positions_map.at("base_qx") == 1);
     DRAKE_DEMAND(positions_map.at("base_qy") == 2);

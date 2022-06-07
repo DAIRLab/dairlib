@@ -111,7 +111,7 @@ int DoMain(int argc, char* argv[]) {
   int nv = plant_w_spr.num_velocities();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant_w_spr);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
   map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant_w_spr);
 
@@ -328,7 +328,7 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_loop);
 
   // Fix the springs in the dynamics
-  auto pos_idx_map = multibody::MakeNameToPositionsMaps(plant_w_spr);
+  auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
   auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
   auto left_fixed_knee_spring =
       FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),

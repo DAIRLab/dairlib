@@ -1,4 +1,3 @@
-from cProfile import label
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,7 +14,7 @@ from pydrake.multibody.tree import JacobianWrtVariable
 spring_stiffness = np.zeros(23,)
 
 class UKF:
-    def __init__(self,init_mean, init_cov, R, Q):
+    def __init__(self,init_mean, init_cov, R, Q, foot_of_contact = 'left'):
         """
         Initialize the states and covariance matrices.
 
@@ -54,6 +53,7 @@ class UKF:
                             "examples/Cassie/urdf/cassie_v2.urdf", True, True)
         self.plant.Finalize()
         self.world = self.plant.world_frame()
+        self.base_frame = self.plant.GetBodyByName("pelvis").body_frame()
         self.context = self.plant.CreateDefaultContext()
         
         left_rod_on_thigh = LeftRodOnThigh(self.plant)
@@ -66,7 +66,19 @@ class UKF:
         self.right_loop = kinematic.DistanceEvaluator(
                         self.plant, right_rod_on_heel[0], right_rod_on_heel[1], right_rod_on_thigh[0],
                         right_rod_on_thigh[1], 0.5012)
-                    
+
+        # Get the point of contact use FK respect to initial mean value
+        self.plant.SetPositionsAndVelocities(self.context, self.mean)
+        self.foot_of_contact = foot_of_contact
+        if self.foot_of_contact == "left":
+            toe_front, foot_frame = LeftToeFront(self.plant)
+            toe_rear, foot_frame = LeftToeRear(self.plant)
+        else:
+            toe_front, foot_frame = RightToeFront(self.plant)
+            toe_rear, foot_frame = RightToeRear(self.plant)
+        point_of_contact_in_foot_frame = (toe_front + toe_rear)/2
+        self.point_of_contact_in_world_frame = self.plant.CalcPointsPositions(self.context, foot_frame, point_of_contact_in_foot_frame, self.world).squeeze()
+        
     def get_sigma_points(self):
         """
         Get 2n+1 sigma points and dynamics noise based on covariance.
@@ -362,11 +374,14 @@ class UKF:
         # Calculate the gyro readings
         gyro_readings = v[:,:3]
 
+        # expected base position
+        base_position = q[:,4:7]
+
         # Deal with encoder
         encoder_reading = q[:,7:]
 
         # Assemble all reading together
-        exp_obs = np.hstack((accelerometer_readings, gyro_readings, encoder_reading))
+        exp_obs = np.hstack((accelerometer_readings, gyro_readings, encoder_reading, base_position))
 
         return exp_obs
 
@@ -383,8 +398,55 @@ class UKF:
         cov = (spread_of_states.T @ spread_of_obs)/spread_of_states.shape[0]
 
         return cov
-    
-    def update(self, vdot, obs, dt):
+
+    def cal_expected_base_position_by_FK(self, sigma_points, lambda_c):
+        # Check if the foot is switched
+        is_foot_of_contact_switch = False
+        if self.foot_of_contact == "left" and np.linalg.norm(lambda_c[:6]) == 0:
+            self.foot_of_contact = "right"
+            pre_toe_front, pre_foot_frame = LeftToeFront(self.plant)
+            pre_toe_rear, pre_foot_frame = LeftToeRear(self.plant)
+            new_toe_front, new_foot_frame = RightToeFront(self.plant)
+            new_toe_rear, new_foot_frame = RightToeRear(self.plant)
+            pre_point_of_contact_in_foot_frame = (pre_toe_front + pre_toe_rear)/2
+            new_point_of_contact_in_foot_frame = (new_toe_front + new_toe_rear)/2
+            is_foot_of_contact_switch = True
+        elif self.foot_of_contact == "right" and np.linalg.norm(lambda_c[6:]) == 0:
+            self.foot_of_contact = "left"
+            pre_toe_front, pre_foot_frame = RightToeFront(self.plant)
+            pre_toe_rear, pre_foot_frame = RightToeRear(self.plant)
+            new_toe_front, new_foot_frame = LeftToeFront(self.plant)
+            new_toe_rear, new_foot_frame = LeftToeRear(self.plant)
+            pre_point_of_contact_in_foot_frame = (pre_toe_front + pre_toe_rear)/2
+            new_point_of_contact_in_foot_frame = (new_toe_front + new_toe_rear)/2
+            is_foot_of_contact_switch = True
+        
+        # Update the point of contact if necessary
+        if is_foot_of_contact_switch:
+            self.plant.SetPositionsAndVelocities(self.context, self.mean)
+            pre_point_of_contact_in_world_frame = self.plant.CalcPointsPositions(self.context, pre_foot_frame, pre_point_of_contact_in_foot_frame, self.world).squeeze()
+            new_point_of_contact_in_world_frame = self.plant.CalcPointsPositions(self.context, new_foot_frame, new_point_of_contact_in_foot_frame, self.world).squeeze()
+            self.point_of_contact_in_world_frame = self.point_of_contact_in_world_frame + new_point_of_contact_in_world_frame - pre_point_of_contact_in_world_frame
+
+        # Calculate expected position use FK
+        base_positions = np.zeros((sigma_points.shape[0], 3))
+        for i in range(sigma_points.shape[0]):
+            self.plant.SetPositionsAndVelocities(self.context, sigma_points[i,:])
+            if self.foot_of_contact == "left":
+                toe_front, foot_frame = LeftToeFront(self.plant)
+                toe_rear, foot_frame = LeftToeRear(self.plant)
+            else:
+                toe_front, foot_frame = RightToeFront(self.plant)
+                toe_rear, foot_frame = RightToeRear(self.plant)
+            point_of_contact_in_foot_frame = (toe_front + toe_rear)/2
+            relative_translation_between_contact_point_and_base_in_foot_frame = self.plant.CalcPointsPositions(self.context, self.base_frame, np.array([0,0,0]), foot_frame).squeeze() - point_of_contact_in_foot_frame
+            rotation_between_world_frame_and_foot_frame = self.plant.CalcRelativeTransform(self.context, self.world, foot_frame).rotation()
+            relative_translation_between_contact_point_and_base_in_world_frame = rotation_between_world_frame_and_foot_frame @ relative_translation_between_contact_point_and_base_in_foot_frame
+            base_positions[i,:] = relative_translation_between_contact_point_and_base_in_world_frame + self.point_of_contact_in_world_frame
+
+        return base_positions
+
+    def update(self, vdot, lambda_c, obs, dt):
         """
         Get one time-step updates after get inputs and observation
         paras:
@@ -392,21 +454,8 @@ class UKF:
             obs: (22,) vector represent the sensor observation. The observation should in form of [body imu, encoding reading of q except body orientation and position]
             dt: scalar for diff in time
         """
-        
-        # print("cov of q", np.diag(self.cov)[:self.nv])
-        # print("cov of v", np.diag(self.cov)[self.nv:self.nv*2])
-        # print("max uncertainty of q", np.max(np.abs(np.diag(self.cov)[:self.nv])))
-        # print("max uncertainty of v", np.max(np.abs(np.diag(self.cov)[self.nv:self.nv*2])))
-        # print("cov of lambda_C", np.diag(self.cov)[self.nv*2:self.nv*2+self.nlc])
-        # print("cov of damping", np.diag(self.cov)[-self.nd:])
-
         # Sample the sigma points
         sigma_points, noise = self.get_sigma_points()
-        # expected_observations = self.cal_expected_obs_of_sigma_points(sigma_points, u, motor_noise)
-        # expected_observations_mean = np.mean(expected_observations, axis=0)
-        # expected_observations_cov = np.cov(expected_observations, rowvar=False, bias=True)
-
-        # print("cov of observation", np.diag(expected_observations_cov))
 
         # Dynamics process for sigma points
         sigma_points = self.dynamics_updates(sigma_points, vdot, noise, dt)
@@ -418,10 +467,17 @@ class UKF:
         expected_observations = self.cal_expected_obs_of_sigma_points(sigma_points, vdot+noise)
         expected_observations_mean = np.mean(expected_observations, axis=0)
         expected_observations_cov = np.cov(expected_observations, rowvar=False, bias=True)
+        
+        # Treat FK base position as obs
+        expected_base_positions_by_FK = self.cal_expected_base_position_by_FK(sigma_points, lambda_c)
+        expected_base_positions_means = np.mean(expected_base_positions_by_FK, axis=0)
+        obs = np.hstack((obs, expected_base_positions_means))
+        sensor_noise = np.eye(25) * 0.01
+        sensor_noise[:22,:22] = self.Q
 
         # Cal the kalman gains
         # Cal the cov we needed
-        cov_yy = expected_observations_cov + self.Q
+        cov_yy = expected_observations_cov + sensor_noise
         cov_xy = self.cal_cov_xy(sigma_points, expected_observations)
         # Cal Kalman gain
         kalman_gain = cov_xy @ scipy.linalg.pinv(cov_yy)
@@ -577,8 +633,10 @@ def main():
     R_motor = np.eye(10) * 1
     # observation noise
     Q = np.eye(22) * 0.001
+    Q[:3,:3] = np.eye(3) * 1
     # initial noise
-    init_cov = np.eye(44) * 0.5
+    init_cov = np.eye(44) * 0.1
+    init_cov[0:6,0:6] = np.eye(6) * 1e-4
 
     # processing raw data
     print("Begin processing raw data for test")
@@ -610,8 +668,14 @@ def main():
     pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
     pos_map_inverse = {value:key for (key, value) in pos_map.items()}
 
+    # check which leg in on contact
+    if np.linalg.norm(lambda_c_gt[0,:6]) > 0:
+        foot_of_contact = 'left'
+    else:
+        foot_of_contact = 'right'
+
     # initial ukf
-    estimator = UKF(init_mean, init_cov, R, Q)
+    estimator = UKF(init_mean, init_cov, R, Q, foot_of_contact=foot_of_contact)
 
     # acc_est = []
     # acc_est_with_lambda_c_noise = []
@@ -643,7 +707,7 @@ def main():
 
     # update the belief
     for i in range(1,t.shape[0]):
-        states = estimator.update(acc[i-1], obs[i], t[i]-t[i-1])
+        states = estimator.update(acc[i-1], lambda_c_gt[i,:], obs[i], t[i]-t[i-1])
         est.append(states)
         v_integrad.append(v_integrad[-1] + acc[i-1] * (t[i] - t[i-1]))
 

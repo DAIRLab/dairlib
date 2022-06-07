@@ -133,22 +133,21 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return this->get_input_port(0);
   }
 
-  // Regularization cost weights
-  void SetInputCostWeights(const Eigen::MatrixXd& W) { W_input_ = W; }
-  void SetAccelerationCostWeights(const Eigen::MatrixXd& W) {
+  // Cost methods
+  void SetInputCost(const Eigen::MatrixXd& W) { W_input_ = W; }
+  void AddInputCostByJointAndFsmState(
+      const std::string& joint_u_name, int fsm, double w);
+  void SetAccelerationCostForAllJoints(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
   }
-  void SetInputSmoothingWeights(const Eigen::MatrixXd& W) {
-    W_input_smoothing_ = W;
-  }
-  void SetContactSoftConstraintWeight(double w_soft_constraint) {
-    w_soft_constraint_ = w_soft_constraint;
-  }
+  void AddAccelerationCost(const std::string& joint_vel_name, double w);
 
   // Constraint methods
   void DisableAcutationConstraint() { with_input_constraints_ = false; }
   void SetContactFriction(double mu) { mu_ = mu; }
-
+  void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
+    w_soft_constraint_ = w_soft_constraint;
+  }
   void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator);
   void AddStateAndContactPoint(
       int state, const multibody::WorldPointEvaluator<double>* evaluator);
@@ -309,6 +308,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+  drake::solvers::QuadraticCost* input_cost_;
   std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
 
   // OSC solution
@@ -328,10 +328,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   /// could consider using acceleration cost instead.
   Eigen::MatrixXd W_input_;        // Input cost weight
   Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
-  Eigen::MatrixXd W_input_smoothing_;
+  std::map<int, std::pair<int, double>> fsm_to_w_input_map_; // each pair is (joint index, weight)
 
   // OSC constraint members
   bool with_input_constraints_ = true;
+
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;

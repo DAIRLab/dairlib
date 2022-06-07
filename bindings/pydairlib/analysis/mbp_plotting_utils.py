@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 from pydairlib.common import plot_styler, plotting_utils
 from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost, osc_regularlization_tracking_cost
@@ -96,8 +97,7 @@ def process_effort_channel(data, plant):
 
 
 def make_point_positions_from_q(
-        q, plant, context, frame, pt_on_frame, frame_to_calc_position_in=None):
-
+    q, plant, context, frame, pt_on_frame, frame_to_calc_position_in=None):
     if frame_to_calc_position_in is None:
         frame_to_calc_position_in = plant.world_frame()
 
@@ -108,6 +108,18 @@ def make_point_positions_from_q(
                                            frame_to_calc_position_in).ravel()
 
     return pos
+
+
+def get_floating_base_velocity_in_body_frame(
+    robot_output, plant, context, fb_frame):
+    vel = np.zeros((robot_output['q'].shape[0], 3))
+    for i, (q, v) in enumerate(zip(robot_output['q'], robot_output['v'])):
+        plant.SetPositions(context, q)
+        plant.SetVelocities(context, v)
+        vel[i] = fb_frame.CalcSpatialVelocity(
+            context, plant.world_frame(), fb_frame).translational()
+
+    return vel
 
 
 def process_osc_channel(data):
@@ -173,6 +185,59 @@ def process_osc_channel(data):
             'osc_output': osc_output}
 
 
+def process_contact_channel(data):
+    t_contact_info = []
+    contact_forces = [[], [], [], []]  # Allocate space for all 4 point contacts
+    contact_info_locs = [[], [], [], []]
+    for msg in data:
+        t_contact_info.append(msg.timestamp / 1e6)
+        num_left_contacts = 0
+        num_right_contacts = 0
+        for i in range(msg.num_point_pair_contacts):
+            if "toe_left" in msg.point_pair_contact_info[i].body2_name:
+                if (num_left_contacts >= 2):
+                    continue
+                contact_info_locs[num_left_contacts].append(
+                    msg.point_pair_contact_info[i].contact_point)
+                contact_forces[num_left_contacts].append(
+                    msg.point_pair_contact_info[i].contact_force)
+                num_left_contacts += 1
+            elif "toe_right" in msg.point_pair_contact_info[i].body2_name:
+                if (num_right_contacts >= 2):
+                    continue
+                contact_info_locs[2 + num_right_contacts].append(
+                    msg.point_pair_contact_info[i].contact_point)
+                contact_forces[2 + num_right_contacts].append(
+                    msg.point_pair_contact_info[i].contact_force)
+                num_right_contacts += 1
+        while num_left_contacts != 2:
+            contact_forces[num_left_contacts].append((0.0, 0.0, 0.0))
+            contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))
+            num_left_contacts += 1
+        while num_right_contacts != 2:
+            contact_forces[2 + num_right_contacts].append((0.0, 0.0, 0.0))
+            contact_info_locs[2 + num_right_contacts].append((0.0, 0.0,
+                                                              0.0))
+            num_right_contacts += 1
+
+    t_contact_info = np.array(t_contact_info)
+    contact_forces = np.array(contact_forces)
+    contact_info_locs = np.array(contact_info_locs)
+
+    for i in range(contact_info_locs.shape[1]):
+        # Swap front and rear contacts if necessary
+        # Order will be front contact in index 1
+        if contact_info_locs[0, i, 0] > contact_info_locs[1, i, 0]:
+            contact_forces[[0, 1], i, :] = contact_forces[[1, 0], i, :]
+            contact_info_locs[[0, 1], i, :] = contact_info_locs[[1, 0], i, :]
+        if contact_info_locs[2, i, 0] > contact_info_locs[3, i, 0]:
+            contact_forces[[2, 3], i, :] = contact_forces[[3, 2], i, :]
+            contact_info_locs[[2, 3], i, :] = contact_info_locs[[3, 2], i, :]
+    return {'t_lambda': t_contact_info,
+            'lambda_c': contact_forces,
+            'p_lambda_c': contact_info_locs}
+
+
 def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
     _, vperm, uperm = make_joint_order_permutations(robot_output_msg, plant)
     osc_data['u_sol'] = (osc_data['u_sol'] @ uperm.T)
@@ -191,9 +256,12 @@ def load_default_channels(data, plant, state_channel, input_channel,
     return robot_output, robot_input, osc_debug
 
 
-def plot_q_or_v_or_u(
-        robot_output, key, x_names, x_slice, time_slice,
-        ylabel=None, title=None):
+def load_force_channels(data, contact_force_channel):
+    contact_info = process_contact_channel(data[contact_force_channel])
+    return contact_info
+
+
+def plot_q_or_v_or_u(robot_output, key, x_names, x_slice, time_slice, ylabel=None, title=None):
     ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key
@@ -201,12 +269,32 @@ def plot_q_or_v_or_u(
         title = key
 
     plotting_utils.make_plot(
-        robot_output,                       # data dict
-        't_x',                              # time channel
+        robot_output,  # data dict
+        't_x',  # time channel
         time_slice,
-        [key],                              # key to plot
-        {key: x_slice},                     # slice of key to plot
-        {key: x_names},                     # legend entries
+        [key],  # key to plot
+        {key: x_slice},  # slice of key to plot
+        {key: x_names},  # legend entries
+        {'xlabel': 'Time',
+         'ylabel': ylabel,
+         'title': title}, ps)
+    return ps
+
+
+def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None, title=None):
+    ps = plot_styler.PlotStyler()
+    if ylabel is None:
+        ylabel = key
+    if title is None:
+        title = key
+
+    plotting_utils.make_plot(
+        robot_input,  # data dict
+        't_u',  # time channel
+        time_slice,
+        [key],  # key to plot
+        {key: x_slice},  # slice of key to plot
+        {key: x_names},  # legend entries
         {'xlabel': 'Time',
          'ylabel': ylabel,
          'title': title}, ps)
@@ -254,7 +342,7 @@ def plot_velocities_by_name(robot_output, v_names, time_slice, vel_map):
 def plot_measured_efforts(robot_output, u_names, time_slice):
     return plot_q_or_v_or_u(robot_output, 'u', u_names, slice(len(u_names)),
                             time_slice, ylabel='Efforts (Nm)',
-                            title='Joint Efforts')
+                            title='Measured Joint Efforts')
 
 
 def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
@@ -263,9 +351,14 @@ def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
                             ylabel='Efforts (Nm)', title='Select Joint Efforts')
 
 
+def plot_commanded_efforts(robot_input, u_names, time_slice):
+    return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
+                      time_slice, ylabel='Efforts (Nm)',
+                      title='Commanded Joint Efforts')
+
+
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
                           pts, dims):
-
     dim_map = ['_x', '_y', '_z']
     data_dict = {'t': robot_output['t_x']}
     legend_entries = {}
@@ -286,6 +379,28 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         {'title': 'Point Positions',
          'xlabel': 'time (s)',
          'ylabel': 'pos (m)'}, ps)
+
+    return ps
+
+
+def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
+                                             context, fb_frame_name):
+    data_dict = {'t': robot_output['t_x']}
+    data_dict['base_vel'] = get_floating_base_velocity_in_body_frame(
+        robot_output, plant, context,
+        plant.GetBodyByName(fb_frame_name).body_frame())
+    legend_entries = {'base_vel': ['base_vx', 'base_vy', 'base_vz']}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['base_vel'],
+        {},
+        legend_entries,
+        {'title': 'Floating Base Velocity (Body Frame)',
+         'xlabel': 'time (s)',
+         'ylabel': 'Velocity (m/s)'}, ps)
 
     return ps
 
@@ -411,11 +526,18 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
     return ps
 
 
-def add_fsm_to_plot(ps, fsm_time, fsm_signal):
+def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
     ax = ps.fig.axes[0]
     ymin, ymax = ax.get_ylim()
 
     # uses default color map
+    legend_elements = []
     for i in np.unique(fsm_signal):
-        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), alpha=0.2)
-    ax.relim()
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
+        if fsm_state_names:
+            legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
+
+    if len(legend_elements) > 0:
+        legend = ax.legend(handles=legend_elements, loc=4)
+        # ax.add_artist(legend)
+        ax.relim()

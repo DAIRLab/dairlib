@@ -18,7 +18,7 @@ using Eigen::MatrixXd;
 using Eigen::Vector2d;
 using Eigen::VectorXd;
 
-using dairlib::multibody::createContext;
+using dairlib::multibody::CreateContext;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
@@ -39,7 +39,8 @@ namespace dairlib::systems::controllers {
 
 using multibody::CreateWithSpringsToWithoutSpringsMapPos;
 using multibody::CreateWithSpringsToWithoutSpringsMapVel;
-using multibody::makeNameToVelocitiesMap;
+using multibody::MakeNameToVelocitiesMap;
+using multibody::MakeNameToActuatorsMap;
 using multibody::SetPositionsIfNew;
 using multibody::SetVelocitiesIfNew;
 using multibody::WorldPointEvaluator;
@@ -104,7 +105,7 @@ OperationalSpaceControl::OperationalSpaceControl(
           .get_index();
 
   const std::map<string, int>& vel_map_wo_spr =
-      multibody::makeNameToVelocitiesMap(plant_wo_spr);
+      multibody::MakeNameToVelocitiesMap(plant_wo_spr);
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ =
@@ -154,7 +155,7 @@ OperationalSpaceControl::OperationalSpaceControl(
   q_max_ = q_max;
 
   // Check if the model is floating based
-  is_quaternion_ = multibody::isQuaternion(plant_w_spr);
+  is_quaternion_ = multibody::HasQuaternion(plant_w_spr);
 }
 
 // Optional features
@@ -167,6 +168,25 @@ void OperationalSpaceControl::SetUpDoubleSupportPhaseBlending(
   left_support_state_ = left_support_state;
   right_support_state_ = right_support_state;
   ds_states_ = ds_states;
+}
+
+// Cost methods
+void OperationalSpaceControl::AddAccelerationCost(
+    const std::string& joint_vel_name, double w) {
+  if (W_joint_accel_.size() == 0) {
+    W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
+  }
+  int idx = MakeNameToVelocitiesMap(plant_wo_spr_).at(joint_vel_name);
+  W_joint_accel_(idx, idx) += w;
+}
+
+void OperationalSpaceControl::AddInputCostByJointAndFsmState(
+    const std::string& joint_u_name, int fsm, double w) {
+  if (W_input_.size() == 0) {
+    W_input_ = Eigen::MatrixXd::Zero(n_u_, n_u_);
+  }
+  int idx = MakeNameToActuatorsMap(plant_wo_spr_).at(joint_u_name);
+  fsm_to_w_input_map_[fsm] = std::pair<int, double>{idx, w};
 }
 
 // Constraint methods
@@ -379,7 +399,8 @@ void OperationalSpaceControl::Build() {
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {
-    prog_->AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u_);
+    input_cost_ = prog_->AddQuadraticCost(
+        W_input_, VectorXd::Zero(n_u_), u_).evaluator().get();
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
@@ -706,6 +727,18 @@ VectorXd OperationalSpaceControl::SolveQp(
       A(0, 7) = 1;
     }
     blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
+  }
+
+
+  // test joint-level input cost by fsm state
+  if (!fsm_to_w_input_map_.empty()) {
+    MatrixXd W = W_input_;
+    if (fsm_to_w_input_map_.count(fsm_state)) {
+      int j = fsm_to_w_input_map_.at(fsm_state).first;
+      double w = fsm_to_w_input_map_.at(fsm_state).second;
+      W(j,j) += w;
+    }
+    input_cost_->UpdateCoefficients(W, VectorXd::Zero(n_u_));
   }
 
   // (Testing) 7. Cost for staying close to the previous input

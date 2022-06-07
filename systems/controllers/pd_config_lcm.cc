@@ -15,7 +15,7 @@ using std::map;
 
 // methods implementation for CassiePDConfigReceiver.
 PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
-  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
+  actuatorIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
 
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();

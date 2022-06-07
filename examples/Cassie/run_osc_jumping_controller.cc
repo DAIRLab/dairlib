@@ -95,7 +95,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Built the Cassie MBPs
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  addCassieMultibody(&plant_w_spr, nullptr, true,
+  AddCassieMultibody(&plant_w_spr, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      false /*spring model*/, false /*loop closure*/);
   plant_w_spr.Finalize();
@@ -112,9 +112,9 @@ int DoMain(int argc, char* argv[]) {
   int n_u = plant_w_spr.num_actuators();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant_w_spr);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant_w_spr);
 
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, right_toe};
@@ -329,8 +329,8 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_loop);
 
   // Fix the springs in the dynamics
-  auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
-  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+  auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
+  auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
   auto left_fixed_knee_spring =
       FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),
                           vel_idx_map.at("knee_joint_leftdot"), 0);

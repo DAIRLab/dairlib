@@ -3,8 +3,11 @@ import lcm
 import numpy as np
 import matplotlib.pyplot as plt
 
-# dairlib imports
+# lcmtype imports
 import dairlib
+import drake
+
+# dairlib python binding imports
 from pydairlib.cassie.cassie_utils import addCassieMultibody
 
 # drake imports
@@ -13,7 +16,6 @@ from pydrake.systems.framework import DiagramBuilder
 
 cassie_urdf = "examples/Cassie/urdf/cassie_v2.urdf"
 cassie_urdf_no_springs = "examples/Cassie/urdf/cassie_fixed_springs.urdf"
-
 
 cassie_default_channels = \
     {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,
@@ -28,6 +30,10 @@ cassie_default_channels = \
      'OSC_DEBUG_WALKING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_RUNNING': dairlib.lcmt_osc_output}
+
+cassie_contact_channels = \
+    {'CASSIE_CONTACT_DRAKE': drake.lcmt_contact_results_for_viz,
+     'CASSIE_GM_CONTACT_DISPATCHER': drake.lcmt_contact_results_for_viz}
 
 
 def make_plant_and_context(floating_base=True, springs=True):

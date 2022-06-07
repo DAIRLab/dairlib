@@ -1,4 +1,4 @@
-def get_log_data(lcm_log, lcm_channels, end_time, data_processing_callback, *args,
+def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_callback, *args,
                  **kwargs):
     """
     Parses an LCM log and returns data as specified by a callback function
@@ -15,9 +15,16 @@ def get_log_data(lcm_log, lcm_channels, end_time, data_processing_callback, *arg
 
     data_to_process = {}
     print('Processing LCM log (this may take a while)...')
-    t = lcm_log.read_next_event().timestamp
     lcm_log.seek(0)
-    for event in lcm_log:
+    first_timestamp = lcm_log.read_next_event().timestamp
+    start_timestamp = first_timestamp + start_time * 1e6
+    print('Start time: ' + str(start_time))
+    print('Duration: ' + str(duration))
+    lcm_log.seek_to_timestamp(start_timestamp)
+    t = lcm_log.read_next_event().timestamp
+    lcm_log.seek_to_timestamp(start_timestamp)
+    event = lcm_log.read_next_event()
+    while event:
         if event.channel in lcm_channels:
             if event.channel in data_to_process:
                 data_to_process[event.channel].append(
@@ -25,13 +32,12 @@ def get_log_data(lcm_log, lcm_channels, end_time, data_processing_callback, *arg
             else:
                 data_to_process[event.channel] = \
                     [lcm_channels[event.channel].decode(event.data)]
-
         if event.eventnum % 50000 == 0:
-            print(f'processed {(event.timestamp - t)*1e-6:.1f}'
+            print(f'processed {(event.timestamp - t) * 1e-6:.1f}'
                   f' seconds of log data')
-
-        if 0 < end_time <= (event.timestamp - t)*1e-6:
+        if 0 < duration <= (event.timestamp - t) * 1e-6:
             break
+        event = lcm_log.read_next_event()
     return data_processing_callback(data_to_process, *args, *kwargs)
 
 
@@ -42,7 +48,7 @@ def get_log_summary(lcm_log):
             channel_names_and_msg_counts[event.channel] = 1
         else:
             channel_names_and_msg_counts[event.channel] = \
-            channel_names_and_msg_counts[event.channel] + 1
+                channel_names_and_msg_counts[event.channel] + 1
     return channel_names_and_msg_counts
 
 

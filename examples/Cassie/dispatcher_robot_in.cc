@@ -7,7 +7,7 @@
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/input_supervisor.h"
+#include "examples/Cassie/systems/input_supervisor.h"
 #include "examples/Cassie/networking/cassie_input_translator.h"
 #include "examples/Cassie/networking/cassie_udp_publisher.h"
 #include "multibody/multibody_utils.h"
@@ -74,7 +74,7 @@ int do_main(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant, nullptr, FLAGS_floating_base /*floating base*/,
+  AddCassieMultibody(&plant, nullptr, FLAGS_floating_base /*floating base*/,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();

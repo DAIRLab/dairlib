@@ -122,7 +122,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   AutoDiffVecXd u_ad = xu_ad.segment(plant_.num_positions()
       + plant_.num_velocities(), plant_.num_actuators());
 
-  auto context_ad = multibody::createContext<AutoDiffXd>(plant_, x_ad, u_ad);
+  auto context_ad = multibody::CreateContext<AutoDiffXd>(plant_, x_ad, u_ad);
 
   AutoDiffVecXd xdot = evaluators_.CalcTimeDerivatives(*context_ad);
 

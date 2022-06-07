@@ -33,11 +33,11 @@ class MultibodyUtilsTest : public ::testing::Test {
 // Test that maps can be constructed without errrors caught by the functions
 // themselves
 TEST_F(MultibodyUtilsTest, StateAndActuatorMappingTest) {
-  auto positions_map = makeNameToPositionsMap(plant_);
+  auto positions_map = MakeNameToPositionsMap(plant_);
 
-  auto velocities_map = makeNameToVelocitiesMap(plant_);
+  auto velocities_map = MakeNameToVelocitiesMap(plant_);
 
-  auto actuators_map = makeNameToActuatorsMap(plant_);
+  auto actuators_map = MakeNameToActuatorsMap(plant_);
 }
 
 TEST_F(MultibodyUtilsTest, ContextTest) {
@@ -49,10 +49,10 @@ TEST_F(MultibodyUtilsTest, ContextTest) {
   u(0) = 2;
   u(3) = -3.1;
 
-  auto context = createContext<double>(plant_, x, u);
+  auto context = CreateContext<double>(plant_, x, u);
 
   VectorXd x_context = plant_.GetPositionsAndVelocities(*context);
-  VectorXd u_context = getInput(plant_, *context);
+  VectorXd u_context = GetInput(plant_, *context);
 
   EXPECT_EQ(x, x_context);
   EXPECT_EQ(u, u_context);

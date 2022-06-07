@@ -83,7 +83,7 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_dt;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
   }
 
   std::string urdf = FLAGS_spring_model
@@ -104,7 +104,7 @@ int do_main(int argc, char* argv[]) {
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
 
   plant.Finalize();
@@ -114,10 +114,11 @@ int do_main(int argc, char* argv[]) {
   int nx = nq + nv;
 
   // Create maps for joints
-  std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
+  std::map<std::string, int> pos_map =
+      multibody::MakeNameToPositionsMaps(plant);
   std::map<std::string, int> vel_map =
-      multibody::makeNameToVelocitiesMap(plant);
-  std::map<std::string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+      multibody::MakeNameToVelocitiesMap(plant);
+  std::map<std::string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();

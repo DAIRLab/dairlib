@@ -7,6 +7,7 @@
 #include "common/find_resource.h"
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 #include "multibody/kinematic/distance_evaluator.h"
+#include "systems/framework/geared_motor.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram.h"
@@ -66,7 +67,7 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
 ///     Default = true
 /// @param add_loop_closure_springs Whether or not to add the loop closure
 ///     distance constraint via stiff springs. Default = true.
-void addCassieMultibody(
+void AddCassieMultibody(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,
@@ -83,5 +84,9 @@ const systems::SimCassieSensorAggregator& AddImuAndAggregator(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant,
     const drake::systems::OutputPort<double>& actuation_port);
+
+const systems::GearedMotor& AddMotorModel(
+    drake::systems::DiagramBuilder<double>* builder,
+    const drake::multibody::MultibodyPlant<double>& plant);
 
 }  // namespace dairlib

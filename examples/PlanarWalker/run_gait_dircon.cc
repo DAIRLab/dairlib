@@ -62,8 +62,8 @@ void runDircon(
   SceneGraph<double>& scene_graph =
       *builder.AddSystem(std::move(scene_graph_ptr));
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
-  auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMaps(plant);
+  auto velocities_map = multibody::MakeNameToVelocitiesMap(plant);
 
   for (auto const& element : positions_map)
     cout << element.first << " = " << element.second << endl;
@@ -202,8 +202,8 @@ void runDircon(
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt.ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(plant_double_ptr,
-      &builder, &scene_graph, pp_xtraj);
+  multibody::ConnectTrajectoryVisualizer(plant_double_ptr, &builder,
+                                         &scene_graph, pp_xtraj);
   auto diagram = builder.Build();
 
   while (true) {

@@ -48,15 +48,15 @@ int do_main(int argc, char* argv[]) {
       *builder.AddSystem<MultibodyPlant>(time_step);
 
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
   }
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
 
   plant.Finalize();
 
   std::map<std::string, int> actuatorIndexMap =
-    multibody::makeNameToActuatorsMap(plant);
+      multibody::MakeNameToActuatorsMap(plant);
 
   for (auto const& x : actuatorIndexMap) {
     std::cout << x.first  // string (key)

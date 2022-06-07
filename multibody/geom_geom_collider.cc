@@ -49,7 +49,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPolytope(
   for (int i = 0; i < num_friction_directions; i++) {
     double theta = (M_PI * i) / num_friction_directions;
     force_basis.row(2*i + 1) = Vector3d(0, cos(theta), sin(theta));
-    force_basis.row(2*i + 2) = -force_basis.col(2*i + 1);
+    force_basis.row(2*i + 2) = -force_basis.row(2*i + 1);
   }
   return DoEval(context, force_basis, wrt);
 }

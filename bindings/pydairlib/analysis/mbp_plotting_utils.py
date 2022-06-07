@@ -305,7 +305,7 @@ def plot_tracking_costs(osc_debug, time_slice):
         {key: [key] for key in osc_debug['tracking_cost'].keys()},
         {'xlabel': 'Time',
          'ylabel': 'Cost',
-         'title': 'tracking_cost'}, ps)
+         'title': 'tracking_costs'}, ps)
     return ps
 
 
@@ -366,7 +366,6 @@ def plot_qp_costs(osc_debug, time_slice):
 
 def plot_qp_solve_time(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()
-
     plotting_utils.make_plot(
         osc_debug,
         't_osc',
@@ -412,5 +411,11 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
     return ps
 
 
-def add_fsm_to_plot(ps, fsm_time, fsm_signal, scale=1):
-    ps.plot(fsm_time, scale * fsm_signal)
+def add_fsm_to_plot(ps, fsm_time, fsm_signal):
+    ax = ps.fig.axes[0]
+    ymin, ymax = ax.get_ylim()
+
+    # uses default color map
+    for i in np.unique(fsm_signal):
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), alpha=0.2)
+    ax.relim()

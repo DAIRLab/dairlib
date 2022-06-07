@@ -195,7 +195,7 @@ void DoMain() {
   }
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
@@ -409,7 +409,7 @@ void DoMain() {
 void SetKinematicConstraints(Dircon<double>* trajopt,
                              const MultibodyPlant<double>& plant) {
   // Create maps for joints
-  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
@@ -697,7 +697,7 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
   auto x = trajopt->state();
   auto u = trajopt->input();
 
-  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
@@ -818,7 +818,7 @@ void AddCostsSprings(Dircon<double>* trajopt,
   auto x = trajopt->state();
   auto u = trajopt->input();
 
-  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 

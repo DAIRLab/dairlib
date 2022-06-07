@@ -117,7 +117,7 @@ TEST_F(ContactEstimationTest, solveFourbarLinkageTest) {
 
   // Get the fix joint indices
   std::map<std::string, int> positionIndexMap =
-      multibody::MakeNameToPositionsMaps(plant_);
+      multibody::MakeNameToPositionsMap(plant_);
   std::vector<int> fixed_joint_inds;
   fixed_joint_inds.push_back(positionIndexMap.at("knee_left"));
   fixed_joint_inds.push_back(positionIndexMap.at("knee_joint_left"));

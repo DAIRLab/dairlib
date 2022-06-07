@@ -24,8 +24,8 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<std::string, int, Eigen::VectorXd, std::string>())
       .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"));
 
-  m.def("MakeNameToPositionsMaps",
-        &dairlib::multibody::MakeNameToPositionsMaps<double>, py::arg("plant"))
+  m.def("MakeNameToPositionsMap",
+        &dairlib::multibody::MakeNameToPositionsMap<double>, py::arg("plant"))
       .def("MakeNameToVelocitiesMap",
            &dairlib::multibody::MakeNameToVelocitiesMap<double>,
            py::arg("plant"))

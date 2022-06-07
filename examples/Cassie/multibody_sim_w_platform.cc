@@ -115,7 +115,7 @@ int do_main(int argc, char* argv[]) {
 
   // Create maps for joints
   std::map<std::string, int> pos_map =
-      multibody::MakeNameToPositionsMaps(plant);
+      multibody::MakeNameToPositionsMap(plant);
   std::map<std::string, int> vel_map =
       multibody::MakeNameToVelocitiesMap(plant);
   std::map<std::string, int> act_map = multibody::MakeNameToActuatorsMap(plant);

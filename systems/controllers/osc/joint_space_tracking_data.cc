@@ -14,7 +14,7 @@ using drake::systems::Context;
 
 namespace dairlib::systems::controllers {
 
-using multibody::MakeNameToPositionsMaps;
+using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
 /**** JointSpaceTrackingData ****/
@@ -37,13 +37,13 @@ void JointSpaceTrackingData::AddStateAndJointToTrack(
   AddFiniteStateToTrack(fsm_state);
   joint_pos_idx_w_spr_[fsm_state] =
       {
-      MakeNameToPositionsMaps(plant_w_spr_).at(joint_pos_name)};
+          MakeNameToPositionsMap(plant_w_spr_).at(joint_pos_name)};
   joint_vel_idx_w_spr_[fsm_state] =
       {
       MakeNameToVelocitiesMap(plant_w_spr_).at(joint_vel_name)};
   joint_pos_idx_wo_spr_[fsm_state] =
       {
-      MakeNameToPositionsMaps(plant_wo_spr_).at(joint_pos_name)};
+          MakeNameToPositionsMap(plant_wo_spr_).at(joint_pos_name)};
   joint_vel_idx_wo_spr_[fsm_state] =
       {
       MakeNameToVelocitiesMap(plant_wo_spr_).at(joint_vel_name)};
@@ -61,7 +61,7 @@ void JointSpaceTrackingData::AddStateAndJointsToTrack(
   AddFiniteStateToTrack(fsm_state);
   std::vector<int> ordered_index_set;
   for (const auto& mem : joint_pos_names) {
-    ordered_index_set.push_back(MakeNameToPositionsMaps(plant_w_spr_).at(mem));
+    ordered_index_set.push_back(MakeNameToPositionsMap(plant_w_spr_).at(mem));
   }
   joint_pos_idx_w_spr_[fsm_state] = ordered_index_set;
   ordered_index_set.clear();
@@ -71,7 +71,7 @@ void JointSpaceTrackingData::AddStateAndJointsToTrack(
   joint_vel_idx_w_spr_[fsm_state] = ordered_index_set;
   ordered_index_set.clear();
   for (const auto& mem : joint_pos_names) {
-    ordered_index_set.push_back(MakeNameToPositionsMaps(plant_wo_spr_).at(mem));
+    ordered_index_set.push_back(MakeNameToPositionsMap(plant_wo_spr_).at(mem));
   }
   joint_pos_idx_wo_spr_[fsm_state] = ordered_index_set;
   ordered_index_set.clear();

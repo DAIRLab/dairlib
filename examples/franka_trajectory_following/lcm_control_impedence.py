@@ -137,19 +137,22 @@ context_d = diagram.CreateDefaultContext()
 receiver_context = diagram.GetMutableSubsystemContext(state_receiver, context_d)
 
 # set the initial state of c3_subscriber
-# msg_data = 25*[0]
-# msg_data[0] = 0.5
-# msg_data[1] = 0.2
-# msg_data[2] = 0.12
+msg_data = 25*[0]
+msg_data[0] = 0.5
+msg_data[1] = 0
+msg_data[2] = 0.12
 
-# initial_c3_msg = lcmt_c3()
-# initial_c3_msg.utime = 0
-# initial_c3_msg.data_size = 25
-# initial_c3_msg.data = msg_data
+initial_c3_msg = lcmt_c3()
+initial_c3_msg.utime = 0
+initial_c3_msg.data_size = 25
+initial_c3_msg.data = msg_data
 
-# subscriber_context = diagram.GetMutableSubsystemContext(c3_subscriber, context_d)
+subscriber_context = diagram.GetMutableSubsystemContext(c3_subscriber, context_d)
+subscriber_context.SetAbstractState(0, initial_c3_msg)
 # mutable_state = subscriber_context.get_mutable_abstract_state(0)
 # mutable_state = initial_c3_msg
+
+print(type(mutable_state))
 
 print("Waiting for first c3 lcm message")
 c3_subscriber.WaitForMessage(0, timeout=0.01)

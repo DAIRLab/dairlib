@@ -570,13 +570,13 @@ int DoMain(int argc, char* argv[]) {
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
 
   if (gains.W_com(0,0) == 0){
-    osc->AddInputCostByJointAndFsmState(
+    osc->SetInputCostWeightForJointAndFsmState(
         "toe_left_motor", left_stance_state, 1.0);
-    osc->AddInputCostByJointAndFsmState(
+    osc->SetInputCostWeightForJointAndFsmState(
         "toe_left_motor", post_right_double_support_state, 1.0);
-    osc->AddInputCostByJointAndFsmState(
+    osc->SetInputCostWeightForJointAndFsmState(
         "toe_right_motor", right_stance_state, 1.0);
-    osc->AddInputCostByJointAndFsmState(
+    osc->SetInputCostWeightForJointAndFsmState(
         "toe_right_motor", post_left_double_support_state, 1.0);
   }
   osc->Build();

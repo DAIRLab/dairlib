@@ -69,9 +69,9 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
     const std::string &osc_gains_filename,
     const std::string &osqp_settings_filename)
     : plant_(&plant),
-      pos_map(multibody::makeNameToPositionsMap(plant)),
-      vel_map(multibody::makeNameToVelocitiesMap(plant)),
-      act_map(multibody::makeNameToActuatorsMap(plant)),
+      pos_map(multibody::MakeNameToPositionsMap(plant)),
+      vel_map(multibody::MakeNameToVelocitiesMap(plant)),
+      act_map(multibody::MakeNameToActuatorsMap(plant)),
       left_toe(LeftToeFront(plant)),
       left_heel(LeftToeRear(plant)),
       right_toe(RightToeFront(plant)),

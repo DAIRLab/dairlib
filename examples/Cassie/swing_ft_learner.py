@@ -50,36 +50,44 @@ class RandomExplorer:
         deviation = np.random.normal(np.zeros(1 + 3 * self.nominal_swing[0] + 6), self.sigmas)
         return self.nominal_swing + deviation
          
-    def collect_data(self, n_steps, cassie_env, num_steps_same_radio = 0):
+    def collect_data(self, n_steps, cassie_env,
+                     num_steps_same_radio=0,
+                     num_steps_same_params=1):
         """ Runs the random explorer for n_steps steps,
         gathering n_steps (s, a, r, s') tuples 
         """
         data = []
         done = False
         s = cassie_env.reset()
-        # print("Reset method finished!")
-        step_counter = 0
-        # vary forward velocity command
-        radio = [np.random.uniform(low=-1, high=1), 0, 0, 0]
+        radio_change_counter = 0
+        params_change_counter = 0
+        radio = [np.random.uniform(low = -1, high = 1), 0, 0, 0]
+        a = self.select_action()
         for _ in range(n_steps):
-            a = self.select_action()
-            print(f"sending action {a}")
+            if params_change_counter > num_steps_same_params:
+                params_change_counter = 0
+                a = self.select_action()
+
             if num_steps_same_radio > 0:
                 s_prime, r, d = cassie_env.step(a, radio)
             else:
                 s_prime, r, d = cassie_env.step(a)
+
             print(f"finished step and got reward {r}")
             data.append([s, a, r, s_prime, radio])
             s = s_prime
             done = d
             if done or s[4] > 5:
                 cassie_env.reset()
-            step_counter += 1
-            if step_counter > num_steps_same_radio:
-                step_counter = 0
-                radio = [np.random.uniform(low=-1, high=1), 0, 0, 0]
+            radio_change_counter += 1
+            params_change_counter += 1
+            if radio_change_counter > num_steps_same_radio:
+                radio_change_counter = 0
+                radio = [np.random.uniform(low = -1, high = 1), 0, 0, 0]
         return data
 
+def calc_new_params(gpr, nominal_swing, radio):
+    return
 
 def main():
     parser = argparse.ArgumentParser()
@@ -91,7 +99,7 @@ def main():
         sigmas[0] = 0
         explorer = RandomExplorer(nominal_swing, sigmas)
         cassie_env = CassieSwingFootEnv(nominal_swing, use_radio=False)
-        data = explorer.collect_data(2000, cassie_env, num_steps_same_radio=20)
+        data = explorer.collect_data(200, cassie_env, num_steps_same_params = 1)
         np.save("swing_foot_reward_data.npy", data)
 
         cassie_env.kill_procs()
@@ -104,22 +112,24 @@ def main():
     # X = np.array([list(d[1]) + list(d[4]) for d in data])
 
     # as a test, just look at the final swing ft z velocity, filtering out huge negative rewards
-    X = np.array([d[1][-1] for d in data if d[2] > -0.3]).reshape(-1, 1)
-    print(f"data shape {X.shape}")
-    y = np.array([d[2] for d in data if d[2] > -0.3]).reshape(-1, 1)
-    print(f"labels shape {y.shape}")
+    cond = lambda x: x > -0.3
+    idx = 2
+    X = np.array([d[1][idx] for d in data if cond(d[2])]).reshape(-1, 1)
+    y = 1e2 * np.array([d[2] for d in data if cond(d[2])]).reshape(-1, 1)
 
-    kernel = RBF(0.01)  # this is a hyperparameter to tune
-    gpr = GaussianProcessRegressor(kernel).fit(X, y)
+    kernel = RBF(1.0)  # this is a hyperparameter to tune
+
+    # there's also a alpha hyperparameter here
+    gpr = GaussianProcessRegressor(kernel).fit(X, y)  
     
     # plot the fit
-    x = np.arange(nominal_swing[-1]-0.02, nominal_swing[-1]+0.02, 0.0001).reshape(-1, 1)
+    x = np.arange(nominal_swing[idx]-0.02, nominal_swing[idx]+0.02, 0.0001).reshape(-1, 1)
     y_, std = gpr.predict(x, return_std=True)
 
     ax = plt.figure().gca()
     ax.set_xlim([min(x), max(x)])
     ax.scatter(X, y, s=5)
-    ax.scatter([nominal_swing[-1]], [0], s=20, color="green")
+    ax.scatter([nominal_swing[idx]], [0], s=20, color="green")
     ax.plot(x, y_, color="orange")
     ax.fill_between(x.ravel(), y_.ravel()-std, y_.ravel()+std, alpha=0.2,
                     color="orange")

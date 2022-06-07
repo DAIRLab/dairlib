@@ -896,7 +896,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
-  output->tracking_cost.clear();
+  output->tracking_costs.clear();
 
   lcmt_osc_qp_output qp_output;
   qp_output.solve_time = solve_time_;
@@ -913,7 +913,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->qp_output = qp_output;
 
   output->tracking_data.reserve(tracking_data_vec_->size());
-  output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
+  output->tracking_costs = std::vector<double>(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -948,7 +948,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       const MatrixXd& W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-      output->tracking_cost[i] =
+      output->tracking_costs[i] =
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
            (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
     }

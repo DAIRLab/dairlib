@@ -165,7 +165,10 @@ def process_osc_channel(data):
 
     tracking_cost_handler = osc_tracking_cost(osc_debug_tracking_datas.keys())
     for msg in data:
-        tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_cost)
+        if hasattr(msg, 'tracking_costs'):
+            tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_costs)
+        else:
+            tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_cost)
     tracking_cost = tracking_cost_handler.convertToNP()
 
     for name in osc_debug_tracking_datas:

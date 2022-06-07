@@ -9,7 +9,7 @@ struct lcmt_osc_output
 
   lcmt_osc_qp_output qp_output;
   string tracking_data_names[num_tracking_data];
-  double tracking_cost [num_tracking_data];
+  double tracking_costs [num_tracking_data];
   double regularization_costs [num_regularization_costs];
   string regularization_cost_names [num_regularization_costs];
 

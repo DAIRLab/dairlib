@@ -109,7 +109,7 @@ void runDircon() {
   trajopt.AddRunningCost(u.transpose()*R*u);
 
 
-  auto positions_map = multibody::MakeNameToPositionsMaps(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto velocities_map = multibody::MakeNameToVelocitiesMap(plant);
   // // Print out position names
   // for (const auto& it : positions_map) {

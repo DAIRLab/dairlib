@@ -149,7 +149,7 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
 ///  -Others are included as "position[ind]""
 ///  -Index mapping can also be used as a state mapping (assumes x = [q;v])
 template <typename T>
-map<string, int> MakeNameToPositionsMaps(const MultibodyPlant<T>& plant) {
+map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant) {
   map<string, int> name_to_index_map;
   std::set<int> index_set;
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
@@ -316,7 +316,7 @@ map<string, int> MakeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
 template <typename T>
 vector<string> CreateStateNameVectorFromMap(
     const MultibodyPlant<T>& plant) {
-  map<string, int> pos_map = MakeNameToPositionsMaps(plant);
+  map<string, int> pos_map = MakeNameToPositionsMap(plant);
   map<string, int> vel_map = MakeNameToVelocitiesMap(plant);
   vector<string> state_names(pos_map.size() + vel_map.size());
 
@@ -347,9 +347,9 @@ Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(
     const drake::multibody::MultibodyPlant<T>& plant_w_spr,
     const drake::multibody::MultibodyPlant<T>& plant_wo_spr) {
   const std::map<string, int>& pos_map_w_spr =
-      multibody::MakeNameToPositionsMaps(plant_w_spr);
+      multibody::MakeNameToPositionsMap(plant_w_spr);
   const std::map<string, int>& pos_map_wo_spr =
-      multibody::MakeNameToPositionsMaps(plant_wo_spr);
+      multibody::MakeNameToPositionsMap(plant_wo_spr);
 
   // Initialize the mapping from spring to no spring
   Eigen::MatrixXd ret = Eigen::MatrixXd::Zero(plant_wo_spr.num_positions(),
@@ -499,8 +499,8 @@ template bool HasQuaternion(const MultibodyPlant<double>& plant);  // NOLINT
 template bool HasQuaternion(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template Vector3d ReExpressWorldVector3InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector3d& vec); //NOLINT
 template Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector2d& vec); //NOLINT
-template map<string, int> MakeNameToPositionsMaps<double>(const MultibodyPlant<double>& plant);  // NOLINT
-template map<string, int> MakeNameToPositionsMaps<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> MakeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd> &plant);  // NOLINT
 template map<string, int> MakeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> MakeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> MakeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT

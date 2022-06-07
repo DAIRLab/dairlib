@@ -110,7 +110,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_x = n_q + n_v;
-  map<string, int> positions_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> positions_map = multibody::MakeNameToPositionsMap(plant);
 
   vector<VectorXd> q_init_guess;
   VectorXd q_ik_guess = VectorXd::Zero(n_q);
@@ -301,7 +301,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   plant.Finalize();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 

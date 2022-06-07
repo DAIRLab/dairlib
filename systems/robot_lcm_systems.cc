@@ -32,7 +32,7 @@ RobotOutputReceiver::RobotOutputReceiver(
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
   num_efforts_ = plant.num_actuators();
-  positionIndexMap_ = multibody::MakeNameToPositionsMaps(plant);
+  positionIndexMap_ = multibody::MakeNameToPositionsMap(plant);
   velocityIndexMap_ = multibody::MakeNameToVelocitiesMap(plant);
   effortIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_output",
@@ -91,7 +91,7 @@ RobotOutputSender::RobotOutputSender(
   num_velocities_ = plant.num_velocities();
   num_efforts_ = plant.num_actuators();
 
-  positionIndexMap_ = multibody::MakeNameToPositionsMaps(plant);
+  positionIndexMap_ = multibody::MakeNameToPositionsMap(plant);
   velocityIndexMap_ = multibody::MakeNameToVelocitiesMap(plant);
   effortIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
 

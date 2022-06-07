@@ -72,7 +72,7 @@ void AddFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
 
 /// Given a MultibodyPlant, builds a map from position name to position index
 template <typename T>
-std::map<std::string, int> MakeNameToPositionsMaps(
+std::map<std::string, int> MakeNameToPositionsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Given a MultiBodyTree, builds a map from velocity name to velocity index

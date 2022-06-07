@@ -86,7 +86,7 @@ int DoMain(int argc, char* argv[]) {
   int nv = plant.num_velocities();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
@@ -148,7 +148,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddStateAndContactPoint(1, &right_foot_evaluator);
 
   // Create maps for joints
-  map<string, int> pos_map_wo_spr = multibody::MakeNameToPositionsMaps(plant);
+  map<string, int> pos_map_wo_spr = multibody::MakeNameToPositionsMap(plant);
 
   std::vector<BasicTrajectoryPassthrough*> joint_trajs;
   std::vector<std::shared_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;

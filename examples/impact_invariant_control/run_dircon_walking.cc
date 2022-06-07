@@ -84,7 +84,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
     vector<PiecewisePolynomial<double>> init_l_traj,
     vector<PiecewisePolynomial<double>> init_lc_traj,
     vector<PiecewisePolynomial<double>> init_vc_traj) {
-  auto positions_map = multibody::MakeNameToPositionsMaps(*plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(*plant);
   auto velocities_map = multibody::MakeNameToVelocitiesMap(*plant);
 
   // Start of constraint specification

@@ -33,7 +33,7 @@ class MultibodyUtilsTest : public ::testing::Test {
 // Test that maps can be constructed without errrors caught by the functions
 // themselves
 TEST_F(MultibodyUtilsTest, StateAndActuatorMappingTest) {
-  auto positions_map = MakeNameToPositionsMaps(plant_);
+  auto positions_map = MakeNameToPositionsMap(plant_);
 
   auto velocities_map = MakeNameToVelocitiesMap(plant_);
 

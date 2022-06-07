@@ -145,7 +145,7 @@ void KinematicAccelerationConstraint<T>::EvaluateConstraint(
   const auto& u = vars.segment(plant_.num_positions() + plant_.num_velocities(),
       plant_.num_actuators());
   const auto& lambda = vars.tail(evaluators_.count_full());
-  multibody::setContext<T>(plant_, x, u, context_);
+  multibody::SetContext<T>(plant_, x, u, context_);
 
   *y = evaluators_.EvalActiveSecondTimeDerivative(context_, lambda);
 }

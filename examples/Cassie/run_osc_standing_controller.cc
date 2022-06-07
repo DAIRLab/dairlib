@@ -110,13 +110,13 @@ int DoMain(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
-  addCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
+  AddCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
                      "examples/Cassie/urdf/cassie_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant_w_springs.Finalize();
   // Build fix-spring Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
-  addCassieMultibody(&plant_wo_springs, nullptr, true,
+  AddCassieMultibody(&plant_wo_springs, nullptr, true,
                      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                      false);
   plant_wo_springs.Finalize();

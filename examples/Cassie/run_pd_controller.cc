@@ -47,7 +47,7 @@ int doMain(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double>& plant = *builder_null.AddSystem<MultibodyPlant>(1.0);
-  addCassieMultibody(&plant, &scene_graph_null, FLAGS_floating_base);
+  AddCassieMultibody(&plant, &scene_graph_null, FLAGS_floating_base);
   plant.Finalize();
 
   const std::string channel_x = FLAGS_channel_x;

@@ -627,7 +627,7 @@ void Dircon<T>::GetStateAndDerivativeSamples(
 
       VectorX<T> xk = result.GetSolution(state_vars(mode, j));
       VectorX<T> uk = result.GetSolution(input_vars(mode, j));
-      auto context = multibody::createContext<T>(plant_, xk, uk);
+      auto context = multibody::CreateContext<T>(plant_, xk, uk);
 
       states_i.col(j) = drake::math::DiscardGradient(xk);
       auto xdot = get_mode(mode).evaluators().CalcTimeDerivativesWithForce(
@@ -772,7 +772,7 @@ void Dircon<T>::ScaleTimeVariables(double scale) {
 
 template <typename T>
 void Dircon<T>::ScaleQuaternionSlackVariables(double scale) {
-  DRAKE_DEMAND(multibody::isQuaternion(plant_));
+  DRAKE_DEMAND(multibody::HasQuaternion(plant_));
   for (int i_mode = 0; i_mode < num_modes(); i_mode++) {
     for (int j = 0; j < mode_length(i_mode) - 1; j++) {
       const auto& vars = quaternion_slack_vars(i_mode, j);

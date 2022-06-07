@@ -9,13 +9,13 @@ namespace dairlib {
 namespace multibody {
 
 template <typename T>
-drake::VectorX<T> getInput(const drake::multibody::MultibodyPlant<T>& plant,
+drake::VectorX<T> GetInput(const drake::multibody::MultibodyPlant<T>& plant,
                            const drake::systems::Context<T>& context);
 
 /// Create a new MultibodyPlant context and set the corresponding state and
 /// input values. Note, this is potentially an expensive operation!
 template <typename T>
-std::unique_ptr<drake::systems::Context<T>> createContext(
+std::unique_ptr<drake::systems::Context<T>> CreateContext(
     const drake::multibody::MultibodyPlant<T>& plant,
     const Eigen::Ref<const drake::VectorX<T>>& state,
     const Eigen::Ref<const drake::VectorX<T>>& input);
@@ -24,7 +24,7 @@ std::unique_ptr<drake::systems::Context<T>> createContext(
 /// input values.
 /// Will only set values that have changed.
 template <typename T>
-void setContext(const drake::multibody::MultibodyPlant<T>& plant,
+void SetContext(const drake::multibody::MultibodyPlant<T>& plant,
                 const Eigen::Ref<const drake::VectorX<T>>& state,
                 const Eigen::Ref<const drake::VectorX<T>>& input,
                 drake::systems::Context<T>* context);
@@ -64,37 +64,37 @@ void SetInputsIfNew(const drake::multibody::MultibodyPlant<T>& plant,
 /// default direction)
 // TODO: we might want to add other types of terrain in the future
 template <typename T>
-void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
+void AddFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     drake::geometry::SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
                     Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1),
                     bool show_ground = true);
 
-/// Given a MultiBodyTree, builds a map from position name to position index
+/// Given a MultibodyPlant, builds a map from position name to position index
 template <typename T>
-std::map<std::string, int> makeNameToPositionsMap(
+std::map<std::string, int> MakeNameToPositionsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Given a MultiBodyTree, builds a map from velocity name to velocity index
 template <typename T>
-std::map<std::string, int> makeNameToVelocitiesMap(
+std::map<std::string, int> MakeNameToVelocitiesMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Given a MultiBodyTree, builds a map from actuator name to actuator index
 template <typename T>
-std::map<std::string, int> makeNameToActuatorsMap(
+std::map<std::string, int> MakeNameToActuatorsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Given a set of maps constructed from the above functions, construct a
 /// vector of state and actuator names in order of their index
 template <typename T>
-std::vector<std::string> createStateNameVectorFromMap(
+std::vector<std::string> CreateStateNameVectorFromMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Given a set of maps constructed from the above functions, construct a
 /// vector of state and actuator names in order of their index
 template <typename T>
-std::vector<std::string> createActuatorNameVectorFromMap(
+std::vector<std::string> CreateActuatorNameVectorFromMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
 /// \param plant_w_spr
@@ -110,10 +110,6 @@ template <typename T>
 Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(
     const drake::multibody::MultibodyPlant<T>& plant_w_spr,
     const drake::multibody::MultibodyPlant<T>& plant_wo_spr);
-
-// TODO: The following two functions need to be implemented as a part of
-// RBT/Multibody and not as separate functions that take in RBTs. Make the
-// change once the codebase shifts to using multibody.
 
 // Given a MultibodyPlant and a state vector, checks if the states are within
 // the joint limits
@@ -139,7 +135,7 @@ int QuaternionStartIndex(const drake::multibody::MultibodyPlant<T>& plant);
 /// Throws an error if there are multiple quaternion floating base joints.
 /// TODO: this method should be deprecated
 template <typename T>
-bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
+bool HasQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 
 template <typename T>
 Eigen::Vector3d ReExpressWorldVector3InBodyYawFrame(

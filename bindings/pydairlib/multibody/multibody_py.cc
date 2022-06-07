@@ -24,21 +24,21 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<std::string, int, Eigen::VectorXd, std::string>())
       .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"));
 
-  m.def("makeNameToPositionsMap",
-        &dairlib::multibody::makeNameToPositionsMap<double>, py::arg("plant"))
-      .def("makeNameToVelocitiesMap",
-           &dairlib::multibody::makeNameToVelocitiesMap<double>,
+  m.def("MakeNameToPositionsMap",
+        &dairlib::multibody::MakeNameToPositionsMap<double>, py::arg("plant"))
+      .def("MakeNameToVelocitiesMap",
+           &dairlib::multibody::MakeNameToVelocitiesMap<double>,
            py::arg("plant"))
-      .def("makeNameToActuatorsMap",
-           &dairlib::multibody::makeNameToActuatorsMap<double>,
+      .def("MakeNameToActuatorsMap",
+           &dairlib::multibody::MakeNameToActuatorsMap<double>,
            py::arg("plant"))
-      .def("createStateNameVectorFromMap",
-           &dairlib::multibody::createStateNameVectorFromMap<double>,
+      .def("CreateStateNameVectorFromMap",
+           &dairlib::multibody::CreateStateNameVectorFromMap<double>,
            py::arg("plant"))
-      .def("createActuatorNameVectorFromMap",
-           &dairlib::multibody::createActuatorNameVectorFromMap<double>,
+      .def("CreateActuatorNameVectorFromMap",
+           &dairlib::multibody::CreateActuatorNameVectorFromMap<double>,
            py::arg("plant"))
-      .def("addFlatTerrain", &dairlib::multibody::addFlatTerrain<double>,
+      .def("AddFlatTerrain", &dairlib::multibody::AddFlatTerrain<double>,
            py::arg("plant"), py::arg("scene_graph"), py::arg("mu_static"),
            py::arg("mu_kinetic"),
            py::arg("normal_W") = Eigen::Vector3d(0, 0, 1),

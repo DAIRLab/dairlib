@@ -119,7 +119,7 @@ void FixedPointConstraint<T>::EvaluateConstraint(
   x << input.head(plant_.num_positions()),
       VectorX<T>::Zero(plant_.num_velocities());
   // input order is x, u, lambda
-  setContext<T>(plant_, x, u, context_);
+  SetContext<T>(plant_, x, u, context_);
 
   *y = evaluators_.CalcMassMatrixTimesVDot(*context_, lambda);  
   // std::cout << *y << std::endl << std::endl;

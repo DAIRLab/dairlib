@@ -70,11 +70,10 @@ nu = plant.num_actuators()
 
 q = np.zeros((nq,1))
 
-
 context = plant.CreateDefaultContext()
 
 # gains
-translational_stiffness = 450
+translational_stiffness = 450 #450
 rotational_stiffness = 5
 coeff = 1
 
@@ -154,7 +153,7 @@ receiver_context = diagram.GetMutableSubsystemContext(state_receiver, context_d)
 # mutable_state = initial_c3_msg
 
 print("Waiting for first c3 lcm message")
-c3_subscriber.WaitForMessage(0, timeout = 0.01)
+c3_subscriber.WaitForMessage(0, timeout = 0.2)
 
 loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                            lcm_parser=state_receiver,

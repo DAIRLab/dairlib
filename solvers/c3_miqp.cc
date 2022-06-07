@@ -42,7 +42,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   // Create an empty model
   GRBModel model = GRBModel(env_);
-  model.set("IterationLimit", "40");
+  //model.set("IterationLimit", "40");
 
   GRBVar delta_k[n_ + m_ + k_];
   GRBVar binary[m_];

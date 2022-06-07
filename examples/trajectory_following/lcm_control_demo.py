@@ -209,7 +209,8 @@ for i in theta:
 
 
 increment = 2.0
-timings = np.arange(0, increment*len(xtraj), increment )
+add_timing_offset = 9
+timings = np.arange(0 + add_timing_offset , increment*len(xtraj) + add_timing_offset, increment )
 
 pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
 

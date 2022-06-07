@@ -36,6 +36,16 @@ py_binary(
 )
 
 py_library(
+    name = "cassie_env_rewards",
+    srcs = [
+        "reward_osudrl.py",
+    ],
+    deps = [
+        ":cassie_env_state",
+    ],
+)
+
+py_library(
     name = "cassie_traj",
     srcs = ["cassie_traj.py"],
     deps = [":cassie_env_state"],

@@ -297,8 +297,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp){
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << "Force:\n" << lambda << std::endl;
-    std::cout << "Force_effect_input:\n" << Jc.transpose() * lambda << std::endl;
+    std::cout << "q\n" << q << std::endl;
     std::cout << std::endl;
   }
 }

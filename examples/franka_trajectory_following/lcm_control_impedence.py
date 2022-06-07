@@ -74,7 +74,7 @@ q = np.zeros((nq,1))
 context = plant.CreateDefaultContext()
 
 # gains
-translational_stiffness = 250
+translational_stiffness = 450
 rotational_stiffness = 5
 coeff = 1
 
@@ -119,6 +119,8 @@ control_publisher = builder.AddSystem(LcmPublisherSystem.Make(
 builder.Connect(control_sender.get_output_port(),
                 control_publisher.get_input_port())
 
+
+
 # TODO: check these connections
 c3_subscriber = builder.AddSystem(LcmSubscriberSystem.Make(
     channel="CONTROLLER_INPUT", lcm_type=lcmt_c3, lcm=lcm,
@@ -127,10 +129,30 @@ c3_receiver = builder.AddSystem(RobotC3Receiver(10, 9, 6))
 builder.Connect(c3_subscriber.get_output_port(0), c3_receiver.get_input_port(0))
 builder.Connect(c3_receiver.get_output_port(0), controller.get_input_port(1))
 
+
+
 diagram = builder.Build()
 
 context_d = diagram.CreateDefaultContext()
 receiver_context = diagram.GetMutableSubsystemContext(state_receiver, context_d)
+
+# set the initial state of c3_subscriber
+# msg_data = 25*[0]
+# msg_data[0] = 0.5
+# msg_data[1] = 0.2
+# msg_data[2] = 0.12
+
+# initial_c3_msg = lcmt_c3()
+# initial_c3_msg.utime = 0
+# initial_c3_msg.data_size = 25
+# initial_c3_msg.data = msg_data
+
+# subscriber_context = diagram.GetMutableSubsystemContext(c3_subscriber, context_d)
+# mutable_state = subscriber_context.get_mutable_abstract_state(0)
+# mutable_state = initial_c3_msg
+
+print("Waiting for first c3 lcm message")
+c3_subscriber.WaitForMessage(0, timeout=0.01)
 
 loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                            lcm_parser=state_receiver,

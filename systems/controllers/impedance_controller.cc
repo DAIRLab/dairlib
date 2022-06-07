@@ -299,10 +299,11 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   std::chrono::duration<double> elapsed = finish - start;
 
   // debug prints every 10th of a second
-  int print_enabled = 0; // print flag
-  if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp){
+  int print_enabled = 1; // print flag
+  if (print_enabled && trunc(timestamp*100) / 100.0 == timestamp && timestamp >= 9.0){
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << "ball_xyz\n" << ball_xyz << std::endl;
+    std::cout << "contact desired?\n" << in_contact << std::endl;
+    std::cout << "relative_distance\n" << (d-ball_xyz).norm() << std::endl;
     std::cout << std::endl;
   }
 }

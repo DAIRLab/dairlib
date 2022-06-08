@@ -12,4 +12,7 @@ cmd "simulate_trifinger_lcm" {
     exec = "bazel-bin/examples/trajectory_following/simulate_trifinger_lcm";
     host = "localhost";
 }
-
+cmd "lcm_spy" {
+    exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+    host = "localhost";
+}

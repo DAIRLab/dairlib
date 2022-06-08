@@ -52,11 +52,11 @@ class SwingFootEnv(DrakeCassieGym):
         osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
         urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
 
-        controller_plant = MultibodyPlant(8e-5)
-        AddCassieMultibody(controller_plant, None, True, urdf, False, False)
-        controller_plant.Finalize()
+        self.controller_plant = MultibodyPlant(8e-5)
+        AddCassieMultibody(self.controller_plant, None, True, urdf, False, False)
+        self.controller_plant.Finalize()
         self.controller = AlipWalkingControllerFactory(
-            controller_plant, True, True, osc_gains, osqp_settings, N_KNOT)
+            self.controller_plant, True, True, osc_gains, osqp_settings, N_KNOT)
 
     def step(self, action=None):
         if not self.initialized:

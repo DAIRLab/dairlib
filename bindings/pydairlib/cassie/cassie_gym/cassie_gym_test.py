@@ -63,7 +63,9 @@ def test_base_env():
 
 def test_swing_foot_env():
     gym_env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=False)
-    gym_env.advance_to(5.0)
+    s, r, d, i = gym_env.step()
+    print(s)
+    # gym_env.advance_to(5.0)
 
 
 def main():

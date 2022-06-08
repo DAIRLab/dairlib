@@ -120,7 +120,7 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
   z = zfin[0];
 
 //  std::cout <<  "contact prediction" << std::endl;
-//      std::cout << zfin[1].segment(n_, m_) << std::endl;
+//      std::cout << zfin[0].segment(n_, m_) << std::endl;
 
 //    std::cout << "violation" << std::endl;
 //  std::cout << delta.at(0) << std::endl;

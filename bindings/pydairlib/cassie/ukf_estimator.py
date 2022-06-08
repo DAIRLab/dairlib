@@ -78,7 +78,8 @@ class UKF:
             toe_rear, foot_frame = RightToeRear(self.plant)
         point_of_contact_in_foot_frame = (toe_front + toe_rear)/2
         self.point_of_contact_in_world_frame = self.plant.CalcPointsPositions(self.context, foot_frame, point_of_contact_in_foot_frame, self.world).squeeze()
-        
+        self.point_of_contact_cov = np.zeros((3,3))
+
     def get_sigma_points(self):
         """
         Get 2n+1 sigma points and dynamics noise based on covariance.
@@ -399,6 +400,14 @@ class UKF:
 
         return cov
 
+    def cal_points_of_contact_in_world_frame(self, sigma_points, frame, coordinates_in_frame):
+        points_of_contact_in_world_frame = np.zeros((sigma_points.shape[0], 3))
+        for i in range(sigma_points.shape[0]):
+            self.plant.SetPositionsAndVelocities(self.context, sigma_points[i,:])
+            points_of_contact_in_world_frame[i,:] = self.plant.CalcPointsPositions(self.context, frame, coordinates_in_frame, self.world).squeeze()
+        
+        return points_of_contact_in_world_frame
+
     def cal_expected_base_position_by_FK(self, sigma_points, lambda_c):
         # Check if the foot is switched
         is_foot_of_contact_switch = False
@@ -424,9 +433,11 @@ class UKF:
         # Update the point of contact if necessary
         if is_foot_of_contact_switch:
             self.plant.SetPositionsAndVelocities(self.context, self.mean)
-            pre_point_of_contact_in_world_frame = self.plant.CalcPointsPositions(self.context, pre_foot_frame, pre_point_of_contact_in_foot_frame, self.world).squeeze()
-            new_point_of_contact_in_world_frame = self.plant.CalcPointsPositions(self.context, new_foot_frame, new_point_of_contact_in_foot_frame, self.world).squeeze()
-            self.point_of_contact_in_world_frame = self.point_of_contact_in_world_frame + new_point_of_contact_in_world_frame - pre_point_of_contact_in_world_frame
+            pre_points_of_contact_in_world_frame = self.cal_points_of_contact_in_world_frame(sigma_points, pre_foot_frame, pre_point_of_contact_in_foot_frame)
+            new_points_of_contact_in_world_frame = self.cal_points_of_contact_in_world_frame(sigma_points, new_foot_frame, new_point_of_contact_in_foot_frame)
+            incremental_of_contact_points_in_world_frame = new_points_of_contact_in_world_frame - pre_points_of_contact_in_world_frame
+            self.point_of_contact_cov = np.cov(incremental_of_contact_points_in_world_frame, rowvar=False, bias=True)
+            self.point_of_contact_in_world_frame = self.point_of_contact_in_world_frame + np.mean(incremental_of_contact_points_in_world_frame, axis=0)
 
         # Calculate expected position use FK
         base_positions = np.zeros((sigma_points.shape[0], 3))
@@ -472,7 +483,8 @@ class UKF:
         expected_base_positions_by_FK = self.cal_expected_base_position_by_FK(sigma_points, lambda_c)
         expected_base_positions_means = np.mean(expected_base_positions_by_FK, axis=0)
         obs = np.hstack((obs, expected_base_positions_means))
-        sensor_noise = np.eye(25) * 0.01
+        sensor_noise = np.eye(25)
+        sensor_noise [22:,22:]= np.diag(np.diag(np.cov(expected_base_positions_by_FK, rowvar=False, bias=True))) + self.point_of_contact_cov
         sensor_noise[:22,:22] = self.Q
 
         # Cal the kalman gains
@@ -629,14 +641,14 @@ def main():
     raw_data = scipy.io.loadmat(data_path)
     
     # dynamics noise
-    R = np.eye(22) * 10
-    R_motor = np.eye(10) * 1
+    R = np.eye(22) * 10**2
+    R_motor = np.eye(10) * 1**2
     # observation noise
-    Q = np.eye(22) * 0.001
-    Q[:3,:3] = np.eye(3) * 1
+    Q = np.eye(22) * 0.01**2
+    Q[:3,:3] = np.eye(3) * 1**2
     # initial noise
-    init_cov = np.eye(44) * 0.1
-    init_cov[0:6,0:6] = np.eye(6) * 1e-4
+    init_cov = np.eye(44) * (0.1)**2
+    init_cov[0:6,0:6] = np.eye(6) * (1e-4)**2
 
     # processing raw data
     print("Begin processing raw data for test")

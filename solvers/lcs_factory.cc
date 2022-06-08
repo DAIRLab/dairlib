@@ -313,7 +313,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   auto An = A.squaredNorm();
   auto AnDn = An / Dn;
 
-  //AnDn = 1;
+  AnDn = 1;
   //std::cout << AnDn << std::endl;
 
   std::vector<MatrixXd> A_lcs(N, A);
@@ -347,32 +347,38 @@ LCS LCSFactory::LinearizePlantToLCS(
 //  std::cout << c_lcs[0] << std::endl;
 //  std::cout << "dstahp" << std::endl;
 
-//////
+
 //  ///check LCS predictions
 //  VectorXd inp = plant.get_actuation_input_port().Eval(context);
+////
+////  std::cout << "inp" << std::endl;
+////  std::cout << inp << std::endl;
 //
-//  std::cout << "inp" << std::endl;
-//  std::cout << inp << std::endl;
-
 //  VectorXd x0(plant.num_positions() + plant.num_velocities());
 //  x0 << plant.GetPositions(context), plant.GetVelocities(context);
+////////
+////////  std::cout << "real" << std::endl;
+//////// std::cout << plant_ad.GetVelocities(context_ad) << std::endl;
+////////
+//////  VectorXd asd = system.Simulate(x0 ,inp);
 //////
-//////  std::cout << "real" << std::endl;
-////// std::cout << plant_ad.GetVelocities(context_ad) << std::endl;
-//////
-////  VectorXd asd = system.Simulate(x0 ,inp);
-////
 //  // calculate force
 //  drake::solvers::MobyLCPSolver<double> LCPSolver;
 //  VectorXd force;
-////
+//////
 //  VectorXd x_init = x0;
 //  VectorXd input = inp;
-////
-////
-//  auto flag = LCPSolver.SolveLcpLemke(F, E * x_init + c + H * input,
+//////
+//////
+//  auto flag = LCPSolver.SolveLcpLemke(F, E * x_init / AnDn + c / AnDn + H * input / AnDn,
 //                                      &force);
 //
+//
+//  std::cout << force << std::endl;
+//  std::cout << "LCS force estimate" << std::endl;
+
+
+  //
 //  VectorXd x_final = A * x_init + B * input + D * force + d;
 
 //  if (flag == 1){

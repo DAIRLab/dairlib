@@ -10,6 +10,8 @@
 #include "solvers/c3.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/lcs_factory.h"
+#include "drake/solvers/moby_lcp_solver.h"
+
 
 //#include
 //"external/drake/common/_virtual_includes/autodiff/drake/common/eigen_autodiff_types.h"
@@ -315,6 +317,17 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
+
+//
+//  // calculate force
+//  drake::solvers::MobyLCPSolver<double> LCPSolver;
+//  VectorXd force;
+//
+//  auto flag = LCPSolver.SolveLcpLemke(system_.F_[0], system_.E_[0] * state + system_.c_[0]  + system_.H_[0] * input,
+//                                      &force);
+//
+//  std::cout << "force" << std::endl;
+//  std::cout  << force << std::endl;
 
 //
 //  auto finish = std::chrono::high_resolution_clock::now();

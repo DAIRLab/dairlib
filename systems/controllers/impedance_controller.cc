@@ -212,7 +212,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   //   lambda << 100, 0, 0, 0, 0;
   // }
 
-  bool in_contact = !isZeroVector(lambda);
+  bool in_contact = !isZeroVector(lambda,0.1);
   
   //update the context_
   plant_.SetPositions(&context_, q);
@@ -249,12 +249,13 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   Vector3d d = H.translation() + R*EE_offset_;
   
   // modify desired state if no contact desired
-  if (!in_contact){
+  if (lambda.norm() < 0.000001){
     // method 1: add position offset
-    double offset = 0.0;
+    double offset = 0.001;
     Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
     Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
     xd.tail(3) << xd_new;
+    //std::cout << "here" << std::endl;
 
     // method 2: add force offset
     // lambda << 10, 0, 0, 0, 0;
@@ -274,7 +275,15 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // add feedforward force term if contact is desired
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
-  if (in_contact){
+
+  //std::cout << lambda << std::endl;
+
+//  std::cout << "normal_des" << std::endl;
+//
+//  std::cout << lambda(0) << std::endl;
+
+  if (lambda.norm() > 0.000001){
+    //std::cout << "here" << std::endl;
     // compute contact jacobian
     VectorXd phi(contact_pairs_.size());
     MatrixXd J_n(contact_pairs_.size(), plant_.num_velocities());
@@ -282,8 +291,8 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     this->CalcContactJacobians(contact_pairs_, phi, J_n, J_t);
     Jc << J_n.block(0, 0, J_n.rows(), n_),
           J_t.block(0, 0, J_t.rows(), n_);
-
-    tau -= Jc.transpose() * lambda; // TODO: check if this should be +/-
+    //lambda(0) = lambda(0) + 1000;
+    tau = tau - Jc.transpose() * lambda; // TODO: check if this should be +/-
   }
 
   // compute nullspace projection
@@ -299,11 +308,13 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   std::chrono::duration<double> elapsed = finish - start;
 
   // debug prints every 10th of a second
-  int print_enabled = 1; // print flag
+  int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*100) / 100.0 == timestamp && timestamp >= 9.0){
     std::cout << timestamp << "\n---------------" << std::endl;
     std::cout << "contact desired?\n" << in_contact << std::endl;
-    std::cout << "relative_distance\n" << (d-ball_xyz).norm() << std::endl;
+    std::cout << "relative_distance\n" << 100*(d-ball_xyz).norm() << std::endl;
+    std::cout << "xd\n" << xd.tail(3) << std::endl;
+    std::cout << "x\n" << d << std::endl;
     std::cout << std::endl;
   }
 }

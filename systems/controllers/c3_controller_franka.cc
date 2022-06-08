@@ -369,12 +369,25 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    drake::solvers::MobyLCPSolver<double> LCPSolver;
    VectorXd force;
 
-   auto flag = LCPSolver.SolveLcpLemke(system_.F_[0], system_.E_[0] * state + system_.c_[0] + system_.H_[0] * input,
-                                       &force);
-   VectorXd state_next = system_.A_[0] * state + system_.B_[0] * input + system_.D_[0] * force + system_.d_[0];
+   //scaling = 1;
 
- //  std::cout << "force" << std::endl;
- //  std::cout << force << std::endl;
+   //VectorXd inp = VectorXd::Zero(3);
+
+   auto flag = LCPSolver.SolveLcpLemkeRegularized(system_.F_[0], system_.E_[0] * scaling * state + system_.c_[0] * scaling + system_.H_[0] * scaling * input,
+                                       &force);
+//   if (flag == 1) {
+//     std::cout << flag << std::endl;
+//     std::cout << "here" << std::endl;
+//     std::cout << force << std::endl;
+//   }
+
+//  std::cout << "here" << std::endl;
+//  std::cout << system_.D_[0] * force << std::endl;
+
+   VectorXd state_next = system_.A_[0] * state + system_.B_[0] * input + system_.D_[0] * force / scaling + system_.d_[0];
+
+//   std::cout << "force" << std::endl;
+//   std::cout << force << std::endl;
 
  //  ///subject to change (compute J_c)
  //  VectorXd phi(contact_pairs.size());
@@ -410,12 +423,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
  VectorXd force_des = VectorXd::Zero(6);
  force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
- force_des = force_des * scaling;
+ force_des = 1 * force_des;
+
+// force_des = force_des * scaling;
+//
+// std::cout << "normal_des" << std::endl;
+//
+// std::cout << force << std::endl;
 
  //force_des = VectorXd::Zero(6);
 
- //std::cout << "force" << std::endl;
- //std::cout << force_des << std::endl;
+// std::cout << "force" << std::endl;
+// std::cout << force << std::endl;
 
  //std::cout << "scaling" << std::endl;
  //std::cout << scaling << std::endl;
@@ -436,7 +455,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
  std::vector<Eigen::Vector3d> target;
  if (timestamp <= total){
    Eigen::Vector3d start(0.5, 0, 0.12);
-   Eigen::Vector3d finish(0.5, 0.2, 0.08);
+   Eigen::Vector3d finish(0.4, 0.2, 0.08);
    target = move_to_initial_position(start, finish, timestamp,
           stabilize_time1, move_time, stabilize_time2);
    st_desired = VectorXd::Zero(25);

@@ -74,7 +74,7 @@ simulator.set_publish_every_time_step(False)
 simulator.set_publish_at_initialization(False)
 
 # Change the real-time rate to above 1 to simulate faster
-simulator.set_target_realtime_rate(1)
+simulator.set_target_realtime_rate(0.5)
 
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
@@ -113,7 +113,7 @@ q[q_map["panda_joint7"]] = 0
 q[q_map['base_qw']] = 1
 q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 0.5
+q[q_map['base_x']] = 0.4
 q[q_map['base_y']] = 0.2
 q[q_map['base_z']] = 0.05
 

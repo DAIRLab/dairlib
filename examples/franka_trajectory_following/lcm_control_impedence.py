@@ -75,7 +75,7 @@ context = plant.CreateDefaultContext()
 # gains
 translational_stiffness = 450 #450
 rotational_stiffness = 5
-coeff = 1
+coeff = 1  #1
 
 K = np.zeros((6,6))
 B = np.zeros((6,6))

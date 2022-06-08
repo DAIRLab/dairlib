@@ -24,6 +24,18 @@ py_library(
     ],
 )
 
+py_library(
+    name = "swing_foot_env",
+    srcs = ["swing_foot_env.py"],
+    deps = [
+        ":drake_cassie_gym",
+        "//bindings/pydairlib/cassie",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 py_binary(
     name = "cassie_gym_test",
     srcs = ["cassie_gym_test.py"],

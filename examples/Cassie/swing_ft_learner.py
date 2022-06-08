@@ -47,7 +47,8 @@ class RandomExplorer:
         """ Outputs a random deviation from the nominal
         (excluding the n_knots).
         """
-        deviation = np.random.normal(np.zeros(1 + 3 * self.nominal_swing[0] + 6), self.sigmas)
+        deviation = np.random.normal(
+            np.zeros(1 + 3 * self.nominal_swing[0] + 6), self.sigmas)
         return self.nominal_swing + deviation
          
     def collect_data(self, n_steps, cassie_env,

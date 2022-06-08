@@ -49,6 +49,7 @@ cc_library(
         "//systems/controllers/osc:osc_tracking_datas",
         "//systems/filters:floating_base_velocity_filter",
         "//systems/primitives:radio_parser",
+        "//systems/primitives:swing_foot_params_sender",
         "@drake//:drake_shared_library",
     ],
 )

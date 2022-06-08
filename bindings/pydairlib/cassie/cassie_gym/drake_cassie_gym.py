@@ -109,8 +109,8 @@ class DrakeCassieGym(gym.Env):
 
     def advance_to(self, time):
         while self.current_time < time and not self.terminated:
-            x, r, t = self.step()
-            print(x.shape)
+            x, r, t, _ = self.step()
+            # print(x.shape)
         return
 
     def check_termination(self):

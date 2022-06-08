@@ -5,6 +5,8 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/analysis/simulator.h"
 
+#include "dairlib/lcmt_swing_foot_spline_params.hpp"
+
 namespace dairlib::examples::controllers {
 
 using drake::multibody::MultibodyPlant;
@@ -25,12 +27,23 @@ int DoMain(int argc, char* argv[]){
   std::string osc_gains =
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml";
 
+  VectorXd default_spline_params(5*3 + 7);
+  default_spline_params(0) = 5;
+  for (int i = 0; i < 5; i++) {
+    double t = (double)i / (4.0);
+    auto x = Vector3d(0.5 * (sin(M_PI * (t - 0.5)) + 1),
+                             0.5 * (sin(M_PI * (t - 0.5)) + 1),
+                             .15/0.58 * cos(M_PI * (t - 0.5)) * t);
+    default_spline_params.segment(1 + 3*i,3) = x;
+  }
+  default_spline_params.tail(6) = VectorXd::Zero(6);
+
   auto controller_diagram = builder.AddSystem<AlipWalkingControllerDiagram>(
-      plant_w_spr, true, false, controller_gains, osc_gains);
+      plant_w_spr, true, true, controller_gains, osc_gains, 5);
 
   auto sim_plant = std::make_unique<MultibodyPlant<double>>(8e-5);
   auto sim_diagram = builder.AddSystem<CassieVisionSimDiagram>(
-      std::move(sim_plant));
+      std::move(sim_plant), urdf, true);
   auto& plant = sim_diagram->get_plant();
 
   builder.Connect(sim_diagram->get_state_output_port(),
@@ -42,7 +55,7 @@ int DoMain(int argc, char* argv[]){
 
   // Set initial state and fix radio port
   VectorXd x_init = VectorXd::Zero(45);
-  x_init << 1, 0, 0, 0, 0, 0, 0.95, -0.0358636, 0, 0.67432, -1.688, -0.0458742, 1.90918,
+  x_init << 1, 0, 0, 0, 0, 0, 0.85, -0.0358636, 0, 0.67432, -1.688, -0.0458742, 1.90918,
            -0.0381073, -1.82312, 0.0358636, 0, 0.67432, -1.688, -0.0457885, 1.90919, -0.0382424, -1.82321,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
   VectorXd radio = VectorXd::Zero(18);
@@ -56,6 +69,7 @@ int DoMain(int argc, char* argv[]){
   plant.SetPositionsAndVelocities(&plant_context, x_init);
   sim_diagram->get_radio_input_port().FixValue(&sim_diagram_context, radio);
   controller_diagram->get_radio_input_port().FixValue(&controller_diagram_context, radio);
+  controller_diagram->get_swing_foot_params_input_port().FixValue(&controller_diagram_context, default_spline_params);
 
   std::cout << "Initialize simulation\n";
   sim.Initialize();

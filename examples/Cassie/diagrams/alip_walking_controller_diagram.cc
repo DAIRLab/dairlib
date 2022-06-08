@@ -25,6 +25,7 @@
 #include "systems/controllers/swing_foot_target_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/primitives/radio_parser.h"
+#include "systems/primitives/swing_foot_params_sender.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
@@ -67,7 +68,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
     drake::multibody::MultibodyPlant<double> &plant,
     bool has_double_stance, bool swing_foot_params,
     const std::string &osc_gains_filename,
-    const std::string &osqp_settings_filename)
+    const std::string &osqp_settings_filename, int n_knot)
     : import_swing_foot_params_(swing_foot_params),
       plant_(&plant),
       pos_map(multibody::MakeNameToPositionsMap(plant)),
@@ -241,6 +242,10 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), true,
       false, 0);
+
+  auto swing_foot_params_parser =
+      builder.AddSystem<systems::SwingFootParamsSender>(n_knot);
+
 
   // Cost
   int n_v = plant.num_velocities();
@@ -448,6 +453,11 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
                   swing_ft_traj_generator->get_input_port_footstep_target());
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
+  if (import_swing_foot_params_) {
+    DRAKE_ASSERT(n_knot >= 2);
+    builder.Connect(swing_foot_params_parser->get_output_port(),
+                    swing_ft_traj_generator->get_input_port_swing_params());
+  }
 
 
   builder.Connect(alip_traj_generator->get_output_port_com(),
@@ -470,7 +480,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
   builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
   if (import_swing_foot_params_) {
-    builder.ExportInput(swing_ft_traj_generator->get_input_port_swing_params());
+    builder.ExportInput(swing_foot_params_parser->get_input_port(), "raw params");
   }
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");

@@ -44,7 +44,8 @@ class AlipWalkingControllerDiagram final
   AlipWalkingControllerDiagram(drake::multibody::MultibodyPlant<double>& plant,
                               bool has_double_stance, bool swing_foot_params,
                               const std::string& osc_gains_filename,
-                              const std::string& osqp_settings_filename);
+                              const std::string& osqp_settings_filename,
+                              int n_knot=0);
 
   /// @return the input port for the raw radio channel values array
   const drake::systems::InputPort<double>& get_radio_input_port() const {

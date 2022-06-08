@@ -251,7 +251,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // modify desired state if no contact desired
   if (lambda.norm() < 0.000001){
     // method 1: add position offset
-    double offset = 0.001;
+    double offset = 0.0; // 0.001
     Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
     Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
     xd.tail(3) << xd_new;

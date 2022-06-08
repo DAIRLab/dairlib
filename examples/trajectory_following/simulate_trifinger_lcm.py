@@ -5,6 +5,7 @@ from pydairlib.systems import AddActuationRecieverAndStateSenderLcm
 import pydairlib.common
 
 import pydrake.geometry as mut
+from pydrake.multibody.plant import ConnectContactResultsToDrakeVisualizer
 
 
 
@@ -59,6 +60,9 @@ logger = builder.AddSystem(VectorLogSink(nq + nv + nu, output_dt))
 
 # Multiplex state and input for logger
 mux = builder.AddSystem(Multiplexer([nq + nv, nu]))
+
+ConnectContactResultsToDrakeVisualizer(
+    builder=builder, plant=plant, scene_graph=scene_graph, lcm=lcm)
 
 builder.Connect(plant.get_state_output_port(), mux.get_input_port(0))
 builder.Connect(passthrough.get_output_port(), mux.get_input_port(1))

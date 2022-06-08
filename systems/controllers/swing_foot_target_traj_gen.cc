@@ -46,7 +46,7 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
     left_right_foot,
     double mid_foot_height, double desired_final_foot_height,
-    double desired_final_vertical_foot_velocity)
+    double desired_final_vertical_foot_velocity, bool learn_params)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
@@ -54,7 +54,8 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
       mid_foot_height_(mid_foot_height),
       desired_final_foot_height_(desired_final_foot_height),
       desired_final_vertical_foot_velocity_(
-          desired_final_vertical_foot_velocity) {
+          desired_final_vertical_foot_velocity),
+      learn_params_(learn_params) {
   this->set_name("swing_ft_traj");
 
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
@@ -108,6 +109,31 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
       {left_right_support_fsm_states.at(0), left_right_foot.at(1)});
   swing_foot_map_.insert(
       {left_right_support_fsm_states.at(1), left_right_foot.at(0)});
+
+  // Make default spline parameters
+  default_spline_params_.n_knot = 5;
+  default_spline_params_.knot_xyz = std::vector<std::vector<double>>(
+      default_spline_params_.n_knot, std::vector<double>(3));
+  for (int i = 0; i < default_spline_params_.n_knot; i++) {
+    double t =  (double) i / (default_spline_params_.n_knot - 1);
+    std::vector<double>& xyz = default_spline_params_.knot_xyz.at(i);
+    xyz[0] = 0.5 * (sin(M_PI * (t - 0.5)) + 1);
+    xyz[1] = 0.5 * (sin(M_PI * (t - 0.5)) + 1);
+    xyz[2] = (mid_foot_height / 0.58) * cos(M_PI * (t - 0.5))*t;
+  }
+  for (int i = 0; i < 3; i++) {
+    default_spline_params_.swing_foot_vel_initial[i] = 0;
+    default_spline_params_.swing_foot_vel_final[i] = 0;
+  }
+  default_spline_params_.swing_foot_vel_final[2] =
+      desired_final_vertical_foot_velocity;
+
+  if (learn_params_) {
+    swing_params_port_ =
+        this->DeclareAbstractInputPort(
+            "swing foot parameters",
+            drake::Value<lcmt_swing_foot_spline_params>(default_spline_params_)).get_index();
+  }
 }
 
 EventStatus SwingFootTargetTrajGen::DiscreteVariableUpdate(
@@ -151,38 +177,30 @@ EventStatus SwingFootTargetTrajGen::DiscreteVariableUpdate(
 PiecewisePolynomial<double> SwingFootTargetTrajGen::CreateSplineForSwingFoot(
     const double start_time_of_this_interval,
     const double end_time_of_this_interval, const double stance_duration,
-    const Vector3d& init_swing_foot_pos, const Vector3d& final_swing_foot_pos)
+    const Vector3d& init_swing_foot_pos, const Vector3d& final_swing_foot_pos,
+    lcmt_swing_foot_spline_params& params)
     const {
 
   // Two segment of cubic polynomial with velocity constraints
-  std::vector<double> T_waypoint = {
-      start_time_of_this_interval,
-      (start_time_of_this_interval + end_time_of_this_interval) / 2,
-      end_time_of_this_interval};
+  std::vector<double> T_waypoint(params.n_knot);
+  std::vector<MatrixXd> Y(params.n_knot, MatrixXd::Zero(3, 1));
 
-  std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
-  // x
-  Y[0](0, 0) = init_swing_foot_pos(0);
-  Y[1](0, 0) = (init_swing_foot_pos(0) + final_swing_foot_pos(0)) / 2;
-  Y[2](0, 0) = final_swing_foot_pos(0);
-  // y
-  Y[0](1, 0) = init_swing_foot_pos(1);
-  Y[1](1, 0) = (init_swing_foot_pos(1) + final_swing_foot_pos(1)) / 2;
-  Y[2](1, 0) = final_swing_foot_pos(1);
+  for (int i = 0; i < params.n_knot; i++) {
+    T_waypoint[i] = start_time_of_this_interval +
+        ((double) i) / (params.n_knot - 1)*
+            (end_time_of_this_interval - start_time_of_this_interval);
+    Vector3d knot = Eigen::Map<Eigen::Matrix<double, 3, 1>>(
+        params.knot_xyz[i].data());
+    knot.head<2>() = knot.head<2>().cwiseProduct(
+        final_swing_foot_pos.head<2>() - init_swing_foot_pos.head<2>())
+            + init_swing_foot_pos.head<2>();
+    knot(2) += init_swing_foot_pos(2);
+    Y[i] = knot;
+  }
 
-  // z
-  /// We added stance_foot_height because we want the desired trajectory to be
-  /// relative to the stance foot in case the floating base state estimation
-  /// drifts.
-  Y[0](2, 0) = init_swing_foot_pos(2);
-  Y[1](2, 0) = mid_foot_height_ + final_swing_foot_pos(2);
-  Y[2](2, 0) = desired_final_foot_height_ + final_swing_foot_pos(2);
+  Vector3d Y_dot_start = Eigen::Map<Vector3d>(params.swing_foot_vel_initial);
+  Vector3d Y_dot_end = Eigen::Map<Vector3d>(params.swing_foot_vel_final);
 
-  MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-  MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
-  Y_dot_end(2) = desired_final_vertical_foot_velocity_;
-
-  // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to make
   // the traj smooth at the mid point
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
@@ -223,6 +241,9 @@ void SwingFootTargetTrajGen::CalcTrajs(
     // Read in current robot state
     const OutputVector<double>* robot_output =
         (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+    lcmt_swing_foot_spline_params spline_params = learn_params_ ?
+          this->EvalAbstractInput(context, swing_params_port_)->
+              get_value<lcmt_swing_foot_spline_params>() : default_spline_params_;
 
     // Get the start time and the end time of the current stance phase
     double start_time_of_this_interval = liftoff_time(0);
@@ -244,7 +265,8 @@ void SwingFootTargetTrajGen::CalcTrajs(
     // Assign traj
     *pp_traj = CreateSplineForSwingFoot(
         start_time_of_this_interval, end_time_of_this_interval,
-        duration_map_.at(fsm_state), swing_foot_pos_at_liftoff, footstep_target);
+        duration_map_.at(fsm_state),swing_foot_pos_at_liftoff,
+        footstep_target, spline_params);
   } else {
     // Assign a constant traj
     *pp_traj = PiecewisePolynomial<double>(Vector3d::Zero());

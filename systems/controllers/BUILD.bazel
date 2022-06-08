@@ -181,6 +181,7 @@ cc_library(
     hdrs = ["swing_foot_target_traj_gen.h"],
     deps = [
         ":control_utils",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

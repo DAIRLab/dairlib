@@ -41,6 +41,7 @@ def test_vec_env():
     print(s)
 
 
+
 def test_env():
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
     osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
@@ -57,6 +58,7 @@ def test_env():
     state = gym_env.reset()
     
     check_env(gym_env)
+
 
 def main():
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'

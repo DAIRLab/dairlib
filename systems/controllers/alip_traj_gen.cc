@@ -218,8 +218,7 @@ ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipState
           Vector4d::Zero(), Vector4d::Zero());
   MatrixXd K = MatrixXd::Identity(4,4);
 
-  return ExponentialPlusPiecewisePolynomial<double>(
-      K, CalcA(com_z), x_alip, pp_part);
+  return {K, CalcA(com_z), x_alip, pp_part};
 }
 
 void ALIPTrajGenerator::CalcAlipState(

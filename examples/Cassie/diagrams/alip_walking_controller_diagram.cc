@@ -65,10 +65,11 @@ namespace controllers {
 
 AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
     drake::multibody::MultibodyPlant<double> &plant,
-    bool has_double_stance,
+    bool has_double_stance, bool swing_foot_params,
     const std::string &osc_gains_filename,
     const std::string &osqp_settings_filename)
-    : plant_(&plant),
+    : import_swing_foot_params_(swing_foot_params),
+      plant_(&plant),
       pos_map(multibody::MakeNameToPositionsMap(plant)),
       vel_map(multibody::MakeNameToVelocitiesMap(plant)),
       act_map(multibody::MakeNameToActuatorsMap(plant)),
@@ -224,7 +225,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
           plant, plant_context.get(), left_right_support_fsm_states,
           left_right_support_state_durations, left_right_foot,
           gains.mid_foot_height, gains.final_foot_height,
-          gains.final_foot_velocity_z);
+          gains.final_foot_velocity_z, swing_foot_params);
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant, plant_context.get(), pos_map["toe_left"],
@@ -468,6 +469,9 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
 
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
   builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
+  if (import_swing_foot_params_) {
+    builder.ExportInput(swing_ft_traj_generator->get_input_port_swing_params());
+  }
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
 

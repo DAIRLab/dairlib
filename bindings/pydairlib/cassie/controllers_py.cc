@@ -21,9 +21,9 @@ PYBIND11_MODULE(controllers, m) {
 
   py::class_<AlipWalkingControllerDiagram, drake::systems::Diagram<double>>(
       m, "AlipWalkingControllerFactory")
-      .def(py::init<drake::multibody::MultibodyPlant<double>&, bool,
+      .def(py::init<drake::multibody::MultibodyPlant<double>&, bool, bool,
                     const std::string&, const std::string&>(),
-           py::arg("plant"), py::arg("has_double_stance"),
+           py::arg("plant"), py::arg("has_double_stance"), py::arg("swing_foot_params"),
            py::arg("osc_gains_filename"), py::arg("osqp_settings_filename"))
       .def("get_plant", &AlipWalkingControllerDiagram::get_plant,
            py_rvp::reference_internal)

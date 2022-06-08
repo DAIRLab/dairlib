@@ -1,4 +1,5 @@
 import numpy as np
+import gym   # OpenAI gym
 
 from pydrake.multibody.parsing import Parser
 from pydrake.systems.framework import DiagramBuilder
@@ -15,7 +16,7 @@ from pydairlib.cassie.simulators import CassieSimDiagram
 from cassie_env_state import CassieEnvState, CASSIE_NU
 
 
-class DrakeCassieGym():
+class DrakeCassieGym(gym.Env):
     def __init__(self, reward_func, visualize=False):
         self.visualize = visualize
         self.reward_func = reward_func
@@ -47,6 +48,9 @@ class DrakeCassieGym():
         self.cassie_sim_context = None
         self.controller_context = None
         self.controller_output_port = None
+
+        self.observation_space = gym.spaces.Box(high = 1000, low = -1000, shape = (45,), dtype=float)
+        self.action_space = gym.spaces.Box(high = 1, low = -1, shape=(18,), dtype=float)
 
     def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         self.builder = DiagramBuilder()
@@ -99,11 +103,12 @@ class DrakeCassieGym():
             CassieEnvState(self.current_time, x, u, self.default_action)
         self.cumulative_reward = 0
         self.terminated = False
-        return
+        return np.array(self.cassie_state.x)
 
     def advance_to(self, time):
         while self.current_time < time and not self.terminated:
-            self.step()
+            x, r, t = self.step()
+            print(x.shape)
         return
 
     def check_termination(self):
@@ -130,7 +135,7 @@ class DrakeCassieGym():
         self.terminated = self.check_termination()
         self.prev_cassie_state = self.cassie_state
         self.cumulative_reward += reward
-        return self.cassie_state, reward
+        return np.array(self.cassie_state.x), reward, bool(self.terminated), {}
 
     def get_traj(self):
         return self.traj

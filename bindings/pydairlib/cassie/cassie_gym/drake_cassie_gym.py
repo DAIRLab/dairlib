@@ -49,8 +49,10 @@ class DrakeCassieGym(gym.Env):
         self.controller_context = None
         self.controller_output_port = None
 
-        self.observation_space = gym.spaces.Box(high = 1000, low = -1000, shape = (45,), dtype=float)
-        self.action_space = gym.spaces.Box(high = 1, low = -1, shape=(18,), dtype=float)
+        self.observation_space = \
+            gym.spaces.Box(high=1000, low=-1000, shape=(45,), dtype=float)
+        self.action_space = \
+            gym.spaces.Box(high=1, low=-1, shape=(18,), dtype=float)
 
     def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         self.builder = DiagramBuilder()

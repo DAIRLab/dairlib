@@ -26,7 +26,7 @@ int DoMain(int argc, char* argv[]){
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml";
 
   auto controller_diagram = builder.AddSystem<AlipWalkingControllerDiagram>(
-      plant_w_spr, true, controller_gains, osc_gains);
+      plant_w_spr, true, false, controller_gains, osc_gains);
 
   auto sim_plant = std::make_unique<MultibodyPlant<double>>(8e-5);
   auto sim_diagram = builder.AddSystem<CassieVisionSimDiagram>(

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dairlib/lcmt_swing_foot_spline_params.hpp"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
@@ -26,7 +27,8 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
                             const drake::multibody::Frame<double>&>>
       left_right_foot,
       double mid_foot_height, double desired_final_foot_height,
-      double desired_final_vertical_foot_velocity);
+      double desired_final_vertical_foot_velocity,
+      bool learn_params = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -42,6 +44,9 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
   const {
     return this->get_input_port(footstep_target_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_swing_params() {
+    return this->get_input_port(swing_params_port_);
+  }
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -52,7 +57,8 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
       const double start_time_of_this_interval,
       const double end_time_of_this_interval, const double stance_duration,
       const Eigen::Vector3d& init_swing_foot_pos,
-      const Eigen::Vector3d& final_swing_foot_pos) const;
+      const Eigen::Vector3d& final_swing_foot_pos,
+      lcmt_swing_foot_spline_params& params) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;
@@ -61,7 +67,7 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
   int fsm_port_;
   int liftoff_time_port_;
   int footstep_target_port_;
-
+  int swing_params_port_;
   int liftoff_swing_foot_pos_idx_;
   int prev_fsm_state_idx_;
 
@@ -75,6 +81,7 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
   double mid_foot_height_;
   double desired_final_foot_height_;
   double desired_final_vertical_foot_velocity_;
+  lcmt_swing_foot_spline_params default_spline_params_;
 
   // Maps
   std::map<int, std::pair<const Eigen::Vector3d,
@@ -84,6 +91,8 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
                           const drake::multibody::Frame<double>&>>
       swing_foot_map_;
   std::map<int, double> duration_map_;
+
+  bool learn_params_;
 };
 
 }  // namespace systems

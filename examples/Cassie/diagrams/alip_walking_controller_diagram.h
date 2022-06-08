@@ -42,19 +42,26 @@ class AlipWalkingControllerDiagram final
   /// @param[in] osc_gains_filename filepath containing the osc walking gains.
   /// @param[in] osqp_settings filepath containing the osqp settings.
   AlipWalkingControllerDiagram(drake::multibody::MultibodyPlant<double>& plant,
-                              bool has_double_stance,
+                              bool has_double_stance, bool swing_foot_params,
                               const std::string& osc_gains_filename,
                               const std::string& osqp_settings_filename);
+
+  /// @return the input port for the raw radio channel values array
+  const drake::systems::InputPort<double>& get_radio_input_port() const {
+    return this->get_input_port(radio_input_port_index_);
+  }
 
   /// @return the input port for the plant state.
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_input_port_index_);
   }
 
-  /// @return the input port for the raw radio channel values array
-  const drake::systems::InputPort<double>& get_radio_input_port() const {
-    return this->get_input_port(radio_input_port_index_);
+  /// @return the input port for the plant state.
+  const drake::systems::InputPort<double>& get_swing_foot_params_input_port()
+  const {
+    return this->get_input_port(swing_foot_params_input_port_);
   }
+
 
   /// @return the output port for the controller torques.
   const drake::systems::OutputPort<double>& get_control_output_port() const {
@@ -77,6 +84,7 @@ class AlipWalkingControllerDiagram final
   }
 
  private:
+  bool import_swing_foot_params_;
   drake::multibody::MultibodyPlant<double>* plant_;
   std::map<std::string, int> pos_map;
   std::map<std::string, int> vel_map;
@@ -159,6 +167,7 @@ class AlipWalkingControllerDiagram final
 
   const int state_input_port_index_ = 0;
   const int radio_input_port_index_ = 1;
+  const int swing_foot_params_input_port_ = 2;
   const int control_output_port_index_ = 0;
   const int torque_output_port_index_ = 1;
   const int controller_failure_port_index_ = 2;

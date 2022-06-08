@@ -4,6 +4,7 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from drake_cassie_gym import DrakeCassieGym
+from swing_foot_env import SwingFootEnv
 from reward_osudrl import RewardOSUDRL
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.cassie.controllers import AlipWalkingControllerFactory
@@ -23,7 +24,7 @@ def make_env():
     controller_plant.Finalize()
     controller = AlipWalkingControllerFactory(
         controller_plant, True, False, osc_gains, osqp_settings)
-    gym_env = DrakeCassieGym(reward_func = RewardOSUDRL(), visualize=False)
+    gym_env = DrakeCassieGym(reward_func=RewardOSUDRL(), visualize=False)
     gym_env.make(controller)
     return gym_env
 
@@ -32,7 +33,7 @@ def test_vec_env():
     env = SubprocVecEnv([make_env, make_env])
 
 
-def test_env():
+def test_base_env():
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
     osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
     urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
@@ -42,12 +43,17 @@ def test_env():
     AddCassieMultibody(controller_plant, None, True, urdf, False, False)
     controller_plant.Finalize()
     controller = AlipWalkingControllerFactory(
-        controller_plant, True, osc_gains, osqp_settings)
-    gym_env = DrakeCassieGym(reward_func = RewardOSUDRL(), visualize=False)
+        controller_plant, True, False, osc_gains, osqp_settings)
+    gym_env = DrakeCassieGym(reward_func=RewardOSUDRL(), visualize=False)
     gym_env.make(controller)
     state = gym_env.reset()
     
     check_env(gym_env)
+
+
+def test_swing_foot_env():
+    gym_env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=False)
+    gym_env.advance_to(5.0)
 
 
 def main():
@@ -61,13 +67,13 @@ def main():
         AddCassieMultibody(controller_plant, None, True, urdf, False, False)
         controller_plant.Finalize()
         controller = AlipWalkingControllerFactory(
-            controller_plant, True, osc_gains, osqp_settings)
-        gym_env = DrakeCassieGym(reward_func = RewardOSUDRL(), visualize=False)
+            controller_plant, True, False, osc_gains, osqp_settings)
+        gym_env = DrakeCassieGym(reward_func=RewardOSUDRL(), visualize=True)
         gym_env.make(controller)
-        gym_env.advance_to(0.35)
+        gym_env.advance_to(5.0)
         gym_env.free_sim()
         gym_env.reset()
 
 
 if __name__ == '__main__':
-    test_vec_env()
+    test_swing_foot_env()

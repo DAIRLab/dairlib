@@ -125,11 +125,11 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 //    std::cout << "violation" << std::endl;
 //  std::cout << delta.at(0) << std::endl;
 
-  std::cout << "delta_force" << std::endl;
-  std::cout << delta.at(0).segment(n_,m_) << std::endl;
-
-  std::cout << "delta_displace" << std::endl;
-  std::cout << delta.at(0).segment(0,n_) << std::endl;
+//  std::cout << "delta_force" << std::endl;
+//  std::cout << delta.at(0).segment(n_,m_) << std::endl;
+//
+//  std::cout << "delta_displace" << std::endl;
+//  std::cout << delta.at(0).segment(0,n_) << std::endl;
 
 //VectorXd hold = delta.at(0).segment(n_,m_);
   //VectorXd hold = z.segment(n_,m_);

@@ -313,7 +313,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   auto An = A.squaredNorm();
   auto AnDn = An / Dn;
 
-  AnDn = 1;
+  //AnDn = 1;
   //std::cout << AnDn << std::endl;
 
   std::vector<MatrixXd> A_lcs(N, A);

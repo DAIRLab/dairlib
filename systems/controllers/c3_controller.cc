@@ -117,6 +117,9 @@ void C3Controller::CalcControl(const Context<double>& context,
   traj_desired_vector[0] = state[7]; //- 0.05;
   traj_desired_vector[1] = state[8]; //+ 0.01;
 
+//  traj_desired_vector[0] = 0; //- 0.05;
+//  traj_desired_vector[1] = 0; //+ 0.01;
+
   //  xtop[0] = xtop[16];
 //  xtop[1] = xtop[17];
 
@@ -239,8 +242,8 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   Qnew = Q_[0];
 
   if (ts % 3 == 0){
-    Qnew(7,7) = 1;
-    Qnew(8,8) = 1;
+    Qnew(7,7) = 1;     ///1
+    Qnew(8,8) = 1;    ///1
   }
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);

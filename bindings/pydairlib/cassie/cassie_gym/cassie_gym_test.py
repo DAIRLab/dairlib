@@ -17,18 +17,29 @@ def make_env():
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
     osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
     urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
+    '''
 
     controller_plant = MultibodyPlant(8e-5)
     AddCassieMultibody(controller_plant, None, True, urdf, False, False)
     controller_plant.Finalize()
     controller = AlipWalkingControllerFactory(
         controller_plant, True, osc_gains, osqp_settings)
-    gym_env = DrakeCassieGym(reward_func = RewardOSUDRL(), visualize=False)
-    gym_env.make(controller)
+    '''
+    gym_env = DrakeCassieGym(RewardOSUDRL(), 
+                             osc_gains,
+                             osqp_settings,
+                             urdf,
+                             visualize=False)
+    # gym_env.make(controller)
     return gym_env
+
 
 def test_vec_env():
     env = SubprocVecEnv([make_env, make_env])
+    env.reset()
+    s,r,d,i = env.step([np.zeros(18) for i in range(2)])
+    print(s)
+
 
 def test_env():
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
@@ -37,10 +48,10 @@ def test_env():
     radio = np.zeros(18)
 
     controller_plant = MultibodyPlant(8e-5)
-    AddCassieMultibody(controller_plant, None, True, urdf, False, False)
-    controller_plant.Finalize()
-    controller = AlipWalkingControllerFactory(
-        controller_plant, True, osc_gains, osqp_settings)
+    # AddCassieMultibody(controller_plant, None, True, urdf, False, False)
+    # controller_plant.Finalize()
+    # controller = AlipWalkingControllerFactory(
+    #     controller_plant, True, osc_gains, osqp_settings)
     gym_env = DrakeCassieGym(reward_func = RewardOSUDRL(), visualize=False)
     gym_env.make(controller)
     state = gym_env.reset()

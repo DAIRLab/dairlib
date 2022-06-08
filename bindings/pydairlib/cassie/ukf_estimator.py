@@ -436,7 +436,7 @@ class UKF:
             pre_points_of_contact_in_world_frame = self.cal_points_of_contact_in_world_frame(sigma_points, pre_foot_frame, pre_point_of_contact_in_foot_frame)
             new_points_of_contact_in_world_frame = self.cal_points_of_contact_in_world_frame(sigma_points, new_foot_frame, new_point_of_contact_in_foot_frame)
             incremental_of_contact_points_in_world_frame = new_points_of_contact_in_world_frame - pre_points_of_contact_in_world_frame
-            self.point_of_contact_cov = np.cov(incremental_of_contact_points_in_world_frame, rowvar=False, bias=True)
+            self.point_of_contact_cov = np.cov(incremental_of_contact_points_in_world_frame, rowvar=False, bias=True) + self.point_of_contact_cov
             self.point_of_contact_in_world_frame = self.point_of_contact_in_world_frame + np.mean(incremental_of_contact_points_in_world_frame, axis=0)
 
         # Calculate expected position use FK

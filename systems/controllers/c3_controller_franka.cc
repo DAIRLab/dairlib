@@ -125,17 +125,17 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   
 
 
-// // get values
+// get values
 // auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
 // double timestamp = robot_output->get_timestamp();
-//
+
 // // DEBUG CODE FOR ADAM
 // // TODO: @Alp comment this section out to use actual admm
 // double stabilize_time1 = 5;
 // double move_time = 1;
 // double stabilize_time2 = 2;
 // double total = stabilize_time1 + move_time + stabilize_time2;
-//
+
 // std::vector<Eigen::Vector3d> target;
 // if (timestamp <= total){
 //   Eigen::Vector3d start(0.5, 0, 0.12);
@@ -146,17 +146,21 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 // else{
 //   target = compute_target_task_space_vector(timestamp-total);
 // }
-//
-// VectorXd debug_state = VectorXd::Zero(25);
+
+// VectorXd debug_state = VectorXd::Zero(25+3);
 // debug_state.head(3) << target[0];
 // debug_state(10) = target[1](0);
 // debug_state(11) = target[1](1);
 // debug_state(12) = target[1](2);
-//
+
 // if (timestamp > 25 && timestamp < 35){
-//   debug_state.tail(5) << 100, 0, 0, 0, 0;
+//   debug_state(20) = 100;
 // }
-//
+
+// debug_state(25) = target[0](0);
+// debug_state(26) = target[0](1);
+// debug_state(27) = target[0](2);
+
 // state_contact_desired->SetDataVector(debug_state);
 // state_contact_desired->set_timestamp(timestamp);
 // return;
@@ -468,7 +472,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
  ///VectorXd force_des = VectorXd::Zero(10);
 
  VectorXd st_desired(force_des.size() + state_next.size() + traj_desired_vector.size());
- st_desired << state_next, traj_desired_vector, force_des.head(6);
+ st_desired << state_next, force_des.head(6), traj_desired_vector;
 
  ////2 (connected to franka)
  //VectorXd st_desired = VectorXd::Zero( force_des.size() + state_next.size() );

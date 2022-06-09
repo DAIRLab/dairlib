@@ -27,7 +27,7 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
       .def(py::init<const MultibodyPlant<double>&>());
   py::class_<systems::RobotC3Receiver, drake::systems::LeafSystem<double>>(
       m, "RobotC3Receiver")
-      .def(py::init<int, int, int>());
+      .def(py::init<int, int, int, int>());
   py::class_<RobotOutputSender, drake::systems::LeafSystem<double>>(
       m, "RobotOutputSender")
       .def(py::init<const MultibodyPlant<double>&, bool>())
@@ -42,7 +42,7 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
       .def(py::init<const MultibodyPlant<double>&>());
   py::class_<systems::RobotC3Sender, drake::systems::LeafSystem<double>>(
       m, "RobotC3Sender")
-      .def(py::init<int, int, int>());
+      .def(py::init<int, int, int, int>());
   m.def("AddActuationRecieverAndStateSenderLcm",
         &dairlib::systems::AddActuationRecieverAndStateSenderLcm,
         py::arg("builder"), py::arg("plant"), py::arg("lcm"),

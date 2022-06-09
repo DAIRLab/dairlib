@@ -200,11 +200,13 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd state = c3_output->get_data();
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);
+  VectorXd lambda = VectorXd::Zero(5); // does not contain the slack variable
   Vector3d ball_xyz(state(7), state(8), state(9));
 
   xd.tail(3) << state.head(3);
   xd_dot.tail(3) << state(10), state(11), state(12);
-  VectorXd lambda = state.tail(5); // does not contain the slack variable
+  lambda << state(20), state(21), state(22), state(23), state(24);
+
 
   // std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
   // VectorXd xd = VectorXd::Zero(6);
@@ -263,7 +265,9 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
 //
 //  }
-  if (timestamp > 9){
+
+  double settle_time = 9;
+  if (timestamp > settle_time){
     if (lambda(0) > 0.001){
       //std::cout << "here" << std::endl;
       Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
@@ -276,7 +280,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     int period = 10;
     double duty_cycle = 0.7;
 
-    double ts = -9 + timestamp - period * (  (int) ( floor(-9 + timestamp)) / period);
+    double ts = -settle_time + timestamp - period * (  (int) ( floor(-settle_time + timestamp)) / period);
 
 
     if (ts > period * duty_cycle){
@@ -287,8 +291,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
     }
   }
-
-
 
   // build task space state vectors
   VectorXd x = VectorXd::Zero(6);
@@ -303,12 +305,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // add feedforward force term if contact is desired
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
-
-  //std::cout << lambda << std::endl;
-
-//  std::cout << "normal_des" << std::endl;
-//
-//  std::cout << lambda(0) << std::endl;
 
 //  if (lambda(0) > 0.0001){
 //    //std::cout << "here" << std::endl;

@@ -121,7 +121,7 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 class RobotC3Receiver : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotC3Receiver(int num_positions, int num_velocities,
-                    int lambda_size);
+                    int lambda_size, int misc_size);
 
  private:
   void CopyC3Out(const drake::systems::Context<double>& context,
@@ -136,7 +136,7 @@ class RobotC3Receiver : public drake::systems::LeafSystem<double> {
 class RobotC3Sender : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotC3Sender(int num_positions, int num_velocities,
-                    int lambda_size);
+                    int lambda_size, int  misc_size);
 
  private:
   void OutputC3(const drake::systems::Context<double>& context,

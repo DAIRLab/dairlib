@@ -47,6 +47,10 @@ class AlipWalkingControllerDiagram final
                               const std::string& osqp_settings_filename,
                               int n_knot=0);
 
+  const drake::systems::OutputPort<double>& get_fsm_output_port() const {
+    return this->get_output_port(fsm_output_port_index_);
+  }
+
   /// @return the input port for the raw radio channel values array
   const drake::systems::InputPort<double>& get_radio_input_port() const {
     return this->get_input_port(radio_input_port_index_);
@@ -171,7 +175,9 @@ class AlipWalkingControllerDiagram final
   const int swing_foot_params_input_port_ = 2;
   const int control_output_port_index_ = 0;
   const int torque_output_port_index_ = 1;
+  // These two currently conflict, but controller_failure port index is not used.
   const int controller_failure_port_index_ = 2;
+  const int fsm_output_port_index_ = 2;
 
   const std::string control_channel_name_ = "OSC_WALKING";
 };

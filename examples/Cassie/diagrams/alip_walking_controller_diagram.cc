@@ -484,6 +484,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   }
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
+  builder.ExportOutput(fsm->get_output_port_fsm(), "fsm_state");
 
   // Create the diagram
   builder.BuildInto(this);

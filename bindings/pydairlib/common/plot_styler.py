@@ -20,22 +20,26 @@ class PlotStyler():
     self.directory = None
     self.fig = plt.figure() if figure is None else figure
     self.fig_id = self.fig.number
-
     return
 
   def attach(self):
     plt.figure(self.fig_id)
+
+  def attach_fig(self, fig):
+      self.fig = fig
+      self.fig_id = fig.number
+      plt.figure(self.fig_id)
 
   def set_default_styling(self, directory=None):
     plt.figure(self.fig_id)
     self.directory = directory
     matplotlib.rcParams["savefig.directory"] = directory
     matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
-    matplotlib.rcParams['figure.figsize'] = 20, 12
+    matplotlib.rcParams['figure.figsize'] = 10, 8
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     # matplotlib.rcParams['figure.figsize'] = 8, 5
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 12.5}
+    font = {'size': 20}
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 4
     plt.set_cmap('tab20')

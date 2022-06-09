@@ -11,8 +11,8 @@ from pydrake.multibody.plant import MultibodyPlant
 
 from pydairlib.cassie.cassie_gym.drake_cassie_gym import DrakeCassieGym
 from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState, CASSIE_NRADIO
-# from pydairlib.cassie.cassie_gym.reward_osudrl import RewardOSUDRL
-from reward_osudrl import RewardOSUDRL
+from pydairlib.cassie.cassie_gym.reward_osudrl import RewardOSUDRL
+# from reward_osudrl import RewardOSUDRL
 
 N_KNOT = 5
 SWING_FOOT_ACTION_DIM = N_KNOT * 3 + 6
@@ -108,4 +108,4 @@ class SwingFootEnv(DrakeCassieGym):
 
 # TODO(hersh500): set random seed in here as well.
 def make_swing_ft_env():
-    return SwingFootEnv(reward_func = RewardOSUDRL(), visualize=True)
+    return SwingFootEnv(reward_func=RewardOSUDRL(), visualize=True)

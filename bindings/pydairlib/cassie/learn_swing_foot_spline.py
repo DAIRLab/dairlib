@@ -33,6 +33,10 @@ class SwingFootSplineOptimizer:
         with open(folder + self.date_prefix + '_' + str(budget) + '.pkl', 'wb') as f:
             pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
 
+    def load_params(self, param_file, folder):
+        with open(folder + param_file + '.pkl', 'rb') as f:
+            return pickle.load(f)
+
     def learn_spline(self):
         self.param_space = \
             ng.p.Array(lower=-0.2, upper=0.2, shape=(len(self.default_action),))
@@ -54,28 +58,44 @@ def params_to_traj(params, duration):
     return pp
 
 
-def params_to_xz_samples(params, duration, n):
+def params_to_xyz_samples(params, duration, n):
     pp = params_to_traj(params, duration)
     t = np.linspace(0, duration, n)
     x = np.zeros(t.shape)
     z = np.zeros(t.shape)
+    y = np.zeros(t.shape)
     for i in range(t.shape[0]):
         xyz = pp.value(t[i])
         x[i] = xyz[0]
+        y[i] = xyz[1]
         z[i] = xyz[-1]
-    return x, z
+    return x, y, z
 
 
-def plot_swing_foot_params(params):
+def plot_swing_foot_params(params, title, filename):
     ps = PlotStyler()
     ps.set_default_styling('bindings/pydairlib/cassie/data/')
-    x, z = params_to_xz_samples(params, 1.0, 100)
-    ps.plot(x, z)
-    plt.title('Swing Foot Trajectory')
-    plt.xlabel('$\\frac{x(t) - x(0)}{x(T)}$')
+    x, y, z = params_to_xyz_samples(params, 1.0, 100)
+    ps.plot(x, z, data_label='$(\phi_{x}, z)$', linestyle='-')
+    ps.plot(y, z, data_label='$(\phi_{y}, z)$', linestyle='--')
+    plt.xlabel('$\phi$')
     plt.ylabel('$z (m)$')
-    ps.save_fig("swing_ft.png")
+    plt.title(title)
+    plt.legend()
+    ps.save_fig(filename)
 
+
+def plot_params_from_file(params_filename):
+    ps = PlotStyler()
+    ps.set_default_styling()
+    opt = SwingFootSplineOptimizer(0)
+    p = opt.load_params(params_filename, opt.data_folder)
+    params = np.array(get_default_params()) + p.value
+    plot_swing_foot_params(
+        params, 'Optimized Swing Foot Spline', 'swing_ft_optimized.png')
+    plot_swing_foot_params(
+        np.array(get_default_params()),
+        'Unoptimized Swing Foot Spline', 'swing_ft_init.png')
 
 def main():
     optimizer = SwingFootSplineOptimizer(1000)
@@ -83,4 +103,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    plot_params_from_file('2022_06_08_23_1000')

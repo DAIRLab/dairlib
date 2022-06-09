@@ -200,7 +200,7 @@ xtraj = []
 for i in theta:
     x = r * np.sin(math.radians(i))
     y = r * np.cos(math.radians(i))
-    q[q_map['base_x']] = x + 0.5
+    q[q_map['base_x']] = x + 0.4
     q[q_map['base_y']] = y
     xtraj_hold = np.zeros((nq+nv,1))
     xtraj_hold[:nq] = q

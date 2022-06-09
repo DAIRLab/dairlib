@@ -280,17 +280,17 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     // in_contact = true;
   }
 
-//  int ts = round(timestamp);
-//
-//
-//  if (ts % 3 == 0){
-//
-//    double offset = 0.001; // 0.001
-//    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-//    Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
-//    xd.tail(3) << xd_new;
-//
-//  }
+  int ts = round(timestamp);
+
+
+  if (ts % 3 == 0){
+
+    double offset = 0.001; // 0.001
+    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+    Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
+    xd.tail(3) << xd_new;
+
+  }
 
 
 

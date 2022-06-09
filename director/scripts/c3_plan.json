@@ -1,0 +1,71 @@
+{
+    "model_file": "examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf",
+    "channelName": "FRANKA_OUTPUT",
+    "data": [
+              {"name": "x1",
+               "source_data" : {"category":"lcm",
+                                "abstract_channel" : "CONTROLLER_INPUT",
+                                "abstract_type" : "dairlib.lcmt_c3",
+                                "abstract_field" : "data",
+                                "x_index" : 0
+                               },
+                "type_data": {"color":[1, 0, 0],
+                              "alpha": 0.5,
+                              "type": "point",
+                              "radius": 0.01
+                            }
+              },
+              {"name": "x2",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 25
+                                },
+                 "type_data": {"color":[1, 0, 0],
+                               "alpha": 0.5,
+                               "type": "point",
+                               "radius": 0.01
+                             }
+               },
+               {"name": "x3",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 28
+                                },
+                 "type_data": {"color":[1, 0, 0],
+                               "alpha": 0.5,
+                               "type": "point",
+                               "radius": 0.01
+                             }
+               },
+               {"name": "x4",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 31
+                                },
+                 "type_data": {"color":[1, 0, 0],
+                               "alpha": 0.5,
+                               "type": "point",
+                               "radius": 0.01
+                             }
+               },
+               {"name": "x5",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 34
+                                },
+                 "type_data": {"color":[1, 0, 0],
+                               "alpha": 0.5,
+                               "type": "point",
+                               "radius": 0.01
+                             }
+               }
+            ]
+}

@@ -22,10 +22,10 @@
                                  "abstract_field" : "data",
                                  "x_index" : 19
                                 },
-                 "type_data": {"color":[1, 0, 0],
+                 "type_data": {"color":[0, 0, 1],
                                "alpha": 0.5,
                                "type": "line",
-                               "thickness": 0.005,
+                               "thickness": 0.001,
                                "history" : -1
                              }
                }

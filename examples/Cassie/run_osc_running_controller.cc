@@ -401,12 +401,12 @@ int DoMain(int argc, char* argv[]) {
 //        vel_map["hip_yaw_rightdot"], left_stance_state);
 //  right_foot_yz_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
 //        vel_map["hip_yaw_rightdot"], left_touchdown_air_phase);
-  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_leftdot"], left_stance_state);
-  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"], right_stance_state);
-  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"], left_stance_state);
-  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_rightdot"], right_stance_state);
-  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_leftdot"], left_stance_state);
-  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_rightdot"], right_stance_state);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_leftdot"], left_stance_state);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"], right_stance_state);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"], left_stance_state);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_rightdot"], right_stance_state);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_leftdot"], left_stance_state);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_rightdot"], right_stance_state);
 
 //  left_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
 //      pos_map["hip_pitch_left"], right_stance_state);

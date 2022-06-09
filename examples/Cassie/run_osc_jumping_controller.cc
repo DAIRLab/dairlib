@@ -123,7 +123,7 @@ int DoMain(int argc, char* argv[]) {
       feet_contact_points = {left_toe, right_toe};
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  drake::yaml::YamlReadArchive::Options yaml_options;
+  drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(

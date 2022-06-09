@@ -618,10 +618,18 @@ VectorXd OperationalSpaceControl::SolveQp(
       ///    JdotV_c_active + J_c_active*dv == -epsilon
       /// -> J_c_active*dv + I*epsilon == -JdotV_c_active
       /// -> [J_c_active, I]* [dv, epsilon]^T == -JdotV_c_active
+
       MatrixXd A_c = MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_);
+
       A_c.block(0, 0, n_c_active_, n_v_) = J_c_active;
-      A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-          MatrixXd::Identity(n_c_active_, n_c_active_);
+      MatrixXd weight = 0.001 * MatrixXd::Identity(n_c_active_, n_c_active_);
+      weight(0, 0) *= 1e-3;
+      weight(1, 1) *= 1e-3;
+      weight(3, 3) *= 1e-3;
+      weight(4, 4) *= 1e-3;
+      A_c.block(0, n_v_, n_c_active_, n_c_active_) = weight;
+//      A_c.block(0, n_v_, n_c_active_, n_c_active_) =
+//          MatrixXd::Identity(n_c_active_, n_c_active_);
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
@@ -1147,7 +1155,7 @@ void OperationalSpaceControl::CheckTracking(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
-  if (soft_constraint_cost_ > 1e2 || isnan(soft_constraint_cost_)) {
+  if (soft_constraint_cost_ > 5e2 || isnan(soft_constraint_cost_)) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

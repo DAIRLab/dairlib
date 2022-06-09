@@ -107,7 +107,7 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   //  auto osc_gains =
   //      drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_osc_gains_filename);
-  drake::yaml::YamlReadArchive::Options yaml_options;
+  drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow(FLAGS_osc_gains_filename), {}, {}, yaml_options);

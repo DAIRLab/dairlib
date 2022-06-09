@@ -164,7 +164,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations, 0.0,
-      osc_running_gains.impact_threshold);
+      osc_running_gains.impact_threshold, osc_running_gains.impact_tau);
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
@@ -174,19 +174,20 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(
           control_channel_name_, 1);
-  std::vector<double> tau = {.05, .1, .01};
+  std::vector<double> tau = {.05, .01, .01};
   auto ekf_filter =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
 
   /**** OSC setup ****/
   // Cost
   /// REGULARIZATION COSTS
-  osc->SetAccelerationCostWeights(osc_running_gains.w_accel *
-                                  osc_running_gains.W_acceleration);
-  osc->SetInputCostWeights(osc_running_gains.w_input *
-                           osc_running_gains.W_input_regularization);
-  osc->SetLambdaHolonomicRegularizationWeight(
-      1e-5 * osc_running_gains.W_lambda_h_regularization);
+  osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
+  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
+  osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
+  osc->SetLambdaContactRegularizationWeight(1e-4 *
+                                            gains.W_lambda_c_regularization);
+  osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
+                                              gains.W_lambda_h_regularization);
 
   // Soft constraint on contacts
   osc->SetSoftConstraintWeight(osc_running_gains.w_soft_constraint);
@@ -347,8 +348,13 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   right_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
 
+  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+
   left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
+  left_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
+  right_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data->SetImpactInvariantProjection(true);
 
   osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));

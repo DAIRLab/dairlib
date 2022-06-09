@@ -28,6 +28,7 @@ hip_yaw_kp: 40
 hip_yaw_kd: 5
 
 impact_threshold: 0.050
+impact_tau: 0.005
 landing_delay: 0.000
 
 CoMW:

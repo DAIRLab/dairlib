@@ -36,12 +36,12 @@ def make_env():
 
 
 def test_vec_env():
-    n_envs = 5
+    n_envs = 1
     swing_vec_env = make_vec_env(make_swing_ft_env, n_envs)
     actions = [get_default_params() for i in range(n_envs)]
-    for i in range(20):
+    for i in range(2):
         s, r, d, i = swing_vec_env.step(actions)
-        print(r[0])
+        print(r)
 
 
 def test_base_env():

@@ -143,7 +143,7 @@ q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
 q[q_map['base_x']] = 0.05
 q[q_map['base_y']] = 0.05
-q[q_map['base_z']] = 0
+q[q_map['base_z']] = 0.03
 
 mu = 1.0
 

@@ -471,8 +471,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
  ///VectorXd force_des = VectorXd::Zero(10);
 
- VectorXd st_desired(force_des.size() + state_next.size() + traj_desired_vector.size());
- st_desired << state_next, force_des.head(6), traj_desired_vector;
+  VectorXd traj_desired_vector_copy = pp_.value(timestamp);
+
+ VectorXd st_desired(force_des.size() + state_next.size() + traj_desired_vector.size()+1);
+ st_desired << state_next, force_des.head(6), traj_desired_vector_copy, 0.03;
 
  ////2 (connected to franka)
  //VectorXd st_desired = VectorXd::Zero( force_des.size() + state_next.size() );
@@ -488,8 +490,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    Eigen::Vector3d finish(0.4, 0.2, 0.08);
    target = move_to_initial_position(start, finish, timestamp,
           stabilize_time1, move_time, stabilize_time2);
-   st_desired = VectorXd::Zero(25);
+   st_desired = VectorXd::Zero(28);
    st_desired.head(3) << target[0];
+   st_desired.tail(3) << 0.4, 0.2, 0.12;
  }
 
 

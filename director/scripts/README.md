@@ -4,11 +4,11 @@ visualization of data during a simulation:
 "model_file": This is the directory containing the file for the robot/plant
               description (like an urdf file).
 
-"weld_body": This is whether the user wants "WeldFrames()" to be called on the
+"weld-body": This is whether the user wants "WeldFrames()" to be called on the
              robot/plant. If this property does not exist then the "WeldFrames()"
              function will not be called
 
-"channel_name": Name of the LCM channel containing state information as lcmt_robot_output
+"channelName": Name of the LCM channel containing state information as lcmt_robot_output
 
 "data": This will be a list of all the different shapes/objects that
         the user wants to be displayed. Each shape is a separate JSON object

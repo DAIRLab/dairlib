@@ -68,7 +68,7 @@ class OptionsTrackingData : public OscTrackingData {
   Eigen::VectorXd filtered_ydot_;
   double tau_ = -1;
   std::set<int> low_pass_filter_element_idx_;
-  std::map<int, std::vector<int>> joint_idx_to_ignore_;
+  std::unordered_map<int, std::vector<int>> joint_idx_to_ignore_;
   double last_timestamp_ = -1;
 };
 

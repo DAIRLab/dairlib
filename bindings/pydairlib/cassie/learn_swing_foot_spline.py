@@ -83,4 +83,4 @@ def main():
 
 
 if __name__ == "__main__":
-    plot_swing_foot_params(np.array(get_default_params()))
+    main()

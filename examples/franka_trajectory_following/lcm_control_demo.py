@@ -182,7 +182,7 @@ for i in theta:
 
 
 
-increment = 2.0
+increment = 5.0   #2.0
 scaling = 9
 timings = np.arange(0 + scaling, increment*len(xtraj) + scaling, increment )
 

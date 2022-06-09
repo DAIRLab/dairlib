@@ -244,7 +244,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
    auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
        plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-       num_friction_directions_, mu_);
+       num_friction_directions_, mu_, 0.1);
 
    solvers::LCS system_ = system_scaling_pair.first;
    double scaling = system_scaling_pair.second;
@@ -373,18 +373,24 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
    //VectorXd inp = VectorXd::Zero(3);
 
-   auto flag = LCPSolver.SolveLcpLemkeRegularized(system_.F_[0], system_.E_[0] * scaling * state + system_.c_[0] * scaling + system_.H_[0] * scaling * input,
-                                       &force);
-//   if (flag == 1) {
-//     std::cout << flag << std::endl;
-//     std::cout << "here" << std::endl;
-//     std::cout << force << std::endl;
-//   }
+  auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+      num_friction_directions_, mu_, 0.03);
+
+  solvers::LCS system2_ = system_scaling_pair2.first;
+  double scaling2 = system_scaling_pair2.second;
+
+
+   auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
+                                      &force);
+
+
+
 
 //  std::cout << "here" << std::endl;
 //  std::cout << system_.D_[0] * force << std::endl;
 
-   VectorXd state_next = system_.A_[0] * state + system_.B_[0] * input + system_.D_[0] * force / scaling + system_.d_[0];
+   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 
 //   std::cout << "force" << std::endl;
 //   std::cout << force << std::endl;
@@ -424,6 +430,20 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
  force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
  force_des = 1 * force_des;
+
+//  if (ts % 3 == 0) {
+//
+//    if (flag == 1) {
+//      std::cout << "here" << std::endl;
+//      std::cout << force_des << std::endl;
+//    }
+//
+//  }
+
+//    if (flag == 1) {
+//      std::cout << "here" << std::endl;
+//      std::cout << force_des << std::endl;
+//    }
 
 // force_des = force_des * scaling;
 //

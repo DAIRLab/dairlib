@@ -31,7 +31,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
-    int num_friction_directions, double mu) {
+    int num_friction_directions, double mu, float dt) {
   ///
   /// First, calculate vdot and derivatives from non-contact dynamcs
   ///
@@ -170,7 +170,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 
   /// std::cout << MinvJ_t_T.cols() << std::endl;
 
-  float dt = 0.1;
+  //float dt = 0.1;
   auto n_contact = 2 * contact_geoms.size() +
                    2 * contact_geoms.size() * num_friction_directions;
 

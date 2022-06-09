@@ -249,9 +249,9 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   Vector3d d = H.translation() + R*EE_offset_;
   
   // modify desired state if no contact desired
-  if (lambda.norm() < 0.000001){
+  if (lambda(0) < 0.000001){
     // method 1: add position offset
-    double offset = 0.0; // 0.001
+    double offset = 0; // 0.001
     Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
     Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
     xd.tail(3) << xd_new;
@@ -261,6 +261,38 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     // lambda << 10, 0, 0, 0, 0;
     // in_contact = true;
   }
+//  else{
+
+//
+//  }
+
+  if (lambda(0) > 0.001){
+    //std::cout << "here" << std::endl;
+    // method 1: add position offset
+    double offset = -0.002; // 0.001
+    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+    Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
+    xd.tail(3) << xd_new;
+    //std::cout << "here" << std::endl;
+
+    // method 2: add force offset
+    // lambda << 10, 0, 0, 0, 0;
+    // in_contact = true;
+  }
+
+//  int ts = round(timestamp);
+//
+//
+//  if (ts % 3 == 0){
+//
+//    double offset = 0.001; // 0.001
+//    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+//    Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
+//    xd.tail(3) << xd_new;
+//
+//  }
+
+
 
   // build task space state vectors
   VectorXd x = VectorXd::Zero(6);
@@ -282,18 +314,18 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 //
 //  std::cout << lambda(0) << std::endl;
 
-  if (lambda.norm() > 0.000001){
-    //std::cout << "here" << std::endl;
-    // compute contact jacobian
-    VectorXd phi(contact_pairs_.size());
-    MatrixXd J_n(contact_pairs_.size(), plant_.num_velocities());
-    MatrixXd J_t(2 * contact_pairs_.size() * num_friction_directions_, plant_.num_velocities());
-    this->CalcContactJacobians(contact_pairs_, phi, J_n, J_t);
-    Jc << J_n.block(0, 0, J_n.rows(), n_),
-          J_t.block(0, 0, J_t.rows(), n_);
-    //lambda(0) = lambda(0) + 1000;
-    tau = tau - Jc.transpose() * lambda; // TODO: check if this should be +/-
-  }
+//  if (lambda(0) > 0.0001){
+//    //std::cout << "here" << std::endl;
+//    // compute contact jacobian
+//    VectorXd phi(contact_pairs_.size());
+//    MatrixXd J_n(contact_pairs_.size(), plant_.num_velocities());
+//    MatrixXd J_t(2 * contact_pairs_.size() * num_friction_directions_, plant_.num_velocities());
+//    this->CalcContactJacobians(contact_pairs_, phi, J_n, J_t);
+//    Jc << J_n.block(0, 0, J_n.rows(), n_),
+//          J_t.block(0, 0, J_t.rows(), n_);
+//    //lambda(0) = lambda(0) + 10;
+//    tau = tau - Jc.transpose() * lambda; // TODO: check if this should be +/-
+//  }
 
   // compute nullspace projection
   MatrixXd M_inv = M_franka.inverse();

@@ -11,6 +11,18 @@ load(
     "pybind_py_library",
 )
 
+py_binary(
+    name = "learn_swing_foot_spline",
+    srcs = ["learn_swing_foot_spline.py"],
+    deps = [
+        ":controllers_py",
+        "//bindings/pydairlib/cassie/cassie_gym:drake_cassie_gym",
+        "//bindings/pydairlib/cassie/cassie_gym:swing_foot_env",
+        "//bindings/pydairlib/common:plot_styler",
+        "@drake//bindings/pydrake",
+    ],
+)
+
 pybind_py_library(
     name = "cassie_utils_py",
     cc_deps = [

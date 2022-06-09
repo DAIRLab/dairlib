@@ -29,6 +29,7 @@ py_library(
     srcs = ["swing_foot_env.py"],
     deps = [
         ":drake_cassie_gym",
+        ":reward_osudrl",
         "//bindings/pydairlib/cassie",
         "//bindings/pydairlib/multibody",
         "//bindings/pydairlib/systems",
@@ -48,7 +49,7 @@ py_binary(
 )
 
 py_library(
-    name = "cassie_env_rewards",
+    name = "reward_osudrl",
     srcs = [
         "reward_osudrl.py",
     ],

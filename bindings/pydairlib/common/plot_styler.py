@@ -35,7 +35,7 @@ class PlotStyler():
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     # matplotlib.rcParams['figure.figsize'] = 8, 5
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 20}
+    font = {'size': 12.5}
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 4
     plt.set_cmap('tab20')
@@ -82,6 +82,7 @@ class PlotStyler():
 
   def save_fig(self, filename):
     plt.figure(self.fig_id)
+    plt.tight_layout()
     plt.savefig(self.directory + filename, dpi=200)
     return
 

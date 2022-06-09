@@ -94,7 +94,7 @@ contact_geoms = [EE_geoms, sphere_geoms]
 num_friction_directions = 2
 
 moving_offset = 0.001
-pushing_offset = 0.001
+pushing_offset = -0.001
 
 controller = builder.AddSystem(
     ImpedanceController(plant,

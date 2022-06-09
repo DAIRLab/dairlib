@@ -279,13 +279,19 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    }
 
 
-   int ts = round(timestamp);
+   //int ts = round(timestamp);
 
 
    MatrixXd Qnew;
    Qnew = Q_[0];
 
-   if (ts % 3 == 0){
+  int period = 10;
+  double duty_cycle = 0.7;
+
+  double ts = -9 + timestamp - period * (  (int) ( floor(-9 + timestamp)) / period);
+
+
+  if (ts > period * duty_cycle){
      Qnew(7,7) = 1;
      Qnew(8,8) = 1;
    }

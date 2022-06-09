@@ -263,26 +263,30 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
 //
 //  }
+  if (timestamp > 9){
+    if (lambda(0) > 0.001){
+      //std::cout << "here" << std::endl;
+      Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+      Vector3d xd_new = xd.tail(3) + pushing_offset_*ball_to_EE;
+      xd.tail(3) << xd_new;
+      //std::cout << "here" << std::endl;
+    }
 
-  if (lambda(0) > 0.001){
-    //std::cout << "here" << std::endl;
-    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-    Vector3d xd_new = xd.tail(3) + pushing_offset_*ball_to_EE;
-    xd.tail(3) << xd_new;
-    //std::cout << "here" << std::endl;
+
+    int period = 10;
+    double duty_cycle = 0.7;
+
+    double ts = -9 + timestamp - period * (  (int) ( floor(-9 + timestamp)) / period);
+
+
+    if (ts > period * duty_cycle){
+
+      Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+      Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
+      xd.tail(3) << xd_new;
+
+    }
   }
-
-
-//  int ts = round(timestamp);
-//
-//
-//  if (ts % 3 == 0){
-//
-//    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-//    Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
-//    xd.tail(3) << xd_new;
-//
-//  }
 
 
 

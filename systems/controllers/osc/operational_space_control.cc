@@ -173,16 +173,6 @@ void OperationalSpaceControl::SetUpDoubleSupportPhaseBlending(
   ds_states_ = ds_states;
 }
 
-// Cost methods
-void OperationalSpaceControl::AddAccelerationCost(
-    const std::string& joint_vel_name, double w) {
-  if (W_joint_accel_.size() == 0) {
-    W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
-  }
-  int idx = MakeNameToVelocitiesMap(plant_wo_spr_).at(joint_vel_name);
-  W_joint_accel_(idx, idx) += w;
-}
-
 void OperationalSpaceControl::AddInputCostByJointAndFsmState(
     const std::string& joint_u_name, int fsm, double w) {
   if (W_input_.size() == 0) {

@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "examples/Cassie/input_supervisor.h"
+#include "examples/Cassie/systems/input_supervisor.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 

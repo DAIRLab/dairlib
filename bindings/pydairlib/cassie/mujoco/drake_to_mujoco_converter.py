@@ -23,7 +23,7 @@ class DrakeToMujocoConverter():
         self.builder = DiagramBuilder()
         self.drake_sim_dt = drake_sim_dt
         self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, drake_sim_dt)
-        addCassieMultibody(self.plant, self.scene_graph, True,
+        AddCassieMultibody(self.plant, self.scene_graph, True,
                            'examples/Cassie/urdf/cassie_v2.urdf', False, False)
         self.plant.Finalize()
 
@@ -49,9 +49,9 @@ class DrakeToMujocoConverter():
         # self.print_pos_indices(self.knee_linkage_plant)
         # self.print_pos_indices(self.plant)
 
-        self.pos_map = makeNameToPositionsMap(self.plant)
-        self.vel_map = makeNameToVelocitiesMap(self.plant)
-        self.act_map = makeNameToActuatorsMap(self.plant)
+        self.pos_map = MakeNameToPositionsMap(self.plant)
+        self.vel_map = MakeNameToVelocitiesMap(self.plant)
+        self.act_map = MakeNameToActuatorsMap(self.plant)
 
         self.map_q_drake_to_mujoco = np.zeros((23, 35))
         self.map_v_drake_to_mujoco = np.zeros((22, 32))
@@ -88,12 +88,12 @@ class DrakeToMujocoConverter():
         self.ik_solver.prog().AddLinearEqualityConstraint(self.ik_solver.q()[0:7], np.array([1, 0, 0, 0, 0, 0, 0]))
 
     def print_pos_indices(self, plant):
-        name_map = makeNameToPositionsMap(plant)
+        name_map = MakeNameToPositionsMap(plant)
         for name in name_map:
             print(name + ': ' + str(name_map[name]))
 
     def print_vel_indices(self, plant):
-        name_map = makeNameToVelocitiesMap(plant)
+        name_map = MakeNameToVelocitiesMap(plant)
         for name in name_map:
             print(name + ': ' + str(name_map[name]))
 

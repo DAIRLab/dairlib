@@ -112,9 +112,9 @@ void DoMain() {
 
   std::cout << "nq: " << n_q << " n_v: " << n_v << " n_x: " << n_x << std::endl;
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   // Set up contact/distance constraints
   auto left_toe_pair = LeftToeFront(plant);
@@ -314,7 +314,7 @@ void DoMain() {
             << std::endl;
   drake::trajectories::PiecewisePolynomial<double> optimal_traj =
       trajopt.ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
+  multibody::ConnectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
                                          optimal_traj);
 
   DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
@@ -333,9 +333,9 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   auto& prog = trajopt.prog();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();

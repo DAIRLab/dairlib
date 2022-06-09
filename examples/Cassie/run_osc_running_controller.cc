@@ -34,9 +34,8 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-#include "yaml-cpp/yaml.h"
 
-#include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -98,7 +97,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Built the Cassie MBPs
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant, nullptr, true,
+  AddCassieMultibody(&plant, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();
@@ -114,9 +113,9 @@ int DoMain(int argc, char* argv[]) {
   int nv = plant.num_velocities();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   std::unordered_map<
       int, std::vector<std::pair<const Vector3d,
@@ -132,7 +131,7 @@ int DoMain(int argc, char* argv[]) {
   /**** Get trajectory from optimization ****/
 
   /**** OSC Gains ****/
-  drake::yaml::YamlReadArchive::Options yaml_options;
+  drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
@@ -238,8 +237,8 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_loop);
 
   // Fix the springs in the dynamics
-  auto pos_idx_map = multibody::makeNameToPositionsMap(plant);
-  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant);
+  auto pos_idx_map = multibody::MakeNameToPositionsMap(plant);
+  auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant);
   auto left_fixed_knee_spring =
       FixedJointEvaluator(plant, pos_idx_map.at("knee_joint_left"),
                           vel_idx_map.at("knee_joint_leftdot"), 0);

@@ -5,7 +5,8 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 
-#include "examples/Cassie/sim_cassie_sensor_aggregator.h"
+#include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
+#include "systems/framework/geared_motor.h"
 
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/diagram.h"
@@ -55,6 +56,7 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
  private:
   drake::multibody::MultibodyPlant<double>* plant_;
   const systems::SimCassieSensorAggregator* sensor_aggregator_;
+  const systems::GearedMotor* cassie_motor_;
   //  const systems::RadioParser* radio_parser_;
   drake::geometry::SceneGraph<double>* scene_graph_;
   const int actuation_input_port_index_ = 0;

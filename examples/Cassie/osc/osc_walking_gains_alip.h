@@ -1,16 +1,16 @@
-#include "drake/common/yaml/yaml_read_archive.h"
+#pragma once
+
+#include "systems/controllers/osc/osc_gains.h"
 #include "yaml-cpp/yaml.h"
+
+#include "drake/common/yaml/yaml_read_archive.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-struct OSCWalkingGainsALIP {
+struct OSCWalkingGainsALIP : OSCGains {
   int rows;
   int cols;
-  double mu;
-  double w_accel;
-  double w_soft_constraint;
-  double w_input_reg;
   std::vector<double> pelvis_xyz_vel_filter_tau;
   std::vector<double> CoMW;
   std::vector<double> CoMKp;
@@ -84,12 +84,9 @@ struct OSCWalkingGainsALIP {
 
   template <typename Archive>
   void Serialize(Archive* a) {
+    OSCGains::Serialize(a);
     a->Visit(DRAKE_NVP(rows));
     a->Visit(DRAKE_NVP(cols));
-    a->Visit(DRAKE_NVP(mu));
-    a->Visit(DRAKE_NVP(w_accel));
-    a->Visit(DRAKE_NVP(w_soft_constraint));
-    a->Visit(DRAKE_NVP(w_input_reg));
     a->Visit(DRAKE_NVP(pelvis_xyz_vel_filter_tau));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(CoMKp));
@@ -191,7 +188,9 @@ struct OSCWalkingGainsALIP {
     W_hip_yaw = this->w_hip_yaw * MatrixXd::Identity(1, 1);
     K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
     K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
-    Q_alip_kalman_filter = Eigen::Map<Eigen::VectorXd>(this->AlipKalmanQ.data(), 4);
-    R_alip_kalman_filter = Eigen::Map<Eigen::VectorXd>(this->AlipKalmanR.data(), 4);
+    Q_alip_kalman_filter =
+        Eigen::Map<Eigen::VectorXd>(this->AlipKalmanQ.data(), 4);
+    R_alip_kalman_filter =
+        Eigen::Map<Eigen::VectorXd>(this->AlipKalmanR.data(), 4);
   }
 };

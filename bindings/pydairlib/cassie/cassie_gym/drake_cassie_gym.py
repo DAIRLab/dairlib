@@ -1,5 +1,6 @@
 import numpy as np
 import gym   # OpenAI gym
+from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from pydrake.multibody.parsing import Parser
 from pydrake.systems.framework import DiagramBuilder
@@ -145,3 +146,8 @@ class DrakeCassieGym(gym.Env):
     # Some simulators for Cassie require cleanup
     def free_sim(self):
         return
+
+
+def make_vec_env(env_func, n_envs):
+    envs = [env_func for _ in range(n_envs)]
+    return SubprocVecEnv(envs)

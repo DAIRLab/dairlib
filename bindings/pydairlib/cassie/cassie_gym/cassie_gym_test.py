@@ -3,8 +3,8 @@ import gym
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 
-from drake_cassie_gym import DrakeCassieGym
-from swing_foot_env import SwingFootEnv
+from drake_cassie_gym import DrakeCassieGym, make_vec_env
+from swing_foot_env import SwingFootEnv, make_swing_ft_env, get_default_params
 from reward_osudrl import RewardOSUDRL
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.cassie.controllers import AlipWalkingControllerFactory
@@ -36,11 +36,12 @@ def make_env():
 
 
 def test_vec_env():
-    env = SubprocVecEnv([make_env, make_env])
-    env.reset()
-    s,r,d,i = env.step([np.zeros(18) for i in range(2)])
-    print(s)
-
+    n_envs = 5
+    swing_vec_env = make_vec_env(make_swing_ft_env, n_envs)
+    actions = [get_default_params() for i in range(n_envs)]
+    for i in range(20):
+        s, r, d, i = swing_vec_env.step(actions)
+        print(r[0])
 
 
 def test_base_env():
@@ -65,7 +66,6 @@ def test_swing_foot_env():
     gym_env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=False)
     s, r, d, i = gym_env.step()
     print(s)
-    # gym_env.advance_to(5.0)
 
 
 def main():
@@ -88,4 +88,4 @@ def main():
 
 
 if __name__ == '__main__':
-    test_swing_foot_env()
+    test_vec_env()

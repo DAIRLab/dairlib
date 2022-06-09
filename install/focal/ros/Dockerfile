@@ -3,7 +3,7 @@ WORKDIR /dairlib
 ENV DAIRLIB_DOCKER_VERSION_25=25
 COPY . .
 RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python
-RUN apt-get install -y python-rosinstall-generator python-catkin-tools
+RUN apt-get install -y python3-rosinstall-generator python3-catkin-tools python3-osrf-pycommon
 RUN set -eux \
   && apt-get install --no-install-recommends  locales \
   && locale-gen en_US.UTF-8

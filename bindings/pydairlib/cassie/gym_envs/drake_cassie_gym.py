@@ -89,6 +89,7 @@ class DrakeCassieGym():
         if not self.initialized:
             print("Call make() before calling step() or advance()")
         next_timestep = self.sim.get_context().get_time() + self.sim_dt
+        action[2] = 1.0
         self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
         self.controller.get_radio_input_port().FixValue(self.controller_context, action)
         self.sim.AdvanceTo(next_timestep)

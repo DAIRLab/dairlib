@@ -177,6 +177,12 @@ class MuJoCoCassieGym():
     def check_termination(self):
         return self.cassie_state.get_fb_positions()[2] < 0.4
 
+    def velocity_profile(self, timestep):
+        velocity_command = np.zeros(18)
+        velocity_command[2] = min(1.0 * timestep, 4.0)
+        # velocity_command[2] = 5.0
+        return velocity_command
+
     def step(self, action=np.zeros(18)):
         if not self.initialized:
             print("Call make() before calling step() or advance()")
@@ -188,6 +194,7 @@ class MuJoCoCassieGym():
         next_timestep = self.drake_sim.get_context().get_time() + timestep
 
         self.robot_output_sender.get_input_port_state().FixValue(self.robot_output_sender_context, self.cassie_state.x)
+        action = self.velocity_profile(timestep)
         self.radio_input_port.FixValue(self.controller_context, action)
 
         u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp

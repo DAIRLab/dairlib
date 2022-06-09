@@ -53,9 +53,10 @@ class OSCGainsOptimizer():
             'SwingFootKp': np.array([125, 80, 50]),
             'SwingFootKd': np.array([5, 5, 1]),
             'FootstepKd': np.array([0.2, 0.45, 0]),
-            # 'center_line_offset': 0.03,
-            # 'rest_length': 0.85,
-            # 'footstep_offset': -0.05,
+            'footstep_sagital_offset': 0,
+            'mid_foot_height': 0.05,
+            'rest_length': 0.95,
+            'footstep_lateral_offset': 0.045,
             # 'stance_duration': 0.30,
             # 'flight_duration': 0.08,
         }
@@ -102,7 +103,7 @@ class OSCGainsOptimizer():
         gym_env.make(controller)
         # rollout a trajectory and compute the loss
         cumulative_reward = 0
-        while gym_env.current_time < 7.5 and not gym_env.terminated:
+        while gym_env.current_time < gym_env.end_time and not gym_env.terminated:
             state, reward = gym_env.step(np.zeros(18))
             cumulative_reward += reward
         # print(-cumulative_reward)
@@ -122,9 +123,10 @@ class OSCGainsOptimizer():
             SwingFootKp=ng.p.Array(lower=20., upper=150., shape=(3,)),
             SwingFootKd=ng.p.Array(lower=0., upper=15., shape=(3,)),
             FootstepKd=ng.p.Array(lower=0., upper=1., shape=(3,)),
-            # center_line_offset=ng.p.Scalar(lower=0.03, upper=0.075),
-            # rest_length=ng.p.Scalar(lower=0.8, upper=0.9),
-            # footstep_offset=ng.p.Scalar(lower=-0.1, upper=0.05),
+            footstep_sagital_offset=ng.p.Scalar(lower=-0.1, upper=0.1),
+            mid_foot_height=ng.p.Scalar(lower=0.03, upper=0.15),
+            rest_length=ng.p.Scalar(lower=0.8, upper=1.0),
+            footstep_lateral_offset=ng.p.Scalar(lower=-0.1, upper=0.05),
             # stance_duration=ng.p.Scalar(lower=0.25, upper=0.40),
             # flight_duration=ng.p.Scalar(lower=0.05, upper=0.15),
         )
@@ -144,15 +146,15 @@ class OSCGainsOptimizer():
 
 if __name__ == '__main__':
     # budget = 2000
-    budget = 2000
+    budget = 500
 
     reward_function = RewardOSUDRL()
 
     optimizer = OSCGainsOptimizer(budget, reward_function, visualize=False)
     optimizer.learn_gains()
 
-    optimal_params = optimizer.load_params('2022_03_28_18_2000', optimizer.drake_params_folder).value
-    optimizer.write_params(optimal_params)
-    reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_2000.npy')
-    plt.plot(reward_over_time)
-    plt.show()
+    # optimal_params = optimizer.load_params('2022_06_02_11_2000', optimizer.drake_params_folder).value
+    # optimizer.write_params(optimal_params)
+    # reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_2000.npy')
+    # plt.plot(reward_over_time)
+    # plt.show()

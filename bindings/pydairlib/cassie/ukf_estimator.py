@@ -1,3 +1,4 @@
+from cProfile import label
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -635,6 +636,44 @@ def processing_raw_data(raw_data, R, Q):
 
     return processed_data
 
+def groundForceCheck(plant, context, q_v, t, lambda_c_gt):
+    smooth_window = 10
+    m = plant.CalcTotalMass(context)
+    center_mass_p = np.zeros((q_v.shape[0], 3))
+    center_mass_v = np.zeros((q_v.shape[0] - 2*smooth_window, 3))
+    center_mass_a = np.zeros((q_v.shape[0] - 4*smooth_window, 3))
+
+    for i in range(q_v.shape[0]):
+        plant.SetPositionsAndVelocities(context, q_v[i])
+        center_mass_p[i,:] = plant.CalcCenterOfMassPositionInWorld(context)
+    for i in range(smooth_window, q_v.shape[0] - smooth_window):
+        center_mass_v[i-smooth_window,:] = (center_mass_p[i+smooth_window,:] - center_mass_p[i-smooth_window,:])/(t[i+smooth_window] - t[i-smooth_window])    
+    t = t[smooth_window:-smooth_window]
+    lambda_c_gt = lambda_c_gt[smooth_window:-smooth_window]
+    for i in range(smooth_window, center_mass_a.shape[0] - smooth_window):
+        center_mass_a[i-smooth_window,:] = (center_mass_v[i+smooth_window,:] - center_mass_v[i-smooth_window])/(t[i+smooth_window] - t[i-smooth_window])
+    t = t[smooth_window:-smooth_window]
+    lambda_c_gt = lambda_c_gt[smooth_window:-smooth_window]
+    est_external_force = (center_mass_a - np.array([0,0,-9.8]))* m
+    plt.plot(t, est_external_force[:,0], 'r', label="est")
+    plt.plot(t, lambda_c_gt[:,0] + lambda_c_gt[:,3] + lambda_c_gt[:,6] + lambda_c_gt[:,9], 'g', label="gt")
+    plt.ylim(-100,100)
+    plt.title("X direction total force")
+    plt.legend()
+    plt.show()
+    plt.plot(t, est_external_force[:,1], 'r', label="est")
+    plt.plot(t, lambda_c_gt[:,1] + lambda_c_gt[:,4] + lambda_c_gt[:,7] + lambda_c_gt[:,10], 'g', label="gt")
+    plt.ylim(-100,100)
+    plt.title("Y direction total force")
+    plt.legend()
+    plt.show()
+    plt.plot(t, est_external_force[:,2], 'r', label="est")
+    plt.plot(t, lambda_c_gt[:,2] + lambda_c_gt[:,5] + lambda_c_gt[:,8] + lambda_c_gt[:,11], 'g', label="gt")
+    plt.legend()
+    plt.ylim(0,1000)
+    plt.title("Z direction total force")
+    plt.show()
+    import pdb; pdb.set_trace()
 def main():
     np.random.seed(0)
     data_path = "log/20220530_1.mat"
@@ -675,10 +714,14 @@ def main():
     addCassieMultibody(plant, scene_graph, True, 
                         "examples/Cassie/urdf/cassie_v2.urdf", True, True)
     plant.Finalize()
+    context = plant.CreateDefaultContext()
     vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)
     vel_map_inverse = {value:key for (key, value) in vel_map.items()}
     pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
     pos_map_inverse = {value:key for (key, value) in pos_map.items()}
+
+    # Ground Force retrieve
+    groundForceCheck(plant, context, np.hstack((q_gt,v_gt)), t, lambda_c_gt)
 
     # check which leg in on contact
     if np.linalg.norm(lambda_c_gt[0,:6]) > 0:
@@ -731,9 +774,9 @@ def main():
         path = "bindings/pydairlib/cassie/ukf_experienments/ukf_input_vdot_check/" + pos_map_inverse[i] + ".png" 
         plt.clf()
         if i >= 7:
-            plt.plot(obs[:,i-1], 'b', label='obs')
-        plt.plot(est[:,i], 'r', label="est")
-        plt.plot(q_gt[:,i], 'g', label="gt")
+            plt.plot(t, obs[:,i-1], 'b', label='obs')
+        plt.plot(t, est[:,i], 'r', label="est")
+        plt.plot(t, q_gt[:,i], 'g', label="gt")
         plt.title(pos_map_inverse[i])
         plt.legend()
         plt.savefig(path)    
@@ -742,12 +785,14 @@ def main():
     for i in range(22):
         path = "bindings/pydairlib/cassie/ukf_experienments/ukf_input_vdot_check/" + vel_map_inverse[i] + ".png" 
         plt.clf()
-        plt.plot(v_integrad[:,i], 'b', label= "integrated")
-        plt.plot(est[:,i+23], 'r', label = "est")
-        plt.plot(v_gt[:,i], 'g', label="gt")
+        plt.plot(t, v_integrad[:,i], 'b', label= "integrated")
+        plt.plot(t, est[:,i+23], 'r', label = "est")
+        plt.plot(t, v_gt[:,i], 'g', label="gt")
         plt.legend()
         plt.title(vel_map_inverse[i])
-        plt.savefig(path)    
+        plt.savefig(path)
+
+    import pdb; pdb.set_trace()    
 
 if __name__ == "__main__":
     main()

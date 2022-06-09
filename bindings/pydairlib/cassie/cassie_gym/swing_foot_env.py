@@ -47,6 +47,7 @@ class SwingFootEnv(DrakeCassieGym):
             high=1, low=-1, shape=(SWING_FOOT_ACTION_DIM,), dtype=np.float32)
         self.add_controller()
         self.make(self.controller)
+        self.ss_states = [0, 1]
 
     def add_controller(self):
         osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
@@ -65,27 +66,43 @@ class SwingFootEnv(DrakeCassieGym):
         if action is None:
             action = self.default_action
 
-        next_timestep = self.drake_simulator.get_context().get_time() + self.sim_dt
-        self.cassie_sim.get_radio_input_port().FixValue(
-            self.cassie_sim_context, np.zeros((CASSIE_NRADIO,)))
-        self.controller.get_radio_input_port().FixValue(
-            self.controller_context, np.zeros((CASSIE_NRADIO,)))
-        self.controller.get_swing_foot_params_input_port().FixValue(
-            self.controller_context, pack_action_message(action))
-        self.drake_simulator.AdvanceTo(next_timestep)
-        self.current_time = self.drake_simulator.get_context().get_time()
+        # assuming this gets called while the robot is in double support
+        cur_fsm_state = self.controller.get_fsm_output_port().Eval(self.controller_context)[0]
+        if cur_fsm_state in self.ss_states:
+            done_with_ds = True
+        else:
+            done_with_ds = False
+        cumulative_reward = 0
 
-        x = self.plant.GetPositionsAndVelocities(
-            self.plant.GetMyMutableContextFromRoot(
-                self.drake_simulator.get_context()))
-        u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
-        self.cassie_state = CassieEnvState(self.current_time, x, u, action)
-        reward = self.reward_func.compute_reward(
-            self.sim_dt, self.cassie_state, self.prev_cassie_state)
-        self.terminated = self.check_termination()
-        self.prev_cassie_state = self.cassie_state
-        self.cumulative_reward += reward
-        return np.array(self.cassie_state.x), reward, bool(self.terminated), {}
+        # Essentially want to do till the end of current double stance and then 
+        # the end of the next single stance in one environment step
+        while not done_with_ds or cur_fsm_state in self.ss_states:
+            next_timestep = self.drake_simulator.get_context().get_time() + self.sim_dt
+            self.cassie_sim.get_radio_input_port().FixValue(
+                self.cassie_sim_context, np.zeros((CASSIE_NRADIO,)))
+            self.controller.get_radio_input_port().FixValue(
+                self.controller_context, np.zeros((CASSIE_NRADIO,)))
+            self.controller.get_swing_foot_params_input_port().FixValue(
+                self.controller_context, pack_action_message(action))
+            # Do sim step
+            self.drake_simulator.AdvanceTo(next_timestep)
+            self.current_time = self.drake_simulator.get_context().get_time()
+            new_fsm_state = self.controller.get_fsm_output_port().Eval(self.controller_context)[0]
+            if new_fsm_state != cur_fsm_state:
+                done_with_ds = True
+            cur_fsm_state = new_fsm_state
+
+            x = self.plant.GetPositionsAndVelocities(
+                self.plant.GetMyMutableContextFromRoot(
+                    self.drake_simulator.get_context()))
+            u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
+            self.cassie_state = CassieEnvState(self.current_time, x, u, action)
+            reward = self.reward_func.compute_reward(
+                self.sim_dt, self.cassie_state, self.prev_cassie_state)
+            self.terminated = self.check_termination()
+            self.prev_cassie_state = self.cassie_state
+            cumulative_reward += reward
+        return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), {}
 
 
 # TODO(hersh500): set random seed in here as well.

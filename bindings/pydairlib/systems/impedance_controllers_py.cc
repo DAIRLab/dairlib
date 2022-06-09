@@ -31,14 +31,18 @@ PYBIND11_MODULE(impedance_controllers, m) {
                     const Eigen::MatrixXd&,
                     const Eigen::VectorXd&,
                     const std::vector<drake::geometry::GeometryId>&,
-                    int>(),
+                    int,
+                    double,
+                    double>(),
            py::arg("plant"), py::arg("plant_f"),
            py::arg("context"), py::arg("context_f"),
            py::arg("K"), py::arg("B"),
            py::arg("K_null"), py::arg("B_null"),
            py::arg("qd"),
            py::arg("contact_geoms"),
-           py::arg("num_friction_directions"))
+           py::arg("num_friction_directions"),
+           py::arg("moving_offset"),
+           py::arg("pushing_offset"))
       .def("get_input_port_config", &ImpedanceController::get_input_port_config,
            py_rvp::reference_internal)
       .def("get_input_port_output", &ImpedanceController::get_input_port_output,

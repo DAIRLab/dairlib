@@ -121,7 +121,9 @@ ImpedanceController::ImpedanceController(
     const MatrixXd& B_null,
     const VectorXd& qd,
     const std::vector<drake::geometry::GeometryId>& contact_geoms,
-    int num_friction_directions)
+    int num_friction_directions,
+    double moving_offset,
+    double pushing_offset)
     : plant_(plant),
       plant_f_(plant_f),
       context_(context),
@@ -132,7 +134,9 @@ ImpedanceController::ImpedanceController(
       B_null_(B_null),
       qd_(qd),
       contact_geoms_(contact_geoms),
-      num_friction_directions_(num_friction_directions){
+      num_friction_directions_(num_friction_directions),
+      moving_offset_(moving_offset),
+      pushing_offset_(pushing_offset){
   
   // plant parameters
   int num_positions = plant_.num_positions();
@@ -249,18 +253,12 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   Vector3d d = H.translation() + R*EE_offset_;
   
   // modify desired state if no contact desired
-  if (lambda(0) < 0.000001){
-    // method 1: add position offset
-    double offset = 0; // 0.001
-    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-    Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
-    xd.tail(3) << xd_new;
-    //std::cout << "here" << std::endl;
-
-    // method 2: add force offset
-    // lambda << 10, 0, 0, 0, 0;
-    // in_contact = true;
-  }
+  // if (lambda(0) < 0.000001){
+  //   Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+  //   Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
+  //   xd.tail(3) << xd_new;
+  //   //std::cout << "here" << std::endl;
+  // }
 //  else{
 
 //
@@ -268,29 +266,23 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   if (lambda(0) > 0.001){
     //std::cout << "here" << std::endl;
-    // method 1: add position offset
-    double offset = -0.002; // 0.001
     Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-    Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
+    Vector3d xd_new = xd.tail(3) + pushing_offset_*ball_to_EE;
     xd.tail(3) << xd_new;
     //std::cout << "here" << std::endl;
-
-    // method 2: add force offset
-    // lambda << 10, 0, 0, 0, 0;
-    // in_contact = true;
   }
 
-  int ts = round(timestamp);
 
-
-  if (ts % 3 == 0){
-
-    double offset = 0.001; // 0.001
-    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-    Vector3d xd_new = xd.tail(3) + offset*ball_to_EE;
-    xd.tail(3) << xd_new;
-
-  }
+//  int ts = round(timestamp);
+//
+//
+//  if (ts % 3 == 0){
+//
+//    Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+//    Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
+//    xd.tail(3) << xd_new;
+//
+//  }
 
 
 

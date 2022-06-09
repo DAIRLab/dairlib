@@ -14,7 +14,21 @@
                               "type": "point",
                               "radius": 0.01
                             }
-              }
+              },
+              {"name": "target",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 19
+                                },
+                 "type_data": {"color":[1, 0, 0],
+                               "alpha": 0.5,
+                               "type": "line",
+                               "thickness": 0.005,
+                               "history" : -1
+                             }
+               }
             ]
 }
   

@@ -154,7 +154,7 @@ ImpedanceController::ImpedanceController(
   c3_state_input_port_ =
       this->DeclareVectorInputPort(
               "xee, xball, xee_dot, xball_dot, lambda",
-              TimestampedVector<double>(25))
+              TimestampedVector<double>(28))
           .get_index();
 
   control_output_port_ = this->DeclareVectorOutputPort(

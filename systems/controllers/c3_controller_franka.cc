@@ -109,7 +109,7 @@ C3Controller_franka::C3Controller_franka(
 
 
   state_output_port_ = this->DeclareVectorOutputPort(
-                                 "x_lambda, t", TimestampedVector<double>(25),
+                                 "x_lambda, t", TimestampedVector<double>(28),
                                  &C3Controller_franka::CalcControl)
                              .get_index();
 
@@ -467,8 +467,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
  ///VectorXd force_des = VectorXd::Zero(10);
 
- VectorXd st_desired(force_des.size() + state_next.size() );
- st_desired << state_next, force_des.head(6);
+ VectorXd st_desired(force_des.size() + state_next.size() + traj_desired_vector.size());
+ st_desired << state_next, traj_desired_vector, force_des.head(6);
 
  ////2 (connected to franka)
  //VectorXd st_desired = VectorXd::Zero( force_des.size() + state_next.size() );

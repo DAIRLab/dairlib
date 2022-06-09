@@ -1,19 +1,22 @@
-group "director" {
+group "1.director" {
     cmd "drake-director" {
-        exec = "bazel-bin/director/drake-director";
+        exec = "bazel-bin/director/drake-director --script director/scripts/VisualizationGUI.py";
         host = "localhost";
     }
 }
-cmd "impedance controller" {
-    exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence";
-    host = "localhost";
-}
-cmd "franka" {
-    exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm";
-    host = "localhost";
-}
-cmd "C3" {
+cmd "2.C3" {
     exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo";
     host = "localhost";
 }
-
+cmd "3.franka" {
+    exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm";
+    host = "localhost";
+}
+cmd "4.impedance controller" {
+    exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence";
+    host = "localhost";
+}
+cmd "5.lcmspy" {
+    exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+    host = "localhost";
+}

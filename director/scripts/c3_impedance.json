@@ -1,0 +1,20 @@
+{
+    "model_file": "examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf",
+    "channelName": "FRANKA_OUTPUT",
+    "data": [
+              {"name": "xd",
+               "source_data" : {"category":"lcm",
+                                "abstract_channel" : "CONTROLLER_INPUT",
+                                "abstract_type" : "dairlib.lcmt_c3",
+                                "abstract_field" : "data",
+                                "x_index" : 0
+                               },
+                "type_data": {"color":[1, 0, 0],
+                              "alpha": 0.5,
+                              "type": "point",
+                              "radius": 0.01
+                            }
+              }
+            ]
+  }
+  

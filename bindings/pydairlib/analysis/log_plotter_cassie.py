@@ -37,20 +37,24 @@ def main():
     robot_output, robot_input, osc_debug = \
         get_log_data(log,  # log
                      cassie_plots.cassie_default_channels,  # lcm channels
-                     plot_config.end_time,
+                     plot_config.start_time,
+                     plot_config.duration,
                      mbp_plots.load_default_channels,  # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
-    contact_output = get_log_data(log,  # log
-                                  cassie_plots.cassie_contact_channels,  # lcm channels
-                                  plot_config.end_time,
-                                  mbp_plots.load_force_channels,  # processing callback
-                                  'CASSIE_CONTACT_DRAKE')  # processing callback arguments
+    if plot_config.plot_contact_forces:
+        contact_output = get_log_data(log,  # log
+                                      cassie_plots.cassie_contact_channels,  # lcm channels
+                                      plot_config.start_time,
+                                      plot_config.duration,
+                                      mbp_plots.load_force_channels,  # processing callback
+                                      'CASSIE_CONTACT_DRAKE')  # processing callback arguments
 
     print('Finished processing log - making plots')
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
+    print('Log start time: ', robot_output['t_x'][0])
 
     ''' Plot Positions '''
     # Plot floating base positions if applicable
@@ -72,6 +76,10 @@ def main():
     if use_floating_base and plot_config.plot_floating_base_velocities:
         mbp_plots.plot_floating_base_velocities(
             robot_output, vel_names, 6, t_x_slice)
+
+    if plot_config.plot_floating_base_velocity_body_frame:
+        mbp_plots.plot_floating_base_body_frame_velocities(
+            robot_output, t_x_slice, plant, context, "pelvis")
 
     # Plot all joint velocities
     if plot_config.plot_joint_positions:

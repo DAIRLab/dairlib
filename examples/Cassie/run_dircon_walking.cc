@@ -110,7 +110,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_x = n_q + n_v;
-  map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
+  map<string, int> positions_map = multibody::MakeNameToPositionsMap(plant);
 
   vector<VectorXd> q_init_guess;
   VectorXd q_ik_guess = VectorXd::Zero(n_q);
@@ -213,7 +213,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       x_const.head(n_q) = q_sol;
       PiecewisePolynomial<double> pp_xtraj(x_const);
 
-      multibody::connectTrajectoryVisualizer(&plant_ik, &builder_ik,
+      multibody::ConnectTrajectoryVisualizer(&plant_ik, &builder_ik,
                                              &scene_graph_ik, pp_xtraj);
       auto diagram = builder_ik.Build();
       drake::systems::Simulator<double> simulator(*diagram);
@@ -301,9 +301,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
   plant.Finalize();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();

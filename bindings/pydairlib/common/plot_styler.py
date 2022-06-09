@@ -39,7 +39,7 @@ class PlotStyler():
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     matplotlib.rcParams['figure.figsize'] = 8, 16
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 18}
+    font = {'size': 20}
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 4
     plt.set_cmap('tab20')
@@ -89,10 +89,10 @@ class PlotStyler():
     plt.savefig(self.directory + filename, dpi=self.dpi)
     return
 
-  def add_legend(self, legend, loc=0):
-    # plt.figure(self.fig_id)
-    ax = self.fig.axes[0]
-    legend = ax.legend(legend, loc=loc)
+  def add_legend(self, labels, loc=0):
+    plt.figure(self.fig_id)
+    ax = plt.gca()
+    legend = ax.legend(labels, loc=loc)
     ax.add_artist(legend)
     return
 

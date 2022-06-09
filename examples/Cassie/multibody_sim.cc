@@ -9,7 +9,7 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/geared_motor.h"
+#include "systems/framework/geared_motor.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -88,8 +88,7 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    //    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
-    multibody::AddFlatTerrain(&plant, &scene_graph, 1e4, 1e2);
+    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
   }
 
   std::string urdf;
@@ -99,7 +98,7 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
   plant.Finalize();
 
@@ -138,13 +137,11 @@ int do_main(int argc, char* argv[]) {
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           FLAGS_radio_channel, lcm));
-  // Order of joint actuators is not depth-first
-  std::vector<double> omega_max = {303.687, 303.687, 303.687, 303.687, 136.136,
-                                   136.135, 136.136, 136.135, 575.958, 575.958};
 
-  auto cassie_motor = builder.AddSystem<systems::GearedMotor>(plant, omega_max);
+  const auto& cassie_motor = AddMotorModel(&builder, plant);
+
   const auto& sensor_aggregator =
-      AddImuAndAggregator(&builder, plant, cassie_motor->get_output_port());
+      AddImuAndAggregator(&builder, plant, cassie_motor.get_output_port());
 
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
@@ -157,14 +154,14 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(discrete_time_delay->get_output_port(),
                   passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(),
-                  cassie_motor->get_input_port_command());
-  builder.Connect(cassie_motor->get_output_port(),
+                  cassie_motor.get_input_port_command());
+  builder.Connect(cassie_motor.get_output_port(),
                   plant.get_actuation_input_port());
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
   builder.Connect(plant.get_state_output_port(),
-                  cassie_motor->get_input_port_state());
-  builder.Connect(cassie_motor->get_output_port(),
+                  cassie_motor.get_input_port_state());
+  builder.Connect(cassie_motor.get_output_port(),
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(
@@ -203,7 +200,7 @@ int do_main(int argc, char* argv[]) {
   // diagram is built, plant.get_actuation_input_port().HasValue(*context)
   // throws a segfault error
   drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
-  addCassieMultibody(&plant_for_solver, nullptr,
+  AddCassieMultibody(&plant_for_solver, nullptr,
                      FLAGS_floating_base /*floating base*/, urdf,
                      FLAGS_spring_model, true);
   plant_for_solver.Finalize();

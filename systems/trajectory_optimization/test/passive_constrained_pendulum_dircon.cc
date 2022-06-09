@@ -120,7 +120,7 @@ void runDircon() {
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt->ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+  multibody::ConnectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                          pp_xtraj);
   auto diagram = builder.Build();
 

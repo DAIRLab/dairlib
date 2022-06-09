@@ -110,6 +110,18 @@ def make_point_positions_from_q(
     return pos
 
 
+def get_floating_base_velocity_in_body_frame(
+    robot_output, plant, context, fb_frame):
+    vel = np.zeros((robot_output['q'].shape[0], 3))
+    for i, (q, v) in enumerate(zip(robot_output['q'], robot_output['v'])):
+        plant.SetPositions(context, q)
+        plant.SetVelocities(context, v)
+        vel[i] = fb_frame.CalcSpatialVelocity(
+            context, plant.world_frame(), fb_frame).translational()
+
+    return vel
+
+
 def process_osc_channel(data):
     t_osc = []
     # input_cost = []
@@ -287,6 +299,26 @@ def plot_u_cmd(
     return ps
 
 
+def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None, title=None):
+    ps = plot_styler.PlotStyler()
+    if ylabel is None:
+        ylabel = key
+    if title is None:
+        title = key
+
+    plotting_utils.make_plot(
+        robot_input,  # data dict
+        't_u',  # time channel
+        time_slice,
+        [key],  # key to plot
+        {key: x_slice},  # slice of key to plot
+        {key: x_names},  # legend entries
+        {'xlabel': 'Time',
+         'ylabel': ylabel,
+         'title': title}, ps)
+    return ps
+
+
 def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):
     return plot_q_or_v_or_u(robot_output, 'q', q_names[:fb_dim], slice(fb_dim),
                             time_slice, ylabel='Position',
@@ -328,7 +360,7 @@ def plot_velocities_by_name(robot_output, v_names, time_slice, vel_map):
 def plot_measured_efforts(robot_output, u_names, time_slice):
     return plot_q_or_v_or_u(robot_output, 'u', u_names, slice(len(u_names)),
                             time_slice, ylabel='Efforts (Nm)',
-                            title='Joint Efforts')
+                            title='Measured Joint Efforts')
 
 
 def plot_commanded_efforts(robot_input, u_names, time_slice):
@@ -341,6 +373,12 @@ def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
     u_slice = [u_map[name] for name in u_names]
     return plot_q_or_v_or_u(robot_output, 'u', u_names, u_slice, time_slice,
                             ylabel='Efforts (Nm)', title='Select Joint Efforts')
+
+
+def plot_commanded_efforts(robot_input, u_names, time_slice):
+    return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
+                      time_slice, ylabel='Efforts (Nm)',
+                      title='Commanded Joint Efforts')
 
 
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
@@ -363,20 +401,31 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         frame_names,
         dims,
         legend_entries,
-        {'title': 'Running',
+        {'title': 'Point Positions',
          'xlabel': 'time (s)',
-         'ylabel': 'foot vertical position (m)'}, ps)
+         'ylabel': 'pos (m)'}, ps)
 
-    # import matplotlib
-    # legend_elements = [matplotlib.patches.Patch(facecolor=ps.cmap(0), alpha=0.3, label='Left Stance (LS)'),
-    #                    matplotlib.patches.Patch(facecolor=ps.cmap(4), alpha=0.3, label='Left Liftoff (LF)'),
-    #                    matplotlib.patches.Patch(facecolor=ps.cmap(2), alpha=0.3, label='Right Stance (RS)'),
-    #                    matplotlib.patches.Patch(facecolor=ps.cmap(6), alpha=0.3, label='Right Liftoff (RF)')]
-    # legend = plt.legend(legend_elements, ['Left Stance (LS)',
-    #                                       'Left Liftoff (LF)',
-    #                                       'Right Stance (RS)',
-    #                                       'Right Liftoff (RF)'], loc=1)
-    # plt.gca().add_artist(legend)
+    return ps
+
+
+def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
+                                             context, fb_frame_name):
+    data_dict = {'t': robot_output['t_x']}
+    data_dict['base_vel'] = get_floating_base_velocity_in_body_frame(
+        robot_output, plant, context,
+        plant.GetBodyByName(fb_frame_name).body_frame())
+    legend_entries = {'base_vel': ['base_vx', 'base_vy', 'base_vz']}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['base_vel'],
+        {},
+        legend_entries,
+        {'title': 'Floating Base Velocity (Body Frame)',
+         'xlabel': 'time (s)',
+         'ylabel': 'Velocity (m/s)'}, ps)
 
     return ps
 
@@ -533,7 +582,7 @@ def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
     return ps
 
 
-def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names=[]):
+def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
     ax = ps.fig.axes[0]
     ymin, ymax = ax.get_ylim()
 
@@ -541,12 +590,10 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names=[]):
     legend_elements = []
     for i in np.unique(fsm_signal):
         ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
-        if len(fsm_state_names) == np.unique(fsm_signal).shape[0]:
+        if fsm_state_names:
             legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
 
-    # if len(legend_elements) > 0:
-    #     legend = ax.legend(legend_elements, fsm_state_names, loc=4)
-    # ps.add_legend(legend, loc=4)
-    # ax.add_artist(legend)
-    # ax.add_artist(legend)
-    # ax.relim()
+    if len(legend_elements) > 0:
+        legend = ax.legend(handles=legend_elements, loc=4)
+        # ax.add_artist(legend)
+        ax.relim()

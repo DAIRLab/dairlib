@@ -1,4 +1,4 @@
-#include "simulator_drift.h"
+#include "examples/Cassie/systems/simulator_drift.h"
 
 using dairlib::systems::OutputVector;
 using Eigen::VectorXd;

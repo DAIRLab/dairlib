@@ -138,6 +138,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
 
   // Regularization cost weights
+  void AddInputCostByJointAndFsmState(
+      const std::string& joint_u_name, int fsm, double w);
   void SetInputCostWeights(const Eigen::MatrixXd& W) { W_input_ = W; }
   void SetAccelerationCostWeights(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
@@ -337,6 +339,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+  drake::solvers::QuadraticCost* input_cost_;
   std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
   drake::solvers::QuadraticCost* input_smoothing_cost_;
   drake::solvers::QuadraticCost* lambda_c_smoothing_cost_;
@@ -362,6 +365,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd W_input_smoothing_;
   Eigen::MatrixXd W_lambda_c_reg_;
   Eigen::MatrixXd W_lambda_h_reg_;
+  std::map<int, std::pair<int, double>> fsm_to_w_input_map_; // each pair is (joint index, weight)
+
 
   // OSC constraint members
   bool with_input_constraints_ = true;

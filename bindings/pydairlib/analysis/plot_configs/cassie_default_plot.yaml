@@ -3,8 +3,10 @@ channel_x: "CASSIE_STATE_DISPATCHER"
 channel_u: "CASSIE_INPUT"
 channel_osc: "OSC_DEBUG_WALKING"
 
-# Log time to stop at (seconds, -1 for whole log)
-end_time: -1
+# Approximate log time to start at relative to the first timestamp in the log
+start_time: 0
+# Duration of time to plot (seconds, -1 for whole log)
+duration: 2
 
 # Plant properties
 use_springs: true
@@ -13,20 +15,22 @@ use_floating_base: true
 # Desired RobotOutput plots
 plot_floating_base_positions: false
 plot_floating_base_velocities: false
+plot_floating_base_velocity_body_frame: true
 plot_joint_positions: false
 plot_joint_velocities: false
 plot_measured_efforts: true
 plot_commanded_efforts: true
-special_positions_to_plot: []
-special_velocities_to_plot: []
-special_efforts_to_plot: []
+plot_contact_forces: false
+special_positions_to_plot: [ ]
+special_velocities_to_plot: [ ]
+special_efforts_to_plot: [ ]
 
 # Finite State Machine Names
 fsm_state_names: ['Left Stance (LS)', 'Left Flight (LF)', ' ', 'Right Stance (RS)', 'Right Flight (RF)']
 
 # Foot position plots
-foot_positions_to_plot: ['right', 'left']
-foot_xyz_to_plot: {'right': [0, 1, 2], 'left': [0, 1, 2]}
+foot_positions_to_plot: [ 'right', 'left' ]
+foot_xyz_to_plot: { 'right': [ 0, 1, 2 ], 'left': [ 0, 1, 2 ] }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
@@ -34,5 +38,5 @@ plot_qp_costs: true
 plot_tracking_costs: true
 plot_qp_solve_time: true
 tracking_datas_to_plot:
-  alip_com_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
-  swing_ft_traj: {'dims': [2], 'derivs': ['pos', 'accel']}
+  alip_com_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'vel' ] }
+  swing_ft_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'accel' ] }

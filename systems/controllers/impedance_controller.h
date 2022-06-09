@@ -126,6 +126,8 @@ class ImpedanceController : public LeafSystem<double> {
   const VectorXd qd_;
   std::vector<drake::geometry::GeometryId> contact_geoms_;
   const int num_friction_directions_;
+  const double moving_offset_;
+  const double pushing_offset_;
 
   // frame, EE, and contact info
   const drake::multibody::BodyFrame<double>* EE_frame_;

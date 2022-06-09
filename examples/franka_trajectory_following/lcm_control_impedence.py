@@ -93,6 +93,9 @@ EE_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link
 contact_geoms = [EE_geoms, sphere_geoms]
 num_friction_directions = 2
 
+moving_offset = 0.001
+pushing_offset = 0.001
+
 controller = builder.AddSystem(
     ImpedanceController(plant,
                         plant_f,
@@ -101,7 +104,9 @@ controller = builder.AddSystem(
                         K, B,
                         K_null, B_null, qd,
                         contact_geoms,
-                        num_friction_directions))
+                        num_friction_directions,
+                        moving_offset,
+                        pushing_offset))
 
 
 # connections

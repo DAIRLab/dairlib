@@ -9,9 +9,9 @@ from pydairlib.cassie.controllers import AlipWalkingControllerFactory
 from pydrake.multibody.plant import MultibodyPlant
 
 
-from drake_cassie_gym import DrakeCassieGym
-from cassie_env_state import CassieEnvState, CASSIE_NRADIO
-from reward_osudrl import RewardOSUDRL
+from pydairlib.cassie.cassie_gym.drake_cassie_gym import DrakeCassieGym
+from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState, CASSIE_NRADIO
+from pydairlib.cassie.cassie_gym.reward_osudrl import RewardOSUDRL
 
 N_KNOT = 5
 SWING_FOOT_ACTION_DIM = N_KNOT * 3 + 6
@@ -64,7 +64,7 @@ class SwingFootEnv(DrakeCassieGym):
         if not self.initialized:
             print("Call make() before calling step() or advance()")
         if action is None:
-            action = self.default_action
+            action = np.zeros((len(self.default_action),))
 
         # assuming this gets called while the robot is in double support
         cur_fsm_state = self.controller.get_fsm_output_port().Eval(self.controller_context)[0]
@@ -107,4 +107,4 @@ class SwingFootEnv(DrakeCassieGym):
 
 # TODO(hersh500): set random seed in here as well.
 def make_swing_ft_env():
-    return SwingFootEnv(reward_func = RewardOSUDRL())
+    return SwingFootEnv(reward_func = RewardOSUDRL(), visualize=True)

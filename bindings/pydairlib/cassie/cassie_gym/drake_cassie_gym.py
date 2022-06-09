@@ -14,7 +14,7 @@ from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
 from dairlib import lcmt_radio_out
 from pydairlib.cassie.simulators import CassieSimDiagram
-from cassie_env_state import CassieEnvState, CASSIE_NU
+from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState, CASSIE_NU
 
 
 class DrakeCassieGym(gym.Env):

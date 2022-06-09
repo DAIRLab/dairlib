@@ -4,20 +4,20 @@ from matplotlib.patches import Patch
 
 from pydairlib.common import plot_styler, plotting_utils
 from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost
-from pydairlib.multibody import makeNameToPositionsMap, \
-    makeNameToVelocitiesMap, makeNameToActuatorsMap, \
-    createStateNameVectorFromMap, createActuatorNameVectorFromMap
+from pydairlib.multibody import MakeNameToPositionsMap, \
+    MakeNameToVelocitiesMap, MakeNameToActuatorsMap, \
+    CreateStateNameVectorFromMap, CreateActuatorNameVectorFromMap
 
 
 def make_name_to_mbp_maps(plant):
-    return makeNameToPositionsMap(plant), \
-           makeNameToVelocitiesMap(plant), \
-           makeNameToActuatorsMap(plant)
+    return MakeNameToPositionsMap(plant), \
+           MakeNameToVelocitiesMap(plant), \
+           MakeNameToActuatorsMap(plant)
 
 
 def make_mbp_name_vectors(plant):
-    x_names = createStateNameVectorFromMap(plant)
-    u_names = createActuatorNameVectorFromMap(plant)
+    x_names = CreateStateNameVectorFromMap(plant)
+    u_names = CreateActuatorNameVectorFromMap(plant)
     q_names = x_names[:plant.num_positions()]
     v_names = x_names[plant.num_positions():]
     return q_names, v_names, u_names
@@ -56,9 +56,9 @@ def process_state_channel(state_data, plant):
     u = []
     v = []
 
-    pos_map = makeNameToPositionsMap(plant)
-    vel_map = makeNameToVelocitiesMap(plant)
-    act_map = makeNameToActuatorsMap(plant)
+    pos_map = MakeNameToPositionsMap(plant)
+    vel_map = MakeNameToVelocitiesMap(plant)
+    act_map = MakeNameToActuatorsMap(plant)
 
     for msg in state_data:
         q_temp = [[] for i in range(len(msg.position))]
@@ -85,7 +85,7 @@ def process_effort_channel(data, plant):
     u = []
     t = []
 
-    act_map = makeNameToActuatorsMap(plant)
+    act_map = MakeNameToActuatorsMap(plant)
     for msg in data:
         u_temp = [[] for i in range(len(msg.efforts))]
         for i in range(len(u_temp)):

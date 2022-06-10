@@ -112,6 +112,10 @@ class RewardOSUDRL():
             height_diff = 0
         pelvis_acc = 0.25 * (np.abs(com_angular_velocity.sum()))
         pelvis_motion = straight_diff + height_diff + pelvis_acc
+        # print("vel_tracking")
+        # print(com_vel_error)
+        # print("pelvis_motion")
+        # print(pelvis_motion)
 
         hip_roll_penalty = np.abs(joint_vel[0]) + np.abs(joint_vel[7])
 
@@ -119,7 +123,7 @@ class RewardOSUDRL():
 
         reward = 0.200 * np.exp(-(com_orient_error + foot_orient_error)) + \
                  0.150 * np.exp(-pelvis_motion) + \
-                 0.150 * np.exp(-com_vel_error) + \
+                 0.250 * np.exp(-com_vel_error) + \
                  0.100 * np.exp(-hip_roll_penalty) + \
                  0.025 * np.exp(-torque_penalty)
 

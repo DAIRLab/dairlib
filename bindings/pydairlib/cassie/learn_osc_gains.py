@@ -95,8 +95,9 @@ class OSCGainsOptimizer():
         else:
             # print('mujoco')
             gym_env = MuJoCoCassieGym(self.reward_function, visualize=self.visualize)
+        gym_env.end_time = self.end_time
         controller_plant = MultibodyPlant(8e-5)
-        addCassieMultibody(controller_plant, None, True, self.controller_urdf, False, False)
+        AddCassieMultibody(controller_plant, None, True, self.controller_urdf, False, False)
         controller_plant.Finalize()
         controller = OSCRunningControllerFactory(controller_plant, self.osc_running_gains_filename,
                                                  self.osqp_settings)
@@ -153,8 +154,8 @@ if __name__ == '__main__':
     optimizer = OSCGainsOptimizer(budget, reward_function, visualize=False)
     optimizer.learn_gains()
 
-    # optimal_params = optimizer.load_params('2022_06_02_11_2000', optimizer.drake_params_folder).value
+    # optimal_params = optimizer.load_params('2022_06_09_15_500', optimizer.drake_params_folder).value
     # optimizer.write_params(optimal_params)
-    # reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_2000.npy')
+    # reward_over_time = np.load('bindings/pydairlib/cassie/optimal_gains/loss_trajectory_500.npy')
     # plt.plot(reward_over_time)
     # plt.show()

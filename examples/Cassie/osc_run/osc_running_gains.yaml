@@ -25,7 +25,7 @@ ekf_filter_tau: [0.05, 0.01, 0.01]
 
 # High level command gains (with radio)
 vel_scale_rot: -0.5
-vel_scale_trans_sagital: 1.0
+vel_scale_trans_sagital: 0.25
 vel_scale_trans_lateral: -0.15
 
 # SLIP parameters

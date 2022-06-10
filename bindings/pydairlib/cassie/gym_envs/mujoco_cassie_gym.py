@@ -194,7 +194,7 @@ class MuJoCoCassieGym():
         next_timestep = self.drake_sim.get_context().get_time() + timestep
 
         self.robot_output_sender.get_input_port_state().FixValue(self.robot_output_sender_context, self.cassie_state.x)
-        action = self.velocity_profile(timestep)
+        action = self.velocity_profile(next_timestep)
         self.radio_input_port.FixValue(self.controller_context, action)
 
         u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp

@@ -36,7 +36,7 @@ class UKF:
         # Dim of v, the C should also in the dimension
         self.nv = 22
         # Dim of damping ratio
-        # self.nd = 16
+        self.nd = 16
         # Total dim
         # self.n = self.nq + self.nv + self.nd
 
@@ -44,7 +44,7 @@ class UKF:
         # self.ni = 10
 
         # Number of points for the foot to contacts for the ground
-        # self.num_contacts = 4
+        self.num_contacts = 4
 
         # Initialize for drake
         self.builder = DiagramBuilder()
@@ -636,12 +636,23 @@ def processing_raw_data(raw_data, R, Q):
 
     return processed_data
 
-def groundForceCheck(plant, context, q_v, t, lambda_c_gt):
+def groundForceCheck(plant, context, q_v, t, lambda_c_gt, u, C, estimator:UKF):
     smooth_window = 10
     m = plant.CalcTotalMass(context)
     center_mass_p = np.zeros((q_v.shape[0], 3))
     center_mass_v = np.zeros((q_v.shape[0] - 2*smooth_window, 3))
     center_mass_a = np.zeros((q_v.shape[0] - 4*smooth_window, 3))
+    
+    vdot = np.zeros((q_v.shape[0] - 4*smooth_window, 22))
+    v = q_v[:,23:]
+    q = q_v[:,:23]
+
+    for i in range(2*smooth_window, q_v.shape[0] - 2*smooth_window):
+        vdot[i-2*smooth_window,:] = (v[i+smooth_window,:] - v[i-smooth_window,:])/(t[i+smooth_window] - t[i-smooth_window])
+    
+    q = q[2*smooth_window:-2*smooth_window]
+    v = v[2*smooth_window:-2*smooth_window]
+    u = u[2*smooth_window:-2*smooth_window]
 
     for i in range(q_v.shape[0]):
         plant.SetPositionsAndVelocities(context, q_v[i])
@@ -655,24 +666,75 @@ def groundForceCheck(plant, context, q_v, t, lambda_c_gt):
     t = t[smooth_window:-smooth_window]
     lambda_c_gt = lambda_c_gt[smooth_window:-smooth_window]
     est_external_force = (center_mass_a - np.array([0,0,-9.8]))* m
+
+    import cvxpy as cp
+    
+    residual = cp.Variable((q_v.shape[0] - 4*smooth_window,22))
+    lambda_cp = cp.Variable((q_v.shape[0] - 4*smooth_window,12))
+    constraints = []
+    cost = 0
+
+    for i in range(residual.shape[0]):
+        constraints.append(residual[i,:] == vdot[i,:] - estimator.cal_vdot(q[i,:],v[i,:],C[6:],u[i,:],lambda_cp[i,:]))
+        cost += cp.norm(residual[i,:])
+
+    obj = cp.Minimize(cost)
+
+    prob = cp.Problem(obj, constraints)
+    prob.solve()
+
+    lambda_cp = lambda_cp.value
+    residual = residual.value
+
+    plt.cla()
     plt.plot(t, est_external_force[:,0], 'r', label="est")
     plt.plot(t, lambda_c_gt[:,0] + lambda_c_gt[:,3] + lambda_c_gt[:,6] + lambda_c_gt[:,9], 'g', label="gt")
+    plt.plot(t, lambda_cp[:,0] + lambda_cp[:,3] + lambda_cp[:,6] + lambda_cp[:,9], 'b', label="cp result")
     plt.ylim(-100,100)
     plt.title("X direction total force")
     plt.legend()
-    plt.show()
+    plt.savefig("bindings/pydairlib/cassie/ukf_experienments/recover_ground_force/X direction total force.png")
+    plt.cla()
     plt.plot(t, est_external_force[:,1], 'r', label="est")
     plt.plot(t, lambda_c_gt[:,1] + lambda_c_gt[:,4] + lambda_c_gt[:,7] + lambda_c_gt[:,10], 'g', label="gt")
+    plt.plot(t, lambda_cp[:,1] + lambda_cp[:,4] + lambda_cp[:,7] + lambda_cp[:,10], 'b', label="cp result")
     plt.ylim(-100,100)
     plt.title("Y direction total force")
     plt.legend()
-    plt.show()
+    plt.savefig("bindings/pydairlib/cassie/ukf_experienments/recover_ground_force/Y direction total force.png")
+    plt.cla()
     plt.plot(t, est_external_force[:,2], 'r', label="est")
     plt.plot(t, lambda_c_gt[:,2] + lambda_c_gt[:,5] + lambda_c_gt[:,8] + lambda_c_gt[:,11], 'g', label="gt")
+    plt.plot(t, lambda_cp[:,2] + lambda_cp[:,5] + lambda_cp[:,8] + lambda_cp[:,11], 'b', label="cp result")
     plt.legend()
     plt.ylim(0,1000)
     plt.title("Z direction total force")
-    plt.show()
+    plt.savefig("bindings/pydairlib/cassie/ukf_experienments/recover_ground_force/Z direction total force.png")
+    
+    vel_map = pydairlib.multibody.makeNameToVelocitiesMap(plant)
+    vel_map_inverse = {value:key for (key, value) in vel_map.items()}
+    pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
+    pos_map_inverse = {value:key for (key, value) in pos_map.items()}
+    
+    path = "bindings/pydairlib/cassie/ukf_experienments/recover_ground_force/" + "all_residual.png" 
+    plt.cla()
+    for i in range(residual.shape[1]):
+        plt.plot(t, residual[:,i], label=vel_map_inverse[i])
+        plt.legend()
+        plt.xlabel("time(s)")
+        plt.ylabel("vdot")
+        plt.savefig(path)
+
+    for i in range(residual.shape[1]):
+        path = "bindings/pydairlib/cassie/ukf_experienments/recover_ground_force/" + vel_map_inverse[i] + "_residual.png" 
+        plt.clf()
+        plt.plot(t, residual[:,i])
+        plt.xlabel("time(s)")
+        plt.ylabel("vdot")
+        plt.title(vel_map_inverse[i])
+        plt.ylim(-200,200)
+        plt.savefig(path)
+
     import pdb; pdb.set_trace()
 def main():
     np.random.seed(0)
@@ -720,9 +782,6 @@ def main():
     pos_map = pydairlib.multibody.makeNameToPositionsMap(plant)
     pos_map_inverse = {value:key for (key, value) in pos_map.items()}
 
-    # Ground Force retrieve
-    groundForceCheck(plant, context, np.hstack((q_gt,v_gt)), t, lambda_c_gt)
-
     # check which leg in on contact
     if np.linalg.norm(lambda_c_gt[0,:6]) > 0:
         foot_of_contact = 'left'
@@ -731,6 +790,9 @@ def main():
 
     # initial ukf
     estimator = UKF(init_mean, init_cov, R, Q, foot_of_contact=foot_of_contact)
+
+    # Ground Force retrieve
+    groundForceCheck(plant, context, np.hstack((q_gt,v_gt)), t, lambda_c_gt, u_gt, damping_ratio, estimator)
 
     # acc_est = []
     # acc_est_with_lambda_c_noise = []
@@ -756,6 +818,7 @@ def main():
     # import pdb; pdb.set_trace()
 
     est = [init_mean]
+    cov = [np.diag(init_cov)]
 
     acc = acc_gt + np.random.multivariate_normal(np.zeros(22), R, acc_gt.shape[0])
     v_integrad = [init_mean[23:]]
@@ -764,9 +827,11 @@ def main():
     for i in range(1,t.shape[0]):
         states = estimator.update(acc[i-1], lambda_c_gt[i,:], obs[i], t[i]-t[i-1])
         est.append(states)
+        cov.append(np.diag(estimator.cov))
         v_integrad.append(v_integrad[-1] + acc[i-1] * (t[i] - t[i-1]))
 
     est = np.array(est)
+    cov = np.array(cov)
     v_integrad = np.array(v_integrad)
 
     # plt q
@@ -776,6 +841,9 @@ def main():
         if i >= 7:
             plt.plot(t, obs[:,i-1], 'b', label='obs')
         plt.plot(t, est[:,i], 'r', label="est")
+        if i>=4 and i <7:
+            plt.plot(t, est[:,i] + cov[:,i-1]**0.5, 'y--')
+            plt.plot(t, est[:,i] - cov[:, i-1]**0.5, 'y--')
         plt.plot(t, q_gt[:,i], 'g', label="gt")
         plt.title(pos_map_inverse[i])
         plt.legend()
@@ -787,6 +855,9 @@ def main():
         plt.clf()
         plt.plot(t, v_integrad[:,i], 'b', label= "integrated")
         plt.plot(t, est[:,i+23], 'r', label = "est")
+        if i>=3 and i < 6:
+            plt.plot(t, est[:,i+23] + cov[:,i+22]**0.5, 'y--')
+            plt.plot(t, est[:,i+23] + cov[:,i-22]**0.5, 'y--')
         plt.plot(t, v_gt[:,i], 'g', label="gt")
         plt.legend()
         plt.title(vel_map_inverse[i])

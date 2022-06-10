@@ -132,14 +132,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 // // DEBUG CODE FOR ADAM
 // // TODO: @Alp comment this section out to use actual admm
 // double stabilize_time1 = 5;
-// double move_time = 1;
+// double move_time = 2;
 // double stabilize_time2 = 2;
 // double total = stabilize_time1 + move_time + stabilize_time2;
 
 // std::vector<Eigen::Vector3d> target;
 // if (timestamp <= total){
 //   Eigen::Vector3d start(0.5, 0, 0.12);
-//   Eigen::Vector3d finish(0.5, 0.2, 0.12);
+//   Eigen::Vector3d finish(0.4, 0.2, 0.08);
 //   target = move_to_initial_position(start, finish, timestamp,
 //          stabilize_time1, move_time, stabilize_time2);
 // }
@@ -157,9 +157,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 //   debug_state(20) = 100;
 // }
 
-// debug_state(25) = target[0](0);
-// debug_state(26) = target[0](1);
-// debug_state(27) = target[0](2);
+  // VectorXd traj = pp_.value(timestamp);
+  // Vector3d ball_xyz_d(traj(7), traj(8), traj(9));
+  // debug_state.tail(3) << ball_xyz_d;
 
 // state_contact_desired->SetDataVector(debug_state);
 // state_contact_desired->set_timestamp(timestamp);
@@ -471,13 +471,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
  ///VectorXd force_des = VectorXd::Zero(10);
 
-  VectorXd traj_desired_vector_copy = pp_.value(timestamp);
+  VectorXd traj = pp_.value(timestamp);
+  Vector3d ball_xyz_d(traj(7), traj(8), traj(9));
 
- VectorXd st_desired(force_des.size() + state_next.size() + traj_desired_vector.size()+1);
- st_desired << state_next, force_des.head(6), traj_desired_vector_copy, 0.03;
-
- ////2 (connected to franka)
- //VectorXd st_desired = VectorXd::Zero( force_des.size() + state_next.size() );
+ VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size());
+ st_desired << state_next, force_des.head(6), ball_xyz_d;
 
  double stabilize_time1 = 5;
  double move_time = 2;

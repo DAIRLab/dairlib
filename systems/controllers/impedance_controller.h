@@ -110,6 +110,11 @@ class ImpedanceController : public LeafSystem<double> {
   // computes the contact jacobians in J_n and J_t
   void CalcContactJacobians(const std::vector<SortedPair<GeometryId>>& contact_pairs,
                     VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;
+  Vector3d ApplyHeuristic(
+      const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
+      const VectorXd& x, const VectorXd& x_dot,
+      const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
+      double timestamp) const;
 
   // ports
   int franka_state_input_port_;

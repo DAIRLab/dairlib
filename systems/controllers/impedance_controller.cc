@@ -202,21 +202,11 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd xd_dot = VectorXd::Zero(6);
   VectorXd lambda = VectorXd::Zero(5); // does not contain the slack variable
   Vector3d ball_xyz(state(7), state(8), state(9));
+  Vector3d ball_xyz_d(state(25), state(26), state(27));
 
   xd.tail(3) << state.head(3);
   xd_dot.tail(3) << state(10), state(11), state(12);
   lambda << state(20), state(21), state(22), state(23), state(24);
-
-
-  // std::vector<Vector3d> target = compute_target_task_space_vector(timestamp);
-  // VectorXd xd = VectorXd::Zero(6);
-  // xd.tail(3) << target[0];
-  // VectorXd xd_dot = VectorXd::Zero(6);
-  // xd_dot.tail(3) << target[1];
-  // VectorXd lambda = VectorXd::Zero(5);
-  // if (timestamp > 10.0 && timestamp < 20.0){
-  //   lambda << 100, 0, 0, 0, 0;
-  // }
 
   bool in_contact = !isZeroVector(lambda,0.1);
   
@@ -253,50 +243,19 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
   const RotationMatrix<double> R = H.rotation();
   Vector3d d = H.translation() + R*EE_offset_;
-  
-  // modify desired state if no contact desired
-  // if (lambda(0) < 0.000001){
-  //   Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-  //   Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
-  //   xd.tail(3) << xd_new;
-  //   //std::cout << "here" << std::endl;
-  // }
-//  else{
-
-//
-//  }
-
-  double settle_time = 9;
-  if (timestamp > settle_time){
-    if (lambda(0) > 0.001){
-      //std::cout << "here" << std::endl;
-      Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-      Vector3d xd_new = xd.tail(3) + pushing_offset_*ball_to_EE;
-      xd.tail(3) << xd_new;
-      //std::cout << "here" << std::endl;
-    }
-
-
-    int period = 10;
-    double duty_cycle = 0.7;
-
-    double ts = -settle_time + timestamp - period * (  (int) ( floor(-settle_time + timestamp)) / period);
-
-
-    if (ts > period * duty_cycle){
-
-      Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-      Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
-      xd.tail(3) << xd_new;
-
-    }
-  }
 
   // build task space state vectors
   VectorXd x = VectorXd::Zero(6);
   x.tail(3) << d;
   VectorXd x_dot = J_franka * v_franka;
 
+  double settle_time = 9;
+  if (timestamp > settle_time){
+    Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), 
+                                lambda, d, x_dot.tail(3), 
+                                ball_xyz, ball_xyz_d, timestamp);
+    xd.tail(3) << xd_new;
+  }
   // compute position control input
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R);
@@ -372,59 +331,52 @@ void ImpedanceController::CalcContactJacobians(const std::vector<SortedPair<Geom
   }
 }
 
-/*
-// JOINT IMPEDANCE CONTROLLER
-void ImpedanceController::CalcControl(const Context<double>& context,
-                               TimestampedVector<double>* control) const {
-
-  /// get values
-  auto robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
-  double timestamp = robot_output->get_timestamp();
-  VectorXd q = robot_output->GetPositions();
-  VectorXd v = robot_output->GetVelocities();
-  VectorXd u = robot_output->GetEfforts();
+Vector3d ImpedanceController::ApplyHeuristic(
+    const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
+    const VectorXd& x, const VectorXd& x_dot,
+    const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
+    double timestamp) const {
   
-  //update the context_
-  VectorXd C(plant_.num_velocities());
-  plant_.SetPositions(&context_, q);
-  plant_.SetVelocities(&context_, v);
+  // commented code from some heuristics we've tried
 
-  // calculate corriolis and gravity terms
-  plant_.CalcBiasTerm(context_, &C);
-  VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
+  // if (lambda(0) > 0.001){
+  //   //std::cout << "here" << std::endl;
+  //   Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+  //   Vector3d xd_new = xd.tail(3) + pushing_offset_*ball_to_EE;
+  //   xd.tail(3) << xd_new;
+  //   //std::cout << "here" << std::endl;
+  // }
 
-  // TODO: get desired x and x_dot from input ports
-  // TODO: get qd and qd_dot from task space and IK instead
-  vector<VectorXd> target = compute_target_joint_space_vector(timestamp);
-  VectorXd qd = target[0];
-  VectorXd qd_dot = target[1];
 
-  // TODO: finish IK with warm start
-  // Vector3d xd = compute_target_task_space_vector(timestamp);
-  // VectorXd qd = inverse_kinematics(plant_, xd);
-  // VectorXd qd_dot = VectorXd::Ones(7); // set joint velocities to 0 for now
-  
-  // gain matrices
-  int num_joints = plant_.num_positions();
-  MatrixXd Kp = MatrixXd::Zero(num_joints, num_joints);
-  MatrixXd Kd = MatrixXd::Zero(num_joints, num_joints);
-  // gains from
-  // https://github.com/frankaemika/libfranka/blob/master/examples/joint_impedance_control.cpp
-  std::vector<double> P_gains = {600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0};
-  std::vector<double> D_gains = {50.0, 50.0, 50.0, 50.0, 30.0, 25.0, 15.0};
-  double ratio = 0.25;
-  for (int i = 0; i < num_joints; i++){
-      Kp(i,i) = P_gains[i]*ratio;
-      Kd(i,i) = D_gains[i]*ratio;
-  }
-  
-  // TODO: add limit on tau?
-  VectorXd tau = Kp*(qd - q) + Kd*(qd_dot - v) + C - tau_g;
-  control->SetDataVector(tau);
-  control->set_timestamp(timestamp);
+  // int period = 10;
+  // double duty_cycle = 0.7;
+
+  // double ts = -settle_time + timestamp - period * (  (int) ( floor(-settle_time + timestamp)) / period);
+
+
+  // if (ts > period * duty_cycle){
+
+  //   Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+  //   Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
+  //   xd.tail(3) << xd_new;
+
+  // }
+
+
+  // modify desired state if no contact desired
+  // if (lambda(0) < 0.000001){
+  //   Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
+  //   Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
+  //   xd.tail(3) << xd_new;
+  //   //std::cout << "here" << std::endl;
+  // }
+//  else{
+
+//
+//  }
+  // temporary return
+  return xd;
 }
-*/
 
 }  // namespace controllers
 }  // namespace systems

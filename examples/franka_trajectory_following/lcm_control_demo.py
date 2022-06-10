@@ -169,7 +169,7 @@ xdesiredinit[:nq] = q
 
 r = 0.2
 degree_increment = 20
-# theta = np.arange(0, 400, degree_increment)
+#theta = np.arange(0, 400, degree_increment)
 theta = np.arange(degree_increment, 400 + degree_increment, degree_increment)
 xtraj = []
 for i in theta:
@@ -183,12 +183,12 @@ for i in theta:
     xtraj.append(xtraj_hold)
 
 
-
-increment = 10.0   #2.0
+increment = 5.0   #2.0
 delay = 9
 timings = np.arange(0 + delay, increment*len(xtraj) + delay, increment )
 
-pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
+#pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
+pp = PiecewisePolynomial.FirstOrderHold(timings, xtraj)
 
 
 num_friction_directions = 2

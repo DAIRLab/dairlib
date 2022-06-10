@@ -289,8 +289,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    MatrixXd Qnew;
    Qnew = Q_[0];
 
-  double period = 10;
-  double duty_cycle = 0.7;
+  double period = 5;
+  double duty_cycle = 0.5;
 
   double settling_time = 9;
   double shifted_time = timestamp - settling_time;

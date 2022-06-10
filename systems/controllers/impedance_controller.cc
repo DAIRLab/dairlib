@@ -249,11 +249,10 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   x.tail(3) << d;
   VectorXd x_dot = J_franka * v_franka;
 
-  double settle_time = 9;
-  if (timestamp > settle_time){
-    Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), 
-                                lambda, d, x_dot.tail(3), 
-                                ball_xyz, ball_xyz_d, timestamp);
+  double settling_time = 9;
+  if (timestamp > settling_time){
+    Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
+                                ball_xyz, ball_xyz_d, settling_time, timestamp);
     xd.tail(3) << xd_new;
   }
   // compute position control input
@@ -335,47 +334,36 @@ Vector3d ImpedanceController::ApplyHeuristic(
     const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
     const VectorXd& x, const VectorXd& x_dot,
     const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
-    double timestamp) const {
+    double settling_time, double timestamp) const {
   
   // commented code from some heuristics we've tried
 
+  Vector3d xd_new = xd;
+  Vector3d ball_to_EE = (x-ball_xyz) / (x-ball_xyz).norm();
+
   // if (lambda(0) > 0.001){
-  //   //std::cout << "here" << std::endl;
-  //   Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-  //   Vector3d xd_new = xd.tail(3) + pushing_offset_*ball_to_EE;
-  //   xd.tail(3) << xd_new;
-  //   //std::cout << "here" << std::endl;
+  //   xd_new += pushing_offset_*ball_to_EE;
   // }
 
+  // get phase information in ts
+  double period = 10;
+  double duty_cycle = 0.7;
+  double shifted_time = timestamp - settling_time;
+  double ts = shifted_time - period * floor((shifted_time / period));
 
-  // int period = 10;
-  // double duty_cycle = 0.7;
 
-  // double ts = -settle_time + timestamp - period * (  (int) ( floor(-settle_time + timestamp)) / period);
-
-
-  // if (ts > period * duty_cycle){
-
-  //   Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-  //   Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
-  //   xd.tail(3) << xd_new;
-
-  // }
+  if (ts > period * duty_cycle){
+    //std::cout << "here" << std::endl;
+    xd_new += moving_offset_*ball_to_EE;
+  }
 
 
   // modify desired state if no contact desired
   // if (lambda(0) < 0.000001){
-  //   Vector3d ball_to_EE = (d-ball_xyz) / (d-ball_xyz).norm();
-  //   Vector3d xd_new = xd.tail(3) + moving_offset_*ball_to_EE;
-  //   xd.tail(3) << xd_new;
-  //   //std::cout << "here" << std::endl;
+  //   xd_new += moving_offset_*ball_to_EE;
   // }
-//  else{
 
-//
-//  }
-  // temporary return
-  return xd;
+  return xd_new;
 }
 
 }  // namespace controllers

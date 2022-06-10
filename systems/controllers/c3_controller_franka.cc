@@ -139,7 +139,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 // std::vector<Eigen::Vector3d> target;
 // if (timestamp <= total){
 //   Eigen::Vector3d start(0.5, 0, 0.12);
-//   Eigen::Vector3d finish(0.4, 0.2, 0.08);
+//   Eigen::Vector3d finish(0.5, 0.2, 0.08);
 //   target = move_to_initial_position(start, finish, timestamp,
 //          stabilize_time1, move_time, stabilize_time2);
 // }
@@ -157,9 +157,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 //   debug_state(20) = 100;
 // }
 
-  // VectorXd traj = pp_.value(timestamp);
-  // Vector3d ball_xyz_d(traj(7), traj(8), traj(9));
-  // debug_state.tail(3) << ball_xyz_d;
+//   VectorXd traj = pp_.value(timestamp);
+//   Vector3d ball_xyz_d(traj(7), traj(8), traj(9));
+//   debug_state.tail(3) << ball_xyz_d;
 
 // state_contact_desired->SetDataVector(debug_state);
 // state_contact_desired->set_timestamp(timestamp);
@@ -530,7 +530,7 @@ std::vector<Eigen::Vector3d> compute_target_task_space_vector(double t){
     double r = 0.2;
     double x_c = 0.5; // smaller x_c performs worse
     double y_c = 0;
-    double z_c = 0.12;
+    double z_c = 0.08;
     double w = 1;
     Eigen::Vector3d start(x_c, y_c+r, z_c);
     double start_time = 0;

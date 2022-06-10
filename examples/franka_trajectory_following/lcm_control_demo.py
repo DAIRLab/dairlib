@@ -135,7 +135,6 @@ nc = 2
 
 q = np.zeros((nq,1))
 q_map = makeNameToPositionsMap(plant)
-print(q_map)
 q[0] = -0.05
 q[1] = 0.22
 q[2] = 0.07 #0.05

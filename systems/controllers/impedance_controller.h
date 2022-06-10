@@ -114,7 +114,7 @@ class ImpedanceController : public LeafSystem<double> {
       const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
       const VectorXd& x, const VectorXd& x_dot,
       const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
-      double timestamp) const;
+      double settling_time, double timestamp) const;
 
   // ports
   int franka_state_input_port_;

@@ -289,10 +289,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    MatrixXd Qnew;
    Qnew = Q_[0];
 
-  int period = 10;
+  double period = 10;
   double duty_cycle = 0.7;
 
-  double ts = -9 + timestamp - period * (  (int) ( floor(-9 + timestamp)) / period);
+  double settling_time = 9;
+  double shifted_time = timestamp - settling_time;
+  double ts = shifted_time - period * floor((shifted_time / period));
 
 
   if (ts > period * duty_cycle){
@@ -490,7 +492,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
           stabilize_time1, move_time, stabilize_time2);
    st_desired = VectorXd::Zero(28);
    st_desired.head(3) << target[0];
-   st_desired.tail(3) << 0.4, 0.2, 0.12;
+   st_desired(7) = finish(0);
+   st_desired(8) = finish(1);
+   st_desired(9) = 0.03;
+   st_desired.tail(3) << ball_xyz_d;
  }
 
 

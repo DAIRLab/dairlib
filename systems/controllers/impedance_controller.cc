@@ -255,6 +255,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
                                 ball_xyz, ball_xyz_d, settling_time, timestamp);
     xd.tail(3) << xd_new;
   }
+
   // compute position control input
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R);
@@ -353,8 +354,9 @@ Vector3d ImpedanceController::ApplyHeuristic(
 
 
   if (ts > period * duty_cycle){
-    //std::cout << "here" << std::endl;
+    
     xd_new += moving_offset_*ball_to_EE;
+    // std::cout << "xd_new:\n" << xd_new << std::endl;
   }
 
 

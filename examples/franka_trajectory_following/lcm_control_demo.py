@@ -177,6 +177,7 @@ for i in theta:
     y = r * np.cos(math.radians(i))
     q[q_map['base_x']] = x + 0.4
     q[q_map['base_y']] = y
+    q[q_map['base_z']] = 0.03
     xtraj_hold = np.zeros((nq+nv,1))
     xtraj_hold[:nq] = q
     xtraj.append(xtraj_hold)

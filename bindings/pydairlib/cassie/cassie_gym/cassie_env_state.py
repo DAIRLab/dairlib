@@ -13,6 +13,7 @@ CASSIE_NX = 45
 CASSIE_NQ = 23
 CASSIE_NV = 22
 CASSIE_NU = 10
+CASSIE_NL = 12
 CASSIE_NRADIO = 18
 
 
@@ -54,7 +55,10 @@ class CassieEnvState():
         return self.x[CASSIE_JOINT_VELOCITY_SLICE]
 
     def get_desired_forward_velocity(self):
-        return self.action[2]
+        if len(self.action) == CASSIE_NRADIO:
+            return self.action[2]
+        else:
+            return 0
 
     def get_desired_lateral_velocity(self):
         return self.action[3]

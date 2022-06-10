@@ -98,11 +98,11 @@ class RewardOSUDRL():
 
         torque_penalty = 0.5 * (sum(np.abs(prev_torques - torques)) / len(torques))
 
-        reward = 0.200 * np.exp(-(com_orient_error + foot_orient_error)) + \
-                 0.150 * np.exp(-pelvis_motion) + \
-                 0.150 * np.exp(-com_vel_error) + \
-                 0.100 * np.exp(-hip_roll_penalty) + \
-                 0.025 * np.exp(-torque_penalty)
+        reward = 0.100 * np.exp(-(com_orient_error + foot_orient_error)) + \
+                 0.025 * np.exp(-pelvis_motion) + \
+                 0.500 * np.exp(-com_vel_error) + \
+                 0.010 * np.exp(-hip_roll_penalty) + \
+                 0.500 * np.exp(-torque_penalty)
 
 
         # print(0.200 * np.exp(-(com_orient_error + hip_yaw_penalty)))

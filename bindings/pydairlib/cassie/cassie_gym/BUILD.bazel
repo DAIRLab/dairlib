@@ -28,6 +28,7 @@ py_library(
     name = "swing_foot_env",
     srcs = ["swing_foot_env.py"],
     deps = [
+        ":cassie_traj",
         ":drake_cassie_gym",
         ":reward_osudrl",
         "//bindings/pydairlib/cassie",

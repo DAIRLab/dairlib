@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from bindings.pydairlib.cassie.gym.cassie_env_state import *
+from pydairlib.cassie.cassie_gym.cassie_env_state import \
+    CassieEnvState, CASSIE_NX, CASSIE_NU, CASSIE_NL, CASSIE_POSITION_SLICE,\
+    CASSIE_VELOCITY_SLICE, CASSIE_QUATERNION_SLICE, CASSIE_OMEGA_SLICE
 
-# 10000 dts / 2000Hz = 5 seconds
-CASSIE_EPS_LENGTH = 100000
-
+CASSIE_EPS_LENGTH = 1000
 
 class CassieTraj():
     def __init__(self):
@@ -44,3 +44,30 @@ class CassieTraj():
         self.x_samples[index] = state
         self.u_samples[index] = action
         self.t[index] = t
+
+
+class CassieStateHistory:
+    def __init__(self):
+        self.x = []
+        self.u = []
+        self.t = []
+        self.r = []
+        self.action = []
+
+    def append(self, s, r=0):
+        self.x.append(s.x)
+        self.u.append(s.u)
+        self.t.append(s.t)
+        self.action.append(s.action)
+        self.r.append(r)
+
+    def make_traj(self):
+        traj = CassieTraj()
+        traj.t = np.array(self.t)
+        traj.x_samples = np.array(self.x)
+        traj.u_samples = np.array(self.u)
+        traj.lambda_traj = np.zeros((len(self.t), CASSIE_NL))
+        return traj
+
+    def get_reward(self):
+        return np.array(self.r)

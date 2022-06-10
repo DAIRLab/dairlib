@@ -14,7 +14,7 @@ from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState, CASSIE_
 from pydairlib.cassie.cassie_gym.reward_osudrl import RewardOSUDRL
 # from reward_osudrl import RewardOSUDRL
 
-N_KNOT = 5
+N_KNOT = 10
 SWING_FOOT_ACTION_DIM = N_KNOT * 3 + 6
 
 
@@ -32,6 +32,17 @@ def get_default_params(
         knots += x
     vel_initial = [0, 0, 0]
     vel_final = [0, 0, gains["final_foot_velocity_z"]]
+    return knots + vel_initial + vel_final
+
+
+def get_poor_default_params():
+    knots = []
+    for i in range(N_KNOT):
+        t = i / (N_KNOT - 1)
+        x = [t, t, 0.75*t*(1-t)]
+        knots += x
+    vel_initial = [0, 0, 0]
+    vel_final = [0, 0, 0]
     return knots + vel_initial + vel_final
 
 
@@ -98,11 +109,13 @@ class SwingFootEnv(DrakeCassieGym):
                     self.drake_simulator.get_context()))
             u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
             self.cassie_state = CassieEnvState(self.current_time, x, u, action)
+            self.traj.append(self.cassie_state)
             reward = self.reward_func.compute_reward(
                 self.sim_dt, self.cassie_state, self.prev_cassie_state)
             self.terminated = self.check_termination()
             self.prev_cassie_state = self.cassie_state
             cumulative_reward += reward
+            self.traj.append(self.cassie_state, reward)
         return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), {}
 
 

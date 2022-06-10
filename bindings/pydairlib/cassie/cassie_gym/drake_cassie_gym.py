@@ -15,6 +15,7 @@ from pydairlib.systems.robot_lcm_systems import RobotOutputSender
 from dairlib import lcmt_radio_out
 from pydairlib.cassie.simulators import CassieSimDiagram
 from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState, CASSIE_NU
+from pydairlib.cassie.cassie_gym.cassie_traj import CassieStateHistory
 
 
 class DrakeCassieGym(gym.Env):
@@ -104,6 +105,7 @@ class DrakeCassieGym(gym.Env):
             CassieEnvState(self.current_time, x, u, self.default_action)
         self.prev_cassie_state = \
             CassieEnvState(self.current_time, x, u, self.default_action)
+        self.traj = CassieStateHistory()
         self.cumulative_reward = 0
         self.terminated = False
         return np.array(self.cassie_state.x)
@@ -141,7 +143,12 @@ class DrakeCassieGym(gym.Env):
         return np.array(self.cassie_state.x), reward, bool(self.terminated), {}
 
     def get_traj(self):
-        return self.traj
+        if self.traj is not None:
+            return self.traj.make_traj()
+
+    def get_reward_history(self):
+        if self.traj is not None:
+            return self.traj.get_reward()
 
     # Some simulators for Cassie require cleanup
     def free_sim(self):

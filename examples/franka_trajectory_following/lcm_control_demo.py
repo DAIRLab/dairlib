@@ -135,6 +135,7 @@ nc = 2
 
 q = np.zeros((nq,1))
 q_map = makeNameToPositionsMap(plant)
+print(q_map)
 q[0] = -0.05
 q[1] = 0.22
 q[2] = 0.07 #0.05
@@ -143,7 +144,7 @@ q[q_map['base_qx']] = 0
 q[q_map['base_qz']] = 0
 q[q_map['base_x']] = 0.05
 q[q_map['base_y']] = 0.05
-q[q_map['base_z']] = 0
+q[q_map['base_z']] = 0.03 # 0
 
 mu = 1.0
 
@@ -169,7 +170,8 @@ xdesiredinit[:nq] = q
 
 r = 0.2
 degree_increment = 20
-theta = np.arange(0, 400, degree_increment)
+# theta = np.arange(0, 400, degree_increment)
+theta = np.arange(degree_increment, 400 + degree_increment, degree_increment)
 xtraj = []
 for i in theta:
     x = r * np.sin(math.radians(i))
@@ -183,8 +185,8 @@ for i in theta:
 
 
 increment = 10.0   #2.0
-scaling = 9
-timings = np.arange(0 + scaling, increment*len(xtraj) + scaling, increment )
+delay = 9
+timings = np.arange(0 + delay, increment*len(xtraj) + delay, increment )
 
 pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
 

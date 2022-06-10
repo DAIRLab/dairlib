@@ -81,12 +81,11 @@
                                "abstract_field" : "data",
                                "x_index" : 25
                               },
-               "type_data": {"color":[0, 0, 1],
-                             "alpha": 0.5,
-                             "type": "line",
-                             "thickness": 0.001,
-                             "history" : -1
-                           }
+              "type_data": {"color":[0, 0, 1],
+                                "alpha": 0.5,
+                                "type": "point",
+                                "radius": 0.03
+                              }
              },
              {"name": "ball_path",
               "source_data" : {"category":"lcm",

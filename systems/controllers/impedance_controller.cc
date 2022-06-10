@@ -347,18 +347,40 @@ Vector3d ImpedanceController::ApplyHeuristic(
   // }
 
   // get phase information in ts
-  double period = 5;
-  double duty_cycle = 0.5;
+  double period = 3;
+  double duty_cycle = 0.66;
   double shifted_time = timestamp - settling_time;
   double ts = shifted_time - period * floor((shifted_time / period));
 
-
+//
   if (ts > period * duty_cycle){
 
-    xd_new += moving_offset_*ball_to_EE;
+    //xd_new += moving_offset_*ball_to_EE;
+    xd_new(2) += moving_offset_;
+//
+//    std::cout << "xd_new" << std::endl;
+//    std::cout << xd_new << std::endl;
+
     // std::cout << "xd_new:\n" << xd_new << std::endl;
   }
-  
+//
+else{
+
+    //xd_new(2) += pushing_offset_;
+    xd_new += pushing_offset_*ball_to_EE;
+
+//  if (xd_dot(2) > 0){
+//
+//    //xd_new += moving_offset_*ball_to_EE;
+//    //xd_new(2) += moving_offset_;
+//
+//  }
+//  else{
+//    xd_new(2) += pushing_offset_;
+//    //xd_new += pushing_offset_*ball_to_EE;
+//
+//  }
+}
   // // contact desired
   // if (lambda(0) > 0.0001){
   //   //xd_new += pushing_offset_*ball_to_EE;

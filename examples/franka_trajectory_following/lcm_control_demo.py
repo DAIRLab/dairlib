@@ -183,12 +183,12 @@ for i in theta:
     xtraj.append(xtraj_hold)
 
 
-increment = 5.0   #2.0
+increment = 30.0   #2.0
 delay = 9
 timings = np.arange(0 + delay, increment*len(xtraj) + delay, increment )
 
-#pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
-pp = PiecewisePolynomial.FirstOrderHold(timings, xtraj)
+pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
+#pp = PiecewisePolynomial.FirstOrderHold(timings, xtraj)
 
 
 num_friction_directions = 2

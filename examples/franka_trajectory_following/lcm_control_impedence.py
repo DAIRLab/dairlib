@@ -75,7 +75,7 @@ context = plant.CreateDefaultContext()
 # gains
 translational_stiffness = 450 #450
 rotational_stiffness = 5
-coeff = 1  #1
+coeff = 1   #1
 
 K = np.zeros((6,6))
 B = np.zeros((6,6))
@@ -93,8 +93,8 @@ EE_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link
 contact_geoms = [EE_geoms, sphere_geoms]
 num_friction_directions = 2
 
-moving_offset = 0.001
-pushing_offset = -0.001
+moving_offset = 0.001 #0.001
+pushing_offset = -0.002   #-0.001
 
 controller = builder.AddSystem(
     ImpedanceController(plant,

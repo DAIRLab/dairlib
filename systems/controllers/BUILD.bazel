@@ -67,6 +67,7 @@ cc_library(
         "c3_controller_franka.h",
     ],
     deps = [
+        "//examples/franka_trajectory_following:c3_parameters",
         "//systems/framework:vector",
         "//solvers:c3",
         "//solvers:lcs",
@@ -84,6 +85,7 @@ cc_library(
     ],
     deps = [
         "//systems/framework:vector",
+        "//examples/franka_trajectory_following:c3_parameters",
         "//solvers:c3",
         "//solvers:lcs",
         "@drake//:drake_shared_library",

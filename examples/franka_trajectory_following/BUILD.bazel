@@ -16,6 +16,14 @@ cc_library(
         "robot_properties_fingers/cube/**"])
 )
 
+cc_library(
+    name = "c3_parameters",
+    hdrs = ["c3_parameters.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 py_binary(
     name = "simulate_franka_lcm",
     srcs = ["simulate_franka_lcm.py"],

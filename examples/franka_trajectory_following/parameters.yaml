@@ -10,34 +10,36 @@
 # impedance control parameters
 translational_stiffness: 450
 rotational_stiffness: 5
-damping_ratio: 0.75
+damping_ratio: 0.5
 stiffness_null: 1
 damping_null: 1
 q_null_desired: [0, 0.36, 0, -2.39, 0, 2.748, 0]
 moving_offset: 0.001
 pushing_offset: -0.002
 
-# # c3 parameters
-mu: 1               # changes need to be consistent with urdf
+# c3 parameters
+mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
-Q_finger_x: 100
-Q_finger_y: 100
-Q_finger_z: 100
+Q_finger: 100           # finger xyz cost
 Q_ball_x: 10000
 Q_ball_y: 10000
-Q_finger_vel: 10    # translational velocity cost
-Q_ball_vel: 0.1     # angular & translational velocity cost
-R: 0.01             # torque cost in xyz
+Q_finger_vel: 10        # translational velocity cost
+Q_ball_vel: 0.1         # angular & translational velocity cost
+Qnew_finger: 1000000    # Qnew costs
+Qnew_ball_x: 1
+Qnew_ball_y: 1
+R: 0.01                 # torque cost in xyz
 G: 0.01
 U_default: 1
-U_pos_vel: 10       # first 19 diag elements of U
-U_u: 1              # last 3 diag elements of U 
+U_pos_vel: 10           # first 19 diag elements of U
+U_u: 1                  # last 3 diag elements of U 
 q_init_finger: [-0.05, 0.22, 0.07]
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03]
+dt: 0.03
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.36, 0, -2.39, 0, 2.748, 0]
-q_init_ball: [1, 0, 0, 0, 0.4, 0.2, 0] # q_init_ball[-1] is a placeholder
+q_init_ball: [1, 0, 0, 0, 0.4, 0.2, 0.03] # q_init_ball[-1] is a placeholder
 
 initial_start: [0.5, 0, 0.12]     # start position of initialization
 initial_finish: [0.4, 0.2, 0.08]  # end position of intialization
@@ -60,7 +62,7 @@ finger_radius: 0.01         # changes need to be consistent with urdf
 EE_offset: [0, 0, 0.05]     # changes need to be consistent with urdf
 
 
-# // Misc
-# contact_threshold // threshold to consider system in contact
-# period
-# duty_cycle
+# Misc
+contact_threshold: 0.0001
+period: 3
+duty_cycle: 0.67

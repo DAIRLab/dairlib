@@ -25,82 +25,6 @@ using Eigen::Vector3d;
 using Eigen::Quaterniond;
 using std::vector;
 
-// test functions for the joint and cartesian impedance controllers
-
-// motion planning test for the joint impedance controller
-// bends all joints to right angles
-vector<VectorXd> compute_target_joint_space_vector(double t){
-    // set start and end points in joint space
-    VectorXd start = VectorXd::Zero(7);
-    VectorXd end = 1.57*VectorXd::Ones(7);
-    start(3) = -0.0698;
-    end(3) = -1.57;
-
-    // path parameters
-    double start_time = 5.0;
-    double duration = 5.0;
-    double end_time = start_time+duration;
-
-    // return q_des and q_dot_des
-    if (t < start_time) { // wait for controller to stabilize
-        return {start, VectorXd::Zero(7)};
-    }
-    else if (t > end_time){
-        return {end, VectorXd::Zero(7)};
-    }    
-    else {
-        VectorXd v = (end-start) / duration;
-        double a = (t-start_time) / duration;
-        return {(1-a)*start + a*end, v};
-    }
-}
-
-// motion planning test for the cartesian impedance controller
-// traces a small horizontal circle
-std::vector<Vector3d> compute_target_task_space_vector(double t){
-    // tracks a cirle in task sapce
-    double r = 0.125;
-    double x_c = 0.6; // smaller x_c performs worse
-    double y_c = 0;
-    double z_c = 0.2;
-    double w = 1;
-    Vector3d start(x_c+r, y_c, z_c);
-    double start_time = 3.0;
-
-    // return x_des and x_dot_des
-    if (t < start_time){ // wait for controller to stabilize
-      return {start, VectorXd::Zero(3)};
-    }
-    else{
-      Vector3d x_des(x_c + r*cos(w*(t-start_time)), y_c + r*sin(w*(t-start_time)), z_c);
-      Vector3d x_dot_des(-r*w*sin(w*(t-start_time)), r*w*cos(w*(t-start_time)), 0);
-      return {x_des, x_dot_des};
-    }
-}
-
-// TODO: IK function (INCOMPLETE)
-VectorXd inverse_kinematics(const MultibodyPlant<double>& plant, 
-    const Vector3d& x){
-    
-    drake::multibody::InverseKinematics ik(plant);
-    double eps = 1e-4;
-    
-    // define frames
-    const auto& world_frame = plant.world_frame();
-    const auto& EE_frame = plant.GetFrameByName("panda_link8");
-
-    ik.AddPositionConstraint(EE_frame, Vector3d(0,0,0), world_frame, 
-            x - eps*VectorXd::Ones(3),
-            x + eps*VectorXd::Ones(3));
-    // TODO: add orientation constraint
-    // TODO: figure out how to warm start this
-    //ik.get_mutable_prog()->SetInitialGuess(ik.q(), warm_start);
-    const auto result = Solve(ik.prog());
-    const auto q_sol = result.GetSolution(ik.q());
-
-    return q_sol;
-}
-
 bool isZeroVector(const VectorXd& a, double eps = 1e-6){
   assert(eps > 0);
   return (a.array().abs() <= eps*VectorXd::Ones(a.size()).array()).all();
@@ -162,8 +86,12 @@ ImpedanceController::ImpedanceController(
                                  &ImpedanceController::CalcControl)
                              .get_index();
 
+  // get c3_parameters
+  param_ = drake::yaml::LoadYamlFile<C3Parameters>(
+      "examples/franka_trajectory_following/parameters.yaml");
+
   // define end effector and contact
-  EE_offset_ << 0, 0, 0.05;
+  EE_offset_ << param_.EE_offset;
   EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
   world_frame_ = &plant_.world_frame();
   contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
@@ -194,7 +122,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
 
-  // TODO: uncomment to get info from port
+  // get values from c3
   auto c3_output =
       (TimestampedVector<double>*) this->EvalVectorInput(context, c3_state_input_port_);
   VectorXd state = c3_output->get_data();
@@ -207,8 +135,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   xd.tail(3) << state.head(3);
   xd_dot.tail(3) << state(10), state(11), state(12);
   lambda << state(20), state(21), state(22), state(23), state(24);
-
-  bool in_contact = !isZeroVector(lambda,0.1);
   
   //update the context_
   plant_.SetPositions(&context_, q);
@@ -249,12 +175,12 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   x.tail(3) << d;
   VectorXd x_dot = J_franka * v_franka;
 
-  // double settling_time = 9;
-  // if (timestamp > settling_time){
-  //   Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
-  //                               ball_xyz, ball_xyz_d, settling_time, timestamp);
-  //   xd.tail(3) << xd_new;
-  // }
+  double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
+  if (timestamp > settling_time){
+    // Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
+    //                             ball_xyz, ball_xyz_d, settling_time, timestamp);
+    // xd.tail(3) << xd_new;
+  }
 
   // compute position control input
   VectorXd xtilde = xd - x;
@@ -265,7 +191,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // add feedforward force term if contact is desired
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
 
- if (lambda.norm() > 0.0001){
+ if (lambda.norm() > param_.contact_threshold){
    //std::cout << "here" << std::endl;
    // compute contact jacobian
    VectorXd phi(contact_pairs_.size());
@@ -293,10 +219,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*100) / 100.0 == timestamp && timestamp >= 9.0){
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << "contact desired?\n" << in_contact << std::endl;
-    std::cout << "relative_distance\n" << 100*(d-ball_xyz).norm() << std::endl;
-    std::cout << "xd\n" << xd.tail(3) << std::endl;
-    std::cout << "x\n" << d << std::endl;
+
     std::cout << std::endl;
   }
 }
@@ -341,56 +264,22 @@ Vector3d ImpedanceController::ApplyHeuristic(
 
 
 
-  // if (lambda(0) > 0.001){
+  // if (lambda(0) > param_.contact_threshold){
   //   xd_new += pushing_offset_*ball_to_EE;
   // }
 
   // get phase information in ts
-  double period = 3;
-  double duty_cycle = 0.66;
+  double period = param_.period;
+  double duty_cycle = param_.duty_cycle;
   double shifted_time = timestamp - settling_time;
   double ts = shifted_time - period * floor((shifted_time / period));
 
-//
   if (ts > period * duty_cycle){
-
-    //xd_new += moving_offset_*ball_to_EE;
     xd_new(2) += moving_offset_;
-//
-//    std::cout << "xd_new" << std::endl;
-//    std::cout << xd_new << std::endl;
-
-    // std::cout << "xd_new:\n" << xd_new << std::endl;
   }
-//
-else{
-
-    //xd_new(2) += pushing_offset_;
+  else{
     xd_new += pushing_offset_*ball_to_EE;
-
-//  if (xd_dot(2) > 0){
-//
-//    //xd_new += moving_offset_*ball_to_EE;
-//    //xd_new(2) += moving_offset_;
-//
-//  }
-//  else{
-//    xd_new(2) += pushing_offset_;
-//    //xd_new += pushing_offset_*ball_to_EE;
-//
-//  }
-}
-  // // contact desired
-  // if (lambda(0) > 0.0001){
-  //   //xd_new += pushing_offset_*ball_to_EE;
-  // }
-
-
-  // modify desired state if no contact desired
-  // if (lambda(0) < 0.000001){
-  //   xd_new += moving_offset_*ball_to_EE;
-  //   // std::cout << "xd_new:\n" << xd_new << std::endl;
-  // }
+  }
   
   return xd_new;
 }

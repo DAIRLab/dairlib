@@ -47,7 +47,6 @@ using drake::math::RotationMatrix;
 // TODO: remove this (only used for Adam debugging)
 // task space helper function that generates the target trajectory
 // modified version of code from impedance_controller.cc
-std::vector<Eigen::Vector3d> compute_target_task_space_vector(double t);
 std::vector<Eigen::Vector3d> move_to_initial_position(
     const Eigen::Vector3d& start, const Eigen::Vector3d& finish,
     double curr_time, double stabilize_time1,
@@ -113,6 +112,10 @@ C3Controller_franka::C3Controller_franka(
                                  &C3Controller_franka::CalcControl)
                              .get_index();
 
+  // get c3_parameters
+  param_ = drake::yaml::LoadYamlFile<C3Parameters>(
+      "examples/franka_trajectory_following/parameters.yaml");
+
 }
 
 void C3Controller_franka::CalcControl(const Context<double>& context,
@@ -130,8 +133,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
 
    // forward kinematics
-   Vector3d EE_offset_;
-   EE_offset_ << 0, 0, 0.05;
+   Vector3d EE_offset_ = param_.EE_offset;
    const drake::math::RigidTransform<double> H_mat =
        plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link8"));
    const RotationMatrix<double> Rotation = H_mat.rotation();
@@ -238,21 +240,22 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    MatrixXd Qnew;
    Qnew = Q_[0];
 
-  double period = 3;
-  double duty_cycle = 0.66;
+  double period = param_.period;
+  double duty_cycle = param_.duty_cycle;
 
-  double settling_time = 9;
+  double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
   double shifted_time = timestamp - settling_time;
   double ts = shifted_time - period * floor((shifted_time / period));
   //std::cout << "ts: " << ts << std::endl;
 
   if (ts > period * duty_cycle){
-    Qnew(0,0) = 1000000;
-    Qnew(1,1) = 1000000;
-    Qnew(2,2) = 1000000;
-     Qnew(7,7) = 1;
-     Qnew(8,8) = 1;
-   }
+    double Qnew_finger = param_.Qnew_finger;
+    Qnew(0,0) = Qnew_finger;
+    Qnew(1,1) = Qnew_finger;
+    Qnew(2,2) = Qnew_finger;
+    Qnew(7,7) = param_.Qnew_ball_x;
+    Qnew(8,8) = param_.Qnew_ball_y;
+  }
 
    std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
@@ -269,7 +272,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_, 0.03);
+      num_friction_directions_, mu_, param_.dt);
 
   solvers::LCS system2_ = system_scaling_pair2.first;
   double scaling2 = system_scaling_pair2.second;
@@ -284,30 +287,23 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
  VectorXd force_des = VectorXd::Zero(6);
  force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
- force_des = 1 * force_des;
-
   VectorXd traj = pp_.value(timestamp);
   Vector3d ball_xyz_d(traj(7), traj(8), traj(9));
 
  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size());
  st_desired << state_next, force_des.head(6), ball_xyz_d;
 
- double stabilize_time1 = 5;
- double move_time = 2;
- double stabilize_time2 = 2;
- double total = stabilize_time1 + move_time + stabilize_time2;
-
  std::vector<Eigen::Vector3d> target;
- if (timestamp <= total){
-   Eigen::Vector3d start(0.5, 0, 0.12);
-   Eigen::Vector3d finish(0.4, 0.2, 0.08);
+ if (timestamp <= settling_time){
+   Eigen::Vector3d start = param_.initial_start;
+   Eigen::Vector3d finish = param_.initial_finish;
    target = move_to_initial_position(start, finish, timestamp,
-          stabilize_time1, move_time, stabilize_time2);
+          param_.stabilize_time1, param_.move_time, param_.stabilize_time2);
    st_desired = VectorXd::Zero(28);
    st_desired.head(3) << target[0];
    st_desired(7) = finish(0);
    st_desired(8) = finish(1);
-   st_desired(9) = 0.03;
+   st_desired(9) = param_.ball_radius;
    st_desired.tail(3) << ball_xyz_d;
  }
 
@@ -341,25 +337,4 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
   else{
     return {finish, zero};
   }
-}
-
-std::vector<Eigen::Vector3d> compute_target_task_space_vector(double t){
-    // tracks a cirle in task sapce
-    double r = 0.2;
-    double x_c = 0.5; // smaller x_c performs worse
-    double y_c = 0;
-    double z_c = 0.08;
-    double w = 1;
-    Eigen::Vector3d start(x_c, y_c+r, z_c);
-    double start_time = 0;
-
-    // return x_des and x_dot_des
-    if (t < start_time){ // wait for controller to stabilize
-      return {start, VectorXd::Zero(3)};
-    }
-    else{
-      Eigen::Vector3d x_des(x_c + r*sin(w*(t-start_time)), y_c + r*cos(w*(t-start_time)), z_c);
-      Eigen::Vector3d x_dot_des(r*w*cos(w*(t-start_time)), -r*w*sin(w*(t-start_time)), 0);
-      return {x_des, x_dot_des};
-    }
 }

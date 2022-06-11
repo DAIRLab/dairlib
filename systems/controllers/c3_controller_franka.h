@@ -29,8 +29,12 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-
 #include "drake/common/trajectories/piecewise_polynomial.h"
+
+#include "examples/franka_trajectory_following/c3_parameters.h"
+#include "yaml-cpp/yaml.h"
+#include "drake/common/yaml/yaml_io.h"
+
 
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
@@ -105,6 +109,7 @@ class C3Controller_franka : public LeafSystem<double> {
   const std::vector<Eigen::MatrixXd> U_;
   const std::vector<Eigen::VectorXd> xdesired_;
   const drake::trajectories::PiecewisePolynomial<double> pp_;
+  C3Parameters param_;
 };
 
 }  // namespace controllers

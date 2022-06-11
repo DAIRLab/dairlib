@@ -54,6 +54,10 @@
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
+#include "examples/franka_trajectory_following/c3_parameters.h"
+#include "yaml-cpp/yaml.h"
+#include "drake/common/yaml/yaml_io.h"
+
 
 
 using drake::multibody::MultibodyPlant;
@@ -135,6 +139,7 @@ class ImpedanceController : public LeafSystem<double> {
   const int num_friction_directions_;
   const double moving_offset_;
   const double pushing_offset_;
+  C3Parameters param_;
 
   // frame, EE, and contact info
   const drake::multibody::BodyFrame<double>* EE_frame_;

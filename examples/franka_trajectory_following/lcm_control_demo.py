@@ -156,9 +156,9 @@ q[q_map['base_z']] = ball_init[6]
 mu = param["mu"]
 
 Qinit = param["Q_default"] * np.eye(nq+nv)
-Qinit[0,0] = param["Q_finger_x"]
-Qinit[1,1] = param["Q_finger_y"]
-Qinit[2,2] = param["Q_finger_z"]
+Qinit[0,0] = param["Q_finger"]
+Qinit[1,1] = param["Q_finger"]
+Qinit[2,2] = param["Q_finger"]
 Qinit[7,7] = param["Q_ball_x"]
 Qinit[8,8] = param["Q_ball_y"]
 Qinit[10:10+nv,10:10+nv] = param["Q_ball_vel"] * np.eye(nv)

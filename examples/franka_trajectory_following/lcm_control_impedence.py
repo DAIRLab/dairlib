@@ -74,15 +74,15 @@ context = plant.CreateDefaultContext()
 
 # gains
 translational_stiffness = 450 #450
-rotational_stiffness = 5
-coeff = 1  #1
+rotational_stiffness = 5 # 5
+damping_ratio = 0.75  # damping ratio assuming mass = 1
 
 K = np.zeros((6,6))
 B = np.zeros((6,6))
 K[0:3, 0:3] = rotational_stiffness * np.identity(3)
 K[3:6, 3:6] = translational_stiffness * np.identity(3)
-B[0:3, 0:3] = coeff * math.sqrt(rotational_stiffness) * np.identity(3)
-B[3:6, 3:6] = coeff * math.sqrt(translational_stiffness) * np.identity(3)
+B[0:3, 0:3] = 2 * damping_ratio * math.sqrt(rotational_stiffness) * np.identity(3)
+B[3:6, 3:6] = 2 * damping_ratio * math.sqrt(translational_stiffness) * np.identity(3)
 
 K_null = np.identity(7)
 B_null = np.identity(7)

@@ -249,12 +249,12 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   x.tail(3) << d;
   VectorXd x_dot = J_franka * v_franka;
 
-  double settling_time = 9;
-  if (timestamp > settling_time){
-    Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
-                                ball_xyz, ball_xyz_d, settling_time, timestamp);
-    xd.tail(3) << xd_new;
-  }
+  // double settling_time = 9;
+  // if (timestamp > settling_time){
+  //   Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
+  //                               ball_xyz, ball_xyz_d, settling_time, timestamp);
+  //   xd.tail(3) << xd_new;
+  // }
 
   // compute position control input
   VectorXd xtilde = xd - x;
@@ -342,34 +342,25 @@ Vector3d ImpedanceController::ApplyHeuristic(
   Vector3d xd_new = xd;
   Vector3d ball_to_EE = (x-ball_xyz) / (x-ball_xyz).norm();
 
+
+
   // if (lambda(0) > 0.001){
   //   xd_new += pushing_offset_*ball_to_EE;
   // }
 
   // get phase information in ts
-  double period = 5;
-  double duty_cycle = 0.5;
-  double shifted_time = timestamp - settling_time;
-  double ts = shifted_time - period * floor((shifted_time / period));
+  // double period = 5;
+  // double duty_cycle = 0.5;
+  // double shifted_time = timestamp - settling_time;
+  // double ts = shifted_time - period * floor((shifted_time / period));
 
 
-  if (ts > period * duty_cycle){
+  // if (ts > period * duty_cycle){
 
-    xd_new += moving_offset_*ball_to_EE;
-    // std::cout << "xd_new:\n" << xd_new << std::endl;
-  }
-  
-  // // contact desired
-  // if (lambda(0) > 0.0001){
-  //   //xd_new += pushing_offset_*ball_to_EE;
-  // }
-
-
-  // modify desired state if no contact desired
-  // if (lambda(0) < 0.000001){
   //   xd_new += moving_offset_*ball_to_EE;
+  //   // std::cout << "xd_new:\n" << xd_new << std::endl;
   // }
-
+  
   return xd_new;
 }
 

@@ -1,4 +1,5 @@
 from pydrake.all import *
+from pydrake.common.yaml import yaml_load
 
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 from pydairlib.systems import AddActuationRecieverAndStateSenderLcm
@@ -6,9 +7,11 @@ import pydairlib.common
 
 import pydrake.geometry as mut
 
-
-
 import matplotlib.pyplot as plt
+
+# load parameters
+param = yaml_load(
+    filename="examples/franka_trajectory_following/parameters.yaml")
 
 # Load the URDF and the cube
 builder = DiagramBuilder()
@@ -74,48 +77,33 @@ simulator.set_publish_every_time_step(False)
 simulator.set_publish_at_initialization(False)
 
 # Change the real-time rate to above 1 to simulate faster
-simulator.set_target_realtime_rate(0.25)
+simulator.set_target_realtime_rate(param["realtime_rate"])
 
 plant_context = diagram.GetMutableSubsystemContext(
     plant, simulator.get_mutable_context())
 
 q = np.zeros(nq)
 q_map = makeNameToPositionsMap(plant)
-# initialize EE close to {0.5, 0.2, 0.08}[m] in task space
-# q[q_map["panda_joint1"]] = 0.324
-# q[q_map["panda_joint2"]] = 0.429
-# q[q_map["panda_joint3"]] = 0.051
-# q[q_map["panda_joint4"]] = -2.256
-# q[q_map["panda_joint5"]] = -0.049
-# q[q_map["panda_joint6"]] = 2.685
-# q[q_map["panda_joint7"]] = 0.414
-
-# initialize EE close to {0.6, 0, 0.2}[m] in task space
-# q[q_map["panda_joint1"]] = 0
-# q[q_map["panda_joint2"]] = 0.82
-# q[q_map["panda_joint3"]] = 0
-# q[q_map["panda_joint4"]] = -1.44
-# q[q_map["panda_joint5"]] = 0
-# q[q_map["panda_joint6"]] = 2.26
-# q[q_map["panda_joint7"]] = 0
-
 
 # initialize EE close to {0.5, 0, 0.12}[m] in task space
-q[q_map["panda_joint1"]] = 0
-q[q_map["panda_joint2"]] = 0.36
-q[q_map["panda_joint3"]] = 0
-q[q_map["panda_joint4"]] = -2.39
-q[q_map["panda_joint5"]] = 0
-q[q_map["panda_joint6"]] = 2.748
-q[q_map["panda_joint7"]] = 0
+franka_init = param["q_init_franka"]
+q[q_map["panda_joint1"]] = franka_init[0]
+q[q_map["panda_joint2"]] = franka_init[1]
+q[q_map["panda_joint3"]] = franka_init[2]
+q[q_map["panda_joint4"]] = franka_init[3]
+q[q_map["panda_joint5"]] = franka_init[4]
+q[q_map["panda_joint6"]] = franka_init[5]
+q[q_map["panda_joint7"]] = franka_init[6]
 
 # initialize ball
-q[q_map['base_qw']] = 1
-q[q_map['base_qx']] = 0
-q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 0.4
-q[q_map['base_y']] = 0.2
-q[q_map['base_z']] = 0.05
+ball_init = param["q_init_ball"]
+q[q_map['base_qw']] = ball_init[0]
+q[q_map['base_qx']] = ball_init[1]
+q[q_map['base_qy']] = ball_init[2]
+q[q_map['base_qz']] = ball_init[3]
+q[q_map['base_x']] = ball_init[4]
+q[q_map['base_y']] = ball_init[5]
+q[q_map['base_z']] = param["ball_radius"]
 
 plant.SetPositions(plant_context, q)
 

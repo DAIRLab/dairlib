@@ -1,6 +1,6 @@
 from dairlib import (lcmt_robot_output, lcmt_robot_input, lcmt_c3)
 
-import pydairlib.common
+from pydrake.common.yaml import yaml_load
 import pydairlib.lcm
 from pydairlib.systems import (RobotCommandSender, RobotOutputReceiver, RobotC3Receiver,
                                LcmOutputDrivenLoop, OutputVector,
@@ -72,10 +72,13 @@ q = np.zeros((nq,1))
 
 context = plant.CreateDefaultContext()
 
-# gains
-translational_stiffness = 450 #450
-rotational_stiffness = 5 # 5
-damping_ratio = 0.75  # damping ratio assuming mass = 1
+# parameters
+param = yaml_load(
+    filename="examples/franka_trajectory_following/parameters.yaml")
+
+translational_stiffness = param["translational_stiffness"]
+rotational_stiffness = param["rotational_stiffness"]
+damping_ratio = param["damping_ratio"] # assumes mass is 1
 
 K = np.zeros((6,6))
 B = np.zeros((6,6))
@@ -84,17 +87,17 @@ K[3:6, 3:6] = translational_stiffness * np.identity(3)
 B[0:3, 0:3] = 2 * damping_ratio * math.sqrt(rotational_stiffness) * np.identity(3)
 B[3:6, 3:6] = 2 * damping_ratio * math.sqrt(translational_stiffness) * np.identity(3)
 
-K_null = np.identity(7)
-B_null = np.identity(7)
-qd = np.array([0, 0.4, 0, -1.57, 0, 1.57, 0])
+K_null = param["stiffness_null"] = np.identity(7)
+B_null = param["damping_null"] = np.identity(7)
+qd = np.array(param["q_null_desired"])
 
 sphere_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0]
 EE_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link8"))[0]
 contact_geoms = [EE_geoms, sphere_geoms]
 num_friction_directions = 2
 
-moving_offset = 0.001 #0.001
-pushing_offset = -0.002   #-0.001
+moving_offset = param["moving_offset"]
+pushing_offset = param["pushing_offset"]
 
 controller = builder.AddSystem(
     ImpedanceController(plant,
@@ -158,7 +161,7 @@ receiver_context = diagram.GetMutableSubsystemContext(state_receiver, context_d)
 # mutable_state = initial_c3_msg
 
 print("Waiting for first c3 lcm message")
-c3_subscriber.WaitForMessage(0, timeout = 0.2)
+c3_subscriber.WaitForMessage(0, timeout = param["c3_sub_timeout"])
 
 loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                            lcm_parser=state_receiver,

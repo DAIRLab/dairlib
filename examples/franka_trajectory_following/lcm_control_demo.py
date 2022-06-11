@@ -1,5 +1,7 @@
+from pyexpat.model import XML_CQUANT_NONE
 from dairlib import (lcmt_robot_output, lcmt_robot_input, lcmt_c3)
 
+from pydrake.common.yaml import yaml_load
 import pydairlib.common
 import pydairlib.lcm
 from pydairlib.systems import (RobotC3Receiver, 
@@ -25,11 +27,13 @@ from pydrake.trajectories import PiecewisePolynomial
 
 import math
 
-
+# load parameters
+param = yaml_load(
+    filename="examples/franka_trajectory_following/parameters.yaml")
+    
 lcm = DrakeLcm()
 
 plant = MultibodyPlant(0.0)
-
 
 #The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
@@ -132,63 +136,71 @@ nv = plant.num_velocities()
 nu = plant.num_actuators()
 nc = 2
 
-
 q = np.zeros((nq,1))
 q_map = makeNameToPositionsMap(plant)
-q[0] = -0.05
-q[1] = 0.22
-q[2] = 0.07 #0.05
-q[q_map['base_qw']] = 1
-q[q_map['base_qx']] = 0
-q[q_map['base_qz']] = 0
-q[q_map['base_x']] = 0.05
-q[q_map['base_y']] = 0.05
-q[q_map['base_z']] = 0.03 # 0
 
-mu = 1.0
+finger_init = param["q_init_finger"]
+q[0] = finger_init[0]
+q[1] = finger_init[1]
+q[2] = finger_init[2]
 
-Qinit = 0*np.eye(nq+nv)
-Qinit[0,0] = 100
-Qinit[1,1] = 100
-Qinit[2,2] = 100  #100
-Qinit[7,7] = 10000 #10000
-Qinit[8,8] = 10000   #10000
-Qinit[10:10+nv,10:10+nv] = 0.1*np.eye(nv) #velocities
-Qinit[10:13,10:13] = 10*np.eye(3) #10
-Rinit = 0.01*np.eye(nu) #torques
+ball_init = param["q_init_ball_c3"]
+q[q_map['base_qw']] = ball_init[0]
+q[q_map['base_qx']] = ball_init[1]
+q[q_map['base_qy']] = ball_init[2]
+q[q_map['base_qz']] = ball_init[3]
+q[q_map['base_x']] = ball_init[4]
+q[q_map['base_y']] = ball_init[5]
+q[q_map['base_z']] = ball_init[6]
+
+mu = param["mu"]
+
+Qinit = param["Q_default"] * np.eye(nq+nv)
+Qinit[0,0] = param["Q_finger_x"]
+Qinit[1,1] = param["Q_finger_y"]
+Qinit[2,2] = param["Q_finger_z"]
+Qinit[7,7] = param["Q_ball_x"]
+Qinit[8,8] = param["Q_ball_y"]
+Qinit[10:10+nv,10:10+nv] = param["Q_ball_vel"] * np.eye(nv)
+Qinit[10:13,10:13] = param["Q_finger_vel"]*np.eye(3) #10
+Rinit = param["R"] * np.eye(nu) #torques
 
 #admm_params
-Ginit = 0.01*np.eye(nq+nv+nu+6*nc)   #0.01
-Uinit = 1*np.eye(nq+nv+nu+6*nc)
-Uinit[0:nq+nv,0:nq+nv] = 10*np.eye(nq+nv)   #10
-Uinit[nq+nv+6*nc:nq+nv+nu+6*nc, nq+nv+6*nc:nq+nv+nu+6*nc] = 1*np.eye(nu)
+Ginit = param["G"] * np.eye(nq+nv+nu+6*nc)
+Uinit = param["U_default"] * np.eye(nq+nv+nu+6*nc)
+Uinit[0:nq+nv,0:nq+nv] = param["U_pos_vel"] * np.eye(nq+nv) 
+Uinit[nq+nv+6*nc:nq+nv+nu+6*nc, nq+nv+6*nc:nq+nv+nu+6*nc] = param["U_u"] * np.eye(nu)
 
 xdesiredinit = np.zeros((nq+nv,1))
 xdesiredinit[:nq] = q
 
 
-r = 0.2
-degree_increment = 20
+r = param["traj_radius"]
+x_c = param["x_c"]
+y_c = param["y_c"]
+
+degree_increment = 20 #param["degree_increment"]
 theta = np.arange(0, 400, degree_increment)
 #theta = np.arange(degree_increment, 400 + degree_increment, degree_increment)
 xtraj = []
 for i in theta:
     x = r * np.sin(math.radians(i))
     y = r * np.cos(math.radians(i))
-    q[q_map['base_x']] = x + 0.4
-    q[q_map['base_y']] = y
-    q[q_map['base_z']] = 0.03
+    q[q_map['base_x']] = x + x_c
+    q[q_map['base_y']] = y + y_c
+    q[q_map['base_z']] = param["ball_radius"]
     xtraj_hold = np.zeros((nq+nv,1))
     xtraj_hold[:nq] = q
     xtraj.append(xtraj_hold)
 
+time_increment = 1.0*param["time_increment"]  # also try just moving in a straight line maybe
+delay = param["stabilize_time1"] + param["move_time"] + param["stabilize_time2"]
+timings = np.arange(delay, time_increment*len(xtraj) + delay, time_increment)
 
-increment = 4.0   #2.0, also try just moving in a straight line maybe
-delay = 9
-timings = np.arange(0 + delay, increment*len(xtraj) + delay, increment )
-
-pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
-#pp = PiecewisePolynomial.FirstOrderHold(timings, xtraj)
+if param["hold_order"] == 0:
+    pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)
+elif param["hold_order"] == 1:
+    pp = PiecewisePolynomial.FirstOrderHold(timings, xtraj)
 
 
 num_friction_directions = 2

@@ -113,58 +113,11 @@ C3Controller_franka::C3Controller_franka(
                                  &C3Controller_franka::CalcControl)
                              .get_index();
 
-
-  // DRAKE_DEMAND(contact_geoms_.size() >= 4);
-  //std::cout << "constructed c3controller" <<std::endl;
-
-  // std::cout << contact_geoms_[0] << std::endl;
 }
 
 void C3Controller_franka::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* state_contact_desired) const {
   
-
-
-// get values
-// auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
-// double timestamp = robot_output->get_timestamp();
-
-// // DEBUG CODE FOR ADAM
-// // TODO: @Alp comment this section out to use actual admm
-// double stabilize_time1 = 5;
-// double move_time = 2;
-// double stabilize_time2 = 2;
-// double total = stabilize_time1 + move_time + stabilize_time2;
-
-// std::vector<Eigen::Vector3d> target;
-// if (timestamp <= total){
-//   Eigen::Vector3d start(0.5, 0, 0.12);
-//   Eigen::Vector3d finish(0.5, 0.2, 0.08);
-//   target = move_to_initial_position(start, finish, timestamp,
-//          stabilize_time1, move_time, stabilize_time2);
-// }
-// else{
-//   target = compute_target_task_space_vector(timestamp-total);
-// }
-
-// VectorXd debug_state = VectorXd::Zero(25+3);
-// debug_state.head(3) << target[0];
-// debug_state(10) = target[1](0);
-// debug_state(11) = target[1](1);
-// debug_state(12) = target[1](2);
-
-// if (timestamp > 25 && timestamp < 35){
-//   debug_state(20) = 100;
-// }
-
-//   VectorXd traj = pp_.value(timestamp);
-//   Vector3d ball_xyz_d(traj(7), traj(8), traj(9));
-//   debug_state.tail(3) << ball_xyz_d;
-
-// state_contact_desired->SetDataVector(debug_state);
-// state_contact_desired->set_timestamp(timestamp);
-// return;
-
 
    // get values
    auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
@@ -282,15 +235,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
      w = w_reset;
    }
 
-
-   //int ts = round(timestamp);
-
-
    MatrixXd Qnew;
    Qnew = Q_[0];
 
   double period = 3;
-  double duty_cycle = 0.67;
+  double duty_cycle = 0.66;
 
   double settling_time = 9;
   double shifted_time = timestamp - settling_time;
@@ -298,6 +247,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //std::cout << "ts: " << ts << std::endl;
 
   if (ts > period * duty_cycle){
+    Qnew(0,0) = 1000000;
+    Qnew(1,1) = 1000000;
+    Qnew(2,2) = 1000000;
      Qnew(7,7) = 1;
      Qnew(8,8) = 1;
    }
@@ -305,73 +257,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
    solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options);
-   //solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
-
- //  ///trifinger constraints
- //  ///input
- //  opt.RemoveConstraints();
- //  RowVectorXd LinIneq = RowVectorXd::Zero(k);
- //  RowVectorXd LinIneq_r = RowVectorXd::Zero(k);
- //  double lowerbound = -10;
- //  double upperbound = 10;
- //  int inputconstraint = 2;
- //
- //  for (int i = 0; i < k; i++) {
- //    LinIneq_r = LinIneq;
- //    LinIneq_r(i) = 1;
- //    opt.AddLinearConstraint(LinIneq_r, lowerbound, upperbound, inputconstraint);
- //  }
- //
- //
- //
- //  ///force
- //  RowVectorXd LinIneqf = RowVectorXd::Zero(m);
- //  RowVectorXd LinIneqf_r = RowVectorXd::Zero(m);
- //  double lowerboundf = 0;
- //  double upperboundf = 100;
- //  int forceconstraint = 3;
- //
- //  for (int i = 0; i < m; i++) {
- //    LinIneqf_r = LinIneqf;
- //    LinIneqf_r(i) = 1;
- //    opt.AddLinearConstraint(LinIneqf_r, lowerboundf, upperboundf, forceconstraint);
- //  }
-
-
-   ///state (velocity)
-   int stateconstraint = 1;
-   RowVectorXd LinIneqs = RowVectorXd::Zero(n);
-   RowVectorXd LinIneqs_r = RowVectorXd::Zero(n);
-   double lowerbounds = -20;
-   double upperbounds = 20;
-
- //  for (int i = 16; i < 25; i++) {
- //    LinIneqs_r = LinIneqs;
- //    LinIneqs_r(i) = 1;
- //    opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
- //  }
-
-   ///state (q)
-   double lowerboundsq = 0;
-   double upperboundsq = 0.03;
- //  for (int i = 0; i < 9; i++) {
- //    LinIneqs_r = LinIneqs;
- //    LinIneqs_r(i) = 1;
- //    opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
- //  }
-
- //int i = 2;
- //LinIneqs_r = LinIneqs;
- //LinIneqs_r(i) = 1;
- //opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
- //i = 5;
- //LinIneqs_r = LinIneqs;
- //LinIneqs_r(i) = 1;
- //opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
- //i = 8;
- //LinIneqs_r = LinIneqs;
- //LinIneqs_r(i) = 1;
- //opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
 
 
    /// calculate the input given x[i]
@@ -381,9 +266,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    drake::solvers::MobyLCPSolver<double> LCPSolver;
    VectorXd force;
 
-   //scaling = 1;
-
-   //VectorXd inp = VectorXd::Zero(3);
 
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
@@ -397,81 +279,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                                       &force);
 
 
-
-
-//  std::cout << "here" << std::endl;
-//  std::cout << system_.D_[0] * force << std::endl;
-
    VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
-
-//   std::cout << "force" << std::endl;
-//   std::cout << force << std::endl;
-
- //  ///subject to change (compute J_c)
- //  VectorXd phi(contact_pairs.size());
- //  MatrixXd J_n(contact_pairs.size(), plant_.num_velocities());
- //  MatrixXd J_t(2 * contact_pairs.size() * num_friction_directions_,
- //               plant_.num_velocities());
- //
- //  for (int i = 0; i < contact_pairs.size(); i++) {
- //    dairlib::multibody::GeomGeomCollider collider(
- //        plant_, contact_pairs[i]);
- //
- //    auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions_);
- //
- ////    std::cout << "phi_i" << std::endl;
- ////    std::cout << phi_i << std::endl;
- ////    std::cout << "phi_i" << std::endl;
- //
- //
- //    phi(i) = phi_i;
- //
- //    J_n.row(i) = J_i.row(0);
- //    J_t.block(2 * i * num_friction_directions_, 0, 2 * num_friction_directions_,
- //              plant_.num_velocities()) =
- //        J_i.block(1, 0, 2 * num_friction_directions_, plant_.num_velocities());
- //  }
-
-   ///add force_next
-   //VectorXd f_mapped = J_n
-
- ////switch between two
- ////1 (connected to impedence)
 
  VectorXd force_des = VectorXd::Zero(6);
  force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
  force_des = 1 * force_des;
-
-//  if (ts % 3 == 0) {
-//
-//    if (flag == 1) {
-//      std::cout << "here" << std::endl;
-//      std::cout << force_des << std::endl;
-//    }
-//
-//  }
-
-//    if (flag == 1) {
-//      std::cout << "here" << std::endl;
-//      std::cout << force_des << std::endl;
-//    }
-
-// force_des = force_des * scaling;
-//
-// std::cout << "normal_des" << std::endl;
-//
-// std::cout << force << std::endl;
-
- //force_des = VectorXd::Zero(6);
-
-// std::cout << "force" << std::endl;
-// std::cout << force << std::endl;
-
- //std::cout << "scaling" << std::endl;
- //std::cout << scaling << std::endl;
-
- ///VectorXd force_des = VectorXd::Zero(10);
 
   VectorXd traj = pp_.value(timestamp);
   Vector3d ball_xyz_d(traj(7), traj(8), traj(9));

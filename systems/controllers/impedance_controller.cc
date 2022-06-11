@@ -337,8 +337,6 @@ Vector3d ImpedanceController::ApplyHeuristic(
     const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
     double settling_time, double timestamp) const {
   
-  // commented code from some heuristics we've tried
-
   Vector3d xd_new = xd;
   Vector3d ball_to_EE = (x-ball_xyz) / (x-ball_xyz).norm();
 
@@ -349,14 +347,48 @@ Vector3d ImpedanceController::ApplyHeuristic(
   // }
 
   // get phase information in ts
-  // double period = 5;
-  // double duty_cycle = 0.5;
-  // double shifted_time = timestamp - settling_time;
-  // double ts = shifted_time - period * floor((shifted_time / period));
+  double period = 3;
+  double duty_cycle = 0.66;
+  double shifted_time = timestamp - settling_time;
+  double ts = shifted_time - period * floor((shifted_time / period));
+
+//
+  if (ts > period * duty_cycle){
+
+    //xd_new += moving_offset_*ball_to_EE;
+    xd_new(2) += moving_offset_;
+//
+//    std::cout << "xd_new" << std::endl;
+//    std::cout << xd_new << std::endl;
+
+    // std::cout << "xd_new:\n" << xd_new << std::endl;
+  }
+//
+else{
+
+    //xd_new(2) += pushing_offset_;
+    xd_new += pushing_offset_*ball_to_EE;
+
+//  if (xd_dot(2) > 0){
+//
+//    //xd_new += moving_offset_*ball_to_EE;
+//    //xd_new(2) += moving_offset_;
+//
+//  }
+//  else{
+//    xd_new(2) += pushing_offset_;
+//    //xd_new += pushing_offset_*ball_to_EE;
+//
+//  }
+}
+  // // contact desired
+  // if (lambda(0) > 0.0001){
+  //   //xd_new += pushing_offset_*ball_to_EE;
+  // }
 
 
-  // if (ts > period * duty_cycle){
-
+  // modify desired state if no contact desired
+  // if (lambda(0) < 0.000001){
   //   xd_new += moving_offset_*ball_to_EE;
   //   // std::cout << "xd_new:\n" << xd_new << std::endl;
   // }

@@ -62,6 +62,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(contact_threshold));
     a->Visit(DRAKE_NVP(period));
     a->Visit(DRAKE_NVP(duty_cycle));
+    a->Visit(DRAKE_NVP(enable_heuristic));
   }
 
   // impedance control parameters
@@ -118,4 +119,5 @@ struct C3Parameters {
   double contact_threshold;
   double period;
   double duty_cycle;
+  int enable_heuristic;
 };

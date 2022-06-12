@@ -96,6 +96,7 @@ ImpedanceController::ImpedanceController(
   world_frame_ = &plant_.world_frame();
   contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
   n_ = 7;
+  enable_heuristic_ = param_.enable_heuristic;
 
   // control-related variables
   // TODO: using fixed Rd for the time being
@@ -176,10 +177,10 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd x_dot = J_franka * v_franka;
 
   double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
-  if (timestamp > settling_time){
-    // Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
-    //                             ball_xyz, ball_xyz_d, settling_time, timestamp);
-    // xd.tail(3) << xd_new;
+  if (enable_heuristic_ && timestamp > settling_time){
+    Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
+                                 ball_xyz, ball_xyz_d, settling_time, timestamp);
+    xd.tail(3) << xd_new;
   }
 
   // compute position control input
@@ -217,9 +218,9 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // debug prints every 10th of a second
   int print_enabled = 0; // print flag
-  if (print_enabled && trunc(timestamp*100) / 100.0 == timestamp && timestamp >= 9.0){
+  if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp && timestamp >= settling_time){
     std::cout << timestamp << "\n---------------" << std::endl;
-
+    std::cout << lambda.norm() << std::endl;
     std::cout << std::endl;
   }
 }
@@ -262,23 +263,16 @@ Vector3d ImpedanceController::ApplyHeuristic(
   Vector3d xd_new = xd;
   Vector3d ball_to_EE = (x-ball_xyz) / (x-ball_xyz).norm();
 
-
-
-  // if (lambda(0) > param_.contact_threshold){
-  //   xd_new += pushing_offset_*ball_to_EE;
-  // }
-
-  // get phase information in ts
   double period = param_.period;
   double duty_cycle = param_.duty_cycle;
   double shifted_time = timestamp - settling_time;
   double ts = shifted_time - period * floor((shifted_time / period));
 
-  if (ts > period * duty_cycle){
-    xd_new(2) += moving_offset_;
+  if (lambda.norm() > 0.001){
+    xd_new = xd_new + pushing_offset_*ball_to_EE;
   }
   else{
-    xd_new += pushing_offset_*ball_to_EE;
+    xd_new = xd_new + moving_offset_*ball_to_EE;
   }
   
   return xd_new;

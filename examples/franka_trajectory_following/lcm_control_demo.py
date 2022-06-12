@@ -179,7 +179,7 @@ r = param["traj_radius"]
 x_c = param["x_c"]
 y_c = param["y_c"]
 
-degree_increment = 20 #param["degree_increment"]
+degree_increment = param["degree_increment"]
 theta = np.arange(0, 400, degree_increment)
 #theta = np.arange(degree_increment, 400 + degree_increment, degree_increment)
 xtraj = []

@@ -164,10 +164,19 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    VectorXd u = VectorXd::Zero(3);
 
    VectorXd traj_desired_vector = pp_.value(timestamp);
+   Vector3d ball_xyz_d(traj_desired_vector(7),  
+                       traj_desired_vector(8),
+                       traj_desired_vector(9));
+  //  Vector3d ball_xyz(state[7], state[8], state[9]);
+  //  Vector3d ball_xy_error = ball_xyz_d - ball_xyz;
+  //  ball_xy_error(2) = 0;
 
-
-   traj_desired_vector[0] = state[7]; //- 0.05;
-   traj_desired_vector[1] = state[8]; //+ 0.01;
+  // Vector3d finger_xyz_d = ball_xyz - 0.01*ball_xy_error / ball_xy_error.norm();
+  // finger_xyz_d(2) = traj_desired_vector(2);
+  // traj_desired_vector.head(3) << finger_xyz_d;
+  
+  traj_desired_vector[0] = state[7]; //- 0.05;
+  traj_desired_vector[1] = state[8]; //+ 0.01;
 
    std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
@@ -288,7 +297,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
  force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
   VectorXd traj = pp_.value(timestamp);
-  Vector3d ball_xyz_d(traj(7), traj(8), traj(9));
 
  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size());
  st_desired << state_next, force_des.head(6), ball_xyz_d;

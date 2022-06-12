@@ -180,12 +180,14 @@ x_c = param["x_c"]
 y_c = param["y_c"]
 
 degree_increment = param["degree_increment"]
-theta = np.arange(0, 400, degree_increment)
-#theta = np.arange(degree_increment, 400 + degree_increment, degree_increment)
+if param["hold_order"] == 0:
+    theta = np.arange(degree_increment, 400 + degree_increment, degree_increment)
+elif param["hold_order"] == 1:
+    theta = np.arange(0, 400, degree_increment)
 xtraj = []
 for i in theta:
-    x = r * np.sin(math.radians(i))
-    y = r * np.cos(math.radians(i))
+    x = r * np.sin(math.radians(i+param["phase"]))
+    y = r * np.cos(math.radians(i+param["phase"]))
     q[q_map['base_x']] = x + x_c
     q[q_map['base_y']] = y + y_c
     q[q_map['base_z']] = param["ball_radius"]

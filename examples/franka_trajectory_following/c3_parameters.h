@@ -47,6 +47,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(move_time));
     a->Visit(DRAKE_NVP(stabilize_time2));
     a->Visit(DRAKE_NVP(traj_radius));
+    a->Visit(DRAKE_NVP(phase));
     a->Visit(DRAKE_NVP(x_c));
     a->Visit(DRAKE_NVP(y_c));
     a->Visit(DRAKE_NVP(degree_increment));
@@ -104,6 +105,7 @@ struct C3Parameters {
   double move_time;
   double stabilize_time2;
   double traj_radius;
+  double phase;
   double x_c;
   double y_c;
   double degree_increment;

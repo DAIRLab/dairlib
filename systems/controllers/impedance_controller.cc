@@ -268,16 +268,21 @@ Vector3d ImpedanceController::ApplyHeuristic(
   double shifted_time = timestamp - settling_time;
   double ts = shifted_time - period * floor((shifted_time / period));
 
-  if (lambda.norm() > 0.001 && ts < period * duty_cycle){
-    double diff = (x-ball_xyz).norm() - param_.ball_raidus - param.finger_radius;
+  if (lambda.norm() > 0.001 && ts < period * duty_cycle && x_dot(2) < 0){
+    //std::cout << "here" << std::endl;
+    double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
     if (diff > 0){
       xd_new = xd_new - diff*ball_to_EE;
     }
+    xd_new = xd_new + pushing_offset_*ball_to_EE;
   }
-  else{
+  else {
+    double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
+    if (diff < 0){
+      xd_new = xd_new - diff*ball_to_EE;
+    }
     xd_new = xd_new + moving_offset_*ball_to_EE;
   }
-  
   return xd_new;
 }
 

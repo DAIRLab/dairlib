@@ -39,15 +39,16 @@ dt: 0.03
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.36, 0, -2.39, 0, 2.748, 0]
-q_init_ball: [1, 0, 0, 0, 0.4, 0.2, 0.03] # q_init_ball[-1] is a placeholder
+q_init_ball: [1, 0, 0, 0, 0.6, 0, 0.03] # q_init_ball[-1] is a placeholder
 
 initial_start: [0.5, 0, 0.12]     # start position of initialization
-initial_finish: [0.4, 0.2, 0.08]  # end position of intialization
-stabilize_time1: 5
-move_time: 2
-stabilize_time2: 2
+initial_finish: [0.6, 0, 0.08]  # end position of intialization
+stabilize_time1: 2
+move_time: 1
+stabilize_time2: 3
 
 traj_radius: 0.2
+phase: 90 # in degrees
 x_c: 0.4
 y_c: 0
 degree_increment: 20
@@ -59,7 +60,7 @@ realtime_rate: 0.25
 
 ball_radius: 0.03           # changes need to be consistent with urdf
 finger_radius: 0.01         # changes need to be consistent with urdf
-EE_offset: [0, 0, 0.05]     # changes need to be consistent with urdf
+EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 
 # Misc

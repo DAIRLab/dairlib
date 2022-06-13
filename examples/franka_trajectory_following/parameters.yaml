@@ -8,14 +8,14 @@
 # systems/controllers/impedance_controller.cc
 
 # impedance control parameters
-translational_stiffness: 400
-rotational_stiffness: 5
-damping_ratio: 0.75
+translational_stiffness: 300
+rotational_stiffness: 1
+damping_ratio: 1.5
 stiffness_null: 1
 damping_null: 1
 q_null_desired: [0, 0.36, 0, -2.39, 0, 2.748, 0]
 moving_offset: 0 #0.0005
-pushing_offset: 0 #-0.001
+pushing_offset: -0.001
 
 # c3 parameters
 mu: 1                   # changes need to be consistent with urdf
@@ -33,7 +33,7 @@ G: 0.01
 U_default: 1
 U_pos_vel: 10           # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U 
-q_init_finger: [0, 0, 0.072]
+q_init_finger: [0, 0, 0.071]
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03]
 dt: 0.03
 
@@ -44,15 +44,15 @@ initial_start: [0.4, 0.2, 0.15]
 initial_finish: [0, 0, 0.08]  # xy computed according to x_c, y_c, traj_radius, and phase
 stabilize_time1: 2
 move_time: 1
-stabilize_time2: 3
+stabilize_time2: 5
 
-traj_radius: 0.2
-phase: 0 # in degrees
+traj_radius: 0.1
+phase: 180 # in degrees
 x_c: 0.4
 y_c: 0
-degree_increment: 20
-time_increment: 5
-hold_order: 1 # 0 for zero order hold, 1 for first order hold
+degree_increment: 180
+time_increment: 10
+hold_order: 0 # 0 for zero order hold, 1 for first order hold
 
 c3_sub_timeout: 0.15
 realtime_rate: 0.5

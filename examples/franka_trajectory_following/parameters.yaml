@@ -47,7 +47,7 @@ move_time: 1
 stabilize_time2: 3
 
 traj_radius: 0.2
-phase: 135 # in degrees
+phase: 0 # in degrees
 x_c: 0.4
 y_c: 0
 degree_increment: 20

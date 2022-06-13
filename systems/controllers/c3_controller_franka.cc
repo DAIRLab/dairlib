@@ -305,8 +305,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
  if (timestamp <= settling_time){
    Eigen::Vector3d start = param_.initial_start;
    Eigen::Vector3d finish = param_.initial_finish;
+   finish(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
+   finish(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180);
    target = move_to_initial_position(start, finish, timestamp,
           param_.stabilize_time1, param_.move_time, param_.stabilize_time2);
+
    st_desired = VectorXd::Zero(28);
    st_desired.head(3) << target[0];
    st_desired(7) = finish(0);

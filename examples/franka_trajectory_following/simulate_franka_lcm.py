@@ -15,8 +15,8 @@ param = yaml_load(
 
 # Load the URDF and the cube
 builder = DiagramBuilder()
-sim_dt = 1e-4
-output_dt = 1e-4
+sim_dt = 5e-5
+output_dt = 5e-5
 
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
 # addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,
@@ -97,12 +97,13 @@ q[q_map["panda_joint7"]] = franka_init[6]
 
 # initialize ball
 ball_init = param["q_init_ball"]
+traj_radius = param["traj_radius"]
 q[q_map['base_qw']] = ball_init[0]
 q[q_map['base_qx']] = ball_init[1]
 q[q_map['base_qy']] = ball_init[2]
 q[q_map['base_qz']] = ball_init[3]
-q[q_map['base_x']] = ball_init[4]
-q[q_map['base_y']] = ball_init[5]
+q[q_map['base_x']] = param["x_c"] + traj_radius * np.sin(math.radians(param["phase"]))
+q[q_map['base_y']] = param["y_c"] + traj_radius * np.cos(math.radians(param["phase"]))
 q[q_map['base_z']] = param["ball_radius"]
 
 plant.SetPositions(plant_context, q)

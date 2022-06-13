@@ -208,7 +208,9 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   MatrixXd M_inv = M_franka.inverse();
   MatrixXd J_ginv_tranpose = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
   MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_ginv_tranpose;
-  VectorXd tau_null = N * (K_null_*(qd_-q_franka) - B_null_*v_franka);
+  VectorXd qd = VectorXd::Zero(7);
+  qd << qd_.head(4), q.tail(3);
+  VectorXd tau_null = N * (K_null_*(qd-q_franka) - B_null_*v_franka);
 
   control->SetDataVector(tau + tau_null);
   control->set_timestamp(timestamp);

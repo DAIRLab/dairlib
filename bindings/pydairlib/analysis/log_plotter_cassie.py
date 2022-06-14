@@ -36,18 +36,18 @@ def main():
 
 
     '''' Get Stiffness '''
-    K = np.zeros(23,)
+    K = np.zeros((22,23))
     for force_element_idx in range(plant.num_force_elements()):
         force_element = plant.get_force_element(ForceElementIndex(force_element_idx))
         if hasattr(force_element, 'joint') and hasattr(force_element, 'stiffness'):
-            K[pos_map[force_element.joint().name()]] = force_element.stiffness()
+            K[vel_map[force_element.joint().name() + 'dot'], pos_map[force_element.joint().name()]] = force_element.stiffness()
 
     ''' Get damping '''
-    C = np.zeros(22,)
+    C = np.zeros((22,22))
     for joint_idx in range(plant.num_joints()):
         joint = plant.get_joint(JointIndex(joint_idx))
         if joint.num_velocities() > 0:
-            C[vel_map[joint.name() + 'dot']] = joint.damping()
+            C[vel_map[joint.name() + 'dot'], vel_map[joint.name() + 'dot']] = joint.damping()
 
     ''' Read the log '''
     filename = sys.argv[1]

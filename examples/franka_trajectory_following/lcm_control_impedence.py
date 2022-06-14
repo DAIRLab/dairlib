@@ -15,7 +15,6 @@ from pydrake.all import *
 
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 import pydairlib.common
-from pydairlib.systems.controllers import C3Controller
 from pydairlib.systems.impedance_controllers import ImpedanceController
 
 import numpy as np

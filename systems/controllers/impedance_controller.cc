@@ -97,6 +97,7 @@ ImpedanceController::ImpedanceController(
   contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
   n_ = 7;
   enable_heuristic_ = param_.enable_heuristic;
+  enable_contact_ = param_.enable_contact;
 
   // control-related variables
   // TODO: using fixed Rd for the time being
@@ -192,7 +193,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // add feedforward force term if contact is desired
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
 
- if (lambda.norm() > param_.contact_threshold){
+ if (enable_contact_ && lambda.norm() > param_.contact_threshold){
    //std::cout << "here" << std::endl;
    // compute contact jacobian
    VectorXd phi(contact_pairs_.size());
@@ -270,21 +271,25 @@ Vector3d ImpedanceController::ApplyHeuristic(
   double shifted_time = timestamp - settling_time;
   double ts = shifted_time - period * floor((shifted_time / period));
 
-  if (lambda.norm() > 0.001 && ts < period * duty_cycle && x_dot(2) < 0){
-    //std::cout << "here" << std::endl;
+  if (lambda.norm() > param_.contact_threshold && ts < period * duty_cycle && x_dot(2) < 0){
     double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
     if (diff > 0){
       xd_new = xd_new - diff*ball_to_EE;
     }
     xd_new = xd_new + pushing_offset_*ball_to_EE;
   }
-  else {
+  else{
     double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
     if (diff < 0){
       xd_new = xd_new - diff*ball_to_EE;
     }
     xd_new = xd_new + moving_offset_*ball_to_EE;
   }
+
+  // if (x_dot(2) > 0){
+  //   xd_new(2) = xd_new(2) + moving_offset_;
+  // }
+
   return xd_new;
 }
 

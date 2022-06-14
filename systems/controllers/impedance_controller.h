@@ -141,6 +141,7 @@ class ImpedanceController : public LeafSystem<double> {
   const double pushing_offset_;
   C3Parameters param_;
   int enable_heuristic_;
+  int enable_contact_;
 
   // frame, EE, and contact info
   const drake::multibody::BodyFrame<double>* EE_frame_;

@@ -108,9 +108,9 @@ C3Controller_franka::C3Controller_franka(
 
 
   state_output_port_ = this->DeclareVectorOutputPort(
-                                 "x_lambda, t", TimestampedVector<double>(28),
-                                 &C3Controller_franka::CalcControl)
-                             .get_index();
+          "x_lambda, t", TimestampedVector<double>(28),
+          &C3Controller_franka::CalcControl)
+      .get_index();
 
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
@@ -119,59 +119,12 @@ C3Controller_franka::C3Controller_franka(
 }
 
 void C3Controller_franka::CalcControl(const Context<double>& context,
-                               TimestampedVector<double>* state_contact_desired) const {
-  
-
-   // get values
-   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
-   double timestamp = robot_output->get_timestamp();
-   VectorXd state_franka(27);
-   state_franka << robot_output->GetPositions(), robot_output->GetVelocities();
-
-   //update franka context
-   plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
-   plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
-
-   // forward kinematics
-   Vector3d EE_offset_ = param_.EE_offset;
-   const drake::math::RigidTransform<double> H_mat =
-       plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link8"));
-   const RotationMatrix<double> Rotation = H_mat.rotation();
-   Vector3d end_effector = H_mat.translation() + Rotation*EE_offset_;
-
-   auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link8").body_frame();
-   auto world_frame_ = &plant_franka_.world_frame();
-
-   MatrixXd J_fb (6, plant_franka_.num_velocities());
-   plant_franka_.CalcJacobianSpatialVelocity(
-       context_franka_, JacobianWrtVariable::kV,
-       *EE_frame_, EE_offset_,
-       *world_frame_, *world_frame_, &J_fb);
-   MatrixXd J_franka = J_fb.block(0, 0, 6, 7);
-
-   VectorXd end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
+                                      TimestampedVector<double>* state_contact_desired) const {
 
 
-
-   VectorXd ball = robot_output->GetPositions().tail(7);
-   VectorXd ball_dot = robot_output->GetVelocities().tail(6);
-   VectorXd state(plant_.num_positions() + plant_.num_velocities());
-   state << end_effector, ball, end_effector_dot, ball_dot;
-   VectorXd q(10);
-   q << end_effector, ball;
-   VectorXd v(9);
-   v << end_effector_dot, ball_dot;
-   VectorXd u = VectorXd::Zero(3);
-
-   VectorXd traj_desired_vector = pp_.value(timestamp);
-   Vector3d ball_xyz_d(traj_desired_vector(7),  
-                       traj_desired_vector(8),
-                       traj_desired_vector(9));
-
-  Vector3d ball_xyz(state[7], state[8], state[9]);
-  Vector3d error_xy = ball_xyz_d - ball_xyz;
-  error_xy(2) = 0;
-  Vector3d error_hat = error_xy / error_xy.norm();
+  // get values
+  auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+  double timestamp = robot_output->get_timestamp();
 
   double period = param_.period;
   double duty_cycle = param_.duty_cycle;
@@ -179,6 +132,75 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
   double shifted_time = timestamp - settling_time;
   double ts = shifted_time - period * floor((shifted_time / period));
+
+  if (timestamp <= settling_time){
+    Eigen::Vector3d start = param_.initial_start;
+    Eigen::Vector3d finish = param_.initial_finish;
+    finish(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
+    finish(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180) - 0.03;
+    std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
+                                                                   param_.stabilize_time1, param_.move_time, param_.stabilize_time2);
+    VectorXd traj = pp_.value(timestamp);
+
+    VectorXd st_desired = VectorXd::Zero(28);
+    st_desired.head(3) << target[0];
+    st_desired(7) = finish(0);
+    st_desired(8) = finish(1);
+    st_desired(9) = param_.ball_radius;
+    st_desired.tail(3) << traj(7), traj(8), traj(9);
+
+    state_contact_desired->SetDataVector(st_desired);
+    state_contact_desired->set_timestamp(timestamp);
+    return;
+  }
+
+  VectorXd state_franka(27);
+  state_franka << robot_output->GetPositions(), robot_output->GetVelocities();
+
+  //update franka context
+  plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
+  plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
+
+  // forward kinematics
+  Vector3d EE_offset_ = param_.EE_offset;
+  const drake::math::RigidTransform<double> H_mat =
+      plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link8"));
+  const RotationMatrix<double> Rotation = H_mat.rotation();
+  Vector3d end_effector = H_mat.translation() + Rotation*EE_offset_;
+
+  auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link8").body_frame();
+  auto world_frame_ = &plant_franka_.world_frame();
+
+  MatrixXd J_fb (6, plant_franka_.num_velocities());
+  plant_franka_.CalcJacobianSpatialVelocity(
+      context_franka_, JacobianWrtVariable::kV,
+      *EE_frame_, EE_offset_,
+      *world_frame_, *world_frame_, &J_fb);
+  MatrixXd J_franka = J_fb.block(0, 0, 6, 7);
+
+  VectorXd end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
+
+
+
+  VectorXd ball = robot_output->GetPositions().tail(7);
+  VectorXd ball_dot = robot_output->GetVelocities().tail(6);
+  VectorXd state(plant_.num_positions() + plant_.num_velocities());
+  state << end_effector, ball, end_effector_dot, ball_dot;
+  VectorXd q(10);
+  q << end_effector, ball;
+  VectorXd v(9);
+  v << end_effector_dot, ball_dot;
+  VectorXd u = VectorXd::Zero(3);
+
+  VectorXd traj_desired_vector = pp_.value(timestamp);
+  Vector3d ball_xyz_d(traj_desired_vector(7),
+                      traj_desired_vector(8),
+                      traj_desired_vector(9));
+
+  Vector3d ball_xyz(state[7], state[8], state[9]);
+  Vector3d error_xy = ball_xyz_d - ball_xyz;
+  error_xy(2) = 0;
+  Vector3d error_hat = error_xy / error_xy.norm();
 
   if (ts > period*duty_cycle && ts < period * (duty_cycle+0.33*return_cycle)){
     traj_desired_vector[0] = state[0]; //- 0.05;
@@ -188,7 +210,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else{ // otherwise go to top of ball
     traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
     traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
-    traj_desired_vector[2] = 0.07;
+    traj_desired_vector[2] = 0.065;
   }
 
 //  traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
@@ -198,74 +220,74 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
-   /// update autodiff
-   VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
-               plant_f_.num_actuators());
+  /// update autodiff
+  VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
+      plant_f_.num_actuators());
 
 
-   xu << q, v, u;
-   auto xu_ad = drake::math::InitializeAutoDiff(xu);
+  xu << q, v, u;
+  auto xu_ad = drake::math::InitializeAutoDiff(xu);
 
-   plant_ad_f_.SetPositionsAndVelocities(
-       &context_ad_f_,
-       xu_ad.head(plant_f_.num_positions() + plant_f_.num_velocities()));
+  plant_ad_f_.SetPositionsAndVelocities(
+      &context_ad_f_,
+      xu_ad.head(plant_f_.num_positions() + plant_f_.num_velocities()));
 
-   multibody::SetInputsIfNew<AutoDiffXd>(
-       plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
-
-
-   /// upddate context
-
-   plant_f_.SetPositions(&context_f_, q);
-   plant_f_.SetVelocities(&context_f_, v);
-   multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
-
-   /// figure out a nice way to do this as SortedPairs with pybind is not working
-   /// (potentially pass a matrix 2xnum_pairs?)
-
- std::vector<SortedPair<GeometryId>> contact_pairs;
-
-   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
-   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
-
-   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-       num_friction_directions_, mu_, 0.1);
-
-   solvers::LCS system_ = system_scaling_pair.first;
-   double scaling = system_scaling_pair.second;
-
-   C3Options options;
-   int N = (system_.A_).size();
-   int n = ((system_.A_)[0].cols());
-   int m = ((system_.D_)[0].cols());
-   int k = ((system_.B_)[0].cols());
+  multibody::SetInputsIfNew<AutoDiffXd>(
+      plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
 
 
-   /// initialize ADMM variables (delta, w)
-   std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
-   std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
+  /// upddate context
 
-   /// initialize ADMM reset variables (delta, w are reseted to these values)
-   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
-   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
+  plant_f_.SetPositions(&context_f_, q);
+  plant_f_.SetVelocities(&context_f_, v);
+  multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
 
-   if (options.delta_option == 1) {
-     /// reset delta and w (option 1)
-     delta = delta_reset;
-     w = w_reset;
-     for (int j = 0; j < N; j++) {
-       //delta[j].head(n) = xdesired_[0]; //state
-       delta[j].head(n) << state; //state
-     }
-   } else {
-     /// reset delta and w (default option)
-     delta = delta_reset;
-     w = w_reset;
-   }
+  /// figure out a nice way to do this as SortedPairs with pybind is not working
+  /// (potentially pass a matrix 2xnum_pairs?)
 
-   MatrixXd Qnew;
-   Qnew = Q_[0];
+  std::vector<SortedPair<GeometryId>> contact_pairs;
+
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+
+  auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+      num_friction_directions_, mu_, 0.1);
+
+  solvers::LCS system_ = system_scaling_pair.first;
+  double scaling = system_scaling_pair.second;
+
+  C3Options options;
+  int N = (system_.A_).size();
+  int n = ((system_.A_)[0].cols());
+  int m = ((system_.D_)[0].cols());
+  int k = ((system_.B_)[0].cols());
+
+
+  /// initialize ADMM variables (delta, w)
+  std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
+  std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
+
+  /// initialize ADMM reset variables (delta, w are reseted to these values)
+  std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
+  std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
+
+  if (options.delta_option == 1) {
+    /// reset delta and w (option 1)
+    delta = delta_reset;
+    w = w_reset;
+    for (int j = 0; j < N; j++) {
+      //delta[j].head(n) = xdesired_[0]; //state
+      delta[j].head(n) << state; //state
+    }
+  } else {
+    /// reset delta and w (default option)
+    delta = delta_reset;
+    w = w_reset;
+  }
+
+  MatrixXd Qnew;
+  Qnew = Q_[0];
 
 
 
@@ -281,17 +303,17 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     Qnew(8,8) = param_.Qnew_ball_y;
   }
 
-   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
+  std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
-   solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options);
+  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options);
 
 
-   /// calculate the input given x[i]
-   VectorXd input = opt.Solve(state, delta, w);
+  /// calculate the input given x[i]
+  VectorXd input = opt.Solve(state, delta, w);
 
-   ///calculate state and force
-   drake::solvers::MobyLCPSolver<double> LCPSolver;
-   VectorXd force;
+  ///calculate state and force
+  drake::solvers::MobyLCPSolver<double> LCPSolver;
+  VectorXd force;
 
 
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
@@ -302,40 +324,22 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   double scaling2 = system_scaling_pair2.second;
 
 
-   auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
-                                      &force);
+  auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
+                                                 &force);
 
 
-   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
+  VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 
- VectorXd force_des = VectorXd::Zero(6);
- force_des << force(0), force(2), force(4), force(5), force(6), force(7);
+  VectorXd force_des = VectorXd::Zero(6);
+  force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
   VectorXd traj = pp_.value(timestamp);
 
- VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size());
- st_desired << state_next, force_des.head(6), ball_xyz_d;
+  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size());
+  st_desired << state_next, force_des.head(6), ball_xyz_d;
 
- std::vector<Eigen::Vector3d> target;
- if (timestamp <= settling_time){
-   Eigen::Vector3d start = param_.initial_start;
-   Eigen::Vector3d finish = param_.initial_finish;
-   finish(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
-   finish(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180) - 0.03;
-   target = move_to_initial_position(start, finish, timestamp,
-          param_.stabilize_time1, param_.move_time, param_.stabilize_time2);
-
-   st_desired = VectorXd::Zero(28);
-   st_desired.head(3) << target[0];
-   st_desired(7) = finish(0);
-   st_desired(8) = finish(1);
-   st_desired(9) = param_.ball_radius;
-   st_desired.tail(3) << ball_xyz_d;
- }
-
-
-   state_contact_desired->SetDataVector(st_desired);
-   state_contact_desired->set_timestamp(timestamp);
+  state_contact_desired->SetDataVector(st_desired);
+  state_contact_desired->set_timestamp(timestamp);
 
 
 }
@@ -344,11 +348,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 }  // namespace dairlib
 
 std::vector<Eigen::Vector3d> move_to_initial_position(
-    const Eigen::Vector3d& start, 
-    const Eigen::Vector3d& finish, 
+    const Eigen::Vector3d& start,
+    const Eigen::Vector3d& finish,
     double curr_time, double stabilize_time1,
     double move_time, double stabilize_time2){
-  
+
   Eigen::Vector3d zero(0,0,0);
 
   if (curr_time < stabilize_time1){

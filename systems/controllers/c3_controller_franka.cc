@@ -167,18 +167,36 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    Vector3d ball_xyz_d(traj_desired_vector(7),  
                        traj_desired_vector(8),
                        traj_desired_vector(9));
-  //  Vector3d ball_xyz(state[7], state[8], state[9]);
-  //  Vector3d ball_xy_error = ball_xyz_d - ball_xyz;
-  //  ball_xy_error(2) = 0;
 
-  // Vector3d finger_xyz_d = ball_xyz - 0.01*ball_xy_error / ball_xy_error.norm();
-  // finger_xyz_d(2) = traj_desired_vector(2);
-  // traj_desired_vector.head(3) << finger_xyz_d;
-  
-  traj_desired_vector[0] = state[7]; //- 0.05;
-  traj_desired_vector[1] = state[8]; //+ 0.01;
+  Vector3d ball_xyz(state[7], state[8], state[9]);
+  Vector3d error_xy = ball_xyz_d - ball_xyz;
+  error_xy(2) = 0;
+  Vector3d error_hat = error_xy / error_xy.norm();
 
-   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
+  double period = param_.period;
+  double duty_cycle = param_.duty_cycle;
+  double return_cycle = 1-duty_cycle;
+  double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
+  double shifted_time = timestamp - settling_time;
+  double ts = shifted_time - period * floor((shifted_time / period));
+
+  if (ts > period*duty_cycle && ts < period * (duty_cycle+0.33*return_cycle)){
+    traj_desired_vector[0] = state[0]; //- 0.05;
+    traj_desired_vector[1] = state[1]; //+ 0.01;
+    //traj_desired_vector[2] = 0.075;
+  }
+  else{ // otherwise go to top of ball
+    traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
+    traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
+    traj_desired_vector[2] = 0.07;
+  }
+
+//  traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
+//  traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
+//  traj_desired_vector[2] = 0.07;
+
+
+  std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
    /// update autodiff
    VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
@@ -249,12 +267,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    MatrixXd Qnew;
    Qnew = Q_[0];
 
-  double period = param_.period;
-  double duty_cycle = param_.duty_cycle;
 
-  double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
-  double shifted_time = timestamp - settling_time;
-  double ts = shifted_time - period * floor((shifted_time / period));
+
+
   //std::cout << "ts: " << ts << std::endl;
 
   if (ts > period * duty_cycle){
@@ -306,7 +321,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    Eigen::Vector3d start = param_.initial_start;
    Eigen::Vector3d finish = param_.initial_finish;
    finish(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
-   finish(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180);
+   finish(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180) - 0.03;
    target = move_to_initial_position(start, finish, timestamp,
           param_.stabilize_time1, param_.move_time, param_.stabilize_time2);
 

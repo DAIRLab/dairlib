@@ -223,11 +223,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   int print_enabled = 1; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp && timestamp >= settling_time){
     std::cout << timestamp << "\n---------------" << std::endl;
-    Eigen::JacobiSVD<MatrixXd> M_svd(M_franka);
-    Eigen::JacobiSVD<MatrixXd> J_svd(J_franka);
-    std::cout << "M svd\n" << M_svd.singularValues() << std::endl;
-    std::cout << "J svd\n" << J_svd.singularValues() << std::endl;
-    std::cout << "error\n" << xtilde.tail(3).norm() << std::endl;
+    
     std::cout << std::endl;
   }
 }

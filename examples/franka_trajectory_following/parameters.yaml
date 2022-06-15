@@ -48,10 +48,10 @@ stabilize_time1: 2
 move_time: 1
 stabilize_time2: 2
 
-traj_radius: 0.2
+traj_radius: 0.1
 phase: 0 # in degrees
-x_c: 0.4
-y_c: 0
+x_c: 0.25
+y_c: 0.3
 degree_increment: 20
 time_increment: 4
 hold_order: 1 # 0 for zero order hold, 1 for first order hold

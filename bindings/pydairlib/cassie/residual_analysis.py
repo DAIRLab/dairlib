@@ -122,7 +122,8 @@ class CassieSystem():
             ))
 
         if is_solve_exact or num_contact_unknown == 0:
-            solution = np.linalg.solve(A, b)
+            # Solve minimum norm solution, since J_c may be not full row rank
+            solution = A.T @ np.linalg.inv(A @ A.T) @ b
         else:
             solution = cp.Variable(22+num_contact_unknown+2)
             epislon = cp.Variable(22+num_contact_unknown+2)
@@ -271,7 +272,7 @@ class CaaiseSystemTest():
 
         for i in range(t.shape[0]):
             t_list.append(t[i])
-            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], is_solve_exact=False)
+            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], is_solve_exact=True)
             v_dot_est_list.append(v_dot_est)
             lambda_c_est_list.append(lambda_c_est)
             lambda_h_est_list.append(lambda_h_est)

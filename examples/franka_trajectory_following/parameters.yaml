@@ -51,8 +51,8 @@ sim_dt: 0.00005
 
 traj_radius: 0.125
 phase: 0 # in degrees
-x_c: 0.35
-y_c: 0.25
+x_c: 0.4
+y_c: 0.3
 degree_increment: 20
 time_increment: 5
 hold_order: 1 # 0 for zero order hold, 1 for first order hold

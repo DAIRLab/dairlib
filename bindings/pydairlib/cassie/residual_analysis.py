@@ -46,7 +46,7 @@ class CassieSystem():
     def get_damping(self, C):
         self.C = C
 
-    def calc_vdot(self, q, v, u, lambda_c_gt, is_solve_exact=True):
+    def calc_vdot(self, q, v, u, lambda_c_gt, lambda_c_position ,is_solve_exact=True):
         """
             The unknown term are \dot v, contact force \lambda_c_active and constraints forces \lambda_h.
 
@@ -73,7 +73,8 @@ class CassieSystem():
         # Get the B matrix
         B = self.plant.MakeActuationMatrix()
 
-        # Get the gravity term
+        # Get the gravity term    Set optional for solving soft constraints optimiazation problem for calc_vdot
+
         gravity = self.plant.CalcGravityGeneralizedForces(self.context)
 
         # Get the general damping and spring force 
@@ -93,7 +94,7 @@ class CassieSystem():
 
         # Get the J_c_active term
         # For simplicity test, now directly give the lambda_c ground truth from simulation to determine if contact happen
-        J_c_active, J_c_active_dot_v, num_contact_unknown, get_force_at_point_matrix = self.get_J_c_ative_and_J_c_active_dot_v(lambda_c_gt)
+        J_c_active, J_c_active_dot_v, num_contact_unknown, get_force_at_point_matrix = self.get_J_c_ative_and_J_c_active_dot_v(lambda_c_gt, lambda_c_position)
 
         # Construct Linear Equation Matrices
         # Solving the exact linear equations:
@@ -140,12 +141,13 @@ class CassieSystem():
 
         return v_dot, lambda_c, lambda_h
 
-    def get_J_c_ative_and_J_c_active_dot_v(self, lambda_c_gt):
+    def get_J_c_ative_and_J_c_active_dot_v(self, lambda_c_gt, lambda_c_position):
         J_c_active = None; J_c_active_dot_v = None; num_contact_unknown = 0; 
         left_front_index = None; left_rear_index = None;
         right_front_index = None; right_rear_index = None;
         if np.linalg.norm(lambda_c_gt[:3]) > 0:
-            point_on_foot, foot_frame = LeftToeFront(self.plant)
+            _, foot_frame = LeftToeFront(self.plant)
+            point_on_foot = lambda_c_position[:3]
             J_c_left_front = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
             J_c_left_front_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
             J_c_active = J_c_left_front
@@ -153,7 +155,8 @@ class CassieSystem():
             left_front_index = num_contact_unknown
             num_contact_unknown += 3
         if np.linalg.norm(lambda_c_gt[3:6]) > 0:
-            point_on_foot, foot_frame = LeftToeRear(self.plant)
+            _, foot_frame = LeftToeRear(self.plant)
+            point_on_foot = lambda_c_position[3:6]
             J_c_left_rear = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
             J_c_left_rear_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
             if J_c_active is None:
@@ -165,7 +168,8 @@ class CassieSystem():
             left_rear_index = num_contact_unknown
             num_contact_unknown += 3
         if np.linalg.norm(lambda_c_gt[6:9]) > 0:
-            point_on_foot, foot_frame = RightToeFront(self.plant)
+            _, foot_frame = RightToeFront(self.plant)
+            point_on_foot = lambda_c_position[6:9]
             J_c_right_front = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
             J_c_right_front_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
             if J_c_active is None:
@@ -177,7 +181,8 @@ class CassieSystem():
             right_front_index = num_contact_unknown
             num_contact_unknown += 3
         if np.linalg.norm(lambda_c_gt[9:12]) > 0:
-            point_on_foot, foot_frame = RightToeRear(self.plant)
+            _, foot_frame = RightToeRear(self.plant)
+            point_on_foot = lambda_c_position[9:12]
             J_c_right_rear = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
             J_c_right_rear_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
             if J_c_active is None:
@@ -266,7 +271,7 @@ class CaaiseSystemTest():
 
         for i in range(t.shape[0]):
             t_list.append(t[i])
-            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], is_solve_exact=False)
+            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], is_solve_exact=False)
             v_dot_est_list.append(v_dot_est)
             lambda_c_est_list.append(lambda_c_est)
             lambda_h_est_list.append(lambda_h_est)
@@ -285,8 +290,6 @@ class CaaiseSystemTest():
             plt.cla()
             plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
             plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
-            plt.ylim(-max(np.abs(v_dot_gt_list[:,i]).mean()*5, np.abs(v_dot_est_list[:,i]).mean()*5), 
-                    max(np.abs(v_dot_gt_list[:,i]).mean()*5, np.abs(v_dot_est_list[:,i]).mean()*5))
             plt.legend()
             plt.title(self.vel_map_inverse[i])
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
@@ -296,8 +299,6 @@ class CaaiseSystemTest():
             plt.cla()
             plt.plot(t_list, lambda_c_est_list[:,i], 'r', label='est')
             plt.plot(t_list, lambda_c_gt_list[:,i], 'g', label='gt')
-            plt.ylim(-max(np.abs(lambda_c_gt_list[:,i]).mean()*5, np.abs(lambda_c_est_list[:,i]).mean()*5), 
-                    max(np.abs(lambda_c_gt_list[:,i]).mean()*5, np.abs(lambda_c_est_list[:,i]).mean()*5))
             plt.legend()
             plt.title(self.lambda_c_map_inverse[i])
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/lambda_c/{}.png".format(self.lambda_c_map_inverse[i]))
@@ -336,9 +337,9 @@ class CaaiseSystemTest():
         left_toe_front_force = contact_force[0,start_index:end_index,:]
         left_toe_front_position = contact_position[0,start_index:end_index,:]
         left_toe_rear_force = contact_force[1,start_index:end_index,:]
-        left_toe_rear_position = contact_position[0,start_index:end_index,:]
+        left_toe_rear_position = contact_position[1,start_index:end_index,:]
         right_toe_front_force = contact_force[2,start_index:end_index,:]
-        right_toe_front_position = contact_position[0,start_index:end_index,:]
+        right_toe_front_position = contact_position[2,start_index:end_index,:]
         right_toe_rear_force = contact_force[3,start_index:end_index,:]
         right_toe_rear_position = contact_position[3,start_index:end_index,:]
         contact_force_processed = []

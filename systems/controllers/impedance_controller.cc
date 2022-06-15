@@ -223,7 +223,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp && timestamp >= settling_time){
     std::cout << timestamp << "\n---------------" << std::endl;
-    std::cout << lambda.norm() << std::endl;
+    std::cout << q.head(7) << std::endl;
     std::cout << std::endl;
   }
 }

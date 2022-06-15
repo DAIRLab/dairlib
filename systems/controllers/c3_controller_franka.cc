@@ -136,8 +136,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   if (timestamp <= settling_time){
     Eigen::Vector3d start = param_.initial_start;
     Eigen::Vector3d finish = param_.initial_finish;
-    finish(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
-    finish(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180) - 0.03;
+    finish(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180) - 0.03;
+    finish(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180);
     std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
                                                                    param_.stabilize_time1, param_.move_time, param_.stabilize_time2);
     VectorXd traj = pp_.value(timestamp);
@@ -210,7 +210,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else{ // otherwise go to top of ball
     traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
     traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
-    traj_desired_vector[2] = 0.065;
+    traj_desired_vector[2] = 0.07;
   }
 
 //  traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;

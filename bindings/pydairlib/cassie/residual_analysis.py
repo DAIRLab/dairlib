@@ -5,12 +5,13 @@ import matplotlib.pyplot as plt
 import pydairlib
 import scipy.linalg
 import scipy.io
+import cvxpy as cp
 from scipy.spatial.transform import Rotation
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.multibody import kinematic
-from pydrake.multibody.tree import JacobianWrtVariable
+from pydrake.multibody.tree import JacobianWrtVariable, MultibodyForces
 
 class CassieSystem():
     def __init__(self):
@@ -45,7 +46,7 @@ class CassieSystem():
     def get_damping(self, C):
         self.C = C
 
-    def calc_vdot(self, q, v, u, lambda_c_gt):
+    def calc_vdot(self, q, v, u, lambda_c_gt, is_solve_exact=True):
         """
             The unknown term are \dot v, contact force \lambda_c_active and constraints forces \lambda_h.
 
@@ -75,6 +76,11 @@ class CassieSystem():
         # Get the gravity term
         gravity = self.plant.CalcGravityGeneralizedForces(self.context)
 
+        # Get the general damping and spring force 
+        damping_and_spring_force = MultibodyForces(self.plant)
+        self.plant.CalcForceElementsContribution(self.context, damping_and_spring_force)
+        damping_and_spring_force = damping_and_spring_force.generalized_forces()
+
         # Get the J_h term
         J_h = np.zeros((2, 22))
         J_h[0, :] = self.left_loop.EvalFullJacobian(self.context)
@@ -90,15 +96,16 @@ class CassieSystem():
         J_c_active, J_c_active_dot_v, num_contact_unknown, get_force_at_point_matrix = self.get_J_c_ative_and_J_c_active_dot_v(lambda_c_gt)
 
         # Construct Linear Equation Matrices
+        # Solving the exact linear equations:
         if num_contact_unknown > 0:
             A = np.vstack((
-                np.hstack((M, -J_c_active.T, -J_h.T)),
-                np.hstack((J_h, np.zeros((2,num_contact_unknown)),np.zeros((2, 2)))),
-                np.hstack((J_c_active, np.zeros((num_contact_unknown, num_contact_unknown)), np.zeros((num_contact_unknown,2))))
-                ))
+                    np.hstack((M, -J_c_active.T, -J_h.T)),
+                    np.hstack((J_h, np.zeros((2,num_contact_unknown)),np.zeros((2, 2)))),
+                    np.hstack((J_c_active, np.zeros((num_contact_unknown, num_contact_unknown)), np.zeros((num_contact_unknown,2))))
+            ))
 
             b = np.hstack((
-                B @ u + gravity - bias - self.C @ v - self.K @ q,
+                B @ u + gravity - bias + damping_and_spring_force,
                 -J_h_dot_times_v,
                 -J_c_active_dot_v
             ))
@@ -109,11 +116,21 @@ class CassieSystem():
                 ))
 
             b = np.hstack((
-                B @ u + gravity - bias - self.C @ v - self.K @ q,
+                B @ u + gravity - bias + damping_and_spring_force,
                 -J_h_dot_times_v,
             ))
 
-        solution = np.linalg.solve(A, b)
+        if is_solve_exact or num_contact_unknown == 0:
+            solution = np.linalg.solve(A, b)
+        else:
+            solution = cp.Variable(22+num_contact_unknown+2)
+            epislon = cp.Variable(22+num_contact_unknown+2)
+            obj = cp.Minimize(cp.norm(epislon))
+            constraints = [A @ solution == b + epislon]
+            prob = cp.Problem(obj, constraints)
+            prob.solve()
+            solution = solution.value
+
         v_dot = solution[:22]
         if num_contact_unknown > 0:
             lambda_c = get_force_at_point_matrix @ solution[22:22+num_contact_unknown]
@@ -249,7 +266,7 @@ class CaaiseSystemTest():
 
         for i in range(t.shape[0]):
             t_list.append(t[i])
-            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:])
+            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], is_solve_exact=False)
             v_dot_est_list.append(v_dot_est)
             lambda_c_est_list.append(lambda_c_est)
             lambda_h_est_list.append(lambda_h_est)
@@ -268,8 +285,8 @@ class CaaiseSystemTest():
             plt.cla()
             plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
             plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
-            plt.ylim(-min(np.abs(v_dot_gt_list[:,i]).mean()*5, np.abs(v_dot_est_list[:,i]).mean()*5), 
-                    min(np.abs(v_dot_gt_list[:,i]).mean()*5, np.abs(v_dot_est_list[:,i]).mean()*5))
+            plt.ylim(-max(np.abs(v_dot_gt_list[:,i]).mean()*5, np.abs(v_dot_est_list[:,i]).mean()*5), 
+                    max(np.abs(v_dot_gt_list[:,i]).mean()*5, np.abs(v_dot_est_list[:,i]).mean()*5))
             plt.legend()
             plt.title(self.vel_map_inverse[i])
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
@@ -279,8 +296,8 @@ class CaaiseSystemTest():
             plt.cla()
             plt.plot(t_list, lambda_c_est_list[:,i], 'r', label='est')
             plt.plot(t_list, lambda_c_gt_list[:,i], 'g', label='gt')
-            plt.ylim(-min(np.abs(lambda_c_gt_list[:,i]).mean()*5, np.abs(lambda_c_est_list[:,i]).mean()*5), 
-                    min(np.abs(lambda_c_gt_list[:,i]).mean()*5, np.abs(lambda_c_est_list[:,i]).mean()*5))
+            plt.ylim(-max(np.abs(lambda_c_gt_list[:,i]).mean()*5, np.abs(lambda_c_est_list[:,i]).mean()*5), 
+                    max(np.abs(lambda_c_gt_list[:,i]).mean()*5, np.abs(lambda_c_est_list[:,i]).mean()*5))
             plt.legend()
             plt.title(self.lambda_c_map_inverse[i])
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/lambda_c/{}.png".format(self.lambda_c_map_inverse[i]))

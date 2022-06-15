@@ -15,8 +15,8 @@ param = yaml_load(
 
 # Load the URDF and the cube
 builder = DiagramBuilder()
-sim_dt = 1e-4 #5e-5
-output_dt = 1e-4 #5e-5
+sim_dt = param["sim_dt"]
+output_dt = param["sim_dt"]
 
 plant, scene_graph = AddMultibodyPlantSceneGraph(builder, sim_dt)
 # addFlatTerrain(plant=plant, scene_graph=scene_graph, mu_static=1.0,

@@ -8,8 +8,8 @@
 # systems/controllers/impedance_controller.cc
 
 # impedance control parameters
-translational_stiffness: 200
-rotational_stiffness: 0.1
+translational_stiffness: 300 # 300
+rotational_stiffness: 1 # 1
 damping_ratio: 1
 stiffness_null: 1
 damping_null: 1
@@ -50,11 +50,11 @@ stabilize_time2: 2
 sim_dt: 0.0001 # 0.00005
 
 traj_radius: 0.125
-phase: 180 # in degrees
+phase: 0 # in degrees
 x_c: 0.40
 y_c: 0.25
 degree_increment: 20
-time_increment: 5
+time_increment: 4
 hold_order: 1 # 0 for zero order hold, 1 for first order hold
 
 c3_sub_timeout: 0.15

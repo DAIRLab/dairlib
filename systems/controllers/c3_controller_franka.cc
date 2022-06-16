@@ -222,7 +222,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();
 
-  if (ts > period*duty_cycle && ts < period * (duty_cycle+0.4*return_cycle)){
+  if (ts > period*duty_cycle && ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
     traj_desired_vector[0] = state[0]; //- 0.05;
     traj_desired_vector[1] = state[1]; //+ 0.01;
     //traj_desired_vector[2] = 0.075;

@@ -64,6 +64,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(contact_threshold));
     a->Visit(DRAKE_NVP(period));
     a->Visit(DRAKE_NVP(duty_cycle));
+    a->Visit(DRAKE_NVP(duty_cycle_upwards_ratio));
     a->Visit(DRAKE_NVP(return_angle));
     a->Visit(DRAKE_NVP(enable_heuristic));
     a->Visit(DRAKE_NVP(enable_contact));
@@ -131,6 +132,7 @@ struct C3Parameters {
   double contact_threshold;
   double period;
   double duty_cycle;
+  double duty_cycle_upwards_ratio;
   double return_angle;
   int enable_heuristic;
   int enable_contact;

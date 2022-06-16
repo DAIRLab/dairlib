@@ -96,8 +96,8 @@ C3Controller_franka::C3Controller_franka(
       pp_(pp){
   int num_positions = plant_.num_positions();
   int num_velocities = plant_.num_velocities();
-  int num_inputs = plant_.num_actuators();
-  int num_states = num_positions + num_velocities;
+  // int num_inputs = plant_.num_actuators();
+  // int num_states = num_positions + num_velocities;
 
 
   state_input_port_ =
@@ -126,18 +126,23 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
 
+  // parse some useful values
   double period = param_.period;
   double duty_cycle = param_.duty_cycle;
   double return_cycle = 1-duty_cycle;
   double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
   double shifted_time = timestamp - settling_time;
   double ts = shifted_time - period * floor((shifted_time / period));
+  double x_c = param_.x_c;
+  double y_c = param_.y_c;
+  double traj_radius = param_.traj_radius;
+  double ball_radius = param_.ball_radius;
 
   if (timestamp <= settling_time){
     Eigen::Vector3d start = param_.initial_start;
     Eigen::Vector3d finish = param_.initial_finish;
-    finish(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180) + finish(0);
-    finish(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180) + finish(1);
+    finish(0) = x_c + traj_radius * sin(param_.phase * 3.14159265 / 180) + finish(0);
+    finish(1) = y_c + traj_radius * cos(param_.phase * 3.14159265 / 180) + finish(1);
     std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
                                                                    param_.stabilize_time1, param_.move_time, param_.stabilize_time2);
     VectorXd traj = pp_.value(timestamp);
@@ -146,7 +151,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired.head(3) << target[0];
     st_desired(7) = finish(0);
     st_desired(8) = finish(1);
-    st_desired(9) = param_.ball_radius;
+    st_desired(9) = ball_radius;
     st_desired.tail(3) << traj(7), traj(8), traj(9);
 
     state_contact_desired->SetDataVector(st_desired);
@@ -191,13 +196,28 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd v(9);
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
+  Vector3d ball_xyz(state[7], state[8], state[9]);
 
   VectorXd traj_desired_vector = pp_.value(timestamp);
+
+  // compute adaptive path if enable_adaptive_path is 1
+  if (param_.enable_adaptive_path == 1){
+    // traj_desired_vector 7-9 is xyz of sphere
+    double x = ball_xyz(0) - x_c;
+    double y = ball_xyz(1) - y_c;
+    // note that the x and y arguments are intentionally flipped
+    // since we want to get the angle from the y-axis, not the x-axis
+    double theta = atan2(x, y) + param_.lead_angle * 3.14159 / 180;
+
+    traj_desired_vector(7) = x_c + traj_radius * sin(theta);
+    traj_desired_vector(8) = y_c + traj_radius * cos(theta);
+    traj_desired_vector(9) = ball_radius;
+  }
+
   Vector3d ball_xyz_d(traj_desired_vector(7),
                       traj_desired_vector(8),
                       traj_desired_vector(9));
 
-  Vector3d ball_xyz(state[7], state[8], state[9]);
   Vector3d error_xy = ball_xyz_d - ball_xyz;
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();

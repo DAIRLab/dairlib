@@ -47,12 +47,12 @@ initial_finish: [-0.03, 0, 0.07]  # xy computed according to x_c, y_c, traj_radi
 stabilize_time1: 2
 move_time: 1
 stabilize_time2: 2
-sim_dt: 0.00005
+sim_dt: 0.0001 # 0.00005
 
 traj_radius: 0.125
 phase: 0 # in degrees
-x_c: 0.4
-y_c: 0.3
+x_c: 0.40
+y_c: 0.25
 degree_increment: 20
 time_increment: 5
 hold_order: 1 # 0 for zero order hold, 1 for first order hold
@@ -67,9 +67,13 @@ EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 # Misc
 contact_threshold: 0.0001
-period: 3.5
+period: 4
 duty_cycle: 0.67
 return_angle: 0 # not used
 enable_heuristic: 0
 enable_contact: 1
 test_parameter: 0.4
+
+# testing
+lead_angle: 10 # angle in degrees
+enable_adaptive_path: 0 # 0 to use regular path, 1 to use path that adjusts to ball in real time

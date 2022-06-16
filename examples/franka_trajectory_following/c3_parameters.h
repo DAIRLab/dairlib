@@ -68,6 +68,11 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(enable_heuristic));
     a->Visit(DRAKE_NVP(enable_contact));
     a->Visit(DRAKE_NVP(test_parameter));
+
+    // testing params
+    a->Visit(DRAKE_NVP(test_parameter));
+    a->Visit(DRAKE_NVP(lead_angle));
+    a->Visit(DRAKE_NVP(enable_adaptive_path));
   }
 
   // impedance control parameters
@@ -130,4 +135,8 @@ struct C3Parameters {
   int enable_heuristic;
   int enable_contact;
   double test_parameter;
+  
+  // test parameters
+  double lead_angle;
+  int enable_adaptive_path;
 };

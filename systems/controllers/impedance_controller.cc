@@ -224,7 +224,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   qd << qd_;
   tau += N * (K_null_*(qd-q_franka) - B_null_*v_franka);
 
-  this->CheckJointLimits(q.head(7), timestamp);
+  //this->CheckJointLimits(q.head(7), timestamp);
   this->ClampJointTorques(tau, timestamp);
 
   control->SetDataVector(tau);
@@ -234,10 +234,14 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   std::chrono::duration<double> elapsed = finish - start;
 
   // debug prints every 10th of a second
-  int print_enabled = 0; // print flag
+  int print_enabled = 1; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp && timestamp >= settling_time){
+    std::cout << std::setprecision(6) << std::fixed;
     std::cout << timestamp << "\n---------------" << std::endl;
-
+    Eigen::JacobiSVD<MatrixXd> M_svd(M_franka);
+    Eigen::JacobiSVD<MatrixXd> svd(J_franka * M_inv * J_franka.transpose());
+    std::cout << "M:\n" << M_svd.singularValues() << std::endl;
+    std::cout << "J*M_inv*J^T:\n" << svd.singularValues() << std::endl;
     std::cout << std::endl;
   }
 }

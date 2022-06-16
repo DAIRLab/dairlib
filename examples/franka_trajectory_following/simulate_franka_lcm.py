@@ -5,6 +5,9 @@ from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 from pydairlib.systems import AddActuationRecieverAndStateSenderLcm
 import pydairlib.common
 
+from pydrake.multibody.plant import ConnectContactResultsToDrakeVisualizer
+
+
 import pydrake.geometry as mut
 
 import matplotlib.pyplot as plt
@@ -68,6 +71,8 @@ builder.Connect(plant.get_state_output_port(), mux.get_input_port(0))
 builder.Connect(passthrough.get_output_port(), mux.get_input_port(1))
 builder.Connect(mux.get_output_port(0), logger.get_input_port(0))
 
+# ConnectContactResultsToDrakeVisualizer(
+#     builder=builder, plant=plant, scene_graph=scene_graph, lcm=drake_lcm)
 
 diagram = builder.Build()
 

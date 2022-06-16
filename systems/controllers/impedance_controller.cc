@@ -99,6 +99,16 @@ ImpedanceController::ImpedanceController(
   enable_heuristic_ = param_.enable_heuristic;
   enable_contact_ = param_.enable_contact;
 
+  // define franka limits
+  // TODO: parse these from urdf instead of hard coding
+  lower_limits_ = VectorXd::Zero(n_);
+  upper_limits_ = VectorXd::Zero(n_);
+  torque_limits_ = VectorXd::Zero(n_);
+  lower_limits_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
+  upper_limits_ << 2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
+  torque_limits_ << 87, 87, 87, 87, 12, 12, 12;
+  joint_ranges_ = upper_limits_ - lower_limits_;
+
   // control-related variables
   // TODO: using fixed Rd for the time being
   Matrix3d Rd_eigen;
@@ -210,10 +220,14 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   MatrixXd J_ginv_tranpose = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
   MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_ginv_tranpose;
   VectorXd qd = VectorXd::Zero(7);
-  qd << qd_.head(4), q.tail(3);
-  VectorXd tau_null = N * (K_null_*(qd-q_franka) - B_null_*v_franka);
+  //qd << qd_.head(4), q(4), q(5), q(6);
+  qd << qd_;
+  tau += N * (K_null_*(qd-q_franka) - B_null_*v_franka);
 
-  control->SetDataVector(tau + tau_null);
+  this->CheckJointLimits(q.head(7), timestamp);
+  this->ClampJointTorques(tau, timestamp);
+
+  control->SetDataVector(tau);
   control->set_timestamp(timestamp);
   
   auto finish = std::chrono::high_resolution_clock::now();
@@ -254,6 +268,43 @@ void ImpedanceController::CalcContactJacobians(const std::vector<SortedPair<Geom
     J_t.block(2 * i * num_friction_directions_, 0, 2 * num_friction_directions_,
               plant_f_.num_velocities()) =
         J_i.block(1, 0, 2 * num_friction_directions_, plant_f_.num_velocities());
+  }
+}
+
+void ImpedanceController::CheckJointLimits(const VectorXd& q, double timestamp) const{
+  VectorXd thresholds = 0.1 * joint_ranges_;
+  std::cout << std::setprecision(3) << std::fixed;
+
+  for (int i = 0; i < n_; i++){
+    if (upper_limits_(i) - q(i) < thresholds(i)){
+      std::cout << "[time: " << timestamp << "] " << "Joint " 
+                << i+1 <<  " is " << upper_limits_(i)-q(i) 
+                << "rad away from its upper limit." << std::endl;
+    }
+    else if (q(i) - lower_limits_(i) < thresholds(i)){
+      std::cout << "[time: " << timestamp << "] " << "Joint " 
+                << i+1 <<  " is " << q(i)-lower_limits_(i) 
+                << "rad away from its lower limit." << std::endl;
+    }
+  }
+}
+
+void ImpedanceController::ClampJointTorques(VectorXd& tau, double timestamp) const {
+  VectorXd thresholds = 0.9 * torque_limits_;
+  std::cout << std::setprecision(3) << std::fixed;
+
+  for (int i = 0; i < n_; i++){
+    int sign = 1;
+    if (tau(i) < 0) sign = -1;
+
+    if (abs(tau(i)) > thresholds(i)){
+      std::cout << "[time: " << timestamp << "] " << "Joint " 
+                << i+1 << "'s desired torque of " << tau(i)
+                << " is close to or above its torque limit of "
+                << torque_limits_(i) <<". This torque input has been clamped to "
+                << sign * thresholds(i) << "." << std::endl;
+      tau(i) = sign * thresholds(i);
+    }
   }
 }
 

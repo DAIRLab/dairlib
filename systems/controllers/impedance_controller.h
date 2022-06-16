@@ -4,6 +4,8 @@
 #include <utility>
 #include <chrono>
 #include <assert.h>
+#include <iostream>
+#include <iomanip>
 
 
 #include <Eigen/Core>
@@ -114,6 +116,8 @@ class ImpedanceController : public LeafSystem<double> {
   // computes the contact jacobians in J_n and J_t
   void CalcContactJacobians(const std::vector<SortedPair<GeometryId>>& contact_pairs,
                     VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;
+  void CheckJointLimits(const VectorXd& q, double timestamp) const;
+  void ClampJointTorques(VectorXd& tau, double timestamp) const;
   Vector3d ApplyHeuristic(
       const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
       const VectorXd& x, const VectorXd& x_dot,
@@ -142,6 +146,10 @@ class ImpedanceController : public LeafSystem<double> {
   C3Parameters param_;
   int enable_heuristic_;
   int enable_contact_;
+  Eigen::VectorXd upper_limits_;
+  Eigen::VectorXd lower_limits_;
+  Eigen::VectorXd joint_ranges_;
+  Eigen::VectorXd torque_limits_;
 
   // frame, EE, and contact info
   const drake::multibody::BodyFrame<double>* EE_frame_;

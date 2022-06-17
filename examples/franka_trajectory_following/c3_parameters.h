@@ -68,10 +68,9 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(return_angle));
     a->Visit(DRAKE_NVP(enable_heuristic));
     a->Visit(DRAKE_NVP(enable_contact));
-    a->Visit(DRAKE_NVP(test_parameter));
 
     // testing params
-    a->Visit(DRAKE_NVP(test_parameter));
+    a->Visit(DRAKE_NVP(test_parameters));
     a->Visit(DRAKE_NVP(lead_angle));
     a->Visit(DRAKE_NVP(enable_adaptive_path));
   }
@@ -136,7 +135,7 @@ struct C3Parameters {
   double return_angle;
   int enable_heuristic;
   int enable_contact;
-  double test_parameter;
+  VectorXd test_parameters;
   
   // test parameters
   double lead_angle;

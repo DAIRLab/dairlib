@@ -218,7 +218,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                       traj_desired_vector(8),
                       traj_desired_vector(9));
 
-  Vector3d error_xy = ball_xyz_d - (ball_xyz + param_.test_parameter * state.tail(3));
+  Vector3d error_xy = ball_xyz_d - ball_xyz;
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();
 
@@ -237,7 +237,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else{ // otherwise go to top of ball
     traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
     traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
-    traj_desired_vector[2] = 0.04; //0.07
+    traj_desired_vector[2] = 0.06; //0.07
   }
 
 //  traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;

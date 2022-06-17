@@ -9,7 +9,7 @@
 
 # impedance control parameters
 translational_stiffness: 250 # 300
-rotational_stiffness: 1 # 1
+rotational_stiffness: 0.25 # 1
 damping_ratio: 1
 stiffness_null: 1
 damping_null: 1
@@ -46,10 +46,10 @@ initial_start: [0.5, 0, 0.12]
 initial_finish: [-0.03, 0, 0.07]  # xy computed according to x_c, y_c, traj_radius, and phase
 stabilize_time1: 2
 move_time: 1
-stabilize_time2: 200
+stabilize_time2: 2
 sim_dt: 0.0001 # 0.00005
 
-traj_radius: 0.2
+traj_radius: 0.1
 phase: 0 # in degrees
 x_c: 0.50
 y_c: 0.0
@@ -72,8 +72,8 @@ duty_cycle: 0.67
 duty_cycle_upwards_ratio: 0.33 # need better name here
 return_angle: 0 # not used
 enable_heuristic: 0
-enable_contact: 0 # i think pulls look nicer without feed forward contact
-test_parameter: 0
+enable_contact: 1 # i think pulls look nicer without feed forward contact
+test_parameters: []
 
 # testing
 lead_angle: 10 # angle in degrees

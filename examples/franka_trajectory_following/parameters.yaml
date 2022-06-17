@@ -72,7 +72,7 @@ duty_cycle: 0.67
 duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
 return_angle: 0 # not used
 enable_heuristic: 0
-enable_contact: 1 # i think pulls look nicer without feed forward contact
+enable_contact: 0 # i think pulls look nicer without feed forward contact
 test_parameters: []
 
 # testing

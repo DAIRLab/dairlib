@@ -24,7 +24,7 @@ Q_finger: 100           # finger xyz cost
 Q_ball_x: 10000
 Q_ball_y: 10000
 Q_finger_vel: 10        # translational velocity cost
-Q_ball_vel: 0.1         # angular & translational velocity cost
+Q_ball_vel: 0.1    #0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
 Qnew_ball_x: 1
 Qnew_ball_y: 1
@@ -49,7 +49,7 @@ move_time: 1
 stabilize_time2: 2
 sim_dt: 0.0001 # 0.00005
 
-traj_radius: 0.2
+traj_radius: 0.1
 phase: 0 # in degrees
 x_c: 0.50
 y_c: 0.0

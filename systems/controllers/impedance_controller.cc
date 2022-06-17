@@ -234,7 +234,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   std::chrono::duration<double> elapsed = finish - start;
 
   // debug prints every 10th of a second
-  int print_enabled = 1; // print flag
+  int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp && timestamp >= settling_time){
     std::cout << std::setprecision(6) << std::fixed;
     std::cout << timestamp << "\n---------------" << std::endl;

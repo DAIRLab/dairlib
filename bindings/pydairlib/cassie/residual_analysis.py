@@ -46,7 +46,7 @@ class CassieSystem():
     def get_damping(self, C):
         self.C = C
 
-    def calc_vdot(self, q, v, u, lambda_c_gt, lambda_c_position ,is_solve_exact=True):
+    def calc_vdot(self, t, q, v, u, lambda_c_gt, lambda_c_position ,is_soft_constraints=False):
         """
             The unknown term are \dot v, contact force \lambda_c_active and constraints forces \lambda_h.
 
@@ -95,6 +95,9 @@ class CassieSystem():
         # Get the J_c_active term
         # For simplicity test, now directly give the lambda_c ground truth from simulation to determine if contact happen
         J_c_active, J_c_active_dot_v, num_contact_unknown, get_force_at_point_matrix = self.get_J_c_ative_and_J_c_active_dot_v(lambda_c_gt, lambda_c_position)
+        z_direction_selection_matrix = np.zeros((4,12))
+        z_direction_selection_matrix[0,2] = 1;  z_direction_selection_matrix[1,5] = 1
+        z_direction_selection_matrix[2,8] = 1;  z_direction_selection_matrix[3,11] = 1
 
         # Construct Linear Equation Matrices
         # Solving the exact linear equations:
@@ -121,7 +124,7 @@ class CassieSystem():
                 -J_h_dot_times_v,
             ))
 
-        if is_solve_exact or num_contact_unknown == 0:
+        if not is_soft_constraints or num_contact_unknown == 0:
             # Solve minimum norm solution, since J_c may be not full row rank
             solution = A.T @ np.linalg.inv(A @ A.T) @ b
         else:
@@ -129,6 +132,7 @@ class CassieSystem():
             epislon = cp.Variable(22+num_contact_unknown+2)
             obj = cp.Minimize(cp.norm(epislon))
             constraints = [A @ solution == b + epislon]
+            constraints.append(z_direction_selection_matrix @ get_force_at_point_matrix @ solution[22:22+num_contact_unknown] >= 0)
             prob = cp.Problem(obj, constraints)
             prob.solve()
             solution = solution.value
@@ -139,6 +143,25 @@ class CassieSystem():
         else:
             lambda_c = np.zeros(12,)
         lambda_h = solution[-2:]
+
+        # if num_contact_unknown > 0:
+        #     lambda_c_z_direction = z_direction_selection_matrix @ get_force_at_point_matrix @ solution[22:22+num_contact_unknown]
+        #     if not np.all(lambda_c_z_direction >= 0):
+        #         print("minmum norm solution:",lambda_c_z_direction[:,None])
+        #         if scipy.linalg.null_space(A).shape[1] > 0:
+        #             null_space_z_direction = z_direction_selection_matrix @ get_force_at_point_matrix @ scipy.linalg.null_space(A)[22:22+num_contact_unknown]
+        #             print("null space:", null_space_z_direction)
+        #             c = cp.Variable(null_space_z_direction.shape[1])
+        #             obj = cp.Minimize(0)
+        #             constraints = [lambda_c_z_direction + null_space_z_direction @ c >= 0]
+        #             prob = cp.Problem(obj, constraints)
+        #             prob.solve()
+        #             if prob.status != cp.OPTIMAL:
+        #                 import pdb; pdb.set_trace()
+        #                 pass
+        #         else:
+        #             import pdb; pdb.set_trace()
+        #             pass
 
         return v_dot, lambda_c, lambda_h
 
@@ -272,7 +295,7 @@ class CaaiseSystemTest():
 
         for i in range(t.shape[0]):
             t_list.append(t[i])
-            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], is_solve_exact=True)
+            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], is_soft_constraints=False)
             v_dot_est_list.append(v_dot_est)
             lambda_c_est_list.append(lambda_c_est)
             lambda_h_est_list.append(lambda_h_est)
@@ -293,6 +316,7 @@ class CaaiseSystemTest():
             plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
             plt.legend()
             plt.title(self.vel_map_inverse[i])
+            plt.ylim(-100,100)
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
         
         # Save lambda_c
@@ -302,6 +326,7 @@ class CaaiseSystemTest():
             plt.plot(t_list, lambda_c_gt_list[:,i], 'g', label='gt')
             plt.legend()
             plt.title(self.lambda_c_map_inverse[i])
+            plt.ylim(-200,200)
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/lambda_c/{}.png".format(self.lambda_c_map_inverse[i]))
         
         import pdb; pdb.set_trace()
@@ -364,7 +389,7 @@ class CaaiseSystemTest():
             right_toe_rear_force_interpolated = self.interpolation(t, t_contact[pointer], t_contact[pointer+1],
                                                         right_toe_rear_force[pointer,:], right_toe_rear_force[pointer+1,:])
             right_toe_rear_position_interpolated = self.interpolation(t, t_contact[pointer], t_contact[pointer+1],
-                                                        right_toe_rear_position[pointer,:], right_toe_rear_position[pointer,:])
+                                                        right_toe_rear_position[pointer,:], right_toe_rear_position[pointer+1,:])
             joined_positions = np.hstack((left_toe_front_position_interpolated, left_toe_rear_position_interpolated,
                                         right_toe_front_position_interpolated, right_toe_rear_position_interpolated))
             joined_forces = np.hstack((left_toe_front_force_interpolated, left_toe_rear_force_interpolated, right_toe_front_force_interpolated, right_toe_rear_force_interpolated))

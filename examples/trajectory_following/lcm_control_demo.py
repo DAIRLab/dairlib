@@ -119,7 +119,7 @@ q[q_map['base_x']] = 0.05
 q[q_map['base_y']] = 0.05
 q[q_map['base_z']] = 0
 
-mu = 1.0
+mu = 1 #1
 
 
 
@@ -195,7 +195,8 @@ xdesiredinit[:nq] = q
 
 r = 0.2
 degree_increment = 20
-theta = np.arange(0, 400, degree_increment)
+#theta = np.arange(0, 400, degree_increment)
+theta = np.arange(degree_increment, 400, degree_increment)
 xtraj = []
 for i in theta:
     x = r * np.sin(math.radians(i))
@@ -209,7 +210,7 @@ for i in theta:
 
 
 increment = 2.0
-add_timing_offset = 9
+add_timing_offset = 0
 timings = np.arange(0 + add_timing_offset , increment*len(xtraj) + add_timing_offset, increment )
 
 pp = PiecewisePolynomial.ZeroOrderHold(timings, xtraj)

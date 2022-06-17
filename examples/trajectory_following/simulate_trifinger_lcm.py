@@ -61,8 +61,8 @@ logger = builder.AddSystem(VectorLogSink(nq + nv + nu, output_dt))
 # Multiplex state and input for logger
 mux = builder.AddSystem(Multiplexer([nq + nv, nu]))
 
-ConnectContactResultsToDrakeVisualizer(
-    builder=builder, plant=plant, scene_graph=scene_graph, lcm=drake_lcm)
+# ConnectContactResultsToDrakeVisualizer(
+#     builder=builder, plant=plant, scene_graph=scene_graph, lcm=drake_lcm)
 
 builder.Connect(plant.get_state_output_port(), mux.get_input_port(0))
 builder.Connect(passthrough.get_output_port(), mux.get_input_port(1))
@@ -129,6 +129,8 @@ q[q_map['base_z']] = .05
 plant.SetPositions(plant_context, q)
 
 v = np.zeros(nv)
+#v[-2] = 0.1
+
 plant.SetVelocities(plant_context, v)
 
 simulator.Initialize()

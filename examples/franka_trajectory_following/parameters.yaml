@@ -73,7 +73,7 @@ duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
 return_angle: 0 # not used
 enable_heuristic: 0
 enable_contact: 0 # i think pulls look nicer without feed forward contact
-test_parameter: 0
+test_parameters: []
 
 # testing
 lead_angle: 10 # angle in degrees

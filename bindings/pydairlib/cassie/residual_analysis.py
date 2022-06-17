@@ -12,15 +12,19 @@ from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.multibody import kinematic
 from pydrake.multibody.tree import JacobianWrtVariable, MultibodyForces
+from pydairlib.multibody import multibody
 
 class CassieSystem():
     def __init__(self):
+
+        self.urdf = "examples/Cassie/urdf/cassie_v2.urdf"
+
         # Initialize for drake
         self.builder = DiagramBuilder()
         self.drake_sim_dt = 5e-5
         self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, self.drake_sim_dt)
         addCassieMultibody(self.plant, self.scene_graph, True, 
-                            "examples/Cassie/urdf/cassie_v2.urdf", True, True)
+                            self.urdf, True, True)
         self.plant.Finalize()
         self.world = self.plant.world_frame()
         self.base_frame = self.plant.GetBodyByName("pelvis").body_frame()
@@ -39,6 +43,12 @@ class CassieSystem():
         # Initial other parameters
         self.K = np.zeros((22,23))
         self.C = np.zeros((22,22))
+
+        # Visualizer
+        self.visualizer = multibody.MultiposeVisualizer(self.urdf, 1, '')
+
+    def drawPose(self, q):
+        self.visualizer.DrawPoses(q)
 
     def get_spring_stiffness(self, K):
         self.K = K
@@ -294,6 +304,8 @@ class CaaiseSystemTest():
         lambda_c_gt_list = []
 
         for i in range(t.shape[0]):
+            if np.linalg.norm(lambda_c_gt[i,:]) > 0:
+                continue
             t_list.append(t[i])
             v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], is_soft_constraints=False)
             v_dot_est_list.append(v_dot_est)
@@ -309,11 +321,21 @@ class CaaiseSystemTest():
         lambda_c_gt_list = np.array(lambda_c_gt_list)
         v_dot_gt_list = np.array(v_dot_gt_list)
 
+        index = np.argwhere(t == t_list[0]).squeeze()
+
+        self.cassie.drawPose(q[index,:])
+        import pdb; pdb.set_trace()
+        import time
+        for i in range(500):
+            self.cassie.drawPose(q[index+i,:])
+            time.sleep(0.01)
+        import pdb; pdb.set_trace()
+
         # Save v_dot pictures
         for i in range(22):
             plt.cla()
-            plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
-            plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
+            plt.plot(t_list, v_dot_gt_list[:,i], 'go', label='gt')
+            plt.plot(t_list, v_dot_est_list[:,i], 'ro', label='est')
             plt.legend()
             plt.title(self.vel_map_inverse[i])
             plt.ylim(-100,100)

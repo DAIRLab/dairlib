@@ -235,13 +235,34 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // debug prints every 10th of a second
   int print_enabled = 1; // print flag
-  if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp && timestamp >= settling_time){
+  if (print_enabled && trunc(timestamp*1) / 1.0 == timestamp){// && timestamp >= settling_time){
     std::cout << std::setprecision(6) << std::fixed;
     std::cout << timestamp << "\n---------------" << std::endl;
-    Eigen::JacobiSVD<MatrixXd> M_svd(M_franka);
-    Eigen::JacobiSVD<MatrixXd> svd(J_franka * M_inv * J_franka.transpose());
-    std::cout << "M:\n" << M_svd.singularValues() << std::endl;
-    std::cout << "J*M_inv*J^T:\n" << svd.singularValues() << std::endl;
+    
+    MatrixXd Jw = J_franka.block(0, 0, 3, n_); // get the translational velocity jacobian
+    MatrixXd Lambda = (Jw * M_inv * Jw.transpose()).inverse(); // apparent end effector mass matrix
+    MatrixXd JwTLambda = Jw.transpose() * Lambda;
+
+    // Eigen::JacobiSVD<MatrixXd> svd(JwTLambda, Eigen::ComputeThinU | Eigen::ComputeThinV); // compact SVD
+    // VectorXd singular_values = svd.singularValues();
+    // MatrixXd U = svd.matrixU();
+    // MatrixXd V = svd.matrixV();
+
+    // for (int i = 0; i < 3; i++){
+    //   std::cout << "singular value #" << i+1 << std::endl;
+    //   std::cout << singular_values(i) << std::endl << std::endl;
+    //   std::cout << V.col(i) << std::endl << std::endl;
+    //   std::cout << U.col(i) << std::endl << std::endl;
+    // }
+
+    std::cout << "\nTorques required to generate torques in xyz" << std::endl;
+    std::cout << "x_hat:\n" << (JwTLambda * Vector3d(1, 0, 0)).norm() << std::endl << std::endl;
+    std::cout << JwTLambda * Vector3d(1, 0, 0) << std::endl << std::endl;
+    std::cout << "y_hat:\n" << (JwTLambda * Vector3d(0, 1, 0)).norm() << std::endl << std::endl;
+    std::cout << JwTLambda * Vector3d(0, 1, 0) << std::endl << std::endl;
+    std::cout << "z_hat:\n" << (JwTLambda * Vector3d(0, 0, 1)).norm() << std::endl << std::endl;
+    std::cout << JwTLambda * Vector3d(0, 0, 1) << std::endl << std::endl;
+
     std::cout << std::endl;
   }
 }

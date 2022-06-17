@@ -222,15 +222,22 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();
 
-  if (ts > period*duty_cycle && ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
-    traj_desired_vector[0] = state[0]; //- 0.05;
-    traj_desired_vector[1] = state[1]; //+ 0.01;
-    //traj_desired_vector[2] = 0.075;
+  ///rolling phase
+  if ( ts < period*duty_cycle ) {
+    traj_desired_vector[0] = state[7]; //- 0.05;
+    traj_desired_vector[1] = state[8]; //+ 0.01;
   }
+  ///go upwards phase
+  else if (ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
+    traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
+    traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
+    traj_desired_vector[2] = 0.08;
+  }
+  ///position finger phase
   else{ // otherwise go to top of ball
     traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
     traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
-    traj_desired_vector[2] = 0.07;
+    traj_desired_vector[2] = 0.04; //0.07
   }
 
 //  traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;

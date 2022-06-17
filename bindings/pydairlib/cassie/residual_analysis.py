@@ -1,4 +1,5 @@
 import sys
+import os
 import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
@@ -286,6 +287,14 @@ class CaaiseSystemTest():
         
         return lambda_c_map, lambda_c_map_inverse
 
+    def get_residual(self, vdot_gt, vdot_est, alpha = 1):
+        residuals = [vdot_gt[0] - vdot_est[0]]
+        for i in range(1, vdot_est.shape[0]):
+            residuals.append(alpha*(vdot_gt[i] - vdot_est[i])  + (1-alpha)* residuals[-1])
+
+        residuals = np.array(residuals)
+        return residuals
+
     def simulation_test(self):
         raw_data = scipy.io.loadmat(self.data_path)
         process_data = self.process_sim_data(raw_data, self.start_time, self.end_time)
@@ -304,8 +313,6 @@ class CaaiseSystemTest():
         lambda_c_gt_list = []
 
         for i in range(t.shape[0]):
-            if np.linalg.norm(lambda_c_gt[i,:]) > 0:
-                continue
             t_list.append(t[i])
             v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], is_soft_constraints=False)
             v_dot_est_list.append(v_dot_est)
@@ -321,25 +328,20 @@ class CaaiseSystemTest():
         lambda_c_gt_list = np.array(lambda_c_gt_list)
         v_dot_gt_list = np.array(v_dot_gt_list)
 
-        index = np.argwhere(t == t_list[0]).squeeze()
-
-        self.cassie.drawPose(q[index,:])
-        import pdb; pdb.set_trace()
-        import time
-        for i in range(500):
-            self.cassie.drawPose(q[index+i,:])
-            time.sleep(0.01)
-        import pdb; pdb.set_trace()
+        residual_list = self.get_residual(v_dot_gt_list, v_dot_est_list)
 
         # Save v_dot pictures
         for i in range(22):
             plt.cla()
-            plt.plot(t_list, v_dot_gt_list[:,i], 'go', label='gt')
-            plt.plot(t_list, v_dot_est_list[:,i], 'ro', label='est')
+            plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
+            plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
             plt.legend()
             plt.title(self.vel_map_inverse[i])
             plt.ylim(-100,100)
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
+
+        # Save residual pictures
+        self.draw_residual(lambda_c_gt[:,2]+lambda_c_gt[:,5], residual_list, "bindings/pydairlib/cassie/residual_analysis/simulation_test/residuals/left_total_z_direction")
         
         # Save lambda_c
         for i in range(12):
@@ -352,6 +354,32 @@ class CaaiseSystemTest():
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/lambda_c/{}.png".format(self.lambda_c_map_inverse[i]))
         
         import pdb; pdb.set_trace()
+
+    def draw_residual(self, x_axis, residuals, dir):
+
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+
+        for i in range(22):
+
+            n = x_axis.shape[0]
+            x_axis_sorted = np.sort(x_axis)
+            residuals_sorted = np.sort(residuals[:,i])
+            x_min=x_axis_sorted[int(n*0.01)]; x_max=x_axis_sorted[int(n*(1-0.01))]
+            y_min=residuals_sorted[int(n*0.01)]; y_max=residuals_sorted[int(n*(1-0.01))]
+
+            corrcoef = np.corrcoef(np.vstack((x_axis, residuals[:,i])))
+
+            A = np.hstack((x_axis[:,None], np.ones((n,1))))
+            sol = np.linalg.pinv(A) @ residuals[:,i]
+
+            plt.cla()
+            plt.plot(x_axis, residuals[:, i], 'ro', markersize=1)
+            plt.plot([x_min, x_max], [x_min*sol[0]+sol[1], x_max*sol[0]+sol[1]], 'b')
+            plt.title(self.vel_map_inverse[i] + " corrcoef:" + "{:.2f}".format(corrcoef[1,0]))
+            plt.xlim(x_min, x_max)
+            plt.ylim(y_min, y_max)
+            plt.savefig(dir + "/{}.png".format(self.vel_map_inverse[i]))
 
     def interpolation(self, t,t1,t2,v1,v2):
         ratio = (t - t1)/(t2-t1)

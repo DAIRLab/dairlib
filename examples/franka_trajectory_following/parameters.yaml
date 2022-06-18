@@ -1,6 +1,6 @@
 # impedance control parameters
 translational_stiffness: 300 # 300
-rotational_stiffness: 1 # 1
+rotational_stiffness: 3 # 1
 damping_ratio: 1
 stiffness_null: 2
 damping_null: 1
@@ -35,8 +35,8 @@ q_init_ball: [1, 0, 0, 0] # xyz computed according to x_c, y_c, traj_radius, pha
 #initial_start: [0.4, 0, 0.08]
 initial_start: [0.5, 0, 0.12]
 initial_finish: [-0.03, 0, 0.07]  # xy computed according to x_c, y_c, traj_radius, and phase
-stabilize_time1: 1
-move_time: 1
+stabilize_time1: 0.5
+move_time: 0.5
 stabilize_time2: 1
 sim_dt: 0.0001 # 0.00005
 
@@ -59,15 +59,15 @@ EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 # Misc
 contact_threshold: 0.0001
-period: 3
+period: 2
 duty_cycle: 0.67
 
 duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
 return_angle: 0 # not used
 enable_heuristic: 0
 enable_contact: 1 # i think pulls look nicer without feed forward contact
-test_parameters: []
+test_parameters: [0.075, 0.071, 0.06]
 
 # testing
 lead_angle: 10 # angle in degrees
-enable_adaptive_path: 0 # 0 to use regular path, 1 to use path that adjusts to ball in real time
+enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time

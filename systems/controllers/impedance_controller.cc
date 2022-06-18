@@ -217,7 +217,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
     tau = tau - Jc.transpose() * lambda;
   }
-  
+
   // compute nullspace projection
   MatrixXd J_ginv_tranpose = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
   MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_ginv_tranpose;
@@ -298,7 +298,7 @@ void ImpedanceController::CalcContactJacobians(const std::vector<SortedPair<Geom
 }
 
 void ImpedanceController::CheckJointLimits(const VectorXd& q, double timestamp) const{
-  VectorXd thresholds = 0.1 * joint_ranges_;
+  VectorXd thresholds = 0.05 * joint_ranges_;
   std::cout << std::setprecision(3) << std::fixed;
 
   for (int i = 0; i < n_; i++){

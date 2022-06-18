@@ -217,29 +217,28 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();
 
-  ///rolling phase
+  /// rolling phase
   if ( ts < period*duty_cycle ) {
-    traj_desired_vector[0] = state[7]; //- 0.05;; //- 0.05;
-    traj_desired_vector[1] = state[8]; //- 0.05;; //+ 0.01;
+    traj_desired_vector[0] = state[7];
+    traj_desired_vector[1] = state[8];
   }
-  ///go upwards phase
+  /// upwards phase
   else if (ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
-//    traj_desired_vector[0] = state[7] - 0.01*error_hat(0); //- 0.05;
-//    traj_desired_vector[1] = state[8] - 0.01*error_hat(1); //+ 0.01;
     traj_desired_vector[0] = state[0]; //- 0.05;
     traj_desired_vector[1] = state[1]; //+ 0.01;
-    traj_desired_vector[2] = 0.075;
+    traj_desired_vector[2] = param_.test_parameters(0);
   }
+  /// side ways phase
   else if( ts < period * (duty_cycle+0.66 * return_cycle) ) {
-    traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
-    traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
-    traj_desired_vector[2] = 0.071;
+    traj_desired_vector[0] = state[7] - 0.03*error_hat(0);
+    traj_desired_vector[1] = state[8] - 0.03*error_hat(1);
+    traj_desired_vector[2] = param_.test_parameters(1);
   }
-  ///position finger phase
-  else{ // otherwise go to top of ball
-    traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
-    traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
-    traj_desired_vector[2] = 0.06; //0.07
+  /// position finger phase
+  else{
+    traj_desired_vector[0] = state[7] - 0.03*error_hat(0);
+    traj_desired_vector[1] = state[8] - 0.03*error_hat(1);
+    traj_desired_vector[2] = param_.test_parameters(2);
   }
 
 //  traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
@@ -329,11 +328,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   MatrixXd Qnew;
   Qnew = Q_[0];
 
-
-
-
-  //std::cout << "ts: " << ts << std::endl;
-
   if (ts > period * duty_cycle){
     double Qnew_finger = param_.Qnew_finger;
     Qnew(0,0) = Qnew_finger;
@@ -380,7 +374,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
-
 
 }
 }  // namespace controllers

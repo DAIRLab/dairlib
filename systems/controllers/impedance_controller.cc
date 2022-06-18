@@ -142,7 +142,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd xd_dot = VectorXd::Zero(6);
   VectorXd lambda = VectorXd::Zero(5); // does not contain the slack variable
   Vector3d ball_xyz(state(7), state(8), state(9));
-  Vector3d ball_xyz_d(state(25), state(26), state(27));
+  Vector3d ball_xyz_d = state.tail(3);
 
   xd.tail(3) << state.head(3);
   xd_dot.tail(3) << state(10), state(11), state(12);
@@ -198,33 +198,34 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R);
   VectorXd xtilde_dot = xd_dot - x_dot;
-  VectorXd tau = J_franka.transpose() * (K_*xtilde + B_*xtilde_dot) + C_franka - tau_g_franka;
 
+  MatrixXd M_inv = M_franka.inverse();
+  MatrixXd Lambda = (J_franka * M_inv * J_franka.transpose()).inverse(); // apparent end effector mass matrix
+  VectorXd  tau = J_franka.transpose() * Lambda * (K_*xtilde + B_*xtilde_dot) + C_franka - tau_g_franka;
+  
   // add feedforward force term if contact is desired
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
+  if (enable_contact_ && lambda.norm() > param_.contact_threshold){
+    //std::cout << "here" << std::endl;
+    // compute contact jacobian
+    VectorXd phi(contact_pairs_.size());
+    MatrixXd J_n(contact_pairs_.size(), plant_.num_velocities());
+    MatrixXd J_t(2 * contact_pairs_.size() * num_friction_directions_, plant_.num_velocities());
+    this->CalcContactJacobians(contact_pairs_, phi, J_n, J_t);
+    Jc << J_n.block(0, 0, J_n.rows(), n_),
+          J_t.block(0, 0, J_t.rows(), n_);
 
- if (enable_contact_ && lambda.norm() > param_.contact_threshold){
-   //std::cout << "here" << std::endl;
-   // compute contact jacobian
-   VectorXd phi(contact_pairs_.size());
-   MatrixXd J_n(contact_pairs_.size(), plant_.num_velocities());
-   MatrixXd J_t(2 * contact_pairs_.size() * num_friction_directions_, plant_.num_velocities());
-   this->CalcContactJacobians(contact_pairs_, phi, J_n, J_t);
-   Jc << J_n.block(0, 0, J_n.rows(), n_),
-         J_t.block(0, 0, J_t.rows(), n_);
-
-   tau = tau - Jc.transpose() * lambda;
- }
+    tau = tau - Jc.transpose() * lambda;
+  }
+  
   // compute nullspace projection
-  MatrixXd M_inv = M_franka.inverse();
   MatrixXd J_ginv_tranpose = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
   MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_ginv_tranpose;
-  VectorXd qd = VectorXd::Zero(7);
+  //VectorXd qd = VectorXd::Zero(7);
   //qd << qd_.head(4), q(4), q(5), q(6);
-  qd << qd_;
-  tau += N * (K_null_*(qd-q_franka) - B_null_*v_franka);
+  tau += N * (K_null_*(qd_-q_franka) - B_null_*v_franka);
 
-  //this->CheckJointLimits(q.head(7), timestamp);
+  this->CheckJointLimits(q.head(7), timestamp);
   this->ClampJointTorques(tau, timestamp);
 
   control->SetDataVector(tau);
@@ -315,7 +316,7 @@ void ImpedanceController::CheckJointLimits(const VectorXd& q, double timestamp) 
 }
 
 void ImpedanceController::ClampJointTorques(VectorXd& tau, double timestamp) const {
-  VectorXd thresholds = 0.9 * torque_limits_;
+  VectorXd thresholds = 0.95 * torque_limits_;
   std::cout << std::setprecision(3) << std::fixed;
 
   for (int i = 0; i < n_; i++){

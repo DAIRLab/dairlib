@@ -94,11 +94,6 @@ C3Controller_franka::C3Controller_franka(
       U_(U),
       xdesired_(xdesired),
       pp_(pp){
-  int num_positions = plant_.num_positions();
-  int num_velocities = plant_.num_velocities();
-  // int num_inputs = plant_.num_actuators();
-  // int num_states = num_positions + num_velocities;
-
 
   state_input_port_ =
       this->DeclareVectorInputPort(
@@ -250,6 +245,17 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 //  traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
 //  traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
 //  traj_desired_vector[2] = 0.07;
+
+  // if (ts > period*duty_cycle && ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio*return_cycle)){
+  //   traj_desired_vector[0] = state[0]; //- 0.05;
+  //   traj_desired_vector[1] = state[1]; //+ 0.01;
+  //   //traj_desired_vector[2] = 0.075;
+  // }
+  // else{ // otherwise go to top of ball
+  //   traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
+  //   traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
+  //   traj_desired_vector[2] = 0.07;
+  // }
 
 
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);

@@ -1,17 +1,8 @@
----
-
-# contains commonly changed parameters from the following files
-# examples/franka_trajectory_following/lcm_franka_lcm.py
-# examples/franka_trajectory_following/lcm_control_demo.py
-# examples/franka_trajectory_following/lcm_control_impedance.py
-# systems/controllers/c3_controller_franka.cc
-# systems/controllers/impedance_controller.cc
-
 # impedance control parameters
-translational_stiffness: 400 # 300 #250
-rotational_stiffness: 0.25 # 1
+translational_stiffness: 300 # 300
+rotational_stiffness: 1 # 1
 damping_ratio: 1
-stiffness_null: 1
+stiffness_null: 2
 damping_null: 1
 q_null_desired: [0, 0.36, 0, -2.39, 0, 2.748, 0]
 moving_offset: 0 #0.0005
@@ -24,7 +15,7 @@ Q_finger: 100           # finger xyz cost
 Q_ball_x: 10000
 Q_ball_y: 10000
 Q_finger_vel: 10        # translational velocity cost
-Q_ball_vel: 0.1    #0.1         # angular & translational velocity cost
+Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
 Qnew_ball_x: 1
 Qnew_ball_y: 1
@@ -33,7 +24,7 @@ G: 0.01
 U_default: 1
 U_pos_vel: 10           # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
-q_init_finger: [0, 0, 0.071]
+q_init_finger: [0, 0, 0.07]
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03]
 dt: 0.03 # 0.03
 
@@ -43,16 +34,16 @@ q_init_franka: [0, 0.36, 0, -2.39, 0, 2.748, 0]
 q_init_ball: [1, 0, 0, 0] # xyz computed according to x_c, y_c, traj_radius, phase, and ball_radius
 #initial_start: [0.4, 0, 0.08]
 initial_start: [0.5, 0, 0.12]
-initial_finish: [-0.04, 0, 0.06]  # xy computed according to x_c, y_c, traj_radius, and phase
-stabilize_time1: 2
+initial_finish: [-0.03, 0, 0.07]  # xy computed according to x_c, y_c, traj_radius, and phase
+stabilize_time1: 1
 move_time: 1
-stabilize_time2: 2
+stabilize_time2: 1
 sim_dt: 0.0001 # 0.00005
 
-traj_radius: 0.1
+traj_radius: 0.125
 phase: 0 # in degrees
-x_c: 0.40
-y_c: 0
+x_c: 0.45
+y_c: 0.0
 degree_increment: 20
 time_increment: 4
 hold_order: 1 # 0 for zero order hold, 1 for first order hold
@@ -65,14 +56,16 @@ finger_radius: 0.01         # changes need to be consistent with urdf
 EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 
+
 # Misc
 contact_threshold: 0.0001
-period: 4
-duty_cycle: 0.7
+period: 3
+duty_cycle: 0.67
+
 duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
 return_angle: 0 # not used
 enable_heuristic: 0
-enable_contact: 0 # i think pulls look nicer without feed forward contact
+enable_contact: 1 # i think pulls look nicer without feed forward contact
 test_parameters: []
 
 # testing

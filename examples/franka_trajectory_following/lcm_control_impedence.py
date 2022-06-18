@@ -167,4 +167,4 @@ loop = LcmOutputDrivenLoop(drake_lcm=lcm, diagram=diagram,
                            input_channel="FRANKA_OUTPUT",
                            is_forced_publish=True)
 
-loop.Simulate(100)
+loop.Simulate(200)

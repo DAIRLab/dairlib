@@ -117,8 +117,8 @@ v = np.zeros(nv)
 plant.SetVelocities(plant_context, v)
 
 simulator.Initialize()
-# Simulate for 10 seconds
-simulator.AdvanceTo(100)
+# Simulate for 200 seconds
+simulator.AdvanceTo(200)
 
 # numpy array of data (nq+nv+nu) x n_time
 data = logger.FindLog(simulator.get_context()).data()

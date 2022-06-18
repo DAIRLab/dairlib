@@ -218,6 +218,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   Vector3d error_hat = error_xy / error_xy.norm();
 
   /// rolling phase
+  double back_dist = param_.test_parameters(0);
   if ( ts < period*duty_cycle ) {
     traj_desired_vector[0] = state[7];
     traj_desired_vector[1] = state[8];
@@ -226,19 +227,19 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else if (ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
     traj_desired_vector[0] = state[0]; //- 0.05;
     traj_desired_vector[1] = state[1]; //+ 0.01;
-    traj_desired_vector[2] = param_.test_parameters(0);
+    traj_desired_vector[2] = param_.test_parameters(1);
   }
   /// side ways phase
   else if( ts < period * (duty_cycle+0.66 * return_cycle) ) {
-    traj_desired_vector[0] = state[7] - 0.03*error_hat(0);
-    traj_desired_vector[1] = state[8] - 0.03*error_hat(1);
-    traj_desired_vector[2] = param_.test_parameters(1);
+    traj_desired_vector[0] = state[7] - back_dist*error_hat(0);
+    traj_desired_vector[1] = state[8] - back_dist*error_hat(1);
+    traj_desired_vector[2] = param_.test_parameters(2);
   }
   /// position finger phase
   else{
-    traj_desired_vector[0] = state[7] - 0.03*error_hat(0);
-    traj_desired_vector[1] = state[8] - 0.03*error_hat(1);
-    traj_desired_vector[2] = param_.test_parameters(2);
+    traj_desired_vector[0] = state[7] - back_dist*error_hat(0);
+    traj_desired_vector[1] = state[8] - back_dist*error_hat(1);
+    traj_desired_vector[2] = param_.test_parameters(3);
   }
 
 //  traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;

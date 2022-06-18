@@ -84,6 +84,10 @@ class AlipWalkingControllerDiagram final
     return this->get_output_port(controller_failure_port_index_);
   }
 
+  const drake::systems::OutputPort<double>& get_swing_error_output_port() const {
+    return this->get_output_port(swing_tracking_error_port_index_);
+  }
+
   drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
@@ -178,6 +182,7 @@ class AlipWalkingControllerDiagram final
   // These two currently conflict, but controller_failure port index is not used.
   const int controller_failure_port_index_ = 2;
   const int fsm_output_port_index_ = 2;
+  const int swing_tracking_error_port_index_ = 3;
 
   const std::string control_channel_name_ = "OSC_WALKING";
 };

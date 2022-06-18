@@ -22,12 +22,12 @@ class SwingFootSplineOptimizer:
         self.data_folder = 'bindings/pydairlib/cassie/data/'
 
     def get_single_reward(self, action):
-        self.env.reset()
-        while self.env.current_time < 8.0:
+        self.env = make_swing_ft_env()
+        while self.env.current_time < 4.0:
             _, _, t, _ = self.env.step(self.default_action + action)
             if t:
-                self.env = make_swing_ft_env()
                 break
+
         return -self.env.cumulative_reward
 
     def save_params(self, folder, params, budget):
@@ -41,7 +41,7 @@ class SwingFootSplineOptimizer:
     def learn_spline(self):
         self.param_space = \
             ng.p.Array(lower=-0.3, upper=0.3, shape=(len(self.default_action),))
-        optimizer = ng.optimizers.NGOpt(parametrization=self.param_space,
+        optimizer = ng.optimizers.CMA(parametrization=self.param_space,
                                            budget=self.budget)
         optimizer.register_callback("tell", ng.callbacks.ProgressBar())
         params = optimizer.minimize(self.get_single_reward)
@@ -102,8 +102,7 @@ def plot_params_from_file(params_filename):
     plot_swing_foot_params(
         params, 'Optimized', 'spatial_optimized.png')
     plot_swing_foot_params(
-        np.array(get_default_params()),
-        'Initial', 'spatial_init.png')
+        np.array(get_default_params()), 'Initial', 'spatial_init.png')
 
 
 def plot_torque_comparison(filename):
@@ -129,7 +128,6 @@ def visualize_params(params):
         env.step(params)
     return env.get_traj(), np.cumsum(env.get_reward_history())
 
-
 def visualize_params_from_file(filename):
     opt = SwingFootSplineOptimizer(0)
     p = opt.load_params(filename, opt.data_folder).value
@@ -140,12 +138,12 @@ def visualize_params_from_file(filename):
 
 def main():
     optimizer = SwingFootSplineOptimizer(1000)
-    optimizer.learn_spline_from_bad_guess()
+    optimizer.learn_spline()
 
 
 if __name__ == "__main__":
-    # plot_params_from_file('2022_06_10_14_06_100')
+    # plot_params_from_file('2022_06_15_00_06_1000')
     # traj = visualize_params(get_default_params())
-    # visualize_params_from_file('2022_06_08_23_1000')
+    visualize_params_from_file('2022_06_15_00_06_1000')
     # plot_torque_comparison('2022_06_08_23_1000')
-    main()
+    # main()

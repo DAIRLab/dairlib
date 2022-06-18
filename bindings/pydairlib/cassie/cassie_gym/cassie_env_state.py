@@ -58,10 +58,10 @@ class CassieEnvState():
         if len(self.action) == CASSIE_NRADIO:
             return self.action[2]
         else:
-            return 0
+            return 1.0
 
     def get_desired_lateral_velocity(self):
-        return self.action[3]
+        return 0
 
 
 def quat_to_rotation(q):

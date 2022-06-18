@@ -40,8 +40,9 @@ CassieSimDiagram::CassieSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
+  float s = -0.1 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX/0.2));
   multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu,
-                            Eigen::Vector3d(0, 0, 1));
+                            Eigen::Vector3d(s, 0, 1).normalized());
   plant_->Finalize();
 
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(*plant_);
@@ -103,7 +104,6 @@ CassieSimDiagram::CassieSimDiagram(
   builder.BuildInto(this);
   this->set_name("cassie_sim_diagram");
   DrawAndSaveDiagramGraph(*this);
-  std::cout << "Built simulator" << std::endl;
 }
 }  // namespace examples
 }  // namespace dairlib

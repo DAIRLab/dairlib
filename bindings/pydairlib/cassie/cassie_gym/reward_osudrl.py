@@ -42,7 +42,8 @@ class RewardOSUDRL():
         self.l_foot_vel = (foot_pos[0:3] - prev_foot[0:3]) / 0.0005
         self.r_foot_vel = (foot_pos[3:6] - prev_foot[3:6]) / 0.0005
 
-    def compute_reward(self, timestep, cassie_env_state, prev_cassie_env_state):
+    def compute_reward(self, timestep, cassie_env_state, prev_cassie_env_state,
+                       swing_foot_error=None):
         pos = cassie_env_state.get_positions()
         vel = cassie_env_state.get_velocities()
         com_pos = cassie_env_state.get_fb_positions()
@@ -98,11 +99,14 @@ class RewardOSUDRL():
 
         torque_penalty = 0.5 * (sum(np.abs(prev_torques - torques)) / len(torques))
 
+        osc_term = 0 if swing_foot_error is None else np.exp(-np.linalg.norm(swing_foot_error))
+
         reward = 0.100 * np.exp(-(com_orient_error + foot_orient_error)) + \
                  0.025 * np.exp(-pelvis_motion) + \
                  0.500 * np.exp(-com_vel_error) + \
                  0.010 * np.exp(-hip_roll_penalty) + \
-                 0.500 * np.exp(-torque_penalty)
+                 0.500 * np.exp(-torque_penalty) + \
+                 osc_term
 
 
         # print(0.200 * np.exp(-(com_orient_error + hip_yaw_penalty)))

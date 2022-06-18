@@ -27,6 +27,16 @@ cc_library(
 )
 
 cc_library(
+    name = "osc_debug_parser",
+    srcs = ["osc_debug_parser.cc"],
+    hdrs = ["osc_debug_parser.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "osc_tracking_datas",
     deps = [
         ":com_tracking_data",

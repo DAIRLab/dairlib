@@ -123,7 +123,7 @@ void OscTrackingData::AddFiniteStateToTrack(int state) {
 // Run this function in OSC constructor to make sure that users constructed
 // OscTrackingData correctly.
 void OscTrackingData::CheckOscTrackingData() {
-  cout << "Checking " << name_ << endl;
+//  cout << "Checking " << name_ << endl;
   CheckDerivedOscTrackingData();
 
   DRAKE_DEMAND((K_p_.rows() == n_ydot_) && (K_p_.cols() == n_ydot_));

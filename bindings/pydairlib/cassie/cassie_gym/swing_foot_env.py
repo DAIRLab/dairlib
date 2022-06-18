@@ -14,7 +14,7 @@ from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState, CASSIE_
 from pydairlib.cassie.cassie_gym.reward_osudrl import RewardOSUDRL
 # from reward_osudrl import RewardOSUDRL
 
-N_KNOT = 10
+N_KNOT = 9
 SWING_FOOT_ACTION_DIM = N_KNOT * 3 + 6
 
 
@@ -60,6 +60,7 @@ class SwingFootEnv(DrakeCassieGym):
         self.add_controller()
         self.make(self.controller)
         self.ss_states = [0, 1]
+        self.swing_ft_error_port = self.controller.get_swing_error_output_port()
 
     def add_controller(self):
         osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
@@ -88,12 +89,14 @@ class SwingFootEnv(DrakeCassieGym):
 
         # Essentially want to do till the end of current double stance and then 
         # the end of the next single stance in one environment step
+        radio = np.zeros((CASSIE_NRADIO,))
+        radio[2] = 1.0
         while not done_with_ds or cur_fsm_state in self.ss_states:
             next_timestep = self.drake_simulator.get_context().get_time() + self.sim_dt
             self.cassie_sim.get_radio_input_port().FixValue(
-                self.cassie_sim_context, np.zeros((CASSIE_NRADIO,)))
+                self.cassie_sim_context, radio)
             self.controller.get_radio_input_port().FixValue(
-                self.controller_context, np.zeros((CASSIE_NRADIO,)))
+                self.controller_context, radio)
             self.controller.get_swing_foot_params_input_port().FixValue(
                 self.controller_context, pack_action_message(action))
             # Do sim step
@@ -110,8 +113,10 @@ class SwingFootEnv(DrakeCassieGym):
             u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
             self.cassie_state = CassieEnvState(self.current_time, x, u, action)
             self.traj.append(self.cassie_state)
+            swing_ft_error = self.swing_ft_error_port.Eval(self.controller_context).ravel()
             reward = self.reward_func.compute_reward(
-                self.sim_dt, self.cassie_state, self.prev_cassie_state)
+                self.sim_dt, self.cassie_state, self.prev_cassie_state,
+                swing_foot_error=swing_ft_error)
             self.terminated = self.check_termination()
             self.prev_cassie_state = self.cassie_state
             cumulative_reward += reward

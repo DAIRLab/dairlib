@@ -21,6 +21,7 @@
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/controllers/osc/osc_debug_parser.h"
 #include "systems/controllers/alip_footstep_planner.h"
 #include "systems/controllers/swing_foot_target_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
@@ -391,6 +392,10 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   }
   osc->Build();
 
+  auto osc_debug =
+      builder.AddSystem<systems::controllers::OscDebugParser>("swing_ft_traj");
+
+
   /*** Connect input and output ports ***/
   // Connect state receiver output
   builder.Connect(state_receiver->get_output_port(),
@@ -476,6 +481,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
                   osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
   builder.Connect(osc->get_output_port(0),
       command_sender->get_input_port(0));
+  builder.Connect(osc->get_osc_debug_port(), osc_debug->get_input_port());
 
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
   builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
@@ -485,12 +491,12 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
   builder.ExportOutput(fsm->get_output_port_fsm(), "fsm_state");
+  builder.ExportOutput(osc_debug->get_error_y_output_port(), "swing_foot_error_y");
 
   // Create the diagram
   builder.BuildInto(this);
   this->set_name(("ALIP_walking_controller_diagram"));
   DrawAndSaveDiagramGraph(*this);
-  std::cout << "Built controller" << std::endl;
 
 }
 }

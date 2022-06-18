@@ -46,6 +46,7 @@ cc_library(
         "//systems/controllers:fsm_event_time",
         "//systems/controllers:swing_foot_target_traj_gen",
         "//systems/controllers/osc:operational_space_control",
+        "//systems/controllers/osc:osc_debug_parser",
         "//systems/controllers/osc:osc_tracking_datas",
         "//systems/filters:floating_base_velocity_filter",
         "//systems/primitives:radio_parser",

@@ -47,6 +47,9 @@ PYBIND11_MODULE(controllers, m) {
            py_rvp::reference_internal)
       .def("get_fsm_output_port",
            &AlipWalkingControllerDiagram::get_fsm_output_port,
+           py_rvp::reference_internal)
+      .def("get_swing_error_output_port",
+           &AlipWalkingControllerDiagram::get_swing_error_output_port,
            py_rvp::reference_internal);
 }
 }  // namespace pydairlib

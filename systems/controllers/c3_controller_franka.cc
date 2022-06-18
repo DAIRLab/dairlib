@@ -126,8 +126,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   double duty_cycle = param_.duty_cycle;
   double return_cycle = 1-duty_cycle;
   double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
-  double shifted_time = timestamp - settling_time;
-  double ts = shifted_time - period * floor((shifted_time / period));
   double x_c = param_.x_c;
   double y_c = param_.y_c;
   double traj_radius = param_.traj_radius;
@@ -217,8 +215,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();
 
-  /// rolling phase
+  double shifted_time = timestamp - settling_time -  return_cycle * period;
+  if (shifted_time < 0) shifted_time += period;
+  double ts = shifted_time - period * floor((shifted_time / period));
+
   double back_dist = param_.test_parameters(0);
+  /// rolling phase
   if ( ts < period*duty_cycle ) {
     traj_desired_vector[0] = state[7];
     traj_desired_vector[1] = state[8];

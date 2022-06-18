@@ -9,4 +9,5 @@ attic/multibody/solver_log/
 .clwb/
 .ijwb
 .vscode
+.learning_data
 /examples/Cassie/saved_trajectories/

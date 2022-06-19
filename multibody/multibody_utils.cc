@@ -13,9 +13,13 @@ using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::VectorX;
 using drake::geometry::HalfSpace;
+using drake::geometry::Box;
+using drake::geometry::SourceId;
+using drake::geometry::GeometryId;
 using drake::geometry::SceneGraph;
 using drake::math::ExtractGradient;
 using drake::math::ExtractValue;
+using drake::math::RigidTransform;
 using drake::multibody::BodyIndex;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
@@ -141,6 +145,26 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
     plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
                                   "visual");
   }
+}
+
+template <typename T>
+std::vector<GeometryId> AddBox(
+    MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
+    const RigidTransform<T>& X_WB, const Vector3d& len_xyz, double mu) {
+  if (!plant->geometry_source_is_registered()) {
+    plant->RegisterAsSourceForSceneGraph(scene_graph);
+  }
+  drake::multibody::CoulombFriction<T> friction(mu, mu);
+  std::vector<GeometryId> ids;
+
+  Box box(len_xyz(0), len_xyz(1), len_xyz(2));
+  ids.push_back(
+      plant->RegisterCollisionGeometry(
+          plant->world_body(), X_WB, box, "box collision", friction));
+  ids.push_back(
+      plant->RegisterVisualGeometry(
+          plant->world_body(), X_WB, box, "box visual"));
+  return ids;
 }
 
 /// Construct a map between joint names and position indices

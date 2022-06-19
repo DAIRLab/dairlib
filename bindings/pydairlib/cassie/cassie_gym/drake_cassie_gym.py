@@ -9,7 +9,7 @@ from pydrake.systems.analysis import Simulator
 
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.cassie.cassie_utils import *
-from pydairlib.multibody import *
+from pydairlib.multibody import MultibodyPlant
 from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
 from dairlib import lcmt_radio_out

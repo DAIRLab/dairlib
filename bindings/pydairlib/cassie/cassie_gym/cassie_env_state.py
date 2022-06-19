@@ -18,10 +18,11 @@ CASSIE_NRADIO = 18
 
 
 class CassieEnvState():
-    def __init__(self, t, x, u, action):
+    def __init__(self, t, x, u, radio, action):
         self.t = t
         self.x = x
         self.u = u
+        self.radio = radio
         self.action = action
 
     def get_positions(self):
@@ -54,14 +55,11 @@ class CassieEnvState():
     def get_joint_velocities(self):
         return self.x[CASSIE_JOINT_VELOCITY_SLICE]
 
-    def get_desired_forward_velocity(self):
-        if len(self.action) == CASSIE_NRADIO:
-            return self.action[2]
-        else:
-            return 1.0
+    def get_desired_forward_velocity(self, vel_scale):
+        return self.radio[2] * vel_scale
 
-    def get_desired_lateral_velocity(self):
-        return 0
+    def get_desired_lateral_velocity(self, vel_scale):
+        return self.radio[3] * vel_scale
 
 
 def quat_to_rotation(q):

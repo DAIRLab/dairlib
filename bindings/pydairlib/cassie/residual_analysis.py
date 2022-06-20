@@ -287,13 +287,18 @@ class CaaiseSystemTest():
         
         return lambda_c_map, lambda_c_map_inverse
 
-    def get_residual(self, vdot_gt, vdot_est, alpha = 1):
-        residuals = [vdot_gt[0] - vdot_est[0]]
-        for i in range(1, vdot_est.shape[0]):
-            residuals.append(alpha*(vdot_gt[i] - vdot_est[i])  + (1-alpha)* residuals[-1])
+    def get_residual(self, vdot_gt, vdot_est, cutting_f = 100):
+        residuals = vdot_gt - vdot_est
+        residuals_smoothed = self.first_order_filter(residuals, cutting_f=100)
+        return residuals_smoothed
 
-        residuals = np.array(residuals)
-        return residuals
+    def first_order_filter(self, orginal_signals, cutting_f=100, Ts=0.0005):
+        a = np.exp(-2*np.pi*cutting_f*Ts)
+        filtered_signals = [orginal_signals[0]]
+        for i in range(1, orginal_signals.shape[0]):
+            filtered_signals.append(a * filtered_signals[-1] + (1-a) * orginal_signals[i])
+        filtered_signals = np.array(filtered_signals)
+        return filtered_signals 
 
     def simulation_test(self):
         raw_data = scipy.io.loadmat(self.data_path)
@@ -341,7 +346,8 @@ class CaaiseSystemTest():
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
 
         # Save residual pictures
-        self.draw_residual(lambda_c_gt[:,2]+lambda_c_gt[:,5], residual_list, "bindings/pydairlib/cassie/residual_analysis/simulation_test/residuals/left_total_z_direction")
+        self.draw_residual(lambda_c_gt[:,2]+lambda_c_gt[:,5]+lambda_c_gt[:,8]+lambda_c_gt[:,11], residual_list, 
+                            "bindings/pydairlib/cassie/residual_analysis/simulation_test/residuals/total_contact_force_at_z_direction")
         
         # Save lambda_c
         for i in range(12):
@@ -402,6 +408,8 @@ class CaaiseSystemTest():
         v_dot = (robot_output['v'][0][0][start_index+smooth_window:end_index+smooth_window,:] - robot_output['v'][0][0][start_index-smooth_window:end_index-smooth_window,:])\
             /(robot_output["t_x"][0][0][0][start_index+smooth_window:end_index+smooth_window] - robot_output["t_x"][0][0][0][start_index-smooth_window:end_index-smooth_window])[:,None]
         
+        v_dot = self.first_order_filter(v_dot)
+
         # processing contact force
         contact_output = raw_data['contact_output']
         t_contact = contact_output['t_lambda'][0][0][0]

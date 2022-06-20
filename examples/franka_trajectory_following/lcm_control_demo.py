@@ -17,7 +17,7 @@ from pydrake.all import (AbstractValue, DiagramBuilder, DrakeLcm, LeafSystem,
                          LcmInterfaceSystem)
 #import pydairlib.common
 
-from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
+from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap, makeNameToVelocitiesMap)
 import pydairlib.common
 from pydairlib.systems.controllers_franka import C3Controller_franka
 
@@ -138,6 +138,7 @@ nc = 2
 
 q = np.zeros((nq,1))
 q_map = makeNameToPositionsMap(plant)
+v_map = makeNameToVelocitiesMap(plant)
 
 finger_init = param["q_init_finger"]
 q[0] = finger_init[0]
@@ -163,6 +164,7 @@ Qinit[7,7] = param["Q_ball_x"]
 Qinit[8,8] = param["Q_ball_y"]
 Qinit[10:10+nv,10:10+nv] = param["Q_ball_vel"] * np.eye(nv)
 Qinit[10:13,10:13] = param["Q_finger_vel"]*np.eye(3) #10
+# Qinit[13:16] = 0*np.eye(3) # zero out cost on rotational velocity
 Rinit = param["R"] * np.eye(nu) #torques
 
 #admm_params

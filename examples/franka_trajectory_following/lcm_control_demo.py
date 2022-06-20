@@ -164,7 +164,7 @@ Qinit[7,7] = param["Q_ball_x"]
 Qinit[8,8] = param["Q_ball_y"]
 Qinit[10:10+nv,10:10+nv] = param["Q_ball_vel"] * np.eye(nv)
 Qinit[10:13,10:13] = param["Q_finger_vel"]*np.eye(3) #10
-# Qinit[13:16] = 0*np.eye(3) # zero out cost on rotational velocity
+# Qinit[13:16, 13:16] = 0*np.eye(3) # zero out cost on rotational velocity
 Rinit = param["R"] * np.eye(nu) #torques
 
 #admm_params

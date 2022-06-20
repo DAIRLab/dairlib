@@ -73,7 +73,6 @@ class C3Controller : public LeafSystem<double> {
   }
 
   // void AddConstraint() const;
-
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;

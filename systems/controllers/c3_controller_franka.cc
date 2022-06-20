@@ -44,13 +44,14 @@ using std::vector;
 using drake::multibody::JacobianWrtVariable;
 using drake::math::RotationMatrix;
 
-// TODO: remove this (only used for Adam debugging)
 // task space helper function that generates the target trajectory
 // modified version of code from impedance_controller.cc
 std::vector<Eigen::Vector3d> move_to_initial_position(
     const Eigen::Vector3d& start, const Eigen::Vector3d& finish,
     double curr_time, double stabilize_time1,
     double move_time, double stabilize_time2);
+
+bool DONE = false;
 
 namespace dairlib {
 namespace systems {
@@ -198,9 +199,24 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // traj_desired_vector 7-9 is xyz of sphere
     double x = ball_xyz(0) - x_c;
     double y = ball_xyz(1) - y_c;
+
+    // compute theta_d
+//    double theta = 0;
+//    if (!DONE){
+//      // note that the x and y arguments are intentionally flipped
+//      // since we want to get the angle from the y-axis, not the x-axis
+//      double angle = atan2(x,y);
+//      double theta = angle + param_.lead_angle * 3.14159 / 180;
+//      if (theta >= 0 && angle < 0){
+//        DONE = true; // try to stop the ball
+//        theta = 0;
+//      }
+//    }
+
     // note that the x and y arguments are intentionally flipped
     // since we want to get the angle from the y-axis, not the x-axis
-    double theta = atan2(x, y) + param_.lead_angle * 3.14159 / 180;
+    double angle = atan2(x,y);
+    double theta = angle + param_.lead_angle * 3.14159 / 180;
 
     traj_desired_vector(7) = x_c + traj_radius * sin(theta);
     traj_desired_vector(8) = y_c + traj_radius * cos(theta);

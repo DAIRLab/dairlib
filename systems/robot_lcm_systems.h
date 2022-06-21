@@ -52,8 +52,7 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   }
 
   const drake::systems::InputPort<double>& get_input_port_effort() const {
-    if(!publish_efforts_)
-      std::cerr << "RobotOutputSender not configured to publish efforts." << std::endl;
+    DRAKE_DEMAND(publish_efforts_);
     return this->get_input_port(effort_input_port_);
   }
 

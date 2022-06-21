@@ -1,4 +1,5 @@
 #include "drake/lcm/drake_lcm_log.h"
+#include <iostream>
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_log_playback_system.h"

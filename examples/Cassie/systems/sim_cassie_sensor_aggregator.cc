@@ -10,8 +10,6 @@ using dairlib::systems::TimestampedVector;
 using Eigen::VectorXd;
 using drake::systems::Context;
 using std::map;
-using std::cout;
-using std::endl;
 
 SimCassieSensorAggregator::SimCassieSensorAggregator(
   const drake::multibody::MultibodyPlant<double>& plant) {

@@ -3,6 +3,7 @@
 
 #include <drake/systems/primitives/constant_vector_source.h>
 #include <drake/systems/primitives/zero_order_hold.h>
+#include <iostream>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"

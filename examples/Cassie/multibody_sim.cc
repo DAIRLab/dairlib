@@ -215,9 +215,6 @@ int do_main(int argc, char* argv[]) {
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
   VectorXd x = plant.GetPositionsAndVelocities(plant_context);
-  const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
-                                         Eigen::DontAlignCols, ", ", "\n");
-  std::cout << "x_init: " << x.transpose().format(CSVFormat) << std::endl;
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

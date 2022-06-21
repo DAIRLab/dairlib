@@ -1,5 +1,6 @@
 #include <drake/systems/analysis/simulator.h>
 #include <gflags/gflags.h>
+#include <iostream>
 
 #include "dairlib/lcmt_pd_config.hpp"
 #include "dairlib/lcmt_robot_input.hpp"

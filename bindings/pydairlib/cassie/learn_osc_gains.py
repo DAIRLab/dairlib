@@ -24,7 +24,7 @@ class OSCGainsOptimizer():
         self.budget = budget
         self.total_loss = 0
         self.reward_function = reward_function
-        self.end_time = 5.0
+        self.end_time = 10.0
         self.gym_env = None
         self.sim = None
         self.controller = None
@@ -144,6 +144,46 @@ class OSCGainsOptimizer():
         np.save(self.drake_params_folder + 'loss_trajectory_' + str(self.budget), loss_samples)
         self.save_params(self.drake_params_folder, params, budget)
 
+    def learn_gains_apex(self):
+        from optimizers.ppo import run_experiment
+        import argparse
+        parser = argparse.ArgumentParser()
+
+        # general args
+        parser.add_argument("--logdir", type=str, default="./trained_models/ppo/")          # Where to log diagnostics to
+        parser.add_argument("--seed", default=0, type=int)                                  # Sets Gym, PyTorch and Numpy seeds
+        parser.add_argument("--history", default=0, type=int)                                         # number of previous states to use as input
+        parser.add_argument("--redis_address", type=str, default=None)                      # address of redis server (for cluster setups)
+        parser.add_argument("--viz_port", default=8097)                                     # (deprecated) visdom server port
+
+        # PPO algo args
+        parser.add_argument("--input_norm_steps", type=int, default=10000)
+        parser.add_argument("--n_itr", type=int, default=10000, help="Number of iterations of the learning algorithm")
+        parser.add_argument("--lr", type=float, default=1e-4, help="Adam learning rate") # Xie
+        parser.add_argument("--eps", type=float, default=1e-5, help="Adam epsilon (for numerical stability)")
+        parser.add_argument("--lam", type=float, default=0.95, help="Generalized advantage estimate discount")
+        parser.add_argument("--gamma", type=float, default=0.99, help="MDP discount")
+        parser.add_argument("--anneal", default=1.0, action='store_true', help="anneal rate for stddev")
+        parser.add_argument("--learn_stddev", default=False, action='store_true', help="learn std_dev or keep it fixed")
+        parser.add_argument("--std_dev", type=int, default=-1.5, help="exponent of exploration std_dev")
+        parser.add_argument("--entropy_coeff", type=float, default=0.0, help="Coefficient for entropy regularization")
+        parser.add_argument("--clip", type=float, default=0.2, help="Clipping parameter for PPO surrogate loss")
+        parser.add_argument("--minibatch_size", type=int, default=64, help="Batch size for PPO updates")
+        parser.add_argument("--epochs", type=int, default=3, help="Number of optimization epochs per PPO update") #Xie
+        parser.add_argument("--num_steps", type=int, default=5096, help="Number of sampled timesteps per gradient estimate")
+        parser.add_argument("--use_gae", type=bool, default=True,help="Whether or not to calculate returns using Generalized Advantage Estimation")
+        parser.add_argument("--num_procs", type=int, default=30, help="Number of threads to train on")
+        parser.add_argument("--max_grad_norm", type=float, default=0.05, help="Value to clip gradients at.")
+        parser.add_argument("--max_traj_len", type=int, default=400, help="Max episode horizon")
+        parser.add_argument("--recurrent",   action='store_true')
+        parser.add_argument("--bounded",   type=bool, default=False)
+        args = parser.parse_args()
+
+        args = parse_previous(args)
+
+        run_experiment(args)
+
+
 
 if __name__ == '__main__':
     # budget = 2000
@@ -152,7 +192,8 @@ if __name__ == '__main__':
     reward_function = RewardOSUDRL()
 
     optimizer = OSCGainsOptimizer(budget, reward_function, visualize=False)
-    optimizer.learn_gains()
+    # optimizer.learn_gains()
+    optimizer.learn_gains_apex()
 
     # optimal_params = optimizer.load_params('2022_06_09_15_500', optimizer.drake_params_folder).value
     # optimizer.write_params(optimal_params)

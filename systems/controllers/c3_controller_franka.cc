@@ -188,19 +188,20 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd v(9);
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
-
-  // comparing the angular velocity versus computed angular velocity
-  Vector3d v_ball = ball_dot.tail(3);
-  Vector3d r_ball(0, 0, ball_radius);
-  Vector3d computed_ang_vel = r_ball.cross(v_ball) / (ball_radius * ball_radius);
+  Vector3d ball_xyz = ball.tail(3);
 
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << end_effector, 0, 0, 0, 0, ball.tail(3), end_effector_dot, computed_ang_vel, ball_dot.tail(3);
-  // state << end_effector, ball, end_effector_dot, computed_ang_vel, ball_dot;
-  Vector3d ball_xyz(state[7], state[8], state[9]);
+  if (param_.compute_angular_velocity == 1){
+    Vector3d v_ball = ball_dot.tail(3);
+    Vector3d r_ball(0, 0, ball_radius);
+    Vector3d computed_ang_vel = r_ball.cross(v_ball) / (ball_radius * ball_radius);
+    state << end_effector, 0, 0, 0, 0, ball.tail(3), end_effector_dot, computed_ang_vel, ball_dot.tail(3);
+  }
+  else {
+    state << end_effector, ball, end_effector_dot, ball_dot;
+  }
 
   VectorXd traj_desired_vector = pp_.value(timestamp);
-
   // compute adaptive path if enable_adaptive_path is 1
   if (param_.enable_adaptive_path == 1){
     // traj_desired_vector 7-9 is xyz of sphere

@@ -1,4 +1,5 @@
 #include <memory>
+#include <iostream>
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"

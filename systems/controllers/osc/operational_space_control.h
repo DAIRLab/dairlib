@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 
@@ -101,8 +102,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
       drake::systems::Context<double>* context_w_spr,
       drake::systems::Context<double>* context_wo_spr,
-      bool used_with_finite_state_machine = true,
-      bool print_tracking_info = false, double qp_time_limit = 0);
+      bool used_with_finite_state_machine = true, double qp_time_limit = 0);
 
   const drake::systems::OutputPort<double>& get_osc_output_port() const {
     return this->get_output_port(osc_output_port_);
@@ -310,9 +310,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
-
-  // flag indicating whether to print the tracking related values or not
-  bool print_tracking_info_;
 
   // floating base model flag
   bool is_quaternion_;

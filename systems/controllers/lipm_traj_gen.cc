@@ -2,7 +2,7 @@
 
 #include <math.h>
 
-#include <fstream>
+#include <iostream>
 #include <string>
 
 #include <drake/math/saturate.h>

@@ -39,18 +39,18 @@ void ParseQuadraticCosts(const MathematicalProgram& prog,
     const std::vector<int> x_indices = prog.FindDecisionVariableIndices(x);
 
     // Add quadratic_cost.Q to the Hessian P.
-    const std::vector<Eigen::Triplet<double>> Qi_triplets =
-        SparseMatrixToTriplets(quadratic_cost.evaluator()->Q());
-    P_triplets.reserve(P_triplets.size() + Qi_triplets.size());
-    for (int i = 0; i < static_cast<int>(Qi_triplets.size()); ++i) {
-      // Unpack the field of the triplet (for clarity below).
-      const int row = x_indices[Qi_triplets[i].row()];
-      const int col = x_indices[Qi_triplets[i].col()];
-      const double value = Qi_triplets[i].value();
-      // Since OSQP 0.6.0 the P matrix is required to be upper triangular, so
-      // we only add upper triangular entries to P_triplets.
-      if (row <= col) {
-        P_triplets.emplace_back(row, col, static_cast<c_float>(value));
+    // Since OSQP 0.6.0 the P matrix is required to be upper triangular, so
+    // we only add upper triangular entries to P_triplets.
+    const Eigen::MatrixXd& Q = quadratic_cost.evaluator()->Q();
+    for (int col = 0; col < Q.cols(); ++col) {
+      for (int row = 0; (row <= col) && (row < Q.rows()); ++row) {
+        const double value = Q(row, col);
+        if (value == 0.0) {
+          continue;
+        }
+        const int x_row = x_indices[row];
+        const int x_col = x_indices[col];
+        P_triplets.emplace_back(x_row, x_col, static_cast<c_float>(value));
       }
     }
 
@@ -62,6 +62,27 @@ void ParseQuadraticCosts(const MathematicalProgram& prog,
     // Add quadratic_cost.c to constant term
     *constant_cost_term += quadratic_cost.evaluator()->c();
   }
+
+//  // Scale the matrix P in the cost.
+//  // Note that the linear term is scaled in ParseLinearCosts().
+//  const auto& scale_map = prog.GetVariableScaling();
+//  if (!scale_map.empty()) {
+//    for (auto& triplet : P_triplets) {
+//      // Column
+//      const auto column = scale_map.find(triplet.col());
+//      if (column != scale_map.end()) {
+//        triplet = Eigen::Triplet<double>(triplet.row(), triplet.col(),
+//                                         triplet.value() * (column->second));
+//      }
+//      // Row
+//      const auto row = scale_map.find(triplet.row());
+//      if (row != scale_map.end()) {
+//        triplet = Eigen::Triplet<double>(triplet.row(), triplet.col(),
+//                                         triplet.value() * (row->second));
+//      }
+//    }
+//  }
+
   P->resize(prog.num_vars(), prog.num_vars());
   P->setFromTriplets(P_triplets.begin(), P_triplets.end());
 }
@@ -111,7 +132,8 @@ void ParseLinearConstraints(
     const std::vector<int> x_indices =
         prog.FindDecisionVariableIndices(constraint.variables());
     const std::vector<Eigen::Triplet<double>> Ai_triplets =
-        SparseMatrixToTriplets(constraint.evaluator()->A());
+        drake::math::SparseMatrixToTriplets(
+            constraint.evaluator()->get_sparse_A());
     const Binding<Constraint> constraint_cast =
         BindingDynamicCast<Constraint>(constraint);
     constraint_start_row->emplace(constraint_cast, *num_A_rows);
@@ -330,9 +352,8 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   workspace_ = nullptr;
   const c_int osqp_setup_err =
       osqp_setup(&workspace_, osqp_data_, osqp_settings_);
-  if (osqp_setup_err != 0) {
-    std::cerr << "Error setting up osqp solver.";
-  }
+  DRAKE_DEMAND(osqp_setup_err == 0);
+
   is_init_ = true;
 }
 
@@ -390,7 +411,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   osqp_update_bounds(workspace_, l.data(), u.data());
   osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
                   OSQP_NULL, A_csc->nzmax);
-  //  SetFastOsqpSolverSettings(merged_options, osqp_settings_);
+  SetFastOsqpSolverSettings(merged_options, osqp_settings_);
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
 

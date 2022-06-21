@@ -1,4 +1,5 @@
 #include "systems/controllers/endeffector_velocity_controller.h"
+#include <iostream>
 
 namespace dairlib{
 namespace systems{

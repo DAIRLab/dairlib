@@ -7,9 +7,6 @@
 
 #include "multibody/multibody_utils.h"
 
-using std::cout;
-using std::endl;
-
 using Eigen::MatrixXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;

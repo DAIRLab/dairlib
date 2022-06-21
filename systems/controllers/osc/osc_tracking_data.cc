@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 
@@ -118,11 +119,6 @@ void OscTrackingData::StoreYddotCommandSol(const VectorXd& dv) {
 }
 
 void OscTrackingData::AddFiniteStateToTrack(int state) {
-  // Avoid repeated states
-  if (active_fsm_states_.count(state)) {
-    std::cout << "FSM state: " << state << " was already included in " << name_
-              << std::endl;
-  }
   DRAKE_DEMAND(!active_fsm_states_.count(state));
   active_fsm_states_.insert(state);
 }

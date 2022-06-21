@@ -1,6 +1,7 @@
 #include "systems/controllers/osc/operational_space_control.h"
 
 #include <drake/multibody/plant/multibody_plant.h>
+#include <iostream>
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
@@ -50,7 +51,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_wo_spr,
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
-    bool used_with_finite_state_machine, bool print_tracking_info,
+    bool used_with_finite_state_machine,
     double qp_time_limit)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
@@ -59,7 +60,6 @@ OperationalSpaceControl::OperationalSpaceControl(
       world_w_spr_(plant_w_spr_.world_frame()),
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
-      print_tracking_info_(print_tracking_info),
       qp_time_limit_(qp_time_limit) {
   this->set_name("OSC");
 
@@ -780,6 +780,11 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
+//  const MathematicalProgramResult result = solver_->Solve(*prog_);
+  auto osqp_solver = drake::solvers::OsqpSolver();
+//  osqp_solver->S
+  const MathematicalProgramResult result = osqp_solver.Solve(*prog_);
+
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   if (result.is_success()) {
@@ -1085,9 +1090,6 @@ void OperationalSpaceControl::CalcOptimalInput(
   double timestamp = robot_output->get_timestamp();
 
   double current_time = timestamp;
-  if (print_tracking_info_) {
-    cout << "\n\ncurrent_time = " << current_time << endl;
-  }
 
   VectorXd x_wo_spr(n_q_ + n_v_);
   x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,

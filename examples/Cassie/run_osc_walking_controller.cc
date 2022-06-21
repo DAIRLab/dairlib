@@ -81,7 +81,6 @@ DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
               "Filepath containing qp settings");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
-DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
@@ -368,7 +367,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
-      FLAGS_print_osc, FLAGS_qp_time_limit);
+       FLAGS_qp_time_limit);
 
   // Cost
   int n_v = plant_w_spr.num_velocities();

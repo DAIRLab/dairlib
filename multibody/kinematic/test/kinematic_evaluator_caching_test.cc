@@ -1,4 +1,5 @@
 #include <chrono>
+#include <iostream>
 
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"

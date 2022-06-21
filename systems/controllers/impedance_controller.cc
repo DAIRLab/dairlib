@@ -225,7 +225,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   //qd << qd_.head(4), q(4), q(5), q(6);
   tau += N * (K_null_*(qd_-q_franka) - B_null_*v_franka);
 
-  this->CheckJointLimits(q.head(7), timestamp);
+  //this->CheckJointLimits(q.head(7), timestamp);
   this->ClampJointTorques(tau, timestamp);
 
   control->SetDataVector(tau);
@@ -324,11 +324,11 @@ void ImpedanceController::ClampJointTorques(VectorXd& tau, double timestamp) con
     if (tau(i) < 0) sign = -1;
 
     if (abs(tau(i)) > thresholds(i)){
-      std::cout << "[time: " << timestamp << "] " << "Joint " 
-                << i+1 << "'s desired torque of " << tau(i)
-                << " is close to or above its torque limit of "
-                << torque_limits_(i) <<". This torque input has been clamped to "
-                << sign * thresholds(i) << "." << std::endl;
+//      std::cout << "[time: " << timestamp << "] " << "Joint "
+//                << i+1 << "'s desired torque of " << tau(i)
+//                << " is close to or above its torque limit of "
+//                << torque_limits_(i) <<". This torque input has been clamped to "
+//                << sign * thresholds(i) << "." << std::endl;
       tau(i) = sign * thresholds(i);
     }
   }

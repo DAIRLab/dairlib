@@ -183,13 +183,20 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   VectorXd ball = robot_output->GetPositions().tail(7);
   VectorXd ball_dot = robot_output->GetVelocities().tail(6);
-  VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << end_effector, ball, end_effector_dot, ball_dot;
   VectorXd q(10);
   q << end_effector, ball;
   VectorXd v(9);
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
+
+  // comparing the angular velocity versus computed angular velocity
+  Vector3d v_ball = ball_dot.tail(3);
+  Vector3d r_ball(0, 0, ball_radius);
+  Vector3d computed_ang_vel = r_ball.cross(v_ball) / (ball_radius * ball_radius);
+
+  VectorXd state(plant_.num_positions() + plant_.num_velocities());
+  state << end_effector, 0, 0, 0, 0, ball.tail(3), end_effector_dot, computed_ang_vel, ball_dot.tail(3);
+  // state << end_effector, ball, end_effector_dot, computed_ang_vel, ball_dot;
   Vector3d ball_xyz(state[7], state[8], state[9]);
 
   VectorXd traj_desired_vector = pp_.value(timestamp);
@@ -199,19 +206,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // traj_desired_vector 7-9 is xyz of sphere
     double x = ball_xyz(0) - x_c;
     double y = ball_xyz(1) - y_c;
-
-    // compute theta_d
-//    double theta = 0;
-//    if (!DONE){
-//      // note that the x and y arguments are intentionally flipped
-//      // since we want to get the angle from the y-axis, not the x-axis
-//      double angle = atan2(x,y);
-//      double theta = angle + param_.lead_angle * 3.14159 / 180;
-//      if (theta >= 0 && angle < 0){
-//        DONE = true; // try to stop the ball
-//        theta = 0;
-//      }
-//    }
 
     // note that the x and y arguments are intentionally flipped
     // since we want to get the angle from the y-axis, not the x-axis
@@ -259,22 +253,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     traj_desired_vector[1] = state[8] - back_dist*error_hat(1);
     traj_desired_vector[2] = param_.test_parameters(3);
   }
-
-//  traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
-//  traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
-//  traj_desired_vector[2] = 0.07;
-
-  // if (ts > period*duty_cycle && ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio*return_cycle)){
-  //   traj_desired_vector[0] = state[0]; //- 0.05;
-  //   traj_desired_vector[1] = state[1]; //+ 0.01;
-  //   //traj_desired_vector[2] = 0.075;
-  // }
-  // else{ // otherwise go to top of ball
-  //   traj_desired_vector[0] = state[7] - 0.03*error_hat(0); //- 0.05;
-  //   traj_desired_vector[1] = state[8] - 0.03*error_hat(1); //+ 0.01;
-  //   traj_desired_vector[2] = 0.07;
-  // }
-
 
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 

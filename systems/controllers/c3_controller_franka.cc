@@ -362,6 +362,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 
+  // std::cout << "A: \n" << system2_.A_[0] << std::endl << std::endl;
+  // std::cout << "B: \n" << system2_.B_[0] << std::endl << std::endl;
+  // std::cout << "D: \n" << system2_.D_[0] << std::endl << std::endl;
+
   VectorXd force_des = VectorXd::Zero(6);
   force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 

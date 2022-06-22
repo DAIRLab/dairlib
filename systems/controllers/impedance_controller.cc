@@ -78,7 +78,7 @@ ImpedanceController::ImpedanceController(
   c3_state_input_port_ =
       this->DeclareVectorInputPort(
               "xee, xball, xee_dot, xball_dot, lambda",
-              TimestampedVector<double>(28))
+              TimestampedVector<double>(31))
           .get_index();
 
   control_output_port_ = this->DeclareVectorOutputPort(
@@ -142,7 +142,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd xd_dot = VectorXd::Zero(6);
   VectorXd lambda = VectorXd::Zero(5); // does not contain the slack variable
   Vector3d ball_xyz(state(7), state(8), state(9));
-  Vector3d ball_xyz_d = state.tail(3);
+  Vector3d ball_xyz_d(state(25), state(26), state(27));
 
   xd.tail(3) << state.head(3);
   xd_dot.tail(3) << state(10), state(11), state(12);

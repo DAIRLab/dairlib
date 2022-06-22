@@ -131,7 +131,7 @@ builder.Connect(control_sender.get_output_port(),
 c3_subscriber = builder.AddSystem(LcmSubscriberSystem.Make(
     channel="CONTROLLER_INPUT", lcm_type=lcmt_c3, lcm=lcm,
     use_cpp_serializer=True))
-c3_receiver = builder.AddSystem(RobotC3Receiver(10, 9, 6, 3))
+c3_receiver = builder.AddSystem(RobotC3Receiver(10, 9, 6, 6))
 builder.Connect(c3_subscriber.get_output_port(0), c3_receiver.get_input_port(0))
 builder.Connect(c3_receiver.get_output_port(0), controller.get_input_port(1))
 

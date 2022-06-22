@@ -104,7 +104,7 @@ C3Controller_franka::C3Controller_franka(
 
 
   state_output_port_ = this->DeclareVectorOutputPort(
-          "x_lambda, t", TimestampedVector<double>(28),
+          "x_lambda, t", TimestampedVector<double>(31),
           &C3Controller_franka::CalcControl)
       .get_index();
 
@@ -140,7 +140,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                                                                    param_.stabilize_time1, param_.move_time, param_.stabilize_time2);
     VectorXd traj = pp_.value(timestamp);
 
-    VectorXd st_desired = VectorXd::Zero(28);
+    VectorXd st_desired = VectorXd::Zero(31);
     st_desired.head(3) << target[0];
     st_desired(7) = finish(0);
     st_desired(8) = finish(1);
@@ -194,7 +194,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::normal_distribution<> d{0, param_.ball_stddev};
-    ball_xyz = ball.tail(3);
+    ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), d(gen));
   }
 
   // compute the angular velocity
@@ -375,8 +375,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   VectorXd traj = pp_.value(timestamp);
 
-  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size());
-  st_desired << state_next, force_des.head(6), ball_xyz_d;
+  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size() + ball_xyz.size());
+  st_desired << state_next, force_des.head(6), ball_xyz_d, ball_xyz;
 
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);

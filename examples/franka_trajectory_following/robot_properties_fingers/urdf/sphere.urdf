@@ -16,9 +16,9 @@
         </inertial>
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
-               <geometry>
-        <sphere radius=".03"/>
-      </geometry>
+            <geometry>
+                <sphere radius=".03"/>
+            </geometry>
         </visual>
         <collision>
             <origin rpy="0 0 0" xyz="0 0 0"/>

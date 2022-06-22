@@ -34,6 +34,7 @@
 #include "examples/franka_trajectory_following/c3_parameters.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
+#include <random>
 
 
 using drake::multibody::MultibodyPlant;

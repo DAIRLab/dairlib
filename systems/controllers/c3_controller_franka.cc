@@ -117,7 +117,6 @@ C3Controller_franka::C3Controller_franka(
 void C3Controller_franka::CalcControl(const Context<double>& context,
                                       TimestampedVector<double>* state_contact_desired) const {
 
-
   // get values
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
@@ -176,10 +175,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       *EE_frame_, EE_offset_,
       *world_frame_, *world_frame_, &J_fb);
   MatrixXd J_franka = J_fb.block(0, 0, 6, 7);
-
   VectorXd end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
-
-
 
   VectorXd ball = robot_output->GetPositions().tail(7);
   VectorXd ball_dot = robot_output->GetVelocities().tail(6);
@@ -188,14 +184,25 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd v(9);
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
-  Vector3d ball_xyz = ball.tail(3);
+  
+  // add noise to ball position
+  Vector3d ball_xyz;
+  if (abs(param_.ball_stddev) < 1e-9){
+    ball_xyz = ball.tail(3);
+  }
+  else{
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<> d{0, param_.ball_stddev};
+    ball_xyz = ball.tail(3);
+  }
 
   // compute the angular velocity
   Vector3d v_ball = ball_dot.tail(3);
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(v_ball) / (ball_radius * ball_radius);
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << end_effector, 1, 0, 0, 0, ball.tail(3), end_effector_dot, computed_ang_vel, ball_dot.tail(3);
+  state << end_effector, 1, 0, 0, 0, ball_xyz, end_effector_dot, computed_ang_vel, ball_dot.tail(3);
   // state << end_effector, ball, end_effector_dot, ball_dot;
 
   VectorXd traj_desired_vector = pp_.value(timestamp);

@@ -65,9 +65,9 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(period));
     a->Visit(DRAKE_NVP(duty_cycle));
     a->Visit(DRAKE_NVP(duty_cycle_upwards_ratio));
-    a->Visit(DRAKE_NVP(return_angle));
     a->Visit(DRAKE_NVP(enable_heuristic));
     a->Visit(DRAKE_NVP(enable_contact));
+    a->Visit(DRAKE_NVP(ball_stddev));
 
     // testing params
     a->Visit(DRAKE_NVP(test_parameters));
@@ -132,9 +132,9 @@ struct C3Parameters {
   double period;
   double duty_cycle;
   double duty_cycle_upwards_ratio;
-  double return_angle;
   int enable_heuristic;
   int enable_contact;
+  double ball_stddev;
   VectorXd test_parameters;
   
   // test parameters

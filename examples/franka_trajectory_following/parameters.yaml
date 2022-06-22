@@ -56,16 +56,15 @@ finger_radius: 0.01         # changes need to be consistent with urdf
 EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 
-
 # Misc
 contact_threshold: 0.0001
 period: 3
 duty_cycle: 0.67
-
 duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
-return_angle: 0 # not used
 enable_heuristic: 0
-enable_contact: 1 # i think pulls look nicer without feed forward contact
+enable_contact: 1
+ball_stddev: 0.01 # standard deviation of 0-mean noise on ball state estimation
+
 test_parameters: [0.02, 0.075, 0.071, 0.07]
 
 # testing

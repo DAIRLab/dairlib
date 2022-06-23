@@ -145,5 +145,5 @@ struct C3Parameters {
   int enable_adaptive_path;
 
   // filter parameters
-  int dt_filter_length;
+  uint32_t dt_filter_length;
 };

@@ -9,10 +9,6 @@
 #include "systems/framework/output_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
-//#include
-//"external/drake/common/_virtual_includes/autodiff/drake/common/eigen_autodiff_types.h"
-//#include
-//"external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/context.h"
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 
@@ -81,9 +77,6 @@ class C3Controller_franka : public LeafSystem<double> {
 
   }
 
-
-  // void AddConstraint() const;
-
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
@@ -112,10 +105,11 @@ class C3Controller_franka : public LeafSystem<double> {
   const std::vector<Eigen::VectorXd> xdesired_;
   const drake::trajectories::PiecewisePolynomial<double> pp_;
   C3Parameters param_;
+  const double PI = 3.14159265359;
 
   mutable std::deque<double> moving_average_;
   mutable double prev_timestamp_;
-  int dt_filter_length_;
+  uint32_t dt_filter_length_;
 };
 
 }  // namespace controllers

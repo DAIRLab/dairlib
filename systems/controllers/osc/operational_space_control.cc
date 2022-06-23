@@ -1,7 +1,8 @@
 #include "systems/controllers/osc/operational_space_control.h"
 
-#include <drake/multibody/plant/multibody_plant.h>
 #include <iostream>
+
+#include <drake/multibody/plant/multibody_plant.h>
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
@@ -40,8 +41,8 @@ namespace dairlib::systems::controllers {
 
 using multibody::CreateWithSpringsToWithoutSpringsMapPos;
 using multibody::CreateWithSpringsToWithoutSpringsMapVel;
-using multibody::MakeNameToVelocitiesMap;
 using multibody::MakeNameToActuatorsMap;
+using multibody::MakeNameToVelocitiesMap;
 using multibody::SetPositionsIfNew;
 using multibody::SetVelocitiesIfNew;
 using multibody::WorldPointEvaluator;
@@ -51,8 +52,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_wo_spr,
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
-    bool used_with_finite_state_machine,
-    double qp_time_limit)
+    bool used_with_finite_state_machine, double qp_time_limit)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_w_spr_(context_w_spr),
@@ -390,8 +390,9 @@ void OperationalSpaceControl::Build() {
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {
-    input_cost_ = prog_->AddQuadraticCost(
-        W_input_, VectorXd::Zero(n_u_), u_).evaluator().get();
+    input_cost_ = prog_->AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u_)
+                      .evaluator()
+                      .get();
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
@@ -458,16 +459,17 @@ void OperationalSpaceControl::Build() {
             .get();
     /// Soft constraint version
     //  DRAKE_DEMAND(w_blend_constraint_ > 0);
-    //  prog_->AddQuadraticCost(
-    //      w_blend_constraint_ *
-    //          MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
-    //      VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
+    //      prog_->AddQuadraticCost(
+    //          w_blend_constraint_ *
+    //              MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
+    //          VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
     /// hard constraint version
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
 
-  solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  solver_->InitializeSolver(*prog_, solver_options_);
+  for (int i = -1; i < 5; ++i) {
+    solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
+  }
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -628,8 +630,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       weight(3, 3) *= 1e-3;
       weight(4, 4) *= 1e-3;
       A_c.block(0, n_v_, n_c_active_, n_c_active_) = weight;
-//      A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-//          MatrixXd::Identity(n_c_active_, n_c_active_);
+      //      A_c.block(0, n_v_, n_c_active_, n_c_active_) =
+      //          MatrixXd::Identity(n_c_active_, n_c_active_);
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
@@ -692,13 +694,19 @@ VectorXd OperationalSpaceControl::SolveQp(
       const MatrixXd& W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-      // The tracking cost is
-      // 0.5 * (J_*dv + JdotV - y_command)^T * W * (J_*dv + JdotV - y_command).
-      // We ignore the constant term
-      // 0.5 * (JdotV - y_command)^T * W * (JdotV - y_command),
-      // since it doesn't change the result of QP.
+      const VectorXd constant_term = (JdotV_t - ddy_t);
+      //      tracking_cost_.at(i)->UpdateCoefficients(
+      //          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t -
+      //          ddy_t), 0.5 * constant_term.transpose() * W * constant_term,
+      //          true);
       tracking_cost_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t));
+          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t),
+          constant_term.transpose() * W * constant_term, true);
+      //      tracking_cost_.at(i)->UpdateCoefficients(
+      //          J_t.transpose() * W * J_t, VectorXd::Zero(n_v_), 0.5 *
+      //          constant_term.transpose() * W * constant_term);
+      //      tracking_cost_.at(i)->UpdateCoefficients(
+      //          J_t.transpose() * W * J_t, VectorXd::Zero(n_v_));
     } else {
       tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                                VectorXd::Zero(n_v_));
@@ -747,14 +755,13 @@ VectorXd OperationalSpaceControl::SolveQp(
     blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
   }
 
-
   // test joint-level input cost by fsm state
   if (!fsm_to_w_input_map_.empty()) {
     MatrixXd W = W_input_;
     if (fsm_to_w_input_map_.count(fsm_state)) {
       int j = fsm_to_w_input_map_.at(fsm_state).first;
       double w = fsm_to_w_input_map_.at(fsm_state).second;
-      W(j,j) += w;
+      W(j, j) += w;
     }
     input_cost_->UpdateCoefficients(W, VectorXd::Zero(n_u_));
   }
@@ -769,22 +776,23 @@ VectorXd OperationalSpaceControl::SolveQp(
                                                  VectorXd::Zero(n_c_));
   }
 
-  //  if (!solver_->IsInitialized()) {
-  //    solver_->InitializeSolver(*prog_);
-  //  }
+  if (!solvers_.at(fsm_state)->IsInitialized()) {
+    solvers_.at(fsm_state)->InitializeSolver(*prog_, solver_options_);
+  }
 
   if (initial_guess_x_.count(fsm_state) > 0) {
-    solver_->WarmStart(initial_guess_x_.at(fsm_state),
-                       initial_guess_y_.at(fsm_state));
+    solvers_.at(fsm_state)->WarmStart(initial_guess_x_.at(fsm_state),
+                                      initial_guess_y_.at(fsm_state));
   }
 
   // Solve the QP
-//  const MathematicalProgramResult result = solver_->Solve(*prog_);
-  const MathematicalProgramResult result = solver_->Solve(*prog_);
-//  auto osqp_solver = drake::solvers::OsqpSolver();
-//  osqp_solver->S
-//  const MathematicalProgramResult result = osqp_solver.Solve(*prog_);
-
+  MathematicalProgramResult result;
+  if (fsm_state == -1) {
+    auto osqp_solver = drake::solvers::OsqpSolver();
+    result = osqp_solver.Solve(*prog_, std::nullopt, solver_options_);
+  } else {
+    result = solvers_.at(fsm_state)->Solve(*prog_);
+  }
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   if (result.is_success()) {
@@ -796,27 +804,35 @@ VectorXd OperationalSpaceControl::SolveQp(
     *epsilon_sol_ = result.GetSolution(epsilon_);
     double window = 0.01;
     double tau = 0.01;
-    if(fsm_state >= 2 && initial_guess_x_.size() == 4){
+    if (fsm_state >= 2 && initial_guess_x_.size() == 4) {
       double clock_time;
       if (this->get_input_port(clock_port_).HasValue(context)) {
         auto clock = this->EvalVectorInput(context, clock_port_);
         clock_time = clock->get_value()(0);
       }
-      if(fsm_state == 2){
+      if (fsm_state == 2) {
         double blend_in = 1 - exp(-((0.3 - clock_time) + window) / tau);
         double blend_out = 1 - exp(-((clock_time - 0.2) + window) / tau);
-        u_sol_->row(6) = blend_out * u_sol_->row(6) + (1 - blend_out) * u_prev_[0].row(6);
-        u_sol_->row(7) = blend_in * u_sol_->row(7) + (1 - blend_in) * u_prev_[1].row(7);
-        u_sol_->row(0) = blend_out * u_sol_->row(0) + (1 - blend_out) * u_prev_[0].row(0);
-        u_sol_->row(1) = blend_in * u_sol_->row(1) + (1 - blend_in) * u_prev_[1].row(1);
+        u_sol_->row(6) =
+            blend_out * u_sol_->row(6) + (1 - blend_out) * u_prev_[0].row(6);
+        u_sol_->row(7) =
+            blend_in * u_sol_->row(7) + (1 - blend_in) * u_prev_[1].row(7);
+        u_sol_->row(0) =
+            blend_out * u_sol_->row(0) + (1 - blend_out) * u_prev_[0].row(0);
+        u_sol_->row(1) =
+            blend_in * u_sol_->row(1) + (1 - blend_in) * u_prev_[1].row(1);
       }
-      if(fsm_state == 3){
+      if (fsm_state == 3) {
         double blend_in = 1 - exp(-((0.6 - clock_time) + window) / tau);
         double blend_out = 1 - exp(-((clock_time - 0.5) + window) / tau);
-        u_sol_->row(6) = blend_in * u_sol_->row(6) + (1 - blend_in) * u_prev_[0].row(6);
-        u_sol_->row(7) = blend_out * u_sol_->row(7) + (1 - blend_out) * u_prev_[1].row(7);
-        u_sol_->row(0) = blend_in * u_sol_->row(0) + (1 - blend_in) * u_prev_[0].row(0);
-        u_sol_->row(1) = blend_out * u_sol_->row(1) + (1 - blend_out) * u_prev_[1].row(1);
+        u_sol_->row(6) =
+            blend_in * u_sol_->row(6) + (1 - blend_in) * u_prev_[0].row(6);
+        u_sol_->row(7) =
+            blend_out * u_sol_->row(7) + (1 - blend_out) * u_prev_[1].row(7);
+        u_sol_->row(0) =
+            blend_in * u_sol_->row(0) + (1 - blend_in) * u_prev_[0].row(0);
+        u_sol_->row(1) =
+            blend_out * u_sol_->row(1) + (1 - blend_out) * u_prev_[1].row(1);
       }
     }
     u_prev_[fsm_state] = *u_sol_;
@@ -827,7 +843,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     u_prev_[fsm_state] = 0.9 * *u_sol_ + VectorXd::Random(n_u_);
   }
 
-
   for (auto& tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {
       tracking_data->StoreYddotCommandSol(*dv_sol_);
@@ -835,7 +850,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   return *u_sol_;
-}
+}  // namespace dairlib::systems::controllers
 void OperationalSpaceControl::UpdateImpactInvariantProjection(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const Context<double>& context, double t, double t_since_last_state_switch,

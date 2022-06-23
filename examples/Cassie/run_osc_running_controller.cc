@@ -501,8 +501,8 @@ int DoMain(int argc, char* argv[]) {
                                               "hip_yaw_leftdot");
   right_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_right",
                                                "hip_yaw_rightdot");
-//  left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
-//  right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
+  left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
+  right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
   osc->AddConstTrackingData(std::move(left_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),

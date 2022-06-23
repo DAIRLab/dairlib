@@ -204,7 +204,8 @@ class CassieSystem():
         if np.linalg.norm(lambda_c_gt[:3]) > 0:
             point_on_foot, foot_frame = LeftToeFront(self.plant)
             if lambda_c_position is not None:
-                point_on_foot = lambda_c_position[:3]
+                point_on_foot_on_world = lambda_c_position[:3]
+                point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
             J_c_left_front = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
             J_c_left_front_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
             J_c_active = J_c_left_front
@@ -214,7 +215,8 @@ class CassieSystem():
         if np.linalg.norm(lambda_c_gt[3:6]) > 0:
             point_on_foot, foot_frame = LeftToeRear(self.plant)
             if lambda_c_position is not None:
-                point_on_foot = lambda_c_position[3:6]
+                point_on_foot_on_world = lambda_c_position[3:6]
+                point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
             J_c_left_rear = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
             J_c_left_rear_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
             if J_c_active is None:
@@ -228,7 +230,8 @@ class CassieSystem():
         if np.linalg.norm(lambda_c_gt[6:9]) > 0:
             point_on_foot, foot_frame = RightToeFront(self.plant)
             if lambda_c_position is not None:
-                point_on_foot = lambda_c_position[6:9]
+                point_on_foot_on_world = lambda_c_position[6:9]
+                point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
             J_c_right_front = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
             J_c_right_front_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
             if J_c_active is None:
@@ -242,7 +245,8 @@ class CassieSystem():
         if np.linalg.norm(lambda_c_gt[9:12]) > 0:
             point_on_foot, foot_frame = RightToeRear(self.plant)
             if lambda_c_position is not None:
-                point_on_foot = lambda_c_position[9:12]
+                point_on_foot_on_world = lambda_c_position[9:12]
+                point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
             J_c_right_rear = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
             J_c_right_rear_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
             if J_c_active is None:
@@ -352,86 +356,56 @@ class CaaiseSystemTest():
         self.cassie.get_spring_stiffness(spring_stiffness)
 
         t_list = []
-        v_dot_gt_position_list = []
-        v_dot_nominal_position_list = []
+        v_dot_est_list = []
         lambda_c_est_list = []
         lambda_h_est_list = []
         v_dot_gt_list = []
         lambda_c_gt_list = []
-        toe_position_diff_list = []
 
         left_toe_front, _ = LeftToeFront(self.cassie.plant)
         left_toe_rear, _ = LeftToeRear(self.cassie.plant)
         right_toe_front, _ = RightToeFront(self.cassie.plant)
         right_toe_rear, _ = RightToeRear(self.cassie.plant)
-        toe_nominal_position = np.hstack((left_toe_front, left_toe_rear, right_toe_front, right_toe_rear))
 
         for i in range(t.shape[0]):
             t_list.append(t[i])
-            
-            v_dot_gt_position, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], v_dot_gt[i,:], is_soft_constraints=False)
-            v_dot_nominal_position, _, _ = self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], None, v_dot_gt[i,:], is_soft_constraints=False)
-            v_dot_nominal_position_list.append(v_dot_nominal_position)
-            v_dot_gt_position_list.append(v_dot_gt_position)
-            
-            toe_position_diff_list.append(lambda_c_position[i,:] - toe_nominal_position)
-            
+            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], v_dot_gt[i,:], is_soft_constraints=False)
+            v_dot_est_list.append(v_dot_est)
             lambda_c_est_list.append(lambda_c_est)
             lambda_h_est_list.append(lambda_h_est)
             v_dot_gt_list.append(v_dot_gt[i,:])
             lambda_c_gt_list.append(lambda_c_gt[i,:])
 
         t_list = np.array(t_list)
-        
-        v_dot_gt_position_list = np.array(v_dot_gt_position_list)
-        v_dot_nominal_position_list = np.array(v_dot_nominal_position_list)
-        
-        toe_position_diff_list = np.array(toe_position_diff_list)
-        
+        v_dot_est_list = np.array(v_dot_est_list)        
         lambda_c_est_list = np.array(lambda_c_est_list)
         lambda_h_est_list = np.array(lambda_h_est_list)
         lambda_c_gt_list = np.array(lambda_c_gt_list)
         v_dot_gt_list = np.array(v_dot_gt_list)
 
-        plt.cla()
-        for i in range(toe_position_diff_list.shape[1]):
-            plt.plot(t_list, toe_position_diff_list[:,i], label = self.lambda_c_map_inverse[i])
-        plt.legend()
-        plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/residuals/residual_of_contact_point.png")
-
-        for i in range(toe_position_diff_list.shape[1]):
-            self.draw_residual(toe_position_diff_list[:, i], v_dot_gt_position_list - v_dot_nominal_position_list, "bindings/pydairlib/cassie/residual_analysis/simulation_test/residuals/v_dot_difference_vs_{}".format(self.lambda_c_map_inverse[i]))
-
-        toe_position_diff_norm_list = []
-        for i in range(toe_position_diff_list.shape[0]):
-            toe_position_diff_norm_list.append(np.linalg.norm(toe_position_diff_list[i,:]))
-        toe_position_diff_norm_list = np.array(toe_position_diff_norm_list)
-
-        self.draw_residual(toe_position_diff_norm_list, v_dot_gt_position_list - v_dot_nominal_position_list, "bindings/pydairlib/cassie/residual_analysis/simulation_test/residuals/v_dot_difference_vs_toe_postion_diff_in_norm")
-
         # Save v_dot pictures
-        # for i in range(22):
-        #     plt.cla()
-        #     plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
-        #     plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
-        #     plt.legend()
-        #     plt.title(self.vel_map_inverse[i])
-        #     plt.ylim(-100,100)
-        #     plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
+        for i in range(22):
+            plt.cla()
+            plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
+            plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
+            plt.legend()
+            plt.title(self.vel_map_inverse[i])
+            plt.ylim(-100,100)
+            plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
 
         # Save residual pictures
         # self.draw_residual(lambda_c_gt[:,2]+lambda_c_gt[:,5]+lambda_c_gt[:,8]+lambda_c_gt[:,11], residual_list, 
         #                     "bindings/pydairlib/cassie/residual_analysis/simulation_test/residuals/total_contact_force_at_z_direction")
         
         # Save lambda_c
-        # for i in range(12):
-        #     plt.cla()
-        #     plt.plot(t_list, lambda_c_est_list[:,i], 'r', label='est')
-        #     plt.plot(t_list, lambda_c_gt_list[:,i], 'g', label='gt')
-        #     plt.legend()
-        #     plt.title(self.lambda_c_map_inverse[i])
-        #     plt.ylim(-200,200)
-        #     plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/lambda_c/{}.png".format(self.lambda_c_map_inverse[i]))
+        for i in range(12):
+            plt.cla()
+            plt.plot(t_list, lambda_c_est_list[:,i], 'r', label='est')
+            plt.plot(t_list, lambda_c_gt_list[:,i], 'g', label='gt')
+            plt.legend()
+            plt.title(self.lambda_c_map_inverse[i])
+            plt.ylim(-200,200)
+            plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/lambda_c/{}.png".format(self.lambda_c_map_inverse[i]))
         
         import pdb; pdb.set_trace()
 

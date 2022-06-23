@@ -105,8 +105,7 @@ InputSupervisor::InputSupervisor(
   K_ *= kEStopGain;
 
   // Create update for error flag
-  DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
-                                     &InputSupervisor::UpdateErrorFlag);
+  DeclarePerStepDiscreteUpdateEvent(&InputSupervisor::UpdateErrorFlag);
 }
 
 void InputSupervisor::SetMotorTorques(const Context<double>& context,
@@ -212,7 +211,7 @@ void InputSupervisor::SetFailureStatus(
   output->error_name = "";
 }
 
-void InputSupervisor::UpdateErrorFlag(
+drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   const auto* controller_switch =
@@ -278,6 +277,7 @@ void InputSupervisor::UpdateErrorFlag(
       blend_duration_) {
     discrete_state->get_mutable_value(prev_efforts_index_) = command->value();
   }
+  return drake::systems::EventStatus::Succeeded();
 }
 
 void InputSupervisor::CheckVelocities(

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 from pydairlib.common import plot_styler, plotting_utils
-from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost
+from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost, osc_regularlization_tracking_cost
 from pydairlib.multibody import MakeNameToPositionsMap, \
     MakeNameToVelocitiesMap, MakeNameToActuatorsMap, \
     CreateStateNameVectorFromMap, CreateActuatorNameVectorFromMap

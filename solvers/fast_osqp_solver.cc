@@ -63,25 +63,25 @@ void ParseQuadraticCosts(const MathematicalProgram& prog,
     *constant_cost_term += quadratic_cost.evaluator()->c();
   }
 
-//  // Scale the matrix P in the cost.
-//  // Note that the linear term is scaled in ParseLinearCosts().
-//  const auto& scale_map = prog.GetVariableScaling();
-//  if (!scale_map.empty()) {
-//    for (auto& triplet : P_triplets) {
-//      // Column
-//      const auto column = scale_map.find(triplet.col());
-//      if (column != scale_map.end()) {
-//        triplet = Eigen::Triplet<double>(triplet.row(), triplet.col(),
-//                                         triplet.value() * (column->second));
-//      }
-//      // Row
-//      const auto row = scale_map.find(triplet.row());
-//      if (row != scale_map.end()) {
-//        triplet = Eigen::Triplet<double>(triplet.row(), triplet.col(),
-//                                         triplet.value() * (row->second));
-//      }
-//    }
-//  }
+  // Scale the matrix P in the cost.
+  // Note that the linear term is scaled in ParseLinearCosts().
+  const auto& scale_map = prog.GetVariableScaling();
+  if (!scale_map.empty()) {
+    for (auto& triplet : P_triplets) {
+      // Column
+      const auto column = scale_map.find(triplet.col());
+      if (column != scale_map.end()) {
+        triplet = Eigen::Triplet<double>(triplet.row(), triplet.col(),
+                                         triplet.value() * (column->second));
+      }
+      // Row
+      const auto row = scale_map.find(triplet.row());
+      if (row != scale_map.end()) {
+        triplet = Eigen::Triplet<double>(triplet.row(), triplet.col(),
+                                         triplet.value() * (row->second));
+      }
+    }
+  }
 
   P->resize(prog.num_vars(), prog.num_vars());
   P->setFromTriplets(P_triplets.begin(), P_triplets.end());
@@ -105,7 +105,16 @@ void ParseLinearCosts(const MathematicalProgram& prog, std::vector<c_float>* q,
     // Add the constant cost term to constant_cost_term.
     *constant_cost_term += linear_cost.evaluator()->b();
   }
+
+  // Scale the vector q in the cost.
+  const auto& scale_map = prog.GetVariableScaling();
+  if (!scale_map.empty()) {
+    for (const auto& [index, scale] : scale_map) {
+      q->at(index) *= scale;
+    }
+  }
 }
+
 
 // OSQP defines its own infinity in osqp/include/glob_opts.h.
 c_float ConvertInfinity(double val) {
@@ -196,6 +205,22 @@ void ParseAllLinearConstraints(
                          l, u, &num_A_rows, constraint_start_row);
   ParseBoundingBoxConstraints(prog, &A_triplets, l, u, &num_A_rows,
                               constraint_start_row);
+
+  // Scale the matrix A.
+  // Note that we only scale the columns of A, because the constraint has the
+  // form l <= Ax <= u where the scaling of x enters the columns of A instead of
+  // rows of A.
+  const auto& scale_map = prog.GetVariableScaling();
+  if (!scale_map.empty()) {
+    for (auto& triplet : A_triplets) {
+      auto column = scale_map.find(triplet.col());
+      if (column != scale_map.end()) {
+        triplet = Eigen::Triplet<double>(triplet.row(), triplet.col(),
+                                         triplet.value() * (column->second));
+      }
+    }
+  }
+
   A->resize(num_A_rows, prog.num_vars());
   A->setFromTriplets(A_triplets.begin(), A_triplets.end());
 }
@@ -344,8 +369,6 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   osqp_data_->l = l.data();
   osqp_data_->u = u.data();
 
-  // Define Solver settings as default.
-  // Problem settings
   osqp_settings_ = static_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
   osqp_set_default_settings(osqp_settings_);
   SetFastOsqpSolverSettings(solver_options, osqp_settings_);
@@ -355,18 +378,30 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   const c_int osqp_setup_err =
       osqp_setup(&workspace_, osqp_data_, osqp_settings_);
   DRAKE_DEMAND(osqp_setup_err == 0);
+
+  is_init_ = true;
+}
+
+void FastOsqpSolver::WarmStart(const Eigen::VectorXd& primal,
+                               const Eigen::VectorXd& dual) {
+  std::vector<c_float> x, y;
+  x.reserve(primal.size());
+  y.reserve(dual.size());
+  for (int i = 0; i < primal.size(); ++i) {
+    x.push_back(ConvertInfinity(primal(i)));
+  }
+  for (int i = 0; i < dual.size(); ++i) {
+    y.push_back(ConvertInfinity(dual(i)));
+  }
+  osqp_warm_start(workspace_, x.data(), y.data());
 }
 
 void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
                              const Eigen::VectorXd& initial_guess,
                              const SolverOptions& merged_options,
                              MathematicalProgramResult* result) const {
-  if (!prog.GetVariableScaling().empty()) {
-    static const drake::logging::Warn log_once(
-        "OsqpSolver doesn't support the feature of variable scaling.");
-  }
-
-  OsqpSolverDetails& solver_details = result->SetSolverDetailsType<OsqpSolverDetails>();
+  OsqpSolverDetails& solver_details =
+      result->SetSolverDetailsType<OsqpSolverDetails>();
 
   // OSQP solves a convex quadratic programming problem
   // min 0.5 xᵀPx + qᵀx
@@ -377,7 +412,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   Eigen::SparseMatrix<c_float> P_sparse;
   std::vector<c_float> q(prog.num_vars(), 0);
   double constant_cost_term{0};
-  //
+
   ParseQuadraticCosts(prog, &P_sparse, &q, &constant_cost_term);
   ParseLinearCosts(prog, &q, &constant_cost_term);
 
@@ -390,19 +425,24 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   std::vector<c_float> l, u;
   ParseAllLinearConstraints(prog, &A_sparse, &l, &u, &constraint_start_row);
 
-  csc* P_csc = EigenSparseToCSC(P_sparse);
-  csc* A_csc = EigenSparseToCSC(A_sparse);
-  osqp_update_lin_cost(workspace_, q.data());
-  osqp_update_bounds(workspace_, l.data(), u.data());
-  osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
-                  OSQP_NULL, A_csc->nzmax);
-  SetFastOsqpSolverSettings(merged_options, osqp_settings_);
+  osqp_data_->n = prog.num_vars();
+  osqp_data_->m = A_sparse.rows();
+  osqp_data_->P = EigenSparseToCSC(P_sparse);
+  osqp_data_->q = q.data();
+  osqp_data_->A = EigenSparseToCSC(A_sparse);
+  osqp_data_->l = l.data();
+  osqp_data_->u = u.data();
+
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
 
   // Solve problem.
   if (!solution_result) {
     DRAKE_THROW_UNLESS(workspace_ != nullptr);
+    const c_int osqp_setup_err = osqp_setup(&workspace_, osqp_data_, osqp_settings_);
+    if (osqp_setup_err != 0) {
+      solution_result = SolutionResult::kInvalidInput;
+    }
     const c_int osqp_solve_err = osqp_solve(workspace_);
     if (osqp_solve_err != 0) {
       solution_result = SolutionResult::kInvalidInput;
@@ -424,6 +464,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
 
     switch (workspace_->info->status_val) {
       case OSQP_SOLVED:
+        this->EnableWarmStart();
       case OSQP_SOLVED_INACCURATE: {
         const Eigen::Map<Eigen::Matrix<c_float, Eigen::Dynamic, 1>> osqp_sol(
             workspace_->solution->x, prog.num_vars());
@@ -466,14 +507,16 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   result->set_solution_result(solution_result.value());
 
   //  osqp_cleanup(workspace_);
-  c_free(P_csc->x);
-  c_free(P_csc->i);
-  c_free(P_csc->p);
-  c_free(P_csc);
-  c_free(A_csc->x);
-  c_free(A_csc->i);
-  c_free(A_csc->p);
-  c_free(A_csc);
+  if (warm_start_) {
+    c_free(osqp_data_->P->x);
+    c_free(osqp_data_->P->i);
+    c_free(osqp_data_->P->p);
+    c_free(osqp_data_->P);
+    c_free(osqp_data_->A->x);
+    c_free(osqp_data_->A->i);
+    c_free(osqp_data_->A->p);
+    c_free(osqp_data_->A);
+  }
 }
 
 }  // namespace solvers

@@ -64,9 +64,11 @@ duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
 enable_heuristic: 0
 enable_contact: 1
 ball_stddev: 0.00 # standard deviation of 0-mean noise on ball state estimation
-
 test_parameters: [0.02, 0.075, 0.071, 0.07]
 
 # testing
 lead_angle: 20 # angle in degrees
 enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
+
+# filters
+dt_filter_length: 10

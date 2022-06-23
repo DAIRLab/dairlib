@@ -21,8 +21,6 @@
 //#include
 //"external/drake/common/_virtual_includes/autodiff/drake/common/eigen_autodiff_types.h"
 
-using std::vector;
-
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::MatrixX;
@@ -112,6 +110,9 @@ C3Controller_franka::C3Controller_franka(
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
       "examples/franka_trajectory_following/parameters.yaml");
 
+  // moving average filter for dt
+  prev_timestamp_ = 0;
+  dt_filter_length_ = param_.dt_filter_length;
 }
 
 void C3Controller_franka::CalcControl(const Context<double>& context,
@@ -149,6 +150,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
+    prev_timestamp_ = (timestamp);
     return;
   }
 
@@ -351,10 +353,21 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   drake::solvers::MobyLCPSolver<double> LCPSolver;
   VectorXd force;
 
+  // compute dt based on moving averaege filter
+  double dt = 0;
+  if (moving_average_.empty()){
+    dt = param_.dt;
+  }
+  else{
+    for (int i = 0; i < moving_average_.size(); i++){
+      dt += moving_average_[i];
+    }
+    dt /= moving_average_.size();
+  }
 
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_, param_.dt);
+      num_friction_directions_, mu_, dt);
 
   solvers::LCS system2_ = system_scaling_pair2.first;
   double scaling2 = system_scaling_pair2.second;
@@ -381,6 +394,15 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 
+  // update moving average filter
+  if (moving_average_.size() < dt_filter_length_){
+    moving_average_.push_back(timestamp - prev_timestamp_);
+  }
+  else{
+    moving_average_.pop_front();
+    moving_average_.push_back(timestamp - prev_timestamp_);
+  }
+  prev_timestamp_ = timestamp;
 }
 }  // namespace controllers
 }  // namespace systems

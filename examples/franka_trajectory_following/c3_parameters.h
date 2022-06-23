@@ -73,6 +73,9 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(test_parameters));
     a->Visit(DRAKE_NVP(lead_angle));
     a->Visit(DRAKE_NVP(enable_adaptive_path));
+
+    // filter params
+    a->Visit(DRAKE_NVP(dt_filter_length));
   }
 
   // impedance control parameters
@@ -140,4 +143,7 @@ struct C3Parameters {
   // test parameters
   double lead_angle;
   int enable_adaptive_path;
+
+  // filter parameters
+  int dt_filter_length;
 };

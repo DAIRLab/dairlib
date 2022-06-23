@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <deque>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -111,6 +112,10 @@ class C3Controller_franka : public LeafSystem<double> {
   const std::vector<Eigen::VectorXd> xdesired_;
   const drake::trajectories::PiecewisePolynomial<double> pp_;
   C3Parameters param_;
+
+  mutable std::deque<double> moving_average_;
+  mutable double prev_timestamp_;
+  int dt_filter_length_;
 };
 
 }  // namespace controllers

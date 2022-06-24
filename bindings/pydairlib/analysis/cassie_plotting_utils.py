@@ -30,9 +30,11 @@ cassie_default_channels = \
      'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_RUNNING': dairlib.lcmt_osc_output}
 
-cassie_contact_channels = \
+cassie_contact_sim_channels = \
     {'CASSIE_CONTACT_DRAKE': drake.lcmt_contact_results_for_viz}
 
+cassie_contact_channels = \
+    {"CASSIE_CONTACT_DISPATCHER": dairlib.lcmt_contact}
 
 def make_plant_and_context(floating_base=True, springs=True):
     builder = DiagramBuilder()

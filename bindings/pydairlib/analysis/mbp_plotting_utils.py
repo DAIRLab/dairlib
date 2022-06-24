@@ -165,8 +165,20 @@ def process_osc_channel(data):
             'tracking_cost': tracking_cost,
             'osc_debug_tracking_datas': osc_debug_tracking_datas,
             'fsm': np.array(fsm),
-            'osc_output': osc_output}
+            # 'osc_output': osc_output
+            }
 
+def process_is_contact_channel(data):
+    t_contact = []
+    is_contact = []
+    for msg in data:
+        t_contact.append(msg.utime / 1e6)
+        is_contact.append(msg.contact)
+    t_contact = np.array(t_contact)
+    is_contact = np.array(is_contact, dtype=bool)
+
+    return {"t_contact": t_contact,
+            "is_contact": is_contact}
 
 def process_contact_channel(data):
     t_contact_info = []
@@ -242,6 +254,10 @@ def load_default_channels(data, plant, state_channel, input_channel,
 def load_force_channels(data, contact_force_channel):
     contact_info = process_contact_channel(data[contact_force_channel])
     return contact_info
+
+def load_is_contact_channels(data, contact_channel):
+    is_contact_info = process_is_contact_channel(data[contact_channel])
+    return is_contact_info
 
 def plot_q_or_v_or_u(
     robot_output, key, x_names, x_slice, time_slice,

@@ -62,8 +62,8 @@ def main():
     contact_output = get_log_data(log,  # log
                                   cassie_plots.cassie_contact_channels,  # lcm channels
                                   plot_config.end_time,
-                                  mbp_plots.load_force_channels,  # processing callback
-                                  'CASSIE_CONTACT_DRAKE')  # processing callback arguments
+                                  mbp_plots.load_is_contact_channels,  # processing callback
+                                  'CASSIE_CONTACT_DISPATCHER')  # processing callback arguments
     print("Finish parse logging")
 
     if len(sys.argv) == 3:
@@ -71,7 +71,7 @@ def main():
         print("output to "+output_path)
         data_to_output = {"robot_output":robot_output, "robot_input":robot_input, 
                         "contact_output":contact_output, 'damping_ratio':C, 'spring_stiffness':K,
-                        "osc_output":{"t_osc":osc_debug["t_osc"], "lambda_h_sol":osc_debug["lambda_h_sol"]}
+                        "osc_output":osc_debug,
                         }
         scipy.io.savemat(output_path, data_to_output)
 

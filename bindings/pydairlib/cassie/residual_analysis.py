@@ -1,4 +1,3 @@
-from cProfile import label
 import sys
 import os
 import tqdm
@@ -58,7 +57,7 @@ class CassieSystem():
     def get_damping(self, C):
         self.C = C
 
-    def calc_vdot(self, t, q, v, u, lambda_c_gt, lambda_c_position, v_dot_gt, is_soft_constraints=False):
+    def calc_vdot(self, t, q, v, u, is_contact=None, lambda_c_gt=None, lambda_c_position=None, v_dot_gt=None, is_soft_constraints=False):
         """
             The unknown term are \dot v, contact force \lambda_c_active and constraints forces \lambda_h.
 
@@ -178,7 +177,7 @@ class CassieSystem():
         
         v_map, v_map_inverse = self.make_velocity_map()
         r = v_dot - v_dot_gt
-        if abs(r[v_map["base_vz"]]) > 25:
+        if abs(r[v_map["hip_roll_leftdot"]]) > 150:
             AA = np.vstack((
                 np.hstack((M, -J_h.T)),
                 np.hstack((J_h, np.zeros((2, 2)))),
@@ -190,10 +189,13 @@ class CassieSystem():
                     lambda_c_gt_active.append(lambda_c_gt[i])
             lambda_c_gt_active = np.array(lambda_c_gt_active)
 
-            bb = np.hstack(( B @ u + gravity - bias + damping_and_spring_force + J_c_active.T @ lambda_c_gt_active,
+            if J_c_active is not None:
+                bb = np.hstack(( B @ u + gravity - bias + damping_and_spring_force + J_c_active.T @ lambda_c_gt_active,
                         -J_h_dot_times_v ))
-
-            #import pdb; pdb.set_trace()
+            else:
+                bb = np.hstack(( B @ u + gravity - bias + damping_and_spring_force,
+                        -J_h_dot_times_v ))
+                # import pdb; pdb.set_trace()
 
         return v_dot, lambda_c, lambda_h
 
@@ -350,6 +352,7 @@ class CaaiseSystemTest():
         process_data = self.process_sim_data(raw_data, self.start_time, self.end_time)
         t = process_data["t"]; q = process_data["q"]; v = process_data["v"]; v_dot_gt = process_data["v_dot"]; 
         u = process_data["u"]; lambda_c_gt = process_data["lambda_c"]; lambda_c_position = process_data["lambda_c_position"]
+        v_dot_osc = process_data["v_dot_osc"]; #u_osc = process_data["u_osc"]
         damping_ratio = process_data["damping_ratio"]; spring_stiffness = process_data["spring_stiffness"]
 
         self.cassie.get_damping(damping_ratio)
@@ -361,20 +364,17 @@ class CaaiseSystemTest():
         lambda_h_est_list = []
         v_dot_gt_list = []
         lambda_c_gt_list = []
-
-        left_toe_front, _ = LeftToeFront(self.cassie.plant)
-        left_toe_rear, _ = LeftToeRear(self.cassie.plant)
-        right_toe_front, _ = RightToeFront(self.cassie.plant)
-        right_toe_rear, _ = RightToeRear(self.cassie.plant)
+        # v_dot_osc_list = []
 
         for i in range(t.shape[0]):
             t_list.append(t[i])
-            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], lambda_c_gt[i,:], lambda_c_position[i,:], v_dot_gt[i,:], is_soft_constraints=False)
+            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], lambda_c_gt=lambda_c_gt[i,:], lambda_c_position=lambda_c_position[i,:], v_dot_gt=v_dot_gt[i,:])
             v_dot_est_list.append(v_dot_est)
             lambda_c_est_list.append(lambda_c_est)
             lambda_h_est_list.append(lambda_h_est)
             v_dot_gt_list.append(v_dot_gt[i,:])
             lambda_c_gt_list.append(lambda_c_gt[i,:])
+            # v_dot_osc_list.append(v_dot_osc[i,:])
 
         t_list = np.array(t_list)
         v_dot_est_list = np.array(v_dot_est_list)        
@@ -382,10 +382,12 @@ class CaaiseSystemTest():
         lambda_h_est_list = np.array(lambda_h_est_list)
         lambda_c_gt_list = np.array(lambda_c_gt_list)
         v_dot_gt_list = np.array(v_dot_gt_list)
+        # v_dot_osc_list = np.array(v_dot_osc_list)
 
         # Save v_dot pictures
         for i in range(22):
             plt.cla()
+            # plt.plot(t_list, v_dot_osc_list[:,i], 'b', label='osc')
             plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
             plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
             plt.legend()
@@ -412,7 +414,7 @@ class CaaiseSystemTest():
     def draw_residual(self, x_axis, residuals, dir):
 
         if not os.path.exists(dir):
-            os.mkdir(dir)
+            os.makedirs(dir)
 
         for i in range(22):
 
@@ -513,14 +515,20 @@ class CaaiseSystemTest():
         t_osc = t_osc[start_index: end_index]
         u_osc = osc_output["u_sol"][0][0][start_index:end_index,:]
         u_osc_processed = []
+        v_dot_osc = osc_output["dv_sol"][0][0][start_index:end_index,:]
+        v_dot_osc_proccessed = []
         pointer = 0
         for t in t_robot_output:
             while not (t_osc[pointer] <= t and t_osc[pointer+1] >=t):
                 pointer+=1
             u_osc_interpolated = self.interpolation(t, t_osc[pointer], t_osc[pointer+1],
                                                     u_osc[pointer,:], u_osc[pointer+1, :])
+            v_dot_osc_interpolated = self.interpolation(t, t_osc[pointer], t_osc[pointer+1],
+                                                    v_dot_osc[pointer,:], v_dot_osc[pointer+1, :])
             u_osc_processed.append(u_osc_interpolated)
+            v_dot_osc_proccessed.append(v_dot_osc_interpolated)
         u_osc_processed = np.array(u_osc_processed)
+        v_dot_osc_proccessed = np.array(v_dot_osc_proccessed)
 
         # Get damping ratio
         damping_ratio = raw_data['damping_ratio']
@@ -537,6 +545,7 @@ class CaaiseSystemTest():
             'lambda_c':contact_force_processed,
             'lambda_c_position':contact_position_processed,
             'u_osc': u_osc_processed,
+            'v_dot_osc': v_dot_osc_proccessed,
             'damping_ratio':damping_ratio,
             'spring_stiffness':spring_stiffness
         }
@@ -544,7 +553,7 @@ class CaaiseSystemTest():
         return processed_data
 
 def main():
-    simulationDataTester = CaaiseSystemTest(data_path="log/20220530_1_simulation_gt.mat", start_time=7.5, end_time=10)
+    simulationDataTester = CaaiseSystemTest(data_path="log/sim_data/20220530_1_estimator", start_time=7.5, end_time=10)
     simulationDataTester.simulation_test()
     # raw_data_est = scipy.io.loadmat("log/20220530_1_estimator.mat")
     # raw_data_gt = scipy.io.loadmat("log/20220530_1_simulation_gt.mat")

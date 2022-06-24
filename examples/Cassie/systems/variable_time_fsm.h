@@ -2,7 +2,6 @@
 
 #include <string>
 
-#include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
 
@@ -13,13 +12,10 @@ namespace dairlib {
 
 enum BLEND_FUNC { SIGMOID, EXP };
 
-class VariableTimeFiniteStateMachine
-    : public systems::ImpactTimeBasedFiniteStateMachine {
+class ContactScheduler : drake::systems::LeafSystem<double> {
  public:
-  VariableTimeFiniteStateMachine(
+  ContactScheduler(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const std::vector<int>& states,
-      const std::vector<double>& state_durations, double t0 = 0,
       double near_impact_threshold = 0, double tau = 0.0025, BLEND_FUNC blend_func = SIGMOID);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -31,18 +27,24 @@ class VariableTimeFiniteStateMachine
   const drake::systems::OutputPort<double>& get_output_port_clock() const {
     return this->get_output_port(clock_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_contact_timing() const {
+    return this->get_output_port(contact_timing_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_impact() const {
-    return this->get_output_port(near_impact_port_);
+    return this->get_output_port(impact_info_port_);
   }
 
  private:
-  void CalcNearImpact(const drake::systems::Context<double>& context,
+  void CalcNextImpactInfo(const drake::systems::Context<double>& context,
                       systems::ImpactInfoVector<double>* near_impact) const;
   void CalcClock(const drake::systems::Context<double>& context,
                  drake::systems::BasicVector<double>* clock) const;
 
-  int near_impact_port_;
+  int state_port_;
+  int fsm_port_;
   int clock_port_;
+  int contact_timing_;
+  int impact_info_port_;
 
   double t0_;
   std::vector<int> states_;

@@ -101,7 +101,11 @@ lcmt_saved_traj LcmTrajectory::GenerateLcmObject() const {
         cpp_traj->time_vector.data(),
         cpp_traj->time_vector.data() + cpp_traj->time_vector.size());
     traj_block.datatypes = vector<string>(cpp_traj->datatypes);
+    std::cout << "memcpy: " << std::endl;
+    std::cout << traj_block.trajectory_name << std::endl;
     for (int i = 0; i < traj_block.num_datatypes; ++i) {
+//      std::cout << "num dtypes: " << traj_block.num_datatypes << std::endl;
+
       // Temporary copy due to underlying data of Eigen::Matrix
       // being column major
       VectorXd tempRow = cpp_traj->datapoints.row(i);

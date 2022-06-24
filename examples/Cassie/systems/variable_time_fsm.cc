@@ -1,4 +1,6 @@
-#include "examples/impact_invariant_control/variable_time_fsm.h"
+#include "examples/Cassie/systems/variable_time_fsm.h"
+
+#include <iostream>
 
 using std::cout;
 using std::endl;
@@ -10,50 +12,24 @@ using std::string;
 
 namespace dairlib {
 
-using systems::OutputVector;
 using systems::ImpactInfoVector;
+using systems::OutputVector;
 
-VariableTimeFiniteStateMachine::VariableTimeFiniteStateMachine(
+ContactScheduler::ContactScheduler(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const std::vector<int>& states, const std::vector<double>& state_durations,
-    double t0, double near_impact_threshold, double tau, BLEND_FUNC blend_func)
-    : ImpactTimeBasedFiniteStateMachine(plant, states, state_durations, t0),
-      states_(states),
-      state_durations_(state_durations),
-      t0_(t0),
-      near_impact_threshold_(near_impact_threshold),
+    double near_impact_threshold, double tau, BLEND_FUNC blend_func)
+    :near_impact_threshold_(near_impact_threshold),
       blend_func_(blend_func) {
-
-  near_impact_port_ =
-      this->DeclareVectorOutputPort("near_impact",
-                                    ImpactInfoVector<double>(0, 0, 0),
-                                    &VariableTimeFiniteStateMachine::CalcNearImpact)
-          .get_index();
-  clock_port_ = this->DeclareVectorOutputPort("clock",
-                                              BasicVector<double>(1),
-                                              &VariableTimeFiniteStateMachine::CalcClock)
+  impact_info_port_ = this->DeclareVectorOutputPort(
+                              "near_impact", ImpactInfoVector<double>(0, 0, 0),
+                              &ContactScheduler::CalcNextImpactInfo)
+                          .get_index();
+  clock_port_ = this->DeclareVectorOutputPort("clock", BasicVector<double>(1),
+                                              &ContactScheduler::CalcClock)
                     .get_index();
-
-  // Accumulate the durations to get timestamps
-  double sum = 0;
-  DRAKE_DEMAND(states.size() == state_durations.size());
-  impact_times_.push_back(0);
-  impact_states_.push_back(states[0]);
-  for (int i = 0; i < states.size(); ++i) {
-    sum += state_durations[i];
-    accu_state_durations_.push_back(sum);
-    if (states[i] >= 2) {
-      impact_times_.push_back(sum);
-      impact_states_.push_back(states[i+1]);
-    }
-  }
-
-  //  std::cout << "Impact times: " << std::endl;
-  //  for(int i = 0; i < impact_times_.size(); ++i){
-  //    std::cout << impact_times_[i] << std::endl;
-  //  }
-
-  period_ = sum;
+  clock_port_ = this->DeclareVectorOutputPort("clock", BasicVector<double>(1),
+                                              &ContactScheduler::CalcClock)
+                    .get_index();
 }
 
 double alpha_sigmoid(double t, double tau, double near_impact_threshold) {
@@ -65,8 +41,9 @@ double alpha_exp(double t, double tau, double near_impact_threshold) {
   return 1 - exp(-(t + near_impact_threshold) / tau);
 }
 
-void VariableTimeFiniteStateMachine::CalcNearImpact(
-    const Context<double>& context, ImpactInfoVector<double>* near_impact) const {
+void ContactScheduler::CalcNextImpactInfo(
+    const Context<double>& context,
+    ImpactInfoVector<double>* near_impact) const {
   // Read in lcm message time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -101,8 +78,8 @@ void VariableTimeFiniteStateMachine::CalcNearImpact(
   }
 }
 
-void VariableTimeFiniteStateMachine::CalcClock(
-    const Context<double>& context, BasicVector<double>* clock) const {
+void ContactScheduler::CalcClock(const Context<double>& context,
+                                 BasicVector<double>* clock) const {
   // Read in lcm message time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);

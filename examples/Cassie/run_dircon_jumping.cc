@@ -332,7 +332,7 @@ void DoMain() {
     prog.SetSolverOption(id, "Solution", "No");
 
     // target nonlinear constraint violation
-    prog.SetSolverOption(id, "Major optimality tolerance", 1e-4);
+    prog.SetSolverOption(id, "Major optimality tolerance", 1e-5 / FLAGS_cost_scaling);
 
     // target complementarity gap
     prog.SetSolverOption(id, "Major feasibility tolerance", tol);
@@ -553,10 +553,18 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   // actuator limits
   std::cout << "Actuator limit constraints: " << std::endl;
+  VectorXd u_min(n_u);
+  VectorXd u_max(n_u);
+  for (drake::multibody::JointActuatorIndex i(0); i < n_u; ++i) {
+    u_min(i) = -plant.get_joint_actuator(i).effort_limit();
+    u_max(i) = plant.get_joint_actuator(i).effort_limit();
+  }
   for (int i = 0; i < trajopt->N(); i++) {
     auto ui = trajopt->input(i);
-    prog->AddBoundingBoxConstraint(VectorXd::Constant(n_u, -175),
-                                      VectorXd::Constant(n_u, +175), ui);
+//    prog->AddBoundingBoxConstraint(VectorXd::Constant(n_u, -175),
+//                                      VectorXd::Constant(n_u, +175), ui);
+    prog->AddBoundingBoxConstraint(u_min,
+                                        u_max, ui);
   }
 
   Vector3d pt_front_contact(-0.0457, 0.112, 0);

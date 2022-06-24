@@ -332,7 +332,7 @@ void DoMain() {
     prog.SetSolverOption(id, "Solution", "No");
 
     // target nonlinear constraint violation
-    prog.SetSolverOption(id, "Major optimality tolerance", 1e-5 / FLAGS_cost_scaling);
+    prog.SetSolverOption(id, "Major optimality tolerance", 1e-7 / FLAGS_cost_scaling);
 
     // target complementarity gap
     prog.SetSolverOption(id, "Major feasibility tolerance", tol);

@@ -112,7 +112,7 @@ DirconTrajectory::DirconTrajectory(
       impulse_traj.traj_name = "impulse_vars" + std::to_string(mode);
       // Check to make sure an impact occurs
       if (dircon.impulse_vars(mode - 1).size() == 0){
-        impulse_traj.datatypes = impulse_names;5
+        impulse_traj.datatypes = impulse_names;
         // Get start of mode to get time of impulse
         impulse_traj.time_vector = state_breaks[mode].segment(0, 1);
         impulse_traj.datapoints = VectorXd::Zero(impulse_names.size());

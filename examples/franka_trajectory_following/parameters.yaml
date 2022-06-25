@@ -1,5 +1,5 @@
 # impedance control parameters
-translational_stiffness: 300 # 300
+translational_stiffness: 200 # 300
 rotational_stiffness: 3 # 1
 damping_ratio: 1
 stiffness_null: 2
@@ -11,9 +11,9 @@ pushing_offset: 0 #-0.001
 # c3 parameters
 mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
-Q_finger: 100           # finger xyz cost
-Q_ball_x: 10000
-Q_ball_y: 10000
+Q_finger: 50           # finger xyz cost
+Q_ball_x: 1500  #10000
+Q_ball_y: 1500  #10000
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
@@ -40,10 +40,10 @@ move_time: 1
 stabilize_time2: 1
 sim_dt: 0.0001 # 0.00005
 
-traj_radius: 0.125
+traj_radius: 0.1
 phase: 0 # starting at 180 avoids first hard push
-x_c: 0.4
-y_c: 0.2
+x_c: 0.5
+y_c: 0
 degree_increment: 20
 time_increment: 4
 hold_order: 1 # 0 for zero order hold, 1 for first order hold
@@ -58,7 +58,7 @@ EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 # Misc
 contact_threshold: 0.0001
-period: 3
+period: 2.5
 duty_cycle: 0.67
 duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
 enable_heuristic: 0

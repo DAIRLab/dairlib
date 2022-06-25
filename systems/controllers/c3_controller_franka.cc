@@ -93,8 +93,8 @@ C3Controller_franka::C3Controller_franka(
 
 
   state_output_port_ = this->DeclareVectorOutputPort(
-          "x_lambda, t", TimestampedVector<double>(31),
-          &C3Controller_franka::CalcControl)
+          "xee, xball, xee_dot, xball_dot, lambda, visualization",
+          TimestampedVector<double>(34), &C3Controller_franka::CalcControl)
       .get_index();
 
 
@@ -135,11 +135,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     
     // fill st_desired
     VectorXd traj = pp_.value(timestamp);
-    VectorXd st_desired = VectorXd::Zero(31);
+    VectorXd st_desired = VectorXd::Zero(34);
     st_desired.head(3) << target[0];
     st_desired(7) = finish(0);
     st_desired(8) = finish(1);
     st_desired(9) = ball_radius;
+    st_desired(28) = traj(7);
+    st_desired(29) = traj(8);
+    st_desired(30) = traj(9);
     st_desired.tail(3) << traj(7), traj(8), traj(9);
 
     state_contact_desired->SetDataVector(st_desired);
@@ -350,6 +353,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
     dt /= moving_average_.size();
   }
+  //std::cout << dt << std::endl;
 
   ///calculate state and force
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
@@ -374,8 +378,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd force_des = VectorXd::Zero(6);
   force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
-  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size() + ball_xyz.size());
-  st_desired << state_next, force_des.head(6), ball_xyz_d, ball_xyz;
+  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size() + ball_xyz.size() + 3);
+  st_desired << state_next, force_des.head(6), ball_xyz_d, ball_xyz, ball.tail(3);
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 

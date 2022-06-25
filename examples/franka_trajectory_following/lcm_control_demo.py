@@ -244,7 +244,7 @@ context_ad = plant_ad.CreateDefaultContext()
 
 controller = builder.AddSystem(
     C3Controller_franka(plant, plant_f, plant_franka, context, context_f, context_franka, plant_ad, plant_ad_f, context_ad, context_ad_f, scene_graph, diagram_f, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired, pp))
-state_force_sender = builder.AddSystem(RobotC3Sender(10, 9, 6, 6))
+state_force_sender = builder.AddSystem(RobotC3Sender(10, 9, 6, 9))
 
 
 builder.Connect(state_receiver.get_output_port(0), controller.get_input_port(0))

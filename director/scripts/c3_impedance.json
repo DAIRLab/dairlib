@@ -33,7 +33,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 7
+                                 "x_index" : 31
                                 },
                  "type_data": {"color":[0, 1, 0],
                                "alpha": 0.5,

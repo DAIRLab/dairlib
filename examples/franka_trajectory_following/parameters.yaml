@@ -42,7 +42,7 @@ sim_dt: 0.0001 # 0.00005
 
 traj_radius: 0.125
 phase: 0 # starting at 180 avoids first hard push
-x_c: 0.40
+x_c: 0.4
 y_c: 0.2
 degree_increment: 20
 time_increment: 4

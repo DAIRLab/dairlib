@@ -23,6 +23,8 @@ build_focal_task:
     cpu: 8
     memory: 24
   test_script:
+    - export CC=clang-12
+    - export CXX=clang++-12
     - bazel build
       --define=WITH_SNOPT=OFF
       --local_ram_resources=24000

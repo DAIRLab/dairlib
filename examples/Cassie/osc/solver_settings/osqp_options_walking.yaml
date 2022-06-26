@@ -10,7 +10,7 @@ linsys_solver: 0
 delta: 1e-6
 polish: 1
 polish_refine_iter: 3
-verbose: 1
+verbose: 0
 scaled_termination: 1
 check_termination: 25
 warm_start: 1

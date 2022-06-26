@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from bindings.pydairlib.cassie.gym.cassie_env_state import *
+from bindings.pydairlib.cassie.cassie_gym.cassie_env_state import *
 
 # 10000 dts / 2000Hz = 5 seconds
 CASSIE_EPS_LENGTH = 100000

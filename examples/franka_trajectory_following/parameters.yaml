@@ -51,7 +51,7 @@ hold_order: 1 # 0 for zero order hold, 1 for first order hold
 c3_sub_timeout: 0.15
 realtime_rate: 0.5
 
-ball_radius: 0.03           # changes need to be consistent with urdf
+ball_radius: 0.0312           # changes need to be consistent with urdf
 finger_radius: 0.01         # changes need to be consistent with urdf
 EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 

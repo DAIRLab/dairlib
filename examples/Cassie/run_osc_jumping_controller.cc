@@ -108,7 +108,8 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant_w_spr);
   auto right_heel = RightToeRear(plant_w_spr);
 
-  int nv = plant_w_spr.num_velocities();
+  int n_v = plant_w_spr.num_velocities();
+  int n_u = plant_w_spr.num_actuators();
 
   // Create maps for joints
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
@@ -288,14 +289,14 @@ int DoMain(int argc, char* argv[]) {
 
   /**** OSC setup ****/
   // Cost
-  MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(nv, nv);
-  osc->SetAccelerationCostForAllJoints(Q_accel);
+  MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
+  osc->SetAccelerationCostWeights(Q_accel);
   // Soft constraint on contacts
   double w_contact_relax = gains.w_soft_constraint;
-  osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  osc->SetContactSoftConstraintWeight(w_contact_relax);
   // Soft constraint on contacts
   double w_input_reg = gains.w_input_reg;
-  osc->SetInputRegularizationWeight(w_input_reg);
+  osc->SetInputSmoothingWeights(gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);

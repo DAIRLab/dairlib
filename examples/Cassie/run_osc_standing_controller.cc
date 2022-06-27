@@ -237,11 +237,11 @@ int DoMain(int argc, char* argv[]) {
   // We don't want w_contact_relax to be too big, cause we want tracking
   // error to be important
   double w_contact_relax = gains.w_soft_constraint;
-  osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  osc->SetContactSoftConstraintWeight(w_contact_relax);
   // Friction coefficient
   double mu = 0.8;
   osc->SetContactFriction(mu);
-  // Add contact points (The position doesn't matter. It's not used in OSC)
+  // Add contact points
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
@@ -261,7 +261,7 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
-  osc->SetAccelerationCostForAllJoints(Q_accel);
+  osc->SetAccelerationCostWeights(Q_accel);
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
   //  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,

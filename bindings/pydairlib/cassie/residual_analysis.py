@@ -1,3 +1,4 @@
+from cgitb import reset
 import sys
 import os
 import tqdm
@@ -47,6 +48,13 @@ class CassieSystem():
 
         # Visualizer
         self.visualizer = multibody.MultiposeVisualizer(self.urdf, 1, '')
+
+        self.init_intermediate_variable_for_plot()
+
+    def init_intermediate_variable_for_plot(self):
+        self.r = []
+        self.effect_e_J_c = []
+        self.effect_e_J_h = []
 
     def drawPose(self, q):
         self.visualizer.DrawPoses(q)
@@ -154,29 +162,32 @@ class CassieSystem():
         else:
             lambda_c = np.zeros(6,)
         lambda_h = solution[-2:]
-
-        # if num_contact_unknown > 0:
-        #     lambda_c_z_direction = z_direction_selection_matrix @ get_force_at_point_matrix @ solution[22:22+num_contact_unknown]
-        #J_c_active @ v_dot_gt     if not np.all(lambda_c_z_direction >= 0):
-        #         print("minmum norm solution:",lambda_c_z_direction[:,None])
-        #         if scipy.linalg.null_space(A).shape[1] > 0:
-        #             null_space_z_direction = z_direction_selection_matrix @ get_force_at_point_matrix @ scipy.linalg.null_space(A)[22:22+num_contact_unknown]
-        #             print("null space:", null_space_z_direction)
-        #             c = cp.Variable(null_space_z_direction.shape[1])
-        #             obj = cp.Minimize(0)
-        #             constraints = [lambda_c_z_direction + null_space_z_direction @ c >= 0]
-        #             prob = cp.Problem(obj, constraints)
-        #             prob.solve()
-        #             if prob.status != cp.OPTIMAL:
-        #                 import pdb; pdb.set_trace()
-        #                 pass
-        #         else:
-        #             import pdb; pdb.set_trace()
-        #             pass
-
         
         v_map, v_map_inverse = self.make_velocity_map()
-        r = v_dot - v_dot_gt
+        desired_index = v_map["hip_pitch_leftdot"]
+        r = (v_dot - v_dot_gt)[desired_index]
+        self.r.append(r)
+
+        if num_contact_unknown > 0:
+            e_J_c = J_c_active @ v_dot_gt + J_c_active_dot_v
+            effect_e_J_c = (np.linalg.inv(M) @ J_c_active.T @ np.linalg.inv(J_c_active @ np.linalg.inv(M) @ J_c_active.T) @ e_J_c)[desired_index]
+            self.effect_e_J_c.append(effect_e_J_c)
+            if np.linalg.matrix_rank(J_c_active) != 3:
+                import pdb; pdb.set_trace()
+        else:
+            self.effect_e_J_c.append(0)
+
+        e_J_h = J_h @ v_dot_gt + J_h_dot_times_v
+        effect_e_J_h = (np.linalg.inv(M) @ J_h.T @ np.linalg.inv( J_h @ np.linalg.inv(M) @ J_h.T) @ e_J_h)[desired_index]
+        self.effect_e_J_h.append(effect_e_J_h)
+
+        if abs(r) > 150:
+            print("residual:", r)
+            if num_contact_unknown > 0:
+                print("residual of J_c:", e_J_c)
+                print("effect of residual of J_c", effect_e_J_c)
+            print("residual pf J_h", e_J_h)
+            print("effect of residual of J_h", effect_e_J_h)
 
         return v_dot, lambda_c, lambda_h
 
@@ -382,7 +393,7 @@ class CaaiseSystemTest():
         lambda_h_est_list = []
         v_dot_gt_list = []
 
-        for i in range(t.shape[0]):
+        for i in range(0, t.shape[0], ):
             t_list.append(t[i])
             v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], is_contact=is_contact[i,:], v_dot_gt=v_dot_gt[i,:])
             v_dot_est_list.append(v_dot_est)
@@ -395,6 +406,14 @@ class CaaiseSystemTest():
         lambda_c_est_list = np.array(lambda_c_est_list)
         lambda_h_est_list = np.array(lambda_h_est_list)
         v_dot_gt_list = np.array(v_dot_gt_list)
+
+        plt.plot(self.cassie.r, label="total residual")
+        plt.plot(self.cassie.effect_e_J_c, label="effect of violate J_c")
+        plt.plot(self.cassie.effect_e_J_h, label="effect of violate J_h")
+        plt.legend()
+        plt.show()
+
+        import pdb; pdb.set_trace()
 
         for i in range(22):
             plt.cla()

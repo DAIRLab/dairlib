@@ -105,6 +105,7 @@ C3Controller_franka::C3Controller_franka(
   // filter info
   prev_timestamp_ = 0;
   dt_filter_length_ = param_.dt_filter_length;
+  ball_xyz_prev_ = VectorXd::Zero(3);
 
   // kalman filter
   // xhat_prev = VectorXd::Zero(6);
@@ -153,6 +154,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
     prev_timestamp_ = (timestamp);
+    ball_xyz_prev_ = st_desired.segment(7,3);
 
     // xhat_prev << finish(0), finish(1), ball_radius, 0, 0, 0;
     // P_prev.topLeftCorner(3,3) << param_.ball_stddev * MatrixXd::Identity(3,3);
@@ -194,19 +196,19 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd u = VectorXd::Zero(3);
   
   // add noise to ball position
-  Vector3d ball_xyz;
-  if (abs(param_.ball_stddev) < 1e-9){
-    ball_xyz = ball.tail(3);
-  }
-  else{
+  Vector3d ball_xyz = ball.tail(3);
+  if (abs(param_.ball_stddev) > 1e-9){
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::normal_distribution<> d{0, param_.ball_stddev};
-    ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), d(gen));
+    ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), 0);
+    // ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), d(gen));
   }
+  // estimate ball velocity
+  Vector3d v_ball = (ball_xyz - ball_xyz_prev_) /  (timestamp - prev_timestamp_);
+  // Vector3d v_ball = ball_dot.tail(3);
 
   // compute the angular velocity
-  Vector3d v_ball = ball_dot.tail(3);
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(v_ball) / (ball_radius * ball_radius);
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
@@ -392,7 +394,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 
-  // update moving average filter
+  /// update moving average filter
   if (moving_average_.size() < dt_filter_length_){
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
@@ -400,7 +402,16 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     moving_average_.pop_front();
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
+
+  /// update prev variables
   prev_timestamp_ = timestamp;
+  ball_xyz_prev_ = ball_xyz;
+
+//  std::cout << "estimated v\n" << v_ball << std::endl;
+//  std::cout << "actual v\n" << ball_dot.tail(3) << std::endl;
+//  std::cout << "error norm\n" << (v_ball - ball_dot.tail(3)).norm() << std::endl;
+//  std::cout << "alignment\n" << v_ball.dot(ball_dot.tail(3)) / (v_ball.norm() * ball_dot.tail(3).norm()) << std::endl;
+//  std::cout << std::endl;
 
   // update kalman filter according to https://en.wikipedia.org/wiki/Kalman_filter
   // prediction step

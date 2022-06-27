@@ -112,6 +112,9 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable double prev_timestamp_;
   uint32_t dt_filter_length_;
 
+  // velocity
+  mutable Eigen::Vector3d ball_xyz_prev_;
+
   // kalman filter
   // mutable VectorXd xhat_prev;
   // mutable MatrixXd P_prev;

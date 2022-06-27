@@ -80,6 +80,14 @@ AddBox(drake::multibody::MultibodyPlant<T>* plant,
        const drake::math::RigidTransform<T>& X_WB,
        const Eigen::Vector3d& len_xyz, double mu);
 
+
+/// Add a series of random boxes
+template <typename T>
+std::vector<drake::geometry::GeometryId>
+AddRandomBoxes(drake::multibody::MultibodyPlant<T>* plant,
+               drake::geometry::SceneGraph<T>* scene_graph,
+               const Eigen::Vector3d& normal=Eigen::Vector3d::UnitZ());
+
 /// Given a MultibodyPlant, builds a map from position name to position index
 template <typename T>
 std::map<std::string, int> MakeNameToPositionsMap(

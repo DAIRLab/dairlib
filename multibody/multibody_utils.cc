@@ -28,6 +28,7 @@ using drake::systems::Context;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::Vector2d;
+using Eigen::MatrixXd;
 using std::map;
 using std::string;
 using std::vector;
@@ -166,6 +167,35 @@ std::vector<GeometryId> AddBox(
           plant->world_body(), X_WB, box, "box visual"));
   return ids;
 }
+
+
+/// Add a series of random boxes
+template <typename T>
+std::vector<drake::geometry::GeometryId>
+AddRandomBoxes(drake::multibody::MultibodyPlant<T>* plant,
+               drake::geometry::SceneGraph<T>* scene_graph,
+               const Vector3d& normal) {
+  //  srand(0);
+
+  // generate a random number between 5 and 15
+  int n_boxes = rand() % 10 + 5;
+  double x_center = 0.1;
+  double z_center = 0.0;
+  drake::math::RotationMatrix<T> R_NW(drake::Vector3<T>(normal), 2);
+  for (int i = 0; i < n_boxes; i++) {
+    Vector2d hd = MatrixXd::Random(2, 1);
+    hd(0) *= 0.2;
+    hd(1) = 0.3 + 0.1 * hd(1);
+    Vector3d box_pos (x_center + hd(1)/2, 0, z_center + hd(0));
+    RigidTransform<T> X_WB(R_NW, R_NW.matrix() * box_pos);
+    auto ids = AddBox(plant, scene_graph, X_WB,
+                      Vector3d(hd(1), 5, 0.5), 0.8);
+    x_center += hd(1);
+    z_center += hd(0);
+  }
+
+}
+
 
 /// Construct a map between joint names and position indices
 ///     <name,index> such that q(index) has the given name

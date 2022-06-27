@@ -105,7 +105,7 @@ class CassieSystem():
 
         # Get the J_c_active term
         # For simplicity test, now directly give the lambda_c ground truth from simulation to determine if contact happen
-        J_c_active, J_c_active_dot_v, num_contact_unknown, get_force_at_point_matrix = self.get_J_c_ative_and_J_c_active_dot_v(lambda_c_gt, lambda_c_position)
+        J_c_active, J_c_active_dot_v, num_contact_unknown, get_force_at_point_matrix = self.get_J_c_ative_and_J_c_active_dot_v(is_contact=is_contact, lambda_c_gt=lambda_c_gt, lambda_c_position=lambda_c_position)
         z_direction_selection_matrix = np.zeros((4,12))
         z_direction_selection_matrix[0,2] = 1;  z_direction_selection_matrix[1,5] = 1
         z_direction_selection_matrix[2,8] = 1;  z_direction_selection_matrix[3,11] = 1
@@ -152,7 +152,7 @@ class CassieSystem():
         if num_contact_unknown > 0:
             lambda_c = get_force_at_point_matrix @ solution[22:22+num_contact_unknown]
         else:
-            lambda_c = np.zeros(12,)
+            lambda_c = np.zeros(6,)
         lambda_h = solution[-2:]
 
         # if num_contact_unknown > 0:
@@ -177,106 +177,125 @@ class CassieSystem():
         
         v_map, v_map_inverse = self.make_velocity_map()
         r = v_dot - v_dot_gt
-        if abs(r[v_map["hip_roll_leftdot"]]) > 150:
-            AA = np.vstack((
-                np.hstack((M, -J_h.T)),
-                np.hstack((J_h, np.zeros((2, 2)))),
-                ))
-
-            lambda_c_gt_active = []
-            for i in range(lambda_c_gt.shape[0]):
-                if lambda_c_gt[i] != 0:
-                    lambda_c_gt_active.append(lambda_c_gt[i])
-            lambda_c_gt_active = np.array(lambda_c_gt_active)
-
-            if J_c_active is not None:
-                bb = np.hstack(( B @ u + gravity - bias + damping_and_spring_force + J_c_active.T @ lambda_c_gt_active,
-                        -J_h_dot_times_v ))
-            else:
-                bb = np.hstack(( B @ u + gravity - bias + damping_and_spring_force,
-                        -J_h_dot_times_v ))
-                # import pdb; pdb.set_trace()
 
         return v_dot, lambda_c, lambda_h
 
-    def get_J_c_ative_and_J_c_active_dot_v(self, lambda_c_gt, lambda_c_position):
-        J_c_active = None; J_c_active_dot_v = None; num_contact_unknown = 0; 
-        left_front_index = None; left_rear_index = None;
-        right_front_index = None; right_rear_index = None;
-        if np.linalg.norm(lambda_c_gt[:3]) > 0:
-            point_on_foot, foot_frame = LeftToeFront(self.plant)
-            if lambda_c_position is not None:
-                point_on_foot_on_world = lambda_c_position[:3]
-                point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
-            J_c_left_front = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
-            J_c_left_front_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
-            J_c_active = J_c_left_front
-            J_c_active_dot_v = J_c_left_front_dot_v
-            left_front_index = num_contact_unknown
-            num_contact_unknown += 3
-        if np.linalg.norm(lambda_c_gt[3:6]) > 0:
-            point_on_foot, foot_frame = LeftToeRear(self.plant)
-            if lambda_c_position is not None:
-                point_on_foot_on_world = lambda_c_position[3:6]
-                point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
-            J_c_left_rear = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
-            J_c_left_rear_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
-            if J_c_active is None:
-                J_c_active = J_c_left_rear
-                J_c_active_dot_v = J_c_left_rear_dot_v
-            else:
-                J_c_active = np.vstack((J_c_active, J_c_left_rear))
-                J_c_active_dot_v = np.hstack((J_c_active_dot_v, J_c_left_rear_dot_v))
-            left_rear_index = num_contact_unknown
-            num_contact_unknown += 3
-        if np.linalg.norm(lambda_c_gt[6:9]) > 0:
-            point_on_foot, foot_frame = RightToeFront(self.plant)
-            if lambda_c_position is not None:
-                point_on_foot_on_world = lambda_c_position[6:9]
-                point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
-            J_c_right_front = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
-            J_c_right_front_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
-            if J_c_active is None:
-                J_c_active = J_c_right_front
-                J_c_active_dot_v = J_c_right_front_dot_v
-            else:
-                J_c_active = np.vstack((J_c_active, J_c_right_front))
-                J_c_active_dot_v = np.hstack((J_c_active_dot_v, J_c_right_front_dot_v))
-            right_front_index = num_contact_unknown
-            num_contact_unknown += 3
-        if np.linalg.norm(lambda_c_gt[9:12]) > 0:
-            point_on_foot, foot_frame = RightToeRear(self.plant)
-            if lambda_c_position is not None:
-                point_on_foot_on_world = lambda_c_position[9:12]
-                point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
-            J_c_right_rear = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
-            J_c_right_rear_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
-            if J_c_active is None:
-                J_c_active = J_c_right_rear
-                J_c_active_dot_v = J_c_right_rear_dot_v
-            else:
-                J_c_active = np.vstack((J_c_active, J_c_right_rear))
-                J_c_active_dot_v = np.hstack((J_c_active_dot_v, J_c_right_rear_dot_v))
-            right_rear_index = num_contact_unknown
-            num_contact_unknown += 3
+    def get_J_c_ative_and_J_c_active_dot_v(self, is_contact, lambda_c_gt, lambda_c_position):
+        J_c_active = None; J_c_active_dot_v = None; num_contact_unknown = 0
+        left_front_index = None; left_rear_index = None
+        right_front_index = None; right_rear_index = None
+        left_index = None; right_index = None
+        if lambda_c_gt is not None:
+            if np.linalg.norm(lambda_c_gt[:3]) > 0:
+                point_on_foot, foot_frame = LeftToeFront(self.plant)
+                if lambda_c_position is not None:
+                    point_on_foot_on_world = lambda_c_position[:3]
+                    point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
+                J_c_left_front = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
+                J_c_left_front_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
+                J_c_active = J_c_left_front
+                J_c_active_dot_v = J_c_left_front_dot_v
+                left_front_index = num_contact_unknown
+                num_contact_unknown += 3
+            if np.linalg.norm(lambda_c_gt[3:6]) > 0:
+                point_on_foot, foot_frame = LeftToeRear(self.plant)
+                if lambda_c_position is not None:
+                    point_on_foot_on_world = lambda_c_position[3:6]
+                    point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
+                J_c_left_rear = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
+                J_c_left_rear_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
+                if J_c_active is None:
+                    J_c_active = J_c_left_rear
+                    J_c_active_dot_v = J_c_left_rear_dot_v
+                else:
+                    J_c_active = np.vstack((J_c_active, J_c_left_rear))
+                    J_c_active_dot_v = np.hstack((J_c_active_dot_v, J_c_left_rear_dot_v))
+                left_rear_index = num_contact_unknown
+                num_contact_unknown += 3
+            if np.linalg.norm(lambda_c_gt[6:9]) > 0:
+                point_on_foot, foot_frame = RightToeFront(self.plant)
+                if lambda_c_position is not None:
+                    point_on_foot_on_world = lambda_c_position[6:9]
+                    point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
+                J_c_right_front = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
+                J_c_right_front_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
+                if J_c_active is None:
+                    J_c_active = J_c_right_front
+                    J_c_active_dot_v = J_c_right_front_dot_v
+                else:
+                    J_c_active = np.vstack((J_c_active, J_c_right_front))
+                    J_c_active_dot_v = np.hstack((J_c_active_dot_v, J_c_right_front_dot_v))
+                right_front_index = num_contact_unknown
+                num_contact_unknown += 3
+            if np.linalg.norm(lambda_c_gt[9:12]) > 0:
+                point_on_foot, foot_frame = RightToeRear(self.plant)
+                if lambda_c_position is not None:
+                    point_on_foot_on_world = lambda_c_position[9:12]
+                    point_on_foot = self.plant.CalcPointsPositions(self.context, self.world, point_on_foot_on_world, foot_frame)
+                J_c_right_rear = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
+                J_c_right_rear_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
+                if J_c_active is None:
+                    J_c_active = J_c_right_rear
+                    J_c_active_dot_v = J_c_right_rear_dot_v
+                else:
+                    J_c_active = np.vstack((J_c_active, J_c_right_rear))
+                    J_c_active_dot_v = np.hstack((J_c_active_dot_v, J_c_right_rear_dot_v))
+                right_rear_index = num_contact_unknown
+                num_contact_unknown += 3
 
-        get_force_at_point_matrix = np.zeros((12, num_contact_unknown))
-        if left_front_index is not None:
-            get_force_at_point_matrix[0,left_front_index] = 1
-            get_force_at_point_matrix[1,left_front_index+1] = 1
-            get_force_at_point_matrix[2,left_front_index+2] = 1
-        if left_rear_index is not None:
-            get_force_at_point_matrix[3,left_rear_index] = 1
-            get_force_at_point_matrix[4,left_rear_index+1] = 1
-            get_force_at_point_matrix[5,left_rear_index+2] = 1
-        if right_front_index is not None:
-            get_force_at_point_matrix[6,right_front_index] = 1
-            get_force_at_point_matrix[7,right_front_index+1] = 1
-            get_force_at_point_matrix[8,right_front_index+2] = 1
-        if right_rear_index is not None:
-            get_force_at_point_matrix[9,right_rear_index] = 1
-            get_force_at_point_matrix[10,right_rear_index+1] = 1
-            get_force_at_point_matrix[11,right_rear_index+2] = 1
+            get_force_at_point_matrix = np.zeros((12, num_contact_unknown))
+            if left_front_index is not None:
+                get_force_at_point_matrix[0,left_front_index] = 1
+                get_force_at_point_matrix[1,left_front_index+1] = 1
+                get_force_at_point_matrix[2,left_front_index+2] = 1
+            if left_rear_index is not None:
+                get_force_at_point_matrix[3,left_rear_index] = 1
+                get_force_at_point_matrix[4,left_rear_index+1] = 1
+                get_force_at_point_matrix[5,left_rear_index+2] = 1
+            if right_front_index is not None:
+                get_force_at_point_matrix[6,right_front_index] = 1
+                get_force_at_point_matrix[7,right_front_index+1] = 1
+                get_force_at_point_matrix[8,right_front_index+2] = 1
+            if right_rear_index is not None:
+                get_force_at_point_matrix[9,right_rear_index] = 1
+                get_force_at_point_matrix[10,right_rear_index+1] = 1
+                get_force_at_point_matrix[11,right_rear_index+2] = 1
+        else:
+            if is_contact[0] > 0:
+                toe_front, foot_frame = LeftToeFront(self.plant)
+                toe_rear, foot_frame = LeftToeRear(self.plant)
+                point_on_foot = (toe_front + toe_rear)/2
+                J_c_left = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
+                J_c_left_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
+                J_c_active = J_c_left
+                J_c_active_dot_v = J_c_left_dot_v
+                left_index = num_contact_unknown
+                num_contact_unknown += 3
+            if is_contact[1] > 0:
+                toe_front, foot_frame = RightToeFront(self.plant)
+                toe_rear, foot_frame = RightToeRear(self.plant)
+                point_on_foot = (toe_front + toe_rear)/2
+                J_c_right = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
+                J_c_right_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
+                if J_c_active is None:
+                    J_c_active = J_c_right
+                    J_c_active_dot_v = J_c_right_dot_v    
+                else:
+                    J_c_active = np.vstack((J_c_active, J_c_right))
+                    J_c_active_dot_v = np.hstack(J_c_active_dot_v, J_c_right_dot_v)
+
+                right_index = num_contact_unknown
+                num_contact_unknown += 3
+            
+            get_force_at_point_matrix = np.zeros((6, num_contact_unknown))
+            if left_index is not None:
+                get_force_at_point_matrix[0,left_index] = 1
+                get_force_at_point_matrix[1,left_index+1] = 1
+                get_force_at_point_matrix[2,left_index+2] = 1
+            if right_index is not None:
+                get_force_at_point_matrix[3, right_index] = 1
+                get_force_at_point_matrix[4, right_index+1] = 1
+                get_force_at_point_matrix[5, right_index+2] = 1
 
         return J_c_active, J_c_active_dot_v, num_contact_unknown, get_force_at_point_matrix      
 
@@ -321,15 +340,19 @@ class CaaiseSystemTest():
         self.pos_map, self.pos_map_inverse = self.cassie.make_position_map()
         self.vel_map, self.vel_map_inverse = self.cassie.make_velocity_map()
         self.act_map, self.act_map_inverse = self.cassie.make_actuator_map()
-        self.lambda_c_map, self.lambda_c_map_inverse = self.make_lambda_c_map()
+        self.lambda_c_map, self.lambda_c_map_inverse = self.make_lambda_c_map(is_four_point=False)
 
-    def make_lambda_c_map(self):
+    def make_lambda_c_map(self, is_four_point=True):
         
-        lambda_c_map = {"left_front_x":0, "left_front_y":1, "left_front_z":2,
+        if is_four_point:
+            lambda_c_map = {"left_front_x":0, "left_front_y":1, "left_front_z":2,
                             "left_rear_x":3, "left_rear_y":4, "left_rear_z":5,
                             "right_front_x":6, "right_front_y":7, "right_front_z":8,
                             "right_rear_x":9, "right_rear_y":10, "right_rear_z":11
                         }
+        else:
+            lambda_c_map = {"left_x":0, "left_y":1, "left_z":2,
+                            "right_x":3, "right_y":4, "right_z":5,}
         lambda_c_map_inverse = {value:key for (key,value) in lambda_c_map.items()}
         
         return lambda_c_map, lambda_c_map_inverse
@@ -346,6 +369,49 @@ class CaaiseSystemTest():
             filtered_signals.append(a * filtered_signals[-1] + (1-a) * orginal_signals[i])
         filtered_signals = np.array(filtered_signals)
         return filtered_signals 
+
+    def hardware_test(self):
+        raw_data = scipy.io.loadmat(self.data_path)
+        process_data = self.process_hardware_data(raw_data, self.start_time, self.end_time)
+        t = process_data["t"]; q = process_data["q"]; v = process_data["v"]; v_dot_gt = process_data["v_dot"]; 
+        u = process_data["u"]; is_contact = process_data["is_contact"]; v_dot_osc = process_data["v_dot_osc"]; u_osc = process_data["u_osc"]
+
+        t_list = []
+        v_dot_est_list = []
+        lambda_c_est_list = []
+        lambda_h_est_list = []
+        v_dot_gt_list = []
+
+        for i in range(t.shape[0]):
+            t_list.append(t[i])
+            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], is_contact=is_contact[i,:], v_dot_gt=v_dot_gt[i,:])
+            v_dot_est_list.append(v_dot_est)
+            lambda_c_est_list.append(lambda_c_est)
+            lambda_h_est_list.append(lambda_h_est)
+            v_dot_gt_list.append(v_dot_gt[i,:])
+        
+        t_list = np.array(t_list)
+        v_dot_est_list = np.array(v_dot_est_list)
+        lambda_c_est_list = np.array(lambda_c_est_list)
+        lambda_h_est_list = np.array(lambda_h_est_list)
+        v_dot_gt_list = np.array(v_dot_gt_list)
+
+        for i in range(22):
+            plt.cla()
+            plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
+            plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
+            plt.legend()
+            plt.title(self.vel_map_inverse[i])
+            plt.savefig("bindings/pydairlib/cassie/residual_analysis/hardware_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
+
+        for i in range(6):
+            plt.cla()
+            plt.plot(t_list, lambda_c_est_list[:,i], 'r', label="est")
+            plt.legend()
+            plt.title(self.lambda_c_map_inverse[i])
+            plt.savefig("bindings/pydairlib/cassie/residual_analysis/hardware_test/lambda_c/{}.png".format(self.lambda_c_map_inverse[i]))
+        
+        import pdb; pdb.set_trace()
 
     def simulation_test(self):
         raw_data = scipy.io.loadmat(self.data_path)
@@ -441,6 +507,87 @@ class CaaiseSystemTest():
         ratio = (t - t1)/(t2-t1)
         v = v1 + ratio * (v2 -v1)
         return v
+
+    def process_hardware_data(self, raw_data, start_time, end_time):
+        
+        # processing robot output
+        robot_output = raw_data['robot_output']
+        t_robot_output = robot_output["t_x"][0][0][0]
+        start_index = np.argwhere(t_robot_output > start_time)[0][0]
+        end_index = np.argwhere(t_robot_output < end_time)[-1][0]
+        t_robot_output = t_robot_output[start_index:end_index]
+        q = robot_output['q'][0][0][start_index:end_index,:]
+        v = robot_output['v'][0][0][start_index:end_index,:]
+        u = robot_output['u'][0][0][start_index:end_index,:]
+        # obtained v_dot by finite diff
+        smooth_window = 10
+        v_dot = (robot_output['v'][0][0][start_index+smooth_window:end_index+smooth_window,:] - robot_output['v'][0][0][start_index-smooth_window:end_index-smooth_window,:])\
+            /(robot_output["t_x"][0][0][0][start_index+smooth_window:end_index+smooth_window] - robot_output["t_x"][0][0][0][start_index-smooth_window:end_index-smooth_window])[:,None]
+        
+        v_dot = self.first_order_filter(v_dot)
+
+        # processing contact force
+        contact_output = raw_data['contact_output']
+        t_contact = contact_output['t_contact'][0][0][0]
+        start_index = np.argwhere(t_contact > start_time - 0.01)[0][0] # make sure contact force period range cover the output states
+        end_index = np.argwhere(t_contact < end_time + 0.01)[-1][0]
+        t_contact = t_contact[start_index: end_index]
+        is_contact = contact_output['is_contact'][0][0][start_index:end_index,:]
+        is_contact_processed = []
+        pointer = 0
+        for t in t_robot_output:
+            while not (t_contact[pointer] <= t and t_contact[pointer+1] >=t):
+                pointer+=1
+            if abs(t_contact[pointer] - t) < abs(t_contact[pointer+1] - t):
+                is_contact_processed.append(is_contact[pointer,:])
+            else:
+                is_contact_processed.append(is_contact[pointer+1,:])
+        is_contact_processed = np.array(is_contact_processed)
+
+        # Get the osc_output
+
+        osc_output = raw_data["osc_output"]
+        t_osc = osc_output["t_osc"][0][0][0]
+        start_index = np.argwhere(t_osc > start_time - 0.01)[0][0]
+        end_index = np.argwhere(t_osc < end_time + 0.01)[-1][0]
+        t_osc = t_osc[start_index: end_index]
+        u_osc = osc_output["u_sol"][0][0][start_index:end_index,:]
+        u_osc_processed = []
+        v_dot_osc = osc_output["dv_sol"][0][0][start_index:end_index,:]
+        v_dot_osc_proccessed = []
+        pointer = 0
+        for t in t_robot_output:
+            while not (t_osc[pointer] <= t and t_osc[pointer+1] >=t):
+                pointer+=1
+            u_osc_interpolated = self.interpolation(t, t_osc[pointer], t_osc[pointer+1],
+                                                    u_osc[pointer,:], u_osc[pointer+1, :])
+            v_dot_osc_interpolated = self.interpolation(t, t_osc[pointer], t_osc[pointer+1],
+                                                    v_dot_osc[pointer,:], v_dot_osc[pointer+1, :])
+            u_osc_processed.append(u_osc_interpolated)
+            v_dot_osc_proccessed.append(v_dot_osc_interpolated)
+        u_osc_processed = np.array(u_osc_processed)
+        v_dot_osc_proccessed = np.array(v_dot_osc_proccessed)
+
+        # Get damping ratio
+        damping_ratio = raw_data['damping_ratio']
+
+        # Get spring stiffness
+        spring_stiffness = raw_data['spring_stiffness']
+
+        processed_data = {
+            't':t_robot_output,
+            'q':q,
+            'v':v,
+            'v_dot':v_dot,
+            'u':u,
+            'is_contact':is_contact_processed,
+            'u_osc': u_osc_processed,
+            'v_dot_osc': v_dot_osc_proccessed,
+            'damping_ratio':damping_ratio,
+            'spring_stiffness':spring_stiffness
+        }
+
+        return processed_data
 
     def process_sim_data(self, raw_data, start_time, end_time):
 
@@ -553,38 +700,8 @@ class CaaiseSystemTest():
         return processed_data
 
 def main():
-    simulationDataTester = CaaiseSystemTest(data_path="log/sim_data/20220530_1_estimator", start_time=7.5, end_time=10)
-    simulationDataTester.simulation_test()
-    # raw_data_est = scipy.io.loadmat("log/20220530_1_estimator.mat")
-    # raw_data_gt = scipy.io.loadmat("log/20220530_1_simulation_gt.mat")
-    # process_data_est = simulationDataTester.process_sim_data(raw_data_est, 6.5, 10)
-    # process_data_gt = simulationDataTester.process_sim_data(raw_data_gt, 6.5, 10)
-    # t_gt = process_data_gt['t']; q_gt = process_data_gt['q']; v_gt = process_data_gt['v']; u_gt = process_data_gt['u']; u_osc = process_data_gt["u_osc"]
-    # t_est = process_data_est['t']; q_est = process_data_est['q']; v_est = process_data_est['v']
-
-    # for i in range(22):
-    #     plt.cla()
-    #     plt.plot(t_est, v_est[:,i], 'r', label='est')
-    #     plt.plot(t_gt, v_gt[:,i], 'g', label='gt')
-    #     plt.legend()
-    #     plt.title(simulationDataTester.vel_map_inverse[i])
-    #     plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/raw_data/v/{}.png".format(simulationDataTester.vel_map_inverse[i]))
-
-    # for i in range(23):
-    #     plt.cla()
-    #     plt.plot(t_est, q_est[:,i], 'r', label='est')
-    #     plt.plot(t_gt, q_gt[:,i], 'g', label='gt')
-    #     plt.legend()
-    #     plt.title(simulationDataTester.pos_map_inverse[i])
-    #     plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/raw_data/q/{}.png".format(simulationDataTester.pos_map_inverse[i]))
-
-    # for i in range(10):
-    #     plt.cla()
-    #     plt.plot(t_gt, u_osc[:,i], 'r', label='osc solution')
-    #     plt.plot(t_gt, u_gt[:,i], 'g', label='gt')
-    #     plt.legend()
-    #     plt.title(simulationDataTester.act_map_inverse[i])
-    #     plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/raw_data/u/{}.png".format(simulationDataTester.act_map_inverse[i]))
+    simulationDataTester = CaaiseSystemTest(data_path="log/03_15_22/lcmlog-11.mat", start_time=31, end_time=35)
+    simulationDataTester.hardware_test()
 
 if __name__ == "__main__":
     main()

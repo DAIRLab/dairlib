@@ -105,6 +105,11 @@ C3Controller_franka::C3Controller_franka(
   // filter info
   prev_timestamp_ = 0;
   dt_filter_length_ = param_.dt_filter_length;
+
+  // kalman filter
+  // xhat_prev = VectorXd::Zero(6);
+  // P_prev = MatrixXd::Zero(6,6);
+
 }
 
 void C3Controller_franka::CalcControl(const Context<double>& context,
@@ -148,6 +153,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
     prev_timestamp_ = (timestamp);
+
+    // xhat_prev << finish(0), finish(1), ball_radius, 0, 0, 0;
+    // P_prev.topLeftCorner(3,3) << param_.ball_stddev * MatrixXd::Identity(3,3);
+    // P_prev.bottomRightCorner(3,3) << 0 * MatrixXd::Identity(3,3);
     return;
   }
 
@@ -201,7 +210,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(v_ball) / (ball_radius * ball_radius);
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << end_effector, 1, 0, 0, 0, ball_xyz, end_effector_dot, computed_ang_vel, ball_dot.tail(3);
+  state << end_effector, 1, 0, 0, 0, ball_xyz, end_effector_dot, computed_ang_vel, v_ball;
   // state << end_effector, ball, end_effector_dot, ball_dot;
 
   VectorXd traj_desired_vector = pp_.value(timestamp);
@@ -392,6 +401,32 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
   prev_timestamp_ = timestamp;
+
+  // update kalman filter according to https://en.wikipedia.org/wiki/Kalman_filter
+  // prediction step
+  // MatrixXd F = MatrixXd::Zero(6,6);
+  // MatrixXd B = MatrixXd::Zero(6,12);
+  // MatrixXd H = MatrixXd::Zero(3, 6);
+  // F.topLeftCorner(3,6) << system2_.A_[0].block(7, 7, 3, 3),
+  //                         system2_.A_[0].block(7, 16, 3, 3);
+  // F.bottomRightCorner(3,6) << system2_.A_[0].block(16, 7, 3, 3),
+  //                             system2_.A_[0].block(16, 16, 3, 3);
+  // B.topLeftCorner(3,12) << system2_.D_[0].block(7, 0, 3, 12);
+  // B.bottomRightCorner(3,12) << system2_.D_[0].block(16, 0, 3, 12);
+  // H.topLeftCorner(3,3) << MatrixXd::Identity(3,3);
+
+  // VectorXd xhat_predict = VectorXd::Zero(6);
+  // xhat_predict << state_next.segment(7, 3), state_next.tail(3);
+
+  // std::cout << "F:\n" << F << std::endl;
+  // std::cout << "B:\n" << B << std::endl;
+  // std::cout << "H:\n" << H << std::endl;
+  // std::cout << "D\n" << system2_.D_[0] << std::endl;
+  // std::cout << "bot of D\n" << system2_.D_[0].block(16, 0, 3, 12) << std::endl;
+  // std::cout << "xhat_predict\n" << xhat_predict << std::endl;
+  // std::cout << "v_ball\n" << v_ball << std::endl;
+  // std::cout << "d\n" << system2_.d_[0] << std::endl;
+
 }
 }  // namespace controllers
 }  // namespace systems

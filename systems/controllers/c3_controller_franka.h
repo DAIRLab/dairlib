@@ -107,9 +107,14 @@ class C3Controller_franka : public LeafSystem<double> {
   C3Parameters param_;
   const double PI = 3.14159265359;
 
+  // dt filter
   mutable std::deque<double> moving_average_;
   mutable double prev_timestamp_;
   uint32_t dt_filter_length_;
+
+  // kalman filter
+  // mutable VectorXd xhat_prev;
+  // mutable MatrixXd P_prev;
 };
 
 }  // namespace controllers

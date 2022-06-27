@@ -4,6 +4,8 @@ from pydrake.common.yaml import yaml_load
 from pydairlib.multibody import (addFlatTerrain, makeNameToPositionsMap)
 from pydairlib.systems import AddActuationRecieverAndStateSenderLcm
 import pydairlib.common
+import numpy as np
+import math
 
 from pydrake.multibody.plant import ConnectContactResultsToDrakeVisualizer
 
@@ -45,6 +47,8 @@ parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
 # Fix the base of the finger to the world
 X_WI = RigidTransform.Identity()
 plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI)
+# degrees = 0.01
+# plant.mutable_gravity_field().set_gravity_vector(np.array([[0], [9.81*sin(degrees * math.pi/180)], [-9.81*cos(degrees * math.pi/180)]]))
 plant.Finalize()
 
 drake_lcm = DrakeLcm()

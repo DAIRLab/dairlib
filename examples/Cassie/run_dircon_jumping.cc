@@ -1,7 +1,7 @@
 #include <chrono>
+#include <iostream>
 #include <memory>
 #include <string>
-#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/solvers/choose_best_solver.h>
@@ -256,12 +256,18 @@ void DoMain() {
   /****
    * Mode duration constraints
    */
+//  auto crouch_mode = DirconMode<double>(double_stance_constraints,
+//                                        stance_knotpoints, 0.5, 0.75);
+//  auto flight_mode = DirconMode<double>(flight_phase_constraints,
+//                                        flight_phase_knotpoints, 0.25, 0.5);
+//  auto land_mode = DirconMode<double>(double_stance_constraints,
+//                                      stance_knotpoints, 0.4, 0.6);
   auto crouch_mode = DirconMode<double>(double_stance_constraints,
-                                        stance_knotpoints, 0.5, 0.75);
+                                        stance_knotpoints, 0.0, 1.0);
   auto flight_mode = DirconMode<double>(flight_phase_constraints,
-                                        flight_phase_knotpoints, 0.25, 0.5);
+                                        flight_phase_knotpoints, 0.0, 1.0);
   auto land_mode = DirconMode<double>(double_stance_constraints,
-                                      stance_knotpoints, 0.4, 0.6);
+                                      stance_knotpoints, 0.0, 1.0);
 
   crouch_mode.MakeConstraintRelative(left_toe_eval_ind, 0);
   crouch_mode.MakeConstraintRelative(left_toe_eval_ind, 1);
@@ -332,7 +338,8 @@ void DoMain() {
     prog.SetSolverOption(id, "Solution", "No");
 
     // target nonlinear constraint violation
-    prog.SetSolverOption(id, "Major optimality tolerance", 1e-7 / FLAGS_cost_scaling);
+    prog.SetSolverOption(id, "Major optimality tolerance",
+                         1e-5 / FLAGS_cost_scaling);
 
     // target complementarity gap
     prog.SetSolverOption(id, "Major feasibility tolerance", tol);
@@ -403,7 +410,7 @@ void DoMain() {
 
 void SetKinematicConstraints(Dircon<double>* trajopt,
                              const MultibodyPlant<double>& plant) {
-  auto *prog = &trajopt->prog();
+  auto* prog = &trajopt->prog();
   // Create maps for joints
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
@@ -435,7 +442,7 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   // position constraints
   prog->AddBoundingBoxConstraint(0 - midpoint, 0 - midpoint,
-                                    x_0(pos_map.at("base_x")));
+                                 x_0(pos_map.at("base_x")));
   prog->AddBoundingBoxConstraint(0, 0, x_0(pos_map.at("base_y")));
   prog->AddBoundingBoxConstraint(0, 0, x_f(pos_map.at("base_y")));
 
@@ -449,10 +456,9 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   prog->AddBoundingBoxConstraint(0, 0, x_0(pos_map.at("hip_yaw_left")));
   prog->AddBoundingBoxConstraint(0, 0, x_0(pos_map.at("hip_yaw_right")));
 
-  prog->AddBoundingBoxConstraint(0.00, 0.1,
-                                    x_0(pos_map.at("hip_roll_left")));
+  prog->AddBoundingBoxConstraint(0.00, 0.1, x_0(pos_map.at("hip_roll_left")));
   prog->AddBoundingBoxConstraint(-0.1, -0.00,
-                                    x_0(pos_map.at("hip_roll_right")));
+                                 x_0(pos_map.at("hip_roll_right")));
 
   // hip yaw and roll constraints
   prog->AddBoundingBoxConstraint(0, 0, x_f(pos_map.at("hip_yaw_left")));
@@ -465,20 +471,20 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   // Jumping height constraints
   prog->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
-                                    x_0(pos_map.at("base_z")));
+                                 x_0(pos_map.at("base_z")));
   if (FLAGS_height < 0) {
     prog->AddBoundingBoxConstraint(FLAGS_height + rest_height + eps,
-                                      0.5 * FLAGS_height + rest_height - eps,
-                                      x_top(pos_map.at("base_z")));
+                                   0.5 * FLAGS_height + rest_height - eps,
+                                   x_top(pos_map.at("base_z")));
 
   } else {
     prog->AddBoundingBoxConstraint(0.5 * FLAGS_height + rest_height - eps,
-                                      FLAGS_height + rest_height + eps,
-                                      x_top(pos_map.at("base_z")));
+                                   FLAGS_height + rest_height + eps,
+                                   x_top(pos_map.at("base_z")));
   }
   prog->AddBoundingBoxConstraint(0.8 * FLAGS_height + rest_height - eps,
-                                    0.8 * FLAGS_height + rest_height + eps,
-                                    x_f(pos_map.at("base_z")));
+                                 0.8 * FLAGS_height + rest_height + eps,
+                                 x_f(pos_map.at("base_z")));
 
   // Zero starting and final velocities
   prog->AddLinearConstraint(VectorXd::Zero(n_v) == x_0.tail(n_v));
@@ -525,16 +531,17 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
       trajopt->AddConstraintToAllKnotPoints(
           x_0(pos_map[sym_joint_name + l_r_pair.first]) ==
           x_0(pos_map[sym_joint_name + l_r_pair.second]));
-      prog->AddLinearConstraint(
-          x_f(pos_map[sym_joint_name + l_r_pair.first]) ==
-          x_f(pos_map[sym_joint_name + l_r_pair.second]));
+      prog->AddLinearConstraint(x_f(pos_map[sym_joint_name + l_r_pair.first]) ==
+                                x_f(pos_map[sym_joint_name + l_r_pair.second]));
       if (sym_joint_name != "ankle_joint") {  // No actuator at ankle
-        trajopt->AddConstraintToAllKnotPoints(
-            u_0(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) ==
-            u_0(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
-        trajopt->AddConstraintToAllKnotPoints(
-            u_f(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) ==
-            u_f(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
+        //        trajopt->AddConstraintToAllKnotPoints(
+        //            u_0(act_map.at(sym_joint_name + l_r_pair.first +
+        //            "_motor")) == u_0(act_map.at(sym_joint_name +
+        //            l_r_pair.second + "_motor")));
+        //        trajopt->AddConstraintToAllKnotPoints(
+        //            u_f(act_map.at(sym_joint_name + l_r_pair.first +
+        //            "_motor")) == u_f(act_map.at(sym_joint_name +
+        //            l_r_pair.second + "_motor")));
       }
     }
   }
@@ -556,15 +563,14 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   VectorXd u_min(n_u);
   VectorXd u_max(n_u);
   for (drake::multibody::JointActuatorIndex i(0); i < n_u; ++i) {
-    u_min(i) = -plant.get_joint_actuator(i).effort_limit();
-    u_max(i) = plant.get_joint_actuator(i).effort_limit();
+    u_min(i) = 0.75 * -plant.get_joint_actuator(i).effort_limit();
+    u_max(i) = 0.75 * plant.get_joint_actuator(i).effort_limit();
   }
   for (int i = 0; i < trajopt->N(); i++) {
     auto ui = trajopt->input(i);
-//    prog->AddBoundingBoxConstraint(VectorXd::Constant(n_u, -175),
-//                                      VectorXd::Constant(n_u, +175), ui);
-    prog->AddBoundingBoxConstraint(u_min,
-                                        u_max, ui);
+    //    prog->AddBoundingBoxConstraint(VectorXd::Constant(n_u, -175),
+    //                                      VectorXd::Constant(n_u, +175), ui);
+    prog->AddBoundingBoxConstraint(u_min, u_max, ui);
   }
 
   Vector3d pt_front_contact(-0.0457, 0.112, 0);
@@ -711,6 +717,7 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
   map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   int n_v = plant.num_velocities();
+  int n_q = plant.num_positions();
   int n_u = plant.num_actuators();
 
   // create joint/motor names
@@ -739,83 +746,105 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
   }
   l_r_pairs.pop_back();
 
-  double w_symmetry_pos = FLAGS_cost_scaling * 1e5;
-  double w_symmetry_vel = FLAGS_cost_scaling * 1e2;
-  double w_symmetry_u = FLAGS_cost_scaling * 1e2;
-  for (const auto& l_r_pair : l_r_pairs) {
-    for (const auto& sym_joint_name : sym_joint_names) {
-      auto pos_diff = x(pos_map.at(sym_joint_name + l_r_pair.first)) -
-                      x(pos_map.at(sym_joint_name + l_r_pair.second));
-      auto vel_diff = x(vel_map.at(sym_joint_name + l_r_pair.first + "dot")) -
-                      x(vel_map.at(sym_joint_name + l_r_pair.second + "dot"));
-      trajopt->AddRunningCost(w_symmetry_pos * pos_diff * pos_diff);
-      trajopt->AddRunningCost(w_symmetry_vel * vel_diff * vel_diff);
-      if (sym_joint_name != "ankle_joint") {
-        auto act_diff =
-            u(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) -
-            u(act_map.at(sym_joint_name + l_r_pair.second + "_motor"));
-        trajopt->AddRunningCost(w_symmetry_u * act_diff * act_diff);
-      }
-    }
-  }
-  for (const auto& l_r_pair : l_r_pairs) {
-    for (const auto& asy_joint_name : asy_joint_names) {
-      auto pos_diff = x(pos_map.at(asy_joint_name + l_r_pair.first)) +
-                      x(pos_map.at(asy_joint_name + l_r_pair.second));
-      auto vel_diff = x(vel_map.at(asy_joint_name + l_r_pair.first + "dot")) +
-                      x(vel_map.at(asy_joint_name + l_r_pair.second + "dot"));
-      trajopt->AddRunningCost(w_symmetry_pos * pos_diff * pos_diff);
-      trajopt->AddRunningCost(w_symmetry_vel * vel_diff * vel_diff);
-      if (asy_joint_name != "ankle_joint") {
-        auto act_diff =
-            u(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) +
-            u(act_map.at(asy_joint_name + l_r_pair.second + "_motor"));
-        trajopt->AddRunningCost(w_symmetry_u * act_diff * act_diff);
-      }
-    }
-  }
+  //  double w_symmetry_pos = FLAGS_cost_scaling * 1e5;
+  //  double w_symmetry_vel = FLAGS_cost_scaling * 1e2;
+  //  double w_symmetry_u = FLAGS_cost_scaling * 1e2;
+  //  for (const auto& l_r_pair : l_r_pairs) {
+  //    for (const auto& sym_joint_name : sym_joint_names) {
+  //      auto pos_diff = x(pos_map.at(sym_joint_name + l_r_pair.first)) -
+  //                      x(pos_map.at(sym_joint_name + l_r_pair.second));
+  //      auto vel_diff = x(vel_map.at(sym_joint_name + l_r_pair.first + "dot"))
+  //      -
+  //                      x(vel_map.at(sym_joint_name + l_r_pair.second +
+  //                      "dot"));
+  //      trajopt->AddRunningCost(w_symmetry_pos * pos_diff * pos_diff);
+  //      trajopt->AddRunningCost(w_symmetry_vel * vel_diff * vel_diff);
+  //      if (sym_joint_name != "ankle_joint") {
+  //        auto act_diff =
+  //            u(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) -
+  //            u(act_map.at(sym_joint_name + l_r_pair.second + "_motor"));
+  //        trajopt->AddRunningCost(w_symmetry_u * act_diff * act_diff);
+  //      }
+  //    }
+  //  }
+  //  for (const auto& l_r_pair : l_r_pairs) {
+  //    for (const auto& asy_joint_name : asy_joint_names) {
+  //      auto pos_diff = x(pos_map.at(asy_joint_name + l_r_pair.first)) +
+  //                      x(pos_map.at(asy_joint_name + l_r_pair.second));
+  //      auto vel_diff = x(vel_map.at(asy_joint_name + l_r_pair.first + "dot"))
+  //      +
+  //                      x(vel_map.at(asy_joint_name + l_r_pair.second +
+  //                      "dot"));
+  //      trajopt->AddRunningCost(w_symmetry_pos * pos_diff * pos_diff);
+  //      trajopt->AddRunningCost(w_symmetry_vel * vel_diff * vel_diff);
+  //      if (asy_joint_name != "ankle_joint") {
+  //        auto act_diff =
+  //            u(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) +
+  //            u(act_map.at(asy_joint_name + l_r_pair.second + "_motor"));
+  //        trajopt->AddRunningCost(w_symmetry_u * act_diff * act_diff);
+  //      }
+  //    }
+  //  }
 
   MatrixXd Q = 0.02 * MatrixXd::Identity(n_v, n_v);
-  MatrixXd R = 1e-4 * MatrixXd::Identity(n_u, n_u);
-  R(act_map.at("hip_roll_left_motor"), act_map.at("hip_roll_left_motor")) =
-      5e-1;
-  R(act_map.at("hip_roll_right_motor"), act_map.at("hip_roll_right_motor")) =
-      5e-1;
-  R(act_map.at("hip_yaw_left_motor"), act_map.at("hip_yaw_left_motor")) = 5e-1;
-  R(act_map.at("hip_yaw_right_motor"), act_map.at("hip_yaw_right_motor")) =
-      5e-1;
-  R(act_map.at("hip_pitch_left_motor"), act_map.at("hip_pitch_left_motor")) =
-      5e-5;
-  R(act_map.at("hip_pitch_right_motor"), act_map.at("hip_pitch_right_motor")) =
-      5e-5;
+  //  MatrixXd R = 1e-4 * MatrixXd::Identity(n_u, n_u);
+  //  R(act_map.at("hip_roll_left_motor"), act_map.at("hip_roll_left_motor")) =
+  //      5e-1;
+  //  R(act_map.at("hip_roll_right_motor"), act_map.at("hip_roll_right_motor"))
+  //  =
+  //      5e-1;
+  //  R(act_map.at("hip_yaw_left_motor"), act_map.at("hip_yaw_left_motor")) =
+  //  5e-1; R(act_map.at("hip_yaw_right_motor"),
+  //  act_map.at("hip_yaw_right_motor")) =
+  //      5e-1;
+  //  R(act_map.at("hip_pitch_left_motor"), act_map.at("hip_pitch_left_motor"))
+  //  =
+  //      5e-5;
+  //  R(act_map.at("hip_pitch_right_motor"),
+  //  act_map.at("hip_pitch_right_motor")) =
+  //      5e-5;
 
   Q *= FLAGS_cost_scaling;
-  R *= FLAGS_cost_scaling;
+  //  R *= FLAGS_cost_scaling;
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
-  trajopt->AddRunningCost(u.transpose() * R * u);
+  VectorXd q_f = VectorXd::Zero(n_q);
+  //  VectorXd quat_identity(4);
+  //  quat_identity << 1, 0, 0, 0;
+  //  q_f.head(4) = quat_identity;
+  q_f(pos_map.at("hip_yaw_left")) = 0;
+  q_f(pos_map.at("hip_yaw_right")) = 0;
+  q_f(pos_map.at("hip_roll_left")) = 0;
+  q_f(pos_map.at("hip_roll_right")) = 0;
+  q_f(pos_map.at("base_z")) = 0.8 * FLAGS_height + FLAGS_start_height;
+  VectorXd q_f_target = q_f.segment(4, 9);
 
-  vector<int> mode_lengths = {FLAGS_knot_points, FLAGS_knot_points,
-                              FLAGS_knot_points};
-  MatrixXd W = 1e-3 * MatrixXd::Identity(n_v, n_v);
-  W(vel_map["hip_pitch_leftdot"], vel_map["hip_pitch_leftdot"]) = 5e-3;
-  W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 5e-3;
-  W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 1e-3;
-  W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 1e-3;
-  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
-  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
-  W *= 2.0 * FLAGS_cost_scaling;
-  vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
-  for (int mode : {0, 1, 2}) {
-    joint_accel_costs.push_back(std::make_shared<JointAccelCost>(
-        W, plant, &constraints->mode(mode).evaluators()));
-    for (int index = 0; index < mode_lengths[mode]; index++) {
-      // Assumes mode_lengths are the same across modes
-      auto x_i = trajopt->state_vars(mode, index);
-      auto u_i = trajopt->input_vars(mode, index);
-      auto l_i = trajopt->force_vars(mode, index);
-      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
-    }
-  }
+  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+  trajopt->AddRunningCost((x.segment(4, 9) - q_f_target).transpose() * Q *
+                          (x.segment(4, 9) - q_f_target));
+  //  trajopt->AddRunningCost(u.transpose() * R * u);
+
+  //  vector<int> mode_lengths = {FLAGS_knot_points, FLAGS_knot_points,
+  //                              FLAGS_knot_points};
+  //  MatrixXd W = 1e-3 * MatrixXd::Identity(n_v, n_v);
+  //  W(vel_map["hip_pitch_leftdot"], vel_map["hip_pitch_leftdot"]) = 5e-3;
+  //  W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 5e-3;
+  //  W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 1e-3;
+  //  W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 1e-3;
+  //  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
+  //  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
+  //  W *= 2.0 * FLAGS_cost_scaling;
+  //  vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
+  //  for (int mode : {0, 1, 2}) {
+  //    joint_accel_costs.push_back(std::make_shared<JointAccelCost>(
+  //        W, plant, &constraints->mode(mode).evaluators()));
+  //    for (int index = 0; index < mode_lengths[mode]; index++) {
+  //      // Assumes mode_lengths are the same across modes
+  //      auto x_i = trajopt->state_vars(mode, index);
+  //      auto u_i = trajopt->input_vars(mode, index);
+  //      auto l_i = trajopt->force_vars(mode, index);
+  //      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
+  //    }
+  //  }
 }
 
 /******
@@ -935,10 +964,11 @@ void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,
   auto gamma_traj = previous_traj.ReconstructGammaCTrajectory();
 
   trajopt.SetInitialTrajectory(input_traj, state_traj);
-//  for (int mode = 0; mode < trajopt.num_modes(); ++mode) {
-//    trajopt.SetInitialForceTrajectory(mode, lambda_traj[mode],
-//                                      lambda_c_traj[mode], gamma_traj[mode]);
-//  }
+  //  for (int mode = 0; mode < trajopt.num_modes(); ++mode) {
+  //    trajopt.SetInitialForceTrajectory(mode, lambda_traj[mode],
+  //                                      lambda_c_traj[mode],
+  //                                      gamma_traj[mode]);
+  //  }
 }
 
 }  // namespace dairlib

@@ -1,4 +1,3 @@
-from cgitb import reset
 import sys
 import os
 import tqdm
@@ -55,6 +54,8 @@ class CassieSystem():
         self.r = []
         self.effect_e_J_c = []
         self.effect_e_J_h = []
+        self.r_spring = []
+        self.r_damping = []
 
     def drawPose(self, q):
         self.visualizer.DrawPoses(q)
@@ -164,30 +165,30 @@ class CassieSystem():
         lambda_h = solution[-2:]
         
         v_map, v_map_inverse = self.make_velocity_map()
-        desired_index = v_map["hip_pitch_leftdot"]
-        r = (v_dot - v_dot_gt)[desired_index]
+        r = (v_dot - v_dot_gt)
         self.r.append(r)
+
+        self.r_spring.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((-self.K @ q, np.zeros(2 + num_contact_unknown))))[:22])
+        self.r_damping.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((-self.C @ v, np.zeros(2 + num_contact_unknown))))[:22])
 
         if num_contact_unknown > 0:
             e_J_c = J_c_active @ v_dot_gt + J_c_active_dot_v
-            effect_e_J_c = (np.linalg.inv(M) @ J_c_active.T @ np.linalg.inv(J_c_active @ np.linalg.inv(M) @ J_c_active.T) @ e_J_c)[desired_index]
+            effect_e_J_c = (np.linalg.inv(M) @ J_c_active.T @ np.linalg.inv(J_c_active @ np.linalg.inv(M) @ J_c_active.T) @ e_J_c)
             self.effect_e_J_c.append(effect_e_J_c)
-            if np.linalg.matrix_rank(J_c_active) != 3:
-                import pdb; pdb.set_trace()
         else:
-            self.effect_e_J_c.append(0)
+            self.effect_e_J_c.append(np.zeros(22))
 
         e_J_h = J_h @ v_dot_gt + J_h_dot_times_v
-        effect_e_J_h = (np.linalg.inv(M) @ J_h.T @ np.linalg.inv( J_h @ np.linalg.inv(M) @ J_h.T) @ e_J_h)[desired_index]
+        effect_e_J_h = (np.linalg.inv(M) @ J_h.T @ np.linalg.inv( J_h @ np.linalg.inv(M) @ J_h.T) @ e_J_h)
         self.effect_e_J_h.append(effect_e_J_h)
 
-        if abs(r) > 150:
-            print("residual:", r)
-            if num_contact_unknown > 0:
-                print("residual of J_c:", e_J_c)
-                print("effect of residual of J_c", effect_e_J_c)
-            print("residual pf J_h", e_J_h)
-            print("effect of residual of J_h", effect_e_J_h)
+        # if abs(r) > 150:
+        #     print("residual:", r)
+        #     if num_contact_unknown > 0:
+        #         print("residual of J_c:", e_J_c)
+        #         print("effect of residual of J_c", effect_e_J_c)
+        #     print("residual pf J_h", e_J_h)
+        #     print("effect of residual of J_h", effect_e_J_h)
 
         return v_dot, lambda_c, lambda_h
 
@@ -386,6 +387,8 @@ class CaaiseSystemTest():
         process_data = self.process_hardware_data(raw_data, self.start_time, self.end_time)
         t = process_data["t"]; q = process_data["q"]; v = process_data["v"]; v_dot_gt = process_data["v_dot"]; 
         u = process_data["u"]; is_contact = process_data["is_contact"]; v_dot_osc = process_data["v_dot_osc"]; u_osc = process_data["u_osc"]
+        K = process_data["spring_stiffness"]; C = process_data["damping_ratio"]
+        self.cassie.get_spring_stiffness(K); self.cassie.get_damping(C)
 
         t_list = []
         v_dot_est_list = []
@@ -407,14 +410,26 @@ class CaaiseSystemTest():
         lambda_h_est_list = np.array(lambda_h_est_list)
         v_dot_gt_list = np.array(v_dot_gt_list)
 
-        plt.plot(self.cassie.r, label="total residual")
-        plt.plot(self.cassie.effect_e_J_c, label="effect of violate J_c")
-        plt.plot(self.cassie.effect_e_J_h, label="effect of violate J_h")
-        plt.legend()
-        plt.show()
+        self.cassie.r = np.array(self.cassie.r)
+        self.cassie.effect_e_J_c = np.array(self.cassie.effect_e_J_c)
+        self.cassie.effect_e_J_h = np.array(self.cassie.effect_e_J_h)
+        self.cassie.r_spring = np.array(self.cassie.r_spring)
+        self.cassie.r_damping = np.array(self.cassie.r_damping)
 
-        import pdb; pdb.set_trace()
+        residuals = self.get_residual(v_dot_gt_list, v_dot_est_list)
+        self.draw_residual(q[:,self.pos_map["knee_joint_left"]], residuals, "bindings/pydairlib/cassie/residual_analysis/hardware_test/residual/residual_vs_knee_joint_left")
 
+        for i in range(22):
+            plt.cla()
+            plt.plot(t_list, self.cassie.r[:,i], label="total residual")
+            plt.plot(t_list, self.cassie.effect_e_J_c[:,i], label="effect of violate J_c")
+            plt.plot(t_list, self.cassie.effect_e_J_h[:,i], label="effect of violate J_h")
+            plt.plot(t_list, self.cassie.r_spring[:,i], label="residual due to spring force")
+            plt.plot(t_list, self.cassie.r_damping[:,i], label="residual due to damping force")
+            plt.legend()
+            plt.title(self.vel_map_inverse[i])
+            plt.savefig("bindings/pydairlib/cassie/residual_analysis/hardware_test/v_dot_residual/{}.png".format(self.vel_map_inverse[i]))
+        
         for i in range(22):
             plt.cla()
             plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')

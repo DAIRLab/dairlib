@@ -34,9 +34,12 @@ def main():
     ''' Read the log '''
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
+    default_channels = cassie_plots.cassie_default_channels
+    if plot_config.use_archived_lcmtypes:
+        default_channels = cassie_plots.cassie_default_channels_archive
     robot_output, robot_input, osc_debug = \
         get_log_data(log,  # log
-                     cassie_plots.cassie_default_channels,  # lcm channels
+                     default_channels,  # lcm channels
                      plot_config.start_time,
                      plot_config.duration,
                      mbp_plots.load_default_channels,  # processing callback

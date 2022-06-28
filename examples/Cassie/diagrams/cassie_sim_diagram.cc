@@ -7,6 +7,7 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/boxy_height_map.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -20,6 +21,7 @@ namespace dairlib {
 namespace examples {
 
 using dairlib::systems::SubvectorPassThrough;
+using dairlib::multibody::BoxyHeightMap;
 using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::math::RotationMatrix;
@@ -32,7 +34,7 @@ using Eigen::VectorXd;
 
 CassieSimDiagram::CassieSimDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
-    const std::string& urdf, bool visualize, double mu) {
+    const std::string& urdf, bool visualize, double mu, Vector3d normal) {
 
   DiagramBuilder<double> builder;
   scene_graph_ = builder.AddSystem<SceneGraph>();
@@ -40,8 +42,8 @@ CassieSimDiagram::CassieSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu,
-                            Eigen::Vector3d(0, 0, 1));
+  BoxyHeightMap boxes = BoxyHeightMap::MakeRandomMap();
+  boxes.AddHeightMapToPlant(plant_, scene_graph_);
   plant_->Finalize();
 
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(*plant_);

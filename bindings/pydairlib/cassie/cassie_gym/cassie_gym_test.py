@@ -17,7 +17,7 @@ def main():
     radio = np.zeros(18)
     while 1:
         controller_plant = MultibodyPlant(8e-5)
-        addCassieMultibody(controller_plant, None, True, urdf, False, False)
+        AddCassieMultibody(controller_plant, None, True, urdf, False, False)
         controller_plant.Finalize()
         controller = AlipWalkingControllerFactory(
             controller_plant, True, osc_gains, osqp_settings)

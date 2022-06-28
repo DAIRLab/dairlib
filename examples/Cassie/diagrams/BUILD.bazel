@@ -106,6 +106,7 @@ cc_library(
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/systems:cassie_encoder",
         "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
+        "//multibody:boxy_height_map",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/framework:geared_motor",

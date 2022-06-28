@@ -40,7 +40,8 @@ class DrakeCassieGym():
         self.dt = 8e-5
         self.plant = MultibodyPlant(self.dt)
         self.controller = controller
-        self.simulator = CassieSimDiagram(self.plant, urdf, self.visualize, 0.8)
+        self.simulator = \
+            CassieSimDiagram(self.plant, urdf, self.visualize, 0.8, np.array([0.1, -0.1, 1]))
         self.sim_plant = self.simulator.get_plant()
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.simulator)

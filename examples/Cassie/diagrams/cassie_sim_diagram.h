@@ -21,7 +21,8 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
   CassieSimDiagram(
       std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
       const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf",
-      bool visualize = false, double mu = 0.8);
+      bool visualize = false, double mu = 0.8,
+      Eigen::Vector3d normal=Eigen::Vector3d(0, 0, 1));
 
   /// @return the input port for the actuation command.
   const drake::systems::InputPort<double>& get_actuation_input_port() const {

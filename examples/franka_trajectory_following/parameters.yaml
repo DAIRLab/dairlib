@@ -70,7 +70,7 @@ test_parameters: [0.02, 0.079, 0.075, 0.074]
 
 # testing
 lead_angle: 20 # angle in degrees
-enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
+enable_adaptive_path: 0 # 0 to use regular path, 1 to use path that adjusts to ball in real time
 
 # filters
 dt_filter_length: 10

@@ -1,0 +1,40 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "contact_scheduler",
+    srcs = ["contact_scheduler.cc"],
+    hdrs = ["contact_scheduler.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kinodynamic_planner",
+    srcs = ["kinodynamic_planner.cc"],
+    hdrs = ["kinodynamic_planner.h"],
+    deps = [
+        ":kinodynamic_settings",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:multibody_solvers",
+        "//solvers:fast_osqp_solver",
+        "//systems/framework:vector",
+        "//lcm:lcm_trajectory_saver",
+        "//common",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kinodynamic_settings",
+    hdrs = ["kinodynamic_settings.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

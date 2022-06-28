@@ -1,0 +1,10 @@
+# hyperparameters for kinodynamic planner
+
+N: 15
+N_per_mode: 5
+Q_q: [1, 0, 0,
+      0, 1, 0,
+      0, 0, 1]
+Q_v: [1, 0, 0,
+      0, 1, 0,
+      0, 0, 1]

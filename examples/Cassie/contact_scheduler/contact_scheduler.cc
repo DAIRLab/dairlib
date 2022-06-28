@@ -1,4 +1,4 @@
-#include "examples/Cassie/systems/contact_scheduler.h"
+#include "examples/Cassie/contact_scheduler/contact_scheduler.h"
 
 #include <iostream>
 

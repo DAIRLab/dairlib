@@ -1,4 +1,4 @@
-#include "examples/Cassie/systems/variable_time_fsm.h"
+#include "examples/Cassie/systems/contact_scheduler.h"
 
 #include <iostream>
 

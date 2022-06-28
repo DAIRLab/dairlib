@@ -51,8 +51,8 @@ cc_library(
 
 cc_library(
     name = "variable_time_fsm",
-    srcs = ["variable_time_fsm.cc"],
-    hdrs = ["variable_time_fsm.h"],
+    srcs = ["contact_scheduler.cc"],
+    hdrs = ["contact_scheduler.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//systems/primitives",

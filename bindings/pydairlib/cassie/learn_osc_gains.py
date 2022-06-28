@@ -80,7 +80,7 @@ class OSCGainsOptimizer():
         yaml_dump(new_gains, filename=self.osc_running_gains_filename)
 
     def get_batch_loss(self, params):
-        batch_size = 5
+        batch_size = 10
         batch_reward = 0
         for i in range(batch_size):
             batch_reward += self.get_single_loss(params)
@@ -108,6 +108,7 @@ class OSCGainsOptimizer():
             state, reward = gym_env.step(np.zeros(18))
             cumulative_reward += reward
         # print(-cumulative_reward)
+        gym_env.free_sim()
         return -cumulative_reward
 
     def learn_gains(self, batch=True):
@@ -192,8 +193,8 @@ if __name__ == '__main__':
     reward_function = RewardOSUDRL()
 
     optimizer = OSCGainsOptimizer(budget, reward_function, visualize=False)
-    # optimizer.learn_gains()
-    optimizer.learn_gains_apex()
+    optimizer.learn_gains()
+    # optimizer.learn_gains_apex()
 
     # optimal_params = optimizer.load_params('2022_06_09_15_500', optimizer.drake_params_folder).value
     # optimizer.write_params(optimal_params)

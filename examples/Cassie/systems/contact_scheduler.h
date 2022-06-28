@@ -46,7 +46,7 @@ class ContactScheduler : drake::systems::LeafSystem<double> {
   int contact_timing_;
   int impact_info_port_;
 
-  const drake::multibody::MultibodyPlant<double>& plant_;
+//  const drake::multibody::MultibodyPlant<double>& plant_;
 
   double t0_;
   std::vector<int> states_;

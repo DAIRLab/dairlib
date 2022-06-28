@@ -188,10 +188,10 @@ elif param["hold_order"] == 1:
     theta = np.arange(0, 400, degree_increment)
 xtraj = []
 for i in theta:
-    # x = r * np.sin(math.radians(i+param["phase"]))
-    # y = r * np.cos(math.radians(i+param["phase"]))
-    x = r * np.sin(math.radians(i+param["phase"]+90)) * np.cos(math.radians(i+param["phase"]+90))
-    y = r * np.sin(math.radians(i+param["phase"]+90))
+    x = r * np.sin(math.radians(i+param["phase"]))
+    y = r * np.cos(math.radians(i+param["phase"]))
+    # x = r * np.sin(math.radians(i+param["phase"]+90)) * np.cos(math.radians(i+param["phase"]+90))
+    # y = r * np.sin(math.radians(i+param["phase"]+90))
     q[q_map['base_x']] = x + x_c
     q[q_map['base_y']] = y + y_c
     q[q_map['base_z']] = param["ball_radius"]

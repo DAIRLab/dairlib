@@ -138,7 +138,7 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
   builder.ExportOutput(state_sender->get_output_port(0), "lcmt_robot_output");
   builder.ExportOutput(sensor_aggregator_->get_output_port(0),
                        "lcmt_cassie_out");
-  builder.ExportOutput(camera->depth_image_16U_output_port(), "camera_output");
+  builder.ExportOutput(camera->depth_image_32F_output_port(), "camera_output");
 
   if (visualize) {
     DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph_);

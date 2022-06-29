@@ -11,7 +11,7 @@ from pydairlib.multibody import *
 from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
 from dairlib import lcmt_radio_out
-from pydairlib.cassie.simulators import CassieSimDiagram
+from pydairlib.cassie.simulators import CassieVisionSimDiagram
 from cassie_env_state import CassieEnvState
 
 
@@ -41,7 +41,8 @@ class DrakeCassieGym():
         self.plant = MultibodyPlant(self.dt)
         self.controller = controller
         self.simulator = \
-            CassieSimDiagram(self.plant, urdf, self.visualize, 0.8, np.array([0.1, -0.1, 1]))
+            CassieVisionSimDiagram(self.plant, urdf, self.visualize,
+                                   0.8, np.array([0.1, -0.1, 1]))
         self.sim_plant = self.simulator.get_plant()
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.simulator)

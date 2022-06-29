@@ -5,6 +5,7 @@ namespace dairlib::multibody {
 
 using Eigen::Vector3d;
 using Eigen::Vector2d;
+using Eigen::MatrixXd;
 using drake::math::RotationMatrix;
 using drake::math::RigidTransform;
 using drake::geometry::GeometryId;
@@ -38,8 +39,27 @@ void BoxyHeightMap::AddHeightMapToPlant(
   }
 }
 
+double BoxyHeightMap::GetHeightInWorld(const Vector2d &xy_pos) const {
+  double x = xmap_ * xy_pos;
+  double h = 0;
+  for (int i = 0; box_start_.at(i) < x; i++){h = box_h_.at(i);}
+  return h;
+}
+
+Eigen::MatrixXd BoxyHeightMap::GetHeightMap(
+    const Eigen::VectorXd &x_grid, const Eigen::VectorXd &y_grid) const {
+  MatrixXd map = MatrixXd::Zero(x_grid.size(), y_grid.size());
+  for (int i = 0; i < x_grid.size(); i++) {
+    double x = x_grid(i);
+    for (int j = 0; j < y_grid.size(); j++) {
+      map(i, j) = GetHeightInWorld(Vector2d(x, y_grid(i)));
+    }
+  }
+  return map;
+}
+
 RotationMatrix<double> BoxyHeightMap::MakeRotation(
-    const Eigen::Vector3d& normal, double rotz) {
+    const Vector3d& normal, double rotz) {
 
   // Make a coordinate frame with the x axis aligned with the parent frame
   // x-z plane and the z axis aligned with normal

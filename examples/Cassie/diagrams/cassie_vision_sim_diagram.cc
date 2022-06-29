@@ -51,7 +51,8 @@ using Eigen::VectorXd;
 
 CassieVisionSimDiagram::CassieVisionSimDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
-    const std::string& urdf, bool visualize, double mu) {
+    const std::string& urdf, bool visualize, double mu,
+    const Eigen::Vector3d& normal) {
 
   DiagramBuilder<double> builder;
   scene_graph_ = builder.AddSystem<SceneGraph>();
@@ -64,8 +65,7 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu,
-                            Eigen::Vector3d(0, 0, 1));
+  multibody::AddRandomBoxes(plant_, scene_graph_, normal);
   plant_->Finalize();
 
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(*plant_);

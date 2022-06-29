@@ -32,40 +32,20 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
     const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
     int num_friction_directions, double mu, float dt) {
+
+
   ///
   /// First, calculate vdot and derivatives from non-contact dynamcs
   ///
 
-
   AutoDiffVecXd C(plant.num_velocities());
 
-  // 0std::cout << ExtractGradient(C).cols() << std::endl;
-
   plant_ad.CalcBiasTerm(context_ad, &C);
-
-//  std::cout << "C" << std::endl;
-//  std::cout << ExtractValue(C) << std::endl;
-//  std::cout << "C" << std::endl;
-
-  // std::cout << ExtractGradient(C).cols() << std::endl;
 
   AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() *
                      plant_ad.get_actuation_input_port().Eval(context_ad);
 
-//  std::cout << "Bu" << std::endl;
-//  std::cout << ExtractValue(Bu) << std::endl;
-//  std::cout << "Bu" << std::endl;
-
-  //  auto u = plant.get_actuation_input_port().Eval(context);
-  //  auto u_ad = drake::math::InitializeAutoDiff(u);
-  //  AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() * u_ad;
-
   AutoDiffVecXd tau_g = plant_ad.CalcGravityGeneralizedForces(context_ad);
-//
-
-//  std::cout << "tau_g" << std::endl;
-//  std::cout << ExtractValue(tau_g) << std::endl;
-//  std::cout << "tau_g" << std::endl;
 
   drake::multibody::MultibodyForces<AutoDiffXd> f_app(plant_ad);
   plant_ad.CalcForceElementsContribution(context_ad, &f_app);
@@ -73,10 +53,6 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 
   MatrixX<AutoDiffXd> M(plant.num_velocities(), plant.num_velocities());
   plant_ad.CalcMassMatrix(context_ad, &M);
-
-//    std::cout << "M" << std::endl;
-//  std::cout << ExtractValue(M) << std::endl;
-//  std::cout << "M" << std::endl;
 
   // If this ldlt is slow, there are alternate formulations which avoid it
   AutoDiffVecXd vdot_no_contact =
@@ -96,28 +72,19 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   VectorXd d_v = d_vv - x_dvvcomp;
 
 
-//  std::cout << "d_v" << std::endl;
-//  std::cout << d_v << std::endl;
-//  std::cout << "d_v" << std::endl;
-
   int n_state = plant_ad.num_positions();
   int n_vel = plant_ad.num_velocities();
   int n_total = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_input = plant_ad.num_actuators();
 
 
-  // std::cout << n_state << std::endl;
-  // std::cout << n_vel << std::endl;
-
   ///////////
   AutoDiffVecXd qdot_no_contact(plant.num_positions());
 
-  // std::cout << "here1" << std::endl;
 
   AutoDiffVecXd state = plant_ad.get_state_output_port().Eval(context_ad);
 
   AutoDiffVecXd vel = state.tail(n_vel);
-  // std::cout << std::size(state) << std::endl;
 
   plant_ad.MapVelocityToQDot(context_ad, vel, &qdot_no_contact);
 
@@ -125,14 +92,8 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 
   MatrixXd d_q = ExtractValue(qdot_no_contact);
 
-  // std::cout << AB_q.rows() << "x" << AB_q.cols() << std::endl;
-
-  // std::cout << AB_q.block(0,n_state, n_state, n_vel) << std::endl;
 
   MatrixXd Nq = AB_q.block(0, n_state, n_state, n_vel);
-
-  ///////////
-
 
 
   ///
@@ -162,7 +123,8 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
         J_i.block(1, 0, 2 * num_friction_directions, plant.num_velocities());
   }
 
-  //std::cout << "here" << std::endl;
+//  std::cout << "here" << std::endl;
+//  std::cout << phi << std::endl;
 
   auto M_ldlt = ExtractValue(M).ldlt();
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());
@@ -196,12 +158,8 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   A.block(n_state, n_state, n_vel, n_vel) =
       dt * AB_v_v + MatrixXd::Identity(n_vel, n_vel);
 
-  // std::cout << "A:" << A.rows() << 'x' << A.cols() << std::endl;
-
   B.block(0, 0, n_state, n_input) = dt * dt * Nq * AB_v_u;
   B.block(n_state, 0, n_vel, n_input) = dt * AB_v_u;
-
-  // std::cout << "B:" <<  B.rows() << 'x' << B.cols() << std::endl;
 
   D = MatrixXd::Zero(n_total, n_contact);
   D.block(0, 2 * contact_geoms.size(), n_state,
@@ -214,18 +172,8 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 
   D.block(n_state, contact_geoms.size(), n_vel, contact_geoms.size() ) = dt * MinvJ_n_T;
 
-
-  // std::cout << "D:" <<  D.rows() << 'x' << D.cols() << std::endl;
-
-  // std::cout << "D:" <<  D << std::endl;
-
   d.head(n_state) = dt * dt * Nq * d_v;
   d.tail(n_vel) = dt * d_v;
-
-  ///separate timescale for complementarity part
-  //dt =0.01;
-
-  // std::cout << "d:" <<  d.rows() << 'x' << d.cols() << std::endl;
 
   E = MatrixXd::Zero(n_contact, n_total);
   E.block(contact_geoms.size(), 0, contact_geoms.size(), n_state) =
@@ -239,9 +187,6 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
           2 * contact_geoms.size() * num_friction_directions, n_vel) =
       J_t + dt * J_t * AB_v_v;
 
-  // std::cout << "E:" <<  E.rows() << 'x' << E.cols() << std::endl;
-  // std::cout << "E:" <<  E << std::endl;
-
   MatrixXd E_t = MatrixXd::Zero(
       contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions);
   for (int i = 0; i < contact_geoms.size(); i++) {
@@ -249,8 +194,6 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
               2 * num_friction_directions) =
         MatrixXd::Ones(1, 2 * num_friction_directions);
   };
-
-  // std::cout <<  E_t << std::endl;
 
   F = MatrixXd::Zero(n_contact, n_contact);
   F.block(0, contact_geoms.size(), contact_geoms.size(), contact_geoms.size()) =
@@ -268,14 +211,12 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
           2 * contact_geoms.size() * num_friction_directions,
           contact_geoms.size()) = E_t.transpose();
 
-  F.block(2 * contact_geoms.size(), contact_geoms.size(), contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions ) = dt * J_t * MinvJ_t_T;
+  F.block(2 * contact_geoms.size(), contact_geoms.size(), contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions ) = dt * J_t * MinvJ_n_T;
 
   F.block(2 * contact_geoms.size(), 2 * contact_geoms.size(),
           2 * contact_geoms.size() * num_friction_directions,
           2 * contact_geoms.size() * num_friction_directions) =
       dt * J_t * MinvJ_t_T;
-
-  // std::cout <<  F << std::endl;
 
   H = MatrixXd::Zero(n_contact, n_input);
   H.block(contact_geoms.size(), 0, contact_geoms.size(), n_input) =
@@ -293,28 +234,11 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
       J_t * dt * d_v;
 
 
-//  std::cout << "here" << std::endl;
-//  std::cout << c << std::endl;
-//  std::cout << "here" << std::endl;
-
-//    std::cout << "here" << std::endl;
-//   std::cout << c.segment(contact_geoms.size(), contact_geoms.size()) << std::endl;
-
-  /// TODO: finish by assembling the terms computed above into the LCS structure
-  ///       and returning an LCS object
-  ///  v_{k+1} = v_k + dt * (AB_V * [x; u] + Minv*J_T*lambda)
-  ///  q_{k+1} = q_k + dt * Nq * v_{k+1}
-  ///  phi_{k+1} = phi + J_n * dt * v_{k+1}
-  ///  tangential velocity: J_t * v_{k+1}
-
   int N = 5;
 
   auto Dn = D.squaredNorm();
   auto An = A.squaredNorm();
   auto AnDn = An / Dn;
-
-  //AnDn = 1;
-  //std::cout << AnDn << std::endl;
 
   std::vector<MatrixXd> A_lcs(N, A);
   std::vector<MatrixXd> B_lcs(N, B);
@@ -325,29 +249,13 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   std::vector<VectorXd> c_lcs(N, c / AnDn);
   std::vector<MatrixXd> H_lcs(N, H / AnDn);
 
-//  std::cout << "Astahp" << std::endl;
-//  std::cout << A << std::endl;
-//  std::cout << "Astahp" << std::endl;
-//
-//  std::cout << "Bstahp" << std::endl;
-//  std::cout << B << std::endl;
-//  std::cout << "Bstahp" << std::endl;
-
-//  std::cout << "Jt" << std::endl;
-//  std::cout << J_t.transpose() << std::endl;
-//  std::cout << "Jt" << std::endl;
-//
-//  std::cout << "dstahp" << std::endl;
-//  std::cout << d << std::endl;
-//  std::cout << "dstahp" << std::endl;
-
   LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs);
 
 //    std::cout << "dstahp" << std::endl;
 //  std::cout << c_lcs[0] << std::endl;
 //  std::cout << "dstahp" << std::endl;
 
-////
+////////
 //  ///check LCS predictions
 //  VectorXd inp = plant.get_actuation_input_port().Eval(context);
 //
@@ -372,9 +280,9 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 //  auto flag = LCPSolver.SolveLcpLemke(F, E * x_init + c + H * input,
 //                                      &force);
 //
-//  VectorXd x_final = A * x_init + B * input + D * force + d;
+//  //VectorXd x_final = A * x_init + B * input + D * force + d;
 //
-//  if (flag == 1){
+//  //if (flag == 1){
 //
 //      std::cout << "LCS force estimate" << std::endl;
 //    std::cout << force << std::endl;

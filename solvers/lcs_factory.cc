@@ -268,7 +268,7 @@ LCS LCSFactory::LinearizePlantToLCS(
           2 * contact_geoms.size() * num_friction_directions,
           contact_geoms.size()) = E_t.transpose();
 
-  F.block(2 * contact_geoms.size(), contact_geoms.size(), contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions ) = dt * J_t * MinvJ_t_T;
+  F.block(2 * contact_geoms.size(), contact_geoms.size(), contact_geoms.size(), 2 * contact_geoms.size() * num_friction_directions ) = dt * J_t * MinvJ_n_T;
 
   F.block(2 * contact_geoms.size(), 2 * contact_geoms.size(),
           2 * contact_geoms.size() * num_friction_directions,
@@ -370,7 +370,8 @@ LCS LCSFactory::LinearizePlantToLCS(
 //  VectorXd input = inp;
 //////
 //////
-//  auto flag = LCPSolver.SolveLcpLemke(F, E * x_init / AnDn + c / AnDn + H * input / AnDn,
+//
+//  auto flag = LCPSolver.SolveLcpLemkeRegularized(F, E * x_init + c  + H * input,
 //                                      &force);
 //
 //

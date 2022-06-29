@@ -54,7 +54,7 @@ c3_sub_timeout: 0.15
 realtime_rate: 0.5
 
 ball_radius: 0.0335           # changes need to be consistent with urdf
-finger_radius: 0.01         # changes need to be consistent with urdf
+finger_radius: 0.01           # changes need to be consistent with urdf
 EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 
@@ -65,7 +65,7 @@ duty_cycle: 0.67
 duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
 enable_heuristic: 0
 enable_contact: 1
-ball_stddev: 0.0 # standard deviation of 0-mean noise on ball state estimation
+ball_stddev: 0.01 # standard deviation of 0-mean noise on ball state estimation
 test_parameters: [0.02, 0.079, 0.075, 0.074]
 
 # testing

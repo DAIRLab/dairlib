@@ -297,6 +297,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
 
+  //std::cout << "first call" << std::endl;
+
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1);
@@ -366,6 +368,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   //std::cout << dt << std::endl;
 
+  //std::cout << "second call" << std::endl;
+
   ///calculate state and force
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
@@ -376,6 +380,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   drake::solvers::MobyLCPSolver<double> LCPSolver;
   VectorXd force;
+
   auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
                                                  &force);
   (void)flag; // suppress compiler unused variable warning

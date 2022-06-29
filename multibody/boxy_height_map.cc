@@ -11,8 +11,8 @@ using drake::geometry::GeometryId;
 
 
 double randd(double a, double b) {
-  return a + static_cast<double>(rand()) * (a - b) /
-      static_cast<double>(RAND_MAX);
+  return a + (b - a) * (static_cast<double>(rand())  /
+      static_cast<double>(RAND_MAX));
 }
 
 void BoxyHeightMap::AppendBox(double h, double w) {

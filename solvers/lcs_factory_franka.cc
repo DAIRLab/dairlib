@@ -124,7 +124,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   }
 
 //  std::cout << "here" << std::endl;
-//  std::cout << phi << std::endl;
+//  std::cout << "phi\n" << phi << std::endl;
 
   auto M_ldlt = ExtractValue(M).ldlt();
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());

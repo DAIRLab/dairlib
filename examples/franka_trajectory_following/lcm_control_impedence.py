@@ -32,9 +32,9 @@ plant = MultibodyPlant(0.0)
 
 parser = Parser(plant)
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
-    "examples/franka/robot_properties_fingers/urdf/franka_box.urdf"))
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
-    "examples/franka/robot_properties_fingers/urdf/sphere.urdf"))
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf"))
 
 X_WI = RigidTransform.Identity()
 plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI)

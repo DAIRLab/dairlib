@@ -194,7 +194,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd v(9);
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
-  
+
   // add noise to ball position
   Vector3d ball_xyz = ball.tail(3);
   if (abs(param_.ball_stddev) > 1e-9){
@@ -296,8 +296,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   std::vector<SortedPair<GeometryId>> contact_pairs;
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
-
-  //std::cout << "first call" << std::endl;
 
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,

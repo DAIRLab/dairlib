@@ -20,6 +20,7 @@ using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::RevoluteSpring;
+using drake::systems::Context;
 using drake::systems::sensors::Accelerometer;
 using drake::systems::sensors::Gyroscope;
 using Eigen::Vector3d;
@@ -228,6 +229,50 @@ const systems::GearedMotor& AddMotorModel(
       {"toe_left_motor", 575.958},       {"toe_right_motor", 575.958}};
   auto cassie_motor = builder->AddSystem<systems::GearedMotor>(plant, omega_max);
   return *cassie_motor;
+}
+
+
+//  CONTEXT MUST ALREADY BE SET AT DESIRED ROBOT STATE
+Eigen::VectorXd MakePelvisStateRelativeToFeet(
+    const MultibodyPlant<double>& plant, const Context<double>& plant_context) {
+
+  // Get the pelvis position + orientation in the world frame
+  auto pelvis_pose =
+      plant.GetBodyByName("pelvis").EvalPoseInWorld(plant_context);
+
+  // get right and left foot positions
+  Vector3d foot_mid (-0.06685, 0.056, 0.0);
+  Vector3d p_r, p_l;
+  plant.CalcPointsPositions(
+      plant_context, plant.GetBodyByName("toe_right").body_frame(),
+      foot_mid, plant.world_frame(), &p_r);
+  plant.CalcPointsPositions(
+      plant_context, plant.GetBodyByName("toe_left").body_frame(),
+      foot_mid, plant.world_frame(), &p_l);
+
+  // Calculate pelvis position relative to feet
+  Eigen::Vector3d p_rel;
+  p_rel.head(2) =
+      pelvis_pose.translation().head(2) - (p_l.head(2) + p_r.head(2)) / 2.0;
+  p_rel(2) = pelvis_pose.translation()(2) - std::min(p_l(2), p_r(2));
+
+
+  // Get pelvis velocity in the world frame
+  auto pelvis_vel = plant.GetBodyByName("pelvis")
+      .body_frame().CalcSpatialVelocityInWorld(plant_context);
+
+  // Convert orientations to Roll Pitch Yaw
+  drake::math::RollPitchYaw<double> rpy(pelvis_pose.rotation());
+  Vector3d rpy_dot =
+      rpy.CalcRpyDtFromAngularVelocityInParent(pelvis_vel.rotational());
+
+  // Assemble the pelvis state vector
+  // phi, theta, psi, x, y, z and then their derivatives, in the same order
+  VectorXd pelvis_state = VectorXd::Zero(12);
+  pelvis_state.head(3) = rpy.vector();
+  pelvis_state.segment(3, 3) =  p_rel;
+  pelvis_state.segment(6, 3) = rpy_dot;
+  pelvis_state.tail(3) = pelvis_vel.translational();
 }
 
 template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(

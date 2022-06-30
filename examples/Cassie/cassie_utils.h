@@ -89,4 +89,9 @@ const systems::GearedMotor& AddMotorModel(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant);
 
+//  CONTEXT MUST ALREADY BE SET AT DESIRED ROBOT STATE
+Eigen::VectorXd MakePelvisStateRelativeToFeet(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context);
+
 }  // namespace dairlib

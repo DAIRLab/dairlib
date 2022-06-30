@@ -43,7 +43,7 @@ def test_vec_env():
         s, r, d, i = swing_vec_env.step(actions)
         print(r)
 
-
+    
 def test_base_env():
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
     osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
@@ -88,4 +88,5 @@ def main():
 
 
 if __name__ == '__main__':
-    test_vec_env()
+    # test_vec_env()
+    main()

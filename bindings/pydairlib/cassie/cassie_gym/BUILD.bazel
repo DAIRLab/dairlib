@@ -62,6 +62,17 @@ py_library(
 )
 
 py_library(
+    name = "high_level_reward",
+    srcs = [
+        "high_level_reward.py",
+    ],
+    deps = [
+        ":cassie_env_state",
+        ":reward_osudrl",
+    ],
+)
+
+py_library(
     name = "cassie_traj",
     srcs = ["cassie_traj.py"],
     deps = [":cassie_env_state"],

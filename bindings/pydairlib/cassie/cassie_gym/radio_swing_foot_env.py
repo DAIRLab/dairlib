@@ -10,53 +10,21 @@ from pydrake.multibody.plant import MultibodyPlant
 
 
 from pydairlib.cassie.cassie_gym.drake_cassie_gym import DrakeCassieGym
-from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState, CASSIE_NRADIO
+from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState, CASSIE_NRADIO, CASSIE_RADIO_TWISTS
 from pydairlib.cassie.cassie_gym.reward_osudrl import RewardOSUDRL
+import pydairlib.cassie.cassie_gym.swing_foot_env as swing_foot_env
 # from reward_osudrl import RewardOSUDRL
 
 N_KNOT = 9
 SWING_FOOT_ACTION_DIM = N_KNOT * 3 + 6
 
-
-def get_default_params(
-        gains_file="examples/Cassie/osc/osc_walking_gains_alip.yaml"):
-    with open(gains_file, 'r') as f:
-        gains = yaml.safe_load(f)
-
-    knots = []
-    for i in range(N_KNOT):
-        t = i/(N_KNOT - 1)
-        x = [0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
-             0.5 * (np.sin(np.pi * (t - 0.5)) + 1),
-             (gains["mid_foot_height"]) * np.cos(np.pi * (t - 0.5))*t]
-        knots += x
-    vel_initial = [0, 0, 0]
-    vel_final = [0, 0, gains["final_foot_velocity_z"]]
-    return knots + vel_initial + vel_final
-
-
-def get_poor_default_params():
-    knots = []
-    for i in range(N_KNOT):
-        t = i / (N_KNOT - 1)
-        x = [t, t, 0.75*t*(1-t)]
-        knots += x
-    vel_initial = [0, 0, 0]
-    vel_final = [0, 0, 0]
-    return knots + vel_initial + vel_final
-
-
-def pack_action_message(action):
-    return np.concatenate(([N_KNOT], action)).ravel()
-
-
-class SwingFootEnv(DrakeCassieGym):
+class RadioSwingFootEnv(DrakeCassieGym):
 
     def __init__(self, reward_func, visualize=False):
         super().__init__(reward_func, visualize)
-        self.default_action = get_default_params()
+        self.default_action = swing_foot_env.get_default_params()
         self.action_space = gym.spaces.Box(
-            high=1, low=-1, shape=(SWING_FOOT_ACTION_DIM,), dtype=np.float32)
+            high=1, low=-1, shape=(CASSIE_RADIO_TWISTS + SWING_FOOT_ACTION_DIM,), dtype=np.float32)
         self.add_controller()
         self.make(self.controller)
         self.ss_states = [0, 1]
@@ -73,11 +41,18 @@ class SwingFootEnv(DrakeCassieGym):
         self.controller = AlipWalkingControllerFactory(
             self.controller_plant, True, True, osc_gains, osqp_settings, N_KNOT)
 
-    def step(self, action=None, vel_des=(1.0, 0.0)):
+    def step(self, action=None):
         if not self.initialized:
             print("Call make() before calling step() or advance()")
         if action is None:
-            action = np.zeros((len(self.default_action),))
+            swing_action = np.zeros((len(self.default_action),))
+            radio_twist = np.zeros(CASSIE_RADIO_TWISTS)
+
+        else:
+            swing_action = action[CASSIE_RADIO_TWISTS:]
+            radio_twist = action[0:CASSIE_RADIO_TWISTS]
+            radio = np.zeros((CASSIE_NRADIO,))
+            radio[[0, 1, 3]] = radio_twist
 
         # assuming this gets called while the robot is in double support
         cur_fsm_state = self.controller.get_fsm_output_port().Eval(self.controller_context)[0]
@@ -89,8 +64,6 @@ class SwingFootEnv(DrakeCassieGym):
 
         # Essentially want to do till the end of current double stance and then 
         # the end of the next single stance in one environment step
-        radio = np.zeros((CASSIE_NRADIO,))
-        radio[2] = vel_des[0]  # currently, y vel is unused
         while not done_with_ds or cur_fsm_state in self.ss_states:
             next_timestep = self.drake_simulator.get_context().get_time() + self.sim_dt
             self.cassie_sim.get_radio_input_port().FixValue(
@@ -98,7 +71,7 @@ class SwingFootEnv(DrakeCassieGym):
             self.controller.get_radio_input_port().FixValue(
                 self.controller_context, radio)
             self.controller.get_swing_foot_params_input_port().FixValue(
-                self.controller_context, pack_action_message(action))
+                self.controller_context, swing_foot_env.pack_action_message(swing_action))
             # Do sim step
             self.drake_simulator.AdvanceTo(next_timestep)
             self.current_time = self.drake_simulator.get_context().get_time()
@@ -111,7 +84,7 @@ class SwingFootEnv(DrakeCassieGym):
                 self.plant.GetMyMutableContextFromRoot(
                     self.drake_simulator.get_context()))
             u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
-            self.cassie_state = CassieEnvState(self.current_time, x, u, radio, action)
+            self.cassie_state = CassieEnvState(self.current_time, x, u, radio, swing_action)
             self.traj.append(self.cassie_state)
             swing_ft_error = self.swing_ft_error_port.Eval(self.controller_context).ravel()
             reward = self.reward_func.compute_reward(
@@ -124,9 +97,9 @@ class SwingFootEnv(DrakeCassieGym):
         return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), {}
 
 
-def make_swing_ft_env_fn(rank, seed=0):
+def make_radio_swing_ft_env(rank, seed=0):
     def _init():
-        env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=False)
-        env.seed(rank + seed)
-        return seed
+        env = RadioSwingFootEnv(reward_func=HighLevelReward(0.5), visualize=False)
+        env.seed(seed + rank)
+        return env
     return _init

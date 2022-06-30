@@ -14,17 +14,19 @@ from pydrake.trajectories import PiecewisePolynomial
 
 
 class SwingFootSplineOptimizer:
-    def __init__(self, budget):
+    def __init__(self, budget, vel_des):
         self.budget = budget
         self.env = make_swing_ft_env()
         self.default_action = np.array(get_default_params())
         self.date_prefix = time.strftime("%Y_%m_%d_%H_%m")
         self.data_folder = 'bindings/pydairlib/cassie/data/'
+        assert len(vel_des) == 2, "vel_des must be a tuple (xdot, ydot)"
+        self.vel_des = vel_des
 
     def get_single_reward(self, action):
         self.env = make_swing_ft_env()
         while self.env.current_time < 4.0:
-            _, _, t, _ = self.env.step(self.default_action + action)
+            _, _, t, _ = self.env.step(self.default_action + action, self.vel_des)
             if t:
                 break
 
@@ -137,13 +139,13 @@ def visualize_params_from_file(filename):
 
 
 def main():
-    optimizer = SwingFootSplineOptimizer(1000)
+    optimizer = SwingFootSplineOptimizer(1000, (1.0, 0.0))
     optimizer.learn_spline()
 
 
 if __name__ == "__main__":
     # plot_params_from_file('2022_06_15_00_06_1000')
     # traj = visualize_params(get_default_params())
-    visualize_params_from_file('2022_06_15_00_06_1000')
+    # visualize_params_from_file('2022_06_15_00_06_1000')
     # plot_torque_comparison('2022_06_08_23_1000')
-    # main()
+    main()

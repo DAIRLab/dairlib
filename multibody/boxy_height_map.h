@@ -31,6 +31,7 @@ class BoxyHeightMap {
                                const Eigen::VectorXd &y_grid) const ;
 
   static  BoxyHeightMap MakeRandomMap();
+  static  BoxyHeightMap MakeFlatSingleStepMap();
 
  private:
   static drake::math::RotationMatrix<double> MakeRotation(

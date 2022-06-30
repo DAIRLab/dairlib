@@ -15,6 +15,7 @@ CASSIE_NV = 22
 CASSIE_NU = 10
 CASSIE_NL = 12
 CASSIE_NRADIO = 18
+CASSIE_RADIO_TWISTS = 3
 
 
 class CassieEnvState():
@@ -55,10 +56,10 @@ class CassieEnvState():
     def get_joint_velocities(self):
         return self.x[CASSIE_JOINT_VELOCITY_SLICE]
 
-    def get_desired_forward_velocity(self, vel_scale):
+    def get_desired_forward_velocity(self, vel_scale=2.0):
         return self.radio[2] * vel_scale
 
-    def get_desired_lateral_velocity(self, vel_scale):
+    def get_desired_lateral_velocity(self, vel_scale=2.0):
         return self.radio[3] * vel_scale
 
 

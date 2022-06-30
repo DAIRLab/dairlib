@@ -12,8 +12,8 @@ using drake::geometry::GeometryId;
 
 
 double randd(double a, double b) {
-  return a + (b - a) * (static_cast<double>(rand())  /
-      static_cast<double>(RAND_MAX));
+  return a + (b - a) *
+                 (static_cast<double>(rand()) / static_cast<double>(RAND_MAX));
 }
 
 void BoxyHeightMap::AppendBox(double h, double w) {
@@ -28,29 +28,27 @@ void BoxyHeightMap::AddHeightMapToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph) {
   for (int i = 0; i < box_w_.size(); i++) {
-    Vector3d box_pos(
-        box_start_.at(i) + box_w_.at(i) / 2,
-        0,
-        box_h_.at(i) - dim_z_ / 2.0);
+    Vector3d box_pos(box_start_.at(i) + box_w_.at(i) / 2, 0,
+                     box_h_.at(i) - dim_z_ / 2.0);
     RigidTransform<double> X_WB(R_, R_.matrix() * box_pos);
     AddBox<double>(plant, scene_graph, X_WB,
-           Vector3d(box_w_.at(i), dim_y_, dim_z_),
-           mu_);
+                   Vector3d(box_w_.at(i), dim_y_, dim_z_), mu_);
   }
 }
 
-
 /// TODO: Brian-Acosta Only accurate for maps with <0, 0, 1> normal directions
-double BoxyHeightMap::GetHeightInWorld(const Vector2d &xy_pos) const {
+double BoxyHeightMap::GetHeightInWorld(const Vector2d& xy_pos) const {
   double x = xmap_ * xy_pos;
   double h = 0;
-  for (int i = 0; box_start_.at(i) < x; i++){h = box_h_.at(i);}
+  for (int i = 0; box_start_.at(i) < x; i++) {
+    h = box_h_.at(i);
+  }
   return h;
 }
 
 /// TODO: Brian-Acosta Only accurate for maps with <0, 0, 1> normal directions
 Eigen::MatrixXd BoxyHeightMap::GetHeightMap(
-    const Eigen::VectorXd &x_grid, const Eigen::VectorXd &y_grid) const {
+    const Eigen::VectorXd& x_grid, const Eigen::VectorXd& y_grid) const {
   MatrixXd map = MatrixXd::Zero(x_grid.size(), y_grid.size());
   for (int i = 0; i < x_grid.size(); i++) {
     double x = x_grid(i);
@@ -61,13 +59,12 @@ Eigen::MatrixXd BoxyHeightMap::GetHeightMap(
   return map;
 }
 
-RotationMatrix<double> BoxyHeightMap::MakeRotation(
-    const Vector3d& normal, double rotz) {
-
+RotationMatrix<double> BoxyHeightMap::MakeRotation(const Vector3d& normal,
+                                                   double rotz) {
   // Make a coordinate frame with the x axis aligned with the parent frame
   // x-z plane and the z axis aligned with normal
   Vector3d b_z = normal.normalized();
-  Vector3d b_x (b_z(2), 0, -b_z(0));
+  Vector3d b_x(b_z(2), 0, -b_z(0));
   b_x.normalize();
   Vector3d b_y = b_z.cross(b_x);
   RotationMatrix<double> R_BW =
@@ -79,8 +76,7 @@ RotationMatrix<double> BoxyHeightMap::MakeRotation(
 
 BoxyHeightMap BoxyHeightMap::MakeRandomMap() {
   int n_boxes = rand() % 10 + 5;
-  BoxyHeightMap boxy(Vector3d::UnitZ(), 5, 0.5,
-                     randd(-0.5, 0.5), 0.8);
+  BoxyHeightMap boxy(Vector3d::UnitZ(), 5, 0.5, randd(-0.5, 0.5), 0.8);
   boxy.AppendBox(0, 0.4);
   for (int i = 0; i < n_boxes; i++) {
     boxy.AppendBox(randd(-0.1, 0.1), randd(0.2, 0.4));
@@ -88,4 +84,11 @@ BoxyHeightMap BoxyHeightMap::MakeRandomMap() {
   return boxy;
 }
 
+BoxyHeightMap BoxyHeightMap::MakeFlatSingleStepMap() {
+  BoxyHeightMap boxy(Vector3d::UnitZ(), 5, 0.5, 0.0, 0.8);
+  boxy.AppendBox(0, 0.4);
+  boxy.AppendBox(0.15, 0.4);
+  boxy.AppendBox(0, 2.0);
+  return boxy;
+}
 }

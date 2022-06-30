@@ -39,6 +39,8 @@ void BoxyHeightMap::AddHeightMapToPlant(
   }
 }
 
+
+/// TODO: Brian-Acosta Only accurate for maps with <0, 0, 1> normal directions
 double BoxyHeightMap::GetHeightInWorld(const Vector2d &xy_pos) const {
   double x = xmap_ * xy_pos;
   double h = 0;
@@ -46,6 +48,7 @@ double BoxyHeightMap::GetHeightInWorld(const Vector2d &xy_pos) const {
   return h;
 }
 
+/// TODO: Brian-Acosta Only accurate for maps with <0, 0, 1> normal directions
 Eigen::MatrixXd BoxyHeightMap::GetHeightMap(
     const Eigen::VectorXd &x_grid, const Eigen::VectorXd &y_grid) const {
   MatrixXd map = MatrixXd::Zero(x_grid.size(), y_grid.size());

@@ -202,6 +202,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     std::mt19937 gen{rd()};
     std::normal_distribution<> d{0, param_.ball_stddev};
     ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), 0);
+    ProjectStateEstimate(end_effector, ball_xyz);
     // ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), d(gen));
   }
   // estimate ball velocity
@@ -442,6 +443,21 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // std::cout << "d\n" << system2_.d_[0] << std::endl;
 
 }
+
+void C3Controller_franka::ProjectStateEstimate(Eigen::Vector3d endeffector, Eigen::Vector3d& estimate) const {
+  Eigen::Vector3d dist_vec = estimate - endeffector;
+  double R = param_.ball_radius;
+  double r = param_.finger_radius;
+  
+  if (dist_vec.norm() < R+r){
+    Eigen::Vector3d u(dist_vec(0), dist_vec(1), 0);
+    double u_norm = u.norm();
+    double du = sqrt((R+r)*(R+r) - dist_vec(2)*dist_vec(2)) - u_norm;
+
+    estimate = estimate + du * u / u_norm;
+  }
+}
+
 }  // namespace controllers
 }  // namespace systems
 }  // namespace dairlib

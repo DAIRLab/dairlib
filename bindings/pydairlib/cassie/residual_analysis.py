@@ -1,4 +1,3 @@
-from cProfile import label
 from math import floor
 import sys
 import os
@@ -139,8 +138,7 @@ class CassieSystem():
         spring_force = -self.K @ ( self.pos_active_mask @ np.array([1,1]) * (q - self.spring_offset))
         spring_force_left = -self.K @ ( self.pos_active_mask @ np.array([1,0]) * (q - self.spring_offset))
         spring_force_right = -self.K @ ( self.pos_active_mask @ np.array([0,1]) * (q - self.spring_offset))
-        # damping_and_spring_force = damping_force + spring_force
-        damping_and_spring_force = damping_force
+        damping_and_spring_force = damping_force + spring_force
 
         # Get the J_h term
         J_h = np.zeros((2, 22))
@@ -159,29 +157,40 @@ class CassieSystem():
         z_direction_selection_matrix[0,2] = 1;  z_direction_selection_matrix[1,5] = 1
         z_direction_selection_matrix[2,8] = 1;  z_direction_selection_matrix[3,11] = 1
 
+        # Get the J_s term 
+        J_s = np.zeros((4, 22))
+        J_s[0, self.vel_map["knee_joint_leftdot"]] = 1
+        J_s[1, self.vel_map["knee_joint_rightdot"]] = 1
+        J_s[2, self.vel_map["ankle_spring_joint_leftdot"]] = 1
+        J_s[3, self.vel_map["ankle_spring_joint_rightdot"]] = 1
+
         # Construct Linear Equation Matrices
         # Solving the exact linear equations:
         if num_contact_unknown > 0:
             A = np.vstack((
-                    np.hstack((M, -J_c_active.T, -J_h.T)),
-                    np.hstack((J_h, np.zeros((2,num_contact_unknown)),np.zeros((2, 2)))),
-                    np.hstack((J_c_active, np.zeros((num_contact_unknown, num_contact_unknown)), np.zeros((num_contact_unknown,2))))
+                np.hstack((M, -J_c_active.T, -J_h.T, -J_s.T)),
+                np.hstack((J_h, np.zeros((2,num_contact_unknown)),np.zeros((2,2)), np.zeros((2,4)) )),
+                np.hstack((J_c_active, np.zeros((num_contact_unknown, num_contact_unknown)), np.zeros((num_contact_unknown,2)), np.zeros((num_contact_unknown,4)) )),
+                np.hstack((J_s, np.zeros((4, num_contact_unknown+6)) ))
             ))
 
             b = np.hstack((
-                B @ u + gravity - bias + damping_and_spring_force,
+                B @ u + gravity - bias + damping_force,
                 -J_h_dot_times_v,
-                -J_c_active_dot_v
+                -J_c_active_dot_v,
+                np.zeros(4)
             ))
         else:
             A = np.vstack((
-                np.hstack((M, -J_h.T)),
-                np.hstack((J_h, np.zeros((2, 2)))),
+                np.hstack((M, -J_h.T, -J_s.T)),
+                np.hstack((J_h, np.zeros((2, 6)))),
+                np.hstack((J_s, np.zeros((4, 6))))
                 ))
 
             b = np.hstack((
-                B @ u + gravity - bias + damping_and_spring_force,
+                B @ u + gravity - bias + damping_force,
                 -J_h_dot_times_v,
+                np.zeros(4)
             ))
 
         if not is_soft_constraints or num_contact_unknown == 0:
@@ -202,16 +211,19 @@ class CassieSystem():
             lambda_c = get_force_at_point_matrix @ solution[22:22+num_contact_unknown]
         else:
             lambda_c = np.zeros(6,)
-        lambda_h = solution[-2:]
+        lambda_h = solution[22+num_contact_unknown:24+num_contact_unknown]
+        lambda_spring = solution[-4:]
+        spring_force = J_s.T @ lambda_spring
+
+        import pdb; pdb.set_trace()
         
-        v_map, v_map_inverse = self.make_velocity_map()
         r = (v_dot - v_dot_gt)
         self.r.append(r)
 
-        self.r_spring.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((spring_force, np.zeros(2 + num_contact_unknown))))[:22])
-        self.r_spring_left.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((spring_force_left, np.zeros(2 + num_contact_unknown))))[:22])
-        self.r_spring_right.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((spring_force_right, np.zeros(2 + num_contact_unknown))))[:22])
-        self.r_damping.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((damping_force, np.zeros(2 + num_contact_unknown))))[:22])
+        self.r_spring.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((spring_force, np.zeros((6 + num_contact_unknown)) )))[:22])
+        #self.r_spring_left.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((spring_force_left, np.zeros(2 + num_contact_unknown))))[:22])
+        #self.r_spring_right.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((spring_force_right, np.zeros(2 + num_contact_unknown))))[:22])
+        self.r_damping.append((A.T @ np.linalg.inv(A @ A.T) @ np.hstack((damping_force, np.zeros(6 + num_contact_unknown))))[:22])
 
         if num_contact_unknown > 0:
             e_J_c = J_c_active @ v_dot_gt + J_c_active_dot_v
@@ -225,30 +237,30 @@ class CassieSystem():
         self.effect_e_J_h.append(effect_e_J_h)
 
         # Only select ankle joint, hip pitch and knee, because other joint in gt seems noisy.
-        selection_matrix = np.zeros((6, 22+num_contact_unknown+2))
-        selection_matrix[0,self.vel_map["ankle_joint_leftdot"]] = 1; selection_matrix[1,self.vel_map["ankle_joint_rightdot"]] = 1
-        selection_matrix[2,self.vel_map["hip_pitch_leftdot"]] = 1; selection_matrix[3,self.vel_map["hip_pitch_rightdot"]] = 1
-        selection_matrix[4,self.vel_map["knee_leftdot"]] = 1; selection_matrix[5,self.vel_map["knee_rightdot"]] = 1
+        # selection_matrix = np.zeros((6, 22+num_contact_unknown+2))
+        # selection_matrix[0,self.vel_map["ankle_joint_leftdot"]] = 1; selection_matrix[1,self.vel_map["ankle_joint_rightdot"]] = 1
+        # selection_matrix[2,self.vel_map["hip_pitch_leftdot"]] = 1; selection_matrix[3,self.vel_map["hip_pitch_rightdot"]] = 1
+        # selection_matrix[4,self.vel_map["knee_leftdot"]] = 1; selection_matrix[5,self.vel_map["knee_rightdot"]] = 1
         
-        if num_contact_unknown > 0:
-            b_other_force = np.hstack((
-                            B @ u + gravity - bias + damping_force,
-                            -J_h_dot_times_v,
-                            -J_c_active_dot_v
-                            ))
-        else:
-            b_other_force = np.hstack((
-                            B @ u + gravity - bias + damping_force,
-                            -J_h_dot_times_v,
-                            ))
+        # if num_contact_unknown > 0:
+        #     b_other_force = np.hstack((
+        #                     B @ u + gravity - bias + damping_force,
+        #                     -J_h_dot_times_v,
+        #                     -J_c_active_dot_v
+        #                     ))
+        # else:
+        #     b_other_force = np.hstack((
+        #                     B @ u + gravity - bias + damping_force,
+        #                     -J_h_dot_times_v,
+        #                     ))
 
-        AA = A.T @ np.linalg.inv(A @ A.T)
+        # AA = A.T @ np.linalg.inv(A @ A.T)
 
-        bb = selection_matrix @ np.hstack((v_dot_gt, np.zeros(2+num_contact_unknown) )) - selection_matrix @ AA @ b_other_force
+        # bb = selection_matrix @ np.hstack((v_dot_gt, np.zeros(2+num_contact_unknown) )) - selection_matrix @ AA @ b_other_force
 
-        self.A.append((selection_matrix @ AA)[:,:22])
-        self.b.append(bb)
-        self.q.append(q)
+        # self.A.append((selection_matrix @ AA)[:,:22])
+        # self.b.append(bb)
+        # self.q.append(q)
 
         return v_dot, lambda_c, lambda_h
 
@@ -470,6 +482,7 @@ class CaaiseSystemTest():
         lambda_c_est_list = []
         lambda_h_est_list = []
         v_dot_gt_list = []
+        v_dot_osc_list = []
 
         v_est_left_foot_in_contact = []
         v_gt_left_foot_in_contact = []
@@ -485,63 +498,65 @@ class CaaiseSystemTest():
             lambda_c_est_list.append(lambda_c_est)
             lambda_h_est_list.append(lambda_h_est)
             v_dot_gt_list.append(v_dot_gt[i,:])
+            v_dot_osc_list.append(v_dot_osc[i,:])
 
-            if np.array_equal(is_contact[i,:], np.array([1,0])):
-                v_gt_left_foot_in_contact.append(v_dot_gt[i,:])
-                v_est_left_foot_in_contact.append(v_dot_est)
-                q_left_foot_in_contact.append(q[i,:])
-            elif np.array_equal(is_contact[i,:], np.array([0,1])):
-                v_gt_right_foot_in_contact.append(v_dot_gt[i,:])
-                v_est_right_foot_in_contact.append(v_dot_est)
-                q_right_foot_in_contact.append(q[i,:])
+            # if np.array_equal(is_contact[i,:], np.array([1,0])):
+            #     v_gt_left_foot_in_contact.append(v_dot_gt[i,:])
+            #     v_est_left_foot_in_contact.append(v_dot_est)
+            #     q_left_foot_in_contact.append(q[i,:])
+            # elif np.array_equal(is_contact[i,:], np.array([0,1])):
+            #     v_gt_right_foot_in_contact.append(v_dot_gt[i,:])
+            #     v_est_right_foot_in_contact.append(v_dot_est)
+            #     q_right_foot_in_contact.append(q[i,:])
         
         t_list = np.array(t_list)
         v_dot_est_list = np.array(v_dot_est_list)
         lambda_c_est_list = np.array(lambda_c_est_list)
         lambda_h_est_list = np.array(lambda_h_est_list)
         v_dot_gt_list = np.array(v_dot_gt_list)
+        v_dot_osc_list = np.array(v_dot_osc_list)
 
         self.cassie.r = np.array(self.cassie.r)
         self.cassie.effect_e_J_c = np.array(self.cassie.effect_e_J_c)
         self.cassie.effect_e_J_h = np.array(self.cassie.effect_e_J_h)
         self.cassie.r_spring = np.array(self.cassie.r_spring)
         self.cassie.r_damping = np.array(self.cassie.r_damping)
-        self.cassie.r_spring_left = np.array(self.cassie.r_spring_left)
-        self.cassie.r_spring_right = np.array(self.cassie.r_spring_right)
+        # self.cassie.r_spring_left = np.array(self.cassie.r_spring_left)
+        # self.cassie.r_spring_right = np.array(self.cassie.r_spring_right)
 
-        v_gt_left_foot_in_contact = np.array(v_gt_left_foot_in_contact)
-        v_est_left_foot_in_contact = np.array(v_est_left_foot_in_contact)
-        q_left_foot_in_contact = np.array(q_left_foot_in_contact)
-        v_gt_right_foot_in_contact = np.array(v_gt_right_foot_in_contact)
-        v_est_right_foot_in_contact = np.array(v_est_right_foot_in_contact)
-        q_right_foot_in_contact = np.array(q_right_foot_in_contact)
+        # v_gt_left_foot_in_contact = np.array(v_gt_left_foot_in_contact)
+        # v_est_left_foot_in_contact = np.array(v_est_left_foot_in_contact)
+        # q_left_foot_in_contact = np.array(q_left_foot_in_contact)
+        # v_gt_right_foot_in_contact = np.array(v_gt_right_foot_in_contact)
+        # v_est_right_foot_in_contact = np.array(v_est_right_foot_in_contact)
+        # q_right_foot_in_contact = np.array(q_right_foot_in_contact)
 
-        print("Start to solving least square")
-        step_size = 10
-        n = floor(len(self.cassie.A) / step_size)        
-        # expand the unknown K and offset to a desired matrix
-        # K and offset be in order of knee_joint_left, knee_joint_right, ankle_spring_joint_left, ankle_spring_joint_left
-        pre_exp_m = np.zeros((22,4))
-        post_exp_m = np.zeros((4,23))
-        pre_exp_m[self.vel_map["knee_joint_leftdot"], 0] = 1; pre_exp_m[self.vel_map["knee_joint_rightdot"], 1] = 1
-        pre_exp_m[self.vel_map["ankle_spring_joint_leftdot"], 2] = 1; pre_exp_m[self.vel_map["ankle_spring_joint_rightdot"], 3] = 1
-        post_exp_m[0, self.pos_map["knee_joint_left"]] = 1; post_exp_m[1, self.pos_map["knee_joint_right"]] = 1
-        post_exp_m[2, self.pos_map["ankle_spring_joint_left"]] = 1; post_exp_m[3, self.pos_map["ankle_spring_joint_right"]] = 1
+        # print("Start to solving least square")
+        # step_size = 10
+        # n = floor(len(self.cassie.A) / step_size)        
+        # # expand the unknown K and offset to a desired matrix
+        # # K and offset be in order of knee_joint_left, knee_joint_right, ankle_spring_joint_left, ankle_spring_joint_left
+        # pre_exp_m = np.zeros((22,4))
+        # post_exp_m = np.zeros((4,23))
+        # pre_exp_m[self.vel_map["knee_joint_leftdot"], 0] = 1; pre_exp_m[self.vel_map["knee_joint_rightdot"], 1] = 1
+        # pre_exp_m[self.vel_map["ankle_spring_joint_leftdot"], 2] = 1; pre_exp_m[self.vel_map["ankle_spring_joint_rightdot"], 3] = 1
+        # post_exp_m[0, self.pos_map["knee_joint_left"]] = 1; post_exp_m[1, self.pos_map["knee_joint_right"]] = 1
+        # post_exp_m[2, self.pos_map["ankle_spring_joint_left"]] = 1; post_exp_m[3, self.pos_map["ankle_spring_joint_right"]] = 1
 
-        K = cp.Variable(4)
-        offset = cp.Variable(4)
-        residuals = cp.Variable(6*n)
-        constraints = []
+        # K = cp.Variable(4)
+        # offset = cp.Variable(4)
+        # residuals = cp.Variable(6*n)
+        # constraints = []
 
-        for i in range(n):
-            constraints.append(residuals[6*i:6*(i+1)] == 
-                            self.cassie.A[i*step_size] @ 
-                            (pre_exp_m @ -cp.diag(K) @ post_exp_m @ self.cassie.q[i*step_size] + pre_exp_m @ cp.diag(offset) @ post_exp_m @ np.ones(23)) - self.cassie.b[i*step_size])
+        # for i in range(n):
+        #     constraints.append(residuals[6*i:6*(i+1)] == 
+        #                     self.cassie.A[i*step_size] @ 
+        #                     (pre_exp_m @ -cp.diag(K) @ post_exp_m @ self.cassie.q[i*step_size] + pre_exp_m @ cp.diag(offset) @ post_exp_m @ np.ones(23)) - self.cassie.b[i*step_size])
 
-        obj = cp.Minimize(cp.norm1(residuals))
-        prob = cp.Problem(obj, constraints)
-        prob.solve()
-        print("Finish solving the least square")
+        # obj = cp.Minimize(cp.norm1(residuals))
+        # prob = cp.Problem(obj, constraints)
+        # prob.solve()
+        # print("Finish solving the least square")
 
         # plt.plot(t_list[::10], residuals.value[::6], label = "ankle_left")
         # plt.plot(t_list[::10], residuals.value[1::6], label = "ankle_right")
@@ -556,15 +571,15 @@ class CaaiseSystemTest():
 
         residuals = self.get_residual(v_dot_gt_list, v_dot_est_list)
 
-        ax = plt.axes(projection='3d')
-        ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.pos_map["ankle_spring_joint_left"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
-        ax.set_xlabel("knee_joint_left"); ax.set_ylabel("ankle_spring_joint_left"); ax.set_title("hip_pitch_left")
-        plt.show()
+        # ax = plt.axes(projection='3d')
+        # ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.pos_map["ankle_spring_joint_left"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
+        # ax.set_xlabel("knee_joint_left"); ax.set_ylabel("ankle_spring_joint_left"); ax.set_title("hip_pitch_left")
+        # plt.show()
 
-        ax = plt.axes(projection='3d')
-        ax.plot(q[:,self.pos_map["knee_joint_left"]], v[:,self.vel_map["knee_joint_leftdot"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
-        ax.set_xlabel("knee_joint_left"); ax.set_ylabel("knee_joint_leftdot"); ax.set_title("hip_pitch_left")
-        plt.show()
+        # ax = plt.axes(projection='3d')
+        # ax.plot(q[:,self.pos_map["knee_joint_left"]], v[:,self.vel_map["knee_joint_leftdot"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
+        # ax.set_xlabel("knee_joint_left"); ax.set_ylabel("knee_joint_leftdot"); ax.set_title("hip_pitch_left")
+        # plt.show()
 
         # ax = plt.axes(projection='3d')
         # ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.pos_map["hip_roll_left"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
@@ -617,6 +632,7 @@ class CaaiseSystemTest():
             plt.cla()
             plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
             plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
+            plt.plot(t_list, v_dot_osc_list[:,i], 'b', label='osc')
             plt.legend()
             plt.title(self.vel_map_inverse[i])
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/hardware_test/v_dot/{}.png".format(self.vel_map_inverse[i]))

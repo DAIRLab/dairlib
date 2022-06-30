@@ -63,7 +63,9 @@ class DrakeCassieGym(gym.Env):
 
         # Add Cassie Simulation
         self.plant = MultibodyPlant(self.plant_dt)
-        self.cassie_sim = CassieSimDiagram(self.plant, urdf, self.visualize, 0.8)
+        self.cassie_sim = CassieSimDiagram(self.plant, urdf,
+                                           self.visualize, 0.8,
+                                           np.array([0,0,1]))
         self.sim_plant = self.cassie_sim.get_plant()
         self.builder.AddSystem(self.cassie_sim)
 

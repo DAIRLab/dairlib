@@ -14,12 +14,12 @@ using drake::AutoDiffXd;
 using drake::VectorX;
 using drake::geometry::HalfSpace;
 using drake::geometry::Box;
-using drake::geometry::SourceId;
 using drake::geometry::GeometryId;
 using drake::geometry::SceneGraph;
 using drake::math::ExtractGradient;
 using drake::math::ExtractValue;
 using drake::math::RigidTransform;
+using drake::math::RotationMatrix;
 using drake::multibody::BodyIndex;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
@@ -29,6 +29,7 @@ using drake::systems::Context;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::Vector2d;
+using Eigen::MatrixXd;
 using std::map;
 using std::string;
 using std::vector;
@@ -147,6 +148,7 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
   }
 }
 
+
 template <typename T>
 std::vector<GeometryId> AddBox(
     MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
@@ -154,18 +156,65 @@ std::vector<GeometryId> AddBox(
   if (!plant->geometry_source_is_registered()) {
     plant->RegisterAsSourceForSceneGraph(scene_graph);
   }
+
+  static int boxnum = 0;
   drake::multibody::CoulombFriction<T> friction(mu, mu);
   std::vector<GeometryId> ids;
 
   Box box(len_xyz(0), len_xyz(1), len_xyz(2));
   ids.push_back(
       plant->RegisterCollisionGeometry(
-          plant->world_body(), X_WB, box, "box collision", friction));
+          plant->world_body(), X_WB, box,
+          "box collision" + std::to_string(boxnum++), friction));
   ids.push_back(
       plant->RegisterVisualGeometry(
-          plant->world_body(), X_WB, box, "box visual"));
+          plant->world_body(), X_WB, box,
+          "box visual"+ std::to_string(boxnum++)));
   return ids;
 }
+
+
+/// Add a series of random boxes
+template <typename T>
+std::vector<drake::geometry::GeometryId>
+AddRandomBoxes(drake::multibody::MultibodyPlant<T>* plant,
+               drake::geometry::SceneGraph<T>* scene_graph,
+               const Vector3d& normal) {
+  //  srand(0);
+  std::vector<GeometryId> all_ids;
+  // generate a random number between 5 and 15
+  int n_boxes = rand() % 10 + 5;
+  double x_center = 0.2;
+  double z_center = -0.25;
+
+  Vector3d basis_z = normal.normalized();
+  Vector3d basis_x (basis_z(2), 0, -normal(0));
+  basis_x.normalize();
+  Vector3d basis_y = basis_z.cross(basis_x);
+  RotationMatrix<T> R_NW =
+      RotationMatrix<T>::MakeFromOrthonormalColumns(basis_x, basis_y, basis_z);
+
+  all_ids = AddBox(plant, scene_graph,
+             RigidTransform<T>(R_NW, Vector3d(0, 0, -0.25)),
+             Vector3d(0.4, 5, 0.5), 0.8);
+
+  for (int i = 0; i < n_boxes; i++) {
+    Vector2d hd = MatrixXd::Random(2, 1);
+    hd(0) *= 0.2;
+    hd(1) = 0.3 + 0.1 * hd(1);
+    Vector3d box_pos (x_center + hd(1)/2, 0, z_center + hd(0));
+    RigidTransform<T> X_WB(R_NW, R_NW.matrix() * box_pos);
+    auto ids = AddBox(plant, scene_graph, X_WB,
+                      Vector3d(hd(1), 5, 0.5), 0.8);
+    x_center += hd(1);
+    z_center += hd(0);
+    for (auto id : ids) {
+      all_ids.push_back(id);
+    }
+  }
+  return all_ids;
+}
+
 
 /// Construct a map between joint names and position indices
 ///     <name,index> such that q(index) has the given name
@@ -536,6 +585,8 @@ template vector<string> CreateActuatorNameVectorFromMap(const MultibodyPlant<Aut
 template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template void AddFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W, bool show_ground);   // NOLINT
+template std::vector<GeometryId> AddBox<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, const RigidTransform<double>& X_WB, const Vector3d& len_xyz, double mu);   //NOLINT
+template std::vector<GeometryId> AddRandomBoxes<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, const Vector3d& normal);   //NOLINT
 template VectorX<double> GetInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> GetInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
 template std::unique_ptr<Context<double>> CreateContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>& input);  // NOLINT

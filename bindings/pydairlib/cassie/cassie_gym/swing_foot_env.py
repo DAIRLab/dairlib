@@ -111,7 +111,7 @@ class SwingFootEnv(DrakeCassieGym):
                 self.plant.GetMyMutableContextFromRoot(
                     self.drake_simulator.get_context()))
             u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
-            self.cassie_state = CassieEnvState(self.current_time, x, u, action)
+            self.cassie_state = CassieEnvState(self.current_time, x, u, radio, action)
             self.traj.append(self.cassie_state)
             swing_ft_error = self.swing_ft_error_port.Eval(self.controller_context).ravel()
             reward = self.reward_func.compute_reward(

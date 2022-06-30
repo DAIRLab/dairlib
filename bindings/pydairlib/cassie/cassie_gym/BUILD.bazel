@@ -16,6 +16,8 @@ py_library(
     srcs = ["drake_cassie_gym.py"],
     deps = [
         ":cassie_env_state",
+        ":cassie_traj",
+        ":reward_osudrl",
         "//bindings/pydairlib",
         "//bindings/pydairlib/cassie",
         "//bindings/pydairlib/multibody",

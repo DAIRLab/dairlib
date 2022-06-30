@@ -9,7 +9,6 @@ from pydrake.systems.analysis import Simulator
 
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.cassie.cassie_utils import *
-from pydairlib.multibody import MultibodyPlant
 from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
 from dairlib import lcmt_radio_out
@@ -102,9 +101,9 @@ class DrakeCassieGym(gym.Env):
         self.drake_simulator.Initialize()
         self.current_time = self.start_time
         self.cassie_state = \
-            CassieEnvState(self.current_time, x, u, self.default_action)
+            CassieEnvState(self.current_time, x, u, self.default_action, None)
         self.prev_cassie_state = \
-            CassieEnvState(self.current_time, x, u, self.default_action)
+            CassieEnvState(self.current_time, x, u, self.default_action, None)
         self.traj = CassieStateHistory()
         self.cumulative_reward = 0
         self.terminated = False
@@ -135,7 +134,7 @@ class DrakeCassieGym(gym.Env):
             self.plant.GetMyMutableContextFromRoot(
                 self.drake_simulator.get_context()))
         u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
-        self.cassie_state = CassieEnvState(self.current_time, x, u, action)
+        self.cassie_state = CassieEnvState(self.current_time, x, u, action, None)
         reward = self.reward_func.compute_reward(self.sim_dt, self.cassie_state, self.prev_cassie_state)
         self.terminated = self.check_termination()
         self.prev_cassie_state = self.cassie_state

@@ -189,6 +189,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // parse franka state info
   VectorXd ball = robot_output->GetPositions().tail(7);
   VectorXd ball_dot = robot_output->GetVelocities().tail(6);
+
+  if (abs(param_.ball_stddev) > 1e-9){
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<> d{0, param_.ball_stddev};
+    ball(4) = ball(4) + d(gen);
+    ball(5) = ball(5) + d(gen);
+
+    // ProjectStateEstimate(end_effector, ball_xyz);
+    // ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), d(gen));
+  }
+
   VectorXd q(10);
   q << end_effector, ball;
   VectorXd v(9);
@@ -197,14 +209,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   // add noise to ball position
   Vector3d ball_xyz = ball.tail(3);
-  if (abs(param_.ball_stddev) > 1e-9){
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
-    std::normal_distribution<> d{0, param_.ball_stddev};
-    ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), 0);
-    ProjectStateEstimate(end_effector, ball_xyz);
-    // ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), d(gen));
-  }
+//  if (abs(param_.ball_stddev) > 1e-9){
+//    std::random_device rd{};
+//    std::mt19937 gen{rd()};
+//    std::normal_distribution<> d{0, param_.ball_stddev};
+//    ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), 0);
+//    ProjectStateEstimate(end_effector, ball_xyz);
+//    // ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), d(gen));
+//  }
   // estimate ball velocity
   Vector3d v_ball = (ball_xyz - ball_xyz_prev_) /  (timestamp - prev_timestamp_);
   // Vector3d v_ball = ball_dot.tail(3);
@@ -452,7 +464,7 @@ void C3Controller_franka::ProjectStateEstimate(Eigen::Vector3d endeffector, Eige
   if (dist_vec.norm() < R+r){
     Eigen::Vector3d u(dist_vec(0), dist_vec(1), 0);
     double u_norm = u.norm();
-    double du = sqrt((R+r)*(R+r) - dist_vec(2)*dist_vec(2)) - u_norm;
+    double du = 0.01 + sqrt((R+r)*(R+r) - dist_vec(2)*dist_vec(2)) - u_norm;
 
     estimate = estimate + du * u / u_norm;
   }

@@ -1,3 +1,5 @@
+from cProfile import label
+from math import floor
 import sys
 import os
 from matplotlib import projections
@@ -51,12 +53,14 @@ class CassieSystem():
         # Visualizer
         self.visualizer = multibody.MultiposeVisualizer(self.urdf, 1, '')
 
-        self.init_intermediate_variable_for_plot()
-
         self.pos_map, self.pos_map_inverse = self.make_position_map()
         self.vel_map, self.vel_map_inverse = self.make_velocity_map()
 
         self.get_pos_active_mask()
+
+        self.init_intermediate_variable_for_plot()
+
+        self.init_intermediate_variable_for_fitting_K()
 
     def get_pos_active_mask(self):
         left_pos_active_mask = np.zeros(23)
@@ -77,6 +81,11 @@ class CassieSystem():
         self.r_damping = []
         self.r_spring_left = []
         self.r_spring_right = []
+
+    def init_intermediate_variable_for_fitting_K(self):
+        self.A = []
+        self.b = []
+        self.q = []
 
     def drawPose(self, q):
         self.visualizer.DrawPoses(q)
@@ -130,7 +139,8 @@ class CassieSystem():
         spring_force = -self.K @ ( self.pos_active_mask @ np.array([1,1]) * (q - self.spring_offset))
         spring_force_left = -self.K @ ( self.pos_active_mask @ np.array([1,0]) * (q - self.spring_offset))
         spring_force_right = -self.K @ ( self.pos_active_mask @ np.array([0,1]) * (q - self.spring_offset))
-        damping_and_spring_force = damping_force + spring_force
+        # damping_and_spring_force = damping_force + spring_force
+        damping_and_spring_force = damping_force
 
         # Get the J_h term
         J_h = np.zeros((2, 22))
@@ -214,13 +224,31 @@ class CassieSystem():
         effect_e_J_h = (np.linalg.inv(M) @ J_h.T @ np.linalg.inv( J_h @ np.linalg.inv(M) @ J_h.T) @ e_J_h)
         self.effect_e_J_h.append(effect_e_J_h)
 
-        # if abs(r) > 150:
-        #     print("residual:", r)
-        #     if num_contact_unknown > 0:
-        #         print("residual of J_c:", e_J_c)
-        #         print("effect of residual of J_c", effect_e_J_c)
-        #     print("residual pf J_h", e_J_h)
-        #     print("effect of residual of J_h", effect_e_J_h)
+        # Only select ankle joint, hip pitch and knee, because other joint in gt seems noisy.
+        selection_matrix = np.zeros((6, 22+num_contact_unknown+2))
+        selection_matrix[0,self.vel_map["ankle_joint_leftdot"]] = 1; selection_matrix[1,self.vel_map["ankle_joint_rightdot"]] = 1
+        selection_matrix[2,self.vel_map["hip_pitch_leftdot"]] = 1; selection_matrix[3,self.vel_map["hip_pitch_rightdot"]] = 1
+        selection_matrix[4,self.vel_map["knee_leftdot"]] = 1; selection_matrix[5,self.vel_map["knee_rightdot"]] = 1
+        
+        if num_contact_unknown > 0:
+            b_other_force = np.hstack((
+                            B @ u + gravity - bias + damping_force,
+                            -J_h_dot_times_v,
+                            -J_c_active_dot_v
+                            ))
+        else:
+            b_other_force = np.hstack((
+                            B @ u + gravity - bias + damping_force,
+                            -J_h_dot_times_v,
+                            ))
+
+        AA = A.T @ np.linalg.inv(A @ A.T)
+
+        bb = selection_matrix @ np.hstack((v_dot_gt, np.zeros(2+num_contact_unknown) )) - selection_matrix @ AA @ b_other_force
+
+        self.A.append((selection_matrix @ AA)[:,:22])
+        self.b.append(bb)
+        self.q.append(q)
 
         return v_dot, lambda_c, lambda_h
 
@@ -419,8 +447,19 @@ class CaaiseSystemTest():
         process_data = self.process_hardware_data(raw_data, self.start_time, self.end_time)
         t = process_data["t"]; q = process_data["q"]; v = process_data["v"]; v_dot_gt = process_data["v_dot"]; 
         u = process_data["u"]; is_contact = process_data["is_contact"]; v_dot_osc = process_data["v_dot_osc"]; u_osc = process_data["u_osc"]
-        K = process_data["spring_stiffness"]; C = process_data["damping_ratio"]; 
-        offset = np.zeros(23); 
+        K = process_data["spring_stiffness"]; C = process_data["damping_ratio"]
+
+        # K[self.vel_map["knee_joint_leftdot"], self.pos_map["knee_joint_left"]] = 1531.28512245
+        # K[self.vel_map["knee_joint_rightdot"], self.pos_map["knee_joint_right"]] = 1754.16568063
+        # K[self.vel_map["ankle_spring_joint_leftdot"], self.pos_map["ankle_spring_joint_left"]] = 923.00560595
+        # K[self.vel_map["ankle_spring_joint_rightdot"], self.pos_map["ankle_spring_joint_right"]] = 986.8367351
+
+        offset = np.zeros(23)
+        # offset[self.pos_map["knee_joint_left"]] = -7.38443491/1531.28512245
+        # offset[self.pos_map["knee_joint_right"]] = -9.17183419/1754.16568063
+        # offset[self.pos_map["ankle_spring_joint_left"]] = -15.89566176/923.00560595
+        # offset[self.pos_map["ankle_spring_joint_right"]] = -17.37326985/986.8367351
+
         # offset[self.pos_map["knee_joint_left"]] = 0.000; offset[self.pos_map["knee_joint_right"]] = offset[self.pos_map["knee_joint_left"]]
         # K[self.vel_map["knee_joint_leftdot"],self.pos_map["knee_joint_left"]] = 1500; K[self.vel_map["knee_joint_rightdot"],self.pos_map["knee_joint_right"]] = K[self.vel_map["knee_joint_leftdot"],self.pos_map["knee_joint_left"]]
         self.cassie.get_spring_stiffness(K); self.cassie.get_damping(C)
@@ -477,6 +516,44 @@ class CaaiseSystemTest():
         v_est_right_foot_in_contact = np.array(v_est_right_foot_in_contact)
         q_right_foot_in_contact = np.array(q_right_foot_in_contact)
 
+        print("Start to solving least square")
+        step_size = 10
+        n = floor(len(self.cassie.A) / step_size)        
+        # expand the unknown K and offset to a desired matrix
+        # K and offset be in order of knee_joint_left, knee_joint_right, ankle_spring_joint_left, ankle_spring_joint_left
+        pre_exp_m = np.zeros((22,4))
+        post_exp_m = np.zeros((4,23))
+        pre_exp_m[self.vel_map["knee_joint_leftdot"], 0] = 1; pre_exp_m[self.vel_map["knee_joint_rightdot"], 1] = 1
+        pre_exp_m[self.vel_map["ankle_spring_joint_leftdot"], 2] = 1; pre_exp_m[self.vel_map["ankle_spring_joint_rightdot"], 3] = 1
+        post_exp_m[0, self.pos_map["knee_joint_left"]] = 1; post_exp_m[1, self.pos_map["knee_joint_right"]] = 1
+        post_exp_m[2, self.pos_map["ankle_spring_joint_left"]] = 1; post_exp_m[3, self.pos_map["ankle_spring_joint_right"]] = 1
+
+        K = cp.Variable(4)
+        offset = cp.Variable(4)
+        residuals = cp.Variable(6*n)
+        constraints = []
+
+        for i in range(n):
+            constraints.append(residuals[6*i:6*(i+1)] == 
+                            self.cassie.A[i*step_size] @ 
+                            (pre_exp_m @ -cp.diag(K) @ post_exp_m @ self.cassie.q[i*step_size] + pre_exp_m @ cp.diag(offset) @ post_exp_m @ np.ones(23)) - self.cassie.b[i*step_size])
+
+        obj = cp.Minimize(cp.norm1(residuals))
+        prob = cp.Problem(obj, constraints)
+        prob.solve()
+        print("Finish solving the least square")
+
+        # plt.plot(t_list[::10], residuals.value[::6], label = "ankle_left")
+        # plt.plot(t_list[::10], residuals.value[1::6], label = "ankle_right")
+        # plt.plot(t_list[::10], residuals.value[2::6], label = "hip_left")
+        # plt.plot(t_list[::10], residuals.value[3::6], label = "hip_right")
+        # plt.plot(t_list[::10], residuals.value[4::6], label = "knee_left")
+        # plt.plot(t_list[::10], residuals.value[5::6], label = "knee_right")
+        # plt.legend()
+        # plt.show()
+
+        # import pdb; pdb.set_trace()
+
         residuals = self.get_residual(v_dot_gt_list, v_dot_est_list)
 
         ax = plt.axes(projection='3d')
@@ -489,49 +566,49 @@ class CaaiseSystemTest():
         ax.set_xlabel("knee_joint_left"); ax.set_ylabel("knee_joint_leftdot"); ax.set_title("hip_pitch_left")
         plt.show()
 
-        ax = plt.axes(projection='3d')
-        ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.pos_map["hip_roll_left"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
-        ax.set_xlabel("knee_joint_left"); ax.set_ylabel("hip_roll_left"); ax.set_title("hip_pitch_left")
-        plt.show()
+        # ax = plt.axes(projection='3d')
+        # ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.pos_map["hip_roll_left"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
+        # ax.set_xlabel("knee_joint_left"); ax.set_ylabel("hip_roll_left"); ax.set_title("hip_pitch_left")
+        # plt.show()
 
-        ax = plt.axes(projection='3d')
-        ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.pos_map["hip_pitch_left"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
-        ax.set_xlabel("knee_joint_left"); ax.set_ylabel("hip_pitch_left"); ax.set_title("hip_pitch_left")
-        plt.show()
+        # ax = plt.axes(projection='3d')
+        # ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.pos_map["hip_pitch_left"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
+        # ax.set_xlabel("knee_joint_left"); ax.set_ylabel("hip_pitch_left"); ax.set_title("hip_pitch_left")
+        # plt.show()
 
-        ax = plt.axes(projection='3d')
-        ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.pos_map["ankle_joint_right"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
-        ax.set_xlabel("knee_joint_left"); ax.set_ylabel("ankle_joint_right"); ax.set_title("hip_pitch_left")
-        plt.show()
+        # ax = plt.axes(projection='3d')
+        # ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.pos_map["ankle_joint_right"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
+        # ax.set_xlabel("knee_joint_left"); ax.set_ylabel("ankle_joint_right"); ax.set_title("hip_pitch_left")
+        # plt.show()
 
-        ax = plt.axes(projection='3d')
-        ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.vel_map["hip_pitch_leftdot"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
-        ax.set_xlabel("knee_joint_left"); ax.set_ylabel("hip_pitch_leftdot"); ax.set_title("hip_pitch_left")
-        plt.show()
+        # ax = plt.axes(projection='3d')
+        # ax.plot(q[:,self.pos_map["knee_joint_left"]], q[:,self.vel_map["hip_pitch_leftdot"]], residuals[:,self.vel_map["hip_pitch_leftdot"]], 'ro')
+        # ax.set_xlabel("knee_joint_left"); ax.set_ylabel("hip_pitch_leftdot"); ax.set_title("hip_pitch_left")
+        # plt.show()
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
-        for i in range(23):
-            self.draw_residual(q[:,i], residuals, "bindings/pydairlib/cassie/residual_analysis/hardware_test/residual/residual_vs_{}".format(self.pos_map_inverse[i]))
+        # for i in range(23):
+        #     self.draw_residual(q[:,i], residuals, "bindings/pydairlib/cassie/residual_analysis/hardware_test/residual/residual_vs_{}".format(self.pos_map_inverse[i]))
 
-        for i in range(22):
-            self.draw_residual(v[:,i], residuals, "bindings/pydairlib/cassie/residual_analysis/hardware_test/residual/residual_vs_{}".format(self.vel_map_inverse[i]))
+        # for i in range(22):
+        #     self.draw_residual(v[:,i], residuals, "bindings/pydairlib/cassie/residual_analysis/hardware_test/residual/residual_vs_{}".format(self.vel_map_inverse[i]))
 
-        residuals_left_foot_in_contact = self.get_residual(v_gt_left_foot_in_contact, v_est_left_foot_in_contact)
-        self.draw_residual(q_left_foot_in_contact[:,self.pos_map["knee_joint_left"]], residuals_left_foot_in_contact, "bindings/pydairlib/cassie/residual_analysis/hardware_test/residual/residual_vs_knee_joint_left_when_left_foot_in_contact")
+        # residuals_left_foot_in_contact = self.get_residual(v_gt_left_foot_in_contact, v_est_left_foot_in_contact)
+        # self.draw_residual(q_left_foot_in_contact[:,self.pos_map["knee_joint_left"]], residuals_left_foot_in_contact, "bindings/pydairlib/cassie/residual_analysis/hardware_test/residual/residual_vs_knee_joint_left_when_left_foot_in_contact")
         
-        residuals_right_foot_in_contact = self.get_residual(v_gt_right_foot_in_contact, v_est_right_foot_in_contact)
-        self.draw_residual(q_right_foot_in_contact[:,self.pos_map["knee_joint_left"]], residuals_right_foot_in_contact, "bindings/pydairlib/cassie/residual_analysis/hardware_test/residual/residual_vs_knee_joint_left_when_right_foot_in_contact")
+        # residuals_right_foot_in_contact = self.get_residual(v_gt_right_foot_in_contact, v_est_right_foot_in_contact)
+        # self.draw_residual(q_right_foot_in_contact[:,self.pos_map["knee_joint_left"]], residuals_right_foot_in_contact, "bindings/pydairlib/cassie/residual_analysis/hardware_test/residual/residual_vs_knee_joint_left_when_right_foot_in_contact")
 
         for i in range(22):
             plt.cla()
             plt.plot(t_list, self.cassie.r[:,i], label="total residual")
-            plt.plot(t_list, self.cassie.effect_e_J_c[:,i], label="effect of violate J_c")
-            plt.plot(t_list, self.cassie.effect_e_J_h[:,i], label="effect of violate J_h")
-            plt.plot(t_list, self.cassie.r_spring[:,i], label="residual due to spring force")
-            plt.plot(t_list, self.cassie.r_spring_left[:,i], label="residual due to left spring force")
-            plt.plot(t_list, self.cassie.r_spring_right[:,i], label="residual due to right spring force")
-            plt.plot(t_list, self.cassie.r_damping[:,i], label="residual due to damping force")
+            plt.plot(t_list, self.cassie.effect_e_J_c[:,i], label="v dot due to residuals of J_c")
+            plt.plot(t_list, self.cassie.effect_e_J_h[:,i], label="v dot due to residuals of J_h")
+            plt.plot(t_list, self.cassie.r_spring[:,i], label="v dot due to spring force")
+            # plt.plot(t_list, self.cassie.r_spring_left[:,i], label="residual due to left spring force")
+            # plt.plot(t_list, self.cassie.r_spring_right[:,i], label="residual due to right spring force")
+            plt.plot(t_list, self.cassie.r_damping[:,i], label="v dot due to damping force")
             plt.legend()
             plt.title(self.vel_map_inverse[i])
             plt.savefig("bindings/pydairlib/cassie/residual_analysis/hardware_test/v_dot_residual/{}.png".format(self.vel_map_inverse[i]))

@@ -2,7 +2,7 @@
 
 # impedance control parameters
 translational_stiffness: 200 # 300
-rotational_stiffness: 3 # 1
+rotational_stiffness: 2 # 1
 damping_ratio: 1
 stiffness_null: 2
 damping_null: 1
@@ -13,9 +13,9 @@ pushing_offset: 0 #-0.001
 # c3 parameters
 mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
-Q_finger: 50           # finger xyz cost
-Q_ball_x: 1500  #10000
-Q_ball_y: 1500  #10000
+Q_finger: 100           # finger xyz cost
+Q_ball_x: 2500  #10000
+Q_ball_y: 2500  #10000
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
@@ -28,7 +28,7 @@ U_pos_vel: 10           # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
 q_init_finger: [0, 0, 0.07]
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03]
-dt: 0.03 # 0.03
+dt: 0.015 # 0.03
 
 # initialization/simulation parameters
 #q_init_franka: [0.154, 0.401, -0.08, -2.65, -0.33, 3.05, -0.252]

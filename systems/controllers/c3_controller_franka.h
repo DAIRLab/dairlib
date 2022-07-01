@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <map>
+#include <string>
 #include <deque>
 
 #include <Eigen/Core>
@@ -106,6 +108,10 @@ class C3Controller_franka : public LeafSystem<double> {
   const std::vector<Eigen::VectorXd> xdesired_;
   const drake::trajectories::PiecewisePolynomial<double> pp_;
   C3Parameters param_;
+  std::map<string, int> q_map_franka_;
+  std::map<string, int> v_map_franka_;
+  std::map<string, int> q_map_;
+  std::map<string, int> v_map_;
   const double PI = 3.14159265359;
 
   // dt filter

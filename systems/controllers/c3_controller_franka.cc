@@ -97,6 +97,10 @@ C3Controller_franka::C3Controller_franka(
           TimestampedVector<double>(34), &C3Controller_franka::CalcControl)
       .get_index();
 
+  q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
+  v_map_franka_ = multibody::makeNameToVelocitiesMap(plant_franka_);
+  q_map_ = multibody::makeNameToPositionsMap(plant_);
+  v_map_ = multibody::makeNameToVelocitiesMap(plant_);
 
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
@@ -110,6 +114,31 @@ C3Controller_franka::C3Controller_franka(
   // kalman filter
   // xhat_prev = VectorXd::Zero(6);
   // P_prev = MatrixXd::Zero(6,6);
+
+  /// print maps
+//  std::cout << "q_map_franka_" << std::endl;
+//  for (auto const& item : q_map_franka_) {
+//    std::cout << item.first << ": " << item.second << std::endl;
+//  }
+//  std::cout << std::endl;
+//
+//  std::cout << "v_map_franka_" << std::endl;
+//  for (auto const& item : v_map_franka_) {
+//    std::cout << item.first << ": " << item.second << std::endl;
+//  }
+//  std::cout << std::endl;
+//
+//  std::cout << "q_map_" << std::endl;
+//  for (auto const& item : q_map_) {
+//    std::cout << item.first << ": " << item.second << std::endl;
+//  }
+//  std::cout << std::endl;
+//
+//  std::cout << "v_map" << std::endl;
+//  for (auto const& item : v_map_) {
+//    std::cout << item.first << ": " << item.second << std::endl;
+//  }
+//  std::cout << std::endl;
 
 }
 
@@ -154,11 +183,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
     prev_timestamp_ = (timestamp);
-    ball_xyz_prev_ = st_desired.segment(7,3);
-
-    // xhat_prev << finish(0), finish(1), ball_radius, 0, 0, 0;
-    // P_prev.topLeftCorner(3,3) << param_.ball_stddev * MatrixXd::Identity(3,3);
-    // P_prev.bottomRightCorner(3,3) << 0 * MatrixXd::Identity(3,3);
     return;
   }
 
@@ -211,8 +235,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       dist_y = -noise_threshold;
     }
 
-    q_plant(11) = q_plant(11) + dist_x;
-    q_plant(12) = q_plant(12) + dist_y;
+    q_plant(q_map_franka_.at("base_x")) += dist_x;
+    q_plant(q_map_franka_.at("base_y")) += dist_y;
 
     ///project estimate
     Vector3d ball_temp = q_plant.tail(3);
@@ -221,8 +245,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
 
   /// update franka position again to include noise
-  VectorXd state_franka(27);
-  state_franka << q_plant, v_plant;
   plant_franka_.SetPositions(&context_franka_, q_plant);
   plant_franka_.SetVelocities(&context_franka_, v_plant);
 
@@ -256,15 +278,15 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     double angle = atan2(x,y);
     double theta = angle + param_.lead_angle * PI / 180;
 
-    traj_desired_vector(7) = x_c + traj_radius * sin(theta);
-    traj_desired_vector(8) = y_c + traj_radius * cos(theta);
-    traj_desired_vector(9) = ball_radius;
+    traj_desired_vector(q_map_.at("base_x")) = x_c + traj_radius * sin(theta);
+    traj_desired_vector(q_map_.at("base_y")) = y_c + traj_radius * cos(theta);
+    traj_desired_vector(q_map_.at("base_z")) = ball_radius;
   }
 
   // compute sphere positional error
-  Vector3d ball_xyz_d(traj_desired_vector(7),
-                      traj_desired_vector(8),
-                      traj_desired_vector(9));
+  Vector3d ball_xyz_d(traj_desired_vector(q_map_.at("base_x")),
+                      traj_desired_vector(q_map_.at("base_y")),
+                      traj_desired_vector(q_map_.at("base_z")));
   Vector3d error_xy = ball_xyz_d - ball_xyz;
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();
@@ -277,26 +299,26 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   
   /// rolling phase
   if ( ts < period*duty_cycle ) {
-    traj_desired_vector[0] = state[7];
-    traj_desired_vector[1] = state[8];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
   }
   /// upwards phase
   else if (ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
-    traj_desired_vector[0] = state[0];
-    traj_desired_vector[1] = state[1];
-    traj_desired_vector[2] = param_.test_parameters(1);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.test_parameters(1);
   }
   /// side ways phase
   else if( ts < period * (duty_cycle+0.66 * return_cycle) ) {
-    traj_desired_vector[0] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[1] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[2] = param_.test_parameters(2);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.test_parameters(2);
   }
   /// position finger phase
   else{
-    traj_desired_vector[0] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[1] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[2] = param_.test_parameters(3);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.test_parameters(3);
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
@@ -323,7 +345,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   /// (potentially pass a matrix 2xnum_pairs?)
 
   std::vector<SortedPair<GeometryId>> contact_pairs;
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
 
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
@@ -431,10 +453,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     moving_average_.pop_front();
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
-
-  /// update prev variables
   prev_timestamp_ = timestamp;
-  ball_xyz_prev_ = ball_xyz;
 
 //  std::cout << "estimated v\n" << v_ball << std::endl;
 //  std::cout << "actual v\n" << ball_dot.tail(3) << std::endl;

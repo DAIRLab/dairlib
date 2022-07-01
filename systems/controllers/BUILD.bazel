@@ -30,8 +30,9 @@ cc_library(
 )
 
 cc_library(
-    name = "fsu_standing_controller",
-    srcs = ["fsu_standing_controller.cc"],
+    name = "standing_pelvis_pd",
+    srcs = ["standing_pelvis_pd.cc"],
+    hdrs = ["standing_pelvis_pd.h"],
     deps = [
         ":control_utils",
         "//examples/Cassie:cassie_utils",

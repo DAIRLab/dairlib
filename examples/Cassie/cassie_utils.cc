@@ -273,6 +273,8 @@ Eigen::VectorXd MakePelvisStateRelativeToFeet(
   pelvis_state.segment(3, 3) =  p_rel;
   pelvis_state.segment(6, 3) = rpy_dot;
   pelvis_state.tail(3) = pelvis_vel.translational();
+
+  return pelvis_state;
 }
 
 template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(

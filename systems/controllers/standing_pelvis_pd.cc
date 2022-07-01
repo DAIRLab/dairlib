@@ -1,7 +1,8 @@
-#include "fsu_standing_controller.h"
+#include "standing_pelvis_pd.h"
 
 #include "multibody/multibody_utils.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/trajectory.h"
@@ -10,10 +11,13 @@
 namespace dairlib::systems::controllers {
 
 using systems::OutputVector;
+using systems::TimestampedVector;
 using multibody::SetPositionsAndVelocitiesIfNew;
 using multibody::MakeNameToVelocitiesMap;
 using multibody::MakeNameToActuatorsMap;
 using multibody::CreateActuatorNameVectorFromMap;
+using multibody::CreateStateNameVectorFromMap;
+using multibody::KinematicEvaluatorSet;
 
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -29,23 +33,18 @@ using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::VectorXd;
 
-MatrixXd K_p_ = MatrixXd::Identity(6, 6); // needs to be tuned later
-MatrixXd K_d_ = MatrixXd::Identity(6, 6);
-double k_cp = 1;
-double y_h = .135;
-
 StandingPelvisPD::StandingPelvisPD(
     const drake::multibody::MultibodyPlant<double> &plant,
     drake::systems::Context<double> *context,
-    std::unordered_map<std::string, std::string> act_to_vel_name_map)
+    const KinematicEvaluatorSet<double>* kinematic_evaluators,
+    const MatrixXd& K_p, const MatrixXd& K_d, double k_cp)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
       w_(9.81 * plant.CalcTotalMass(*context)),
-      act_name_to_vel_name_map_(act_to_vel_name_map),
       name_to_vel_map_(MakeNameToVelocitiesMap(plant)),
-      name_to_act_map_(MakeNameToActuatorsMap(plant)),
-      act_names_(CreateActuatorNameVectorFromMap(plant)) {
+      kinematic_evaluators_(kinematic_evaluators),
+      K_p_(K_p), K_d_(K_d), k_cp_(k_cp){
 
   state_port_desired_ =
       this->DeclareVectorInputPort(
@@ -60,12 +59,18 @@ StandingPelvisPD::StandingPelvisPD(
                                               plant.num_actuators()))
           .get_index(),
 
-  output_forces =
-      this->DeclareVectorOutputPort(
-          "output_torques",
-          BasicVector<double>(plant_.num_actuators()),
-                                    &StandingPelvisPD::CalcInput)
-            .get_index();
+  commanded_torque_port_ =
+  this->DeclareVectorOutputPort(
+      "output_torques",
+      TimestampedVector<double>(plant_.num_actuators()),
+                                &StandingPelvisPD::CalcInput)
+        .get_index();
+
+//  for (auto& name: CreateStateNameVectorFromMap(plant_)) {
+//    std::cout << name << "\n";
+//
+//  }
+//  std::cout << std::endl;
 
 }
 
@@ -91,7 +96,7 @@ VectorXd StandingPelvisPD::CalcForceVector(
   VectorXd pe_r = VectorXd::Zero(6);
 
   // Calculate errors
-  double theta_pe;
+  double theta_pe = p_actual(0) - p_des(0);
   double x_pe = p_actual(3) - p_des(2);
   double y_pe = p_actual(4) - p_des(5);
   double z_pe = p_actual(5) - p_des(3);
@@ -99,17 +104,19 @@ VectorXd StandingPelvisPD::CalcForceVector(
   double zdot_pe = p_actual(11) - p_des(4);
 
   // Center of pressure control
-  double y_cp = p_actual(4) - k_cp * y_pe;
-  double cr = (y_cp - p_r(1)) / (p_l(1) + p_r(1));
+  double y_cp = p_actual(4) - k_cp_ * y_pe;
+  double cr = (y_cp - p_r(1)) / (p_l(1) - p_r(1));
   double frz = w_* cr;
   double flz = w_ - frz;
-  VectorXd flw;
-  VectorXd frw;
-  flw << 0, 0, 0, 0, 0, flz;
-  frw << 0, 0, 0, 0, 0, frz;
+  std::cout << "p_l:\n" << p_l << "\np_r:\b" << p_r << std::endl;
+  std::cout << "y_cp: " << y_cp << ", cr: " << cr << std::endl;
+  VectorXd flw = VectorXd::Zero(6);
+  VectorXd frw = VectorXd::Zero(6);
+  flw(5) = flz;
+  frw(5) = frz;
 
   // Roll Correction
-  double yf = 0.135 - (fabs(p_l(1)) + fabs(p_r(1)))/2;
+  double yf = y_h_ - (fabs(p_l(1)) + fabs(p_r(1)))/2;
   double hip_roll_d_left = atan(yf / p_l(2)) + atan(p_des(5) / p_l(2));
   double hip_roll_d_right = atan(yf / p_r(2)) + atan(p_des(5) / p_r(2));
 
@@ -128,22 +135,13 @@ VectorXd StandingPelvisPD::CalcForceVector(
   VectorXd f = VectorXd::Zero(12);
   f.head(6) = K_p_ * p_le + K_d_ * v_e - flw;
   f.tail(6) = K_p_ * p_re + K_d_ * v_e - frw;
-
+  std::cout << "f:\n" << f << std::endl;
   return f;
-}
-
-MatrixXd StandingPelvisPD::GetActuatedJacobianColumns(const Eigen::MatrixXd &J) const {
-  MatrixXd J_act = MatrixXd::Zero(6, plant_.num_actuators());
-  for (auto& name : act_names_) {
-  J_act.col(name_to_act_map_.at(name)) =
-      J.col(name_to_vel_map_.at(act_name_to_vel_name_map_.at(name)));
-  }
-  return J_act;
 }
 
 void StandingPelvisPD::CalcInput(
     const drake::systems::Context<double> &context,
-    BasicVector<double>* u) const {
+    TimestampedVector<double>* u) const {
 
   // Read in robot state and desired pelvis state
   VectorXd p_des = this->EvalVectorInput(
@@ -170,7 +168,7 @@ void StandingPelvisPD::CalcInput(
                              plant_.GetBodyByName("toe_right").body_frame());
 
   // Get Pelvis roll, pitch, yaw, and xyz relative to feet
-  VectorXd p = MakePelvisStateRelativeToFeet(plant_, context);
+  VectorXd p = MakePelvisStateRelativeToFeet(plant_, *context_);
 
   // Calculate desired Ground Reaction Forces
   VectorXd f = CalcForceVector(p_des, p, p_l, p_r, psi_l, psi_r);
@@ -179,7 +177,7 @@ void StandingPelvisPD::CalcInput(
   Eigen::MatrixXd J_l = MatrixXd::Zero(6, plant_.num_velocities());
   Eigen::MatrixXd J_r = MatrixXd::Zero(6, plant_.num_velocities());
   plant_.CalcJacobianSpatialVelocity(
-      context,
+      *context_,
       JacobianWrtVariable::kV,
       plant_.GetBodyByName("toe_left").body_frame(),
       foot_mid,
@@ -187,7 +185,7 @@ void StandingPelvisPD::CalcInput(
       plant_.GetBodyByName("pelvis").body_frame(),
       &J_l);
   plant_.CalcJacobianSpatialVelocity(
-      context,
+      *context_,
       JacobianWrtVariable::kV,
       plant_.GetBodyByName("toe_right").body_frame(),
       foot_mid,
@@ -195,11 +193,42 @@ void StandingPelvisPD::CalcInput(
       plant_.GetBodyByName("pelvis").body_frame(),
       &J_r);
 
-  MatrixXd J = MatrixXd::Zero(12, plant_.num_velocities());
-  J.block(0, 0, 6, plant_.num_velocities()) = J_l;
-  J.block(6, 0, 6, plant_.num_velocities()) = J_r;
+  MatrixXd J_f = MatrixXd::Zero(12, plant_.num_velocities());
+  J_f.block(0, 0, 6, plant_.num_velocities()) = J_l;
+  J_f.block(6, 0, 6, plant_.num_velocities()) = J_r;
 
-  u->set_value(GetActuatedJacobianColumns(J).transpose() * f);
+  int n_p = plant_.num_velocities() - plant_.num_actuators();
+  MatrixXd B = plant_.MakeActuationMatrix();
+  MatrixXd C = MatrixXd::Zero(plant_.num_velocities(),n_p);
+
+
+  int c = 0;
+  for (int i = 0; i < plant_.num_velocities(); i++) {
+    if (B.row(i).dot(VectorXd::Ones(plant_.num_actuators())) > 0) {
+      C(i, c) = 0;
+    } else {
+      C(i, c) = 1;
+      c++;
+    }
+  }
+
+  int n_loop = kinematic_evaluators_->count_full();
+  std::cout << "N_loop:" << n_loop << std::endl;
+  MatrixXd J_h = MatrixXd::Zero(n_p,plant_.num_velocities());
+  J_h.topRows(n_loop) =
+      kinematic_evaluators_->EvalFullJacobian(*context_);
+  for (int i = 0; i < spring_vel_names_.size(); i++) {
+    J_h(n_loop + i, name_to_vel_map_.at(spring_vel_names_.at(i))) = 1;
+  }
+  MatrixXd J_f_a = J_f * B;
+  MatrixXd J_f_p = J_f * C;
+  MatrixXd J_h_a = J_h * B;
+  MatrixXd J_h_p = J_h * C;
+  MatrixXd J_T = (J_f_a + J_f_p * J_h_p.inverse() * J_h_a).transpose();
+  std::cout << J_h << std::endl;
+
+  u->SetDataVector(J_T * f);
+  u->set_timestamp(robot_state->get_timestamp());
 }
 }
 

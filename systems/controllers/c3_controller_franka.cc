@@ -221,7 +221,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     double dist_x = d(gen);
     double dist_y = d(gen);
-    double noise_threshold = 0.005;
+    double noise_threshold = 1000000;
     if (dist_x > noise_threshold){
       dist_x = noise_threshold;
     }

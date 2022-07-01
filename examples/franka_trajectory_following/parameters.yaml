@@ -1,4 +1,4 @@
-# tennis ball parameters
+# bouncy ball parameters
 
 # impedance control parameters
 translational_stiffness: 200 # 300
@@ -28,7 +28,7 @@ U_pos_vel: 10           # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
 q_init_finger: [0, 0, 0.07]
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03]
-dt: 0.03 # 0.03
+dt: 0.015 # 0.03
 
 # initialization/simulation parameters
 #q_init_franka: [0.154, 0.401, -0.08, -2.65, -0.33, 3.05, -0.252]
@@ -53,20 +53,20 @@ hold_order: 1 # 0 for zero order hold, 1 for first order hold
 c3_sub_timeout: 0.15
 realtime_rate: 0.5
 
-ball_radius: 0.0335           # changes need to be consistent with urdf
+ball_radius: 0.0312           # changes need to be consistent with urdf
 finger_radius: 0.01         # changes need to be consistent with urdf
 EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 
 # Misc
 contact_threshold: 0.0001
-period: 3
+period: 2.5
 duty_cycle: 0.67
 duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
 enable_heuristic: 0
 enable_contact: 1
-ball_stddev: 0.00 # standard deviation of 0-mean noise on ball state estimation
-test_parameters: [0.022, 0.0795, 0.0755, 0.074]
+ball_stddev: 0.01 # standard deviation of 0-mean noise on ball state estimation
+test_parameters: [0.02, 0.075, 0.071, 0.07]
 
 # testing
 lead_angle: 20 # angle in degrees

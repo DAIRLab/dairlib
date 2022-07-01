@@ -163,6 +163,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
 
   /// FK
+  // update context once for FK
+  plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
+  plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
   Vector3d EE_offset_ = param_.EE_offset;
   const drake::math::RigidTransform<double> H_mat =
       plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link8"));
@@ -184,6 +187,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   /// ensure that ALL state variables derive from q_plant and v_plant to ensure that noise is added EVERYWHERE!
   VectorXd q_plant = robot_output->GetPositions();
   VectorXd v_plant = robot_output->GetVelocities();
+  // extract true state for visualization purposes only
+  Vector3d true_ball_xyz = q_plant.tail(3);
 
   if (abs(param_.ball_stddev) > 1e-9){
     std::random_device rd{};
@@ -215,7 +220,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     q_plant.tail(3) = ball_temp;
   }
 
-  /// franka context update
+  /// update franka position again to include noise
   VectorXd state_franka(27);
   state_franka << q_plant, v_plant;
   plant_franka_.SetPositions(&context_franka_, q_plant);
@@ -413,8 +418,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd force_des = VectorXd::Zero(6);
   force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
-  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size() + ball_xyz.size() + 3);
-  st_desired << state_next, force_des.head(6), ball_xyz_d, ball_xyz, ball.tail(3);
+  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+  st_desired << state_next, force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 

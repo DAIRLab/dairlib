@@ -2,7 +2,7 @@
 
 # impedance control parameters
 translational_stiffness: 200 # 300
-rotational_stiffness: 3 # 1
+rotational_stiffness: 2 # 1
 damping_ratio: 1
 stiffness_null: 2
 damping_null: 1
@@ -13,9 +13,9 @@ pushing_offset: 0 #-0.001
 # c3 parameters
 mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
-Q_finger: 30           # finger xyz cost
-Q_ball_x: 1000  #10000
-Q_ball_y: 1000  #10000
+Q_finger: 100           # finger xyz cost
+Q_ball_x: 2500  #10000
+Q_ball_y: 2500  #10000
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
@@ -60,13 +60,13 @@ EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 # Misc
 contact_threshold: 0.0001
-period: 2.5
+period: 3
 duty_cycle: 0.67
 duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
 enable_heuristic: 0
 enable_contact: 1
 ball_stddev: 0.00 # standard deviation of 0-mean noise on ball state estimation
-test_parameters: [0.02, 0.079, 0.075, 0.074]
+test_parameters: [0.022, 0.0795, 0.0755, 0.074]
 
 # testing
 lead_angle: 20 # angle in degrees

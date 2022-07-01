@@ -153,7 +153,6 @@ q[q_map['base_qz']] = ball_init[3]
 q[q_map['base_x']] = ball_init[4]
 q[q_map['base_y']] = ball_init[5]
 q[q_map['base_z']] = ball_init[6]
-
 mu = param["mu"]
 
 Qinit = param["Q_default"] * np.eye(nq+nv)

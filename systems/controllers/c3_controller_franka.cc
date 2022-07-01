@@ -162,13 +162,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     return;
   }
 
-  // franka
-  VectorXd state_franka(27);
-  state_franka << robot_output->GetPositions(), robot_output->GetVelocities();
-  plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
-  plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
-
-  // forward kinematics
+  /// FK
   Vector3d EE_offset_ = param_.EE_offset;
   const drake::math::RigidTransform<double> H_mat =
       plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link8"));
@@ -186,20 +180,52 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   MatrixXd J_franka = J_fb.block(0, 0, 6, 7);
   VectorXd end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
 
-  // parse franka state info
-  VectorXd ball = robot_output->GetPositions().tail(7);
-  VectorXd ball_dot = robot_output->GetVelocities().tail(6);
+  /// add noise to ball ASAP
+  /// ensure that ALL state variables derive from q_plant and v_plant to ensure that noise is added EVERYWHERE!
+  VectorXd q_plant = robot_output->GetPositions();
+  VectorXd v_plant = robot_output->GetVelocities();
 
   if (abs(param_.ball_stddev) > 1e-9){
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::normal_distribution<> d{0, param_.ball_stddev};
-    ball(4) = ball(4) + d(gen);
-    ball(5) = ball(5) + d(gen);
 
-    // ProjectStateEstimate(end_effector, ball_xyz);
-    // ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), d(gen));
+    double dist_x = d(gen);
+    double dist_y = d(gen);
+    double noise_threshold = 0.005;
+    if (dist_x > noise_threshold){
+      dist_x = noise_threshold;
+    }
+    else if(dist_x < -noise_threshold) {
+      dist_x = -noise_threshold;
+    }
+    if (dist_y > noise_threshold){
+      dist_y = noise_threshold;
+    }
+    else if(dist_y < -noise_threshold) {
+      dist_y = -noise_threshold;
+    }
+
+    q_plant(11) = q_plant(11) + dist_x;
+    q_plant(12) = q_plant(12) + dist_y;
+
+    ///project estimate
+    Vector3d ball_temp = q_plant.tail(3);
+    ProjectStateEstimate(end_effector, ball_temp);
+    q_plant.tail(3) = ball_temp;
   }
+
+  /// franka context update
+  VectorXd state_franka(27);
+  state_franka << q_plant, v_plant;
+  plant_franka_.SetPositions(&context_franka_, q_plant);
+  plant_franka_.SetVelocities(&context_franka_, v_plant);
+
+  // parse franka state info
+  VectorXd ball = q_plant.tail(7);
+  Vector3d ball_xyz = ball.tail(3);
+  VectorXd ball_dot = v_plant.tail(6);
+  Vector3d v_ball = ball_dot.tail(3);
 
   VectorXd q(10);
   q << end_effector, ball;
@@ -207,26 +233,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
 
-  // add noise to ball position
-  Vector3d ball_xyz = ball.tail(3);
-//  if (abs(param_.ball_stddev) > 1e-9){
-//    std::random_device rd{};
-//    std::mt19937 gen{rd()};
-//    std::normal_distribution<> d{0, param_.ball_stddev};
-//    ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), 0);
-//    ProjectStateEstimate(end_effector, ball_xyz);
-//    // ball_xyz = ball.tail(3) + Vector3d(d(gen), d(gen), d(gen));
-//  }
-  // estimate ball velocity
-  Vector3d v_ball = (ball_xyz - ball_xyz_prev_) /  (timestamp - prev_timestamp_);
-  // Vector3d v_ball = ball_dot.tail(3);
-
   // compute the angular velocity
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(v_ball) / (ball_radius * ball_radius);
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
   state << end_effector, 1, 0, 0, 0, ball_xyz, end_effector_dot, computed_ang_vel, v_ball;
-  // state << end_effector, ball, end_effector_dot, ball_dot;
 
   VectorXd traj_desired_vector = pp_.value(timestamp);
   // compute adaptive path if enable_adaptive_path is 1
@@ -377,9 +388,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
     dt /= moving_average_.size();
   }
-  //std::cout << dt << std::endl;
-
-  //std::cout << "second call" << std::endl;
 
   ///calculate state and force
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
@@ -461,10 +469,10 @@ void C3Controller_franka::ProjectStateEstimate(Eigen::Vector3d endeffector, Eige
   double R = param_.ball_radius;
   double r = param_.finger_radius;
   
-  if (dist_vec.norm() < R+r){
+  if (dist_vec.norm() < (R+r)*(1)){
     Eigen::Vector3d u(dist_vec(0), dist_vec(1), 0);
     double u_norm = u.norm();
-    double du = 0.01 + sqrt((R+r)*(R+r) - dist_vec(2)*dist_vec(2)) - u_norm;
+    double du = sqrt((R+r)*(R+r) - dist_vec(2)*dist_vec(2)) - u_norm;
 
     estimate = estimate + du * u / u_norm;
   }

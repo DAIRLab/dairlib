@@ -11,6 +11,9 @@ namespace dairlib::systems::controllers {
 
 using systems::OutputVector;
 using multibody::SetPositionsAndVelocitiesIfNew;
+using multibody::MakeNameToVelocitiesMap;
+using multibody::MakeNameToActuatorsMap;
+using multibody::CreateActuatorNameVectorFromMap;
 
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -33,11 +36,16 @@ double y_h = .135;
 
 StandingPelvisPD::StandingPelvisPD(
     const drake::multibody::MultibodyPlant<double> &plant,
-    drake::systems::Context<double> *context)
+    drake::systems::Context<double> *context,
+    std::unordered_map<std::string, std::string> act_to_vel_name_map)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
-      w_(9.81 * plant.CalcTotalMass(*context)){
+      w_(9.81 * plant.CalcTotalMass(*context)),
+      act_name_to_vel_name_map_(act_to_vel_name_map),
+      name_to_vel_map_(MakeNameToVelocitiesMap(plant)),
+      name_to_act_map_(MakeNameToActuatorsMap(plant)),
+      act_names_(CreateActuatorNameVectorFromMap(plant)) {
 
   state_port_desired_ =
       this->DeclareVectorInputPort(
@@ -53,7 +61,9 @@ StandingPelvisPD::StandingPelvisPD(
           .get_index(),
 
   output_forces =
-      this->DeclareVectorOutputPort("output_torques", BasicVector<double>(10),
+      this->DeclareVectorOutputPort(
+          "output_torques",
+          BasicVector<double>(plant_.num_actuators()),
                                     &StandingPelvisPD::CalcInput)
             .get_index();
 
@@ -122,6 +132,15 @@ VectorXd StandingPelvisPD::CalcForceVector(
   return f;
 }
 
+MatrixXd StandingPelvisPD::GetActuatedJacobianColumns(const Eigen::MatrixXd &J) const {
+  MatrixXd J_act = MatrixXd::Zero(6, plant_.num_actuators());
+  for (auto& name : act_names_) {
+  J_act.col(name_to_act_map_.at(name)) =
+      J.col(name_to_vel_map_.at(act_name_to_vel_name_map_.at(name)));
+  }
+  return J_act;
+}
+
 void StandingPelvisPD::CalcInput(
     const drake::systems::Context<double> &context,
     BasicVector<double>* u) const {
@@ -176,7 +195,11 @@ void StandingPelvisPD::CalcInput(
       plant_.GetBodyByName("pelvis").body_frame(),
       &J_r);
 
-  
+  MatrixXd J = MatrixXd::Zero(12, plant_.num_velocities());
+  J.block(0, 0, 6, plant_.num_velocities()) = J_l;
+  J.block(6, 0, 6, plant_.num_velocities()) = J_r;
+
+  u->set_value(GetActuatedJacobianColumns(J).transpose() * f);
 }
 }
 

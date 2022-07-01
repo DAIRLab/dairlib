@@ -13,7 +13,8 @@ class StandingPelvisPD: public drake::systems::LeafSystem<double> {
  public:
   StandingPelvisPD(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context);
+      drake::systems::Context<double>* context,
+      std::unordered_map<std::string, std::string> act_to_vel_name_map);
 
   const drake::systems::InputPort<double>& get_input_port_state_desired_() const {
     return this->get_input_port(state_port_desired_);
@@ -44,7 +45,12 @@ class StandingPelvisPD: public drake::systems::LeafSystem<double> {
                      const drake::systems::Context<double> &context,
                      const drake::multibody::Frame<double> &toe_frame) const;
 
-//                drake::trajectories::Trajectory<double>* traj
+  Eigen::MatrixXd GetActuatedJacobianColumns(const Eigen::MatrixXd& J) const;
+
+  const std::unordered_map<std::string, std::string> act_name_to_vel_name_map_;
+  const std::map<std::string, int> name_to_vel_map_;
+  const std::map<std::string, int> name_to_act_map_;
+  const std::vector<std::string> act_names_;
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;

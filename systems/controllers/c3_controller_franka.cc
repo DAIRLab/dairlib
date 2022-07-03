@@ -491,20 +491,20 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
   }
 
   /// estimate v_plant
-  std::cout << "before\n" << v_plant.tail(6) << std::endl;
+//  std::cout << "before\n" << v_plant.tail(6) << std::endl;
   double alpha = param_.test_parameters(4);
   double ball_radius = param_.ball_radius;
-//  Vector3d ball_xyz_dot = v_plant.tail(3);
-  Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
-  Vector3d ball_xyz_dot = alpha * curr_velocity + (1-alpha)*prev_velocity_;
-  ball_xyz_dot(2) = 0; // expect no velocity in z direction
+  Vector3d ball_xyz_dot = v_plant.tail(3);
+//  Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
+//  Vector3d ball_xyz_dot = alpha * curr_velocity + (1-alpha)*prev_velocity_;
+//  ball_xyz_dot(2) = 0; // expect no velocity in z direction
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);
   v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
-  std::cout << "after\n" << v_plant.tail(6) << std::endl;
-  std::cout << "prev_position\n" << prev_position_ << std::endl;
-  std::cout << "ball_xyz\n" << q_plant.tail(3) << std::endl;
-  std::cout << "dt\n" << timestamp - prev_timestamp_ << std::endl;
+//  std::cout << "after\n" << v_plant.tail(6) << std::endl;
+//  std::cout << "prev_position\n" << prev_position_ << std::endl;
+//  std::cout << "ball_xyz\n" << q_plant.tail(3) << std::endl;
+//  std::cout << "dt\n" << timestamp - prev_timestamp_ << std::endl;
 }
 
 void C3Controller_franka::ProjectStateEstimate(Eigen::Vector3d endeffector, Eigen::Vector3d& estimate) const {

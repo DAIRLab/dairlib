@@ -82,7 +82,8 @@ class C3Controller_franka : public LeafSystem<double> {
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
-  void StateEstimation(const Eigen::Vector3d& end_effector, Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant) const;
+  void StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
+                       const Eigen::Vector3d end_effector, double timestamp) const;
   void ProjectStateEstimate(Eigen::Vector3d endeffector, Eigen::Vector3d& estimate) const;
 
   int state_input_port_;

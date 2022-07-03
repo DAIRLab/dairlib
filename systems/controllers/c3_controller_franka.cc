@@ -180,7 +180,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
     prev_timestamp_ = (timestamp);
-    prev_position_ << traj(7), traj(8), traj(9);
+    prev_position_ << finish(0), finish(1), ball_radius;
     prev_velocity_ << 0, 0, 0;
     return;
   }
@@ -211,7 +211,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd v_plant = robot_output->GetVelocities();
   Vector3d true_ball_xyz = q_plant.tail(3);    // extract true state for visualization purposes only
   // TODO: move this to a separate system
-  StateEstimation(end_effector, q_plant, v_plant);
+  StateEstimation(q_plant, v_plant, end_effector, timestamp);
 
   /// update franka position again to include noise
   plant_franka_.SetPositions(&context_franka_, q_plant);
@@ -229,11 +229,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
 
-  Vector3d r_ball(0, 0, ball_radius);
-  Vector3d computed_ang_vel = r_ball.cross(v_ball) / (ball_radius * ball_radius);
-
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << end_effector, 1, 0, 0, 0, ball_xyz, end_effector_dot, computed_ang_vel, v_ball;
+  state << end_effector, q_plant.tail(7), end_effector_dot, v_plant.tail(6);
 
   VectorXd traj_desired_vector = pp_.value(timestamp);
   // compute adaptive path if enable_adaptive_path is 1
@@ -459,8 +456,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
 }
 
-void C3Controller_franka::StateEstimation(const Eigen::Vector3d& end_effector,
-                                          Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant) const {
+void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
+                                          const Eigen::Vector3d end_effector, double timestamp) const {
+  /// estimate q_plant
   if (abs(param_.ball_stddev) > 1e-9) {
     std::random_device rd{};
     std::mt19937 gen{rd()};
@@ -486,18 +484,27 @@ void C3Controller_franka::StateEstimation(const Eigen::Vector3d& end_effector,
     ///project estimate
     Vector3d ball_temp = q_plant.tail(3);
     ProjectStateEstimate(end_effector, ball_temp);
-    q_plant.tail(3) << ball_temp;
+    q_plant.tail(7) << 1, 0, 0, 0, ball_temp;
   }
-  /// estimate velocity
-//  double alpha = 0.8
-//  Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
-//  Vector3d ball_xyz_dot = alpha * curr_velocity + (1-alpha)*prev_velocity_;
+  else{
+    q_plant.tail(7) << 1, 0, 0, 0, q_plant.tail(3);
+  }
+
+  /// estimate v_plant
+  std::cout << "before\n" << v_plant.tail(6) << std::endl;
+  double alpha = param_.test_parameters(4);
+  double ball_radius = param_.ball_radius;
 //  Vector3d ball_xyz_dot = v_plant.tail(3);
-//
-//  /// compute the angular velocity
-//  Vector3d r_ball(0, 0, ball_radius);
-//  Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);
-//  v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
+  Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
+  Vector3d ball_xyz_dot = alpha * curr_velocity + (1-alpha)*prev_velocity_;
+  ball_xyz_dot(2) = 0; // expect no velocity in z direction
+  Vector3d r_ball(0, 0, ball_radius);
+  Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);
+  v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
+  std::cout << "after\n" << v_plant.tail(6) << std::endl;
+  std::cout << "prev_position\n" << prev_position_ << std::endl;
+  std::cout << "ball_xyz\n" << q_plant.tail(3) << std::endl;
+  std::cout << "dt\n" << timestamp - prev_timestamp_ << std::endl;
 }
 
 void C3Controller_franka::ProjectStateEstimate(Eigen::Vector3d endeffector, Eigen::Vector3d& estimate) const {

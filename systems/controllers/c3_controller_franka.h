@@ -82,6 +82,7 @@ class C3Controller_franka : public LeafSystem<double> {
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
+  void StateEstimation(const Eigen::Vector3d& end_effector, Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant) const;
   void ProjectStateEstimate(Eigen::Vector3d endeffector, Eigen::Vector3d& estimate) const;
 
   int state_input_port_;
@@ -120,7 +121,8 @@ class C3Controller_franka : public LeafSystem<double> {
   uint32_t dt_filter_length_;
 
   // velocity
-  mutable Eigen::Vector3d ball_xyz_prev_;
+  mutable Eigen::Vector3d prev_position_;
+  mutable Eigen::Vector3d prev_velocity_;
 
   // kalman filter
   // mutable VectorXd xhat_prev;

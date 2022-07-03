@@ -109,11 +109,8 @@ C3Controller_franka::C3Controller_franka(
   // filter info
   prev_timestamp_ = 0;
   dt_filter_length_ = param_.dt_filter_length;
-  ball_xyz_prev_ = VectorXd::Zero(3);
-
-  // kalman filter
-  // xhat_prev = VectorXd::Zero(6);
-  // P_prev = MatrixXd::Zero(6,6);
+  prev_position_ = VectorXd::Zero(3);
+  prev_velocity_ = VectorXd::Zero(3);
 
   /// print maps
 //  std::cout << "q_map_franka_" << std::endl;
@@ -183,6 +180,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
     prev_timestamp_ = (timestamp);
+    prev_position_ << traj(7), traj(8), traj(9);
+    prev_velocity_ << 0, 0, 0;
     return;
   }
 
@@ -207,42 +206,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   MatrixXd J_franka = J_fb.block(0, 0, 6, 7);
   VectorXd end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
 
-  /// add noise to ball ASAP
   /// ensure that ALL state variables derive from q_plant and v_plant to ensure that noise is added EVERYWHERE!
   VectorXd q_plant = robot_output->GetPositions();
   VectorXd v_plant = robot_output->GetVelocities();
-  // extract true state for visualization purposes only
-  Vector3d true_ball_xyz = q_plant.tail(3);
-
-  if (abs(param_.ball_stddev) > 1e-9){
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
-    std::normal_distribution<> d{0, param_.ball_stddev};
-
-    double dist_x = d(gen);
-    double dist_y = d(gen);
-    double noise_threshold = 1000000;
-    if (dist_x > noise_threshold){
-      dist_x = noise_threshold;
-    }
-    else if(dist_x < -noise_threshold) {
-      dist_x = -noise_threshold;
-    }
-    if (dist_y > noise_threshold){
-      dist_y = noise_threshold;
-    }
-    else if(dist_y < -noise_threshold) {
-      dist_y = -noise_threshold;
-    }
-
-    q_plant(q_map_franka_.at("base_x")) += dist_x;
-    q_plant(q_map_franka_.at("base_y")) += dist_y;
-
-    ///project estimate
-    Vector3d ball_temp = q_plant.tail(3);
-    ProjectStateEstimate(end_effector, ball_temp);
-    q_plant.tail(3) = ball_temp;
-  }
+  Vector3d true_ball_xyz = q_plant.tail(3);    // extract true state for visualization purposes only
+  // TODO: move this to a separate system
+  StateEstimation(end_effector, q_plant, v_plant);
 
   /// update franka position again to include noise
   plant_franka_.SetPositions(&context_franka_, q_plant);
@@ -260,9 +229,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
 
-  // compute the angular velocity
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(v_ball) / (ball_radius * ball_radius);
+
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
   state << end_effector, 1, 0, 0, 0, ball_xyz, end_effector_dot, computed_ang_vel, v_ball;
 
@@ -445,15 +414,17 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 
-  /// update moving average filter
+  /// update moving average filter and prev variables
   if (moving_average_.size() < dt_filter_length_){
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
-  else{
+  else {
     moving_average_.pop_front();
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
   prev_timestamp_ = timestamp;
+  prev_position_ = ball_xyz;
+  prev_velocity_ = v_ball;
 
 //  std::cout << "estimated v\n" << v_ball << std::endl;
 //  std::cout << "actual v\n" << ball_dot.tail(3) << std::endl;
@@ -486,6 +457,47 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // std::cout << "v_ball\n" << v_ball << std::endl;
   // std::cout << "d\n" << system2_.d_[0] << std::endl;
 
+}
+
+void C3Controller_franka::StateEstimation(const Eigen::Vector3d& end_effector,
+                                          Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant) const {
+  if (abs(param_.ball_stddev) > 1e-9) {
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<> d{0, param_.ball_stddev};
+
+    double dist_x = d(gen);
+    double dist_y = d(gen);
+    double noise_threshold = 1000000;
+    if (dist_x > noise_threshold) {
+      dist_x = noise_threshold;
+    } else if (dist_x < -noise_threshold) {
+      dist_x = -noise_threshold;
+    }
+    if (dist_y > noise_threshold) {
+      dist_y = noise_threshold;
+    } else if (dist_y < -noise_threshold) {
+      dist_y = -noise_threshold;
+    }
+
+    q_plant(q_map_franka_.at("base_x")) += dist_x;
+    q_plant(q_map_franka_.at("base_y")) += dist_y;
+
+    ///project estimate
+    Vector3d ball_temp = q_plant.tail(3);
+    ProjectStateEstimate(end_effector, ball_temp);
+    q_plant.tail(3) << ball_temp;
+  }
+  /// estimate velocity
+//  double alpha = 0.8
+//  Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
+//  Vector3d ball_xyz_dot = alpha * curr_velocity + (1-alpha)*prev_velocity_;
+//  Vector3d ball_xyz_dot = v_plant.tail(3);
+//
+//  /// compute the angular velocity
+//  Vector3d r_ball(0, 0, ball_radius);
+//  Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);
+//  v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
 }
 
 void C3Controller_franka::ProjectStateEstimate(Eigen::Vector3d endeffector, Eigen::Vector3d& estimate) const {

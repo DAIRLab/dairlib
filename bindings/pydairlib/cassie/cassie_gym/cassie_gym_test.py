@@ -1,7 +1,7 @@
 import numpy as np
 
 from drake_cassie_gym import DrakeCassieGym
-from pydairlib.cassie.cassie_utils import *
+from pydairlib.cassie.cassie_utils import AddCassieMultibody
 
 from pydairlib.cassie.controllers import AlipWalkingControllerFactory
 from pydairlib.cassie.simulators import CassieSimDiagram

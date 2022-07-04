@@ -24,7 +24,7 @@ class StepnetDataGenerator(DrakeCassieGym):
     def reset(self):
         super(self).reset()
 
-    def get_canonical_state(self):
+    def get_robot_centric_state(self):
         x = self.plant.GetPositionsAndVelocities(
                 self.plant.GetMyMutableContextFromRoot(
                     self.sim.get_context()))
@@ -33,3 +33,7 @@ class StepnetDataGenerator(DrakeCassieGym):
     # TODO: Test and insure depth image output is being updated during sim
     def get_current_depth_image(self):
         return self.depth_image_output_port.Eval(self.cassie_sim_context)
+
+
+def test_data_collection():
+    generator = StepnetDataGenerator()

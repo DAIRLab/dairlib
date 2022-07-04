@@ -57,7 +57,7 @@ class FootstepTargetControllerDiagram final
   }
 
   /// @return the input port for the desire footstep target
-  const drake::systems::InputPort<double>& get_foostep_target_input_port()
+  const drake::systems::InputPort<double>& get_footstep_target_input_port()
   const {
     return this->get_input_port(footstep_input_port_index_);
   };

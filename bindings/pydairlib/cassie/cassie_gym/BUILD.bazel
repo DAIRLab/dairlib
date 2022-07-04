@@ -12,6 +12,12 @@ load(
 )
 
 py_library(
+    name = "stepnet_data_generator",
+    srcs = ["stepnet_data_generator.py"],
+    deps = [":drake_cassie_gym"],
+)
+
+py_library(
     name = "drake_cassie_gym",
     srcs = ["drake_cassie_gym.py"],
     deps = [

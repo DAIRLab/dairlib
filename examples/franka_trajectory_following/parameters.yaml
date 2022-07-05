@@ -2,7 +2,7 @@
 
 # impedance control parameters
 translational_stiffness: 200 # 300
-rotational_stiffness: 2 # 1
+rotational_stiffness: 3 # 1
 damping_ratio: 1
 stiffness_null: 2
 damping_null: 1
@@ -59,14 +59,14 @@ EE_offset: [0, 0, 0.03]     # changes need to be consistent with urdf
 
 
 # Misc
-contact_threshold: 0.0001
+contact_threshold: 0.001
 period: 2.5
 duty_cycle: 0.67
-duty_cycle_upwards_ratio: 0.33 # need better name here   (ratio it goes upwards)
+duty_cycle_upwards_ratio: 0.33 # need better name here
 enable_heuristic: 0
 enable_contact: 1
-ball_stddev: 0.01 # standard deviation of 0-mean noise on ball state estimation
-test_parameters: [0.02, 0.075, 0.071, 0.07, 0.2]
+ball_stddev: 0.0001 # standard deviation of 0-mean noise on ball state estimation
+test_parameters: [0.02, 0.075, 0.071, 0.07, 0.2, 1]
 
 # testing
 lead_angle: 20 # angle in degrees

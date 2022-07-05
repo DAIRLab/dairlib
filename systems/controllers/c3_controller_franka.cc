@@ -477,9 +477,12 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
     } else if (dist_y < -noise_threshold) {
       dist_y = -noise_threshold;
     }
+    double x_obs = q_plant(q_map_franka_.at("base_x")) + dist_x;
+    double y_obs = q_plant(q_map_franka_.at("base_y")) + dist_y;
 
-    q_plant(q_map_franka_.at("base_x")) += dist_x;
-    q_plant(q_map_franka_.at("base_y")) += dist_y;
+    double alpha_p = param_.test_parameters[5];
+    q_plant(q_map_franka_.at("base_x")) = alpha_p*x_obs + (1-alpha_p)*prev_position_(0);
+    q_plant(q_map_franka_.at("base_y")) = alpha_p*y_obs + (1-alpha_p)*prev_position_(1);
 
     ///project estimate
     Vector3d ball_temp = q_plant.tail(3);
@@ -492,12 +495,12 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
 
   /// estimate v_plant
 //  std::cout << "before\n" << v_plant.tail(6) << std::endl;
-  double alpha = param_.test_parameters(4);
+  double alpha_v = param_.test_parameters(4);
   double ball_radius = param_.ball_radius;
-  Vector3d ball_xyz_dot = v_plant.tail(3);
-//  Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
-//  Vector3d ball_xyz_dot = alpha * curr_velocity + (1-alpha)*prev_velocity_;
-//  ball_xyz_dot(2) = 0; // expect no velocity in z direction
+//  Vector3d ball_xyz_dot = v_plant.tail(3);
+  Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
+  Vector3d ball_xyz_dot = alpha_v * curr_velocity + (1-alpha_v)*prev_velocity_;
+  ball_xyz_dot(2) = 0; // expect no velocity in z direction
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);
   v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;

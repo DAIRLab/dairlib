@@ -16,7 +16,7 @@ from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
 from dairlib import lcmt_radio_out
 from pydairlib.cassie.simulators import CassieVisionSimDiagram
-from cassie_env_state import CassieEnvState
+from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState
 
 
 class DrakeCassieGym():
@@ -50,6 +50,7 @@ class DrakeCassieGym():
         self.drake_simulator = None
         self.cassie_sim_context = None
         self.controller_context = None
+        self.plant_context = None
         self.controller_output_port = None
 
     def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
@@ -99,6 +100,10 @@ class DrakeCassieGym():
             self.diagram.GetMutableSubsystemContext(
                 self.controller,
                 self.drake_simulator.get_mutable_context())
+        self.plant_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.sim_plant,
+                self.drake_simulator.get_mutable_context())
         self.controller_output_port = self.controller.get_torque_output_port()
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
         self.reset()
@@ -106,12 +111,9 @@ class DrakeCassieGym():
 
     def reset(self):
         self.sim_plant.SetPositionsAndVelocities(
-            self.sim_plant.GetMyMutableContextFromRoot(
-                self.drake_simulator.get_mutable_context()), self.x_init)
+            self.plant_context, self.x_init)
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
-        x = self.sim_plant.GetPositionsAndVelocities(
-                self.sim_plant.GetMyMutableContextFromRoot(
-                    self.drake_simulator.get_context()))
+        x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
         u = np.zeros(10)
         self.drake_simulator.Initialize()
         self.current_time = self.start_time
@@ -146,9 +148,7 @@ class DrakeCassieGym():
         self.current_time = self.drake_simulator.get_context().get_time()
 
         # Get the state
-        x = self.sim_plant.GetPositionsAndVelocities(
-                self.sim_plant.GetMyMutableContextFromRoot(
-                    self.drake_simulator.get_context()))
+        x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
         u = self.controller_output_port.Eval(
             self.controller_context)[:-1]  # remove the timestamp
         self.cassie_state = CassieEnvState(self.current_time, x, u)

@@ -470,6 +470,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
+  builder.ExportOutput(fsm->get_output_port_fsm(), "fsm");
 
   // Create the diagram
   builder.BuildInto(this);

@@ -14,7 +14,12 @@ load(
 py_library(
     name = "stepnet_data_generator",
     srcs = ["stepnet_data_generator.py"],
-    deps = [":drake_cassie_gym"],
+    deps = [
+        ":drake_cassie_gym",
+        "//bindings/pydairlib/cassie",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems",
+    ],
 )
 
 py_library(

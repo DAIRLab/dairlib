@@ -78,6 +78,11 @@ class FootstepTargetControllerDiagram final
     return this->get_output_port(controller_failure_port_index_);
   }
 
+  /// @return the output port for the current fsm state.
+  const drake::systems::OutputPort<double>& get_fsm_output_port() const {
+    return this->get_output_port(fsm_output_port_index_);
+  }
+
   drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
@@ -168,7 +173,8 @@ class FootstepTargetControllerDiagram final
   const int footstep_input_port_index_ = 2;
   const int control_output_port_index_ = 0;
   const int torque_output_port_index_ = 1;
-  const int controller_failure_port_index_ = 2;
+  const int fsm_output_port_index_ = 2;
+  const int controller_failure_port_index_ = 3;
 
   const std::string control_channel_name_ = "OSC_WALKING";
 };

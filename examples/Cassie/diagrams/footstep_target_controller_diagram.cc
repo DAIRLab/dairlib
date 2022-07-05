@@ -451,6 +451,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
   builder.ExportInput(swing_ft_traj_generator->get_input_port_footstep_target(), "footstep_target");
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
+  builder.ExportOutput(fsm->get_output_port_fsm(), "fsm");
 
   // Create the diagram
   builder.BuildInto(this);

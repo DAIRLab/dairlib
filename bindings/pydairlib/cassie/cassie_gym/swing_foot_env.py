@@ -114,6 +114,7 @@ class SwingFootEnv(DrakeCassieGym):
             self.cassie_state = CassieEnvState(self.current_time, x, u, radio, action)
             self.traj.append(self.cassie_state)
             swing_ft_error = self.swing_ft_error_port.Eval(self.controller_context).ravel()
+            print(f"swing foot env step swing_ft_error: {swing_ft_error}")
             reward = self.reward_func.compute_reward(
                 self.sim_dt, self.cassie_state, self.prev_cassie_state,
                 swing_foot_error=swing_ft_error)
@@ -121,12 +122,16 @@ class SwingFootEnv(DrakeCassieGym):
             self.prev_cassie_state = self.cassie_state
             cumulative_reward += reward
             self.traj.append(self.cassie_state, reward)
+
+        print(f"terminated = {self.terminated}")
+        print(f"reward = {reward}")
+        print(f"cumulative reward = {cumulative_reward}")
         return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), {}
 
 
 def make_swing_ft_env_fn(rank, seed=0):
     def _init():
-        env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=False)
+        env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=True)
         env.seed(rank + seed)
-        return seed
+        return env 
     return _init

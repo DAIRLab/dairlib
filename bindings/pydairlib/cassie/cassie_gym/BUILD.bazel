@@ -40,12 +40,41 @@ py_library(
     ],
 )
 
+
+py_library(
+    name = "high_level_reward",
+    srcs = [
+        "high_level_reward.py",
+    ],
+    deps = [
+        ":cassie_env_state",
+        ":reward_osudrl",
+    ],
+)
+
+py_binary(
+    name = "radio_swing_foot_env",
+    srcs = ["radio_swing_foot_env.py"],
+    deps = [
+        ":swing_foot_env",
+        ":cassie_traj",
+        ":drake_cassie_gym",
+        ":high_level_reward",
+        "//bindings/pydairlib/cassie",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+
 py_binary(
     name = "cassie_gym_test",
     srcs = ["cassie_gym_test.py"],
     deps = [
         ":cassie_env_state",
         ":drake_cassie_gym",
+        ":swing_foot_env",
         "//bindings/pydairlib/cassie",
         "@drake//bindings/pydrake",
     ],
@@ -61,16 +90,6 @@ py_library(
     ],
 )
 
-py_library(
-    name = "high_level_reward",
-    srcs = [
-        "high_level_reward.py",
-    ],
-    deps = [
-        ":cassie_env_state",
-        ":reward_osudrl",
-    ],
-)
 
 py_library(
     name = "cassie_traj",

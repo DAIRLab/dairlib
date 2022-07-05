@@ -1,6 +1,7 @@
 import numpy as np
 import gym   # OpenAI gym
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
+import time
 
 from pydrake.multibody.parsing import Parser
 from pydrake.systems.framework import DiagramBuilder
@@ -99,7 +100,9 @@ class DrakeCassieGym(gym.Env):
         x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.drake_simulator.get_context()))
+        print(f"DrakeCassieGym state on reset: {x}")
         u = np.zeros(CASSIE_NU)
+        print(f"DrakeCassieGym u on reset: {u}")
         self.drake_simulator.Initialize()
         self.current_time = self.start_time
         self.cassie_state = \

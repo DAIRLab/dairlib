@@ -1,11 +1,14 @@
 import numpy as np
 import gym
+import time
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from drake_cassie_gym import DrakeCassieGym, make_vec_env
-from swing_foot_env import SwingFootEnv, make_swing_ft_env, get_default_params
+from swing_foot_env import SwingFootEnv, make_swing_ft_env_fn, get_default_params
+# from radio_swing_foot_env import RadioSwingFootEnv
 from reward_osudrl import RewardOSUDRL
+from high_level_reward import HighLevelReward
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.cassie.controllers import AlipWalkingControllerFactory
 from pydairlib.cassie.simulators import CassieSimDiagram
@@ -63,10 +66,25 @@ def test_base_env():
 
 
 def test_swing_foot_env():
-    gym_env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=False)
-    s, r, d, i = gym_env.step()
-    print(s)
+    gym_env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=True)
+    for i in range(20):
+        s, r, d, i = gym_env.step()
+        print(r, d)
+        # if np.isnan(r):
+         #    gym_env.reset()
+          #   return
+        if d:
+            gym_env.reset()
+            time.sleep(0.1)
 
+
+def test_radio_swing_ft_env():
+    gym_env = RadioSwingFootEnv(reward_func=HighLevelReward(0.5), visualize=True)
+    for i in range(20):
+        s, r, d, i = gym_env.step()
+        # print(r, d)
+        if d:
+            gym_env.reset()
 
 def main():
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
@@ -89,4 +107,6 @@ def main():
 
 if __name__ == '__main__':
     # test_vec_env()
-    main()
+    # main()
+    # test_radio_swing_ft_env()
+    test_swing_foot_env()

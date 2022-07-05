@@ -52,6 +52,12 @@ class RewardOSUDRL():
         joint_vel = cassie_env_state.get_joint_velocities()
         torques = cassie_env_state.get_inputs()
         prev_torques = prev_cassie_env_state.get_inputs()
+        if np.any(np.isnan(torques)):
+            print("saw nan in torques! setting to 0")
+            torques = np.zeros(torques.shape[0])
+        if np.any(np.isnan(prev_torques)):
+            print("saw nan in prev_torques! setting to 0")
+            prev_torques = np.zeros(prev_torques.shape[0])
         com_angular_velocity = cassie_env_state.get_omegas()
 
         des_forward_vel = cassie_env_state.get_desired_forward_velocity()

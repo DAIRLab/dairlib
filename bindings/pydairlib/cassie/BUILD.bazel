@@ -12,6 +12,15 @@ load(
 )
 
 py_binary(
+    name = "swing_foot_ppo",
+    srcs = ["swing_foot_ppo.py"],
+    deps = [
+        "//bindings/pydairlib/cassie/cassie_gym:drake_cassie_gym",
+        "//bindings/pydairlib/cassie/cassie_gym:radio_swing_foot_env",
+    ],
+)
+
+py_binary(
     name = "learn_swing_foot_spline",
     srcs = ["learn_swing_foot_spline.py"],
     deps = [

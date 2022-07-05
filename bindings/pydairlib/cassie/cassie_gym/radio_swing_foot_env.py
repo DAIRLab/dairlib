@@ -13,7 +13,7 @@ from pydairlib.cassie.cassie_gym.drake_cassie_gym import DrakeCassieGym
 from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState, CASSIE_NRADIO, CASSIE_RADIO_TWISTS
 from pydairlib.cassie.cassie_gym.reward_osudrl import RewardOSUDRL
 import pydairlib.cassie.cassie_gym.swing_foot_env as swing_foot_env
-# from reward_osudrl import RewardOSUDRL
+from pydairlib.cassie.cassie_gym.high_level_reward import HighLevelReward
 
 N_KNOT = 9
 SWING_FOOT_ACTION_DIM = N_KNOT * 3 + 6
@@ -51,8 +51,9 @@ class RadioSwingFootEnv(DrakeCassieGym):
         else:
             swing_action = action[CASSIE_RADIO_TWISTS:]
             radio_twist = action[0:CASSIE_RADIO_TWISTS]
-            radio = np.zeros((CASSIE_NRADIO,))
-            radio[[0, 1, 3]] = radio_twist
+
+        radio = np.zeros((CASSIE_NRADIO,))
+        radio[[0, 1, 3]] = radio_twist
 
         # assuming this gets called while the robot is in double support
         cur_fsm_state = self.controller.get_fsm_output_port().Eval(self.controller_context)[0]
@@ -92,14 +93,20 @@ class RadioSwingFootEnv(DrakeCassieGym):
                 swing_foot_error=swing_ft_error)
             self.terminated = self.check_termination()
             self.prev_cassie_state = self.cassie_state
-            cumulative_reward += reward
+            if self.terminated:   # for some reason, becomes nan when terminates
+                cumulative_reward += 0 
+            else:
+                cumulative_reward += reward
             self.traj.append(self.cassie_state, reward)
+        print(f"terminated = {self.terminated}")
+        print(f"reward = {reward}")
+        print(f"cumulative reward = {cumulative_reward}")
         return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), {}
 
 
 def make_radio_swing_ft_env(rank, seed=0):
     def _init():
-        env = RadioSwingFootEnv(reward_func=HighLevelReward(0.5), visualize=False)
+        env = RadioSwingFootEnv(reward_func=HighLevelReward(0.5), visualize=True)
         env.seed(seed + rank)
         return env
     return _init

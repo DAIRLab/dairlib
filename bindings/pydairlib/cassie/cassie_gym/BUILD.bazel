@@ -15,6 +15,7 @@ py_library(
     name = "stepnet_data_generator",
     srcs = ["stepnet_data_generator.py"],
     deps = [
+        ":cassie_env_state",
         ":drake_cassie_gym",
         "//bindings/pydairlib/cassie",
         "//bindings/pydairlib/multibody",

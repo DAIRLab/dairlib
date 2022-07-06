@@ -100,9 +100,7 @@ class DrakeCassieGym(gym.Env):
         x = self.plant.GetPositionsAndVelocities(
             self.plant.GetMyMutableContextFromRoot(
                 self.drake_simulator.get_context()))
-        print(f"DrakeCassieGym state on reset: {x}")
         u = np.zeros(CASSIE_NU)
-        print(f"DrakeCassieGym u on reset: {u}")
         self.drake_simulator.Initialize()
         self.current_time = self.start_time
         self.cassie_state = \
@@ -121,7 +119,23 @@ class DrakeCassieGym(gym.Env):
         return
 
     def check_termination(self):
-        return self.cassie_state.get_fb_positions()[2] < 0.4
+        # TODO(hersh500): add a check for if foot positions are also too high, since
+        # RL can cause the robot to be in some weird positions.
+        # get feed positions
+        context = self.sim_plant.GetMyMutableContextFromRoot(self.drake_simulator.get_context())
+
+        left_foot_pos = self.sim_plant.CalcPointsPositions(context = context,
+                                                           frame_B = self.sim_plant.GetBodyByName("toe_left").body_frame(),
+                                                           p_BQi=np.zeros(3).T,
+                                                           frame_A = self.sim_plant.GetBodyByName("pelvis").body_frame()).flatten()[2]
+        right_foot_pos = self.sim_plant.CalcPointsPositions(context = context,
+                                                           frame_B = self.sim_plant.GetBodyByName("toe_right").body_frame(),
+                                                           p_BQi=np.zeros(3).T,
+                                                           frame_A = self.sim_plant.GetBodyByName("pelvis").body_frame()).flatten()[2]
+        print(f"foot z's: {left_foot_pos, right_foot_pos}")
+        print(f"state z's: {self.cassie_state.get_fb_positions()[2]}")
+        return self.cassie_state.get_fb_positions()[2] < 0.4 or right_foot_pos > -0.5 or left_foot_pos > -0.5
+            
 
     def step(self, action=None):
         if not self.initialized:

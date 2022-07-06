@@ -91,16 +91,19 @@ class RadioSwingFootEnv(DrakeCassieGym):
             reward = self.reward_func.compute_reward(
                 self.sim_dt, self.cassie_state, self.prev_cassie_state,
                 swing_foot_error=swing_ft_error)
-            self.terminated = self.check_termination()
+
+            # reached the goal
+            self.terminated = self.check_termination() or self.cassie_state.get_positions()[0] >= 0.8
+            # print(f"state positions: {self.cassie_state.get_positions()[0:3]}")
+            # print(f"foot positions: {self.cassie_state.get_positions()[0:3]}")
             self.prev_cassie_state = self.cassie_state
-            if self.terminated:   # for some reason, becomes nan when terminates
+            if self.terminated:
+                print("terminated!")
                 cumulative_reward += 0 
+                break
             else:
                 cumulative_reward += reward
             self.traj.append(self.cassie_state, reward)
-        print(f"terminated = {self.terminated}")
-        print(f"reward = {reward}")
-        print(f"cumulative reward = {cumulative_reward}")
         return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), {}
 
 

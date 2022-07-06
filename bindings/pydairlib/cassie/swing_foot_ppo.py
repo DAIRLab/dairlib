@@ -11,8 +11,8 @@ from pydairlib.cassie.cassie_gym.swing_foot_env import make_swing_ft_env_fn
 
 def main():
     # make a vec env for the radio swing foot env
-    # env = make_vec_env(make_radio_swing_ft_env, 1, 42)
-    env = make_vec_env(make_swing_ft_env_fn, 1, 42)
+    env = make_vec_env(make_radio_swing_ft_env, 1, 42)
+    # env = make_vec_env(make_swing_ft_env_fn, 8, 42)
     # create a logger
     logdir = "./rl_logging/" + datetime.now().strftime("%b_%d_%Y_%H%M") +  "/"
     # create ppo with the swing foot vec env

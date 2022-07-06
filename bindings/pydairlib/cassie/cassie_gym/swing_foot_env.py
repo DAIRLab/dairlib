@@ -119,19 +119,18 @@ class SwingFootEnv(DrakeCassieGym):
                 self.sim_dt, self.cassie_state, self.prev_cassie_state,
                 swing_foot_error=swing_ft_error)
             self.terminated = self.check_termination()
+            if self.terminated:
+                cumulative_reward += reward
+                break
             self.prev_cassie_state = self.cassie_state
-            cumulative_reward += reward
             self.traj.append(self.cassie_state, reward)
 
-        print(f"terminated = {self.terminated}")
-        print(f"reward = {reward}")
-        print(f"cumulative reward = {cumulative_reward}")
         return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), {}
 
 
 def make_swing_ft_env_fn(rank, seed=0):
     def _init():
-        env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=True)
+        env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=False)
         env.seed(rank + seed)
         return env 
     return _init

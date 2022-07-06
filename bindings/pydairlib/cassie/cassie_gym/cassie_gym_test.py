@@ -70,9 +70,6 @@ def test_swing_foot_env():
     for i in range(20):
         s, r, d, i = gym_env.step()
         print(r, d)
-        # if np.isnan(r):
-         #    gym_env.reset()
-          #   return
         if d:
             gym_env.reset()
             time.sleep(0.1)

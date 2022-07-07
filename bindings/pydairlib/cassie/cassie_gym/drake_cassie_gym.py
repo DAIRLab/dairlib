@@ -127,14 +127,13 @@ class DrakeCassieGym(gym.Env):
         left_foot_pos = self.sim_plant.CalcPointsPositions(context = context,
                                                            frame_B = self.sim_plant.GetBodyByName("toe_left").body_frame(),
                                                            p_BQi=np.zeros(3).T,
-                                                           frame_A = self.sim_plant.GetBodyByName("pelvis").body_frame()).flatten()[2]
+                                                           frame_A = self.sim_plant.GetBodyByName("WorldBody").body_frame()).flatten()[2]
         right_foot_pos = self.sim_plant.CalcPointsPositions(context = context,
                                                            frame_B = self.sim_plant.GetBodyByName("toe_right").body_frame(),
                                                            p_BQi=np.zeros(3).T,
-                                                           frame_A = self.sim_plant.GetBodyByName("pelvis").body_frame()).flatten()[2]
-        print(f"foot z's: {left_foot_pos, right_foot_pos}")
-        print(f"state z's: {self.cassie_state.get_fb_positions()[2]}")
-        return self.cassie_state.get_fb_positions()[2] < 0.4 or right_foot_pos > -0.5 or left_foot_pos > -0.5
+                                                           frame_A = self.sim_plant.GetBodyByName("WorldBody").body_frame()).flatten()[2]
+        pelvis_z = self.cassie_state.get_fb_positions()[2]
+        return pelvis_z < 0.4 or right_foot_pos > pelvis_z - 0.2  or left_foot_pos > pelvis_z - 0.2
             
 
     def step(self, action=None):

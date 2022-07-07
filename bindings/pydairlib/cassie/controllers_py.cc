@@ -43,7 +43,10 @@ PYBIND11_MODULE(controllers, m) {
            py_rvp::reference_internal)
       .def("get_controller_failure_output_port",
            &AlipWalkingControllerDiagram::get_controller_failure_output_port,
-           py_rvp::reference_internal);
+           py_rvp::reference_internal)
+      .def("get_fsm_output_port",
+          &AlipWalkingControllerDiagram::get_fsm_output_port,
+          py_rvp::reference_internal);
 
   py::class_<FootstepTargetControllerDiagram, drake::systems::Diagram<double>>(
       m, "FootstepTargetWalkingControllerFactory")
@@ -70,6 +73,9 @@ PYBIND11_MODULE(controllers, m) {
           py_rvp::reference_internal)
       .def("get_controller_failure_output_port",
           &FootstepTargetControllerDiagram::get_controller_failure_output_port,
+          py_rvp::reference_internal)
+      .def("get_fsm_output_port",
+          &FootstepTargetControllerDiagram::get_fsm_output_port,
           py_rvp::reference_internal);
 
 }

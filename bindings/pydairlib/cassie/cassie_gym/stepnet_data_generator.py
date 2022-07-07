@@ -2,8 +2,9 @@ import numpy as np
 
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.math import RigidTransform, RotationMatrix
+from pydrake.common.eigen_geometry import Quaternion
 
-from pydairlib.multibody.utils import \
+from pydairlib.multibody import \
     ReExpressWorldVector3InBodyYawFrame,\
     MakeNameToPositionsMap, \
     MakeNameToVelocitiesMap, \
@@ -30,13 +31,49 @@ class StepnetDataGenerator(DrakeCassieGym):
     '''
     def __init__(self, visualize=False):
         super().__init__(visualize=visualize)
+        # Simulation Infrastructure
         self.fsm_output_port = None
         self.depth_image_output_port = None
         self.foot_target_input_port = None
+
+        # Multobidy objects
+        self.fsm_state_stance_legs = None
+        self.foot_frames = None
+        self.front_contact_pt = None
+        self.rear_contact_pt = None
+        self.mid_contact_pt = None
+        self.pos_map = None
+        self.vel_map = None
+        self.state_name_list = None
+        self.state_name_list = None
+        self.swapped_state_names = None
+        self.nq = 0
+        self.nv = 0
+
+        self.calc_context = None
+
+    def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
+        super().make(controller, urdf)
+        self.depth_image_output_port = \
+            self.cassie_sim.get_camera_out_output_port()
+        self.fsm_output_port = \
+            self.controller.get_fsm_output_port()
+        # self.foot_target_input_port = \
+            # self.controller.get_footstep_target_input_port()
+
+        # Multibody objects for Cassie's feet
         self.fsm_state_stance_legs = {0: 'left', 1: 'right',
                                       3: 'left', 4: 'right'}
+        self.foot_frames = \
+            {'left': self.sim_plant.GetBodyByName("toe_left").body_frame(),
+             'right': self.sim_plant.GetBodyByName("toe_right").body_frame()}
+        self.front_contact_pt = np.array((-0.0457, 0.112, 0))
+        self.rear_contact_pt = np.array((0.088, 0, 0))
+        self.mid_contact_pt = 0.5 * (self.front_contact_pt + self.rear_contact_pt)
+
+        # Multibody objects for swapping Cassie's state
         self.pos_map = MakeNameToPositionsMap(self.sim_plant)
-        self.vel_map = MakeNameToPositionsMap(self.sim_plant)
+        self.vel_map = MakeNameToVelocitiesMap(self.sim_plant)
         self.state_name_list = CreateStateNameVectorFromMap(self.sim_plant)
         self.swapped_state_names = CreateStateNameVectorFromMap(self.sim_plant)
         for i, name in enumerate(self.swapped_state_names):
@@ -46,16 +83,9 @@ class StepnetDataGenerator(DrakeCassieGym):
                 self.swapped_state_names[i].replace('left', 'right')
         self.nq = self.sim_plant.num_positions()
         self.nv = self.sim_plant.num_velocities()
-        self.calc_context = self.sim_plant.CreateDefatulContext()
 
-    def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
-        super().make(controller, urdf)
-        self.depth_image_output_port = \
-            self.cassie_sim.get_camera_out_output_port()
-        self.fsm_output_port = \
-            self.controller.get_fsm_output_port()
-        self.foot_target_input_port = \
-            self.controller.get_footstep_target_input_port()
+        # Spare context for calculations without messing with the sim
+        self.calc_context = self.sim_plant.CreateDefaultContext()
 
     # TODO: modify reset to change initial state, heightmap
     def reset(self):
@@ -67,7 +97,7 @@ class StepnetDataGenerator(DrakeCassieGym):
             if i < self.nq:
                 xnew[self.pos_map[name]] = x[i]
             else:
-                xnew[self.vel_map[name]] = x[i]
+                xnew[self.vel_map[name] + self.nq] = x[i]
         return xnew
 
     '''
@@ -75,7 +105,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         assuming we have already transformed the state to a local frame
     '''
     def reflect_state_about_centerline(self, x):
-        xnew = np.zeros((self.nq, self.nv))
+        xnew = np.zeros((self.nq + self.nv,))
         self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
         R_WB = self.pelvis_pose(self.calc_context).rotation().matrix()
 
@@ -106,14 +136,30 @@ class StepnetDataGenerator(DrakeCassieGym):
         x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
         self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
 
-        # Align the robot state with the robot yaw
-        b_x = self.pelvis_pose(self.calc_context).col(0).ravel()
-        yaw = np.arctan2(b_x[1], b_x[0])
-        R = RotationMatrix.MakeZRotation(yaw).inverse().matrix()
-        # TODO: apply the transformation and subtract stance foot location
-
+        # Get the current stance leg
         fsm = self.fsm_output_port.Eval(self.controller_context)
-        if self.fsm_state_stance_legs[int(fsm)] == 'right':
+        stance = self.fsm_state_stance_legs[int(fsm)]
+
+
+        # Align the robot state with the robot yaw
+        b_x = self.pelvis_pose(self.calc_context).rotation().col(0).ravel()
+        yaw = np.arctan2(b_x[1], b_x[0])
+        R = RotationMatrix.MakeZRotation(yaw).inverse()
+        Rmat = R.matrix()
+        x[CASSIE_QUATERNION_SLICE] = \
+            (R @ RotationMatrix(Quaternion(x[CASSIE_QUATERNION_SLICE]))).ToQuaternion().wxyz()
+        x[CASSIE_FB_VELOCITY_SLICE] = Rmat @ x[CASSIE_FB_VELOCITY_SLICE]
+        x[CASSIE_OMEGA_SLICE] = Rmat @ x[CASSIE_OMEGA_SLICE]
+        x[CASSIE_FB_POSITION_SLICE] = Rmat @ (
+                x[CASSIE_FB_POSITION_SLICE] -
+                self.sim_plant.CalcPointsPositions(
+                    self.calc_context,
+                    self.foot_frames[stance],
+                    self.mid_contact_pt,
+                    self.sim_plant.world_frame()).ravel())
+
+        # Always remap the state to look like it's left stance
+        if stance == 'right':
             x = self.reflect_state_about_centerline(x)
 
         return x
@@ -122,6 +168,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         return self.depth_image_output_port.Eval(self.cassie_sim_context)
 
 
+#TODO: Test state remap with unit test and visual inspection in drake visualizer
 def test_data_collection():
     # Cassie settings
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
@@ -138,7 +185,7 @@ def test_data_collection():
     gym_env.make(controller)
     while gym_env.current_time < 10.0:
         gym_env.step()
-        print(gym_env.get_robot_centric_state()[0])
+        print(gym_env.get_robot_centric_state())
     gym_env.free_sim()
-    gym_env.reset()
+
 

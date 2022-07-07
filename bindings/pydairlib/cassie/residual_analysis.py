@@ -1,5 +1,6 @@
 from math import floor
 import sys
+import time
 import os
 from matplotlib import projections
 import tqdm
@@ -74,12 +75,14 @@ class CassieSystem():
 
     def init_intermediate_variable_for_plot(self):
         self.r = []
-        self.effect_e_J_c = []
-        self.effect_e_J_h = []
-        self.r_spring = []
-        self.r_damping = []
-        self.r_spring_left = []
-        self.r_spring_right = []
+        self.r_u = []
+        self.r_c = []
+        self.r_d = []
+        self.r_s = []
+        self.r_g = []
+        self.r_lc = []
+        self.r_lh = []
+        self.r_invalid_constraint = []
 
     def init_intermediate_variable_for_fitting_K(self):
         self.A = []
@@ -175,8 +178,6 @@ class CassieSystem():
 
         damping_force = -self.C @ v
         spring_force = -self.K @ (q - self.spring_offset)
-        spring_force_left = -self.K @ ( self.pos_active_mask @ np.array([1,0]) * (q - self.spring_offset))
-        spring_force_right = -self.K @ ( self.pos_active_mask @ np.array([0,1]) * (q - self.spring_offset))
         damping_and_spring_force = damping_force + spring_force
 
         # Get the J_h term
@@ -276,6 +277,22 @@ class CassieSystem():
             lambda_c = np.zeros(6,)
         lambda_h = solution[22+num_contact_unknown:24+num_contact_unknown]
 
+        if spring_mode == "changed_stiffness":
+            M_inv = np.linalg.inv(M)
+            self.r.append(v_dot_gt - v_dot)
+            self.r_u.append(M_inv @ B @ u)
+            self.r_c.append(M_inv @ -bias)
+            self.r_g.append(M_inv @ gravity)
+            self.r_s.append(M_inv @ spring_force)
+            self.r_d.append(M_inv @ damping_force)
+            self.r_lh.append(M_inv @ J_h.T @ lambda_h)
+            self.r_invalid_constraint.append(np.linalg.norm(J_h @ v_dot_gt + J_h_dot_times_v))
+            if num_contact_unknown > 0:
+                self.r_lc.append(M_inv @ J_c_active.T @ solution[22:22+num_contact_unknown])
+            else:
+                self.r_lc.append(np.zeros(22))
+            if (t > 31.11 - 0.0001 and t < 31.11 + 0.0001) or (t > 31.14 - 0.0001 and t < 31.14 + 0.0001) :
+                import pdb; pdb.set_trace()
         return v_dot, lambda_c, lambda_h
 
     def get_J_c_ative_and_J_c_active_dot_v(self, is_contact, lambda_c_gt, lambda_c_position):
@@ -499,6 +516,16 @@ class CaaiseSystemTest():
         v_dot_gt_list = []
         v_dot_osc_list = []
 
+        # while True:
+        #     for i in range(t.shape[0]):
+        #         self.cassie.drawPose(q[i,:])
+        #         time.sleep(0.01)
+        #     import pdb; pdb.set_trace()
+
+        plt.plot(t, is_contact[:,0], label = 'left')
+        plt.plot(t, is_contact[:,1], label = 'right')
+        plt.legend()
+
         for i in range(0, t.shape[0], ):
             t_list.append(t[i])
 
@@ -527,6 +554,38 @@ class CaaiseSystemTest():
         constant_stiffness_residuals = self.get_residual(v_dot_gt_list, v_dot_est_constant_spring_stiffness_list)
         changed_stiffness_residuals = self.get_residual(v_dot_gt_list, v_dot_est_changed_spring_stiffness_list)
         osc_residuals = self.get_residual(v_dot_gt_list, v_dot_osc_list)
+
+        self.cassie.r = np.array(self.cassie.r)
+        self.cassie.r_c = np.array(self.cassie.r_c)
+        self.cassie.r_d = np.array(self.cassie.r_d)
+        self.cassie.r_g = np.array(self.cassie.r_g)
+        self.cassie.r_u = np.array(self.cassie.r_u)
+        self.cassie.r_s = np.array(self.cassie.r_s)
+        self.cassie.r_lc = np.array(self.cassie.r_lc)
+        self.cassie.r_lh = np.array(self.cassie.r_lh)
+
+        interested_index = self.vel_map["hip_roll_leftdot"]
+
+        plt.figure()
+        plt.plot(t_list, self.cassie.r[:,interested_index], label="residual")
+        plt.plot(t_list, v_dot_gt_list[:, interested_index], label="gt")
+        plt.plot(t_list, self.cassie.r_c[:,interested_index], label="bias term")
+        plt.plot(t_list, self.cassie.r_d[:,interested_index], label="damping")
+        plt.plot(t_list, self.cassie.r_g[:,interested_index], label="gravity")
+        plt.plot(t_list, self.cassie.r_u[:,interested_index], label="u")
+        plt.plot(t_list, self.cassie.r_s[:,interested_index], label="spring")
+        plt.plot(t_list, self.cassie.r_lc[:,interested_index], label="contact force")
+        plt.plot(t_list, self.cassie.r_lh[:,interested_index], label="four bar constraints")
+        plt.legend()
+        plt.figure()
+        plt.plot(t_list, q[:,self.pos_map["knee_joint_right"]], label = "knee joint right")
+        plt.plot(t_list, q[:,self.pos_map["ankle_spring_joint_right"]], label = "ankle joint right")
+        plt.plot(t_list, q[:,self.pos_map["knee_joint_left"]], label = "knee joint left")
+        plt.plot(t_list, q[:,self.pos_map["ankle_spring_joint_left"]], label = "ankle joint left")
+        plt.legend()
+        plt.show()
+
+        import pdb; pdb.set_trace()
 
         for i in range(22):
             plt.cla()
@@ -838,7 +897,7 @@ class CaaiseSystemTest():
         return processed_data
 
 def main():
-    simulationDataTester = CaaiseSystemTest(data_path="log/03_15_22/lcmlog-11.mat", start_time=31, end_time=32)
+    simulationDataTester = CaaiseSystemTest(data_path="log/03_28_22/lcmlog-00.mat", start_time=43.25, end_time=43.3)
     simulationDataTester.hardware_test()
 
 if __name__ == "__main__":

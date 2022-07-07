@@ -6,6 +6,7 @@ from pydairlib.multibody import kinematic
 from pydrake.multibody.tree import JacobianWrtVariable, MultibodyForces
 from pydairlib.multibody import multibody
 import pydairlib
+import copy
 
 class CassieSystem():
     def __init__(self):
@@ -43,28 +44,9 @@ class CassieSystem():
 
         self.pos_map, self.pos_map_inverse = self.make_position_map()
         self.vel_map, self.vel_map_inverse = self.make_velocity_map()
+        self.act_map, self.act_map_inverse = self.make_actuator_map()
 
-        self.init_intermediate_variable_for_plot()
-
-        self.init_intermediate_variable_for_fitting_K()
-
-    def init_intermediate_variable_for_plot(self):
-        self.r = []
-        self.r_u = []
-        self.r_c = []
-        self.r_d = []
-        self.r_s = []
-        self.r_g = []
-        self.r_lc = []
-        self.r_lh = []
-        self.r_invalid_constraint = []
-
-    def init_intermediate_variable_for_fitting_K(self):
-        self.A = []
-        self.b = []
-        self.q = []
-        self.is_contact = []
-        self.left_foot_on_world = []
+        self.intermediate_variables = []
 
     def drawPose(self, q):
         self.visualizer.DrawPoses(q)
@@ -78,7 +60,7 @@ class CassieSystem():
     def get_spring_offset(self, offset):
         self.spring_offset = offset
 
-    def calc_vdot(self, t, q, v, u, is_contact=None, lambda_c_gt=None, lambda_c_position=None, v_dot_gt=None, is_soft_constraints=False, spring_mode="fixed_spring"):
+    def calc_vdot(self, t, q, v, u, is_contact=None, lambda_c_gt=None, lambda_c_position=None, v_dot_gt=None, spring_mode="fixed_spring"):
         """
             The unknown term are \dot v, contact force \lambda_c_active and constraints forces \lambda_h.
 
@@ -93,6 +75,10 @@ class CassieSystem():
             J_c_active, 0, 0          \lambda_h            -\dot J_c_active * v 
             ]                       ]                     ]
         """
+
+        if spring_mode not in ["fixed_spring", "changed_stiffness", "constant_stiffness"]:
+            raise ValueError("Spring mode not valid")
+
         # Set configuration
         self.plant.SetPositionsAndVelocities(self.context, np.hstack((q,v)))
 
@@ -108,11 +94,6 @@ class CassieSystem():
         # Get the gravity term
 
         gravity = self.plant.CalcGravityGeneralizedForces(self.context)
-
-        # Get the general damping and spring force 
-        damping_and_spring_force = MultibodyForces(self.plant)
-        self.plant.CalcForceElementsContribution(self.context, damping_and_spring_force)
-        # damping_and_spring_force = damping_and_spring_force.generalized_forces()
 
         if spring_mode == "changed_stiffness":
 
@@ -151,7 +132,6 @@ class CassieSystem():
                 self.spring_offset[self.pos_map["knee_joint_right"]] = 1.5369/808.3982
                 self.spring_offset[self.pos_map["ankle_spring_joint_right"]] = 6.0154/519.0283
         
-
         damping_force = -self.C @ v
         spring_force = -self.K @ (q - self.spring_offset)
         damping_and_spring_force = damping_force + spring_force
@@ -167,12 +147,8 @@ class CassieSystem():
         J_h_dot_times_v[1] = self.right_loop.EvalFullJacobianDotTimesV(self.context)
 
         # Get the J_c_active term
-        # For simplicity test, now directly give the lambda_c ground truth from simulation to determine if contact happen
         J_c_active, J_c_active_dot_v, num_contact_unknown, get_force_at_point_matrix = self.get_J_c_ative_and_J_c_active_dot_v(is_contact=is_contact, lambda_c_gt=lambda_c_gt, lambda_c_position=lambda_c_position)
-        z_direction_selection_matrix = np.zeros((4,12))
-        z_direction_selection_matrix[0,2] = 1;  z_direction_selection_matrix[1,5] = 1
-        z_direction_selection_matrix[2,8] = 1;  z_direction_selection_matrix[3,11] = 1
-
+    
         # Get the J_s term 
         J_s = np.zeros((4, 22))
         J_s[0, self.vel_map["knee_joint_leftdot"]] = 1
@@ -180,8 +156,6 @@ class CassieSystem():
         J_s[2, self.vel_map["ankle_spring_joint_leftdot"]] = 1
         J_s[3, self.vel_map["ankle_spring_joint_rightdot"]] = 1
 
-        # Construct Linear Equation Matrices
-        # Solving the exact linear equations:
         if spring_mode == "fixed_spring":
             if num_contact_unknown > 0:
                 A = np.vstack((
@@ -233,18 +207,7 @@ class CassieSystem():
                     -J_h_dot_times_v,            
                 ))
 
-        if not is_soft_constraints or num_contact_unknown == 0:
-            # Solve minimum norm solution, since J_c may be not full row rank
-            solution = A.T @ np.linalg.inv(A @ A.T) @ b
-        else:
-            solution = cp.Variable(22+num_contact_unknown+2)
-            epislon = cp.Variable(22+num_contact_unknown+2)
-            obj = cp.Minimize(cp.norm(epislon))
-            constraints = [A @ solution == b + epislon]
-            constraints.append(z_direction_selection_matrix @ get_force_at_point_matrix @ solution[22:22+num_contact_unknown] >= 0)
-            prob = cp.Problem(obj, constraints)
-            prob.solve()
-            solution = solution.value
+        solution = A.T @ np.linalg.inv(A @ A.T) @ b
 
         v_dot = solution[:22]
         if num_contact_unknown > 0:
@@ -253,22 +216,41 @@ class CassieSystem():
             lambda_c = np.zeros(6,)
         lambda_h = solution[22+num_contact_unknown:24+num_contact_unknown]
 
-        if spring_mode == "changed_stiffness":
-            M_inv = np.linalg.inv(M)
-            self.r.append(v_dot_gt - v_dot)
-            self.r_u.append(M_inv @ B @ u)
-            self.r_c.append(M_inv @ -bias)
-            self.r_g.append(M_inv @ gravity)
-            self.r_s.append(M_inv @ spring_force)
-            self.r_d.append(M_inv @ damping_force)
-            self.r_lh.append(M_inv @ J_h.T @ lambda_h)
-            self.r_invalid_constraint.append(np.linalg.norm(J_h @ v_dot_gt + J_h_dot_times_v))
-            if num_contact_unknown > 0:
-                self.r_lc.append(M_inv @ J_c_active.T @ solution[22:22+num_contact_unknown])
-            else:
-                self.r_lc.append(np.zeros(22))
+        left_toe_mid_point_on_world, right_toe_mid_point_on_world, v_left_toe_mid_in_world, v_right_toe_mid_in_world = self.get_toe_q_and_v_in_world(q, v)
+
+        # save all intermediate variables for later use
+        intermediate_variables = {"t":t, "q":q, "v":v, "is_contact":is_contact, "lambda_c_gt":lambda_c_gt, "lambda_c_position":lambda_c_position, "v_dot_gt": v_dot_gt, "spring_mode":spring_mode,
+        "M":M, "bias":bias, "B":B, "gravity":gravity, "K":self.K, "C":self.C, "damping_force":damping_force, "spring_force":spring_force, "damping_force":damping_force, "damping_and_spring_force":damping_and_spring_force,
+        "J_h": J_h, "J_h_dot_times_v": J_h_dot_times_v, "J_c_active":J_c_active, "J_c_active_dot_v":J_c_active_dot_v, "J_s":J_s,"num_contact_unknown":num_contact_unknown, "get_force_at_point_matrix":get_force_at_point_matrix, 
+        "A":A, "b":b, "solution":solution, "lambda_c":lambda_c, "lambda_h":lambda_h, "left_toe_mid_point_on_world":left_toe_mid_point_on_world, "right_toe_mid_point_on_world": right_toe_mid_point_on_world, 
+        "v_left_toe_mid_in_world":v_left_toe_mid_in_world, "v_right_toe_mid_in_world":v_right_toe_mid_in_world
+        }
+
+        self.intermediate_variables.append(intermediate_variables)
     
         return v_dot, lambda_c, lambda_h
+
+    def get_toe_q_and_v_in_world(self, q, v):
+
+        context = copy.deepcopy(self.context)
+
+        self.plant.SetPositionsAndVelocities(context, np.hstack((q,v)))
+        
+        left_toe_front_on_foot, left_foot_frame = LeftToeFront(self.plant)
+        left_toe_rear_on_foot, left_foot_frame = LeftToeRear(self.plant)
+        right_toe_front_on_foot, right_foot_frame = RightToeFront(self.plant)
+        right_toe_rear_on_foot, right_foot_frame = RightToeRear(self.plant)
+
+        left_toe_mid_point = (left_toe_front_on_foot + left_toe_rear_on_foot)/2
+        right_toe_mid_point = (right_toe_front_on_foot + right_toe_rear_on_foot)/2
+
+        left_toe_mid_point_on_world = self.plant.CalcPointsPositions(context, left_foot_frame, left_toe_mid_point, self.world).squeeze()
+        right_toe_mid_point_on_world = self.plant.CalcPointsPositions(context, right_foot_frame, right_toe_mid_point, self.world).squeeze()
+
+        v_left_toe_mid_in_world = self.plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, left_foot_frame, left_toe_mid_point, self.world, self.world)
+        v_right_toe_mid_in_world = self.plant.CalcJacobianTranslationalVelocity(context, JacobianWrtVariable.kV, right_foot_frame, right_toe_mid_point, self.world, self.world)
+
+        return left_toe_mid_point_on_world, right_toe_mid_point_on_world, v_left_toe_mid_in_world, v_right_toe_mid_in_world
 
     def get_J_c_ative_and_J_c_active_dot_v(self, is_contact, lambda_c_gt, lambda_c_position):
         J_c_active = None; J_c_active_dot_v = None; num_contact_unknown = 0
@@ -355,7 +337,6 @@ class CassieSystem():
                 toe_front, foot_frame = LeftToeFront(self.plant)
                 toe_rear, foot_frame = LeftToeRear(self.plant)
                 point_on_foot = (toe_front + toe_rear)/2
-                self.left_foot_on_world.append(self.plant.CalcPointsPositions(self.context, foot_frame, point_on_foot, self.world).squeeze())
                 J_c_left = self.plant.CalcJacobianTranslationalVelocity(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world)
                 J_c_left_dot_v = self.plant.CalcBiasTranslationalAcceleration(self.context, JacobianWrtVariable.kV, foot_frame, point_on_foot, self.world, self.world).squeeze()
                 J_c_active = J_c_left
@@ -378,11 +359,6 @@ class CassieSystem():
                 right_index = num_contact_unknown
                 num_contact_unknown += 3
 
-            toe_front, foot_frame = LeftToeFront(self.plant)
-            toe_rear, foot_frame = LeftToeRear(self.plant)
-            point_on_foot = (toe_front + toe_rear)/2
-            self.left_foot_on_world.append(self.plant.CalcPointsPositions(self.context, foot_frame, point_on_foot, self.world).squeeze())
-            
             get_force_at_point_matrix = np.zeros((6, num_contact_unknown))
             if left_index is not None:
                 get_force_at_point_matrix[0,left_index] = 1
@@ -415,11 +391,3 @@ class CassieSystem():
         act_map_inverse = {value:key for (key, value) in act_map.items()}
 
         return act_map, act_map_inverse
-
-    def cal_damping_and_spring_force(self, q, v):
-        self.plant.SetPositionsAndVelocities(self.context, np.hstack((q,v)))
-        damping_and_spring_force = MultibodyForces(self.plant)
-        self.plant.CalcForceElementsContribution(self.context, damping_and_spring_force)
-        damping_and_spring_force = damping_and_spring_force.generalized_forces()
-
-        return damping_and_spring_force

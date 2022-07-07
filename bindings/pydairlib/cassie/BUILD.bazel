@@ -87,24 +87,6 @@ py_binary(
     ],
 )
 
-py_binary(
-    name = 'ukf_estimator',
-    srcs = ['ukf_estimator.py'],
-    deps = [
-        ":cassie_utils_py",
-        "//bindings/pydairlib/multibody",
-    ]
-)
-
-py_binary(
-    name = 'residual_analysis',
-    srcs = ['residual_analysis.py'],
-    deps = [
-        ":cassie_utils_py",
-        "//bindings/pydairlib/multibody",
-    ]
-)
-
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

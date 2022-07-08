@@ -23,6 +23,16 @@ py_binary(
     ],
 )
 
+py_library(
+    name = "cassie_traj_visualizer",
+    srcs = ["cassie_traj_visualizer.py"],
+    deps = [
+        ":cassie_utils_py",
+        "//bindings/pydairlib/multibody:plant_traj_visualizer",
+        "@drake//bindings/pydrake",
+    ],
+)
+
 pybind_py_library(
     name = "cassie_utils_py",
     cc_deps = [
@@ -95,6 +105,7 @@ PY_LIBRARIES = [
 ]
 
 PY_LIBRARIES = [
+    ":cassie_traj_visualizer",
     ":cassie_utils_py",
     ":controllers_py",
     ":simulators_py",

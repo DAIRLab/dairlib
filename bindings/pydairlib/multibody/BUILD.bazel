@@ -42,6 +42,14 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+py_library(
+    name = "plant_traj_visualizer",
+    srcs = ["plant_traj_visualizer.py"],
+    deps = [
+        "@drake//bindings/pydrake",
+    ],
+)
+
 py_binary(
     name = "multipose_visualizer_test",
     srcs = ["test/multipose_visualizer_test.py"],

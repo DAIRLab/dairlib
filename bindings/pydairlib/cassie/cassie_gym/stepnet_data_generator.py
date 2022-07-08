@@ -3,6 +3,7 @@ import numpy as np
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.math import RigidTransform, RotationMatrix
 from pydrake.common.eigen_geometry import Quaternion
+from pydrake.trajectories import PiecewisePolynomial
 
 from pydairlib.multibody import \
     ReExpressWorldVector3InBodyYawFrame,\
@@ -19,7 +20,7 @@ from pydairlib.cassie.cassie_gym.cassie_env_state import \
     CASSIE_VELOCITY_SLICE, CASSIE_JOINT_POSITION_SLICE,\
     CASSIE_JOINT_VELOCITY_SLICE, CASSIE_FB_POSITION_SLICE,\
     CASSIE_FB_VELOCITY_SLICE
-
+from pydairlib.cassie.cassie_traj_visualizer import CassieTrajVisualizer
 
 class StepnetDataGenerator(DrakeCassieGym):
 
@@ -183,9 +184,19 @@ def test_data_collection():
     controller = AlipWalkingControllerFactory(
         controller_plant, True, osc_gains, osqp_settings)
     gym_env.make(controller)
-    while gym_env.current_time < 10.0:
+
+    t = []
+    x = []
+    while gym_env.current_time < 1.0:
         gym_env.step()
-        print(gym_env.get_robot_centric_state())
+        t.append(gym_env.current_time)
+        x.append(gym_env.get_robot_centric_state()[:23])
+        print(gym_env.current_time)
     gym_env.free_sim()
+
+    traj = PiecewisePolynomial.FirstOrderHold(t, np.array(x).T)
+    viz = CassieTrajVisualizer(traj)
+    while True:
+        viz.play()
 
 

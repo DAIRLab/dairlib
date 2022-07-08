@@ -113,7 +113,6 @@ ROSToTimestampedVector::ROSToTimestampedVector(const std::string& topic_name,
                                 this->ConversionCallback);
 }
 
-R
 void ROSToTimestampedVector::CopyOutput(const drake::systems::Context<double>& context,
     TimestampedVector<double>* output) const{
     

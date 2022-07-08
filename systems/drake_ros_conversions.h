@@ -47,7 +47,6 @@ class TimestampedVectorToROS : public drake::systems::LeafSystem<double> {
 
 /// Subscribes to a ROS topic and converts its messages to a Drake
 /// OutputVector
-// TODO: figure out how to get time accurately
 // ROS spin needs to be called outside class (in python interface file)
 class ROSToOutputVector : public drake::systems::LeafSystem<double> {
  public:
@@ -72,6 +71,26 @@ class ROSToOutputVector : public drake::systems::LeafSystem<double> {
   ros::Subscriber subscriber_;
 };
 
+/// Subscribes to a ROS topic and converts its messages to a Drake
+/// TimestampedVector
+// ROS spin needs to be called outside class (in python interface file)
+class ROSToTimestampedVector : public drake::systems::LeafSystem<double> {
+ public:
+  explicit ROSToTimestampedVector(const std::string& topic_name, 
+                    int num_elements, int queue_size = 1);
+
+ private:
+  void CopyOutput(const drake::systems::Context<double>& context,
+                  TimestampedVector<double>* output) const;
+  void ConversionCallback(const std_msgs::Float64MultiArray& msg);
+  const std::string topic_name_;
+  const int num_elements_;
+  const int queue_size_;
+  mutable TimestampedVector<double> output_;
+
+  ros::NodeHandle nh_;
+  ros::Subscriber subscriber_;
+};
 
 }  // namespace systems
 }  // namespace dairlib

@@ -1,14 +1,13 @@
 #include "drake_ros_conversions.h"
 
-/*--------------------------------------------------------------------------*/
-// methods implementation for TimestampedVectorToROS.
-
 namespace dairlib {
 namespace systems {
 
 using drake::systems::LeafSystem;
 using Eigen::VectorXd;
 
+/*--------------------------------------------------------------------------*/
+// methods implementation for TimestampedVectorToROS.
 TimestampedVectorToROS::TimestampedVectorToROS(
     const std::string& topic_name, int num_elements, int queue_size) : 
     topic_name_(topic_name_), num_elements_(num_elements_), 
@@ -42,6 +41,8 @@ void TimestampedVectorToROS::PublishMessage(
     publisher_.publish(msg);
 }
 
+/*--------------------------------------------------------------------------*/
+// methods implementation for ROSToOutputVector.
 ROSToOutputVector::ROSToOutputVector(const std::string& topic_name, 
     int num_positions, int num_velocities, 
     int num_efforts, int queue_size) :
@@ -94,6 +95,45 @@ void ROSToOutputVector::ConversionCallback(const std_msgs::Float64MultiArray::Co
     output_.SetIMUAccelerations(VectorXd::Zero(3));
     output_.set_timestamp(timestamp);
 }
+
+/*--------------------------------------------------------------------------*/
+// methods implementation for ROSToTimestampedVector.
+
+ROSToTimestampedVector::ROSToTimestampedVector(const std::string& topic_name, 
+    int num_elements, int queue_size) :
+    topic_name_(topic_name), num_elements_(num_elements),
+    queue_size_(queue_size) {
+
+    this->DeclareVectorOutputPort(
+      "u, t",
+      TimestampedVector<double>(num_elements_),
+      &ROSToTimestampedVector::CopyOutput);
+    
+    subscriber_ = nh_.subscribe(topic_name_, queue_size_, 
+                                this->ConversionCallback);
+}
+
+
+void ROSTimestampedVector::CopyOutput(const drake::systems::Context<double>& context,
+    TimestampedVector<double>* output) const{
+    
+    output->SetDataVector(output_->get_data());
+    output->set_timestamp(output->get_timestamp());
+}
+
+// TODO: if compiler is not happy with this since it is not const function
+// can maybe try making a lambda function for it in constructor
+void ROSToTimestampedVector::ConversionCallback(const std_msgs::Float64MultiArray::ConstPtr& msg){  
+    VectorXd data = VectorXd::Zero(num_elements_);
+    for (int i = 0; i < num_elements_; i++){
+        data(i) = msg->data[i];
+    }
+    double timestamp = msg->data[msg->data.size()-1];
+    
+    output_.SetDataVector(data);
+    output_.set_timestamp(timestamp);
+}
+
 
 }  // namespace systems
 }  // namespace dairlib

@@ -30,10 +30,10 @@ class DrakeCassieGym():
         self.action_dim = 10
         self.state_dim = 45
         self.x_init = np.array(
-            [1, 0, 0, 0, 0, 0, 0.85, -0.0358636, 0, 0.67432, -1.588, -0.0458742,
-             1.90918, -0.0381073, -1.82312, 0.0358636, 0, 0.67432, -1.588,
-             -0.0457885, 1.90919, -0.0382424, -1.82321, 0, 0, 0, 0, 0, 0, 0, 0,
-             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+            [1, 0, 0, 0, 0, 0, 0.85,
+             -0.0358, 0, 0.674, -1.588, -0.0458, 1.909, -0.0382, -1.823,
+              0.0358, 0, 0.674, -1.588, -0.0458, 1.909, -0.0382, -1.823,
+              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         self.controller = None
         self.terminated = False
         self.initialized = False
@@ -62,7 +62,7 @@ class DrakeCassieGym():
             urdf=urdf,
             visualize=self.visualize,
             mu=0.8,
-            normal=np.array([0.1, -0.1, 1]))
+            normal=np.array([0, 0, 1]))
         self.sim_plant = self.cassie_sim.get_plant()
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.cassie_sim)

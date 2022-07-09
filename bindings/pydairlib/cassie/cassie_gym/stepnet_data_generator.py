@@ -22,8 +22,8 @@ from pydairlib.cassie.cassie_gym.cassie_env_state import \
     CASSIE_FB_VELOCITY_SLICE
 from pydairlib.cassie.cassie_traj_visualizer import CassieTrajVisualizer
 
-class StepnetDataGenerator(DrakeCassieGym):
 
+class StepnetDataGenerator(DrakeCassieGym):
     '''
     TODO: Add domain randomization for the following:
         Surface Normal
@@ -37,7 +37,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.depth_image_output_port = None
         self.foot_target_input_port = None
 
-        # Multobidy objects
+        # Multibody objects
         self.fsm_state_stance_legs = None
         self.foot_frames = None
         self.front_contact_pt = None
@@ -76,12 +76,14 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.pos_map = MakeNameToPositionsMap(self.sim_plant)
         self.vel_map = MakeNameToVelocitiesMap(self.sim_plant)
         self.state_name_list = CreateStateNameVectorFromMap(self.sim_plant)
-        self.swapped_state_names = CreateStateNameVectorFromMap(self.sim_plant)
-        for i, name in enumerate(self.swapped_state_names):
+        self.swapped_state_names = []
+        for name in self.state_name_list:
             if 'right' in name:
-                self.swapped_state_names[i].replace('right', 'left')
+                self.swapped_state_names.append(name.replace('right', 'left'))
             elif 'left' in name:
-                self.swapped_state_names[i].replace('left', 'right')
+                self.swapped_state_names.append(name.replace('left', 'right'))
+            else:
+                self.swapped_state_names.append(name)
         self.nq = self.sim_plant.num_positions()
         self.nv = self.sim_plant.num_velocities()
 
@@ -95,10 +97,14 @@ class StepnetDataGenerator(DrakeCassieGym):
     def remap_joints_left_to_right(self, x):
         xnew = np.zeros((self.nq + self.nv,))
         for i, name in enumerate(self.swapped_state_names):
+            m = 1
+            if 'hip_roll' in name or 'hip_yaw' in name:
+                m = -1
             if i < self.nq:
-                xnew[self.pos_map[name]] = x[i]
+                xnew[self.pos_map[name]] = m * x[i]
             else:
-                xnew[self.vel_map[name] + self.nq] = x[i]
+                xnew[self.vel_map[name] + self.nq] = m * x[i]
+
         return xnew
 
     '''
@@ -116,7 +122,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         R = np.eye(3) - 2 * n @ n.T
 
         new_R_WB = R @ R_WB
-        new_R_WB[:,-1] *= -1
+        new_R_WB[:, 1] *= -1
         q = RotationMatrix(new_R_WB).ToQuaternion().wxyz()
 
         xnew[CASSIE_QUATERNION_SLICE] = q
@@ -141,9 +147,9 @@ class StepnetDataGenerator(DrakeCassieGym):
         fsm = self.fsm_output_port.Eval(self.controller_context)
         stance = self.fsm_state_stance_legs[int(fsm)]
 
-
         # Align the robot state with the robot yaw
-        b_x = self.pelvis_pose(self.calc_context).rotation().col(0).ravel()
+        pose = self.pelvis_pose(self.calc_context)
+        b_x = pose.rotation().col(0).ravel()
         yaw = np.arctan2(b_x[1], b_x[0])
         R = RotationMatrix.MakeZRotation(yaw).inverse()
         Rmat = R.matrix()
@@ -187,7 +193,7 @@ def test_data_collection():
 
     t = []
     x = []
-    while gym_env.current_time < 1.0:
+    while gym_env.current_time < 10.0:
         gym_env.step()
         t.append(gym_env.current_time)
         x.append(gym_env.get_robot_centric_state()[:23])

@@ -37,7 +37,7 @@ class PlantTrajVisualizer:
         self.diagram = self.builder.Build()
         self.sim = Simulator(self.diagram)
         self.sim.set_publish_every_time_step(True)
-        self.sim.set_target_realtime_rate(1.0)
+        self.sim.set_target_realtime_rate(0.5)
         self.sim.Initialize()
 
     def play(self):

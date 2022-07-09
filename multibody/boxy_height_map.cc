@@ -75,14 +75,19 @@ RotationMatrix<double> BoxyHeightMap::MakeRotation(
 }
 
 BoxyHeightMap BoxyHeightMap::MakeRandomMap() {
+  return MakeRandomMap(Vector3d::UnitZ(), randd(-0.5, 0.5), randd(0.5, 1.0));
+}
+
+BoxyHeightMap BoxyHeightMap::MakeRandomMap(
+    const Vector3d& normal, double yaw, double mu) {
   int n_boxes = rand() % 10 + 5;
-  BoxyHeightMap boxy(Vector3d::UnitZ(), 5, 0.5,
-                     randd(-0.5, 0.5), 0.8);
+  BoxyHeightMap boxy(normal, 5, 0.5, yaw, mu);
   boxy.AppendBox(0, 0.4);
   for (int i = 0; i < n_boxes; i++) {
     boxy.AppendBox(randd(-0.1, 0.1), randd(0.2, 0.4));
   }
   return boxy;
 }
+
 
 }

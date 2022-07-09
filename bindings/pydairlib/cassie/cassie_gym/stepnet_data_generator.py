@@ -51,6 +51,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.nq = 0
         self.nv = 0
 
+        # Spare plant context for calculations
         self.calc_context = None
 
     def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
@@ -138,6 +139,13 @@ class StepnetDataGenerator(DrakeCassieGym):
             context=context,
             body=self.sim_plant.GetBodyByName("pelvis"))
 
+    def calc_foot_position_in_world(self, context, side):
+        return self.sim_plant.CalcPointsPositions(
+            context,
+            self.foot_frames[side],
+            self.mid_contact_pt,
+            self.sim_plant.world_frame()).ravel()
+
     def get_robot_centric_state(self):
         # Get the robot state
         x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
@@ -159,11 +167,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         x[CASSIE_OMEGA_SLICE] = Rmat @ x[CASSIE_OMEGA_SLICE]
         x[CASSIE_FB_POSITION_SLICE] = Rmat @ (
                 x[CASSIE_FB_POSITION_SLICE] -
-                self.sim_plant.CalcPointsPositions(
-                    self.calc_context,
-                    self.foot_frames[stance],
-                    self.mid_contact_pt,
-                    self.sim_plant.world_frame()).ravel())
+                self.calc_foot_position_in_world(self.calc_context, stance))
 
         # Always remap the state to look like it's left stance
         if stance == 'right':
@@ -175,7 +179,6 @@ class StepnetDataGenerator(DrakeCassieGym):
         return self.depth_image_output_port.Eval(self.cassie_sim_context)
 
 
-#TODO: Test state remap with unit test and visual inspection in drake visualizer
 def test_data_collection():
     # Cassie settings
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'

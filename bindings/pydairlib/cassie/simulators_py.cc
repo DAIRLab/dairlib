@@ -47,11 +47,12 @@ PYBIND11_MODULE(simulators, m) {
              drake::systems::Diagram<double>>(m, "CassieVisionSimDiagram")
       .def(py::init<
                std::unique_ptr<drake::multibody::MultibodyPlant<double>>,
-               const std::string &, bool, double, Eigen::Vector3d>(),
+               const std::string &, bool, double, double, Eigen::Vector3d>(),
            py::arg("plant"),
            py::arg("urdf"),
            py::arg("visualize"),
            py::arg("mu"),
+           py::arg("map_yaw"),
            py::arg("normal"))
       .def("get_plant", &CassieVisionSimDiagram::get_plant,
            py_rvp::reference_internal)

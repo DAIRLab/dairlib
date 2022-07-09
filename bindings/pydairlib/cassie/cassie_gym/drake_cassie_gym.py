@@ -1,4 +1,5 @@
 import numpy as np
+from dataclasses import dataclass
 
 from pydrake.multibody.parsing import Parser
 from pydrake.systems.framework import DiagramBuilder
@@ -19,21 +20,39 @@ from pydairlib.cassie.simulators import CassieVisionSimDiagram
 from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState
 
 
-class DrakeCassieGym():
-    def __init__(self, visualize=False):
+@dataclass
+class CassieGymParams:
+    """
+        Container class for the parameters which could
+        be randomized for simulation
+    """
+    terrain_normal: np.ndarray = np.array([0.0, 0.0, 1.0])
+    x_init: np.ndarray = np.array(
+        [1, 0, 0, 0, 0, 0, 0.85,
+         -0.0358, 0, 0.674, -1.588, -0.0458, 1.909, -0.0382, -1.823,
+          0.0358, 0, 0.674, -1.588, -0.0458, 1.909, -0.0382, -1.823,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    map_yaw: float = 0
+    mu: float = 0.8
+
+    @staticmethod
+    def make_random(ic_file_path=None):
+        normal = np.random.uniform(
+            low=[-0.1, -0.1, 1.0],
+            high=[0.1, 0.1, 1.0],
+        )
+
+
+
+class DrakeCassieGym:
+    def __init__(self, visualize=False, params=CassieGymParams()):
+        self.params = params
         self.sim_dt = 1e-2
         self.visualize = visualize
         self.start_time = 0.00
         self.current_time = 0.00
-        self.end_time = 0.05
-        self.hardware_traj = None
         self.action_dim = 10
         self.state_dim = 45
-        self.x_init = np.array(
-            [1, 0, 0, 0, 0, 0, 0.85,
-             -0.0358, 0, 0.674, -1.588, -0.0458, 1.909, -0.0382, -1.823,
-              0.0358, 0, 0.674, -1.588, -0.0458, 1.909, -0.0382, -1.823,
-              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         self.controller = None
         self.terminated = False
         self.initialized = False
@@ -61,8 +80,9 @@ class DrakeCassieGym():
             plant=self.plant,
             urdf=urdf,
             visualize=self.visualize,
-            mu=0.8,
-            normal=np.array([0, 0, 1]))
+            mu=self.params.mu,
+            map_yaw=self.params.map_yaw,
+            normal=self.params.terrain_normal)
         self.sim_plant = self.cassie_sim.get_plant()
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.cassie_sim)
@@ -111,7 +131,7 @@ class DrakeCassieGym():
 
     def reset(self):
         self.sim_plant.SetPositionsAndVelocities(
-            self.plant_context, self.x_init)
+            self.plant_context, self.params.x_init)
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
         x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
         u = np.zeros(10)

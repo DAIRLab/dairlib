@@ -21,7 +21,7 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
   CassieVisionSimDiagram(
       std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
       const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf",
-      bool visualize = false, double mu = 0.8,
+      bool visualize = false, double mu = 0.8, double map_yaw=0,
       const Eigen::Vector3d& normal=Eigen::Vector3d::UnitZ());
 
   /// @return the input port for the actuation command.

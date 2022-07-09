@@ -9,6 +9,7 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/boxy_height_map.h"
 #include "systems/framework/geared_motor.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -51,7 +52,7 @@ using Eigen::VectorXd;
 
 CassieVisionSimDiagram::CassieVisionSimDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
-    const std::string& urdf, bool visualize, double mu,
+    const std::string& urdf, bool visualize, double mu, double map_yaw,
     const Eigen::Vector3d& normal) {
 
   DiagramBuilder<double> builder;
@@ -65,7 +66,9 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  multibody::AddRandomBoxes(plant_, scene_graph_, normal);
+  multibody::BoxyHeightMap hmap =
+      multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
+  hmap.AddHeightMapToPlant(plant_, scene_graph_);
   plant_->Finalize();
 
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(*plant_);

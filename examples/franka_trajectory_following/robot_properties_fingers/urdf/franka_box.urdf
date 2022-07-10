@@ -467,7 +467,7 @@
     <axis xyz="0 0 1"/>
     <limit effort="12" lower="-0.0175" upper="3.7525" velocity="2.610"/>
   </joint>
-  <link name="panda_link7">
+  <link name="panda_link7">,
     <inertial>
       <mass value="0.54"/>
       <origin xyz="0.0109695 0.0107965 0.0650411" rpy="0 0 0"/>
@@ -500,16 +500,21 @@
     <limit effort="12" lower="-2.8973" upper="2.8973" velocity="2.610"/>
   </joint>
   <link name="panda_link8">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0.0048"/>
+      <mass value="0.0779312"/>
+      <interia ixx="0.0000193318083" iyy="0.0000193318083" izz="0.0000386636166" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0.03"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0048"/>
       <geometry>
-        <sphere radius="0.01"/>
+        <cylinder radius="0.0315" length="0.0096"/>
       </geometry>
     </collision>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0.03"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0048"/>
       <geometry>
-        <sphere radius=".01"/>
+        <cylinder radius="0.0315" length="0.0096"/>
       </geometry>
     </visual>
   </link>
@@ -517,6 +522,43 @@
     <origin rpy="0 0 0" xyz="0 0 0.107"/>
     <parent link="panda_link7"/>
     <child link="panda_link8"/>
+  </joint>
+  <link name="panda_link9">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0.0508"/>
+      <mass value="0.1340688"/>
+      <interia ixx="0.000005405989188" iyy="0.000005405989188" izz="0.000010811978376" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0.0508"/>
+      <geometry>
+        <cylinder radius="0.0127" length="0.1016"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="panda_joint9" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0.0096"/>
+    <parent link="panda_link8"/>
+    <child link="panda_link9"/>
+  </joint>
+  <link name="panda_link10">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0.0195"/>
+      <geometry>
+        <sphere radius="0.0198"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0.0195"/>
+      <geometry>
+        <sphere radius="0.0198"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="panda_joint10" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0.1016"/>
+    <parent link="panda_link9"/>
+    <child link="panda_link10"/>
   </joint>
   <transmission name="panda_tran1">
     <type>transmission_interface/SimpleTransmission</type>

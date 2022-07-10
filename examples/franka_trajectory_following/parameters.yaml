@@ -1,8 +1,8 @@
 # bouncy ball parameters
 
 # impedance control parameters
-translational_stiffness: 200 # 300
-rotational_stiffness: 3 # 1
+translational_stiffness: 300 # 300
+rotational_stiffness: 5 # 1
 damping_ratio: 1
 stiffness_null: 2
 damping_null: 1
@@ -44,7 +44,7 @@ sim_dt: 0.0001 # 0.00005
 
 traj_radius: 0.1
 phase: 0 # starting at 180 avoids first hard push
-x_c: 0.5
+x_c: 0.55
 y_c: 0
 degree_increment: 20
 time_increment: 4
@@ -61,7 +61,7 @@ EE_offset: [0, 0, 0.0192]     # changes need to be consistent with urdf
 # Misc
 contact_threshold: 0.001
 period: 2.5
-duty_cycle: 0.67
+duty_cycle: 0.75
 duty_cycle_upwards_ratio: 0.33 # need better name here
 enable_heuristic: 0
 enable_contact: 1

@@ -12,7 +12,6 @@ from pydairlib.multibody import \
     CreateStateNameVectorFromMap
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.cassie.controllers import \
-    AlipWalkingControllerFactory, \
     FootstepTargetWalkingControllerFactory
 from pydairlib.cassie.cassie_gym.drake_cassie_gym import \
     DrakeCassieGym,\

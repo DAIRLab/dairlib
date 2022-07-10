@@ -148,8 +148,6 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
   }
   builder.BuildInto(this);
   this->set_name("cassie_sim_diagram");
-  DrawAndSaveDiagramGraph(*this);
-  std::cout << "Built simulator" << std::endl;
 }
 }  // namespace examples
 }  // namespace dairlib

@@ -475,9 +475,6 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   // Create the diagram
   builder.BuildInto(this);
   this->set_name(("ALIP_walking_controller_diagram"));
-  DrawAndSaveDiagramGraph(*this);
-  std::cout << "Built controller" << std::endl;
-
 }
 }
 }

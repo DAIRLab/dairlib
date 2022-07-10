@@ -112,6 +112,10 @@ C3Controller_franka::C3Controller_franka(
   prev_position_ = VectorXd::Zero(3);
   prev_velocity_ = VectorXd::Zero(3);
 
+  for(int i = 0 ; i < 10; i++){
+  past_velocities_.push_back(Vector3d::Zero(3));
+  }
+
   /// print maps
 //  std::cout << "q_map_franka_" << std::endl;
 //  for (auto const& item : q_map_franka_) {
@@ -423,6 +427,15 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   prev_position_ = ball_xyz;
   prev_velocity_ = v_ball;
 
+  /// update moving average filter and prev variables
+  if (past_velocities_.size() < 10){
+    past_velocities_.push_back(v_ball);
+  }
+  else {
+    past_velocities_.pop_front();
+    past_velocities_.push_back(v_ball);
+  }
+
 //  std::cout << "estimated v\n" << v_ball << std::endl;
 //  std::cout << "actual v\n" << ball_dot.tail(3) << std::endl;
 //  std::cout << "error norm\n" << (v_ball - ball_dot.tail(3)).norm() << std::endl;
@@ -497,10 +510,22 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
 //  std::cout << "before\n" << v_plant.tail(6) << std::endl;
   double alpha_v = param_.test_parameters(4);
   double ball_radius = param_.ball_radius;
-//  Vector3d ball_xyz_dot = v_plant.tail(3);
-  Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
-  Vector3d ball_xyz_dot = alpha_v * curr_velocity + (1-alpha_v)*prev_velocity_;
-  ball_xyz_dot(2) = 0; // expect no velocity in z direction
+
+  ///1
+  //Vector3d ball_xyz_dot = v_plant.tail(3);
+
+  ///2
+  // Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
+  // Vector3d ball_xyz_dot = alpha_v * curr_velocity + (1-alpha_v)*prev_velocity_;
+  // ball_xyz_dot(2) = 0; // expect no velocity in z direction
+
+  ///3
+  Vector3d average = Vector3d::Zero(3);
+  for(int i = 0; i < 10; i++){
+    average = average + past_velocities_[i]/10;
+  }
+  Vector3d ball_xyz_dot = average;
+
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);
   v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;

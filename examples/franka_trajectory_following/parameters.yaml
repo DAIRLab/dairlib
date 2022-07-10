@@ -51,7 +51,7 @@ time_increment: 4
 hold_order: 1 # 0 for zero order hold, 1 for first order hold
 
 c3_sub_timeout: 0.15
-realtime_rate: 0.5
+realtime_rate: 1
 
 ball_radius: 0.0312           # changes need to be consistent with urdf
 finger_radius: 0.01         # changes need to be consistent with urdf
@@ -65,7 +65,7 @@ duty_cycle: 0.67
 duty_cycle_upwards_ratio: 0.33 # need better name here
 enable_heuristic: 0
 enable_contact: 1
-ball_stddev: 0.0001 # standard deviation of 0-mean noise on ball state estimation
+ball_stddev: 0.001 # standard deviation of 0-mean noise on ball state estimation
 test_parameters: [0.02, 0.075, 0.071, 0.07, 0.2, 1]
 
 # testing

@@ -124,6 +124,7 @@ class C3Controller_franka : public LeafSystem<double> {
   // velocity
   mutable Eigen::Vector3d prev_position_;
   mutable Eigen::Vector3d prev_velocity_;
+  mutable std::deque<Eigen::Vector3d> past_velocities_;
 
   // kalman filter
   // mutable VectorXd xhat_prev;

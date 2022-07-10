@@ -117,6 +117,7 @@ class C3Controller_franka : public LeafSystem<double> {
   const double PI = 3.14159265359;
 
   // dt filter
+  // TODO: make all the mutable variables drake states
   mutable std::deque<double> moving_average_;
   mutable double prev_timestamp_;
   uint32_t dt_filter_length_;

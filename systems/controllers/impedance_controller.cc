@@ -92,7 +92,7 @@ ImpedanceController::ImpedanceController(
 
   // define end effector and contact
   EE_offset_ << param_.EE_offset;
-  EE_frame_ = &plant_.GetBodyByName("panda_link8").body_frame();
+  EE_frame_ = &plant_.GetBodyByName("panda_link10").body_frame();
   world_frame_ = &plant_.world_frame();
   contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
   n_ = 7;
@@ -178,7 +178,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   
   // forward kinematics
   const drake::math::RigidTransform<double> H = 
-    plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link8"));
+    plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link10"));
   const RotationMatrix<double> R = H.rotation();
   Vector3d d = H.translation() + R*EE_offset_;
 

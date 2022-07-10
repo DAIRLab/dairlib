@@ -38,13 +38,13 @@ plant = MultibodyPlant(0.0)
 #The package addition here seems necessary due to how the URDF is defined
 parser = Parser(plant)
 parser.package_map().Add("robot_properties_fingers",
-                         "examples/trajectory_following/robot_properties_fingers")
+                         "examples/franka_trajectory_following/robot_properties_fingers")
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
-    "examples/trajectory_following/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf"))
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf"))
 # parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
 #     "examples/trifinger_simple/robot_properties_fingers/cube/cube_v2.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
-    "examples/trajectory_following/robot_properties_fingers/urdf/sphere.urdf"))
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf"))
 
 
 #Fix the base of the finger to the world

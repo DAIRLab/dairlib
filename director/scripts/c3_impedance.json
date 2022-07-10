@@ -12,7 +12,7 @@
                  "type_data": {"color":[0, 0, 1],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.0312
+                               "radius": 0.0315
                              }
                },
               {"name": "estimated_state",
@@ -25,7 +25,7 @@
                 "type_data": {"color":[1, 0, 0],
                   "alpha": 0.5,
                   "type": "point",
-                  "radius": 0.0312
+                  "radius": 0.0315
                 }
               },
                {"name": "ball_path",
@@ -52,7 +52,7 @@
                  "type_data": {"color":[1, 0, 0],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.01
+                               "radius": 0.0195
                              }
                }
             ]

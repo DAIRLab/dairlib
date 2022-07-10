@@ -26,7 +26,8 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
                             const drake::multibody::Frame<double>&>>
       left_right_foot,
       double mid_foot_height, double desired_final_foot_height,
-      double desired_final_vertical_foot_velocity);
+      double desired_final_vertical_foot_velocity,
+      bool relative_to_com=true);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -75,6 +76,7 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
   double mid_foot_height_;
   double desired_final_foot_height_;
   double desired_final_vertical_foot_velocity_;
+  bool relative_to_com_;
 
   // Maps
   std::map<int, std::pair<const Eigen::Vector3d,

@@ -10,11 +10,14 @@ from pydairlib.multibody import \
     MakeNameToPositionsMap, \
     MakeNameToVelocitiesMap, \
     CreateStateNameVectorFromMap
-
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
-from pydairlib.cassie.controllers import AlipWalkingControllerFactory, \
+from pydairlib.cassie.controllers import \
+    AlipWalkingControllerFactory, \
     FootstepTargetWalkingControllerFactory
-from pydairlib.cassie.cassie_gym.drake_cassie_gym import DrakeCassieGym
+from pydairlib.cassie.cassie_gym.drake_cassie_gym import \
+    DrakeCassieGym,\
+    CassieGymParams,\
+    FixedVectorInputPort
 from pydairlib.cassie.cassie_gym.cassie_env_state import \
     CASSIE_QUATERNION_SLICE, CASSIE_POSITION_SLICE, CASSIE_OMEGA_SLICE,\
     CASSIE_VELOCITY_SLICE, CASSIE_JOINT_POSITION_SLICE,\
@@ -30,19 +33,22 @@ class StepnetDataGenerator(DrakeCassieGym):
         Initial State
         Footstep target (need to add input port)
     '''
-    def __init__(self, visualize=False):
-        super().__init__(visualize=visualize)
+    def __init__(self, visualize=False, params=CassieGymParams):
+        # Initialize the base cassie gym simulator
+        super().__init__(
+            visualize=visualize,
+            params=params
+        )
+
         # Simulation Infrastructure
         self.fsm_output_port = None
         self.depth_image_output_port = None
         self.foot_target_input_port = None
 
         # Multibody objects
-        self.fsm_state_stance_legs = None
+        self.fsm_state_stances = None
         self.foot_frames = None
-        self.front_contact_pt = None
-        self.rear_contact_pt = None
-        self.mid_contact_pt = None
+        self.contact_pt_in_ft_frame = None
         self.pos_map = None
         self.vel_map = None
         self.state_name_list = None
@@ -60,18 +66,21 @@ class StepnetDataGenerator(DrakeCassieGym):
             self.cassie_sim.get_camera_out_output_port()
         self.fsm_output_port = \
             self.controller.get_fsm_output_port()
-        # self.foot_target_input_port = \
-            # self.controller.get_footstep_target_input_port()
+        self.foot_target_input_port = \
+            self.controller.get_footstep_target_input_port()
 
         # Multibody objects for Cassie's feet
-        self.fsm_state_stance_legs = {0: 'left', 1: 'right',
-                                      3: 'left', 4: 'right'}
-        self.foot_frames = \
-            {'left': self.sim_plant.GetBodyByName("toe_left").body_frame(),
-             'right': self.sim_plant.GetBodyByName("toe_right").body_frame()}
-        self.front_contact_pt = np.array((-0.0457, 0.112, 0))
-        self.rear_contact_pt = np.array((0.088, 0, 0))
-        self.mid_contact_pt = 0.5 * (self.front_contact_pt + self.rear_contact_pt)
+        self.fsm_state_stances = {
+            0: 'left',
+            1: 'right',
+            3: 'left',
+            4: 'right'
+        }
+        self.foot_frames = {
+            'left': self.sim_plant.GetBodyByName("toe_left").body_frame(),
+             'right': self.sim_plant.GetBodyByName("toe_right").body_frame()
+        }
+        self.contact_pt_in_ft_frame = np.array([0.02115, 0.056, 0])
 
         # Multibody objects for swapping Cassie's state
         self.pos_map = MakeNameToPositionsMap(self.sim_plant)
@@ -91,13 +100,13 @@ class StepnetDataGenerator(DrakeCassieGym):
         # Spare context for calculations without messing with the sim
         self.calc_context = self.sim_plant.CreateDefaultContext()
 
-    # TODO: modify reset to change initial state, heightmap
     def reset(self):
         super().reset()
 
     def remap_joints_left_to_right(self, x):
         xnew = np.zeros((self.nq + self.nv,))
         for i, name in enumerate(self.swapped_state_names):
+            # invert the position and velocity of the hip roll/yaw joints
             m = 1
             if 'hip_roll' in name or 'hip_yaw' in name:
                 m = -1
@@ -105,7 +114,6 @@ class StepnetDataGenerator(DrakeCassieGym):
                 xnew[self.pos_map[name]] = m * x[i]
             else:
                 xnew[self.vel_map[name] + self.nq] = m * x[i]
-
         return xnew
 
     '''
@@ -122,10 +130,14 @@ class StepnetDataGenerator(DrakeCassieGym):
         n = np.array([[0], [1], [0]])
         R = np.eye(3) - 2 * n @ n.T
 
+        # Reflect the pelvis orientation across the world xz plane then reflect
+        # it again across the pelvis xz plane to maintain a right-handed
+        # coordinate system
         new_R_WB = R @ R_WB
         new_R_WB[:, 1] *= -1
         q = RotationMatrix(new_R_WB).ToQuaternion().wxyz()
 
+        # Assign the transformed state
         xnew[CASSIE_QUATERNION_SLICE] = q
         xnew[CASSIE_JOINT_POSITION_SLICE] = x[CASSIE_JOINT_POSITION_SLICE]
         xnew[CASSIE_JOINT_VELOCITY_SLICE] = x[CASSIE_JOINT_VELOCITY_SLICE]
@@ -143,8 +155,14 @@ class StepnetDataGenerator(DrakeCassieGym):
         return self.sim_plant.CalcPointsPositions(
             context,
             self.foot_frames[side],
-            self.mid_contact_pt,
+            self.contact_pt_in_ft_frame,
             self.sim_plant.world_frame()).ravel()
+
+    def make_world_to_robot_yaw_rotation(self, context):
+        pose = self.pelvis_pose(context)
+        b_x = pose.rotation().col(0).ravel()
+        yaw = np.arctan2(b_x[1], b_x[0])
+        return RotationMatrix.MakeZRotation(yaw).inverse()
 
     def get_robot_centric_state(self):
         # Get the robot state
@@ -153,51 +171,59 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         # Get the current stance leg
         fsm = self.fsm_output_port.Eval(self.controller_context)
-        stance = self.fsm_state_stance_legs[int(fsm)]
+        stance = self.fsm_state_stances[int(fsm)]
 
         # Align the robot state with the robot yaw
-        pose = self.pelvis_pose(self.calc_context)
-        b_x = pose.rotation().col(0).ravel()
-        yaw = np.arctan2(b_x[1], b_x[0])
-        R = RotationMatrix.MakeZRotation(yaw).inverse()
+        R = self.make_world_to_robot_yaw_rotation(self.calc_context)
         Rmat = R.matrix()
         x[CASSIE_QUATERNION_SLICE] = \
-            (R @ RotationMatrix(Quaternion(x[CASSIE_QUATERNION_SLICE]))).ToQuaternion().wxyz()
+            (R @ RotationMatrix(
+                Quaternion(
+                    x[CASSIE_QUATERNION_SLICE]))).ToQuaternion().wxyz()
         x[CASSIE_FB_VELOCITY_SLICE] = Rmat @ x[CASSIE_FB_VELOCITY_SLICE]
         x[CASSIE_OMEGA_SLICE] = Rmat @ x[CASSIE_OMEGA_SLICE]
         x[CASSIE_FB_POSITION_SLICE] = Rmat @ (
                 x[CASSIE_FB_POSITION_SLICE] -
-                self.calc_foot_position_in_world(self.calc_context, stance))
+                self.calc_foot_position_in_world(self.calc_context, stance)
+        )
 
         # Always remap the state to look like it's left stance
         if stance == 'right':
             x = self.reflect_state_about_centerline(x)
-
         return x
 
     def get_current_depth_image(self):
         return self.depth_image_output_port.Eval(self.cassie_sim_context)
 
+    def step(self, footstep_target):
+        super().step(fixed_ports=[FixedVectorInputPort(
+            input_port=self.foot_target_input_port,
+            context=self.controller_context,
+            value=footstep_target
+        )])
+
 
 def test_data_collection():
+    params = CassieGymParams.make_random('.learning_data/initial_conditions.npy')
+    # import pdb; pdb.set_trace()
     # Cassie settings
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
     osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
     urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
 
     # Make the controller
-    gym_env = StepnetDataGenerator()
+    gym_env = StepnetDataGenerator(visualize=True)
     controller_plant = MultibodyPlant(8e-5)
     AddCassieMultibody(controller_plant, None, True, urdf, False, False)
     controller_plant.Finalize()
-    controller = AlipWalkingControllerFactory(
+    controller = FootstepTargetWalkingControllerFactory(
         controller_plant, True, osc_gains, osqp_settings)
     gym_env.make(controller)
 
     t = []
     x = []
     while gym_env.current_time < 10.0:
-        gym_env.step()
+        gym_env.step(np.zeros(3,))
         t.append(gym_env.current_time)
         x.append(gym_env.get_robot_centric_state()[:23])
         print(gym_env.current_time)

@@ -31,7 +31,7 @@ ss_time: 0.3
 ds_time: 0.1
 
 # Distance of contact point from foot rear (0 is heel, 1 is toe)
-contact_point_pos: 0.35
+contact_point_pos: 0.5
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55

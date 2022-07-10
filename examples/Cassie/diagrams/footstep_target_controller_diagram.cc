@@ -216,7 +216,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
           plant, plant_context.get(), left_right_support_fsm_states,
           left_right_support_state_durations, left_right_foot,
           gains.mid_foot_height, gains.final_foot_height,
-          gains.final_foot_velocity_z);
+          gains.final_foot_velocity_z, false);
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant, plant_context.get(), pos_map["toe_left"],
@@ -283,7 +283,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
 
   /*** Tracking Datas ***/
   swing_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
-      "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant, plant);
   swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
@@ -292,7 +292,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
       vel_map["hip_yaw_right"], left_stance_state);
   swing_foot_data->AddJointAndStateToIgnoreInJacobian(
       vel_map["hip_yaw_left"], right_stance_state);
-
+  /*
   com_data = std::make_unique<ComTrackingData>(
       "com_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant, plant);
@@ -308,8 +308,8 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
   swing_ft_traj_local->SetTimeVaryingGains(
       swing_ft_gain_multiplier_gain_multiplier);
   swing_ft_traj_local->SetFeedforwardAccelMultiplier(
-      swing_ft_accel_gain_multiplier_gain_multiplier);
-  osc->AddTrackingData(swing_ft_traj_local.get());
+      swing_ft_accel_gain_multiplier_gain_multiplier); */
+  osc->AddTrackingData(swing_foot_data.get());
 
   center_of_mass_traj = std::make_unique<ComTrackingData>(
       "alip_com_traj", gains.K_p_com, gains.K_d_com, gains.W_com, plant, plant);

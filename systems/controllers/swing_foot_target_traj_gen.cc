@@ -46,7 +46,7 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
     left_right_foot,
     double mid_foot_height, double desired_final_foot_height,
-    double desired_final_vertical_foot_velocity)
+    double desired_final_vertical_foot_velocity, bool relative_to_com)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
@@ -54,7 +54,8 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
       mid_foot_height_(mid_foot_height),
       desired_final_foot_height_(desired_final_foot_height),
       desired_final_vertical_foot_velocity_(
-          desired_final_vertical_foot_velocity) {
+          desired_final_vertical_foot_velocity),
+      relative_to_com_(relative_to_com) {
   this->set_name("swing_ft_traj");
 
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
@@ -140,10 +141,13 @@ EventStatus SwingFootTargetTrajGen::DiscreteVariableUpdate(
     plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_at_liftoff);
 
-    swing_foot_pos_at_liftoff = multibody::ReExpressWorldVector3InBodyYawFrame(
-        plant_, *context_, "pelvis",
-        swing_foot_pos_at_liftoff -
-            plant_.CalcCenterOfMassPositionInWorld(*context_));
+    if (relative_to_com_) {
+      swing_foot_pos_at_liftoff =
+          multibody::ReExpressWorldVector3InBodyYawFrame(
+          plant_, *context_, "pelvis",
+          swing_foot_pos_at_liftoff -
+              plant_.CalcCenterOfMassPositionInWorld(*context_));
+    }
   }
   return EventStatus::Succeeded();
 }

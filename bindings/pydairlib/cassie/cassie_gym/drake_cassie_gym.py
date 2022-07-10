@@ -2,7 +2,7 @@ import numpy as np
 from dataclasses import dataclass
 
 from pydrake.multibody.parsing import Parser
-from pydrake.systems.framework import DiagramBuilder
+from pydrake.systems.framework import DiagramBuilder, Context, InputPort
 from pydrake.multibody.plant import *
 from pydrake.systems.analysis import Simulator
 from pydrake.systems.sensors import ImageToLcmImageArrayT, PixelType
@@ -36,12 +36,28 @@ class CassieGymParams:
     mu: float = 0.8
 
     @staticmethod
-    def make_random(ic_file_path=None):
+    def make_random(ic_file_path):
+        ics = np.load(ic_file_path)
+        x = ics[np.random.choice(ics.shape[0], size=1, replace=False)]
         normal = np.random.uniform(
             low=[-0.1, -0.1, 1.0],
             high=[0.1, 0.1, 1.0],
         )
+        map_yaw = 2 * np.random.random() - 1
+        mu = 0.5 * np.random.random() + 0.5
+        return CassieGymParams(
+            terrain_normal=normal,
+            x_init=x,
+            map_yaw=map_yaw,
+            mu=mu
+        )
 
+
+@dataclass
+class FixedVectorInputPort:
+    input_port: InputPort = None
+    context: Context = None
+    value: np.ndarray = None
 
 
 class DrakeCassieGym:
@@ -51,8 +67,6 @@ class DrakeCassieGym:
         self.visualize = visualize
         self.start_time = 0.00
         self.current_time = 0.00
-        self.action_dim = 10
-        self.state_dim = 45
         self.controller = None
         self.terminated = False
         self.initialized = False
@@ -150,12 +164,13 @@ class DrakeCassieGym:
     def check_termination(self):
         return self.cassie_state.get_fb_positions()[2] < 0.4
 
-    def step(self, radio=np.zeros(18)):
+    def step(self, radio=np.zeros(18), fixed_ports=None):
         if not self.initialized:
             print("Call make() before calling step() or advance()")
 
         # Calculate next timestep
-        next_timestep = self.drake_simulator.get_context().get_time() + self.sim_dt
+        next_timestep = self.drake_simulator.get_context().get_time() + \
+                        self.sim_dt
 
         # Set simulator inputs and advance simulator
         self.cassie_sim.get_radio_input_port().FixValue(
@@ -164,6 +179,14 @@ class DrakeCassieGym:
         self.controller.get_radio_input_port().FixValue(
             context=self.controller_context,
             value=radio)
+
+        if fixed_ports is not None:
+            for port in fixed_ports:
+                port.input_port.FixValue(
+                    context=port.context,
+                    value=port.value
+                )
+
         self.drake_simulator.AdvanceTo(next_timestep)
         self.current_time = self.drake_simulator.get_context().get_time()
 

@@ -97,10 +97,9 @@ AlipFootstepPlanner::AlipFootstepPlanner(
   m_ = plant_.CalcTotalMass(*context_);
 }
 
-void AlipFootstepPlanner::CalcFootStepAndStanceFootHeight(
+Eigen::Vector3d AlipFootstepPlanner::CalcFootStepAndStanceFootHeight(
     const Context<double>& context, const OutputVector<double>* robot_output,
-    const double end_time_of_this_interval, Vector2d* x_fs,
-    double* stance_foot_height) const {
+    const double end_time_of_this_interval) const {
 
   int fsm_state =
       this->EvalVectorInput(context, fsm_port_)->get_value()(0);
@@ -144,7 +143,7 @@ void AlipFootstepPlanner::CalcFootStepAndStanceFootHeight(
       (m_ * H * omega * sinh(omega*T));
   double p_y_ft_to_com = -( L_f(0) - cosh(omega*T) * L_i(0) ) /
       (m_ * H * omega * sinh(omega*T));
-  *x_fs = Vector2d(-p_x_ft_to_com, -p_y_ft_to_com);
+  Vector2d xy_fs = Vector2d(-p_x_ft_to_com, -p_y_ft_to_com);
 
   /// Imposing guards
   Vector2d stance_foot_wrt_com_in_local_frame =
@@ -153,20 +152,19 @@ void AlipFootstepPlanner::CalcFootStepAndStanceFootHeight(
   if (is_right_support) {
     double line_pos =
         std::max(center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
-    (*x_fs)(1) = std::max(line_pos, (*x_fs)(1));
+    xy_fs(1) = std::max(line_pos, xy_fs(1));
   } else {
     double line_pos =
         std::min(-center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
-    (*x_fs)(1) = std::min(line_pos, (*x_fs)(1));
+    xy_fs(1) = std::min(line_pos, xy_fs(1));
   }
 
   // Cap by the step length
-  double dist = x_fs->norm();
+  double dist = xy_fs.norm();
   if (dist > max_com_to_footstep_dist_) {
-    (*x_fs) = (*x_fs) * max_com_to_footstep_dist_ / dist;
+    xy_fs = xy_fs * max_com_to_footstep_dist_ / dist;
   }
-
-  *stance_foot_height = -H;
+  return Eigen::Vector3d(xy_fs(0), xy_fs(1), -H);
 }
 
 void AlipFootstepPlanner::CalcTarget(const drake::systems::Context<double>&
@@ -197,13 +195,8 @@ void AlipFootstepPlanner::CalcTarget(const drake::systems::Context<double>&
         liftoff_time(0) + duration_map_.at(fsm_state);
 
     // Get footstep target
-    double stance_foot_height;
-    Vector2d x_fs(0, 0);
-    CalcFootStepAndStanceFootHeight(context, robot_output,
-                                    end_time_of_this_interval, &x_fs,
-                                    &stance_foot_height);
-    target->get_mutable_value().head<2>() = x_fs;
-    target->get_mutable_value()(2) = stance_foot_height;
+    target->get_mutable_value() = CalcFootStepAndStanceFootHeight(
+        context, robot_output,end_time_of_this_interval);
   } else {
     target->get_mutable_value().setZero();
   }

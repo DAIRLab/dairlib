@@ -49,9 +49,9 @@ plant_f, scene_graph = AddMultibodyPlantSceneGraph(builder_f, 0.0)
 
 parser = Parser(plant_f)
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
-    "examples/franka/robot_properties_fingers/urdf/franka_box.urdf"))
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
-    "examples/franka/robot_properties_fingers/urdf/sphere.urdf"))
+    "examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf"))
 
 X_WI = RigidTransform.Identity()
 plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("panda_link0"), X_WI)
@@ -91,7 +91,7 @@ B_null = param["damping_null"] = np.identity(7)
 qd = np.array(param["q_null_desired"])
 
 sphere_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0]
-EE_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link8"))[0]
+EE_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link10"))[0]
 contact_geoms = [EE_geoms, sphere_geoms]
 num_friction_directions = 2
 

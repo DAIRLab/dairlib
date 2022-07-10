@@ -12,18 +12,18 @@
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <mass value="0.132"/>
-            <inertia ixx="0.0000514" ixy="0" ixz="0" iyy="0.0000514" iyz="0" izz="0.0000514"/>
+            <inertia ixx="0.0000524" ixy="0" ixz="0" iyy="0.0000524" iyz="0" izz="0.0000524"/>
         </inertial>
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <sphere radius=".0312"/>
+                <sphere radius=".0315"/>
             </geometry>
         </visual>
         <collision>
             <origin rpy="0 0 0" xyz="0 0 0"/>
                     <geometry>
-        <sphere radius=".0312"/>
+        <sphere radius=".0315"/>
       </geometry>
             <drake:proximity_properties>
         <drake:mu_static value="1"/>

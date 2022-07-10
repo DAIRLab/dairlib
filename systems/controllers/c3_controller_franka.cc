@@ -191,12 +191,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
   Vector3d EE_offset_ = param_.EE_offset;
   const drake::math::RigidTransform<double> H_mat =
-      plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link8"));
+      plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
   const RotationMatrix<double> Rotation = H_mat.rotation();
   Vector3d end_effector = H_mat.translation() + Rotation*EE_offset_;
 
   // jacobian and end_effector_dot
-  auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link8").body_frame();
+  auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
   auto world_frame_ = &plant_franka_.world_frame();
   MatrixXd J_fb (6, plant_franka_.num_velocities());
   plant_franka_.CalcJacobianSpatialVelocity(

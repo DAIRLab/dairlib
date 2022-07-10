@@ -543,15 +543,15 @@
   </joint>
   <link name="panda_link10">
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0.0195"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0192"/>
       <geometry>
-        <sphere radius="0.0198"/>
+        <sphere radius="0.0195"/>
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0.0195"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0192"/>
       <geometry>
-        <sphere radius="0.0198"/>
+        <sphere radius="0.0195"/>
       </geometry>
     </collision>
   </link>

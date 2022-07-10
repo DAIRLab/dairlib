@@ -25,28 +25,48 @@ from pydairlib.cassie.cassie_gym.cassie_env_state import \
     CASSIE_FB_VELOCITY_SLICE
 from pydairlib.cassie.cassie_traj_visualizer import CassieTrajVisualizer
 
+# Plant and Simulation Constants
+OSC_GAINS = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
+OSQP_SETTINGS = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
+URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
+MBP_TIMESTEP = 8e-5
+
+# Data Collection Constants
+INITIAL_CONDITIONS_FILE = '.learning_data/initial_conditions.npy'
+TARGET_LOWER_BOUND = np.array([-2.0, -1.0, 0.0])
+TARGET_UPPER_BOUND = -TARGET_LOWER_BOUND
+
 
 class StepnetDataGenerator(DrakeCassieGym):
-    '''
-    TODO: Add domain randomization for the following:
-        Surface Normal
-        Initial State
-        Footstep target (need to add input port)
-    '''
-    def __init__(self, visualize=False, params=CassieGymParams):
+
+    def __init__(self, visualize=False, params=CassieGymParams()):
         # Initialize the base cassie gym simulator
         super().__init__(
             visualize=visualize,
             params=params
         )
+        # simulate for a bit past a full step
+        self.sim_dt = 0.5
 
         # Simulation Infrastructure
         self.fsm_output_port = None
         self.depth_image_output_port = None
         self.foot_target_input_port = None
+        self.initial_condition_bank = None
 
         # Multibody objects
-        self.fsm_state_stances = None
+        self.fsm_state_stances = {
+            0: 'left',
+            1: 'right',
+            3: 'right',
+            4: 'left'
+        }
+        self.fsm_swing_states = {
+            0: 'right',
+            1: 'left',
+            3: 'left',
+            4: 'right'
+        }
         self.foot_frames = None
         self.contact_pt_in_ft_frame = None
         self.pos_map = None
@@ -60,7 +80,21 @@ class StepnetDataGenerator(DrakeCassieGym):
         # Spare plant context for calculations
         self.calc_context = None
 
-    def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
+        self.add_controller()
+        self.make(self.controller)
+
+    def add_controller(self):
+        self.controller_plant = MultibodyPlant(MBP_TIMESTEP)
+        AddCassieMultibody(self.controller_plant, None, True, URDF, False, False)
+        self.controller_plant.Finalize()
+        self.controller = FootstepTargetWalkingControllerFactory(
+            plant=self.controller_plant,
+            has_double_stance=True,
+            osc_gains_filename=OSC_GAINS,
+            osqp_settings_filename=OSQP_SETTINGS
+        )
+
+    def make(self, controller, urdf=URDF):
         super().make(controller, urdf)
         self.depth_image_output_port = \
             self.cassie_sim.get_camera_out_output_port()
@@ -70,12 +104,6 @@ class StepnetDataGenerator(DrakeCassieGym):
             self.controller.get_footstep_target_input_port()
 
         # Multibody objects for Cassie's feet
-        self.fsm_state_stances = {
-            0: 'left',
-            1: 'right',
-            3: 'left',
-            4: 'right'
-        }
         self.foot_frames = {
             'left': self.sim_plant.GetBodyByName("toe_left").body_frame(),
              'right': self.sim_plant.GetBodyByName("toe_right").body_frame()
@@ -100,7 +128,9 @@ class StepnetDataGenerator(DrakeCassieGym):
         # Spare context for calculations without messing with the sim
         self.calc_context = self.sim_plant.CreateDefaultContext()
 
-    def reset(self):
+    def reset(self, new_x_init=None):
+        if new_x_init is not None:
+            self.params.x_init = new_x_init
         super().reset()
 
     def remap_joints_left_to_right(self, x):
@@ -164,9 +194,8 @@ class StepnetDataGenerator(DrakeCassieGym):
         yaw = np.arctan2(b_x[1], b_x[0])
         return RotationMatrix.MakeZRotation(yaw).inverse()
 
-    def get_robot_centric_state(self):
+    def get_robot_centric_state(self, x):
         # Get the robot state
-        x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
         self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
 
         # Get the current stance leg
@@ -177,9 +206,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         R = self.make_world_to_robot_yaw_rotation(self.calc_context)
         Rmat = R.matrix()
         x[CASSIE_QUATERNION_SLICE] = \
-            (R @ RotationMatrix(
-                Quaternion(
-                    x[CASSIE_QUATERNION_SLICE]))).ToQuaternion().wxyz()
+            (R @ self.pelvis_pose(self.calc_context).rotation()).ToQuaternion().wxyz()
         x[CASSIE_FB_VELOCITY_SLICE] = Rmat @ x[CASSIE_FB_VELOCITY_SLICE]
         x[CASSIE_OMEGA_SLICE] = Rmat @ x[CASSIE_OMEGA_SLICE]
         x[CASSIE_FB_POSITION_SLICE] = Rmat @ (
@@ -196,42 +223,67 @@ class StepnetDataGenerator(DrakeCassieGym):
         return self.depth_image_output_port.Eval(self.cassie_sim_context)
 
     def step(self, footstep_target):
-        super().step(fixed_ports=[FixedVectorInputPort(
+        return super().step(fixed_ports=[FixedVectorInputPort(
             input_port=self.foot_target_input_port,
             context=self.controller_context,
             value=footstep_target
         )])
 
+    def draw_random_initial_condition(self):
+        if self.initial_condition_bank is None:
+            self.initial_condition_bank = \
+                np.load(INITIAL_CONDITIONS_FILE)
+        return self.get_robot_centric_state(
+            self.initial_condition_bank[
+                np.random.choice(
+                    self.initial_condition_bank.shape[0],
+                    size=1,
+                    replace=False
+                )
+            ].ravel()
+        )
+
+    def get_stepnet_data_point(self):
+        x_pre = self.draw_random_initial_condition()
+        self.reset(x_pre)
+        depth_image = self.get_current_depth_image()
+        target = np.random.uniform(
+            low=TARGET_LOWER_BOUND,
+            high=TARGET_UPPER_BOUND
+        )
+        swing = self.fsm_swing_states[
+            int(self.fsm_output_port.Eval(self.controller_context))
+        ]
+        x_post = self.step(footstep_target=target)
+        swing_foot_final_pos = self.calc_foot_position_in_world(
+            self.plant_context, swing)
+        error = np.linalg.norm(swing_foot_final_pos - target)
+        return {
+            'depth': depth_image.data,
+            'state': x_pre,
+            'target': target,
+            'error': error
+        }
+
+    @staticmethod
+    def make_randomized_env(visualize=False):
+        env = StepnetDataGenerator(
+            visualize=visualize,
+            params=CassieGymParams.make_random(INITIAL_CONDITIONS_FILE)
+        )
+        env.reset(env.get_robot_centric_state(env.params.x_init))
+        return env
+
 
 def test_data_collection():
-    params = CassieGymParams.make_random('.learning_data/initial_conditions.npy')
-    # import pdb; pdb.set_trace()
-    # Cassie settings
-    osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
-    osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
-    urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
-
-    # Make the controller
-    gym_env = StepnetDataGenerator(visualize=True)
-    controller_plant = MultibodyPlant(8e-5)
-    AddCassieMultibody(controller_plant, None, True, urdf, False, False)
-    controller_plant.Finalize()
-    controller = FootstepTargetWalkingControllerFactory(
-        controller_plant, True, osc_gains, osqp_settings)
-    gym_env.make(controller)
-
-    t = []
-    x = []
-    while gym_env.current_time < 10.0:
-        gym_env.step(np.zeros(3,))
-        t.append(gym_env.current_time)
-        x.append(gym_env.get_robot_centric_state()[:23])
-        print(gym_env.current_time)
+    gym_env = StepnetDataGenerator.make_randomized_env(visualize=True)
+    data = gym_env.get_stepnet_data_point()
+    import pdb; pdb.set_trace()
     gym_env.free_sim()
 
-    traj = PiecewisePolynomial.FirstOrderHold(t, np.array(x).T)
-    viz = CassieTrajVisualizer(traj)
-    while True:
-        viz.play()
+    # traj = PiecewisePolynomial.FirstOrderHold(t, np.array(x).T)
+    # viz = CassieTrajVisualizer(traj)
+    # while True:
+    #     viz.play()
 
 

@@ -38,7 +38,7 @@ class CassieGymParams:
     @staticmethod
     def make_random(ic_file_path):
         ics = np.load(ic_file_path)
-        x = ics[np.random.choice(ics.shape[0], size=1, replace=False)]
+        x = ics[np.random.choice(ics.shape[0], size=1, replace=False)].ravel()
         normal = np.random.uniform(
             low=[-0.1, -0.1, 1.0],
             high=[0.1, 0.1, 1.0],

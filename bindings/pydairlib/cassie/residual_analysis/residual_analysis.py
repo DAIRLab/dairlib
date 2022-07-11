@@ -15,8 +15,7 @@ from plot_utlis import PlotViewlizer
 from data_processor import DataProcessor
 
 class CaaiseSystemTest():
-    def __init__(self, date, log_num):
-        
+    def __init__(self, date, log_num, is_new_plots=False):
 
         data_path = "log/{}/lcmlog-{}.mat".format(date, log_num)
 
@@ -26,8 +25,10 @@ class CaaiseSystemTest():
         
         self.cassie = CassieSystem()
 
+        self.is_new_plots = is_new_plots
 
-        self.plotViewlizer = PlotViewlizer("{}-{}".format(date, log_num))
+        if self.is_new_plots:
+            self.plotViewlizer = PlotViewlizer("{}-{}".format(date, log_num))
 
         self.data_processor = DataProcessor()
         
@@ -51,10 +52,6 @@ class CaaiseSystemTest():
         self.cassie.get_spring_stiffness(K); self.cassie.get_damping(C)
         self.cassie.get_spring_offset(offset)
 
-        plt.plot(t, is_contact[:,0])
-        plt.show()
-        import pdb; pdb.set_trace()
-
         print("Begin calculate v dot.")
         for i in tqdm.tqdm(range(0, t.shape[0])):
             v_dot, lambda_c, lambda_h = self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], is_contact=is_contact[i,:], v_dot_gt=v_dot_gt[i,:], u_osc=u_osc[i,:], v_dot_osc=v_dot_osc[i,:], spring_mode="changed_stiffness")
@@ -65,10 +62,11 @@ class CaaiseSystemTest():
         self.data_processor.process_data()
         print("Finish Calculate additional infos.")
         
-        print("Begin update data for plots")
-        for processed_datum in self.data_processor.processed_data:
-            self.plotViewlizer.add_info(processed_datum)
-        print("Finish update data for plots")
+        if self.is_new_plots:
+            print("Begin update data for plots")
+            for processed_datum in self.data_processor.processed_data:
+                self.plotViewlizer.add_info(processed_datum)
+            print("Finish update data for plots")
 
     def simulation_test(self):
         raw_data = scipy.io.loadmat(self.data_path)
@@ -135,7 +133,7 @@ class CaaiseSystemTest():
         import pdb; pdb.set_trace()
 
 def main():
-    simulationDataTester = CaaiseSystemTest(date="03_15_22", log_num=11)
+    simulationDataTester = CaaiseSystemTest(date="03_15_22", log_num=11, is_new_plots=False)
     simulationDataTester.hardware_test()
 
 if __name__ == "__main__":

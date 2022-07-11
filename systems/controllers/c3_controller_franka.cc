@@ -217,6 +217,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // TODO: move this to a separate system
   StateEstimation(q_plant, v_plant, end_effector, timestamp);
 
+
   /// update franka position again to include noise
   plant_franka_.SetPositions(&context_franka_, q_plant);
   plant_franka_.SetVelocities(&context_franka_, v_plant);
@@ -250,7 +251,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     traj_desired_vector(q_map_.at("base_x")) = x_c + traj_radius * sin(theta);
     traj_desired_vector(q_map_.at("base_y")) = y_c + traj_radius * cos(theta);
-    traj_desired_vector(q_map_.at("base_z")) = ball_radius;
+    traj_desired_vector(q_map_.at("base_z")) = ball_radius - 0.0301;
   }
 
   // compute sphere positional error
@@ -271,6 +272,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   if ( ts < period*duty_cycle ) {
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")]  - 0.0301;
   }
   /// upwards phase
   else if (ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
@@ -307,6 +309,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   /// upddate context
 
+//  std::cout << "here" << std::endl;
+//  std::cout << q(9) << std::endl;
+//  q(9) = q(9) - 0.01;
   plant_f_.SetPositions(&context_f_, q);
   plant_f_.SetVelocities(&context_f_, v);
   multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
@@ -370,7 +375,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options);
 
-
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
 
@@ -412,6 +416,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
   st_desired << state_next, force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 

@@ -33,7 +33,7 @@
    <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius=".01"/>
+        <sphere radius=".0195"/>
       </geometry>
       <material name="finger_0_material"/>
     </visual>
@@ -44,7 +44,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius=".01"/>
+        <sphere radius=".0195"/>
       </geometry>
                   <drake:proximity_properties>
         <drake:mu_static value="1"/>
@@ -133,7 +133,7 @@
    <joint name="box_to_base" type="fixed">
     <parent link="base_link"/>
     <child link="box"/>
-    <origin xyz="0 0 -0.05"/>
+    <origin xyz="0 0 -0.0801"/>
   </joint>
 
 

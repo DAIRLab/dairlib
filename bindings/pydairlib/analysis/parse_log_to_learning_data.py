@@ -189,7 +189,8 @@ def parse_log_folders_to_ds_states(folder_list, savepath):
                     logpath, plant, context, channel_x, channel_u, channel_osc,
                     T_ds, T_step, 1.0
                 )
-                dataset.append(data)
+                if data is not None:
+                    dataset.append(data)
             except Exception as e:
                 print(f'cant parse the lcm log{logpath}: ' + str(e))
                 continue

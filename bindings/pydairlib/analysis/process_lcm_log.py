@@ -14,7 +14,7 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
     """
 
     data_to_process = {}
-    print('Processing LCM log (this may take a while)...')
+    # print('Processing LCM log (this may take a while)...')
     lcm_log.seek(0)
     first_timestamp = lcm_log.read_next_event().timestamp
     start_timestamp = first_timestamp + start_time * 1e6
@@ -32,7 +32,7 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
             else:
                 data_to_process[event.channel] = \
                     [lcm_channels[event.channel].decode(event.data)]
-        if event.eventnum % 50000 == 0:
+        if event.eventnum % 1000000 == 0:
             print(f'processed {(event.timestamp - t) * 1e-6:.1f}'
                   f' seconds of log data')
         if 0 < duration <= (event.timestamp - t) * 1e-6:

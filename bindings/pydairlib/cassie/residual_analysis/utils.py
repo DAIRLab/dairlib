@@ -13,11 +13,19 @@ def interpolation(t,t1,t2,v1,v2):
     v = v1 + ratio * (v2 -v1)
     return v
 
-def process_hardware_data(raw_data, start_time, end_time):
+def process_hardware_data(raw_data, ):
     
+    print("Begin process the hardware data.")
+
     # processing robot output
     robot_output = raw_data['robot_output']
     t_robot_output = robot_output["t_x"][0][0][0]
+
+    start_time = t_robot_output[100]
+    end_time = t_robot_output[-100]
+
+    print("start time:{}, end time:{}".format(start_time, end_time))
+
     start_index = np.argwhere(t_robot_output > start_time)[0][0]
     end_index = np.argwhere(t_robot_output < end_time)[-1][0]
     t_robot_output = t_robot_output[start_index:end_index]
@@ -91,6 +99,8 @@ def process_hardware_data(raw_data, start_time, end_time):
         'damping_ratio':damping_ratio,
         'spring_stiffness':spring_stiffness
     }
+
+    print("Finish process hardware data.")
 
     return processed_data
 

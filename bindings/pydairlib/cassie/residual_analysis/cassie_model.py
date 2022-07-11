@@ -60,7 +60,7 @@ class CassieSystem():
     def get_spring_offset(self, offset):
         self.spring_offset = offset
 
-    def calc_vdot(self, t, q, v, u, is_contact=None, lambda_c_gt=None, lambda_c_position=None, v_dot_gt=None, spring_mode="fixed_spring"):
+    def calc_vdot(self, t, q, v, u, is_contact=None, lambda_c_gt=None, lambda_c_position=None, v_dot_gt=None, u_osc=None, v_dot_osc=None, spring_mode="changed_stiffness"):
         """
             The unknown term are \dot v, contact force \lambda_c_active and constraints forces \lambda_h.
 
@@ -219,10 +219,10 @@ class CassieSystem():
         left_toe_mid_point_on_world, right_toe_mid_point_on_world, v_left_toe_mid_in_world, v_right_toe_mid_in_world = self.get_toe_q_and_v_in_world(q, v)
 
         # save all intermediate variables for later use
-        intermediate_variables = {"t":t, "q":q, "v":v, "is_contact":is_contact, "lambda_c_gt":lambda_c_gt, "lambda_c_position":lambda_c_position, "v_dot_gt": v_dot_gt, "spring_mode":spring_mode,
+        intermediate_variables = {"t":t, "q":q, "v":v, "u":u, "is_contact":is_contact, "lambda_c_gt":lambda_c_gt, "lambda_c_position":lambda_c_position, "v_dot_gt": v_dot_gt, "u_osc":u_osc, "v_dot_osc":v_dot_osc, "spring_mode":spring_mode,
         "M":M, "bias":bias, "B":B, "gravity":gravity, "K":self.K, "C":self.C, "damping_force":damping_force, "spring_force":spring_force, "damping_force":damping_force, "damping_and_spring_force":damping_and_spring_force,
-        "J_h": J_h, "J_h_dot_times_v": J_h_dot_times_v, "J_c_active":J_c_active, "J_c_active_dot_v":J_c_active_dot_v, "J_s":J_s,"num_contact_unknown":num_contact_unknown, "get_force_at_point_matrix":get_force_at_point_matrix, 
-        "A":A, "b":b, "solution":solution, "lambda_c":lambda_c, "lambda_h":lambda_h, "left_toe_mid_point_on_world":left_toe_mid_point_on_world, "right_toe_mid_point_on_world": right_toe_mid_point_on_world, 
+        "J_h": J_h, "J_h_dot_v": J_h_dot_times_v, "J_c_active":J_c_active, "J_c_active_dot_v":J_c_active_dot_v, "J_s":J_s,"num_contact_unknown":num_contact_unknown, "get_force_at_point_matrix":get_force_at_point_matrix, 
+        "A":A, "b":b, "solution":solution, "v_dot":v_dot, "lambda_c":lambda_c, "lambda_h":lambda_h, "left_toe_mid_point_on_world":left_toe_mid_point_on_world, "right_toe_mid_point_on_world": right_toe_mid_point_on_world, 
         "v_left_toe_mid_in_world":v_left_toe_mid_in_world, "v_right_toe_mid_in_world":v_right_toe_mid_in_world
         }
 
@@ -354,7 +354,7 @@ class CassieSystem():
                     J_c_active_dot_v = J_c_right_dot_v    
                 else:
                     J_c_active = np.vstack((J_c_active, J_c_right))
-                    J_c_active_dot_v = np.hstack(J_c_active_dot_v, J_c_right_dot_v)
+                    J_c_active_dot_v = np.hstack((J_c_active_dot_v, J_c_right_dot_v))
 
                 right_index = num_contact_unknown
                 num_contact_unknown += 3

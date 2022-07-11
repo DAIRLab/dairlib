@@ -11,155 +11,64 @@ import scipy.io
 import cvxpy as cp
 from cassie_model import CassieSystem
 from utils import *
+from plot_utlis import PlotViewlizer
+from data_processor import DataProcessor
 
 class CaaiseSystemTest():
-    def __init__(self, data_path, start_time, end_time):
+    def __init__(self, date, log_num):
         
+
+        data_path = "log/{}/lcmlog-{}.mat".format(date, log_num)
+
         self.data_path = data_path
-        self.start_time = start_time
-        self.end_time = end_time
+
+        print("data log at:{}".format(self.data_path))
         
         self.cassie = CassieSystem()
+
+
+        self.plotViewlizer = PlotViewlizer("{}-{}".format(date, log_num))
+
+        self.data_processor = DataProcessor()
         
         self.pos_map, self.pos_map_inverse = self.cassie.make_position_map()
         self.vel_map, self.vel_map_inverse = self.cassie.make_velocity_map()
         self.act_map, self.act_map_inverse = self.cassie.make_actuator_map()
 
+        self.data_processor.update_pos_map(self.pos_map, self.pos_map_inverse)
+        self.data_processor.update_vel_map(self.vel_map, self.vel_map_inverse)
+        self.data_processor.update_act_map(self.act_map, self.act_map_inverse)
+
     def hardware_test(self):
         raw_data = scipy.io.loadmat(self.data_path)
-        process_data = process_hardware_data(raw_data, self.start_time, self.end_time)
+        process_data = process_hardware_data(raw_data,)
         t = process_data["t"]; q = process_data["q"]; v = process_data["v"]; v_dot_gt = process_data["v_dot"]; 
         u = process_data["u"]; is_contact = process_data["is_contact"]; v_dot_osc = process_data["v_dot_osc"]; u_osc = process_data["u_osc"]
         K = process_data["spring_stiffness"]; C = process_data["damping_ratio"]
 
-        # K[self.vel_map["knee_joint_leftdot"], self.pos_map["knee_joint_left"]] = 1531.28512245
-        # K[self.vel_map["knee_joint_rightdot"], self.pos_map["knee_joint_right"]] = 1754.16568063
-        # K[self.vel_map["ankle_spring_joint_leftdot"], self.pos_map["ankle_spring_joint_left"]] = 923.00560595
-        # K[self.vel_map["ankle_spring_joint_rightdot"], self.pos_map["ankle_spring_joint_right"]] = 986.8367351
-
         offset = np.zeros(23)
-        # offset[self.pos_map["knee_joint_left"]] = -7.38443491/1531.28512245
-        # offset[self.pos_map["knee_joint_right"]] = -9.17183419/1754.16568063
-        # offset[self.pos_map["ankle_spring_joint_left"]] = -15.89566176/923.00560595
-        # offset[self.pos_map["ankle_spring_joint_right"]] = -17.37326985/986.8367351
 
-        # offset[self.pos_map["knee_joint_left"]] = 0.000; offset[self.pos_map["knee_joint_right"]] = offset[self.pos_map["knee_joint_left"]]
-        # K[self.vel_map["knee_joint_leftdot"],self.pos_map["knee_joint_left"]] = 1500; K[self.vel_map["knee_joint_rightdot"],self.pos_map["knee_joint_right"]] = K[self.vel_map["knee_joint_leftdot"],self.pos_map["knee_joint_left"]]
         self.cassie.get_spring_stiffness(K); self.cassie.get_damping(C)
         self.cassie.get_spring_offset(offset)
 
-        t_list = []
-        v_dot_est_fixed_spring_list = []
-        v_dot_est_constant_spring_stiffness_list = []
-        v_dot_est_changed_spring_stiffness_list = []
-
-        v_dot_gt_list = []
-        v_dot_osc_list = []
-
-        # while True:
-        #     for i in range(t.shape[0]):
-        #         self.cassie.drawPose(q[i,:])
-        #         time.sleep(0.1)
-        #     import pdb; pdb.set_trace()
-
-        plt.plot(t, is_contact[:,0], label = 'left')
-        plt.plot(t, is_contact[:,1], label = 'right')
-        plt.legend()
-
-        for i in range(0, t.shape[0], ):
-            t_list.append(t[i])
-
-            v_dot_est, _, _= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], is_contact=is_contact[i,:], v_dot_gt=v_dot_gt[i,:], spring_mode="fixed_spring")
-            v_dot_est_fixed_spring_list.append(v_dot_est)
-
-            self.cassie.get_spring_stiffness(K)
-            self.cassie.get_spring_offset(offset)
-            v_dot_est, _, _= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], is_contact=is_contact[i,:], v_dot_gt=v_dot_gt[i,:], spring_mode="constant_stiffness")
-            v_dot_est_constant_spring_stiffness_list.append(v_dot_est)
-
-            v_dot_est, _, _= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], is_contact=is_contact[i,:], v_dot_gt=v_dot_gt[i,:], spring_mode="changed_stiffness")
-            v_dot_est_changed_spring_stiffness_list.append(v_dot_est)
-
-            v_dot_gt_list.append(v_dot_gt[i,:])
-            v_dot_osc_list.append(v_dot_osc[i,:])
-        
-        t_list = np.array(t_list)
-        v_dot_est_fixed_spring_list = np.array(v_dot_est_fixed_spring_list)
-        v_dot_est_constant_spring_stiffness_list = np.array(v_dot_est_constant_spring_stiffness_list)
-        v_dot_est_changed_spring_stiffness_list = np.array(v_dot_est_changed_spring_stiffness_list)
-        v_dot_gt_list = np.array(v_dot_gt_list)
-        v_dot_osc_list = np.array(v_dot_osc_list)
-
-        fixed_spring_residuals = self.get_residual(v_dot_gt_list, v_dot_est_fixed_spring_list)
-        constant_stiffness_residuals = self.get_residual(v_dot_gt_list, v_dot_est_constant_spring_stiffness_list)
-        changed_stiffness_residuals = self.get_residual(v_dot_gt_list, v_dot_est_changed_spring_stiffness_list)
-        osc_residuals = self.get_residual(v_dot_gt_list, v_dot_osc_list)
-
-        self.cassie.r = np.array(self.cassie.r)
-        self.cassie.r_c = np.array(self.cassie.r_c)
-        self.cassie.r_d = np.array(self.cassie.r_d)
-        self.cassie.r_g = np.array(self.cassie.r_g)
-        self.cassie.r_u = np.array(self.cassie.r_u)
-        self.cassie.r_s = np.array(self.cassie.r_s)
-        self.cassie.r_lc = np.array(self.cassie.r_lc)
-        self.cassie.r_lh = np.array(self.cassie.r_lh)
-
-        self.cassie.left_foot_on_world = np.array(self.cassie.left_foot_on_world)
-
-        plt.figure()
-
-        plt.plot(t_list, self.cassie.r[:,])
-
-        interested_index = self.vel_map["hip_pitch_leftdot"]
-
-        plt.figure()
-        plt.plot(t_list, self.cassie.r[:,interested_index], label="residual")
-        plt.plot(t_list, v_dot_gt_list[:, interested_index], label="gt")
-        plt.plot(t_list, self.cassie.r_c[:,interested_index], label="bias term")
-        plt.plot(t_list, self.cassie.r_d[:,interested_index], label="damping")
-        plt.plot(t_list, self.cassie.r_g[:,interested_index], label="gravity")
-        plt.plot(t_list, self.cassie.r_u[:,interested_index], label="u")
-        plt.plot(t_list, self.cassie.r_s[:,interested_index], label="spring")
-        plt.plot(t_list, self.cassie.r_lc[:,interested_index], label="contact force")
-        plt.plot(t_list, self.cassie.r_lh[:,interested_index], label="four bar constraints")
-        plt.figure()
-        plt.plot(t_list, self.cassie.r[:,interested_index]*0.1, label="residual")
-        plt.plot(t_list, v[:,interested_index], label="v")
-        plt.plot(t_list, u[:,self.act_map["hip_pitch_left_motor"]], label="u")
-        plt.plot(t_list, q[:,self.pos_map["hip_pitch_left"]], label="q")
-        plt.legend()
-        plt.figure()
-        plt.plot(t_list, q[:,self.pos_map["knee_joint_right"]], label = "knee joint right")
-        plt.plot(t_list, q[:,self.pos_map["ankle_spring_joint_right"]], label = "ankle joint right")
-        plt.plot(t_list, q[:,self.pos_map["knee_joint_left"]], label = "knee joint left")
-        plt.plot(t_list, q[:,self.pos_map["ankle_spring_joint_left"]], label = "ankle joint left")
-        plt.legend()
+        plt.plot(t, is_contact[:,0])
         plt.show()
-
         import pdb; pdb.set_trace()
 
-        for i in range(22):
-            plt.cla()
-            plt.plot(t_list, fixed_spring_residuals[:,i], label="fix spring:{:.1f}".format(np.mean(np.abs(fixed_spring_residuals[:,i]))))
-            plt.plot(t_list, constant_stiffness_residuals[:,i], label="constant stiffness residuals:{:.1f}".format(np.mean(np.abs(constant_stiffness_residuals[:,i]))))
-            plt.plot(t_list, changed_stiffness_residuals[:,i], label="changed stiffness residuals:{:.1f}".format(np.mean(np.abs(changed_stiffness_residuals[:,i]))))
-            plt.plot(t_list, osc_residuals[:,i], label="osc residuals:{:.1f}".format(np.mean(np.abs(osc_residuals[:,i]))))
-            plt.legend()
-            plt.title(self.vel_map_inverse[i])
-            plt.savefig("bindings/pydairlib/cassie/residual_analysis/hardware_test/v_dot_residual/{}.png".format(self.vel_map_inverse[i]))
+        print("Begin calculate v dot.")
+        for i in tqdm.tqdm(range(0, t.shape[0])):
+            v_dot, lambda_c, lambda_h = self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], is_contact=is_contact[i,:], v_dot_gt=v_dot_gt[i,:], u_osc=u_osc[i,:], v_dot_osc=v_dot_osc[i,:], spring_mode="changed_stiffness")
+        print("Finish calculate v dot.")
+
+        print("Begin calculate additional infos.")
+        self.data_processor.get_data(self.cassie.intermediate_variables)
+        self.data_processor.process_data()
+        print("Finish Calculate additional infos.")
         
-        for i in range(22):
-            plt.cla()
-            plt.plot(t_list, v_dot_gt_list[:,i], label='gt')
-            plt.plot(t_list, v_dot_est_constant_spring_stiffness_list[:,i], label='constant stiffness')
-            plt.plot(t_list, v_dot_est_changed_spring_stiffness_list[:,i], label='changed stiffness')
-            plt.plot(t_list, v_dot_est_fixed_spring_list[:,i], label='fixed spring')
-            plt.plot(t_list, v_dot_osc_list[:,i], label='osc')
-            plt.legend()
-            plt.title(self.vel_map_inverse[i])
-            plt.savefig("bindings/pydairlib/cassie/residual_analysis/hardware_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
-        
-        import pdb; pdb.set_trace()
+        print("Begin update data for plots")
+        for processed_datum in self.data_processor.processed_data:
+            self.plotViewlizer.add_info(processed_datum)
+        print("Finish update data for plots")
 
     def simulation_test(self):
         raw_data = scipy.io.loadmat(self.data_path)
@@ -225,34 +134,8 @@ class CaaiseSystemTest():
         
         import pdb; pdb.set_trace()
 
-    def draw_residual(self, x_axis, residuals, dir):
-
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-
-        for i in range(22):
-
-            n = x_axis.shape[0]
-            x_axis_sorted = np.sort(x_axis)
-            residuals_sorted = np.sort(residuals[:,i])
-            x_min=x_axis_sorted[int(n*0.01)]; x_max=x_axis_sorted[int(n*(1-0.01))]
-            y_min=residuals_sorted[int(n*0.01)]; y_max=residuals_sorted[int(n*(1-0.01))]
-
-            corrcoef = np.corrcoef(np.vstack((x_axis, residuals[:,i])))
-
-            A = np.hstack((x_axis[:,None], np.ones((n,1))))
-            sol = np.linalg.pinv(A) @ residuals[:,i]
-
-            plt.cla()
-            plt.plot(x_axis, residuals[:, i], 'ro', markersize=1)
-            plt.plot([x_min, x_max], [x_min*sol[0]+sol[1], x_max*sol[0]+sol[1]], 'b')
-            plt.title(self.vel_map_inverse[i] + " corrcoef:" + "{:.2f}".format(corrcoef[1,0]))
-            plt.xlim(x_min, x_max)
-            plt.ylim(y_min, y_max)
-            plt.savefig(dir + "/{}.png".format(self.vel_map_inverse[i]))
-
 def main():
-    simulationDataTester = CaaiseSystemTest(data_path="log/03_15_22/lcmlog-11.mat", start_time=31.1, end_time=31.16)
+    simulationDataTester = CaaiseSystemTest(date="03_15_22", log_num=11)
     simulationDataTester.hardware_test()
 
 if __name__ == "__main__":

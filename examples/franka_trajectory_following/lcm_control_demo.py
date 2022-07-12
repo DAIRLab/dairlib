@@ -193,7 +193,7 @@ for i in theta:
     # y = r * np.sin(math.radians(i+param["phase"]+90))
     q[q_map['base_x']] = x + x_c
     q[q_map['base_y']] = y + y_c
-    q[q_map['base_z']] = param["ball_radius"]
+    q[q_map['base_z']] = param["ball_radius"] + param["table_offset"]
     xtraj_hold = np.zeros((nq+nv,1))
     xtraj_hold[:nq] = q
     xtraj.append(xtraj_hold)

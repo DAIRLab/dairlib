@@ -26,8 +26,8 @@ G: 0.01
 U_default: 1
 U_pos_vel: 10           # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
-q_init_finger: [0, 0, 0.07]
-q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03]
+q_init_finger: [0, 0, 0.0399] # TODO: Tune this! (used to be 0.7)
+q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
 
 # initialization/simulation parameters
@@ -53,8 +53,9 @@ c3_sub_timeout: 0.15
 realtime_rate: 0.5
 
 ball_radius: 0.0315           # changes need to be consistent with urdf
-finger_radius: 0.0195         # changes need to be consistent with urdf
+finger_radius: 0.0195         # changes need to be consistent with BOTH urdfs
 EE_offset: [0, 0, 0.0192]     # changes need to be consistent with urdf
+table_offset: -0.0301         # chances need to be consistent with BOTH urdfs
 
 
 # Misc

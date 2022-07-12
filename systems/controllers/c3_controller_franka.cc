@@ -159,6 +159,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   double y_c = param_.y_c;
   double traj_radius = param_.traj_radius;
   double ball_radius = param_.ball_radius;
+  double table_offset = param_.table_offset;
 
   if (timestamp <= settling_time){
     // move to initial position
@@ -175,7 +176,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired.head(3) << target[0];
     st_desired(7) = finish(0);
     st_desired(8) = finish(1);
-    st_desired(9) = ball_radius;
+    st_desired(9) = ball_radius + table_offset;
     st_desired(28) = traj(7);
     st_desired(29) = traj(8);
     st_desired(30) = traj(9);
@@ -184,7 +185,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
     prev_timestamp_ = (timestamp);
-    prev_position_ << finish(0), finish(1), ball_radius;
+    prev_position_ << finish(0), finish(1), ball_radius + table_offset;
     prev_velocity_ << 0, 0, 0;
     return;
   }
@@ -251,7 +252,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     traj_desired_vector(q_map_.at("base_x")) = x_c + traj_radius * sin(theta);
     traj_desired_vector(q_map_.at("base_y")) = y_c + traj_radius * cos(theta);
-    traj_desired_vector(q_map_.at("base_z")) = ball_radius - 0.0301;
+    traj_desired_vector(q_map_.at("base_z")) = ball_radius + table_offset;
   }
 
   // compute sphere positional error
@@ -272,7 +273,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   if ( ts < period*duty_cycle ) {
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")]  - 0.0301;
   }
   /// upwards phase
   else if (ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
@@ -308,10 +308,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
 
   /// upddate context
-
-//  std::cout << "here" << std::endl;
-//  std::cout << q(9) << std::endl;
-//  q(9) = q(9) - 0.01;
   plant_f_.SetPositions(&context_f_, q);
   plant_f_.SetVelocities(&context_f_, v);
   multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
@@ -407,10 +403,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 
-  // std::cout << "A: \n" << system2_.A_[0] << std::endl << std::endl;
-  // std::cout << "B: \n" << system2_.B_[0] << std::endl << std::endl;
-  // std::cout << "D: \n" << system2_.D_[0] << std::endl << std::endl;
-
   VectorXd force_des = VectorXd::Zero(6);
   force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
@@ -440,38 +432,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     past_velocities_.pop_front();
     past_velocities_.push_back(v_ball);
   }
-
-//  std::cout << "estimated v\n" << v_ball << std::endl;
-//  std::cout << "actual v\n" << ball_dot.tail(3) << std::endl;
-//  std::cout << "error norm\n" << (v_ball - ball_dot.tail(3)).norm() << std::endl;
-//  std::cout << "alignment\n" << v_ball.dot(ball_dot.tail(3)) / (v_ball.norm() * ball_dot.tail(3).norm()) << std::endl;
-//  std::cout << std::endl;
-
-  // update kalman filter according to https://en.wikipedia.org/wiki/Kalman_filter
-  // prediction step
-  // MatrixXd F = MatrixXd::Zero(6,6);
-  // MatrixXd B = MatrixXd::Zero(6,12);
-  // MatrixXd H = MatrixXd::Zero(3, 6);
-  // F.topLeftCorner(3,6) << system2_.A_[0].block(7, 7, 3, 3),
-  //                         system2_.A_[0].block(7, 16, 3, 3);
-  // F.bottomRightCorner(3,6) << system2_.A_[0].block(16, 7, 3, 3),
-  //                             system2_.A_[0].block(16, 16, 3, 3);
-  // B.topLeftCorner(3,12) << system2_.D_[0].block(7, 0, 3, 12);
-  // B.bottomRightCorner(3,12) << system2_.D_[0].block(16, 0, 3, 12);
-  // H.topLeftCorner(3,3) << MatrixXd::Identity(3,3);
-
-  // VectorXd xhat_predict = VectorXd::Zero(6);
-  // xhat_predict << state_next.segment(7, 3), state_next.tail(3);
-
-  // std::cout << "F:\n" << F << std::endl;
-  // std::cout << "B:\n" << B << std::endl;
-  // std::cout << "H:\n" << H << std::endl;
-  // std::cout << "D\n" << system2_.D_[0] << std::endl;
-  // std::cout << "bot of D\n" << system2_.D_[0].block(16, 0, 3, 12) << std::endl;
-  // std::cout << "xhat_predict\n" << xhat_predict << std::endl;
-  // std::cout << "v_ball\n" << v_ball << std::endl;
-  // std::cout << "d\n" << system2_.d_[0] << std::endl;
-
 }
 
 void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
@@ -517,7 +477,7 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
   double ball_radius = param_.ball_radius;
 
   ///1
-  //Vector3d ball_xyz_dot = v_plant.tail(3);
+  Vector3d ball_xyz_dot = v_plant.tail(3);
 
   ///2
   // Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
@@ -525,19 +485,15 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
   // ball_xyz_dot(2) = 0; // expect no velocity in z direction
 
   ///3
-  Vector3d average = Vector3d::Zero(3);
-  for(int i = 0; i < 10; i++){
-    average = average + past_velocities_[i]/10;
-  }
-  Vector3d ball_xyz_dot = average;
+//  Vector3d average = Vector3d::Zero(3);
+//  for(int i = 0; i < 10; i++){
+//    average = average + past_velocities_[i]/10;
+//  }
+//  Vector3d ball_xyz_dot = average;
 
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);
   v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
-//  std::cout << "after\n" << v_plant.tail(6) << std::endl;
-//  std::cout << "prev_position\n" << prev_position_ << std::endl;
-//  std::cout << "ball_xyz\n" << q_plant.tail(3) << std::endl;
-//  std::cout << "dt\n" << timestamp - prev_timestamp_ << std::endl;
 }
 
 void C3Controller_franka::ProjectStateEstimate(Eigen::Vector3d endeffector, Eigen::Vector3d& estimate) const {

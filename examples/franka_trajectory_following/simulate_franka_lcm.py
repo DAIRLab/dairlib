@@ -47,8 +47,6 @@ parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
 # Fix the base of the finger to the world
 X_WI = RigidTransform.Identity()
 plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI)
-# degrees = 0.01
-# plant.mutable_gravity_field().set_gravity_vector(np.array([[0], [9.81*sin(degrees * math.pi/180)], [-9.81*cos(degrees * math.pi/180)]]))
 plant.Finalize()
 
 drake_lcm = DrakeLcm()
@@ -113,7 +111,7 @@ q[q_map['base_qy']] = ball_init[2]
 q[q_map['base_qz']] = ball_init[3]
 q[q_map['base_x']] = param["x_c"] + traj_radius * np.sin(math.radians(param["phase"]))
 q[q_map['base_y']] = param["y_c"] + traj_radius * np.cos(math.radians(param["phase"]))
-q[q_map['base_z']] = param["ball_radius"]
+q[q_map['base_z']] = param["ball_radius"]+param["table_offset"]
 
 plant.SetPositions(plant_context, q)
 

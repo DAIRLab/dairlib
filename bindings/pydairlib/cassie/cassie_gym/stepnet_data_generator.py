@@ -253,10 +253,15 @@ class StepnetDataGenerator(DrakeCassieGym):
         swing = self.fsm_swing_states[
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
-        x_post = self.step(footstep_target=target)
-        swing_foot_final_pos = self.calc_foot_position_in_world(
-            self.plant_context, swing)
-        error = np.linalg.norm(swing_foot_final_pos - target)
+        try:
+            x_post = self.step(footstep_target=target)
+            swing_foot_final_pos = self.calc_foot_position_in_world(
+                self.plant_context, swing)
+            error = np.linalg.norm(swing_foot_final_pos - target)
+        except:
+            print('simulation failed')
+            error = 100.0
+
         return {
             'depth': depth_image.data,
             'state': x_pre,

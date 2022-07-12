@@ -15,13 +15,13 @@ def collect_data_from_random_map(size):
     env = StepnetDataGenerator.make_randomized_env()
     data = []
     for i in range(size):
+        print(i)
         data.append(env.get_stepnet_data_point())
     env.free_sim()
     return data
 
 
 def collect_and_save_data_from_random_map(i, size):
-    print(i)
     data = collect_data_from_random_map(size)
     save(data, os.path.join(DATASET_DIR, f'{i}.pt'))
 

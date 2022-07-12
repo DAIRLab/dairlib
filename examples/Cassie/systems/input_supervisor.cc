@@ -241,7 +241,7 @@ drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
   }
   if (command->get_data().array().isNaN().any()) {
     discrete_state->get_mutable_value(
-        error_indices_index_)[error_indices_.at("is_nan")] = 0;
+        error_indices_index_)[error_indices_.at("is_nan")] = 1;
   }
   if (context.get_discrete_state(n_fails_index_)[0] >=
       min_consecutive_failures_) {

@@ -120,8 +120,8 @@ OperationalSpaceControl::OperationalSpaceControl(
   VectorXd u_min(n_u_);
   VectorXd u_max(n_u_);
   for (JointActuatorIndex i(0); i < n_u_; ++i) {
-    u_min(i) = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
-    u_max(i) = plant_wo_spr_.get_joint_actuator(i).effort_limit();
+    u_min[i] = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
+    u_max[i] = plant_wo_spr_.get_joint_actuator(i).effort_limit();
   }
   u_min_ = u_min;
   u_max_ = u_max;

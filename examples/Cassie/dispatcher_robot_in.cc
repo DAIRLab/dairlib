@@ -126,7 +126,7 @@ int do_main(int argc, char* argv[]) {
   int nu = plant.num_actuators();
   VectorXd input_limit(nu);
   for (drake::multibody::JointActuatorIndex i(0); i < nu; ++i) {
-    input_limit(i) = plant.get_joint_actuator(i).effort_limit();
+    input_limit[i] = plant.get_joint_actuator(i).effort_limit();
   }
 
   auto input_supervisor = builder.AddSystem<InputSupervisor>(

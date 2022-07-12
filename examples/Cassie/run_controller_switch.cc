@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 
-#include <drake/systems/lcm/lcm_interface_system.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_controller_switch.hpp"
@@ -79,12 +78,15 @@ int do_main(int argc, char* argv[]) {
   // offset has to be positive
   DRAKE_DEMAND(FLAGS_fsm_offset >= 0);
 
+  // Parameters
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+
   // Build the diagram
   drake::systems::DiagramBuilder<double> builder;
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto name_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_switch>(
-          FLAGS_switch_channel, lcm, TriggerTypeSet({TriggerType::kForced})));
+          FLAGS_switch_channel, &lcm_local,
+          TriggerTypeSet({TriggerType::kForced})));
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("switch publisher"));
 
@@ -94,12 +96,13 @@ int do_main(int argc, char* argv[]) {
   auto& diagram_context = simulator.get_mutable_context();
 
   // Create subscriber for lcm driven loop
-  drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(lcm,
+  drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
                                                                FLAGS_channel_x);
 
   // Wait for the first message and initialize the context time..
   drake::log()->info("Waiting for first lcm input message");
-  LcmHandleSubscriptionsUntil(lcm, [&]() { return input_sub.count() > 0; });
+  LcmHandleSubscriptionsUntil(&lcm_local,
+                              [&]() { return input_sub.count() > 0; });
   const double t0 = input_sub.message().utime * 1e-6;
   diagram_context.SetTime(t0);
 
@@ -107,8 +110,8 @@ int do_main(int argc, char* argv[]) {
   double t_threshold = t0;
   if (FLAGS_n_period_delay > 0) {
     t_threshold = (floor(t0 / FLAGS_fsm_period) + FLAGS_n_period_delay) *
-        FLAGS_fsm_period +
-        FLAGS_fsm_offset;
+                      FLAGS_fsm_period +
+                  FLAGS_fsm_offset;
   }
   // Create output message
   dairlib::lcmt_controller_switch msg;
@@ -121,7 +124,8 @@ int do_main(int argc, char* argv[]) {
   while (pub_count < FLAGS_n_publishes) {
     // Wait for input message.
     input_sub.clear();
-    LcmHandleSubscriptionsUntil(lcm, [&]() { return input_sub.count() > 0; });
+    LcmHandleSubscriptionsUntil(&lcm_local,
+                                [&]() { return input_sub.count() > 0; });
 
     // Get message time from the input channel
     double t_current = input_sub.message().utime * 1e-6;

@@ -1,3 +1,4 @@
+import cProfile
 import numpy as np
 
 from drake_cassie_gym import DrakeCassieGym
@@ -21,7 +22,7 @@ def main():
         controller_plant.Finalize()
         controller = AlipWalkingControllerFactory(
             controller_plant, True, osc_gains, osqp_settings)
-        gym_env = DrakeCassieGym(visualize=True)
+        gym_env = DrakeCassieGym(visualize=False)
         gym_env.make(controller)
         gym_env.advance_to(5.0)
         gym_env.free_sim()

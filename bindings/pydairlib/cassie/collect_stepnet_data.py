@@ -4,9 +4,9 @@ import multiprocessing
 from torch import save
 from pydairlib.cassie.cassie_gym.stepnet_data_generator import StepnetDataGenerator
 
-NMAPS = 1000
-NSTEPS = 4
-NTHREADS = 11
+NMAPS = 20000
+NSTEPS = 10
+NTHREADS = 10
 
 DATASET_DIR = '.learning_data/dataset/'
 

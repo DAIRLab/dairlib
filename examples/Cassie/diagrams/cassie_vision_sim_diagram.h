@@ -63,8 +63,8 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
   const int state_output_port_index_ = 0;
   const int cassie_out_output_port_index_ = 1;
   const int camera_out_output_port_index_ = 2;
-  const double actuator_delay = 5e-3;        // 5ms
-  const double actuator_update_rate = 2e-3;  // 1ms
+  const double actuator_delay = 6e-3;
+  const double actuator_update_rate = 2.5e-3;
 
 };
 }  // namespace examples

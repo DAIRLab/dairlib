@@ -31,8 +31,8 @@ URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
-INITIAL_CONDITIONS_FILE = '.learning_data/initial_conditions.npy'
-TARGET_LOWER_BOUND = np.array([-2.0, -1.0, 0.0])
+INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
+TARGET_LOWER_BOUND = np.array([-1.6, -0.8, 0.0])
 TARGET_UPPER_BOUND = -TARGET_LOWER_BOUND
 
 
@@ -45,7 +45,7 @@ class StepnetDataGenerator(DrakeCassieGym):
             params=params
         )
         # simulate for a bit past a full step
-        self.sim_dt = 0.5
+        self.sim_dt = 0.45
 
         # Simulation Infrastructure
         self.fsm_output_port = None

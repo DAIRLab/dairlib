@@ -15,12 +15,6 @@ import cassie_plotting_utils as cassie_plots
 import mbp_plotting_utils as mbp_plots
 
 
-
-
-
-
-
-
 def nans(shape, dtype=float):
     a = np.empty(shape, dtype)
     a.fill(np.nan)

@@ -157,6 +157,7 @@ class DrakeCassieGym:
         return
 
     def advance_to(self, time):
+
         while self.current_time < time and not self.terminated:
             self.step()
         return
@@ -186,7 +187,6 @@ class DrakeCassieGym:
                     context=port.context,
                     value=port.value
                 )
-
         self.drake_simulator.AdvanceTo(next_timestep)
         self.current_time = self.drake_simulator.get_context().get_time()
 

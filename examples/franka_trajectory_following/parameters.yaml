@@ -26,7 +26,8 @@ G: 0.01
 U_default: 1
 U_pos_vel: 10           # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
-q_init_finger: [0, 0, 0.0399] # TODO: Tune this! (used to be 0.7)
+q_init_finger: [0, 0, 0.0524] # TODO: Tune this! (used to be 0.7)
+#q_init_finger: [0, 0, 0.0399] # parameters that work for wrong EE model
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
 

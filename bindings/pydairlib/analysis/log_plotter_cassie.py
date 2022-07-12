@@ -9,7 +9,7 @@ from process_lcm_log import get_log_data
 from cassie_plot_config import CassiePlotConfig
 import cassie_plotting_utils as cassie_plots
 import mbp_plotting_utils as mbp_plots
-
+from spring_compensation import SpringCompensation
 
 def main():
     config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
@@ -58,6 +58,18 @@ def main():
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
     print('Log start time: ', robot_output['t_x'][0])
+    # import time
+    # time_start = time.time()
+    # time.sleep(1)
+    # print(time.time() - time_start)
+    # spring_compensation = SpringCompensation()
+    # samples, t_samples = spring_compensation.sample_simulate_forward(robot_output['q'][0], robot_output['v'][0], robot_output['u'][0], 10)
+    # print(time.time() - time_start)
+    # plt.plot(t_samples, samples[:, :23])
+    # plt.plot(t_samples, samples[:, -22:])
+    # print(t_samples)
+    # plt.show()
+    # import pdb; pdb.set_trace()
 
     ''' Plot Positions '''
     # Plot floating base positions if applicable
@@ -85,7 +97,7 @@ def main():
             robot_output, t_x_slice, plant, context, "pelvis")
 
     # Plot all joint velocities
-    if plot_config.plot_joint_positions:
+    if plot_config.plot_joint_velocities:
         plot = mbp_plots.plot_joint_velocities(robot_output, vel_names,
                                                6 if use_floating_base else 0,
                                                t_x_slice)

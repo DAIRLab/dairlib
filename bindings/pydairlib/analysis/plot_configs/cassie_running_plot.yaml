@@ -6,23 +6,23 @@ use_archived_lcmtypes: false
 
 # Log time to stop at (seconds, -1 for whole log)
 start_time: 0
-duration: 2
+duration: 5
 
 # Plant properties
 use_springs: true
 use_floating_base: true
 
 # Desired RobotOutput plots
-plot_floating_base_positions: false
+plot_floating_base_positions: true
 plot_floating_base_velocities: false
 plot_floating_base_velocity_body_frame: false
-plot_joint_positions: false
-plot_joint_velocities: false
+plot_joint_positions: true
+plot_joint_velocities: true
 plot_measured_efforts: true
 plot_commanded_efforts: true
 plot_contact_forces: false
-special_positions_to_plot: [ ]
-special_velocities_to_plot: []
+special_positions_to_plot: [ 'hip_pitch_left']
+special_velocities_to_plot: ['hip_pitch_leftdot']
 special_efforts_to_plot: [ ]
 
 # Finite State Machine Names
@@ -31,14 +31,14 @@ fsm_state_names: ['Left Stance (LS)', 'Left Flight (LF)', 'Right Stance (RS)', '
 # Foot position plots
 foot_positions_to_plot: [ 'right', 'left' ]
 #foot_positions_to_plot: []
-foot_xyz_to_plot: { 'right': [ 0, 2 ], 'left': [ 0, 2 ] }
+foot_xyz_to_plot: { 'right': [0], 'left': [0 ] }
 #foot_xyz_to_plot: { }
-pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
+pt_on_foot_to_plot: 'rear'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
 plot_qp_costs: false
 plot_qp_solve_time: true
-plot_qp_solutions: true
+plot_qp_solutions: false
 plot_tracking_costs: false
 tracking_datas_to_plot:
 #  pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': [ 'vel' ] }

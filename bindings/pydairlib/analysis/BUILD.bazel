@@ -48,6 +48,19 @@ py_library(
 )
 
 py_library(
+    name = "spring_compensation",
+    srcs = ["spring_compensation.py"],
+    deps = [
+        ":osc_debug_py",
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/common:plotting_utils",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/multibody:kinematic_py",
+        "//bindings/pydairlib/multibody:multibody_py",
+    ],
+)
+
+py_library(
     name = "mbp_plotting_utils",
     srcs = ["mbp_plotting_utils.py"],
     data = ["@lcm//:lcm-python"],

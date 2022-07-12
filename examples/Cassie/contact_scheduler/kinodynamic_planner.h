@@ -10,12 +10,14 @@
 
 #include "examples/Cassie/contact_scheduler/kinodynamic_settings.h"
 #include "lcm/lcm_trajectory.h"
+
 #include "multibody/multibody_utils.h"
 #include "solvers/constraint_factory.h"
 #include "solvers/fast_osqp_solver.h"
 #include "systems/framework/output_vector.h"
-
 #include "drake/common/trajectories/piecewise_polynomial.h"
+
+#include "drake/multibody/optimization/centroidal_momentum_constraint.h"
 //#include "drake/solvers/gurobi_solver.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
@@ -45,11 +47,16 @@ typedef struct LinearSrbdDynamics {
 
 class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
  public:
-  KinodynamicPlanner(const drake::multibody::MultibodyPlant<double>& plant);
+  KinodynamicPlanner(const drake::multibody::MultibodyPlant<double>& plant,
+                     drake::systems::Context<double>& context,
+                     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+                     drake::systems::Context<drake::AutoDiffXd>& context_ad);
 
   void SetMPCSettings(KinodynamicSettings& settings);
   void SetTerminalCost(const Eigen::MatrixXd& Qf);
   void AddInputRegularization(const Eigen::MatrixXd& R);
+  void AddTrackingObjective(const Eigen::VectorXd& xdes,
+                            const Eigen::MatrixXd& Q);
   //  void AddFootPlacementRegularization(const Eigen::MatrixXd& W);
   void Build();
   void CheckProblemDefinition();
@@ -139,15 +146,40 @@ class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+
+  void AddCentroidalMomentumConstraint();
+  void AddAngularMomentumDynamicsConstraint();
+  void AddCoMDynamicsConstraint();
+  void AddDynamicsConstraint();
+  void AddIntegrationConstraints();
+  void AddKinematicConstraints();
+
+
   // plant
   const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>& context_;
+  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  drake::systems::Context<drake::AutoDiffXd>& context_ad_;
   double mu_ = 0;
   int n_q_;
   int n_v_;
   int n_u_;
 
+  // centroidal optimization parameters
+  double m_;
+  Eigen::Vector3d g_;
+  int n_contacts_ = 4;
   int n_r_ = 3;
   int n_h_ = 3;
+
+  // mpc parameters
+  int n_knot_points_ = 4;
+
+
+
+
+
+
 
 
   // parameters and constants
@@ -203,7 +235,24 @@ class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
   mutable std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       kinematic_constraint_;
 
+
+  // Constraints
+  std::vector<std::shared_ptr<drake::multibody::CentroidalMomentumConstraint>> centroidal_momentum_constraints_;
+
+
   // Decision Variables
+  std::vector<drake::solvers::VectorXDecisionVariable> q_;
+  std::vector<drake::solvers::VectorXDecisionVariable> v_;
+  std::vector<drake::solvers::VectorXDecisionVariable> dt_;
+  std::vector<drake::solvers::VectorXDecisionVariable> r_;
+  std::vector<drake::solvers::VectorXDecisionVariable> dr_;
+  std::vector<drake::solvers::VectorXDecisionVariable> ddr_;
+  std::vector<std::vector<drake::solvers::VectorXDecisionVariable>> c_;
+  std::vector<std::vector<drake::solvers::VectorXDecisionVariable>> F_;
+  std::vector<std::vector<drake::solvers::VectorXDecisionVariable>> tau_;
+  std::vector<drake::solvers::VectorXDecisionVariable> h_;
+  std::vector<drake::solvers::VectorXDecisionVariable> dh_;
+
   std::vector<drake::solvers::VectorXDecisionVariable> xx;
   std::vector<drake::solvers::VectorXDecisionVariable> uu;
   std::vector<drake::solvers::VectorXDecisionVariable> pp;

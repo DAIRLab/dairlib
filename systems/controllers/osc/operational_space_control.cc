@@ -120,8 +120,8 @@ OperationalSpaceControl::OperationalSpaceControl(
   VectorXd u_min(n_u_);
   VectorXd u_max(n_u_);
   for (JointActuatorIndex i(0); i < n_u_; ++i) {
-    u_min(i) = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
-    u_max(i) = plant_wo_spr_.get_joint_actuator(i).effort_limit();
+    u_min[i] = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
+    u_max[i] = plant_wo_spr_.get_joint_actuator(i).effort_limit();
   }
   u_min_ = u_min;
   u_max_ = u_max;
@@ -547,9 +547,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   bool near_impact = alpha != 0;
   VectorXd v_proj = VectorXd::Zero(n_v_);
   if (near_impact) {
+    auto start = std::chrono::high_resolution_clock::now();
     UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t,
                                     time_since_last_state_switch, fsm_state,
                                     next_fsm_state, M);
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    cout << "Solve time:" << elapsed.count() << std::endl;
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
   }

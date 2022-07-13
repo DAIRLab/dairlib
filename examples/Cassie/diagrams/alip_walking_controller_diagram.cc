@@ -296,11 +296,6 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  swing_foot_data->AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_right"], left_stance_state);
-  swing_foot_data->AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_left"], right_stance_state);
-
   com_data = std::make_unique<ComTrackingData>(
       "com_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant, plant);

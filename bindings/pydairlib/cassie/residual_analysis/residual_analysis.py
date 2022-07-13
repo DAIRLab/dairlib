@@ -133,7 +133,7 @@ class CaaiseSystemTest():
         import pdb; pdb.set_trace()
 
 def main():
-    simulationDataTester = CaaiseSystemTest(date="03_15_22", log_num=11, is_new_plots=False)
+    simulationDataTester = CaaiseSystemTest(date="03_15_22", log_num=11, is_new_plots=True)
     simulationDataTester.hardware_test()
 
 if __name__ == "__main__":

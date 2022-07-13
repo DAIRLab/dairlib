@@ -34,7 +34,6 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
-<<<<<<< HEAD
 
     '''' Get Stiffness '''
     K = np.zeros((22,23))
@@ -50,8 +49,6 @@ def main():
         if joint.num_velocities() > 0:
             C[vel_map[joint.name() + 'dot'], vel_map[joint.name() + 'dot']] = joint.damping()
 
-=======
->>>>>>> origin/dynamic_motions
     ''' Read the log '''
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
@@ -66,22 +63,12 @@ def main():
                      mbp_plots.load_default_channels,  # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
-<<<<<<< HEAD
     contact_output = get_log_data(log,  # log
                                   cassie_plots.cassie_contact_channels,  # lcm channels
                                   plot_config.end_time,
                                   mbp_plots.load_is_contact_channels,  # processing callback
                                   'CASSIE_CONTACT_DISPATCHER')  # processing callback arguments
     print("Finish parse logging")
-=======
-    if plot_config.plot_contact_forces:
-        contact_output = get_log_data(log,  # log
-                                      cassie_plots.cassie_contact_channels,  # lcm channels
-                                      plot_config.start_time,
-                                      plot_config.duration,
-                                      mbp_plots.load_force_channels,  # processing callback
-                                      'CASSIE_CONTACT_DRAKE')  # processing callback arguments
->>>>>>> origin/dynamic_motions
 
     if len(sys.argv) == 3:
         output_path = sys.argv[2]

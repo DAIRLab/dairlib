@@ -1,4 +1,5 @@
 #include <chrono>
+#include <iostream>
 #include <gflags/gflags.h>
 
 #include "examples/Cassie/cassie_fixed_point_solver.h"
@@ -25,7 +26,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant, nullptr, true, urdf, FLAGS_spring_model, false);
+  AddCassieMultibody(&plant, nullptr, true, urdf, FLAGS_spring_model, false);
   plant.Finalize();
 
   Eigen::VectorXd q, u, lambda;

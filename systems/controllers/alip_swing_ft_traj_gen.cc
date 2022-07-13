@@ -10,8 +10,6 @@
 #include "systems/controllers/control_utils.h"
 #include "multibody/multibody_utils.h"
 
-using std::cout;
-using std::endl;
 using std::string;
 
 using Eigen::MatrixXd;
@@ -45,7 +43,7 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
     double mid_foot_height, double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
     double max_com_to_footstep_dist, double footstep_offset,
-    double center_line_offset, bool wrt_com_in_local_frame)
+    double center_line_offset)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
@@ -64,10 +62,6 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
   DRAKE_DEMAND(left_right_support_durations.size() == 2);
   DRAKE_DEMAND(left_right_foot.size() == 2);
-  if (!wrt_com_in_local_frame) {
-    std::cerr << "ALIP swing foot trajectory only supports relative to CoM\n";
-  }
-  DRAKE_DEMAND(wrt_com_in_local_frame);
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(

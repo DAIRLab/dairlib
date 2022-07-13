@@ -1,5 +1,6 @@
 #include <drake/systems/analysis/simulator.h>
 #include <gflags/gflags.h>
+#include <iostream>
 
 #include "dairlib/lcmt_pd_config.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -38,7 +39,7 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> controller_plant =
       MultibodyPlant<double>(8e-5);
   // Built the Cassie MBPs
-  addCassieMultibody(&controller_plant, nullptr, true,
+  AddCassieMultibody(&controller_plant, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      false /*spring model*/, false /*loop closure*/);
   controller_plant.Finalize();

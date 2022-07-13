@@ -14,7 +14,7 @@ namespace pydairlib {
 using multibody::MultiposeVisualizer;
 
 PYBIND11_MODULE(multibody, m) {
-//  py::module::import("pydrake.all");
+  py::module::import("pydrake.all");
 
   m.doc() = "Binding utility functions for MultibodyPlant";
 
@@ -24,27 +24,27 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<std::string, int, Eigen::VectorXd, std::string>())
       .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"));
 
-  m.def("makeNameToPositionsMap",
-        &dairlib::multibody::makeNameToPositionsMap<double>, py::arg("plant"))
-      .def("makeNameToVelocitiesMap",
-           &dairlib::multibody::makeNameToVelocitiesMap<double>,
+  m.def("MakeNameToPositionsMap",
+        &dairlib::multibody::MakeNameToPositionsMap<double>, py::arg("plant"))
+      .def("MakeNameToVelocitiesMap",
+           &dairlib::multibody::MakeNameToVelocitiesMap<double>,
            py::arg("plant"))
-      .def("makeNameToActuatorsMap",
-           &dairlib::multibody::makeNameToActuatorsMap<double>,
+      .def("MakeNameToActuatorsMap",
+           &dairlib::multibody::MakeNameToActuatorsMap<double>,
            py::arg("plant"))
-      .def("createStateNameVectorFromMap",
-           &dairlib::multibody::createStateNameVectorFromMap<double>,
+      .def("CreateStateNameVectorFromMap",
+           &dairlib::multibody::CreateStateNameVectorFromMap<double>,
            py::arg("plant"))
-      .def("createActuatorNameVectorFromMap",
-           &dairlib::multibody::createActuatorNameVectorFromMap<double>,
+      .def("CreateActuatorNameVectorFromMap",
+           &dairlib::multibody::CreateActuatorNameVectorFromMap<double>,
            py::arg("plant"))
-      .def("addFlatTerrain",
-            &dairlib::multibody::AddFlatTerrain<double>, py::arg("plant"),
-            py::arg("scene_graph"), py::arg("mu_static"), py::arg("mu_kinetic"),
-            py::arg("normal_W") = Eigen::Vector3d(0, 0, 1),
-            py::arg("stiffness") = 1e4, py::arg("dissipation_rate") = 0.5,
-            py::arg("show_ground") = 1);
-
+      .def("AddFlatTerrain", &dairlib::multibody::AddFlatTerrain<double>,
+           py::arg("plant"), py::arg("scene_graph"), py::arg("mu_static"),
+           py::arg("mu_kinetic"),
+           py::arg("normal_W") = Eigen::Vector3d(0, 0, 1),
+           py::arg("stiffness") = 0,
+           py::arg("dissipation_rate") = 0,
+           py::arg("show_ground") = 1);
 }
 
 }  // namespace pydairlib

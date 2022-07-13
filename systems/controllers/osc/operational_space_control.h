@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 
@@ -101,8 +102,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
       drake::systems::Context<double>* context_w_spr,
       drake::systems::Context<double>* context_wo_spr,
-      bool used_with_finite_state_machine = true,
-      bool print_tracking_info = false, double qp_time_limit = 0);
+      bool used_with_finite_state_machine = true, double qp_time_limit = 0);
 
   const drake::systems::OutputPort<double>& get_osc_output_port() const {
     return this->get_output_port(osc_output_port_);
@@ -138,6 +138,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
 
   // Regularization cost weights
+  void AddInputCostByJointAndFsmState(
+      const std::string& joint_u_name, int fsm, double w);
   void SetInputCostWeights(const Eigen::MatrixXd& W) { W_input_ = W; }
   void SetAccelerationCostWeights(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
@@ -309,14 +311,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
 
-  // flag indicating whether to print the tracking related values or not
-  bool print_tracking_info_;
-
   // floating base model flag
   bool is_quaternion_;
 
   // Solver
-  std::unique_ptr<solvers::FastOsqpSolver> solver_;
+  std::unordered_map<int, std::unique_ptr<solvers::FastOsqpSolver>> solvers_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
@@ -337,6 +336,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+  drake::solvers::QuadraticCost* input_cost_;
   std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
   drake::solvers::QuadraticCost* input_smoothing_cost_;
   drake::solvers::QuadraticCost* lambda_c_smoothing_cost_;
@@ -362,6 +362,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd W_input_smoothing_;
   Eigen::MatrixXd W_lambda_c_reg_;
   Eigen::MatrixXd W_lambda_h_reg_;
+  std::map<int, std::pair<int, double>> fsm_to_w_input_map_; // each pair is (joint index, weight)
+
 
   // OSC constraint members
   bool with_input_constraints_ = true;

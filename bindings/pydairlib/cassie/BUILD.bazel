@@ -31,7 +31,7 @@ pybind_py_library(
 pybind_py_library(
     name = "input_supervisor_py",
     cc_deps = [
-        "//examples/Cassie:input_supervisor",
+        "//examples/Cassie/systems:input_supervisor",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "input_supervisor",

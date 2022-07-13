@@ -8,11 +8,10 @@
 #include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
-#include "examples/Cassie/simulator_drift.h"
+#include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/cassie_out_to_radio.h"
 #include "systems/controllers/fsm_event_time.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/com_tracking_data.h"
@@ -82,7 +81,6 @@ DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
               "Filepath containing qp settings");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
-DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
@@ -100,11 +98,11 @@ int DoMain(int argc, char* argv[]) {
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   if (FLAGS_spring_model) {
-    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_v2.urdf",
                        true /*spring model*/, false /*loop closure*/);
   } else {
-    addCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
+    AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
                        "examples/Cassie/urdf/cassie_fixed_springs.urdf",
                        false /*spring model*/, false /*loop closure*/);
   }
@@ -146,8 +144,6 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_spr);
-  auto cassie_out_to_radio =
-      builder.AddSystem<systems::CassieOutToRadio>();
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
@@ -163,26 +159,25 @@ int DoMain(int argc, char* argv[]) {
   // Note that we didn't add drift to yaw angle here because it requires
   // changing SimulatorDrift.
 
-  auto simulator_drift =
-      builder.AddSystem<SimulatorDrift>(plant_w_spr, drift_mean, drift_cov);
-  builder.Connect(state_receiver->get_output_port(0),
-                  simulator_drift->get_input_port_state());
-
   // Create human high-level control
   Eigen::Vector2d global_target_position(gains.global_target_position_x,
                                          gains.global_target_position_y);
   Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
                                        gains.yaw_deadband_radius);
   cassie::osc::HighLevelCommand* high_level_command;
+
+  auto cassie_out_to_radio =
+      builder.AddSystem<systems::CassieOutToRadio>();
+
   if (FLAGS_use_radio) {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
         gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
+
     auto cassie_out_receiver =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
             FLAGS_cassie_out_channel, &lcm_local));
-    builder.Connect(cassie_out_receiver->get_output_port(),
-                    cassie_out_to_radio->get_input_port());
+    builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
     builder.Connect(cassie_out_to_radio->get_output_port(),
                     high_level_command->get_radio_input_port());
   } else {
@@ -199,7 +194,7 @@ int DoMain(int argc, char* argv[]) {
   // Create heading traj generator
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
       plant_w_spr, context_w_spr.get());
-  builder.Connect(simulator_drift->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   head_traj_gen->get_state_input_port());
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
@@ -225,7 +220,7 @@ int DoMain(int argc, char* argv[]) {
   }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations);
-  builder.Connect(simulator_drift->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_input_port_state());
 
   // Create leafsystem that record the switching time of the FSM
@@ -237,7 +232,7 @@ int DoMain(int argc, char* argv[]) {
   liftoff_event_time->set_name("liftoff_time");
   builder.Connect(fsm->get_output_port(0),
                   liftoff_event_time->get_input_port_fsm());
-  builder.Connect(simulator_drift->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   liftoff_event_time->get_input_port_state());
   std::vector<int> double_support_states = {post_left_double_support_state,
                                             post_right_double_support_state};
@@ -247,7 +242,7 @@ int DoMain(int argc, char* argv[]) {
   touchdown_event_time->set_name("touchdown_time");
   builder.Connect(fsm->get_output_port(0),
                   touchdown_event_time->get_input_port_fsm());
-  builder.Connect(simulator_drift->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   touchdown_event_time->get_input_port_state());
 
   // Create CoM trajectory generator
@@ -283,7 +278,7 @@ int DoMain(int argc, char* argv[]) {
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
                   lipm_traj_generator->get_input_port_touchdown_time());
-  builder.Connect(simulator_drift->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
   // We can use the same desired_com_height for pelvis_traj_generator as we use
@@ -299,7 +294,7 @@ int DoMain(int argc, char* argv[]) {
                   pelvis_traj_generator->get_input_port_fsm());
   builder.Connect(touchdown_event_time->get_output_port_event_time(),
                   pelvis_traj_generator->get_input_port_touchdown_time());
-  builder.Connect(simulator_drift->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   pelvis_traj_generator->get_input_port_state());
 
   // Create velocity control by foot placement
@@ -311,7 +306,7 @@ int DoMain(int argc, char* argv[]) {
           left_support_duration, 0, wrt_com_in_local_frame);
   builder.Connect(high_level_command->get_xy_output_port(),
                   walking_speed_control->get_input_port_des_hor_vel());
-  builder.Connect(simulator_drift->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   walking_speed_control->get_input_port_state());
   builder.Connect(lipm_traj_generator->get_output_port_lipm_from_current(),
                   walking_speed_control->get_input_port_com());
@@ -343,7 +338,7 @@ int DoMain(int argc, char* argv[]) {
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   swing_ft_traj_generator->get_input_port_fsm_switch_time());
-  builder.Connect(simulator_drift->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_state());
   builder.Connect(lipm_traj_generator->get_output_port_lipm_from_current(),
                   swing_ft_traj_generator->get_input_port_com());
@@ -351,7 +346,7 @@ int DoMain(int argc, char* argv[]) {
                   swing_ft_traj_generator->get_input_port_sc());
 
   // Swing toe joint trajectory
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};
   vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
@@ -372,7 +367,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
-      FLAGS_print_osc, FLAGS_qp_time_limit);
+       FLAGS_qp_time_limit);
 
   // Cost
   int n_v = plant_w_spr.num_velocities();
@@ -396,8 +391,8 @@ int DoMain(int argc, char* argv[]) {
   std::unique_ptr<FixedJointEvaluator<double>> left_fixed_ankle_spring;
   std::unique_ptr<FixedJointEvaluator<double>> right_fixed_ankle_spring;
   if (FLAGS_spring_model) {
-    auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
-    auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+    auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
+    auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
     left_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
         plant_w_spr, pos_idx_map.at("knee_joint_left"),
         vel_idx_map.at("knee_joint_leftdot"), 0);
@@ -586,7 +581,7 @@ int DoMain(int argc, char* argv[]) {
   // Build OSC problem
   osc->Build();
   // Connect ports
-  builder.Connect(simulator_drift->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   if (use_pelvis_for_lipm_tracking) {

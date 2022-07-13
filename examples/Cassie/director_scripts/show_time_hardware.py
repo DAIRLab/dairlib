@@ -4,6 +4,7 @@ from director import lcmUtils
 from director import applogic
 import time
 import dairlib.lcmt_robot_output
+import numpy as np
 
 
 class TimeVisualizer(object):
@@ -25,8 +26,8 @@ class TimeVisualizer(object):
         if 'pd_panel_state_channel' in globals():
             channel = pd_panel_state_channel
         else:
-            channel = "NETWORK_CASSIE_STATE_DISPATCHER"
-            # channel = "CASSIE_STATE_SIMULATION"
+            # channel = "NETWORK_CASSIE_STATE_DISPATCHER"
+            channel = "CASSIE_STATE_SIMULATION"
 
         self._subscriber = lcmUtils.addSubscriber(
             channel,
@@ -53,11 +54,13 @@ class TimeVisualizer(object):
     def handle_message(self, msg):
         msg_time = msg.utime * 1e-6  # convert from microseconds
         pelvis_height = (msg.position)[6]  # convert from microseconds
+        pelvis_velocity = np.linalg.norm((msg.velocity)[3:5])  # convert from microseconds
         self._real_time.append(time.time())
         self._msg_time.append(msg_time)
 
         my_text = 'time: %.3f' % msg_time
         pelvis_height_text = 'pelvis height: %.3f' % pelvis_height
+        pelvis_velocity_text = 'pelvis velocity: %.3f' % pelvis_velocity
 
         if (len(self._real_time) >= self._num_msg_for_average):
             self._real_time.pop(0)
@@ -70,7 +73,8 @@ class TimeVisualizer(object):
 
             #my_text = my_text + ', real time factor: %.2f' % rt_ratio
 
-        vis.updateText(my_text + '\n' + pelvis_height_text, 'text')
+        vis.updateText(my_text + '\n' + pelvis_height_text + '\n' + pelvis_velocity_text, 'text')
+        # vis.updateText(my_text + '\n' + pelvis_velocity_text, 'text')
 
 
 def init_visualizer():

@@ -98,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Built the Cassie MBPs
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  addCassieMultibody(&plant_w_spr, nullptr, true,
+  AddCassieMultibody(&plant_w_spr, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant_w_spr.Finalize();
@@ -115,15 +115,15 @@ int DoMain(int argc, char* argv[]) {
   int n_u = plant_w_spr.num_actuators();
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant_w_spr);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant_w_spr);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant_w_spr);
 
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, right_toe};
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  drake::yaml::YamlReadArchive::Options yaml_options;
+  drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
@@ -239,7 +239,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_trans_traj = pelvis_trans_traj + offset_traj;
 
   /**** Initialize all the leaf systems ****/
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm;
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
@@ -342,8 +342,8 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_loop);
 
   // Fix the springs in the dynamics
-  auto pos_idx_map = multibody::makeNameToPositionsMap(plant_w_spr);
-  auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_w_spr);
+  auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
+  auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
   auto left_fixed_knee_spring =
       FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),
                           vel_idx_map.at("knee_joint_leftdot"), 0);

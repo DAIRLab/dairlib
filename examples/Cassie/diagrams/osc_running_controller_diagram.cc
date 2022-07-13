@@ -74,11 +74,11 @@ namespace controllers {
 
 OSCRunningControllerDiagram::OSCRunningControllerDiagram(
     drake::multibody::MultibodyPlant<double>& plant,
-    const string& osc_gainsfilename, const string& osqp_settings_filename)
+    const string& osc_gains_filename, const string& osqp_settings_filename)
     : plant_(&plant),
-      pos_map(multibody::makeNameToPositionsMap(plant)),
-      vel_map(multibody::makeNameToVelocitiesMap(plant)),
-      act_map(multibody::makeNameToActuatorsMap(plant)),
+      pos_map(multibody::MakeNameToPositionsMap(plant)),
+      vel_map(multibody::MakeNameToVelocitiesMap(plant)),
+      act_map(multibody::MakeNameToActuatorsMap(plant)),
       left_toe(LeftToeFront(plant)),
       left_heel(LeftToeRear(plant)),
       right_toe(RightToeFront(plant)),
@@ -125,14 +125,14 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       {right_toe, right_heel});
 
   /**** OSC Gains ****/
-  drake::yaml::YamlReadArchive::Options yaml_options;
+  drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
-  OSCGains osc_gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(osc_gainsfilename), {}, {}, yaml_options);
+  OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
+      FindResourceOrThrow(osc_gains_filename), {}, {}, yaml_options);
   OSCRunningGains osc_running_gains =
       drake::yaml::LoadYamlFile<OSCRunningGains>(
-          FindResourceOrThrow(osc_gainsfilename));
+          FindResourceOrThrow(osc_gains_filename));
 
   /**** FSM and contact mode configuration ****/
   int left_stance_state = 0;
@@ -163,7 +163,8 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   accumulated_state_durations.pop_back();
 
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, 0.0, osc_gains.impact_threshold);
+      plant, fsm_states, state_durations, 0.0,
+      osc_running_gains.impact_threshold, osc_running_gains.impact_tau);
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
@@ -173,24 +174,26 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(
           control_channel_name_, 1);
-  std::vector<double> tau = {.05, .1, .01};
+  std::vector<double> tau = {.05, .01, .01};
   auto ekf_filter =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
 
   /**** OSC setup ****/
   // Cost
   /// REGULARIZATION COSTS
-  osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
-  osc->SetInputCostWeights(osc_gains.w_input *
-                           osc_gains.W_input_regularization);
-  osc->SetLambdaHolonomicRegularizationWeight(
-      1e-5 * osc_gains.W_lambda_h_regularization);
+  osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
+  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
+  osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
+  osc->SetLambdaContactRegularizationWeight(1e-4 *
+                                            gains.W_lambda_c_regularization);
+  osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
+                                              gains.W_lambda_h_regularization);
 
   // Soft constraint on contacts
-  osc->SetSoftConstraintWeight(osc_gains.w_soft_constraint);
+  osc->SetSoftConstraintWeight(osc_running_gains.w_soft_constraint);
 
   // Contact information for OSC
-  osc->SetContactFriction(osc_gains.mu);
+  osc->SetContactFriction(osc_running_gains.mu);
 
   osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
   osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
@@ -232,10 +235,12 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   r_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
       osc_running_gains.rest_length, osc_running_gains.footstep_lateral_offset,
-      osc_running_gains.footstep_sagital_offset, osc_running_gains.mid_foot_height);
+      osc_running_gains.footstep_sagital_offset,
+      osc_running_gains.mid_foot_height);
   r_foot_traj_generator->SetFootPlacementOffsets(
       osc_running_gains.rest_length, osc_running_gains.footstep_lateral_offset,
-      osc_running_gains.footstep_sagital_offset, osc_running_gains.mid_foot_height);
+      osc_running_gains.footstep_sagital_offset,
+      osc_running_gains.mid_foot_height);
 
   pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", osc_running_gains.K_p_pelvis,
@@ -343,8 +348,13 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   right_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
 
+  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+
   left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
+  left_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
+  right_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
   pelvis_trans_rel_tracking_data->SetImpactInvariantProjection(true);
 
   osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
@@ -492,8 +502,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   // Publisher connections
   builder.ExportInput(state_receiver->get_input_port(), "lcmt_robot_output");
-  builder.ExportInput(radio_parser->get_input_port(),
-                      "raw_radio");
+  builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
   builder.ExportOutput(failure_aggregator->get_status_output_port(),

@@ -177,6 +177,12 @@ class MuJoCoCassieGym():
     def check_termination(self):
         return self.cassie_state.get_fb_positions()[2] < 0.4
 
+    def velocity_profile(self, timestep):
+        velocity_command = np.zeros(18)
+        velocity_command[2] = min(1.0 * timestep, 4.0)
+        # velocity_command[2] = 5.0
+        return velocity_command
+
     def step(self, action=np.zeros(18)):
         if not self.initialized:
             print("Call make() before calling step() or advance()")
@@ -188,26 +194,27 @@ class MuJoCoCassieGym():
         next_timestep = self.drake_sim.get_context().get_time() + timestep
 
         self.robot_output_sender.get_input_port_state().FixValue(self.robot_output_sender_context, self.cassie_state.x)
+        action = self.velocity_profile(next_timestep)
         self.radio_input_port.FixValue(self.controller_context, action)
 
         u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
         self.drake_sim.AdvanceTo(next_timestep)
-        self.reward_func.reset_clock_reward()
+        # self.reward_func.reset_clock_reward()
         while self.simulator.time() < next_timestep:
             self.simulator.step(cassie_in)
             foot_pos = self.simulator.foot_pos()
-            self.reward_func.update_clock_reward(self.simulator.get_foot_forces(), foot_pos,
-                                                 self.simulator.xquat("left-foot"), self.simulator.xquat("right-foot"))
+            # self.reward_func.update_clock_reward(self.simulator.get_foot_forces(), foot_pos,
+            #                                      self.simulator.xquat("left-foot"), self.simulator.xquat("right-foot"))
 
         if self.visualize:
             self.cassie_vis.draw(self.simulator)
 
         self.current_time = next_timestep
         t = self.simulator.time()
-        q = np.copy(self.simulator.qpos())
-        v = np.copy(self.simulator.qvel())
-        q, v = self.drake_to_mujoco_converter.convert_to_drake(q, v)
+        # q = np.copy()
+        # v = np.copy()
+        q, v = self.drake_to_mujoco_converter.convert_to_drake(self.simulator.qpos(), self.simulator.qvel())
         self.current_time = t
         x = np.hstack((q, v))
         x = reexpress_state_local_to_global_omega(x)
@@ -387,7 +394,8 @@ class MuJoCoCassieGym():
 
     def free_sim(self):
         del self.simulator
-        del self.cassie_vis
+        if self.visualize:
+            del self.cassie_vis
 
 
 def euler2quat(z=0, y=0, x=0):

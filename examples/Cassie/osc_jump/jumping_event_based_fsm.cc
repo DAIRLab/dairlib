@@ -1,6 +1,7 @@
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 
 #include <dairlib/lcmt_controller_switch.hpp>
+#include <iostream>
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 using dairlib::systems::OutputVector;

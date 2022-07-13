@@ -112,9 +112,9 @@ void DoMain() {
 
   std::cout << "nq: " << n_q << " n_v: " << n_v << " n_x: " << n_x << std::endl;
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   // Set up contact/distance constraints
   auto left_toe_pair = LeftToeFront(plant);
@@ -199,46 +199,47 @@ void DoMain() {
   //  all_modes.AddMode(&flight_phase);
 
   auto trajopt = Dircon<double>(all_modes);
+  auto& prog = trajopt.prog();
 
   double tol = FLAGS_tol;
   if (FLAGS_ipopt) {
     // Ipopt settings adapted from CaSaDi and FROST
     auto id = drake::solvers::IpoptSolver::id();
-    trajopt.SetSolverOption(id, "tol", tol);
-    trajopt.SetSolverOption(id, "dual_inf_tol", tol);
-    trajopt.SetSolverOption(id, "constr_viol_tol", tol);
-    trajopt.SetSolverOption(id, "compl_inf_tol", tol);
-    trajopt.SetSolverOption(id, "max_iter", 1e5);
-    trajopt.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
-    trajopt.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
-    trajopt.SetSolverOption(id, "print_timing_statistics", "yes");
-    trajopt.SetSolverOption(id, "print_level", 5);
-    trajopt.SetSolverOption(id, "output_file", "../ipopt.out");
+    prog.SetSolverOption(id, "tol", tol);
+    prog.SetSolverOption(id, "dual_inf_tol", tol);
+    prog.SetSolverOption(id, "constr_viol_tol", tol);
+    prog.SetSolverOption(id, "compl_inf_tol", tol);
+    prog.SetSolverOption(id, "max_iter", 1e5);
+    prog.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
+    prog.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
+    prog.SetSolverOption(id, "print_timing_statistics", "yes");
+    prog.SetSolverOption(id, "print_level", 5);
+    prog.SetSolverOption(id, "output_file", "../ipopt.out");
 
     // Set to ignore overall tolerance/dual infeasibility, but terminate when
     // primal feasible and objective fails to increase over 5 iterations.
-    trajopt.SetSolverOption(id, "acceptable_compl_inf_tol", tol);
-    trajopt.SetSolverOption(id, "acceptable_constr_viol_tol", tol);
-    trajopt.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
-    trajopt.SetSolverOption(id, "acceptable_tol", 1e2);
-    trajopt.SetSolverOption(id, "acceptable_iter", 5);
+    prog.SetSolverOption(id, "acceptable_compl_inf_tol", tol);
+    prog.SetSolverOption(id, "acceptable_constr_viol_tol", tol);
+    prog.SetSolverOption(id, "acceptable_obj_change_tol", 1e-3);
+    prog.SetSolverOption(id, "acceptable_tol", 1e2);
+    prog.SetSolverOption(id, "acceptable_iter", 5);
   } else {
     // Snopt settings
     auto id = drake::solvers::SnoptSolver::id();
-    trajopt.SetSolverOption(id, "Print file", "../snopt.out");
-    trajopt.SetSolverOption(id, "Major iterations limit", 1e5);
-    trajopt.SetSolverOption(id, "Iterations limit", 100000);
-    trajopt.SetSolverOption(id, "Verify level", 0);
+    prog.SetSolverOption(id, "Print file", "../snopt.out");
+    prog.SetSolverOption(id, "Major iterations limit", 1e5);
+    prog.SetSolverOption(id, "Iterations limit", 100000);
+    prog.SetSolverOption(id, "Verify level", 0);
 
     // snopt doc said try 2 if seeing snopta exit 40
-    trajopt.SetSolverOption(id, "Scale option", 2);
-    trajopt.SetSolverOption(id, "Solution", "No");
+    prog.SetSolverOption(id, "Scale option", 2);
+    prog.SetSolverOption(id, "Solution", "No");
 
     // target nonlinear constraint violation
-    trajopt.SetSolverOption(id, "Major optimality tolerance", 1e-4);
+    prog.SetSolverOption(id, "Major optimality tolerance", 1e-4);
 
     // target complementarity gap
-    trajopt.SetSolverOption(id, "Major feasibility tolerance", tol);
+    prog.SetSolverOption(id, "Major feasibility tolerance", tol);
   }
 
   std::cout << "Adding kinematic constraints: " << std::endl;
@@ -251,8 +252,8 @@ void DoMain() {
                                   FLAGS_data_directory + FLAGS_load_filename,
                                   FLAGS_same_knotpoints);
   } else {
-    trajopt.SetInitialGuessForAllVariables(
-        VectorXd::Random(trajopt.decision_variables().size()));
+    prog.SetInitialGuessForAllVariables(
+        VectorXd::Random(prog.decision_variables().size()));
   }
 
   //  auto loaded_traj =
@@ -272,12 +273,12 @@ void DoMain() {
   // To avoid NaN quaternions
   for (int i = 0; i < trajopt.N(); i++) {
     auto xi = trajopt.state(i);
-    if ((trajopt.GetInitialGuess(xi.head(4)).norm() == 0) ||
-        std::isnan(trajopt.GetInitialGuess(xi.head(4)).norm())) {
-      trajopt.SetInitialGuess(xi(0), 1);
-      trajopt.SetInitialGuess(xi(1), 0);
-      trajopt.SetInitialGuess(xi(2), 0);
-      trajopt.SetInitialGuess(xi(3), 0);
+    if ((prog.GetInitialGuess(xi.head(4)).norm() == 0) ||
+        std::isnan(prog.GetInitialGuess(xi.head(4)).norm())) {
+      prog.SetInitialGuess(xi(0), 1);
+      prog.SetInitialGuess(xi(1), 0);
+      prog.SetInitialGuess(xi(2), 0);
+      prog.SetInitialGuess(xi(3), 0);
     }
   }
 
@@ -290,13 +291,13 @@ void DoMain() {
     solver_id = drake::solvers::IpoptSolver().id();
     cout << "\nChose manually: " << solver_id.name() << endl;
   } else {
-    solver_id = drake::solvers::ChooseBestSolver(trajopt);
+    solver_id = drake::solvers::ChooseBestSolver(prog);
     cout << "\nChose the best solver: " << solver_id.name() << endl;
   }
 
   cout << "Solving DIRCON\n\n";
   auto start = std::chrono::high_resolution_clock::now();
-  const auto result = drake::solvers::Solve(trajopt, trajopt.initial_guess());
+  const auto result = drake::solvers::Solve(prog, prog.initial_guess());
   //  SolutionResult solution_result = result.get_solution_result();
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
@@ -313,7 +314,7 @@ void DoMain() {
             << std::endl;
   drake::trajectories::PiecewisePolynomial<double> optimal_traj =
       trajopt.ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
+  multibody::ConnectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
                                          optimal_traj);
 
   DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
@@ -329,10 +330,12 @@ void DoMain() {
 
 void setKinematicConstraints(Dircon<double>& trajopt,
                              const MultibodyPlant<double>& plant) {
+  auto& prog = trajopt.prog();
+
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
@@ -352,36 +355,36 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   double start_height = FLAGS_start_height;
 
   // position constraints
-  trajopt.AddBoundingBoxConstraint(-0.25, 0.25, x0(pos_map.at("base_x")));
-  trajopt.AddLinearConstraint(x0(pos_map.at("base_x")) + FLAGS_stride_length ==
+  prog.AddBoundingBoxConstraint(-0.25, 0.25, x0(pos_map.at("base_x")));
+  prog.AddLinearConstraint(x0(pos_map.at("base_x")) + FLAGS_stride_length ==
                               xf(pos_map.at("base_x")));
-  trajopt.AddBoundingBoxConstraint(start_height, start_height,
+  prog.AddBoundingBoxConstraint(start_height, start_height,
                                    x0(pos_map.at("base_z")));
   //  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) <= 0.05);
   //  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) >= -0.05);
   // initial fb orientation constraint
   VectorXd quat_identity(4);
   quat_identity << 1, 0, 0, 0;
-  trajopt.AddBoundingBoxConstraint(quat_identity, quat_identity, x0.head(4));
-  trajopt.AddBoundingBoxConstraint(quat_identity, quat_identity, x_mid.head(4));
-  trajopt.AddBoundingBoxConstraint(quat_identity, quat_identity, xf.head(4));
+  prog.AddBoundingBoxConstraint(quat_identity, quat_identity, x0.head(4));
+  prog.AddBoundingBoxConstraint(quat_identity, quat_identity, x_mid.head(4));
+  prog.AddBoundingBoxConstraint(quat_identity, quat_identity, xf.head(4));
 
   // periodicity constraint
-  trajopt.AddLinearConstraint(x0(pos_map.at("base_y")) ==
+  prog.AddLinearConstraint(x0(pos_map.at("base_y")) ==
                               -xf(pos_map.at("base_y")));
-  trajopt.AddLinearConstraint(x0(pos_map.at("base_z")) ==
+  prog.AddLinearConstraint(x0(pos_map.at("base_z")) ==
                               xf(pos_map.at("base_z")));
-  trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
                               xf(n_q + vel_map.at("base_wx")));
-  trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
                               -xf(n_q + vel_map.at("base_wy")));
-  trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
                               xf(n_q + vel_map.at("base_wz")));
-  trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
                               xf(n_q + vel_map.at("base_vx")));
-  trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
                               -xf(n_q + vel_map.at("base_vy")));
-  trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
                               xf(n_q + vel_map.at("base_vz")));
 
   // create joint/motor names
@@ -409,28 +412,28 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   for (const auto& l_r_pair : l_r_pairs) {
     // Symmetry constraints
     for (const auto& sym_joint_name : sym_joint_names) {
-      trajopt.AddLinearConstraint(
+      prog.AddLinearConstraint(
           x0(pos_map[sym_joint_name + l_r_pair.first]) ==
           xf(pos_map[sym_joint_name + l_r_pair.second]));
-      trajopt.AddLinearConstraint(
+      prog.AddLinearConstraint(
           x0(n_q + vel_map.at(sym_joint_name + l_r_pair.first + "dot")) ==
           xf(n_q + vel_map.at(sym_joint_name + l_r_pair.second + "dot")));
       if (sym_joint_name != "ankle_joint") {  // No actuator at ankle
-        trajopt.AddLinearConstraint(
+        prog.AddLinearConstraint(
             u0(act_map.at(sym_joint_name + l_r_pair.first + "_motor")) ==
             uf(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
       }
     }
     // Asymmetry constraints
     for (const auto& asy_joint_name : asy_joint_names) {
-      trajopt.AddLinearConstraint(
+      prog.AddLinearConstraint(
           x0(pos_map[asy_joint_name + l_r_pair.first]) ==
           -xf(pos_map[asy_joint_name + l_r_pair.second]));
-      trajopt.AddLinearConstraint(
+      prog.AddLinearConstraint(
           x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
           -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
       if (asy_joint_name != "ankle_joint") {  // No actuator at ankle
-        trajopt.AddLinearConstraint(
+        prog.AddLinearConstraint(
             u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
             -uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
       }
@@ -452,7 +455,7 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   std::cout << "Actuator limit constraints: " << std::endl;
   for (int i = 0; i < trajopt.N(); i++) {
     auto ui = trajopt.input(i);
-    trajopt.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -200),
+    prog.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -200),
                                      VectorXd::Constant(n_u, +200), ui);
   }
 
@@ -470,8 +473,8 @@ void setKinematicConstraints(Dircon<double>& trajopt,
 
   for (int i = 0; i < N; ++i) {
     auto x_i = trajopt.state(i);
-    trajopt.AddConstraint(left_foot_y_constraint, x_i.head(n_q));
-    trajopt.AddConstraint(right_foot_y_constraint, x_i.head(n_q));
+    prog.AddConstraint(left_foot_y_constraint, x_i.head(n_q));
+    prog.AddConstraint(right_foot_y_constraint, x_i.head(n_q));
   }
 
   for (int mode = 0; mode < trajopt.num_modes(); ++mode) {
@@ -480,8 +483,8 @@ void setKinematicConstraints(Dircon<double>& trajopt,
 
       auto lambda = trajopt.force_vars(mode, index);
       if (mode == 0 || mode == 2) {
-        trajopt.AddLinearConstraint(lambda(2) >= 10);
-        trajopt.AddLinearConstraint(lambda(5) >= 10);
+        prog.AddLinearConstraint(lambda(2) >= 10);
+        prog.AddLinearConstraint(lambda(5) >= 10);
       }
     }
   }
@@ -496,8 +499,8 @@ void setKinematicConstraints(Dircon<double>& trajopt,
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(1, 0, 0),
           0 * VectorXd::Ones(1), 0 * VectorXd::Ones(1));
-  trajopt.AddConstraint(left_foot_x_constraint, x0.head(n_q));
-  trajopt.AddConstraint(right_foot_x_constraint, xf.head(n_q));
+  prog.AddConstraint(left_foot_x_constraint, x0.head(n_q));
+  prog.AddConstraint(right_foot_x_constraint, xf.head(n_q));
 
   std::cout << "Foot clearance constraints: " << std::endl;
   //   Foot clearance constraint
@@ -511,10 +514,10 @@ void setKinematicConstraints(Dircon<double>& trajopt,
           0.055 * VectorXd::Ones(1), (0.15) * VectorXd::Ones(1));
   for (int i = 0; i < N; i++) {
     auto x_i = trajopt.state(i);
-    trajopt.AddConstraint(left_foot_z_constraint_clearance, x_i.head(n_q));
-    trajopt.AddConstraint(right_foot_z_constraint_clearance, x_i.head(n_q));
-    trajopt.AddBoundingBoxConstraint(-1.8, -1.5, x_i[pos_map["toe_left"]]);
-    trajopt.AddBoundingBoxConstraint(-1.8, -1.5, x_i[pos_map["toe_right"]]);
+    prog.AddConstraint(left_foot_z_constraint_clearance, x_i.head(n_q));
+    prog.AddConstraint(right_foot_z_constraint_clearance, x_i.head(n_q));
+    prog.AddBoundingBoxConstraint(-1.8, -1.5, x_i[pos_map["toe_left"]]);
+    prog.AddBoundingBoxConstraint(-1.8, -1.5, x_i[pos_map["toe_right"]]);
   }
 
   std::cout << "Miscellaneous constraints" << std::endl;
@@ -575,7 +578,7 @@ void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,
                                    bool same_knot_points) {
   DirconTrajectory previous_traj = DirconTrajectory(plant, filepath);
   if (same_knot_points) {
-    trajopt.SetInitialGuessForAllVariables(
+    trajopt.prog().SetInitialGuessForAllVariables(
         previous_traj.GetDecisionVariables());
     return;
   }

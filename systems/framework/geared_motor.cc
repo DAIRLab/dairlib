@@ -1,4 +1,4 @@
-#include "systems/controllers/geared_motor.h"
+#include "systems/framework/geared_motor.h"
 
 #include <drake/common/eigen_types.h>
 
@@ -10,7 +10,7 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::kUseDefaultName;
 
 GearedMotor::GearedMotor(const MultibodyPlant<double>& plant,
-                         const std::vector<double>& max_motor_speeds)
+                         const std::unordered_map<std::string, double>& max_motor_speeds)
     : n_q(plant.num_positions()),
       n_v(plant.num_velocities()),
       n_u(plant.num_actuators()),
@@ -19,8 +19,8 @@ GearedMotor::GearedMotor(const MultibodyPlant<double>& plant,
     const JointActuator<double>& joint_actuator =
         plant.get_joint_actuator(drake::multibody::JointActuatorIndex(i));
     actuator_gear_ratios.push_back(joint_actuator.default_gear_ratio());
-    actuator_ranges.push_back(joint_actuator.effort_limit());
-    actuator_max_speeds.push_back(max_motor_speeds[i]);
+    actuator_ranges.push_back(joint_actuator.effort_limit() / joint_actuator.default_gear_ratio());
+    actuator_max_speeds.push_back(max_motor_speeds.at(joint_actuator.name()));
   }
   systems::BasicVector<double> input(plant.num_actuators());
   systems::BasicVector<double> output(plant.num_actuators());
@@ -39,7 +39,7 @@ void GearedMotor::CalcTorqueOutput(
     systems::BasicVector<double>* output) const {
   const systems::BasicVector<double>& u =
       *this->template EvalVectorInput<BasicVector>(context,
-                                                         command_input_port_);
+                                                   command_input_port_);
   const systems::BasicVector<double>& x =
       *this->template EvalVectorInput<BasicVector>(context, state_input_port_);
   Eigen::VectorXd actuator_velocities = B_.transpose() * x.value().tail(n_v);
@@ -47,7 +47,7 @@ void GearedMotor::CalcTorqueOutput(
   for (int i = 0; i < n_u; ++i) {
     double ratio = actuator_gear_ratios[i];
     double tmax = actuator_ranges[i];
-    double w = actuator_velocities[i];
+    double w = actuator_velocities[i] * ratio;
     double wmax = actuator_max_speeds[i];
 
     // Calculate torque limit based on motor speed
@@ -56,8 +56,6 @@ void GearedMotor::CalcTorqueOutput(
 
     // Compute motor-side torque
     tau[i] = copysign(fmin(fabs(u[i] / ratio), tlim), u[i]) * ratio;
-
-//    tau[i] = copysign(fmin(fabs(u[i]), tlim), u[i]);
   }
   output->SetFromVector(tau);
 }

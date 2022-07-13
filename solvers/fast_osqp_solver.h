@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drake/solvers/mathematical_program.h>
 #include <osqp.h>
 
 #include "drake/common/drake_copyable.h"
@@ -32,6 +33,8 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
   static bool is_available();
   static bool is_enabled();
   static bool ProgramAttributesSatisfied(
+      const drake::solvers::MathematicalProgram&);
+  static std::string UnsatisfiedProgramAttributes(
       const drake::solvers::MathematicalProgram&);
   //@}
 

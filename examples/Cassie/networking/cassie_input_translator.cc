@@ -22,7 +22,7 @@ namespace {
 CassieInputTranslator::CassieInputTranslator(
     const MultibodyPlant<double>& plant) {
   std::map<std::string, int> actuatorIndexMap =
-    multibody::makeNameToActuatorsMap(plant);
+      multibody::MakeNameToActuatorsMap(plant);
   // build index map
   DRAKE_ASSERT(kNumActuators == cassieEffortNames.size());
   for (auto const& name : cassieEffortNames) {

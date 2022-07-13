@@ -1,4 +1,5 @@
 #include "solvers/optimization_utils.h"
+#include <iostream>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;

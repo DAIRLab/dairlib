@@ -22,7 +22,7 @@ void CassieOutputReceiver::CopyOutput(const Context<double>& context,
                                      cassie_out_t* cassie_out) const {
   const auto& message = this->EvalAbstractInput(
       context, 0)->get_value<dairlib::lcmt_cassie_out>();
-  cassieOutFromLcm(message, cassie_out);
+  CassieOutFromLcm(message, cassie_out);
 }
 
 }  // namespace systems

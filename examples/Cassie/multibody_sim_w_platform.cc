@@ -108,7 +108,7 @@ int do_main(int argc, char* argv[]) {
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
 
   plant.Finalize();
@@ -118,10 +118,11 @@ int do_main(int argc, char* argv[]) {
   int nx = nq + nv;
 
   // Create maps for joints
-  std::map<std::string, int> pos_map = multibody::makeNameToPositionsMap(plant);
+  std::map<std::string, int> pos_map =
+      multibody::MakeNameToPositionsMap(plant);
   std::map<std::string, int> vel_map =
-      multibody::makeNameToVelocitiesMap(plant);
-  std::map<std::string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+      multibody::MakeNameToVelocitiesMap(plant);
+  std::map<std::string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -216,7 +217,7 @@ int do_main(int argc, char* argv[]) {
     // diagram is built, plant.get_actuation_input_port().HasValue(*context)
     // throws a segfault error
     drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
-    addCassieMultibody(&plant_for_solver, nullptr,
+    AddCassieMultibody(&plant_for_solver, nullptr,
                        FLAGS_floating_base /*floating base*/, urdf,
                        FLAGS_spring_model, true);
     plant_for_solver.Finalize();

@@ -7,6 +7,7 @@
 #include "examples/Cassie/osc/osc_standing_gains.h"
 #include "examples/Cassie/osc/standing_com_traj.h"
 #include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
+#include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/com_tracking_data.h"
@@ -56,7 +57,6 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
-DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_double(cost_weight_multiplier, 1.0,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, .8, "The initial COM height (m)");
@@ -78,13 +78,13 @@ int DoMain(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
-  addCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
+  AddCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant_w_springs.Finalize();
   // Build fix-spring Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
-  addCassieMultibody(&plant_wo_springs, nullptr, true,
+  AddCassieMultibody(&plant_wo_springs, nullptr, true,
                      "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf", false,
                      false);
   plant_wo_springs.Finalize();
@@ -106,7 +106,7 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   //  auto osc_gains =
   //      drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_osc_gains_filename);
-  drake::yaml::YamlReadArchive::Options yaml_options;
+  drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow(FLAGS_osc_gains_filename), {}, {}, yaml_options);
@@ -147,6 +147,9 @@ int DoMain(int argc, char* argv[]) {
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
+  auto cassie_out_to_radio =
+      builder.AddSystem<systems::CassieOutToRadio>();
+  builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
 
   // Create command sender.
   auto command_pub =
@@ -178,9 +181,9 @@ int DoMain(int argc, char* argv[]) {
                   com_traj_generator->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   pelvis_rot_traj_generator->get_input_port_state());
-  builder.Connect(cassie_out_receiver->get_output_port(),
+  builder.Connect(cassie_out_to_radio->get_output_port(),
                   pelvis_rot_traj_generator->get_input_port_radio());
-  builder.Connect(cassie_out_receiver->get_output_port(),
+  builder.Connect(cassie_out_to_radio->get_output_port(),
                   com_traj_generator->get_input_port_radio());
   builder.Connect(target_height_receiver->get_output_port(),
                   com_traj_generator->get_input_port_target_height());
@@ -188,7 +191,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_springs, plant_wo_springs, context_w_spr.get(),
-      context_wo_spr.get(), false, FLAGS_print_osc, FLAGS_qp_time_limit);
+      context_wo_spr.get(), false, FLAGS_qp_time_limit);
 
   // Distance constraint
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);

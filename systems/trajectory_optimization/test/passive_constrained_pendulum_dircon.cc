@@ -1,4 +1,5 @@
 #include <memory>
+#include <iostream>
 #include <chrono>
 
 #include <gflags/gflags.h>
@@ -120,7 +121,7 @@ void runDircon() {
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt->ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+  multibody::ConnectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                          pp_xtraj);
   auto diagram = builder.Build();
 

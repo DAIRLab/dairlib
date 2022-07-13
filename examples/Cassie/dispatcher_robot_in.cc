@@ -8,7 +8,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_lcm_driven_loop.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/input_supervisor.h"
+#include "examples/Cassie/systems/input_supervisor.h"
 #include "examples/Cassie/networking/cassie_input_translator.h"
 #include "examples/Cassie/networking/cassie_udp_publisher.h"
 #include "multibody/multibody_utils.h"
@@ -74,7 +74,7 @@ int do_main(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant, nullptr, FLAGS_floating_base /*floating base*/,
+  AddCassieMultibody(&plant, nullptr, FLAGS_floating_base /*floating base*/,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();
@@ -126,7 +126,7 @@ int do_main(int argc, char* argv[]) {
   int nu = plant.num_actuators();
   VectorXd input_limit(nu);
   for (drake::multibody::JointActuatorIndex i(0); i < nu; ++i) {
-    input_limit(i) = plant.get_joint_actuator(i).effort_limit();
+    input_limit[i] = plant.get_joint_actuator(i).effort_limit();
   }
 
   auto input_supervisor = builder.AddSystem<InputSupervisor>(

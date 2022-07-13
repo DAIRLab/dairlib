@@ -8,7 +8,6 @@ cc_library(
     srcs = [],
     deps = [
         ":affine_controller",
-        ":geared_motor",
         ":cassie_out_to_radio",
         ":controller_failure_aggregator",
         ":fsm_event_time",
@@ -73,20 +72,6 @@ cc_library(
     ],
     hdrs = [
         "affine_controller.h",
-    ],
-    deps = [
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "geared_motor",
-    srcs = [
-        "geared_motor.cc",
-    ],
-    hdrs = [
-        "geared_motor.h",
     ],
     deps = [
         "//systems/framework:vector",
@@ -182,6 +167,7 @@ cc_library(
     deps = [
         ":control_utils",
         "//multibody:utils",
+        "//systems/filters:s2s_kalman_filter",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

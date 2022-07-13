@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 
@@ -23,8 +24,8 @@ using std::vector;
 
 namespace dairlib::systems::controllers {
 
-using multibody::makeNameToPositionsMap;
-using multibody::makeNameToVelocitiesMap;
+using multibody::MakeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
 
 /**** OscTrackingData ****/
 OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
@@ -118,11 +119,6 @@ void OscTrackingData::StoreYddotCommandSol(const VectorXd& dv) {
 }
 
 void OscTrackingData::AddFiniteStateToTrack(int state) {
-  // Avoid repeated states
-  if (active_fsm_states_.count(state)) {
-    std::cout << "FSM state: " << state << " was already included in " << name_
-              << std::endl;
-  }
   DRAKE_DEMAND(!active_fsm_states_.count(state));
   active_fsm_states_.insert(state);
 }

@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string>
 
 #include <gflags/gflags.h>
@@ -109,8 +110,8 @@ int do_main(int argc, char* argv[]) {
   double t_threshold = t0;
   if (FLAGS_n_period_delay > 0) {
     t_threshold = (floor(t0 / FLAGS_fsm_period) + FLAGS_n_period_delay) *
-        FLAGS_fsm_period +
-        FLAGS_fsm_offset;
+                      FLAGS_fsm_period +
+                  FLAGS_fsm_offset;
   }
   // Create output message
   dairlib::lcmt_controller_switch msg;

@@ -1,4 +1,5 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
+#include <iostream>
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
@@ -75,9 +76,8 @@ void CassieFixedPointSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  std::cout << "N***** " << evaluators.count_active() << std::endl;
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
@@ -213,7 +213,7 @@ void CassieFixedBaseFixedPointSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
@@ -255,10 +255,6 @@ void CassieFixedBaseFixedPointSolver(
   const auto result = drake::solvers::Solve(program, guess);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "Solve time:" << elapsed.count() << std::endl;
-
-  std::cout << to_string(result.get_solution_result()) << std::endl;
-  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
 
   // Draw final pose
   if (visualize_model_urdf != "") {
@@ -297,7 +293,7 @@ void VdotConstraint::EvaluateConstraint(
       plant_.num_positions() + plant_.num_velocities() + plant_.num_actuators(),
       evaluators_.count_full());
   const auto& vdot = vars.tail(plant_.num_velocities());
-  multibody::setContext<double>(plant_, x, u, context_.get());
+  multibody::SetContext<double>(plant_, x, u, context_.get());
 
   *y = vdot - evaluators_.EvalActiveSecondTimeDerivative(context_.get(), lambda)
                   .tail(n_v_);
@@ -382,7 +378,7 @@ void CassieInitStateSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
@@ -390,7 +386,7 @@ void CassieInitStateSolver(
   program.AddJointLimitConstraints(q);
 
   // Velocity part
-  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+  auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
   int n_v = plant.num_velocities();
   auto v = program.NewContinuousVariables(n_v, "v");
 
@@ -499,7 +495,6 @@ void CassieInitStateSolver(
   // Snopt settings
   // program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
   //                         "../snopt_test.out");
-  std::cout << "Save log to ../snopt_test.out\n";
   program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
   program.SetSolverOption(drake::solvers::SnoptSolver::id(),
                           "Major optimality tolerance", 1e-2);

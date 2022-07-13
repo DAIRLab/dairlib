@@ -87,7 +87,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
 
   void SetMotorTorques(const drake::systems::Context<double>& context,
                        systems::TimestampedVector<double>* output) const;
-  void UpdateErrorFlag(
+  drake::systems::EventStatus UpdateErrorFlag(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 

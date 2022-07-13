@@ -1,6 +1,6 @@
 rho: 0.0001
 sigma: 1e-6
-max_iter: 250
+max_iter: 500
 eps_abs: 1e-7
 eps_rel: 1e-7
 eps_prim_inf: 1e-5
@@ -8,8 +8,8 @@ eps_dual_inf: 1e-5
 alpha: 1.6
 linsys_solver: 0
 delta: 1e-6
-polish: 1
-polish_refine_iter: 3
+polish: 0
+polish_refine_iter: 0
 verbose: 0
 scaled_termination: 1
 check_termination: 25
@@ -19,4 +19,4 @@ adaptive_rho: 1
 adaptive_rho_interval: 0
 adaptive_rho_tolerance: 5
 adaptive_rho_fraction: 0.4
-time_limit: 0.1
+time_limit: 0.0

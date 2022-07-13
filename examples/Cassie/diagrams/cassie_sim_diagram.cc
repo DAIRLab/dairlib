@@ -3,6 +3,7 @@
 
 #include <drake/systems/primitives/constant_vector_source.h>
 #include <drake/systems/primitives/zero_order_hold.h>
+#include <iostream>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -10,7 +11,7 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/geared_motor.h"
+#include "systems/framework/geared_motor.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
@@ -55,7 +56,7 @@ CassieSimDiagram::CassieSimDiagram(
   scene_graph_->set_name("scene_graph");
 
   plant_ = builder.AddSystem(std::move(plant));
-  addCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
+  AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
   multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu,
                             Eigen::Vector3d(0, 0, 1), stiffness,
                             dissipation_rate);
@@ -80,11 +81,8 @@ CassieSimDiagram::CassieSimDiagram(
   sensor_aggregator_ = &AddImuAndAggregator(&builder, *plant_,
                                             constant_source->get_output_port());
 
-  std::vector<double> omega_max = {303.687, 303.687, 136.136, 136.135, 575.958,
-                                   303.687, 303.687, 136.136, 136.135, 575.958};
+  cassie_motor_ = &AddMotorModel(&builder, *plant);
 
-  auto cassie_motor =
-      builder.AddSystem<systems::GearedMotor>(*plant_, omega_max);
   auto radio_parser = builder.AddSystem<systems::RadioParser>();
 
   // connect leaf systems
@@ -95,14 +93,14 @@ CassieSimDiagram::CassieSimDiagram(
   builder.Connect(discrete_time_delay->get_output_port(),
                   passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(),
-                  cassie_motor->get_input_port_command());
-  builder.Connect(cassie_motor->get_output_port(),
+                  cassie_motor_->get_input_port_command());
+  builder.Connect(cassie_motor_->get_output_port(),
                   plant_->get_actuation_input_port());
   builder.Connect(plant_->get_state_output_port(),
                   state_sender->get_input_port_state());
   builder.Connect(plant_->get_state_output_port(),
-                  cassie_motor->get_input_port_state());
-  builder.Connect(cassie_motor->get_output_port(),
+                  cassie_motor_->get_input_port_state());
+  builder.Connect(cassie_motor_->get_output_port(),
                   state_sender->get_input_port_effort());
   builder.Connect(
       plant_->get_geometry_poses_output_port(),

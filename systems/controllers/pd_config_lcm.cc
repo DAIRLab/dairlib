@@ -1,5 +1,6 @@
 #include "systems/controllers/pd_config_lcm.h"
 #include "multibody/multibody_utils.h"
+#include <iostream>
 
 namespace dairlib {
 namespace systems {
@@ -15,7 +16,7 @@ using std::map;
 
 // methods implementation for CassiePDConfigReceiver.
 PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
-  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
+  actuatorIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
 
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
@@ -62,8 +63,9 @@ PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
         index_q = k;
       }
     }
-    if (index_q != -1)
+    if (index_q != -1){
       actuatorToPositionIndexMap_[j] = index_q;
+    }
     std::cout << "Map u_ind:" << j << " q_ind: " << index_q << " v_ind: " <<
                   index << std::endl;
   }

@@ -77,11 +77,6 @@ struct OSCRunningGains : OSCGains {
   template <typename Archive>
   void Serialize(Archive* a) {
     OSCGains::Serialize(a);
-    a->Visit(DRAKE_NVP(w_input));
-    a->Visit(DRAKE_NVP(w_accel));
-    a->Visit(DRAKE_NVP(w_soft_constraint));
-    a->Visit(DRAKE_NVP(impact_threshold));
-    a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(relative_feet));
     a->Visit(DRAKE_NVP(relative_pelvis));
     a->Visit(DRAKE_NVP(rest_length));

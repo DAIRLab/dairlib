@@ -34,6 +34,7 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
+<<<<<<< HEAD
 
     '''' Get Stiffness '''
     K = np.zeros((22,23))
@@ -49,22 +50,38 @@ def main():
         if joint.num_velocities() > 0:
             C[vel_map[joint.name() + 'dot'], vel_map[joint.name() + 'dot']] = joint.damping()
 
+=======
+>>>>>>> origin/dynamic_motions
     ''' Read the log '''
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
+    default_channels = cassie_plots.cassie_default_channels
+    if plot_config.use_archived_lcmtypes:
+        default_channels = cassie_plots.cassie_default_channels_archive
     robot_output, robot_input, osc_debug = \
         get_log_data(log,  # log
-                     cassie_plots.cassie_default_channels,  # lcm channels
-                     plot_config.end_time,
+                     default_channels,  # lcm channels
+                     plot_config.start_time,
+                     plot_config.duration,
                      mbp_plots.load_default_channels,  # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
+<<<<<<< HEAD
     contact_output = get_log_data(log,  # log
                                   cassie_plots.cassie_contact_channels,  # lcm channels
                                   plot_config.end_time,
                                   mbp_plots.load_is_contact_channels,  # processing callback
                                   'CASSIE_CONTACT_DISPATCHER')  # processing callback arguments
     print("Finish parse logging")
+=======
+    if plot_config.plot_contact_forces:
+        contact_output = get_log_data(log,  # log
+                                      cassie_plots.cassie_contact_channels,  # lcm channels
+                                      plot_config.start_time,
+                                      plot_config.duration,
+                                      mbp_plots.load_force_channels,  # processing callback
+                                      'CASSIE_CONTACT_DRAKE')  # processing callback arguments
+>>>>>>> origin/dynamic_motions
 
     if len(sys.argv) == 3:
         output_path = sys.argv[2]
@@ -79,6 +96,7 @@ def main():
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
+    print('Log start time: ', robot_output['t_x'][0])
 
     ''' Plot Positions '''
     # Plot floating base positions if applicable
@@ -101,19 +119,22 @@ def main():
         mbp_plots.plot_floating_base_velocities(
             robot_output, vel_names, 6, t_x_slice)
 
+    if plot_config.plot_floating_base_velocity_body_frame:
+        mbp_plots.plot_floating_base_body_frame_velocities(
+            robot_output, t_x_slice, plant, context, "pelvis")
+
     # Plot all joint velocities
     if plot_config.plot_joint_positions:
         plot = mbp_plots.plot_joint_velocities(robot_output, vel_names,
-                                        6 if use_floating_base else 0,
-                                        t_x_slice)
+                                               6 if use_floating_base else 0,
+                                               t_x_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     # Plot specific velocities
     if plot_config.vel_names:
         plot = mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
-                                          t_x_slice, vel_map)
+                                                 t_x_slice, vel_map)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
@@ -157,7 +178,7 @@ def main():
             pts['toe_' + pos] = pts_map[plot_config.pt_on_foot_to_plot]
 
         plot = mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
-                                        foot_frames, pts, dims)
+                                               foot_frames, pts, dims)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_qp_solve_time:

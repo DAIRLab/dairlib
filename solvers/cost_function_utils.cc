@@ -31,7 +31,7 @@ void AddPositiveWorkCost(
           trajopt.input_vars(mode, i - mode_start);
       variables.segment(1 + 2 * n_v + n_u, n_u) =
           trajopt.input_vars(mode, i + 1 - mode_start);
-      trajopt.AddCost(
+      trajopt.prog().AddCost(
           std::make_shared<PositiveMechanicalWork<T>>(n_v, plant.num_actuators(),
                                  plant.MakeActuationMatrix(), W,
                                  "pos_work_cost_" + std::to_string(i)),

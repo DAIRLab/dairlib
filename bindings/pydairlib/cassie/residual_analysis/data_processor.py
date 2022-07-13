@@ -40,6 +40,22 @@ class DataProcessor():
             dicts[order_dict[key]] = spring_force[key]
         return dicts
 
+    def construct_dict_for_u_shape_value(self, u):
+        dicts = {}
+        for i in range(10):
+            dicts[self.act_map_inverse[i]] = u[i]
+        return dicts
+
+    def construct_dict_for_left(self, value):
+        dicts = {}
+        dicts["left"] = value
+        return dicts
+    
+    def construct_dict_for_right(self, value):
+        dicts = {}
+        dicts["right"] = value
+        return dicts
+
     def fit_best_spring(self):
         """Calculate the what spring can do best"""
 
@@ -97,16 +113,6 @@ class DataProcessor():
 
         return residual, v_dot_of_best_spring_model, best_spring_forces
 
-    def construct_dict_for_left(self, value):
-        dicts = {}
-        dicts["left"] = value
-        return dicts
-    
-    def construct_dict_for_right(self, value):
-        dicts = {}
-        dicts["right"] = value
-        return dicts
-
     def process_data(self):
         processed_data = []
         # Load Data
@@ -115,9 +121,12 @@ class DataProcessor():
         v = [datum['v'] for datum in self.original_data]; v_dot = [datum['v_dot'] for datum in self.original_data]
         v_dot_gt = [datum['v_dot_gt'] for datum in self.original_data]; is_contact = [datum["is_contact"] for datum in self.original_data]
         J_s = [datum["J_s"] for datum in self.original_data]; spring_force = [datum["spring_force"] for datum in self.original_data]
+        u = [datum['u'] for datum in self.original_data]
 
         # Make numpy array
         t = np.array(t); q = np.array(q); v = np.array(v); v_dot = np.array(v_dot); v_dot_gt = np.array(v_dot_gt); is_contact = np.array(is_contact)
+        u = np.array(u)
+        import pdb; pdb.set_trace()
 
         # Calculate residual for a special spring model 
         residual_specify_spring_model = get_residual(v_dot_gt, v_dot)
@@ -128,6 +137,7 @@ class DataProcessor():
         for i in range(n):
             datum = {}; datum["t"] = t[i]; datum["q"] = self.construct_dict_for_q_shape_value(q[i]); 
             datum["v"] = self.construct_dict_for_v_shape_value(v[i]); datum["v_dot_gt"] = self.construct_dict_for_v_shape_value(v_dot_gt[i])
+            datum["u"] = self.construct_dict_for_u_shape_value(u[i])
             datum["residual_for_changed_stiffness_spring_model"] = self.construct_dict_for_v_shape_value(residual_specify_spring_model[i])
             datum["v_dot_best_spring_model"] = self.construct_dict_for_v_shape_value(v_dot_of_best_spring_model[i])
             datum["v_dot_changed_stiffness_spring_model"] = self.construct_dict_for_v_shape_value(v_dot[i])

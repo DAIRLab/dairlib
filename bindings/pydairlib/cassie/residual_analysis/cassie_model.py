@@ -17,7 +17,7 @@ class CassieSystem():
         self.builder = DiagramBuilder()
         self.drake_sim_dt = 5e-5
         self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, self.drake_sim_dt)
-        addCassieMultibody(self.plant, self.scene_graph, True, 
+        AddCassieMultibody(self.plant, self.scene_graph, True, 
                             self.urdf, True, True)
         self.plant.Finalize()
         self.world = self.plant.world_frame()
@@ -373,21 +373,21 @@ class CassieSystem():
 
     def make_position_map(self):
 
-        pos_map = pydairlib.multibody.makeNameToPositionsMap(self.plant)
+        pos_map = pydairlib.multibody.MakeNameToPositionsMap(self.plant)
         pos_map_inverse = {value:key for (key, value) in pos_map.items()}
         
         return pos_map, pos_map_inverse
     
     def make_velocity_map(self):
 
-        vel_map = pydairlib.multibody.makeNameToVelocitiesMap(self.plant)
+        vel_map = pydairlib.multibody.MakeNameToVelocitiesMap(self.plant)
         vel_map_inverse = {value:key for (key, value) in vel_map.items()}
 
         return vel_map, vel_map_inverse
 
     def make_actuator_map(self):
 
-        act_map = pydairlib.multibody.makeNameToActuatorsMap(self.plant)
+        act_map = pydairlib.multibody.MakeNameToActuatorsMap(self.plant)
         act_map_inverse = {value:key for (key, value) in act_map.items()}
 
         return act_map, act_map_inverse

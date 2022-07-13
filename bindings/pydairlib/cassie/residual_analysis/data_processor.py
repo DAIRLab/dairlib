@@ -51,7 +51,8 @@ class DataProcessor():
         lambda_c_solved = []
         v_dot_gts = []
         
-        selected_joints = ["hip_pitch_rightdot", ]
+        selected_joints = ["hip_roll_leftdot", "hip_roll_rightdot", "hip_pitch_leftdot", "hip_pitch_rightdot", "hip_yaw_leftdot", "hip_yaw_rightdot",
+                        "knee_leftdot", "knee_rightdot", "knee_joint_leftdot", "knee_joint_rightdot", "ankle_joint_leftdot", "ankle_joint_rightdot"]
         selection_matrix = np.zeros((22,22))
         for selected_joint in selected_joints:
             selection_matrix[self.vel_map[selected_joint], self.vel_map[selected_joint]] = 1

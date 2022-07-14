@@ -113,6 +113,40 @@ class DataProcessor():
 
         return residual, v_dot_of_best_spring_model, best_spring_forces
 
+    def calc_residuals_info_at_given_period(self, start_time, end_time, joints_name, residual_name):
+        
+        residuals = {}
+
+        act_start_time = None
+        act_end_time = None
+
+        if joints_name is None:
+            joints_name = ["hip_roll_leftdot", "hip_roll_rightdot", "hip_pitch_leftdot", "hip_pitch_rightdot", "hip_yaw_leftdot", "hip_yaw_rightdot",
+                        "knee_leftdot", "knee_rightdot", "knee_joint_leftdot", "knee_joint_rightdot", "ankle_joint_leftdot", "ankle_joint_rightdot"]
+
+        for datum in self.processed_data:
+            if not (datum['t'] >= start_time and datum['t'] <= end_time):
+                continue
+            if act_start_time is None or datum["t"] < act_start_time:
+                act_start_time = datum["t"]
+            if act_end_time is None or datum["t"] > act_end_time:
+                act_end_time = datum["t"]
+            
+            single_residual_info = datum[residual_name]
+            for key in single_residual_info:
+                if key not in joints_name:
+                    continue
+                if key in residuals:
+                    residuals[key].append(single_residual_info[key])
+                else:
+                    residuals[key] = [single_residual_info[key]]
+        
+        print("time period:{} to {}".format(act_start_time, act_end_time))
+        print(f"{'joint_name':<28} {'mean absolute':>13} {'mean':>10} {'max abs':>10} ")
+        for key in residuals:
+            residuals[key] = np.array(residuals[key])
+            print(f"{key:<28} {np.mean(np.abs(residuals[key])):13.2f} {np.mean(residuals[key]):7.2f} {np.max(np.abs(residuals[key])):10.2f}")
+
     def process_data(self):
         processed_data = []
         # Load Data
@@ -126,7 +160,6 @@ class DataProcessor():
         # Make numpy array
         t = np.array(t); q = np.array(q); v = np.array(v); v_dot = np.array(v_dot); v_dot_gt = np.array(v_dot_gt); is_contact = np.array(is_contact)
         u = np.array(u)
-        import pdb; pdb.set_trace()
 
         # Calculate residual for a special spring model 
         residual_specify_spring_model = get_residual(v_dot_gt, v_dot)

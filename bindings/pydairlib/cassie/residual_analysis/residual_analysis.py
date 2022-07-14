@@ -68,6 +68,11 @@ class CaaiseSystemTest():
                 self.plotViewlizer.add_info(processed_datum)
             print("Finish update data for plots")
 
+        import pdb; pdb.set_trace()
+
+    def calc_mean_residuals_info_at_given_period(self, start_time, end_time, joint_name=None, residual_name="residual_for_best_spring_model"):
+        self.data_processor.calc_residuals_info_at_given_period(start_time, end_time, joint_name, residual_name)
+
     def simulation_test(self):
         raw_data = scipy.io.loadmat(self.data_path)
         process_data = process_sim_data(raw_data, self.start_time, self.end_time)

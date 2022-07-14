@@ -71,7 +71,7 @@ parser_f.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/franka_trajectory_following/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf"))
 # parser_f.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
 #     "examples/trifinger_simple/robot_properties_fingers/cube/cube_v2.urdf"))
-parser_f.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+parser_f.AddModelFromFile(pydairlib.common.FindResourceO  rThrow(
     "examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf"))
 
 
@@ -126,10 +126,6 @@ plant_franka.WeldFrames(plant_franka.world_frame(), plant_franka.GetFrameByName(
 plant_franka.Finalize()
 
 context_franka = plant_franka.CreateDefaultContext()
-
-state_receiver = builder.AddSystem(RobotOutputReceiver(plant_franka))
-
-
 
 nq = plant.num_positions()
 nv = plant.num_velocities()
@@ -243,10 +239,10 @@ context = plant.CreateDefaultContext()
 
 context_ad = plant_ad.CreateDefaultContext()
 
+state_receiver = builder.AddSystem(RobotOutputReceiver(plant_franka))
 controller = builder.AddSystem(
     C3Controller_franka(plant, plant_f, plant_franka, context, context_f, context_franka, plant_ad, plant_ad_f, context_ad, context_ad_f, scene_graph, diagram_f, contact_geoms, num_friction_directions, mu, Q, R, G, U, xdesired, pp))
 state_force_sender = builder.AddSystem(RobotC3Sender(10, 9, 6, 9))
-
 
 builder.Connect(state_receiver.get_output_port(0), controller.get_input_port(0))
 

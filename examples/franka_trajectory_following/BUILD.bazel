@@ -24,6 +24,18 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "lcm_control_demo_cc",
+    srcs = ["lcm_control_demo.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:c3_controller_franka",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 py_binary(
     name = "simulate_franka_lcm",
     srcs = ["simulate_franka_lcm.py"],

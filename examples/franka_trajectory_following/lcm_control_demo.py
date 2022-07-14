@@ -71,7 +71,7 @@ parser_f.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/franka_trajectory_following/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf"))
 # parser_f.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
 #     "examples/trifinger_simple/robot_properties_fingers/cube/cube_v2.urdf"))
-parser_f.AddModelFromFile(pydairlib.common.FindResourceO  rThrow(
+parser_f.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf"))
 
 
@@ -254,13 +254,6 @@ control_publisher = builder.AddSystem(LcmPublisherSystem.Make(
     publish_period=0.0, use_cpp_serializer=True))
 builder.Connect(state_force_sender.get_output_port(),
     control_publisher.get_input_port())
-
-# TODO: check these connections
-# lcm_passthrough = builder.AddSystem(LcmInterfaceSystem(lcm))
-# passthrough = AddActuationRecieverAndStateSenderLcm(
-#     builder=builder, plant=plant_franka, lcm=lcm_passthrough, actuator_channel="FRANKA_INPUT",
-#     state_channel="FRANKA_OUTPUT", publish_rate=1/output_dt,
-#     publish_efforts=True, actuator_delay=0.0)   #1/output_dt
 
 diagram = builder.Build()
 

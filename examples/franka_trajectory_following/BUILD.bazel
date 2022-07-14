@@ -24,7 +24,36 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_binary(
+    name = "simulate_franka_lcm_cc",
+    srcs = ["simulate_franka_lcm.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//examples/franka_trajectory_following:c3_parameters",
+        "@drake//:drake_shared_library",
+    ],
+    data = [":trifinger_urdf",
+            "@drake//manipulation/models/franka_description:models"]
+)
+
+cc_binary(
+    name = "lcm_control_impedence_cc",
+    srcs = ["lcm_control_impedance.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:impedance_controller",
+        "//examples/franka_trajectory_following:c3_parameters",
+        "@drake//:drake_shared_library",
+    ],
+    data = [":trifinger_urdf",
+            "@drake//manipulation/models/franka_description:models"]
+)
+
+cc_binary(
     name = "lcm_control_demo_cc",
     srcs = ["lcm_control_demo.cc"],
     deps = [
@@ -32,8 +61,11 @@ cc_library(
         "//systems/controllers",
         "//systems/framework:lcm_driven_loop",
         "//systems/controllers:c3_controller_franka",
+        "//examples/franka_trajectory_following:c3_parameters",
         "@drake//:drake_shared_library",
     ],
+    data = [":trifinger_urdf",
+            "@drake//manipulation/models/franka_description:models"]
 )
 
 py_binary(

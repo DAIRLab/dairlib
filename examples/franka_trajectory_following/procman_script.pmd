@@ -5,15 +5,15 @@ group "1.director" {
     }
 }
 cmd "2.C3" {
-    exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo";
+    exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo_cc";
     host = "localhost";
 }
 cmd "3.franka" {
-    exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm";
+    exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm_cc";
     host = "localhost";
 }
 cmd "4.impedance controller" {
-    exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence";
+    exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence_cc";
     host = "localhost";
 }
 cmd "5.lcmspy" {

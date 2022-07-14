@@ -86,8 +86,8 @@ K[3:6, 3:6] = translational_stiffness * np.identity(3)
 B[0:3, 0:3] = 2 * damping_ratio * math.sqrt(rotational_stiffness) * np.identity(3)
 B[3:6, 3:6] = 2 * damping_ratio * math.sqrt(translational_stiffness) * np.identity(3)
 
-K_null = param["stiffness_null"] = np.identity(7)
-B_null = param["damping_null"] = np.identity(7)
+K_null = param["stiffness_null"] * np.identity(7)
+B_null = param["damping_null"] * np.identity(7)
 qd = np.array(param["q_null_desired"])
 
 sphere_geoms = plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0]

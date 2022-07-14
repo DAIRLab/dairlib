@@ -4,8 +4,8 @@
 translational_stiffness: 300 # 300
 rotational_stiffness: 5 # 1
 damping_ratio: 1
-stiffness_null: 2
-damping_null: 1
+stiffness_null: 1 # try changing to 2
+damping_null: 1 # try changing to using damping ratio null
 q_null_desired: [0, 0.361, 0, -2.223, 0, 2.584, 0]
 moving_offset: 0 #0.0005
 pushing_offset: 0 #-0.001

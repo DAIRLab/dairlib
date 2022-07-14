@@ -12,6 +12,7 @@
 #include "systems/ros/ros_subscriber_system.h"
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/c3_ros_conversions.h"
+#include "systems/system_utils.h"
 
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -35,39 +36,37 @@ int DoMain(ros::NodeHandle& node_handle) {
   DiagramBuilder<double> builder;
 
   // if test_c3_drake_to_ros is also running, then this system subscribes
-  // to a rostopic that outputs 0, 1, 2, ..., 9, timestampe: 0.0
+  // to a rostopic that outputs 0, 1, 2, ..., 9
   auto msg_subscriber =
       builder.AddSystem(RosSubscriberSystem<std_msgs::Float64MultiArray>::Make(
           "chatter", &node_handle));
   auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(4, 3, 3));
-  // auto to_c3 = builder.AddSystem(ROSToC3LCM::Make(10,0,0,0));
-  // auto msg_publisher = builder.AddSystem(
-  //   RosPublisherSystem<std_msgs::Float64MultiArray>::Make("echo", &node_handle, .25));
+  auto to_c3 = builder.AddSystem(ROSToC3LCM::Make(10,0,0,0));
 
-  // builder.Connect(*msg_subscriber, *msg_publisher);
   builder.Connect(msg_subscriber->get_output_port(), to_robot_output->get_input_port());
-  // builder.Connect(*msg_subscriber, *to_c3);
+  builder.Connect(*msg_subscriber, *to_c3);
 
-  // TODO: need to add publisher to actually send out the lcm message
-  // need to declare drake lcm etc
-  // see if the echo publisher can be removed
+  // TODO: msg_subsciber doesn't produce an output until a new message
+  // appears on the ROS channel which means to_c3 and to_robot_output
+  // do no receive meaningful outputs until the ROS topic gets updated
+  // Before the first ROS topic update, these classes return some default
+  // value, but should probably find a better way to deal with this
   drake::lcm::DrakeLcm drake_lcm;
   auto robot_output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
         "LCM_ROBOT_OUTPUT_TEST", &drake_lcm, 
-        {drake::systems::TriggerType::kForced}, 0.0));
+        {drake::systems::TriggerType::kPeriodic}, 0.25));
   builder.Connect(to_robot_output->get_output_port(0), 
     robot_output_pub->get_input_port(0));
 
-  // auto c3_pub = builder.AddSystem(
-  // LcmPublisherSystem::Make<dairlib::lcmt_c3>(
-  //   "LCM_C3_TEST", &drake_lcm, 
-  //   {drake::systems::TriggerType::kForced}, 0.0));
-  // builder.Connect(to_c3->get_output_port(0), c3_pub->get_input_port(0));
+  auto c3_pub = builder.AddSystem(
+  LcmPublisherSystem::Make<dairlib::lcmt_c3>(
+    "LCM_C3_TEST", &drake_lcm, 
+    {drake::systems::TriggerType::kPeriodic}, 0.25));
+  builder.Connect(to_c3->get_output_port(0), c3_pub->get_input_port(0));
 
   auto sys = builder.Build();
   Simulator<double> simulator(*sys);
-
   simulator.Initialize();
   simulator.set_target_realtime_rate(1.0);
 

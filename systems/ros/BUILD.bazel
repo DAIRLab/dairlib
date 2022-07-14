@@ -53,6 +53,7 @@ cc_binary(
   srcs = ["test/test_c3_ros_to_lcm.cc"],
   deps = [":ros_pubsub_systems",
           ":c3_ros_conversions",
+          "//systems:system_utils",
           "@drake//:drake_shared_library"
   ],
   tags=["ros"],

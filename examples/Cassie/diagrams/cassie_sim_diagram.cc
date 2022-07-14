@@ -42,7 +42,7 @@ CassieSimDiagram::CassieSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-//  multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
+  // multibody::AddFlatTerrain(plant, scene_graph_, .8, .8);
   BoxyHeightMap one_box = BoxyHeightMap::MakeFlatSingleStepMap();
 //  BoxyHeightMap boxes = BoxyHeightMap::MakeRandomMap();
   one_box.AddHeightMapToPlant(plant_, scene_graph_);

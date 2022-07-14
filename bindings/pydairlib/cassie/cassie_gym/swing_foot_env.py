@@ -87,6 +87,7 @@ class SwingFootEnv(DrakeCassieGym):
             done_with_ds = False
         cumulative_reward = 0
 
+        action = np.array(action) + self.default_action
         # Essentially want to do till the end of current double stance and then 
         # the end of the next single stance in one environment step
         radio = np.zeros((CASSIE_NRADIO,))
@@ -114,7 +115,7 @@ class SwingFootEnv(DrakeCassieGym):
             self.cassie_state = CassieEnvState(self.current_time, x, u, radio, action)
             self.traj.append(self.cassie_state)
             swing_ft_error = self.swing_ft_error_port.Eval(self.controller_context).ravel()
-            print(f"swing foot env step swing_ft_error: {swing_ft_error}")
+            # print(f"swing foot env step swing_ft_error: {swing_ft_error}")
             reward = self.reward_func.compute_reward(
                 self.sim_dt, self.cassie_state, self.prev_cassie_state,
                 swing_foot_error=swing_ft_error)
@@ -128,9 +129,9 @@ class SwingFootEnv(DrakeCassieGym):
         return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), {}
 
 
-def make_swing_ft_env_fn(rank, seed=0):
+def make_swing_ft_env_fn(rank, seed=0, visualize=False):
     def _init():
-        env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=False)
+        env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=visualize)
         env.seed(rank + seed)
-        return env 
+        return env
     return _init

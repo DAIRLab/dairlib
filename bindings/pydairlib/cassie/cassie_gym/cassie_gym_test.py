@@ -6,7 +6,7 @@ from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from drake_cassie_gym import DrakeCassieGym, make_vec_env
 from swing_foot_env import SwingFootEnv, make_swing_ft_env_fn, get_default_params
-# from radio_swing_foot_env import RadioSwingFootEnv
+from radio_swing_foot_env import RadioSwingFootEnv
 from reward_osudrl import RewardOSUDRL
 from high_level_reward import HighLevelReward
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
@@ -65,9 +65,9 @@ def test_base_env():
     check_env(gym_env)
 
 
-def test_swing_foot_env():
+def test_swing_ft_env():
     gym_env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=True)
-    for i in range(20):
+    for i in range(60):
         s, r, d, i = gym_env.step()
         print(r, d)
         if d:
@@ -77,7 +77,7 @@ def test_swing_foot_env():
 
 def test_radio_swing_ft_env():
     gym_env = RadioSwingFootEnv(reward_func=HighLevelReward(0.5), visualize=True)
-    for i in range(20):
+    for i in range(60):
         s, r, d, i = gym_env.step()
         # print(r, d)
         if d:
@@ -105,5 +105,5 @@ def main():
 if __name__ == '__main__':
     # test_vec_env()
     # main()
-    # test_radio_swing_ft_env()
-    test_swing_foot_env()
+    # test_swing_ft_env()
+    test_radio_swing_ft_env()

@@ -75,6 +75,8 @@ py_binary(
         ":cassie_env_state",
         ":drake_cassie_gym",
         ":swing_foot_env",
+        ":radio_swing_foot_env",
+        ":high_level_reward",
         "//bindings/pydairlib/cassie",
         "@drake//bindings/pydrake",
     ],

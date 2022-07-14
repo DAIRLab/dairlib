@@ -1,4 +1,5 @@
 #include "options_tracking_data.h"
+#include "drake/math/saturate.h"
 
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -102,6 +103,10 @@ void OptionsTrackingData::UpdateYddotCmd(double t,
 
   yddot_command_ = yddot_des_converted_ +
                    gain_multiplier * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
+  for (int i = 0; i < n_ydot_; i++) {
+    yddot_command_(i) = drake::math::saturate(
+        yddot_command_(i), -100, 100);
+  }
 }
 
 void OptionsTrackingData::SetLowPassFilter(double tau,

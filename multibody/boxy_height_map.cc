@@ -86,9 +86,9 @@ BoxyHeightMap BoxyHeightMap::MakeRandomMap() {
 
 BoxyHeightMap BoxyHeightMap::MakeFlatSingleStepMap() {
   BoxyHeightMap boxy(Vector3d::UnitZ(), 5, 0.5, 0.0, 0.8);
-  boxy.AppendBox(0, 0.4);
-  boxy.AppendBox(0.15, 0.4);
-  boxy.AppendBox(0, 2.0);
+  boxy.AppendBox(0, 1.0);
+  // boxy.AppendBox(0.15, 0.4);
+  boxy.AppendBox(0, 4.0);
   return boxy;
 }
 }

@@ -133,7 +133,7 @@ class DrakeCassieGym(gym.Env):
                                                            p_BQi=np.zeros(3).T,
                                                            frame_A = self.sim_plant.GetBodyByName("WorldBody").body_frame()).flatten()[2]
         pelvis_z = self.cassie_state.get_fb_positions()[2]
-        return pelvis_z < 0.4 or right_foot_pos > pelvis_z - 0.2  or left_foot_pos > pelvis_z - 0.2
+        return pelvis_z < 0.4 or right_foot_pos > pelvis_z - 0.3  or left_foot_pos > pelvis_z - 0.3
             
 
     def step(self, action=None):
@@ -172,6 +172,6 @@ class DrakeCassieGym(gym.Env):
         return
 
 
-def make_vec_env(env_func, n_envs, seed):
-    envs = [env_func(i, seed) for i in range(n_envs)]
+def make_vec_env(env_func, n_envs, seed, visualize):
+    envs = [env_func(i, seed, visualize) for i in range(n_envs)]
     return SubprocVecEnv(envs)

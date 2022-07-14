@@ -810,7 +810,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
     double window = 0.01;
-    double tau = 0.01;
+    double tau = 0.02;
     if (fsm_state >= 2 && initial_guess_x_.size() == 4) {
       double clock_time;
       if (this->get_input_port(clock_port_).HasValue(context)) {

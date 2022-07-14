@@ -818,8 +818,8 @@ VectorXd OperationalSpaceControl::SolveQp(
         clock_time = clock->get_value()(0);
       }
       if (fsm_state == 2) {
-        double blend_in = 1 - exp(-((0.3 - clock_time) + window) / tau);
-        double blend_out = 1 - exp(-((clock_time - 0.2) + window) / tau);
+        double blend_in = 1 - exp(-((0.4 - clock_time) + window) / tau);
+        double blend_out = 1 - exp(-((clock_time - 0.3) + window) / tau);
         u_sol_->row(6) =
             blend_out * u_sol_->row(6) + (1 - blend_out) * u_prev_[0].row(6);
         u_sol_->row(7) =
@@ -830,8 +830,8 @@ VectorXd OperationalSpaceControl::SolveQp(
             blend_in * u_sol_->row(1) + (1 - blend_in) * u_prev_[1].row(1);
       }
       if (fsm_state == 3) {
-        double blend_in = 1 - exp(-((0.6 - clock_time) + window) / tau);
-        double blend_out = 1 - exp(-((clock_time - 0.5) + window) / tau);
+        double blend_in = 1 - exp(-((0.8 - clock_time) + window) / tau);
+        double blend_out = 1 - exp(-((clock_time - 0.7) + window) / tau);
         u_sol_->row(6) =
             blend_in * u_sol_->row(6) + (1 - blend_in) * u_prev_[0].row(6);
         u_sol_->row(7) =

@@ -47,3 +47,12 @@ cc_binary(
   ],
   tags=["ros"],
 )
+
+cc_binary(
+  name = "test_c3_ros_to_lcm",
+  srcs = ["test/test_c3_ros_to_lcm.cc"],
+  deps = [":ros_pubsub_systems",
+          ":c3_ros_conversions"
+  ],
+  tags=["ros"],
+)

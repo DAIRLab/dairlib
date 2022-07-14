@@ -263,6 +263,9 @@ namespace dairlib {
     systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
         &drake_lcm, std::move(diagram), state_receiver, "FRANKA_OUTPUT", true);
     
+    // TODO: code to connect the publisher
+
+
     loop.Simulate(std::numeric_limits<double>::infinity());
 
     return 0;

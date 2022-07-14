@@ -2,6 +2,10 @@
 #include <signal.h>
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
+#include <drake/lcm/drake_lcm.h>
 #include "ros/ros.h"
 #include "std_msgs/Float64MultiArray.h"
 
@@ -11,11 +15,14 @@
 
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
+using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
 
 using dairlib::systems::RosSubscriberSystem;
 using dairlib::systems::RosPublisherSystem;
 using dairlib::systems::ROSToRobotOutputLCM;
 using dairlib::systems::ROSToC3LCM;
+
 
 
 // Shutdown ROS gracefully and then exit
@@ -33,10 +40,30 @@ int DoMain(ros::NodeHandle& node_handle) {
       builder.AddSystem(RosSubscriberSystem<std_msgs::Float64MultiArray>::Make(
           "chatter", &node_handle));
   auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(4, 3, 3));
-  auto to_c3 = builder.AddSystem(ROSToC3LCM::Make(10,0,0,0));
+  // auto to_c3 = builder.AddSystem(ROSToC3LCM::Make(10,0,0,0));
+  // auto msg_publisher = builder.AddSystem(
+  //   RosPublisherSystem<std_msgs::Float64MultiArray>::Make("echo", &node_handle, .25));
 
-  builder.Connect(*msg_subscriber, *to_robot_output);
-  builder.Connect(*msg_subscriber, *to_c3);
+  // builder.Connect(*msg_subscriber, *msg_publisher);
+  builder.Connect(msg_subscriber->get_output_port(), to_robot_output->get_input_port());
+  // builder.Connect(*msg_subscriber, *to_c3);
+
+  // TODO: need to add publisher to actually send out the lcm message
+  // need to declare drake lcm etc
+  // see if the echo publisher can be removed
+  drake::lcm::DrakeLcm drake_lcm;
+  auto robot_output_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+        "LCM_ROBOT_OUTPUT_TEST", &drake_lcm, 
+        {drake::systems::TriggerType::kForced}, 0.0));
+  builder.Connect(to_robot_output->get_output_port(0), 
+    robot_output_pub->get_input_port(0));
+
+  // auto c3_pub = builder.AddSystem(
+  // LcmPublisherSystem::Make<dairlib::lcmt_c3>(
+  //   "LCM_C3_TEST", &drake_lcm, 
+  //   {drake::systems::TriggerType::kForced}, 0.0));
+  // builder.Connect(to_c3->get_output_port(0), c3_pub->get_input_port(0));
 
   auto sys = builder.Build();
   Simulator<double> simulator(*sys);

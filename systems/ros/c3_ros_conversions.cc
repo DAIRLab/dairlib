@@ -46,11 +46,14 @@ ROSToRobotOutputLCM::ROSToRobotOutputLCM(int num_positions, int num_velocities, 
     drake::Value<std_msgs::Float64MultiArray>());
   this->DeclareAbstractOutputPort("lcmt_robot_output",
     &ROSToRobotOutputLCM::ConvertToLCM);
+
+  std::cout << "in constructor" << std::endl;
 }
 
 void ROSToRobotOutputLCM::ConvertToLCM(const drake::systems::Context<double>& context,
                   dairlib::lcmt_robot_output* output) const {
 
+  std::cout << "start of callback" << std::endl;
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   const auto& msg = input->get_value<std_msgs::Float64MultiArray>();
 
@@ -77,6 +80,7 @@ void ROSToRobotOutputLCM::ConvertToLCM(const drake::systems::Context<double>& co
   // TODO: figure out which time to use
   output->utime = context.get_time() * 1e6;
   output->utime = msg.data[num_positions_+num_velocities_+num_efforts_];
+  std::cout << "end of callback" << std::endl;
 }
 
 /***************************************************************************************/

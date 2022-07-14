@@ -12,7 +12,6 @@
 #include "systems/ros/ros_subscriber_system.h"
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/c3_ros_conversions.h"
-#include "systems/system_utils.h"
 
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;

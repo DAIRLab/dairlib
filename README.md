@@ -4,7 +4,7 @@ Warning! This is very much "development-level" code and is provided as-is. APIs 
 ## Current Continuous Integration Status
 * `master` branch build and unit tests (Ubuntu 18.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
 * `master` branch build and unit tests (Ubuntu 20.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_focal&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
-* `master` branch build and unit tests (Ubuntu 18.04 with ROS): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_with_ros&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* `master` branch build and unit tests (Ubuntu 20.04 with ROS): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_with_ros&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
 * Experimental build against Drake's `master` branch: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=drake_master_build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
 ## Complete Build Instructions
 
@@ -50,12 +50,12 @@ These dependencies are necessary for some advanced visualization and process man
 Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation from Drake should add the proper repo for these. (This likely require's Drake's prerequisites to be installed from a source copy).
 
 #### ROS
-To integrate with ROS (tested on ROS Melodic), the following steps are required.
+To integrate with ROS (tested on ROS Noetic with 20.04), the following steps are required.
 1. Install ROS http://wiki.ros.org/ROS/Installation
 2. Do not forget to setup your environment. For instance, add these lines to `~/.bashrc`
 ```
 export ROS_MASTER_URI=http://localhost:11311
-source /opt/ros/melodic/setup.bash 
+source /opt/ros/noetic/setup.bash 
 ```
 3. Install additional dependencies
 ```

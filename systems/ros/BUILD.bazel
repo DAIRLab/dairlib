@@ -1,5 +1,7 @@
 # -*- python -*-
 
+package(default_visibility = ["//visibility:public"])
+
 cc_library(
   name="ros_pubsub_systems",
   hdrs=["ros_publisher_system.h",

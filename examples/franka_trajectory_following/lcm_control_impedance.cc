@@ -25,6 +25,11 @@
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 
+#include "ros/ros.h"
+#include "std_msgs/Float64MultiArray.h"
+#include "systems/ros/ros_publisher_system.h"
+#include "systems/ros/c3_ros_conversions.h"
+
 namespace dairlib {
 
 using drake::geometry::SceneGraph;
@@ -134,6 +139,17 @@ int DoMain(int argc, char* argv[]){
   auto c3_receiver = builder.AddSystem<systems::RobotC3Receiver>(10, 9, 6, 9);
   builder.Connect(c3_subscriber->get_output_port(0), c3_receiver->get_input_port(0));
   builder.Connect(c3_receiver->get_output_port(0), controller->get_input_port(1));
+
+  /* -------------------------------------------------------------------------------------------*/
+  /// Publish to ROS topic
+  ros::init(argc, argv, "test_ros_publisher_system");
+  ros::NodeHandle node_handle;
+  auto impedance_to_ros = builder.AddSystem<systems::TimestampedVectorToROS>(7);
+  auto ros_publisher = builder.AddSystem(
+      systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/franka_input", &node_handle, .0005));
+  
+  builder.Connect(controller->get_output_port(), impedance_to_ros->get_input_port());
+  builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());
 
   auto diagram = builder.Build();
 

@@ -71,12 +71,12 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_torque_output_port",
           &FootstepTargetControllerDiagram::get_torque_output_port,
           py_rvp::reference_internal)
-      .def("get_controller_failure_output_port",
-          &FootstepTargetControllerDiagram::get_controller_failure_output_port,
-          py_rvp::reference_internal)
       .def("get_fsm_output_port",
           &FootstepTargetControllerDiagram::get_fsm_output_port,
-          py_rvp::reference_internal);
+          py_rvp::reference_internal)
+      .def("get_alip_target_footstep_port",
+           &FootstepTargetControllerDiagram::get_alip_target_footstep_port,
+           py_rvp::reference_internal);
 
 }
 }  // namespace pydairlib

@@ -211,6 +211,13 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
       unordered_fsm_states, unordered_state_durations,
       contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
       gains.R_alip_kalman_filter.asDiagonal());
+  auto footstep_planner =
+      builder.AddSystem<systems::AlipFootstepPlanner>(
+          plant, plant_context.get(), left_right_support_fsm_states,
+          left_right_support_state_durations, left_right_foot,
+          double_support_duration,
+          gains.max_CoM_to_footstep_dist, gains.footstep_offset,
+          gains.center_line_offset);
   auto swing_ft_traj_generator =
       builder.AddSystem<systems::SwingFootTargetTrajGen>(
           plant, plant_context.get(), left_right_support_fsm_states,
@@ -395,6 +402,8 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
                   liftoff_event_time->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(),
                   touchdown_event_time->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(),
+                  footstep_planner->get_input_port_state());
 
   // Connect fsm output port
   builder.Connect(fsm->get_output_port_fsm(),
@@ -409,6 +418,8 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(fsm->get_output_port_fsm(),
                   hip_yaw_traj_gen->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  footstep_planner->get_input_port_fsm());
 
   // Connect radio
   builder.Connect(radio_parser->get_output_port(),
@@ -423,6 +434,12 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
                   swing_ft_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
+  builder.Connect(alip_traj_generator->get_output_port_alip_state(),
+                  footstep_planner->get_input_port_alip_state());
+  builder.Connect(high_level_command->get_xy_output_port(),
+                  footstep_planner->get_input_port_vdes());
+  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
+                  footstep_planner->get_input_port_fsm_switch_time());
 
 
   builder.Connect(alip_traj_generator->get_output_port_com(),
@@ -448,6 +465,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
   builder.ExportOutput(fsm->get_output_port_fsm(), "fsm");
+  builder.ExportOutput(footstep_planner->get_output_port(), "alip_target");
 
   // Create the diagram
   builder.BuildInto(this);

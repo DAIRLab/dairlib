@@ -32,8 +32,9 @@ MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
 INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
-TARGET_LOWER_BOUND = np.array([-1.6, -0.8, 0.0])
+TARGET_LOWER_BOUND = np.array([-0.5, -0.3, 0.0])
 TARGET_UPPER_BOUND = -TARGET_LOWER_BOUND
+MAX_ERROR = 1.0
 
 
 class StepnetDataGenerator(DrakeCassieGym):
@@ -45,12 +46,13 @@ class StepnetDataGenerator(DrakeCassieGym):
             params=params
         )
         # simulate for a bit past a full step
-        self.sim_dt = 0.45
+        # self.sim_dt = 0.45
 
         # Simulation Infrastructure
         self.fsm_output_port = None
         self.depth_image_output_port = None
         self.foot_target_input_port = None
+        self.alip_target_port = None
         self.initial_condition_bank = None
 
         # Multibody objects
@@ -101,6 +103,8 @@ class StepnetDataGenerator(DrakeCassieGym):
             self.controller.get_fsm_output_port()
         self.foot_target_input_port = \
             self.controller.get_footstep_target_input_port()
+        self.alip_target_port = \
+            self.controller.get_alip_target_footstep_port()
 
         # Multibody objects for Cassie's feet
         self.foot_frames = {
@@ -245,22 +249,35 @@ class StepnetDataGenerator(DrakeCassieGym):
     def get_stepnet_data_point(self):
         x_pre = self.draw_random_initial_condition()
         self.reset(x_pre)
+
         depth_image = self.get_current_depth_image()
-        target = np.random.uniform(
+        alip_target = self.alip_target_port.Eval(self.controller_context) + \
+                      self.sim_plant.CalcCenterOfMassPositionInWorld(
+                          self.plant_context
+                      )
+
+        target = alip_target + np.random.uniform(
             low=TARGET_LOWER_BOUND,
             high=TARGET_UPPER_BOUND
         )
+        target[2] = 0.0
+
         swing = self.fsm_swing_states[
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
-        try:
-            x_post = self.step(footstep_target=target)
-            swing_foot_final_pos = self.calc_foot_position_in_world(
-                self.plant_context, swing)
-            error = np.linalg.norm(swing_foot_final_pos - target)
-        except:
-            print('simulation failed')
-            error = 100.0
+        while self.current_time < 0.45:
+            self.step(footstep_target=target)
+            if self.check_termination():
+                return {
+                    'depth': depth_image.data,
+                    'state': x_pre,
+                    'target': target,
+                    'error': MAX_ERROR
+                }
+
+        swing_foot_final_pos = self.calc_foot_position_in_world(
+            self.plant_context, swing)
+        error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target))
 
         return {
             'depth': depth_image.data,
@@ -281,7 +298,8 @@ class StepnetDataGenerator(DrakeCassieGym):
 
 def test_data_collection():
     gym_env = StepnetDataGenerator.make_randomized_env(visualize=True)
-    data = gym_env.get_stepnet_data_point()
+    while True:
+        data = gym_env.get_stepnet_data_point()
     import pdb; pdb.set_trace()
     gym_env.free_sim()
 

@@ -71,7 +71,7 @@ def parse_single_log_to_robot_ds_states(filename, plant, context, channel_x,
             state[k, nq:] = robot_output['v'][x_idx]
         else:
             state[k] = nans((nx,))
-    # return state[~np.isnan(state).any(axis=1)]
+    return state[~np.isnan(state).any(axis=1)]
     return state
 
 

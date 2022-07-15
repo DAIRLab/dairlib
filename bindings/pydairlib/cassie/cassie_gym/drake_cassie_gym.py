@@ -105,7 +105,7 @@ class DrakeCassieGym:
             self.lcm = DrakeLcm()
             self.image_array_sender = self.builder.AddSystem(
                 ImageToLcmImageArrayT())
-            self.image_array_sender.DeclareImageInputPort[PixelType.kDepth16U]("depth")
+            self.image_array_sender.DeclareImageInputPort[PixelType.kDepth32F]("depth")
             self.image_array_publisher = self.builder.AddSystem(
                 LcmPublisherSystem.Make(
                     "DRAKE_RGBD_CAMERA_IMAGES",

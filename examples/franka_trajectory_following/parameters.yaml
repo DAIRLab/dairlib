@@ -1,11 +1,11 @@
 # bouncy ball parameters
 
 # impedance control parameters
-translational_stiffness: 300 # 300
-rotational_stiffness: 5 # 1
+translational_stiffness: 200 # 300
+rotational_stiffness: 2 # 1
 damping_ratio: 1
 stiffness_null: 1 # try changing to 2
-damping_null: 1 # try changing to using damping ratio null
+damping_null: 2 # try changing to using damping ratio null
 q_null_desired: [0, 0.361, 0, -2.223, 0, 2.584, 0]
 moving_offset: 0 #0.0005
 pushing_offset: 0 #-0.001
@@ -26,7 +26,7 @@ G: 0.01
 U_default: 1
 U_pos_vel: 10           # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
-q_init_finger: [0, 0, 0.0524] # TODO: Tune this! (used to be 0.7)
+q_init_finger: [0, 0, 0.05] # TODO: Tune this! (used to be 0.7)
 #q_init_finger: [0, 0, 0.0399] # parameters that work for wrong EE model
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
@@ -50,17 +50,17 @@ degree_increment: 20
 time_increment: 4
 hold_order: 1 # 0 for zero order hold, 1 for first order hold
 
-c3_sub_timeout: 0.15
-realtime_rate: 0.5
+c3_sub_timeout: 0.01
+realtime_rate: 1.0
 
 ball_radius: 0.0315           # changes need to be consistent with urdf
 finger_radius: 0.0195         # changes need to be consistent with BOTH urdfs
-EE_offset: [0, 0, 0.0192]     # changes need to be consistent with urdf
+EE_offset: [0, 0, 0.0153]     # changes need to be consistent with urdf
 table_offset: -0.0301         # chances need to be consistent with BOTH urdfs
 
 
 # Misc
-contact_threshold: 0.001
+contact_threshold: 0.01
 period: 2.5   #2.5
 duty_cycle: 0.75 #0.75
 duty_cycle_upwards_ratio: 0.33 # need better name here

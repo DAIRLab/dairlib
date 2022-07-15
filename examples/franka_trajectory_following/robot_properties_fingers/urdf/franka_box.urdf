@@ -4,6 +4,10 @@
 <!-- |    from panda_arm.urdf.xacro                                                         | -->
 <!-- =================================================================================== -->
 <robot xmlns:drake="http://drake.mit.edu" name="panda">
+  <material name="black">
+    <color rgba="0.27 0.27 0.27 1"/>
+  </material>
+
   <link name="panda_link0">
     <inertial>
       <mass value="2.92"/>
@@ -543,13 +547,14 @@
   </joint>
   <link name="panda_link10">
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0.0192"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0153"/>
       <geometry>
         <sphere radius="0.0195"/>
       </geometry>
+      <material name="black"/>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0.0192"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0153"/>
       <geometry>
         <sphere radius="0.0195"/>
       </geometry>

@@ -123,19 +123,19 @@ void AddCassieMultibody(MultibodyPlant<double>* plant,
     plant->AddForceElement<RevoluteSpring>(
         dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
             plant->GetJointByName("knee_joint_left")),
-        0, 9000);
+        0, 1500);
     plant->AddForceElement<RevoluteSpring>(
         dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
             plant->GetJointByName("knee_joint_right")),
-        0, 9000);
+        0, 1500);
     plant->AddForceElement<RevoluteSpring>(
         dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
             plant->GetJointByName("ankle_spring_joint_left")),
-        0, 9000);
+        0, 1250);
     plant->AddForceElement<RevoluteSpring>(
         dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
             plant->GetJointByName("ankle_spring_joint_right")),
-        0, 9000);
+        0, 1250);
   }
 
   if (add_loop_closure) {

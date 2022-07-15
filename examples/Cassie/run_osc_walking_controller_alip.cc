@@ -489,17 +489,13 @@ int DoMain(int argc, char* argv[]) {
 
 
   auto vel_map = MakeNameToVelocitiesMap<double>(plant_w_spr);
-  swing_foot_data->AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_right"], left_stance_state);
-  swing_foot_data->AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_left"], right_stance_state);
 
   auto com_data = std::make_unique<ComTrackingData> ("com_data", osc_walking_gains.K_p_swing_foot,
                            osc_walking_gains.K_d_swing_foot, osc_walking_gains.W_swing_foot,
                            plant_w_spr, plant_w_spr);
   com_data->AddFiniteStateToTrack(left_stance_state);
   com_data->AddFiniteStateToTrack(right_stance_state);
-//  com_data->SetImpactInvariantProjection(true);
+  com_data->SetImpactInvariantProjection(true);
   auto swing_ft_traj_local = std::make_unique<RelativeTranslationTrackingData> (
       "swing_ft_traj", osc_walking_gains.K_p_swing_foot, osc_walking_gains.K_d_swing_foot,
       osc_walking_gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data.get(),
@@ -543,7 +539,7 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_heading_traj", osc_walking_gains.K_p_pelvis_heading, osc_walking_gains.K_d_pelvis_heading,
       osc_walking_gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
   pelvis_heading_traj->AddFrameToTrack("pelvis");
-  pelvis_heading_traj->SetImpactInvariantProjection(true);
+//  pelvis_heading_traj->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_heading_traj),
                        osc_walking_gains.period_of_no_heading_control);
 

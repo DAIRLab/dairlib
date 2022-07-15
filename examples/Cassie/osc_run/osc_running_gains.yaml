@@ -1,4 +1,4 @@
-w_input: 0.0001
+w_input: 0.0000
 w_input_reg: 0.1
 w_accel: 0.0001
 w_soft_constraint: 100
@@ -16,7 +16,7 @@ W_lambda_c_reg: [1, 0.001, 0.01,
                  1, 0.1, 0.01,
                  1, 0.1, 0.01]
 W_lambda_h_reg: [0.01, 0.01, 0.01,
-               0.01, 0.02, 0.02]
+                 0.01, 0.02, 0.02]
 #w_soft_constraint: 1000000
 
 relative_feet: true
@@ -29,8 +29,8 @@ vel_scale_trans_sagital: 0.25
 vel_scale_trans_lateral: -0.15
 
 # SLIP parameters
-rest_length: 0.87
-stance_duration: 0.30
+rest_length: 0.9
+stance_duration: 0.20
 flight_duration: 0.1
 
 w_swing_toe: 1
@@ -42,12 +42,12 @@ hip_yaw_kp: 40
 hip_yaw_kd: 1
 # Foot placement parameters
 #footstep_offset: -0.05
-footstep_sagital_offset: -0.1
-footstep_lateral_offset: 0.06 #drake
+footstep_sagital_offset: -0.13
+footstep_lateral_offset: 0.045 # drake
 mid_foot_height: 0.05
 FootstepKd:
-  [ 0.25,     0,  0,
-    0,     0.7, 0,
+  [ 0.3,     0,  0,
+    0,     0.65, 0,
     0,        0,  0 ]
 PelvisW:
   [ 0,     0,    0,
@@ -56,22 +56,22 @@ PelvisW:
 PelvisKp:
   [ 0,    0,    0,
     0,    0,    0,
-    0,    0,   70]
+    0,    0,   40]
 PelvisKd:
-  [ 0 ,    0,   0,
+  [  0,    0,   0,
      0,    0,   0,
-     0,    0,  5]
+     0,    0,  4]
 PelvisRotW:
-  [10,  0,   0,
-   0,  10,   0,
-   0,   0,  0]
+  [5,  0,   0,
+   0,  1,   0,
+   0,   0,  5]
 PelvisRotKp:
-  [10.,   0,   0,
-   0,  100.,   0,
+  [100.,   0,   0,
+   0,  200.,   0,
    0,    0,  0.]
 PelvisRotKd:
-  [2.,   0,  0,
-   0,   5.,  0,
+  [5.,   0,  0,
+   0,   10.,  0,
    0,    0,  1.]
 SwingFootW:
   [10,    0,    0,
@@ -79,20 +79,20 @@ SwingFootW:
    0,    0,   5]
 SwingFootKp:
   [50,    0,    0,
-   0,   50,    0,
-   0,     0,  50]
+   0,   75,    0,
+   0,     0,  45]
 SwingFootKd:
   [5.,   0,   0,
    0,   5.,   0,
-   0,   0,  1.]
+   0,   0,  2.]
 LiftoffSwingFootW:
   [1,    0,    0,
-   0,   100,    0,
+   0,   1,    0,
    0,    0,    1]
 LiftoffSwingFootKp:
   [50,    0,    0,
    0,   50,    0,
-   0,    0,  50]
+   0,    0,  35]
 LiftoffSwingFootKd:
   [ 5,   0,   0,
     0,  5,   0,

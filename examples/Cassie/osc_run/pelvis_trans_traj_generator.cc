@@ -107,7 +107,12 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
 
   double dt = 1e-3;
   Eigen::Vector2d breaks;
-  breaks << t, t + dt;
+  if(t < 0.3){
+      breaks << 0, 0.2;
+  }
+  else{
+      breaks << 0.3, 0.5;
+  }
   MatrixXd samples(3, 2);
   MatrixXd samples_dot(3, 2);
   samples << pelvis_pos, pelvis_pos + 0.5 * rddot * dt * dt;
@@ -127,7 +132,12 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   else if (fsm_state == 1){
     y_dist_des = 0.15;
   }
-  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
+//  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
+   samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ + 0.05;
+//   samples << 0, y_dist_des, rest_length_, 0, y_dist_des, rest_length_ + 0.1;
+   return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
+//  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+//      breaks, samples, VectorXd::Zero(3), VectorXd::Zero(3));
 }
 
 void PelvisTransTrajGenerator::CalcTraj(

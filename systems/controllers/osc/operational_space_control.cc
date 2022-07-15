@@ -817,30 +817,30 @@ VectorXd OperationalSpaceControl::SolveQp(
         auto clock = this->EvalVectorInput(context, clock_port_);
         clock_time = clock->get_value()(0);
       }
-      if (fsm_state == 2) {
-        double blend_in = 1 - exp(-((0.4 - clock_time) + window) / tau);
-        double blend_out = 1 - exp(-((clock_time - 0.3) + window) / tau);
-        u_sol_->row(6) =
-            blend_out * u_sol_->row(6) + (1 - blend_out) * u_prev_[0].row(6);
-        u_sol_->row(7) =
-            blend_in * u_sol_->row(7) + (1 - blend_in) * u_prev_[1].row(7);
-        u_sol_->row(0) =
-            blend_out * u_sol_->row(0) + (1 - blend_out) * u_prev_[0].row(0);
-        u_sol_->row(1) =
-            blend_in * u_sol_->row(1) + (1 - blend_in) * u_prev_[1].row(1);
-      }
-      if (fsm_state == 3) {
-        double blend_in = 1 - exp(-((0.8 - clock_time) + window) / tau);
-        double blend_out = 1 - exp(-((clock_time - 0.7) + window) / tau);
-        u_sol_->row(6) =
-            blend_in * u_sol_->row(6) + (1 - blend_in) * u_prev_[0].row(6);
-        u_sol_->row(7) =
-            blend_out * u_sol_->row(7) + (1 - blend_out) * u_prev_[1].row(7);
-        u_sol_->row(0) =
-            blend_in * u_sol_->row(0) + (1 - blend_in) * u_prev_[0].row(0);
-        u_sol_->row(1) =
-            blend_out * u_sol_->row(1) + (1 - blend_out) * u_prev_[1].row(1);
-      }
+//      if (fsm_state == 2) {
+//        double blend_in = 1 - exp(-((0.4 - clock_time) + window) / tau);
+//        double blend_out = 1 - exp(-((clock_time - 0.3) + window) / tau);
+//        u_sol_->row(6) =
+//            blend_out * u_sol_->row(6) + (1 - blend_out) * u_prev_[0].row(6);
+//        u_sol_->row(7) =
+//            blend_in * u_sol_->row(7) + (1 - blend_in) * u_prev_[1].row(7);
+//        u_sol_->row(0) =
+//            blend_out * u_sol_->row(0) + (1 - blend_out) * u_prev_[0].row(0);
+//        u_sol_->row(1) =
+//            blend_in * u_sol_->row(1) + (1 - blend_in) * u_prev_[1].row(1);
+//      }
+//      if (fsm_state == 3) {
+//        double blend_in = 1 - exp(-((0.8 - clock_time) + window) / tau);
+//        double blend_out = 1 - exp(-((clock_time - 0.7) + window) / tau);
+//        u_sol_->row(6) =
+//            blend_in * u_sol_->row(6) + (1 - blend_in) * u_prev_[0].row(6);
+//        u_sol_->row(7) =
+//            blend_out * u_sol_->row(7) + (1 - blend_out) * u_prev_[1].row(7);
+//        u_sol_->row(0) =
+//            blend_in * u_sol_->row(0) + (1 - blend_in) * u_prev_[0].row(0);
+//        u_sol_->row(1) =
+//            blend_out * u_sol_->row(1) + (1 - blend_out) * u_prev_[1].row(1);
+//      }
     }
     u_prev_[fsm_state] = *u_sol_;
     initial_guess_x_[fsm_state] = result.GetSolution();
@@ -1137,17 +1137,17 @@ void OperationalSpaceControl::CalcOptimalInput(
       next_fsm_state = impact_info->GetCurrentContactMode();
     }
 
-    if (fsm_state(0) == 0) {
-      x_wo_spr[19] = 0;
-      x_wo_spr[21] = 0;
-      x_wo_spr[33] = 0;
-      x_wo_spr[41] = 0;
-    } else if (fsm_state(0) == 1) {
-      x_wo_spr[11] = 0;
-      x_wo_spr[13] = 0;
-      x_wo_spr[33] = 0;
-      x_wo_spr[41] = 0;
-    }
+//    if (fsm_state(0) == 0) {
+//      x_wo_spr[19] = 0;
+//      x_wo_spr[21] = 0;
+//      x_wo_spr[33] = 0;
+//      x_wo_spr[41] = 0;
+//    } else if (fsm_state(0) == 1) {
+//      x_wo_spr[11] = 0;
+//      x_wo_spr[13] = 0;
+//      x_wo_spr[33] = 0;
+//      x_wo_spr[41] = 0;
+//    }
     //    else {
     //      x_wo_spr[11] = 0;
     //      x_wo_spr[13] = 0;

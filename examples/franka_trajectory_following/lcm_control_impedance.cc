@@ -142,11 +142,11 @@ int DoMain(int argc, char* argv[]){
 
   /* -------------------------------------------------------------------------------------------*/
   /// Publish to ROS topic
-  ros::init(argc, argv, "test_ros_publisher_system");
-  ros::NodeHandle node_handle;
-  auto impedance_to_ros = builder.AddSystem<systems::TimestampedVectorToROS>(7);
-  auto ros_publisher = builder.AddSystem(
-      systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/franka_input", &node_handle, .0005));
+  // ros::init(argc, argv, "test_ros_publisher_system");
+  // ros::NodeHandle node_handle;
+  // auto impedance_to_ros = builder.AddSystem<systems::TimestampedVectorToROS>(7);
+  // auto ros_publisher = builder.AddSystem(
+  //     systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/franka_input", &node_handle, .0005));
   
   builder.Connect(controller->get_output_port(), impedance_to_ros->get_input_port());
   builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());

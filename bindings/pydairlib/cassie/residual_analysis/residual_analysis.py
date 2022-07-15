@@ -70,8 +70,8 @@ class CaaiseSystemTest():
 
         import pdb; pdb.set_trace()
 
-    def calc_mean_residuals_info_at_given_period(self, start_time, end_time, joint_name=None, residual_name="residual_for_best_spring_model"):
-        self.data_processor.calc_residuals_info_at_given_period(start_time, end_time, joint_name, residual_name)
+    def calc_mean_residuals_info_at_given_period(self, start_time, end_time, is_show_freq_plot=False,joint_name=None, residual_name="residual_for_best_spring_model"):
+        self.data_processor.calc_residuals_info_at_given_period(start_time, end_time, joint_name, residual_name, is_show_freq_plot=is_show_freq_plot)
 
     def simulation_test(self):
         raw_data = scipy.io.loadmat(self.data_path)
@@ -138,7 +138,7 @@ class CaaiseSystemTest():
         import pdb; pdb.set_trace()
 
 def main():
-    simulationDataTester = CaaiseSystemTest(date="03_15_22", log_num=11, is_new_plots=False)
+    simulationDataTester = CaaiseSystemTest(date="03_28_22", log_num="00", is_new_plots=False)
     simulationDataTester.hardware_test()
 
 if __name__ == "__main__":

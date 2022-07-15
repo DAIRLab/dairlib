@@ -1,5 +1,6 @@
 import cvxpy as cp
 import tqdm
+import matplotlib.pyplot as plt
 from utils import *
 class DataProcessor():
 
@@ -113,7 +114,7 @@ class DataProcessor():
 
         return residual, v_dot_of_best_spring_model, best_spring_forces
 
-    def calc_residuals_info_at_given_period(self, start_time, end_time, joints_name, residual_name):
+    def calc_residuals_info_at_given_period(self, start_time, end_time, joints_name, residual_name, is_show_freq_plot):
         
         residuals = {}
 
@@ -142,10 +143,20 @@ class DataProcessor():
                     residuals[key] = [single_residual_info[key]]
         
         print("time period:{} to {}".format(act_start_time, act_end_time))
-        print(f"{'joint_name':<28} {'mean absolute':>13} {'mean':>10} {'max abs':>10} ")
+        print(f"{'joint_name':<28} {'mean absolute':>13} {'mean':>10} {'max abs':>10} {'freq':>10} {'mag:':>10}")
         for key in residuals:
             residuals[key] = np.array(residuals[key])
-            print(f"{key:<28} {np.mean(np.abs(residuals[key])):13.2f} {np.mean(residuals[key]):7.2f} {np.max(np.abs(residuals[key])):10.2f}")
+            xf, freq = get_freq_domain(residuals[key])
+            print(f"{key:<28} {np.mean(np.abs(residuals[key])):13.2f} {np.mean(residuals[key]):7.2f} {np.max(np.abs(residuals[key])):10.2f} {freq[np.argmax(xf[1:])]:10.2f} {np.max(xf[1:]):10.2f}" )
+            if is_show_freq_plot:
+                plt.figure()
+                plt.plot(freq, xf)
+                plt.xlabel("freq")
+                plt.ylabel("mag")
+                plt.title(key)
+
+        if is_show_freq_plot:
+            plt.show()
 
     def process_data(self):
         processed_data = []

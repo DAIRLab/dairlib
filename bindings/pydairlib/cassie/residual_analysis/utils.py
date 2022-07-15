@@ -1,4 +1,15 @@
 import numpy as np
+import scipy.fft
+
+def get_freq_domain(signal, Ts=0.0005):
+    n = signal.shape[0]
+
+    signal_f = np.abs(scipy.fft.fft(signal))[0:n//2] / n
+    signal_f[1:] = signal_f[1:]*2
+
+    freq = scipy.fft.fftfreq(n, Ts)[:n//2]
+
+    return signal_f, freq
 
 def first_order_filter(orginal_signals, cutting_f=100, Ts=0.0005):
         a = np.exp(-2*np.pi*cutting_f*Ts)

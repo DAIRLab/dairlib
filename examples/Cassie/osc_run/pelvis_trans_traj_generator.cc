@@ -108,10 +108,10 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   double dt = 1e-3;
   Eigen::Vector3d breaks;
   if(t <= 0.3){
-      breaks << 0, 0.3, 0.4;
+      breaks << 0, 0.25, 0.4;
   }
   else{
-      breaks << 0.4, 0.7, 0.8;
+      breaks << 0.4, 0.65, 0.8;
   }
   MatrixXd samples(3, 3);
 //  MatrixXd samples_dot(3, 2);

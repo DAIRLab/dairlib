@@ -29,8 +29,8 @@ vel_scale_trans_sagital: 0.25
 vel_scale_trans_lateral: -0.15
 
 # SLIP parameters
-rest_length: 0.9
-stance_duration: 0.20
+rest_length: 0.85
+stance_duration: 0.3
 flight_duration: 0.1
 
 w_swing_toe: 1
@@ -43,7 +43,7 @@ hip_yaw_kd: 1
 # Foot placement parameters
 #footstep_offset: -0.05
 footstep_sagital_offset: -0.13
-footstep_lateral_offset: 0.045 # drake
+footstep_lateral_offset: 0.06 # drake
 mid_foot_height: 0.05
 FootstepKd:
   [ 0.3,     0,  0,
@@ -56,7 +56,7 @@ PelvisW:
 PelvisKp:
   [ 0,    0,    0,
     0,    0,    0,
-    0,    0,   65]
+    0,    0,   50]
 PelvisKd:
   [  0,    0,   0,
      0,    0,   0,
@@ -66,7 +66,7 @@ PelvisRotW:
    0,  1,   0,
    0,   0,  5]
 PelvisRotKp:
-  [100.,   0,   0,
+  [60.,   0,   0,
    0,  200.,   0,
    0,    0,  0.]
 PelvisRotKd:
@@ -86,8 +86,8 @@ SwingFootKd:
    0,   5.,   0,
    0,   0,  2.]
 LiftoffSwingFootW:
-  [5,    0,    0,
-   0,   5,    0,
+  [3,    0,    0,
+   0,   3,    0,
    0,    0,    1]
 LiftoffSwingFootKp:
   [50,    0,    0,

@@ -177,10 +177,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired(7) = finish(0);
     st_desired(8) = finish(1);
     st_desired(9) = ball_radius + table_offset;
-    st_desired(28) = traj(7);
-    st_desired(29) = traj(8);
-    st_desired(30) = traj(9);
-    st_desired.tail(3) << traj(7), traj(8), traj(9);
+    st_desired(28) = finish(0);
+    st_desired(29) = finish(1);
+    st_desired(30) = ball_radius + table_offset;
+    st_desired.tail(3) << finish(0), finish(1), ball_radius + table_offset;
 
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
@@ -216,7 +216,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd v_plant = robot_output->GetVelocities();
   Vector3d true_ball_xyz = q_plant.tail(3);    // extract true state for visualization purposes only
   // TODO: move this to a separate system
-  StateEstimation(q_plant, v_plant, end_effector, timestamp);
+  // StateEstimation (q_plant, v_plant, end_effector, timestamp);
 
 
   /// update franka position again to include noise

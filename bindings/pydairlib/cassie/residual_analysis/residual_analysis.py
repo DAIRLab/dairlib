@@ -138,7 +138,14 @@ class CaaiseSystemTest():
         import pdb; pdb.set_trace()
 
 def main():
-    simulationDataTester = CaaiseSystemTest(date="03_28_22", log_num="00", is_new_plots=False)
+    date = sys.argv[1]
+    log_num = sys.argv[2]
+    if len(sys.argv) == 4:
+        is_new_plots = sys.argv[3]
+    else:
+        is_new_plots = False
+
+    simulationDataTester = CaaiseSystemTest(date=date, log_num=log_num, is_new_plots=is_new_plots)
     simulationDataTester.hardware_test()
 
 if __name__ == "__main__":

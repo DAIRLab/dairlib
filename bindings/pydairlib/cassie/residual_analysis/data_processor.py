@@ -143,11 +143,11 @@ class DataProcessor():
                     residuals[key] = [single_residual_info[key]]
         
         print("time period:{} to {}".format(act_start_time, act_end_time))
-        print(f"{'joint_name':<28} {'mean absolute':>13} {'mean':>10} {'max abs':>10} {'freq':>10} {'mag:':>10}")
+        print(f"{'joint_name':<28} {'mean absolute':>13} {'mean':>10} {'max abs':>10} {'freq':>10} {'mag':>10}")
         for key in residuals:
             residuals[key] = np.array(residuals[key])
             xf, freq = get_freq_domain(residuals[key])
-            print(f"{key:<28} {np.mean(np.abs(residuals[key])):13.2f} {np.mean(residuals[key]):7.2f} {np.max(np.abs(residuals[key])):10.2f} {freq[np.argmax(xf[1:])]:10.2f} {np.max(xf[1:]):10.2f}" )
+            print(f"{key:<28} {np.mean(np.abs(residuals[key])):13.2f} {np.mean(residuals[key]):10.2f} {np.max(np.abs(residuals[key])):10.2f} {freq[np.argmax(xf[1:])+1]:10.2f} {np.max(xf[1:]):10.2f}" )
             if is_show_freq_plot:
                 plt.figure()
                 plt.plot(freq, xf)

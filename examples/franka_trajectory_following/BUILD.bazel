@@ -50,6 +50,7 @@ cc_binary(
         "//examples/franka_trajectory_following:c3_parameters",
         # "//systems/ros:ros_pubsub_systems",
         # "//systems/ros:c3_ros_conversions",
+        "//examples/franka_trajectory_following/systems:gravity_compensator",
         "//systems:system_utils",
         "@drake//:drake_shared_library",
     ],

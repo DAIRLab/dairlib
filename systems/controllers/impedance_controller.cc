@@ -201,7 +201,9 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   MatrixXd M_inv = M_franka.inverse();
   MatrixXd Lambda = (J_franka * M_inv * J_franka.transpose()).inverse(); // apparent end effector mass matrix
-  VectorXd  tau = J_franka.transpose() * Lambda * (K_*xtilde + B_*xtilde_dot) + C_franka - tau_g_franka;
+  // VectorXd tau = J_franka.transpose() * Lambda * (K_*xtilde + B_*xtilde_dot) + C_franka - tau_g_franka;
+  VectorXd tau = J_franka.transpose() * Lambda * (K_*xtilde + B_*xtilde_dot) + C_franka;
+
   
   // add feedforward force term if contact is desired
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);

@@ -22,6 +22,7 @@
 #include "systems/system_utils.h"
 
 #include "examples/franka_trajectory_following/c3_parameters.h"
+#include "examples/franka_trajectory_following/systems/gravity_compensator.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -118,6 +119,7 @@ int DoMain(int argc, char* argv[]){
   auto controller = builder.AddSystem<systems::controllers::ImpedanceController>(
       plant, plant_f, *context, context_f, K, B, K_null, B_null, qd,
       contact_geoms, num_friction_directions, moving_offset, pushing_offset);
+  auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
 
   /* -------------------------------------------------------------------------------------------*/
 
@@ -125,7 +127,8 @@ int DoMain(int argc, char* argv[]){
     controller->get_input_port(0));
   
   auto control_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
-  builder.Connect(controller->get_output_port(), control_sender->get_input_port(0));
+  builder.Connect(controller->get_output_port(), gravity_compensator->get_input_port());
+  builder.Connect(gravity_compensator->get_output_port(), control_sender->get_input_port());
 
   auto control_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(

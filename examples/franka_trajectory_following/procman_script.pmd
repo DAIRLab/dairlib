@@ -4,25 +4,28 @@ group "1.director" {
         host = "localhost";
     }
 }
-cmd "2.C3" {
-    exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo_cc";
-    host = "localhost";
-}
-cmd "3.franka" {
-    exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm_cc";
-    host = "localhost";
-}
-cmd "4.impedance controller" {
-    exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence_cc";
-    host = "localhost";
+
+group "2.C3 Sim" {
+  cmd "1.C3" {
+      exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo_cc";
+      host = "localhost";
+  }
+  cmd "2.franka" {
+      exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm_cc";
+      host = "localhost";
+  }
+  cmd "3.impedance controller" {
+      exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence_cc";
+      host = "localhost";
+  }
+
+  cmd "4.sim visualizer" {
+      exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_OUTPUT";
+      host = "localhost";
+  }
 }
 
-cmd "5.visualizer" {
-    exec = "bazel-bin/examples/franka_trajectory_following/visualizer";
-    host = "localhost";
-}
-
-cmd "6.lcmspy" {
+cmd "3.lcmspy" {
     exec = "bazel-bin/lcmtypes/dair-lcm-spy";
     host = "localhost";
 }

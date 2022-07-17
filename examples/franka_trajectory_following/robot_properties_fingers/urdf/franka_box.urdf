@@ -5,7 +5,7 @@
 <!-- =================================================================================== -->
 <robot xmlns:drake="http://drake.mit.edu" name="panda">
   <material name="black">
-    <color rgba="0.27 0.27 0.27 1"/>
+    <color rgba="0.3 0.3 0.3 1"/>
   </material>
 
   <link name="panda_link0">

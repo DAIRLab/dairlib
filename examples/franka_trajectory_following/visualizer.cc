@@ -18,6 +18,11 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "examples/franka_trajectory_following/c3_parameters.h"
 
+DEFINE_string(channel, "FRANKA_OUTPUT",
+              "LCM channel for receiving state. "
+              "Use FRANKA_OUTPUT to get state from simulator, and "
+              "use FRANKA_STATE_ESTIMATE to get state from state estimator");
+
 namespace dairlib {
 
 using dairlib::systems::RobotOutputReceiver;
@@ -67,7 +72,7 @@ int do_main(int argc, char* argv[]) {
   // Create state receiver.
   auto state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          "FRANKA_OUTPUT", lcm));
+          FLAGS_channel, lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
   builder.Connect(*state_sub, *state_receiver);
 

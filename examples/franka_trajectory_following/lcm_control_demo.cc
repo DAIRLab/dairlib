@@ -262,7 +262,7 @@ int DoMain(int argc, char* argv[]){
       control_publisher->get_input_port());
 
   auto diagram = builder.Build();
-  DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_lcm_control_demo");
+  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_lcm_control_demo");
   auto context_d = diagram->CreateDefaultContext();
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

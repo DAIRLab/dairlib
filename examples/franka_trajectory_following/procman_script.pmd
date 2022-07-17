@@ -16,7 +16,13 @@ cmd "4.impedance controller" {
     exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence_cc";
     host = "localhost";
 }
-cmd "5.lcmspy" {
+
+cmd "5.visualizer" {
+    exec = "bazel-bin/examples/franka_trajectory_following/visualizer";
+    host = "localhost";
+}
+
+cmd "6.lcmspy" {
     exec = "bazel-bin/lcmtypes/dair-lcm-spy";
     host = "localhost";
 }

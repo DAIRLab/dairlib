@@ -156,7 +156,7 @@ int DoMain(int argc, char* argv[]){
   // builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());
 
   auto diagram = builder.Build();
-  DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_lcm_control_impedance");
+  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_lcm_control_impedance");
 
 
   auto context_d = diagram->CreateDefaultContext();

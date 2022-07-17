@@ -12,4 +12,5 @@ attic/multibody/solver_log/
 *.csv
 /examples/Cassie/saved_trajectories/
 examples/trifinger/env/
+examples/franka_trajectory_following/diagram_*.ps
 log.txt

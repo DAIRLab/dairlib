@@ -74,6 +74,23 @@ cc_binary(
             "@drake//manipulation/models/franka_description:models"]
 )
 
+cc_binary(
+    name = "visualizer",
+    srcs = ["visualizer.cc"],
+    deps = [
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//examples/franka_trajectory_following:c3_parameters",
+        "//systems/primitives",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    data = [":trifinger_urdf",
+        "@drake//manipulation/models/franka_description:models"]
+)
+
 py_binary(
     name = "simulate_franka_lcm",
     srcs = ["simulate_franka_lcm.py"],

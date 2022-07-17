@@ -75,7 +75,7 @@ int DoMain(int argc, char* argv[]){
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
     &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
     1/output_dt, true, 0.0);
-  drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+  // drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -91,7 +91,7 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(mux->get_output_port(0), logger->get_input_port(0));
 
   auto diagram = builder.Build();
-  DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_simulate_franka_lcm ");
+  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_simulate_franka_lcm");
 
   drake::systems::Simulator<double> simulator(*diagram);
   

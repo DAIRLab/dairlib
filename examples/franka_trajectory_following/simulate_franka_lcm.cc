@@ -22,6 +22,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_c3.hpp"
 #include "multibody/multibody_utils.h"
+#include "systems/system_utils.h"
 
 #include "examples/franka_trajectory_following/c3_parameters.h"
 #include "systems/robot_lcm_systems.h"
@@ -90,6 +91,7 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(mux->get_output_port(0), logger->get_input_port(0));
 
   auto diagram = builder.Build();
+  DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_simulate_franka_lcm ");
 
   drake::systems::Simulator<double> simulator(*diagram);
   

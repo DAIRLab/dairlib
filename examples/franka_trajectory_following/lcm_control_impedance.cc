@@ -19,16 +19,17 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_c3.hpp"
 #include "multibody/multibody_utils.h"
+#include "systems/system_utils.h"
 
 #include "examples/franka_trajectory_following/c3_parameters.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 
-#include "ros/ros.h"
-#include "std_msgs/Float64MultiArray.h"
-#include "systems/ros/ros_publisher_system.h"
-#include "systems/ros/c3_ros_conversions.h"
+// #include "ros/ros.h"
+// #include "std_msgs/Float64MultiArray.h"
+// #include "systems/ros/ros_publisher_system.h"
+// #include "systems/ros/c3_ros_conversions.h"
 
 namespace dairlib {
 
@@ -148,10 +149,12 @@ int DoMain(int argc, char* argv[]){
   // auto ros_publisher = builder.AddSystem(
   //     systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/franka_input", &node_handle, .0005));
   
-  builder.Connect(controller->get_output_port(), impedance_to_ros->get_input_port());
-  builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());
+  // builder.Connect(controller->get_output_port(), impedance_to_ros->get_input_port());
+  // builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());
 
   auto diagram = builder.Build();
+  DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_lcm_control_impedance");
+
 
   auto context_d = diagram->CreateDefaultContext();
   auto& receiver_context = diagram->GetMutableSubsystemContext(*state_receiver, context_d.get());

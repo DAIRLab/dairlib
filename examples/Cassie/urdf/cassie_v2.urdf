@@ -615,7 +615,7 @@
     <child link="yaw_left" />
     <axis xyz="0 0 1" />
     <limit lower="-0.262" upper="0.393" effort="112.5"/>
-    <dynamics damping="1" />
+    <dynamics damping="2" />
   </joint>
 
   <joint name="hip_roll_right" type="revolute">
@@ -624,7 +624,7 @@
     <child link="yaw_right" />
     <axis xyz="0 0 1" />
     <limit lower="-0.393" upper="0.262" effort="112.5"/>
-    <dynamics damping="1" />
+    <dynamics damping="2" />
   </joint>
 
 

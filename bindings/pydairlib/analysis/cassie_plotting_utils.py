@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 
 # lcmtype imports
 import dairlib
-# import archive.dairlib
 import drake
 
 # dairlib python binding imports

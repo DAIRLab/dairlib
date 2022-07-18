@@ -169,7 +169,7 @@ int DoMain(int argc, char* argv[]) {
       plant, fsm_states, state_durations, 0.0, gains.impact_threshold, gains.impact_tau);
 
   /**** Initialize all the leaf systems ****/
-  drake::lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_pub =
@@ -419,8 +419,8 @@ int DoMain(int argc, char* argv[]) {
 
 //  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
 //  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});
-  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
-  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+//  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+//  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
 //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
 //  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
 

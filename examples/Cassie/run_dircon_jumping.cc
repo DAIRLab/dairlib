@@ -567,8 +567,8 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   VectorXd u_min(n_u);
   VectorXd u_max(n_u);
   for (drake::multibody::JointActuatorIndex i(0); i < n_u; ++i) {
-    u_min(i) = 0.75 * -plant.get_joint_actuator(i).effort_limit();
-    u_max(i) = 0.75 * plant.get_joint_actuator(i).effort_limit();
+    u_min[i] = 0.75 * -plant.get_joint_actuator(i).effort_limit();
+    u_max[i] = 0.75 * plant.get_joint_actuator(i).effort_limit();
   }
   for (int i = 0; i < trajopt->N(); i++) {
     auto ui = trajopt->input(i);

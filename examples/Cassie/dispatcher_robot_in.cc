@@ -67,7 +67,7 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::lcm::DrakeLcm lcm_local;
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
   DiagramBuilder<double> builder;
@@ -126,7 +126,7 @@ int do_main(int argc, char* argv[]) {
   int nu = plant.num_actuators();
   VectorXd input_limit(nu);
   for (drake::multibody::JointActuatorIndex i(0); i < nu; ++i) {
-    input_limit(i) = plant.get_joint_actuator(i).effort_limit();
+    input_limit[i] = plant.get_joint_actuator(i).effort_limit();
   }
 
   auto input_supervisor = builder.AddSystem<InputSupervisor>(

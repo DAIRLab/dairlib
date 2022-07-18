@@ -1,3 +1,5 @@
+import lcm
+
 def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_callback, *args,
                  **kwargs):
     """
@@ -43,6 +45,7 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
 
 def get_log_summary(lcm_log):
     channel_names_and_msg_counts = {}
+    import pdb; pdb.set_trace()
     for event in lcm_log:
         if event.channel not in channel_names_and_msg_counts:
             channel_names_and_msg_counts[event.channel] = 1
@@ -63,14 +66,14 @@ def passthrough_callback(data, *args, **kwargs):
     return data
 
 
-def main():
-    import lcm
-    import sys
-
-    logfile = sys.argv[1]
-    log = lcm.EventLog(logfile, "r")
-    print_log_summary(logfile, log)
-
-
-if __name__ == "__main__":
-    main()
+# def main():
+#     import lcm
+#     import sys
+#
+#     logfile = sys.argv[1]
+#     log = lcm.EventLog(logfile, "r")
+#     print_log_summary(logfile, log)
+#
+#
+# if __name__ == "__main__":
+#     main()

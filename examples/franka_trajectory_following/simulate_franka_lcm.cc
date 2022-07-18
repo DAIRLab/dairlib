@@ -1,6 +1,9 @@
 #include <vector>
 #include <math.h>
 
+#include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/meshcat_visualizer_params.h"
+
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -75,8 +78,15 @@ int DoMain(int argc, char* argv[]){
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
     &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
     1/output_dt, true, 0.0);
-  // drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
-  
+
+  /// meshcat visualizer
+  drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+  drake::geometry::MeshcatVisualizerParams params;
+  params.publish_period = 1.0/30.0;
+  auto meshcat = std::make_shared<drake::geometry::Meshcat>();
+  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+      &builder, scene_graph, meshcat, std::move(params));
+
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();

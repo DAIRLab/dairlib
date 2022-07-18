@@ -50,7 +50,7 @@ degree_increment: 20
 time_increment: 4
 hold_order: 1 # 0 for zero order hold, 1 for first order hold
 
-c3_sub_timeout: 0.05
+c3_sub_timeout: 0.1   # no longer used
 realtime_rate: 1.0
 
 ball_radius: 0.0315           # changes need to be consistent with urdf

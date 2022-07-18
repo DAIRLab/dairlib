@@ -163,11 +163,44 @@ int DoMain(int argc, char* argv[]){
   auto& receiver_context = diagram->GetMutableSubsystemContext(*state_receiver, context_d.get());
   (void) receiver_context; // suppressed unused variable warning
 
-  std::cout << "Waiting for first c3 lcm message" << std::endl;
-  c3_subscriber->WaitForMessage(0, nullptr, param.c3_sub_timeout);
+  // std::cout << "Waiting for first c3 lcm message" << std::endl;
+  // c3_subscriber->WaitForMessage(0, nullptr, param.c3_sub_timeout);
 
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &drake_lcm, std::move(diagram), state_receiver, "FRANKA_OUTPUT", true);
+
+  /// initialize message
+  std::vector<double> msg_data(34, 0);
+  msg_data[0] = param.initial_start(0);
+  msg_data[1] = param.initial_start(1);
+  msg_data[2] = param.initial_start(2);
+  msg_data[3] = 1;
+  msg_data[7] = param.traj_radius * sin(M_PI * param.phase / 180.0) + param.x_c;
+  msg_data[8] = param.traj_radius * cos(M_PI * param.phase / 180.0) + param.y_c;
+  msg_data[9] = param.ball_radius + param.table_offset;
+  msg_data[28] = msg_data[7];
+  msg_data[29] = msg_data[8];
+  msg_data[30] = msg_data[9];
+  msg_data[31] = msg_data[7];
+  msg_data[32] = msg_data[8];
+  msg_data[33] = msg_data[9];
+
+  dairlib::lcmt_c3 init_msg;
+  init_msg.data = msg_data;
+  init_msg.data_size = 34;
+  init_msg.utime = 0.0;
+
+  /// assign initial message
+  auto& diagram_context = loop.get_diagram_mutable_context();
+  auto& ik_subscriber_context =
+      loop.get_diagram()->GetMutableSubsystemContext(*c3_subscriber,
+                                                      &diagram_context);
+  // Note that currently the LcmSubscriber stores the lcm message in the first
+  // state of the leaf system (we hard coded index 0 here)
+  auto& mutable_state =
+      ik_subscriber_context
+          .get_mutable_abstract_state<dairlib::lcmt_c3>(0);
+  mutable_state = init_msg;
   
   loop.Simulate(std::numeric_limits<double>::infinity());
 

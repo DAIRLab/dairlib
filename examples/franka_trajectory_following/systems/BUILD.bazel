@@ -15,3 +15,17 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "c3_trajectory_converter",
+    srcs = [
+        "c3_trajectory_converter.cc",
+    ],
+    hdrs = [
+        "c3_trajectory_converter.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

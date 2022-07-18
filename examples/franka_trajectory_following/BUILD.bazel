@@ -75,6 +75,26 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_impedance_experiment",
+    srcs = ["run_impedance_experiment.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:impedance_controller",
+        "//examples/franka_trajectory_following:c3_parameters",
+        # "//systems/ros:ros_pubsub_systems",
+        # "//systems/ros:c3_ros_conversions",
+        "//examples/franka_trajectory_following/systems:gravity_compensator",
+        "//examples/franka_trajectory_following/systems:c3_trajectory_converter",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+    ],
+    data = [":trifinger_urdf",
+            "@drake//manipulation/models/franka_description:models"]
+)
+
+cc_binary(
     name = "visualizer",
     srcs = ["visualizer.cc"],
     deps = [

@@ -65,7 +65,8 @@ def main():
 
     contact_output = get_log_data(log,  # log
                                   cassie_plots.cassie_contact_channels,  # lcm channels
-                                  plot_config.end_time,
+                                  plot_config.start_time,
+                                  plot_config.duration,
                                   mbp_plots.load_is_contact_channels,  # processing callback
                                   'CASSIE_CONTACT_DISPATCHER')  # processing callback arguments
     print("Finish parse logging")

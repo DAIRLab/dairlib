@@ -22,9 +22,9 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
     start_timestamp = first_timestamp + start_time * 1e6
     print('Start time: ' + str(start_time))
     print('Duration: ' + str(duration))
-    lcm_log.seek_to_timestamp(start_timestamp)
+    lcm_log.seek_to_timestamp(int(start_timestamp))
     t = lcm_log.read_next_event().timestamp
-    lcm_log.seek_to_timestamp(start_timestamp)
+    lcm_log.seek_to_timestamp(int(start_timestamp))
     event = lcm_log.read_next_event()
     while event:
         if event.channel in lcm_channels:

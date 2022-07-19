@@ -36,7 +36,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     const std::unordered_map<
         int, std::vector<std::pair<const Eigen::Vector3d,
                                    const drake::multibody::Frame<double>&>>>&
-        feet_contact_points,
+    feet_contact_points,
     bool relative_pelvis)
     : plant_(plant),
       context_(context),
@@ -49,14 +49,14 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
   this->set_name("pelvis_trans_traj_generator");
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                        "x, u, t", OutputVector<double>(plant_.num_positions(),
-                                                        plant_.num_velocities(),
-                                                        plant_.num_actuators()))
-                    .get_index();
+          "x, u, t", OutputVector<double>(plant_.num_positions(),
+                                          plant_.num_velocities(),
+                                          plant_.num_actuators()))
+      .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   clock_port_ = this->DeclareVectorInputPort("t_clock", BasicVector<double>(1))
-                    .get_index();
+      .get_index();
   contact_scheduler_port_ =
       this->DeclareVectorInputPort("t_mode", BasicVector<double>(2))
           .get_index();
@@ -130,21 +130,17 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   } else if (fsm_state == 1) {
     y_dist_des = 0.15;
   }
-  //  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
   //   samples << 0, 0, 0, y_dist_des, y_dist_des,  y_dist_des, rest_length_,
   //   rest_length_ + 0.05, rest_length_;
-  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ + 0.1;
+//  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ + 0.05;
   //  samples_dot << 0, 0, 0, 0, 0.25, 0.0;
+  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
   //   return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
-  //   return PiecewisePolynomial<double>::Cu(breaks, samples);
   //  return PiecewisePolynomial<double>::CubicHermite(
   //      breaks, samples, samples_dot);
   //  return PiecewisePolynomial<double>::CubicShapePreserving(breaks, samples);
-
-  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-      breaks, samples, VectorXd::Zero(3), VectorXd::Zero(3));
-  //  return PiecewisePolynomial<double>::CubicHermite(
-  //      breaks, samples, samples_dot);
+//  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+//      breaks, samples, VectorXd::Zero(3), VectorXd::Zero(3));
 }
 
 void PelvisTransTrajGenerator::CalcTraj(
@@ -167,7 +163,7 @@ void PelvisTransTrajGenerator::CalcTraj(
   //  std::cout << "mode_length end: " << mode_length[1] << std::endl;
 
   auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+      (PiecewisePolynomial<double>*) dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   //  const drake::VectorX<double>& x = robot_output->GetState();
   if (fsm_state == 0 || fsm_state == 1) {

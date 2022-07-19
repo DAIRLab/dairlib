@@ -31,7 +31,7 @@ fsm_state_names: ['Left Stance (LS)', 'Right Stance (RS)', 'Left Flight (LF)', '
 # Foot position plots
 foot_positions_to_plot: [ 'right', 'left' ]
 #foot_positions_to_plot: []
-foot_xyz_to_plot: { 'right': [0], 'left': [0] }
+foot_xyz_to_plot: { 'right': [2], 'left': [2] }
 #foot_xyz_to_plot: { }
 pt_on_foot_to_plot: 'rear'  # takes value 'front', 'mid', or 'rear'
 

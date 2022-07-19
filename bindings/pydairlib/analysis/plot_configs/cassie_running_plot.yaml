@@ -1,7 +1,7 @@
 # LCM channels to read data from
 # channel_x: "CASSIE_STATE_SIMULATION"
 channel_x: "CASSIE_STATE_DISPATCHER"
-channel_u: "OSC_RUNNING"
+channel_u: "OSC_WALKING"
 channel_osc: "OSC_DEBUG_RUNNING"
 use_archived_lcmtypes: false
 

@@ -260,13 +260,32 @@ def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
     return osc_data
 
 
+def generate_non_data_osc(data):
+    t_osc = []
+    u_sol = []
+    dv_sol = []
+
+    for msg in data:
+        t_osc.append(msg.utime / 1e6)
+        u_sol.append(np.zeros(10))
+        dv_sol.append(np.zeros(22))
+
+    return {'t_osc': np.array(t_osc),
+            'u_sol': np.array(u_sol),
+            'dv_sol': np.array(dv_sol),
+            # 'osc_output': osc_output
+            }
+
 def load_default_channels(data, plant, state_channel, input_channel,
                           osc_debug_channel):
     robot_output = process_state_channel(data[state_channel], plant)
     robot_input = process_effort_channel(data[input_channel], plant)
-    osc_debug = process_osc_channel(data[osc_debug_channel])
-    osc_debug = permute_osc_joint_ordering(
-        osc_debug, data[state_channel][0], plant)
+    try:
+        osc_debug = process_osc_channel(data[osc_debug_channel])
+        osc_debug = permute_osc_joint_ordering(
+            osc_debug, data[state_channel][0], plant)
+    except:
+        osc_debug = generate_non_data_osc(data[state_channel])
 
     return robot_output, robot_input, osc_debug
 

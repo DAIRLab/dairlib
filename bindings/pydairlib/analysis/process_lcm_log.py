@@ -32,8 +32,11 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
                 data_to_process[event.channel].append(
                     lcm_channels[event.channel].decode(event.data))
             else:
-                data_to_process[event.channel] = \
-                    [lcm_channels[event.channel].decode(event.data)]
+                try:
+                    data_to_process[event.channel] = \
+                        [lcm_channels[event.channel].decode(event.data)]
+                except:
+                    pass
         if event.eventnum % 50000 == 0:
             print(f'processed {(event.timestamp - t) * 1e-6:.1f}'
                   f' seconds of log data')

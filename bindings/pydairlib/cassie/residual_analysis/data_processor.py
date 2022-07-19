@@ -114,6 +114,46 @@ class DataProcessor():
 
         return residual, v_dot_of_best_spring_model, best_spring_forces
 
+    def calc_spring_constant(self, q, best_spring_forces):
+        
+        n = q.shape[0]
+
+        print("begin to fix the spring model:")
+
+        A_knee_left = np.ones((n, 2))
+        b_knee_left = np.zeros(n)
+        A_knee_right = np.ones((n, 2))
+        b_knee_right = np.zeros(n)
+        A_ankle_left = np.ones((n, 2))
+        b_ankle_left = np.zeros(n)
+        A_ankle_right = np.ones((n,2))
+        b_ankle_right = np.zeros(n)
+
+
+        for i in range(n):
+            A_knee_left [i,0] = q[i, self.pos_map["knee_joint_left"]]
+            b_knee_left[i] = best_spring_forces[i,0]
+            A_knee_right[i,0] = q[i, self.pos_map["knee_joint_right"]] 
+            b_knee_right[i] = best_spring_forces[i,1]
+            A_ankle_left[i,0] = q[i, self.pos_map["ankle_spring_joint_left"]]
+            b_ankle_left[i] = best_spring_forces[i,2]
+            A_ankle_right[i,0] = q[i, self.pos_map["ankle_spring_joint_right"]]
+            b_ankle_right[i] = best_spring_forces[i,3]
+
+        knee_left_sol = np.linalg.inv(A_knee_left.T @ A_knee_left) @ A_knee_left.T @ b_knee_left
+        knee_right_sol = np.linalg.inv(A_knee_right.T @ A_knee_right) @ A_knee_right.T @ b_knee_right 
+        ankle_left_sol = np.linalg.inv(A_ankle_left.T @ A_ankle_left) @ A_ankle_left.T @ b_ankle_left
+        ankle_right_sol = np.linalg.inv(A_ankle_right.T @ A_ankle_right) @ A_ankle_right.T @ b_ankle_right
+
+        print(f"{'Joint name':>15} {'K':>10} {'Offset':>10}")
+
+        print(f"{'Knee left':<15} {knee_left_sol[0]:>10.2f} {knee_left_sol[1]:>10.2f}")
+        print(f"{'Knee right':<15} {knee_right_sol[0]:>10.2f} {knee_right_sol[1]:>10.2f}")
+        print(f"{'Ankle left':<15} {ankle_left_sol[0]:>10.2f} {ankle_left_sol[1]:>10.2f}")
+        print(f"{'Ankle left':<15} {ankle_right_sol[0]:>10.2f} {ankle_right_sol[1]:>10.2f}")
+
+        import pdb; pdb.set_trace()
+
     def calc_residuals_info_at_given_period(self, start_time, end_time, joints_name, residual_name, is_show_freq_plot):
         
         residuals = {}

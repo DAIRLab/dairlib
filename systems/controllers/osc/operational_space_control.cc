@@ -48,8 +48,8 @@ using multibody::SetVelocitiesIfNew;
 using multibody::WorldPointEvaluator;
 
 OperationalSpaceControl::OperationalSpaceControl(
-    const MultibodyPlant<double> &plant_w_spr,
-    const MultibodyPlant<double> &plant_wo_spr,
+    const MultibodyPlant<double>& plant_w_spr,
+    const MultibodyPlant<double>& plant_wo_spr,
     drake::systems::Context<double> *context_w_spr,
     drake::systems::Context<double> *context_wo_spr,
     bool used_with_finite_state_machine, double qp_time_limit)
@@ -107,7 +107,7 @@ OperationalSpaceControl::OperationalSpaceControl(
           &OperationalSpaceControl::CheckTracking)
       .get_index();
 
-  const std::map<string, int> &vel_map_wo_spr =
+  const std::map<string, int>& vel_map_wo_spr =
       multibody::MakeNameToVelocitiesMap(plant_wo_spr);
 
   // Initialize the mapping from spring to no spring
@@ -128,7 +128,7 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   n_revolute_joints_ = 0;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
-    const drake::multibody::Joint<double> &joint = plant_wo_spr_.get_joint(i);
+    const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
     if (joint.type_name() == "revolute") {
       n_revolute_joints_ += 1;
     }
@@ -137,7 +137,7 @@ OperationalSpaceControl::OperationalSpaceControl(
   VectorXd q_max(n_revolute_joints_);
   int floating_base_offset = n_v_ - n_revolute_joints_;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
-    const drake::multibody::Joint<double> &joint = plant_wo_spr_.get_joint(i);
+    const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
     if (joint.type_name() == "revolute") {
       q_min(vel_map_wo_spr.at(joint.name() + "dot") - floating_base_offset) =
           plant_wo_spr.get_joint(i).position_lower_limits()[0];
@@ -174,7 +174,7 @@ void OperationalSpaceControl::SetUpDoubleSupportPhaseBlending(
 }
 
 void OperationalSpaceControl::AddInputCostByJointAndFsmState(
-    const std::string &joint_u_name, int fsm, double w) {
+    const std::string& joint_u_name, int fsm, double w) {
   if (W_input_.size() == 0) {
     W_input_ = Eigen::MatrixXd::Zero(n_u_, n_u_);
   }
@@ -242,7 +242,7 @@ void OperationalSpaceControl::AddTrackingData(
   }
 }
 void OperationalSpaceControl::AddConstTrackingData(
-    std::unique_ptr<OscTrackingData> tracking_data, const VectorXd &v,
+    std::unique_ptr<OscTrackingData> tracking_data, const VectorXd& v,
     double t_lb, double t_ub) {
   tracking_data_vec_->push_back(std::move(tracking_data));
   fixed_position_vec_.push_back(v);
@@ -277,7 +277,7 @@ void OperationalSpaceControl::Build() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
-  for (auto &tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : *tracking_data_vec_) {
     tracking_data->CheckOscTrackingData();
     DRAKE_DEMAND(&tracking_data->plant_w_spr() == &plant_w_spr_);
     DRAKE_DEMAND(&tracking_data->plant_wo_spr() == &plant_wo_spr_);
@@ -450,28 +450,38 @@ void OperationalSpaceControl::Build() {
           .get());
 
   // (Testing) 6. contact force blending
-  if (ds_duration_ > 0) {
-    epsilon_blend_ =
-        prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
-    blend_constraint_ =
-        prog_
-            ->AddLinearEqualityConstraint(
-                MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim), VectorXd::Zero(1),
-                {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
-                 lambda_c_.segment(kSpaceDim * 1 + 2, 1),
-                 lambda_c_.segment(kSpaceDim * 2 + 2, 1),
-                 lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
-            .evaluator()
-            .get();
-    /// Soft constraint version
-    //  DRAKE_DEMAND(w_blend_constraint_ > 0);
-    //      prog_->AddQuadraticCost(
-    //          w_blend_constraint_ *
-    //              MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
-    //          VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
-    /// hard constraint version
-    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
-  }
+//  if (ds_duration_ > 0) {
+//    epsilon_blend_ =
+//        prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
+//    blend_constraint_ =
+//        prog_
+//            ->AddLinearEqualityConstraint(
+//                MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim), VectorXd::Zero(1),
+//                {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+//                 lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+//                 lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+//                 lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
+//            .evaluator()
+//            .get();
+  /// Soft constraint version
+  //  DRAKE_DEMAND(w_blend_constraint_ > 0);
+  //      prog_->AddQuadraticCost(
+  //          w_blend_constraint_ *
+  //              MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
+  //          VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
+  /// hard constraint version
+//    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
+//  }
+  blend_constraint_ =
+      prog_
+          ->AddBoundingBoxConstraint(
+              VectorXd::Zero(4), VectorXd::Zero(4),
+              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
+          .evaluator()
+          .get();
 
   for (int i = -1; i < 5; ++i) {
     solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
@@ -479,7 +489,7 @@ void OperationalSpaceControl::Build() {
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
-    const drake::systems::Context<double> &context,
+    const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double> *discrete_state) const {
   const BasicVector<double> *fsm_output =
       (BasicVector<double> *) this->EvalVectorInput(context, fsm_port_);
@@ -501,8 +511,8 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 }
 
 VectorXd OperationalSpaceControl::SolveQp(
-    const VectorXd &x_w_spr, const VectorXd &x_wo_spr,
-    const drake::systems::Context<double> &context, double t, int fsm_state,
+    const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
+    const drake::systems::Context<double>& context, double t, int fsm_state,
     double time_since_last_state_switch, double alpha,
     int next_fsm_state) const {
   // Get active contact indices
@@ -687,12 +697,12 @@ VectorXd OperationalSpaceControl::SolveQp(
             time_since_last_state_switch, fsm_state, v_proj);
       } else {
         // Read in traj from input port
-        const string &traj_name = tracking_data->GetName();
+        const string& traj_name = tracking_data->GetName();
         int port_index = traj_name_to_port_index_map_.at(traj_name);
         const drake::AbstractValue *input_traj =
             this->EvalAbstractInput(context, port_index);
         DRAKE_DEMAND(input_traj != nullptr);
-        const auto &traj =
+        const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         // Update
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
@@ -700,10 +710,10 @@ VectorXd OperationalSpaceControl::SolveQp(
                               time_since_last_state_switch, fsm_state, v_proj);
       }
 
-      const VectorXd &ddy_t = tracking_data->GetYddotCommand();
-      const MatrixXd &W = tracking_data->GetWeight();
-      const MatrixXd &J_t = tracking_data->GetJ();
-      const VectorXd &JdotV_t = tracking_data->GetJdotTimesV();
+      const VectorXd& ddy_t = tracking_data->GetYddotCommand();
+      const MatrixXd& W = tracking_data->GetWeight();
+      const MatrixXd& J_t = tracking_data->GetJ();
+      const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       const VectorXd constant_term = (JdotV_t - ddy_t);
       //      tracking_cost_.at(i)->UpdateCoefficients(
       //          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t -
@@ -743,34 +753,39 @@ VectorXd OperationalSpaceControl::SolveQp(
   joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
   // (Testing) 6. blend contact forces during double support phase
-  if (ds_duration_ > 0) {
-    MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
-    if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
-        ds_states_.end()) {
-      double alpha_left = 0;
-      double alpha_right = 0;
-      if (prev_distinct_fsm_state_ == right_support_state_) {
-        // We want left foot force to gradually increase
-        alpha_left = -1;
-        alpha_right = time_since_last_state_switch /
-            (ds_duration_ - time_since_last_state_switch);
-
-      } else if (prev_distinct_fsm_state_ == left_support_state_) {
-        alpha_left = time_since_last_state_switch /
-            (ds_duration_ - time_since_last_state_switch);
-        alpha_right = -1;
-      }
-      A(0, 0) = alpha_left / 2;
-      A(0, 1) = alpha_left / 2;
-      A(0, 2) = alpha_right / 2;
-      A(0, 3) = alpha_right / 2;
-      A(0, 4) = 1;
-      A(0, 5) = 1;
-      A(0, 6) = 1;
-      A(0, 7) = 1;
-    }
-    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
-  }
+//  if (ds_duration_ > 0) {
+//    MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
+//    if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
+//        ds_states_.end()) {
+//      double alpha_left = 0;
+//      double alpha_right = 0;
+//      if (prev_distinct_fsm_state_ == right_support_state_) {
+//        // We want left foot force to gradually increase
+//        alpha_left = -1;
+//        alpha_right = time_since_last_state_switch /
+//            (ds_duration_ - time_since_last_state_switch);
+//
+//      } else if (prev_distinct_fsm_state_ == left_support_state_) {
+//        alpha_left = time_since_last_state_switch /
+//            (ds_duration_ - time_since_last_state_switch);
+//        alpha_right = -1;
+//      }
+//      A(0, 0) = alpha_left / 2;
+//      A(0, 1) = alpha_left / 2;
+//      A(0, 2) = alpha_right / 2;
+//      A(0, 3) = alpha_right / 2;
+//      A(0, 4) = 1;
+//      A(0, 5) = 1;
+//      A(0, 6) = 1;
+//      A(0, 7) = 1;
+//    }
+  VectorXd normals = VectorXd(4);
+  normals << lambda_c_sol_->segment(kSpaceDim * 0 + 2, 1),
+      lambda_c_sol_->segment(kSpaceDim * 1 + 2, 1),
+      lambda_c_sol_->segment(kSpaceDim * 2 + 2, 1),
+      lambda_c_sol_->segment(kSpaceDim * 3 + 2, 1);
+  blend_constraint_->UpdateCoefficients(MatrixXd::Identity(4, 4), normals - 15 * VectorXd::Ones(4), normals + 15 * VectorXd::Ones(4));
+//  }
 
   // test joint-level input cost by fsm state
   if (!fsm_to_w_input_map_.empty()) {
@@ -868,7 +883,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     *u_prev_ = 0.9 * *u_sol_ + VectorXd::Random(n_u_);
   }
 
-  for (auto &tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {
       tracking_data->StoreYddotCommandSol(*dv_sol_);
     }
@@ -877,9 +892,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   return *u_sol_;
 }  // namespace dairlib::systems::controllers
 void OperationalSpaceControl::UpdateImpactInvariantProjection(
-    const VectorXd &x_w_spr, const VectorXd &x_wo_spr,
-    const Context<double> &context, double t, double t_since_last_state_switch,
-    int fsm_state, int next_fsm_state, const MatrixXd &M) const {
+    const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
+    const Context<double>& context, double t, double t_since_last_state_switch,
+    int fsm_state, int next_fsm_state, const MatrixXd& M) const {
   auto map_iterator = contact_indices_map_.find(next_fsm_state);
   if (map_iterator == contact_indices_map_.end()) {
     ii_lambda_sol_ = VectorXd::Zero(n_c_ + n_h_);
@@ -921,11 +936,11 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
             t_since_last_state_switch, fsm_state, v_proj);
       } else {
         // Read in traj from input port
-        const string &traj_name = tracking_data->GetName();
+        const string& traj_name = tracking_data->GetName();
         int port_index = traj_name_to_port_index_map_.at(traj_name);
         const drake::AbstractValue *input_traj =
             EvalAbstractInput(context, port_index);
-        const auto &traj =
+        const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t,
@@ -937,7 +952,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_constraint_dim);
   VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
   int start_row = 0;
-  for (auto &tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
       A.block(start_row, 0, tracking_data->GetYdotDim(),
@@ -970,7 +985,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
-    const Context<double> &context, dairlib::lcmt_osc_output *output) const {
+    const Context<double>& context, dairlib::lcmt_osc_output *output) const {
   auto state =
       (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
   total_cost_ = 0;
@@ -1097,10 +1112,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       osc_output.yddot_command_sol =
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
 
-      const VectorXd &ddy_t = tracking_data->GetYddotCommand();
-      const MatrixXd &W = tracking_data->GetWeight();
-      const MatrixXd &J_t = tracking_data->GetJ();
-      const VectorXd &JdotV_t = tracking_data->GetJdotTimesV();
+      const VectorXd& ddy_t = tracking_data->GetYddotCommand();
+      const MatrixXd& W = tracking_data->GetWeight();
+      const MatrixXd& J_t = tracking_data->GetJ();
+      const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       output->tracking_costs[i] =
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
               (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
@@ -1115,7 +1130,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 }
 
 void OperationalSpaceControl::CalcOptimalInput(
-    const drake::systems::Context<double> &context,
+    const drake::systems::Context<double>& context,
     systems::TimestampedVector<double> *control) const {
   // Read in current state and time
   auto robot_output =
@@ -1191,7 +1206,7 @@ void OperationalSpaceControl::CalcOptimalInput(
 }
 
 void OperationalSpaceControl::CheckTracking(
-    const drake::systems::Context<double> &context,
+    const drake::systems::Context<double>& context,
     TimestampedVector<double> *output) const {
   auto robot_output =
       (OutputVector<double> *) this->EvalVectorInput(context, state_port_);

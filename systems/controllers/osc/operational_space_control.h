@@ -410,8 +410,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<int> ds_states_;
   double w_blend_constraint_ = 0.1;  // for soft constraint
   mutable double prev_distinct_fsm_state_ = -1;
-  drake::solvers::LinearEqualityConstraint* blend_constraint_;
+  drake::solvers::BoundingBoxConstraint* blend_constraint_;
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
+//  drake::solvers::BoundingBoxConstraint* contact_force_smoothing_constraint_;
 
   // Optional feature -- regularizing input
   mutable double total_cost_ = 0;

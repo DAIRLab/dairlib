@@ -160,7 +160,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << accumulated_state_durations.back() << std::endl;
   for (double state_duration : state_durations) {
     accumulated_state_durations.push_back(accumulated_state_durations.back() +
-                                          state_duration);
+        state_duration);
     std::cout << accumulated_state_durations.back() << std::endl;
   }
   accumulated_state_durations.pop_back();
@@ -200,9 +200,9 @@ int DoMain(int argc, char* argv[]) {
   osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
   osc->SetLambdaContactRegularizationWeight(1e-4 *
-                                            gains.W_lambda_c_regularization);
+      gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
-                                              gains.W_lambda_h_regularization);
+      gains.W_lambda_h_regularization);
 
   // Soft constraint on contacts
   osc->SetSoftConstraintWeight(gains.w_soft_constraint);
@@ -393,14 +393,6 @@ int DoMain(int argc, char* argv[]) {
   right_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
 
-//  left_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
-//      vel_map["hip_yaw_leftdot"], right_stance_state);
-//  left_foot_yz_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
-//      vel_map["hip_yaw_leftdot"], right_touchdown_air_phase);
-//  right_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
-//        vel_map["hip_yaw_rightdot"], left_stance_state);
-//  right_foot_yz_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
-//        vel_map["hip_yaw_rightdot"], left_touchdown_air_phase);
 //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_leftdot"], left_stance_state);
 //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"], right_stance_state);
 //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"], left_stance_state);
@@ -408,17 +400,10 @@ int DoMain(int argc, char* argv[]) {
 //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_leftdot"], left_stance_state);
 //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_rightdot"], right_stance_state);
 
-//  left_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
-//      pos_map["hip_pitch_left"], right_stance_state);
-//  left_foot_yz_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
-//      pos_map["hip_pitch_left"], right_touchdown_air_phase);
-//  right_foot_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
-//        pos_map["hip_pitch_right"], left_stance_state);
-//  right_foot_yz_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(
-//        pos_map["hip_pitch_right"], left_touchdown_air_phase);
 
 //  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
 //  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});
+  pelvis_trans_rel_tracking_data->DisableFeedforwardAccel({2});
 //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
 //  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
 //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
@@ -517,6 +502,8 @@ int DoMain(int argc, char* argv[]) {
 
   // OSC connections
   builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port_contact_scheduler(),
+                  pelvis_trans_traj_generator->get_contact_scheduler_input_port());
   builder.Connect(fsm->get_output_port_impact(),
                   osc->get_near_impact_input_port());
   builder.Connect(fsm->get_output_port_clock(), osc->get_clock_input_port());

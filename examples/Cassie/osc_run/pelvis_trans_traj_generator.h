@@ -13,13 +13,13 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   PelvisTransTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context,
+      drake::systems::Context<double> *context,
       drake::trajectories::PiecewisePolynomial<double>& traj,
       const std::unordered_map<
           int, std::vector<std::pair<const Eigen::Vector3d,
                                      const drake::multibody::Frame<double>&>>>&
-          feet_contact_points,
-          bool relative_pelvis = false);
+      feet_contact_points,
+      bool relative_pelvis = false);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -30,6 +30,9 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_clock_input_port() const {
     return this->get_input_port(clock_port_);
   }
+  const drake::systems::InputPort<double>& get_contact_scheduler_input_port() const {
+    return this->get_input_port(contact_scheduler_port_);
+  }
 
   void SetSLIPParams(double rest_length) { rest_length_ = rest_length; }
 
@@ -38,17 +41,17 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& x, double t, int fsm_state) const;
 
   drake::trajectories::PiecewisePolynomial<double> GenerateSLIPTraj(
-      const Eigen::VectorXd& x, double t, int fsm_state) const;
+      const Eigen::VectorXd& x, double t_0, double t_f, int fsm_state) const;
 
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
+      drake::systems::DiscreteValues<double> *discrete_state) const;
 
   void CalcTraj(const drake::systems::Context<double>& context,
-                drake::trajectories::Trajectory<double>* traj) const;
+                drake::trajectories::Trajectory<double> *traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>* context_;
+  drake::systems::Context<double> *context_;
   const drake::multibody::BodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
   const drake::multibody::BodyFrame<double>& pelvis_frame_;
@@ -68,6 +71,7 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;
   drake::systems::InputPortIndex clock_port_;
+  drake::systems::InputPortIndex contact_scheduler_port_;
 
   // SLIP parameters
   double rest_length_ = 0.8;

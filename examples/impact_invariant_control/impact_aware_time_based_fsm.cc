@@ -1,3 +1,4 @@
+#include <dairlib/lcmt_radio_out.hpp>
 #include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 
 
@@ -31,6 +32,15 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
                         BasicVector<double>(1),
                         &ImpactTimeBasedFiniteStateMachine::CalcClock)
                     .get_index();
+  radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
+          .get_index();
+
+  contact_scheduler_port_ = this->DeclareVectorOutputPort("contact_scheduler",
+                        BasicVector<double>(2),
+                        &ImpactTimeBasedFiniteStateMachine::CalcContactScheduler)
+                    .get_index();
+
 
   // Accumulate the durations to get timestamps
   double sum = 0;
@@ -108,6 +118,33 @@ void ImpactTimeBasedFiniteStateMachine::CalcClock(
 
   double remainder = fmod(current_time, period_);
   clock->get_mutable_value()(0) = remainder;
+}
+
+void ImpactTimeBasedFiniteStateMachine::CalcContactScheduler(
+    const Context<double>& context, BasicVector<double>* contact_timing) const {
+  // Read in lcm message time
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  if (this->get_input_port(radio_port_).HasValue(context)) {
+    const auto& radio_out =
+        this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+  }
+  auto current_time = static_cast<double>(robot_output->get_timestamp());
+  double remainder = fmod(current_time, period_);
+
+  for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
+    if (remainder < accu_state_durations_[i]) {
+      if(i == 0){
+        contact_timing->get_mutable_value()(0) = 0 - 2e-3;
+        contact_timing->get_mutable_value()(1) = accu_state_durations_[i] + 2e-3;
+      }
+      else{
+        contact_timing->get_mutable_value()(0) = accu_state_durations_[i-1] - 2e-3;
+        contact_timing->get_mutable_value()(1) = accu_state_durations_[i] + 2e-3;
+      }
+      break;
+    }
+  }
 }
 
 }  // namespace dairlib

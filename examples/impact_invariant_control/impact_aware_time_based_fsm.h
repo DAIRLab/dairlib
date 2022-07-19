@@ -34,15 +34,22 @@ class ImpactTimeBasedFiniteStateMachine
   const drake::systems::OutputPort<double>& get_output_port_impact() const {
     return this->get_output_port(near_impact_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_contact_scheduler() const {
+    return this->get_output_port(contact_scheduler_port_);
+  }
 
  private:
   void CalcNearImpact(const drake::systems::Context<double>& context,
-                      systems::ImpactInfoVector<double>* near_impact) const;
+                      systems::ImpactInfoVector<double> *near_impact) const;
   void CalcClock(const drake::systems::Context<double>& context,
-                 drake::systems::BasicVector<double>* clock) const;
+                 drake::systems::BasicVector<double> *clock) const;
+  void CalcContactScheduler(const drake::systems::Context<double>& context,
+                            drake::systems::BasicVector<double> *clock) const;
 
   int near_impact_port_;
   int clock_port_;
+  int radio_port_;
+  int contact_scheduler_port_;
 
   double t0_;
   std::vector<int> states_;

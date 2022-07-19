@@ -6,7 +6,7 @@ use_archived_lcmtypes: false
 
 # Log time to stop at (seconds, -1 for whole log)
 start_time: 0
-duration: 5
+duration: -1
 
 # Plant properties
 use_springs: true
@@ -26,27 +26,28 @@ special_velocities_to_plot: ['hip_pitch_leftdot']
 special_efforts_to_plot: [ ]
 
 # Finite State Machine Names
-fsm_state_names: ['Left Stance (LS)', 'Left Flight (LF)', 'Right Stance (RS)', 'Right Flight (RF)']
+fsm_state_names: ['Left Stance (LS)', 'Right Stance (RS)', 'Left Flight (LF)', 'Right Flight (RF)']
 
 # Foot position plots
 foot_positions_to_plot: [ 'right', 'left' ]
 #foot_positions_to_plot: []
-foot_xyz_to_plot: { 'right': [0], 'left': [0 ] }
+foot_xyz_to_plot: { 'right': [0], 'left': [0] }
 #foot_xyz_to_plot: { }
 pt_on_foot_to_plot: 'rear'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: false
+plot_qp_costs: true
 plot_qp_solve_time: true
-plot_qp_solutions: false
-plot_tracking_costs: false
-tracking_datas_to_plot:
-  pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel' ] }
+plot_qp_solutions: true
+plot_tracking_costs: true
+tracking_datas_to_plot: {
+  pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': ['pos', 'vel', 'accel' ] },
+  right_ft_traj: {'dims': [2], 'derivs': ['pos', 'vel', 'accel' ] }
 #  pelvis_rot_traj: {'dims': [0, 1], 'derivs': ['vel']}
 #  hip_yaw_left_traj: {'dims': [0], 'derivs': ['vel']}
 #  left_ft_traj: {'dims': [1], 'derivs': ['pos']}
-#  right_ft_traj: {'dims': [2], 'derivs': ['vel']}
 #  left_ft_z_traj: {'dims': [1], 'derivs': ['pos']}
 #  right_ft_z_traj: {'dims': [1, 2], 'derivs': ['pos']}
 #  left_toe_angle_traj: {'dims': [0], 'derivs': ['vel']}
 #  right_toe_angle_traj: {'dims': [0], 'derivs': ['accel']}
+}

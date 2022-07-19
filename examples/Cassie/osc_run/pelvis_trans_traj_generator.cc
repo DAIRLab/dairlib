@@ -57,6 +57,9 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   clock_port_ = this->DeclareVectorInputPort("t_clock", BasicVector<double>(1))
                     .get_index();
+  contact_scheduler_port_ =
+      this->DeclareVectorInputPort("t_mode", BasicVector<double>(2))
+          .get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
@@ -79,9 +82,9 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GeneratePelvisTraj(
 }
 
 PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
-    const VectorXd& x, double t, int fsm_state) const {
+    const VectorXd& x, double t_0, double t_f, int fsm_state) const {
   // fsm_state should be unused
-  if (fsm_state == 2) {
+  if (fsm_state >= 2) {
     // flight phase trajectory should be unused
     return PiecewisePolynomial<double>();
   }
@@ -93,8 +96,9 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   plant_.CalcPointsPositions(*context_,
                              feet_contact_points_.at(fsm_state)[0].second,
                              Vector3d::Zero(), world_, &foot_pos);
-//  plant_.CalcPointsPositions(*context_, pelvis_frame_, Vector3d::Zero(), world_,
-//                             &pelvis_pos);
+  //  plant_.CalcPointsPositions(*context_, pelvis_frame_, Vector3d::Zero(),
+  //  world_,
+  //                             &pelvis_pos);
   pelvis_pos = plant_.CalcCenterOfMassPositionInWorld(*context_);
   pelvis_vel =
       plant_.EvalBodySpatialVelocityInWorld(*context_, pelvis_).translational();
@@ -105,41 +109,42 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
       k_leg_ * compression * leg_length.normalized() + b_leg_ * pelvis_vel;
   VectorXd rddot = f_g + f_leg;
 
-  double dt = 1e-3;
-  Eigen::Vector3d breaks;
-  if(t <= 0.3){
-      breaks << 0, 0.25, 0.4;
-  }
-  else{
-      breaks << 0.4, 0.65, 0.8;
-  }
-  MatrixXd samples(3, 3);
-//  MatrixXd samples_dot(3, 2);
-//  samples << pelvis_pos, pelvis_pos + 0.5 * rddot * dt * dt;
-//  samples_dot << pelvis_vel, pelvis_vel + rddot * dt;
+  //  double dt = 1e-3;
+  Eigen::Vector2d breaks;
+  //  if (t <= 0.3) {
+  //    breaks << 0, 0.25, 0.4;
+  //  } else {
+  //    breaks << 0.4, 0.65, 0.8;
+  //  }
+  breaks << t_0, t_f;
+  MatrixXd samples(3, 2);
+  MatrixXd samples_dot(3, 2);
+  //  samples << pelvis_pos, pelvis_pos + 0.5 * rddot * dt * dt;
+  //  samples_dot << pelvis_vel, pelvis_vel + rddot * dt;
 
-  //  std::cout << "pelvis_pos: " << pelvis_pos.transpose() << std::endl;
-  //  std::cout << (pelvis_pos + 0.5 * rddot * dt * dt).transpose() <<
-  //  std::endl; std::cout << "pelvis_vel: " << pelvis_vel + rddot * dt <<
-  //  std::endl; std::cout << "pelvis_acc: " << rddot.transpose() << std::endl;
-
-//  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-//      breaks, samples, pelvis_vel, pelvis_vel + rddot * dt);
+  //  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+  //      breaks, samples, pelvis_vel, pelvis_vel + rddot * dt);
   double y_dist_des = 0;
-  if(fsm_state == 0){
+  if (fsm_state == 0) {
     y_dist_des = -0.15;
-  }
-  else if (fsm_state == 1){
+  } else if (fsm_state == 1) {
     y_dist_des = 0.15;
   }
-//  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
-//   samples << 0, 0, 0, y_dist_des, y_dist_des,  y_dist_des, rest_length_, rest_length_ + 0.05, rest_length_;
-   samples << 0, 0, 0, y_dist_des, y_dist_des,  y_dist_des, rest_length_, rest_length_ + 0.1, rest_length_;
-//   samples << 0, y_dist_des, rest_length_, 0, y_dist_des, rest_length_ + 0.1;
-   return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
-//   return PiecewisePolynomial<double>::Cu(breaks, samples);
-//  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-//      breaks, samples, VectorXd::Zero(3), VectorXd::Zero(3));
+  //  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
+  //   samples << 0, 0, 0, y_dist_des, y_dist_des,  y_dist_des, rest_length_,
+  //   rest_length_ + 0.05, rest_length_;
+  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ + 0.1;
+  //  samples_dot << 0, 0, 0, 0, 0.25, 0.0;
+  //   return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
+  //   return PiecewisePolynomial<double>::Cu(breaks, samples);
+  //  return PiecewisePolynomial<double>::CubicHermite(
+  //      breaks, samples, samples_dot);
+  //  return PiecewisePolynomial<double>::CubicShapePreserving(breaks, samples);
+
+  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+      breaks, samples, VectorXd::Zero(3), VectorXd::Zero(3));
+  //  return PiecewisePolynomial<double>::CubicHermite(
+  //      breaks, samples, samples_dot);
 }
 
 void PelvisTransTrajGenerator::CalcTraj(
@@ -153,6 +158,13 @@ void PelvisTransTrajGenerator::CalcTraj(
       this->EvalVectorInput(context, fsm_port_)->get_value()(0);
   const auto& clock =
       this->EvalVectorInput(context, clock_port_)->get_value()(0);
+  const auto& mode_length =
+      this->EvalVectorInput(context, contact_scheduler_port_)->get_value();
+
+  //  std::cout << "fsm_state: " << fsm_state << std::endl;
+  //  std::cout << "clock: " << clock << std::endl;
+  //  std::cout << "mode_length start: " << mode_length[0] << std::endl;
+  //  std::cout << "mode_length end: " << mode_length[1] << std::endl;
 
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
@@ -160,8 +172,8 @@ void PelvisTransTrajGenerator::CalcTraj(
   //  const drake::VectorX<double>& x = robot_output->GetState();
   if (fsm_state == 0 || fsm_state == 1) {
     if (relative_pelvis_) {
-      *casted_traj =
-          GenerateSLIPTraj(robot_output->GetState(), clock, fsm_state);
+      *casted_traj = GenerateSLIPTraj(robot_output->GetState(), mode_length[0],
+                                      mode_length[1], fsm_state);
     } else {
       *casted_traj =
           GeneratePelvisTraj(robot_output->GetState(), clock, fsm_state);

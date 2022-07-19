@@ -28,12 +28,12 @@ def process_hardware_data(raw_data, ):
     
     print("Begin process the hardware data.")
 
+    start_time = max(raw_data['robot_output']["t_x"][0][0][0][100], raw_data['contact_output']['t_contact'][0][0][0][100], raw_data['osc_output']['t_osc'][0][0][0][100])
+    end_time = min(raw_data['robot_output']["t_x"][0][0][0][-100], raw_data['contact_output']['t_contact'][0][0][0][-100], raw_data['osc_output']['t_osc'][0][0][0][-100])
+
     # processing robot output
     robot_output = raw_data['robot_output']
     t_robot_output = robot_output["t_x"][0][0][0]
-
-    start_time = t_robot_output[100]
-    end_time = t_robot_output[-100]
 
     print("start time:{}, end time:{}".format(start_time, end_time))
 

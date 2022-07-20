@@ -32,10 +32,15 @@ void BoxyHeightMap::AddHeightMapToPlant(
         box_start_.at(i) + box_w_.at(i) / 2,
         0,
         box_h_.at(i) - dim_z_ / 2.0);
+    Vector3d box_pos_p(-box_pos(0), -box_pos(1), box_pos(2));
     RigidTransform<double> X_WB(R_, R_.matrix() * box_pos);
+    RigidTransform<double> X_WB_p(R_, R_.matrix() * box_pos_p);
     AddBox<double>(plant, scene_graph, X_WB,
            Vector3d(box_w_.at(i), dim_y_, dim_z_),
            mu_);
+    AddBox<double>(plant, scene_graph, X_WB_p,
+                   Vector3d(box_w_.at(i), dim_y_, dim_z_),
+                   mu_);
   }
 }
 

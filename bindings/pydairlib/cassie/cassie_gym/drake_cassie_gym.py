@@ -101,23 +101,23 @@ class DrakeCassieGym:
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.cassie_sim)
 
-        if self.visualize:
-            self.lcm = DrakeLcm()
-            self.image_array_sender = self.builder.AddSystem(
-                ImageToLcmImageArrayT())
-            self.image_array_sender.DeclareImageInputPort[PixelType.kDepth32F]("depth")
-            self.image_array_publisher = self.builder.AddSystem(
-                LcmPublisherSystem.Make(
-                    "DRAKE_RGBD_CAMERA_IMAGES",
-                    lcm_type=lcmt_image_array,
-                    lcm=self.lcm,
-                    publish_period=0.1,
-                    use_cpp_serializer=True))
-
-            self.builder.Connect(self.cassie_sim.get_camera_out_output_port(),
-                                 self.image_array_sender.get_input_port())
-            self.builder.Connect(self.image_array_sender.get_output_port(),
-                                 self.image_array_publisher.get_input_port())
+        # if self.visualize:
+            # self.lcm = DrakeLcm()
+            # self.image_array_sender = self.builder.AddSystem(
+            #     ImageToLcmImageArrayT())
+            # self.image_array_sender.DeclareImageInputPort[PixelType.kDepth32F]("depth")
+            # self.image_array_publisher = self.builder.AddSystem(
+            #     LcmPublisherSystem.Make(
+            #         "DRAKE_RGBD_CAMERA_IMAGES",
+            #         lcm_type=lcmt_image_array,
+            #         lcm=self.lcm,
+            #         publish_period=0.1,
+            #         use_cpp_serializer=True))
+            #
+            # self.builder.Connect(self.cassie_sim.get_camera_out_output_port(),
+            #                      self.image_array_sender.get_input_port())
+            # self.builder.Connect(self.image_array_sender.get_output_port(),
+            #                      self.image_array_publisher.get_input_port())
 
         self.builder.Connect(self.controller.get_control_output_port(),
                              self.cassie_sim.get_actuation_input_port())
@@ -179,13 +179,13 @@ class DrakeCassieGym:
         return pelvis_z < 0.4 or right_foot_pos > pelvis_z - 0.3 or \
                left_foot_pos > pelvis_z - 0.3
 
-    def step(self, radio=np.zeros(18), fixed_ports=None):
+    def step(self, radio=np.zeros(18), fixed_ports=None, time=None):
         if not self.initialized:
             print("Call make() before calling step() or advance()")
 
         # Calculate next timestep
         next_timestep = self.drake_simulator.get_context().get_time() + \
-                        self.sim_dt
+                        (self.sim_dt if time is None else time)
 
         # Set simulator inputs and advance simulator
         self.cassie_sim.get_radio_input_port().FixValue(

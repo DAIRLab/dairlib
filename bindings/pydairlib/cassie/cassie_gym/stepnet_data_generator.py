@@ -199,7 +199,8 @@ class StepnetDataGenerator(DrakeCassieGym):
 
     def get_robot_centric_state(self, x):
         # Get the robot state
-        self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
+        xc = np.copy(x)
+        self.sim_plant.SetPositionsAndVelocities(self.calc_context, xc)
 
         # Get the current stance leg
         fsm = self.fsm_output_port.Eval(self.controller_context)
@@ -208,22 +209,37 @@ class StepnetDataGenerator(DrakeCassieGym):
         # Align the robot state with the robot yaw
         R = self.make_world_to_robot_yaw_rotation(self.calc_context)
         Rmat = R.matrix()
-        x[CASSIE_QUATERNION_SLICE] = \
+        xc[CASSIE_QUATERNION_SLICE] = \
             (R @ self.pelvis_pose(self.calc_context).rotation()).ToQuaternion().wxyz()
-        x[CASSIE_FB_VELOCITY_SLICE] = Rmat @ x[CASSIE_FB_VELOCITY_SLICE]
-        x[CASSIE_OMEGA_SLICE] = Rmat @ x[CASSIE_OMEGA_SLICE]
-        x[CASSIE_FB_POSITION_SLICE] = Rmat @ (
-                x[CASSIE_FB_POSITION_SLICE] -
-                self.calc_foot_position_in_world(self.calc_context, stance)
+        xc[CASSIE_FB_VELOCITY_SLICE] = Rmat @ xc[CASSIE_FB_VELOCITY_SLICE]
+        xc[CASSIE_OMEGA_SLICE] = Rmat @ xc[CASSIE_OMEGA_SLICE]
+        xc[CASSIE_FB_POSITION_SLICE] = Rmat @ (
+            xc[CASSIE_FB_POSITION_SLICE] -
+            self.calc_foot_position_in_world(self.calc_context, stance)
         )
 
         # Always remap the state to look like it's left stance
         if stance == 'right':
-            x = self.reflect_state_about_centerline(x)
+            xc = self.reflect_state_about_centerline(xc)
+        return xc
+
+    def move_robot_to_origin(self, x):
+        self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
+        x[CASSIE_FB_POSITION_SLICE] = (
+            x[CASSIE_FB_POSITION_SLICE] -
+            self.calc_foot_position_in_world(self.calc_context, 'left')
+        )
         return x
 
     def get_current_depth_image(self):
-        return self.depth_image_output_port.Eval(self.cassie_sim_context)
+        return np.copy(
+            self.depth_image_output_port.Eval(
+                self.diagram.GetMutableSubsystemContext(
+                    self.cassie_sim,
+                    self.drake_simulator.get_mutable_context()
+                )
+            ).data
+        )
 
     def step(self, footstep_target):
         return super().step(fixed_ports=[FixedVectorInputPort(
@@ -236,7 +252,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         if self.initial_condition_bank is None:
             self.initial_condition_bank = \
                 np.load(INITIAL_CONDITIONS_FILE)
-        return self.get_robot_centric_state(
+        return self.move_robot_to_origin(
             self.initial_condition_bank[
                 np.random.choice(
                     self.initial_condition_bank.shape[0],
@@ -246,10 +262,13 @@ class StepnetDataGenerator(DrakeCassieGym):
             ].ravel()
         )
 
-    def get_stepnet_data_point(self):
+    def get_stepnet_data_point(self, seed=0):
+        np.random.seed(seed)
+
         # Reset the simulation to a random initial state
         x_pre = self.draw_random_initial_condition()
         self.reset(x_pre)
+        x = self.get_robot_centric_state(x_pre)
 
         # Apply a random velocity command
         radio = np.zeros((18,))
@@ -267,7 +286,6 @@ class StepnetDataGenerator(DrakeCassieGym):
                       self.sim_plant.CalcCenterOfMassPositionInWorld(
                           self.plant_context
                       )
-
         # Apply a random offset to the target XY position
         target = alip_target + np.random.uniform(
             low=-TARGET_BOUND,
@@ -280,14 +298,15 @@ class StepnetDataGenerator(DrakeCassieGym):
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
 
+
         # Step the simulation forward until middle of next double stance
         while self.current_time < 0.35:
             self.step(footstep_target=target)
             # Abort and return max error if something crazy happens
             if self.check_termination():
                 return {
-                    'depth': depth_image.data,
-                    'state': x_pre,
+                    'depth': depth_image,
+                    'state': x,
                     'target': target,
                     'error': MAX_ERROR
                 }
@@ -298,8 +317,8 @@ class StepnetDataGenerator(DrakeCassieGym):
         error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target))
 
         return {
-            'depth': depth_image.data,
-            'state': x_pre,
+            'depth': depth_image,
+            'state': x,
             'target': target,
             'error': error
         }

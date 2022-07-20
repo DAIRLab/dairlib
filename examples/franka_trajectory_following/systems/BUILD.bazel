@@ -3,26 +3,15 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "gravity_compensator",
+    name = "c3_systems",
     srcs = [
         "gravity_compensator.cc",
+        "c3_trajectory_source.cc",
+        
     ],
     hdrs = [
         "gravity_compensator.h",
-    ],
-    deps = [
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "c3_trajectory_converter",
-    srcs = [
-        "c3_trajectory_converter.cc",
-    ],
-    hdrs = [
-        "c3_trajectory_converter.h",
+        "c3_trajectory_source.h",
     ],
     deps = [
         "//systems/framework:vector",

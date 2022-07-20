@@ -1,3 +1,7 @@
+#define ROS
+
+#ifdef ROS
+
 #include <memory>
 #include <signal.h>
 #include "drake/systems/analysis/simulator.h"
@@ -36,6 +40,8 @@ int DoMain(int argc, char* argv[]){
   ros::init(argc, argv, "test_ros_subscriber_system");
   ros::NodeHandle node_handle;
 
+  drake::lcm::DrakeLcm drake_lcm;
+
   DiagramBuilder<double> builder;
 
   /// systems
@@ -47,14 +53,14 @@ int DoMain(int argc, char* argv[]){
   auto robot_output_pub = builder.AddSystem(
     LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
       "LCM_ROBOT_OUTPUT_TEST", &drake_lcm, 
-      {drake::systems::TriggerType::kPeriodic}, 0.25));
+      {drake::systems::TriggerType::kPeriodic}, 0.0005));
 
   /// connections
   builder.Connect(ros_subscriber->get_output_port(), to_robot_output->get_input_port());
-  builder.Connect(to_robot_output->get_input_port(), robot_output_pub->get_input_port());
+  builder.Connect(to_robot_output->get_output_port(), robot_output_pub->get_input_port());
   
   auto sys = builder.Build();
-  DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_run_ros_to_lcm");
+  // DrawAndSaveDiagramGraph(*sys, "examples/franka_trajectory_following/diagram_run_ros_to_lcm");
 
   Simulator<double> simulator(*sys); 
   simulator.Initialize();
@@ -72,3 +78,5 @@ int DoMain(int argc, char* argv[]){
 } // namespace dairlib
 
 int main(int argc, char* argv[]) { dairlib::DoMain(argc, argv);}
+
+#endif

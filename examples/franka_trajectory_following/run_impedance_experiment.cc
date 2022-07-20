@@ -1,6 +1,7 @@
 #include <vector>
 #include <math.h>
 #include <gflags/gflags.h>
+#include <signal.h>
 
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -24,16 +25,27 @@
 #include "systems/system_utils.h"
 
 #include "examples/franka_trajectory_following/c3_parameters.h"
-#include "examples/franka_trajectory_following/systems/c3_trajectory_converter.h"
+#include "examples/franka_trajectory_following/systems/c3_trajectory_source.h"
 #include "examples/franka_trajectory_following/systems/gravity_compensator.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 
-// #include "ros/ros.h"
-// #include "std_msgs/Float64MultiArray.h"
-// #include "systems/ros/ros_publisher_system.h"
-// #include "systems/ros/c3_ros_conversions.h"
+#define ROS
+
+#ifdef ROS
+
+#include "ros/ros.h"
+#include "std_msgs/Float64MultiArray.h"
+#include "systems/ros/ros_publisher_system.h"
+#include "systems/ros/c3_ros_conversions.h"
+
+void SigintHandler(int sig) {
+  ros::shutdown();
+  exit(sig);
+}
+
+#endif
 
 DEFINE_string(channel, "FRANKA_OUTPUT",
               "LCM channel for receiving state. "
@@ -133,11 +145,11 @@ int DoMain(int argc, char* argv[]){
 
   /* -------------------------------------------------------------------------------------------*/
   /// create trajectory source
-  
-  // fix this trajectory issue, what the heck is going on with the timings????
-  std::vector<double> times = {0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0};
-  std::vector<MatrixXd> points(times.size());
+  double time_inc = 2;
+  double num_points = 7;
 
+  std::vector<MatrixXd> points(num_points);
+  std::vector<double> times;
   points[0] = Vector3d(0.5, 0.0, 0.12);
   points[1] = Vector3d(0.5, 0.1, 0.12);
   points[2] = Vector3d(0.3, 0.1, 0.12);
@@ -146,18 +158,21 @@ int DoMain(int argc, char* argv[]){
   points[5] = Vector3d(0.5, -0.1, 0.1);
   points[6] = Vector3d(0.5, 0.0, 0.12);
 
+  for (int i = 0; i < num_points; i++){
+    times.push_back(i*time_inc);
+  }
+
   auto ee_trajectory = drake::trajectories::PiecewisePolynomial<
     double>::FirstOrderHold(times, points);
 
-  auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(
-      ee_trajectory, 1);
-  auto trajectory_converter = builder.AddSystem<systems::C3TrajectoryConverter>();
-
-  builder.Connect(input_trajectory->get_output_port(), trajectory_converter->get_input_port());
-  builder.Connect(trajectory_converter->get_output_port(), controller->get_input_port(1));  
+  auto input_trajectory = builder.AddSystem<systems::C3TrajectorySource>(
+      ee_trajectory);
+  builder.Connect(state_receiver->get_output_port(0),
+    input_trajectory->get_input_port(0));
+  builder.Connect(input_trajectory->get_output_port(0),
+    controller->get_input_port(1));
 
   /* -------------------------------------------------------------------------------------------*/
-
 
   builder.Connect(state_receiver->get_output_port(0), 
     controller->get_input_port(0));
@@ -174,15 +189,20 @@ int DoMain(int argc, char* argv[]){
       control_publisher->get_input_port());
 
   /* -------------------------------------------------------------------------------------------*/
+#ifdef ROS
   /// Publish to ROS topic
-  // ros::init(argc, argv, "test_ros_publisher_system");
-  // ros::NodeHandle node_handle;
-  // auto impedance_to_ros = builder.AddSystem<systems::TimestampedVectorToROS>(7);
-  // auto ros_publisher = builder.AddSystem(
-  //     systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/franka_input", &node_handle, .0005));
+  ros::init(argc, argv, "test_ros_publisher_system");
+  ros::NodeHandle node_handle;
+  signal(SIGINT, SigintHandler);
+
+  auto impedance_to_ros = builder.AddSystem<systems::TimestampedVectorToROS>(7);
+  // try making this kForced
+  auto ros_publisher = builder.AddSystem(
+      systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/franka_input", &node_handle, .0005));
   
-  // builder.Connect(controller->get_output_port(), impedance_to_ros->get_input_port());
-  // builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());
+  builder.Connect(controller->get_output_port(), impedance_to_ros->get_input_port());
+  builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());
+#endif
 
   auto diagram = builder.Build();
   // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_run_impedance_experiment");

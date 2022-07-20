@@ -20,12 +20,12 @@ void C3TrajectoryConverter::Convert(const drake::systems::Context<double>& conte
 
   VectorXd data = VectorXd::Zero(34);
   data.head(3) << input.head(3);
-  data.block(10, 0, 3, 1) << input.tail(3);
+  data.segment(10, 3) << input.tail(3);
 
-  std::cout << "data\n" << input.head(3) << std::endl;
+  std::cout << "converter time\n" << context.get_time() << std::endl;
 
   output->SetDataVector(data);
-  output->set_timestamp(0.0); // not used
+  output->set_timestamp(context.get_time()); // not used
 }
 
 }  // namespace systems

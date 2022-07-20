@@ -21,7 +21,7 @@
 DEFINE_string(channel, "FRANKA_OUTPUT",
               "LCM channel for receiving state. "
               "Use FRANKA_OUTPUT to get state from simulator, and "
-              "use FRANKA_STATE_ESTIMATE to get state from state estimator");
+              "use FRANKA_ROS_OUTPUT to get state from state estimator");
 
 namespace dairlib {
 

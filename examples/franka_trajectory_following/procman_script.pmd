@@ -25,9 +25,9 @@ group "2.C3 Sim" {
   }
 }
 
-group "3.Impedance Experiments" {
+group "3.SIM Impedance Experiments" {
   cmd "1.Impedance" {
-      exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_experiment";
+      exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_experiment --channel=FRANKA_OUTPUT";
       host = "localhost";
   }
   cmd "2.Simulator" {
@@ -40,7 +40,22 @@ group "3.Impedance Experiments" {
   }
 }
 
-cmd "4.lcmspy" {
+group "4.HW Impedance Experiments" {
+  cmd "1.Impedance" {
+      exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_experiment --channel=FRANKA_ROS_OUTPUT";
+      host = "localhost";
+  }
+  cmd "2.ROS->LCM" {
+      exec = "bazel-bin/examples/franka_trajectory_following/run_ros_to_lcm";
+      host = "localhost";
+  }
+  cmd "3.Visualizer" {
+      exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_ROS_OUTPUT";
+      host = "localhost";
+  }
+}
+
+cmd "5.lcmspy" {
     exec = "bazel-bin/lcmtypes/dair-lcm-spy";
     host = "localhost";
 }

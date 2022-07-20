@@ -1,5 +1,6 @@
 #include <vector>
 #include <math.h>
+#include <gflags/gflags.h>
 
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -34,6 +35,11 @@
 // #include "systems/ros/ros_publisher_system.h"
 // #include "systems/ros/c3_ros_conversions.h"
 
+DEFINE_string(channel, "FRANKA_OUTPUT",
+              "LCM channel for receiving state. "
+              "Use FRANKA_OUTPUT to get state from simulator, and "
+              "use FRANKA_ROS_OUTPUT to get state from state estimator");
+
 namespace dairlib {
 
 using drake::geometry::SceneGraph;
@@ -53,6 +59,8 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
 int DoMain(int argc, char* argv[]){
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
     "examples/franka_trajectory_following/parameters.yaml");
 
@@ -185,7 +193,7 @@ int DoMain(int argc, char* argv[]){
   (void) receiver_context; // suppressed unused variable warning
 
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &drake_lcm, std::move(diagram), state_receiver, "FRANKA_OUTPUT", true);
+      &drake_lcm, std::move(diagram), state_receiver, FLAGS_channel, true);
   
   loop.Simulate(std::numeric_limits<double>::infinity());
 

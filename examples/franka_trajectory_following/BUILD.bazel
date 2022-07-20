@@ -89,6 +89,7 @@ cc_binary(
         "//examples/franka_trajectory_following/systems:c3_trajectory_converter",
         "//systems:system_utils",
         "@drake//:drake_shared_library",
+        "@gflags",
     ],
     data = [":trifinger_urdf",
             "@drake//manipulation/models/franka_description:models"]

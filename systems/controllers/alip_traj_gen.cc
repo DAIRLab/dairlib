@@ -154,7 +154,7 @@ ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTr
     double start_time, double end_time_of_this_fsm_state) const {
 
   double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
-  DRAKE_DEMAND(CoM_wrt_foot_z > 0);
+  //DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   Vector2d T_waypoint_com {start_time, end_time_of_this_fsm_state};

@@ -163,7 +163,21 @@ class DrakeCassieGym:
         return
 
     def check_termination(self):
-        return self.cassie_state.get_fb_positions()[2] < 0.5
+        left_foot_pos = self.sim_plant.CalcPointsPositions(
+            context=self.plant_context,
+            frame_B=self.sim_plant.GetBodyByName("toe_left").body_frame(),
+            p_BQi=np.zeros(3).T,
+            frame_A=self.sim_plant.world_frame()
+        ).flatten()[2]
+        right_foot_pos = self.sim_plant.CalcPointsPositions(
+            context=self.plant_context,
+            frame_B=self.sim_plant.GetBodyByName("toe_right").body_frame(),
+            p_BQi=np.zeros(3).T,
+            frame_A=self.sim_plant.world_frame()
+        ).flatten()[2]
+        pelvis_z = self.cassie_state.get_fb_positions()[2]
+        return pelvis_z < 0.4 or right_foot_pos > pelvis_z - 0.3 or \
+               left_foot_pos > pelvis_z - 0.3
 
     def step(self, radio=np.zeros(18), fixed_ports=None):
         if not self.initialized:

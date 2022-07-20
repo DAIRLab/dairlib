@@ -207,6 +207,8 @@ class DataProcessor():
 
         for key in residuals:
             indices = np.argwhere(np.abs(residuals[key])>threshholds[key])
+            if indices.shape[0] == 0:
+                continue
             start_index = indices[0]
             end_index = indices[-1]
             rect = patches.Rectangle((t[start_index], min_value), t[end_index] - t[start_index], max_value-min_value, color=color_corresponding[key], alpha=0.8)

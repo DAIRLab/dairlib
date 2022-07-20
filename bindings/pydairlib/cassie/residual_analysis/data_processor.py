@@ -1,4 +1,5 @@
 import cvxpy as cp
+from matplotlib import patches
 import tqdm
 import matplotlib.pyplot as plt
 from utils import *
@@ -153,6 +154,74 @@ class DataProcessor():
         print(f"{'Ankle left':<15} {ankle_right_sol[0]:>10.2f} {ankle_right_sol[1]:>10.2f}")
 
         import pdb; pdb.set_trace()
+
+    def show_hip_residuals_given_time_period(self, start_time, end_time, residual_name):
+
+        threshholds = {"hip_roll_leftdot":100,
+                        "hip_roll_rightdot":100,
+                        "hip_pitch_leftdot":100,
+                        "hip_pitch_rightdot":100,
+                        "hip_yaw_leftdot":100,
+                        "hip_yaw_rightdot":100}
+
+        residuals = {}
+
+        t = []
+
+        color_corresponding = {"hip_roll_leftdot":'aqua',
+                                "hip_roll_rightdot":'blue',
+                                "hip_pitch_leftdot":'brown',
+                                "hip_pitch_rightdot":'coral',
+                                "hip_yaw_leftdot":'silver',
+                                "hip_yaw_rightdot":'yellow'}
+    
+        for datum in self.processed_data:
+            if not (datum['t'] >= start_time and datum['t'] <= end_time):
+                continue
+            t.append(datum['t'])
+            single_residual_info = datum[residual_name]
+            for key in single_residual_info:
+                if key not in threshholds:
+                    continue
+                if key in residuals:
+                    residuals[key].append(single_residual_info[key])
+                else:
+                    residuals[key] = [single_residual_info[key]]
+
+        t = np.array(t)
+
+        max_value = None
+        min_value = None
+
+        plt.figure()
+
+        for key in residuals:
+            residuals[key] = np.array(residuals[key])
+            if max_value is None or np.max(residuals[key]) > max_value:
+                max_value = np.max(residuals[key])
+            if min_value is None or np.min(residuals[key]) < min_value:
+                min_value = np.min(residuals[key])
+            plt.plot(t, residuals[key], label=key, color=color_corresponding[key])
+
+        rects = []
+
+        for key in residuals:
+            indices = np.argwhere(np.abs(residuals[key])>threshholds[key])
+            start_index = indices[0]
+            end_index = indices[-1]
+            rect = patches.Rectangle((t[start_index], min_value), t[end_index] - t[start_index], max_value-min_value, color=color_corresponding[key], alpha=0.8)
+            rects.append({"rect":rect,
+                        "start_index":start_index,
+                        "end_index":end_index})
+        rects.sort(key=lambda x: x["start_index"])
+        
+        for rect in rects:
+            plt.gca().add_patch(rect["rect"])
+
+        plt.xlabel("t")
+        plt.ylabel("residuals")
+        plt.legend()
+        plt.show()
 
     def calc_residuals_info_at_given_period(self, start_time, end_time, joints_name, residual_name, is_show_freq_plot):
         

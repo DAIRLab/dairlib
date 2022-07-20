@@ -42,8 +42,9 @@ ALIPTrajGenerator::ALIPTrajGenerator(
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
     contact_points_in_each_state, const Eigen::MatrixXd& Q,
-    const Eigen::MatrixXd& R)
-    : plant_(plant),
+    const Eigen::MatrixXd& R, bool filter_alip_state)
+    : filter_alip_state_(filter_alip_state),
+      plant_(plant),
       context_(context),
       desired_com_height_(desired_com_height),
       unordered_fsm_states_(unordered_fsm_states),
@@ -88,12 +89,14 @@ ALIPTrajGenerator::ALIPTrajGenerator(
   MatrixXd C = MatrixXd::Identity(4,4);
   MatrixXd G = MatrixXd::Identity(4,4);
 
-  S2SKalmanFilterData filter_data = {A, B, C, Q, R, G};
+  S2SKalmanFilterData filter_data = {{A, B, C, Q, R}, G};
   S2SKalmanFilter filter = S2SKalmanFilter(filter_data);
   std::pair<S2SKalmanFilter, S2SKalmanFilterData> model_filter = {filter, filter_data};
+  if (filter_alip_state_) {
     alip_filter_idx_ = this->DeclareAbstractState(
-      drake::Value<std::pair<S2SKalmanFilter,
+        drake::Value<std::pair<S2SKalmanFilter,
                                S2SKalmanFilterData>>(model_filter));
+  }
 
   prev_foot_idx_ = this->DeclareDiscreteState(Vector2d::Zero());
   prev_fsm_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
@@ -109,9 +112,6 @@ drake::systems::EventStatus ALIPTrajGenerator::UnrestrictedUpdate(
     drake::systems::State<double> *state) const {
 
   int prev_fsm = state->get_discrete_state(prev_fsm_idx_).value()(0);
-  auto& [filter, filter_data] =
-      state->get_mutable_abstract_state<std::pair<S2SKalmanFilter,
-                                        S2SKalmanFilterData>>(alip_filter_idx_);
 
   // Read in current state
   const OutputVector<double>* robot_output =
@@ -121,28 +121,37 @@ drake::systems::EventStatus ALIPTrajGenerator::UnrestrictedUpdate(
   // Read in finite state machine
   const BasicVector<double>* fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
-  int mode_index = GetModeIdx((int)fsm_state(0));
+  int fsm_state = (int)fsm_output->get_value()(0);
+  int mode_index = GetModeIdx(fsm_state);
 
   // calculate current estimate of ALIP state
   Vector3d CoM, L, stance_foot_pos;
   CalcAlipState(robot_output->GetState(), mode_index,
                 &CoM, &L, &stance_foot_pos);
 
-  Vector4d x_alip;
-  x_alip.head(2) = CoM.head(2) - stance_foot_pos.head(2);
-  x_alip.tail(2) = L.head(2);
+  if (filter_alip_state_) {
+    auto& [filter, filter_data] =
+    state->get_mutable_abstract_state<std::pair<S2SKalmanFilter,
+                                                S2SKalmanFilterData>>(alip_filter_idx_);
+    Vector4d x_alip;
+    x_alip.head(2) = CoM.head(2) - stance_foot_pos.head(2);
+    x_alip.tail(2) = L.head(2);
 
-  // Filter the alip state
-  filter_data.A = CalcA(CoM(2));
-  if ((int)fsm_state(0) == prev_fsm) {
-    filter.Update(filter_data, Vector2d::Zero(), x_alip,
-                  robot_output->get_timestamp());
-  } else {
-    Vector2d prev_stance_pos = state->get_discrete_state(prev_foot_idx_).value();
-    filter.Update(filter_data, stance_foot_pos.head<2>() - prev_stance_pos, x_alip,
-                  robot_output->get_timestamp());
-    state->get_mutable_discrete_state(prev_fsm_idx_).get_mutable_value() << fsm_state;
+    // Filter the alip state
+    filter_data.A = CalcA(CoM(2));
+    if (fsm_state == prev_fsm) {
+      filter.Update(filter_data, Vector2d::Zero(), x_alip,
+                    robot_output->get_timestamp());
+    } else {
+      Vector2d prev_stance_pos = state->get_discrete_state(prev_foot_idx_).value();
+      filter.Update(filter_data, stance_foot_pos.head<2>() - prev_stance_pos, x_alip,
+                    robot_output->get_timestamp());
+    }
+  }
+
+  if (fsm_state != prev_fsm) {
+    state->get_mutable_discrete_state(prev_fsm_idx_).get_mutable_value()
+        << fsm_state;
   }
   state->get_mutable_discrete_state(com_z_idx_).get_mutable_value() << CoM.tail(1) - stance_foot_pos.tail(1);
   state->get_mutable_discrete_state(prev_foot_idx_).get_mutable_value() << stance_foot_pos.head<2>();
@@ -278,9 +287,16 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
       robot_output->GetState(), mode_index,
       &CoM, &L, &stance_foot_pos);
 
-  Vector4d x_alip =
-      context.get_abstract_state<std::pair<S2SKalmanFilter,
-      S2SKalmanFilterData>>(alip_filter_idx_).first.x();
+  Vector4d x_alip = Vector4d::Zero();
+  if (filter_alip_state_) {
+    x_alip = context.get_abstract_state
+        <std::pair<S2SKalmanFilter,S2SKalmanFilterData>>
+          (alip_filter_idx_).first.x();
+  } else {
+    x_alip.head(2) = CoM.head(2) - stance_foot_pos.head(2);
+    x_alip.tail(2) = L.head(2);
+  }
+
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
@@ -316,12 +332,21 @@ void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);
 
-  Vector4d x_alip =
-      context.get_abstract_state<std::pair<S2SKalmanFilter,
-                                           S2SKalmanFilterData>>(
-                                               alip_filter_idx_).first.x();
-  double com_z = context.get_discrete_state(com_z_idx_).value()(0);
+  Vector3d CoM, L, stance_foot_pos;
+  CalcAlipState(
+      robot_output->GetState(), mode_index,
+      &CoM, &L, &stance_foot_pos);
 
+  Vector4d x_alip = Vector4d::Zero();
+  if (filter_alip_state_) {
+    x_alip = context.get_abstract_state
+        <std::pair<S2SKalmanFilter,S2SKalmanFilterData>>
+        (alip_filter_idx_).first.x();
+  } else {
+    x_alip.head(2) = CoM.head(2) - stance_foot_pos.head(2);
+    x_alip.tail(2) = L.head(2);
+  }
+  double com_z = context.get_discrete_state(com_z_idx_).value()(0);
   *exp_pp_traj =
       ConstructAlipStateTraj(x_alip, com_z, start_time, end_time);
 }

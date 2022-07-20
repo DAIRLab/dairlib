@@ -210,7 +210,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
       plant, plant_context.get(), gains.lipm_height,
       unordered_fsm_states, unordered_state_durations,
       contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
-      gains.R_alip_kalman_filter.asDiagonal());
+      gains.R_alip_kalman_filter.asDiagonal(), false);
   auto footstep_planner =
       builder.AddSystem<systems::AlipFootstepPlanner>(
           plant, plant_context.get(), left_right_support_fsm_states,

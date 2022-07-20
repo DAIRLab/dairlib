@@ -32,8 +32,8 @@ MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
 INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
-TARGET_LOWER_BOUND = np.array([-0.5, -0.3, 0.0])
-TARGET_UPPER_BOUND = -TARGET_LOWER_BOUND
+TARGET_BOUND = np.array([0.1, 0.1, 0.0])
+RADIO_BOUND = np.array([1.0, 1.0])
 MAX_ERROR = 1.0
 
 
@@ -62,7 +62,7 @@ class StepnetDataGenerator(DrakeCassieGym):
             3: 'right',
             4: 'left'
         }
-        self.fsm_swing_states = {
+        self.swing_states = {
             0: 'right',
             1: 'left',
             3: 'left',
@@ -247,26 +247,43 @@ class StepnetDataGenerator(DrakeCassieGym):
         )
 
     def get_stepnet_data_point(self):
+        # Reset the simulation to a random initial state
         x_pre = self.draw_random_initial_condition()
         self.reset(x_pre)
 
+        # Apply a random velocity command
+        radio = np.zeros((18,))
+        radio[2:4] = np.random.uniform(
+            low=-RADIO_BOUND,
+            high=RADIO_BOUND
+        )
+        self.cassie_sim.get_radio_input_port().FixValue(
+            context=self.cassie_sim_context,
+            value=radio)
+
+        # Get the depth image and the current ALIP footstep target
         depth_image = self.get_current_depth_image()
         alip_target = self.alip_target_port.Eval(self.controller_context) + \
                       self.sim_plant.CalcCenterOfMassPositionInWorld(
                           self.plant_context
                       )
 
+        # Apply a random offset to the target XY position
         target = alip_target + np.random.uniform(
-            low=TARGET_LOWER_BOUND,
-            high=TARGET_UPPER_BOUND
+            low=-TARGET_BOUND,
+            high=TARGET_BOUND
         )
         target[2] = 0.0
 
-        swing = self.fsm_swing_states[
+        # Get the current swing leg
+        swing = self.swing_states[
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
-        while self.current_time < 0.45:
+
+        # Step the simulation forward until middle of next double stance
+        while self.current_time < 0.35:
             self.step(footstep_target=target)
+            # Abort and return max error if something crazy happens
             if self.check_termination():
                 return {
                     'depth': depth_image.data,
@@ -275,6 +292,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                     'error': MAX_ERROR
                 }
 
+        # Calculate error
         swing_foot_final_pos = self.calc_foot_position_in_world(
             self.plant_context, swing)
         error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target))
@@ -300,7 +318,6 @@ def test_data_collection():
     gym_env = StepnetDataGenerator.make_randomized_env(visualize=True)
     while True:
         data = gym_env.get_stepnet_data_point()
-    import pdb; pdb.set_trace()
     gym_env.free_sim()
 
     # traj = PiecewisePolynomial.FirstOrderHold(t, np.array(x).T)

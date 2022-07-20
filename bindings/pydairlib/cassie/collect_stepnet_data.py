@@ -7,9 +7,9 @@ from torch import save as pt_save
 from pydairlib.cassie.cassie_gym.stepnet_data_generator import \
     StepnetDataGenerator, test_data_collection
 
-NMAPS = 4
-NSTEPS = 4
-NTHREADS = 1
+NMAPS = 50000
+NSTEPS = 10
+NTHREADS = 10
 
 DATASET_DIR = '.learning_data/dataset/'
 DEPTH_DIR = DATASET_DIR + 'depth/'
@@ -27,6 +27,7 @@ def collect_data_from_random_map(size):
 
 def collect_and_save_data_from_random_map(i, size):
     data = collect_data_from_random_map(size)
+    print(i)
     for j, stp in enumerate(data):
         depth = np.nan_to_num(stp['depth'], posinf=0).squeeze()
         depth = (255 * depth / np.max(depth)).astype('uint8')
@@ -35,7 +36,6 @@ def collect_and_save_data_from_random_map(i, size):
 
         im.save(os.path.join(DEPTH_DIR, f'{i}_{j}.png'))
         pt_save(robot, os.path.join(ROBO_DIR, f'{i}_{j}.pt'))
-        print('saved!')
 
 
 def main():

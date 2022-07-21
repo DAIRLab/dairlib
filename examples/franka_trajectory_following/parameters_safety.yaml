@@ -1,0 +1,6 @@
+# specify the halfspace constraint of each virtual wall
+# halfspace constraint defined as ax + by + cz > d
+
+virtual_walls:
+  wall_self_coll: {a: 1.0,  b: 0.0, c: 0.0, d: 0.12}
+  wall_table: {a: 0.0, b: 0.0, c: 0.0, d: 0.01}

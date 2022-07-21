@@ -30,7 +30,7 @@ class BoxyHeightMap {
   Eigen::MatrixXd GetHeightMap(const Eigen::VectorXd &x_grid,
                                const Eigen::VectorXd &y_grid) const ;
 
-  static  BoxyHeightMap MakeRandomMap();
+  static  BoxyHeightMap MakeRandomMap(double max_step_magnitude);
   static  BoxyHeightMap MakeFlatSingleStepMap();
 
  private:

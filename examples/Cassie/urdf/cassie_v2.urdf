@@ -27,7 +27,6 @@
       </material>
     </visual>
 
-    <!--
     <visual name="pelvis_collision">
       <geometry>
         <sphere radius="0.2"/>
@@ -37,7 +36,6 @@
         <color rgba="0.1 0.1 0.1 1.0" />
       </material>
     </visual>
-    -->
 
     <collision>
       <geometry>

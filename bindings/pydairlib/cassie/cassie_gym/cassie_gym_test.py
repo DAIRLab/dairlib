@@ -53,17 +53,10 @@ def test_base_env():
     urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
     radio = np.zeros(18)
 
-    controller_plant = MultibodyPlant(8e-5)
-    AddCassieMultibody(controller_plant, None, True, urdf, False, False)
-    controller_plant.Finalize()
-    controller = AlipWalkingControllerFactory(
-        controller_plant, True, False, osc_gains, osqp_settings)
-    gym_env = DrakeCassieGym(reward_func=RewardOSUDRL(), visualize=False)
-    gym_env.make(controller)
+    gym_env = DrakeCassieGym(reward_func=RewardOSUDRL(), visualize=True)
     state = gym_env.reset()
+    gym_env.AdvanceTo(5.0)
     
-    check_env(gym_env)
-
 
 def test_swing_ft_env():
     gym_env = SwingFootEnv(reward_func=RewardOSUDRL(), visualize=True)
@@ -106,4 +99,6 @@ if __name__ == '__main__':
     # test_vec_env()
     # main()
     # test_swing_ft_env()
-    test_radio_swing_ft_env()
+    # test_radio_swing_ft_env()
+    # test_base_env()
+    test_swing_ft_env()

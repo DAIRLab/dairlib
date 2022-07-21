@@ -19,7 +19,7 @@ from pydairlib.cassie.cassie_gym.cassie_traj import CassieStateHistory
 
 
 class DrakeCassieGym(gym.Env):
-    def __init__(self, reward_func, visualize=False):
+    def __init__(self, reward_func, visualize=False, max_step_magnitude=0.0):
         self.visualize = visualize
         self.reward_func = reward_func
         self.start_time = 0.00
@@ -50,6 +50,7 @@ class DrakeCassieGym(gym.Env):
         self.cassie_sim_context = None
         self.controller_context = None
         self.controller_output_port = None
+        self.max_step_magnitude = max_step_magnitude
 
         self.observation_space = \
             gym.spaces.Box(high=1000, low=-1000, shape=(45,), dtype=float)
@@ -66,7 +67,8 @@ class DrakeCassieGym(gym.Env):
         self.plant = MultibodyPlant(self.plant_dt)
         self.cassie_sim = CassieSimDiagram(self.plant, urdf,
                                            self.visualize, 0.8,
-                                           np.array([0,0,1]))
+                                           np.array([0,0,1]),
+                                           self.max_step_magnitude)
         self.sim_plant = self.cassie_sim.get_plant()
         self.builder.AddSystem(self.cassie_sim)
 

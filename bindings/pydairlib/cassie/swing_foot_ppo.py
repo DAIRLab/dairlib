@@ -22,7 +22,7 @@ def main():
     if not to_eval:
         print("Training....")
         # make a vec env for the radio swing foot env
-        # env = make_vec_env(make_radio_swing_ft_env, 1, 42, visualize=True)
+        # env = make_vec_env(make_radio_swing_ft_env, 15, 50, visualize=False)
         env = RadioSwingFootEnv(HighLevelReward(0.5), visualize=True)
         eval_env = make_vec_env(make_radio_swing_ft_env, 1, 30, visualize=False)
         # create a logger
@@ -41,7 +41,8 @@ def main():
             model.save(os.path.join(logdir, "ppo_model"))
         except KeyboardInterrupt:
             # env.env_method("save_action_log", 0) 
-            env.save_action_log()
+            # env.save_action_log()
+            model.save(os.path.join(logdir, "ppo_model"))
     else:
         directory = args.path
         model = PPO.load(directory)

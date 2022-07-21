@@ -23,12 +23,13 @@ PYBIND11_MODULE(simulators, m) {
              drake::systems::Diagram<double>>(m, "CassieSimDiagram")
       .def(py::init<
                std::unique_ptr<drake::multibody::MultibodyPlant<double>>,
-               const std::string &, bool, double, Eigen::Vector3d>(),
+               const std::string &, bool, double, Eigen::Vector3d, double>(),
            py::arg("plant"),
            py::arg("urdf"),
            py::arg("visualize"),
            py::arg("mu"),
-           py::arg("normal"))
+           py::arg("normal"),
+           py::arg("max_step_magnitude"))
       .def("get_plant", &CassieSimDiagram::get_plant,
            py_rvp::reference_internal)
       .def("get_actuation_input_port",

@@ -6,7 +6,7 @@ class HighLevelReward(RewardOSUDRL):
     def __init__(self, fwd_vel_des):
         super().__init__()
         self.fwd_vel_des = fwd_vel_des
-        self.gain = 2
+        self.gain = 0.2
 
     def compute_reward(self, timestep, cassie_env_state, prev_cassie_env_state, swing_foot_error=None):
         low_level_reward = super().compute_reward(timestep, cassie_env_state, prev_cassie_env_state,

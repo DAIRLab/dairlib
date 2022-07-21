@@ -18,10 +18,11 @@ double randd(double a, double b) {
 
 void BoxyHeightMap::AppendBox(double h, double w) {
   double box_start =
-      box_w_.empty() ? -w / 2.0 : box_start_.back() + box_w_.back();
-  box_start_.push_back(box_start);
+//      box_w_.empty() ? -w / 2.0 : box_start_.back() + box_w_.back();
+        box_w_.empty() ? -w : box_start_.back() + box_w_.back();
+  box_start_.push_back(box_start - 0.02); // corrective factor to prevent seams
   box_h_.push_back(h);
-  box_w_.push_back(w);
+  box_w_.push_back(w + 0.02); // correcting for corrective factor
 }
 
 void BoxyHeightMap::AddHeightMapToPlant(
@@ -74,12 +75,15 @@ RotationMatrix<double> BoxyHeightMap::MakeRotation(const Vector3d& normal,
   return R_BW * RotationMatrix<double>::MakeZRotation(rotz);
 }
 
-BoxyHeightMap BoxyHeightMap::MakeRandomMap() {
-  int n_boxes = rand() % 10 + 5;
+BoxyHeightMap BoxyHeightMap::MakeRandomMap(double max_step_magnitude) {
+  if (max_step_magnitude < 0) {
+    max_step_magnitude = 0.1;
+  }
+  int n_boxes = rand() % 20 + 5;
   BoxyHeightMap boxy(Vector3d::UnitZ(), 5, 0.5, randd(-0.5, 0.5), 0.8);
-  boxy.AppendBox(0, 0.4);
+  boxy.AppendBox(0, 0.8);
   for (int i = 0; i < n_boxes; i++) {
-    boxy.AppendBox(randd(-0.1, 0.1), randd(0.2, 0.4));
+    boxy.AppendBox(randd(-max_step_magnitude, max_step_magnitude), randd(0.2, 0.4));
   }
   return boxy;
 }

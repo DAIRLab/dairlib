@@ -12,6 +12,17 @@ load(
 )
 
 py_binary(
+    name = "test_rough_terrain",
+    srcs = ["test_rough_terrain.py"],
+    deps = [
+        "//bindings/pydairlib/cassie/cassie_gym:drake_cassie_gym",
+        "//bindings/pydairlib/cassie/cassie_gym:radio_swing_foot_env",
+        "//bindings/pydairlib/cassie/cassie_gym:cassie_env_state",
+        "//bindings/pydairlib/cassie/cassie_gym:high_level_reward",
+    ],
+)
+
+py_binary(
     name = "swing_foot_ppo",
     srcs = ["swing_foot_ppo.py"],
     deps = [

@@ -1,6 +1,7 @@
 import numpy as np
 import gym
 import yaml
+from scipy.spatial.transform import Rotation as R
 
 from dairlib import lcmt_swing_foot_spline_params
 from pydairlib.cassie.cassie_utils import *
@@ -20,17 +21,21 @@ SWING_FOOT_ACTION_DIM = N_KNOT * 3 + 6
 
 class RadioSwingFootEnv(DrakeCassieGym):
 
-    def __init__(self, reward_func, visualize=False):
-        super().__init__(reward_func, visualize)
+    def __init__(self, reward_func, visualize=False, max_step_magnitude=0.0, goal=0.8):
+        super().__init__(reward_func, visualize, max_step_magnitude)
         self.default_action = swing_foot_env.get_default_params()
+        highs = [1] * CASSIE_RADIO_TWISTS + [0.2] * SWING_FOOT_ACTION_DIM
+        lows = [-1] * CASSIE_RADIO_TWISTS + [-0.2] * SWING_FOOT_ACTION_DIM
         self.action_space = gym.spaces.Box(
-            high=0.1, low=-0.1, shape=(CASSIE_RADIO_TWISTS + SWING_FOOT_ACTION_DIM,), dtype=np.float32)
+            high=np.array(highs), low=np.array(lows), shape=(CASSIE_RADIO_TWISTS + SWING_FOOT_ACTION_DIM,), dtype=np.float32)
         self.add_controller()
         self.make(self.controller)
         self.swing_ft_error_port = self.controller.get_swing_error_output_port()
         self.ss_states = [0, 1]
         self.action_log = []
         self.state_log = []
+        self.goal = goal
+
 
     def add_controller(self):
         osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
@@ -64,8 +69,7 @@ class RadioSwingFootEnv(DrakeCassieGym):
         self.action_log.append(swing_action)
         self.state_log.append(self.cassie_state.x)
         radio = np.zeros((CASSIE_NRADIO,))
-        # for the purposes of logging, fix radio command to 0
-        # radio[[0, 1, 3]] = radio_twist
+        radio[[2, 3, 5]] = radio_twist
 
         # assuming this gets called while the robot is in double support
         cur_fsm_state = self.controller.get_fsm_output_port().Eval(self.controller_context)[0]
@@ -74,10 +78,25 @@ class RadioSwingFootEnv(DrakeCassieGym):
         else:
             done_with_ds = False
         cumulative_reward = 0
+        total_pitch = 0
+        total_roll = 0
+        start_time = self.drake_simulator.get_context().get_time()
 
         # Essentially want to do till the end of current double stance and then 
         # the end of the next single stance in one environment step
         while not done_with_ds or cur_fsm_state in self.ss_states:
+            x = self.plant.GetPositionsAndVelocities(
+                self.plant.GetMyMutableContextFromRoot(
+                    self.drake_simulator.get_context()))
+
+            # normalized by sim_dt
+            quat = x[0:4]  # TODO: not hardcode this. 
+            euler = R.from_quat(quat).as_euler("xyz")
+            pitch_mag = np.abs(euler[1])
+            roll_mag = np.abs(euler[0])
+            total_pitch += pitch_mag
+            total_roll += roll_mag - np.pi # seems like pi is the nominal roll?
+
             next_timestep = self.drake_simulator.get_context().get_time() + self.sim_dt
             self.cassie_sim.get_radio_input_port().FixValue(
                 self.cassie_sim_context, radio)
@@ -111,7 +130,7 @@ class RadioSwingFootEnv(DrakeCassieGym):
                 swing_foot_error=swing_ft_error)
 
             # reached the goal
-            self.terminated = self.check_termination() or self.cassie_state.get_positions()[0] >= 0.8
+            self.terminated = self.check_termination() or self.cassie_state.get_positions()[0] >= self.goal 
             # print(f"state positions: {self.cassie_state.get_positions()[0:3]}")
             # print(f"foot positions: {self.cassie_state.get_positions()[0:3]}")
             self.prev_cassie_state = self.cassie_state
@@ -121,7 +140,9 @@ class RadioSwingFootEnv(DrakeCassieGym):
             else:
                 cumulative_reward += reward
             self.traj.append(self.cassie_state, reward)
-        return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), {}
+        total_time = self.current_time - start_time
+        info = {"total_pitch_error":total_pitch/total_time, "total_roll_error":total_roll/total_time}
+        return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), info
 
 
 def make_radio_swing_ft_env(rank, seed=0, visualize=False):

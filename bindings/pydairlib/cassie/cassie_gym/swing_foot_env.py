@@ -73,7 +73,7 @@ class SwingFootEnv(DrakeCassieGym):
         self.controller = AlipWalkingControllerFactory(
             self.controller_plant, True, True, osc_gains, osqp_settings, N_KNOT)
 
-    def step(self, action=None, vel_des=(1.0, 0.0)):
+    def step(self, action=None, vel_des=(0.2, 0.0)):
         if not self.initialized:
             print("Call make() before calling step() or advance()")
         if action is None:

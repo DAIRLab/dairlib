@@ -45,13 +45,14 @@ def main():
         os.makedirs(ROBO_DIR)
 
     # collect_and_save_data_from_random_map(0, 10)
-    with multiprocessing.Pool(NTHREADS) as pool:
-        results = [
-            pool.apply_async(
-                collect_and_save_data_from_random_map,
-                (i, NSTEPS)
-            ) for i in range(NMAPS) ]
-        [result.wait() for result in results]
+    for j in range(int(NMAPS / NTHREADS)):
+        with multiprocessing.Pool(NTHREADS) as pool:
+            results = [
+                pool.apply_async(
+                    collect_and_save_data_from_random_map,
+                    (NTHREADS * j + i, NSTEPS)
+                ) for i in range(NTHREADS) ]
+            [result.wait() for result in results]
 
 
 def test():

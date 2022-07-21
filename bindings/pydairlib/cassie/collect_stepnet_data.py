@@ -52,7 +52,7 @@ def main():
                     collect_and_save_data_from_random_map,
                     (NTHREADS * j + i, NSTEPS)
                 ) for i in range(NTHREADS) ]
-            [result.wait() for result in results]
+            [result.wait(timeout=NSTEPS*5) for result in results]
 
 
 def test():

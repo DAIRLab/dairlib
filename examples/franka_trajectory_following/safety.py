@@ -2,8 +2,6 @@ import rospy
 import numpy as np
 
 from franka_msgs.msg import FrankaStateCustom
-from geometry_msgs.msg import Point
-
 
 class SafetyLayer:
   def __init__(self, robot_state_topic, safety_params):
@@ -20,7 +18,8 @@ class SafetyLayer:
 
     self.robot_state_topic = robot_state_topic
     self.virtual_walls = safety_params["virtual_walls"]
-    self.subsriber = rospy.Subscriber(robot_state_topic, FrankaStateCustom, self.safety_callback)
+    self.subsriber = rospy.Subscriber(robot_state_topic, FrankaStateCustom, 
+      self.safety_callback, tcp_nodelay=True)
 
   def safety_callback(self, msg):
     EEx = msg.O_T_EE[12] # x

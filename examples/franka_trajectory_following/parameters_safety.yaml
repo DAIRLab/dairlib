@@ -3,4 +3,4 @@
 
 virtual_walls:
   wall_self_coll: {a: 1.0,  b: 0.0, c: 0.0, d: 0.12}
-  wall_table: {a: 0.0, b: 0.0, c: 0.0, d: 0.01}
+  wall_table: {a: 0.0, b: 0.0, c: 1.0, d: 0.01}

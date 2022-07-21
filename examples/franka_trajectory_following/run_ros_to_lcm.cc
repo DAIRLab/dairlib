@@ -47,7 +47,7 @@ int DoMain(int argc, char* argv[]){
   /// systems
   auto ros_subscriber =
       builder.AddSystem(RosSubscriberSystem<std_msgs::Float64MultiArray>::Make(
-          "/c3/franka_state", &node_handle));
+          "/c3/franka_output", &node_handle));
   auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(4, 3, 3));  
   // change this to output correctly (i.e. when ros subscriber gets new message)
   auto robot_output_pub = builder.AddSystem(

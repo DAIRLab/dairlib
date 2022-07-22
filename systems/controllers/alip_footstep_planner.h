@@ -38,11 +38,10 @@ namespace systems {
    }
 
  private:
-   void CalcFootStepAndStanceFootHeight(
+   Eigen::Vector3d CalcFootStepAndStanceFootHeight(
        const drake::systems::Context<double>& context,
        const OutputVector<double>* robot_output,
-       const double end_time_of_this_interval, Eigen::Vector2d* x_fs,
-       double* stance_foot_height) const;
+       const double end_time_of_this_interval) const;
 
    void CalcTarget(const drake::systems::Context<double>& context,
        BasicVector<double>* target) const;

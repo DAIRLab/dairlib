@@ -214,7 +214,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
       plant, plant_context.get(), gains.lipm_height,
       unordered_fsm_states, unordered_state_durations,
       contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
-      gains.R_alip_kalman_filter.asDiagonal());
+      gains.R_alip_kalman_filter.asDiagonal(), false);
   auto footstep_planner =
       builder.AddSystem<systems::AlipFootstepPlanner>(
           plant, plant_context.get(), left_right_support_fsm_states,
@@ -302,11 +302,6 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
       gains.W_swing_foot, plant, plant);
   swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
-
-//  swing_foot_data->AddJointAndStateToIgnoreInJacobian(
-//      vel_map["hip_yaw_right"], left_stance_state);
-//  swing_foot_data->AddJointAndStateToIgnoreInJacobian(
-//      vel_map["hip_yaw_left"], right_stance_state);
 
   com_data = std::make_unique<ComTrackingData>(
       "com_data", gains.K_p_swing_foot, gains.K_d_swing_foot,

@@ -5,6 +5,7 @@ cc_library(
     srcs = ["camera_utils.cc"],
     hdrs = ["camera_utils.h"],
     deps = [
+        "//common:find_resource",
         "@drake//:drake_shared_library",
     ],
 )

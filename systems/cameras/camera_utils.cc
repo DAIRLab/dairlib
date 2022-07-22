@@ -1,4 +1,7 @@
 #include "systems/cameras/camera_utils.h"
+#include "common/find_resource.h"
+
+#include "drake/common/yaml/yaml_io.h"
 
 // Original code by Hersh Sanghvi, Extended by Brian Acosta
 
@@ -9,9 +12,29 @@ using drake::math::RigidTransform;
 using drake::math::RigidTransformd;
 using drake::math::RollPitchYaw;
 using drake::math::RotationMatrix;
+using drake::systems::sensors::CameraInfo;
 
 namespace dairlib {
 namespace camera {
+
+std::map<int, drake::systems::sensors::CameraInfo>
+LoadRealsenseCalibrationsAsCameraInfo(const std::string& yaml_filename) {
+  const auto archive =
+      drake::yaml::LoadYamlFile<
+          std::unordered_map<int, std::unordered_map<std::string, double>>>(
+          yaml_filename);
+  std::map<int, drake::systems::sensors::CameraInfo> camera_infos{};
+  for (auto& [i, cam] : archive) {
+    camera_infos[i] = CameraInfo((int)cam.at("width"),
+                                 (int)cam.at("height"),
+                                 cam.at("focal_x"),
+                                 cam.at("focal_y"),
+                                 cam.at("center_x"),
+                                 cam.at("center_y"));
+  }
+  return camera_infos;
+}
+
 
 //  https://github.com/RobotLocomotion/drake/blob/master/examples/manipulation_station/manipulation_station.cc
 std::pair <drake::geometry::render::ColorRenderCamera,
@@ -52,10 +75,26 @@ MakeD415CameraModel(const std::string &renderer_name) {
 
 std::pair<drake::geometry::render::ColorRenderCamera,
           drake::geometry::render::DepthRenderCamera> MakeDairD455CameraModel(
-              const std::string& renderer_name) {
+    const std::string &renderer_name, D455ImageSize image_size) {
   // Intrinsics specific to the D455 realsense for use with Cassie
+  auto camera_info = LoadRealsenseCalibrationsAsCameraInfo(
+      FindResourceOrThrow(
+          "systems/cameras/dair_d455.yaml")).at(image_size);
 
+  drake::geometry::render::ColorRenderCamera color_camera{
+      {renderer_name,
+       camera_info,
+       {0.1, 10.0},
+       {},
+      }, false};
 
+  drake::geometry::render::DepthRenderCamera depth_camera{
+      {renderer_name,
+       camera_info,
+       {0.6, 6.0},
+       RigidTransformd(),
+      }, {0.6, 6.0}};
+  return {color_camera, depth_camera};
 }
 
 

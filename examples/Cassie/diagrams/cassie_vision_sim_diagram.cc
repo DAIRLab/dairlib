@@ -95,7 +95,8 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   // Add camera model
   const auto& [color_camera, depth_camera] =
-  camera::MakeD415CameraModel(renderer_name);
+  camera::MakeDairD455CameraModel(renderer_name,
+                                  camera::D455ImageSize::k640x480);
   const std::optional<drake::geometry::FrameId> parent_body_id =
       plant_->GetBodyFrameIdIfExists(
           plant_->GetFrameByName("pelvis").body().index());

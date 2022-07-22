@@ -10,9 +10,18 @@
 namespace dairlib {
 namespace camera {
 
+
+
+std::map<int, drake::systems::sensors::CameraInfo> load_realsense_calib_info
+
 std::pair<drake::geometry::render::ColorRenderCamera,
 drake::geometry::render::DepthRenderCamera> MakeD415CameraModel(
     const std::string &renderer_name);
+
+std::pair<drake::geometry::render::ColorRenderCamera,
+drake::geometry::render::DepthRenderCamera> MakeDairD455CameraModel(
+    const std::string& renderer_name);
+
 
 std::pair<drake::geometry::render::ColorRenderCamera,
 drake::geometry::render::DepthRenderCamera> MakeGenericCameraModel(

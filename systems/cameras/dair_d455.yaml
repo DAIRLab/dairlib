@@ -1,0 +1,112 @@
+0:
+  center_x: 968.33
+  center_y: 543.467
+  focal_x: 976.858
+  focal_y: 976.858
+  height: 1080
+  width: 1920
+1:
+  center_x: 645.553
+  center_y: 362.311
+  focal_x: 651.238
+  focal_y: 651.238
+  height: 720
+  width: 1280
+2:
+  center_x: 323.332
+  center_y: 241.387
+  focal_x: 390.743
+  focal_y: 390.743
+  height: 480
+  width: 640
+3:
+  center_x: 427.679
+  center_y: 241.531
+  focal_x: 431.445
+  focal_y: 431.445
+  height: 480
+  width: 848
+4:
+  center_x: 322.777
+  center_y: 181.156
+  focal_x: 325.619
+  focal_y: 325.619
+  height: 360
+  width: 640
+5:
+  center_x: 213.839
+  center_y: 120.766
+  focal_x: 215.723
+  focal_y: 215.723
+  height: 240
+  width: 424
+6:
+  center_x: 161.666
+  center_y: 120.693
+  focal_x: 195.372
+  focal_y: 195.372
+  height: 240
+  width: 320
+7:
+  center_x: 242.082
+  center_y: 135.867
+  focal_x: 244.214
+  focal_y: 244.214
+  height: 270
+  width: 480
+8:
+  center_x: 645.553
+  center_y: 402.311
+  focal_x: 651.238
+  focal_y: 651.238
+  height: 800
+  width: 1280
+9:
+  center_x: 484.165
+  center_y: 271.734
+  focal_x: 488.429
+  focal_y: 488.429
+  height: 540
+  width: 960
+10:
+  center_x: 364.998
+  center_y: 362.08
+  focal_x: 586.115
+  focal_y: 586.115
+  height: 0
+  width: 0
+11:
+  center_x: 291.998
+  center_y: 289.641
+  focal_x: 468.892
+  focal_y: 468.892
+  height: 0
+  width: 0
+12:
+  center_x: 645.553
+  center_y: 402.311
+  focal_x: 651.238
+  focal_y: 651.238
+  height: 400
+  width: 640
+13:
+  center_x: 0.0
+  center_y: 0.0
+  focal_x: 4.70255e-37
+  focal_y: 0.0
+  height: 576
+  width: 576
+14:
+  center_x: 0.0
+  center_y: 0.0
+  focal_x: 0.0
+  focal_y: 0.0
+  height: 720
+  width: 720
+15:
+  center_x: 0.0
+  center_y: 0.0
+  focal_x: 0.0
+  focal_y: 0.0
+  height: 1152
+  width: 1152

@@ -50,6 +50,15 @@ MakeD415CameraModel(const std::string &renderer_name) {
   return {color_camera, depth_camera};
 }
 
+std::pair<drake::geometry::render::ColorRenderCamera,
+          drake::geometry::render::DepthRenderCamera> MakeDairD455CameraModel(
+              const std::string& renderer_name) {
+  // Intrinsics specific to the D455 realsense for use with Cassie
+
+
+}
+
+
 std::pair <drake::geometry::render::ColorRenderCamera,
 drake::geometry::render::DepthRenderCamera>
 MakeGenericCameraModel(const std::string &renderer_name, int kHeight, int kWidth) {

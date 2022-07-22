@@ -21,16 +21,19 @@ std::map<int, drake::systems::sensors::CameraInfo>
 LoadRealsenseCalibrationsAsCameraInfo(const std::string& yaml_filename) {
   const auto archive =
       drake::yaml::LoadYamlFile<
-          std::unordered_map<int, std::unordered_map<std::string, double>>>(
+          std::map<std::string, std::unordered_map<std::string, double>>>(
           yaml_filename);
   std::map<int, drake::systems::sensors::CameraInfo> camera_infos{};
-  for (auto& [i, cam] : archive) {
-    camera_infos[i] = CameraInfo((int)cam.at("width"),
-                                 (int)cam.at("height"),
-                                 cam.at("focal_x"),
-                                 cam.at("focal_y"),
-                                 cam.at("center_x"),
-                                 cam.at("center_y"));
+  for (const std::pair<std::string, std::unordered_map<std::string, double>> entry: archive) {
+    int i = stoi(entry.first);
+    const std::unordered_map<std::string, double>& cam = entry.second;
+    CameraInfo info = CameraInfo{((int)cam.at("width")),
+                                 ((int)cam.at("height")),
+                       cam.at("focal_x"),
+                       cam.at("focal_y"),
+                       cam.at("center_x"),
+                       cam.at("center_y")};
+    camera_infos.emplace(i, info);
   }
   return camera_infos;
 }

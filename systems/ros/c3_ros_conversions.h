@@ -12,6 +12,7 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 
 #include "std_msgs/Float64MultiArray.h"
+#include "sensor_msgs/JointState.h"
 #include "dairlib/lcmt_c3.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 
@@ -32,6 +33,9 @@ class TimestampedVectorToROS : public drake::systems::LeafSystem<double> {
   int num_elements_;
 };
 
+// NOTE: this class appends 7 zeros to the position and 6 zeros
+// to the velocity fields.  This was done since this class was hard
+// coded for the C3 Franka experiments.
 class ROSToRobotOutputLCM : public drake::systems::LeafSystem<double> {
  public:
   static std::unique_ptr<ROSToRobotOutputLCM> Make(int num_positions, int num_velocities, int num_efforts) {
@@ -46,6 +50,7 @@ class ROSToRobotOutputLCM : public drake::systems::LeafSystem<double> {
   int num_positions_;
   int num_velocities_;
   int num_efforts_;
+  const int num_franka_joints_{7};
 };
 
 class ROSToC3LCM : public drake::systems::LeafSystem<double> {

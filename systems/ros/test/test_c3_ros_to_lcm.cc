@@ -8,6 +8,7 @@
 #include <drake/lcm/drake_lcm.h>
 #include "ros/ros.h"
 #include "std_msgs/Float64MultiArray.h"
+#include "sensor_msgs/JointState.h"
 
 #include "systems/ros/ros_subscriber_system.h"
 #include "systems/ros/ros_publisher_system.h"
@@ -36,20 +37,26 @@ int DoMain(ros::NodeHandle& node_handle) {
 
   // if test_c3_drake_to_ros is also running, then this system subscribes
   // to a rostopic that outputs 0, 1, 2, ..., 9
-  auto msg_subscriber =
+  auto c3_subscriber =
       builder.AddSystem(RosSubscriberSystem<std_msgs::Float64MultiArray>::Make(
           "chatter", &node_handle));
-  auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(4, 3, 3));
+
+  TODO: find correct channel name here!!!!
+
+  auto robot_output_subscriber = 
+    builder.AddSystem(RosSubscriberSystem<sensor_msgs::JointState>::Make(
+        "", &node_handle));
+  auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(14, 13, 7));
   auto to_c3 = builder.AddSystem(ROSToC3LCM::Make(10,0,0,0));
 
-  builder.Connect(msg_subscriber->get_output_port(), to_robot_output->get_input_port());
-  builder.Connect(*msg_subscriber, *to_c3);
+  builder.Connect(*robot_output_subscriber, *to_robot_output);
+  builder.Connect(*c3_subscriber, *to_c3);
 
   // TODO: msg_subsciber doesn't produce an output until a new message
   // appears on the ROS channel which means to_c3 and to_robot_output
   // do no receive meaningful outputs until the ROS topic gets updated
-  // Before the first ROS topic update, these classes return some default
-  // value, but should probably find a better way to deal with this
+  // Before the first ROS topic update, these classes send some default
+  // value, but we should probably find a better way to deal with this.
   drake::lcm::DrakeLcm drake_lcm;
   auto robot_output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
@@ -62,7 +69,8 @@ int DoMain(ros::NodeHandle& node_handle) {
   LcmPublisherSystem::Make<dairlib::lcmt_c3>(
     "LCM_C3_TEST", &drake_lcm, 
     {drake::systems::TriggerType::kPeriodic}, 0.25));
-  builder.Connect(to_c3->get_output_port(0), c3_pub->get_input_port(0));
+  builder.Connect(to_c3->get_output_port(0), 
+    c3_pub->get_input_port(0));
 
   auto sys = builder.Build();
   Simulator<double> simulator(*sys);

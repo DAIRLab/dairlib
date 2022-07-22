@@ -42,8 +42,8 @@ void TimestampedVectorToROS::ConvertToROS(const drake::systems::Context<double>&
 ROSToRobotOutputLCM::ROSToRobotOutputLCM(int num_positions, int num_velocities, int num_efforts)
   : num_positions_(num_positions), num_velocities_(num_velocities), num_efforts_(num_efforts) {
 
-  this->DeclareAbstractInputPort("ROS Float64MultiArray", 
-    drake::Value<std_msgs::Float64MultiArray>());
+  this->DeclareAbstractInputPort("Franka JointState topic", 
+    drake::Value<sensor_msgs::JointState>());
   this->DeclareAbstractOutputPort("lcmt_robot_output",
     &ROSToRobotOutputLCM::ConvertToLCM);
 }
@@ -53,7 +53,7 @@ void ROSToRobotOutputLCM::ConvertToLCM(const drake::systems::Context<double>& co
 
   const drake::AbstractValue* const input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
-  const auto& msg = input->get_value<std_msgs::Float64MultiArray>();
+  const auto& msg = input->get_value<sensor_msgs::JointState>();
 
   output->num_positions = num_positions_;
   output->num_velocities = num_velocities_;
@@ -61,12 +61,15 @@ void ROSToRobotOutputLCM::ConvertToLCM(const drake::systems::Context<double>& co
   output->position_names.resize(num_positions_);
   output->velocity_names.resize(num_velocities_);
   output->effort_names.resize(num_efforts_);
+  output->position_names = position_names_;
+  output->velocity_names = velocity_names_;
+  output->effort_names = effort_names_;
   output->position.resize(num_positions_);
   output->velocity.resize(num_velocities_);
   output->effort.resize(num_efforts_);
   
   // yet to receive message from rostopic
-  if (msg.data.empty()){
+  if (msg.position.empty()){
     for (int i = 0; i < num_positions_; i++){
       output->position[i] = nan("");
     }
@@ -82,14 +85,24 @@ void ROSToRobotOutputLCM::ConvertToLCM(const drake::systems::Context<double>& co
   }
   // input should be order as "positions, velocities, effort, timestamp"
   else{
-    for (int i = 0; i < num_positions_; i++){
-      output->position[i] = msg.data[i];
+    for (int i = 0; i < num_franka_joints_; i++){
+      output->position[i] = msg.position[i];
     }
+    // hard coded to add 7 zeros to the end of position
+    for (int i = num_franka_joints_; i < num_positions_; i++){
+      output->position[i] = default_ball_position_[i-num_franka_joints_];
+    }
+
     for (int i = 0; i < num_velocities_; i++){
-      output->velocity[i] = msg.data[i+num_positions_];
+      output->velocity[i] = msg.velocity[i];
     }
+    // hard coded to add 6 zeros to the end of velocity
+    for (int i = num_franka_joints_; i < num_velocities_; i++){
+      output->velocity[i] = 0;
+    }
+    
     for (int i = 0; i < num_efforts_; i++){
-      output->effort[i] = msg.data[i+num_positions_+num_velocities_];
+      output->effort[i] = msg.effort[i];
     }
     for (int i = 0; i < 3; i++){
       output->imu_accel[i] = 0;
@@ -97,6 +110,7 @@ void ROSToRobotOutputLCM::ConvertToLCM(const drake::systems::Context<double>& co
   }
   // TODO: figure out which time to use
   output->utime = context.get_time() * 1e6;
+  //output->utime = msg.head.stamp.secs
   //output->utime = msg.data[num_positions_+num_velocities_+num_efforts_];
 }
 

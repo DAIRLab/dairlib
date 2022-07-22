@@ -11,7 +11,7 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include <drake/lcm/drake_lcm.h>
 #include "ros/ros.h"
-#include "std_msgs/Float64MultiArray.h"
+#include "sensor_msgs/JointState.h"
 
 #include "systems/ros/ros_subscriber_system.h"
 #include "systems/ros/ros_publisher_system.h"
@@ -37,7 +37,7 @@ void SigintHandler(int sig) {
 namespace dairlib {
 
 int DoMain(int argc, char* argv[]){
-  ros::init(argc, argv, "test_ros_subscriber_system");
+  ros::init(argc, argv, "run_ros_to_lcm");
   ros::NodeHandle node_handle;
 
   drake::lcm::DrakeLcm drake_lcm;
@@ -46,15 +46,15 @@ int DoMain(int argc, char* argv[]){
 
   /// systems
   auto ros_subscriber =
-      builder.AddSystem(RosSubscriberSystem<std_msgs::Float64MultiArray>::Make(
-          "/c3/franka_output", &node_handle));
-  auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(4, 3, 3));  
+      builder.AddSystem(RosSubscriberSystem<sensor_msgs::JointState>::Make(
+          "/franka_state_controller/joint_states", &node_handle));
+  auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(14, 13, 7));  
+  
   // change this to output correctly (i.e. when ros subscriber gets new message)
   auto robot_output_pub = builder.AddSystem(
     LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-      "LCM_ROBOT_OUTPUT_TEST", &drake_lcm, 
+      "FRANKA_ROS_OUTPUT", &drake_lcm, 
       {drake::systems::TriggerType::kPeriodic}, 0.0005));
-
   /// connections
   builder.Connect(ros_subscriber->get_output_port(), to_robot_output->get_input_port());
   builder.Connect(to_robot_output->get_output_port(), robot_output_pub->get_input_port());

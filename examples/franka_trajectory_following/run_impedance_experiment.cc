@@ -210,6 +210,16 @@ int DoMain(int argc, char* argv[]){
   
   builder.Connect(controller->get_output_port(), impedance_to_ros->get_input_port());
   builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());
+
+  auto ros_lcm_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto echo_ros_lcm = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+        "FRANKA_INPUT_WO_G", &drake_lcm, 
+        {drake::systems::TriggerType::kForced}, 0.0));
+  builder.Connect(controller->get_output_port(),
+      ros_lcm_sender->get_input_port());
+  builder.Connect(ros_lcm_sender->get_output_port(),
+      echo_ros_lcm->get_input_port());
 #endif
 
   auto diagram = builder.Build();

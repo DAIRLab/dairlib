@@ -242,6 +242,8 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp && timestamp >= settling_time){
     std::cout << std::setprecision(6) << std::fixed;
 
+    std::cout << timestamp << std::endl;
+
     std::cout << std::endl;
   }
 }

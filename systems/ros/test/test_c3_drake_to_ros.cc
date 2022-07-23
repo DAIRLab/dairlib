@@ -35,7 +35,7 @@ public:
   void Output(const drake::systems::Context<double>& context, TimestampedVector<double>* output) const {
     Eigen::VectorXd data(10);
     for (int i = 0; i < 10; i++){
-      data(i) = i;
+      data(i) = 0.5*i;
     }
     output->set_timestamp(0.0);
     output->SetDataVector(data);

@@ -160,7 +160,6 @@ class ImpedanceController : public LeafSystem<double> {
 
   // control related variables
   Quaterniond orientation_d_;
-
 };
 
 }  // namespace controller

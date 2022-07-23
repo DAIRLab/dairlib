@@ -52,7 +52,7 @@ class ROSToRobotOutputLCM : public drake::systems::LeafSystem<double> {
   int num_efforts_;
   const int num_franka_joints_{7};
 
-  const std::vector<double> default_ball_position_ {1, 0, 0, 0, 0.5, 0, 0};
+  const std::vector<double> default_ball_position_ {1, 0, 0, 0, 0.5, 0, 0.0315-0.0301};
 
   const std::vector<std::string> position_names_ {
     "panda_joint1",

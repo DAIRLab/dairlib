@@ -24,7 +24,7 @@ def main():
             controller_plant, True, osc_gains, osqp_settings)
         gym_env = DrakeCassieGym(visualize=True)
         gym_env.make(controller)
-        gym_env.advance_to(5.0)
+        gym_env.advance_to(1.0)
         gym_env.free_sim()
         gym_env.reset()
 

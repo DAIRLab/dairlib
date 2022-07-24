@@ -27,6 +27,17 @@ enum D455ImageSize {
   k1152x1152 = 15
 };
 
+/// Returns a rotation matrix which will make a drake rgbd sensor "look"
+/// parallel to the X-Z plane the parent frame, with angle "pitch" between the
+/// positive X-Axis of the parent frame and the center of the image,
+/// and the parent Y axis pointing left in the image.
+drake::math::RotationMatrix<double> inline MakeXZAlignedCameraRotation(double pitch) {
+  return drake::math::RotationMatrixd::MakeFromOrthonormalColumns(
+      {0, -1, 0},
+      {sin(pitch), 0, -cos(pitch)},
+      {cos(pitch), 0, sin(pitch)}
+      );
+}
 
 std::map<int, drake::systems::sensors::CameraInfo>
     LoadRealsenseCalibrationsAsCameraInfo(const std::string& yaml_filename);

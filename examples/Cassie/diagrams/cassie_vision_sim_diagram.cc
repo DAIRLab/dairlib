@@ -30,7 +30,7 @@
 #include "drake/systems/primitives/discrete_time_delay.h"
 #include "drake/systems/sensors/rgbd_sensor.h"
 #include "drake/geometry/render_vtk/render_engine_vtk_params.h"
-#include "drake/geometry/render/render_engine_vtk_factory.h"
+#include "drake/geometry/render_vtk/factory.h"
 
 namespace dairlib {
 namespace examples {
@@ -55,6 +55,11 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
     const std::string& urdf, bool visualize, double mu, double map_yaw,
     const Eigen::Vector3d& normal) {
 
+  drake::math::RigidTransform<double> cam_transform =
+      drake::math::RigidTransform<double>(
+          camera::MakeXZAlignedCameraRotation(-0.85*M_PI/2),
+          Eigen::Vector3d(0.175, 0, 0.15));
+
   DiagramBuilder<double> builder;
   scene_graph_ = builder.AddSystem<SceneGraph>();
   scene_graph_->set_name("scene_graph");
@@ -69,6 +74,10 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
   multibody::BoxyHeightMap hmap =
       multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
   hmap.AddHeightMapToPlant(plant_, scene_graph_);
+  plant_->RegisterVisualGeometry(plant_->GetBodyByName("pelvis"),
+                                 cam_transform,
+                                 drake::geometry::Box(0.15, 0.025, 0.025),
+                                 "realsense_box");
   plant_->Finalize();
 
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(*plant_);
@@ -101,10 +110,6 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
       plant_->GetBodyFrameIdIfExists(
           plant_->GetFrameByName("pelvis").body().index());
 
-  drake::math::RigidTransform<double> cam_transform =
-      drake::math::RigidTransform<double>(
-          drake::math::RollPitchYaw<double>(-2.6, 0.0, -1.57),
-          Eigen::Vector3d(0.05, 0, -0.15));
 
   auto camera = builder.AddSystem<drake::systems::sensors::RgbdSensor>(
       parent_body_id.value(), cam_transform, color_camera, depth_camera);

@@ -24,7 +24,8 @@ LoadRealsenseCalibrationsAsCameraInfo(const std::string& yaml_filename) {
           std::map<std::string, std::unordered_map<std::string, double>>>(
           yaml_filename);
   std::map<int, drake::systems::sensors::CameraInfo> camera_infos{};
-  for (const std::pair<std::string, std::unordered_map<std::string, double>> entry: archive) {
+  for (const std::pair<std::string,
+       std::unordered_map<std::string, double>> entry: archive) {
     int i = stoi(entry.first);
     const std::unordered_map<std::string, double>& cam = entry.second;
     CameraInfo info = CameraInfo{((int)cam.at("width")),

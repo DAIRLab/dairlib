@@ -17,11 +17,8 @@ from data_processor import DataProcessor
 class CaaiseSystemTest():
     def __init__(self, date, log_num, is_new_plots=False):
 
-        data_path = "log/{}/lcmlog-{}.mat".format(date, log_num)
-
-        self.data_path = data_path
-
-        print("data log at:{}".format(self.data_path))
+        self.date = date
+        self.log_num = log_num       
         
         self.cassie = CassieSystem()
 
@@ -90,12 +87,23 @@ class CaaiseSystemTest():
                 time.sleep(0.1)
             import pdb; pdb.set_trace()
 
-    def hardware_test(self):
-        raw_data = scipy.io.loadmat(self.data_path)
-        process_data = process_hardware_data(raw_data,)
-        t = process_data["t"]; q = process_data["q"]; v = process_data["v"]; v_dot_gt = process_data["v_dot"]; 
-        u = process_data["u"]; is_contact = process_data["is_contact"]; v_dot_osc = process_data["v_dot_osc"]; u_osc = process_data["u_osc"]
-        K = process_data["spring_stiffness"]; C = process_data["damping_ratio"]
+    def main(self, data_type="hardware"):
+
+        if data_type == "hardware":
+            data_path = "log/hardware_data/{}/lcmlog-{}.mat".format(self.date, self.log_num)
+            print("data log at:{}".format(data_path))
+        elif data_type == "simulation":
+            data_path = "log/simulation_data/{}/lcmlog-{}.mat".format(self.date, self.log_num)
+            print("data log at:{}".format(data_path))
+        else:
+            raise ValueError("data type should in [\"hardware\", \"simulation\"]")
+
+        raw_data = scipy.io.loadmat(data_path)
+        processed_data = process_raw_data(raw_data)
+
+        t = processed_data["t"]; q = processed_data["q"]; v = processed_data["v"]; v_dot_gt = processed_data["v_dot"]; 
+        u = processed_data["u"]; is_contact = processed_data["is_contact"]; v_dot_osc = processed_data["v_dot_osc"]; u_osc = processed_data["u_osc"]
+        K = processed_data["spring_stiffness"]; C = processed_data["damping_ratio"]
 
         offset = np.zeros(23)
 
@@ -126,70 +134,6 @@ class CaaiseSystemTest():
     def show_hip_residuals_given_time_period(self, start_time, end_time, residual_name="residual_for_best_spring_model"):
         self.data_processor.show_hip_residuals_given_time_period(start_time, end_time, residual_name)
 
-    def simulation_test(self):
-        raw_data = scipy.io.loadmat(self.data_path)
-        process_data = process_sim_data(raw_data, self.start_time, self.end_time)
-        t = process_data["t"]; q = process_data["q"]; v = process_data["v"]; v_dot_gt = process_data["v_dot"]; 
-        u = process_data["u"]; lambda_c_gt = process_data["lambda_c"]; lambda_c_position = process_data["lambda_c_position"]
-        v_dot_osc = process_data["v_dot_osc"]; #u_osc = process_data["u_osc"]
-        damping_ratio = process_data["damping_ratio"]; spring_stiffness = process_data["spring_stiffness"]
-
-        self.cassie.get_damping(damping_ratio)
-        self.cassie.get_spring_stiffness(spring_stiffness)
-
-        t_list = []
-        v_dot_est_list = []
-        lambda_c_est_list = []
-        lambda_h_est_list = []
-        v_dot_gt_list = []
-        lambda_c_gt_list = []
-        # v_dot_osc_list = []
-
-        for i in range(t.shape[0]):
-            t_list.append(t[i])
-            v_dot_est, lambda_c_est, lambda_h_est= self.cassie.calc_vdot(t[i], q[i,:], v[i,:], u[i,:], lambda_c_gt=lambda_c_gt[i,:], lambda_c_position=lambda_c_position[i,:], v_dot_gt=v_dot_gt[i,:])
-            v_dot_est_list.append(v_dot_est)
-            lambda_c_est_list.append(lambda_c_est)
-            lambda_h_est_list.append(lambda_h_est)
-            v_dot_gt_list.append(v_dot_gt[i,:])
-            lambda_c_gt_list.append(lambda_c_gt[i,:])
-            # v_dot_osc_list.append(v_dot_osc[i,:])
-
-        t_list = np.array(t_list)
-        v_dot_est_list = np.array(v_dot_est_list)        
-        lambda_c_est_list = np.array(lambda_c_est_list)
-        lambda_h_est_list = np.array(lambda_h_est_list)
-        lambda_c_gt_list = np.array(lambda_c_gt_list)
-        v_dot_gt_list = np.array(v_dot_gt_list)
-        # v_dot_osc_list = np.array(v_dot_osc_list)
-
-        # Save v_dot pictures
-        for i in range(22):
-            plt.cla()
-            # plt.plot(t_list, v_dot_osc_list[:,i], 'b', label='osc')
-            plt.plot(t_list, v_dot_est_list[:,i], 'r', label='est')
-            plt.plot(t_list, v_dot_gt_list[:,i], 'g', label='gt')
-            plt.legend()
-            plt.title(self.vel_map_inverse[i])
-            plt.ylim(-100,100)
-            plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/v_dot/{}.png".format(self.vel_map_inverse[i]))
-
-        # Save residual pictures
-        # self.draw_residual(lambda_c_gt[:,2]+lambda_c_gt[:,5]+lambda_c_gt[:,8]+lambda_c_gt[:,11], residual_list, 
-        #                     "bindings/pydairlib/cassie/residual_analysis/simulation_test/residuals/total_contact_force_at_z_direction")
-        
-        # Save lambda_c
-        for i in range(12):
-            plt.cla()
-            plt.plot(t_list, lambda_c_est_list[:,i], 'r', label='est')
-            plt.plot(t_list, lambda_c_gt_list[:,i], 'g', label='gt')
-            plt.legend()
-            plt.title(self.lambda_c_map_inverse[i])
-            plt.ylim(-200,200)
-            plt.savefig("bindings/pydairlib/cassie/residual_analysis/simulation_test/lambda_c/{}.png".format(self.lambda_c_map_inverse[i]))
-        
-        import pdb; pdb.set_trace()
-
 def main():
     date = sys.argv[1]
     log_num = sys.argv[2]
@@ -199,8 +143,8 @@ def main():
         is_new_plots = False
 
     simulationDataTester = CaaiseSystemTest(date=date, log_num=log_num, is_new_plots=is_new_plots)
-    # simulationDataTester.hardware_test()
-    simulationDataTester.input_isolation_test()
+    simulationDataTester.main(data_type="simulation")
+    # simulationDataTester.input_isolation_test()
 
 if __name__ == "__main__":
     main()

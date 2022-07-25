@@ -40,6 +40,56 @@ class CaaiseSystemTest():
         self.data_processor.update_vel_map(self.vel_map, self.vel_map_inverse)
         self.data_processor.update_act_map(self.act_map, self.act_map_inverse)
 
+    def input_isolation_test(self):
+        duration = 100
+        dt = 0.0005
+        contact_mode = np.array([0,0])
+        
+        init_q = np.array([0.99544474,  0.01837867, -0.07732829,  0.05265298,  0.99051897,
+       -0.25745832,  1.10687565, -0.01257864, -0.060807  ,  0.60521936,
+       -1.68468988,  0.04315069,  1.8032732 ,  0.05351326, -1.797297  ,
+       -0.06826214, -0.00297592,  0.58877701, -1.74365234,  0.0022177 ,
+        1.95459545,  0.01105913, -1.94397616])
+        
+        init_v = np.array([ 0.84349948, -0.99632606, -0.54623077,  0.08054357, -0.24025121,
+                        0.15620078,  0.77324903,  0.11250215,  5.04166746, -5.10034227,
+                        2.5170238 ,  2.75815916,  0.        ,  0.48897243, -0.03494408,
+                        0.40377441, -2.16895294,  1.43810701,  0.73286361, -1.31574011,
+                        0.        ,  1.22875142])
+
+        t = np.arange(duration) * dt
+        u = np.zeros((duration, 10))
+        u[:, self.act_map["hip_roll_right_motor"]] = 0
+        u[:, self.act_map["hip_roll_left_motor"]] = 0
+
+        init_v_dot, _, _ = self.cassie.calc_vdot(t[0], init_q, init_v, u[0], is_contact=contact_mode)
+
+        qs = [init_q]
+        vs = [init_v]
+        v_dots = [init_v_dot]
+
+        for i in range(1, t.shape[0]):
+            q, v = self.cassie.calc_q_and_v(dt, qs[i-1], vs[i-1], v_dots[i-1])
+            qs.append(q)
+            vs.append(v)
+            v_dot,_,_ = self.cassie.calc_vdot(t[i], qs[i], vs[i], u[i], is_contact=contact_mode)
+            v_dots.append(v_dot)
+
+        qs = np.array(qs)
+        vs = np.array(vs)
+        v_dots = np.array(v_dots)
+
+        plt.plot(t, v_dots[:,self.vel_map["hip_roll_leftdot"]], label="hip roll left")
+        plt.plot(t, v_dots[:,self.vel_map["hip_roll_rightdot"]], label="hip roll right")
+        plt.legend()
+        plt.show()
+
+        while True:
+            for i in range(t.shape[0]):
+                self.cassie.drawPose(qs[i])
+                time.sleep(0.1)
+            import pdb; pdb.set_trace()
+
     def hardware_test(self):
         raw_data = scipy.io.loadmat(self.data_path)
         process_data = process_hardware_data(raw_data,)
@@ -149,7 +199,8 @@ def main():
         is_new_plots = False
 
     simulationDataTester = CaaiseSystemTest(date=date, log_num=log_num, is_new_plots=is_new_plots)
-    simulationDataTester.hardware_test()
+    # simulationDataTester.hardware_test()
+    simulationDataTester.input_isolation_test()
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial.transform import Rotation
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydairlib.cassie.cassie_utils import *
@@ -59,6 +60,16 @@ class CassieSystem():
 
     def get_spring_offset(self, offset):
         self.spring_offset = offset
+
+    def calc_q_and_v(self, dt, q, v, v_dot):
+        new_q = np.zeros_like(q)
+        new_v = np.zeros_like(v)
+
+        new_v = v + dt * v
+        new_q[4:] = q[4:] + dt * v[3:]
+        new_q[:4] = ((Rotation.from_quat(q[[1,2,3,0]]) * Rotation.from_rotvec(dt * v[:3])).as_quat())[[3,0,1,2]]
+
+        return new_q, new_v
 
     def calc_vdot(self, t, q, v, u, is_contact=None, lambda_c_gt=None, lambda_c_position=None, v_dot_gt=None, u_osc=None, v_dot_osc=None, spring_mode="changed_stiffness"):
         """

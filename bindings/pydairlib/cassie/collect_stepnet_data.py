@@ -1,6 +1,6 @@
 import os
+import math
 import multiprocessing
-import time
 
 import numpy as np
 from PIL import Image
@@ -8,13 +8,17 @@ from torch import save as pt_save
 from pydairlib.cassie.cassie_gym.stepnet_data_generator import \
     StepnetDataGenerator, test_data_collection
 
-NMAPS = 50000
+NMAPS = 20000
 NSTEPS = 10
-NTHREADS = 10
+NTHREADS = 6
 
 DATASET_DIR = '.learning_data/dataset/'
 DEPTH_DIR = DATASET_DIR + 'depth/'
 ROBO_DIR = DATASET_DIR + 'robot/'
+
+
+def ndigits(number):
+    return int(math.log10(number)) + 1
 
 
 def collect_data_from_random_map(size, seed):
@@ -29,13 +33,15 @@ def collect_data_from_random_map(size, seed):
 def collect_and_save_data_from_random_map(i, size):
     data = collect_data_from_random_map(size, i*NSTEPS)
     print(i)
+    ni = ndigits(NMAPS)
+    nj = ndigits(NSTEPS)
     for j, stp in enumerate(data):
         depth = np.nan_to_num(stp['depth'], posinf=0).squeeze()
         depth = (255 * depth / max(.001, np.max(depth))).astype('uint8')
         im = Image.fromarray(depth)
         robot = {key: stp[key] for key in ['state', 'target', 'error']}
-        im.save(os.path.join(DEPTH_DIR, f'{i}_{j}.png'))
-        pt_save(robot, os.path.join(ROBO_DIR, f'{i}_{j}.pt'))
+        im.save(os.path.join(DEPTH_DIR, f'{i:0{ni}}_{j:0{nj}}.png'))
+        pt_save(robot, os.path.join(ROBO_DIR, f'{i:0{ni}}_{j:0{nj}}.pt'))
 
 
 def main():

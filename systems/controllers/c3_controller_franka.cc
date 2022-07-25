@@ -403,6 +403,24 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 
+  // check if the desired end effector position is unreasonably far from the current location
+  Vector3d vd = state_next.segment(10, 3);
+  if (vd.norm() > max_desired_velocity_){
+    /// update new desired position accordingly
+    Vector3d dx = state_next.head(3) - state.head(3);
+    state_next.head(3) << max_desired_velocity_ * dt * dx / dx.norm() + state.head(3);
+    
+    /// update new desired velocity accordingly
+    Vector3d clamped_velocity = max_desired_velocity_ * vd / vd.norm();
+    state_next(10) = clamped_velocity(0);
+    state_next(11) = clamped_velocity(1);
+    state_next(12) = clamped_velocity(2);
+
+    /// update the user
+    std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
+    std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;
+  }
+
   VectorXd force_des = VectorXd::Zero(6);
   force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 

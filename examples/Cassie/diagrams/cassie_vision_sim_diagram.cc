@@ -10,6 +10,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/boxy_height_map.h"
+#include "multibody/cube_height_map.h"
 #include "systems/framework/geared_motor.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -71,8 +72,10 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  multibody::BoxyHeightMap hmap =
-      multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
+  //multibody::BoxyHeightMap hmap =
+  //  multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
+  multibody::CubeHeightMap hmap =
+      multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu);
   hmap.AddHeightMapToPlant(plant_, scene_graph_);
   plant_->RegisterVisualGeometry(plant_->GetBodyByName("pelvis"),
                                  cam_transform,

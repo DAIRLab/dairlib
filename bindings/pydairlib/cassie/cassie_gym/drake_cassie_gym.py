@@ -143,9 +143,23 @@ class DrakeCassieGym:
         self.reset()
         self.initialized = True
 
+    def set_context_members(self, diagram_context):
+        self.cassie_sim_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.cassie_sim, diagram_context)
+        self.controller_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.controller, diagram_context)
+        self.plant_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.sim_plant, diagram_context)
+
     def reset(self):
-        self.sim_plant.SetPositionsAndVelocities(
-            self.plant_context, self.params.x_init)
+        new_context = self.diagram.CreateDefaultContext()
+        self.drake_simulator.reset_context(new_context)
+        self.set_context_members(new_context)
+
+        self.sim_plant.SetPositionsAndVelocities(self.plant_context, self.params.x_init)
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
         x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
         u = np.zeros(10)

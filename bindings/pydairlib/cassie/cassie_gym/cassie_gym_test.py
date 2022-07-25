@@ -16,14 +16,14 @@ def main():
     urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
 
     radio = np.zeros(18)
+    controller_plant = MultibodyPlant(8e-5)
+    AddCassieMultibody(controller_plant, None, True, urdf, False, False)
+    controller_plant.Finalize()
+    controller = AlipWalkingControllerFactory(
+        controller_plant, True, osc_gains, osqp_settings)
+    gym_env = DrakeCassieGym(visualize=True)
+    gym_env.make(controller)
     while 1:
-        controller_plant = MultibodyPlant(8e-5)
-        AddCassieMultibody(controller_plant, None, True, urdf, False, False)
-        controller_plant.Finalize()
-        controller = AlipWalkingControllerFactory(
-            controller_plant, True, osc_gains, osqp_settings)
-        gym_env = DrakeCassieGym(visualize=True)
-        gym_env.make(controller)
         gym_env.advance_to(1.0)
         gym_env.free_sim()
         gym_env.reset()

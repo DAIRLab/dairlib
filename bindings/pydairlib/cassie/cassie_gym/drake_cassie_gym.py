@@ -174,6 +174,6 @@ class DrakeCassieGym(gym.Env):
         return
 
 
-def make_vec_env(env_func, n_envs, seed, visualize):
-    envs = [env_func(i, seed, visualize) for i in range(n_envs)]
+def make_vec_env(env_func, n_envs, seed, visualize, **kwargs):
+    envs = [env_func(i, seed, visualize, **kwargs) for i in range(n_envs)]
     return SubprocVecEnv(envs)

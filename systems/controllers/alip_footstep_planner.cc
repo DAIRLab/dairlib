@@ -196,7 +196,7 @@ void AlipFootstepPlanner::CalcTarget(const drake::systems::Context<double>&
 
     // Get footstep target
     target->get_mutable_value() = CalcFootStepAndStanceFootHeight(
-        context, robot_output,end_time_of_this_interval);
+        context, robot_output, end_time_of_this_interval);
   } else {
     target->get_mutable_value().setZero();
   }

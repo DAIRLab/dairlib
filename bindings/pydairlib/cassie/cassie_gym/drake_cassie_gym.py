@@ -4,7 +4,7 @@ from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 import time
 
 from pydrake.multibody.parsing import Parser
-from pydrake.systems.framework import DiagramBuilder
+from pydrake.systems.framework import DiagramBuilder, Context, InputPort
 from pydrake.multibody.plant import *
 from pydrake.systems.analysis import Simulator
 
@@ -49,6 +49,7 @@ class DrakeCassieGym(gym.Env):
         self.drake_simulator = None
         self.cassie_sim_context = None
         self.controller_context = None
+        self.plant_context = None
         self.controller_output_port = None
         self.max_step_magnitude = max_step_magnitude
 
@@ -81,27 +82,42 @@ class DrakeCassieGym(gym.Env):
         # Build Drake block diagram
         self.diagram = self.builder.Build()
         self.drake_simulator = Simulator(self.diagram)
-
-        # grab relevant contexts
-        self.cassie_sim_context = self.diagram.GetMutableSubsystemContext(
-            self.cassie_sim, self.drake_simulator.get_mutable_context())
-        self.controller_context = self.diagram.GetMutableSubsystemContext(
-            self.controller, self.drake_simulator.get_mutable_context())
+        self.cassie_sim_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.cassie_sim,
+                self.drake_simulator.get_mutable_context())
+        self.controller_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.controller,
+                self.drake_simulator.get_mutable_context())
+        self.plant_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.sim_plant,
+                self.drake_simulator.get_mutable_context())
         self.controller_output_port = self.controller.get_torque_output_port()
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
         self.reset()
         self.initialized = True
 
+    def set_context_members(self, diagram_context):
+        self.cassie_sim_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.cassie_sim, diagram_context)
+        self.controller_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.controller, diagram_context)
+        self.plant_context = \
+            self.diagram.GetMutableSubsystemContext(
+                self.sim_plant, diagram_context)
+
     def reset(self):
-        # Reset plant state
-        self.sim_plant.SetPositionsAndVelocities(
-            self.sim_plant.GetMyMutableContextFromRoot(
-                self.drake_simulator.get_mutable_context()), self.x_init)
-        # Rewind simulator to 0
+        new_context = self.diagram.CreateDefaultContext()
+        self.drake_simulator.reset_context(new_context)
+        self.set_context_members(new_context)
+
+        self.sim_plant.SetPositionsAndVelocities(self.plant_context, self.params.x_init)
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
-        x = self.plant.GetPositionsAndVelocities(
-            self.plant.GetMyMutableContextFromRoot(
-                self.drake_simulator.get_context()))
+        x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
         u = np.zeros(CASSIE_NU)
         self.drake_simulator.Initialize()
         self.current_time = self.start_time

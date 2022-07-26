@@ -44,7 +44,8 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
-      contact_points_in_each_state, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R);
+      contact_points_in_each_state, const Eigen::MatrixXd& Q,
+      const Eigen::MatrixXd& R, bool filter_alip_state = true);
 
   // Input port getters
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -112,7 +113,6 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
 
   double desired_com_height_;
   std::vector<int> unordered_fsm_states_;
-
   std::vector<double> unordered_state_durations_;
 
   // A list of pairs of contact body frame and contact point in each FSM state
@@ -121,6 +121,7 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
       contact_points_in_each_state_;
   const drake::multibody::BodyFrame<double>& world_;
 
+  bool filter_alip_state_;
   double m_;
 
   int alip_filter_idx_;

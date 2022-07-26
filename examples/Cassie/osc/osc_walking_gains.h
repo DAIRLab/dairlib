@@ -1,3 +1,4 @@
+#pragma once
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "yaml-cpp/yaml.h"
 

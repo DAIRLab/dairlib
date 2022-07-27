@@ -15,6 +15,9 @@ class S2SKalmanFilter : public LinearKalmanFilter {
  public:
   S2SKalmanFilter(const S2SKalmanFilterData& sys) :
                   LinearKalmanFilter(sys) {};
+  static S2SKalmanFilter MakeAlipFilter(Eigen::MatrixXd Q,
+                                        Eigen::MatrixXd R,
+                                        double H);
  private:
   void Predict(const S2SKalmanFilterData& sys,
       const Eigen::VectorXd& u, double t) {

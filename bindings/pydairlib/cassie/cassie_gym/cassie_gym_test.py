@@ -24,7 +24,7 @@ def main():
     gym_env = DrakeCassieGym(visualize=True)
     gym_env.make(controller)
     while 1:
-        gym_env.advance_to(1.0)
+        gym_env.advance_to(5.0)
         gym_env.free_sim()
         gym_env.reset()
 

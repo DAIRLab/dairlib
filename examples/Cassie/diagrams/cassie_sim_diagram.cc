@@ -34,7 +34,7 @@ using Eigen::VectorXd;
 
 CassieSimDiagram::CassieSimDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
-    const std::string& urdf, bool visualize, double mu, Vector3d normal) {
+    const std::string& urdf, bool visualize, double mu, Vector3d normal, double map_height) {
 
   DiagramBuilder<double> builder;
   scene_graph_ = builder.AddSystem<SceneGraph>();
@@ -42,7 +42,7 @@ CassieSimDiagram::CassieSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  BoxyHeightMap boxes = BoxyHeightMap::MakeRandomMap();
+  BoxyHeightMap boxes = BoxyHeightMap::MakeRandomMap(normal, 0, mu, map_height);
   boxes.AddHeightMapToPlant(plant_, scene_graph_);
   plant_->Finalize();
 

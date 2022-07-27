@@ -76,6 +76,12 @@ group "0.operator" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
         host = "localhost";
     }
+
+    cmd "0.drake-director-noimage" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+
     cmd "2.state-visualizer-floating (from dispatcher)" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true";
         host = "localhost";

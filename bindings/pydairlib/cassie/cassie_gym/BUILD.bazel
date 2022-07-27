@@ -24,6 +24,28 @@ py_library(
 )
 
 py_library(
+    name = "visual_loco_reward",
+    srcs = ["visual_loco_reward.py"],
+    deps = [
+        ":cassie_env_state",
+    ],
+)
+
+py_binary(
+    name = "footstep_env",
+    srcs = ["footstep_env.py"],
+    deps = [
+        ":cassie_env_state",
+        ":visual_loco_reward",
+        ":drake_cassie_gym",
+        "//bindings/pydairlib/cassie",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
+
+py_library(
     name = "drake_cassie_gym",
     srcs = ["drake_cassie_gym.py"],
     deps = [

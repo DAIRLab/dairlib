@@ -16,7 +16,7 @@ from pydairlib.multibody import *
 from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import RobotOutputSender
 from dairlib import lcmt_radio_out
-from pydairlib.cassie.simulators import CassieVisionSimDiagram
+from pydairlib.cassie.simulators import CassieSimDiagram, CassieVisionSimDiagram
 from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState
 
 
@@ -34,6 +34,7 @@ class CassieGymParams:
           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     map_yaw: float = 0
     mu: float = 0.8
+    max_step_magnitude: float = 0
 
     @staticmethod
     def make_random(ic_file_path):
@@ -45,11 +46,13 @@ class CassieGymParams:
         )
         map_yaw = 2 * np.random.random() - 1
         mu = 0.5 * np.random.random() + 0.5
+        max_step_magnitude = np.random.uniform(0, 0.1)
         return CassieGymParams(
             terrain_normal=normal,
             x_init=x,
             map_yaw=map_yaw,
-            mu=mu
+            mu=mu,
+            max_step_magnitude = max_step_magnitude
         )
 
 
@@ -96,12 +99,14 @@ class DrakeCassieGym:
             visualize=self.visualize,
             mu=self.params.mu,
             map_yaw=self.params.map_yaw,
-            normal=self.params.terrain_normal)
+            normal=self.params.terrain_normal,
+            map_height=self.params.max_step_magnitude)
         self.sim_plant = self.cassie_sim.get_plant()
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.cassie_sim)
 
         if self.visualize:
+            '''
             self.lcm = DrakeLcm()
             self.image_array_sender = self.builder.AddSystem(
                 ImageToLcmImageArrayT())
@@ -118,6 +123,7 @@ class DrakeCassieGym:
                                  self.image_array_sender.get_input_port())
             self.builder.Connect(self.image_array_sender.get_output_port(),
                                  self.image_array_publisher.get_input_port())
+            '''
 
         self.builder.Connect(self.controller.get_control_output_port(),
                              self.cassie_sim.get_actuation_input_port())

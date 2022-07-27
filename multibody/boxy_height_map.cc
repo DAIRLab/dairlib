@@ -80,7 +80,7 @@ RotationMatrix<double> BoxyHeightMap::MakeRotation(
 }
 
 BoxyHeightMap BoxyHeightMap::MakeRandomMap() {
-  return MakeRandomMap(Vector3d::UnitZ(), randd(-0.5, 0.5), randd(0.5, 1.0));
+  return MakeRandomMap(Vector3d::UnitZ(), randd(-0.5, 0.5), randd(0.5, 1.0), 0.1);
 }
 
 BoxyHeightMap BoxyHeightMap::MakeRandomMap(

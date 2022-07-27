@@ -17,4 +17,11 @@ void CalcAlipState(const drake::multibody::MultibodyPlant<double>& plant,
                    const drake::EigenPtr<Eigen::Vector3d> &stance_pos_p);
 
 Eigen::Matrix4d CalcA(double com_z, double m);
+
+double XImpactTime(double t_start, double H, double m, double x, double Ly,
+                   double x_impact);
+
+double YImpactTime(double t_start, double H, double m, double y, double Lx,
+                   double y_impact);
+
 }

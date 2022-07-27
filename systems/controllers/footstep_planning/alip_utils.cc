@@ -1,3 +1,4 @@
+#include <cmath>
 #include "alip_utils.h"
 #include "multibody/multibody_utils.h"
 
@@ -53,6 +54,16 @@ Matrix4d CalcA(double com_z, double m) {
   A(2, 1) = a2x;
   A(3, 0) = a2y;
   return A;
+}
+
+double XImpactTime(double t_start, double H, double x, double Ly,
+                   double x_impact) {
+  return 0;
+}
+
+double YImpactTime(double t_start, double H, double y, double Lx,
+                   double y_impact) {
+  return 0;
 }
 
 }

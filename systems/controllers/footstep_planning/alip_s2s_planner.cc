@@ -15,12 +15,14 @@ namespace dairlib::systems::controllers {
 
 using alip_utils::PointOnFramed;
 using alip_utils::CalcA;
+using alip_utils::YImpactTime;
 
 using Eigen::MatrixXd;
 using Eigen::Matrix3d;
 using Eigen::VectorXd;
 using Eigen::Vector4d;
 using Eigen::Vector3d;
+using Eigen::Vector2d;
 
 using drake::math::RotationMatrixd;
 using drake::multibody::MultibodyPlant;
@@ -35,7 +37,7 @@ AlipS2SPlanner::AlipS2SPlanner(const MultibodyPlant<double>& plant,
                                std::vector<int> left_right_stance_fsm_states,
                                std::vector<double> left_right_stance_durations,
                                std::vector<PointOnFramed> left_right_foot,
-                               AlipS2SControllerParameters params) :
+                               const AlipS2SControllerParameters& params) :
                                plant_(plant),
                                context_(context),
                                world_(plant.world_frame()),
@@ -46,6 +48,7 @@ AlipS2SPlanner::AlipS2SPlanner(const MultibodyPlant<double>& plant,
   DRAKE_DEMAND(left_right_stance_fsm_states_.size() == 2);
   DRAKE_DEMAND(left_right_stance_durations.size() == 2);
   DRAKE_DEMAND(left_right_foot.size() == 2);
+  DRAKE_DEMAND(double_stance_duration_ == 0);
 
   nq_ = plant_.num_positions();
   nv_ = plant_.num_velocities();
@@ -53,12 +56,13 @@ AlipS2SPlanner::AlipS2SPlanner(const MultibodyPlant<double>& plant,
 
   // Declare discrete states first (otherwise ports aren't assigned properly)
   fsm_state_idx_ = this->DeclareDiscreteState(1);
-  time_to_impact_idx_ = this->DeclareDiscreteState(1);
   time_since_impact_idx_ = this->DeclareDiscreteState(1);
   footstep_target_idx_ = this->DeclareDiscreteState(3);
   zdot_com_pre_impact_idx_ = this->DeclareDiscreteState(1);
+  next_impact_time_idx_ = this->DeclareDiscreteState(
+      left_right_stance_durations.at(0) * VectorXd::Ones(1));
 
-  // Then the abstract states why not
+  // Abstract states
   if (params.filter_alip_state) {
     MatrixXd A = CalcA(params_.z_com_des, m_);
     MatrixXd B = -MatrixXd::Identity(4,2);
@@ -105,8 +109,8 @@ AlipS2SPlanner::AlipS2SPlanner(const MultibodyPlant<double>& plant,
   // Direct state output ports
   fsm_output_port_ = this->DeclareStateOutputPort(
       "fsm", fsm_state_idx_).get_index();
-  time_to_impact_output_port_ = this->DeclareStateOutputPort(
-      "seconds until next imapct", time_to_impact_idx_).get_index();
+  next_impact_time_output_port_ = this->DeclareStateOutputPort(
+      "seconds until next imapct", next_impact_time_idx_).get_index();
   time_since_impact_output_port_ = this->DeclareStateOutputPort(
       "seconds since last impact", time_since_impact_idx_).get_index();
   footstep_target_output_port_ = this->DeclareStateOutputPort(
@@ -128,8 +132,68 @@ AlipS2SPlanner::AlipS2SPlanner(const MultibodyPlant<double>& plant,
 
 }
 
+// TODO (@Brian-Acosta) figure out how to handle double stance.
+//  enforce single stance for now
+
+/*
+ * Update Implementation:
+ * [ ] fsm_state_idx_
+ * [x] next_impact_time_idx_
+ * [/] time_since_impact_idx_
+ * [ ] footstep_target_idx_
+ * [ ] zdot_com_pre_impact_idx_
+ * [ ] s2s_filter_idx_
+ * [ ] mpc related states
+ */
 EventStatus AlipS2SPlanner::UnrestrictedUpdate(const Context<double>& context,
                                                State<double>* state) const {
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+  const Vector2d vdes = this->EvalVectorInput(
+      context, vdes_input_port_)->get_value();
+  const auto& foothold = this->EvalAbstractInput(
+      context, foothold_input_port_)->get_value<ConvexFoothold>();
+
+  double t = robot_output->get_timestamp();
+  double t_next_impact = state->get_discrete_state(
+      next_impact_time_idx_).get_value()(0);
+  if (t >= t_next_impact) {
+    // TODO (@Brian-Acosta) handle fsm transition here
+    state->get_mutable_discrete_state(time_since_impact_idx_).set_value(
+        drake::Vector1<double>(t - t_next_impact));
+  } else {
+
+  }
+
+  Vector4d alip_state;
+  double zcom;
+
+  // TODO (@Brian-Acosta) calculate the alip state based on
+  //  if using as filter, etc.
+
+  double t_step = t_next_impact - t;
+  Vector2d p_hat_sw, p_hat_com;
+  if (t_step > params_.step_period_update_cutoff_time) {
+    CalcNominalAlipFootTarget(vdes, alip_state, t_step, &p_hat_sw, &p_hat_com);
+
+    // Can this whole thing just be accomplished by feedback? Should ablate this
+    t_step += CalcFootstepTimingOffset(foothold, p_hat_sw, p_hat_com);
+    CalcNominalAlipFootTarget(vdes, alip_state, t_step, &p_hat_sw, &p_hat_com);
+
+    Vector2d p_sw_des = foothold.ProjectPointToSet(p_hat_sw);
+    // TODO: Make a 3D swing foot target and update the corresponding
+    //  DiscreteState
+
+    double y_c_des = p_sw_des(1) / 2;
+    double t_i = YImpactTime(t, zcom, m_, alip_state(1), alip_state(3), y_c_des);
+    state->get_mutable_discrete_state(next_impact_time_idx_).set_value(
+        drake::Vector1<double>(t_i));
+  }
+
+
+
+  // then calculate zdot_com_pre_des and a saggital plane traj via mpc
+
   return EventStatus::Succeeded();
 }
 

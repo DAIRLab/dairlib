@@ -54,7 +54,7 @@ using Eigen::VectorXd;
 CassieVisionSimDiagram::CassieVisionSimDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
     const std::string& urdf, bool visualize, double mu, double map_yaw,
-    const Eigen::Vector3d& normal) {
+    const Eigen::Vector3d& normal, double map_height) {
 
   drake::math::RigidTransform<double> cam_transform =
       drake::math::RigidTransform<double>(
@@ -75,7 +75,7 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
   //multibody::BoxyHeightMap hmap =
   //  multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
   multibody::CubeHeightMap hmap =
-      multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu);
+      multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu, map_height);
   hmap.AddHeightMapToPlant(plant_, scene_graph_);
   plant_->RegisterVisualGeometry(plant_->GetBodyByName("pelvis"),
                                  cam_transform,

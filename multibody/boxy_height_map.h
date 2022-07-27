@@ -32,7 +32,7 @@ class BoxyHeightMap {
 
   static BoxyHeightMap MakeRandomMap();
   static BoxyHeightMap MakeRandomMap(
-      const Eigen::Vector3d& normal, double yaw, double mu);
+      const Eigen::Vector3d& normal, double yaw, double mu, double height);
   static drake::math::RotationMatrix<double> MakeRotation(
       const Eigen::Vector3d& normal, double rotz);
 

@@ -145,9 +145,12 @@ class RadioSwingFootEnv(DrakeCassieGym):
         return np.array(self.cassie_state.x), cumulative_reward, bool(self.terminated), info
 
 
-def make_radio_swing_ft_env(rank, seed=0, visualize=False):
+def make_radio_swing_ft_env(rank, seed=0, visualize=False, magnitude=0.0, goal=1.0):
     def _init():
-        env = RadioSwingFootEnv(reward_func=HighLevelReward(0.5), visualize=visualize)
+        env = RadioSwingFootEnv(reward_func=HighLevelReward(0.5),
+                                visualize=visualize,
+                                max_step_magnitude=magnitude,
+                                goal=goal)
         env.seed(seed + rank)
         return env
     return _init

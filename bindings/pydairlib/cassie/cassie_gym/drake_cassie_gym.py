@@ -115,7 +115,7 @@ class DrakeCassieGym(gym.Env):
         self.drake_simulator.reset_context(new_context)
         self.set_context_members(new_context)
 
-        self.sim_plant.SetPositionsAndVelocities(self.plant_context, self.params.x_init)
+        self.sim_plant.SetPositionsAndVelocities(self.plant_context, self.x_init)
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
         x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
         u = np.zeros(CASSIE_NU)

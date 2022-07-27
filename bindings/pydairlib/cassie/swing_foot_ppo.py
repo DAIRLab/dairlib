@@ -22,8 +22,8 @@ def main():
     if not to_eval:
         print("Training....")
         # make a vec env for the radio swing foot env
-        # env = make_vec_env(make_radio_swing_ft_env, 15, 50, visualize=False)
-        env = RadioSwingFootEnv(HighLevelReward(0.5), visualize=True)
+        env = make_vec_env(make_radio_swing_ft_env, 15, 50, visualize=False, magnitude=0, goal=2.0)
+        # env = RadioSwingFootEnv(HighLevelReward(0.5), visualize=True)
         eval_env = make_vec_env(make_radio_swing_ft_env, 1, 30, visualize=False)
         # create a logger
         logdir = "./rl_logging/" + datetime.now().strftime("%b_%d_%Y_%H%M") +  "/"

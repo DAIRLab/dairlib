@@ -2,13 +2,15 @@
 
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
+#include "systems/controllers/footstep_planning/alip_utils.h"
 #include "systems/framework/output_vector.h"
+#include "systems/filters/s2s_kalman_filter.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/filters/s2s_kalman_filter.h"
+
 
 namespace dairlib {
 namespace systems {
@@ -98,7 +100,9 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   void CalcAlipTrajFromCurrent(const drake::systems::Context<double>& context,
                                drake::trajectories::Trajectory<double>* traj) const;
 
-  Eigen::MatrixXd CalcA(double com_z) const;
+  Eigen::Matrix4d CalcA(double com_z) const {
+    return controllers::alip_utils::CalcA(com_z, m_);
+  }
 
   // Port indices
   int state_port_;

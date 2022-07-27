@@ -3,6 +3,7 @@
 //
 
 #include "alip_traj_gen.h"
+#include "systems/controllers/footstep_planning/alip_utils.h"
 #include <cmath>
 
 #include <fstream>
@@ -16,6 +17,7 @@ using std::string;
 using std::vector;
 
 using Eigen::MatrixXd;
+using Eigen::Matrix4d;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
@@ -198,24 +200,6 @@ ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTr
       K, A, x_alip, pp_part);
 }
 
-
-Eigen::MatrixXd ALIPTrajGenerator::CalcA(double com_z) const {
-  // Dynamics of ALIP: (eqn 6) https://arxiv.org/pdf/2109.14862.pdf
-  const double g = 9.81;
-  double a1x = 1.0 / (m_ * com_z);
-  double a2x = -m_ * g;
-  double a1y = -1.0 / (m_ * com_z);
-  double a2y = m_ * g;
-
-  // Sum of two exponential + one-segment 3D polynomial
-  MatrixXd A = MatrixXd::Zero(4, 4);
-  A(0, 3) = a1x;
-  A(1, 2) = a1y;
-  A(2, 1) = a2x;
-  A(3, 0) = a2y;
-  return A;
-}
-
 ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipStateTraj(
     const Eigen::Vector4d& x_alip, double com_z, double start_time,
     double end_time_of_this_fsm_state) const {
@@ -237,25 +221,8 @@ void ALIPTrajGenerator::CalcAlipState(
     const drake::EigenPtr<Eigen::Vector3d>& L_p,
     const drake::EigenPtr<Eigen::Vector3d>& stance_pos_p) const {
 
-  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, x, context_);
-  Vector3d CoM = plant_.CalcCenterOfMassPositionInWorld(*context_);
-
-  // Take average of contact points a stance position
-  Vector3d stance_foot_pos = Vector3d::Zero();
-  for (const auto& stance_foot : contact_points_in_each_state_[mode_index]) {
-    Vector3d position;
-    plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
-                               world_, &position);
-    stance_foot_pos += position;
-  }
-  stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
-
-  Vector3d L = plant_.CalcSpatialMomentumInWorldAboutPoint(
-      *context_, stance_foot_pos).rotational();
-
-  *CoM_p = CoM;
-  *L_p = L;
-  *stance_pos_p = stance_foot_pos;
+  controllers::alip_utils::CalcAlipState(plant_, context_, x,
+      contact_points_in_each_state_[mode_index], CoM_p, L_p, stance_pos_p);
 }
 
 void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<

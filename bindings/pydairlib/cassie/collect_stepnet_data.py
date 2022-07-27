@@ -12,7 +12,8 @@ NMAPS = 20000
 NSTEPS = 10
 NTHREADS = 6
 
-DATASET_DIR = '~/workspace/stepnet_learning_data/dataset/'
+HOME = os.getenv("HOME")
+DATASET_DIR = HOME + '/workspace/stepnet_learning_data/dataset/'
 DEPTH_DIR = DATASET_DIR + 'depth/'
 ROBO_DIR = DATASET_DIR + 'robot/'
 

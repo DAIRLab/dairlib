@@ -24,12 +24,13 @@ def interpolation(t,t1,t2,v1,v2):
     v = v1 + ratio * (v2 -v1)
     return v
 
-def process_raw_data(raw_data):
+def process_raw_data(raw_data, start_time, end_time):
     
     print("Begin process the data.")
 
-    start_time = max(raw_data['robot_output']["t_x"][0][0][0][100], raw_data['contact_output']['t_contact'][0][0][0][100], raw_data['osc_output']['t_osc'][0][0][0][100])
-    end_time = min(raw_data['robot_output']["t_x"][0][0][0][-100], raw_data['contact_output']['t_contact'][0][0][0][-100], raw_data['osc_output']['t_osc'][0][0][0][-100])
+    if start_time is None or end_time is None:
+        start_time = max(raw_data['robot_output']["t_x"][0][0][0][100], raw_data['contact_output']['t_contact'][0][0][0][100], raw_data['osc_output']['t_osc'][0][0][0][100])
+        end_time = min(raw_data['robot_output']["t_x"][0][0][0][-100], raw_data['contact_output']['t_contact'][0][0][0][-100], raw_data['osc_output']['t_osc'][0][0][0][-100])
 
     print("start time:{}, end time:{}".format(start_time, end_time))
 

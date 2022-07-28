@@ -1,3 +1,5 @@
+import argparse
+import parser
 from math import floor
 import sys
 import time
@@ -15,7 +17,7 @@ from plot_utlis import PlotViewlizer
 from data_processor import DataProcessor
 
 class CaaiseSystemTest():
-    def __init__(self, date, log_num, is_new_plots=False):
+    def __init__(self, date, log_num, is_new_plots, start_time, end_time):
 
         self.date = date
         self.log_num = log_num       
@@ -26,6 +28,9 @@ class CaaiseSystemTest():
 
         if self.is_new_plots:
             self.plotViewlizer = PlotViewlizer("{}-{}".format(date, log_num))
+
+        self.start_time = start_time
+        self.end_time = end_time
 
         self.data_processor = DataProcessor()
         
@@ -99,7 +104,7 @@ class CaaiseSystemTest():
             raise ValueError("data type should in [\"hardware\", \"simulation\"]")
 
         raw_data = scipy.io.loadmat(data_path)
-        processed_data = process_raw_data(raw_data)
+        processed_data = process_raw_data(raw_data, self.start_time, self.end_time)
 
         t = processed_data["t"]; q = processed_data["q"]; v = processed_data["v"]; v_dot_gt = processed_data["v_dot"]; 
         u = processed_data["u"]; is_contact = processed_data["is_contact"]; v_dot_osc = processed_data["v_dot_osc"]; u_osc = processed_data["u_osc"]
@@ -137,13 +142,21 @@ class CaaiseSystemTest():
 def main():
     date = sys.argv[1]
     log_num = sys.argv[2]
+    sys.argv.remove(sys.argv[1])
+    sys.argv.remove(sys.argv[1])
     if len(sys.argv) == 4:
         is_new_plots = sys.argv[3]
+        sys.argv.remove(sys.argv[1])
     else:
         is_new_plots = False
 
-    simulationDataTester = CaaiseSystemTest(date=date, log_num=log_num, is_new_plots=is_new_plots)
-    simulationDataTester.main(data_type="simulation")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--start_time', type=float)
+    parser.add_argument('--end_time', type=float)
+    args = parser.parse_args()
+
+    simulationDataTester = CaaiseSystemTest(date=date, log_num=log_num, is_new_plots=is_new_plots, start_time=args.start_time, end_time=args.end_time)
+    simulationDataTester.main(data_type="hardware")
     # simulationDataTester.input_isolation_test()
 
 if __name__ == "__main__":

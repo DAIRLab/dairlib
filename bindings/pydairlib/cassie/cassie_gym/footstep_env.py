@@ -177,12 +177,13 @@ class CassieFootstepEnv(DrakeCassieGym):
         start_time = self.current_time
         while self.current_time < start_time + 1/self.params.action_rate:
             step_location_b = self.alip_target_port.Eval(self.controller_context)
-            step_location_w = step_location_b + self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context) 
+            step_location_w = self.pelvis_pose(self.plant_context).rotation().matrix().T @ \
+                    step_location_b + self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context)
             s = super().step(fixed_ports=[FixedVectorInputPort(
                         input_port=self.foot_target_input_port,
                         context=self.controller_context,
                         value=step_location_w)])
-            s = super().step()
+            # s = super().step()
             r = 0  # TODO(hersh500): implement reward for this
             d = super().check_termination()
             if d:
@@ -220,6 +221,20 @@ class CassieFootstepEnv(DrakeCassieGym):
         return x
    
 
+    def draw_random_initial_condition(self):
+        if self.initial_condition_bank is None:
+            self.initial_condition_bank = \
+                np.load(INITIAL_CONDITIONS_FILE)
+        return self.move_robot_to_origin(
+            self.initial_condition_bank[
+                np.random.choice(
+                    self.initial_condition_bank.shape[0],
+                    size=1,
+                    replace=False
+                )
+            ].ravel()
+        )
+
     # really doesn't like these conditions in the bank, both the hardware and other ones.
     def draw_random_initial_condition_csv(self):
         if self.initial_condition_bank is None:
@@ -231,7 +246,7 @@ class CassieFootstepEnv(DrakeCassieGym):
 
         new_ic = csv_ic_to_new_ic(self.initial_condition_bank[:,-1])
         # looks like there might be some chicanery with this.
-        # new_ic[13:15] = [-0.0382, -1.823]
+        new_ic[13:15] = new_ic[21:23] # [-0.0382, -1.823]
         # new_ic[21:23] = [-0.0382, -1.823]
         print(new_ic[7:15])
         print(new_ic[15:23])
@@ -243,7 +258,8 @@ class CassieFootstepEnv(DrakeCassieGym):
         return 0
 
     def test_env(self):
-        ic = self.draw_random_initial_condition_csv()
+        # ic = self.draw_random_initial_condition_csv()
+        ic = self.draw_random_initial_condition()
         s = self.reset(ic)
         while self.current_time < 5:
             s, r, d, _ = self.step()

@@ -197,7 +197,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
           plant, single_support_states);
   auto touchdown_event_time =
-      builder.AddSystem<systems::FiniteStateMachineEventTime>(
+      builder.AddSystem<systems::FiniteStateMachineEventTime>(4
           plant, double_support_states);
   auto radio_parser = builder.AddSystem<systems::RadioParser>();
   touchdown_event_time->set_name("touchdown_time");
@@ -294,6 +294,8 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
       gains.W_swing_foot, plant, plant);
   swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
+//  WorldYawViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
+//  swing_foot_data->SetViewFrame(pelvis_view_frame);
 
   /*
   com_data = std::make_unique<ComTrackingData>(

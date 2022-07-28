@@ -66,7 +66,7 @@ class FixedVectorInputPort:
 class DrakeCassieGym:
     def __init__(self, visualize=False, params=CassieGymParams()):
         self.params = params
-        self.sim_dt = 1e-2
+        self.sim_dt = 1e-3
         self.visualize = visualize
         self.start_time = 0.00
         self.current_time = 0.00

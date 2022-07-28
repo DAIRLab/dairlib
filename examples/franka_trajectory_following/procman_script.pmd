@@ -12,6 +12,7 @@ cmd "2.roscore" {
 
 cmd "3.safety" {
   exec = "rosrun franka_safety safety.py";
+  host = "localhost";
 }
 
 group "4.ROS controlers" {

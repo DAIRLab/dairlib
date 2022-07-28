@@ -299,7 +299,42 @@ void ROSToFrankaStateLCM::ConvertToLCM(const drake::systems::Context<double>& co
 
   franka_state->control_command_success_rate = msg.control_command_success_rate;
   franka_state->robot_mode = msg.robot_mode;
-  franka_state->time = msg.time;
+  // time from franka robot
+  franka_state->franka_time = msg.time;
+  // time for drake loop
+  franka_state->utime = context.get_time() * 1e6;
+}
+
+/***************************************************************************************/
+// ROSToBallPositionLCM implementation
+
+ROSToBallPositionLCM::ROSToBallPositionLCM() {
+
+  this->DeclareAbstractInputPort("ROS Float64MultiArray", 
+    drake::Value<std_msgs::Float64MultiArray>());
+  this->DeclareAbstractOutputPort("lcmt_c3",
+    &ROSToBallPositionLCM::ConvertToLCM);
+  
+}
+
+void ROSToBallPositionLCM::ConvertToLCM(const drake::systems::Context<double>& context,
+  dairlib::lcmt_ball_position* ball_position) const {
+
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  const auto& msg = input->get_value<std_msgs::Float64MultiArray>();
+
+  for (uint8_t i = 0; i < 3; i++){
+    ball_position->xyz[i] = msg.data[i];
+  }
+  ball_position->num_cameras_used = 0;
+  for (uint8_t i = 0; i < 3; i++){
+    ball_position->cam_statuses[i] = 
+      enum_map_.at(msg.data[i+3]);
+    if (msg.data[i+3] == 1.0){
+      ball_position->num_cameras_used++;
+    }
+  }
+  ball_position->utime = context.get_time() * 1e6;
 }
 
 }  // namespace systems

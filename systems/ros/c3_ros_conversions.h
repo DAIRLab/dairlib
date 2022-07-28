@@ -16,6 +16,7 @@
 #include "dairlib/lcmt_c3.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_franka_state.hpp"
+#include "dairlib/lcmt_ball_position.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -133,7 +134,26 @@ class ROSToFrankaStateLCM : public drake::systems::LeafSystem<double> {
                   dairlib::lcmt_franka_state* franka_state) const;
 };
 
+class ROSToBallPositionLCM : public drake::systems::LeafSystem<double> {
+ public:
+  static std::unique_ptr<ROSToBallPositionLCM> Make() {
 
+    return std::make_unique<ROSToBallPositionLCM>();
+  }
+
+  explicit ROSToBallPositionLCM();
+
+ private:
+  void ConvertToLCM(const drake::systems::Context<double>& context,
+                  dairlib::lcmt_ball_position* franka_state) const;
+
+  std::map<double, std::string> enum_map_ = 
+    {{-3.0, "Invalid"},
+     {-2.0, "Outlier"},
+     {-1.0, "No ball found"},
+     { 0.0, "N/A"},
+     { 1.0, "Valid"}};
+};
 
 }  // namespace systems
 }  // namespace dairlib

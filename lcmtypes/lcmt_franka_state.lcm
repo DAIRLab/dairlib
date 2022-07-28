@@ -49,5 +49,6 @@ struct lcmt_franka_state
   string last_motion_errors;
   double control_command_success_rate;
   int16_t robot_mode;
-  double time;
+  double franka_time;
+  double utime;
 }

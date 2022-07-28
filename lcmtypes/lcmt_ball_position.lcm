@@ -1,0 +1,9 @@
+package dairlib;
+
+struct lcmt_ball_position
+{
+  double xyz[3];
+  int16_t num_cameras_used;
+  string cam_statuses[3];
+  double utime;
+}

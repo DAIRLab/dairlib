@@ -15,6 +15,7 @@
 #include "sensor_msgs/JointState.h"
 #include "dairlib/lcmt_c3.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_franka_state.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -116,6 +117,20 @@ class ROSToC3LCM : public drake::systems::LeafSystem<double> {
   int lambda_size_;
   int misc_size_;
   int data_size_;
+};
+
+class ROSToFrankaStateLCM : public drake::systems::LeafSystem<double> {
+ public:
+  static std::unique_ptr<ROSToFrankaStateLCM> Make() {
+
+    return std::make_unique<ROSToFrankaStateLCM>();
+  }
+
+  explicit ROSToFrankaStateLCM();
+
+ private:
+  void ConvertToLCM(const drake::systems::Context<double>& context,
+                  dairlib::lcmt_franka_state* franka_state) const;
 };
 
 

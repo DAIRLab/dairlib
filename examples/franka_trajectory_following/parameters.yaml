@@ -1,7 +1,7 @@
 # bouncy ball parameters
 
 # impedance control parameters
-translational_stiffness: 200 # 200
+translational_stiffness: 300 # 200
 rotational_stiffness: 2 # 2
 damping_ratio: 1
 stiffness_null: 1 # try changing to 2

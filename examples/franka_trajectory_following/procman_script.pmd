@@ -5,57 +5,77 @@ group "1.director" {
     }
 }
 
-group "2.C3 Sim" {
-  cmd "1.C3" {
-      exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo_cc";
-      host = "localhost";
-  }
-  cmd "2.franka" {
-      exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm_cc";
-      host = "localhost";
-  }
-  cmd "3.impedance controller" {
-      exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence_cc";
-      host = "localhost";
-  }
-
-  cmd "4.sim visualizer" {
-      exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_OUTPUT";
-      host = "localhost";
-  }
+cmd "2.roscore" {
+    exec = "roscore";
+    host = "localhost";
 }
 
-group "3.SIM Impedance Experiments" {
-  cmd "1.Impedance" {
-      exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_experiment --channel=FRANKA_OUTPUT";
-      host = "localhost";
-  }
-  cmd "2.Simulator" {
-      exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm_cc";
-      host = "localhost";
-  }
-  cmd "3.Sim Visualizer" {
-      exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_OUTPUT";
-      host = "localhost";
-  }
+cmd "3.safety" {
+  exec = "rosrun franka_safety safety.py";
 }
 
-group "4.HW Impedance Experiments" {
-  cmd "1.Impedance" {
-      exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_experiment --channel=FRANKA_ROS_OUTPUT";
-      host = "localhost";
-  }
-  cmd "2.ROS->LCM" {
-      exec = "bazel-bin/examples/franka_trajectory_following/run_ros_to_lcm";
-      host = "localhost";
-  }
-  cmd "3.Visualizer" {
-      exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_ROS_OUTPUT";
-      host = "localhost";
-  }
+group "4.ROS controlers" {
+    cmd "a.move to start" {
+        exec = "roslaunch franka_example_controllers move_to_start.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "localhost";
+    }
+    cmd "b.ROS impedance" {
+        exec = "roslaunch franka_example_controllers drake_impedance_controller.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "localhost";
+    }
 }
 
-cmd "5.lcmspy" {
+group "5.[SIM] C3" {
+    cmd "a.C3" {
+        exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo_cc";
+        host = "localhost";
+    }
+    cmd "b.franka" {
+        exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm_cc";
+        host = "localhost";
+    }
+    cmd "c.impedance controller" {
+        exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence_cc";
+        host = "localhost";
+    }
+    cmd "d.sim visualizer" {
+        exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_OUTPUT";
+        host = "localhost";
+    }
+}
+
+group "6.[SIM] Impedance Experiments" {
+    cmd "a.Impedance" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_experiment --channel=FRANKA_OUTPUT";
+        host = "localhost";
+    }
+    cmd "b.Simulator" {
+        exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm_cc";
+        host = "localhost";
+    }
+    cmd "c.Sim Visualizer" {
+        exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_OUTPUT";
+        host = "localhost";
+    }
+}
+
+group "7.[HW] Impedance Experiments" {
+    cmd "a.Impedance" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_experiment --channel=FRANKA_ROS_OUTPUT";
+        host = "localhost";
+    }
+    cmd "b.ROS->LCM" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_ros_to_lcm";
+        host = "localhost";
+    }
+    cmd "c.Visualizer" {
+        exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_ROS_OUTPUT";
+        host = "localhost";
+    }
+}
+
+cmd "8.lcmspy" {
     exec = "bazel-bin/lcmtypes/dair-lcm-spy";
     host = "localhost";
 }
+

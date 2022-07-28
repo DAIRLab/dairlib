@@ -22,12 +22,20 @@ void C3TrajectorySource::CalcOutput(const drake::systems::Context<double>& conte
   auto input = (OutputVector<double>*)this->EvalVectorInput(context, 0);
   double timestamp = input->get_timestamp();
 
+  bool set_zero = timestamp > trajectory_.end_time() || timestamp < trajectory_.start_time();
   VectorXd x = trajectory_.value(timestamp);
-  VectorXd xdot = derivative_.value(timestamp);
+
+  VectorXd xdot = VectorXd::Zero(3);
+  if (!set_zero){
+    xdot << derivative_.value(timestamp);
+  }
 
   VectorXd data = VectorXd::Zero(34);
   data.head(3) << x;
   data.segment(10, 3) << xdot;
+
+  // std::cout << "desired trajectory position\n" << x << std::endl;
+  // std::cout << "desired trajectory velocity\n" << xdot << std::endl;
   
   output->SetDataVector(data);
   output->set_timestamp(timestamp); // not used

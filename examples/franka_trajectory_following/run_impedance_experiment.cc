@@ -145,29 +145,43 @@ int DoMain(int argc, char* argv[]){
 
   /* -------------------------------------------------------------------------------------------*/
   /// create trajectory source
-  double time_inc = 10;
-  double num_points = 10;
+  // double time_inc = 10;
+  // double num_points = 10;
 
-  std::vector<MatrixXd> points(num_points);
-  std::vector<double> times;
-  points[0] = Vector3d(0.5, 0.0, 0.12);
-  points[1] = Vector3d(0.5, 0.0, 0.12);
-  points[2] = Vector3d(0.5, 0.0, 0.12);
-  points[3] = Vector3d(0.5, 0.0, 0.12);
-  points[4] = Vector3d(0.5, 0.1, 0.12);
-  points[5] = Vector3d(0.3, 0.1, 0.12);
-  points[6] = Vector3d(0.5, -0.1, 0.12);
-  points[7] = Vector3d(0.5, -0.1, 0.2);
-  points[8] = Vector3d(0.5, -0.1, 0.1);
-  points[9] = Vector3d(0.5, 0.0, 0.12);
+  // std::vector<MatrixXd> points(num_points);
+  // std::vector<double> times;
+  // points[0] = Vector3d(0.55, 0.0, 0.12);
+  // points[1] = Vector3d(0.55, 0.0, 0.12);
+  // points[2] = Vector3d(0.55, 0.0, 0.12);
+  // points[3] = Vector3d(0.55, 0.0, 0.12);
+  // points[4] = Vector3d(0.55, 0.1, 0.12);
+  // points[5] = Vector3d(0.3, 0.1, 0.12);
+  // points[6] = Vector3d(0.5, -0.1, 0.12);
+  // points[7] = Vector3d(0.55, -0.1, 0.2);
+  // points[8] = Vector3d(0.55, -0.1, 0.1);
+  // points[9] = Vector3d(0.55, 0.0, 0.12);
 
-  // double time_inc = 2000000;
+  // double time_inc = 10;
   // double num_points = 2;
 
   // std::vector<MatrixXd> points(num_points);
   // std::vector<double> times;
-  // points[0] = Vector3d(0.5, 0.0, 0.12);
-  // points[1] = Vector3d(0.5, 0.0, 0.12);
+  // points[0] = Vector3d(0.55, 0.0, 0.12);
+  // points[1] = Vector3d(0.60, 0.05, 0.20);
+
+  double time_inc = 2;
+  double num_points = 5;
+
+  double l = 0.15;
+
+  std::vector<MatrixXd> points(num_points);
+  std::vector<double> times;
+  points[0] = Vector3d(0.55, 0.0, 0.12);
+  points[1] = Vector3d(0.55, 0.0+l, 0.12);
+  points[2] = Vector3d(0.55-l, 0.0+l, 0.12);
+  points[3] = Vector3d(0.55-l, 0.0, 0.12);
+  points[4] = Vector3d(0.55, 0.0, 0.12);
+
 
   for (int i = 0; i < num_points; i++){
     times.push_back(i*time_inc);

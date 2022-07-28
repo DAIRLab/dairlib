@@ -47,7 +47,7 @@ int DoMain(int argc, char* argv[]){
   /// systems
   auto ros_subscriber =
       builder.AddSystem(RosSubscriberSystem<sensor_msgs::JointState>::Make(
-          "/panda/franka_state_controller/joint_states", &node_handle));
+          "/franka_state_controller/joint_states", &node_handle));
   auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(14, 13, 7));  
   
   // change this to output correctly (i.e. when ros subscriber gets new message)

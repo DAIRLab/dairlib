@@ -182,6 +182,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("panda_link10"));
   const RotationMatrix<double> R = H.rotation();
   Vector3d d = H.translation() + R*EE_offset_;
+  //std::cout << "position\n" << d << std::endl; 
 
   // build task space state vectors
   VectorXd x = VectorXd::Zero(6);

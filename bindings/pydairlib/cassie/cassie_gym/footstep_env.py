@@ -34,7 +34,7 @@ OSQP_SETTINGS = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
 URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
-INITIAL_CONDITIONS_FILE = './learning_data/hardware_ics.npy'
+INITIAL_CONDITIONS_FILE = './learning_data/initial_conditions.npy'
 INITIAL_CONDITIONS_FILE_CSV = "./learning_data/cassie_initial_conditions.csv"
 
 @dataclass
@@ -157,6 +157,7 @@ class CassieFootstepEnv(DrakeCassieGym):
         radio = np.zeros((18,))
         if action is None:
             radio[2:6] = 0
+            radio[2] = 0.5
             step_location_b = self.alip_target_port.Eval(self.controller_context)
         else:
             radio[2,3,5] = action[:3]
@@ -176,14 +177,20 @@ class CassieFootstepEnv(DrakeCassieGym):
         ]
         start_time = self.current_time
         while self.current_time < start_time + 1/self.params.action_rate:
-            step_location_b = self.alip_target_port.Eval(self.controller_context)
-            step_location_w = self.pelvis_pose(self.plant_context).rotation().matrix().T @ \
-                    step_location_b + self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context)
-            s = super().step(fixed_ports=[FixedVectorInputPort(
+    
+            R = self.pelvis_pose(self.plant_context).rotation().matrix().T
+            alip_target = R @ self.alip_target_port.Eval(self.controller_context) + \
+                          self.sim_plant.CalcCenterOfMassPositionInWorld(
+                              self.plant_context)
+            print(f"alip target = {alip_target}")
+            # self.step(footstep_target=alip_target)
+            # step_location_b = self.alip_target_port.Eval(self.controller_context)
+            # step_location_w = self.pelvis_pose(self.plant_context).rotation().matrix().T @ \
+            #        step_location_b + self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context)
+            s = super().step(radio=radio, fixed_ports=[FixedVectorInputPort(
                         input_port=self.foot_target_input_port,
                         context=self.controller_context,
-                        value=step_location_w)])
-            # s = super().step()
+                        value=alip_target)])
             r = 0  # TODO(hersh500): implement reward for this
             d = super().check_termination()
             if d:
@@ -244,12 +251,12 @@ class CassieFootstepEnv(DrakeCassieGym):
                 ics.append([float(x) for x in row])
             self.initial_condition_bank = np.array(ics)
 
-        new_ic = csv_ic_to_new_ic(self.initial_condition_bank[:,-1])
+        new_ic = csv_ic_to_new_ic(self.initial_condition_bank[:,-10])
         # looks like there might be some chicanery with this.
-        new_ic[13:15] = new_ic[21:23] # [-0.0382, -1.823]
+        # new_ic[13:15] = [-0.0382, -1.823]
         # new_ic[21:23] = [-0.0382, -1.823]
-        print(new_ic[7:15])
-        print(new_ic[15:23])
+        # print(new_ic[7:15])
+        # print(new_ic[15:23])
         return self.move_robot_to_origin(new_ic.ravel())
 
 

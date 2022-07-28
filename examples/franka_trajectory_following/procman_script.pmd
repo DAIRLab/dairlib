@@ -75,24 +75,42 @@ group "7.[HW] Impedance Experiments" {
     }
 }
 
-cmd "8.lcmspy" {
+group "8.Logging" {
+  cmd "a.start_logging" {
+    exec = "bazel-bin/examples/franka_trajectory_following/start_logging";
+    host = "localhost";
+  }
+  cmd "b.[doesn't work yet] end_logging" {
+    exec = "bazel-bin/examples/franka_trajectory_following/end_logging";
+    host = "localhost";
+  }
+}
+
+cmd "9.lcmspy" {
     exec = "bazel-bin/lcmtypes/dair-lcm-spy";
     host = "localhost";
 }
 
 script "start_impedance_test" {
-  stop cmd "b.ROS impedance"
-  stop group "7.[HW] Impedance Experiments"
-  start cmd "3.safety"
-  start cmd "a.move to start"
-  wait cmd "a.move to start"
-  start cmd "b.ROS impedance"
-  start group "7.[HW] Impedance Experiments"
-  wait 10ms
-  start cmd "c.Visualizer"
+  stop cmd "b.ROS impedance";
+  stop group "7.[HW] Impedance Experiments";
+  stop cmd "a.start_logging";
+
+  start cmd "2.roscore";
+  start cmd "3.safety";
+  start cmd "a.move to start";
+  wait cmd "a.move to start" status "stopped";
+
+  start cmd "a.start_logging";
+  start cmd "b.ROS impedance" wait "running";
+  start group "7.[HW] Impedance Experiments";
+  start cmd "logging";
+  wait ms 50;
+  start cmd "c.Visualizer";
 }
 
 script "stop_impedance_test" {
-  stop cmd "b.ROS impedance"
-  stop group "7.[HW] Impedance Experiments"
+  stop cmd "b.ROS impedance";
+  stop group "7.[HW] Impedance Experiments";
+  stop cmd "a.start_logging";
 }

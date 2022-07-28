@@ -267,7 +267,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   double shifted_time = timestamp - settling_time -  return_cycle * period;
   if (shifted_time < 0) shifted_time += period;
   double ts = shifted_time - period * floor((shifted_time / period));
-  double back_dist = param_.test_parameters(0);
+  double back_dist = param_.gait_parameters(0);
   
   /// rolling phase
   if ( ts < period*duty_cycle ) {
@@ -278,19 +278,19 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else if (ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.test_parameters(1);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1);
   }
   /// side ways phase
   else if( ts < period * (duty_cycle+0.66 * return_cycle) ) {
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.test_parameters(2);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2);
   }
   /// position finger phase
   else{
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.test_parameters(3);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3);
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
@@ -476,7 +476,7 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
     double x_obs = q_plant(q_map_franka_.at("base_x")) + dist_x;
     double y_obs = q_plant(q_map_franka_.at("base_y")) + dist_y;
 
-    double alpha_p = param_.test_parameters[5];
+    double alpha_p = param_.alpha_p;
     q_plant(q_map_franka_.at("base_x")) = alpha_p*x_obs + (1-alpha_p)*prev_position_(0);
     q_plant(q_map_franka_.at("base_y")) = alpha_p*y_obs + (1-alpha_p)*prev_position_(1);
 
@@ -491,7 +491,7 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
 
   /// estimate v_plant
 //  std::cout << "before\n" << v_plant.tail(6) << std::endl;
-  double alpha_v = param_.test_parameters(4);
+  double alpha_v = param_.alpha_v;
   double ball_radius = param_.ball_radius;
 
   ///1

@@ -49,6 +49,9 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(move_time));
     a->Visit(DRAKE_NVP(stabilize_time2));
     a->Visit(DRAKE_NVP(sim_dt));
+    a->Visit(DRAKE_NVP(realtime_rate));
+
+    // trajectory parameters
     a->Visit(DRAKE_NVP(traj_radius));
     a->Visit(DRAKE_NVP(phase));
     a->Visit(DRAKE_NVP(x_c));
@@ -56,8 +59,10 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(degree_increment));
     a->Visit(DRAKE_NVP(time_increment));
     a->Visit(DRAKE_NVP(hold_order));
-    a->Visit(DRAKE_NVP(c3_sub_timeout));
-    a->Visit(DRAKE_NVP(realtime_rate));
+    a->Visit(DRAKE_NVP(lead_angle));
+    a->Visit(DRAKE_NVP(enable_adaptive_path));
+    
+    // geometry parameters
     a->Visit(DRAKE_NVP(ball_radius));
     a->Visit(DRAKE_NVP(finger_radius));
     a->Visit(DRAKE_NVP(EE_offset));
@@ -65,20 +70,20 @@ struct C3Parameters {
 
     // misc
     a->Visit(DRAKE_NVP(contact_threshold));
-    a->Visit(DRAKE_NVP(period));
-    a->Visit(DRAKE_NVP(duty_cycle));
-    a->Visit(DRAKE_NVP(duty_cycle_upwards_ratio));
     a->Visit(DRAKE_NVP(enable_heuristic));
     a->Visit(DRAKE_NVP(enable_contact));
     a->Visit(DRAKE_NVP(ball_stddev));
 
-    // testing params
-    a->Visit(DRAKE_NVP(test_parameters));
-    a->Visit(DRAKE_NVP(lead_angle));
-    a->Visit(DRAKE_NVP(enable_adaptive_path));
+    // gaiting params
+    a->Visit(DRAKE_NVP(period));
+    a->Visit(DRAKE_NVP(duty_cycle));
+    a->Visit(DRAKE_NVP(duty_cycle_upwards_ratio));
+    a->Visit(DRAKE_NVP(gait_parameters));
 
     // filter params
     a->Visit(DRAKE_NVP(dt_filter_length));
+    a->Visit(DRAKE_NVP(alpha_p));
+    a->Visit(DRAKE_NVP(alpha_v));
   }
 
   // impedance control parameters
@@ -120,6 +125,9 @@ struct C3Parameters {
   double move_time;
   double stabilize_time2;
   double sim_dt;
+  double realtime_rate;
+
+  // trajectory parameters
   double traj_radius;
   double phase;
   double x_c;
@@ -127,8 +135,8 @@ struct C3Parameters {
   double degree_increment;
   double time_increment;
   int hold_order;
-  double c3_sub_timeout;
-  double realtime_rate;
+
+  // geometry parameters
   double ball_radius;
   double finger_radius;
   VectorXd EE_offset;
@@ -136,13 +144,15 @@ struct C3Parameters {
 
   // misc
   double contact_threshold;
-  double period;
-  double duty_cycle;
-  double duty_cycle_upwards_ratio;
   int enable_heuristic;
   int enable_contact;
   double ball_stddev;
-  VectorXd test_parameters;
+
+  // gaiting parameters
+  double period;
+  double duty_cycle;
+  double duty_cycle_upwards_ratio;
+  VectorXd gait_parameters;
   
   // test parameters
   double lead_angle;
@@ -150,4 +160,6 @@ struct C3Parameters {
 
   // filter parameters
   uint32_t dt_filter_length;
+  double alpha_p;
+  double alpha_v;
 };

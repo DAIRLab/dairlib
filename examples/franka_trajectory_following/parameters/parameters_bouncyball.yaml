@@ -1,4 +1,6 @@
 # bouncy ball parameters
+# NOTE THESE PARAMETER FILES ARE NOT MAINTAINED
+# ONLY USE THESE FILES FOR REFERENCE
 
 # impedance control parameters
 translational_stiffness: 200 # 300

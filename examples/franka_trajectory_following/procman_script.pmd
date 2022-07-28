@@ -79,3 +79,19 @@ cmd "8.lcmspy" {
     host = "localhost";
 }
 
+script "start_impedance_test" {
+  stop cmd "b.ROS impedance"
+  stop group "7.[HW] Impedance Experiments"
+  start cmd "3.safety"
+  start cmd "a.move to start"
+  wait cmd "a.move to start"
+  start cmd "b.ROS impedance"
+  start group "7.[HW] Impedance Experiments"
+  wait 10ms
+  start cmd "c.Visualizer"
+}
+
+script "stop_impedance_test" {
+  stop cmd "b.ROS impedance"
+  stop group "7.[HW] Impedance Experiments"
+}

@@ -176,13 +176,20 @@ class CassieFootstepEnv(DrakeCassieGym):
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
         start_time = self.current_time
+        j = 0
         while self.current_time < start_time + 1/self.params.action_rate:
     
-            R = self.pelvis_pose(self.plant_context).rotation().matrix().T
+            R = self.pelvis_pose(self.plant_context).rotation().matrix()
+            alip_target_prev = self.alip_target_port.Eval(self.controller_context)
+            if j % 30 == 0:
+                print(f"alip target in body frame: {alip_target_prev}")
+                print(f"pelvis height = : {self.pelvis_pose(self.plant_context).translation()}")
+                print(f"com height = : {self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context)}")
+            j += 1
             alip_target = R @ self.alip_target_port.Eval(self.controller_context) + \
                           self.sim_plant.CalcCenterOfMassPositionInWorld(
                               self.plant_context)
-            print(f"alip target = {alip_target}")
+            # print(f"alip target = {alip_target}")
             # self.step(footstep_target=alip_target)
             # step_location_b = self.alip_target_port.Eval(self.controller_context)
             # step_location_w = self.pelvis_pose(self.plant_context).rotation().matrix().T @ \

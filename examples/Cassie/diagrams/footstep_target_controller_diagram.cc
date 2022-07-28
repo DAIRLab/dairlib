@@ -197,7 +197,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
           plant, single_support_states);
   auto touchdown_event_time =
-      builder.AddSystem<systems::FiniteStateMachineEventTime>(4
+      builder.AddSystem<systems::FiniteStateMachineEventTime>(
           plant, double_support_states);
   auto radio_parser = builder.AddSystem<systems::RadioParser>();
   touchdown_event_time->set_name("touchdown_time");

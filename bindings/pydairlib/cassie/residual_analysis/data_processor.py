@@ -115,6 +115,94 @@ class DataProcessor():
 
         return residual, v_dot_of_best_spring_model, best_spring_forces
 
+    def fit_spring_damper_model_of_hip(self, start_time, end_time, selected_joint="hip_roll_leftdot"):
+        """
+            Assuming there are spring and damping couple with hip roll, this function is going to how it may look like.
+            
+            Note, becasue there are too many freedom to choose K, C and mass for the system, the result can mean nothing.
+        """
+
+        # initial guess of spring stiffness and damping
+        Ks = [10000]
+        Cs = [1]
+        # max iteration
+        max_iter = 5
+
+        tau = []
+        t = []
+
+        n = len(self.original_data)
+
+        for i in range(n):
+            datum_ori = self.original_data[i]
+            datum_processed = self.processed_data[i]
+
+            v_dot_best_spring = [datum_processed["v_dot_best_spring_model"][x] for x in datum_processed["v_dot_best_spring_model"]]
+
+            if not (datum_ori['t'] >= start_time and datum_ori['t'] <= end_time):
+                continue
+            
+            # TODO alternative just choose the residual corresponding the acc?
+
+            tau.append( (datum_ori['M'] @ (datum_ori['v_dot_gt'] - v_dot_best_spring))[self.vel_map[selected_joint]])
+            t.append(datum_ori['t'])
+
+        tau = np.array(tau)
+        t = np.array(t)
+
+        q_init = np.zeros(n)
+        v_init = np.zeros(n)
+        qs = [q_init]
+        vs = [v_init]
+
+        print("Begin fit spring damping model. Step of signal:{}".format(n))
+        
+        for i in tqdm.tqdm(range(max_iter)):
+            # solve q and v
+            q_cp = cp.Variable(n)
+            v_cp = cp.Variable(n)
+            
+            cost = cp.norm(tau + Ks[-1] * q_cp + Cs[-1] * v_cp)
+            obj = cp.Minimize(cost)
+            
+            constraints = []
+            for i in range(1,n):
+                constraints.append(q_cp[i] == q_cp[i-1] + (t[i] - t[i-1])*v_cp)
+            
+            prob = cp.Problem(obj, constraints)
+            q_cp.value = qs[-1]
+            v_cp.value = vs[-1]
+            
+            prob.solve(warm_start = True)
+            
+            qs.append(q_cp.value)
+            vs.append(v_cp.value)
+
+            # solve K and C
+            A = np.hstack((qs[-1].reshape(-1,1), vs[-1].reshape(-1,1)))
+            sol = -np.linalg.inv(A.T @ A) @ A.T @ tau            
+            Ks.append(sol[0])
+            Cs.append(sol[1])
+        
+        print("Finish fit spring damping model.")
+        
+        plt.figure()
+        plt.plot(Ks, label="K")
+        plt.plot(Cs, label="C")
+        plt.legend()
+        
+        for i in range(max_iter):
+            plt.figure()
+            plt.plot(t, -Ks[i] * qs[i+1] - Cs[i] * vs[i+1], label="Spring and Damping force")
+            plt.plot(t, tau, label="Virtual Torque")
+            plt.legend()
+
+            plt.plot(t, qs[i+1], label="q")
+            plt.plot(t, vs[i+1], label="v")
+            plt.legend()
+        
+        plt.show()
+
     def calc_spring_constant(self, q, best_spring_forces):
         
         n = q.shape[0]

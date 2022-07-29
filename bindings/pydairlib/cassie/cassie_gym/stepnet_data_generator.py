@@ -282,7 +282,8 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         # Get the depth image and the current ALIP footstep target
         depth_image = self.get_current_depth_image()
-        alip_target = self.alip_target_port.Eval(self.controller_context) + \
+        alip_target = self.pelvis_pose(self.plant_context).rotation.matrix() @ \
+                      self.alip_target_port.Eval(self.controller_context) + \
                       self.sim_plant.CalcCenterOfMassPositionInWorld(
                           self.plant_context
                       )

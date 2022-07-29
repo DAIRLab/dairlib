@@ -16,6 +16,7 @@ HOME = os.getenv("HOME")
 DATASET_DIR = HOME + '/workspace/stepnet_learning_data/dataset/'
 DEPTH_DIR = DATASET_DIR + 'depth/'
 ROBO_DIR = DATASET_DIR + 'robot/'
+DEPTH_SCALE = 255 / 10.0  # depth camera clips at 10 m
 
 
 def ndigits(number):
@@ -38,7 +39,7 @@ def collect_and_save_data_from_random_map(i, size):
     nj = ndigits(NSTEPS)
     for j, stp in enumerate(data):
         depth = np.nan_to_num(stp['depth'], posinf=0).squeeze()
-        depth = (255 * depth / max(.001, np.max(depth))).astype('uint8')
+        depth = (DEPTH_SCALE * depth).astype('uint8')
         im = Image.fromarray(depth)
         robot = {key: stp[key] for key in ['state', 'target', 'error']}
         im.save(os.path.join(DEPTH_DIR, f'{i:0{ni}}_{j:0{nj}}.png'))

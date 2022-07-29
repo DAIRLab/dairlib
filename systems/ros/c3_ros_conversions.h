@@ -148,11 +148,21 @@ class ROSToBallPositionLCM : public drake::systems::LeafSystem<double> {
                   dairlib::lcmt_ball_position* franka_state) const;
 
   std::map<double, std::string> enum_map_ = 
-    {{-3.0, "Invalid"},
-     {-2.0, "Outlier"},
-     {-1.0, "No ball found"},
-     { 0.0, "N/A"},
-     { 1.0, "Valid"}};
+    {{-3.0, "Invalid"},         // invalid ball measurement obtained (i.e. incorrectly identified ball)
+     {-2.0, "Outlier"},         // outlier ball measurement obtained (i.e. too diff than other measurements)
+     {-1.0, "Ball not found"},  // no ball measurement obtained
+     { 0.0, "N/A"},             // See below
+     { 1.0, "Valid"}};          // valid ball measurement obtained
+
+     /*
+     This LCM message type was designed to be used for the actual ball measurement
+     (combining info from all 3 cameras) and to provide information about a single camera.
+     If this message is being used to transfer info about a single camera, the N/A status
+     is used for the other cameras (i.e. the status field will have exactly 2 "N/A").  
+     Ex. a message that transfers info about cam0 might have a status that looks like 
+     {"Valid", "N/A", "N/A"}, whereas a message that transfers info about the combined 
+     ball measurement might have a status that looks like {"Valid", "Ball not found", "Valid"};
+     */
 };
 
 }  // namespace systems

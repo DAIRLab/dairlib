@@ -2,6 +2,7 @@ import numpy as np
 
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.math import RigidTransform, RotationMatrix
+from pydrake.systems.sensors import CameraInfo
 from pydrake.common.eigen_geometry import Quaternion
 from pydrake.trajectories import PiecewisePolynomial
 
@@ -34,6 +35,7 @@ MBP_TIMESTEP = 8e-5
 INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
 TARGET_BOUND = np.array([0.5, 0.5, 0.0])
 RADIO_BOUND = np.array([1.0, 1.0])
+DEPTH_VAR_Z = 0.01
 MAX_ERROR = 1.0
 STEPNET_SIM_DURATION = 0.35
 
@@ -52,6 +54,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         # Simulation Infrastructure
         self.fsm_output_port = None
         self.depth_image_output_port = None
+        self.depth_camera_pose_output_port = None
         self.foot_target_input_port = None
         self.alip_target_port = None
         self.initial_condition_bank = None
@@ -79,6 +82,16 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.nq = 0
         self.nv = 0
 
+        # Depth camera
+        self.depth_camera_info = CameraInfo(
+            width=640,
+            height=480,
+            focal_x=390.743,
+            focal_y=390.743,
+            center_x=323.332,
+            center_y=241.387
+        )
+
         # Spare plant context for calculations
         self.calc_context = None
 
@@ -100,6 +113,8 @@ class StepnetDataGenerator(DrakeCassieGym):
         super().make(controller, urdf)
         self.depth_image_output_port = \
             self.cassie_sim.get_camera_out_output_port()
+        self.depth_camera_pose_output_port = \
+            self.cassie_sim.get_camera_pose_output_port()
         self.fsm_output_port = \
             self.controller.get_fsm_output_port()
         self.foot_target_input_port = \
@@ -242,6 +257,37 @@ class StepnetDataGenerator(DrakeCassieGym):
             ).data
         )
 
+    def get_noisy_height_from_current_depth_image(self, var_z, target):
+        image = self.depth_image_output_port.Eval(
+            self.diagram.GetMutableSubsystemContext(
+                self.cassie_sim,
+                self.drake_simulator.get_mutable_context()
+            )
+        ).data
+        pose = self.depth_camera_pose_output_port.Eval(
+            self.diagram.GetMutableSubsystemContext(
+                self.cassie_sim,
+                self.drake_simulator.get_mutable_context()
+            )
+        )
+        u_v = self.depth_camera_info.intrinsic_matrix() @ \
+              (pose.inverse().multiply(target))
+        u_v = (u_v[:2] / u_v[2])
+        u = u_v[0]
+        v = u_v[1]
+
+        if not (0 <= u <= self.depth_camera_info.width() and
+                0 <= v <= self.depth_camera_info.height()):
+            return np.copy(image), np.random.normal(0, var_z)
+
+        depth_pixel = np.array((u, v, image[int(v), int(u)][0]))
+
+        return np.copy(image), \
+            pose.multiply(
+                np.linalg.inv(self.depth_camera_info.intrinsic_matrix()) @
+                depth_pixel
+            )[-1] + np.random.normal(0, var_z)
+
     def step(self, footstep_target):
         return super().step(fixed_ports=[FixedVectorInputPort(
             input_port=self.foot_target_input_port,
@@ -282,7 +328,6 @@ class StepnetDataGenerator(DrakeCassieGym):
             value=radio)
 
         # Get the depth image and the current ALIP footstep target
-        depth_image = self.get_current_depth_image()
         alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
                       self.alip_target_port.Eval(self.controller_context) + \
                       self.sim_plant.CalcCenterOfMassPositionInWorld(
@@ -293,13 +338,15 @@ class StepnetDataGenerator(DrakeCassieGym):
             low=-TARGET_BOUND,
             high=TARGET_BOUND
         )
-        target[2] = 0.0
+
+        depth_image, target_z = \
+            self.get_noisy_height_from_current_depth_image(DEPTH_VAR_Z, target)
+        target[-1] = target_z
 
         # Get the current swing leg
         swing = self.swing_states[
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
-
 
         # Step the simulation forward until middle of next double stance
         while self.current_time < STEPNET_SIM_DURATION:
@@ -405,8 +452,11 @@ class StepnetDataGenerator(DrakeCassieGym):
 
 def test_data_collection():
     gym_env = StepnetDataGenerator.make_randomized_env(visualize=True)
+    i = 0
     while True:
-        data = gym_env.get_stepnet_data_point()
+        gym_env = StepnetDataGenerator.make_randomized_env(visualize=True)
+        data = gym_env.get_stepnet_data_point(seed=i)
+        i += 1
     gym_env.free_sim()
 
 

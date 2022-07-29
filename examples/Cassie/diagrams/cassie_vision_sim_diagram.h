@@ -49,6 +49,12 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
     return this->get_output_port(camera_out_output_port_index_);
   }
 
+  /// @return the camera pose output port.
+  const drake::systems::OutputPort<double>& get_camera_pose_output_port() const {
+    return this->get_output_port(camera_pose_output_port_index_);
+  }
+
+
   drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
@@ -63,6 +69,7 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
   const int state_output_port_index_ = 0;
   const int cassie_out_output_port_index_ = 1;
   const int camera_out_output_port_index_ = 2;
+  const int camera_pose_output_port_index_ = 3;
   const double actuator_delay = 6e-3;
   const double actuator_update_rate = 2.5e-3;
 

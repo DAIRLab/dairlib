@@ -42,9 +42,9 @@ void CubeHeightMap::AddHeightMapToPlant(
 
 CubeHeightMap CubeHeightMap::MakeRandomMap(
     const Eigen::Vector3d &normal, double rotz, double mu) {
-  double dim_x = randd(10, 15);
-  double dim_y = randd(10,15);
-  int n = rand() % 5 + 20;
+  double dim_x = randd(3, 9);
+  double dim_y = randd(3,9);
+  int n = rand() % 10 + 10;
   // easier to initialize with an odd number of squares
   n = n + (1 - n % 2);
   MatrixXd heights = randd(0.05, 0.1) * MatrixXd::Random(n,n);

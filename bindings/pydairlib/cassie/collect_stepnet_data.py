@@ -15,8 +15,8 @@ NTHREADS = 5
 
 # Flat ground data collection
 NSTEPS_FG = 10000
-BATCH_SIZE_FG = 10
-NTHREADS_FG = 10
+BATCH_SIZE_FG = 5
+NTHREADS_FG = 5
 
 
 HOME = os.getenv("HOME")
@@ -96,10 +96,10 @@ def main():
 
 
 def test():
-    test_flat_collection()
+    test_data_collection()
 
 
 if __name__ == "__main__":
-    # test()
+    test()
     # main()
-    flat_gound_data_main()
+    # flat_gound_data_main()

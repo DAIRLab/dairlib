@@ -72,6 +72,9 @@ PYBIND11_MODULE(simulators, m) {
            py_rvp::reference_internal)
       .def("get_camera_out_output_port",
            &CassieVisionSimDiagram::get_camera_out_output_port,
+           py_rvp::reference_internal)
+      .def("get_camera_pose_output_port",
+           &CassieVisionSimDiagram::get_camera_pose_output_port,
            py_rvp::reference_internal);
 }
 }  // namespace pydairlib

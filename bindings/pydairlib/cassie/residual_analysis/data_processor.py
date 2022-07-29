@@ -3,6 +3,7 @@ from matplotlib import patches
 import tqdm
 import matplotlib.pyplot as plt
 from utils import *
+from scipy.spatial.transform import Rotation
 class DataProcessor():
 
     def __init__(self):
@@ -115,7 +116,102 @@ class DataProcessor():
 
         return residual, v_dot_of_best_spring_model, best_spring_forces
 
-    def fit_spring_damper_model_of_hip(self, start_time, end_time, selected_joint="hip_roll_leftdot"):
+    def fit_spring_damper_model_of_hip_between_main_body(self, start_time, end_time):
+
+        n = len(self.processed_data)
+        t = []
+        state_dots = []
+        state_s = []
+
+        for datum in self.processed_data:
+            if not (datum['t'] >= start_time and datum['t'] <= end_time):
+                continue
+            t.append(datum['t'])
+            state_dots.append([datum["v"]["hip_roll_leftdot"], datum["v"]["base_wx"], datum["v"]["hip_roll_rightdot"],
+                        datum["v_dot_gt"]["hip_roll_leftdot"] - datum["v_dot_best_spring_model"]["hip_roll_leftdot"], 
+                        datum["v_dot_gt"]["base_wx"] - datum["v_dot_best_spring_model"]["base_wx"], 
+                        datum["v_dot_gt"]["hip_roll_rightdot"] - datum["v_dot_best_spring_model"]["hip_roll_rightdot"]])
+            rot = Rotation.from_quat( np.array([datum["q"]["base_qx"], datum["q"]["base_qy"], datum["q"]["base_qz"], datum["q"]["base_qw"]]))
+            state_s.append([datum["q"]["hip_roll_left"], rot.as_rotvec()[0], datum["q"]["hip_roll_right"],
+                    datum["v"]["hip_roll_leftdot"], datum["v"]["base_wx"], datum["v"]["hip_roll_rightdot"]])
+
+        state_s = np.array(state_s)
+        state_dots = np.array(state_dots)
+
+        print("Begin fit a spring damper model")
+
+        A = cp.Variable((6,6))
+        residuals = cp.Variable(6*n)
+        """
+        A = [0,0,0,1,0,0,
+            0,0,0,0,1,0,
+            -k1/m1,k1/m1,0,,-c1/m1,c1/m1,0,
+            k1/m2,-(k1+k2)/m2,k2/m2,c1/m2,-(c1+c2)/m2,c2/m2,
+            0,k2/m3,-k2/m3,0,c3/m3,-c2/m3
+        ]
+        """
+        constraints = [A[:3]==np.array([[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]]),
+                        A[3,2]==0, A[3,5]==0, A[5,0]==0, A[5,3]==0,
+                        A[3,0]+A[3,1]==0, A[3,3]+A[3,4]==0,
+                        A[4,0]+A[4,1]+A[4,2] == 0, A[4,3]+A[4,4]+A[4,5]==0,
+                        A[5,1] + A[5,2] == 0, A[5,4] + A[5,5] == 0]
+        
+        for i in range(n):
+            constraints.append(residuals[i*6:(i+1)*6] == state_dots[i] - A @ state_s[i])
+
+        obj = cp.Minimize(cp.norm2(residuals))
+        
+        prob = cp.Problem(obj, constraints)
+        prob.solve()
+
+        state_dots_est = []
+
+        for i in range(n):
+            state_dots_est.append(A.value @ state_s[i])
+
+        state_dots_est = np.array(state_dots_est)
+
+        plt.figure()
+        plt.plot(t, state_dots_est[:,0], label='est')
+        plt.plot(t, state_dots[:,0], label='gt')
+        plt.legend()
+        plt.title("left_hip_roll_v")
+
+        plt.figure()
+        plt.plot(t, state_dots_est[:,1], label='est')
+        plt.plot(t, state_dots[:,1], label='gt')
+        plt.legend()
+        plt.title("base_wx")
+
+        plt.figure()
+        plt.plot(t, state_dots_est[:,2], label='est')
+        plt.plot(t, state_dots[:,2], label='gt')
+        plt.legend()
+        plt.title("right_hip_roll_v")
+
+        plt.figure()
+        plt.plot(t, state_dots_est[:,3], label='est')
+        plt.plot(t, state_dots[:,3], label='gt')
+        plt.legend()
+        plt.title("left_hip_roll_v_dot")
+
+        plt.figure()
+        plt.plot(t, state_dots_est[:,4], label='est')
+        plt.plot(t, state_dots[:,4], label='gt')
+        plt.legend()
+        plt.title("base_wx_v_dot")
+
+        plt.figure()
+        plt.plot(t, state_dots_est[:,5], label='est')
+        plt.plot(t, state_dots[:,5], label='gt')
+        plt.legend()
+        plt.title("right_hip_v_dot")
+
+        plt.show()
+
+        print("Finish fit a spring damper model")
+
+    def fit_spring_damper_model_of_hip_as_beam(self, start_time, end_time, selected_joint="hip_roll_leftdot"):
         """
             Assuming there are spring and damping couple with hip roll, this function is going to how it may look like.
             

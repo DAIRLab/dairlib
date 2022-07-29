@@ -55,6 +55,12 @@ class CassieGymParams:
             max_step_magnitude = max_step_magnitude
         )
 
+    @staticmethod
+    def make_flat(ic_file_path):
+        ics = np.load(ic_file_path)
+        x = ics[np.random.choice(ics.shape[0], size=1, replace=False)].ravel()
+        return CassieGymParams(x_init=x)
+
 
 @dataclass
 class FixedVectorInputPort:
@@ -97,6 +103,7 @@ class DrakeCassieGym:
             plant=self.plant,
             urdf=urdf,
             visualize=self.visualize,
+            add_terrain=self.params.add_terrain,
             mu=self.params.mu,
             map_yaw=self.params.map_yaw,
             normal=self.params.terrain_normal,

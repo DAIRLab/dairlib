@@ -301,6 +301,11 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
   swing_foot_data->SetFeedforwardAccelMultiplier(
           swing_ft_accel_gain_multiplier_gain_multiplier);
 
+  swing_foot_data->SetTimeVaryingGains(
+      swing_ft_gain_multiplier_gain_multiplier);
+  swing_foot_data->SetFeedforwardAccelMultiplier(
+      swing_ft_accel_gain_multiplier_gain_multiplier);
+
   /*
   com_data = std::make_unique<ComTrackingData>(
       "com_data", gains.K_p_swing_foot, gains.K_d_swing_foot,

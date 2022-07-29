@@ -296,6 +296,10 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
 //  WorldYawViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
 //  swing_foot_data->SetViewFrame(pelvis_view_frame);
+  swing_foot_data->SetTimeVaryingGains(
+          swing_ft_gain_multiplier_gain_multiplier);
+  swing_foot_data->SetFeedforwardAccelMultiplier(
+          swing_ft_accel_gain_multiplier_gain_multiplier);
 
   /*
   com_data = std::make_unique<ComTrackingData>(
@@ -442,6 +446,11 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
                   footstep_planner->get_input_port_vdes());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   footstep_planner->get_input_port_fsm_switch_time());
+
+  // As a test, connect these two here.
+//  builder.Connect(footstep_planner->get_output_port(),
+//                  swing_ft_traj_generator->get_input_port_footstep_target());
+
 
 
   builder.Connect(alip_traj_generator->get_output_port_com(),

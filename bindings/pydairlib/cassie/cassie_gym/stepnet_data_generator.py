@@ -31,7 +31,7 @@ URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
-INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
+INITIAL_CONDITIONS_FILE = './learning_data/hardware_ics.npy'
 TARGET_BOUND = np.array([0.1, 0.1, 0.0])
 RADIO_BOUND = np.array([1.0, 1.0])
 MAX_ERROR = 1.0
@@ -300,7 +300,7 @@ class StepnetDataGenerator(DrakeCassieGym):
 
 
         # Step the simulation forward until middle of next double stance
-        while self.current_time < 0.35:
+        while self.current_time < 0.7:
             self.step(footstep_target=target)
             # Abort and return max error if something crazy happens
             if self.check_termination():
@@ -344,4 +344,5 @@ def test_data_collection():
     # while True:
     #     viz.play()
 
-
+if __name__ == "__main__":
+    test_data_collection()

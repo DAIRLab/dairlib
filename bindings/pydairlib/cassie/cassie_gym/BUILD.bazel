@@ -11,7 +11,7 @@ load(
     "pybind_py_library",
 )
 
-py_library(
+py_binary(
     name = "stepnet_data_generator",
     srcs = ["stepnet_data_generator.py"],
     deps = [

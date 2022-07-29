@@ -7,6 +7,16 @@ from pydrake.multibody.plant import MultibodyPlant
 from pydrake.math import RigidTransform, RotationMatrix
 from pydrake.common.eigen_geometry import Quaternion
 from pydrake.trajectories import PiecewisePolynomial
+from pydrake.systems.framework import DiagramBuilder, Context, InputPort
+
+from pydrake.multibody.parsing import Parser
+from pydrake.systems.framework import DiagramBuilder, Context, InputPort
+from pydrake.multibody.plant import *
+from pydrake.systems.analysis import Simulator
+from pydrake.systems.sensors import ImageToLcmImageArrayT, PixelType
+from pydrake.systems.lcm import LcmPublisherSystem
+from pydrake.lcm import DrakeLcm
+from drake import lcmt_image_array
 
 from pydairlib.multibody import \
     ReExpressWorldVector3InBodyYawFrame,\
@@ -15,7 +25,7 @@ from pydairlib.multibody import \
     CreateStateNameVectorFromMap
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.cassie.controllers import \
-    FootstepTargetWalkingControllerFactory
+    FootstepTargetWalkingControllerFactory, AlipWalkingControllerFactory
 from pydairlib.cassie.cassie_gym.drake_cassie_gym import \
     DrakeCassieGym,\
     CassieGymParams,\
@@ -26,6 +36,7 @@ from pydairlib.cassie.cassie_gym.cassie_env_state import \
     CASSIE_JOINT_VELOCITY_SLICE, CASSIE_FB_POSITION_SLICE,\
     CASSIE_FB_VELOCITY_SLICE
 from pydairlib.cassie.cassie_traj_visualizer import CassieTrajVisualizer
+from pydairlib.cassie.simulators import CassieSimDiagram, CassieVisionSimDiagram
 
 
 # Plant and Simulation Constants
@@ -75,12 +86,14 @@ def csv_ic_to_new_ic(csv_ic):
 # then add utilities for depth images.
 class CassieFootstepEnv(DrakeCassieGym):
     # Init should be the same as the StepNet generator stuff
-    def __init__(self, visualize=False, blind=True, params=FootstepGymParams()):
+    def __init__(self, visualize=False, blind=True, use_alip_ctrlr=False,
+                 params=FootstepGymParams()):
         # Initialize the base cassie gym simulator
         super().__init__(
             visualize=visualize,
             params=params
         )
+        self.use_alip_ctrlr = use_alip_ctrlr
 
         # should stacking be a feature of the policy or of the environment?
         # for now, let's keep it as a feature of the environment.
@@ -118,23 +131,62 @@ class CassieFootstepEnv(DrakeCassieGym):
         self.controller_plant = MultibodyPlant(MBP_TIMESTEP)
         AddCassieMultibody(self.controller_plant, None, True, URDF, False, False)
         self.controller_plant.Finalize()
-        self.controller = FootstepTargetWalkingControllerFactory(
-            plant=self.controller_plant,
-            has_double_stance=True,
-            osc_gains_filename=OSC_GAINS,
-            osqp_settings_filename=OSQP_SETTINGS)
+        if self.use_alip_ctrlr:
+            self.controller = AlipWalkingControllerFactory(
+                self.controller_plant, True, OSC_GAINS, OSQP_SETTINGS)
+        else:
+            self.controller = FootstepTargetWalkingControllerFactory(
+                plant=self.controller_plant,
+                has_double_stance=True,
+                osc_gains_filename=OSC_GAINS,
+                osqp_settings_filename=OSQP_SETTINGS)
 
 
     def make(self, controller, urdf=URDF):
-        super().make(controller, urdf)
-        self.depth_image_output_port = \
-            self.cassie_sim.get_camera_out_output_port()
-        self.fsm_output_port = \
-            self.controller.get_fsm_output_port()
-        self.foot_target_input_port = \
-            self.controller.get_footstep_target_input_port()
-        self.alip_target_port = \
-            self.controller.get_alip_target_footstep_port()
+        # super().make(controller, urdf)
+        self.builder = DiagramBuilder()
+        self.plant = MultibodyPlant(8e-5)
+        self.controller = controller
+        self.cassie_sim = CassieVisionSimDiagram(
+            plant=self.plant,
+            urdf=urdf,
+            visualize=self.visualize,
+            mu=self.params.mu,
+            map_yaw=self.params.map_yaw,
+            normal=self.params.terrain_normal,
+            map_height=self.params.max_step_magnitude)
+        self.sim_plant = self.cassie_sim.get_plant()
+        self.builder.AddSystem(self.controller)
+        self.builder.AddSystem(self.cassie_sim)
+        ''' skipping image publisher '''
+
+        self.builder.Connect(self.controller.get_control_output_port(),
+                             self.cassie_sim.get_actuation_input_port())
+        self.builder.Connect(self.cassie_sim.get_state_output_port(),
+                             self.controller.get_state_input_port())
+
+        # as a test, connect the alip port to the swing foot port
+        if not self.use_alip_ctrlr:
+            # self.builder.Connect(self.controller.get_alip_target_footstep_port(),
+            #                    self.controller.get_footstep_target_input_port())
+
+            self.depth_image_output_port = \
+                self.cassie_sim.get_camera_out_output_port()
+            self.fsm_output_port = \
+                self.controller.get_fsm_output_port()
+            # self.foot_target_input_port = \
+            #    self.controller.get_footstep_target_input_port()
+            # self.alip_target_port = \
+            #    self.controller.get_alip_target_footstep_port()
+
+        self.diagram = self.builder.Build()
+        self.drake_simulator = Simulator(self.diagram)
+        self.set_context_members(self.drake_simulator.get_mutable_context())
+        self.controller_output_port = self.controller.get_torque_output_port()
+        self.drake_simulator.get_mutable_context().SetTime(self.start_time)
+        self.reset()
+        self.initialized = True
+
 
         # Multibody objects for Cassie's feet
         self.foot_frames = {
@@ -157,8 +209,7 @@ class CassieFootstepEnv(DrakeCassieGym):
         radio = np.zeros((18,))
         if action is None:
             radio[2:6] = 0
-            radio[2] = 0.5
-            step_location_b = self.alip_target_port.Eval(self.controller_context)
+            # step_location_b = self.alip_target_port.Eval(self.controller_context)
         else:
             radio[2,3,5] = action[:3]
             # footstep target for the current (or upcoming) swing foot
@@ -168,7 +219,7 @@ class CassieFootstepEnv(DrakeCassieGym):
                 raise NotImplementedError("Perceptive environment is not implemented yet")
 
         # convert from local body frame to global frame
-        step_location_w = step_location_b + self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context) 
+        # step_location_w = step_location_b + self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context) 
         # print(f"world frame step target {step_location_w}")
 
         # get current swing leg 
@@ -186,18 +237,21 @@ class CassieFootstepEnv(DrakeCassieGym):
                 print(f"pelvis height = : {self.pelvis_pose(self.plant_context).translation()}")
                 print(f"com height = : {self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context)}")
             j += 1
-            alip_target = R @ self.alip_target_port.Eval(self.controller_context) + \
-                          self.sim_plant.CalcCenterOfMassPositionInWorld(
-                              self.plant_context)
+            # alip_target = R @ self.alip_target_port.Eval(self.controller_context) + \
+            #               self.sim_plant.CalcCenterOfMassPositionInWorld(
+            #                    self.plant_context)
             # print(f"alip target = {alip_target}")
             # self.step(footstep_target=alip_target)
             # step_location_b = self.alip_target_port.Eval(self.controller_context)
             # step_location_w = self.pelvis_pose(self.plant_context).rotation().matrix().T @ \
             #        step_location_b + self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context)
+            '''
             s = super().step(radio=radio, fixed_ports=[FixedVectorInputPort(
                         input_port=self.foot_target_input_port,
                         context=self.controller_context,
-                        value=alip_target)])
+                        value=alip_target_prev)])
+            '''
+            s = super().step(radio=radio)
             r = 0  # TODO(hersh500): implement reward for this
             d = super().check_termination()
             if d:
@@ -272,18 +326,24 @@ class CassieFootstepEnv(DrakeCassieGym):
         return 0
 
     def test_env(self):
-        # ic = self.draw_random_initial_condition_csv()
+        '''
         ic = self.draw_random_initial_condition()
-        s = self.reset(ic)
         while self.current_time < 5:
             s, r, d, _ = self.step()
             if d:
                 break
+        '''
+        # with alip output port connected to swing foot port, this should be the same thing
+        # as 
+        ic = self.draw_random_initial_condition()
+        s = self.reset(ic)
+        while self.current_time < 5 and not self.terminated:
+            super().step()
         return
 
 # test out this env with providing no actions
 def main():
-    env = CassieFootstepEnv(visualize=True, params=FootstepGymParams())
+    env = CassieFootstepEnv(visualize=True, use_alip_ctrlr=False, params=FootstepGymParams())
     env.test_env()
 
 if __name__ == "__main__":

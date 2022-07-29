@@ -1,7 +1,6 @@
 #include <dairlib/lcmt_radio_out.hpp>
 #include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 
-
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using Eigen::VectorXd;
@@ -13,8 +12,8 @@ using systems::OutputVector;
 using systems::ImpactInfoVector;
 
 ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const std::vector<int>& states, const std::vector<double>& state_durations,
+    const drake::multibody::MultibodyPlant<double> &plant,
+    const std::vector<int> &states, const std::vector<double> &state_durations,
     double t0, double near_impact_threshold, double tau, BLEND_FUNC blend_func)
     : TimeBasedFiniteStateMachine(plant, states, state_durations, t0),
       states_(states),
@@ -25,21 +24,25 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
 
   near_impact_port_ =
       this->DeclareVectorOutputPort("near_impact",
-              ImpactInfoVector<double>(0, 0, 0),
-              &ImpactTimeBasedFiniteStateMachine::CalcNearImpact)
+                                    ImpactInfoVector<double>(0, 0, 0),
+                                    &ImpactTimeBasedFiniteStateMachine::CalcNearImpact)
           .get_index();
   clock_port_ = this->DeclareVectorOutputPort("clock",
-                        BasicVector<double>(1),
-                        &ImpactTimeBasedFiniteStateMachine::CalcClock)
-                    .get_index();
+                                              BasicVector<double>(1),
+                                              &ImpactTimeBasedFiniteStateMachine::CalcClock)
+      .get_index();
   radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
-                                     drake::Value<dairlib::lcmt_radio_out>{})
-          .get_index();
+                                               drake::Value<dairlib::lcmt_radio_out>{})
+      .get_index();
 
-  contact_scheduler_port_ = this->DeclareVectorOutputPort("contact_scheduler",
-                        BasicVector<double>(2),
-                        &ImpactTimeBasedFiniteStateMachine::CalcContactScheduler)
-                    .get_index();
+  contact_scheduler_port_ = this->DeclareVectorOutputPort("contact_scheduler "
+                                                          "(pelvis_t0, "
+                                                          "pelvis_tf, "
+                                                          "left_t0, left_tf, "
+                                                          "right_t0, right_t0",
+                                                          BasicVector<double>(6),
+                                                          &ImpactTimeBasedFiniteStateMachine::CalcContactScheduler)
+      .get_index();
 
 
   // Accumulate the durations to get timestamps
@@ -52,14 +55,9 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
     accu_state_durations_.push_back(sum);
     if (states[i] >= 2) {
       impact_times_.push_back(sum);
-      impact_states_.push_back(states[i+1]);
+      impact_states_.push_back(states[i + 1]);
     }
   }
-
-//  std::cout << "Impact times: " << std::endl;
-//  for(int i = 0; i < impact_times_.size(); ++i){
-//    std::cout << impact_times_[i] << std::endl;
-//  }
 
   period_ = sum;
 }
@@ -74,10 +72,11 @@ double alpha_exp(double t, double tau, double near_impact_threshold) {
 }
 
 void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
-    const Context<double>& context, ImpactInfoVector<double>* near_impact) const {
+    const Context<double> &context,
+    ImpactInfoVector<double> *near_impact) const {
   // Read in lcm message time
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const OutputVector<double> *robot_output =
+      (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
   auto current_time = static_cast<double>(robot_output->get_timestamp());
 
   double remainder = fmod(current_time, period_);
@@ -92,8 +91,8 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   if (current_time >= t0_) {
     for (int i = 0; i < impact_states_.size(); ++i) {
       double blend_window = blend_func_ == SIGMOID
-                                ? 1.5 * near_impact_threshold_
-                                : near_impact_threshold_;
+                            ? 1.5 * near_impact_threshold_
+                            : near_impact_threshold_;
       if (abs(remainder - impact_times_[i]) < blend_window) {
         if (remainder < impact_times_[i]) {
           near_impact->SetAlpha(alpha_func(remainder - impact_times_[i], tau_,
@@ -110,10 +109,10 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
 }
 
 void ImpactTimeBasedFiniteStateMachine::CalcClock(
-    const Context<double>& context, BasicVector<double>* clock) const {
+    const Context<double> &context, BasicVector<double> *clock) const {
   // Read in lcm message time
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const OutputVector<double> *robot_output =
+      (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
   auto current_time = static_cast<double>(robot_output->get_timestamp());
 
   double remainder = fmod(current_time, period_);
@@ -121,12 +120,12 @@ void ImpactTimeBasedFiniteStateMachine::CalcClock(
 }
 
 void ImpactTimeBasedFiniteStateMachine::CalcContactScheduler(
-    const Context<double>& context, BasicVector<double>* contact_timing) const {
+    const Context<double> &context, BasicVector<double> *contact_timing) const {
   // Read in lcm message time
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const OutputVector<double> *robot_output =
+      (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
   if (this->get_input_port(radio_port_).HasValue(context)) {
-    const auto& radio_out =
+    const auto &radio_out =
         this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   }
   auto current_time = static_cast<double>(robot_output->get_timestamp());
@@ -134,13 +133,20 @@ void ImpactTimeBasedFiniteStateMachine::CalcContactScheduler(
 
   for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
     if (remainder < accu_state_durations_[i]) {
-      if(i == 0){
-        contact_timing->get_mutable_value()(0) = 0 - 2e-3;
-        contact_timing->get_mutable_value()(1) = accu_state_durations_[i] + 2e-3;
-      }
-      else{
-        contact_timing->get_mutable_value()(0) = accu_state_durations_[i-1] - 2e-3;
-        contact_timing->get_mutable_value()(1) = accu_state_durations_[i] + 2e-3;
+      if (i == 0) {
+        contact_timing->get_mutable_value()(0) = 0;
+        contact_timing->get_mutable_value()(1) = accu_state_durations_[i];
+        contact_timing->get_mutable_value()(2) = 0;
+        contact_timing->get_mutable_value()(3) = accu_state_durations_[i];
+        contact_timing->get_mutable_value()(4) = 0;
+        contact_timing->get_mutable_value()(5) = accu_state_durations_[i];
+      } else {
+        contact_timing->get_mutable_value()(0) = accu_state_durations_[i - 1];
+        contact_timing->get_mutable_value()(1) = accu_state_durations_[i];
+        contact_timing->get_mutable_value()(2) = accu_state_durations_[i - 1];
+        contact_timing->get_mutable_value()(3) = accu_state_durations_[i];
+        contact_timing->get_mutable_value()(4) = accu_state_durations_[i - 1];
+        contact_timing->get_mutable_value()(5) = accu_state_durations_[i];
       }
       break;
     }

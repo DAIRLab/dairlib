@@ -82,6 +82,9 @@ void OptionsTrackingData::UpdateYddotDes(double t,
     yddot_des_converted_ = ff_accel_multiplier_->value(t_since_state_switch) *
                            yddot_des_converted_;
   }
+//  if(this->GetName() == "pelvis_trans_traj"){
+//    yddot_des_converted_[2] -= 9.81;
+//  }
 }
 
 void OptionsTrackingData::UpdateYddotCmd(double t,

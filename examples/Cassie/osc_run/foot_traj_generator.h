@@ -32,6 +32,9 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_radio_input_port() const {
     return this->get_input_port(radio_port_);
   }
+  const drake::systems::InputPort<double>& get_contact_scheduler_input_port() const {
+    return this->get_input_port(contact_scheduler_port_);
+  }
 
   void SetFootstepGains(const Eigen::MatrixXd& Kd) { Kd_ = Kd; };
 
@@ -76,11 +79,13 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   bool relative_feet_;
   int stance_state_;
 
-  int state_port_;
-  int target_vel_port_;
-  int fsm_port_;
-  int clock_port_;
-  int radio_port_;
+  drake::systems::InputPortIndex state_port_;
+  drake::systems::InputPortIndex target_vel_port_;
+  drake::systems::InputPortIndex fsm_port_;
+  drake::systems::InputPortIndex clock_port_;
+  drake::systems::InputPortIndex radio_port_;
+  drake::systems::InputPortIndex contact_scheduler_port_;
+
   int initial_foot_pos_idx_;
   int initial_hip_pos_idx_;
   int pelvis_yaw_idx_;

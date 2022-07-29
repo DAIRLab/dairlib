@@ -298,25 +298,25 @@ cc_library(
     ],
 )
 
-cc_binary(
-    name = "log_timing_test",
-    srcs = ["test/log_timing_test.cc"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "@drake//lcm",
-        "@gflags",
-    ],
-)
+#cc_binary(
+#    name = "log_timing_test",
+#    srcs = ["test/log_timing_test.cc"],
+#    deps = [
+#        "//lcmtypes:lcmt_robot",
+#        "@drake//lcm",
+#        "@gflags",
+#    ],
+#)
 
-cc_binary(
-    name = "dispatcher_log_timing_test",
-    srcs = ["test/dispatcher_log_timing_test.cc"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "@drake//lcm",
-        "@gflags",
-    ],
-)
+#cc_binary(
+#    name = "dispatcher_log_timing_test",
+#    srcs = ["test/dispatcher_log_timing_test.cc"],
+#    deps = [
+#        "//lcmtypes:lcmt_robot",
+#        "@drake//lcm",
+#        "@gflags",
+#    ],
+#)
 
 cc_test(
     name = "cassie_state_estimator_test",

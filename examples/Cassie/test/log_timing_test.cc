@@ -1,7 +1,7 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <gflags/gflags.h>
-#include "lcm/lcm-cpp.hpp"
+#include <lcm/lcm-cpp.hpp>
 
 DEFINE_string(file, "", "Log file name.");
 DEFINE_int64(max_count, 5000, "Max number of messages to read.");

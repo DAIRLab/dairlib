@@ -11,7 +11,7 @@ from pydrake.common.yaml import yaml_load
 def main():
     osc_running_gains_filename = 'examples/Cassie/osc_run/osc_running_gains.yaml'
     # osc_running_gains_filename = 'examples/Cassie/osc_run/learned_osc_running_gains.yaml'
-    # osc_walking_gains_filename = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
+    osc_walking_gains_filename = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
     osqp_settings = 'examples/Cassie/osc_run/osc_running_qp_settings.yaml'
     default_osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
     urdf = 'examples/Cassie/urdf/cassie_v2.urdf'

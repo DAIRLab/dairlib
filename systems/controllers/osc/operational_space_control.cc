@@ -428,10 +428,10 @@ void OperationalSpaceControl::Build() {
             .evaluator()
             .get();
   }
-  input_smoothing_constraint_ =
-      prog_->AddBoundingBoxConstraint(VectorXd::Zero(n_u_), VectorXd::Zero(n_u_), u_)
-          .evaluator()
-          .get();
+//  input_smoothing_constraint_ =
+//      prog_->AddBoundingBoxConstraint(VectorXd::Zero(n_u_), VectorXd::Zero(n_u_), u_)
+//          .evaluator()
+//          .get();
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     tracking_cost_.push_back(prog_
@@ -472,16 +472,16 @@ void OperationalSpaceControl::Build() {
   /// hard constraint version
 //    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
 //  }
-  blend_constraint_ =
-      prog_
-          ->AddBoundingBoxConstraint(
-              VectorXd::Zero(4), VectorXd::Zero(4),
-              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
-               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
-               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
-               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
-          .evaluator()
-          .get();
+//  blend_constraint_ =
+//      prog_
+//          ->AddBoundingBoxConstraint(
+//              VectorXd::Zero(4), VectorXd::Zero(4),
+//              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+//               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+//               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+//               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
+//          .evaluator()
+//          .get();
 
   for (int i = -1; i < 5; ++i) {
     solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
@@ -563,19 +563,12 @@ VectorXd OperationalSpaceControl::SolveQp(
   bool near_impact = alpha != 0;
   VectorXd v_proj = VectorXd::Zero(n_v_);
   if (near_impact) {
-//    auto start = std::chrono::high_resolution_clock::now();
     UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t,
                                     time_since_last_state_switch, fsm_state,
                                     next_fsm_state, M);
-//    auto finish = std::chrono::high_resolution_clock::now();
-//    std::chrono::duration<double> elapsed = finish - start;
-//    cout << "Solve time:" << elapsed.count() << std::endl;
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
   }
-  //  SetVelocitiesIfNew<double>(
-  //      plant_wo_spr_, x_wo_spr.tail(plant_wo_spr_.num_velocities()) + v_proj,
-  //      context_wo_spr_);
 
   // Get J and JdotV for holonomic constraint
   MatrixXd J_h(n_h_, n_v_);
@@ -640,18 +633,10 @@ VectorXd OperationalSpaceControl::SolveQp(
       ///    JdotV_c_active + J_c_active*dv == -epsilon
       /// -> J_c_active*dv + I*epsilon == -JdotV_c_active
       /// -> [J_c_active, I]* [dv, epsilon]^T == -JdotV_c_active
-
       MatrixXd A_c = MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_);
-
       A_c.block(0, 0, n_c_active_, n_v_) = J_c_active;
-      MatrixXd weight = 0.001 * MatrixXd::Identity(n_c_active_, n_c_active_);
-      weight(0, 0) *= 1e-3;
-      weight(1, 1) *= 1e-3;
-      weight(3, 3) *= 1e-3;
-      weight(4, 4) *= 1e-3;
-      A_c.block(0, n_v_, n_c_active_, n_c_active_) = weight;
-      //      A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-      //          MatrixXd::Identity(n_c_active_, n_c_active_);
+      A_c.block(0, n_v_, n_c_active_, n_c_active_) =
+          MatrixXd::Identity(n_c_active_, n_c_active_);
       contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
     }
   }
@@ -779,12 +764,12 @@ VectorXd OperationalSpaceControl::SolveQp(
 //      A(0, 6) = 1;
 //      A(0, 7) = 1;
 //    }
-  VectorXd normals = VectorXd(4);
-  normals << lambda_c_sol_->segment(kSpaceDim * 0 + 2, 1),
-      lambda_c_sol_->segment(kSpaceDim * 1 + 2, 1),
-      lambda_c_sol_->segment(kSpaceDim * 2 + 2, 1),
-      lambda_c_sol_->segment(kSpaceDim * 3 + 2, 1);
-  blend_constraint_->UpdateCoefficients(MatrixXd::Identity(4, 4), normals - 15 * VectorXd::Ones(4), normals + 15 * VectorXd::Ones(4));
+//  VectorXd normals = VectorXd(4);
+//  normals << lambda_c_sol_->segment(kSpaceDim * 0 + 2, 1),
+//      lambda_c_sol_->segment(kSpaceDim * 1 + 2, 1),
+//      lambda_c_sol_->segment(kSpaceDim * 2 + 2, 1),
+//      lambda_c_sol_->segment(kSpaceDim * 3 + 2, 1);
+//  blend_constraint_->UpdateCoefficients(MatrixXd::Identity(4, 4), normals - 15 * VectorXd::Ones(4), normals + 15 * VectorXd::Ones(4));
 //  }
 
   // test joint-level input cost by fsm state
@@ -803,8 +788,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     input_smoothing_cost_->UpdateCoefficients(
         W_input_smoothing_, -W_input_smoothing_ * *u_prev_);
   }
-  input_smoothing_constraint_->UpdateCoefficients(
-      MatrixXd::Identity(n_u_, n_u_), *u_prev_ - 1 * u_max_, *u_prev_ + 1 * u_max_);
+//  input_smoothing_constraint_->UpdateCoefficients(
+//      MatrixXd::Identity(n_u_, n_u_), *u_prev_ - 1 * u_max_, *u_prev_ + 1 * u_max_);
+
   if (W_lambda_c_reg_.size() > 0) {
     lambda_c_smoothing_cost_->UpdateCoefficients(1000 * alpha * W_lambda_c_reg_,
                                                  VectorXd::Zero(n_c_));

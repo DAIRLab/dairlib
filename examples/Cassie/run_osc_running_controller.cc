@@ -504,6 +504,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
   builder.Connect(fsm->get_output_port_contact_scheduler(),
                   pelvis_trans_traj_generator->get_contact_scheduler_input_port());
+  builder.Connect(fsm->get_output_port_contact_scheduler(),
+                  l_foot_traj_generator->get_contact_scheduler_input_port());
+  builder.Connect(fsm->get_output_port_contact_scheduler(),
+                  r_foot_traj_generator->get_contact_scheduler_input_port());
   builder.Connect(fsm->get_output_port_impact(),
                   osc->get_near_impact_input_port());
   builder.Connect(fsm->get_output_port_clock(), osc->get_clock_input_port());

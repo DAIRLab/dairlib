@@ -58,7 +58,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
   clock_port_ = this->DeclareVectorInputPort("t_clock", BasicVector<double>(1))
       .get_index();
   contact_scheduler_port_ =
-      this->DeclareVectorInputPort("t_mode", BasicVector<double>(2))
+      this->DeclareVectorInputPort("t_mode", BasicVector<double>(6))
           .get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));

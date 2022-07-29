@@ -591,3 +591,39 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
         legend = ax.legend(handles=legend_elements, loc=4)
         # ax.add_artist(legend)
         ax.relim()
+
+def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal, fsm_state_names):
+    ps = plot_styler.PlotStyler()
+
+    ax = ps.fig.axes[0]
+    # ymin, ymax = ax.get_ylim()
+    ymin, ymax = 0, 1
+    tracking_data_names = osc_debug['osc_debug_tracking_datas'].keys()
+    # import pdb; pdb.set_trace()
+    n_tracking_datas = len(tracking_data_names)
+    tracking_data_legend_elements = []
+
+    for i, tracking_data_name in enumerate(tracking_data_names):
+        # tracking_data_name = tracking_data_names[i]
+        tracking_data = osc_debug['osc_debug_tracking_datas'][
+            tracking_data_name]
+        ax.fill_between(fsm_time, ymax - (i+0.25)/n_tracking_datas, ymax -
+                        (i+0.75)/n_tracking_datas,
+                        where=tracking_data.is_active.astype(bool)[
+                              :fsm_time.shape[0]],
+                        color=ps.cmap(2 * i), alpha=0.5)
+        tracking_data_legend_elements.append(Patch(facecolor=ps.cmap(2 * i),
+                                                   alpha=0.3, label=tracking_data_name))
+
+    # uses default color map
+    legend_elements = []
+    for i in np.unique(fsm_signal):
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
+        if fsm_state_names:
+            legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
+
+    if len(legend_elements) > 0:
+        legend = ax.legend(handles=legend_elements, loc=4)
+        legend = ax.legend(handles=tracking_data_legend_elements, loc=1)
+        # ax.add_artist(legend)
+        ax.relim()

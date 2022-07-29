@@ -61,6 +61,7 @@ class TimeVisualizer(object):
         my_text = 'time: %.3f' % msg_time
         pelvis_height_text = 'pelvis height: %.3f' % pelvis_height
         pelvis_velocity_text = 'pelvis velocity: %.3f' % pelvis_velocity
+        realtime_text = ''
 
         if (len(self._real_time) >= self._num_msg_for_average):
             self._real_time.pop(0)
@@ -70,10 +71,10 @@ class TimeVisualizer(object):
             dt_real_time = self._real_time[-1] - self._real_time[0]
 
             rt_ratio = dt / dt_real_time
+            realtime_text = 'realtime rate: %.2f' % rt_ratio
+            # my_text = my_text + ', real time factor: %.2f' % rt_ratio
 
-            #my_text = my_text + ', real time factor: %.2f' % rt_ratio
-
-        vis.updateText(my_text + '\n' + pelvis_height_text + '\n' + pelvis_velocity_text, 'text')
+        vis.updateText(my_text + '\n' + pelvis_height_text + '\n' + pelvis_velocity_text +'\n' + realtime_text, 'text')
         # vis.updateText(my_text + '\n' + pelvis_velocity_text, 'text')
 
 

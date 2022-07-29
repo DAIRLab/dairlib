@@ -89,8 +89,9 @@ def main():
     ''' Plot Velocities '''
     # Plot floating base velocities if applicable
     if use_floating_base and plot_config.plot_floating_base_velocities:
-        mbp_plots.plot_floating_base_velocities(
+        plot = mbp_plots.plot_floating_base_velocities(
             robot_output, vel_names, 6, t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_floating_base_velocity_body_frame:
         mbp_plots.plot_floating_base_body_frame_velocities(
@@ -161,6 +162,9 @@ def main():
 
     if plot_config.plot_qp_solve_time:
         mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+
+    if plot_config.plot_active_tracking_datas:
+        mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     plt.show()
 

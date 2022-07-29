@@ -51,7 +51,7 @@ INITIAL_CONDITIONS_FILE_CSV = "./learning_data/cassie_initial_conditions.csv"
 @dataclass
 class FootstepGymParams(CassieGymParams):
     n_stack: int = 4
-    action_rate: int = 10
+    action_rate: int = 5
 
     @staticmethod
     def make_random(ic_file_path):
@@ -167,17 +167,15 @@ class CassieFootstepEnv(DrakeCassieGym):
 
         # as a test, connect the alip port to the swing foot port
         if not self.use_alip_ctrlr:
-            # self.builder.Connect(self.controller.get_alip_target_footstep_port(),
-            #                    self.controller.get_footstep_target_input_port())
 
             self.depth_image_output_port = \
                 self.cassie_sim.get_camera_out_output_port()
             self.fsm_output_port = \
                 self.controller.get_fsm_output_port()
-            # self.foot_target_input_port = \
-            #    self.controller.get_footstep_target_input_port()
-            # self.alip_target_port = \
-            #    self.controller.get_alip_target_footstep_port()
+            self.foot_target_input_port = \
+               self.controller.get_footstep_target_input_port()
+            self.alip_target_port = \
+               self.controller.get_alip_target_footstep_port()
 
         self.diagram = self.builder.Build()
         self.drake_simulator = Simulator(self.diagram)
@@ -202,61 +200,33 @@ class CassieFootstepEnv(DrakeCassieGym):
 
     # Action space is radio cmd + footstep target for Cassie
     # difficult to find a good stable initial condition to start from
+    # TODO(hersh500): select appropriate states (body vel, body rates, body pitch, roll, yaw, foot positions, swing vs. stance states)
     def step(self, action=None):
-        # is sim context the right one to use here?
-        pelvis_loc_w = self.pelvis_pose(self.plant_context)
-        # radio cmd
         radio = np.zeros((18,))
-        if action is None:
-            radio[2:6] = 0
-            # step_location_b = self.alip_target_port.Eval(self.controller_context)
+        if action is not None:
+            radio[2:5] = action[0:5]
         else:
-            radio[2,3,5] = action[:3]
-            # footstep target for the current (or upcoming) swing foot
-            if self.blind:
-                step_location_b = action[3:].append(0) # body frame, for now keeping as 0 (blind)
-            else:
-                raise NotImplementedError("Perceptive environment is not implemented yet")
+            radio[2] = 0.2
 
-        # convert from local body frame to global frame
-        # step_location_w = step_location_b + self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context) 
-        # print(f"world frame step target {step_location_w}")
+        alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
+                      self.alip_target_port.Eval(self.controller_context) + \
+                      self.sim_plant.CalcCenterOfMassPositionInWorld(
+                          self.plant_context
+                      )
+        # TODO: regress this from the depth image
+        # alip_target[2] = 0.0
+        # print(f"alip target = {alip_target}")
 
-        # get current swing leg 
-        swing = self.swing_states[
-            int(self.fsm_output_port.Eval(self.controller_context))
-        ]
+        fixed_ports=[FixedVectorInputPort(
+            input_port=self.foot_target_input_port,
+            context=self.controller_context,
+            value=alip_target)]
         start_time = self.current_time
-        j = 0
-        while self.current_time < start_time + 1/self.params.action_rate:
-    
-            R = self.pelvis_pose(self.plant_context).rotation().matrix()
-            alip_target_prev = self.alip_target_port.Eval(self.controller_context)
-            if j % 30 == 0:
-                print(f"alip target in body frame: {alip_target_prev}")
-                print(f"pelvis height = : {self.pelvis_pose(self.plant_context).translation()}")
-                print(f"com height = : {self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context)}")
-            j += 1
-            # alip_target = R @ self.alip_target_port.Eval(self.controller_context) + \
-            #               self.sim_plant.CalcCenterOfMassPositionInWorld(
-            #                    self.plant_context)
-            # print(f"alip target = {alip_target}")
-            # self.step(footstep_target=alip_target)
-            # step_location_b = self.alip_target_port.Eval(self.controller_context)
-            # step_location_w = self.pelvis_pose(self.plant_context).rotation().matrix().T @ \
-            #        step_location_b + self.sim_plant.CalcCenterOfMassPositionInWorld(self.plant_context)
-            '''
-            s = super().step(radio=radio, fixed_ports=[FixedVectorInputPort(
-                        input_port=self.foot_target_input_port,
-                        context=self.controller_context,
-                        value=alip_target_prev)])
-            '''
-            s = super().step(radio=radio)
-            r = 0  # TODO(hersh500): implement reward for this
+        while self.current_time-start_time < 1/self.params.action_rate:
+            s = super().step(radio, fixed_ports)
             d = super().check_termination()
             if d:
                 break
-        # TODO(hersh500): select appropriate states (body vel, body rates, body pitch, roll, yaw, foot positions, swing vs. stance states)
         return s, r, d, {}
 
 
@@ -293,15 +263,21 @@ class CassieFootstepEnv(DrakeCassieGym):
         if self.initial_condition_bank is None:
             self.initial_condition_bank = \
                 np.load(INITIAL_CONDITIONS_FILE)
+        idx = np.random.choice(
+            self.initial_condition_bank.shape[0],
+            size=1,
+            replace=False)
         return self.move_robot_to_origin(
-            self.initial_condition_bank[
-                np.random.choice(
-                    self.initial_condition_bank.shape[0],
-                    size=1,
-                    replace=False
-                )
-            ].ravel()
+            self.initial_condition_bank[idx].ravel()
         )
+
+
+    def draw_good_ic(self):
+        if self.initial_condition_bank is None:
+            self.initial_condition_bank = \
+                np.load(INITIAL_CONDITIONS_FILE)
+        return self.move_robot_to_origin(self.initial_condition_bank[10].ravel()) 
+
 
     # really doesn't like these conditions in the bank, both the hardware and other ones.
     def draw_random_initial_condition_csv(self):
@@ -326,19 +302,11 @@ class CassieFootstepEnv(DrakeCassieGym):
         return 0
 
     def test_env(self):
-        '''
-        ic = self.draw_random_initial_condition()
-        while self.current_time < 5:
-            s, r, d, _ = self.step()
-            if d:
-                break
-        '''
-        # with alip output port connected to swing foot port, this should be the same thing
-        # as 
-        ic = self.draw_random_initial_condition()
+        # ic = self.draw_random_initial_condition()
+        ic = self.draw_good_ic()
         s = self.reset(ic)
         while self.current_time < 5 and not self.terminated:
-            super().step()
+            self.step()
         return
 
 # test out this env with providing no actions

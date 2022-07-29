@@ -51,4 +51,5 @@ struct lcmt_franka_state
   int16_t robot_mode;
   double franka_time;
   double utime;
+  boolean valid;
 }

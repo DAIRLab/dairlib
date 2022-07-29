@@ -407,7 +407,6 @@ class StepnetDataGenerator(DrakeCassieGym):
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
 
-
         # Step the simulation forward until about the
         # middle of next double stance
         while self.current_time < STEPNET_SIM_DURATION:

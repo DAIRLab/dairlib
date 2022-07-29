@@ -58,7 +58,7 @@ def collect_flat_ground_data(size, seed):
     env = StepnetDataGenerator.make_flat_env()
     data = []
     for i in range(size):
-        data.append(env.get_stepnet_data_point(seed=seed+i))
+        data.append(env.get_flat_ground_stepnet_datapoint(seed=seed+i))
         print(seed+i)
     env.free_sim()
     for i, entry in enumerate(data):
@@ -69,12 +69,13 @@ def flat_gound_data_main():
     if not os.path.isdir(FLAT_GROUND_DATASET_DIR):
         os.makedirs(FLAT_GROUND_DATASET_DIR)
 
-    for j in range(int(NSTEPS_FG / NTHREADS_FG / BATCH_SIZE_FG)):
+    for j in range(int(NSTEPS_FG / (NTHREADS_FG * BATCH_SIZE_FG))):
         with multiprocessing.Pool(NTHREADS_FG) as pool:
             results = [
                 pool.apply_async(
                     collect_flat_ground_data,
-                    (BATCH_SIZE_FG, NTHREADS_FG * j + BATCH_SIZE_FG * i)
+                    (BATCH_SIZE_FG, NTHREADS_FG * BATCH_SIZE_FG * j +
+                     BATCH_SIZE_FG * i)
                 ) for i in range(NTHREADS_FG)]
             [result.wait(timeout=BATCH_SIZE_FG*5) for result in results]
 
@@ -100,6 +101,6 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    # test()
     # main()
-    # flat_gound_data_main()
+    flat_gound_data_main()

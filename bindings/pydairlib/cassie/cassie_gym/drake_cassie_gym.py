@@ -34,6 +34,7 @@ class CassieGymParams:
           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     map_yaw: float = 0
     mu: float = 0.8
+    add_terrain: bool = False
 
     @staticmethod
     def make_random(ic_file_path):
@@ -49,8 +50,15 @@ class CassieGymParams:
             terrain_normal=normal,
             x_init=x,
             map_yaw=map_yaw,
-            mu=mu
+            mu=mu,
+            add_terrain=True
         )
+
+    @staticmethod
+    def make_flat(ic_file_path):
+        ics = np.load(ic_file_path)
+        x = ics[np.random.choice(ics.shape[0], size=1, replace=False)].ravel()
+        return CassieGymParams(x_init=x)
 
 
 @dataclass
@@ -94,6 +102,7 @@ class DrakeCassieGym:
             plant=self.plant,
             urdf=urdf,
             visualize=self.visualize,
+            add_terrain=self.params.add_terrain,
             mu=self.params.mu,
             map_yaw=self.params.map_yaw,
             normal=self.params.terrain_normal)

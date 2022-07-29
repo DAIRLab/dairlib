@@ -32,9 +32,10 @@ MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
 INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
-TARGET_BOUND = np.array([0.1, 0.1, 0.0])
+TARGET_BOUND = np.array([0.5, 0.5, 0.0])
 RADIO_BOUND = np.array([1.0, 1.0])
 MAX_ERROR = 1.0
+STEPNET_SIM_DURATION = 0.35
 
 
 class StepnetDataGenerator(DrakeCassieGym):
@@ -282,7 +283,7 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         # Get the depth image and the current ALIP footstep target
         depth_image = self.get_current_depth_image()
-        alip_target = self.pelvis_pose(self.plant_context).rotation.matrix() @ \
+        alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
                       self.alip_target_port.Eval(self.controller_context) + \
                       self.sim_plant.CalcCenterOfMassPositionInWorld(
                           self.plant_context
@@ -301,7 +302,7 @@ class StepnetDataGenerator(DrakeCassieGym):
 
 
         # Step the simulation forward until middle of next double stance
-        while self.current_time < 0.35:
+        while self.current_time < STEPNET_SIM_DURATION:
             self.step(footstep_target=target)
             # Abort and return max error if something crazy happens
             if self.check_termination():
@@ -324,6 +325,65 @@ class StepnetDataGenerator(DrakeCassieGym):
             'error': error
         }
 
+    def get_flat_ground_stepnet_datapoint(self, seed=0):
+        np.random.seed(seed)
+
+        # Reset the simulation to a random initial state
+        x_pre = self.draw_random_initial_condition()
+        self.reset(x_pre)
+        x = self.get_robot_centric_state(x_pre)
+
+        # Apply a random velocity command
+        radio = np.zeros((18,))
+        radio[2:4] = np.random.uniform(
+            low=-RADIO_BOUND,
+            high=RADIO_BOUND
+        )
+        self.cassie_sim.get_radio_input_port().FixValue(
+            context=self.cassie_sim_context,
+            value=radio)
+
+        alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
+                      self.alip_target_port.Eval(self.controller_context) + \
+                      self.sim_plant.CalcCenterOfMassPositionInWorld(
+                          self.plant_context
+                      )
+        # Apply a random offset to the target XY position
+        target = alip_target + np.random.uniform(
+            low=-TARGET_BOUND,
+            high=TARGET_BOUND
+        )
+        target[2] = 0.0
+
+        # Get the current swing leg
+        swing = self.swing_states[
+            int(self.fsm_output_port.Eval(self.controller_context))
+        ]
+
+
+        # Step the simulation forward until about the
+        # middle of next double stance
+        while self.current_time < STEPNET_SIM_DURATION:
+            self.step(footstep_target=target)
+            # Abort and return max error if something crazy happens
+            if self.check_termination():
+                return {
+                    'state': x,
+                    'target': target,
+                    'error': MAX_ERROR
+                }
+
+        # Calculate error
+        swing_foot_final_pos = self.calc_foot_position_in_world(
+            self.plant_context, swing)
+        error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target))
+
+        return {
+            'state': x,
+            'target': target,
+            'error': error
+        }
+
     @staticmethod
     def make_randomized_env(visualize=False):
         env = StepnetDataGenerator(
@@ -333,11 +393,29 @@ class StepnetDataGenerator(DrakeCassieGym):
         env.reset(env.get_robot_centric_state(env.params.x_init))
         return env
 
+    @staticmethod
+    def make_flat_env(visualize=False):
+        env = StepnetDataGenerator(
+            visualize=visualize,
+            params=CassieGymParams.make_flat(INITIAL_CONDITIONS_FILE)
+        )
+        env.reset(env.get_robot_centric_state(env.params.x_init))
+        return env
+
 
 def test_data_collection():
     gym_env = StepnetDataGenerator.make_randomized_env(visualize=True)
     while True:
         data = gym_env.get_stepnet_data_point()
+    gym_env.free_sim()
+
+
+def test_flat_collection():
+    gym_env = StepnetDataGenerator.make_flat_env(visualize=True)
+    i = 0
+    while True:
+        data = gym_env.get_flat_ground_stepnet_datapoint(seed = i)
+        i += 1
     gym_env.free_sim()
 
     # traj = PiecewisePolynomial.FirstOrderHold(t, np.array(x).T)

@@ -5,9 +5,15 @@ group "1.director" {
     }
 }
 
-cmd "2.roscore" {
+group "2.ROS"{
+  cmd "a.roscore" {
     exec = "roscore";
     host = "localhost";
+  }
+  cmd "b.vision" {
+    exec = "rosrun franka_vision pointgrey.py hough 0";
+    host = "localhost";
+  }
 }
 
 cmd "3.safety" {
@@ -80,9 +86,9 @@ group "8.Logging" {
     exec = "bazel-bin/examples/franka_trajectory_following/start_logging";
     host = "localhost";
   }
-  cmd "b.[doesn't work yet] end_logging" {
-    exec = "bazel-bin/examples/franka_trajectory_following/end_logging";
-    host = "localhost";
+  cmd "b.start_filming" {
+    exec = bazel-bin/examples/franka_trajectory_following/start_filming";
+    host = "localhost"
   }
 }
 
@@ -96,15 +102,16 @@ script "start_impedance_test" {
   stop group "7.[HW] Impedance Experiments";
   stop cmd "a.start_logging";
 
-  start cmd "2.roscore";
+  start cmd "a.roscore";
   start cmd "3.safety";
   start cmd "a.move to start";
   wait cmd "a.move to start" status "stopped";
 
   start cmd "a.start_logging";
   start cmd "b.ROS impedance" wait "running";
+  start cmd "a.start_logging";
+  start cmd "b.start_filming";
   start group "7.[HW] Impedance Experiments";
-  start cmd "logging";
   wait ms 50;
   start cmd "c.Visualizer";
 }

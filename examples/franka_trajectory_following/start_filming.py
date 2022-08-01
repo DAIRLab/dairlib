@@ -15,15 +15,18 @@ import time
 
 class Recorder:
   def __init__(self):
+    ''' ROS subscribers '''
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("/camera/color/image_raw", Image, self.callback)
     self.frame = 0
 
+    ''' directory paths '''
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
     self.logdir = "{}/adam_ws/logs/{}/{}".format(os.getenv('HOME'), year, curr_date)
     self.dair = str(os.getenv('DAIR_PATH'))
 
+    ''' locate most recent log '''
     os.chdir(self.logdir)
     current_logs = sorted(glob.glob('*'))
     if current_logs[-1] == 'log_descriptions.txt':
@@ -31,7 +34,8 @@ class Recorder:
     else:
       last_log = int(current_logs[-1])
     self.log_num = "{:02}".format(last_log)
- 
+
+    ''' remove existing frame dir if applicable and create new frames dir '''
     self.frames_dir = "{}/{}/frames".format(self.logdir, self.log_num)
     subprocess.Popen(['rm', '-rf', self.frames_dir])
     subprocess.Popen(['mkdir', self.frames_dir])
@@ -43,7 +47,7 @@ class Recorder:
     except CvBridgeError as e:
       print(e)
     
-    frame_num = "{:05}".format(self.frame)
+    frame_num = "frame{:04}".format(self.frame)
     cv2.imwrite("{}/{}.png".format(self.frames_dir, frame_num), 
       cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     self.frame += 1

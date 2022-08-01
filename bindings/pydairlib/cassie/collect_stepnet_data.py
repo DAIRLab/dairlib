@@ -62,7 +62,7 @@ def collect_flat_ground_data(size, seed):
         print(seed+i)
     env.free_sim()
     for i, entry in enumerate(data):
-        pt_save(data, os.path.join(FLAT_GROUND_DATASET_DIR, f'{seed + i}.pt'))
+        pt_save(entry, os.path.join(FLAT_GROUND_DATASET_DIR, f'{seed + i}.pt'))
 
 
 def flat_gound_data_main():

@@ -213,6 +213,12 @@ class StepnetDataGenerator(DrakeCassieGym):
         yaw = np.arctan2(b_x[1], b_x[0])
         return RotationMatrix.MakeZRotation(yaw).inverse()
 
+    def make_robot_yaw_to_world_rotation(self, context):
+        pose = self.pelvis_pose(context)
+        b_x = pose.rotation().col(0).ravel()
+        yaw = np.arctan2(b_x[1], b_x[0])
+        return RotationMatrix.MakeZRotation(yaw)
+
     def get_robot_centric_state(self, x):
         # Get the robot state
         xc = np.copy(x)
@@ -328,11 +334,12 @@ class StepnetDataGenerator(DrakeCassieGym):
             value=radio)
 
         # Get the depth image and the current ALIP footstep target
-        alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
-                      self.alip_target_port.Eval(self.controller_context) + \
-                      self.sim_plant.CalcCenterOfMassPositionInWorld(
-                          self.plant_context
-                      )
+        alip_target = self.make_robot_yaw_to_world_rotation(
+            self.plant_context).matrix() @ \
+                self.alip_target_port.Eval(self.controller_context) + \
+                self.sim_plant.CalcCenterOfMassPositionInWorld(
+                    self.plant_context)
+
         # Apply a random offset to the target XY position
         target = alip_target + np.random.uniform(
             low=-TARGET_BOUND,
@@ -348,6 +355,9 @@ class StepnetDataGenerator(DrakeCassieGym):
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
 
+        target_in_body_yaw = ReExpressWorldVector3InBodyYawFrame(
+            self.sim_plant, self.plant_context, "pelvis", target
+        )
         # Step the simulation forward until middle of next double stance
         while self.current_time < STEPNET_SIM_DURATION:
             self.step(footstep_target=target)
@@ -356,7 +366,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                 return {
                     'depth': depth_image,
                     'state': x,
-                    'target': target,
+                    'target': target_in_body_yaw,
                     'error': MAX_ERROR
                 }
 
@@ -368,7 +378,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         return {
             'depth': depth_image,
             'state': x,
-            'target': target,
+            'target': target_in_body_yaw,
             'error': error
         }
 
@@ -390,11 +400,11 @@ class StepnetDataGenerator(DrakeCassieGym):
             context=self.cassie_sim_context,
             value=radio)
 
-        alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
+        alip_target = self.make_robot_yaw_to_world_rotation(
+            self.plant_context).matrix() @ \
                       self.alip_target_port.Eval(self.controller_context) + \
                       self.sim_plant.CalcCenterOfMassPositionInWorld(
-                          self.plant_context
-                      )
+                          self.plant_context)
         # Apply a random offset to the target XY position
         target = alip_target + np.random.uniform(
             low=-TARGET_BOUND,
@@ -407,6 +417,9 @@ class StepnetDataGenerator(DrakeCassieGym):
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
 
+        target_in_body_yaw = ReExpressWorldVector3InBodyYawFrame(
+            self.sim_plant, self.plant_context, "pelvis", target
+        )
         # Step the simulation forward until about the
         # middle of next double stance
         while self.current_time < STEPNET_SIM_DURATION:
@@ -415,7 +428,7 @@ class StepnetDataGenerator(DrakeCassieGym):
             if self.check_termination():
                 return {
                     'state': x,
-                    'target': target,
+                    'target': target_in_body_yaw,
                     'error': MAX_ERROR
                 }
 
@@ -426,7 +439,7 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         return {
             'state': x,
-            'target': target,
+            'target': target_in_body_yaw,
             'error': error
         }
 

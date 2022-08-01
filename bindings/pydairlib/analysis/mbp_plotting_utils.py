@@ -188,6 +188,12 @@ def load_default_channels(data, plant, state_channel, input_channel,
 
     return robot_output, robot_input, osc_debug
 
+def load_default_franka_channels(data, plant, state_channel, input_channel):
+    robot_output = process_state_channel(data[state_channel], plant)
+    robot_input = process_effort_channel(data[input_channel], plant)
+
+    return robot_output, robot_input
+
 
 def plot_q_or_v_or_u(
         robot_output, key, x_names, x_slice, time_slice,
@@ -253,6 +259,23 @@ def plot_measured_efforts(robot_output, u_names, time_slice):
     return plot_q_or_v_or_u(robot_output, 'u', u_names, slice(len(u_names)),
                             time_slice, ylabel='Efforts (Nm)',
                             title='Joint Efforts')
+
+def plot_desired_efforts(robot_input, u_names, time_slice):
+    label = "Desired Joint Efforts"
+    key = 'u'
+    ps = plot_styler.PlotStyler()
+
+    plotting_utils.make_plot(
+      robot_input,
+      't_x',
+      time_slice,
+      [key],
+      {key: slice(len(u_names))},
+      {key: u_names},
+      {'xlabel': 'Time',
+         'ylabel': label,
+         'title': label}, ps)
+    return ps
 
 
 def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):

@@ -90,6 +90,7 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   int initial_hip_pos_idx_;
   int pelvis_yaw_idx_;
   int pelvis_vel_est_idx_;
+  int last_stance_timestamp_idx_;
 };
 
 }  // namespace dairlib::examples::osc_run

@@ -472,16 +472,16 @@ void OperationalSpaceControl::Build() {
   /// hard constraint version
 //    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
 //  }
-//  blend_constraint_ =
-//      prog_
-//          ->AddBoundingBoxConstraint(
-//              VectorXd::Zero(4), VectorXd::Zero(4),
-//              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
-//               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
-//               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
-//               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
-//          .evaluator()
-//          .get();
+  blend_constraint_ =
+      prog_
+          ->AddBoundingBoxConstraint(
+              VectorXd::Zero(4), VectorXd::Zero(4),
+              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
+          .evaluator()
+          .get();
 
   for (int i = -1; i < 5; ++i) {
     solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
@@ -764,12 +764,12 @@ VectorXd OperationalSpaceControl::SolveQp(
 //      A(0, 6) = 1;
 //      A(0, 7) = 1;
 //    }
-//  VectorXd normals = VectorXd(4);
-//  normals << lambda_c_sol_->segment(kSpaceDim * 0 + 2, 1),
-//      lambda_c_sol_->segment(kSpaceDim * 1 + 2, 1),
-//      lambda_c_sol_->segment(kSpaceDim * 2 + 2, 1),
-//      lambda_c_sol_->segment(kSpaceDim * 3 + 2, 1);
-//  blend_constraint_->UpdateCoefficients(MatrixXd::Identity(4, 4), normals - 15 * VectorXd::Ones(4), normals + 15 * VectorXd::Ones(4));
+  VectorXd normals = VectorXd(4);
+  normals << lambda_c_sol_->segment(kSpaceDim * 0 + 2, 1),
+      lambda_c_sol_->segment(kSpaceDim * 1 + 2, 1),
+      lambda_c_sol_->segment(kSpaceDim * 2 + 2, 1),
+      lambda_c_sol_->segment(kSpaceDim * 3 + 2, 1);
+  blend_constraint_->UpdateCoefficients(MatrixXd::Identity(4, 4), normals - 25 * VectorXd::Ones(4), normals + 25 * VectorXd::Ones(4));
 //  }
 
   // test joint-level input cost by fsm state
@@ -788,8 +788,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     input_smoothing_cost_->UpdateCoefficients(
         W_input_smoothing_, -W_input_smoothing_ * *u_prev_);
   }
-//  input_smoothing_constraint_->UpdateCoefficients(
-//      MatrixXd::Identity(n_u_, n_u_), *u_prev_ - 1 * u_max_, *u_prev_ + 1 * u_max_);
 
   if (W_lambda_c_reg_.size() > 0) {
     lambda_c_smoothing_cost_->UpdateCoefficients(1000 * alpha * W_lambda_c_reg_,
@@ -1155,27 +1153,6 @@ void OperationalSpaceControl::CalcOptimalInput(
       alpha = impact_info->GetAlpha();
       next_fsm_state = impact_info->GetCurrentContactMode();
     }
-
-//    if (fsm_state(0) == 0) {
-//      x_wo_spr[19] = 0;
-//      x_wo_spr[21] = 0;
-//      x_wo_spr[33] = 0;
-//      x_wo_spr[41] = 0;
-//    } else if (fsm_state(0) == 1) {
-//      x_wo_spr[11] = 0;
-//      x_wo_spr[13] = 0;
-//      x_wo_spr[33] = 0;
-//      x_wo_spr[41] = 0;
-//    }
-    //    else {
-    //      x_wo_spr[11] = 0;
-    //      x_wo_spr[13] = 0;
-    //      x_wo_spr[19] = 0;
-    //      x_wo_spr[21] = 0;
-    //      x_wo_spr[33] = 0;
-    //      x_wo_spr[41] = 0;
-    //    }
-
     // Get discrete states
     const auto prev_event_time =
         context.get_discrete_state(prev_event_time_idx_).get_value();

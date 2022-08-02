@@ -5,15 +5,28 @@ from pydairlib.common import FindResourceOrThrow
 from pydrake.trajectories import PiecewisePolynomial
 import numpy as np
 
+from pydrake.all import (DiagramBuilder, AddMultibodyPlantSceneGraph)
+from pydairlib.cassie.cassie_utils import AddCassieMultibody
 
 def main():
+
+  builder = DiagramBuilder()
+  plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
+  AddCassieMultibody(plant, scene_graph,
+                     True, "examples/Cassie/urdf/cassie_v2.urdf", True, True)
+
+  plant.Finalize()
   # Default filename for the example
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
-  filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
+  # filename = FindResourceOrThrow("e?xamples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
+  filename = FindResourceOrThrow(
+    "examples/Cassie/saved_trajectories/jumping_box_0.5h_0.3d_5")
+  # filename = FindResourceOrThrow(
+  #   "examples/Cassie/saved_trajectories/jumping_box_0.5h_0.3d_1")
   # filename = "/home/yangwill/Documents/research/projects/cassie/hardware/backup/dair/saved_trajectories/jumping_0.15h_0.3d"
 
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/" + sys.argv[1])
-  dircon_traj = lcm_trajectory.DirconTrajectory(filename)
+  dircon_traj = lcm_trajectory.DirconTrajectory(plant, filename)
 
   # Reconstructing state and input trajectory as piecewise polynomials
   state_traj = dircon_traj.ReconstructStateTrajectory()
@@ -27,7 +40,6 @@ def main():
   force_datatypes = dircon_traj.GetTrajectory("force_vars1").datatypes
 
   collocation_force_points = dircon_traj.GetCollocationForceSamples(0)
-  import pdb; pdb.set_trace()
   # M = reflected_joints()
   #
   # mirror_traj = lcm_trajectory.Trajectory()

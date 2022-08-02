@@ -50,6 +50,7 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
   DRAKE_DEMAND(states.size() == state_durations.size());
   impact_times_.push_back(0);
   impact_states_.push_back(states[0]);
+  accu_state_durations_.push_back(0);
   for (int i = 0; i < states.size(); ++i) {
     sum += state_durations[i];
     accu_state_durations_.push_back(sum);
@@ -116,7 +117,8 @@ void ImpactTimeBasedFiniteStateMachine::CalcClock(
   auto current_time = static_cast<double>(robot_output->get_timestamp());
 
   double remainder = fmod(current_time, period_);
-  clock->get_mutable_value()(0) = remainder;
+//  clock->get_mutable_value()(0) = remainder;
+  clock->get_mutable_value()(0) = current_time;
 }
 
 void ImpactTimeBasedFiniteStateMachine::CalcContactScheduler(
@@ -130,26 +132,23 @@ void ImpactTimeBasedFiniteStateMachine::CalcContactScheduler(
   }
   auto current_time = static_cast<double>(robot_output->get_timestamp());
   double remainder = fmod(current_time, period_);
+  int n_periods = (int) (current_time / period_);
 
   for (unsigned int i = 0; i < accu_state_durations_.size(); i++) {
-    if (remainder < accu_state_durations_[i]) {
-      if (i == 0) {
-        contact_timing->get_mutable_value()(0) = 0;
-        contact_timing->get_mutable_value()(1) = accu_state_durations_[i];
-        contact_timing->get_mutable_value()(2) = 0;
-        contact_timing->get_mutable_value()(3) = accu_state_durations_[i];
-        contact_timing->get_mutable_value()(4) = 0;
-        contact_timing->get_mutable_value()(5) = accu_state_durations_[i];
-      } else {
-        contact_timing->get_mutable_value()(0) = accu_state_durations_[i - 1];
-        contact_timing->get_mutable_value()(1) = accu_state_durations_[i];
-        contact_timing->get_mutable_value()(2) = accu_state_durations_[i - 1];
-        contact_timing->get_mutable_value()(3) = accu_state_durations_[i];
-        contact_timing->get_mutable_value()(4) = accu_state_durations_[i - 1];
-        contact_timing->get_mutable_value()(5) = accu_state_durations_[i];
-      }
-      break;
-    }
+    contact_timing->get_mutable_value()(0) =
+        n_periods * period_ + accu_state_durations_[i];
+    contact_timing->get_mutable_value()(1) =
+        n_periods * period_ + accu_state_durations_[i];
+    contact_timing->get_mutable_value()(2) =
+        n_periods * period_ + accu_state_durations_[1];
+    contact_timing->get_mutable_value()(3) =
+        n_periods * period_ + accu_state_durations_[4];
+    contact_timing->get_mutable_value()(4) =
+        (n_periods - 1) * period_ + accu_state_durations_[3];
+    contact_timing->get_mutable_value()(5) =
+        (n_periods - 1) * period_ + accu_state_durations_[3]
+            + (accu_state_durations_[2] - accu_state_durations_[0])
+            + (accu_state_durations_[4] - accu_state_durations_[3]);
   }
 }
 

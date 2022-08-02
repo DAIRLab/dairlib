@@ -126,18 +126,3 @@ cc_binary(
     data = [":trifinger_urdf",
         "@drake//manipulation/models/franka_description:models"]
 )
-
-py_binary(
-    name = "start_logging",
-    srcs = ["start_logging.py"],
-)
-
-py_binary(
-    name = "start_filming",
-    srcs = ["start_filming.py"],
-)
-
-py_binary(
-    name = "end_logging",
-    srcs = ["end_logging.py"],
-)

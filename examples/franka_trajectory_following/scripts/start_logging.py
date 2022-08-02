@@ -39,7 +39,7 @@ def main():
     
     parameters_path = "{}/examples/franka_trajectory_following/parameters.yaml".format(dair)
     subprocess.Popen(['cp', parameters_path, 'parameters{}.yaml'.format(log_num)])
-
+  
     subprocess.Popen(['lcm-logger', '-f', 'lcmlog-%s' % log_num])
 
 

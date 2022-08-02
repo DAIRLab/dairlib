@@ -14,6 +14,10 @@ group "2.ROS"{
     exec = "rosrun franka_vision pointgrey.py hough 0";
     host = "localhost";
   }
+  cmd "c.realsense" {
+    exec = "roslaunch realsense2_camera rs_camera.launch";
+    host = "localhost";
+  }
 }
 
 cmd "3.safety" {
@@ -83,15 +87,23 @@ group "7.[HW] Impedance Experiments" {
 
 group "8.Logging" {
   cmd "a.start_logging" {
-    exec = "bazel-bin/examples/franka_trajectory_following/start_logging";
+    exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging";
     host = "localhost";
   }
-  cmd "b.start_filming" {
-    exec = "bazel-bin/examples/franka_trajectory_following/start_filming";
+  cmd "b.start_rosbag" {
+    exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_rosbag";
     host = "localhost";
   }
   cmd "c.process_logs" {
-    exec = "bazel-bin/bindings/pydairlib/analysis/log_plotter_franka";
+    exec = "bazel-bin/bindings/pydairlib/analysis/scripts/log_plotter_franka";
+    host = "localhost";
+  }
+  cmd "d.kill_rosbag" {
+    exec = "rosnode kill video_bag";
+    host = "localhost";
+  }
+  cmd "e.process_rosbag" {
+    exec = "bazel-bin/examples/franka_trajectory_following/scripts/process_rosbag";
     host = "localhost";
   }
 }
@@ -114,7 +126,6 @@ script "start_impedance_test" {
   start cmd "a.start_logging";
   start cmd "b.ROS impedance" wait "running";
   wait ms 3000;
-  start cmd "a.start_logging";
   start group "7.[HW] Impedance Experiments";
   wait ms 100;
   start cmd "c.Visualizer";

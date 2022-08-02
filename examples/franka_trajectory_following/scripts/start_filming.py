@@ -52,6 +52,10 @@ class Recorder:
       cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     self.frame += 1
 
+    # now = time.time()
+    # print(now - self.prev_time)
+    # self.prev_time = now
+
 def main():
   rospy.init_node("start_filming")
   Recorder()

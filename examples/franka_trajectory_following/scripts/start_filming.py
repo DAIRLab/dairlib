@@ -42,6 +42,7 @@ class Recorder:
     self.prev_time = time.time()
 
   def callback(self, msg):
+    start = time.time()
     try:
       img = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
     except CvBridgeError as e:
@@ -51,6 +52,7 @@ class Recorder:
     cv2.imwrite("{}/{}.png".format(self.frames_dir, frame_num), 
       cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     self.frame += 1
+    print(time.time()-start)
 
     # now = time.time()
     # print(now - self.prev_time)

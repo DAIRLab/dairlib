@@ -24,3 +24,18 @@ cc_library(
         "//examples/franka_trajectory_following:c3_parameters",
     ],
 )
+
+cc_binary(
+  name = "test_state_estimator",
+  srcs = ["test/test_state_estimator.cc"],
+  deps = [":c3_systems",
+          "//systems:robot_lcm_systems",
+          "//systems:system_utils",
+          "//systems/ros:ros_pubsub_systems",
+          "//systems/ros:c3_ros_conversions"
+  ],
+  data = ["//examples/franka_trajectory_following:trifinger_urdf",
+          "@drake//manipulation/models/franka_description:models"
+  ],
+  tags=["ros"],
+)

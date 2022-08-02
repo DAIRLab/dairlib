@@ -318,7 +318,7 @@ ROSToBallPositionLCM::ROSToBallPositionLCM() {
 
   this->DeclareAbstractInputPort("ROS Float64MultiArray", 
     drake::Value<std_msgs::Float64MultiArray>());
-  this->DeclareAbstractOutputPort("lcmt_c3",
+  this->DeclareAbstractOutputPort("ball_position",
     &ROSToBallPositionLCM::ConvertToLCM);
   
 }
@@ -335,6 +335,7 @@ void ROSToBallPositionLCM::ConvertToLCM(const drake::systems::Context<double>& c
       ball_position->cam_statuses[i] = "N/A";
     }
     ball_position->num_cameras_used = 0;
+    ball_position->id = -1;
   }
   else{
     for (size_t i = 0; i < 3; i++){
@@ -348,6 +349,7 @@ void ROSToBallPositionLCM::ConvertToLCM(const drake::systems::Context<double>& c
         ball_position->num_cameras_used++;
       }
     }
+    ball_position->id = (int) msg.data[6];
   }
   ball_position->utime = context.get_time() * 1e6;
 }

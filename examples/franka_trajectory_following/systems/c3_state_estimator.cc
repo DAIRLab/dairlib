@@ -44,6 +44,8 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
 
   prev_time_idx_ = this->DeclareAbstractState(
     drake::Value<double>(0));
+  prev_id_idx_ = this->DeclareAbstractState(
+    drake::Value<int>(-1));
   
   this->DeclarePerStepUnrestrictedUpdateEvent(
     &C3StateEstimator::UpdateHistory);
@@ -54,9 +56,14 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
   ball_input_port_ = this->DeclareAbstractInputPort("ball_port",
                                  drake::Value<dairlib::lcmt_ball_position>{}).get_index();
   this->DeclareVectorOutputPort(
-      "x, u, t",
-      OutputVector<double>(14, 13, 7),
+      "x",
+      BasicVector<double>(num_franka_positions_ + num_ball_positions_ + 
+                          num_franka_velocities_ + num_ball_velocities_),
       &C3StateEstimator::EstimateState);
+  this->DeclareVectorOutputPort(
+      "u",
+      BasicVector<double>(num_franka_efforts_ + num_ball_efforts_),
+      &C3StateEstimator::OutputEfforts);
 }
 
 EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
@@ -70,14 +77,17 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
     v_history_idx_);
   auto& prev_time = state->get_mutable_abstract_state<double>(
     prev_time_idx_);
+  auto& prev_id = state->get_mutable_abstract_state<int>(
+    prev_id_idx_);
 
   /// check if received new input from camera
   const drake::AbstractValue* input = this->EvalAbstractInput(context, ball_input_port_);
   DRAKE_ASSERT(input != nullptr);
   const auto& ball_position = input->get_value<dairlib::lcmt_ball_position>();
+  int id = ball_position.id;
   double timestamp = ball_position.utime * 1.0e-6;
   
-  if (timestamp != prev_time){
+  if (id != prev_id){
     if (!std::isnan(ball_position.xyz[0])){
       double dt = timestamp - prev_time;
 
@@ -109,17 +119,18 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
       double ball_radius = param_.ball_radius;
       Vector3d r_ball(0, 0, ball_radius);
       state->get_mutable_discrete_state(w_idx_).get_mutable_value() << 
-        r_ball.cross(estimated_velocity) / (ball_radius * ball_radius);   
+        r_ball.cross(estimated_velocity) / (ball_radius * ball_radius);
     }
     /// update prev_time
     prev_time = timestamp;
+    prev_id = id;
   }
 
   return EventStatus::Succeeded();
 }
 
 void C3StateEstimator::EstimateState(const drake::systems::Context<double>& context,
-                  OutputVector<double>* output) const {
+                  BasicVector<double>* output) const {
 
   /// parse inputs
   const drake::AbstractValue* input = this->EvalAbstractInput(context, franka_input_port_);
@@ -145,6 +156,19 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
     velocities(i) = franka_output.velocity[i];
   }
   velocities.tail(num_ball_velocities_) << angular_velocity, ball_velocity;
+  
+  VectorXd value = VectorXd::Zero(14+13);
+  value << positions, velocities;
+
+  output->SetFromVector(value);
+}
+
+void C3StateEstimator::OutputEfforts(const drake::systems::Context<double>& context,
+                  BasicVector<double>* output) const {
+
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, franka_input_port_);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& franka_output = input->get_value<dairlib::lcmt_robot_output>();
 
   VectorXd efforts = VectorXd::Zero(
       num_franka_efforts_ + num_ball_efforts_);
@@ -152,10 +176,7 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
     efforts(i) = franka_output.effort[i];
   }
 
-  output->SetPositions(positions);
-  output->SetVelocities(velocities);
-  output->SetEfforts(efforts);
-  output->set_timestamp(franka_output.utime * 1.0e-6);
+  output->SetFromVector(efforts);  
 }
 
 }  // namespace systems

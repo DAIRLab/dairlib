@@ -46,7 +46,9 @@ class C3StateEstimator : public LeafSystem<double> {
 
   // estimates state
   void EstimateState(const drake::systems::Context<double>& context,
-                    OutputVector<double>* output) const;
+                    BasicVector<double>* output) const;
+  void OutputEfforts(const drake::systems::Context<double>& context,
+                    BasicVector<double>* output) const;
   
   C3Parameters param_;
 
@@ -57,6 +59,7 @@ class C3StateEstimator : public LeafSystem<double> {
   int p_history_idx_;
   int v_history_idx_;
   int prev_time_idx_;
+  int prev_id_idx_;
 
   // port indices
   int franka_input_port_;

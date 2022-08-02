@@ -56,7 +56,6 @@ class C3StateEstimator : public LeafSystem<double> {
   int w_idx_;
   int p_history_idx_;
   int v_history_idx_;
-  int dt_history_idx_;
   int prev_time_idx_;
 
   // port indices
@@ -67,7 +66,6 @@ class C3StateEstimator : public LeafSystem<double> {
   std::vector<double> v_FIR_values_;
   const int p_filter_length_;
   const int v_filter_length_;
-  const int dt_filter_length_{10};
 
   // useful variables
   const int num_franka_positions_{7};

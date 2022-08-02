@@ -175,121 +175,121 @@ void ROSToFrankaStateLCM::ConvertToLCM(const drake::systems::Context<double>& co
     franka_state->valid = false;
   }
   else{
-    for (uint8_t i = 0; i < msg.O_T_EE.size(); i++){
+    for (size_t i = 0; i < msg.O_T_EE.size(); i++){
       franka_state->O_T_EE[i] = msg.O_T_EE[i];
     }
-    for (uint8_t i = 0; i < msg.O_T_EE_d.size(); i++){
+    for (size_t i = 0; i < msg.O_T_EE_d.size(); i++){
       franka_state->O_T_EE_d[i] = msg.O_T_EE_d[i];
     }
-    for (uint8_t i = 0; i < msg.F_T_EE.size(); i++){
+    for (size_t i = 0; i < msg.F_T_EE.size(); i++){
       franka_state->F_T_EE[i] = msg.F_T_EE[i];
     }
-    for (uint8_t i = 0; i < msg.F_T_NE.size(); i++){
+    for (size_t i = 0; i < msg.F_T_NE.size(); i++){
       franka_state->F_T_NE[i] = msg.F_T_NE[i];
     }
-    for (uint8_t i = 0; i < msg.NE_T_EE.size(); i++){
+    for (size_t i = 0; i < msg.NE_T_EE.size(); i++){
       franka_state->NE_T_EE[i] = msg.NE_T_EE[i];
     }
-    for (uint8_t i = 0; i < msg.EE_T_K.size(); i++){
+    for (size_t i = 0; i < msg.EE_T_K.size(); i++){
       franka_state->EE_T_K[i] = msg.EE_T_K[i];
     }
     franka_state->m_ee = msg.m_ee;
-    for (uint8_t i = 0; i < msg.I_ee.size(); i++){
+    for (size_t i = 0; i < msg.I_ee.size(); i++){
       franka_state->I_ee[i] = msg.I_ee[i];
     }
-    for (uint8_t i = 0; i < msg.F_x_Cee.size(); i++){
+    for (size_t i = 0; i < msg.F_x_Cee.size(); i++){
       franka_state->F_x_Cee[i] = msg.F_x_Cee[i];
     }
     franka_state->m_load = msg.m_load;
-    for (uint8_t i = 0; i < msg.I_load.size(); i++){
+    for (size_t i = 0; i < msg.I_load.size(); i++){
       franka_state->I_load[i] = msg.I_load[i];
     }
-    for (uint8_t i = 0; i < msg.F_x_Cload.size(); i++){
+    for (size_t i = 0; i < msg.F_x_Cload.size(); i++){
       franka_state->F_x_Cload[i] = msg.F_x_Cload[i];
     }
     franka_state->m_total = msg.m_total;
-    for (uint8_t i = 0; i < msg.I_total.size(); i++){
+    for (size_t i = 0; i < msg.I_total.size(); i++){
       franka_state->I_total[i] = msg.I_total[i];
     }
-    for (uint8_t i = 0; i < msg.F_x_Ctotal.size(); i++){
+    for (size_t i = 0; i < msg.F_x_Ctotal.size(); i++){
       franka_state->F_x_Ctotal[i] = msg.F_x_Ctotal[i];
     }
-    for (uint8_t i = 0; i < msg.elbow.size(); i++){
+    for (size_t i = 0; i < msg.elbow.size(); i++){
       franka_state->elbow[i] = msg.elbow[i];
     }
-    for (uint8_t i = 0; i < msg.elbow_d.size(); i++){
+    for (size_t i = 0; i < msg.elbow_d.size(); i++){
       franka_state->elbow_d[i] = msg.elbow_d[i];
     }
-    for (uint8_t i = 0; i < msg.elbow_c.size(); i++){
+    for (size_t i = 0; i < msg.elbow_c.size(); i++){
       franka_state->elbow_c[i] = msg.elbow_c[i];
     }
-    for (uint8_t i = 0; i < msg.delbow_c.size(); i++){
+    for (size_t i = 0; i < msg.delbow_c.size(); i++){
       franka_state->delbow_c[i] = msg.delbow_c[i];
     }
-    for (uint8_t i = 0; i < msg.ddelbow_c.size(); i++){
+    for (size_t i = 0; i < msg.ddelbow_c.size(); i++){
       franka_state->ddelbow_c[i] = msg.ddelbow_c[i];
     }
-    for (uint8_t i = 0; i < msg.tau_J.size(); i++){
+    for (size_t i = 0; i < msg.tau_J.size(); i++){
       franka_state->tau_J[i] = msg.tau_J[i];
     }
-    for (uint8_t i = 0; i < msg.tau_J_d.size(); i++){
+    for (size_t i = 0; i < msg.tau_J_d.size(); i++){
       franka_state->tau_J_d[i] = msg.tau_J_d[i];
     }
-    for (uint8_t i = 0; i < msg.dtau_J.size(); i++){
+    for (size_t i = 0; i < msg.dtau_J.size(); i++){
       franka_state->dtau_J[i] = msg.dtau_J[i];
     }
-    for (uint8_t i = 0; i < msg.q.size(); i++){
+    for (size_t i = 0; i < msg.q.size(); i++){
       franka_state->q[i] = msg.q[i];
     }
-    for (uint8_t i = 0; i < msg.q_d.size(); i++){
+    for (size_t i = 0; i < msg.q_d.size(); i++){
       franka_state->q_d[i] = msg.q_d[i];
     }
-    for (uint8_t i = 0; i < msg.dq.size(); i++){
+    for (size_t i = 0; i < msg.dq.size(); i++){
       franka_state->dq[i] = msg.dq[i];
     }
-    for (uint8_t i = 0; i < msg.dq_d.size(); i++){
+    for (size_t i = 0; i < msg.dq_d.size(); i++){
       franka_state->dq_d[i] = msg.dq_d[i];
     }
-    for (uint8_t i = 0; i < msg.ddq_d.size(); i++){
+    for (size_t i = 0; i < msg.ddq_d.size(); i++){
       franka_state->ddq_d[i] = msg.ddq_d[i];
     }
-    for (uint8_t i = 0; i < msg.joint_contact.size(); i++){
+    for (size_t i = 0; i < msg.joint_contact.size(); i++){
       franka_state->joint_contact[i] = msg.joint_contact[i];
     }
-    for (uint8_t i = 0; i < msg.cartesian_contact.size(); i++){
+    for (size_t i = 0; i < msg.cartesian_contact.size(); i++){
       franka_state->cartesian_contact[i] = msg.cartesian_contact[i];
     }
-    for (uint8_t i = 0; i < msg.joint_collision.size(); i++){
+    for (size_t i = 0; i < msg.joint_collision.size(); i++){
       franka_state->joint_collision[i] = msg.joint_collision[i];
     }
-    for (uint8_t i = 0; i < msg.cartesian_collision.size(); i++){
+    for (size_t i = 0; i < msg.cartesian_collision.size(); i++){
       franka_state->cartesian_collision[i] = msg.cartesian_collision[i];
     }
-    for (uint8_t i = 0; i < msg.tau_ext_hat_filtered.size(); i++){
+    for (size_t i = 0; i < msg.tau_ext_hat_filtered.size(); i++){
       franka_state->tau_ext_hat_filtered[i] = msg.tau_ext_hat_filtered[i];
     }
-    for (uint8_t i = 0; i < msg.O_F_ext_hat_K.size(); i++){
+    for (size_t i = 0; i < msg.O_F_ext_hat_K.size(); i++){
       franka_state->O_F_ext_hat_K[i] = msg.O_F_ext_hat_K[i];
     }
-    for (uint8_t i = 0; i < msg.K_F_ext_hat_K.size(); i++){
+    for (size_t i = 0; i < msg.K_F_ext_hat_K.size(); i++){
       franka_state->K_F_ext_hat_K[i] = msg.K_F_ext_hat_K[i];
     }
-    for (uint8_t i = 0; i < msg.O_dP_EE_d.size(); i++){
+    for (size_t i = 0; i < msg.O_dP_EE_d.size(); i++){
       franka_state->O_dP_EE_d[i] = msg.O_dP_EE_d[i];
     }
-    for (uint8_t i = 0; i < msg.O_T_EE_c.size(); i++){
+    for (size_t i = 0; i < msg.O_T_EE_c.size(); i++){
       franka_state->O_T_EE_c[i] = msg.O_T_EE_c[i];
     }
-    for (uint8_t i = 0; i < msg.O_dP_EE_c.size(); i++){
+    for (size_t i = 0; i < msg.O_dP_EE_c.size(); i++){
       franka_state->O_dP_EE_c[i] = msg.O_dP_EE_c[i];
     }
-    for (uint8_t i = 0; i < msg.O_ddP_EE_c.size(); i++){
+    for (size_t i = 0; i < msg.O_ddP_EE_c.size(); i++){
       franka_state->O_ddP_EE_c[i] = msg.O_ddP_EE_c[i];
     }
-    for (uint8_t i = 0; i < msg.theta.size(); i++){
+    for (size_t i = 0; i < msg.theta.size(); i++){
       franka_state->theta[i] = msg.theta[i];
     }
-    for (uint8_t i = 0; i < msg.dtheta.size(); i++){
+    for (size_t i = 0; i < msg.dtheta.size(); i++){
       franka_state->dtheta[i] = msg.dtheta[i];
     }
 
@@ -330,18 +330,18 @@ void ROSToBallPositionLCM::ConvertToLCM(const drake::systems::Context<double>& c
   const auto& msg = input->get_value<std_msgs::Float64MultiArray>();
 
   if (msg.data.empty()){
-    for (uint8_t i = 0; i < 3; i++){
+    for (size_t i = 0; i < 3; i++){
       ball_position->xyz[i] = nan("");
       ball_position->cam_statuses[i] = "N/A";
     }
     ball_position->num_cameras_used = 0;
   }
   else{
-    for (uint8_t i = 0; i < 3; i++){
+    for (size_t i = 0; i < 3; i++){
       ball_position->xyz[i] = msg.data[i];
     }
     ball_position->num_cameras_used = 0;
-    for (uint8_t i = 0; i < 3; i++){
+    for (size_t i = 0; i < 3; i++){
       ball_position->cam_statuses[i] = 
         enum_map_.at(msg.data[i+3]);
       if (msg.data[i+3] == 1.0){

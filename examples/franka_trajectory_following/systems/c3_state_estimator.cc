@@ -42,11 +42,6 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
       (size_t) v_filter_length_,
       VectorXd::Zero(3)));
 
-  // if visualization on vison side is false, use 1/98.0 for the default value
-  std::deque<double> default_dt_deque((size_t) dt_filter_length_, 1/60.0);
-  dt_history_idx_ = this->DeclareAbstractState(
-    drake::Value<std::deque<double>>(default_dt_deque));
-  
   prev_time_idx_ = this->DeclareAbstractState(
     drake::Value<double>(0));
   
@@ -73,8 +68,6 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
     p_history_idx_);
   auto& v_history = state->get_mutable_abstract_state<std::deque<Vector3d>>(
     v_history_idx_);
-  auto& dt_history = state->get_mutable_abstract_state<std::deque<double>>(
-    dt_history_idx_);
   auto& prev_time = state->get_mutable_abstract_state<double>(
     prev_time_idx_);
 
@@ -85,47 +78,39 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
   double timestamp = ball_position.utime * 1.0e-6;
   
   if (timestamp != prev_time){
-    /// estimate dt
-    dt_history.push_back(timestamp-prev_time);
-    dt_history.pop_front();
+    if (!std::isnan(ball_position.xyz[0])){
+      double dt = timestamp - prev_time;
 
-    double dt = 0;
-    for (int i = 0; i < dt_filter_length_; i++){
-      dt += dt_history[i];
+      /// estimate position
+      Vector3d prev_position = state->get_discrete_state(p_idx_).value();
+      p_history.push_back(Vector3d(
+        ball_position.xyz[0], ball_position.xyz[1], ball_position.xyz[2]));
+      p_history.pop_front();
+
+      Vector3d estimated_position = VectorXd::Zero(3);
+      for (int i = 0; i < p_filter_length_; i++){
+        estimated_position += p_FIR_values_[i] * p_history[i];
+      }
+      state->get_mutable_discrete_state(p_idx_).get_mutable_value() << estimated_position;
+
+
+      /// estimate velocity
+      v_history.push_back(
+        (estimated_position - prev_position) / dt);
+      v_history.pop_front();
+
+      Vector3d estimated_velocity = VectorXd::Zero(3);
+      for (int i = 0; i < v_filter_length_; i++){
+        estimated_velocity += v_FIR_values_[i] * v_history[i];
+      }
+      state->get_mutable_discrete_state(v_idx_).get_mutable_value() << estimated_velocity;
+
+      ///  estimate angular velocity
+      double ball_radius = param_.ball_radius;
+      Vector3d r_ball(0, 0, ball_radius);
+      state->get_mutable_discrete_state(w_idx_).get_mutable_value() << 
+        r_ball.cross(estimated_velocity) / (ball_radius * ball_radius);   
     }
-    dt /= dt_filter_length_;
-
-    /// estimate position
-
-    Vector3d prev_position = state->get_discrete_state(p_idx_).value();
-    p_history.push_back(Vector3d(
-      ball_position.xyz[0], ball_position.xyz[1], ball_position.xyz[2]));
-    p_history.pop_front();
-
-    Vector3d estimated_position = VectorXd::Zero(3);
-    for (int i = 0; i < p_filter_length_; i++){
-      estimated_position += p_FIR_values_[i] * p_history[i];
-    }
-    state->get_mutable_discrete_state(p_idx_).get_mutable_value() << estimated_position;
-
-
-    /// estimate velocity
-    v_history.push_back(
-      (estimated_position - prev_position) / dt);
-    v_history.pop_front();
-
-    Vector3d estimated_velocity = VectorXd::Zero(3);
-    for (int i = 0; i < v_filter_length_; i++){
-      estimated_velocity += v_FIR_values_[i] * v_history[i];
-    }
-    state->get_mutable_discrete_state(v_idx_).get_mutable_value() << estimated_velocity;
-
-    ///  estimate angular velocity
-    double ball_radius = param_.ball_radius;
-    Vector3d r_ball(0, 0, ball_radius);
-    state->get_mutable_discrete_state(w_idx_).get_mutable_value() << 
-      r_ball.cross(estimated_velocity) / (ball_radius * ball_radius);   
-
     /// update prev_time
     prev_time = timestamp;
   }

@@ -7,14 +7,20 @@ cc_library(
     srcs = [
         "gravity_compensator.cc",
         "c3_trajectory_source.cc",
+        "c3_state_estimator.cc",
         
     ],
     hdrs = [
         "gravity_compensator.h",
         "c3_trajectory_source.h",
+        "c3_state_estimator.h"
     ],
     deps = [
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+        "@lcm",
+        "//multibody:utils",
+        "//lcmtypes:lcmt_robot",
+        "//examples/franka_trajectory_following:c3_parameters",
     ],
 )

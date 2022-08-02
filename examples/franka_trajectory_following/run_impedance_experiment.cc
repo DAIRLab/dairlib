@@ -77,6 +77,7 @@ int DoMain(int argc, char* argv[]){
     "examples/franka_trajectory_following/parameters.yaml");
 
   drake::lcm::DrakeLcm drake_lcm;
+  // drake::lcm::DrakeLcm drake_network("udpm://239.255.76.67:7667?ttl=1");
 
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
@@ -210,6 +211,7 @@ int DoMain(int argc, char* argv[]){
       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
         "FRANKA_INPUT", &drake_lcm, 
         {drake::systems::TriggerType::kForced}, 0.0));
+  
   builder.Connect(control_sender->get_output_port(),
       control_publisher->get_input_port());
 

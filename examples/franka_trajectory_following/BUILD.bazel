@@ -133,6 +133,11 @@ py_binary(
 )
 
 py_binary(
+    name = "start_filming",
+    srcs = ["start_filming.py"],
+)
+
+py_binary(
     name = "end_logging",
     srcs = ["end_logging.py"],
 )

@@ -142,9 +142,11 @@ class DataProcessor():
 
         A = cp.Variable((6,6))
         residuals = cp.Variable(6*n)
+        offset = cp.Variable((6))
         """
         A = [0,0,0,1,0,0,
             0,0,0,0,1,0,
+            0,0,0,0,0,1,
             -k1/m1,k1/m1,0,,-c1/m1,c1/m1,0,
             k1/m2,-(k1+k2)/m2,k2/m2,c1/m2,-(c1+c2)/m2,c2/m2,
             0,k2/m3,-k2/m3,0,c3/m3,-c2/m3
@@ -157,7 +159,7 @@ class DataProcessor():
                         A[5,1] + A[5,2] == 0, A[5,4] + A[5,5] == 0]
         
         for i in range(n):
-            constraints.append(residuals[i*6:(i+1)*6] == state_dots[i] - A @ state_s[i])
+            constraints.append(residuals[i*6:(i+1)*6] == state_dots[i] - A @ state_s[i] - offset)
 
         obj = cp.Minimize(cp.norm2(residuals))
         

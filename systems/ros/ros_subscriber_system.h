@@ -69,15 +69,17 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
     subscriber_ = node_handle->subscribe(
         topic, 1, &RosSubscriberSystem<RosMessage>::HandleMessage, this);
 
-    DeclareAbstractOutputPort(
-        topic,
-        [this]() {
-          return this->AllocateOutputValue();
-        },
-        [this](const drake::systems::Context<double>& context,
-            drake::AbstractValue* out) {
-          this->CalcOutputValue(context, out);
-        });
+
+    // Declare our two states (message_value, message_count).
+    static_assert(kStateIndexMessage == 0, "");
+    auto message_state_index =
+        this->DeclareAbstractState(drake::Value<RosMessage>(RosMessage{}));
+    static_assert(kStateIndexMessageCount == 1, "");
+    this->DeclareAbstractState(drake::Value<int>(0));
+
+    // Our sole output is the message state.
+    this->DeclareStateOutputPort(drake::systems::kUseDefaultName,
+        message_state_index);
 
     set_name(make_name(topic_));
   }
@@ -163,17 +165,6 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
     ProcessMessageAndStoreToAbstractState(&state->get_mutable_abstract_state());
   }
 
-  std::unique_ptr<drake::systems::AbstractValues> AllocateAbstractState()
-  const {
-    std::vector<std::unique_ptr<drake::AbstractValue>> abstract_vals(2);
-    abstract_vals[kStateIndexMessage] =
-        this->RosSubscriberSystem::AllocateOutputValue();
-    abstract_vals[kStateIndexMessageCount] =
-        drake::AbstractValue::Make<int>(0);
-    return std::make_unique<drake::systems::AbstractValues>(
-        std::move(abstract_vals));
-  }
-
   void SetDefaultState(const drake::systems::Context<double>& context,
                        drake::systems::State<double>* state) const override {
     ProcessMessageAndStoreToAbstractState(&state->get_mutable_abstract_state());
@@ -196,17 +187,6 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
     received_message_ = message;
     received_message_count_++;
     received_message_condition_variable_.notify_all();
-  }
-
-  // This pair of methods is used for the output port when we're using a
-  // serializer.
-  std::unique_ptr<drake::AbstractValue> AllocateOutputValue() const {
-    return std::make_unique<drake::Value<RosMessage>>(RosMessage{});
-  }
-  void CalcOutputValue(const drake::systems::Context<double>& context,
-                       drake::AbstractValue* output_value) const {
-    output_value->SetFrom(
-        context.get_abstract_state().get_value(kStateIndexMessage));
   }
 
   // The topic on which to receive ROS messages.

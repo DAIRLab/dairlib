@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 
 # lcmtype imports
 import dairlib
+import archive.dairlib
 import drake
 
 # dairlib python binding imports
-from pydairlib.cassie.cassie_utils import addCassieMultibody
+from pydairlib.cassie.cassie_utils import AddCassieMultibody
 
 # drake imports
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
@@ -16,7 +17,6 @@ from pydrake.systems.framework import DiagramBuilder
 
 cassie_urdf = "examples/Cassie/urdf/cassie_v2.urdf"
 cassie_urdf_no_springs = "examples/Cassie/urdf/cassie_fixed_springs.urdf"
-
 cassie_default_channels = \
     {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,
      'CASSIE_STATE_DISPATCHER': dairlib.lcmt_robot_output,
@@ -24,11 +24,26 @@ cassie_default_channels = \
      'OSC_WALKING': dairlib.lcmt_robot_input,
      'OSC_STANDING': dairlib.lcmt_robot_input,
      'OSC_JUMPING': dairlib.lcmt_robot_input,
+     'OSC_RUNNING': dairlib.lcmt_robot_input,
      'CASSIE_OUTPUT': dairlib.lcmt_cassie_out,
      'OSC_DEBUG_STANDING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_WALKING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_RUNNING': dairlib.lcmt_osc_output}
+
+cassie_default_channels_archive = \
+    {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,
+     'CASSIE_STATE_DISPATCHER': dairlib.lcmt_robot_output,
+     'CASSIE_INPUT': dairlib.lcmt_robot_input,
+     'OSC_WALKING': dairlib.lcmt_robot_input,
+     'OSC_STANDING': dairlib.lcmt_robot_input,
+     'OSC_JUMPING': dairlib.lcmt_robot_input,
+     'OSC_RUNNING': dairlib.lcmt_robot_input,
+     'CASSIE_OUTPUT': dairlib.lcmt_cassie_out,
+     'OSC_DEBUG_STANDING': archive.dairlib.lcmt_osc_output,
+     'OSC_DEBUG_WALKING': archive.dairlib.lcmt_osc_output,
+     'OSC_DEBUG_JUMPING': archive.dairlib.lcmt_osc_output,
+     'OSC_DEBUG_RUNNING': archive.dairlib.lcmt_osc_output}
 
 cassie_contact_channels = \
     {'CASSIE_CONTACT_DRAKE': drake.lcmt_contact_results_for_viz,
@@ -38,11 +53,11 @@ cassie_contact_channels = \
 def make_plant_and_context(floating_base=True, springs=True):
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
-    if (springs):
-        addCassieMultibody(plant, scene_graph,
+    if springs:
+        AddCassieMultibody(plant, scene_graph,
                            floating_base, cassie_urdf, True, True)
     else:
-        addCassieMultibody(plant, scene_graph,
+        AddCassieMultibody(plant, scene_graph,
                            floating_base, cassie_urdf_no_springs, False, True)
 
     plant.Finalize()

@@ -361,9 +361,10 @@ int DoMain(int argc, char* argv[]) {
 
   // Cost
   int n_v = plant_w_spr.num_velocities();
+  int n_u = plant_w_spr.num_actuators();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
-  osc->SetAccelerationCostForAllJoints(Q_accel);
-  osc->SetInputRegularizationWeight(gains.w_input_reg);
+  osc->SetAccelerationCostWeights(Q_accel);
+  osc->SetInputSmoothingWeights(gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
 
   // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
@@ -404,7 +405,7 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
-  osc->SetWeightOfSoftContactConstraint(gains.w_soft_constraint);
+  osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
   // Friction coefficient
   osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
@@ -568,13 +569,13 @@ int DoMain(int argc, char* argv[]) {
       "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
 
   if (gains.W_com(0,0) == 0){
-    osc->AddInputCostByJointAndFsmState(
+    osc->SetInputCostWeightForJointAndFsmState(
         "toe_left_motor", left_stance_state, 1.0);
-    osc->AddInputCostByJointAndFsmState(
+    osc->SetInputCostWeightForJointAndFsmState(
         "toe_left_motor", post_right_double_support_state, 1.0);
-    osc->AddInputCostByJointAndFsmState(
+    osc->SetInputCostWeightForJointAndFsmState(
         "toe_right_motor", right_stance_state, 1.0);
-    osc->AddInputCostByJointAndFsmState(
+    osc->SetInputCostWeightForJointAndFsmState(
         "toe_right_motor", post_left_double_support_state, 1.0);
   }
   osc->Build();

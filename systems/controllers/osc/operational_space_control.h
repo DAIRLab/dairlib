@@ -9,6 +9,7 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 
+#include "common/find_resource.h"
 #include "dairlib/lcmt_osc_output.hpp"
 #include "dairlib/lcmt_osc_qp_output.hpp"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -18,7 +19,6 @@
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
-#include "common/find_resource.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -133,21 +133,26 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return this->get_input_port(0);
   }
 
-  // Cost methods
-  void SetInputCost(const Eigen::MatrixXd& W) { W_input_ = W; }
-  void AddInputCostByJointAndFsmState(
-      const std::string& joint_u_name, int fsm, double w);
-  void SetAccelerationCostForAllJoints(const Eigen::MatrixXd& W) {
+  // Regularization cost weights
+  void SetInputCostWeights(const Eigen::MatrixXd& W) { W_input_ = W; }
+  void SetAccelerationCostWeights(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
   }
-  void AddAccelerationCost(const std::string& joint_vel_name, double w);
+  void SetAccelerationCostWeightForJoint(const std::string& joint_vel_name,
+                                         double w);
+  void SetInputCostWeightForJointAndFsmState(const std::string& joint_u_name,
+                                             int fsm, double w);
+  void SetInputSmoothingWeights(const Eigen::MatrixXd& W) {
+    W_input_smoothing_ = W;
+  }
+  void SetContactSoftConstraintWeight(double w_soft_constraint) {
+    w_soft_constraint_ = w_soft_constraint;
+  }
 
   // Constraint methods
   void DisableAcutationConstraint() { with_input_constraints_ = false; }
   void SetContactFriction(double mu) { mu_ = mu; }
-  void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
-    w_soft_constraint_ = w_soft_constraint;
-  }
+
   void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator);
   void AddStateAndContactPoint(
       int state, const multibody::WorldPointEvaluator<double>* evaluator);
@@ -181,7 +186,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetOsqpSolverOptionsFromYaml(const std::string& yaml_string) {
     SetOsqpSolverOptions(
         drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
-        FindResourceOrThrow(yaml_string)).osqp_options);
+            FindResourceOrThrow(yaml_string))
+            .osqp_options);
   };
 
   // OSC LeafSystem builder
@@ -323,13 +329,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user
   /// could consider using acceleration cost instead.
-  Eigen::MatrixXd W_input_;        // Input cost weight
-  Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
-  std::map<int, std::pair<int, double>> fsm_to_w_input_map_; // each pair is (joint index, weight)
+  Eigen::MatrixXd W_input_;            // Input cost weight
+  Eigen::MatrixXd W_joint_accel_;      // Joint acceleration cost weight
+  Eigen::MatrixXd W_input_smoothing_;  // Input smoothing cost weight
+  std::map<int, std::pair<int, double>>
+      fsm_to_w_input_map_;  // each pair is (joint index, weight)
 
   // OSC constraint members
   bool with_input_constraints_ = true;
-
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;

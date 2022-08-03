@@ -37,7 +37,7 @@ void SigintHandler(int sig) {
 namespace dairlib {
 
 int DoMain(int argc, char* argv[]){
-  ros::init(argc, argv, "run_ros_to_lcm");
+  ros::init(argc, argv, "run_impedance_ros_to_lcm");
   ros::NodeHandle node_handle;
 
   drake::lcm::DrakeLcm drake_lcm;
@@ -60,7 +60,7 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(to_robot_output->get_output_port(), robot_output_pub->get_input_port());
   
   auto sys = builder.Build();
-  // DrawAndSaveDiagramGraph(*sys, "examples/franka_trajectory_following/diagram_run_ros_to_lcm");
+  // DrawAndSaveDiagramGraph(*sys, "examples/franka_trajectory_following/diagram_run_impedance_ros_to_lcm");
 
   Simulator<double> simulator(*sys); 
   simulator.Initialize();

@@ -28,7 +28,28 @@ def plot_spring_force_vs_time(processed_data, start_time, end_time):
     x = np.array(x)
     ys = np.array(ys)
 
-    plot_given_keys(cut_data, x, ys, legends, "t(s)", "force (N*m)", "Fitted best spring force")
+    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "force (N*m)", "Fitted best spring force")
+
+def plot_spring_force_vs_q(processed_data, start_time, end_time, is_sorted=False):
+    cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
+    legends = ["knee_joint_left", "knee_joint_right", "ankle_spring_joint_left", "ankle_spring_joint_right"]
+    plt.figure()
+    for l in legends:
+        x = [x["q"][l] for x in cut_data]
+        y = [x["spring_force_of_best_spring_model"][l] for x in cut_data]
+        if is_sorted:
+            x_y = []
+            for i in range(len(x)):
+                x_y.append((x[i],y[i]))
+            x_y.sort(key=lambda x: x[0])
+            x = [x[0] for x in x_y]
+            y= [x[1] for x in x_y]
+        plt.plot(x,y,label=l)
+    plt.xlabel("q(rad)")
+    plt.ylabel("spring force(N*m)")
+    plt.title("Spring force vs spring deflection")
+    plt.legend()
+    plt.show()
 
 def plot_contact_background(cut_data, min_ys, max_ys):
     left_on_ground = []
@@ -62,9 +83,13 @@ def plot_contact_background(cut_data, min_ys, max_ys):
         rect = patches.Rectangle((start_time, min_ys), end_time - start_time, max_ys-min_ys, color="y", alpha=0.2)
         plt.gca().add_patch(rect)
 
-def plot_given_keys(cut_data, x, ys, legends, xlabel, ylabel, title):
+def plot_given_keys_vs_time(cut_data, x, ys, legends, xlabel, ylabel, title):
 
     plt.figure()
+
+    max_ys = np.max(ys)
+    min_ys = np.min(ys)
+    plot_contact_background(cut_data, min_ys, max_ys)
 
     for i in range(len(ys)):
         plt.plot(x, ys[i], label=legends[i])

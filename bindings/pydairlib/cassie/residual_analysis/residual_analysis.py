@@ -13,7 +13,7 @@ import scipy.io
 import cvxpy as cp
 from cassie_model import CassieSystem
 from utils import *
-from plot_utlis import PlotViewlizer
+from plot_utlis import PlotViewlizer, plot_spring_force_vs_q, plot_spring_force_vs_time
 from data_processor import DataProcessor
 
 class CaaiseSystemTest():
@@ -109,6 +109,7 @@ class CaaiseSystemTest():
         t = processed_data["t"]; q = processed_data["q"]; v = processed_data["v"]; v_dot_gt = processed_data["v_dot"]; 
         u = processed_data["u"]; is_contact = processed_data["is_contact"]; v_dot_osc = processed_data["v_dot_osc"]; u_osc = processed_data["u_osc"]
         K = processed_data["spring_stiffness"]; C = processed_data["damping_ratio"]
+        self.start_time = t[0]; self.end_time = t[-1]
 
         offset = np.zeros(23)
 
@@ -130,6 +131,10 @@ class CaaiseSystemTest():
             for processed_datum in self.data_processor.processed_data:
                 self.plotViewlizer.add_info(processed_datum)
             print("Finish update data for plots")
+
+        # self.data_processor.fit_spring_damper_model_of_hip_between_main_body(self.start_time, self.end_time)
+        plot_spring_force_vs_time(self.data_processor.processed_data, self.start_time, self.end_time)
+        # plot_spring_force_vs_q(self.data_processor.processed_data, self.start_time, self.end_time, is_sorted=True)
 
         import pdb; pdb.set_trace()
 

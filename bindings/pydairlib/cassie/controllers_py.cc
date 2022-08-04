@@ -51,9 +51,11 @@ PYBIND11_MODULE(controllers, m) {
   py::class_<FootstepTargetControllerDiagram, drake::systems::Diagram<double>>(
       m, "FootstepTargetWalkingControllerFactory")
       .def(py::init<drake::multibody::MultibodyPlant<double>&, bool,
-              const std::string&, const std::string&>(),
+              const std::string&, const std::string&, double>(),
       py::arg("plant"), py::arg("has_double_stance"),
-      py::arg("osc_gains_filename"), py::arg("osqp_settings_filename"))
+      py::arg("osc_gains_filename"),
+      py::arg("osqp_settings_filename"),
+      py::arg("single_stance_time_override"))
       .def("get_plant", &FootstepTargetControllerDiagram::get_plant,
           py_rvp::reference_internal)
       .def("get_state_input_port",
@@ -77,7 +79,6 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_alip_target_footstep_port",
            &FootstepTargetControllerDiagram::get_alip_target_footstep_port,
            py_rvp::reference_internal);
-
 }
 }  // namespace pydairlib
 }  // namespace dairlib

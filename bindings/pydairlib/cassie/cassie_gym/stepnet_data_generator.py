@@ -1,4 +1,5 @@
 import numpy as np
+from dataclasses import dataclass
 
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.math import RigidTransform, RotationMatrix
@@ -33,13 +34,7 @@ MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
 INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
-TARGET_NOISE_BOUND = np.array([1.0, 1.0, 0.0])
-TARGET_LB = np.array([-2.0, -2.0, -0.5])
-TARGET_UB = np.array([2.0, 2.0, 0.5])
-RADIO_BOUND = np.array([1.0, 1.0])
-DEPTH_VAR_Z = 0.01
 MAX_ERROR = 1.0
-STEPNET_SIM_DURATION = 0.35
 
 
 class StepnetDataGenerator(DrakeCassieGym):

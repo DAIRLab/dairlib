@@ -67,7 +67,8 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
     drake::multibody::MultibodyPlant<double> &plant,
     bool has_double_stance,
     const std::string &osc_gains_filename,
-    const std::string &osqp_settings_filename)
+    const std::string &osqp_settings_filename,
+    double single_stance_time_override)
     : plant_(&plant),
       pos_map(multibody::MakeNameToPositionsMap(plant)),
       vel_map(multibody::MakeNameToVelocitiesMap(plant)),
@@ -124,6 +125,10 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
 
   auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(
       FindResourceOrThrow(osc_gains_filename));
+
+  if (single_stance_time_override > 0) {
+    gains.ss_time = single_stance_time_override;
+  }
 
   /*** FSM and contact mode configuration ***/
   int left_stance_state = 0;

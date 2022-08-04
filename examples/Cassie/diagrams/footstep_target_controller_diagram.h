@@ -44,7 +44,8 @@ class FootstepTargetControllerDiagram final
   FootstepTargetControllerDiagram(drake::multibody::MultibodyPlant<double>& plant,
                                bool has_double_stance,
                                const std::string& osc_gains_filename,
-                               const std::string& osqp_settings_filename);
+                               const std::string& osqp_settings_filename,
+                               double single_stance_time_override=-1);
 
   /// @return the input port for the plant state.
   const drake::systems::InputPort<double>& get_state_input_port() const {

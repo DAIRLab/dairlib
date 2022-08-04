@@ -1,9 +1,9 @@
 import os
 import math
 import multiprocessing
-
 import numpy as np
 from PIL import Image
+from dataclasses import dataclass
 from torch import save as pt_save
 from pydairlib.cassie.cassie_gym.stepnet_data_generator import \
     StepnetDataGenerator, test_data_collection, test_flat_collection
@@ -24,7 +24,53 @@ DATASET_DIR = HOME + '/workspace/stepnet_learning_data/dataset/'
 FLAT_GROUND_DATASET_DIR = HOME + '/workspace/stepnet_learning_data/flat_ground/'
 DEPTH_DIR = DATASET_DIR + 'depth/'
 ROBO_DIR = DATASET_DIR + 'robot/'
-DEPTH_SCALE = 255 / 10.0  # depth camera clips at 10 m
+
+
+@dataclass
+class DepthCameraInfo:
+    width: int = 640
+    height: int = 480
+    focal_x: float = 390.743
+    focal_y: float = 390.743
+    center_x: float = 323.332
+    center_y: float = 241.387
+
+
+@dataclass
+class DataCollectionParams:
+    """ Dataset size"""
+    nmaps: int
+    nsteps: int
+    robot_path: str
+    depth_path: str
+
+    """ For flat ground, a static transform from world to errormap coordinates.
+    For terrain, the transform from pelvis frame to depth frame """
+    target_to_map_tf: np.ndarray
+    camera_params: DepthCameraInfo = DepthCameraInfo()
+
+    """Is there terrain besides flat ground? """
+    has_terrain: bool = True
+
+    """ How much noise to add to target footsteps """
+    target_xyz_noise_bound: np.ndarray = np.array([1.0, 1.0, 0.0])
+    target_yaw_noise_bound: float = np.pi / 2
+    target_time_bounds: np.ndarray = np.array([0.1, 0.6])
+
+    """ Bounds on footstep coordinates"""
+    target_lb: np.ndarray = np.array([-2.0, -2.0, -0.5])
+    target_ub: np.ndarray = np.array([2.0, 2.0, 0.5])
+
+    """ Bounds on radio commands """
+    radio_bound: np.ndarray = np.array([1.0, 1.0])
+
+    """ Depth scaling for conversion to .png  """
+    depth_scale: float = 25.5
+
+    """ simulation params """
+    depth_var_z: float = 0.01
+    sim_duration: float = 0.35
+    max_error: float = 1.0
 
 
 def ndigits(number):

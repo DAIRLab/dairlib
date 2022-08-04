@@ -56,11 +56,6 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
     const std::string& urdf, bool visualize, bool add_terrain, double mu,
     double map_yaw, const Eigen::Vector3d& normal) {
 
-  drake::math::RigidTransform<double> cam_transform =
-      drake::math::RigidTransform<double>(
-          camera::MakeXZAlignedCameraRotation(-0.85*M_PI/2),
-          Eigen::Vector3d(0.175, 0, 0.15));
-
   DiagramBuilder<double> builder;
   scene_graph_ = builder.AddSystem<SceneGraph>();
   scene_graph_->set_name("scene_graph");
@@ -84,7 +79,7 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
   }
 
   plant_->RegisterVisualGeometry(plant_->GetBodyByName("pelvis"),
-                                 cam_transform,
+                                 cam_transform_,
                                  drake::geometry::Box(0.15, 0.025, 0.025),
                                  "realsense_box");
   plant_->Finalize();
@@ -121,7 +116,7 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
 
   auto camera = builder.AddSystem<drake::systems::sensors::RgbdSensor>(
-      parent_body_id.value(), cam_transform, color_camera, depth_camera);
+      parent_body_id.value(), cam_transform_, color_camera, depth_camera);
 
 
   // connect leaf systems

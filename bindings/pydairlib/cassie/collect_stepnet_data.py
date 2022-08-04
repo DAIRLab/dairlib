@@ -1,22 +1,18 @@
 import os
+import sys
 import math
-import multiprocessing
+import pickle
+import argparse
 import numpy as np
 from PIL import Image
+import multiprocessing
+from pydantic import BaseModel
 from dataclasses import dataclass
 from torch import save as pt_save
+from pydairlib.cassie.cassie_gym.config_types import \
+    DataCollectionParams, DepthCameraInfo
 from pydairlib.cassie.cassie_gym.stepnet_data_generator import \
     StepnetDataGenerator, test_data_collection, test_flat_collection
-
-# Terrain data collection
-NMAPS = 20000
-NSTEPS = 10
-NTHREADS = 5
-
-# Flat ground data collection
-NSTEPS_FG = 10000
-BATCH_SIZE_FG = 5
-NTHREADS_FG = 5
 
 
 HOME = os.getenv("HOME")
@@ -26,59 +22,15 @@ DEPTH_DIR = DATASET_DIR + 'depth/'
 ROBO_DIR = DATASET_DIR + 'robot/'
 
 
-@dataclass
-class DepthCameraInfo:
-    width: int = 640
-    height: int = 480
-    focal_x: float = 390.743
-    focal_y: float = 390.743
-    center_x: float = 323.332
-    center_y: float = 241.387
-
-
-@dataclass
-class DataCollectionParams:
-    """ Dataset size"""
-    nmaps: int
-    nsteps: int
-    robot_path: str
-    depth_path: str
-
-    """ For flat ground, a static transform from world to errormap coordinates.
-    For terrain, the transform from pelvis frame to depth frame """
-    target_to_map_tf: np.ndarray
-    camera_params: DepthCameraInfo = DepthCameraInfo()
-
-    """Is there terrain besides flat ground? """
-    has_terrain: bool = True
-
-    """ How much noise to add to target footsteps """
-    target_xyz_noise_bound: np.ndarray = np.array([1.0, 1.0, 0.0])
-    target_yaw_noise_bound: float = np.pi / 2
-    target_time_bounds: np.ndarray = np.array([0.1, 0.6])
-
-    """ Bounds on footstep coordinates"""
-    target_lb: np.ndarray = np.array([-2.0, -2.0, -0.5])
-    target_ub: np.ndarray = np.array([2.0, 2.0, 0.5])
-
-    """ Bounds on radio commands """
-    radio_bound: np.ndarray = np.array([1.0, 1.0])
-
-    """ Depth scaling for conversion to .png  """
-    depth_scale: float = 25.5
-
-    """ simulation params """
-    depth_var_z: float = 0.01
-    sim_duration: float = 0.35
-    max_error: float = 1.0
-
-
 def ndigits(number):
     return int(math.log10(number)) + 1
 
 
-def collect_data_from_random_map(size, seed):
-    env = StepnetDataGenerator.make_randomized_env(visualize=False)
+def collect_data_from_random_map(size, seed, params):
+    env = StepnetDataGenerator.make_randomized_env(
+        params.generator_params,
+        params.randomization_bounds
+    )
     data = []
     for i in range(size):
         data.append(env.get_stepnet_data_point(seed=seed+i))
@@ -86,67 +38,113 @@ def collect_data_from_random_map(size, seed):
     return data
 
 
-def collect_and_save_data_from_random_map(i, size):
-    data = collect_data_from_random_map(size, i*NSTEPS)
+def collect_and_save_data_from_random_map(i, size, params):
+    data = collect_data_from_random_map(size, i*params.nsteps, params)
     print(i)
-    ni = ndigits(NMAPS)
-    nj = ndigits(NSTEPS)
-    for j, stp in enumerate(data):
-        depth = np.nan_to_num(stp['depth'], posinf=0).squeeze()
-        depth = (DEPTH_SCALE * depth).astype('uint8')
+    ni = ndigits(params.nmaps)
+    nj = ndigits(params.nsteps)
+    for j, step in enumerate(data):
+        # Proces the depth image and save as PNG
+        depth = np.nan_to_num(step['depth'], posinf=0).squeeze()
+        depth = (params.depth_scale * depth).astype('uint8')
         im = Image.fromarray(depth)
-        robot = {key: stp[key] for key in ['state', 'target', 'error']}
+        robot = {key: step[key] for key in ['state', 'target', 'time', 'error']}
         im.save(os.path.join(DEPTH_DIR, f'{i:0{ni}}_{j:0{nj}}.png'))
         pt_save(robot, os.path.join(ROBO_DIR, f'{i:0{ni}}_{j:0{nj}}.pt'))
 
 
-def collect_flat_ground_data(size, seed):
-    env = StepnetDataGenerator.make_flat_env()
+def collect_flat_ground_data(size, seed, params):
+    env = StepnetDataGenerator.make_flat_env(params.generator_params)
     data = []
     for i in range(size):
         data.append(env.get_flat_ground_stepnet_datapoint(seed=seed+i))
         print(seed+i)
     env.free_sim()
     for i, entry in enumerate(data):
-        pt_save(entry, os.path.join(FLAT_GROUND_DATASET_DIR, f'{seed + i}.pt'))
+        pt_save(entry, os.path.join(params.robot_path, f'{seed + i}.pt'))
 
 
-def flat_gound_data_main():
-    if not os.path.isdir(FLAT_GROUND_DATASET_DIR):
-        os.makedirs(FLAT_GROUND_DATASET_DIR)
+def flat_main(collection_params):
+    if not os.path.isdir(collection_params.robot_path):
+        os.makedirs(collection_params.robot_path)
 
-    for j in range(int(NSTEPS_FG / (NTHREADS_FG * BATCH_SIZE_FG))):
-        with multiprocessing.Pool(NTHREADS_FG) as pool:
+    nsteps = collection_params.nsteps
+    nthreads = collection_params.nthreads
+    batch_size = collection_params.nmaps
+    for j in range(int(nsteps/ (nthreads * batch_size))):
+        with multiprocessing.Pool(nthreads) as pool:
             results = [
                 pool.apply_async(
                     collect_flat_ground_data,
-                    (BATCH_SIZE_FG, NTHREADS_FG * BATCH_SIZE_FG * j +
-                     BATCH_SIZE_FG * i)
-                ) for i in range(NTHREADS_FG)]
-            [result.wait(timeout=BATCH_SIZE_FG*5) for result in results]
+                    (batch_size, nthreads * batch_size * j +
+                     batch_size * i,
+                     collection_params)
+                ) for i in range(nthreads)]
+            [result.wait(timeout=batch_size*5) for result in results]
 
 
-def main():
-    if not os.path.isdir(DEPTH_DIR):
-        os.makedirs(DEPTH_DIR)
-    if not os.path.isdir(ROBO_DIR):
-        os.makedirs(ROBO_DIR)
+def terrain_main(collection_params):
+    for path in [collection_params.robot_path,
+                 collection_params.depth_path]:
+        if not os.path.isdir(path):
+            os.makedirs(path)
 
-    for j in range(int(NMAPS / NTHREADS)):
-        with multiprocessing.Pool(NTHREADS) as pool:
+    for j in range(int(collection_params.nmaps / collection_params.nthreads)):
+        with multiprocessing.Pool(collection_params.nthreads) as pool:
             results = [
                 pool.apply_async(
                     collect_and_save_data_from_random_map,
-                    (NTHREADS * j + i, NSTEPS)
-                ) for i in range(NTHREADS) ]
-            [result.wait(timeout=NSTEPS*5) for result in results]
+                    (collection_params.nthreads * j + i,
+                     collection_params.nsteps,
+                     collection_params)
+                ) for i in range(collection_params.nthreads) ]
+            [result.wait(timeout=collection_params.nsteps) for result in results]
+
+
+def main(args):
+    # Set dataset collection params
+    collection_params = DataCollectionParams(
+        nmaps=args.nmaps,
+        nsteps=args.nsteps,
+        nthreads=args.nthreads,
+        robot_path=os.path.join(args.dataset_parent_folder, 'robot'),
+        depth_path=os.path.join(args.dataset_parent_folder, 'depth'),
+        has_terrain=(args.terrain == 'varied')
+    )
+    if collection_params.has_terrain:
+        collection_params.target_to_map_tf = \
+            DepthCameraInfo().as_drake_camera_info()
+
+    # Save collection params
+    with open(os.path.join(args.dataset_parent_folder,
+              'data_collection_params.pkl'), 'wb') as fp:
+        pickle.dump(collection_params, fp)
+
+    # run the data collection
+    if collection_params.has_terrain:
+        terrain_main(collection_params)
+    else:
+        flat_main(collection_params)
 
 
 def test():
-    test_data_collection()
+    test_flat_collection()
 
 
 if __name__ == "__main__":
-    # test()
-    # main()
-    flat_gound_data_main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--terrain', type=str, default='varied', help='\'varied\' or \'flat\'')
+    parser.add_argument('--vary_timing', type=bool, default=False, help='bool: vary step timing or no?')
+    parser.add_argument('--vary_foot_yaw', type=bool, default=False, help='bool: add a yaw target to the controller?')
+    parser.add_argument('--nmaps', type=int, default=50000)
+    parser.add_argument('--nsteps', type=int, default=10)
+    parser.add_argument('--nthreads', type=int, default=5)
+    parser.add_argument('--dataset_parent_folder', type=str, default=DATASET_DIR)
+
+    try:
+        args = parser.parse_args()
+    except:
+        parser.print_help()
+        sys.exit(0)
+    test()
+    main(args)

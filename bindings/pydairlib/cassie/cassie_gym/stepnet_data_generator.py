@@ -1,5 +1,5 @@
 import numpy as np
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.math import RigidTransform, RotationMatrix
@@ -15,10 +15,15 @@ from pydairlib.multibody import \
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.cassie.controllers import \
     FootstepTargetWalkingControllerFactory
+from pydairlib.cassie.cassie_gym.config_types import \
+    CassieGymParams,\
+    DepthCameraInfo,\
+    DataGeneratorParams,\
+    DomainRandomizationBounds
 from pydairlib.cassie.cassie_gym.drake_cassie_gym import \
     DrakeCassieGym,\
-    CassieGymParams,\
     FixedVectorInputPort
+from pydairlib.cassie.simulators import CassieVisionSimDiagram
 from pydairlib.cassie.cassie_gym.cassie_env_state import \
     CASSIE_QUATERNION_SLICE, CASSIE_POSITION_SLICE, CASSIE_OMEGA_SLICE,\
     CASSIE_VELOCITY_SLICE, CASSIE_JOINT_POSITION_SLICE,\
@@ -39,14 +44,16 @@ MAX_ERROR = 1.0
 
 class StepnetDataGenerator(DrakeCassieGym):
 
-    def __init__(self, visualize=False, params=CassieGymParams()):
+    def __init__(self, data_gen_params,
+                 visualize=False, gym_params=CassieGymParams()):
         # Initialize the base cassie gym simulator
         super().__init__(
             visualize=visualize,
-            params=params
+            params=gym_params
         )
-        # simulate for a bit past a full step
-        # self.sim_dt = 0.45
+        self.data_gen_params = data_gen_params
+        self.simulate_until = 0
+        self.ss_time = 0
 
         # Simulation Infrastructure
         self.fsm_output_port = None
@@ -80,14 +87,9 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.nv = 0
 
         # Depth camera
-        self.depth_camera_info = CameraInfo(
-            width=640,
-            height=480,
-            focal_x=390.743,
-            focal_y=390.743,
-            center_x=323.332,
-            center_y=241.387
-        )
+        self.depth_camera_info = \
+            self.data_gen_params.depth_camera_info.as_drake_camera_info()
+
 
         # Spare plant context for calculations
         self.calc_context = None
@@ -99,12 +101,28 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.controller_plant = MultibodyPlant(MBP_TIMESTEP)
         AddCassieMultibody(self.controller_plant, None, True, URDF, False, False)
         self.controller_plant.Finalize()
-        self.controller = FootstepTargetWalkingControllerFactory(
-            plant=self.controller_plant,
-            has_double_stance=True,
-            osc_gains_filename=OSC_GAINS,
-            osqp_settings_filename=OSQP_SETTINGS
-        )
+        if self.data_gen_params.randomize_time:
+            self.ss_time = np.random.uniform(
+                low=self.data_gen_params.target_time_bounds[0],
+                high=self.data_gen_params.target_time_bounds[1]
+            )
+            self.controller = FootstepTargetWalkingControllerFactory(
+                plant=self.controller_plant,
+                has_double_stance=True,
+                osc_gains_filename=OSC_GAINS,
+                osqp_settings_filename=OSQP_SETTINGS,
+                single_stance_time_override=self.ss_times
+            )
+        else:
+            self.ss_time = 0.3
+            self.controller = FootstepTargetWalkingControllerFactory(
+                plant=self.controller_plant,
+                has_double_stance=True,
+                osc_gains_filename=OSC_GAINS,
+                osqp_settings_filename=OSQP_SETTINGS
+            )
+
+        self.simulate_until = self.ss_time + 0.1
 
     def make(self, controller, urdf=URDF):
         super().make(controller, urdf)
@@ -317,8 +335,8 @@ class StepnetDataGenerator(DrakeCassieGym):
         # Apply a random velocity command
         radio = np.zeros((18,))
         radio[2:4] = np.random.uniform(
-            low=-RADIO_BOUND,
-            high=RADIO_BOUND
+            low=-self.data_gen_params.radio_bound,
+            high=self.data_gen_params.radio_bound
         )
 
         self.cassie_sim.get_radio_input_port().FixValue(
@@ -331,11 +349,14 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         # Apply a random offset to the target XY position
         target = alip_target + np.random.uniform(
-            low=-TARGET_NOISE_BOUND,
-            high=TARGET_NOISE_BOUND
+            low=-self.data_gen_params.target_xyz_noise_bound,
+            high=self.data_gen_params.target_xyz_noise_bound
         )
-
-        target_b = np.clip(target, TARGET_LB, TARGET_UB)
+        target_b = np.clip(
+            target,
+            self.data_gen_params.target_lb,
+            self.data_gen_params.target_ub
+        )
         target_w = self.make_robot_yaw_to_world_rotation(
             self.plant_context).matrix() @ target_b
 
@@ -353,7 +374,7 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         depth_image, target_z = \
             self.get_noisy_height_from_current_depth_image(
-                DEPTH_VAR_Z, target_w
+                self.data_gen_params.depth_var_z, target_w
             )
         target_w[-1] = target_z
 
@@ -363,7 +384,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         ]
 
         # Step the simulation forward until middle of next double stance
-        while self.current_time < STEPNET_SIM_DURATION:
+        while self.current_time < self.simulate_until:
             self.step(footstep_target=target_w)
             # Abort and return max error if something crazy happens
             if self.check_termination():
@@ -371,6 +392,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                     'depth': depth_image,
                     'state': x,
                     'target': target_b,
+                    'time': self.ss_time,
                     'error': MAX_ERROR
                 }
 
@@ -383,6 +405,7 @@ class StepnetDataGenerator(DrakeCassieGym):
             'depth': depth_image,
             'state': x,
             'target': target_b,
+            'time': self.ss_time,
             'error': error
         }
 
@@ -405,13 +428,14 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         # Step the simulation forward until about the
         # middle of next double stance
-        while self.current_time < STEPNET_SIM_DURATION:
+        while self.current_time < self.simulate_until:
             self.step(footstep_target=target_w)
             # Abort and return max error if something crazy happens
             if self.check_termination():
                 return {
                     'state': x,
                     'target': target_b,
+                    'time': self.ss_time,
                     'error': MAX_ERROR
                 }
 
@@ -423,40 +447,47 @@ class StepnetDataGenerator(DrakeCassieGym):
         return {
             'state': x,
             'target': target_b,
+            'time': self.ss_time,
             'error': error
         }
 
     @staticmethod
-    def make_randomized_env(visualize=False):
+    def make_randomized_env(data_gen_params, rand_domain, visualize=False):
         env = StepnetDataGenerator(
+            data_gen_params,
             visualize=visualize,
-            params=CassieGymParams.make_random(INITIAL_CONDITIONS_FILE)
+            gym_params=CassieGymParams.make_random(
+                INITIAL_CONDITIONS_FILE,
+                domain=rand_domain
+            )
         )
         env.reset(env.get_robot_centric_state(env.params.x_init))
         return env
 
     @staticmethod
-    def make_flat_env(visualize=False):
+    def make_flat_env(data_gen_params, visualize=False):
         env = StepnetDataGenerator(
+            data_gen_params,
             visualize=visualize,
-            params=CassieGymParams.make_flat(INITIAL_CONDITIONS_FILE)
+            gym_params=CassieGymParams.make_flat(INITIAL_CONDITIONS_FILE)
         )
         env.reset(env.get_robot_centric_state(env.params.x_init))
         return env
 
 
 def test_data_collection():
-    gym_env = StepnetDataGenerator.make_randomized_env(visualize=True)
+    gym_env = StepnetDataGenerator.make_randomized_env(
+        DataGeneratorParams(), DomainRandomizationBounds(), visualize=True)
     i = 0
     while True:
-        gym_env = StepnetDataGenerator.make_randomized_env(visualize=True)
         data = gym_env.get_stepnet_data_point(seed=i)
         i += 1
     gym_env.free_sim()
 
 
 def test_flat_collection():
-    gym_env = StepnetDataGenerator.make_flat_env(visualize=True)
+    gym_env = StepnetDataGenerator.make_flat_env(
+        DataGeneratorParams(), visualize=True)
     i = 0
     while True:
         data = gym_env.get_flat_ground_stepnet_datapoint(seed = i)

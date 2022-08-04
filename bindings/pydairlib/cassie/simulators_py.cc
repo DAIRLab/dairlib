@@ -75,7 +75,9 @@ PYBIND11_MODULE(simulators, m) {
            py_rvp::reference_internal)
       .def("get_camera_pose_output_port",
            &CassieVisionSimDiagram::get_camera_pose_output_port,
-           py_rvp::reference_internal);
+           py_rvp::reference_internal)
+      .def_static("default_camera_transform",
+           &CassieVisionSimDiagram::default_camera_transform);
 }
 }  // namespace pydairlib
 }  // namespace dairlib

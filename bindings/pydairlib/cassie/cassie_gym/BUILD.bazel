@@ -16,6 +16,7 @@ py_library(
     srcs = ["stepnet_data_generator.py"],
     deps = [
         ":cassie_env_state",
+        ":config_types",
         ":drake_cassie_gym",
         "//bindings/pydairlib/cassie",
         "//bindings/pydairlib/multibody",
@@ -28,6 +29,7 @@ py_library(
     srcs = ["drake_cassie_gym.py"],
     deps = [
         ":cassie_env_state",
+        ":config_types",
         "//bindings/pydairlib",
         "//bindings/pydairlib/cassie",
         "//bindings/pydairlib/multibody",
@@ -42,6 +44,16 @@ py_binary(
     deps = [
         ":cassie_env_state",
         ":drake_cassie_gym",
+        "//bindings/pydairlib/cassie",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "config_types",
+    srcs = ["config_types.py"],
+    deps = [
+        "//bindings/pydairlib",
         "//bindings/pydairlib/cassie",
         "@drake//bindings/pydrake",
     ],

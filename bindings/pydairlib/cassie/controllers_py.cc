@@ -55,7 +55,7 @@ PYBIND11_MODULE(controllers, m) {
       py::arg("plant"), py::arg("has_double_stance"),
       py::arg("osc_gains_filename"),
       py::arg("osqp_settings_filename"),
-      py::arg("single_stance_time_override"))
+      py::arg("single_stance_time_override") = 0)
       .def("get_plant", &FootstepTargetControllerDiagram::get_plant,
           py_rvp::reference_internal)
       .def("get_state_input_port",

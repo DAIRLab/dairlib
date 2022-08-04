@@ -9,6 +9,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/system.h"
+#include "systems/cameras/camera_utils.h"
 
 namespace dairlib {
 namespace examples {
@@ -54,13 +55,23 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
     return this->get_output_port(camera_pose_output_port_index_);
   }
 
-
   drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
 
+  static drake::math::RigidTransform<double> default_camera_transform() {
+    return {
+      camera::MakeXZAlignedCameraRotation(-0.85*M_PI/2),
+      Eigen::Vector3d(0.175, 0, 0.15)
+    };
+  }
+
  private:
 
+  drake::math::RigidTransform<double> cam_transform_ =
+      drake::math::RigidTransform<double>(
+          camera::MakeXZAlignedCameraRotation(-0.85*M_PI/2),
+          Eigen::Vector3d(0.175, 0, 0.15));
   drake::multibody::MultibodyPlant<double>* plant_;
   const systems::SimCassieSensorAggregator* sensor_aggregator_;
   drake::geometry::SceneGraph<double>* scene_graph_;

@@ -16,6 +16,7 @@ py_binary(
     srcs = ["collect_stepnet_data.py"],
     deps = [
         ":controllers_py",
+        "//bindings/pydairlib/cassie/cassie_gym:config_types",
         "//bindings/pydairlib/cassie/cassie_gym:drake_cassie_gym",
         "//bindings/pydairlib/cassie/cassie_gym:stepnet_data_generator",
         "//bindings/pydairlib/common:plot_styler",

@@ -1,9 +1,9 @@
 import numpy as np
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 from pydrake.multibody.parsing import Parser
 from pydrake.systems.framework import DiagramBuilder, Context, InputPort
-from pydrake.multibody.plant import *
+from pydrake.multibody.plant import MultibodyPlant
 from pydrake.systems.analysis import Simulator
 from pydrake.systems.sensors import ImageToLcmImageArrayT, PixelType
 from pydrake.systems.lcm import LcmPublisherSystem
@@ -14,55 +14,13 @@ from pydairlib.common import FindResourceOrThrow
 from pydairlib.cassie.cassie_utils import *
 from pydairlib.multibody import *
 from pydairlib.systems.primitives import *
-from pydairlib.systems.robot_lcm_systems import RobotOutputSender
-from dairlib import lcmt_radio_out
 from pydairlib.cassie.simulators import CassieVisionSimDiagram
 from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState
+from pydairlib.cassie.cassie_gym.config_types import StepnetDataClass, \
+    DomainRandomizationBounds, CassieGymParams
 
 
-@dataclass
-class CassieGymParams:
-    """
-        Container class for the parameters which could
-        be randomized for simulation
-    """
-    terrain_normal: np.ndarray = np.array([0.0, 0.0, 1.0])
-    x_init: np.ndarray = np.array(
-        [1, 0, 0, 0, 0, 0, 0.85,
-         -0.0358, 0, 0.674, -1.588, -0.0458, 1.909, -0.0382, -1.823,
-          0.0358, 0, 0.674, -1.588, -0.0458, 1.909, -0.0382, -1.823,
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    map_yaw: float = 0
-    mu: float = 0.8
-    add_terrain: bool = False
-
-    @staticmethod
-    def make_random(ic_file_path):
-        ics = np.load(ic_file_path)
-        x = ics[np.random.choice(ics.shape[0], size=1, replace=False)].ravel()
-        normal = np.random.uniform(
-            low=[-0.1, -0.1, 1.0],
-            high=[0.1, 0.1, 1.0],
-        )
-        map_yaw = 2 * np.random.random() - 1
-        mu = 0.5 * np.random.random() + 0.5
-        return CassieGymParams(
-            terrain_normal=normal,
-            x_init=x,
-            map_yaw=map_yaw,
-            mu=mu,
-            add_terrain=True
-        )
-
-    @staticmethod
-    def make_flat(ic_file_path):
-        ics = np.load(ic_file_path)
-        x = ics[np.random.choice(ics.shape[0], size=1, replace=False)].ravel()
-        return CassieGymParams(x_init=x)
-
-
-@dataclass
-class FixedVectorInputPort:
+class FixedVectorInputPort(StepnetDataClass):
     input_port: InputPort = None
     context: Context = None
     value: np.ndarray = None

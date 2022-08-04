@@ -54,7 +54,9 @@ int DoMain(int argc, char* argv[]) {
   auto franka_subscriber = builder.AddSystem(
     LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
       FLAGS_channel, &drake_lcm));
-
+  std::cout << "franka susbcriber waiting for first message" << std::endl;
+  franka_subscriber->WaitForMessage(0, nullptr,1);
+  
   /// state estimation block
   int p_filter_length = 10;
   int v_filter_length = 10;
@@ -82,6 +84,8 @@ int DoMain(int argc, char* argv[]) {
     auto vision_subscriber = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_ball_position>(
         "VISION_OUTPUT", &drake_lcm));
+    std::cout << "vision subscriber waiting for first message" << std::endl;
+    vision_subscriber->WaitForMessage(0, nullptr, 1);
     builder.Connect(vision_subscriber->get_output_port(0),
       state_estimator->get_input_port(1));
   }

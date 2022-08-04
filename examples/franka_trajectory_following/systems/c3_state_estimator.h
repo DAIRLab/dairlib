@@ -104,12 +104,7 @@ class FrankaBallToBallPosition : public LeafSystem<double> {
   int id_idx_;
   int utime_idx_;
 
-  // noise generating member variables
   C3Parameters param_;
-  std::random_device rd_{};
-  std::mt19937 gen_{rd_()};
-  std::normal_distribution<> distribution_{};
-
   const double stddev_;
   const double period_;
 };

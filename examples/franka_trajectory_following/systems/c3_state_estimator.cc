@@ -2,6 +2,7 @@
 
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
+using drake::systems::DiscreteValues;
 using drake::systems::State;
 using drake::systems::EventStatus;
 using drake::systems::BasicVector;
@@ -179,50 +180,78 @@ void C3StateEstimator::OutputEfforts(const drake::systems::Context<double>& cont
 /* ------------------------------------------------------------------------------ */
 /// Method implementation of FrankaBallToBallPosition class
 
-// FrankaBallToBallPosition::FrankaBallToBallPosition(
-//   double stddev, double period) : 
-//   stddev_(stddev), period_(period) {
+FrankaBallToBallPosition::FrankaBallToBallPosition(
+  double stddev, double period) : 
+  stddev_(stddev), period_(period) {
   
-//   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
-//       "examples/franka_trajectory_following/parameters.yaml");
-//   distribution_ = std::normal_distribution<>(0, stddev_);
+  param_ = drake::yaml::LoadYamlFile<C3Parameters>(
+      "examples/franka_trajectory_following/parameters.yaml");
 
-//   /// declare discrete states
-//   Vector3d initial_position;
-//   initial_position(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
-//   initial_position(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180);
-//   initial_position(2) = param_.ball_radius + param_.table_offset;
+  /// declare discrete states
+  Vector3d initial_position;
+  initial_position(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
+  initial_position(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180);
+  initial_position(2) = param_.ball_radius + param_.table_offset;
 
-//   p_idx_ = this->DeclareDiscreteState(initial_position);
-//   id_idx_ = this->DeclareDiscreteState(1); // automatically initialized to 0;
+  p_idx_ = this->DeclareDiscreteState(initial_position);
+  id_idx_ = this->DeclareDiscreteState(1); // automatically initialized to 0;
+  utime_idx_ = this->DeclareDiscreteState(1);
   
-//   this->DeclarePeriodicDiscreteUpdateEvent(period_, 0,
-//     &FrankaBallToBallPosition::UpdateBallPosition);
+  this->DeclarePeriodicDiscreteUpdateEvent(period_, 0,
+    &FrankaBallToBallPosition::UpdateBallPosition);
 
-//   this->DeclareAbstractInputPort("lcmt_robot_output",
-//                                  drake::Value<dairlib::lcmt_robot_output>{});
-//   this->DeclareAbstractOutputPort("lcmt_ball_position",
-//                                   &FrankaBallToBallPosition::ConvertOutput);
-// }
+  this->DeclareAbstractInputPort("lcmt_robot_output",
+                                 drake::Value<dairlib::lcmt_robot_output>{});
+  this->DeclareAbstractOutputPort("lcmt_ball_position",
+                                  &FrankaBallToBallPosition::ConvertOutput);
+}
 
-// // TODO: write update block
-
-// void ConvertOutput(const drake::systems::Context<double>& context,
-//                     dairlib::lcmt_ball_position* output) const {
+EventStatus FrankaBallToBallPosition::UpdateBallPosition(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
   
-//   Vector3d ball_position = context.get_discrete_state(p_idx_).value();
-//   VectorXd id = context.get_discrete_state(id_idx_).value();
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& franka_output = input->get_value<dairlib::lcmt_robot_output>();
 
-//   for (int i = 0; i < 3; i++){
-//     output->xyz[i] = ball_position(i);
-//     output->cam_statuses = "N/A";
-//   }
-//   output->num_cameras_used = -1;
-//   output->id = id(0);
-//   output->utime = // TODO: get time here
+  Vector3d position(franka_output.position[11],
+                    franka_output.position[12],
+                    franka_output.position[13]);
 
+  if (stddev_ > 1e-12){
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<> d{0, param_.ball_stddev};
+
+    position(0) += d(gen);
+    position(1) += d(gen);
+  }
+
+  discrete_state->get_mutable_vector(p_idx_).get_mutable_value() << position;
+  discrete_state->get_mutable_vector(utime_idx_).get_mutable_value() 
+    << franka_output.utime;
+  double id = discrete_state->get_vector(id_idx_).get_value()(0);
+  discrete_state->get_mutable_vector(id_idx_).get_mutable_value() << id+1;
+
+  return EventStatus::Succeeded();
+}
+
+void FrankaBallToBallPosition::ConvertOutput(
+                    const drake::systems::Context<double>& context,
+                    dairlib::lcmt_ball_position* output) const {
   
-// }
+  Vector3d ball_position = context.get_discrete_state(p_idx_).value();
+  double id = context.get_discrete_state(id_idx_).value()(0);
+  double utime = context.get_discrete_state(utime_idx_).value()(0);
+
+  for (int i = 0; i < 3; i++){
+    output->xyz[i] = ball_position(i);
+    output->cam_statuses[i] = "N/A";
+  }
+  output->num_cameras_used = -1;
+  output->id = (int) id;
+  output->utime = utime;
+}
 
 }  // namespace systems
 }  // namespace dairlib

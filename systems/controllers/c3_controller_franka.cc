@@ -215,7 +215,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd q_plant = robot_output->GetPositions();
   VectorXd v_plant = robot_output->GetVelocities();
   Vector3d true_ball_xyz = q_plant.tail(3);    // extract true state for visualization purposes only
-  // TODO: move this to a separate system
+  q_plant.tail(3) << ProjectStateEstimate(end_effector, q_plant.tail(3));
+  // uncomment this line if using OLD simulation (without state estimator)
   // StateEstimation (q_plant, v_plant, end_effector, timestamp);
 
 
@@ -481,9 +482,7 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
     q_plant(q_map_franka_.at("base_y")) = alpha_p*y_obs + (1-alpha_p)*prev_position_(1);
 
     ///project estimate
-    Vector3d ball_temp = q_plant.tail(3);
-    ProjectStateEstimate(end_effector, ball_temp);
-    q_plant.tail(7) << 1, 0, 0, 0, ball_temp;
+    q_plant.tail(7) << 1, 0, 0, 0, ProjectStateEstimate(end_effector, q_plant.tail(3));;
   }
   else{
     q_plant.tail(7) << 1, 0, 0, 0, q_plant.tail(3);
@@ -514,7 +513,10 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
   v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
 }
 
-void C3Controller_franka::ProjectStateEstimate(Eigen::Vector3d endeffector, Eigen::Vector3d& estimate) const {
+Eigen::Vector3d C3Controller_franka::ProjectStateEstimate(
+    const Eigen::Vector3d& endeffector,
+    const Eigen::Vector3d& estimate) const {
+
   Eigen::Vector3d dist_vec = estimate - endeffector;
   double R = param_.ball_radius;
   double r = param_.finger_radius;
@@ -524,7 +526,10 @@ void C3Controller_franka::ProjectStateEstimate(Eigen::Vector3d endeffector, Eige
     double u_norm = u.norm();
     double du = sqrt((R+r)*(R+r) - dist_vec(2)*dist_vec(2)) - u_norm;
 
-    estimate = estimate + du * u / u_norm;
+    return estimate + du * u / u_norm;
+  }
+  else {
+    return estimate;
   }
 }
 

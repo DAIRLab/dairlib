@@ -84,7 +84,8 @@ class C3Controller_franka : public LeafSystem<double> {
                    TimestampedVector<double>* output) const;
   void StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
                        const Eigen::Vector3d end_effector, double timestamp) const;
-  void ProjectStateEstimate(Eigen::Vector3d endeffector, Eigen::Vector3d& estimate) const;
+  Eigen::Vector3d ProjectStateEstimate(
+      const Eigen::Vector3d& endeffector, const Eigen::Vector3d& estimate) const;
 
   int state_input_port_;
   int state_output_port_;

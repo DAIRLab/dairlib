@@ -27,10 +27,10 @@
 #include "systems/controllers/c3_controller_franka.h"
 #include "systems/framework/lcm_driven_loop.h"
 
-DEFINE_string(channel, "FRANKA_OUTPUT",
-              "LCM channel for receiving state. "
-              "Use FRANKA_OUTPUT to get state from simulator, and "
-              "use FRANKA_STATE_ESTIMATE to get state from state estimator");
+DEFINE_bool(sim, true,
+              "Flag to distinguish between sim and hw experiments. "
+              "Use true for simulation, and "
+              "use false for hardware experiments.");
 
 namespace dairlib {
 
@@ -263,10 +263,10 @@ int DoMain(int argc, char* argv[]){
 
   // determine if ttl 0 or 1 should be used for publishing
   drake::lcm::DrakeLcm* pub_lcm;
-  if (FLAGS_channel == "FRANKA_OUTPUT") {
+  if (FLAGS_sim) {
     pub_lcm = &drake_lcm;
   }
-  else if (FLAGS_channel == "FRANKA_STATE_ESTIMATE") {
+  else {
     pub_lcm = &drake_lcm_network;
   }
   auto control_publisher = builder.AddSystem(
@@ -281,7 +281,7 @@ int DoMain(int argc, char* argv[]){
   auto context_d = diagram->CreateDefaultContext();
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &drake_lcm, std::move(diagram), state_receiver, FLAGS_channel, true);
+      &drake_lcm, std::move(diagram), state_receiver, "FRANKA_STATE_ESTIMATE", true);
   
   loop.Simulate(std::numeric_limits<double>::infinity());
 

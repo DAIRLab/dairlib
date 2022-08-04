@@ -97,7 +97,7 @@ int DoMain(int argc, char* argv[]) {
   auto sender = builder.AddSystem<dairlib::systems::RobotOutputSender>(plant, true);
   auto robot_output_pub = builder.AddSystem(
     LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-      "STATE_ESTIMATE", pub_lcm, 
+      "FRANKA_STATE_ESTIMATE", pub_lcm, 
       {drake::systems::TriggerType::kPeriodic}, 0.0005));
   builder.Connect(state_estimator->get_output_port(0), 
     sender->get_input_port(0));

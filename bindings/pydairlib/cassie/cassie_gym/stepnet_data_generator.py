@@ -33,7 +33,9 @@ MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
 INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
-TARGET_BOUND = np.array([0.5, 0.5, 0.0])
+TARGET_NOISE_BOUND = np.array([1.0, 1.0, 0.0])
+TARGET_LB = np.array([-2.0, -2.0, -0.5])
+TARGET_UB = np.array([2.0, 2.0, 0.5])
 RADIO_BOUND = np.array([1.0, 1.0])
 DEPTH_VAR_Z = 0.01
 MAX_ERROR = 1.0
@@ -315,6 +317,35 @@ class StepnetDataGenerator(DrakeCassieGym):
             ].ravel()
         )
 
+    def get_footstep_target_with_random_offset(self):
+
+        # Apply a random velocity command
+        radio = np.zeros((18,))
+        radio[2:4] = np.random.uniform(
+            low=-RADIO_BOUND,
+            high=RADIO_BOUND
+        )
+
+        self.cassie_sim.get_radio_input_port().FixValue(
+            context=self.cassie_sim_context,
+            value=radio)
+        # Get the depth image and the current ALIP footstep target
+        alip_target = self.alip_target_port.Eval(self.controller_context) + \
+                      self.sim_plant.CalcCenterOfMassPositionInWorld(
+                          self.plant_context)
+
+        # Apply a random offset to the target XY position
+        target = alip_target + np.random.uniform(
+            low=-TARGET_NOISE_BOUND,
+            high=TARGET_NOISE_BOUND
+        )
+
+        target_b = np.clip(target, TARGET_LB, TARGET_UB)
+        target_w = self.make_robot_yaw_to_world_rotation(
+            self.plant_context).matrix() @ target_b
+
+        return target_w, target_b
+
     def get_stepnet_data_point(self, seed=0):
         np.random.seed(seed)
 
@@ -323,62 +354,40 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.reset(x_pre)
         x = self.get_robot_centric_state(x_pre)
 
-        # Apply a random velocity command
-        radio = np.zeros((18,))
-        radio[2:4] = np.random.uniform(
-            low=-RADIO_BOUND,
-            high=RADIO_BOUND
-        )
-        self.cassie_sim.get_radio_input_port().FixValue(
-            context=self.cassie_sim_context,
-            value=radio)
-
-        # Get the depth image and the current ALIP footstep target
-        alip_target = self.make_robot_yaw_to_world_rotation(
-            self.plant_context).matrix() @ \
-                self.alip_target_port.Eval(self.controller_context) + \
-                self.sim_plant.CalcCenterOfMassPositionInWorld(
-                    self.plant_context)
-
-        # Apply a random offset to the target XY position
-        target = alip_target + np.random.uniform(
-            low=-TARGET_BOUND,
-            high=TARGET_BOUND
-        )
+        target_w, target_b = self.get_footstep_target_with_random_offset()
 
         depth_image, target_z = \
-            self.get_noisy_height_from_current_depth_image(DEPTH_VAR_Z, target)
-        target[-1] = target_z
+            self.get_noisy_height_from_current_depth_image(
+                DEPTH_VAR_Z, target_w
+            )
+        target_w[-1] = target_z
 
         # Get the current swing leg
         swing = self.swing_states[
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
 
-        target_in_body_yaw = ReExpressWorldVector3InBodyYawFrame(
-            self.sim_plant, self.plant_context, "pelvis", target
-        )
         # Step the simulation forward until middle of next double stance
         while self.current_time < STEPNET_SIM_DURATION:
-            self.step(footstep_target=target)
+            self.step(footstep_target=target_w)
             # Abort and return max error if something crazy happens
             if self.check_termination():
                 return {
                     'depth': depth_image,
                     'state': x,
-                    'target': target_in_body_yaw,
+                    'target': target_b,
                     'error': MAX_ERROR
                 }
 
         # Calculate error
         swing_foot_final_pos = self.calc_foot_position_in_world(
             self.plant_context, swing)
-        error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target))
+        error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target_w))
 
         return {
             'depth': depth_image,
             'state': x,
-            'target': target_in_body_yaw,
+            'target': target_b,
             'error': error
         }
 
@@ -390,56 +399,35 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.reset(x_pre)
         x = self.get_robot_centric_state(x_pre)
 
-        # Apply a random velocity command
-        radio = np.zeros((18,))
-        radio[2:4] = np.random.uniform(
-            low=-RADIO_BOUND,
-            high=RADIO_BOUND
-        )
-        self.cassie_sim.get_radio_input_port().FixValue(
-            context=self.cassie_sim_context,
-            value=radio)
 
-        alip_target = self.make_robot_yaw_to_world_rotation(
-            self.plant_context).matrix() @ \
-                      self.alip_target_port.Eval(self.controller_context) + \
-                      self.sim_plant.CalcCenterOfMassPositionInWorld(
-                          self.plant_context)
-        # Apply a random offset to the target XY position
-        target = alip_target + np.random.uniform(
-            low=-TARGET_BOUND,
-            high=TARGET_BOUND
-        )
-        target[2] = 0.0
+        target_w, target_b = self.get_footstep_target_with_random_offset()
+        target_w[-1] = 0
 
         # Get the current swing leg
         swing = self.swing_states[
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
 
-        target_in_body_yaw = ReExpressWorldVector3InBodyYawFrame(
-            self.sim_plant, self.plant_context, "pelvis", target
-        )
         # Step the simulation forward until about the
         # middle of next double stance
         while self.current_time < STEPNET_SIM_DURATION:
-            self.step(footstep_target=target)
+            self.step(footstep_target=target_w)
             # Abort and return max error if something crazy happens
             if self.check_termination():
                 return {
                     'state': x,
-                    'target': target_in_body_yaw,
+                    'target': target_b,
                     'error': MAX_ERROR
                 }
 
         # Calculate error
         swing_foot_final_pos = self.calc_foot_position_in_world(
             self.plant_context, swing)
-        error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target))
+        error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target_w))
 
         return {
             'state': x,
-            'target': target_in_body_yaw,
+            'target': target_b,
             'error': error
         }
 

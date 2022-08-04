@@ -50,8 +50,8 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
   }
 
  protected:
-  int state_port_;
-  int fsm_port_;
+  drake::systems::InputPortIndex state_port_;
+  drake::systems::OutputPortIndex fsm_port_;
 
  private:
   void CalcFiniteState(const drake::systems::Context<double>& context,

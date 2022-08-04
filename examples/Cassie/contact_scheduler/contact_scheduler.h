@@ -27,11 +27,11 @@ class ContactScheduler : drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_clock() const {
     return this->get_output_port(clock_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_contact_timing() const {
-    return this->get_output_port(contact_timing_);
-  }
   const drake::systems::OutputPort<double>& get_output_port_impact() const {
     return this->get_output_port(impact_info_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_contact_scheduler() const {
+    return this->get_output_port(contact_scheduler_port_);
   }
 
  private:
@@ -39,12 +39,16 @@ class ContactScheduler : drake::systems::LeafSystem<double> {
                       systems::ImpactInfoVector<double>* near_impact) const;
   void CalcClock(const drake::systems::Context<double>& context,
                  drake::systems::BasicVector<double>* clock) const;
+  void CalcContactScheduler(const drake::systems::Context<double>& context,
+                            drake::systems::BasicVector<double> *clock) const;
 
-  int state_port_;
-  int fsm_port_;
-  int clock_port_;
-  int contact_timing_;
-  int impact_info_port_;
+  drake::systems::InputPortIndex state_port_;
+  drake::systems::OutputPortIndex fsm_port_;
+  drake::systems::OutputPortIndex clock_port_;
+//  drake::systems::OutputPortIndex contact_timing_;
+  drake::systems::OutputPortIndex impact_info_port_;
+  drake::systems::OutputPortIndex contact_scheduler_port_;
+
 
 //  const drake::multibody::MultibodyPlant<double>& plant_;
 

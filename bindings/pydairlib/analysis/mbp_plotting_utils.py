@@ -194,6 +194,9 @@ def load_default_franka_channels(data, plant, state_channel, input_channel):
 
     return robot_output, robot_input
 
+def load_franka_state_estimate_channel(data, plant, state_channel):
+    return process_state_channel(data[state_channel], plant)
+
 
 def plot_q_or_v_or_u(
         robot_output, key, x_names, x_slice, time_slice,

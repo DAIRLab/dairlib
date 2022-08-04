@@ -3,6 +3,7 @@ import lcm
 import matplotlib.pyplot as plt
 import code
 import numpy as np
+import scipy.io
 
 import dairlib
 from process_lcm_log import get_log_data
@@ -38,7 +39,8 @@ def main():
     franka_channels = \
       {'FRANKA_INPUT': dairlib.lcmt_robot_input,
        'FRANKA_OUTPUT': dairlib.lcmt_robot_output, # SIM ouput
-       'FRANKA_ROS_OUTPUT': dairlib.lcmt_robot_output} # HW output
+       'FRANKA_ROS_OUTPUT': dairlib.lcmt_robot_output, # HW output
+       'STATE_ESTIMATE': dairlib.lcmt_robot_output} 
     
     ''' set up log directory paths '''
     if len(sys.argv) == 1:
@@ -71,14 +73,30 @@ def main():
     filename = "{}/{}/lcmlog-{}".format(logdir, log_num, log_num)
     print("Processing {}".format(filename))
     log = lcm.EventLog(filename, "r")
-    robot_output, robot_input = \
+    robot_output, robot_input, state_estimate = \
         get_log_data(log,                                       # log
                      franka_channels,                           # lcm channels
                      -1,                                        # end time
                      mbp_plots.load_default_franka_channels,    # processing callback
                      plant, "FRANKA_ROS_OUTPUT", "FRANKA_INPUT")    # processing callback arguments
 
+    # state_estimate = \
+    #     get_log_data(log,                                       # log
+    #                  franka_channels,                           # lcm channels
+    #                  -1,                                        # end time
+    #                  mbp_plots.load_franka_state_estimate_channel,    # processing callback
+    #                  plant, "STATE_ESTIMATE")    # processing callback arguments
+
+
     print('Finished processing log - making plots')
+
+    # t = state_estimate['t_x']
+    # position_data = state_estimate['q'][:,-3:]
+
+    # np.save('timestamps.npy', t)
+    # np.save('positions.npy', position_data)
+    # print(t[start:end])
+
 
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)

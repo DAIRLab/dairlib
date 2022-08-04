@@ -141,7 +141,7 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
   Vector3d angular_velocity = context.get_discrete_state(w_idx_).value();
 
   /// generate output
-  // NOTE: vector sizes are hard coded for C3 experiments  
+  // NOTE: vector sizes are hard coded for C3 experiments
   VectorXd positions = VectorXd::Zero(num_franka_positions_ + num_ball_positions_);
   for (int i = 0; i < num_franka_positions_; i++){
     positions(i) = franka_output.position[i];    

@@ -46,10 +46,14 @@ group "5.[SIM] C3" {
         host = "localhost";
     }
     cmd "c.impedance controller" {
-        exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_impedence_cc";
+        exec = "bazel-bin/examples/franka_trajectory_following/run_c3_impedance_experiment";
         host = "localhost";
     }
-    cmd "d.sim visualizer" {
+    cmd "d.run_state_estimator" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_state_estimator";
+        host = "localhost";
+    }
+    cmd "e.sim visualizer" {
         exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_OUTPUT";
         host = "localhost";
     }

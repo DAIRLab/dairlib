@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from dataclasses import dataclass
 from torch import save as pt_save
 from pydairlib.cassie.cassie_gym.config_types import \
-    DataCollectionParams, DepthCameraInfo
+    DataCollectionParams, DepthCameraInfo, save_config
 from pydairlib.cassie.cassie_gym.stepnet_data_generator import \
     StepnetDataGenerator, test_data_collection, test_flat_collection
 
@@ -131,6 +131,22 @@ def test():
     test_flat_collection()
 
 
+def save_config_test(args):
+    collection_params = DataCollectionParams(
+        nmaps=args.nmaps,
+        nsteps=args.nsteps,
+        nthreads=args.nthreads,
+        robot_path=os.path.join(args.dataset_parent_folder, 'robot'),
+        depth_path=os.path.join(args.dataset_parent_folder, 'depth'),
+        has_terrain=(args.terrain == 'varied')
+    )
+    if collection_params.has_terrain:
+        collection_params.target_to_map_tf = \
+            DepthCameraInfo().get_pelvis_to_image_tf()
+
+    save_config(collection_params, '/home/brian/workspace/test_config.yaml')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--terrain', type=str, default='varied', help='\'varied\' or \'flat\'')
@@ -146,5 +162,4 @@ if __name__ == "__main__":
     except:
         parser.print_help()
         sys.exit(0)
-    test()
     main(args)

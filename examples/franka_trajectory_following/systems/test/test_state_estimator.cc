@@ -74,8 +74,8 @@ int DoMain(ros::NodeHandle& node_handle) {
   builder.Connect(*ball_position_subscriber, *to_ball_position);
 
   /// state estimation block
-  int p_filter_length = 50;
-  int v_filter_length = 50;
+  int p_filter_length = 10;
+  int v_filter_length = 10;
   std::vector<double> p_FIR_values(p_filter_length, 1.0 / p_filter_length);
   std::vector<double> v_FIR_values(v_filter_length, 1.0 / v_filter_length);
 

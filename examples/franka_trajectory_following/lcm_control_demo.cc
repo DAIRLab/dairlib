@@ -1,5 +1,6 @@
 #include <vector>
 #include <math.h>
+#include <gflags/gflags.h>
 
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -26,6 +27,11 @@
 #include "systems/controllers/c3_controller_franka.h"
 #include "systems/framework/lcm_driven_loop.h"
 
+DEFINE_string(channel, "FRANKA_OUTPUT",
+              "LCM channel for receiving state. "
+              "Use FRANKA_OUTPUT to get state from simulator, and "
+              "use FRANKA_STATE_ESTIMATE to get state from state estimator");
+
 namespace dairlib {
 
 using drake::geometry::SceneGraph;
@@ -48,6 +54,7 @@ int DoMain(int argc, char* argv[]){
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
     "examples/franka_trajectory_following/parameters.yaml");
   drake::lcm::DrakeLcm drake_lcm;
+  drake::lcm::DrakeLcm drake_lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
   /// parse plant from urdfs
   MultibodyPlant<double> plant(0.0);
@@ -254,9 +261,17 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(state_receiver->get_output_port(0), controller->get_input_port(0));    
   builder.Connect(controller->get_output_port(), state_force_sender->get_input_port(0));
 
+  // determine if ttl 0 or 1 should be used for publishing
+  drake::lcm::DrakeLcm* pub_lcm;
+  if (FLAGS_channel == "FRANKA_OUTPUT") {
+    pub_lcm = &drake_lcm;
+  }
+  else if (FLAGS_channel == "FRANKA_STATE_ESTIMATE") {
+    pub_lcm = &drake_lcm_network;
+  }
   auto control_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_c3>(
-        "CONTROLLER_INPUT", &drake_lcm, 
+        "CONTROLLER_INPUT", pub_lcm, 
         {drake::systems::TriggerType::kForced}, 0.0));
   builder.Connect(state_force_sender->get_output_port(),
       control_publisher->get_input_port());
@@ -266,7 +281,7 @@ int DoMain(int argc, char* argv[]){
   auto context_d = diagram->CreateDefaultContext();
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &drake_lcm, std::move(diagram), state_receiver, "FRANKA_OUTPUT", true);
+      &drake_lcm, std::move(diagram), state_receiver, FLAGS_channel, true);
   
   loop.Simulate(std::numeric_limits<double>::infinity());
 

@@ -1,8 +1,5 @@
 #include "c3_state_estimator.h"
 
-#include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_ball_position.hpp"
-
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::State;
@@ -178,6 +175,54 @@ void C3StateEstimator::OutputEfforts(const drake::systems::Context<double>& cont
 
   output->SetFromVector(efforts);  
 }
+
+/* ------------------------------------------------------------------------------ */
+/// Method implementation of FrankaBallToBallPosition class
+
+// FrankaBallToBallPosition::FrankaBallToBallPosition(
+//   double stddev, double period) : 
+//   stddev_(stddev), period_(period) {
+  
+//   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
+//       "examples/franka_trajectory_following/parameters.yaml");
+//   distribution_ = std::normal_distribution<>(0, stddev_);
+
+//   /// declare discrete states
+//   Vector3d initial_position;
+//   initial_position(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
+//   initial_position(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180);
+//   initial_position(2) = param_.ball_radius + param_.table_offset;
+
+//   p_idx_ = this->DeclareDiscreteState(initial_position);
+//   id_idx_ = this->DeclareDiscreteState(1); // automatically initialized to 0;
+  
+//   this->DeclarePeriodicDiscreteUpdateEvent(period_, 0,
+//     &FrankaBallToBallPosition::UpdateBallPosition);
+
+//   this->DeclareAbstractInputPort("lcmt_robot_output",
+//                                  drake::Value<dairlib::lcmt_robot_output>{});
+//   this->DeclareAbstractOutputPort("lcmt_ball_position",
+//                                   &FrankaBallToBallPosition::ConvertOutput);
+// }
+
+// // TODO: write update block
+
+// void ConvertOutput(const drake::systems::Context<double>& context,
+//                     dairlib::lcmt_ball_position* output) const {
+  
+//   Vector3d ball_position = context.get_discrete_state(p_idx_).value();
+//   VectorXd id = context.get_discrete_state(id_idx_).value();
+
+//   for (int i = 0; i < 3; i++){
+//     output->xyz[i] = ball_position(i);
+//     output->cam_statuses = "N/A";
+//   }
+//   output->num_cameras_used = -1;
+//   output->id = id(0);
+//   output->utime = // TODO: get time here
+
+  
+// }
 
 }  // namespace systems
 }  // namespace dairlib

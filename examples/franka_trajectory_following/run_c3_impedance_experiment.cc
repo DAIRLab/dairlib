@@ -50,7 +50,7 @@ void SigintHandler(int sig) {
 DEFINE_string(channel, "FRANKA_OUTPUT",
               "LCM channel for receiving state. "
               "Use FRANKA_OUTPUT to get state from simulator, and "
-              "use FRANKA_ROS_OUTPUT to get state from franka_ros");
+              "use FRANKA_ROS_OUTPUT to get state from from franka_ros");
 
 namespace dairlib {
 
@@ -77,7 +77,6 @@ int DoMain(int argc, char* argv[]){
     "examples/franka_trajectory_following/parameters.yaml");
 
   drake::lcm::DrakeLcm drake_lcm;
-  // drake::lcm::DrakeLcm drake_network("udpm://239.255.76.67:7667?ttl=1");
 
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
@@ -145,65 +144,22 @@ int DoMain(int argc, char* argv[]){
   auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
 
   /* -------------------------------------------------------------------------------------------*/
-  /// create trajectory source
-  // double time_inc = 10;
-  // double num_points = 10;
-
-  // std::vector<MatrixXd> points(num_points);
-  // std::vector<double> times;
-  // points[0] = Vector3d(0.55, 0.0, 0.12);
-  // points[1] = Vector3d(0.55, 0.0, 0.12);
-  // points[2] = Vector3d(0.55, 0.0, 0.12);
-  // points[3] = Vector3d(0.55, 0.0, 0.12);
-  // points[4] = Vector3d(0.55, 0.1, 0.12);
-  // points[5] = Vector3d(0.3, 0.1, 0.12);
-  // points[6] = Vector3d(0.5, -0.1, 0.12);
-  // points[7] = Vector3d(0.55, -0.1, 0.2);
-  // points[8] = Vector3d(0.55, -0.1, 0.1);
-  // points[9] = Vector3d(0.55, 0.0, 0.12);
-
-  // double time_inc = 10;
-  // double num_points = 2;
-
-  // std::vector<MatrixXd> points(num_points);
-  // std::vector<double> times;
-  // points[0] = Vector3d(0.55, 0.0, 0.12);
-  // points[1] = Vector3d(0.60, 0.05, 0.20);
-
-  double time_inc = 2;
-  double num_points = 5;
-
-  double l = 0.15;
-
-  std::vector<MatrixXd> points(num_points);
-  std::vector<double> times;
-  points[0] = Vector3d(0.55, 0.0, 0.12);
-  points[1] = Vector3d(0.55, 0.0+l, 0.12);
-  points[2] = Vector3d(0.55-l, 0.0+l, 0.12);
-  points[3] = Vector3d(0.55-l, 0.0, 0.12);
-  points[4] = Vector3d(0.55, 0.0, 0.12);
-
-
-  for (int i = 0; i < num_points; i++){
-    times.push_back(i*time_inc);
-  }
-
-  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<
-    double>::FirstOrderHold(times, points);
-
-  auto input_trajectory = builder.AddSystem<systems::C3TrajectorySource>(
-      ee_trajectory);
-  builder.Connect(state_receiver->get_output_port(0),
-    input_trajectory->get_input_port(0));
-  builder.Connect(input_trajectory->get_output_port(0),
+  /// get trajectory info from c3
+  auto c3_subscriber = builder.AddSystem(
+    LcmSubscriberSystem::Make<dairlib::lcmt_c3>(
+      "CONTROLLER_INPUT", &drake_lcm));
+  auto c3_receiver = 
+    builder.AddSystem<systems::RobotC3Receiver>(10, 9, 6, 9);
+  builder.Connect(c3_subscriber->get_output_port(0),
+    c3_receiver->get_input_port(0));
+  builder.Connect(c3_receiver->get_output_port(0),
     controller->get_input_port(1));
 
   /* -------------------------------------------------------------------------------------------*/
 
   builder.Connect(state_receiver->get_output_port(0), 
     controller->get_input_port(0));
-
-  // sim
+  
   if (FLAGS_channel == "FRANKA_OUTPUT"){
     auto control_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
     builder.Connect(controller->get_output_port(), gravity_compensator->get_input_port());
@@ -216,12 +172,11 @@ int DoMain(int argc, char* argv[]){
     builder.Connect(control_sender->get_output_port(),
         control_publisher->get_input_port());
   }
-
   /* -------------------------------------------------------------------------------------------*/
 #ifdef ROS
   else if (FLAGS_channel == "FRANKA_ROS_OUTPUT"){
     /// Publish to ROS topic
-    ros::init(argc, argv, "impedance_controller");
+    ros::init(argc, argv, "c3_impedance_controller");
     ros::NodeHandle node_handle;
     signal(SIGINT, SigintHandler);
 
@@ -246,7 +201,7 @@ int DoMain(int argc, char* argv[]){
 #endif
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_run_impedance_experiment");
+  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_run_c3_impedance_experiments");
 
 
   auto context_d = diagram->CreateDefaultContext();

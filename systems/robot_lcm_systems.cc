@@ -267,7 +267,7 @@ RobotC3Receiver::RobotC3Receiver(int num_positions, int num_velocities,
   data_size_ = num_positions + num_velocities + lambda_size + misc_size;
   this->DeclareAbstractInputPort("lcmt_robot_c3",
                                  drake::Value<dairlib::lcmt_c3>{});
-  this->DeclareVectorOutputPort("x, xdot, lambda",
+  this->DeclareVectorOutputPort("x, xdot, lambda, misc",
                                 TimestampedVector<double>(data_size_),
                                 &RobotC3Receiver::CopyC3Out);
 }
@@ -294,7 +294,7 @@ void RobotC3Receiver::CopyC3Out(const Context<double>& context,
 RobotC3Sender::RobotC3Sender(int num_positions, int num_velocities,
                     int lambda_size, int misc_size) {
   data_size_ = num_positions + num_velocities + lambda_size + misc_size;
-  this->DeclareVectorInputPort("x, xdot, lambda",
+  this->DeclareVectorInputPort("x, xdot, lambda, misc",
                                TimestampedVector<double>(data_size_));
   this->DeclareAbstractOutputPort("lcmt_c3",
                                   &RobotC3Sender::OutputC3);

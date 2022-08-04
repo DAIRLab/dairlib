@@ -56,10 +56,10 @@ lead_angle: 20 # angle in degrees
 enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
 
 # geometry parameters
-ball_radius: 0.0315           # changes need to be consistent with urdf
+ball_radius: 0.0315           # changes need to be consistent with urdf AND vision
 finger_radius: 0.0195         # changes need to be consistent with BOTH urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with urdf
-table_offset: -0.0301         # chances need to be consistent with BOTH urdfs
+table_offset: -0.0301         # chances need to be consistent with BOTH urdfs AND vision
 
 # Misc
 contact_threshold: 0.01

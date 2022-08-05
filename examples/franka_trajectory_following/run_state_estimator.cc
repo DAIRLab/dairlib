@@ -10,11 +10,15 @@
 #include <drake/lcm/drake_lcm.h>
 
 #include "examples/franka_trajectory_following/systems/c3_state_estimator.h"
+#include "examples/franka_trajectory_following/systems/robot_output_passthrough.h"
 #include "systems/system_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include <drake/multibody/tree/multibody_element.h>
 #include <drake/multibody/parsing/parser.h>
+
+#include "systems/framework/lcm_driven_loop.h"
 #include "examples/franka_trajectory_following/c3_parameters.h"
+#include "dairlib/lcmt_robot_output.hpp"
 
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -51,21 +55,18 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
 
   /// subscribe to franka state
-  auto franka_subscriber = builder.AddSystem(
-    LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-      FLAGS_channel, &drake_lcm));
-  std::cout << "franka susbcriber waiting for first message" << std::endl;
-  franka_subscriber->WaitForMessage(0, nullptr,1);
+  auto passthrough = 
+    builder.AddSystem<dairlib::systems::RobotOutputPassthrough>(plant);
   
   /// state estimation block
-  int p_filter_length = 10;
+  int p_filter_length = 10; // turn these to 1 for better sim perf
   int v_filter_length = 10;
   std::vector<double> p_FIR_values(p_filter_length, 1.0 / p_filter_length);
   std::vector<double> v_FIR_values(v_filter_length, 1.0 / v_filter_length);
 
   auto state_estimator = 
     builder.AddSystem<dairlib::systems::C3StateEstimator>(p_FIR_values, v_FIR_values);
-  builder.Connect(franka_subscriber->get_output_port(0),
+  builder.Connect(passthrough->get_output_port(0),
     state_estimator->get_input_port(0));
 
   /// connect state_susbcriber ball position port
@@ -74,7 +75,7 @@ int DoMain(int argc, char* argv[]) {
     auto to_ball_position =
       builder.AddSystem<dairlib::systems::FrankaBallToBallPosition>(
         param.ball_stddev, 1.0/100.0);
-    builder.Connect(franka_subscriber->get_output_port(0),
+    builder.Connect(passthrough->get_output_port(0),
       to_ball_position->get_input_port(0));
     builder.Connect(to_ball_position->get_output_port(0),
       state_estimator->get_input_port(1));
@@ -102,7 +103,7 @@ int DoMain(int argc, char* argv[]) {
   auto robot_output_pub = builder.AddSystem(
     LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
       "FRANKA_STATE_ESTIMATE", pub_lcm, 
-      {drake::systems::TriggerType::kPeriodic}, 0.0005));
+      {drake::systems::TriggerType::kForced}));
   builder.Connect(state_estimator->get_output_port(0), 
     sender->get_input_port(0));
   builder.Connect(state_estimator->get_output_port(1), 
@@ -111,12 +112,14 @@ int DoMain(int argc, char* argv[]) {
 
 
   auto sys = builder.Build();
-  Simulator<double> simulator(*sys);
-  dairlib::DrawAndSaveDiagramGraph(*sys, "examples/franka_trajectory_following/diagram_run_state_estimator");
-  simulator.Initialize();
+  auto sys_context = sys->CreateDefaultContext();
+  // dairlib::DrawAndSaveDiagramGraph(*sys, "examples/franka_trajectory_following/diagram_run_state_estimator");
 
-  simulator.set_target_realtime_rate(1.0);
-  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
+  dairlib::systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+      &drake_lcm, std::move(sys), passthrough, 
+      FLAGS_channel, true);
+  
+  loop.Simulate(std::numeric_limits<double>::infinity());
 
   return 0;
 }

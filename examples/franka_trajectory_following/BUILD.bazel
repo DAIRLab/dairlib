@@ -154,6 +154,7 @@ cc_binary(
           "//examples/franka_trajectory_following:c3_parameters",
           "//systems:robot_lcm_systems",
           "//systems:system_utils",
+          "//systems/framework:lcm_driven_loop",
           "@gflags"
   ],
   data = ["//examples/franka_trajectory_following:trifinger_urdf",

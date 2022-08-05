@@ -109,12 +109,14 @@ C3Controller_franka::C3Controller_franka(
   // filter info
   prev_timestamp_ = 0;
   dt_filter_length_ = param_.dt_filter_length;
-  prev_position_ = VectorXd::Zero(3);
-  prev_velocity_ = VectorXd::Zero(3);
 
-  for(int i = 0 ; i < 10; i++){
-  past_velocities_.push_back(Vector3d::Zero(3));
-  }
+  // prev_position_ = VectorXd::Zero(3);
+
+  // prev_velocity_ = VectorXd::Zero(3);
+
+  // for(int i = 0 ; i < 10; i++){
+  //   past_velocities_.push_back(Vector3d::Zero(3));
+  // }
 
   /// print maps
 //  std::cout << "q_map_franka_" << std::endl;
@@ -185,8 +187,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
     prev_timestamp_ = (timestamp);
-    prev_position_ << finish(0), finish(1), ball_radius + table_offset;
-    prev_velocity_ << 0, 0, 0;
+    // prev_position_ << finish(0), finish(1), ball_radius + table_offset;
+    // prev_velocity_ << 0, 0, 0;
     return;
   }
 
@@ -418,8 +420,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     state_next(12) = clamped_velocity(2);
 
     /// update the user
-    std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
-    std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;
+    // std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
+    // std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;
   }
 
   VectorXd force_des = VectorXd::Zero(6);
@@ -440,17 +442,17 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
   prev_timestamp_ = timestamp;
-  prev_position_ = ball_xyz;
-  prev_velocity_ = v_ball;
+  // prev_position_ = ball_xyz;
+  // prev_velocity_ = v_ball;
 
   /// update moving average filter and prev variables
-  if (past_velocities_.size() < 10){
-    past_velocities_.push_back(v_ball);
-  }
-  else {
-    past_velocities_.pop_front();
-    past_velocities_.push_back(v_ball);
-  }
+  // if (past_velocities_.size() < 10){
+  //   past_velocities_.push_back(v_ball);
+  // }
+  // else {
+  //   past_velocities_.pop_front();
+  //   past_velocities_.push_back(v_ball);
+  // }
 }
 
 void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,

@@ -23,7 +23,7 @@ namespace osc_jump {
 JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                  const vector<double>& transition_times,
                                  bool contact_based, double impact_threshold,
-                                 FSM_STATE init_state, BLEND_FUNC blend_func)
+                                 JUMPING_FSM_STATE init_state, BLEND_FUNC blend_func)
     : transition_times_(transition_times),
       contact_based_(contact_based),
       impact_threshold_(impact_threshold),
@@ -104,7 +104,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       fsm_state << CROUCH;
       std::cout << "Current time: " << timestamp << std::endl;
       std::cout << "Setting fsm to CROUCH" << std::endl;
-      std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+      std::cout << "fsm: " << (JUMPING_FSM_STATE)fsm_state(0) << std::endl;
     }
   } else if (fsm_state(0) == CROUCH) {
     if (contact_based_ ? num_contacts == 0
@@ -113,7 +113,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       std::cout << "Current time: " << timestamp << std::endl;
       std::cout << "First detection time: " << state_trigger_time(0) << "\n";
       std::cout << "Setting fsm to FLIGHT" << std::endl;
-      std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+      std::cout << "fsm: " << (JUMPING_FSM_STATE)fsm_state(0) << std::endl;
     }
   } else if (fsm_state(0) == FLIGHT) {
     if (contact_based_ ? num_contacts != 0
@@ -123,7 +123,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       std::cout << "First detection time: " << state_trigger_time(0) << "\n";
       std::cout << "Setting fsm to LAND"
                 << "\n";
-      std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << "\n";
+      std::cout << "fsm: " << (JUMPING_FSM_STATE)fsm_state(0) << "\n";
     }
   } else if (fsm_state(0) == LAND) {
     // no more transitions

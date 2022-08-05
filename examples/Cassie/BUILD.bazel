@@ -357,6 +357,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//examples/Cassie/osc",
+        "//examples/Cassie/contact_scheduler:all",
         "//examples/Cassie/osc_jump",
         "//examples/Cassie/osc_run",
         "//lcm:trajectory_saver",

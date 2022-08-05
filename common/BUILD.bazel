@@ -6,6 +6,7 @@ cc_library(
         ":find_resource",
         ":eigen_utils",
         ":file_utils",
+        ":blending_utils",
         "@drake//:drake_shared_library",
     ],
 )
@@ -41,6 +42,19 @@ cc_library(
     ],
     hdrs = [
         "file_utils.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "blending_utils",
+    srcs = [
+        "blending_utils.cc",
+    ],
+    hdrs = [
+        "blending_utils.h",
     ],
     deps = [
         "@drake//:drake_shared_library",

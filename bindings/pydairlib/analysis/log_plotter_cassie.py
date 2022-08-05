@@ -14,8 +14,7 @@ from spring_compensation import SpringCompensation
 def main():
     config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
-    # config_file = \
-    #     'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
+    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
     use_floating_base = plot_config.use_floating_base

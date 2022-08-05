@@ -260,7 +260,7 @@ int DoMain(int argc, char* argv[]) {
           pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
-      gains.impact_threshold, (osc_jump::FSM_STATE)FLAGS_init_fsm_state);
+      gains.impact_threshold, (osc_jump::JUMPING_FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -326,8 +326,8 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
-  vector<osc_jump::FSM_STATE> stance_modes = {osc_jump::BALANCE,
-                                              osc_jump::CROUCH, osc_jump::LAND};
+  vector<osc_jump::JUMPING_FSM_STATE> stance_modes = {osc_jump::BALANCE,
+                                                      osc_jump::CROUCH, osc_jump::LAND};
   for (auto mode : stance_modes) {
     osc->AddStateAndContactPoint(mode, &left_toe_evaluator);
     osc->AddStateAndContactPoint(mode, &left_heel_evaluator);

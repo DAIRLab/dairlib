@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "common/blending_utils.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
@@ -11,7 +12,6 @@
 
 namespace dairlib {
 
-enum BLEND_FUNC { SIGMOID, EXP };
 
 class ImpactTimeBasedFiniteStateMachine
     : public systems::TimeBasedFiniteStateMachine {
@@ -58,7 +58,7 @@ class ImpactTimeBasedFiniteStateMachine
   std::vector<int> impact_states_;
   std::vector<double> impact_times_;
   double period_;
-  double tau_ = 0.0025;
+  double tau_;
   double near_impact_threshold_;
   BLEND_FUNC blend_func_;
 };

@@ -6,8 +6,8 @@ channel_osc: "OSC_DEBUG_JUMPING"
 use_archived_lcmtypes: false
 
 # Log time to stop at (seconds, -1 for whole log)
-start_time: 20
-duration: 5
+start_time: 15
+duration: -1
 
 # Plant properties
 use_springs: true
@@ -43,7 +43,7 @@ plot_qp_solutions: true
 plot_tracking_costs: true
 plot_active_tracking_datas: true
 tracking_datas_to_plot: {
-  pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': ['pos', 'vel'] },
+  pelvis_trans_traj: { 'dims': [ 0, 2 ], 'derivs': ['pos', 'vel'] },
   #  pelvis_rot_traj: {'dims': [0, 1], 'derivs': ['vel']}
   #  hip_yaw_left_traj: {'dims': [0], 'derivs': ['vel']}
   #  right_ft_traj: {'dims': [2], 'derivs': ['pos'] },

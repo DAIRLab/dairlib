@@ -4,11 +4,21 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name="all",
+    deps = [
+        ":contact_scheduler",
+        ":kinodynamic_planner",
+        ":kinodynamic_settings",
+    ]
+)
+
+cc_library(
     name = "contact_scheduler",
     srcs = ["contact_scheduler.cc"],
     hdrs = ["contact_scheduler.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
+        "//common",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],

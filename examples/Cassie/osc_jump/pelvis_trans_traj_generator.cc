@@ -33,7 +33,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     const std::vector<std::pair<const Eigen::Vector3d,
                                 const drake::multibody::Frame<double>&>>&
         feet_contact_points,
-    double time_offset, FSM_STATE init_fsm_state)
+    double time_offset, JUMPING_FSM_STATE init_fsm_state)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),

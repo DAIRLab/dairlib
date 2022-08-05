@@ -38,6 +38,7 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "examples/Cassie/contact_scheduler/contact_scheduler.h"
 
 namespace dairlib {
 
@@ -143,14 +144,10 @@ int DoMain(int argc, char* argv[]) {
   //          FindResourceOrThrow(FLAGS_osqp_settings));
 
   /**** FSM and contact mode configuration ****/
-  int left_stance_state = 0;
-  int right_stance_state = 1;
-  int right_touchdown_air_phase = 2;
-  int left_touchdown_air_phase = 3;
 
-  vector<int> fsm_states = {left_stance_state, right_touchdown_air_phase,
-                            right_stance_state, left_touchdown_air_phase,
-                            left_stance_state};
+  vector<int> fsm_states = {RUNNING_FSM_STATE::LEFT_STANCE, RUNNING_FSM_STATE::LEFT_FLIGHT,
+                            RUNNING_FSM_STATE::RIGHT_STANCE, RUNNING_FSM_STATE::RIGHT_FLIGHT,
+                            RUNNING_FSM_STATE::LEFT_STANCE};
 
   vector<double> state_durations = {
       osc_gains.stance_duration, osc_gains.flight_duration,
@@ -165,6 +162,9 @@ int DoMain(int argc, char* argv[]) {
   }
   accumulated_state_durations.pop_back();
 
+  std::set<RUNNING_FSM_STATE> impact_states = {LEFT_STANCE, RIGHT_STANCE};
+  auto contact_scheduler = builder.AddSystem<ContactScheduler>(
+      plant, impact_states, gains.impact_threshold, gains.impact_tau);
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations, 0.0, gains.impact_threshold, gains.impact_tau);
 
@@ -225,10 +225,10 @@ int DoMain(int argc, char* argv[]) {
       plant, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
 
-  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
+  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE, &left_toe_evaluator);
+  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE, &left_heel_evaluator);
+  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE, &right_toe_evaluator);
+  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE, &right_heel_evaluator);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
   auto left_loop = LeftLoopClosureEvaluator(plant);
@@ -255,10 +255,10 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);
-//  osc->AddStateAndContactPoint(left_stance_state, &left_fixed_knee_spring);
-//  osc->AddStateAndContactPoint(right_stance_state, &right_fixed_knee_spring);
-//  osc->AddStateAndContactPoint(left_stance_state, &left_fixed_ankle_spring);
-//  osc->AddStateAndContactPoint(right_stance_state, &right_fixed_ankle_spring);
+//  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE, &left_fixed_knee_spring);
+//  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE, &right_fixed_knee_spring);
+//  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE, &left_fixed_ankle_spring);
+//  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE, &right_fixed_ankle_spring);
 
   osc->AddKinematicConstraint(&evaluators);
 
@@ -307,19 +307,19 @@ int DoMain(int argc, char* argv[]) {
   auto right_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  pelvis_tracking_data->AddStateAndPointToTrack(left_stance_state, "pelvis");
-  pelvis_tracking_data->AddStateAndPointToTrack(right_stance_state, "pelvis");
-  stance_foot_tracking_data->AddStateAndPointToTrack(left_stance_state,
+  pelvis_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
+  pelvis_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
+  stance_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE,
                                                      "toe_left");
-  stance_foot_tracking_data->AddStateAndPointToTrack(right_stance_state,
+  stance_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE,
                                                      "toe_right");
-  left_foot_tracking_data->AddStateAndPointToTrack(right_stance_state,
+  left_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE,
                                                    "toe_left");
-  right_foot_tracking_data->AddStateAndPointToTrack(left_stance_state,
+  right_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE,
                                                     "toe_right");
-  left_foot_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
+  left_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
                                                    "toe_left");
-  right_foot_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
+  right_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
                                                     "toe_right");
 
   auto left_foot_yz_tracking_data =
@@ -330,9 +330,9 @@ int DoMain(int argc, char* argv[]) {
       std::make_unique<TransTaskSpaceTrackingData>(
           "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant);
-  left_foot_yz_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
+  left_foot_yz_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
                                                       "toe_left");
-  right_foot_yz_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
+  right_foot_yz_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
                                                        "toe_right");
 
   auto left_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
@@ -341,11 +341,11 @@ int DoMain(int argc, char* argv[]) {
   auto right_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  left_hip_tracking_data->AddStateAndPointToTrack(right_stance_state, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(left_stance_state, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
+  left_hip_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
                                                    "pelvis");
-  left_hip_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
+  left_hip_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
                                                   "pelvis");
 
   auto left_hip_yz_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
@@ -355,9 +355,9 @@ int DoMain(int argc, char* argv[]) {
       std::make_unique<TransTaskSpaceTrackingData>(
           "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant);
-  left_hip_yz_tracking_data->AddStateAndPointToTrack(right_touchdown_air_phase,
+  left_hip_yz_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
                                                      "pelvis");
-  right_hip_yz_tracking_data->AddStateAndPointToTrack(left_touchdown_air_phase,
+  right_hip_yz_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
                                                       "pelvis");
 
   auto left_foot_rel_tracking_data =
@@ -393,12 +393,12 @@ int DoMain(int argc, char* argv[]) {
   right_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
 
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_leftdot"], left_stance_state);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"], right_stance_state);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"], left_stance_state);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_rightdot"], right_stance_state);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_leftdot"], left_stance_state);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_rightdot"], right_stance_state);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_leftdot"], RUNNING_FSM_STATE::LEFT_STANCE);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"], RUNNING_FSM_STATE::RIGHT_STANCE);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"], RUNNING_FSM_STATE::LEFT_STANCE);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_rightdot"], RUNNING_FSM_STATE::RIGHT_STANCE);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_leftdot"], RUNNING_FSM_STATE::LEFT_STANCE);
+//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_rightdot"], RUNNING_FSM_STATE::RIGHT_STANCE);
 
 
 //  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
@@ -428,13 +428,13 @@ int DoMain(int argc, char* argv[]) {
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
       osc_gains.W_pelvis_rot, plant, plant);
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(left_stance_state,
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(RUNNING_FSM_STATE::LEFT_STANCE,
                                                     "pelvis");
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(right_stance_state,
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(RUNNING_FSM_STATE::RIGHT_STANCE,
                                                     "pelvis");
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(left_touchdown_air_phase,
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
                                                     "pelvis");
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(right_touchdown_air_phase,
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
                                                     "pelvis");
   pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
@@ -459,17 +459,17 @@ int DoMain(int argc, char* argv[]) {
       "right_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
       osc_gains.W_swing_toe, plant, plant);
   left_toe_angle_tracking_data->AddStateAndJointToTrack(
-      right_stance_state, "toe_left", "toe_leftdot");
+      RUNNING_FSM_STATE::RIGHT_STANCE, "toe_left", "toe_leftdot");
   left_toe_angle_tracking_data->AddStateAndJointToTrack(
-      right_touchdown_air_phase, "toe_left", "toe_leftdot");
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_left", "toe_leftdot");
   left_toe_angle_tracking_data->AddStateAndJointToTrack(
-      left_touchdown_air_phase, "toe_left", "toe_leftdot");
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_left", "toe_leftdot");
   right_toe_angle_tracking_data->AddStateAndJointToTrack(
-      left_stance_state, "toe_right", "toe_rightdot");
+      RUNNING_FSM_STATE::LEFT_STANCE, "toe_right", "toe_rightdot");
   right_toe_angle_tracking_data->AddStateAndJointToTrack(
-      right_touchdown_air_phase, "toe_right", "toe_rightdot");
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_right", "toe_rightdot");
   right_toe_angle_tracking_data->AddStateAndJointToTrack(
-      left_touchdown_air_phase, "toe_right", "toe_rightdot");
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_right", "toe_rightdot");
   left_toe_angle_tracking_data->SetImpactInvariantProjection(true);
   right_toe_angle_tracking_data->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(left_toe_angle_tracking_data));
@@ -518,6 +518,8 @@ int DoMain(int argc, char* argv[]) {
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(0),
+                  contact_scheduler->get_input_port_state());
 
   // Trajectory generator connections
   builder.Connect(state_receiver->get_output_port(0),

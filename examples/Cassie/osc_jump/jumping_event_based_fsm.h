@@ -11,7 +11,7 @@ namespace dairlib {
 namespace examples {
 
 namespace osc_jump {
-enum FSM_STATE { READY, BALANCE, CROUCH, FLIGHT, LAND };
+enum JUMPING_FSM_STATE { READY, BALANCE, CROUCH, FLIGHT, LAND };
 
 /// Event based FSM for jumping with option to change to a time-based FSM
 /// @param[plant] The MultibodyPlant that this FSM operates with
@@ -26,7 +26,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   JumpingEventFsm(const drake::multibody::MultibodyPlant<double>& plant,
                   const std::vector<double>& transition_times,
                   bool contact_based = true, double impact_threshold = 0.0,
-                  FSM_STATE init_state = BALANCE,
+                  JUMPING_FSM_STATE init_state = BALANCE,
                   BLEND_FUNC blend_func = SIGMOID);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -83,7 +83,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   int prev_time_idx_;
   int guard_trigger_time_idx_;
 
-  const FSM_STATE init_state_;
+  const JUMPING_FSM_STATE init_state_;
   BLEND_FUNC blend_func_;
 };
 

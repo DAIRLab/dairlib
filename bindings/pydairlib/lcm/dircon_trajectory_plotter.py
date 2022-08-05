@@ -13,14 +13,14 @@ def main():
   builder = DiagramBuilder()
   plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
   AddCassieMultibody(plant, scene_graph,
-                     True, "examples/Cassie/urdf/cassie_v2.urdf", True, True)
+                     True, "examples/Cassie/urdf/cassie_fixed_springs.urdf", False, True)
 
   plant.Finalize()
   # Default filename for the example
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
-  # filename = FindResourceOrThrow("e?xamples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
+  # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
   filename = FindResourceOrThrow(
-    "examples/Cassie/saved_trajectories/jumping_box_0.5h_0.3d_5")
+    "examples/Cassie/saved_trajectories/jumping_0.0h_1.0d_0")
   # filename = FindResourceOrThrow(
   #   "examples/Cassie/saved_trajectories/jumping_box_0.5h_0.3d_1")
   # filename = "/home/yangwill/Documents/research/projects/cassie/hardware/backup/dair/saved_trajectories/jumping_0.15h_0.3d"
@@ -54,23 +54,34 @@ def main():
   n_points = 500
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
   state_samples = np.zeros((n_points, state_traj.value(0).shape[0]))
+  state_derivative_samples = np.zeros((n_points, state_traj.value(0).shape[0]))
   input_samples = np.zeros((n_points, input_traj.value(0).shape[0]))
   # force_samples = np.zeros((n_points, force_traj[0].value(0).shape[0]))
   for i in range(n_points):
     state_samples[i] = state_traj.value(t[i])[:, 0]
+    state_derivative_samples[i] = state_traj.EvalDerivative(t[i], 1)[:, 0]
     input_samples[i] = input_traj.value(t[i])[:, 0]
     # force_samples[i] = force_traj[0].value(t[i])[:, 0]
 
   # reflected_state_samples = state_samples @ M
   # Plotting reconstructed state trajectories
   plt.figure("state trajectory")
-  plt.plot(t, state_samples[:, 0:7])
+  plt.plot(t, state_samples[:, 4:7])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 0:7])
   # plt.plot(t, state_samples[:, -18:])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 7:13])
   # plt.plot(t, state_samples[:, 25:31])
   # plt.plot(t + state_traj.end_time(), reflected_state_samples[:, 25:31])
-  plt.legend(state_datatypes[0:7])
+  plt.legend(state_datatypes[4:7])
+
+  # Velocity Error
+  # plt.figure('velocity_error')
+  # import pdb; pdb.set_trace()
+  # plt.plot(t, (state_samples[:, (19 + 3):] - state_derivative_samples[:, 4:19]))
+  # plt.plot(t, (state_samples[:, -2:] - state_derivative_samples[:, 21:23]))
+  # plt.legend(state_datatypes[26:])
+  # plt.plot(t, state_samples[:, (23 + 3):])
+
 
   plt.figure("input trajectory")
   plt.plot(t, input_samples[:, :])

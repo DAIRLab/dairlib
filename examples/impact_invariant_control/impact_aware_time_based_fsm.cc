@@ -20,6 +20,7 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
       state_durations_(state_durations),
       t0_(t0),
       near_impact_threshold_(near_impact_threshold),
+      tau_(tau),
       blend_func_(blend_func) {
 
   near_impact_port_ =
@@ -63,15 +64,6 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
   period_ = sum;
 }
 
-double alpha_sigmoid(double t, double tau, double near_impact_threshold) {
-  double x = (t + near_impact_threshold) / tau;
-  return exp(x) / (1 + exp(x));
-}
-
-double alpha_exp(double t, double tau, double near_impact_threshold) {
-  return 1 - exp(-(t + near_impact_threshold) / tau);
-}
-
 void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
     const Context<double> &context,
     ImpactInfoVector<double> *near_impact) const {
@@ -83,7 +75,7 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   double remainder = fmod(current_time, period_);
 
   // Assign the blending function ptr
-  auto alpha_func = blend_func_ == SIGMOID ? &alpha_sigmoid : &alpha_exp;
+  auto alpha_func = blend_func_ == SIGMOID ? &blend_sigmoid : &blend_exp;
 
   near_impact->set_timestamp(current_time);
   near_impact->SetCurrentContactMode(0);

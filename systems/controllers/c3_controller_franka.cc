@@ -152,11 +152,17 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
 
+  if (!received_first_message_){
+    received_first_message_ = true;
+    first_message_time_ = timestamp;
+  }
+
+
   // parse some useful values
   double period = param_.period;
   double duty_cycle = param_.duty_cycle;
   double return_cycle = 1-duty_cycle;
-  double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
+  double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2 + first_message_time_;
   double x_c = param_.x_c;
   double y_c = param_.y_c;
   double traj_radius = param_.traj_radius;
@@ -170,7 +176,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     finish(0) = x_c + traj_radius * sin(param_.phase * PI/ 180) + finish(0);
     finish(1) = y_c + traj_radius * cos(param_.phase * PI / 180) + finish(1);
     std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
-                                                                   param_.stabilize_time1, param_.move_time, param_.stabilize_time2);
+                                                                   param_.stabilize_time1 + first_message_time_,
+                                                                   param_.move_time, param_.stabilize_time2);
     
     // fill st_desired
     VectorXd traj = pp_.value(timestamp);

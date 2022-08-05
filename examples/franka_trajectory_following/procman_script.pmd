@@ -33,7 +33,7 @@ group "4.ROS controlers" {
 
 group "5.[SIM] C3" {
     cmd "a.C3" {
-        exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo_cc";
+        exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo_cc --TTL 1";
         host = "localhost";
     }
     cmd "b.franka" {
@@ -45,7 +45,7 @@ group "5.[SIM] C3" {
         host = "localhost";
     }
     cmd "d.run_state_estimator" {
-        exec = "bazel-bin/examples/franka_trajectory_following/run_state_estimator";
+        exec = "bazel-bin/examples/franka_trajectory_following/run_state_estimator --TTL 1";
         host = "localhost";
     }
     cmd "e.sim visualizer" {

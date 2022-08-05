@@ -27,3 +27,8 @@ py_binary(
     name = "process_rosbag",
     srcs = ["process_rosbag.py"],
 )
+
+py_binary(
+    name = "process_frames",
+    srcs = ["process_frames.py"],
+)

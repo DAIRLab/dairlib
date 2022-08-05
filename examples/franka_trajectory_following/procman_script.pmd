@@ -5,24 +5,19 @@ group "1.director" {
     }
 }
 
-group "2.ROS"{
-  cmd "a.roscore" {
-    exec = "roscore";
-    host = "localhost";
-  }
-  cmd "b.vision" {
-    exec = "rosrun franka_vision pointgrey.py hough 0";
-    host = "localhost";
-  }
-  cmd "c.realsense" {
-    exec = "roslaunch realsense2_camera rs_camera.launch";
-    host = "localhost";
-  }
-}
-
-cmd "3.safety" {
-  exec = "rosrun franka_safety safety.py";
-  host = "localhost";
+group "2.ROS" {
+    cmd "a.roscore" {
+        exec = "roscore";
+        host = "localhost";
+    }
+    cmd "b.vision" {
+        exec = "rosrun franka_vision pointgrey.py hough 0";
+        host = "localhost";
+    }
+    cmd "c.realsense" {
+        exec = "roslaunch realsense2_camera rs_camera.launch";
+        host = "localhost";
+    }
 }
 
 group "4.ROS controlers" {
@@ -90,56 +85,53 @@ group "7.[HW] Impedance Experiments" {
 }
 
 group "8.Logging" {
-  cmd "a.start_logging" {
-    exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging";
-    host = "localhost";
-  }
-  cmd "b.start_rosbag" {
-    exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_rosbag";
-    host = "localhost";
-  }
-  cmd "c.process_logs" {
-    exec = "bazel-bin/bindings/pydairlib/analysis/scripts/log_plotter_franka";
-    host = "localhost";
-  }
-  cmd "d.kill_rosbag" {
-    exec = "rosnode kill video_bag";
-    host = "localhost";
-  }
-  cmd "e.process_rosbag" {
-    exec = "bazel-bin/examples/franka_trajectory_following/scripts/process_rosbag";
-    host = "localhost";
-  }
+    cmd "a.start_logging" {
+        exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging";
+        host = "localhost";
+    }
+    cmd "b.start_filming" {
+        exec = "python examples/franka_trajectory_following/scripts/start_filming.py";
+        host = "localhost";
+    }
+    cmd "c.process_logs" {
+        exec = "bazel-bin/bindings/pydairlib/analysis/scripts/log_plotter_franka";
+        host = "localhost";
+    }
+    cmd "d.process_frames" {
+        exec = "bazel-bin/examples/franka_trajectory_following/scripts/process_frames";
+        host = "localhost";
+    }
 }
-
+cmd "3.safety" {
+    exec = "rosrun franka_safety safety.py";
+    host = "localhost";
+}
 cmd "9.lcmspy" {
     exec = "bazel-bin/lcmtypes/dair-lcm-spy";
     host = "localhost";
 }
 
 script "start_impedance_test" {
-  stop cmd "b.ROS impedance";
-  stop group "7.[HW] Impedance Experiments";
-  stop cmd "a.start_logging";
-
-  start cmd "a.roscore";
-  start cmd "3.safety";
-  start cmd "a.move to start";
-  wait cmd "a.move to start" status "stopped";
-
-  start cmd "a.start_logging";
-  start cmd "b.ROS impedance" wait "running";
-  wait ms 3000;
-  start group "7.[HW] Impedance Experiments";
-  wait ms 100;
-  start cmd "c.Visualizer";
-  wait ms 1000;
-  start cmd "c.Visualizer";
+    stop cmd "b.ROS impedance";
+    stop group "7.[HW] Impedance Experiments";
+    stop cmd "a.start_logging";
+    start cmd "a.roscore";
+    start cmd "3.safety";
+    start cmd "a.move to start";
+    wait cmd "a.move to start" status "stopped";
+    start cmd "a.start_logging";
+    start cmd "b.ROS impedance" wait "running";
+    wait ms 3000;
+    start group "7.[HW] Impedance Experiments";
+    wait ms 100;
+    start cmd "c.Visualizer";
+    wait ms 1000;
+    start cmd "c.Visualizer";
 }
 
 script "stop_impedance_test" {
-  stop cmd "b.ROS impedance";
-  stop group "7.[HW] Impedance Experiments";
-  stop cmd "a.start_logging";
-  start cmd "c.process_logs";
+    stop cmd "b.ROS impedance";
+    stop group "7.[HW] Impedance Experiments";
+    stop cmd "a.start_logging";
+    start cmd "c.process_logs";
 }

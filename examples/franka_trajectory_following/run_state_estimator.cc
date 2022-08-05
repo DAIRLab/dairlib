@@ -74,7 +74,7 @@ int DoMain(int argc, char* argv[]) {
     /// connections for sim experiment
     auto to_ball_position =
       builder.AddSystem<dairlib::systems::FrankaBallToBallPosition>(
-        param.ball_stddev, 1.0/100.0);
+        param.ball_stddev, 1.0/80.0);
     builder.Connect(passthrough->get_output_port(0),
       to_ball_position->get_input_port(0));
     builder.Connect(to_ball_position->get_output_port(0),

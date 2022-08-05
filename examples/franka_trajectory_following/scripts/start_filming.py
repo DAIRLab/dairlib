@@ -39,20 +39,20 @@ class Recorder:
     self.frames_dir = "{}/{}/frames".format(self.logdir, self.log_num)
     subprocess.Popen(['rm', '-rf', self.frames_dir])
     subprocess.Popen(['mkdir', self.frames_dir])
-    self.prev_time = time.time()
+    # self.prev_time = time.time()
 
   def callback(self, msg):
-    start = time.time()
+    # start = time.time()
     try:
       img = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
     except CvBridgeError as e:
       print(e)
     
     frame_num = "frame{:04}".format(self.frame)
-    cv2.imwrite("{}/{}.png".format(self.frames_dir, frame_num), 
+    cv2.imwrite("{}/{}.jpg".format(self.frames_dir, frame_num), 
       cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     self.frame += 1
-    print(time.time()-start)
+    # print(time.time()-start)
 
     # now = time.time()
     # print(now - self.prev_time)

@@ -1,11 +1,11 @@
 # bouncy ball parameters
 
 # impedance control parameters
-translational_stiffness: 200 # 200
-rotational_stiffness: 2 # 2
+translational_stiffness: 150 # 200
+rotational_stiffness: 4 # 2
 damping_ratio: 1
-stiffness_null: 2 # try changing to 2
-damping_null: 2 # try changing to using damping ratio null
+stiffness_null: 4 # try changing to 2
+damping_null: 4 # try changing to using damping ratio null
 q_null_desired: [0, 0.361, 0, -2.223, 0, 2.584, 0]
 moving_offset: 0 #0.0005
 pushing_offset: 0 #-0.001
@@ -65,10 +65,10 @@ table_offset: -0.0301         # chances need to be consistent with BOTH urdfs AN
 contact_threshold: 0.01
 enable_heuristic: 0
 enable_contact: 1
-ball_stddev: 0.000 # standard deviation of 0-mean noise on ball state estimation
+ball_stddev: 0.0001 # standard deviation of 0-mean noise on ball state estimation
 
 # gaiting parameters
-period: 2.5   #2.5
+period: 3   #2.5
 duty_cycle: 0.75 #0.75
 duty_cycle_upwards_ratio: 0.33 # need better name here
 gait_parameters: [0.02, 0.055, 0.051, 0.049] # try playing with first param here

@@ -1,6 +1,7 @@
 #include <memory>
 #include <signal.h>
 #include <gflags/gflags.h>
+#include <cmath>
 
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -35,6 +36,10 @@ DEFINE_string(channel, "FRANKA_OUTPUT",
               "Use FRANKA_OUTPUT to get state from simulator, and "
               "use FRANKA_ROS_OUTPUT to get state from from franka_ros");
 
+DEFINE_int32(TTL, 0,
+              "TTL level for publisher. "
+              "Default value is 0.");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
@@ -59,10 +64,12 @@ int DoMain(int argc, char* argv[]) {
     builder.AddSystem<dairlib::systems::RobotOutputPassthrough>(plant);
   
   /// state estimation block
-  int p_filter_length = 10; // turn these to 1 for better sim perf
-  int v_filter_length = 10;
-  std::vector<double> p_FIR_values(p_filter_length, 1.0 / p_filter_length);
-  std::vector<double> v_FIR_values(v_filter_length, 1.0 / v_filter_length);
+  int p_filter_length = 1;
+  int v_filter_length = 2;
+  double alpha = 0.9;
+
+  std::vector<double> p_FIR_values = {1};
+  std::vector<double> v_FIR_values = {(1-alpha), alpha};
 
   auto state_estimator = 
     builder.AddSystem<dairlib::systems::C3StateEstimator>(p_FIR_values, v_FIR_values);
@@ -92,10 +99,10 @@ int DoMain(int argc, char* argv[]) {
   }
 
   drake::lcm::DrakeLcm* pub_lcm;
-  if (FLAGS_channel == "FRANKA_OUTPUT") {
+  if (FLAGS_TTL == 0) {
     pub_lcm = &drake_lcm;
   }
-  else if (FLAGS_channel == "FRANKA_ROS_OUTPUT") {
+  else if (FLAGS_TTL == 1) {
     pub_lcm = &drake_lcm_network;
   }
 

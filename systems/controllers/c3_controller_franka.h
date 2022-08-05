@@ -116,7 +116,7 @@ class C3Controller_franka : public LeafSystem<double> {
   std::map<string, int> q_map_;
   std::map<string, int> v_map_;
   const double PI{3.14159265359};
-  const double max_desired_velocity_{0.05};
+  const double max_desired_velocity_{0.075};
 
   // dt filter
   // TODO: make all the mutable variables drake states

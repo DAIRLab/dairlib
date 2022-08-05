@@ -27,10 +27,9 @@
 #include "systems/controllers/c3_controller_franka.h"
 #include "systems/framework/lcm_driven_loop.h"
 
-DEFINE_bool(sim, true,
-              "Flag to distinguish between sim and hw experiments. "
-              "Use true for simulation, and "
-              "use false for hardware experiments.");
+DEFINE_int32(TTL, 0,
+              "TTL level for publisher. "
+              "Default value is 0.");
 
 namespace dairlib {
 
@@ -262,10 +261,10 @@ int DoMain(int argc, char* argv[]){
 
   // determine if ttl 0 or 1 should be used for publishing
   drake::lcm::DrakeLcm* pub_lcm;
-  if (FLAGS_sim) {
+  if (FLAGS_TTL == 0) {
     pub_lcm = &drake_lcm;
   }
-  else {
+  else if (FLAGS_TTL == 1) {
     pub_lcm = &drake_lcm_network;
   }
   auto control_publisher = builder.AddSystem(

@@ -80,12 +80,12 @@ int DoMain(int argc, char* argv[]){
     1/output_dt, true, 0.0);
 
   /// meshcat visualizer
-  drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
-  drake::geometry::MeshcatVisualizerParams params;
-  params.publish_period = 1.0/30.0;
-  auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
-      &builder, scene_graph, meshcat, std::move(params));
+  // drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+  // drake::geometry::MeshcatVisualizerParams params;
+  // params.publish_period = 1.0/30.0;
+  // auto meshcat = std::make_shared<drake::geometry::Meshcat>();
+  // auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+  //     &builder, scene_graph, meshcat, std::move(params));
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();

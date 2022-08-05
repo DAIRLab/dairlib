@@ -50,6 +50,7 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
 int DoMain(int argc, char* argv[]){
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
     "examples/franka_trajectory_following/parameters.yaml");
   drake::lcm::DrakeLcm drake_lcm;
@@ -262,9 +263,11 @@ int DoMain(int argc, char* argv[]){
   // determine if ttl 0 or 1 should be used for publishing
   drake::lcm::DrakeLcm* pub_lcm;
   if (FLAGS_TTL == 0) {
+    std::cout << "Using TTL=0" << std::endl;
     pub_lcm = &drake_lcm;
   }
   else if (FLAGS_TTL == 1) {
+    std::cout << "Using TTL=1" << std::endl;
     pub_lcm = &drake_lcm_network;
   }
   auto control_publisher = builder.AddSystem(

@@ -116,9 +116,10 @@ def main(args):
             DepthCameraInfo().as_drake_camera_info()
 
     # Save collection params
-    with open(os.path.join(args.dataset_parent_folder,
-              'data_collection_params.pkl'), 'wb') as fp:
-        pickle.dump(collection_params, fp)
+    save_config(
+        collection_params,
+        os.path.join(args.dataset_parent_folder, 'dataset_config.yaml')
+    )
 
     # run the data collection
     if collection_params.has_terrain:

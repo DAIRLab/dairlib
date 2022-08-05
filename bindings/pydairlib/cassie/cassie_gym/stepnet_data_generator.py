@@ -331,7 +331,6 @@ class StepnetDataGenerator(DrakeCassieGym):
         )
 
     def get_footstep_target_with_random_offset(self):
-
         # Apply a random velocity command
         radio = np.zeros((18,))
         radio[2:4] = np.random.uniform(
@@ -342,13 +341,15 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.cassie_sim.get_radio_input_port().FixValue(
             context=self.cassie_sim_context,
             value=radio)
-        # Get the depth image and the current ALIP footstep target
-        alip_target = self.alip_target_port.Eval(self.controller_context) + \
-                      self.sim_plant.CalcCenterOfMassPositionInWorld(
-                          self.plant_context)
+        # Get the current ALIP footstep target in the body yaw frame
+        com_w = self.sim_plant.CalcCenterOfMassPositionInWorld(
+            self.plant_context)
+        alip_target_b = self.alip_target_port.Eval(self.controller_context) + \
+            ReExpressWorldVector3InBodyYawFrame(
+                self.plant, self.plant_context, "pelvis", com_w)
 
         # Apply a random offset to the target XY position
-        target = alip_target + np.random.uniform(
+        target = alip_target_b + np.random.uniform(
             low=-self.data_gen_params.target_xyz_noise_bound,
             high=self.data_gen_params.target_xyz_noise_bound
         )
@@ -416,7 +417,6 @@ class StepnetDataGenerator(DrakeCassieGym):
         x_pre = self.draw_random_initial_condition()
         self.reset(x_pre)
         x = self.get_robot_centric_state(x_pre)
-
 
         target_w, target_b = self.get_footstep_target_with_random_offset()
         target_w[-1] = 0

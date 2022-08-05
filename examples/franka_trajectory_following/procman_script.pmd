@@ -54,7 +54,30 @@ group "5.[SIM] C3" {
     }
 }
 
-group "6.[SIM] Impedance Experiments" {
+group "6.[HW] C3" {
+    cmd "a.C3" {
+        exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo_cc --TTL 1";
+        host = "localhost";
+    }
+    cmd "b.ROS->LCM" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_c3_ros_to_lcm";
+        host = "localhost";
+    }
+    cmd "c.impedance controller" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_c3_impedance_experiment --channel FRANKA_ROS_OUTPUT";
+        host = "localhost";
+    }
+    cmd "d.run_state_estimator" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_state_estimator --channel FRANKA_ROS_OUTPUT --TTL 1";
+        host = "localhost";
+    }
+    cmd "e.sim visualizer" {
+        exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_STATE_ESTIMATE";
+        host = "localhost";
+    }
+}
+
+group "7.[SIM] Impedance Experiments" {
     cmd "a.Impedance" {
         exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_experiment --channel=FRANKA_OUTPUT";
         host = "localhost";
@@ -69,7 +92,7 @@ group "6.[SIM] Impedance Experiments" {
     }
 }
 
-group "7.[HW] Impedance Experiments" {
+group "8.[HW] Impedance Experiments" {
     cmd "a.Impedance" {
         exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_experiment --channel=FRANKA_ROS_OUTPUT";
         host = "localhost";
@@ -84,7 +107,7 @@ group "7.[HW] Impedance Experiments" {
     }
 }
 
-group "8.Logging" {
+group "9.Logging" {
     cmd "a.start_logging" {
         exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging";
         host = "localhost";

@@ -60,6 +60,7 @@ ball_radius: 0.0315           # changes need to be consistent with urdf AND visi
 finger_radius: 0.0195         # changes need to be consistent with BOTH urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with urdf
 table_offset: -0.0301         # chances need to be consistent with BOTH urdfs AND vision
+# table_offset: -0.0193         # chances need to be consistent with BOTH urdfs AND vision
 
 # Misc
 contact_threshold: 0.01

@@ -55,7 +55,7 @@ def plot_spring_force_vs_q(processed_data, start_time, end_time, is_sorted=False
     else:
         plt.savefig(directory+"/spring_force_vs_q_" + log_name + ".png")
 
-def plot_joint_residuals_vs_time(processed_data, start_time, end_time, joint_name, directory=None, log_num=None):
+def plot_joint_residuals_vs_time(processed_data, start_time, end_time, joint_name, directory=None, log_name=None):
     cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
     x = [x["t"] for x in cut_data]
     ys = []
@@ -64,7 +64,7 @@ def plot_joint_residuals_vs_time(processed_data, start_time, end_time, joint_nam
     x = np.array(x)
     ys = np.array(ys)
     legends = ["ground truth", "estimated"]
-    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "acc(rad/s^2)", "vdot_of_{}".format(joint_name), directory=directory, log_num=log_num)
+    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "acc(rad/s^2)", "vdot_of_{}".format(joint_name), directory=directory, log_name=log_name)
 
 def plot_joint_effort_vs_time(processed_data, start_time, end_time, joint_names, directory=None, log_num=None):
     cut_data = get_data_of_selected_time(processed_data, start_time, end_time)

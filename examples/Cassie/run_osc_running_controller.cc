@@ -8,6 +8,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/contact_scheduler/contact_scheduler.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
@@ -38,7 +39,6 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
-#include "examples/Cassie/contact_scheduler/contact_scheduler.h"
 
 namespace dairlib {
 
@@ -145,9 +145,10 @@ int DoMain(int argc, char* argv[]) {
 
   /**** FSM and contact mode configuration ****/
 
-  vector<int> fsm_states = {RUNNING_FSM_STATE::LEFT_STANCE, RUNNING_FSM_STATE::LEFT_FLIGHT,
-                            RUNNING_FSM_STATE::RIGHT_STANCE, RUNNING_FSM_STATE::RIGHT_FLIGHT,
-                            RUNNING_FSM_STATE::LEFT_STANCE};
+  vector<int> fsm_states = {
+      RUNNING_FSM_STATE::LEFT_STANCE, RUNNING_FSM_STATE::LEFT_FLIGHT,
+      RUNNING_FSM_STATE::RIGHT_STANCE, RUNNING_FSM_STATE::RIGHT_FLIGHT,
+      RUNNING_FSM_STATE::LEFT_STANCE};
 
   vector<double> state_durations = {
       osc_gains.stance_duration, osc_gains.flight_duration,
@@ -157,7 +158,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << accumulated_state_durations.back() << std::endl;
   for (double state_duration : state_durations) {
     accumulated_state_durations.push_back(accumulated_state_durations.back() +
-        state_duration);
+                                          state_duration);
     std::cout << accumulated_state_durations.back() << std::endl;
   }
   accumulated_state_durations.pop_back();
@@ -166,7 +167,8 @@ int DoMain(int argc, char* argv[]) {
   auto contact_scheduler = builder.AddSystem<ContactScheduler>(
       plant, impact_states, gains.impact_threshold, gains.impact_tau);
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, 0.0, gains.impact_threshold, gains.impact_tau);
+      plant, fsm_states, state_durations, 0.0, gains.impact_threshold,
+      gains.impact_tau);
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
@@ -184,11 +186,13 @@ int DoMain(int argc, char* argv[]) {
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(FLAGS_channel_u,
                                                               1);
-  auto cassie_out_to_radio =
-      builder.AddSystem<systems::CassieOutToRadio>();
+  auto cassie_out_to_radio = builder.AddSystem<systems::CassieOutToRadio>();
   auto controller_failure_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
           "CONTROLLER_ERROR", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  auto contact_scheduler_debug_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact_timing>(
+          "CONTACT_TIMING", &lcm, TriggerTypeSet({TriggerType::kForced})));
   std::vector<double> tau = {.05, .01, .01};
   auto ekf_filter =
       builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
@@ -200,9 +204,9 @@ int DoMain(int argc, char* argv[]) {
   osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
   osc->SetLambdaContactRegularizationWeight(1e-4 *
-      gains.W_lambda_c_regularization);
+                                            gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
-      gains.W_lambda_h_regularization);
+                                              gains.W_lambda_h_regularization);
 
   // Soft constraint on contacts
   osc->SetSoftConstraintWeight(gains.w_soft_constraint);
@@ -225,10 +229,14 @@ int DoMain(int argc, char* argv[]) {
       plant, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
 
-  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE, &right_heel_evaluator);
+  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
+                               &left_toe_evaluator);
+  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
+                               &left_heel_evaluator);
+  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
+                               &right_toe_evaluator);
+  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
+                               &right_heel_evaluator);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
   auto left_loop = LeftLoopClosureEvaluator(plant);
@@ -255,10 +263,14 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);
-//  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE, &left_fixed_knee_spring);
-//  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE, &right_fixed_knee_spring);
-//  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE, &left_fixed_ankle_spring);
-//  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE, &right_fixed_ankle_spring);
+  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
+  //  &left_fixed_knee_spring);
+  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
+  //  &right_fixed_knee_spring);
+  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
+  //  &left_fixed_ankle_spring);
+  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
+  //  &right_fixed_ankle_spring);
 
   osc->AddKinematicConstraint(&evaluators);
 
@@ -307,20 +319,22 @@ int DoMain(int argc, char* argv[]) {
   auto right_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  pelvis_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
-  pelvis_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
-  stance_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE,
-                                                     "toe_left");
-  stance_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE,
-                                                     "toe_right");
-  left_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE,
-                                                   "toe_left");
-  right_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE,
-                                                    "toe_right");
-  left_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
-                                                   "toe_left");
-  right_foot_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
-                                                    "toe_right");
+  pelvis_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE,
+                                                "pelvis");
+  pelvis_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE,
+                                                "pelvis");
+  stance_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_STANCE, "toe_left");
+  stance_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_STANCE, "toe_right");
+  left_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_STANCE, "toe_left");
+  right_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_STANCE, "toe_right");
+  left_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_left");
+  right_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_right");
 
   auto left_foot_yz_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
@@ -330,10 +344,10 @@ int DoMain(int argc, char* argv[]) {
       std::make_unique<TransTaskSpaceTrackingData>(
           "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant);
-  left_foot_yz_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
-                                                      "toe_left");
-  right_foot_yz_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
-                                                       "toe_right");
+  left_foot_yz_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_left");
+  right_foot_yz_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_right");
 
   auto left_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -341,12 +355,14 @@ int DoMain(int argc, char* argv[]) {
   auto right_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  left_hip_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
-                                                   "pelvis");
-  left_hip_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
-                                                  "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
 
   auto left_hip_yz_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -355,10 +371,10 @@ int DoMain(int argc, char* argv[]) {
       std::make_unique<TransTaskSpaceTrackingData>(
           "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant);
-  left_hip_yz_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
-                                                     "pelvis");
-  right_hip_yz_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
-                                                      "pelvis");
+  left_hip_yz_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+  right_hip_yz_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
 
   auto left_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
@@ -393,21 +409,26 @@ int DoMain(int argc, char* argv[]) {
   right_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
 
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_leftdot"], RUNNING_FSM_STATE::LEFT_STANCE);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"], RUNNING_FSM_STATE::RIGHT_STANCE);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"], RUNNING_FSM_STATE::LEFT_STANCE);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_rightdot"], RUNNING_FSM_STATE::RIGHT_STANCE);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_leftdot"], RUNNING_FSM_STATE::LEFT_STANCE);
-//  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_rightdot"], RUNNING_FSM_STATE::RIGHT_STANCE);
+  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_leftdot"],
+  //  RUNNING_FSM_STATE::LEFT_STANCE);
+  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"],
+  //  RUNNING_FSM_STATE::RIGHT_STANCE);
+  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"],
+  //  RUNNING_FSM_STATE::LEFT_STANCE);
+  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_rightdot"],
+  //  RUNNING_FSM_STATE::RIGHT_STANCE);
+  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_leftdot"],
+  //  RUNNING_FSM_STATE::LEFT_STANCE);
+  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_rightdot"],
+  //  RUNNING_FSM_STATE::RIGHT_STANCE);
 
-
-//  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
-//  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});
+  //  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
+  //  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});
   pelvis_trans_rel_tracking_data->DisableFeedforwardAccel({2});
-//  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
-//  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
-//  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
-//  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
+  //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+  //  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
+  //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
+  //  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
 
   left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
@@ -428,14 +449,14 @@ int DoMain(int argc, char* argv[]) {
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
       osc_gains.W_pelvis_rot, plant, plant);
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(RUNNING_FSM_STATE::LEFT_STANCE,
-                                                    "pelvis");
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(RUNNING_FSM_STATE::RIGHT_STANCE,
-                                                    "pelvis");
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(RUNNING_FSM_STATE::RIGHT_FLIGHT,
-                                                    "pelvis");
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(RUNNING_FSM_STATE::LEFT_FLIGHT,
-                                                    "pelvis");
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+      RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+      RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
   pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 
@@ -501,79 +522,105 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port_contact_scheduler(),
-                  pelvis_trans_traj_generator->get_contact_scheduler_input_port());
-  builder.Connect(fsm->get_output_port_contact_scheduler(),
-                  l_foot_traj_generator->get_contact_scheduler_input_port());
-  builder.Connect(fsm->get_output_port_contact_scheduler(),
-                  r_foot_traj_generator->get_contact_scheduler_input_port());
-  builder.Connect(fsm->get_output_port_impact(),
-                  osc->get_near_impact_input_port());
-  builder.Connect(fsm->get_output_port_clock(), osc->get_clock_input_port());
+  builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_impact_info(),
+                  osc->get_input_port_impact_info());
+  builder.Connect(fsm->get_output_port_clock(), osc->get_input_port_clock());
+  //  builder.Connect(contact_scheduler->get_output_port_fsm(),
+  //                  osc->get_input_port_fsm());
+  //  builder.Connect(contact_scheduler->get_output_port_impact_info(),
+  //                  osc->get_input_port_impact_info());
+  //  builder.Connect(contact_scheduler->get_output_port_clock(),
+  //                  osc->get_input_port_clock());
+
   builder.Connect(state_receiver->get_output_port(0),
                   ekf_filter->get_input_port());
   builder.Connect(ekf_filter->get_output_port(),
                   osc->get_robot_output_input_port());
+
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_input_port_state());
+                  fsm->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   contact_scheduler->get_input_port_state());
 
   // Trajectory generator connections
+
+  //  builder.Connect(contact_scheduler->get_output_port_fsm(),
+  //                  l_foot_traj_generator->get_input_port_fsm());
+  //  builder.Connect(contact_scheduler->get_output_port_fsm(),
+  //                  r_foot_traj_generator->get_input_port_fsm());
+  //  builder.Connect(
+  //      contact_scheduler->get_output_port_contact_scheduler(),
+  //      pelvis_trans_traj_generator->get_input_port_contact_scheduler());
+  //  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
+  //                  l_foot_traj_generator->get_input_port_contact_scheduler());
+  //  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
+  //                  r_foot_traj_generator->get_input_port_contact_scheduler());
+  builder.Connect(
+      contact_scheduler->get_output_port_contact_scheduler(),
+      pelvis_trans_traj_generator->get_contact_scheduler_input_port());
+//  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
+//                  l_foot_traj_generator->get_input_port_contact_scheduler());
+//  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
+//                  r_foot_traj_generator->get_input_port_contact_scheduler());
+  builder.Connect(fsm->get_output_port_contact_scheduler(),
+                  l_foot_traj_generator->get_input_port_contact_scheduler());
+  builder.Connect(fsm->get_output_port_contact_scheduler(),
+                  r_foot_traj_generator->get_input_port_contact_scheduler());
+
   builder.Connect(state_receiver->get_output_port(0),
                   pelvis_trans_traj_generator->get_state_input_port());
-  builder.Connect(fsm->get_output_port_fsm(),
+  builder.Connect(contact_scheduler->get_output_port_fsm(),
                   pelvis_trans_traj_generator->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port_clock(),
+  builder.Connect(contact_scheduler->get_output_port_clock(),
                   pelvis_trans_traj_generator->get_clock_input_port());
   builder.Connect(high_level_command->get_xy_output_port(),
-                  l_foot_traj_generator->get_target_vel_input_port());
+                  l_foot_traj_generator->get_input_port_target_vel());
   builder.Connect(high_level_command->get_xy_output_port(),
-                  r_foot_traj_generator->get_target_vel_input_port());
+                  r_foot_traj_generator->get_input_port_target_vel());
   builder.Connect(state_receiver->get_output_port(0),
-                  l_foot_traj_generator->get_state_input_port());
+                  l_foot_traj_generator->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
-                  r_foot_traj_generator->get_state_input_port());
+                  r_foot_traj_generator->get_input_port_state());
   builder.Connect(cassie_out_to_radio->get_output_port(),
-                  l_foot_traj_generator->get_radio_input_port());
+                  l_foot_traj_generator->get_input_port_radio());
   builder.Connect(cassie_out_to_radio->get_output_port(),
-                  r_foot_traj_generator->get_radio_input_port());
+                  r_foot_traj_generator->get_input_port_radio());
 
-  builder.Connect(fsm->get_output_port_clock(),
-                  l_foot_traj_generator->get_clock_input_port());
-  builder.Connect(fsm->get_output_port_clock(),
-                  r_foot_traj_generator->get_clock_input_port());
+  builder.Connect(contact_scheduler->get_output_port_clock(),
+                  l_foot_traj_generator->get_input_port_clock());
+  builder.Connect(contact_scheduler->get_output_port_clock(),
+                  r_foot_traj_generator->get_input_port_clock());
   builder.Connect(fsm->get_output_port_fsm(),
-                  l_foot_traj_generator->get_fsm_input_port());
+                  l_foot_traj_generator->get_input_port_fsm());
   builder.Connect(fsm->get_output_port_fsm(),
-                  r_foot_traj_generator->get_fsm_input_port());
+                  r_foot_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
-                  left_toe_angle_traj_gen->get_state_input_port());
+                  left_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
-                  right_toe_angle_traj_gen->get_state_input_port());
+                  right_toe_angle_traj_gen->get_input_port_state());
   // OSC connections
   builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_trans_traj"));
+                  osc->get_input_port_tracking_data("pelvis_trans_traj"));
   builder.Connect(state_receiver->get_output_port(0),
                   heading_traj_generator->get_state_input_port());
   builder.Connect(high_level_command->get_yaw_output_port(),
                   heading_traj_generator->get_yaw_input_port());
   builder.Connect(heading_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_rot_traj"));
+                  osc->get_input_port_tracking_data("pelvis_rot_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_ft_traj"));
+                  osc->get_input_port_tracking_data("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_ft_traj"));
+                  osc->get_input_port_tracking_data("right_ft_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_ft_z_traj"));
+                  osc->get_input_port_tracking_data("left_ft_z_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_ft_z_traj"));
+                  osc->get_input_port_tracking_data("right_ft_z_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("right_toe_angle_traj"));
 
   // Publisher connections
   builder.Connect(cassie_out_receiver->get_output_port(),
@@ -589,6 +636,8 @@ int DoMain(int argc, char* argv[]) {
                   failure_aggregator->get_input_port(0));
   builder.Connect(failure_aggregator->get_status_output_port(),
                   controller_failure_pub->get_input_port());
+  builder.Connect(contact_scheduler->get_output_port_debug_info(),
+                  contact_scheduler_debug_publisher->get_input_port());
 
   // Run lcm-driven simulation
   // Create the diagram

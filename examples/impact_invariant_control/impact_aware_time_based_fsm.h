@@ -31,7 +31,7 @@ class ImpactTimeBasedFiniteStateMachine
   const drake::systems::OutputPort<double>& get_output_port_clock() const {
     return this->get_output_port(clock_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_impact() const {
+  const drake::systems::OutputPort<double>& get_output_port_impact_info() const {
     return this->get_output_port(near_impact_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_contact_scheduler() const {

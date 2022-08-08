@@ -29,7 +29,7 @@ PYBIND11_MODULE(simulators, m) {
       .def("get_actuation_input_port",
            &CassieSimDiagram::get_actuation_input_port,
            py_rvp::reference_internal)
-      .def("get_radio_input_port", &CassieSimDiagram::get_radio_input_port,
+      .def("get_input_port_radio", &CassieSimDiagram::get_radio_input_port,
            py_rvp::reference_internal)
       .def("get_state_output_port", &CassieSimDiagram::get_state_output_port,
            py_rvp::reference_internal)

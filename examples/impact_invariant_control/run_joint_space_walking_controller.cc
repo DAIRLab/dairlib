@@ -177,7 +177,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(std::move(joint_tracking_data_vec[joint_idx]));
 
     builder.Connect(joint_trajs[joint_idx]->get_output_port(),
-                    osc->get_tracking_data_input_port(joint_name + "_traj"));
+                    osc->get_input_port_tracking_data(joint_name + "_traj"));
   }
   osc->SetOsqpSolverOptionsFromYaml(
       FLAGS_osqp_settings);
@@ -188,14 +188,14 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port_impact(),
-                  osc->get_near_impact_input_port());
+  builder.Connect(fsm->get_fsm_output_port(), osc->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_impact_info(),
+                  osc->get_input_port_impact_info());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_input_port_state());
+                  fsm->get_state_input_port());
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),

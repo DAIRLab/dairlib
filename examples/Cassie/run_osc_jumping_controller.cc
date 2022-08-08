@@ -487,25 +487,25 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_fsm_output_port(), osc->get_fsm_input_port());
-  builder.Connect(fsm->get_clock_output_port(), osc->get_clock_input_port());
+  builder.Connect(fsm->get_fsm_output_port(), osc->get_input_port_fsm());
+  builder.Connect(fsm->get_clock_output_port(), osc->get_input_port_clock());
   builder.Connect(fsm->get_impact_output_port(),
-                  osc->get_near_impact_input_port());
+                  osc->get_input_port_impact_info());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_trans_traj"));
+                  osc->get_input_port_tracking_data("pelvis_trans_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_ft_traj"));
+                  osc->get_input_port_tracking_data("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_ft_traj"));
+                  osc->get_input_port_tracking_data("right_ft_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("right_toe_angle_traj"));
   builder.Connect(
       pelvis_rot_traj_generator->get_output_port(0),
-      osc->get_tracking_data_input_port("pelvis_rot_tracking_data"));
+      osc->get_input_port_tracking_data("pelvis_rot_tracking_data"));
 
   // FSM connections
   builder.Connect(contact_results_sub->get_output_port(),

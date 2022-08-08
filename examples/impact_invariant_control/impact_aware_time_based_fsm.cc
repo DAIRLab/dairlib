@@ -22,7 +22,7 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
       near_impact_threshold_(near_impact_threshold),
       tau_(tau),
       blend_func_(blend_func) {
-
+  this->set_name("ImpactAwareTimeBasedFSM");
   near_impact_port_ =
       this->DeclareVectorOutputPort("near_impact",
                                     ImpactInfoVector<double>(0, 0, 0),

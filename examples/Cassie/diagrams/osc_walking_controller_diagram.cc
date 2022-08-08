@@ -473,7 +473,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
   builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_input_port_state());
+                  fsm->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
                   liftoff_event_time->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
@@ -505,25 +505,25 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   builder.Connect(high_level_command->get_xy_output_port(),
                   swing_ft_traj_generator->get_input_port_vdes());
   builder.Connect(state_receiver->get_output_port(0),
-                  left_toe_angle_traj_gen->get_state_input_port());
+                  left_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
-                  right_toe_angle_traj_gen->get_state_input_port());
+                  right_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0), osc->get_input_port_fsm());
   builder.Connect(
       pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
-      osc->get_tracking_data_input_port("lipm_traj"));
+      osc->get_input_port_tracking_data("lipm_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("swing_ft_traj"));
+                  osc->get_input_port_tracking_data("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
+                  osc->get_input_port_tracking_data("pelvis_heading_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
+                  osc->get_input_port_tracking_data("pelvis_balance_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("right_toe_angle_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   builder.Connect(radio_parser->get_output_port(),
                   high_level_command->get_radio_input_port());

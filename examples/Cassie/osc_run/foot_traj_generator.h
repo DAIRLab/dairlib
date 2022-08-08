@@ -17,22 +17,22 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
                     bool relative_feet, int stance_state,
                     std::vector<double> state_durations);
 
-  const drake::systems::InputPort<double>& get_state_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
-  const drake::systems::InputPort<double>& get_fsm_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
   }
-  const drake::systems::InputPort<double>& get_clock_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_clock() const {
     return this->get_input_port(clock_port_);
   }
-  const drake::systems::InputPort<double>& get_target_vel_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_target_vel() const {
     return this->get_input_port(target_vel_port_);
   }
-  const drake::systems::InputPort<double>& get_radio_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
-  const drake::systems::InputPort<double>& get_contact_scheduler_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_contact_scheduler() const {
     return this->get_input_port(contact_scheduler_port_);
   }
 

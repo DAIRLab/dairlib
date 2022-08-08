@@ -27,10 +27,10 @@ PYBIND11_MODULE(controllers, m) {
            py::arg("plant"), py::arg("osc_gains_filename"), py::arg("osqp_settings_filename"))
       .def("get_plant", &OSCRunningControllerDiagram::get_plant,
            py_rvp::reference_internal)
-      .def("get_state_input_port",
+      .def("get_input_port_state",
            &OSCRunningControllerDiagram::get_state_input_port,
            py_rvp::reference_internal)
-      .def("get_radio_input_port",
+      .def("get_input_port_radio",
            &OSCRunningControllerDiagram::get_radio_input_port,
            py_rvp::reference_internal)
       .def("get_control_output_port",
@@ -49,10 +49,10 @@ PYBIND11_MODULE(controllers, m) {
            py::arg("plant"), py::arg("has_double_stance"), py::arg("osc_gains_filename"), py::arg("osqp_settings_filename"))
       .def("get_plant", &OSCWalkingControllerDiagram::get_plant,
            py_rvp::reference_internal)
-      .def("get_state_input_port",
+      .def("get_input_port_state",
            &OSCWalkingControllerDiagram::get_state_input_port,
            py_rvp::reference_internal)
-      .def("get_radio_input_port",
+      .def("get_input_port_radio",
            &OSCWalkingControllerDiagram::get_radio_input_port,
            py_rvp::reference_internal)
       .def("get_control_output_port",

@@ -249,7 +249,7 @@ int DoMain(int argc, char* argv[]) {
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations, 0.0, osc_gains.impact_threshold);
   builder.Connect(simulator_drift->get_output_port(0),
-                  fsm->get_input_port_state());
+                  fsm->get_state_input_port());
 
   // Create leafsystem that record the switching time of the FSM
   std::vector<int> single_support_states = {left_stance_state,
@@ -258,7 +258,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
           plant_w_spr, single_support_states);
   liftoff_event_time->set_name("liftoff_time");
-  builder.Connect(fsm->get_output_port_fsm(),
+  builder.Connect(fsm->get_fsm_output_port(),
                   liftoff_event_time->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
                   liftoff_event_time->get_input_port_state());
@@ -268,7 +268,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::FiniteStateMachineEventTime>(
           plant_w_spr, double_support_states);
   touchdown_event_time->set_name("touchdown_time");
-  builder.Connect(fsm->get_output_port_fsm(),
+  builder.Connect(fsm->get_fsm_output_port(),
                   touchdown_event_time->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
                   touchdown_event_time->get_input_port_state());
@@ -358,9 +358,9 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
   builder.Connect(pelvis_filt->get_output_port(0),
-                  left_toe_angle_traj_gen->get_state_input_port());
+                  left_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(pelvis_filt->get_output_port(0),
-                  right_toe_angle_traj_gen->get_state_input_port());
+                  right_toe_angle_traj_gen->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -573,7 +573,7 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_use_radio) {
     builder.Connect(cassie_out_to_radio->get_output_port(),
                     hip_yaw_traj_gen->get_radio_input_port());
-    builder.Connect(fsm->get_output_port_fsm(),
+    builder.Connect(fsm->get_fsm_output_port(),
                     hip_yaw_traj_gen->get_fsm_input_port());
     osc->AddTrackingData(std::move(swing_hip_yaw_traj));
   } else {
@@ -594,22 +594,22 @@ int DoMain(int argc, char* argv[]) {
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_fsm_output_port(), osc->get_input_port_fsm());
   builder.Connect(alip_traj_generator->get_output_port_com(),
-                  osc->get_tracking_data_input_port("alip_com_traj"));
+                  osc->get_input_port_tracking_data("alip_com_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("swing_ft_traj"));
+                  osc->get_input_port_tracking_data("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
+                  osc->get_input_port_tracking_data("pelvis_heading_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
+                  osc->get_input_port_tracking_data("pelvis_balance_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("right_toe_angle_traj"));
   if (FLAGS_use_radio) {
     builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
-                    osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
+                    osc->get_input_port_tracking_data("swing_hip_yaw_traj"));
   }
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {

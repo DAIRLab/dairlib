@@ -1147,7 +1147,7 @@ void OperationalSpaceControl::CalcOptimalInput(
 
     double alpha = 0;
     int next_fsm_state = -1;
-    if (this->get_near_impact_input_port().HasValue(context)) {
+    if (this->get_input_port_impact_info().HasValue(context)) {
       auto impact_info = (ImpactInfoVector<double> *) this->EvalVectorInput(
           context, impact_info_port_);
       alpha = impact_info->GetAlpha();

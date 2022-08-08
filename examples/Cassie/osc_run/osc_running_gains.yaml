@@ -38,8 +38,8 @@ swing_toe_kp: 1500
 swing_toe_kd: 10
 
 w_hip_yaw: 2.5
-hip_yaw_kp: 40
-hip_yaw_kd: 1
+hip_yaw_kp: 100
+hip_yaw_kd: 5
 # Foot placement parameters
 #footstep_offset: -0.05
 footstep_sagital_offset: -0.08

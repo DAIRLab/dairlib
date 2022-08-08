@@ -85,7 +85,7 @@ namespace dairlib::systems::controllers {
 /// such as `PiecewisePolynomial` and `ExponentialPlusPiecewisePolynomial`.
 /// The users can connect the output ports of the desired trajectory blocks to
 /// the corresponding input ports of `OperationalSpaceControl` by using
-/// the method get_tracking_data_input_port().
+/// the method get_input_port_tracking_data().
 
 /// The procedure of setting up `OperationalSpaceControl`:
 ///   1. create an instance of `OperationalSpaceControl`
@@ -118,16 +118,16 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
     return this->get_input_port(state_port_);
   }
-  const drake::systems::InputPort<double>& get_fsm_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
   }
-  const drake::systems::InputPort<double>& get_clock_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_clock() const {
     return this->get_input_port(clock_port_);
   }
-  const drake::systems::InputPort<double>& get_near_impact_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_impact_info() const {
     return this->get_input_port(impact_info_port_);
   }
-  const drake::systems::InputPort<double>& get_tracking_data_input_port(
+  const drake::systems::InputPort<double>& get_input_port_tracking_data(
       const std::string& name) const {
     try {
       return this->get_input_port(traj_name_to_port_index_map_.at(name));

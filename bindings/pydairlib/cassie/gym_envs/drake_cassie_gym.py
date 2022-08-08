@@ -50,7 +50,7 @@ class DrakeCassieGym():
         self.builder.Connect(self.simulator.get_state_output_port(), self.controller.get_state_input_port())
         # self.builder.Connect(self.simulator.get_cassie_out_output_port_index(),
         #                      self.controller.get_cassie_out_input_port())
-        # self.builder.Connect(self.controller, self.simulator.get_radio_input_port())
+        # self.builder.Connect(self.controller, self.simulator.get_input_port_radio())
 
         self.diagram = self.builder.Build()
         self.sim = Simulator(self.diagram)

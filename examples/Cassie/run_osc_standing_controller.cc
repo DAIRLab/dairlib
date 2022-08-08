@@ -279,9 +279,9 @@ int DoMain(int argc, char* argv[]) {
                   command_sender->get_input_port(0));
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("com_traj"));
+                  osc->get_input_port_tracking_data("com_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_rot_traj"));
+                  osc->get_input_port_tracking_data("pelvis_rot_traj"));
 
   // Create the diagram
   auto owned_diagram = builder.Build();

@@ -99,6 +99,7 @@ cc_library(
         "//multibody:utils",
         "//lcmtypes:lcmt_robot",
         "//systems/controllers/osc:osc_gains",
+        "//examples/Cassie/contact_scheduler:all",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],

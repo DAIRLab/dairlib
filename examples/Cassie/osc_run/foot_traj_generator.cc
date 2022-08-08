@@ -5,6 +5,7 @@
 #include <drake/math/saturate.h>
 
 #include "dairlib/lcmt_radio_out.hpp"
+#include "examples/Cassie/contact_scheduler/contact_scheduler.h"
 #include "multibody/multibody_utils.h"
 
 using Eigen::Map;
@@ -30,10 +31,10 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib::examples::osc_run {
 
-FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double> &plant,
-                                     Context<double> *context,
-                                     const string &foot_name,
-                                     const string &hip_name, bool relative_feet,
+FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
+                                     Context<double>* context,
+                                     const string& foot_name,
+                                     const string& hip_name, bool relative_feet,
                                      const int stance_state,
                                      std::vector<double> state_durations)
     : plant_(plant),
@@ -45,7 +46,7 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double> &plant,
       stance_state_(stance_state),
       state_durations_(state_durations) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
-  Trajectory<double> &traj_inst = empty_pp_traj;
+  Trajectory<double>& traj_inst = empty_pp_traj;
 
   if (foot_name == "toe_left") {
     is_left_foot_ = true;
@@ -61,19 +62,19 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double> &plant,
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-          "x", OutputVector<double>(plant_.num_positions(),
-                                    plant_.num_velocities(),
-                                    plant_.num_actuators()))
-      .get_index();
+                        "x", OutputVector<double>(plant_.num_positions(),
+                                                  plant_.num_velocities(),
+                                                  plant_.num_actuators()))
+                    .get_index();
   target_vel_port_ = this->DeclareVectorInputPort(
-          "v_des", BasicVector<double>(VectorXd::Zero(2)))
-      .get_index();
+                             "v_des", BasicVector<double>(VectorXd::Zero(2)))
+                         .get_index();
   fsm_port_ = this->DeclareVectorInputPort(
-          "fsm", BasicVector<double>(VectorXd::Zero(1)))
-      .get_index();
+                      "fsm", BasicVector<double>(VectorXd::Zero(1)))
+                  .get_index();
   clock_port_ = this->DeclareVectorInputPort(
-          "clock", BasicVector<double>(VectorXd::Zero(1)))
-      .get_index();
+                        "clock", BasicVector<double>(VectorXd::Zero(1)))
+                    .get_index();
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
@@ -96,11 +97,11 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double> &plant,
 }
 
 EventStatus FootTrajGenerator::DiscreteVariableUpdate(
-    const Context<double> &context,
-    DiscreteValues<double> *discrete_state) const {
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
   // Read in current state
-  const OutputVector<double> *robot_output =
-      (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   // Read in finite state machine
   VectorXd fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
 
@@ -124,20 +125,21 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
   // Only update the current foot position when in stance (
   if (fsm_state(0) == stance_state_) {
     auto foot_pos = discrete_state->get_mutable_vector(initial_foot_pos_idx_)
-        .get_mutable_value();
+                        .get_mutable_value();
     plant_.CalcPointsPositions(*context_, foot_frame_, Vector3d::Zero(), world_,
                                &foot_pos);
     auto hip_pos = discrete_state->get_mutable_vector(initial_hip_pos_idx_)
-        .get_mutable_value();
+                       .get_mutable_value();
     plant_.CalcPointsPositions(*context_, hip_frame_, Vector3d::Zero(), world_,
                                &hip_pos);
     foot_pos = rot.transpose() * foot_pos;
     hip_pos = rot.transpose() * hip_pos;
     auto pelvis_vel = discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
-        .get_mutable_value();
+                          .get_mutable_value();
     pelvis_vel = 0.99 * v.segment(3, 3) + 0.01 * pelvis_vel;
-    auto last_stance_time = discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
-        .get_mutable_value();
+    auto last_stance_time =
+        discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
+            .get_mutable_value();
     last_stance_time[0] = robot_output->get_timestamp();
     //    pelvis_vel = v.segment(3, 3);
     //    std::cout << "stance state: " << stance_state_ << std::endl;
@@ -150,20 +152,20 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
 }
 
 PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
-    const drake::systems::Context<double> &context) const {
+    const drake::systems::Context<double>& context) const {
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
   const auto desired_pelvis_vel_xy =
       this->EvalVectorInput(context, target_vel_port_)->get_value();
   double clock = this->EvalVectorInput(context, clock_port_)->get_value()(0);
-  const auto &mode_lengths =
+  const auto& mode_lengths =
       this->EvalVectorInput(context, contact_scheduler_port_)->get_value();
 
   // Offset between 0 and 2
   double lateral_radio_tuning = 1.0;
   double sagital_radio_tuning = 1.0;
   if (this->get_input_port(radio_port_).HasValue(context)) {
-    const auto &radio_out =
+    const auto& radio_out =
         this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
     lateral_radio_tuning += radio_out->channel[4];
     sagital_radio_tuning += radio_out->channel[5];
@@ -222,45 +224,44 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   std::vector<double> T_waypoints_2;
 
   // Storing old method for record keeping
-  T_waypoints = {state_durations_[1],
-                 state_durations_[1] +
-                     0.5 * (state_durations_[4] - state_durations_[1]),
-                 state_durations_[4]};
+  T_waypoints = {
+      state_durations_[1],
+      state_durations_[1] + 0.5 * (state_durations_[4] - state_durations_[1]),
+      state_durations_[4]};
 
-//  T_waypoints_0 = {
-//      state_durations_[0],
-//      (state_durations_[3] - state_durations_[4]) +
-//          0.5 * (0.1 + state_durations_[2] - state_durations_[0]),
-//      state_durations_[2]};
-//  T_waypoints_1 = {state_durations_[2], state_durations_[3]};
-//  T_waypoints_2 = {state_durations_[3], state_durations_[4]};
-//
-//
+  //  T_waypoints_0 = {
+  //      state_durations_[0],
+  //      (state_durations_[3] - state_durations_[4]) +
+  //          0.5 * (0.1 + state_durations_[2] - state_durations_[0]),
+  //      state_durations_[2]};
+  //  T_waypoints_1 = {state_durations_[2], state_durations_[3]};
+  //  T_waypoints_2 = {state_durations_[3], state_durations_[4]};
+  //
+  //
 
-
-  if( is_left_foot_){
-//    std::cout << "is left foot: " << is_left_foot_ << std::endl;
+  if (is_left_foot_) {
+    //    std::cout << "is left foot: " << is_left_foot_ << std::endl;
     T_waypoints = {left_t0, left_t0 + 0.6 * (left_tf - left_t0), left_tf};
-//    std::cout << T_waypoints.back() - T_waypoints.front() << std::endl;
-//    std::cout << left_t0 << std::endl;
-//    std::cout << left_t0 + 0.6 * (left_tf - left_t0) << std::endl;
-//    std::cout << left_tf << std::endl;
-  }
-  else{
-//    std::cout << "is left foot: " << is_left_foot_ << std::endl;
+    //    std::cout << T_waypoints.back() - T_waypoints.front() << std::endl;
+    //    std::cout << left_t0 << std::endl;
+    //    std::cout << left_t0 + 0.6 * (left_tf - left_t0) << std::endl;
+    //    std::cout << left_tf << std::endl;
+  } else {
+    //    std::cout << "is left foot: " << is_left_foot_ << std::endl;
     T_waypoints = {right_t0, right_t0 + 0.6 * (right_tf - right_t0), right_tf};
-//    std::cout << T_waypoints.back() - T_waypoints.front() << std::endl;
-//    std::cout << right_t0 << std::endl;
-//    std::cout << right_t0 + 0.6 * (right_tf - right_t0) << std::endl;
-//    std::cout << right_tf << std::endl;
+    //    std::cout << T_waypoints.back() - T_waypoints.front() << std::endl;
+    //    std::cout << right_t0 << std::endl;
+    //    std::cout << right_t0 + 0.6 * (right_tf - right_t0) << std::endl;
+    //    std::cout << right_tf << std::endl;
   }
-            //  T_waypoints_0 = {
-//      pelvis_t0,
-//      (state_durations_[3] - state_durations_[4]) +
-//          1.5 / 3.0 * (0.1 + state_durations_[2] - pelvis_t0),
-//      state_durations_[2]};
-//  T_waypoints_1 = {state_durations_[2], state_durations_[3]};
-//  T_waypoints_2 = {state_durations_[3], state_durations_[4]};
+//  std::cout << T_waypoints.back() - T_waypoints.front() << std::endl;
+  //  T_waypoints_0 = {
+  //      pelvis_t0,
+  //      (state_durations_[3] - state_durations_[4]) +
+  //          1.5 / 3.0 * (0.1 + state_durations_[2] - pelvis_t0),
+  //      state_durations_[2]};
+  //  T_waypoints_1 = {state_durations_[2], state_durations_[3]};
+  //  T_waypoints_2 = {state_durations_[3], state_durations_[4]};
 
   //  auto foot_pos =
   //  context.get_discrete_state(initial_foot_pos_idx_).get_value();
@@ -287,18 +288,21 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
     Y[2](1) = drake::math::saturate(Y[2](1), -0.2, -lateral_offset_);
   }
 
-//  MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-//  MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
-//  Y_dot_end(2) = -0.1;
+  //  MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
+  //  MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
+  //  Y_dot_end(2) = -0.1;
 
-//  PiecewisePolynomial<double> swing_foot_spline =
-//      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-//          T_waypoints, Y, Y_dot_start, Y_dot_end);
+  //  PiecewisePolynomial<double> swing_foot_spline =
+  //      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+  //          T_waypoints, Y, Y_dot_start, Y_dot_end);
+//  std::cout << "is left foot: " << is_left_foot_ << std::endl;
+//  for (auto& t :T_waypoints){
+//    std::cout << "t: " << t << std::endl;
+//  }
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           T_waypoints, Y, false);
   return swing_foot_spline;
-
 
   if (is_left_foot_) {
     return swing_foot_spline;
@@ -327,17 +331,17 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
         PiecewisePolynomial<double>::ZeroOrderHold(T_waypoints_1, Y2));
     offset_swing_foot_spline.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(T_waypoints_2, Y2, Ydot2));
-//    for (auto t: offset_swing_foot_spline.get_segment_times()) {
-//      std::cout << t << std::endl;
-//    }
+    //    for (auto t: offset_swing_foot_spline.get_segment_times()) {
+    //      std::cout << t << std::endl;
+    //    }
     return offset_swing_foot_spline;
   }
   //  return swing_foot_spline;
 }
 
 void FootTrajGenerator::CalcTraj(
-    const drake::systems::Context<double> &context,
-    drake::trajectories::Trajectory<double> *traj) const {
+    const drake::systems::Context<double>& context,
+    drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
   //  const auto robot_output =
   //      this->template EvalVectorInput<OutputVector>(context, state_port_);
@@ -345,15 +349,30 @@ void FootTrajGenerator::CalcTraj(
   //  double timestamp = robot_output->get_timestamp();
   //
   //  // Read in finite state machine
-  //  const auto fsm_state = this->EvalVectorInput(context,
-  //  fsm_port_)->get_value();
+  const auto fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()[0];
 
-  auto *casted_traj =
-      (PiecewisePolynomial<double> *) dynamic_cast<PiecewisePolynomial<double> *>(
+  auto* casted_traj =
+      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  //  if (fsm_state[0] == FLIGHT) {
-  *casted_traj = GenerateFlightTraj(context);
-  //  }
+  if (is_left_foot_ ) {
+    if(fsm_state != LEFT_STANCE){
+//      *casted_traj =  PiecewisePolynomial<double>(Vector3d{0, 0, rest_length_});
+      *casted_traj = GenerateFlightTraj(context);
+    }
+//    else{
+//      *casted_traj =  PiecewisePolynomial<double>(Vector3d{0, 0, rest_length_});
+//    }
+
+  }
+  else{
+    if(fsm_state != RIGHT_STANCE){
+      *casted_traj = GenerateFlightTraj(context);
+//      *casted_traj =  PiecewisePolynomial<double>(Vector3d{0, 0, rest_length_});
+    }
+//    else{
+//      *casted_traj =  PiecewisePolynomial<double>(Vector3d{0, 0, rest_length_});
+//    }
+  }
 }
 
 }  // namespace dairlib::examples::osc_run

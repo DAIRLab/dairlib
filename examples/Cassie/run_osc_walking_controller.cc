@@ -221,7 +221,7 @@ int DoMain(int argc, char* argv[]) {
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations);
   builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_input_port_state());
+                  fsm->get_state_input_port());
 
   // Create leafsystem that record the switching time of the FSM
   std::vector<int> single_support_states = {left_stance_state,
@@ -360,9 +360,9 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
   builder.Connect(state_receiver->get_output_port(0),
-                  left_toe_angle_traj_gen->get_state_input_port());
+                  left_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
-                  right_toe_angle_traj_gen->get_state_input_port());
+                  right_toe_angle_traj_gen->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -583,25 +583,25 @@ int DoMain(int argc, char* argv[]) {
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0), osc->get_input_port_fsm());
   if (use_pelvis_for_lipm_tracking) {
     builder.Connect(
         pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
-        osc->get_tracking_data_input_port("lipm_traj"));
+        osc->get_input_port_tracking_data("lipm_traj"));
   } else {
     builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
-                    osc->get_tracking_data_input_port("lipm_traj"));
+                    osc->get_input_port_tracking_data("lipm_traj"));
   }
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("swing_ft_traj"));
+                  osc->get_input_port_tracking_data("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
+                  osc->get_input_port_tracking_data("pelvis_heading_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
+                  osc->get_input_port_tracking_data("pelvis_balance_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("right_toe_angle_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.

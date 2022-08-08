@@ -94,6 +94,9 @@ DEFINE_double(cost_scaling, 1.0, "Common scaling factor for costs.");
 DEFINE_double(actuator_limit,
               1.0,
               "Conservative estimate scaling factor for actuator limits, 1.0 is at the actual actuator limits.");
+DEFINE_double(input_delta,
+              50.0,
+              "Maximum change in torques between knot points.");
 
 namespace dairlib {
 
@@ -595,8 +598,10 @@ void SetKinematicConstraints(Dircon<double> *trajopt,
     prog->AddBoundingBoxConstraint(u_min, u_max, ui);
     if (i < trajopt->N() - 1) {
       auto uip1 = trajopt->input(i + 1);
-      prog->AddConstraint(ui - uip1 <= VectorXd::Constant(n_u, 50));
-      prog->AddConstraint(ui - uip1 >= VectorXd::Constant(n_u, -50));
+//      prog->AddConstraint(ui - uip1 <= VectorXd::Constant(n_u, 50));
+//      prog->AddConstraint(ui - uip1 >= VectorXd::Constant(n_u, -50));
+      prog->AddConstraint(ui - uip1 <= VectorXd::Constant(n_u, FLAGS_input_delta));
+      prog->AddConstraint(ui - uip1 >= VectorXd::Constant(n_u, -FLAGS_input_delta));
     }
   }
 
@@ -824,7 +829,7 @@ void AddCosts(Dircon<double> *trajopt, const MultibodyPlant<double> &plant,
 
   MatrixXd Q = 0.02 * MatrixXd::Identity(n_v, n_v);
 //  MatrixXd Q = 0.02 * MatrixXd::Identity(n_v - 3, n_v - 3);
-  MatrixXd R = 1e-4 * MatrixXd::Identity(n_u, n_u);
+  MatrixXd R = 1e-1 * MatrixXd::Identity(n_u, n_u);
   //  R(act_map.at("hip_roll_left_motor"), act_map.at("hip_roll_left_motor")) =
   //      5e-1;
   //  R(act_map.at("hip_roll_right_motor"), act_map.at("hip_roll_right_motor"))

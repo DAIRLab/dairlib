@@ -20,7 +20,7 @@ def main():
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/walking_0.16.0")
   # filename = FindResourceOrThrow("examples/Cassie/saved_trajectories/jumping_0.15h_0.3d")
   filename = FindResourceOrThrow(
-    "examples/Cassie/saved_trajectories/jumping_0.0h_1.0d_0")
+    "examples/Cassie/saved_trajectories/jumping_0.0h_1.0d_9")
   # filename = FindResourceOrThrow(
   #   "examples/Cassie/saved_trajectories/jumping_box_0.5h_0.3d_1")
   # filename = "/home/yangwill/Documents/research/projects/cassie/hardware/backup/dair/saved_trajectories/jumping_0.15h_0.3d"
@@ -33,11 +33,11 @@ def main():
   input_traj = dircon_traj.ReconstructInputTrajectory()
   state_datatypes = dircon_traj.GetTrajectory("state_traj0").datatypes
   input_datatypes = dircon_traj.GetTrajectory("input_traj").datatypes
-  force_samples = dircon_traj.GetTrajectory("force_vars0").datapoints
+  force_samples = dircon_traj.GetTrajectory("force_vars2").datapoints
   force_t_samples = dircon_traj.GetStateBreaks(0)
   force_traj = dircon_traj.ReconstructLambdaTrajectory()
   # force_datatypes = dircon_traj.GetTrajectory("force_vars0").datatypes
-  force_datatypes = dircon_traj.GetTrajectory("force_vars1").datatypes
+  force_datatypes = dircon_traj.GetTrajectory("force_vars2").datatypes
 
   collocation_force_points = dircon_traj.GetCollocationForceSamples(0)
   # M = reflected_joints()
@@ -51,8 +51,15 @@ def main():
   # dircon_traj.AddTrajectory('mirror_matrix', mirror_traj)
   # dircon_traj.WriteToFile(filename)
 
+
+  plot_only_at_knotpoints = True
+  print(force_t_samples)
+
   n_points = 500
   t = np.linspace(state_traj.start_time(), state_traj.end_time(), n_points)
+  if plot_only_at_knotpoints:
+    n_points = force_t_samples.shape[0]
+    t = force_t_samples
   state_samples = np.zeros((n_points, state_traj.value(0).shape[0]))
   state_derivative_samples = np.zeros((n_points, state_traj.value(0).shape[0]))
   input_samples = np.zeros((n_points, input_traj.value(0).shape[0]))
@@ -84,6 +91,7 @@ def main():
 
 
   plt.figure("input trajectory")
+  print(np.diff(input_samples[:, 7]))
   plt.plot(t, input_samples[:, :])
   plt.legend(input_datatypes[:])
 

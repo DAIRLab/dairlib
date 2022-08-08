@@ -1,3 +1,4 @@
+from operator import mod
 import wandb
 import matplotlib.pylab as plt
 import numpy as np
@@ -18,7 +19,7 @@ def get_data_of_selected_time(original_data, start_time , end_time):
         cut_data.append(datum)
     return cut_data
 
-def plot_spring_force_vs_time(processed_data, start_time, end_time):
+def plot_spring_force_vs_time(processed_data, start_time, end_time, directory=None, log_name=None):
     cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
     x = [x["t"] for x in cut_data]
     legends = ["knee_joint_left", "knee_joint_right", "ankle_spring_joint_left", "ankle_spring_joint_right"]
@@ -28,9 +29,9 @@ def plot_spring_force_vs_time(processed_data, start_time, end_time):
     x = np.array(x)
     ys = np.array(ys)
 
-    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "force (N*m)", "Fitted best spring force")
+    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "force (N*m)", "spring_force_vs_t", directory=directory, log_name=log_name)
 
-def plot_spring_force_vs_q(processed_data, start_time, end_time, is_sorted=False):
+def plot_spring_force_vs_q(processed_data, start_time, end_time, is_sorted=False, directory=None, log_name=None):
     cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
     legends = ["knee_joint_left", "knee_joint_right", "ankle_spring_joint_left", "ankle_spring_joint_right"]
     plt.figure()
@@ -49,7 +50,31 @@ def plot_spring_force_vs_q(processed_data, start_time, end_time, is_sorted=False
     plt.ylabel("spring force(N*m)")
     plt.title("Spring force vs spring deflection")
     plt.legend()
-    plt.show()
+    if not directory or not log_name:
+        plt.show()
+    else:
+        plt.savefig(directory+"/spring_force_vs_q_" + log_name + ".png")
+
+def plot_joint_residuals_vs_time(processed_data, start_time, end_time, joint_name, directory=None, log_num=None):
+    cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
+    x = [x["t"] for x in cut_data]
+    ys = []
+    ys.append([x["v_dot_gt"][joint_name] for x in cut_data])
+    ys.append([x["v_dot_best_spring_model"][joint_name] for x in cut_data])
+    x = np.array(x)
+    ys = np.array(ys)
+    legends = ["ground truth", "estimated"]
+    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "acc(rad/s^2)", "vdot_of_{}".format(joint_name), directory=directory, log_num=log_num)
+
+def plot_joint_effort_vs_time(processed_data, start_time, end_time, joint_names, directory=None, log_num=None):
+    cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
+    x = [x["t"] for x in cut_data]
+    ys = []
+    for joint_name in joint_names:
+        ys.append([x["u"][joint_name] for x in cut_data])
+    x = np.array(x)
+    ys = np.array(ys)
+    plot_given_keys_vs_time(cut_data, x, ys, joint_names, "t(s)", "u(N*m)", "joint_efforts_vs_t", directory=directory, log_num=log_num)
 
 def plot_contact_background(cut_data, min_ys, max_ys):
     left_on_ground = []
@@ -75,15 +100,35 @@ def plot_contact_background(cut_data, min_ys, max_ys):
                 right_on_ground.append((right_start, datum["t"]))
                 right_start = None
 
+    is_draw_label_left = False
+    is_draw_label_right = False
     for (start_time, end_time) in left_on_ground:
-        rect = patches.Rectangle((start_time, min_ys), end_time - start_time, max_ys-min_ys, color="b", alpha=0.2)
+        if not is_draw_label_left:
+            rect = patches.Rectangle((start_time, min_ys), end_time - start_time, max_ys-min_ys, color="pink", alpha=0.2, label="left foot on ground")
+            is_draw_label_left = True
+        else:
+            rect = patches.Rectangle((start_time, min_ys), end_time - start_time, max_ys-min_ys, color="pink", alpha=0.2)
         plt.gca().add_patch(rect)
     
     for (start_time, end_time) in right_on_ground:
-        rect = patches.Rectangle((start_time, min_ys), end_time - start_time, max_ys-min_ys, color="y", alpha=0.2)
+        if not is_draw_label_right:
+            rect = patches.Rectangle((start_time, min_ys), end_time - start_time, max_ys-min_ys, color="y", alpha=0.2, label="right foot on ground")
+            is_draw_label_right = True
+        else:
+            rect = patches.Rectangle((start_time, min_ys), end_time - start_time, max_ys-min_ys, color="y", alpha=0.2)
         plt.gca().add_patch(rect)
 
-def plot_given_keys_vs_time(cut_data, x, ys, legends, xlabel, ylabel, title):
+def plot_joint_velocity_vs_time(processed_data, start_time, end_time, joint_name):
+    cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
+    x = [x["t"] for x in cut_data]
+    ys = []
+    ys.append([x["v"][joint_name] for x in cut_data])
+    x = np.array(x)
+    ys = np.array(ys)
+    legends = ["v"]
+    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "v(rad/s)", "velocity_of_{}".format(joint_name))
+
+def plot_given_keys_vs_time(cut_data, x, ys, legends, xlabel, ylabel, title, colors=None, directory=None, log_name=None):
 
     plt.figure()
 
@@ -92,7 +137,10 @@ def plot_given_keys_vs_time(cut_data, x, ys, legends, xlabel, ylabel, title):
     plot_contact_background(cut_data, min_ys, max_ys)
 
     for i in range(len(ys)):
-        plt.plot(x, ys[i], label=legends[i])
+        if colors:
+            plt.plot(x, ys[i], label=legends[i], color=colors[i % len(colors)])
+        else:
+            plt.plot(x, ys[i], label=legends[i])
         plt.legend()
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
@@ -101,5 +149,8 @@ def plot_given_keys_vs_time(cut_data, x, ys, legends, xlabel, ylabel, title):
     max_ys = np.max(ys)
     min_ys = np.min(ys)
     plot_contact_background(cut_data, min_ys, max_ys)
-    
-    plt.show()
+
+    if not directory or not log_name:
+        plt.show()
+    else:
+        plt.savefig(directory+"/" + title +"_" + log_name + ".png")

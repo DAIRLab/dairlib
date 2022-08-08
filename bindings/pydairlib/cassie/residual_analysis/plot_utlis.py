@@ -66,7 +66,7 @@ def plot_joint_residuals_vs_time(processed_data, start_time, end_time, joint_nam
     legends = ["ground truth", "estimated"]
     plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "acc(rad/s^2)", "vdot_of_{}".format(joint_name), directory=directory, log_name=log_name)
 
-def plot_joint_effort_vs_time(processed_data, start_time, end_time, joint_names, directory=None, log_num=None):
+def plot_joint_effort_vs_time(processed_data, start_time, end_time, joint_names, directory=None, log_name=None):
     cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
     x = [x["t"] for x in cut_data]
     ys = []
@@ -74,7 +74,7 @@ def plot_joint_effort_vs_time(processed_data, start_time, end_time, joint_names,
         ys.append([x["u"][joint_name] for x in cut_data])
     x = np.array(x)
     ys = np.array(ys)
-    plot_given_keys_vs_time(cut_data, x, ys, joint_names, "t(s)", "u(N*m)", "joint_efforts_vs_t", directory=directory, log_num=log_num)
+    plot_given_keys_vs_time(cut_data, x, ys, joint_names, "t(s)", "u(N*m)", "joint_efforts_vs_t", directory=directory, log_name=log_name, colors=['r', 'b'])
 
 def plot_contact_background(cut_data, min_ys, max_ys):
     left_on_ground = []

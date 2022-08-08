@@ -288,19 +288,19 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else if (ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
   }
   /// side ways phase
   else if( ts < period * (duty_cycle+0.66 * return_cycle) ) {
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
   }
   /// position finger phase
   else{
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 

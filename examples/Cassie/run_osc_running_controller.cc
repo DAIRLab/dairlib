@@ -165,10 +165,11 @@ int DoMain(int argc, char* argv[]) {
 
   std::set<RUNNING_FSM_STATE> impact_states = {LEFT_STANCE, RIGHT_STANCE};
   auto contact_scheduler = builder.AddSystem<ContactScheduler>(
-      plant, plant_context.get(), impact_states, gains.impact_threshold, gains.impact_tau);
-  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, 0.0, gains.impact_threshold,
+      plant, plant_context.get(), impact_states, gains.impact_threshold,
       gains.impact_tau);
+//  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
+//      plant, fsm_states, state_durations, 0.0, gains.impact_threshold,
+//      gains.impact_tau);
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
@@ -294,10 +295,10 @@ int DoMain(int argc, char* argv[]) {
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_left", "pelvis", osc_gains.relative_feet,
-      0, accumulated_state_durations);
+      LEFT_STANCE);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_right", "pelvis",
-      osc_gains.relative_feet, 1, accumulated_state_durations);
+      osc_gains.relative_feet, RIGHT_STANCE);
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
@@ -522,11 +523,13 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-//  builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
-  builder.Connect(contact_scheduler->get_output_port_fsm(), osc->get_input_port_fsm());
+  //  builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
+  builder.Connect(contact_scheduler->get_output_port_fsm(),
+                  osc->get_input_port_fsm());
   builder.Connect(contact_scheduler->get_output_port_impact_info(),
                   osc->get_input_port_impact_info());
-  builder.Connect(contact_scheduler->get_output_port_clock(), osc->get_input_port_clock());
+  builder.Connect(contact_scheduler->get_output_port_clock(),
+                  osc->get_input_port_clock());
   //  builder.Connect(contact_scheduler->get_output_port_fsm(),
   //                  osc->get_input_port_fsm());
   //  builder.Connect(contact_scheduler->get_output_port_impact_info(),
@@ -540,8 +543,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
 
   // FSM connections
-  builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_state_input_port());
+//  builder.Connect(state_receiver->get_output_port(0),
+//                  fsm->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   contact_scheduler->get_input_port_state());
 
@@ -552,11 +555,7 @@ int DoMain(int argc, char* argv[]) {
       pelvis_trans_traj_generator->get_contact_scheduler_input_port());
   builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
                   l_foot_traj_generator->get_input_port_contact_scheduler());
-//  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
-//                  r_foot_traj_generator->get_input_port_contact_scheduler());
-//  builder.Connect(fsm->get_output_port_contact_scheduler(),
-//                  l_foot_traj_generator->get_input_port_contact_scheduler());
-  builder.Connect(fsm->get_output_port_contact_scheduler(),
+  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
                   r_foot_traj_generator->get_input_port_contact_scheduler());
 
   builder.Connect(state_receiver->get_output_port(0),

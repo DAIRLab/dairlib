@@ -34,10 +34,10 @@ ContactScheduler::ContactScheduler(const MultibodyPlant<double>& plant,
                                    BLEND_FUNC blend_func)
     : plant_(plant),
       plant_context_(plant_context),
+      impact_states_(impact_states),
       near_impact_threshold_(near_impact_threshold),
       tau_(tau),
-      blend_func_(blend_func),
-      impact_states_(impact_states) {
+      blend_func_(blend_func) {
   this->set_name("ContactScheduler");
   // Declare system ports
   state_port_ = this->DeclareVectorInputPort(
@@ -138,7 +138,7 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
                                plant_.world_frame(), &toe_rear_pos);
     VectorXd height =
         0.5 * (toe_front_pos[2] + toe_rear_pos[2]) * VectorXd::Ones(1);
-    state->get_mutable_discrete_state(stored_robot_state_index_)
+    state->get_mutable_discrete_state(ground_height_index_)
         .SetFromVector(height);
   } else if (active_state == RIGHT_STANCE) {
     auto toe_front = RightToeFront(plant_);
@@ -192,10 +192,13 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
                                 {transition_times[RIGHT_FLIGHT], RIGHT_FLIGHT}};
       }
     } else {
-      double time_to_touchdown =
-          1 / g *
-          (pelvis_zdot +
-           sqrt(pelvis_zdot * pelvis_zdot - 2 * g * (rest_length_ - pelvis_z)));
+      double time_to_touchdown = 0.1;
+      if (pelvis_zdot * pelvis_zdot - 2 * g * (rest_length_ - pelvis_z) > 0) {
+        time_to_touchdown =
+            (pelvis_zdot + sqrt(pelvis_zdot * pelvis_zdot -
+                                2 * g * (rest_length_ - pelvis_z))) /
+            g;
+      }
       double next_transition_time =
           stored_transition_time +
           drake::math::saturate(time_to_touchdown, 0.07, 0.10);

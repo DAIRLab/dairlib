@@ -13,6 +13,7 @@ class TimeVisualizer(object):
         self._name = "Time Visualizer"
         self._real_time = []
         self._msg_time = []
+        self._pelvis_velocity = []
         self._subscriber = None
         # Number of messages used to average for real time factor.
         self._num_msg_for_average = 50
@@ -57,15 +58,19 @@ class TimeVisualizer(object):
         pelvis_velocity = np.linalg.norm((msg.velocity)[3:5])  # convert from microseconds
         self._real_time.append(time.time())
         self._msg_time.append(msg_time)
+        self._pelvis_velocity.append(pelvis_velocity)
 
         my_text = 'time: %.3f' % msg_time
         pelvis_height_text = 'pelvis height: %.3f' % pelvis_height
-        pelvis_velocity_text = 'pelvis velocity: %.3f' % pelvis_velocity
+
+        pelvis_velocity_text = 'pelvis velocity: %.3f' % np.array(self._pelvis_velocity).mean()
         realtime_text = ''
 
         if (len(self._real_time) >= self._num_msg_for_average):
             self._real_time.pop(0)
             self._msg_time.pop(0)
+            self._pelvis_velocity.pop(0)
+
 
             dt = self._msg_time[-1] - self._msg_time[0]
             dt_real_time = self._real_time[-1] - self._real_time[0]

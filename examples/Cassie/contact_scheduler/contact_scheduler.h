@@ -66,19 +66,19 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex state_port_;
   drake::systems::OutputPortIndex fsm_port_;
   drake::systems::OutputPortIndex clock_port_;
-  //  drake::systems::OutputPortIndex contact_timing_;
   drake::systems::OutputPortIndex impact_info_port_;
   drake::systems::OutputPortIndex contact_scheduler_port_;
   drake::systems::OutputPortIndex debug_port_;
+
+  // Dynamics calculations
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* plant_context_;
 
   // For impact-invariant calculations
   const std::set<RUNNING_FSM_STATE> impact_states_;
   double near_impact_threshold_;
   double tau_;
   const BLEND_FUNC blend_func_;
-
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>* plant_context_;
 
   /// contains pairs (start of fsm, fsm_state)
   /// the order of the vector goes: last transition, next upcoming three

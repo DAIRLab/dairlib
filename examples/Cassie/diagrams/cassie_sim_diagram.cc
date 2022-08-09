@@ -5,13 +5,10 @@
 #include <drake/systems/primitives/zero_order_hold.h>
 #include <iostream>
 
-#include "dairlib/lcmt_cassie_out.hpp"
-#include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
-#include "systems/framework/geared_motor.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
@@ -19,12 +16,9 @@
 
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"
-#include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
-#include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
@@ -81,7 +75,7 @@ CassieSimDiagram::CassieSimDiagram(
   sensor_aggregator_ = &AddImuAndAggregator(&builder, *plant_,
                                             constant_source->get_output_port());
 
-  cassie_motor_ = &AddMotorModel(&builder, *plant);
+  cassie_motor_ = &AddMotorModel(&builder, *plant_);
 
   auto radio_parser = builder.AddSystem<systems::RadioParser>();
 

@@ -30,8 +30,8 @@ def main():
         # reward_func = RewardOSUDRL(reward_function_weights)
         reward_func = RewardOSUDRL()
 
-        # gym_env = DrakeCassieGym(reward_func, visualize=False)
-        gym_env = MuJoCoCassieGym(reward_func, visualize=True)
+        gym_env = DrakeCassieGym(reward_func, visualize=True)
+        # gym_env = MuJoCoCassieGym(reward_func, visualize=True)
         gym_env.make(controller)
         cumulative_reward = gym_env.advance_to(7.5)
         print(cumulative_reward)

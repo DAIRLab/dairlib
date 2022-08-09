@@ -60,7 +60,7 @@ int do_main(int argc, char* argv[]) {
       Eigen::VectorXd::Zero(plant.num_actuators()));
 
   builder.Connect(input_source->get_output_port(),
-                  plant.get_actuation_input_port());
+                  plant.get_input_port_actuation());
 
   builder.Connect(
     plant.get_geometry_poses_output_port(),

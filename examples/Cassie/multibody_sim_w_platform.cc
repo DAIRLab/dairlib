@@ -214,7 +214,7 @@ int do_main(int argc, char* argv[]) {
     double toe_spread = 0.1;
     // Create a plant for CassieFixedPointSolver.
     // Note that we cannot use the plant from the above diagram, because after the
-    // diagram is built, plant.get_actuation_input_port().HasValue(*context)
+    // diagram is built, plant.get_input_port_actuation().HasValue(*context)
     // throws a segfault error
     drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
     AddCassieMultibody(&plant_for_solver, nullptr,

@@ -26,15 +26,15 @@ PYBIND11_MODULE(simulators, m) {
            py::arg("dissipation_rate"))
       .def("get_plant", &CassieSimDiagram::get_plant,
            py_rvp::reference_internal)
-      .def("get_actuation_input_port",
-           &CassieSimDiagram::get_actuation_input_port,
+      .def("get_input_port_actuation",
+           &CassieSimDiagram::get_input_port_actuation,
            py_rvp::reference_internal)
-      .def("get_input_port_radio", &CassieSimDiagram::get_radio_input_port,
+      .def("get_input_port_radio", &CassieSimDiagram::get_input_port_radio,
            py_rvp::reference_internal)
-      .def("get_state_output_port", &CassieSimDiagram::get_state_output_port,
+      .def("get_output_port_state", &CassieSimDiagram::get_output_port_state,
            py_rvp::reference_internal)
-      .def("get_cassie_out_output_port_index",
-           &CassieSimDiagram::get_cassie_out_output_port_index,
+      .def("get_output_port_cassie_out",
+           &CassieSimDiagram::get_output_port_cassie_out,
            py_rvp::reference_internal);
 }
 }  // namespace pydairlib

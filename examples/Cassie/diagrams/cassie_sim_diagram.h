@@ -26,24 +26,24 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
       double mu = 0.8, double stiffness = 1e4, double dissipation_rate = 1e2);
 
   /// @return the input port for the actuation command.
-  const drake::systems::InputPort<double>& get_actuation_input_port() const {
-    return this->get_input_port(actuation_input_port_index_);
+  const drake::systems::InputPort<double>& get_input_port_actuation() const {
+    return this->get_input_port(actuation_port_);
   }
 
   /// @return the input port for the radio struct.
-  const drake::systems::InputPort<double>& get_radio_input_port() const {
-    return this->get_input_port(radio_input_port_index_);
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_port_);
   }
 
   /// @return the output port for the plant state as an OutputVector.
-  const drake::systems::OutputPort<double>& get_state_output_port() const {
-    return this->get_output_port(state_output_port_index_);
+  const drake::systems::OutputPort<double>& get_output_port_state() const {
+    return this->get_output_port(state_port_);
   }
 
-  /// @return the output port for the failure status of the controller.
-  const drake::systems::OutputPort<double>& get_cassie_out_output_port_index()
+  /// @return the output port for the lcmt_cassie_out_message
+  const drake::systems::OutputPort<double>& get_output_port_cassie_out()
       const {
-    return this->get_output_port(cassie_out_output_port_index_);
+    return this->get_output_port(cassie_out_port_);
   }
 
   drake::multibody::MultibodyPlant<double>& get_plant() {
@@ -59,10 +59,10 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
   const systems::GearedMotor* cassie_motor_;
   //  const systems::RadioParser* radio_parser_;
   drake::geometry::SceneGraph<double>* scene_graph_;
-  const int actuation_input_port_index_ = 0;
-  const int radio_input_port_index_ = 1;
-  const int state_output_port_index_ = 0;
-  const int cassie_out_output_port_index_ = 1;
+  const int actuation_port_ = 0;
+  const int radio_port_ = 1;
+  const int state_port_ = 0;
+  const int cassie_out_port_ = 1;
   const double actuator_delay = 5e-3;        // 5ms
   const double actuator_update_rate = 1e-3;  // 1ms
   const double dt_ = 8e-5;

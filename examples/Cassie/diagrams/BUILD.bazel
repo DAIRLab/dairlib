@@ -40,6 +40,7 @@ cc_library(
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc_run:osc_run",
+        "//examples/Cassie/contact_scheduler:all",
         "//examples/Cassie/osc:osc",
         "//lcm:trajectory_saver",
         "//multibody:utils",

@@ -43,35 +43,33 @@ class OSCRunningControllerDiagram final
                               const std::string& osqp_settings_filename);
 
   /// @return the input port for the plant state.
-  const drake::systems::InputPort<double>& get_state_input_port() const {
-    return this->get_input_port(state_input_port_index_);
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return this->get_input_port(state_port_);
   }
 
   /// @return the input port for the cassie_out struct (containing radio
   /// commands).
-  const drake::systems::InputPort<double>& get_radio_input_port() const {
-    return this->get_input_port(radio_input_port_index_);
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_port_);
+  }
+
+  /// @return the output port for the lcmt_robot_input message.
+  const drake::systems::OutputPort<double>& get_output_port_robot_input() const {
+    return this->get_output_port(control_port_);
   }
 
   /// @return the output port for the controller torques.
-  const drake::systems::OutputPort<double>& get_control_output_port() const {
-    return this->get_output_port(control_output_port_index_);
-  }
-
-  /// @return the output port for the controller torques.
-  const drake::systems::OutputPort<double>& get_torque_output_port() const {
-    return this->get_output_port(torque_output_port_index_);
+  const drake::systems::OutputPort<double>& get_output_port_torque() const {
+    return this->get_output_port(torque_port_);
   }
 
   /// @return the output port for the failure status of the controller.
-  const drake::systems::OutputPort<double>& get_controller_failure_output_port()
+  const drake::systems::OutputPort<double>& get_output_port_controller_failure()
       const {
-    return this->get_output_port(controller_failure_port_index_);
+    return this->get_output_port(controller_failure_port_);
   }
 
-  drake::multibody::MultibodyPlant<double>& get_plant() {
-    return *plant_;
-  }
+  drake::multibody::MultibodyPlant<double>& get_plant() { return *plant_; }
 
  private:
   drake::multibody::MultibodyPlant<double>* plant_;
@@ -139,11 +137,16 @@ class OSCRunningControllerDiagram final
   std::unique_ptr<JointSpaceTrackingData> left_hip_yaw_tracking_data;
   std::unique_ptr<JointSpaceTrackingData> right_hip_yaw_tracking_data;
 
-  const int state_input_port_index_ = 0;
-  const int radio_input_port_index_ = 1;
-  const int control_output_port_index_ = 0;
-  const int torque_output_port_index_ = 1;
-  const int controller_failure_port_index_ = 2;
+  const drake::systems::InputPortIndex
+      state_port_ = drake::systems::InputPortIndex(0);
+  const drake::systems::InputPortIndex
+      radio_port_ = drake::systems::InputPortIndex(1);
+  const drake::systems::OutputPortIndex control_port_ =
+      drake::systems::OutputPortIndex(0);
+  const drake::systems::OutputPortIndex torque_port_ =
+      drake::systems::OutputPortIndex(1);
+  const drake::systems::OutputPortIndex controller_failure_port_ =
+      drake::systems::OutputPortIndex(2);
 
   const std::string control_channel_name_ = "OSC_RUNNING";
 };

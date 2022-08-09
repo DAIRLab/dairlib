@@ -523,19 +523,12 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  //  builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
   builder.Connect(contact_scheduler->get_output_port_fsm(),
                   osc->get_input_port_fsm());
   builder.Connect(contact_scheduler->get_output_port_impact_info(),
                   osc->get_input_port_impact_info());
   builder.Connect(contact_scheduler->get_output_port_clock(),
                   osc->get_input_port_clock());
-  //  builder.Connect(contact_scheduler->get_output_port_fsm(),
-  //                  osc->get_input_port_fsm());
-  //  builder.Connect(contact_scheduler->get_output_port_impact_info(),
-  //                  osc->get_input_port_impact_info());
-  //  builder.Connect(contact_scheduler->get_output_port_clock(),
-  //                  osc->get_input_port_clock());
 
   builder.Connect(state_receiver->get_output_port(0),
                   ekf_filter->get_input_port());
@@ -543,8 +536,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
 
   // FSM connections
-//  builder.Connect(state_receiver->get_output_port(0),
-//                  fsm->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   contact_scheduler->get_input_port_state());
 

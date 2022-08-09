@@ -28,19 +28,19 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_plant", &OSCRunningControllerDiagram::get_plant,
            py_rvp::reference_internal)
       .def("get_input_port_state",
-           &OSCRunningControllerDiagram::get_state_input_port,
+           &OSCRunningControllerDiagram::get_input_port_state,
            py_rvp::reference_internal)
       .def("get_input_port_radio",
-           &OSCRunningControllerDiagram::get_radio_input_port,
+           &OSCRunningControllerDiagram::get_input_port_radio,
            py_rvp::reference_internal)
-      .def("get_control_output_port",
-           &OSCRunningControllerDiagram::get_control_output_port,
+      .def("get_output_port_robot_input",
+           &OSCRunningControllerDiagram::get_output_port_robot_input,
            py_rvp::reference_internal)
-      .def("get_torque_output_port",
-           &OSCRunningControllerDiagram::get_torque_output_port,
+      .def("get_output_port_torque",
+           &OSCRunningControllerDiagram::get_output_port_torque,
            py_rvp::reference_internal)
-      .def("get_controller_failure_output_port",
-           &OSCRunningControllerDiagram::get_controller_failure_output_port,
+      .def("get_output_port_controller_failure",
+           &OSCRunningControllerDiagram::get_output_port_controller_failure,
            py_rvp::reference_internal);
 
   py::class_<OSCWalkingControllerDiagram, drake::systems::Diagram<double>>(
@@ -50,19 +50,19 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_plant", &OSCWalkingControllerDiagram::get_plant,
            py_rvp::reference_internal)
       .def("get_input_port_state",
-           &OSCWalkingControllerDiagram::get_state_input_port,
+           &OSCWalkingControllerDiagram::get_input_port_state,
            py_rvp::reference_internal)
       .def("get_input_port_radio",
-           &OSCWalkingControllerDiagram::get_radio_input_port,
+           &OSCWalkingControllerDiagram::get_input_port_radio,
            py_rvp::reference_internal)
-      .def("get_control_output_port",
-           &OSCWalkingControllerDiagram::get_control_output_port,
+      .def("get_output_port_robot_input",
+           &OSCWalkingControllerDiagram::get_output_port_robot_input,
            py_rvp::reference_internal)
-      .def("get_torque_output_port",
-           &OSCWalkingControllerDiagram::get_torque_output_port,
+      .def("get_output_port_torque",
+           &OSCWalkingControllerDiagram::get_output_port_torque,
            py_rvp::reference_internal)
-      .def("get_controller_failure_output_port",
-           &OSCWalkingControllerDiagram::get_controller_failure_output_port,
+      .def("get_output_port_controller_failure",
+           &OSCWalkingControllerDiagram::get_output_port_controller_failure,
            py_rvp::reference_internal);
 }
 }  // namespace pydairlib

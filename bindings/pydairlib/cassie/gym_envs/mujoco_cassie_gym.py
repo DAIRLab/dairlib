@@ -129,7 +129,7 @@ class MuJoCoCassieGym():
         self.robot_output_sender = RobotOutputSender(self.controller.get_plant(), False)
         self.builder.AddSystem(self.robot_output_sender)
 
-        self.builder.Connect(self.robot_output_sender.get_output_port(), self.controller.get_state_input_port())
+        self.builder.Connect(self.robot_output_sender.get_output_port(), self.controller.get_input_port_state())
         self.drake_to_mujoco_converter = DrakeToMujocoConverter(self.sim_dt)
 
         self.diagram = self.builder.Build()
@@ -138,8 +138,8 @@ class MuJoCoCassieGym():
                                                                                    self.drake_sim.get_mutable_context())
         self.controller_context = self.diagram.GetMutableSubsystemContext(self.controller,
                                                                           self.drake_sim.get_mutable_context())
-        self.controller_output_port = self.controller.get_torque_output_port()
-        self.radio_input_port = self.controller.get_radio_input_port()
+        self.controller_output_port = self.controller.get_output_port_torque()
+        self.radio_input_port = self.controller.get_input_port_radio()
         self.drake_sim.get_mutable_context().SetTime(self.start_time)
         self.reset()
         self.initialized = True

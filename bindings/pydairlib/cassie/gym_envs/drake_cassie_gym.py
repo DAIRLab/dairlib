@@ -46,9 +46,9 @@ class DrakeCassieGym():
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.simulator)
 
-        self.builder.Connect(self.controller.get_control_output_port(), self.simulator.get_actuation_input_port())
-        self.builder.Connect(self.simulator.get_state_output_port(), self.controller.get_state_input_port())
-        # self.builder.Connect(self.simulator.get_cassie_out_output_port_index(),
+        self.builder.Connect(self.controller.get_output_port_robot_input(), self.simulator.get_input_port_actuation())
+        self.builder.Connect(self.simulator.get_output_port_state(), self.controller.get_input_port_state())
+        # self.builder.Connect(self.simulator.get_output_port_cassie_out(),
         #                      self.controller.get_cassie_out_input_port())
         # self.builder.Connect(self.controller, self.simulator.get_input_port_radio())
 
@@ -56,7 +56,7 @@ class DrakeCassieGym():
         self.sim = Simulator(self.diagram)
         self.simulator_context = self.diagram.GetMutableSubsystemContext(self.simulator, self.sim.get_mutable_context())
         self.controller_context = self.diagram.GetMutableSubsystemContext(self.controller, self.sim.get_mutable_context())
-        self.controller_output_port = self.controller.get_torque_output_port()
+        self.controller_output_port = self.controller.get_output_port_torque()
         self.sim.get_mutable_context().SetTime(self.start_time)
         self.reset()
         self.initialized = True
@@ -90,8 +90,8 @@ class DrakeCassieGym():
             print("Call make() before calling step() or advance()")
         next_timestep = self.sim.get_context().get_time() + self.sim_dt
         action[2] = 1.0
-        self.simulator.get_radio_input_port().FixValue(self.simulator_context, action)
-        self.controller.get_radio_input_port().FixValue(self.controller_context, action)
+        self.simulator.get_input_port_radio().FixValue(self.simulator_context, action)
+        self.controller.get_input_port_radio().FixValue(self.controller_context, action)
         self.sim.AdvanceTo(next_timestep)
         self.current_time = self.sim.get_context().get_time()
 

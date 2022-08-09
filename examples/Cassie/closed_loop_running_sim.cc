@@ -55,11 +55,11 @@ int DoMain(int argc, char* argv[]) {
 //      builder.AddSystem<examples::controllers::OSCWalkingControllerDiagram>(
 //          controller_plant, true, osc_walking_gains, osqp_settings);
 
-  builder.Connect(controller_diagram->get_control_output_port(),
-                  sim_diagram->get_actuation_input_port());
-  builder.Connect(sim_diagram->get_state_output_port(),
-                  controller_diagram->get_state_input_port());
-//  builder.Connect(sim_diagram->get_cassie_out_output_port_index(),
+  builder.Connect(controller_diagram->get_output_port_robot_input(),
+                  sim_diagram->get_input_port_actuation());
+  builder.Connect(sim_diagram->get_output_port_state(),
+                  controller_diagram->get_input_port_state());
+//  builder.Connect(sim_diagram->get_output_port_cassie_out(),
 //                  controller_diagram->get_cassie_out_input_port());
 
   auto diagram = builder.Build();
@@ -80,8 +80,8 @@ int DoMain(int argc, char* argv[]) {
   Context<double>& simulator_context = diagram->GetMutableSubsystemContext(*sim_diagram, &simulator.get_mutable_context());
   Context<double>& controller_context = diagram->GetMutableSubsystemContext(*controller_diagram, &simulator.get_mutable_context());
 
-  sim_diagram->get_radio_input_port().FixValue(&simulator_context, Eigen::VectorXd::Zero(18));
-  controller_diagram->get_radio_input_port().FixValue(&controller_context, Eigen::VectorXd::Zero(18));
+  sim_diagram->get_input_port_radio().FixValue(&simulator_context, Eigen::VectorXd::Zero(18));
+  controller_diagram->get_input_port_radio().FixValue(&controller_context, Eigen::VectorXd::Zero(18));
 
   new_plant.SetPositionsAndVelocities(&plant_context, x_init);
   simulator.Initialize();

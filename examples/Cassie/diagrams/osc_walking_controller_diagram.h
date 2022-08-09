@@ -48,28 +48,28 @@ class OSCWalkingControllerDiagram final
                               const std::string& osqp_settings_filename);
 
   /// @return the input port for the plant state.
-  const drake::systems::InputPort<double>& get_state_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_index_);
   }
 
   /// @return the input port for the cassie_out struct (containing radio
   /// commands).
-  const drake::systems::InputPort<double>& get_radio_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_input_port_index_);
   }
 
   /// @return the output port for the controller torques.
-  const drake::systems::OutputPort<double>& get_control_output_port() const {
+  const drake::systems::OutputPort<double>& get_output_port_robot_input() const {
     return this->get_output_port(control_output_port_index_);
   }
 
   /// @return the output port for the controller torques.
-  const drake::systems::OutputPort<double>& get_torque_output_port() const {
+  const drake::systems::OutputPort<double>& get_output_port_torque() const {
     return this->get_output_port(torque_output_port_index_);
   }
 
   /// @return the output port for the failure status of the controller.
-  const drake::systems::OutputPort<double>& get_controller_failure_output_port()
+  const drake::systems::OutputPort<double>& get_output_port_controller_failure()
       const {
     return this->get_output_port(controller_failure_port_index_);
   }

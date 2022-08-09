@@ -8,6 +8,7 @@
 
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/contact_scheduler/contact_scheduler.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
@@ -162,9 +163,10 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   }
   accumulated_state_durations.pop_back();
 
-  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-      plant, fsm_states, state_durations, 0.0,
-      osc_running_gains.impact_threshold, osc_running_gains.impact_tau);
+  std::set<RUNNING_FSM_STATE> impact_states = {LEFT_STANCE, RIGHT_STANCE};
+  auto contact_scheduler = builder.AddSystem<ContactScheduler>(
+      plant, plant_context.get(), impact_states, gains.impact_threshold,
+      gains.impact_tau);
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
@@ -227,10 +229,10 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   pelvis_trans_traj_generator->SetSLIPParams(osc_running_gains.rest_length);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_left", "pelvis",
-      osc_running_gains.relative_feet, 0, accumulated_state_durations);
+      osc_running_gains.relative_feet, LEFT_STANCE);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_right", "pelvis",
-      osc_running_gains.relative_feet, 1, accumulated_state_durations);
+      osc_running_gains.relative_feet, RIGHT_STANCE);
   l_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
@@ -439,24 +441,36 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_fsm_output_port(), osc->get_input_port_fsm());
-  builder.Connect(fsm->get_output_port_impact_info(),
+  builder.Connect(contact_scheduler->get_output_port_fsm(),
+                  osc->get_input_port_fsm());
+  builder.Connect(contact_scheduler->get_output_port_impact_info(),
                   osc->get_input_port_impact_info());
-  builder.Connect(fsm->get_output_port_clock(), osc->get_input_port_clock());
+  builder.Connect(contact_scheduler->get_output_port_clock(),
+                  osc->get_input_port_clock());
+
   builder.Connect(state_receiver->get_output_port(0),
                   ekf_filter->get_input_port());
   builder.Connect(ekf_filter->get_output_port(),
                   osc->get_robot_output_input_port());
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_state_input_port());
+                  contact_scheduler->get_input_port_state());
 
   // Trajectory generator connections
+
+  builder.Connect(
+      contact_scheduler->get_output_port_contact_scheduler(),
+      pelvis_trans_traj_generator->get_contact_scheduler_input_port());
+  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
+                  l_foot_traj_generator->get_input_port_contact_scheduler());
+  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
+                  r_foot_traj_generator->get_input_port_contact_scheduler());
+
   builder.Connect(state_receiver->get_output_port(0),
                   pelvis_trans_traj_generator->get_state_input_port());
-  builder.Connect(fsm->get_fsm_output_port(),
+  builder.Connect(contact_scheduler->get_output_port_fsm(),
                   pelvis_trans_traj_generator->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port_clock(),
+  builder.Connect(contact_scheduler->get_output_port_clock(),
                   pelvis_trans_traj_generator->get_clock_input_port());
   builder.Connect(high_level_command->get_xy_output_port(),
                   l_foot_traj_generator->get_input_port_target_vel());
@@ -466,9 +480,14 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                   l_foot_traj_generator->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   r_foot_traj_generator->get_input_port_state());
-  builder.Connect(fsm->get_fsm_output_port(),
+
+  builder.Connect(contact_scheduler->get_output_port_clock(),
+                  l_foot_traj_generator->get_input_port_clock());
+  builder.Connect(contact_scheduler->get_output_port_clock(),
+                  r_foot_traj_generator->get_input_port_clock());
+  builder.Connect(contact_scheduler->get_output_port_fsm(),
                   l_foot_traj_generator->get_input_port_fsm());
-  builder.Connect(fsm->get_fsm_output_port(),
+  builder.Connect(contact_scheduler->get_output_port_fsm(),
                   r_foot_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
                   left_toe_angle_traj_gen->get_input_port_state());

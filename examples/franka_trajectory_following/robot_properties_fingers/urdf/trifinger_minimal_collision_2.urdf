@@ -133,7 +133,7 @@
    <joint name="box_to_base" type="fixed">
     <parent link="base_link"/>
     <child link="box"/>
-    <origin xyz="0 0 -0.0801"/>
+    <origin xyz="0 0 -0.0725"/>
   </joint>
 
 

@@ -64,11 +64,11 @@ int DoMain(int argc, char* argv[]) {
     builder.AddSystem<dairlib::systems::RobotOutputPassthrough>(plant);
   
   /// state estimation block
-  int p_filter_length = 1;
+  int p_filter_length = 2;
   int v_filter_length = 2;
   double alpha = 0.9;
 
-  std::vector<double> p_FIR_values = {1};
+  std::vector<double> p_FIR_values = {0.2, 0.8};
   std::vector<double> v_FIR_values = {(1-alpha), alpha};
 
   auto state_estimator = 

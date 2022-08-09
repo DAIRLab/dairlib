@@ -59,7 +59,7 @@ enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to b
 ball_radius: 0.0315           # changes need to be consistent with urdf AND vision
 finger_radius: 0.0195         # changes need to be consistent with BOTH urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with urdf
-table_offset: -0.0225         # chances need to be consistent with BOTH urdfs AND vision
+table_offset: -0.0245         # chances need to be consistent with BOTH urdfs AND vision
 # table_offset: -0.0193         # chances need to be consistent with BOTH urdfs AND vision
 
 # Misc
@@ -72,7 +72,7 @@ ball_stddev: 0.0001 # standard deviation of 0-mean noise on ball state estimatio
 period: 15   #2.5
 duty_cycle: 0.4 #0.75
 duty_cycle_upwards_ratio: 0.33 # need better name here
-gait_parameters: [0.025, 0.0951, 0.0911, 0.0891] # try playing with first param here
+gait_parameters: [0.02, 0.0851, 0.0811, 0.0791] # try playing with first param here
 # gait parameters represent height above the table
 
 # filters

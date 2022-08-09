@@ -165,7 +165,7 @@ int DoMain(int argc, char* argv[]) {
 
   std::set<RUNNING_FSM_STATE> impact_states = {LEFT_STANCE, RIGHT_STANCE};
   auto contact_scheduler = builder.AddSystem<ContactScheduler>(
-      plant, impact_states, gains.impact_threshold, gains.impact_tau);
+      plant, plant_context.get(), impact_states, gains.impact_threshold, gains.impact_tau);
   auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations, 0.0, gains.impact_threshold,
       gains.impact_tau);
@@ -522,10 +522,11 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
-  builder.Connect(fsm->get_output_port_impact_info(),
+//  builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
+  builder.Connect(contact_scheduler->get_output_port_fsm(), osc->get_input_port_fsm());
+  builder.Connect(contact_scheduler->get_output_port_impact_info(),
                   osc->get_input_port_impact_info());
-  builder.Connect(fsm->get_output_port_clock(), osc->get_input_port_clock());
+  builder.Connect(contact_scheduler->get_output_port_clock(), osc->get_input_port_clock());
   //  builder.Connect(contact_scheduler->get_output_port_fsm(),
   //                  osc->get_input_port_fsm());
   //  builder.Connect(contact_scheduler->get_output_port_impact_info(),
@@ -546,26 +547,15 @@ int DoMain(int argc, char* argv[]) {
 
   // Trajectory generator connections
 
-  //  builder.Connect(contact_scheduler->get_output_port_fsm(),
-  //                  l_foot_traj_generator->get_input_port_fsm());
-  //  builder.Connect(contact_scheduler->get_output_port_fsm(),
-  //                  r_foot_traj_generator->get_input_port_fsm());
-  //  builder.Connect(
-  //      contact_scheduler->get_output_port_contact_scheduler(),
-  //      pelvis_trans_traj_generator->get_input_port_contact_scheduler());
-  //  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
-  //                  l_foot_traj_generator->get_input_port_contact_scheduler());
-  //  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
-  //                  r_foot_traj_generator->get_input_port_contact_scheduler());
   builder.Connect(
       contact_scheduler->get_output_port_contact_scheduler(),
       pelvis_trans_traj_generator->get_contact_scheduler_input_port());
-//  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
-//                  l_foot_traj_generator->get_input_port_contact_scheduler());
+  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
+                  l_foot_traj_generator->get_input_port_contact_scheduler());
 //  builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
 //                  r_foot_traj_generator->get_input_port_contact_scheduler());
-  builder.Connect(fsm->get_output_port_contact_scheduler(),
-                  l_foot_traj_generator->get_input_port_contact_scheduler());
+//  builder.Connect(fsm->get_output_port_contact_scheduler(),
+//                  l_foot_traj_generator->get_input_port_contact_scheduler());
   builder.Connect(fsm->get_output_port_contact_scheduler(),
                   r_foot_traj_generator->get_input_port_contact_scheduler());
 
@@ -592,9 +582,9 @@ int DoMain(int argc, char* argv[]) {
                   l_foot_traj_generator->get_input_port_clock());
   builder.Connect(contact_scheduler->get_output_port_clock(),
                   r_foot_traj_generator->get_input_port_clock());
-  builder.Connect(fsm->get_output_port_fsm(),
+  builder.Connect(contact_scheduler->get_output_port_fsm(),
                   l_foot_traj_generator->get_input_port_fsm());
-  builder.Connect(fsm->get_output_port_fsm(),
+  builder.Connect(contact_scheduler->get_output_port_fsm(),
                   r_foot_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
                   left_toe_angle_traj_gen->get_input_port_state());

@@ -6,9 +6,9 @@
 #include <vector>
 
 #include "common/blending_utils.h"
+#include "dairlib/lcmt_contact_timing.hpp"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
-#include "dairlib/lcmt_contact_timing.hpp"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -20,6 +20,7 @@ enum RUNNING_FSM_STATE { LEFT_STANCE, RIGHT_STANCE, LEFT_FLIGHT, RIGHT_FLIGHT };
 class ContactScheduler : public drake::systems::LeafSystem<double> {
  public:
   ContactScheduler(const drake::multibody::MultibodyPlant<double>& plant,
+                   drake::systems::Context<double>* plant_context,
                    std::set<RUNNING_FSM_STATE>& impact_states,
                    double near_impact_threshold = 0, double tau = 0.0025,
                    BLEND_FUNC blend_func = SIGMOID);
@@ -34,15 +35,15 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_clock() const {
     return this->get_output_port(clock_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_impact_info() const {
+  const drake::systems::OutputPort<double>& get_output_port_impact_info()
+      const {
     return this->get_output_port(impact_info_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_contact_scheduler()
       const {
     return this->get_output_port(contact_scheduler_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_debug_info()
-      const {
+  const drake::systems::OutputPort<double>& get_output_port_debug_info() const {
     return this->get_output_port(debug_port_);
   }
 
@@ -76,7 +77,8 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   double tau_;
   const BLEND_FUNC blend_func_;
 
-  //  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* plant_context_;
 
   /// contains pairs (start of fsm, fsm_state)
   /// the order of the vector goes: last transition, next upcoming three
@@ -93,6 +95,7 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   // estimates of state durations for stance and flight in seconds
   drake::systems::DiscreteStateIndex nominal_state_durations_index_;
   drake::systems::DiscreteStateIndex transition_times_index_;
+  drake::systems::DiscreteStateIndex ground_height_index_;
 
   drake::systems::AbstractStateIndex upcoming_transitions_index_;
 

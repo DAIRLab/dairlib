@@ -19,6 +19,8 @@ cc_library(
     deps = [
         "//lcmtypes:lcmt_robot",
         "//common",
+        "//multibody:utils",
+        "//examples/Cassie:cassie_utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],

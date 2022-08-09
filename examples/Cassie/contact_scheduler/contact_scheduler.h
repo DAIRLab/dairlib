@@ -21,7 +21,7 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
  public:
   ContactScheduler(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* plant_context,
-                   std::set<RUNNING_FSM_STATE>& impact_states,
+                   std::set<RUNNING_FSM_STATE> impact_states,
                    double near_impact_threshold = 0, double tau = 0.0025,
                    BLEND_FUNC blend_func = SIGMOID);
 

@@ -14,7 +14,7 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
 w_input_reg: 0.001
 w_soft_constraint: 100
-x_offset: -0.02
+x_offset: 0.06
 relative_feet: true
 
 mu: 0.4
@@ -29,7 +29,7 @@ hip_yaw_kd: 5
 
 impact_threshold: 0.050
 impact_tau: 0.005
-landing_delay: 0.000
+landing_delay: 0.045
 
 CoMW:
   [20,    0,    0,

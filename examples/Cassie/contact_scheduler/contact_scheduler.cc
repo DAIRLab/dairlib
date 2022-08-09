@@ -1,6 +1,7 @@
 #include "examples/Cassie/contact_scheduler/contact_scheduler.h"
 
 #include <iostream>
+#include <utility>
 
 #include <drake/math/saturate.h>
 
@@ -29,12 +30,12 @@ using systems::OutputVector;
 
 ContactScheduler::ContactScheduler(const MultibodyPlant<double>& plant,
                                    Context<double>* plant_context,
-                                   std::set<RUNNING_FSM_STATE>& impact_states,
+                                   std::set<RUNNING_FSM_STATE> impact_states,
                                    double near_impact_threshold, double tau,
                                    BLEND_FUNC blend_func)
     : plant_(plant),
       plant_context_(plant_context),
-      impact_states_(impact_states),
+      impact_states_(std::move(impact_states)),
       near_impact_threshold_(near_impact_threshold),
       tau_(tau),
       blend_func_(blend_func) {

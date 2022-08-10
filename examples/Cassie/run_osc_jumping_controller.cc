@@ -511,9 +511,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_output_port(0),
                   r_foot_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
-                  left_toe_angle_traj_gen->get_fsm_input_port());
+                  left_toe_angle_traj_gen->get_input_port_fsm());
   builder.Connect(fsm->get_output_port(0),
-                  right_toe_angle_traj_gen->get_fsm_input_port());
+                  right_toe_angle_traj_gen->get_input_port_fsm());
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),

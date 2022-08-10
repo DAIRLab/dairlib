@@ -26,7 +26,7 @@ class FlightToeAngleTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_port_);
   }
 
-  const drake::systems::InputPort<double>& get_fsm_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
   }
 

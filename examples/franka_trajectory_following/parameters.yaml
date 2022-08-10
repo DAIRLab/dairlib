@@ -69,10 +69,10 @@ enable_contact: 1
 ball_stddev: 0.0001 # standard deviation of 0-mean noise on ball state estimation
 
 # gaiting parameters
-period: 6   #2.5
+period: 4  #2.5
 duty_cycle: 0.6 #0.75
 duty_cycle_upwards_ratio: 0.33 # need better name here
-gait_parameters: [0.025, 0.0901, 0.0861, 0.0841] # try playing with first param here
+gait_parameters: [0.025, 0.0951, 0.0911, 0.0891] # try playing with first param here
 # gait parameters represent height above the table
 
 # filters

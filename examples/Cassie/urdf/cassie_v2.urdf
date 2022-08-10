@@ -713,8 +713,8 @@
     <parent link="knee_left" />
     <child link="shin_left" />
     <axis xyz="0 0 1" />
-    <limit lower="-.35" upper="0.35"/>
-    <dynamics damping=".1" />
+    <limit lower="-.35" upper="0.035"/>
+    <dynamics damping=".05" />
   </joint>
 
   <joint name="knee_joint_right" type="revolute">
@@ -722,8 +722,8 @@
     <parent link="knee_right" />
     <child link="shin_right" />
     <axis xyz="0 0 1" />
-    <limit lower="-.35" upper="0.35"/>
-    <dynamics damping=".1" />
+    <limit lower="-.35" upper="0.035"/>
+    <dynamics damping=".05" />
   </joint>
 
 

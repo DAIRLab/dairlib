@@ -16,7 +16,7 @@ class TimeVisualizer(object):
         self._pelvis_velocity = []
         self._subscriber = None
         # Number of messages used to average for real time factor.
-        self._num_msg_for_average = 50
+        self._num_msg_for_average = 20
 
         self.set_enabled(True)
 
@@ -55,7 +55,9 @@ class TimeVisualizer(object):
     def handle_message(self, msg):
         msg_time = msg.utime * 1e-6  # convert from microseconds
         pelvis_height = (msg.position)[6]  # convert from microseconds
-        pelvis_velocity = np.linalg.norm((msg.velocity)[3:5])  # convert from microseconds
+        pelvis_velocity = np.linalg.norm((msg.velocity)[3:4])  # convert from microseconds
+        # pelvis_height = (msg.position)[2]  # convert from microseconds
+        # pelvis_velocity = np.linalg.norm((msg.velocity)[0:2])  # convert from microseconds
         self._real_time.append(time.time())
         self._msg_time.append(msg_time)
         self._pelvis_velocity.append(pelvis_velocity)

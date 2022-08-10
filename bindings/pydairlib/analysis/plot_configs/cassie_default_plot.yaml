@@ -22,7 +22,7 @@ plot_joint_velocities: false
 plot_measured_efforts: true
 plot_commanded_efforts: true
 plot_contact_forces: false
-special_positions_to_plot: [ ]
+special_positions_to_plot: ['knee_joint_left', 'knee_joint_right']
 special_velocities_to_plot: [ ]
 special_efforts_to_plot: [ ]
 
@@ -36,9 +36,10 @@ pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
 plot_qp_costs: true
-plot_tracking_costs: true
+plot_tracking_costs: false
 plot_qp_solutions: true
 plot_qp_solve_time: true
+plot_active_tracking_datas: false
 tracking_datas_to_plot:
   alip_com_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'vel' ] }
   swing_ft_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'accel' ] }

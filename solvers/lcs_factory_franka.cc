@@ -251,6 +251,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 
   LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs);
 
+
 //    std::cout << "dstahp" << std::endl;
 //  std::cout << c_lcs[0] << std::endl;
 //  std::cout << "dstahp" << std::endl;

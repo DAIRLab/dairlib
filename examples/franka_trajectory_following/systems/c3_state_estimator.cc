@@ -86,9 +86,8 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
   double timestamp = ball_position.utime * 1.0e-6;
   
   if (id != prev_id){
-    if (!std::isnan(ball_position.xyz[0])){
-      double dt = timestamp - prev_time;
-
+    double dt = timestamp - prev_time;
+    if (!std::isnan(ball_position.xyz[0]) && dt > 1e-9){
       /// estimate position
       Vector3d prev_position = state->get_discrete_state(p_idx_).value();
       p_history.push_back(Vector3d(
@@ -134,6 +133,8 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
   const drake::AbstractValue* input = this->EvalAbstractInput(context, franka_input_port_);
   DRAKE_ASSERT(input != nullptr);
   const auto& franka_output = input->get_value<dairlib::lcmt_robot_output>();
+
+
 
   /// read in estimates froms states
   Vector3d ball_position = context.get_discrete_state(p_idx_).value();

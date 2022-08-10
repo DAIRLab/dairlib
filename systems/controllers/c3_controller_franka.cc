@@ -245,6 +245,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
 
+//  std::cout << "vel" << std::endl;
+//  std::cout << v << std::endl;
+
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
   state << end_effector, q_plant.tail(7), end_effector_dot, v_plant.tail(6);
 
@@ -303,6 +306,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
+
 
   /// update autodiff
   VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +

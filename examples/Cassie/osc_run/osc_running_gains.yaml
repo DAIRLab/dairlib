@@ -42,11 +42,11 @@ hip_yaw_kp: 100
 hip_yaw_kd: 5
 # Foot placement parameters
 #footstep_offset: -0.05
-footstep_sagital_offset: -0.03
-footstep_lateral_offset: 0.03 # drake
+footstep_sagital_offset: -0.08
+footstep_lateral_offset: 0.01 # drake
 mid_foot_height: 0.05
 FootstepKd:
-  [ 0.2,     0,  0,
+  [ 0.18,     0,  0,
     0,     0.7, 0,
     0,        0,  0 ]
 PelvisW:

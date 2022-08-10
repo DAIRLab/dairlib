@@ -2,6 +2,7 @@
 #include <string>
 
 #include <gflags/gflags.h>
+#include <dairlib/lcmt_contact_timing.hpp>
 
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -15,8 +16,8 @@
 namespace dairlib {
 
 using drake::systems::TriggerType;
-using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::TriggerTypeSet;
+using drake::systems::lcm::LcmPublisherSystem;
 
 DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
               "The name of the channel which receives state");
@@ -26,7 +27,13 @@ DEFINE_string(switch_channel, "INPUT_SWITCH",
 DEFINE_string(new_channel, "PD_CONTROL",
               "The name of the new lcm channel that dispatcher_in listens to "
               "after switch");
-DEFINE_double(trigger_state, -1.0, " the period of TimeBasedFiniteStateMachine");
+DEFINE_string(contact_schedule_channel, "CONTACT_TIMING",
+              "The name of the lcm channel that publishes contact timings");
+DEFINE_double(trigger_state, -1.0,
+              " the period of TimeBasedFiniteStateMachine");
+DEFINE_double(fsm_offset, 0.0,
+              "a constant that's used to determined the publish time see the "
+              "documentation below for details");
 DEFINE_double(blend_duration, 1.0,
               "Duration to blend efforts between previous and current "
               "controller command");
@@ -42,7 +49,6 @@ DEFINE_double(blend_duration, 1.0,
 /// `new_channel`:
 ///   @param trigger_state, the FSM state to switch on`
 ///
-
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -67,6 +73,8 @@ int do_main(int argc, char* argv[]) {
   // Create subscriber for lcm driven loop
   drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
                                                                FLAGS_channel_x);
+  drake::lcm::Subscriber<dairlib::lcmt_contact_timing> timing_sub(&lcm_local,
+                                                               FLAGS_contact_schedule_channel);
 
   // Wait for the first message and initialize the context time..
   drake::log()->info("Waiting for first lcm input message");
@@ -75,22 +83,26 @@ int do_main(int argc, char* argv[]) {
   const double t0 = input_sub.message().utime * 1e-6;
   diagram_context.SetTime(t0);
 
-  // Set the threshold time
-  double t_threshold = t0;
-  if (FLAGS_n_period_delay > 0) {
-    t_threshold = (floor(t0 / FLAGS_fsm_period) + FLAGS_n_period_delay) *
-        FLAGS_fsm_period +
-        FLAGS_fsm_offset;
+  drake::log()->info(diagram_ptr->get_name() + " started");
+
+  LcmHandleSubscriptionsUntil(&lcm_local,
+                              [&]() { return timing_sub.count() > 0; });
+  while(timing_sub.message().transition_states.back() != FLAGS_trigger_state){
+    timing_sub.clear();
+    LcmHandleSubscriptionsUntil(&lcm_local,
+                                [&]() { return timing_sub.count() > 0; });
   }
+  const double transition_time = timing_sub.message().transition_times.back() + FLAGS_fsm_offset;
+  std::cout << "transition time: " << transition_time << std::endl;
+
   // Create output message
   dairlib::lcmt_controller_switch msg;
   msg.channel = FLAGS_new_channel;
   msg.blend_duration = FLAGS_blend_duration;
 
-  // Run the simulation until it publishes the channel name `n_publishes` times
-  drake::log()->info(diagram_ptr->get_name() + " started");
+
   int pub_count = 0;
-  while (pub_count < FLAGS_n_publishes) {
+  while (pub_count < 1) {
     // Wait for input message.
     input_sub.clear();
     LcmHandleSubscriptionsUntil(&lcm_local,
@@ -98,7 +110,7 @@ int do_main(int argc, char* argv[]) {
 
     // Get message time from the input channel
     double t_current = input_sub.message().utime * 1e-6;
-    if (t_current >= t_threshold) {
+    if (t_current >= transition_time) {
       std::cout << "publish at t = " << t_current << std::endl;
 
       msg.utime = (int)input_sub.message().utime;

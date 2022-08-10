@@ -202,7 +202,7 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
       }
       double next_transition_time =
           stored_transition_time +
-          drake::math::saturate(time_to_touchdown, 0.05, 0.15);
+          drake::math::saturate(time_to_touchdown, 0.08, 0.12);
       state->get_mutable_discrete_state(nominal_state_durations_index_)[1] =
           next_transition_time - stored_transition_time;
       if (active_state == LEFT_FLIGHT) {

@@ -50,3 +50,13 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_binary(
+    name = "state_based_controller_switch",
+    srcs = ["state_based_controller_switch.cc"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//lcmtypes:lcmt_robot",
+        "@gflags",
+    ],
+)

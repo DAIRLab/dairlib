@@ -286,16 +286,16 @@ void DoMain() {
 
   land_mode.MakeConstraintRelative(left_toe_eval_ind, 0);
   land_mode.MakeConstraintRelative(left_toe_eval_ind, 1);
-  land_mode.MakeConstraintRelative(left_toe_eval_ind, 2);
+//  land_mode.MakeConstraintRelative(left_toe_eval_ind, 2);
   land_mode.MakeConstraintRelative(left_heel_eval_ind, 0);
   land_mode.MakeConstraintRelative(left_heel_eval_ind, 1);
-  land_mode.MakeConstraintRelative(left_heel_eval_ind, 2);
+//  land_mode.MakeConstraintRelative(left_heel_eval_ind, 2);
   land_mode.MakeConstraintRelative(right_toe_eval_ind, 0);
   land_mode.MakeConstraintRelative(right_toe_eval_ind, 1);
-  land_mode.MakeConstraintRelative(right_toe_eval_ind, 2);
+//  land_mode.MakeConstraintRelative(right_toe_eval_ind, 2);
   land_mode.MakeConstraintRelative(right_heel_eval_ind, 0);
   land_mode.MakeConstraintRelative(right_heel_eval_ind, 1);
-  land_mode.MakeConstraintRelative(right_heel_eval_ind, 2);
+//  land_mode.MakeConstraintRelative(right_heel_eval_ind, 2);
 
   auto all_modes = DirconModeSequence<double>(plant);
   all_modes.AddMode(&crouch_mode);
@@ -346,6 +346,8 @@ void DoMain() {
     // target nonlinear constraint violation
     prog.SetSolverOption(id, "Major optimality tolerance",
                          1e-5 / FLAGS_cost_scaling);
+//    prog.SetSolverOption(id, "Major optimality tolerance",
+//                         1e-5);
 
     // target complementarity gap
     prog.SetSolverOption(id, "Major feasibility tolerance", tol);
@@ -445,7 +447,7 @@ void SetKinematicConstraints(Dircon<double> *trajopt,
 
   // Standing constraints
   double rest_height = FLAGS_start_height;
-  double eps = 1e-6;
+  double eps = 1e-4;
 
   double midpoint = 0.045;
 
@@ -620,11 +622,11 @@ void SetKinematicConstraints(Dircon<double> *trajopt,
           -0.15 * VectorXd::Ones(1), -0.1 * VectorXd::Ones(1));
   auto left_foot_z_ground_constraint =
       std::make_shared<PointPositionConstraint<double>>(
-          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+          plant, "toe_left", pt_front_contact, Eigen::RowVector3d(0, 0, 1),
           VectorXd::Zero(1), 1.5 * VectorXd::Ones(1));
   auto right_foot_z_ground_constraint =
       std::make_shared<PointPositionConstraint<double>>(
-          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+          plant, "toe_right", pt_front_contact, Eigen::RowVector3d(0, 0, 1),
           VectorXd::Zero(1), 1.5 * VectorXd::Ones(1));
 
   for (int mode: {0, 1, 2}) {
@@ -829,7 +831,7 @@ void AddCosts(Dircon<double> *trajopt, const MultibodyPlant<double> &plant,
 
   MatrixXd Q = 0.02 * MatrixXd::Identity(n_v, n_v);
 //  MatrixXd Q = 0.02 * MatrixXd::Identity(n_v - 3, n_v - 3);
-  MatrixXd R = 1e-1 * MatrixXd::Identity(n_u, n_u);
+  MatrixXd R = 1e1 * MatrixXd::Identity(n_u, n_u);
   //  R(act_map.at("hip_roll_left_motor"), act_map.at("hip_roll_left_motor")) =
   //      5e-1;
   //  R(act_map.at("hip_roll_right_motor"), act_map.at("hip_roll_right_motor"))

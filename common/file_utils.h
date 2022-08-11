@@ -13,4 +13,6 @@ Eigen::MatrixXd readCSV(const std::string & path);
 /// Write an Eigen Matrix into a CSV formatted file
 void writeCSV(const std::string& path, const Eigen::MatrixXd& M);
 
+void appendCSV(const std::string& path, const Eigen::MatrixXd& M);
+
 }  // namespace dairlib

@@ -47,4 +47,12 @@ void writeCSV(const std::string& path, const MatrixXd& M) {
   outfile.close();
 }
 
+void appendCSV(const std::string& path, const MatrixXd& M) {
+  ofstream outfile;
+  outfile.open(path, std::ios_base::app);
+  outfile << M.format(CSVFormat);
+  outfile << "\n";
+  outfile.close();
+}
+
 }  // namespace dairlib

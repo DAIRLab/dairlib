@@ -124,6 +124,15 @@ cc_binary(
 )
 
 cc_binary(
+    name = "find_initial_states",
+    srcs = ["find_initial_states.cc"],
+    deps = [
+        ":cassie_fixed_point_solver",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_lqr_balancing",
     srcs = ["run_lqr_balancing.cc"],
     deps = [

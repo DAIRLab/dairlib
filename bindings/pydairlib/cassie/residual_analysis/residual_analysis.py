@@ -13,7 +13,7 @@ import scipy.io
 import cvxpy as cp
 from cassie_model import CassieSystem
 from utils import *
-from plot_utlis import PlotViewlizer, plot_spring_force_vs_q, plot_spring_force_vs_time
+from plot_utlis import *
 from data_processor import DataProcessor
 
 class CaaiseSystemTest():

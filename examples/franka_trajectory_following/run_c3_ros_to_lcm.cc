@@ -5,6 +5,8 @@
 #include <memory>
 #include <signal.h>
 #include <string>
+#include <gflags/gflags.h>
+
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -37,21 +39,29 @@ void SigintHandler(int sig) {
   exit(sig);
 }
 
+DEFINE_string(joint_channel, "/c3/joint_states",
+              "Rostopic for receiving joint state info from Franka. "
+              "Use /c3/joint_states for actual experiments (1000hz channel), and "
+              "use /franka_control_interface/joint_states for debugging (100hz channel)."
+              "Note that the default rate of the franka_control_interface is 30hz, "
+              "but this rate has been overridden to be 100hz on the franka computer");
+
 namespace dairlib {
 
 int DoMain(int argc, char* argv[]){
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   ros::init(argc, argv, "run_c3_ros_to_lcm");
   ros::NodeHandle node_handle;
 
   drake::lcm::DrakeLcm drake_lcm;
-
   DiagramBuilder<double> builder;
 
   /* -------------------------------------------------------------------------------------------*/
   /// convert franka joint states to lcm
   auto franka_subscriber =
       builder.AddSystem(RosSubscriberSystem<sensor_msgs::JointState>::Make(
-          "/c3/joint_states", &node_handle));
+          FLAGS_joint_channel, &node_handle));
   auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(14, 13, 7));  
   
   // change this to output correctly (i.e. when ros subscriber gets new message)

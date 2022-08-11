@@ -1,17 +1,13 @@
 # Note: Run this script AFTER the realsense camera has been turned on
 # and after start logging
 
-import sys
 import rospy
 import cv2
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-import numpy as np
-import os
-import glob
-from datetime import date
 import subprocess
 import time
+from franka_logging_utils import get_most_recent_logs
 
 class Recorder:
   def __init__(self):
@@ -21,19 +17,7 @@ class Recorder:
     self.frame = 0
 
     ''' directory paths '''
-    curr_date = date.today().strftime("%m_%d_%y")
-    year = date.today().strftime("%Y")
-    self.logdir = "{}/adam_ws/logs/{}/{}".format(os.getenv('HOME'), year, curr_date)
-    self.dair = str(os.getenv('DAIR_PATH'))
-
-    ''' locate most recent log '''
-    os.chdir(self.logdir)
-    current_logs = sorted(glob.glob('*'))
-    if current_logs[-1] == 'log_descriptions.txt':
-      last_log = int(current_logs[-2])
-    else:
-      last_log = int(current_logs[-1])
-    self.log_num = "{:02}".format(last_log)
+    self.logdir, self.log_num = get_most_recent_logs()
 
     ''' remove existing frame dir if applicable and create new frames dir '''
     self.frames_dir = "{}/{}/frames".format(self.logdir, self.log_num)

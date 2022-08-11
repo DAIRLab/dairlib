@@ -1,28 +1,14 @@
 import subprocess
 import os
-import glob
-import codecs
 import sys
-from datetime import date
+from franka_logging_utils import get_most_recent_logs
 
 def main():
   ''' set up log directory paths '''
   if len(sys.argv) == 1:
-    curr_date = date.today().strftime("%m_%d_%y")
-    year = date.today().strftime("%Y")
-    logdir = "{}/adam_ws/logs/{}/{}".format(os.getenv('HOME'), year, curr_date)
-
-    os.chdir(logdir)
-    current_logs = sorted(glob.glob('*'))
-    if current_logs:
-        if current_logs[-1] == 'log_descriptions.txt':
-            last_log = int(current_logs[-2])
-        else:
-            last_log = int(current_logs[-1])
-        log_num = "{:02}".format(last_log)
-    else:
-        log_num = '00'
+    logdir, log_num = get_most_recent_logs()
   else:
+    # process frames in directory passed in through cmd line
     filename = sys.argv[1]
     path_components = os.path.normpath(filename).split(os.sep)
     log_num = path_components[-2]
@@ -33,10 +19,14 @@ def main():
       logdir += '/{}'.format(comp)
   framesdir = "{}/{}/frames".format(logdir, log_num)
 
+  if log_num is None:
+      print("Did not find logs in {}".format(logdir))
+      return
+
   print("Processing frames in " + framesdir)
   fps = 30
   os.chdir(framesdir)
-  subprocess.Popen(['ffmpeg', '-r', str(fps), '-f', 'image2', \
+  subprocess.call(['ffmpeg', '-r', str(fps), '-f', 'image2', \
     '-s', '640x480', '-i', 'frame%04d.jpg', '-vcodec', 'libx264', \
     '-crf', '25', '-pix_fmt', 'yuv420p', '../video{}.mp4'.format(log_num)])
   print("Finished processing video")

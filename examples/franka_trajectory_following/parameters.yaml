@@ -26,7 +26,7 @@ G: 0.01
 U_default: 1
 U_pos_vel: 10           # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
-q_init_finger: [0, 0, 0.051] # TODO: Tune this! (used to be 0.7)
+q_init_finger: [0, 0, 0.0775] # TODO: tune this
 #q_init_finger: [0, 0, 0.0399] # parameters that work for wrong EE model
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
@@ -56,11 +56,11 @@ lead_angle: 20 # angle in degrees
 enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
 
 # geometry parameters
-ball_radius: 0.0315           # changes need to be consistent with urdf AND vision
-finger_radius: 0.0195         # changes need to be consistent with BOTH urdfs
-EE_offset: [0, 0, 0.0153]     # changes need to be consistent with urdf
-table_offset: -0.0265         # chances need to be consistent with BOTH urdfs AND vision, 0.0235
-# table_offset: -0.0193         # chances need to be consistent with BOTH urdfs AND vision
+ball_radius: 0.0315           # changes need to be consistent with sphere urdf, geometry mesh, AND vision
+finger_radius: 0.0195         # changes need to be consistent with franka_box and model urdfs
+EE_offset: [0, 0, 0.0153]     # changes need to be consistent with franka_box urdf
+table_offset: -0.0265         # chances need to be consistent with franka_box, model urdf, AND vision
+model_table_offset: -0.0265   # changes need to be consistent with model urdf
 
 # Misc
 contact_threshold: 0.01

@@ -38,7 +38,7 @@ group "5.[SIM] Impedance Experiments" {
         host = "localhost";
     }
     cmd "b.Simulator" {
-        exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm_cc";
+        exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm";
         host = "localhost";
     }
     cmd "c.Sim Visualizer" {

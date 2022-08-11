@@ -3,6 +3,11 @@
 
 package(default_visibility = ["//visibility:public"])
 
+py_library(
+    name = "franka_logging_utils",
+    srcs = ["franka_logging_utils.py"],
+)
+
 py_binary(
     name = "start_logging",
     srcs = ["start_logging.py"],
@@ -31,4 +36,12 @@ py_binary(
 py_binary(
     name = "process_frames",
     srcs = ["process_frames.py"],
+)
+py_binary(
+    name = "update_urdfs",
+    srcs = ["update_urdfs.py"],
+    deps = [
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
 )

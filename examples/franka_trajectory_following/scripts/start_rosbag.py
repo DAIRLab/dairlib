@@ -1,20 +1,18 @@
 import subprocess
 import os
 import glob
-import codecs
-from datetime import date
 import time
+from franka_logging_utils import get_most_recent_logs
 
 def main():
-
-    curr_date = date.today().strftime("%m_%d_%y")
-    year = date.today().strftime("%Y")
-    logdir = "{}/adam_ws/logs/{}/{}".format(os.getenv('HOME'), year, curr_date)
-    dair = str(os.getenv('DAIR_PATH'))
-
-    # sleep for 0.2 seconds to ensure new log directory is finished being
-    # created by start_logging
-    time.sleep(0.2)
+    # sleep for 0.1 seconds to ensure new log directory is finished being
+    # created by start_logging.py
+    time.sleep(0.1)
+    logdir, log_num = get_most_recent_logs()
+    if log_num is None:
+        print("Did not find logs in {}".format(logdir))
+        return
+    
     os.chdir(logdir)
     current_logs = sorted(glob.glob('*'))
     if current_logs:

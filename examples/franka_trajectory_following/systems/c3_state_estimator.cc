@@ -7,6 +7,9 @@ using drake::systems::State;
 using drake::systems::EventStatus;
 using drake::systems::BasicVector;
 using drake::systems::Context;
+using drake::math::RotationMatrix;
+using Eigen::Quaternion;
+
 
 namespace dairlib {
 namespace systems {
@@ -25,8 +28,11 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
   initial_position(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
   initial_position(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180);
   initial_position(2) = param_.ball_radius + param_.table_offset;
+  VectorXd initial_orientation = VectorXd::Zero(4);
+  initial_orientation << 1, 0, 0, 0;
 
   p_idx_ = this->DeclareDiscreteState(initial_position);
+  orientation_idx_ = this->DeclareDiscreteState(initial_orientation);
   v_idx_ = this->DeclareDiscreteState(3);         // automatically initialized to all 0s
   w_idx_ = this->DeclareDiscreteState(3);         // automatically initialized to all 0s
 
@@ -34,7 +40,7 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
     drake::Value<std::deque<Vector3d>>(
       (size_t) p_filter_length_,
       initial_position));
-      
+  
   v_history_idx_ = this->DeclareAbstractState(
     drake::Value<std::deque<Vector3d>>(
       (size_t) v_filter_length_,
@@ -42,6 +48,7 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
 
   prev_time_idx_ = this->DeclareAbstractState(
     drake::Value<double>(0));
+  
   prev_id_idx_ = this->DeclareAbstractState(
     drake::Value<int>(-1));
   
@@ -100,7 +107,6 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
       }
       state->get_mutable_discrete_state(p_idx_).get_mutable_value() << estimated_position;
 
-
       /// estimate velocity
       v_history.push_back(
         (estimated_position - prev_position) / dt);
@@ -115,8 +121,18 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
       ///  estimate angular velocity
       double ball_radius = param_.ball_radius;
       Vector3d r_ball(0, 0, ball_radius);
-      state->get_mutable_discrete_state(w_idx_).get_mutable_value() << 
-        r_ball.cross(estimated_velocity) / (ball_radius * ball_radius);
+      Vector3d w = r_ball.cross(estimated_velocity) / (ball_radius * ball_radius);
+      state->get_mutable_discrete_state(w_idx_).get_mutable_value() << w;
+
+      /// numerically integrate angular velocity to get orientation
+      VectorXd orientation = state->get_discrete_state(orientation_idx_).value();
+      Quaternion<double> quaternion(orientation(0), orientation(1), orientation(2), orientation(3));
+      RotationMatrix<double> curr_orientation(quaternion);
+      RotationMatrix<double> rotation = this->RodriguesFormula(w / w.norm(), w.norm() * dt);
+      VectorXd new_orientation = (rotation * curr_orientation).ToQuaternionAsVector4();
+      state->get_mutable_discrete_state(orientation_idx_).get_mutable_value() 
+        << new_orientation;
+
     }
     /// update prev_time
     prev_time = timestamp;
@@ -138,6 +154,7 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
 
   /// read in estimates froms states
   Vector3d ball_position = context.get_discrete_state(p_idx_).value();
+  Vector3d ball_orientation = context.get_discrete_state(orientation_idx_).value();
   Vector3d ball_velocity = context.get_discrete_state(v_idx_).value();
   Vector3d angular_velocity = context.get_discrete_state(w_idx_).value();
 
@@ -147,7 +164,7 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
   for (int i = 0; i < num_franka_positions_; i++){
     positions(i) = franka_output.position[i];    
   }
-  positions.tail(num_ball_positions_) << 1, 0, 0, 0, ball_position;
+  positions.tail(num_ball_positions_) << ball_orientation, ball_position;
 
   VectorXd velocities = VectorXd::Zero(
     num_franka_velocities_ + num_ball_velocities_);
@@ -176,6 +193,19 @@ void C3StateEstimator::OutputEfforts(const drake::systems::Context<double>& cont
   }
 
   output->SetFromVector(efforts);  
+}
+
+RotationMatrix<double> C3StateEstimator::RodriguesFormula(const Vector3d& axis, double theta) const {
+  double w1 = axis(0);
+  double w2 = axis(1);
+  double w3 = axis(2);
+  
+  Eigen::Matrix3d Sw;
+  Sw << 0, -w3, w2,
+        w3, 0, -w1,
+        -w1, w1, 0;
+  Eigen::Matrix3d R = MatrixXd::Identity(3,3) + sin(theta)*Sw + (1-cos(theta))*Sw*Sw;
+  return RotationMatrix<double>(R);
 }
 
 /* ------------------------------------------------------------------------------ */

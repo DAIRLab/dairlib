@@ -8,6 +8,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <Eigen/Geometry> 
 
 #include "systems/framework/output_vector.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -16,6 +17,8 @@
 
 #include <drake/systems/framework/continuous_state.h>
 #include <drake/systems/framework/vector_base.h>
+#include <drake/math/rotation_matrix.h>
+
 #include "examples/franka_trajectory_following/c3_parameters.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
@@ -52,11 +55,13 @@ class C3StateEstimator : public LeafSystem<double> {
                     BasicVector<double>* output) const;
   void OutputEfforts(const drake::systems::Context<double>& context,
                     BasicVector<double>* output) const;
+  drake::math::RotationMatrix<double> RodriguesFormula(const Vector3d& axis, double theta) const;
   
   C3Parameters param_;
 
   // deques for tracking history
   int p_idx_;
+  int orientation_idx_;
   int v_idx_;
   int w_idx_;
   int p_history_idx_;

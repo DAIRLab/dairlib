@@ -1,27 +1,15 @@
-import subprocess
 import os
-import glob
-import codecs
 import sys
 import select
-from datetime import date
-
+from franka_logging_utils import get_most_recent_logs
 
 def main():
+    logdir, log_num = get_most_recent_logs()
+    if log_num is None:
+        print("Did not find logs in {}".format(logdir))
+        return
 
-    # Make the log folder if one doesn't already exist 
-    curr_date = date.today().strftime("%m_%d_%y")
-    year = date.today().strftime("%Y")
-    logdir = "{}/adam_ws/logs/{}/{}".format(os.getenv('HOME'), year, curr_date)
-    
     os.chdir(logdir)
-    current_logs = sorted(glob.glob('*'))
-    if current_logs[-1] == 'log_descriptions.txt':
-      last_log = int(current_logs[-2])
-    else:
-      last_log = int(current_logs[-1])
-    log_num = "{:02}".format(last_log)
-
     description = ''
     with open('log_descriptions.txt', 'a') as f:
         f.write(log_num + ": ")

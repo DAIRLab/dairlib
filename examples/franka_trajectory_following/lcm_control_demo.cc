@@ -119,7 +119,7 @@ int DoMain(int argc, char* argv[]){
   
   q(0) = param.q_init_finger(0);
   q(1) = param.q_init_finger(1);
-  q(2) = param.q_init_finger(2);
+  q(2) = param.q_init_finger(2) + param.table_offset;
 
   q[q_map["base_qw"]] = param.q_init_ball_c3(0);
   q[q_map["base_qx"]] = param.q_init_ball_c3(1);

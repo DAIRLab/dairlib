@@ -67,6 +67,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(finger_radius));
     a->Visit(DRAKE_NVP(EE_offset));
     a->Visit(DRAKE_NVP(table_offset));
+    a->Visit(DRAKE_NVP(model_table_offset));
 
     // misc
     a->Visit(DRAKE_NVP(contact_threshold));
@@ -141,6 +142,7 @@ struct C3Parameters {
   double finger_radius;
   VectorXd EE_offset;
   double table_offset;
+  double model_table_offset;
 
   // misc
   double contact_threshold;

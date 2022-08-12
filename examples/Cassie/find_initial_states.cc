@@ -1,11 +1,13 @@
 #include <cmath>
-
 #include "examples/Cassie/cassie_fixed_point_solver.h"
+
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_solvers.h"
 #include "solvers/constraint_factory.h"
 #include "common/file_utils.h"
 
+#include "drake/multibody/inverse_kinematics/unit_quaternion_constraint.h"
+#include "drake/solvers/ipopt_solver.h"
 #include "drake/solvers/solve.h"
 #include "drake/solvers/snopt_solver.h"
 
@@ -78,9 +80,9 @@ Eigen::VectorXd SolveIK(
   auto v = program.NewContinuousVariables(n_v, "v");
 
   // Equation of motion
-  auto vdot = program.NewContinuousVariables(n_v, "vdot");
-  auto constraint = std::make_shared<VdotConstraint>(plant, evaluators);
-  program.AddConstraint(constraint, {q, v, u, lambda, vdot});
+//  auto vdot = program.NewContinuousVariables(n_v, "vdot");
+//  auto constraint = std::make_shared<VdotConstraint>(plant, evaluators);
+//  program.AddConstraint(constraint, {q, v, u, lambda, vdot});
 
   // Zero velocity on feet
   multibody::KinematicEvaluatorSet<double> contact_evaluators(plant);
@@ -92,11 +94,13 @@ Eigen::VectorXd SolveIK(
       std::make_shared<BodyPointVelConstraint>(plant, contact_evaluators);
   program.AddConstraint(contact_vel_constraint, {q, v});
 
-  // Fix floating base height
+  // Fix floating base
+  program.AddBoundingBoxConstraint(q_guess.head(4), q_guess.head(4), q.head(4));
+
   program.AddBoundingBoxConstraint(height, height,
                                    q(positions_map.at("base_z")));
 
-  program.AddBoundingBoxConstraint(-10, 10, v);
+  program.AddBoundingBoxConstraint(-20, 20, v);
 
   //  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wx")));
   //  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wy")));
@@ -106,32 +110,37 @@ Eigen::VectorXd SolveIK(
                                    v(vel_map.at("base_vx")));
   program.AddBoundingBoxConstraint(pelvis_vel(1), pelvis_vel(1),
                                    v(vel_map.at("base_vy")));
-  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_vz")));
+  program.AddBoundingBoxConstraint(-0.1, 0.1, v(vel_map.at("base_vz")));
 
 
   // Add some contact force constraints: Lorentz version
   double mu = 0.8;
-  program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
-                        lambda.segment(2, 3));
-  program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
-                        lambda.segment(5, 3));
-  program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
-                        lambda.segment(8, 3));
-  program.AddConstraint(solvers::CreateConicFrictionConstraint(mu),
-                        lambda.segment(11, 3));
+  int num_linear_faces = 8;
+  program.AddConstraint(
+      solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+      lambda.segment(2, 3));
+  program.AddConstraint(
+      solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+      lambda.segment(5, 3));
+  program.AddConstraint(
+      solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+      lambda.segment(8, 3));
+  program.AddConstraint(
+      solvers::CreateLinearFrictionConstraint(mu, num_linear_faces),
+      lambda.segment(11, 3));
 
   // Add minimum normal forces on all contact points
-  program.AddLinearConstraint(lambda(4) >= 20);
-  program.AddLinearConstraint(lambda(7) >= 20);
-  program.AddLinearConstraint(lambda(10) >= 20);
-  program.AddLinearConstraint(lambda(13) >= 20);
+  program.AddLinearConstraint(lambda(4) >= 40);
+  program.AddLinearConstraint(lambda(7) >= 40);
+  program.AddLinearConstraint(lambda(10) >= 40);
+  program.AddLinearConstraint(lambda(13) >= 40);
 
   // Add costs
-  double s = 100;
+  double s = 10;
   auto q_cost_binding = program.AddQuadraticErrorCost(
       s * MatrixXd::Identity(q.size(), q.size()), q_guess, q);
-  auto u_cost_binding = program.AddQuadraticErrorCost(
-      s * 0.001 * MatrixXd::Identity(u.size(), u.size()), u_guess, u);
+//  auto u_cost_binding = program.AddQuadraticErrorCost(
+//      s * 0.001 * MatrixXd::Identity(u.size(), u.size()), u_guess, u);
   auto v_cost_binding = program.AddQuadraticErrorCost(
       s * .1 * MatrixXd::Identity(v.size() - 6, v.size() - 6),
       v_guess.tail(n_v - 6), v.tail(n_v - 6));
@@ -144,31 +153,37 @@ Eigen::VectorXd SolveIK(
       0.01 * Eigen::VectorXd::Random(program.num_vars()));
   program.SetInitialGuess(q, q_guess);
   program.SetInitialGuess(v, v_guess);
-  program.SetInitialGuess(u, u_guess);
 
   // Snopt settings
-  // program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-  //                         "../snopt_test.out");
-  std::cout << "Save log to ../snopt_test.out\n";
-  program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
-  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance",
-                          1e-2);
-  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance",
-                          1e-4);
+  program.SetSolverOption(drake::solvers::IpoptSolver::id(),
+                          "print_level", 0);
+  program.SetSolverOption(drake::solvers::IpoptSolver::id(),
+      "tol", 1e-2);
+  program.SetSolverOption(drake::solvers::IpoptSolver::id(),
+                          "constr_viol_tol", 1e-4);
+//  program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+//                          "../snopt_test.out");
+//  program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
+//  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+//                          "Major optimality tolerance",
+//                          1e-2);
+//  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+//                          "Major feasibility tolerance",
+//                          1e-4);
 
-  std::cout << "Start solving" << std::endl;
-  auto start = std::chrono::high_resolution_clock::now();
-  //  drake::solvers::IpoptSolver ipopt_solver;
-  //  const auto result = ipopt_solver.Solve(program, guess);
-  const auto result = drake::solvers::Solve(program, program.initial_guess());
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "Solve time:" << elapsed.count() << std::endl;
+//  std::cout << "Start solving" << std::endl;
+//  auto start = std::chrono::high_resolution_clock::now();
+
+//  std::cout << program.initial_guess() << std::endl;
+  drake::solvers::IpoptSolver ipopt_solver;
+  const auto result = ipopt_solver.Solve(program, program.initial_guess());
+//  const auto result = drake::solvers::Solve(program, program.initial_guess());
+//  auto finish = std::chrono::high_resolution_clock::now();
+//  std::chrono::duration<double> elapsed = finish - start;
+//  std::cout << "Solve time:" << elapsed.count() << std::endl;
 
   std::cout << to_string(result.get_solution_result()) << std::endl;
-  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
+//  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
 
   VectorXd q_result = result.GetSolution(q);
   VectorXd v_result = result.GetSolution(v);
@@ -222,7 +237,7 @@ void FindInitialStates(
   Vector3d mid_to_toe_w = swing_points.col(0) - swing_points.col(3);
   Vector3d mid_to_heel_w = -mid_to_toe_w;
 
-  int n_heights = 4;
+  int n_heights = 5;
   int n_swing_radii = 5;
   int n_swing_angle = 5;
   int n_pelvis_vel_angle = 5;
@@ -230,18 +245,23 @@ void FindInitialStates(
 
   VectorXd heights = VectorXd::LinSpaced(
       n_heights, q(6) - height_offset_bound, q(6) + height_offset_bound);
+  std::cout << "Heights: " << heights.transpose() << "\n";
   VectorXd radii = VectorXd::LinSpaced(
       n_swing_radii, swing_foot_offset_bound_radius / n_swing_radii,
       swing_foot_offset_bound_radius);
+  std::cout << "Radii: " << radii.transpose() << "\n";
   VectorXd swing_angles = VectorXd::LinSpaced(
       n_swing_angle, 0,
       M_2_PI * (double) (n_swing_angle + 1) / (double) (n_swing_angle));
-  VectorXd pelvis_vel_anlges = VectorXd::LinSpaced(
+  std::cout << "SWA: " << swing_angles.transpose() << "\n";
+  VectorXd pelvis_vel_angles = VectorXd::LinSpaced(
       n_pelvis_vel_angle, 0,
       M_2_PI * (double) (n_pelvis_vel_angle + 1)
           / (double) (n_pelvis_vel_angle));
+  std::cout << "PVA: " << pelvis_vel_angles.transpose() << "\n";
   VectorXd pelvis_vel = VectorXd::LinSpaced(
       n_pelvis_vel, pelvis_vel_xy_bound / n_pelvis_vel, pelvis_vel_xy_bound);
+  std::cout << "V: " << pelvis_vel.transpose() << "\n";
 
   int sol_idx = 0;
   for (int idx_h = 0; idx_h < n_heights; idx_h++) {
@@ -253,9 +273,9 @@ void FindInitialStates(
             double r_sw = radii(idx_rsw);
             double a_sw = swing_angles(idx_asw);
             double v = pelvis_vel(idx_vp);
-            double ap = pelvis_vel_anlges(idx_ap);
+            double ap = pelvis_vel_angles(idx_ap);
             Vector3d swing_mid_pos_adjusted =
-                r_sw * Vector3d(cos(a_sw), sin(a_sw), 0);
+                swing_pos.col(2) + r_sw * Vector3d(cos(a_sw), sin(a_sw), 0);
             VectorXd solution = SolveIK(
                 plant, q, v_init, u_init, *context, stance_toe,
                 stance_heel, swing_toe, swing_heel, height,
@@ -294,7 +314,7 @@ int do_main(){
       -1.26584468e-01;
   FindInitialStates(plant, x.head(23), x.tail(22), VectorXd::Zero(10),
                     context.get(), LeftToeFront(plant), LeftToeRear(plant),
-                    RightToeFront(plant), RightToeRear(plant), 0.5, 0.25, 1.5,
+                    RightToeFront(plant), RightToeRear(plant), 0.05, 0.15, 1.0,
                     ".learning_data/ic_creation_test.csv");
   return 0;
 }

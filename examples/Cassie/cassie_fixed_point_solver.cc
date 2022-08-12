@@ -297,6 +297,11 @@ void VdotConstraint::EvaluateConstraint(
       plant_.num_positions() + plant_.num_velocities() + plant_.num_actuators(),
       evaluators_.count_full());
   const auto& vdot = vars.tail(plant_.num_velocities());
+
+  DRAKE_DEMAND(!x.hasNaN());
+  DRAKE_DEMAND(!u.hasNaN());
+  DRAKE_DEMAND(!lambda.hasNaN());
+
   multibody::SetContext<double>(plant_, x, u, context_.get());
 
   *y = vdot - evaluators_.EvalActiveSecondTimeDerivative(context_.get(), lambda)

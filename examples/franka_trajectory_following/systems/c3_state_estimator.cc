@@ -150,11 +150,9 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
   DRAKE_ASSERT(input != nullptr);
   const auto& franka_output = input->get_value<dairlib::lcmt_robot_output>();
 
-
-
   /// read in estimates froms states
   Vector3d ball_position = context.get_discrete_state(p_idx_).value();
-  Vector3d ball_orientation = context.get_discrete_state(orientation_idx_).value();
+  VectorXd ball_orientation = context.get_discrete_state(orientation_idx_).value();
   Vector3d ball_velocity = context.get_discrete_state(v_idx_).value();
   Vector3d angular_velocity = context.get_discrete_state(w_idx_).value();
 
@@ -175,7 +173,6 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
   
   VectorXd value = VectorXd::Zero(14+13);
   value << positions, velocities;
-
   output->SetFromVector(value);
 }
 

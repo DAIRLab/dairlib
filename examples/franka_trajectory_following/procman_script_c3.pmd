@@ -20,11 +20,6 @@ group "2.ROS" {
     }
 }
 
-cmd "3.safety" {
-    exec = "rosrun franka_safety safety.py";
-    host = "localhost";
-}
-
 group "4.ROS controlers" {
     cmd "a.move to start" {
         exec = "roslaunch franka_example_controllers move_to_start.launch robot_ip:=172.16.0.2 load_gripper:=false";
@@ -32,6 +27,10 @@ group "4.ROS controlers" {
     }
     cmd "b.ROS impedance" {
         exec = "roslaunch franka_example_controllers drake_impedance_controller.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "localhost";
+    }
+    cmd "c.control_node" {
+        exec = "roslaunch franka_control franka_control.launch robot_ip:=172.16.0.2 load_gripper:=false";
         host = "localhost";
     }
 }
@@ -99,7 +98,7 @@ group "8.Logging, Utils" {
         host = "localhost";
     }
     cmd "c.process_logs" {
-        exec = "bazel-bin/bindings/pydairlib/analysis/scripts/log_plotter_franka";
+        exec = "bazel-bin/bindings/pydairlib/analysis/log_plotter_franka";
         host = "localhost";
     }
     cmd "d.process_frames" {
@@ -111,10 +110,17 @@ group "8.Logging, Utils" {
         host = "localhost";
     }
 }
-
+cmd "3.safety" {
+    exec = "rosrun franka_safety safety.py";
+    host = "localhost";
+}
 cmd "9.lcmspy" {
     exec = "bazel-bin/lcmtypes/dair-lcm-spy";
     host = "localhost";
+}
+
+script "start_c3_cmds" {
+    start group "5.[HW] C3 Computer";
 }
 
 script "start_franka_cmds" {
@@ -134,10 +140,9 @@ script "start_franka_cmds" {
     start group "6.[HW] Franka Computer";
 }
 
-script "start_c3_cmds" {
-  start group "5.[HW] C3 Computer";
+script "stop_c3_cmds" {
+    stop group "5.[HW] C3 Computer";
 }
-
 
 script "stop_franka_cmds" {
     stop cmd "b.ROS impedance";
@@ -148,8 +153,4 @@ script "stop_franka_cmds" {
     stop cmd "b.start_filming";
     start cmd "c.process_logs";
     start cmd "d.process_frames";
-}
-
-script "stop_c3_cmds" {
-  stop group "5.[HW] C3 Computer";
 }

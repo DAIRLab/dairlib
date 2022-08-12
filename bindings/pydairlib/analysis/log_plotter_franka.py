@@ -56,12 +56,12 @@ def main():
     filename = "{}/{}/lcmlog-{}".format(logdir, log_num, log_num)
     print("Processing {}".format(filename))
     log = lcm.EventLog(filename, "r")
-    robot_output, robot_input, state_estimate = \
+    robot_output, robot_input = \
         get_log_data(log,                                       # log
                      franka_channels,                           # lcm channels
                      -1,                                        # end time
                      mbp_plots.load_default_franka_channels,    # processing callback
-                     plant, "FRANKA_ROS_OUTPUT", "FRANKA_INPUT")    # processing callback arguments
+                     plant, "FRANKA_OUTPUT", "FRANKA_INPUT")    # processing callback arguments
 
     # state_estimate = \
     #     get_log_data(log,                                       # log

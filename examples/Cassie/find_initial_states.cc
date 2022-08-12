@@ -1,4 +1,6 @@
+#include <gflags/gflags.h>
 #include <cmath>
+
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 
 #include "multibody/kinematic/world_point_evaluator.h"
@@ -6,10 +8,14 @@
 #include "solvers/constraint_factory.h"
 #include "common/file_utils.h"
 
-#include "drake/multibody/inverse_kinematics/unit_quaternion_constraint.h"
 #include "drake/solvers/ipopt_solver.h"
 #include "drake/solvers/solve.h"
 #include "drake/solvers/snopt_solver.h"
+
+DEFINE_string(csvloadpath, ".learning_data/hardware_ics.csv",
+              "csv to augment initial conditions from");
+DEFINE_string(csvsavepath, ".learning_data/augmented_hardware_ics.csv",
+              "csv path to save data to");
 
 namespace dairlib {
 
@@ -182,10 +188,10 @@ void FindInitialStates(
     std::pair<const Vector3d &, const Frame<double> &> stance_heel,
     std::pair<const Vector3d &, const Frame<double> &> swing_toe,
     std::pair<const Vector3d &, const Frame<double> &> swing_heel,
-    double height_offset_bound,
-    double swing_foot_offset_bound_radius,
-    double pelvis_vel_xy_bound,
-    std::string sol_file_path) {
+    double height_offset_bound, double swing_foot_offset_bound_radius,
+    double pelvis_vel_xy_bound, std::string sol_file_path,
+    int n_heights, int n_swing_radii, int n_swing_angle, int n_pelvis_vel_angle,
+    int n_pelvis_vel) {
 
   /*** Calulate the contact point positions at the original state ***/
   plant.SetPositions(context, q_init);
@@ -196,7 +202,7 @@ void FindInitialStates(
 
   VectorXd q = q_init;
   // subtract foot position in case of state estimate drift
-  q(6) -= stance_toe_pos(2);
+  q.segment(4, 3) -= stance_toe_pos;
 
   plant.SetPositions(context, q);
   plant.SetVelocities(context, v_init);
@@ -217,12 +223,6 @@ void FindInitialStates(
   Vector3d mid_to_toe_w = swing_points.col(0) - swing_points.col(3);
   Vector3d mid_to_heel_w = -mid_to_toe_w;
 
-  int n_heights = 5;
-  int n_swing_radii = 5;
-  int n_swing_angle = 5;
-  int n_pelvis_vel_angle = 5;
-  int n_pelvis_vel = 5;
-
   VectorXd heights = VectorXd::LinSpaced(
       n_heights, q(6) - height_offset_bound, q(6) + height_offset_bound);
   std::cout << "Heights: " << heights.transpose() << "\n";
@@ -232,12 +232,12 @@ void FindInitialStates(
   std::cout << "Radii: " << radii.transpose() << "\n";
   VectorXd swing_angles = VectorXd::LinSpaced(
       n_swing_angle, 0,
-      M_2_PI * (double) (n_swing_angle + 1) / (double) (n_swing_angle));
+      2 *M_PI * ((double) (n_swing_angle) / (double) (n_swing_angle + 1)));
   std::cout << "SWA: " << swing_angles.transpose() << "\n";
   VectorXd pelvis_vel_angles = VectorXd::LinSpaced(
       n_pelvis_vel_angle, 0,
-      M_2_PI * (double) (n_pelvis_vel_angle + 1)
-          / (double) (n_pelvis_vel_angle));
+      2 * M_PI * ((double) (n_pelvis_vel_angle)
+          / (double) (n_pelvis_vel_angle+1)));
   std::cout << "PVA: " << pelvis_vel_angles.transpose() << "\n";
   VectorXd pelvis_vel = VectorXd::LinSpaced(
       n_pelvis_vel, pelvis_vel_xy_bound / n_pelvis_vel, pelvis_vel_xy_bound);
@@ -276,37 +276,31 @@ void FindInitialStates(
   }
 }
 
-int do_main(){
-  std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+int do_main(int argc, char* argv[]){
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
   MultibodyPlant<double> plant(0.0);
   AddCassieMultibody(&plant, nullptr, true, urdf, true, false);
   plant.Finalize();
   auto context = plant.CreateDefaultContext();
-  VectorXd x(45);
-  x <<  9.99999994e-01, -9.75672206e-05,  6.00044143e-05,  1.51191670e-05,
-      1.64820876e-05, -6.69671293e-06,  9.50003136e-01,  2.07290598e-02,
-      -2.65128678e-05,  5.43385750e-01, -1.31539589e+00, -4.01696242e-02,
-      1.62053942e+00, -2.84294141e-02, -1.68171234e+00, -2.03198419e-02,
-      -3.21608639e-05,  5.43664121e-01, -1.31809820e+00, -3.73206371e-02,
-      1.62025623e+00, -2.91660067e-02, -1.68184813e+00, -1.92531741e-01,
-      6.27865751e-02,  2.79565936e-02,  7.43566473e-03, -6.64940231e-03,
-      7.30699664e-04,  2.01833534e-01, -2.64304714e-02, -1.50072302e-01,
-      6.71744632e-01, -5.43207028e-01,  1.34859689e-01,  3.61006843e-01,
-      -4.96650921e-02,  2.01542101e-01, -2.86009955e-02,  1.53678093e-01,
-      -2.00170497e+00,  2.19799862e+00, -1.57034350e-01, -2.83855002e-01,
-      -1.26584468e-01;
-  FindInitialStates(plant, x.head(23), x.tail(22), VectorXd::Zero(10),
-                    context.get(), LeftToeFront(plant), LeftToeRear(plant),
-                    RightToeFront(plant), RightToeRear(plant), 0.05, 0.15, 1.0,
-                    ".learning_data/ic_creation_test.csv");
+  auto initial_conditions_reader = CSVReader(FLAGS_csvloadpath);
+
+  while (initial_conditions_reader.has_next()) {
+    VectorXd x = initial_conditions_reader.next();
+    FindInitialStates(plant, x.head(23), x.tail(22), VectorXd::Zero(10),
+                      context.get(), LeftToeFront(plant), LeftToeRear(plant),
+                      RightToeFront(plant), RightToeRear(plant), 0.05, 0.15, 1.0,
+                      FLAGS_csvsavepath, 5, 5, 5, 5, 5);
+  }
+
   return 0;
 }
 
 }
 
 int main(int argc, char* argv[]) {
-  return dairlib::do_main();
+  return dairlib::do_main(argc, argv);
 }
 
 

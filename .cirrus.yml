@@ -37,7 +37,7 @@ build_focal_task:
 build_with_ros_task:
   timeout_in: 120m
   container:
-    dockerfile: install/bionic/ros/Dockerfile
+    dockerfile: install/focal/ros/Dockerfile
     cpu: 8
     memory: 24
   env:

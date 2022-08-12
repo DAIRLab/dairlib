@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 from pydairlib.common import plot_styler, plotting_utils
-from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost
+from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost, osc_regularlization_tracking_cost
 from pydairlib.multibody import MakeNameToPositionsMap, \
     MakeNameToVelocitiesMap, MakeNameToActuatorsMap, \
     CreateStateNameVectorFromMap, CreateActuatorNameVectorFromMap
@@ -124,9 +124,10 @@ def get_floating_base_velocity_in_body_frame(
 
 def process_osc_channel(data):
     t_osc = []
-    input_cost = []
-    accel_cost = []
-    soft_constraint_cost = []
+    if hasattr(data[0], 'regularization_cost_names'):
+        regularization_costs = osc_regularlization_tracking_cost(data[0].regularization_cost_names)
+    else:
+        regularization_costs = osc_regularlization_tracking_cost(['input_cost', 'acceleration_cost', 'soft_constraint_cost'])
     qp_solve_time = []
     u_sol = []
     lambda_c_sol = []
@@ -139,9 +140,12 @@ def process_osc_channel(data):
 
     for msg in data:
         t_osc.append(msg.utime / 1e6)
-        input_cost.append(msg.input_cost)
-        accel_cost.append(msg.acceleration_cost)
-        soft_constraint_cost.append(msg.soft_constraint_cost)
+        if hasattr(msg, 'regularization_cost_names'):
+            regularization_costs.append(msg.regularization_cost_names, msg.regularization_costs)
+        else:
+            regularization_cost_names = ['input_cost', 'acceleration_cost', 'soft_constraint_cost']
+            regularization_cost_list = [msg.input_cost, msg.acceleration_cost, msg.soft_constraint_cost]
+            regularization_costs.append(regularization_cost_names, regularization_cost_list)
         qp_solve_time.append(msg.qp_output.solve_time)
         u_sol.append(msg.qp_output.u_sol)
         lambda_c_sol.append(msg.qp_output.lambda_c_sol)
@@ -161,16 +165,17 @@ def process_osc_channel(data):
 
     tracking_cost_handler = osc_tracking_cost(osc_debug_tracking_datas.keys())
     for msg in data:
-        tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_cost)
+        if hasattr(msg, 'tracking_costs'):
+            tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_costs)
+        else:
+            tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_cost)
     tracking_cost = tracking_cost_handler.convertToNP()
 
     for name in osc_debug_tracking_datas:
         osc_debug_tracking_datas[name].convertToNP()
 
     return {'t_osc': np.array(t_osc),
-            'input_cost': np.array(input_cost),
-            'acceleration_cost': np.array(accel_cost),
-            'soft_constraint_cost': np.array(soft_constraint_cost),
+            'regularization_costs': regularization_costs,
             'qp_solve_time': np.array(qp_solve_time),
             'u_sol': np.array(u_sol),
             'lambda_c_sol': np.array(lambda_c_sol),
@@ -459,19 +464,21 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
 
 
 def plot_qp_costs(osc_debug, time_slice):
-    cost_keys = ['input_cost', 'acceleration_cost',
-                 'soft_constraint_cost']
+    regularization_cost = osc_debug['regularization_costs'].regularization_costs
+    data_dict = \
+        {key: val for key, val in regularization_cost.items()}
+    data_dict['t_osc'] = osc_debug['t_osc']
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
-        osc_debug,
+        data_dict,
         't_osc',
         time_slice,
-        cost_keys,
+        regularization_cost.keys(),
         {},
-        {key: [key] for key in cost_keys},
+        {key: [key] for key in regularization_cost.keys()},
         {'xlabel': 'Time',
          'ylabel': 'Cost',
-         'title': 'OSC QP Costs'}, ps)
+         'title': 'Regularization Costs'}, ps)
     return ps
 
 

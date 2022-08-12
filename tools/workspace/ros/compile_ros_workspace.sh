@@ -14,13 +14,30 @@ mkdir bundle_ws
 pushd bundle_ws
 mkdir src
 
-rosinstall_generator \
+DISTRO=$(lsb_release -c -s)
+
+if [ $DISTRO == "bionic" ]
+then
+  rosinstall_generator \
+    --deps \
+    --tar \
+    --flat \
+    $PACKAGES > ws.rosinstall
+  wstool init -j1 src ws.rosinstall
+elif [ $DISTRO == "focal" ]
+then
+  mkdir src
+  rosinstall_generator \
     --rosdistro noetic \
     --deps \
     --tar \
     --flat \
     $PACKAGES > ws.rosinstall
-vcs import src < ws.rosinstall
+  vcs import src < ws.rosinstall
+else
+  echo "${DISTRO} not supported for ROS with dairlib!"
+  exit 1
+fi
 
 catkin config \
     --install \

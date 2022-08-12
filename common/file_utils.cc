@@ -4,6 +4,7 @@
 
 using Eigen::MatrixXd;
 using Eigen::Matrix;
+using Eigen::VectorXd;
 using Eigen::Dynamic;
 using Eigen::Map;
 using Eigen::RowMajor;
@@ -17,6 +18,35 @@ const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
                                        Eigen::DontAlignCols, ", ", "\n");
 
 namespace dairlib {
+
+CSVReader::CSVReader(std::string filepath) {
+  indata_.open(filepath);
+}
+
+bool CSVReader::has_next() {
+  if (std::getline(indata_, next_line_)) {
+    has_next_ = true;
+    return true;
+  }
+  has_next_ = false;
+  return false;
+}
+
+Eigen::VectorXd CSVReader::next() {
+  if (!has_next_) {
+    throw std::logic_error("called next() when next line did not exist. "
+                           "Either has_next() has not been called first or "
+                           "you have reached the end of the CSV");
+  }
+  std::stringstream lineStream(next_line_);
+  std::vector<double> data;
+  string cell;
+  while(std::getline(lineStream, cell, ',')){
+    data.push_back(std::stod(cell));
+  }
+  return Map<const VectorXd>(data.data(), data.size());
+  has_next_ = false;
+}
 
 MatrixXd readCSV(const string & path) {
     ifstream indata;

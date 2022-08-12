@@ -166,7 +166,7 @@ def parse_log_folders_to_ds_states(folder_list, savepath):
                 gains = load(
                     io.open(
                         logpath.replace(
-                            'lcmlog-', 'walking_gains_alip'
+                            'lcmlog-', 'walking_gains_alip_'
                         ) + '.yaml', 'r'
                     ),
                     Loader=Loader
@@ -192,12 +192,12 @@ def parse_log_folders_to_ds_states(folder_list, savepath):
 
 
 def parse_hardware_main():
-    savepath = '.learning_data/hardware_ics.npy'
+    savepath = '.learning_data/hardware_ics_v2.npy'
     folder_list = \
         [
-            f'/home/brian/workspace/logs/cassie_hardware/2022/{subfolder}/' for
+            f'/media/brian/tb2/cassie_backup/logs/cassie_hardware/2022/{subfolder}/' for
             subfolder in [
-                '05_16_22', '05_17_22', '05_18_22', '05_19_22'
+                '08_11_22'
             ]
         ]
     parse_log_folders_to_ds_states(folder_list, savepath)

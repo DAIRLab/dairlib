@@ -19,7 +19,9 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::Vector2d;
+
 using drake::multibody::MultibodyPlant;
+using drake::solvers::MathematicalProgramResult;
 using drake::multibody::Frame;
 using drake::systems::Context;
 
@@ -34,7 +36,7 @@ Eigen::VectorXd SolveIK(
     double height,
     const Vector3d &stance_toe_pos, const Vector3d &stance_heel_pos,
     const Vector3d &swing_toe_pos, const Vector3d &swing_heel_pos,
-    const Vector2d &pelvis_vel) {
+    const Vector2d &pelvis_vel, bool* is_success) {
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
@@ -69,17 +71,16 @@ Eigen::VectorXd SolveIK(
 
   auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
+  auto v = program.AddVelocityVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
-  auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
+  auto kinematic_constraints = program.AddHolonomicConstraint(
+      evaluators, q, v, u, lambda);
   program.AddJointLimitConstraints(q);
 
   // Velocity part
   auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
   int n_v = plant.num_velocities();
-  auto v = program.NewContinuousVariables(n_v, "v");
-
-  program.AddFixedPointConstraintWithVelocities(evaluators, q, v, u, lambda);
 
   // Fix floating base
   program.AddBoundingBoxConstraint(q_guess.head(4), q_guess.head(4), q.head(4));
@@ -137,37 +138,33 @@ Eigen::VectorXd SolveIK(
   program.SetInitialGuess(q, q_guess);
   program.SetInitialGuess(v, v_guess);
 
-  // Snopt settings
-  program.SetSolverOption(drake::solvers::IpoptSolver::id(),
-                          "print_level", 0);
-  program.SetSolverOption(drake::solvers::IpoptSolver::id(),
-      "tol", 1e-2);
-  program.SetSolverOption(drake::solvers::IpoptSolver::id(),
-                          "constr_viol_tol", 1e-4);
-//  program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-//                          "../snopt_test.out");
-//  program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
-//  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
-//                          "Major optimality tolerance",
-//                          1e-2);
-//  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
-//                          "Major feasibility tolerance",
-//                          1e-4);
-
-//  std::cout << "Start solving" << std::endl;
-//  auto start = std::chrono::high_resolution_clock::now();
-
-//  std::cout << program.initial_guess() << std::endl;
-  drake::solvers::IpoptSolver ipopt_solver;
-  const auto result = ipopt_solver.Solve(program, program.initial_guess());
-//  const auto result = drake::solvers::Solve(program, program.initial_guess());
-//  auto finish = std::chrono::high_resolution_clock::now();
-//  std::chrono::duration<double> elapsed = finish - start;
-//  std::cout << "Solve time:" << elapsed.count() << std::endl;
+  //solver settings
+  bool use_ipopt = false;
+  MathematicalProgramResult result;
+  if (use_ipopt) {
+    program.SetSolverOption(drake::solvers::IpoptSolver::id(),
+                            "print_level", 0);
+    program.SetSolverOption(drake::solvers::IpoptSolver::id(),
+                            "tol", 1e-2);
+    program.SetSolverOption(drake::solvers::IpoptSolver::id(),
+                            "constr_viol_tol", 1e-4);
+    drake::solvers::IpoptSolver ipopt_solver;
+    result = ipopt_solver.Solve(program, program.initial_guess());
+  } else {
+    program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                          "../snopt_test.out");
+    program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
+    program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major optimality tolerance",
+                          1e-2);
+    program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major feasibility tolerance",
+                          1e-4);
+    result = drake::solvers::Solve(program, program.initial_guess());
+  }
 
   std::cout << to_string(result.get_solution_result()) << std::endl;
-//  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
-
+  *is_success = result.is_success();
   VectorXd q_result = result.GetSolution(q);
   VectorXd v_result = result.GetSolution(v);
   VectorXd u_result = result.GetSolution(u);
@@ -257,17 +254,21 @@ void FindInitialStates(
             double a_sw = swing_angles(idx_asw);
             double v = pelvis_vel(idx_vp);
             double ap = pelvis_vel_angles(idx_ap);
+            bool is_success;
             Vector3d swing_mid_pos_adjusted =
                 swing_pos.col(2) + r_sw * Vector3d(cos(a_sw), sin(a_sw), 0);
+            std::cout << sol_idx << ": ";
             VectorXd solution = SolveIK(
                 plant, q, v_init, u_init, *context, stance_toe,
                 stance_heel, swing_toe, swing_heel, height,
                 stance_pos.col(0), stance_pos.col(1),
                 swing_mid_pos_adjusted + mid_to_toe_w,
                 swing_mid_pos_adjusted + mid_to_heel_w,
-                v * Vector2d(cos(ap), sin(ap)));
+                v * Vector2d(cos(ap), sin(ap)), &is_success);
             sol_idx++;
-            appendCSV(sol_file_path, solution.transpose());
+            if (is_success) {
+              appendCSV(sol_file_path, solution.transpose());
+            }
           }
         }
       }

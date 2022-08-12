@@ -31,13 +31,18 @@ VectorXDecisionVariable MultibodyProgram<T>::AddInputVariables() {
 }
 
 template <typename T>
+VectorXDecisionVariable MultibodyProgram<T>::AddVelocityVariables() {
+  return NewContinuousVariables(plant_.num_velocities(), "v");
+}
+
+template <typename T>
 VectorXDecisionVariable MultibodyProgram<T>::AddConstraintForceVariables(
     const KinematicEvaluatorSet<T>& evaluators) {
   return NewContinuousVariables(evaluators.count_full(), "lambda");;
 }
 
 template <typename T>
-Binding<Constraint> MultibodyProgram<T>::AddKinematicConstraint(
+Binding<Constraint> MultibodyProgram<T>::AddKinematicPositionConstraint(
     const KinematicEvaluatorSet<T>& evaluators,
     const VectorXDecisionVariable& q, Context<T>* local_context) {
   DRAKE_DEMAND(q.size() == plant_.num_positions());
@@ -47,11 +52,88 @@ Binding<Constraint> MultibodyProgram<T>::AddKinematicConstraint(
 }
 
 template <typename T>
-Binding<Constraint> MultibodyProgram<T>::AddKinematicConstraint(
+Binding<Constraint> MultibodyProgram<T>::AddKinematicPositionConstraint(
     const KinematicEvaluatorSet<T>& evaluators,
     const VectorXDecisionVariable& q) {
-  return AddKinematicConstraint(evaluators, q, context_.get());
+  return AddKinematicPositionConstraint(evaluators, q, context_.get());
 }
+
+template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddKinematicVelocityConstraint(
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q, const VectorXDecisionVariable& v,
+    Context<T>* local_context) {
+  DRAKE_DEMAND(q.size() == plant_.num_positions());
+  DRAKE_DEMAND(v.size() == plant_.num_velocities());
+  auto constraint = std::make_shared<KinematicVelocityConstraint<T>>(
+      plant_, evaluators, local_context);
+  return AddConstraint(constraint, {q, v});
+}
+
+template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddKinematicVelocityConstraint(
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q, const VectorXDecisionVariable& v) {
+  return AddKinematicVelocityConstraint(evaluators, q, v, context_.get());
+}
+
+template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddKinematicAccelerationConstraint(
+    const KinematicEvaluatorSet<T> &evaluators,
+    const VectorXDecisionVariable &q, const VectorXDecisionVariable &v,
+    const VectorXDecisionVariable &u, const VectorXDecisionVariable &lambda,
+    Context<T>* local_context) {
+  DRAKE_DEMAND(q.size() == plant_.num_positions());
+  DRAKE_DEMAND(v.size() == plant_.num_velocities());
+  DRAKE_DEMAND(u.size() == plant_.num_actuators());
+  DRAKE_DEMAND(lambda.size() == evaluators.count_full());
+  auto constraint = std::make_shared<KinematicAccelerationConstraint<T>>(
+          plant_, evaluators, local_context);
+  return AddConstraint(constraint, {q, v, u, lambda});
+}
+
+template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddKinematicAccelerationConstraint(
+    const KinematicEvaluatorSet<T> &evaluators,
+    const VectorXDecisionVariable &q, const VectorXDecisionVariable &v,
+    const VectorXDecisionVariable &u, const VectorXDecisionVariable &lambda) {
+  return AddKinematicAccelerationConstraint(
+      evaluators, q, v, u, lambda, context_.get());
+}
+
+template <typename T>
+std::vector<Binding<Constraint>> MultibodyProgram<T>::AddHolonomicConstraint(
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q, const VectorXDecisionVariable& v,
+    const VectorXDecisionVariable& u, const VectorXDecisionVariable& lambda,
+    Context<T>* local_context) {
+  DRAKE_DEMAND(q.size() == plant_.num_positions());
+  DRAKE_DEMAND(v.size() == plant_.num_velocities());
+  DRAKE_DEMAND(u.size() == plant_.num_actuators());
+  DRAKE_DEMAND(lambda.size() == evaluators.count_full());
+
+  auto position_constraint = std::make_shared<KinematicPositionConstraint<T>>(
+      plant_, evaluators, local_context);
+  auto velocity_constraint = std::make_shared<KinematicVelocityConstraint<T>>(
+        plant_, evaluators, local_context);
+  auto acceleration_constraint =
+      std::make_shared<KinematicAccelerationConstraint<T>>(
+          plant_, evaluators, local_context);
+  std::vector<Binding<Constraint>> bindings;
+  bindings.push_back(AddConstraint(position_constraint, q));
+  bindings.push_back(AddConstraint(velocity_constraint, {q, v}));
+  bindings.push_back(AddConstraint(acceleration_constraint, {q, v, u, lambda}));
+  return bindings;
+}
+
+template <typename T>
+std::vector<Binding<Constraint>> MultibodyProgram<T>::AddHolonomicConstraint(
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q, const VectorXDecisionVariable& v,
+    const VectorXDecisionVariable& u, const VectorXDecisionVariable& lambda) {
+  return AddHolonomicConstraint(evaluators, q, v, u, lambda, context_.get());
+}
+
 
 template <typename T>
 Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
@@ -62,7 +144,7 @@ Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
   DRAKE_DEMAND(u.size() == plant_.num_actuators());
   DRAKE_DEMAND(lambda.size() == evaluators.count_full());
   auto constraint = std::make_shared<FixedPointConstraint<T>>(
-        plant_, evaluators, local_context);
+      plant_, evaluators, local_context);
   return AddConstraint(constraint, {q, u, lambda});
 }
 
@@ -72,30 +154,6 @@ Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
     const VectorXDecisionVariable& q, const VectorXDecisionVariable& u,
     const VectorXDecisionVariable& lambda) {
   return AddFixedPointConstraint(evaluators, q, u, lambda, context_.get());
-}
-
-template <typename T>
-Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraintWithVelocities(
-    const KinematicEvaluatorSet<T>& evaluators,
-    const VectorXDecisionVariable& q, const VectorXDecisionVariable& v,
-    const VectorXDecisionVariable& u, const VectorXDecisionVariable& lambda,
-    Context<T>* local_context) {
-  DRAKE_DEMAND(q.size() == plant_.num_positions());
-  DRAKE_DEMAND(u.size() == plant_.num_actuators());
-  DRAKE_DEMAND(v.size() == plant_.num_velocities());
-  DRAKE_DEMAND(lambda.size() == evaluators.count_full());
-  auto constraint = std::make_shared<FixedPointConstraint<T>>(
-      plant_, evaluators, local_context, "", true);
-  return AddConstraint(constraint, {q, v, u, lambda});
-}
-
-template <typename T>
-Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraintWithVelocities(
-    const KinematicEvaluatorSet<T> &evaluators,
-    const VectorXDecisionVariable &q, const VectorXDecisionVariable &v,
-    const VectorXDecisionVariable &u, const VectorXDecisionVariable &lambda) {
-  return AddFixedPointConstraintWithVelocities(
-      evaluators, q, v, u, lambda, context_.get());
 }
 
 template <typename T>
@@ -114,17 +172,15 @@ template <typename T>
 FixedPointConstraint<T>::FixedPointConstraint(
     const MultibodyPlant<T>& plant,
     const KinematicEvaluatorSet<T>& evaluators,
-    Context<T>* context, const std::string& description, bool has_vel)
-    : NonlinearConstraint<T>(
-          plant.num_velocities(),
-          plant.num_positions() + (has_vel? plant.num_velocities() : 0)
-          + plant.num_actuators() + evaluators.count_full(),
-          VectorXd::Zero(plant.num_velocities()),
-          VectorXd::Zero(plant.num_velocities()),
-          description),
+    Context<T>* context, const std::string& description)
+    : NonlinearConstraint<T>(plant.num_velocities(),
+                             plant.num_positions() + plant.num_actuators()
+                                 + evaluators.count_full(),
+                             VectorXd::Zero(plant.num_velocities()),
+                             VectorXd::Zero(plant.num_velocities()),
+                             description),
       plant_(plant),
-      evaluators_(evaluators),
-      has_vel_(has_vel) {
+      evaluators_(evaluators) {
   // Create a new context if one was not provided
   if (context == nullptr) {
     owned_context_ = plant_.CreateDefaultContext();
@@ -138,26 +194,16 @@ template <typename T>
 void FixedPointConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& input, VectorX<T>* y) const {
 
-  int nx = has_vel_ ? plant_.num_positions() + plant_.num_velocities() :
-                      plant_.num_positions();
-  auto u = input.segment(nx, plant_.num_actuators());
-  auto lambda = input.segment(nx + plant_.num_actuators(),
-      evaluators_.count_full());
-
+  auto u = input.segment(plant_.num_positions(), plant_.num_actuators());
+  auto lambda = input.segment(plant_.num_positions() + plant_.num_actuators(),
+                              evaluators_.count_full());
   VectorX<T> x(plant_.num_positions() + plant_.num_velocities());
-
-  if (has_vel_) {
-    x << input.head(plant_.num_positions()),
-         input.segment(plant_.num_positions(), plant_.num_velocities());
-  } else {
-    x << input.head(plant_.num_positions()),
-         VectorX<T>::Zero(plant_.num_velocities());
-  }
-
+  x << input.head(plant_.num_positions()),
+      VectorX<T>::Zero(plant_.num_velocities());
   // input order is x, u, lambda
   SetContext<T>(plant_, x, u, context_);
 
-  *y = evaluators_.CalcMassMatrixTimesVDot(*context_, lambda);  
+  *y = evaluators_.CalcMassMatrixTimesVDot(*context_, lambda);
   // std::cout << *y << std::endl << std::endl;
 }
 

@@ -25,7 +25,7 @@ namespace multibody {
 /// auto q = program.AddPositionVariables();
 /// auto u = program.AddInputVariables();
 /// auto lambda = program.AddConstraintForceVariables(evaluators);
-/// program.AddKinematicConstraint(evaluators, q);
+/// program.AddKinematicPositionConstraint(evaluators, q);
 /// program.AddFixedPointConstraint(evaluators, q, u, lambda);
 /// <Solve program and extract solution>
 template <typename T>
@@ -36,6 +36,9 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
 
   /// Adds and returns position decision variables.
   drake::solvers::VectorXDecisionVariable AddPositionVariables();
+
+  /// Adds and returns velocity decision variables.
+  drake::solvers::VectorXDecisionVariable AddVelocityVariables();
 
   /// Adds and returns actuation input decision variables.
   drake::solvers::VectorXDecisionVariable AddInputVariables();
@@ -50,15 +53,66 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
   /// Adds a kinematic constraint for the associated KinematicEvaluators
   /// Decision variables q here are required as an input to avoid calling
   /// this method out of order with AddPositionVariables()
-  drake::solvers::Binding<drake::solvers::Constraint> AddKinematicConstraint(
+  drake::solvers::Binding<drake::solvers::Constraint>
+  AddKinematicPositionConstraint(
       const KinematicEvaluatorSet<T>& evaluators,
       const drake::solvers::VectorXDecisionVariable& q,
       drake::systems::Context<T>* local_context);
 
   /// See above. Uses the internal context_ (recommended for most use cases)
-  drake::solvers::Binding<drake::solvers::Constraint> AddKinematicConstraint(
+  drake::solvers::Binding<drake::solvers::Constraint>
+  AddKinematicPositionConstraint(
       const KinematicEvaluatorSet<T>& evaluators,
       const drake::solvers::VectorXDecisionVariable& q);
+
+  drake::solvers::Binding<drake::solvers::Constraint>
+  AddKinematicVelocityConstraint(
+      const KinematicEvaluatorSet<T>& evaluators,
+      const drake::solvers::VectorXDecisionVariable& q,
+      const drake::solvers::VectorXDecisionVariable& v,
+      drake::systems::Context<T>* local_context);
+
+  drake::solvers::Binding<drake::solvers::Constraint>
+  AddKinematicVelocityConstraint(
+      const KinematicEvaluatorSet<T>& evaluators,
+      const drake::solvers::VectorXDecisionVariable& q,
+      const drake::solvers::VectorXDecisionVariable& v);
+
+  drake::solvers::Binding<drake::solvers::Constraint>
+  AddKinematicAccelerationConstraint(
+      const KinematicEvaluatorSet<T>& evaluators,
+      const drake::solvers::VectorXDecisionVariable& q,
+      const drake::solvers::VectorXDecisionVariable& v,
+      const drake::solvers::VectorXDecisionVariable& u,
+      const drake::solvers::VectorXDecisionVariable& lambda,
+      drake::systems::Context<T>* local_context);
+
+  drake::solvers::Binding<drake::solvers::Constraint>
+  AddKinematicAccelerationConstraint(
+      const KinematicEvaluatorSet<T>& evaluators,
+      const drake::solvers::VectorXDecisionVariable& q,
+      const drake::solvers::VectorXDecisionVariable& v,
+      const drake::solvers::VectorXDecisionVariable& u,
+      const drake::solvers::VectorXDecisionVariable& lambda);
+
+  /// Adds a holonomic kinematic constraint at the position, velocity,
+  /// and acceleration level, and returns a vecotr of constraint bindings, one
+  /// for each derivative.
+  std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
+  AddHolonomicConstraint(const KinematicEvaluatorSet<T>& evaluators,
+                         const drake::solvers::VectorXDecisionVariable& q,
+                         const drake::solvers::VectorXDecisionVariable& v,
+                         const drake::solvers::VectorXDecisionVariable& u,
+                         const drake::solvers::VectorXDecisionVariable& lambda,
+                         drake::systems::Context<T>* local_context);
+
+  /// See above. Uses the internal context_ (recommended for most cases)
+  std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
+  AddHolonomicConstraint(const KinematicEvaluatorSet<T>& evaluators,
+                         const drake::solvers::VectorXDecisionVariable& q,
+                         const drake::solvers::VectorXDecisionVariable& v,
+                         const drake::solvers::VectorXDecisionVariable& u,
+                         const drake::solvers::VectorXDecisionVariable& lambda);
 
   /// Adds a fixed point constraint, including the associated constraint
   /// forces. The length of lambda is checked against
@@ -74,21 +128,6 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
   drake::solvers::Binding<drake::solvers::Constraint> AddFixedPointConstraint(
       const KinematicEvaluatorSet<T>& evaluators,
       const drake::solvers::VectorXDecisionVariable& q,
-      const drake::solvers::VectorXDecisionVariable& u,
-      const drake::solvers::VectorXDecisionVariable& lambda);
-
-  drake::solvers::Binding<drake::solvers::Constraint> AddFixedPointConstraintWithVelocities(
-      const KinematicEvaluatorSet<T>& evaluators,
-      const drake::solvers::VectorXDecisionVariable& q,
-      const drake::solvers::VectorXDecisionVariable& v,
-      const drake::solvers::VectorXDecisionVariable& u,
-      const drake::solvers::VectorXDecisionVariable& lambda,
-      drake::systems::Context<T>* local_context);
-
-  drake::solvers::Binding<drake::solvers::Constraint> AddFixedPointConstraintWithVelocities(
-      const KinematicEvaluatorSet<T>& evaluators,
-      const drake::solvers::VectorXDecisionVariable& q,
-      const drake::solvers::VectorXDecisionVariable& v,
       const drake::solvers::VectorXDecisionVariable& u,
       const drake::solvers::VectorXDecisionVariable& lambda);
 
@@ -109,8 +148,7 @@ class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
       drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "fixed point",
-      bool has_vel = false);
+      const std::string& description = "fixed point");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                                   drake::VectorX<T>* y) const;
@@ -120,7 +158,6 @@ class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
   const KinematicEvaluatorSet<T>& evaluators_;
   drake::systems::Context<T>* context_;
   std::unique_ptr<drake::systems::Context<T>> owned_context_;
-  bool has_vel_;
 };
 
 }  // namespace multibody

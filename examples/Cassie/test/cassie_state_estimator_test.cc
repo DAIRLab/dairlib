@@ -131,7 +131,7 @@ TEST_F(ContactEstimationTest, solveFourbarLinkageTest) {
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(*fourbar_evaluator_);
-  program.AddKinematicConstraint(*fourbar_evaluator_, q);
+  program.AddKinematicPositionConstraint(*fourbar_evaluator_, q);
   for (auto& ind : fixed_joint_inds) {
     program.AddConstraint(q(ind) == q_init(ind));
   }

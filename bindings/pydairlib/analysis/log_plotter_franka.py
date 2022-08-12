@@ -4,18 +4,15 @@ import matplotlib.pyplot as plt
 import code
 import numpy as np
 import scipy.io
+import os
+from datetime import date
 
 import dairlib
 from process_lcm_log import get_log_data
 import mbp_plotting_utils as mbp_plots
 from pydrake.all import *
 import pydairlib.common
-
-import subprocess
-import os
-import glob
-import codecs
-from datetime import date
+from examples.franka_trajectory_following.scripts.franka_logging_utils import get_most_recent_logs
 
 
 def main():
@@ -44,21 +41,7 @@ def main():
     
     ''' set up log directory paths '''
     if len(sys.argv) == 1:
-      curr_date = date.today().strftime("%m_%d_%y")
-      year = date.today().strftime("%Y")
-      logdir = "{}/adam_ws/logs/{}/{}".format(os.getenv('HOME'), year, curr_date)
-
-      os.chdir(logdir)
-      current_logs = sorted(glob.glob('*'))
-      if current_logs:
-          if current_logs[-1] == 'log_descriptions.txt':
-              last_log = int(current_logs[-2])
-          else:
-              last_log = int(current_logs[-1])
-          log_num = "{:02}".format(last_log)
-      else:
-          log_num = '00'
-      filename = "{}/{}/lcmlog-{}".format(logdir, log_num, log_num)
+      logdir, log_num = get_most_recent_logs()
     else:
       filename = sys.argv[1]
       path_components = os.path.normpath(filename).split(os.sep)

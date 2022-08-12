@@ -107,22 +107,13 @@ std::vector<Binding<Constraint>> MultibodyProgram<T>::AddHolonomicConstraint(
     const VectorXDecisionVariable& q, const VectorXDecisionVariable& v,
     const VectorXDecisionVariable& u, const VectorXDecisionVariable& lambda,
     Context<T>* local_context) {
-  DRAKE_DEMAND(q.size() == plant_.num_positions());
-  DRAKE_DEMAND(v.size() == plant_.num_velocities());
-  DRAKE_DEMAND(u.size() == plant_.num_actuators());
-  DRAKE_DEMAND(lambda.size() == evaluators.count_full());
-
-  auto position_constraint = std::make_shared<KinematicPositionConstraint<T>>(
-      plant_, evaluators, local_context);
-  auto velocity_constraint = std::make_shared<KinematicVelocityConstraint<T>>(
-        plant_, evaluators, local_context);
-  auto acceleration_constraint =
-      std::make_shared<KinematicAccelerationConstraint<T>>(
-          plant_, evaluators, local_context);
   std::vector<Binding<Constraint>> bindings;
-  bindings.push_back(AddConstraint(position_constraint, q));
-  bindings.push_back(AddConstraint(velocity_constraint, {q, v}));
-  bindings.push_back(AddConstraint(acceleration_constraint, {q, v, u, lambda}));
+  bindings.push_back(AddKinematicPositionConstraint(
+      evaluators, q, local_context));
+  bindings.push_back(AddKinematicVelocityConstraint(
+      evaluators, q, v, local_context));
+  bindings.push_back(AddKinematicAccelerationConstraint(
+      evaluators, q, v, u, lambda, local_context));
   return bindings;
 }
 

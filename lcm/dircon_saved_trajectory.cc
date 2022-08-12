@@ -2,6 +2,8 @@
 
 #include "multibody/multibody_utils.h"
 
+#include <iostream>
+
 using drake::multibody::MultibodyPlant;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::Map;

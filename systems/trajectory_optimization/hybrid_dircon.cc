@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "multibody/multibody_utils.h"
 

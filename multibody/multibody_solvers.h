@@ -77,6 +77,21 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
       const drake::solvers::VectorXDecisionVariable& u,
       const drake::solvers::VectorXDecisionVariable& lambda);
 
+  drake::solvers::Binding<drake::solvers::Constraint> AddFixedPointConstraintWithVelocities(
+      const KinematicEvaluatorSet<T>& evaluators,
+      const drake::solvers::VectorXDecisionVariable& q,
+      const drake::solvers::VectorXDecisionVariable& v,
+      const drake::solvers::VectorXDecisionVariable& u,
+      const drake::solvers::VectorXDecisionVariable& lambda,
+      drake::systems::Context<T>* local_context);
+
+  drake::solvers::Binding<drake::solvers::Constraint> AddFixedPointConstraintWithVelocities(
+      const KinematicEvaluatorSet<T>& evaluators,
+      const drake::solvers::VectorXDecisionVariable& q,
+      const drake::solvers::VectorXDecisionVariable& v,
+      const drake::solvers::VectorXDecisionVariable& u,
+      const drake::solvers::VectorXDecisionVariable& lambda);
+
   drake::systems::Context<T>* get_context() {return context_.get();};
 
  private:
@@ -94,7 +109,8 @@ class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
       drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "fixed point");
+      const std::string& description = "fixed point",
+      bool has_vel = false);
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                                   drake::VectorX<T>* y) const;
@@ -104,6 +120,7 @@ class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
   const KinematicEvaluatorSet<T>& evaluators_;
   drake::systems::Context<T>* context_;
   std::unique_ptr<drake::systems::Context<T>> owned_context_;
+  bool has_vel_;
 };
 
 }  // namespace multibody

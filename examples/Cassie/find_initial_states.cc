@@ -79,20 +79,7 @@ Eigen::VectorXd SolveIK(
   int n_v = plant.num_velocities();
   auto v = program.NewContinuousVariables(n_v, "v");
 
-  // Equation of motion
-//  auto vdot = program.NewContinuousVariables(n_v, "vdot");
-//  auto constraint = std::make_shared<VdotConstraint>(plant, evaluators);
-//  program.AddConstraint(constraint, {q, v, u, lambda, vdot});
-
-  // Zero velocity on feet
-  multibody::KinematicEvaluatorSet<double> contact_evaluators(plant);
-  contact_evaluators.add_evaluator(&stance_toe_evaluator);
-  contact_evaluators.add_evaluator(&stance_heel_evaluator);
-  contact_evaluators.add_evaluator(&swing_toe_evaluator);
-  contact_evaluators.add_evaluator(&swing_heel_evaluator);
-  auto contact_vel_constraint =
-      std::make_shared<BodyPointVelConstraint>(plant, contact_evaluators);
-  program.AddConstraint(contact_vel_constraint, {q, v});
+  program.AddFixedPointConstraintWithVelocities(evaluators, q, v, u, lambda);
 
   // Fix floating base
   program.AddBoundingBoxConstraint(q_guess.head(4), q_guess.head(4), q.head(4));
@@ -101,10 +88,6 @@ Eigen::VectorXd SolveIK(
                                    q(positions_map.at("base_z")));
 
   program.AddBoundingBoxConstraint(-20, 20, v);
-
-  //  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wx")));
-  //  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wy")));
-  //  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wz")));
 
   program.AddBoundingBoxConstraint(pelvis_vel(0), pelvis_vel(0),
                                    v(vel_map.at("base_vx")));

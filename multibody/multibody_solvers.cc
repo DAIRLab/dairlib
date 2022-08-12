@@ -75,6 +75,30 @@ Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
 }
 
 template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraintWithVelocities(
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q, const VectorXDecisionVariable& v,
+    const VectorXDecisionVariable& u, const VectorXDecisionVariable& lambda,
+    Context<T>* local_context) {
+  DRAKE_DEMAND(q.size() == plant_.num_positions());
+  DRAKE_DEMAND(u.size() == plant_.num_actuators());
+  DRAKE_DEMAND(v.size() == plant_.num_velocities());
+  DRAKE_DEMAND(lambda.size() == evaluators.count_full());
+  auto constraint = std::make_shared<FixedPointConstraint<T>>(
+      plant_, evaluators, local_context, "", true);
+  return AddConstraint(constraint, {q, v, u, lambda});
+}
+
+template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraintWithVelocities(
+    const KinematicEvaluatorSet<T> &evaluators,
+    const VectorXDecisionVariable &q, const VectorXDecisionVariable &v,
+    const VectorXDecisionVariable &u, const VectorXDecisionVariable &lambda) {
+  return AddFixedPointConstraintWithVelocities(
+      evaluators, q, v, u, lambda, context_.get());
+}
+
+template <typename T>
 void MultibodyProgram<T>::AddJointLimitConstraints(VectorXDecisionVariable q) {
   for (int i = 0; i < plant_.num_joints(); i++) {
     const auto& joint = plant_.get_joint(drake::multibody::JointIndex(i));
@@ -90,15 +114,17 @@ template <typename T>
 FixedPointConstraint<T>::FixedPointConstraint(
     const MultibodyPlant<T>& plant,
     const KinematicEvaluatorSet<T>& evaluators,
-    Context<T>* context, const std::string& description)
-    : NonlinearConstraint<T>(plant.num_velocities(),
-          plant.num_positions() + plant.num_actuators()
-          + evaluators.count_full(),
+    Context<T>* context, const std::string& description, bool has_vel)
+    : NonlinearConstraint<T>(
+          plant.num_velocities(),
+          plant.num_positions() + (has_vel? plant.num_velocities() : 0)
+          + plant.num_actuators() + evaluators.count_full(),
           VectorXd::Zero(plant.num_velocities()),
           VectorXd::Zero(plant.num_velocities()),
           description),
-      plant_(plant), 
-      evaluators_(evaluators) {
+      plant_(plant),
+      evaluators_(evaluators),
+      has_vel_(has_vel) {
   // Create a new context if one was not provided
   if (context == nullptr) {
     owned_context_ = plant_.CreateDefaultContext();
@@ -112,12 +138,22 @@ template <typename T>
 void FixedPointConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& input, VectorX<T>* y) const {
 
-  auto u = input.segment(plant_.num_positions(), plant_.num_actuators());
-  auto lambda = input.segment(plant_.num_positions() + plant_.num_actuators(),
+  int nx = has_vel_ ? plant_.num_positions() + plant_.num_velocities() :
+                      plant_.num_positions();
+  auto u = input.segment(nx, plant_.num_actuators());
+  auto lambda = input.segment(nx + plant_.num_actuators(),
       evaluators_.count_full());
+
   VectorX<T> x(plant_.num_positions() + plant_.num_velocities());
-  x << input.head(plant_.num_positions()),
-      VectorX<T>::Zero(plant_.num_velocities());
+
+  if (has_vel_) {
+    x << input.head(plant_.num_positions()),
+         input.segment(plant_.num_positions(), plant_.num_velocities());
+  } else {
+    x << input.head(plant_.num_positions()),
+         VectorX<T>::Zero(plant_.num_velocities());
+  }
+
   // input order is x, u, lambda
   SetContext<T>(plant_, x, u, context_);
 

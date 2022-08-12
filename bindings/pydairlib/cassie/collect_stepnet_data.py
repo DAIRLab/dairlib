@@ -113,7 +113,7 @@ def main(args):
     )
     if collection_params.has_terrain:
         collection_params.target_to_map_tf = \
-            DepthCameraInfo().as_drake_camera_info()
+            DepthCameraInfo().get_pelvis_to_image_tf()
 
     # Save collection params
     save_config(

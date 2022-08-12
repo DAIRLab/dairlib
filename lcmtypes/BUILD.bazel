@@ -48,7 +48,7 @@ drake_lcm_py_library(
 drake_lcm_py_library(
     name = "lcmtypes_robot_archive_py",
     add_current_package_to_imports = True,  # Use //:module_py instead.
-    extra_srcs = ["__init__.py"],
+    extra_srcs = ["archive/__init__.py"],
     lcm_package = "archive.dairlib",
     lcm_srcs = glob(["archive/*.lcm"]),
     deps = [

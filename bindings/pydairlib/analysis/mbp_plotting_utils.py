@@ -175,7 +175,7 @@ def process_osc_channel(data):
         osc_debug_tracking_datas[name].convertToNP()
 
     return {'t_osc': np.array(t_osc),
-            'regularization_costs': regularization_costs,
+            'regularization_costs': regularization_costs.convertToNP(),
             'qp_solve_time': np.array(qp_solve_time),
             'u_sol': np.array(u_sol),
             'lambda_c_sol': np.array(lambda_c_sol),

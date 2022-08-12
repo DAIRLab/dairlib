@@ -53,7 +53,7 @@ def parse_single_log_to_robot_ds_states(filename, plant, context, channel_x,
     # Give some margin by subtracting about 20 seconds from the end of the log
     n_steps = int(np.floor_divide(
         robot_output['t_x'].ravel()[-1] - t_start, T_step)) - int(10.0/T_step)
-
+    print(f'Processing {n_steps} steps')
     if n_steps < 1:
         return None
 
@@ -66,7 +66,7 @@ def parse_single_log_to_robot_ds_states(filename, plant, context, channel_x,
 
         # Append data only if we have a good OSC solve - heuristic for
         # eliminating failed steps
-        if osc_debug['soft_constraint_cost'][osc_idx] < osc_cost_thresh:
+        if osc_debug['regularization_costs']['soft_constraint_cost'][osc_idx] < osc_cost_thresh:
             state[k, :nq] = robot_output['q'][x_idx]
             state[k, nq:] = robot_output['v'][x_idx]
         else:

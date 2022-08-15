@@ -40,9 +40,9 @@ void SigintHandler(int sig) {
 }
 
 DEFINE_string(joint_channel, "/c3/joint_states",
-              "Rostopic for receiving joint state info from Franka. "
+              "Rostopic for receiving joint state info from Franka.  "
               "Use /c3/joint_states for actual experiments (1000hz channel), and "
-              "use /franka_control_interface/joint_states for debugging (100hz channel)."
+              "use /franka_state_controller/joint_states for debugging (100hz channel)."
               "Note that the default rate of the franka_control_interface is 30hz, "
               "but this rate has been overridden to be 100hz on the franka computer");
 

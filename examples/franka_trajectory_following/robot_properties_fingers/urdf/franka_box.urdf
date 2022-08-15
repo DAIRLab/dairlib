@@ -648,7 +648,7 @@
         <visual>
           <origin xyz="-0.05 0 -0.01505" />
           <geometry>
-            <box size="0.3 0.3 0.0265"/>
+            <box size="0.3 0.3 0.0235"/>
           </geometry>
         </visual>
       </link>
@@ -694,7 +694,7 @@
       <parent link="connection"/>
       <child link="box"/>
       <!-- lowered the table since Franka table is a bit lower as well (offset by -0.0301)-->
-      <origin xyz="0 0 -0.0765"/> <!-- -0.05 + table_offset-->
+      <origin xyz="0 0 -0.07350000000000001"/> <!-- -0.05 + table_offset-->
     </joint>
 
 

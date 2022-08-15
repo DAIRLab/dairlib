@@ -45,7 +45,7 @@ group "5.[HW] C3 Computer" {
         host = "localhost";
     }
     cmd "c.log parameters" {
-        exec = "python examples/franka_trajectory_following/scripts/start_logging c3_computer";
+        exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging c3_computer";
         host = "localhost";
     }
 }
@@ -106,7 +106,7 @@ group "8.Logging, Utils" {
         host = "localhost";
     }
     cmd "e.update_urdf" {
-        exec = "bazel-bin/examples/franka_trajectory_following/scripts/update_urdf";
+        exec = "bazel-bin/examples/franka_trajectory_following/scripts/update_urdfs";
         host = "localhost";
     }
 }

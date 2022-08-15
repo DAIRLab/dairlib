@@ -31,7 +31,7 @@
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 
-//#define ROS
+#define ROS
 
 #ifdef ROS
 

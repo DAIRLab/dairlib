@@ -130,7 +130,7 @@
    <joint name="box_to_base" type="fixed">
     <parent link="base_link"/>
     <child link="box"/>
-    <origin xyz="0 0 -0.0765"/> <!-- -0.5 + model_table_offset -->
+    <origin xyz="0 0 -0.07350000000000001"/> <!-- -0.5 + model_table_offset -->
   </joint>
 
 

@@ -18,10 +18,10 @@ double randd(double a, double b) {
 
 void BoxyHeightMap::AppendBox(double h, double w) {
   double box_start =
-      box_w_.empty() ? -w / 2.0 : box_start_.back() + box_w_.back();
+      box_w_.empty() ? -w / 2.0 : box_start_.back() + box_w_.back() - 0.01; // to remove seams.
   box_start_.push_back(box_start);
   box_h_.push_back(h);
-  box_w_.push_back(w);
+  box_w_.push_back(w + 0.01);  // to make up for slightly pushing the start back.
 }
 
 void BoxyHeightMap::AddHeightMapToPlant(

@@ -1,5 +1,7 @@
 import numpy as np
 from dataclasses import dataclass
+from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
+import gym
 
 from pydrake.multibody.parsing import Parser
 from pydrake.systems.framework import DiagramBuilder, Context, InputPort
@@ -69,7 +71,9 @@ class FixedVectorInputPort:
     value: np.ndarray = None
 
 
-class DrakeCassieGym:
+# This actually doesn't fully fit with the gym API. It doesn't have a defined
+# observation space or action space.
+class DrakeCassieGym(gym.Env):
     def __init__(self, visualize=False, params=CassieGymParams()):
         self.params = params
         self.sim_dt = 1e-3
@@ -103,7 +107,6 @@ class DrakeCassieGym:
             plant=self.plant,
             urdf=urdf,
             visualize=self.visualize,
-            add_terrain=self.params.add_terrain,
             mu=self.params.mu,
             map_yaw=self.params.map_yaw,
             normal=self.params.terrain_normal,
@@ -142,7 +145,7 @@ class DrakeCassieGym:
         self.set_context_members(self.drake_simulator.get_mutable_context())
         self.controller_output_port = self.controller.get_torque_output_port()
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
-        self.reset()
+        # self.reset()
         self.initialized = True
 
     def set_context_members(self, diagram_context):
@@ -171,7 +174,7 @@ class DrakeCassieGym:
         self.prev_cassie_state = CassieEnvState(self.current_time, x, u)
         self.cassie_state = CassieEnvState(self.current_time, x, u)
         self.terminated = False
-        return
+        return self.cassie_state
 
     def advance_to(self, time):
 
@@ -218,7 +221,12 @@ class DrakeCassieGym:
                     context=port.context,
                     value=port.value
                 )
-        self.drake_simulator.AdvanceTo(next_timestep)
+        try:
+            self.drake_simulator.AdvanceTo(next_timestep)
+        except RuntimeError:
+            print("hit a runtime error!")
+            return self.cassie_state, True
+
         self.current_time = self.drake_simulator.get_context().get_time()
 
         # Get the state
@@ -228,7 +236,7 @@ class DrakeCassieGym:
         self.cassie_state = CassieEnvState(self.current_time, x, u)
         self.terminated = self.check_termination()
         self.prev_cassie_state = self.cassie_state
-        return self.cassie_state
+        return self.cassie_state, self.terminated
 
     def get_traj(self):
         return self.traj
@@ -236,3 +244,12 @@ class DrakeCassieGym:
     # Some simulators for Cassie require cleanup
     def free_sim(self):
         return
+
+def make_vec_env(env_func, n_envs, seed, **kwargs):
+    assert n_envs > 0
+    if n_envs > 1:
+        visualize=False
+    else:
+        visualize=True
+    envs = [env_func(i, seed, visualize, **kwargs) for i in range(n_envs)]
+    return SubprocVecEnv(envs)

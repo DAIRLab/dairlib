@@ -23,6 +23,15 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "footstep_ppo",
+    srcs = ["footstep_ppo.py"],
+    deps = [
+        "//bindings/pydairlib/cassie/cassie_gym:drake_cassie_gym",
+        "//bindings/pydairlib/cassie/cassie_gym:footstep_env",
+    ],
+)
+
 py_library(
     name = "cassie_traj_visualizer",
     srcs = ["cassie_traj_visualizer.py"],

@@ -9,7 +9,7 @@ class VisualLocoReward:
     def __init__(self, weights):
         self.weights = weights
 
-    def calc_reward(self, cassie_state, yaw_des):
+    def calc_reward(self, cassie_state):
         # TODO(hersh500): implement yaw following.
         vel = cassie_state.get_velocities()
         return (self.weights[0] * np.clip(vel[0], -0.5, 0.5) +

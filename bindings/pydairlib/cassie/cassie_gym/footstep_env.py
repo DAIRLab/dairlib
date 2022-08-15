@@ -1,7 +1,8 @@
+import csv
+import gym
 import numpy as np
 from dataclasses import dataclass
-import csv
-import chardet 
+from scipy.spatial.transform import Rotation as R
 
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.math import RigidTransform, RotationMatrix
@@ -37,21 +38,26 @@ from pydairlib.cassie.cassie_gym.cassie_env_state import \
     CASSIE_FB_VELOCITY_SLICE
 from pydairlib.cassie.cassie_traj_visualizer import CassieTrajVisualizer
 from pydairlib.cassie.simulators import CassieSimDiagram, CassieVisionSimDiagram
+from pydairlib.cassie.cassie_gym.visual_loco_reward import VisualLocoReward
 
 
 # Plant and Simulation Constants
 OSC_GAINS = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
 OSQP_SETTINGS = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
-URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
+URDF = 'examples/Cassie/urdf/cassie_v2_sc.urdf'
 MBP_TIMESTEP = 8e-5
 
 INITIAL_CONDITIONS_FILE = './learning_data/initial_conditions.npy'
 INITIAL_CONDITIONS_FILE_CSV = "./learning_data/cassie_initial_conditions.csv"
 
+# TODO(hersh500): implement reading this from yaml
 @dataclass
 class FootstepGymParams(CassieGymParams):
     n_stack: int = 4
     action_rate: int = 5
+    reward_weights = [0.2, -0.2]
+    goal_x = 4.0
+    step_loc_scaling = 0.1
 
     @staticmethod
     def make_random(ic_file_path):
@@ -82,18 +88,14 @@ def csv_ic_to_new_ic(csv_ic):
     return new_ic
 
 
-# TODO(hersh500): get this working without depth images
-# then add utilities for depth images.
 class CassieFootstepEnv(DrakeCassieGym):
     # Init should be the same as the StepNet generator stuff
-    def __init__(self, visualize=False, blind=True, use_alip_ctrlr=False,
-                 params=FootstepGymParams()):
+    def __init__(self, visualize=False, blind=True, params=FootstepGymParams()):
         # Initialize the base cassie gym simulator
         super().__init__(
             visualize=visualize,
             params=params
         )
-        self.use_alip_ctrlr = use_alip_ctrlr
 
         # should stacking be a feature of the policy or of the environment?
         # for now, let's keep it as a feature of the environment.
@@ -108,6 +110,15 @@ class CassieFootstepEnv(DrakeCassieGym):
         self.foot_target_input_port = None
         self.alip_target_port = None
         self.initial_condition_bank = None
+
+        # RL definitions
+        self.n_states = 14
+        self.n_actions = 3 + 2*2
+        # TODO(hersh500): these should more tightly fit with the real values.
+        self.observation_space = gym.spaces.Box(high=4, low=-4, shape=(self.n_states + self.n_actions,), dtype=np.float32)
+        self.action_space = gym.spaces.Box(high=1, low=-1, shape=(self.n_actions,), dtype=np.float32)
+        self.reward = VisualLocoReward(self.params.reward_weights)
+
         # Multibody objects
         self.fsm_state_stances = {
             0: 'left',
@@ -131,60 +142,24 @@ class CassieFootstepEnv(DrakeCassieGym):
         self.controller_plant = MultibodyPlant(MBP_TIMESTEP)
         AddCassieMultibody(self.controller_plant, None, True, URDF, False, False)
         self.controller_plant.Finalize()
-        if self.use_alip_ctrlr:
-            self.controller = AlipWalkingControllerFactory(
-                self.controller_plant, True, OSC_GAINS, OSQP_SETTINGS)
-        else:
-            self.controller = FootstepTargetWalkingControllerFactory(
-                plant=self.controller_plant,
-                has_double_stance=True,
-                osc_gains_filename=OSC_GAINS,
-                osqp_settings_filename=OSQP_SETTINGS)
+        self.controller = FootstepTargetWalkingControllerFactory(
+            plant=self.controller_plant,
+            has_double_stance=True,
+            osc_gains_filename=OSC_GAINS,
+            osqp_settings_filename=OSQP_SETTINGS)
 
 
     def make(self, controller, urdf=URDF):
-        # super().make(controller, urdf)
-        self.builder = DiagramBuilder()
-        self.plant = MultibodyPlant(8e-5)
-        self.controller = controller
-        self.cassie_sim = CassieVisionSimDiagram(
-            plant=self.plant,
-            urdf=urdf,
-            visualize=self.visualize,
-            mu=self.params.mu,
-            map_yaw=self.params.map_yaw,
-            normal=self.params.terrain_normal,
-            map_height=self.params.max_step_magnitude)
-        self.sim_plant = self.cassie_sim.get_plant()
-        self.builder.AddSystem(self.controller)
-        self.builder.AddSystem(self.cassie_sim)
-        ''' skipping image publisher '''
-
-        self.builder.Connect(self.controller.get_control_output_port(),
-                             self.cassie_sim.get_actuation_input_port())
-        self.builder.Connect(self.cassie_sim.get_state_output_port(),
-                             self.controller.get_state_input_port())
-
-        # as a test, connect the alip port to the swing foot port
-        if not self.use_alip_ctrlr:
-
-            self.depth_image_output_port = \
-                self.cassie_sim.get_camera_out_output_port()
-            self.fsm_output_port = \
-                self.controller.get_fsm_output_port()
-            self.foot_target_input_port = \
-               self.controller.get_footstep_target_input_port()
-            self.alip_target_port = \
-               self.controller.get_alip_target_footstep_port()
-
-        self.diagram = self.builder.Build()
-        self.drake_simulator = Simulator(self.diagram)
-        self.set_context_members(self.drake_simulator.get_mutable_context())
-        self.controller_output_port = self.controller.get_torque_output_port()
-        self.drake_simulator.get_mutable_context().SetTime(self.start_time)
-        self.reset()
-        self.initialized = True
-
+        super().make(controller, urdf)
+        
+        self.depth_image_output_port = \
+            self.cassie_sim.get_camera_out_output_port()
+        self.fsm_output_port = \
+            self.controller.get_fsm_output_port()
+        self.foot_target_input_port = \
+           self.controller.get_footstep_target_input_port()
+        self.alip_target_port = \
+           self.controller.get_alip_target_footstep_port()
 
         # Multibody objects for Cassie's feet
         self.foot_frames = {
@@ -198,37 +173,101 @@ class CassieFootstepEnv(DrakeCassieGym):
         self.calc_context = self.sim_plant.CreateDefaultContext()
 
 
+    def check_goal(self, cassie_state):
+        return self.cassie_state.get_fb_positions()[0] >= self.params.goal_x
+
     # Action space is radio cmd + footstep target for Cassie
-    # difficult to find a good stable initial condition to start from
-    # TODO(hersh500): select appropriate states (body vel, body rates, body pitch, roll, yaw, foot positions, swing vs. stance states)
+    # Footstep target is deviation from the alip target.
+    # TODO(hersh500): current policy is doing a lot of centerline crossing.
     def step(self, action=None):
+        # Process radio actions
         radio = np.zeros((18,))
         if action is not None:
-            radio[2:5] = action[0:5]
+            # xdot, ydot, yaw_dot
+            # radio[(2,3,5)] = action[0:3]
+            # Ew.
+            radio[2], radio[3], radio[5] = action[0], action[1], action[2]
         else:
             radio[2] = 0.2
 
+        # Process footstep actions
+        swing = self.swing_states[
+            int(self.fsm_output_port.Eval(self.controller_context))
+        ]
+
+        if action is None:
+            target = self.alip_target_port.Eval(self.controller_context)
+        else:
+            # target = np.zeros(3)
+            target = self.alip_target_port.Eval(self.controller_context)
+            if swing == "right":
+                target[0:2] += action[3:5] * self.params.step_loc_scaling
+            else:
+                target[0:2] += action[5:7] * self.params.step_loc_scaling
+            # TODO(hersh500): better way to do this?
+            # target[2] = -self.cassie_state.get_fb_positions()[2]
+
         alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
-                      self.alip_target_port.Eval(self.controller_context) + \
+                      target + \
                       self.sim_plant.CalcCenterOfMassPositionInWorld(
                           self.plant_context
                       )
-        # TODO: regress this from the depth image
-        # alip_target[2] = 0.0
-        # print(f"alip target = {alip_target}")
+        if self.blind:
+            alip_target[2] = 0.0
+        else:
+            # TODO(hersh500): lookup the correct height from the depth image.
+            raise NotImplementedError("Haven't implemented depth images lookup yet.")
+        if self.visualize:
+            # print(f"radio command = {radio[2:6]}")
+            # print(f"step cmd for {swing} foot is {target}")
+            pass
 
         fixed_ports=[FixedVectorInputPort(
             input_port=self.foot_target_input_port,
             context=self.controller_context,
             value=alip_target)]
         start_time = self.current_time
+        r = 0
         while self.current_time-start_time < 1/self.params.action_rate:
-            s = super().step(radio, fixed_ports)
-            d = super().check_termination()
-            if d:
+            s, drake_d = super().step(radio, fixed_ports)
+            if self.check_goal(s):
+                d = True
                 break
-        return s, r, d, {}
+            elif drake_d:  # we've fallen over or reached some bad state.
+                d = True 
+                r = -10
+                break
+            else:
+                d = False
+        reduced_state = self.get_reduced_state(s)
+        r += self.reward.calc_reward(s)
+        return np.append(reduced_state, action), r, d, {}
 
+
+    def get_reduced_state(self, s):
+        rs = np.zeros(self.n_states)
+        quat = s.get_orientations()
+        euler = R.from_quat(quat).as_euler("xyz")
+        rs[3:6] = euler
+        rs[0:3] = s.get_fb_velocities()
+        # Note this is relative to pelvis not relative to com, could cause issues?
+        # TODO(hersh): how to get foot position relative to com?
+        rs[6:9] = self.sim_plant.CalcPointsPositions(
+                    self.plant_context,
+                    self.foot_frames["right"],
+                    self.contact_pt_in_ft_frame,
+                    self.sim_plant.GetBodyByName("pelvis").body_frame()).flatten()
+        rs[9:12] = self.sim_plant.CalcPointsPositions(
+                    self.plant_context,
+                    self.foot_frames["left"],
+                    self.contact_pt_in_ft_frame,
+                    self.sim_plant.GetBodyByName("pelvis").body_frame()).flatten()
+        swing = int(self.fsm_output_port.Eval(self.controller_context))
+        if swing == 0 or swing == 4:
+            rs[12] = 1
+        else:
+            rs[13] = 1
+        return rs
 
     # Utilities copied over from StepNetGenerator
     def calc_foot_position_in_world(self, context, side):
@@ -238,10 +277,18 @@ class CassieFootstepEnv(DrakeCassieGym):
             self.contact_pt_in_ft_frame,
             self.sim_plant.world_frame()).ravel()
 
-    def reset(self, new_x_init=None):
+
+    def reset(self):
+        '''
         if new_x_init is not None:
             self.params.x_init = new_x_init
-        return super().reset()
+        '''
+        # self.params.x_init = self.draw_good_ic() 
+        # randomizing initial condition should help with always picking the same action.
+        self.params.x_init = self.draw_random_initial_condition()
+        s = super().reset()
+        actions = np.zeros(self.n_actions)
+        return np.append(self.get_reduced_state(s), actions)
 
 
     def pelvis_pose(self, context):
@@ -250,12 +297,27 @@ class CassieFootstepEnv(DrakeCassieGym):
             body=self.sim_plant.GetBodyByName("pelvis"))
 
 
+    # what is this actually doing?
     def move_robot_to_origin(self, x):
         self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
         x[CASSIE_FB_POSITION_SLICE] = (
             x[CASSIE_FB_POSITION_SLICE] -
             self.calc_foot_position_in_world(self.calc_context, 'left')
         )
+        # TODO(hersh): should rotate robot to the origin by applying
+        # inverse yaw rotation from the rotation matrix. Currently
+        # just zero-ing out the yaw but that's kinda hacky.
+        rot = x[CASSIE_QUATERNION_SLICE]
+        w = rot[0]
+        rot[0:3] = rot[1:4]
+        rot[3] = w
+        euler = R.from_quat(rot).as_euler("zyx")
+        euler[0] = 0
+        rot = R.from_euler("zyx", euler).as_quat()
+        w = rot[3]
+        rot[1:4] = rot[0:3]
+        rot[0] = w
+        x[CASSIE_QUATERNION_SLICE] = rot
         return x
    
 
@@ -279,7 +341,6 @@ class CassieFootstepEnv(DrakeCassieGym):
         return self.move_robot_to_origin(self.initial_condition_bank[10].ravel()) 
 
 
-    # really doesn't like these conditions in the bank, both the hardware and other ones.
     def draw_random_initial_condition_csv(self):
         if self.initial_condition_bank is None:
             reader = csv.reader(open(INITIAL_CONDITIONS_FILE_CSV, 'r'), delimiter=",")
@@ -297,21 +358,39 @@ class CassieFootstepEnv(DrakeCassieGym):
         return self.move_robot_to_origin(new_ic.ravel())
 
 
-    # Returns
+    # Returns lookup in depth image.
     def getBodyHeightFromDepthImage(self, x_b, y_b):
         return 0
+
 
     def test_env(self):
         # ic = self.draw_random_initial_condition()
         ic = self.draw_good_ic()
         s = self.reset(ic)
         while self.current_time < 5 and not self.terminated:
-            self.step()
+            s, r, d, _ = self.step()
         return
+
+
+# is there a good way to reconcile this with the params class?
+def make_footstep_env_fn(rank,
+                         seed=0,
+                         visualize=False,
+                         blind=True,
+                         goal_x=4.0,
+                         max_step_magnitude=0.0,
+                         reward_weights=[0.2, -0.1]):
+    def _init():
+        params = FootstepGymParams(max_step_magnitude=max_step_magnitude)
+        env = CassieFootstepEnv(visualize=visualize, blind=blind, params=params)
+        env.seed(seed+rank)
+        return env
+    return _init
+
 
 # test out this env with providing no actions
 def main():
-    env = CassieFootstepEnv(visualize=True, use_alip_ctrlr=False, params=FootstepGymParams())
+    env = CassieFootstepEnv(visualize=True, blind=True, params=FootstepGymParams())
     env.test_env()
 
 if __name__ == "__main__":

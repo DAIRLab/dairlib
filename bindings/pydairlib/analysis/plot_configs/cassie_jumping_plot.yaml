@@ -6,8 +6,8 @@ channel_osc: "OSC_DEBUG_JUMPING"
 use_archived_lcmtypes: false
 
 # Log time to stop at (seconds, -1 for whole log)
-start_time: 15
-duration: -1
+start_time: 20
+duration: 5
 
 # Plant properties
 use_springs: true

@@ -241,6 +241,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/primitives:vector_aggregator",
         "@drake//:drake_shared_library",
+        "@lcm",
     ],
 )
 
@@ -294,22 +295,24 @@ cc_library(
     ],
 )
 
-cc_binary(
+cc_test(
     name = "log_timing_test",
     srcs = ["test/log_timing_test.cc"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
+        "@lcm",
         "@gflags",
     ],
 )
 
-cc_binary(
+cc_test(
     name = "dispatcher_log_timing_test",
     srcs = ["test/dispatcher_log_timing_test.cc"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
+        "@lcm",
         "@gflags",
     ],
 )

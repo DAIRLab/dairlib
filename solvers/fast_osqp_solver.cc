@@ -115,7 +115,6 @@ void ParseLinearCosts(const MathematicalProgram& prog, std::vector<c_float>* q,
   }
 }
 
-
 // OSQP defines its own infinity in osqp/include/glob_opts.h.
 c_float ConvertInfinity(double val) {
   if (std::isinf(val)) {
@@ -432,14 +431,14 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   osqp_data_->A = EigenSparseToCSC(A_sparse);
   osqp_data_->l = l.data();
   osqp_data_->u = u.data();
-
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
 
   // Solve problem.
   if (!solution_result) {
     DRAKE_THROW_UNLESS(workspace_ != nullptr);
-    const c_int osqp_setup_err = osqp_setup(&workspace_, osqp_data_, osqp_settings_);
+    const c_int osqp_setup_err =
+        osqp_setup(&workspace_, osqp_data_, osqp_settings_);
     if (osqp_setup_err != 0) {
       solution_result = SolutionResult::kInvalidInput;
     }

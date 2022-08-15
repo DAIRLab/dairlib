@@ -81,7 +81,7 @@ int do_main(int argc, char* argv[]) {
 
   // Build the diagram
   drake::systems::DiagramBuilder<double> builder;
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>("udpm://239.255.76.67:7667?ttl=0");
   auto name_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_switch>(
           FLAGS_switch_channel, lcm, TriggerTypeSet({TriggerType::kForced})));

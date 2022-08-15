@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drake/solvers/mathematical_program.h>
 #include <osqp.h>
 
 #include "drake/common/drake_copyable.h"

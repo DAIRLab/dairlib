@@ -105,7 +105,7 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
   /// at the position, velocity, and acceleration level.
   /// Returns a std::vector of constraint bindings, one for each derivative.
   /// For details on what each of these constraints mean, see
-  /// AddKinematic[derivative]Constraint above.
+  /// AddKinematic[Position, Velocity, Acceleration]Constraint above.
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
   AddHolonomicConstraint(const KinematicEvaluatorSet<T>& evaluators,
                          const drake::solvers::VectorXDecisionVariable& q,

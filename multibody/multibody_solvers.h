@@ -50,9 +50,9 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
 
   void AddJointLimitConstraints(drake::solvers::VectorXDecisionVariable q);
 
-  /// Adds a kinematic constraint for the associated KinematicEvaluators
-  /// Decision variables q here are required as an input to avoid calling
-  /// this method out of order with AddPositionVariables()
+  /// Adds a the kinematic constraint phi(q) = 0 for the associated
+  /// KinematicEvaluators. Decision variables q here are required as an input
+  /// to avoid calling this method out of order with AddPositionVariables()
   drake::solvers::Binding<drake::solvers::Constraint>
   AddKinematicPositionConstraint(
       const KinematicEvaluatorSet<T>& evaluators,
@@ -65,6 +65,8 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
       const KinematicEvaluatorSet<T>& evaluators,
       const drake::solvers::VectorXDecisionVariable& q);
 
+  /// Adds a the kinematic constraint d/dt(phi(q)) = J(q)v = 0 for the
+  /// associated KinematicEvaluators, and the decision variables q and v
   drake::solvers::Binding<drake::solvers::Constraint>
   AddKinematicVelocityConstraint(
       const KinematicEvaluatorSet<T>& evaluators,
@@ -78,6 +80,10 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
       const drake::solvers::VectorXDecisionVariable& q,
       const drake::solvers::VectorXDecisionVariable& v);
 
+  /// Adds the kinematic constraint
+  /// d^2/dt^2(phi(q)) = Jdot(q, v)v + J vdot(q, v, u, lambda) = 0 for the
+  /// associated KinematicEvaluators and the decision variables
+  /// q, v, u, and lambda.
   drake::solvers::Binding<drake::solvers::Constraint>
   AddKinematicAccelerationConstraint(
       const KinematicEvaluatorSet<T>& evaluators,
@@ -95,9 +101,11 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
       const drake::solvers::VectorXDecisionVariable& u,
       const drake::solvers::VectorXDecisionVariable& lambda);
 
-  /// Adds a holonomic kinematic constraint at the position, velocity,
-  /// and acceleration level, and returns a std::vector of constraint bindings,
-  /// one for each derivative.
+  /// Adds a holonomic kinematic constraint phi(q) = 0, and, enforces it at the
+  /// at the position, velocity, and acceleration level.
+  /// Returns a std::vector of constraint bindings, one for each derivative.
+  /// For details on what each of these constraints mean, see
+  /// AddKinematic[derivative]Constraint above.
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
   AddHolonomicConstraint(const KinematicEvaluatorSet<T>& evaluators,
                          const drake::solvers::VectorXDecisionVariable& q,

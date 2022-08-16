@@ -16,6 +16,8 @@ import pydairlib.common
 import yaml
 from examples.franka_trajectory_following.scripts.franka_logging_utils import get_most_recent_logs
 
+DAIR_PATH = "/home/dair-manipulation/adam_ws/dairlib"
+
 def check_flag_and_save(ps, filename, format='svg', save_flag=False):
   if save_flag:
     ps.fig.savefig(filename, format=format)
@@ -178,10 +180,11 @@ def main():
                      
     print('Finished processing log - making plots')
 
-    # Define x time slice
     if not os.path.isdir('{}/{}/figures'.format(logdir, log_num)):
       os.makedirs('{}/{}/figures'.format(logdir, log_num))
+    os.chdir(DAIR_PATH)
 
+    # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
 
     ''' Plot Joint Positions '''

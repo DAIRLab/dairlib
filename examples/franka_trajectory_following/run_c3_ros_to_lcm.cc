@@ -84,7 +84,7 @@ int DoMain(int argc, char* argv[]){
   auto ball_position_pub = builder.AddSystem(
     LcmPublisherSystem::Make<dairlib::lcmt_ball_position>(
       "VISION_OUTPUT", &drake_lcm, 
-      {drake::systems::TriggerType::kPeriodic}, 0.01)); //100hz is sufficient
+      {drake::systems::TriggerType::kPeriodic}, 0.005));
   /// connections
   builder.Connect(ball_subscriber->get_output_port(), to_ball_position->get_input_port());
   builder.Connect(to_ball_position->get_output_port(), ball_position_pub->get_input_port());
@@ -109,7 +109,7 @@ int DoMain(int argc, char* argv[]){
       builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_ball_position>(
         "CAM" + cam_id + "_OUTPUT", &drake_lcm, 
-        {drake::systems::TriggerType::kPeriodic}, 0.01));
+        {drake::systems::TriggerType::kPeriodic}, 0.005));
     
     // Connect systems
     builder.Connect(cam_subscribers[i]->get_output_port(),

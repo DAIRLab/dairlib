@@ -84,9 +84,10 @@ int DoMain(int argc, char* argv[]) {
   plant_w_springs.Finalize();
   // Build fix-spring Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
-  AddCassieMultibody(&plant_wo_springs, nullptr, true,
-                     "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf", false,
-                     false);
+  AddCassieMultibody(
+      &plant_wo_springs, nullptr, true,
+      "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf", false,
+      false);
   plant_wo_springs.Finalize();
 
   auto context_w_spr = plant_w_springs.CreateDefaultContext();
@@ -113,28 +114,6 @@ int DoMain(int argc, char* argv[]) {
   OSCStandingGains osc_gains = drake::yaml::LoadYamlFile<OSCStandingGains>(
       FindResourceOrThrow(FLAGS_osc_gains_filename));
 
-  MatrixXd K_p_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      osc_gains.CoMKp.data(), osc_gains.rows, osc_gains.cols);
-  MatrixXd K_d_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      osc_gains.CoMKd.data(), osc_gains.rows, osc_gains.cols);
-  MatrixXd K_p_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      osc_gains.PelvisRotKp.data(), osc_gains.rows, osc_gains.cols);
-  MatrixXd K_d_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      osc_gains.PelvisRotKd.data(), osc_gains.rows, osc_gains.cols);
-  MatrixXd K_p_hip_yaw = osc_gains.HipYawKp * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = osc_gains.HipYawKd * MatrixXd::Identity(1, 1);
-  MatrixXd W_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      osc_gains.CoMW.data(), osc_gains.rows, osc_gains.cols);
-  MatrixXd W_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      osc_gains.PelvisW.data(), osc_gains.rows, osc_gains.cols);
-  MatrixXd W_hip_yaw = osc_gains.HipYawW * MatrixXd::Identity(1, 1);
-
   // Create Lcm subsriber for lcmt_target_standing_height
   auto target_height_receiver = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_target_standing_height>(
@@ -147,8 +126,7 @@ int DoMain(int argc, char* argv[]) {
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
-  auto cassie_out_to_radio =
-      builder.AddSystem<systems::CassieOutToRadio>();
+  auto cassie_out_to_radio = builder.AddSystem<systems::CassieOutToRadio>();
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
 
   // Create command sender.
@@ -224,10 +202,10 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant_wo_springs.num_velocities();
 
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
+  osc->SetInputSmoothingWeights(gains.w_input * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
-  //  osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
-  //                                              gains.W_lambda_h_regularization);
+  osc->SetLambdaHolonomicRegularizationWeight(gains.w_lambda *
+                                              gains.W_lambda_h_regularization);
 
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
@@ -235,17 +213,19 @@ int DoMain(int argc, char* argv[]) {
   //                                      W_com * FLAGS_cost_weight_multiplier,
   //                                      plant_w_springs, plant_wo_springs);
   auto center_of_mass_traj = std::make_unique<TransTaskSpaceTrackingData>(
-      "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
-      plant_w_springs, plant_wo_springs);
+      "com_traj", osc_gains.K_p_com, osc_gains.K_d_com,
+      osc_gains.W_com * FLAGS_cost_weight_multiplier, plant_w_springs,
+      plant_wo_springs);
   center_of_mass_traj->AddPointToTrack("pelvis");
   //  double cutoff_freq = 5; // in Hz
   //  double tau = 1 / (2 * M_PI * cutoff_freq);
-  center_of_mass_traj->SetLowPassFilter(0.03, {1});
+  center_of_mass_traj->SetLowPassFilter(osc_gains.center_of_mass_filter_tau,
+                                        {1});
   osc->AddTrackingData(std::move(center_of_mass_traj));
   // Pelvis rotation tracking
   auto pelvis_rot_traj = std::make_unique<RotTaskSpaceTrackingData>(
-      "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
-      W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
+      "pelvis_rot_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
+      osc_gains.W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_wo_springs);
   pelvis_rot_traj->AddFrameToTrack("pelvis");
   osc->AddTrackingData(std::move(pelvis_rot_traj));
@@ -254,17 +234,12 @@ int DoMain(int argc, char* argv[]) {
   // We use hip yaw joint tracking instead of pelvis yaw tracking because the
   // foot sometimes rotates about yaw, and we need hip yaw joint to go back to
   // 0.
-  double w_hip_yaw = 0.5;
-  double hip_yaw_kp = 40;
-  double hip_yaw_kd = 0.5;
   auto left_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
-      "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
-      hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
-      plant_w_springs, plant_wo_springs);
+      "left_hip_yaw_traj", osc_gains.K_d_hip_yaw, osc_gains.K_p_hip_yaw,
+      osc_gains.W_hip_yaw, plant_w_springs, plant_wo_springs);
   auto right_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
-      "right_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
-      hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
-      plant_w_springs, plant_wo_springs);
+      "right_hip_yaw_traj", osc_gains.K_d_hip_yaw, osc_gains.K_p_hip_yaw,
+      osc_gains.W_hip_yaw, plant_w_springs, plant_wo_springs);
   left_hip_yaw_traj->AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   osc->AddConstTrackingData(std::move(left_hip_yaw_traj), VectorXd::Zero(1));
   right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");

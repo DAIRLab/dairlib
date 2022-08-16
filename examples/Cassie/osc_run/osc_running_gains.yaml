@@ -1,10 +1,12 @@
-w_input: 0.0001
-w_input_reg: 0.1
+w_input: 0.00001
+w_input_reg: 0.0001
 w_accel: 0.0001
 w_soft_constraint: 100
+w_lambda: 0.0001
 impact_threshold: 0.05
 impact_tau: 0.005
 mu: 0.6
+weight_scaling: 1.0
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
            1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
@@ -15,8 +17,8 @@ W_lambda_c_reg: [ 1, 0.001, 0.01,
                   1, 0.001, 0.01,
                   1, 0.1, 0.01,
                   1, 0.1, 0.01 ]
-W_lambda_h_reg: [ 0.01, 0.01, 0.01,
-                  0.01, 0.02, 0.02 ]
+W_lambda_h_reg: [ 0.001, 0.001, 0.001,
+                  0.001, 0.002, 0.002 ]
 #w_soft_constraint: 1000000
 
 relative_feet: true
@@ -50,8 +52,8 @@ FootstepKd:
     0,     0.7, 0,
     0,        0,  0 ]
 PelvisW:
-  [ 1,     0,    0,
-    0,    1,    0,
+  [ 0.1,     0,    0,
+    0,    0.1,    0,
     0,     0,    5 ]
 PelvisKp:
   [ -50,    0,    0,

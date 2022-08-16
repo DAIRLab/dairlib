@@ -66,6 +66,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("GetBreaks", &DirconTrajectory::GetBreaks)
       .def("GetForceSamples", &DirconTrajectory::GetForceSamples)
       .def("GetForceBreaks", &DirconTrajectory::GetForceBreaks)
+      .def("GetImpulseSamples", &DirconTrajectory::GetImpulseSamples)
       .def("GetCollocationForceSamples",
            &DirconTrajectory::GetCollocationForceSamples)
       .def("GetCollocationForceBreaks",

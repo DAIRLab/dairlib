@@ -736,10 +736,10 @@ void SetKinematicConstraints(Dircon<double> *trajopt,
   // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force_vars(2, index);
-    prog->AddLinearConstraint(lambda(2) <= 350);
-    prog->AddLinearConstraint(lambda(5) <= 350);
-    prog->AddLinearConstraint(lambda(8) <= 350);
-    prog->AddLinearConstraint(lambda(11) <= 350);
+    prog->AddLinearConstraint(lambda(2) <= FLAGS_input_delta * 350);
+    prog->AddLinearConstraint(lambda(5) <= FLAGS_input_delta * 350);
+    prog->AddLinearConstraint(lambda(8) <= FLAGS_input_delta * 350);
+    prog->AddLinearConstraint(lambda(11) <= FLAGS_input_delta * 350);
 //    prog->AddLinearConstraint(lambda(2) >= 50);
 //    prog->AddLinearConstraint(lambda(5) >= 50);
 //    prog->AddLinearConstraint(lambda(8) >= 50);

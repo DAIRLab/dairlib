@@ -11,6 +11,7 @@ rows: 3
 cols: 3
 w_input: 0
 w_accel: 0.00000001
+w_lambda: 0.00001
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
            1, 1, 1, 1, 0.01, 0.001,
            1, 1, 1, 1, 0.01, 0.001 ]
@@ -20,11 +21,11 @@ W_lambda_c_reg: [ 1, 0.001, 0.01,
                   1, 0.001, 0.01,
                   1, 0.1, 0.01,
                   1, 0.1, 0.01 ]
-W_lambda_h_reg: [ 0.01, 0.01, 0.01,
-                  0.01, 0.02, 0.02 ]
+W_lambda_h_reg: [ 0.02, 0.02 ]
 w_soft_constraint: 100
 w_input_reg: 0.001
 impact_threshold: 0.00
+center_of_mass_filter_tau: 0.03
 impact_tau: 0.00
 mu: 0.6
 HipYawKp: 10

@@ -8,6 +8,7 @@
 using Eigen::MatrixXd;
 
 struct OSCRunningGains : OSCGains {
+  double weight_scaling;
   double w_swing_toe;
   double swing_toe_kp;
   double swing_toe_kd;
@@ -77,6 +78,7 @@ struct OSCRunningGains : OSCGains {
   template <typename Archive>
   void Serialize(Archive* a) {
     OSCGains::Serialize(a);
+    a->Visit(DRAKE_NVP(weight_scaling));
     a->Visit(DRAKE_NVP(relative_feet));
     a->Visit(DRAKE_NVP(relative_pelvis));
     a->Visit(DRAKE_NVP(rest_length));
@@ -157,5 +159,17 @@ struct OSCRunningGains : OSCGains {
     W_hip_yaw = this->w_hip_yaw * MatrixXd::Identity(1, 1);
     K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
     K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
+
+    w_accel *= weight_scaling;
+    w_input *= weight_scaling;
+    w_input_reg *= weight_scaling;
+    w_lambda *= weight_scaling;
+    w_soft_constraint *= weight_scaling;
+    W_pelvis *= weight_scaling;
+    W_pelvis_rot *= weight_scaling;
+    W_swing_foot *= weight_scaling;
+    W_liftoff_swing_foot *= weight_scaling;
+    W_swing_toe *= weight_scaling;
+    W_hip_yaw *= weight_scaling;
   }
 };

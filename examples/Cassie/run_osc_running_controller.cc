@@ -155,11 +155,9 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.stance_duration, osc_gains.flight_duration, 0.0};
   vector<double> accumulated_state_durations;
   accumulated_state_durations.push_back(0);
-  std::cout << accumulated_state_durations.back() << std::endl;
   for (double state_duration : state_durations) {
     accumulated_state_durations.push_back(accumulated_state_durations.back() +
                                           state_duration);
-    std::cout << accumulated_state_durations.back() << std::endl;
   }
   accumulated_state_durations.pop_back();
 
@@ -167,9 +165,9 @@ int DoMain(int argc, char* argv[]) {
   auto contact_scheduler = builder.AddSystem<ContactScheduler>(
       plant, plant_context.get(), impact_states, gains.impact_threshold,
       gains.impact_tau);
-//  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
-//      plant, fsm_states, state_durations, 0.0, gains.impact_threshold,
-//      gains.impact_tau);
+  //  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
+  //      plant, fsm_states, state_durations, 0.0, gains.impact_threshold,
+  //      gains.impact_tau);
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
@@ -194,26 +192,23 @@ int DoMain(int argc, char* argv[]) {
   auto contact_scheduler_debug_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact_timing>(
           "CONTACT_TIMING", &lcm, TriggerTypeSet({TriggerType::kForced})));
-//  std::vector<double> tau = {.05, .01, .01};
-  auto ekf_filter =
-      builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, osc_gains.ekf_filter_tau);
+  //  std::vector<double> tau = {.05, .01, .01};
+  auto ekf_filter = builder.AddSystem<systems::FloatingBaseVelocityFilter>(
+      plant, osc_gains.ekf_filter_tau);
 
   /**** OSC setup ****/
   // Cost
   /// REGULARIZATION COSTS
-  osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  osc->SetInputSmoothingWeights(1e-3 * gains.W_input_regularization);
-  osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
-  osc->SetLambdaContactRegularizationWeight(1e-4 *
-                                            gains.W_lambda_c_regularization);
-  osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
-                                              gains.W_lambda_h_regularization);
-
+  osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
+  osc->SetInputSmoothingWeights(osc_gains.w_input_reg * osc_gains.W_input_regularization);
+  osc->SetInputCostWeights(osc_gains.w_input * osc_gains.W_input_regularization);
+  osc->SetLambdaContactRegularizationWeight(osc_gains.w_lambda * osc_gains.W_lambda_c_regularization);
+  osc->SetLambdaHolonomicRegularizationWeight(osc_gains.w_lambda * osc_gains.W_lambda_h_regularization);
   // Soft constraint on contacts
-  osc->SetSoftConstraintWeight(gains.w_soft_constraint);
+  osc->SetSoftConstraintWeight(osc_gains.w_soft_constraint);
 
   // Contact information for OSC
-  osc->SetContactFriction(gains.mu);
+  osc->SetContactFriction(osc_gains.mu);
 
   const auto& pelvis = plant.GetBodyByName("pelvis");
   multibody::WorldYawViewFrame view_frame(pelvis);
@@ -534,8 +529,8 @@ int DoMain(int argc, char* argv[]) {
                   ekf_filter->get_input_port());
   builder.Connect(ekf_filter->get_output_port(),
                   osc->get_robot_output_input_port());
-//  builder.Connect(state_receiver->get_output_port(0),
-//                  osc->get_robot_output_input_port());
+  //  builder.Connect(state_receiver->get_output_port(0),
+  //                  osc->get_robot_output_input_port());
 
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),

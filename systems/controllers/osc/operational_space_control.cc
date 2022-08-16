@@ -702,7 +702,13 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
       tracking_cost_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t), 0, true);
+          (J_t.transpose() * W) * J_t, J_t.transpose() * W * (JdotV_t - ddy_t),
+          constant_term.transpose() * W * constant_term, true);
+      //      tracking_cost_.at(i)->UpdateCoefficients(
+      //          J_t.transpose() * W * J_t, VectorXd::Zero(n_v_), 0.5 *
+      //          constant_term.transpose() * W * constant_term);
+      //      tracking_cost_.at(i)->UpdateCoefficients(
+      //          J_t.transpose() * W * J_t, VectorXd::Zero(n_v_));
     } else {
       tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                                VectorXd::Zero(n_v_));

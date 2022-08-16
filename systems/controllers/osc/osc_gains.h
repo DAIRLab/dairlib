@@ -9,8 +9,9 @@ using Eigen::MatrixXd;
 struct OSCGains {
   // costs
   double w_input;
-  double w_input_reg;
   double w_accel;
+  double w_lambda;
+  double w_input_reg;
   double w_soft_constraint;
   double impact_threshold;
   double impact_tau;
@@ -28,8 +29,9 @@ struct OSCGains {
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(w_input));
-    a->Visit(DRAKE_NVP(w_input_reg));
     a->Visit(DRAKE_NVP(w_accel));
+    a->Visit(DRAKE_NVP(w_lambda));
+    a->Visit(DRAKE_NVP(w_input_reg));
     a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(impact_threshold));
     a->Visit(DRAKE_NVP(impact_tau));

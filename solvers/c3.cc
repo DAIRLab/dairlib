@@ -28,7 +28,8 @@ using drake::solvers::Solve;
 
 C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
        const vector<MatrixXd>& G, const vector<MatrixXd>& U,
-       const vector<VectorXd>& xdesired, const C3Options& options)
+       const vector<VectorXd>& xdesired, const C3Options& options,
+       const vector<VectorXd>& warm_start)
     : A_(LCS.A_),
       B_(LCS.B_),
       D_(LCS.D_),
@@ -272,7 +273,9 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
 //    std::cout << "Prediction lam" << std::endl;
 //    std::cout << zz.at(i).segment(n_,m_) << std::endl;
 
+
   }
+
 
 
   return zz;

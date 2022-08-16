@@ -22,7 +22,9 @@ class C3 {
      const std::vector<Eigen::MatrixXd>& R,
      const std::vector<Eigen::MatrixXd>& G,
      const std::vector<Eigen::MatrixXd>& U,
-     const std::vector<Eigen::VectorXd>& xdesired, const C3Options& options);
+     const std::vector<Eigen::VectorXd>& xdesired, 
+     const C3Options& options,
+     const std::vector<Eigen::VectorXd>& warm_start = {});
 
   /// Solve the MPC problem
   /// @param x0 The initial state of the system

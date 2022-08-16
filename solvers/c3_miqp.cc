@@ -10,8 +10,8 @@ using std::vector;
 C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q,
                const vector<MatrixXd>& R, const vector<MatrixXd>& G,
                const vector<MatrixXd>& U, const vector<VectorXd>& xdesired,
-               const C3Options& options)
-    : C3(LCS, Q, R, G, U, xdesired, options), env_(true) {
+               const C3Options& options, const vector<VectorXd>& warm_start)
+    : C3(LCS, Q, R, G, U, xdesired, options, warm_start), env_(true) {
   // Create an environment
   env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");

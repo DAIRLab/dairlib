@@ -29,7 +29,8 @@ using drake::solvers::Solve;
 C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
        const vector<MatrixXd>& G, const vector<MatrixXd>& U,
        const vector<VectorXd>& xdesired, const C3Options& options,
-       const vector<VectorXd>& warm_start)
+       const std::vector<Eigen::VectorXd>& warm_start_delta,
+       const std::vector<Eigen::VectorXd>& warm_start_binary)
     : A_(LCS.A_),
       B_(LCS.B_),
       D_(LCS.D_),
@@ -52,6 +53,19 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
       prog_(MathematicalProgram()),
       OSQPoptions_(SolverOptions()),
       osqp_(OsqpSolver()) {
+
+  // Deep copy warm start
+  if (!warm_start_delta.empty()){
+    warm_start_delta_.resize(warm_start_delta.size());
+    for (int i = 0; i < warm_start_delta.size(); i++){
+      warm_start_delta_[i] = warm_start_delta[i];
+    }
+    warm_start_binary_.resize(warm_start_binary.size());
+    for (int i = 0; i < warm_start_binary.size(); i++){
+      warm_start_binary_[i] = warm_start_binary[i];
+    }
+  }
+
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -323,8 +337,14 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
 
 #pragma omp parallel for
   for (i = 0; i < N_; i++) {
-    deltaProj[i] =
-        SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i]);
+    if (!warm_start_binary_.empty()){
+      deltaProj[i] =
+          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], i);
+    }
+    else{
+      deltaProj[i] =
+          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], -1);
+    }
   }
 
   return deltaProj;

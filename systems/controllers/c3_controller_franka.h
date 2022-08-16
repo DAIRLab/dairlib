@@ -132,6 +132,10 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable bool received_first_message_{false};
   mutable double first_message_time_{-1.0};
 
+  // warm starting
+  mutable std::vector<VectorXd> warm_start_delta_;
+  mutable std::vector<VectorXd> warm_start_binary_;
+
   // kalman filter
   // mutable VectorXd xhat_prev;
   // mutable MatrixXd P_prev;

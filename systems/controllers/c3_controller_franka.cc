@@ -85,6 +85,16 @@ C3Controller_franka::C3Controller_franka(
       xdesired_(xdesired),
       pp_(pp){
 
+
+  // initialize warm start
+  for (int i = 0; i < 5; i++){
+    warm_start_delta_.push_back(VectorXd::Zero(19 + 12 + 3));
+  }
+  for (int i = 0; i < 5; i++){
+    warm_start_binary_.push_back(VectorXd::Zero(12));
+  }
+  
+
   state_input_port_ =
       this->DeclareVectorInputPort(
               "x, u, t",
@@ -386,10 +396,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
-  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options);
+  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options, warm_start_delta_, warm_start_binary_);
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
+  warm_start_delta_ = opt.GetWarmStartDelta();
+  warm_start_binary_ = opt.GetWarmStartBinary();
 
   // compute dt based on moving averaege filter
   double dt = 0;

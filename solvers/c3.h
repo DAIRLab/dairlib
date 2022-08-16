@@ -24,7 +24,8 @@ class C3 {
      const std::vector<Eigen::MatrixXd>& U,
      const std::vector<Eigen::VectorXd>& xdesired, 
      const C3Options& options,
-     const std::vector<Eigen::VectorXd>& warm_start = {});
+     const std::vector<Eigen::VectorXd>& warm_start_delta = {},
+     const std::vector<Eigen::VectorXd>& warm_start_binary = {});
 
   /// Solve the MPC problem
   /// @param x0 The initial state of the system
@@ -77,7 +78,8 @@ class C3 {
                                                 const Eigen::MatrixXd& E,
                                                 const Eigen::MatrixXd& F,
                                                 const Eigen::MatrixXd& H,
-                                                const Eigen::VectorXd& c) = 0;
+                                                const Eigen::VectorXd& c,
+                                                const int& warm_start_index) = 0;
 
  public:
   const std::vector<Eigen::MatrixXd> A_;
@@ -99,6 +101,10 @@ class C3 {
   const int m_;
   const int k_;
   const bool hflag_;
+
+protected:
+  std::vector<Eigen::VectorXd> warm_start_delta_;
+  std::vector<Eigen::VectorXd> warm_start_binary_;
 
  private:
   drake::solvers::MathematicalProgram prog_;

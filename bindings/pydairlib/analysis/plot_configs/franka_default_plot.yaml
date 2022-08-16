@@ -1,16 +1,19 @@
 # Log time to stop at (seconds, -1 for whole log)
-end_time: -1
+end_time: 5
+save_plots: true
+show_plots: true
 
 # Desired Franka plots
 plot_joint_positions: true
 plot_joint_velocities: true
-plot_joint_efforts: true
+plot_measured_joint_efforts: true
+plot_desired_joint_efforts: true
 
 # Desired ball/vision plots
-plot_ball_position: true
-plot_ball_velocity: true
+plot_unfiltered_ball_position: true
+plot_vision_dt: true
 plot_num_cameras: true
-plot_num_camera_channels: ['CAM0_OUTPUT', 'CAM1_OUTPUT', 'CAM2_OUTPUT', 'VISION_OUTPUT']
+plot_camera_channels: ['CAM0_OUTPUT', 'CAM1_OUTPUT', 'CAM2_OUTPUT', 'VISION_OUTPUT']
 
 # Desired C3 plots
 plot_EE_position: true
@@ -19,4 +22,4 @@ plot_EE_error: true
 plot_desired_EE_position: true
 plot_desired_EE_velocity: true
 plot_desired_EE_forces: true
-overlay_desired_and_measured_EE_plots: true
+plot_c3_solve_times: true

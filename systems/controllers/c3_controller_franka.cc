@@ -186,6 +186,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired(7) = finish(0);
     st_desired(8) = finish(1);
     st_desired(9) = ball_radius + table_offset;
+    st_desired(10) = target[1][0];
+    st_desired(11) = target[1][1];
+    st_desired(12) = target[1][2];
     st_desired(28) = finish(0);
     st_desired(29) = finish(1);
     st_desired(30) = ball_radius + table_offset;

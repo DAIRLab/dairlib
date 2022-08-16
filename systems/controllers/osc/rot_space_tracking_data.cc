@@ -1,4 +1,5 @@
 #include "rot_space_tracking_data.h"
+#include <iostream>
 
 using Eigen::Isometry3d;
 using Eigen::MatrixXd;

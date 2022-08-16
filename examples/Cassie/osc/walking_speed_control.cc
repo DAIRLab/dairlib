@@ -8,8 +8,6 @@
 
 #include "drake/math/quaternion.h"
 
-using std::cout;
-using std::endl;
 using std::string;
 
 using Eigen::MatrixXd;

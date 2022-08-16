@@ -2,9 +2,6 @@
 
 #include "dairlib/lcmt_target_standing_height.hpp"
 
-using std::cout;
-using std::endl;
-
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;

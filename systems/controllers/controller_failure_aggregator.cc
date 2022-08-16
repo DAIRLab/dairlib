@@ -2,8 +2,6 @@
 
 #include <limits>
 
-using std::cout;
-using std::endl;
 using std::string;
 
 using Eigen::MatrixXd;

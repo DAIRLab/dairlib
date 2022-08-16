@@ -55,7 +55,6 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
-DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_double(cost_weight_multiplier, 1.0,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, .8, "The initial COM height (m)");
@@ -135,7 +134,7 @@ int DoMain(int argc, char* argv[]) {
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
-  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_local;
   auto gains = drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_gains_filename);
 
   MatrixXd K_p_com = Eigen::Map<
@@ -224,7 +223,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_springs, plant_wo_springs, context_w_spr.get(),
-      context_wo_spr.get(), false, FLAGS_print_osc, FLAGS_qp_time_limit);
+      context_wo_spr.get(), false, FLAGS_qp_time_limit);
 
   // Distance constraint
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);

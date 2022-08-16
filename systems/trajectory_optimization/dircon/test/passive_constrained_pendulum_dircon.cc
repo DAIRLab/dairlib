@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <chrono>
+#include <iostream>
 
 #include <gflags/gflags.h>
 

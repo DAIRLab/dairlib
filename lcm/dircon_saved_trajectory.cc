@@ -1,4 +1,5 @@
 #include "dircon_saved_trajectory.h"
+#include <iostream>
 
 #include "multibody/multibody_utils.h"
 

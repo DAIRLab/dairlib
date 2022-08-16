@@ -43,8 +43,6 @@ using drake::multibody::UnitInertia;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
-using std::cout;
-using std::endl;
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -111,7 +109,7 @@ int do_main(int argc, char* argv[]) {
         scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
   }
 
-  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph, lcm);
 
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 

@@ -1,21 +1,3 @@
-build_task:
-  timeout_in: 120m
-  container:
-    dockerfile: install/bionic/Dockerfile
-    cpu: 8
-    memory: 24
-  test_script:
-    - bazel build
-      --define=WITH_SNOPT=OFF
-      --local_ram_resources=24000
-      --local_cpu_resources=8
-      --jobs=8 
-      //...
-    - bazel test
-      --define=WITH_SNOPT=OFF
-      --local_ram_resources=24000
-      --local_cpu_resources=8
-      //...
 build_focal_task:
   timeout_in: 120m
   container:
@@ -23,6 +5,8 @@ build_focal_task:
     cpu: 8
     memory: 24
   test_script:
+    - export CC=clang-12
+    - export CXX=clang++-12
     - bazel build
       --define=WITH_SNOPT=OFF
       --local_ram_resources=24000
@@ -61,7 +45,7 @@ build_with_ros_task:
 drake_master_build_task:
   timeout_in: 120m
   container:
-    dockerfile: install/bionic/ros/Dockerfile
+    dockerfile: install/focal/ros/Dockerfile
     cpu: 8
     memory: 24
   allow_failures: true

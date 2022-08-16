@@ -1,6 +1,7 @@
 #include "examples/Cassie/systems/input_supervisor.h"
 
 #include <dairlib/lcmt_cassie_out.hpp>
+#include <iostream>
 #include <dairlib/lcmt_controller_failure.hpp>
 
 #include "dairlib/lcmt_controller_switch.hpp"

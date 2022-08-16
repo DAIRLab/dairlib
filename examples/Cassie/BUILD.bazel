@@ -295,7 +295,7 @@ cc_library(
     ],
 )
 
-cc_test(
+cc_binary(
     name = "log_timing_test",
     srcs = ["test/log_timing_test.cc"],
     deps = [
@@ -306,7 +306,7 @@ cc_test(
     ],
 )
 
-cc_test(
+cc_binary(
     name = "dispatcher_log_timing_test",
     srcs = ["test/dispatcher_log_timing_test.cc"],
     deps = [

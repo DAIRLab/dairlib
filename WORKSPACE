@@ -11,12 +11,12 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "e80d001876a8c14dbd46e8a5f8c0d1eaf0e7de1a"
+DRAKE_COMMIT = "7ed177b58a6200b248928eb7519dd0eff4e04a14"
 
-DRAKE_CHECKSUM = "b277f8cd93ca219bb33d93a3bf7c111e3353df49aa48da19fcfbdb36addd3727"
+DRAKE_CHECKSUM = "a3ab84e9b2fa663158966b4b78b96dda5b2b6da96d24636245b645812270d98b"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
-#DRAKE_CHECKSUM = "0" * 64
+# DRAKE_CHECKSUM = "0" * 64
 
 # Load an environment variable.
 load("//:environ.bzl", "environ_repository")

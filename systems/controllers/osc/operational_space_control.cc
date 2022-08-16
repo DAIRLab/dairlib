@@ -700,25 +700,9 @@ VectorXd OperationalSpaceControl::SolveQp(
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       const VectorXd constant_term = (JdotV_t - ddy_t);
-      //      tracking_cost_.at(i)->UpdateCoefficients(
-      //          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t -
-      //          ddy_t), 0.5 * constant_term.transpose() * W * constant_term,
-      //          true);
-//      Eigen::EigenSolver<MatrixXd> b(J_t.transpose() * W * J_t,false);
-//      cout<<" Eigen values are: \n "<<b.eigenvalues()<<"\n";
-//      Eigen::LDLT<Eigen::MatrixXd> ldlt_solver;
-//      ldlt_solver.compute(J_t.transpose() * W * J_t);
-      //      std::cout << J_t.rows() << ", " << J_t.cols() << std::endl;
-//      std::cout << W.rows() << ", " << W.cols() << std::endl;
-//      std::cout << ldlt_solver.isPositive() << std::endl;
+
       tracking_cost_.at(i)->UpdateCoefficients(
-          (J_t.transpose() * W) * J_t, J_t.transpose() * W * (JdotV_t - ddy_t),
-          constant_term.transpose() * W * constant_term, true);
-      //      tracking_cost_.at(i)->UpdateCoefficients(
-      //          J_t.transpose() * W * J_t, VectorXd::Zero(n_v_), 0.5 *
-      //          constant_term.transpose() * W * constant_term);
-      //      tracking_cost_.at(i)->UpdateCoefficients(
-      //          J_t.transpose() * W * J_t, VectorXd::Zero(n_v_));
+          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t), 0, true);
     } else {
       tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                                VectorXd::Zero(n_v_));

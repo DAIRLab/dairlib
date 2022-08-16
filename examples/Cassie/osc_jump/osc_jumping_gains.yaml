@@ -1,4 +1,5 @@
 w_input: 0.000
+w_lambda: 0.000
 w_accel: 0.0000001
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
 W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,

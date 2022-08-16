@@ -168,8 +168,11 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
         drake::multibody::UniformGravityFieldElement<double>::kDefaultStrength;
 
     // Compute relative to stance foot
-    double pelvis_z = robot_output->GetPositionAtIndex(6) -
-                      state->get_discrete_state(ground_height_index_)[0];
+    VectorXd pelvis_pos = Vector3d::Zero();
+    plant_.CalcPointsPositions(
+        *plant_context_, plant_.GetBodyByName("pelvis").body_frame(),
+        Vector3d::Zero(), plant_.world_frame(), &pelvis_pos);
+    double pelvis_z = pelvis_pos[2];
     double pelvis_zdot = robot_output->GetVelocityAtIndex(5);
 
     if (active_state == LEFT_STANCE || active_state == RIGHT_STANCE) {
@@ -200,9 +203,10 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
                                 2 * g * (rest_length_ - pelvis_z))) /
             g;
       }
+      double time_to_touchdown_saturated =
+          drake::math::saturate(time_to_touchdown, 0.05, 0.12);
       double next_transition_time =
-          stored_transition_time +
-          drake::math::saturate(time_to_touchdown, 0.08, 0.12);
+          stored_transition_time + time_to_touchdown_saturated;
       state->get_mutable_discrete_state(nominal_state_durations_index_)[1] =
           next_transition_time - stored_transition_time;
       if (active_state == LEFT_FLIGHT) {

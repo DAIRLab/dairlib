@@ -4,7 +4,7 @@ w_accel: 0.0001
 w_soft_constraint: 100
 w_lambda: 0.0001
 impact_threshold: 0.05
-impact_tau: 0.005
+impact_tau: 0.001
 mu: 0.6
 weight_scaling: 1.0
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
@@ -32,8 +32,8 @@ vel_scale_trans_lateral: -0.0
 
 # SLIP parameters
 rest_length: 0.85
-stance_duration: 0.25
-flight_duration: 0.10
+stance_duration: 0.0
+flight_duration: 0.0
 
 w_swing_toe: 1
 swing_toe_kp: 1500
@@ -62,7 +62,7 @@ PelvisKp:
 PelvisKd:
   [ 2,    0,   0,
     0,    2,   0,
-    0,    0,  4 ]
+    0,    0,  2 ]
 PelvisRotW:
   [ 10,  0,   0,
     0,  10,   0,

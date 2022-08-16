@@ -165,6 +165,7 @@ int DoMain(int argc, char* argv[]) {
   auto contact_scheduler = builder.AddSystem<ContactScheduler>(
       plant, plant_context.get(), impact_states, gains.impact_threshold,
       gains.impact_tau);
+  contact_scheduler->SetSLIPParams(osc_gains.rest_length);
   //  auto fsm = builder.AddSystem<ImpactTimeBasedFiniteStateMachine>(
   //      plant, fsm_states, state_durations, 0.0, gains.impact_threshold,
   //      gains.impact_tau);
@@ -288,6 +289,7 @@ int DoMain(int argc, char* argv[]) {
           plant, plant_context.get(), default_traj, feet_contact_points,
           osc_gains.relative_pelvis);
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length);
+
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_left", "pelvis", osc_gains.relative_feet,
       LEFT_STANCE);

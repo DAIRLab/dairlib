@@ -2,7 +2,7 @@ import os
 import glob
 from datetime import date
 
-default_log_root = "{}/adam_ws/logs".format(os.getenv('HOME'))
+default_log_root = "/hdd_storage/c3-experiments/logs".format(os.getenv('HOME'))
 
 
 def create_new_log(log_root=default_log_root):

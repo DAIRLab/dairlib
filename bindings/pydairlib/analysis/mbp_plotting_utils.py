@@ -103,17 +103,22 @@ def process_ball_position_channel(data):
   t = []
   dt = []
 
-  prev_t = (data[0].utime - (data[1].utime - data[0].utime)) / 1e6
-  prev_id = -1000
+  prev_t = 0.0
+  prev_id = -1
   curr_dt = 0.0
+  first_message = True
   for msg in data:
-    id.append(msg.id)
-    if msg.id != prev_id:
+    if first_message:
+      first_message = False
+      prev_t = msg.utime /1e-6
+      prev_id = msg.id
+    elif msg.id != prev_id:
       curr_dt = msg.utime / 1e6 - prev_t
       prev_t = msg.utime / 1e6
       prev_id = msg.id
     dt.append(curr_dt)
 
+    id.append(msg.id)
     num_cameras_used.append(msg.num_cameras_used)
 
     xyz_temp = [msg.xyz[0], msg.xyz[1], msg.xyz[2]]
@@ -286,6 +291,10 @@ def load_default_channels(data, plant, state_channel, input_channel,
 def load_default_franka_channels(data, plant, state_channel, input_channel, c3_channel,
     cam0_channel, cam1_channel, cam2_channel, vision_channel):
     
+    print("\nDetected the following channels:")
+    print(data.keys())
+    print('')
+
     robot_output = process_state_channel(data[state_channel], plant)
     robot_input = process_effort_channel(data[input_channel], plant)
     c3_output = process_c3_channel(data[c3_channel])
@@ -400,13 +409,17 @@ def plot_ball_position(output, key, time_slice, ylabel=None, title=None):
   return ps
 
 def plot_multiple_ball_positions(outputs, time_slice, legend, ylabel='Position [m]', title='Raw Camera Outputs'):
-  data = outputs[0]['xyz']
+  min_msgs = float('inf')
+  for i in range(len(outputs)):
+    min_msgs = min(min_msgs, outputs[i]['xyz'].shape[0])
+
+  data = outputs[0]['xyz'][:min_msgs, :]
   for i in range(1, len(outputs)):
-    data = np.concatenate((data, outputs[i]['xyz']), axis = 1)
+    data = np.concatenate((data, outputs[i]['xyz'][:min_msgs, :]), axis = 1)
   
   ps = plot_styler.PlotStyler()
   plotting_utils.make_plot(
-    {'t': outputs[0]['t'],
+    {'t': outputs[0]['t'][:min_msgs],
      'data': data},
     't',
     time_slice,

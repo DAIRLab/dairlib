@@ -193,17 +193,17 @@ void StandingPelvisPD::CalcInput(
       plant_.GetBodyByName("pelvis").body_frame(),
       &J_r);
 
-  MatrixXd J_f = MatrixXd::Zero(12, plant_.num_velocities());
-  J_f.block(0, 0, 6, plant_.num_velocities()) = J_l;
-  J_f.block(6, 0, 6, plant_.num_velocities()) = J_r;
+  MatrixXd J_f = MatrixXd::Zero(12, plant_.num_velocities() - 6);
+  J_f.block(0, 0, 6, plant_.num_velocities() - 6) = J_l.rightCols(plant_.num_velocities() - 6);
+  J_f.block(6, 0, 6, plant_.num_velocities() - 6) = J_r.rightCols(plant_.num_velocities() - 6);
 
-  int n_p = plant_.num_velocities() - plant_.num_actuators();
-  MatrixXd B = plant_.MakeActuationMatrix();
-  MatrixXd C = MatrixXd::Zero(plant_.num_velocities(),n_p);
+  int n_p = plant_.num_velocities() - plant_.num_actuators() - 6;
+  MatrixXd B = plant_.MakeActuationMatrix().bottomRows(plant_.num_velocities() - 6);
+  MatrixXd C = MatrixXd::Zero(B.rows(), n_p);
 
 
   int c = 0;
-  for (int i = 0; i < plant_.num_velocities(); i++) {
+  for (int i = 0; i < plant_.num_velocities() - 6; i++) {
     if (B.row(i).dot(VectorXd::Ones(plant_.num_actuators())) > 0) {
       C(i, c) = 0;
     } else {
@@ -214,26 +214,20 @@ void StandingPelvisPD::CalcInput(
 
   int n_loop = kinematic_evaluators_->count_full();
   std::cout << "N_loop:" << n_loop << std::endl;
-  MatrixXd J_h = MatrixXd::Zero(n_p,plant_.num_velocities());
+  MatrixXd J_h = MatrixXd::Zero(n_p,plant_.num_velocities() - 6);
   J_h.topRows(n_loop) =
-      kinematic_evaluators_->EvalFullJacobian(*context_);
+      kinematic_evaluators_->EvalFullJacobian(*context_).rightCols(plant_.num_velocities() - 6);
   for (int i = 0; i < spring_vel_names_.size(); i++) {
-    J_h(n_loop + i, name_to_vel_map_.at(spring_vel_names_.at(i))) = 1;
+    J_h(n_loop + i, name_to_vel_map_.at(spring_vel_names_.at(i)) - 6) = 1;
   }
   MatrixXd J_f_a = J_f * B;
   MatrixXd J_f_p = J_f * C;
   MatrixXd J_h_a = J_h * B;
   MatrixXd J_h_p = J_h * C;
   MatrixXd J_T = (J_f_a + J_f_p * J_h_p.inverse() * J_h_a).transpose();
-  std::cout << J_h << std::endl;
+  std::cout << J_T << std::endl;
 
   u->SetDataVector(J_T * f);
   u->set_timestamp(robot_state->get_timestamp());
 }
 }
-
-
-
-
-
-

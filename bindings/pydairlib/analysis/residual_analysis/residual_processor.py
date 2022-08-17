@@ -8,7 +8,7 @@ from utils import *
 from scipy.spatial.transform import Rotation
 import numpy as np
 
-class DataProcessor():
+class CassieResidualAnalyzer():
 
     def __init__(self):
         pass
@@ -76,8 +76,6 @@ class DataProcessor():
         
         best_spring_forces = []
         v_dot_of_best_spring_model = []
-        lambda_h_solved = []
-        lambda_c_solved = []
         v_dot_gts = []
         
         # Selected joints that have encoders in them, such that the corresponding ground truth v_dot are more accurate.
@@ -113,18 +111,6 @@ class DataProcessor():
             A_inverse = np.linalg.inv(A)
             
             v_dot_gts.append(v_dot_gt)
-
-            if num_of_contact > 0:
-                b = np.hstack((
-                    B @ u + gravity - bias + damping_force + J_s.T @ spring_force,
-                    -J_h_active_dot_v,
-                    -J_c_active_dot_v,
-                ))
-            else:
-                b = np.hstack((
-                    B @ u + gravity - bias + damping_force + J_s.T @ spring_force,
-                    -J_h_active_dot_v,            
-                ))
 
             # Define cost
             # The cost is define as L2 norm of "selection_matrix @ (v_dot_gt - v_dot)"
@@ -185,188 +171,6 @@ class DataProcessor():
 
         return residual, v_dot_of_best_spring_model, best_spring_forces
 
-    def fit_spring_damper_model_of_hip_between_main_body(self, start_time, end_time, is_show=False):
-
-        n = len(self.processed_data)
-        t = []
-        state_dots = []
-        state_s = []
-
-        for datum in self.processed_data:
-            if datum['t'] < start_time or datum['t'] > end_time:
-                continue
-            t.append(datum['t'])
-            state_dots.append([datum["v"]["hip_roll_leftdot"], datum["v"]["base_wx"], datum["v"]["hip_roll_rightdot"],
-                        datum["v_dot_gt"]["hip_roll_leftdot"] - datum["v_dot_best_spring_model"]["hip_roll_leftdot"], 
-                        datum["v_dot_gt"]["base_wx"] - datum["v_dot_best_spring_model"]["base_wx"], 
-                        datum["v_dot_gt"]["hip_roll_rightdot"] - datum["v_dot_best_spring_model"]["hip_roll_rightdot"]])
-            rot = Rotation.from_quat( np.array([datum["q"]["base_qx"], datum["q"]["base_qy"], datum["q"]["base_qz"], datum["q"]["base_qw"]]))
-            state_s.append([datum["q"]["hip_roll_left"], rot.as_rotvec()[0], datum["q"]["hip_roll_right"],
-                    datum["v"]["hip_roll_leftdot"], datum["v"]["base_wx"], datum["v"]["hip_roll_rightdot"]])
-
-        state_s = np.array(state_s)
-        state_dots = np.array(state_dots)
-
-        print("Begin fit a spring damper model")
-
-        prog = MathematicalProgram()
-        A = prog.NewContinuousVariables(6,6)
-        residuals = prog.NewContinuousVariables(6*n)
-        offset = prog.NewContinuousVariables(6)
-        """
-        A = [0,0,0,1,0,0,
-            0,0,0,0,1,0,
-            0,0,0,0,0,1,
-            -k1/m1,k1/m1,0,,-c1/m1,c1/m1,0,
-            k1/m2,-(k1+k2)/m2,k2/m2,c1/m2,-(c1+c2)/m2,c2/m2,
-            0,k2/m3,-k2/m3,0,c3/m3,-c2/m3
-        ]
-        """
-        A_shape_constraints = [prog.AddLinearEqualityConstraint(A[0], np.array([0,0,0,1,0,0])),
-                            prog.AddLinearEqualityConstraint(A[1], np.array([0,0,0,0,1,0])),
-                            prog.AddLinearEqualityConstraint(A[2], np.array([0,0,0,0,0,1])),
-                            prog.AddConstraint(A[3,2] == 0),
-                            prog.AddConstraint(A[3,5] == 0),
-                            prog.AddConstraint(A[5,0] == 0),
-                            prog.AddConstraint(A[5,3] == 0),
-                            prog.AddConstraint(A[3,0] + A[3,1] == 0),
-                            prog.AddConstraint(A[3,3] + A[3,4] == 0),
-                            prog.AddConstraint(A[4,0] + A[4,1] + A[4,2] == 0),
-                            prog.AddConstraint(A[4,3] + A[4,4] + A[4,5] == 0),
-                            prog.AddConstraint(A[5,1] + A[5,2] == 0),
-                            prog.AddConstraint(A[5,4] + A[5,5] == 0)
-                            ]
-        
-        # residuals[i*6:(i+1)*6] == state_dots[i] - A @ state_s[i] - offset
-        residual_equal_constraints = []
-        for i in range(n):
-            residual_equal_constraints.append(prog.AddConstraint(residuals[i*6:(i+1)*6] == state_dots[i] - A @ state_s[i] - offset))
-
-        obj = cp.Minimize(cp.norm2(residuals))
-        
-        prob = cp.Problem(obj, constraints)
-        prob.solve()
-
-        state_dots_est = []
-
-        for i in range(n):
-            state_dots_est.append(A.value @ state_s[i])
-
-        state_dots_est = np.array(state_dots_est)
-
-        if is_show:
-            self.show_fitted_result_for_spring_damper_model_of_hip_between_main_body(t,state_dots,state_dots_est)
-
-        return state_dots, state_dots_est, t
-    
-    def show_fitted_result_for_spring_damper_model_of_hip_between_main_body(self,t,state_dots,state_dots_est):
-
-        data_to_show = [
-            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,0],est=state_dots_est[:,0],title="left_hip_roll_v",ylabel="v(rad/s)"),
-            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,1],est=state_dots_est[:,1],title="base_wx",ylabel="v(rad/s)"),
-            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,2],est=state_dots_est[:,2],title="right_hip_roll_v",ylabel="v(rad/s)"),
-            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,3],est=state_dots_est[:,3],title="left_hip_roll_v_dot",ylabel="acc(rad/s^2)"),
-            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,4],est=state_dots_est[:,4],title="base_wx_v_dot",ylabel="acc(rad/s^2)"),
-            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,5],est=state_dots_est[:,5],title="right_hip_v_dot",ylabel="acc(rad/s^2)")
-        ]
-
-        plot_by_list_of_dictionaries(data_to_show,is_show=True)
-
-    def fit_spring_damper_model_of_hip_as_beam(self, start_time, end_time, selected_joint="hip_roll_leftdot", is_show=False):
-        """
-            Assuming there are spring and damping couple with hip roll, this function is going to how it may look like.
-            
-            Note, becasue there are too many freedom to choose K, C and mass for the system, the result can mean nothing.
-        """
-
-        # initial guess of spring stiffness and damping
-        Ks = [10000]
-        Cs = [1]
-        # max iteration
-        max_iter = 5
-
-        tau = []
-        t = []
-
-        n = len(self.original_data)
-
-        for i in range(n):
-            datum_original = self.original_data[i]
-            datum_processed = self.processed_data[i]
-
-            v_dot_best_spring = [datum_processed["v_dot_best_spring_model"][x] for x in datum_processed["v_dot_best_spring_model"]]
-
-            if datum_original['t'] < start_time or datum_original['t'] > end_time:
-                continue
-            
-            # TODO alternative just choose the residual corresponding the acc?
-
-            tau.append( (datum_original['M'] @ (datum_original['v_dot_gt'] - v_dot_best_spring))[self.vel_map[selected_joint]])
-            t.append(datum_original['t'])
-
-        tau = np.array(tau)
-        t = np.array(t)
-
-        q_init = np.zeros(n)
-        v_init = np.zeros(n)
-        qs = [q_init]
-        vs = [v_init]
-
-        print("Begin fit spring damping model. Step of signal:{}".format(n))
-        
-        for i in tqdm.trange(max_iter):
-            # solve q and v
-            q_cp = cp.Variable(n)
-            v_cp = cp.Variable(n)
-            
-            cost = cp.norm(tau + Ks[-1] * q_cp + Cs[-1] * v_cp)
-            obj = cp.Minimize(cost)
-            
-            constraints = []
-            for i in range(1,n):
-                constraints.append(q_cp[i] == q_cp[i-1] + (t[i] - t[i-1])*v_cp)
-            
-            prob = cp.Problem(obj, constraints)
-            q_cp.value = qs[-1]
-            v_cp.value = vs[-1]
-            
-            prob.solve(warm_start = True)
-            
-            qs.append(q_cp.value)
-            vs.append(v_cp.value)
-
-            # solve K and C
-            A = np.hstack((qs[-1].reshape(-1,1), vs[-1].reshape(-1,1)))
-            sol = -np.linalg.inv(A.T @ A) @ A.T @ tau            
-            Ks.append(sol[0])
-            Cs.append(sol[1])
-        
-        print("Finish fit spring damping model.")
-
-        if is_show:
-            self.show_fitted_result_for_spring_damper_model_of_hip_as_beam(Ks, Cs, qs, vs, tau, t)
-
-        # each element in Ks, Cs, qs, vs corresponding to data in one iteration. The final result can be find by e.g. Ks[-1]
-        return Ks, Cs, qs, vs, tau, t
-
-    def show_fitted_result_for_spring_damper_model_of_hip_as_beam(self, Ks, Cs, qs, vs, tau, t):
-        max_iter = len(Ks)
-        # Construc data for plots
-        data_to_plot = []
-        data_to_plot.append({
-            "x":range(len(Ks)), 
-            "ys":[{"legend":"K", "value":Ks},
-                    {"legend":"C", "value":Cs}]
-            })
-        for i in range(max_iter):
-            data_to_plot.append({
-            "x":t,
-            "ys":[{"legend":"Spring and Damping force", "value":-Ks[i] * qs[i+1] - Cs[i] * vs[i+1]},
-                {"legend":"Virtual Torque", "value":tau}],
-            })
-
-        plot_by_list_of_dictionaries(data_to_plot, is_show=True)
-
     def calc_spring_constant(self, q, best_spring_forces):
         
         n = q.shape[0]
@@ -405,7 +209,7 @@ class DataProcessor():
         print(f"{'Ankle left':<15} {ankle_left_sol[0]:>10.2f} {ankle_left_sol[1]:>10.2f}")
         print(f"{'Ankle left':<15} {ankle_right_sol[0]:>10.2f} {ankle_right_sol[1]:>10.2f}")
 
-    def show_hip_residuals_given_time_period(self, start_time, end_time, residual_name):
+    def show_hip_residuals_given_time_period(self, start_time, end_time, residual_name="v_dot_changed_stiffness_spring_model"):
 
         threshholds = {"hip_roll_leftdot":100,
                         "hip_roll_rightdot":100,
@@ -424,10 +228,15 @@ class DataProcessor():
                                 "hip_pitch_rightdot":'coral',
                                 "hip_yaw_leftdot":'silver',
                                 "hip_yaw_rightdot":'yellow'}
+
+        start_index = 0
+        while self.processed_data[start_index]["t"] < start_time:
+            start_index += 1
+        end_index = len(self.processed_data)-1
+        while self.processed_data[end_index]["t"] > end_time:
+            end_index -= 1
     
-        for datum in self.processed_data:
-            if datum['t'] < start_time or datum['t'] > end_time:
-                continue
+        for datum in self.processed_data[start_index:end_index]:
             t.append(datum['t'])
             single_residual_info = datum[residual_name]
             for joint_name in single_residual_info:
@@ -465,7 +274,7 @@ class DataProcessor():
             rects.append({"rect":rect,
                         "start_index":start_index,
                         "end_index":end_index})
-        rects.sort(joint_name=lambda x: x["start_index"])
+        rects.sort(key=lambda x: x["start_index"])
         
         for rect in rects:
             plt.gca().add_patch(rect["rect"])
@@ -486,7 +295,14 @@ class DataProcessor():
             joints_name = ["hip_roll_leftdot", "hip_roll_rightdot", "hip_pitch_leftdot", "hip_pitch_rightdot", "hip_yaw_leftdot", "hip_yaw_rightdot",
                         "knee_leftdot", "knee_rightdot", "knee_joint_leftdot", "knee_joint_rightdot", "ankle_joint_leftdot", "ankle_joint_rightdot"]
 
-        for datum in self.processed_data:
+        start_index = 0
+        while self.processed_data[start_index]["t"] < start_time:
+            start_index += 1
+        end_index = len(self.processed_data)-1
+        while self.processed_data[end_index]["t"] > end_time:
+            end_index -= 1
+
+        for datum in self.processed_data[start_index:end_index]:
             if datum['t'] < start_time or datum['t'] > end_time:
                 continue
             if act_start_time is None or datum["t"] < act_start_time:

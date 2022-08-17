@@ -78,22 +78,6 @@ class CassieSystem():
     def set_spring_offset(self, offset):
         self.spring_offset = offset
 
-    def calc_q_and_v(self, dt, q, v, v_dot):
-        """
-        Get the q and v at the next step by intergraion of v and v_dot.
-        
-        The first four entries in the q are the quaternion for the pelvic, 
-        and the first three entries in the velocity are the angular velocities along three axis.
-        """
-        new_q = np.zeros_like(q)
-        new_v = np.zeros_like(v)
-
-        new_v = v + dt * v_dot
-        new_q[4:] = q[4:] + dt * v[3:]
-        new_q[:4] = ((Rotation.from_quat(q[[1,2,3,0]]) * Rotation.from_rotvec(dt * v[:3])).as_quat())[[3,0,1,2]]
-
-        return new_q, new_v
-
     def calc_vdot(self, t, q, v, u, is_contact=None, lambda_c_gt=None, lambda_c_position=None, v_dot_gt=None, u_osc=None, v_dot_osc=None, spring_mode="changed_stiffness"):
         """
             The unknown term are \dot v, contact force \lambda_c_active and constraints forces \lambda_h.
@@ -296,8 +280,6 @@ class CassieSystem():
 
     def get_J_c_ative_and_J_c_active_dot_v(self, is_contact, lambda_c_gt, lambda_c_position):
         J_c_active = None; J_c_active_dot_v = None; num_contact_unknown = 0
-        left_front_index = None; left_rear_index = None
-        right_front_index = None; right_rear_index = None
         left_index = None; right_index = None
         
         if is_contact[0] > 0:

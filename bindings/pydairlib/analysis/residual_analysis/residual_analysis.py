@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 from cassie_model import CassieSystem
 from utils import *
 from plot_utlis import *
-from data_processor import DataProcessor
+from residual_processor import CassieResidualAnalyzer
 from log_processor import LogProcessor
 
-class ResidualAnalyzer():
+class CassieResidualAnalysisMain():
     def __init__(self, path, is_wandb, start_time, duration, wandb_name): 
         
         self.cassie = CassieSystem()
@@ -22,19 +22,19 @@ class ResidualAnalyzer():
         self.start_time = start_time
         self.duration = duration
 
-        self.data_processor = DataProcessor()
+        self.residual_analyzer = CassieResidualAnalyzer()
         self.log_processor = LogProcessor(self.start_time, self.duration)
 
-        self.data_processor.set_num_of_pos(self.cassie.num_pos)
-        self.data_processor.set_num_of_vel(self.cassie.num_vel)
+        self.residual_analyzer.set_num_of_pos(self.cassie.num_pos)
+        self.residual_analyzer.set_num_of_vel(self.cassie.num_vel)
 
         self.pos_map, self.pos_map_inverse = self.cassie.make_position_map()
         self.vel_map, self.vel_map_inverse = self.cassie.make_velocity_map()
         self.act_map, self.act_map_inverse = self.cassie.make_actuator_map()
 
-        self.data_processor.set_pos_map(self.pos_map, self.pos_map_inverse)
-        self.data_processor.set_vel_map(self.vel_map, self.vel_map_inverse)
-        self.data_processor.set_act_map(self.act_map, self.act_map_inverse)
+        self.residual_analyzer.set_pos_map(self.pos_map, self.pos_map_inverse)
+        self.residual_analyzer.set_vel_map(self.vel_map, self.vel_map_inverse)
+        self.residual_analyzer.set_act_map(self.act_map, self.act_map_inverse)
         
         self.log_processor.set_pos_map(self.pos_map, self.pos_map_inverse)
         self.log_processor.set_vel_map(self.vel_map, self.vel_map_inverse)
@@ -64,15 +64,13 @@ class ResidualAnalyzer():
         print("Finish calculate v dot.")
 
         print("Begin calculate additional infos.")
-        self.data_processor.set_data(self.cassie.intermediate_variables_list)
-        self.data_processor.process_data()
+        self.residual_analyzer.set_data(self.cassie.intermediate_variables_list)
+        self.residual_analyzer.process_data()
         print("Finish Calculate additional infos.")
-
-        self.data_processor.fit_spring_damper_model_of_hip_between_main_body(self.start_time,self.end_time,is_show=True)
         
         if self.is_wandb:
             print("Begin update data for plots")
-            for processed_datum in self.data_processor.processed_data:
+            for processed_datum in self.residual_analyzer.processed_data:
                 self.wandb_processor.add_info(processed_datum)
             print("Finish update data for plots")
 
@@ -84,19 +82,19 @@ class ResidualAnalyzer():
         plot_list_for_u = ["hip_roll_left_motor", "hip_roll_right_motor"]
 
         for joint_name in plot_list_for_v_dot:
-            plot_joint_residuals_vs_time(self.data_processor.processed_data, self.actual_start_time, self.actual_end_time, joint_name)
+            plot_joint_residuals_vs_time(self.residual_analyzer.processed_data, self.actual_start_time, self.actual_end_time, joint_name)
         
-        plot_joint_effort_vs_time(self.data_processor.processed_data, self.actual_start_time, self.actual_end_time, plot_list_for_u)
+        plot_joint_effort_vs_time(self.residual_analyzer.processed_data, self.actual_start_time, self.actual_end_time, plot_list_for_u)
         
-        plot_spring_force_vs_time(self.data_processor.processed_data, self.actual_start_time, self.actual_end_time)
+        plot_spring_force_vs_time(self.residual_analyzer.processed_data, self.actual_start_time, self.actual_end_time)
         plt.show()
         print("Finish making plots")
         
     def calc_mean_residuals_info_at_given_period(self, start_time, end_time, is_show_freq_plot=False,joint_name=None, residual_name="residual_for_best_spring_model"):
-        self.data_processor.calc_residuals_info_at_given_period(start_time, end_time, joint_name, residual_name, is_show_freq_plot=is_show_freq_plot)
+        self.residual_analyzer.calc_residuals_info_at_given_period(start_time, end_time, joint_name, residual_name, is_show_freq_plot=is_show_freq_plot)
 
     def show_hip_residuals_given_time_period(self, start_time, end_time, residual_name="residual_for_best_spring_model"):
-        self.data_processor.show_hip_residuals_given_time_period(start_time, end_time, residual_name)
+        self.residual_analyzer.show_hip_residuals_given_time_period(start_time, end_time, residual_name)
 
     def process_raw_data(self, raw_data):
     
@@ -168,7 +166,7 @@ def main():
     parser.add_argument('--wandb_name', type=str, default="residual_analysis")
     args = parser.parse_args()
 
-    simulationDataTester = ResidualAnalyzer(path, args.is_wandb, args.start_time, args.duration, args.wandb_name)
+    simulationDataTester = CassieResidualAnalysisMain(path, args.is_wandb, args.start_time, args.duration, args.wandb_name)
     simulationDataTester.main(args.frame_num)
 
 if __name__ == "__main__":

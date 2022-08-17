@@ -21,7 +21,11 @@ class C3MIQP : public C3 {
          const std::vector<Eigen::VectorXd>& xdesired,
          const C3Options& options,
          const std::vector<Eigen::VectorXd>& warm_start_delta = {},
-         const std::vector<Eigen::VectorXd>& warm_start_binary = {});
+         const std::vector<Eigen::VectorXd>& warm_start_binary = {},
+         const std::vector<Eigen::VectorXd>& warm_start_x = {},
+         const std::vector<Eigen::VectorXd>& warm_start_lambda = {},
+         const std::vector<Eigen::VectorXd>& warm_start_u = {},
+         bool warm_start = false);
 
   /// Virtual projection method
   Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U,

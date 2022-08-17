@@ -87,11 +87,25 @@ C3Controller_franka::C3Controller_franka(
 
 
   // initialize warm start
-  for (int i = 0; i < 5; i++){
-    warm_start_delta_.push_back(VectorXd::Zero(19 + 12 + 3));
+  int time_horizon = 5;
+  int nx = 19;
+  int nlambda = 12;
+  int nu = 3;
+
+  for (int i = 0; i < time_horizon; i++){
+    warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
   }
-  for (int i = 0; i < 5; i++){
-    warm_start_binary_.push_back(VectorXd::Zero(12));
+  for (int i = 0; i < time_horizon; i++){
+    warm_start_binary_.push_back(VectorXd::Zero(nlambda));
+  }
+  for (int i = 0; i < time_horizon+1; i++){
+    warm_start_x_.push_back(VectorXd::Zero(nx));
+  }
+  for (int i = 0; i < time_horizon; i++){
+    warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
+  }
+  for (int i = 0; i < time_horizon; i++){
+    warm_start_u_.push_back(VectorXd::Zero(nu));
   }
   
 
@@ -396,10 +410,15 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
-  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options, warm_start_delta_, warm_start_binary_);
+  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options,
+    warm_start_delta_, warm_start_binary_, warm_start_x_,
+    warm_start_lambda_, warm_start_u_, true);
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
+  warm_start_x_ = opt.GetWarmStartX();
+  warm_start_lambda_ = opt.GetWarmStartLambda();
+  warm_start_u_ = opt.GetWarmStartU();
   warm_start_delta_ = opt.GetWarmStartDelta();
   warm_start_binary_ = opt.GetWarmStartBinary();
 

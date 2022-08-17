@@ -25,7 +25,11 @@ class C3 {
      const std::vector<Eigen::VectorXd>& xdesired, 
      const C3Options& options,
      const std::vector<Eigen::VectorXd>& warm_start_delta = {},
-     const std::vector<Eigen::VectorXd>& warm_start_binary = {});
+     const std::vector<Eigen::VectorXd>& warm_start_binary = {},
+     const std::vector<Eigen::VectorXd>& warm_start_x_ = {},
+     const std::vector<Eigen::VectorXd>& warm_start_lambda_ = {},
+     const std::vector<Eigen::VectorXd>& warm_start_u_ = {},
+     bool warm_start = false);
 
   /// Solve the MPC problem
   /// @param x0 The initial state of the system
@@ -69,6 +73,11 @@ class C3 {
   /// allow user to remove all constraints
   void RemoveConstraints();
 
+  /// Get QP warm start
+  std::vector<Eigen::VectorXd> GetWarmStartX() const;
+  std::vector<Eigen::VectorXd> GetWarmStartLambda() const;
+  std::vector<Eigen::VectorXd> GetWarmStartU() const;
+
   /// Solve a single projection step
   /// @param E, F, H, c LCS parameters
   /// @param U A pointer to the U variables
@@ -105,6 +114,10 @@ class C3 {
 protected:
   std::vector<Eigen::VectorXd> warm_start_delta_;
   std::vector<Eigen::VectorXd> warm_start_binary_;
+  std::vector<Eigen::VectorXd> warm_start_x_;
+  std::vector<Eigen::VectorXd> warm_start_lambda_;
+  std::vector<Eigen::VectorXd> warm_start_u_;
+  bool warm_start_;
 
  private:
   drake::solvers::MathematicalProgram prog_;

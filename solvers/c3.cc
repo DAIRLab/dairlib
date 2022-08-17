@@ -30,7 +30,11 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
        const vector<MatrixXd>& G, const vector<MatrixXd>& U,
        const vector<VectorXd>& xdesired, const C3Options& options,
        const std::vector<Eigen::VectorXd>& warm_start_delta,
-       const std::vector<Eigen::VectorXd>& warm_start_binary)
+       const std::vector<Eigen::VectorXd>& warm_start_binary,
+       const std::vector<Eigen::VectorXd>& warm_start_x,
+       const std::vector<Eigen::VectorXd>& warm_start_lambda,
+       const std::vector<Eigen::VectorXd>& warm_start_u,
+       bool warm_start)
     : A_(LCS.A_),
       B_(LCS.B_),
       D_(LCS.D_),
@@ -55,14 +59,27 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
       osqp_(OsqpSolver()) {
 
   // Deep copy warm start
-  if (!warm_start_delta.empty()){
+  warm_start_ = warm_start;
+  if (warm_start_){
     warm_start_delta_.resize(warm_start_delta.size());
-    for (int i = 0; i < warm_start_delta.size(); i++){
+    for (size_t i = 0; i < warm_start_delta.size(); i++){
       warm_start_delta_[i] = warm_start_delta[i];
     }
     warm_start_binary_.resize(warm_start_binary.size());
-    for (int i = 0; i < warm_start_binary.size(); i++){
+    for (size_t i = 0; i < warm_start_binary.size(); i++){
       warm_start_binary_[i] = warm_start_binary[i];
+    }
+    warm_start_x_.resize(warm_start_x.size());
+    for (size_t i = 0; i < warm_start_x.size(); i++){
+      warm_start_x_[i] = warm_start_x[i];
+    }
+    warm_start_lambda_.resize(warm_start_lambda.size());
+    for (size_t i = 0; i < warm_start_lambda.size(); i++){
+      warm_start_lambda_[i] = warm_start_lambda[i];
+    }
+    warm_start_u_.resize(warm_start_u.size());
+    for (size_t i = 0; i < warm_start_u.size(); i++){
+      warm_start_u_[i] = warm_start_u[i];
     }
   }
 
@@ -104,7 +121,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-  OSQPoptions_.SetOption(drake::solvers::OsqpSolver::id(), "max_iter",  30);  //30
+  //OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  50);  //30
   prog_.SetSolverOptions(OSQPoptions_);
 }
 
@@ -233,6 +250,7 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
 
 vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
                              vector<VectorXd>& WD) {
+
   for (auto& constraint : constraints_) {
     prog_.RemoveConstraint(constraint);
   }
@@ -270,6 +288,14 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
     }
   }
 
+  /// initialize decision variables to warm start
+  for (int i = 0; i < N_; i++){
+    prog_.SetInitialGuess(x_[i], warm_start_x_[i]);
+    prog_.SetInitialGuess(lambda_[i], warm_start_lambda_[i]);
+    prog_.SetInitialGuess(u_[i], warm_start_u_[i]);
+  }
+  prog_.SetInitialGuess(x_[N_], warm_start_x_[N_]);
+
   MathematicalProgramResult result = osqp_.Solve(prog_);
   VectorXd xSol = result.GetSolution(x_[0]);
   vector<VectorXd> zz(N_, VectorXd::Zero(n_ + m_ + k_));
@@ -279,6 +305,11 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
     zz.at(i).segment(n_, m_) = result.GetSolution(lambda_[i]);
     zz.at(i).segment(n_ + m_, k_) = result.GetSolution(u_[i]);
 
+    // update warm start parameters
+    warm_start_x_[i] = result.GetSolution(x_[i]);
+    warm_start_lambda_[i] = result.GetSolution(lambda_[i]);
+    warm_start_u_[i] = result.GetSolution(u_[i]);
+    
 //    std::cout << "Step" << i << std::endl;
 //    std::cout << "Prediction x" << std::endl;
 //    std::cout << zz.at(i).segment(0,n_) ;
@@ -286,10 +317,8 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
 //    std::cout << zz.at(i).segment(n_+m_,k_) ;
 //    std::cout << "Prediction lam" << std::endl;
 //    std::cout << zz.at(i).segment(n_,m_) << std::endl;
-
-
   }
-
+  warm_start_x_[N_] = result.GetSolution(x_[N_]);
 
 
   return zz;
@@ -337,7 +366,7 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
 
 #pragma omp parallel for
   for (i = 0; i < N_; i++) {
-    if (!warm_start_binary_.empty()){
+    if (warm_start_){
       deltaProj[i] =
           SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], i);
     }
@@ -348,6 +377,18 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
   }
 
   return deltaProj;
+}
+
+std::vector<Eigen::VectorXd> C3::GetWarmStartX() const {
+  return warm_start_x_;
+}
+
+std::vector<Eigen::VectorXd> C3::GetWarmStartLambda() const {
+  return warm_start_lambda_;
+}
+
+std::vector<Eigen::VectorXd> C3::GetWarmStartU() const {
+  return warm_start_u_;
 }
 
 }  // namespace solvers

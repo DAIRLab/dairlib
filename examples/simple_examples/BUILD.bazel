@@ -25,7 +25,11 @@ cc_binary(
 cc_binary(
     name = "heightfield_example",
     srcs = ["heightfield_example.cc"],
-    deps = ["@drake//:drake_shared_library"],
+    deps = [
+        "//common:find_resource",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
 
 cc_binary(

@@ -289,12 +289,14 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
   }
 
   /// initialize decision variables to warm start
-  for (int i = 0; i < N_; i++){
-    prog_.SetInitialGuess(x_[i], warm_start_x_[i]);
-    prog_.SetInitialGuess(lambda_[i], warm_start_lambda_[i]);
-    prog_.SetInitialGuess(u_[i], warm_start_u_[i]);
+  if (warm_start_){
+    for (int i = 0; i < N_; i++){
+      prog_.SetInitialGuess(x_[i], warm_start_x_[i]);
+      prog_.SetInitialGuess(lambda_[i], warm_start_lambda_[i]);
+      prog_.SetInitialGuess(u_[i], warm_start_u_[i]);
+    }
+    prog_.SetInitialGuess(x_[N_], warm_start_x_[N_]);
   }
-  prog_.SetInitialGuess(x_[N_], warm_start_x_[N_]);
 
   MathematicalProgramResult result = osqp_.Solve(prog_);
   VectorXd xSol = result.GetSolution(x_[0]);
@@ -305,10 +307,12 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
     zz.at(i).segment(n_, m_) = result.GetSolution(lambda_[i]);
     zz.at(i).segment(n_ + m_, k_) = result.GetSolution(u_[i]);
 
-    // update warm start parameters
-    warm_start_x_[i] = result.GetSolution(x_[i]);
-    warm_start_lambda_[i] = result.GetSolution(lambda_[i]);
-    warm_start_u_[i] = result.GetSolution(u_[i]);
+    if (warm_start_){
+      // update warm start parameters
+      warm_start_x_[i] = result.GetSolution(x_[i]);
+      warm_start_lambda_[i] = result.GetSolution(lambda_[i]);
+      warm_start_u_[i] = result.GetSolution(u_[i]);
+    }
     
 //    std::cout << "Step" << i << std::endl;
 //    std::cout << "Prediction x" << std::endl;
@@ -318,7 +322,8 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
 //    std::cout << "Prediction lam" << std::endl;
 //    std::cout << zz.at(i).segment(n_,m_) << std::endl;
   }
-  warm_start_x_[N_] = result.GetSolution(x_[N_]);
+  if (warm_start_)
+    warm_start_x_[N_] = result.GetSolution(x_[N_]);
 
 
   return zz;

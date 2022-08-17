@@ -134,7 +134,7 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
       HalfSpace::MakePose(normal_W, point_W));
 
   plant->RegisterCollisionGeometry(plant->world_body(), X_WG,
-      drake::geometry::HeightField(Eigen::MatrixXd::Random(10,10), 1.0, 1.0, 1.0),
+                                   HalfSpace(),
                                    "collision", friction);
 
   // Add visual for the ground.

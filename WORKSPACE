@@ -28,7 +28,7 @@ environ_repository(
 
 load("@environ//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
 
-DAIRLIB_LOCAL_DRAKE_PATH = "/home/brian/workspace/dair_sandbox/drake"
+DAIRLIB_LOCAL_DRAKE_PATH = "/home/brian/workspace/sandbox/drake"
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named

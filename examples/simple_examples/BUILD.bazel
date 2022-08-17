@@ -23,6 +23,12 @@ cc_binary(
 )
 
 cc_binary(
+    name = "heightfield_example",
+    srcs = ["heightfield_example.cc"],
+    deps = ["@drake//:drake_shared_library"],
+)
+
+cc_binary(
     name = "autoDiff_example",
     srcs = ["autoDiff_example.cc"],
     deps = [

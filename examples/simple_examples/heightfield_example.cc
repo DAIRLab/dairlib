@@ -100,19 +100,28 @@ int do_main(int argc, char* argv[]) {
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
+  double radius = 0.05;
   plant.RegisterCollisionGeometry(
       plant.GetBodyByName("sphere"), RigidTransform<double>::Identity(),
       Sphere(0.1), "sphere_collide", CoulombFriction<double>(0.8, 0.8));
   plant.RegisterVisualGeometry(
       plant.GetBodyByName("sphere"), RigidTransform<double>::Identity(),
-      Sphere(0.1), "sphere_visual", Vector4d(1.0, 0.0, 0.0, 1.0));
+      Sphere(0.05), "sphere_visual", Vector4d(1.0, 0.0, 0.0, 1.0));
 
-  HeightField h(MatrixXd::Zero(7,7), 10.0, 10.0, 10.0);
+  int n = 10;
+  MatrixXd h = MatrixXd::Zero(n, n);
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      auto nd = static_cast<double>(n);
+      h(i, j) =  ((i - nd/2)*(i - nd/2) +  (j - nd/2)*(j-nd/2)) / (nd*nd);
+    }
+  }
+  HeightField hfield(h, 5.0, 5.0, 10.0);
   plant.RegisterCollisionGeometry(
-      plant.world_body(), RigidTransform<double>::Identity(), h,
+      plant.world_body(), RigidTransform<double>::Identity(), hfield,
       "hfield_collide", CoulombFriction<double>(0.8, 0.8));
 
-  auto mesh_file = SaveHeightFieldToMesh(h);
+  auto mesh_file = SaveHeightFieldToMesh(hfield);
   drake::geometry::Mesh mesh(FindResourceOrThrow(mesh_file));
 
   plant.RegisterVisualGeometry(
@@ -129,7 +138,7 @@ int do_main(int argc, char* argv[]) {
 
 
   VectorXd q_init = VectorXd::Zero(7);
-  q_init << 1, 0, 0, 0, 0.1, 0.1, 2.0;
+  q_init << 1, 0, 0, 0, -1.0, -1.0, 5.0;
   std::cout << "here4\n";
 
   plant.SetPositions(&plant_context,q_init);
@@ -137,7 +146,7 @@ int do_main(int argc, char* argv[]) {
       simulator(*diagram, std::move(diagram_context));
   simulator.set_target_realtime_rate(FLAGS_realtime_rate);
   simulator.Initialize();
-  simulator.AdvanceTo(4.0);
+  simulator.AdvanceTo(10.0);
 
   return 0;
 

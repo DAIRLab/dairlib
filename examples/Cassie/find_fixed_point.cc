@@ -1,4 +1,5 @@
 #include <chrono>
+#include <iostream>
 #include <gflags/gflags.h>
 
 #include "examples/Cassie/cassie_fixed_point_solver.h"

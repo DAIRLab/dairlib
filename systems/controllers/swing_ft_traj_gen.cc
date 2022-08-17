@@ -9,8 +9,6 @@
 #include <drake/math/saturate.h>
 #include "systems/controllers/control_utils.h"
 
-using std::cout;
-using std::endl;
 using std::string;
 
 using Eigen::MatrixXd;

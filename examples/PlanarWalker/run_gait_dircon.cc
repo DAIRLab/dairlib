@@ -1,4 +1,5 @@
 #include <memory>
+#include <iostream>
 #include <chrono>
 
 #include <gflags/gflags.h>

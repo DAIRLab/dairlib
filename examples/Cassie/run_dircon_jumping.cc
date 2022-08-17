@@ -1,6 +1,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/solvers/choose_best_solver.h>

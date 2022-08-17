@@ -1,7 +1,5 @@
 #include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 
-using std::cout;
-using std::endl;
 
 using drake::systems::BasicVector;
 using drake::systems::Context;

@@ -157,9 +157,9 @@ void setInitialEkfState(double t0, const cassie_out_t& cassie_output,
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
-  drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
   DiagramBuilder<double> builder;
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);
@@ -229,7 +229,7 @@ int do_main(int argc, char* argv[]) {
     if (FLAGS_floating_base && FLAGS_test_with_ground_truth_state) {
       auto state_sub = builder.AddSystem(
           LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-              FLAGS_state_channel_name, &lcm_local));
+              FLAGS_state_channel_name, lcm));
       auto state_receiver =
           builder.AddSystem<systems::RobotOutputReceiver>(plant);
       builder.Connect(state_sub->get_output_port(),
@@ -247,14 +247,13 @@ int do_main(int argc, char* argv[]) {
     // Create and connect contact estimation publisher.
     auto contact_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(
-            "CASSIE_CONTACT_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+            "CASSIE_CONTACT_DISPATCHER", lcm, {TriggerType::kForced}));
     builder.Connect(state_estimator->get_contact_output_port(),
                     contact_pub->get_input_port());
     // TODO(yangwill): Consider filtering contact estimation
     auto gm_contact_pub = builder.AddSystem(
         LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-            "CASSIE_GM_CONTACT_DISPATCHER", &lcm_local,
-            {TriggerType::kForced}));
+            "CASSIE_GM_CONTACT_DISPATCHER", lcm, {TriggerType::kForced}));
     builder.Connect(state_estimator->get_gm_contact_output_port(),
                     gm_contact_pub->get_input_port());
   }
@@ -293,7 +292,7 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_broadcast_robot_state) {
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+            "CASSIE_STATE_DISPATCHER", lcm, {TriggerType::kForced}));
     builder.Connect(*robot_output_sender, *state_pub);
     auto net_state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
@@ -304,7 +303,7 @@ int do_main(int argc, char* argv[]) {
   } else {
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE_DISPATCHER", &lcm_local, {TriggerType::kForced}));
+            "CASSIE_STATE_DISPATCHER", lcm, {TriggerType::kForced}));
     builder.Connect(*robot_output_sender, *state_pub);
 
     // Create and connect RobotOutput publisher (low-rate for the network)
@@ -328,10 +327,9 @@ int do_main(int argc, char* argv[]) {
 
     // Wait for the first message.
     drake::log()->info("Waiting for first lcmt_cassie_out");
-    drake::lcm::Subscriber<dairlib::lcmt_cassie_out> input_sub(&lcm_local,
+    drake::lcm::Subscriber<dairlib::lcmt_cassie_out> input_sub(lcm,
                                                                "CASSIE_OUTPUT");
-    LcmHandleSubscriptionsUntil(&lcm_local,
-                                [&]() { return input_sub.count() > 0; });
+    LcmHandleSubscriptionsUntil(lcm, [&]() { return input_sub.count() > 0; });
 
     // Initialize the context based on the first message.
     const double t0 = input_sub.message().utime * 1e-6;
@@ -355,8 +353,7 @@ int do_main(int argc, char* argv[]) {
     while (true) {
       // Wait for an lcmt_cassie_out message.
       input_sub.clear();
-      LcmHandleSubscriptionsUntil(&lcm_local,
-                                  [&]() { return input_sub.count() > 0; });
+      LcmHandleSubscriptionsUntil(lcm, [&]() { return input_sub.count() > 0; });
       // Write the lcmt_robot_input message into the context and advance.
       input_value.GetMutableData()->set_value(input_sub.message());
       const double time = input_sub.message().utime * 1e-6;

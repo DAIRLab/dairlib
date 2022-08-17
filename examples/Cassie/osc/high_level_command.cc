@@ -10,8 +10,6 @@
 #include "drake/math/quaternion.h"
 #include "drake/math/saturate.h"
 
-using std::cout;
-using std::endl;
 using std::string;
 
 using Eigen::MatrixXd;
@@ -180,11 +178,6 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   // PD position control
   double des_yaw_vel = kp_yaw_ * heading_error + kd_yaw_ * (-yaw_vel);
   des_yaw_vel = drake::math::saturate(des_yaw_vel, -vel_max_yaw_, vel_max_yaw_);
-  /*cout << "desired_yaw= " << desired_yaw << endl;
-  cout << "approx_pelvis_yaw= " << approx_pelvis_yaw << endl;
-  cout << "heading_error= " << heading_error << endl;
-  cout << "des_yaw_vel= " << des_yaw_vel << endl;
-  cout << "\n";*/
 
   // Convex combination of 0 and desired yaw velocity
   double weight = 1 / (1 + exp(-params_of_no_turning_(0) *

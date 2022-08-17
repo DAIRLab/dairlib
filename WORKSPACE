@@ -28,6 +28,8 @@ environ_repository(
 
 load("@environ//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
 
+DAIRLIB_LOCAL_DRAKE_PATH = "/home/brian/workspace/dair_sandbox/drake"
+
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
 # "@drake", the other is named "@drake_ignored".
@@ -70,7 +72,6 @@ signal_scope_repository(name = "signal_scope")
 load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
 
 pydrake_repository(name = "pydrake_pegged")
-
 
 # Prebuilt ROS workspace
 new_local_repository(

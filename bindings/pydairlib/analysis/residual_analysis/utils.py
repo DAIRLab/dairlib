@@ -24,62 +24,6 @@ def interpolation(t,t1,t2,v1,v2):
     v = v1 + ratio * (v2 -v1)
     return v
 
-def process_raw_data(raw_data):
-    
-    print("Begin process the raw data.")
-    
-    # cut down some data in the begin and at the end to make sure processings like finite difference, interpolation won't have issue
-    start_time = max(raw_data["states_info"]["t_x"][20], raw_data["contact_info"]["t_contact"][20])
-    end_time = min(raw_data["states_info"]["t_x"][-20], raw_data["contact_info"]["t_contact"][-20])
-
-    # processing robot output
-    states_info = raw_data['states_info']
-    t_states_info = states_info["t_x"]
-
-    start_index = np.argwhere(t_states_info > start_time)[0][0]
-    end_index = np.argwhere(t_states_info < end_time)[-1][0]
-    t_states_info = t_states_info[start_index:end_index]
-    q = states_info['q'][start_index:end_index,:]
-    v = states_info['v'][start_index:end_index,:]
-    u = states_info['u'][start_index:end_index,:]
-    # obtained v_dot by finite diff
-    smooth_window = 10
-    v_dot = (states_info['v'][start_index+smooth_window:end_index+smooth_window,:] - states_info['v'][start_index-smooth_window:end_index-smooth_window,:])\
-        /(states_info["t_x"][start_index+smooth_window:end_index+smooth_window] - states_info["t_x"][start_index-smooth_window:end_index-smooth_window])[:,None]
-    
-    v_dot = first_order_filter(v_dot)
-
-    # processing contact info
-    contact_output = raw_data['contact_info']
-    t_contact = contact_output['t_contact']
-    start_index = np.argwhere(t_contact > start_time - 0.01)[0][0] # make sure contact force period range cover the output states
-    end_index = np.argwhere(t_contact < end_time + 0.01)[-1][0]
-    t_contact = t_contact[start_index: end_index]
-    is_contact = contact_output['is_contact'][start_index:end_index,:]
-    is_contact_processed = []
-    pointer = 0
-    for t in t_states_info:
-        while not (t_contact[pointer] <= t and t_contact[pointer+1] >=t):
-            pointer+=1
-        if abs(t_contact[pointer] - t) < abs(t_contact[pointer+1] - t):
-            is_contact_processed.append(is_contact[pointer,:])
-        else:
-            is_contact_processed.append(is_contact[pointer+1,:])
-    is_contact_processed = np.array(is_contact_processed)
-
-    processed_data = {
-        't':t_states_info,
-        'q':q,
-        'v':v,
-        'v_dot':v_dot,
-        'u':u,
-        'is_contact':is_contact_processed,
-    }
-
-    print("Finish process data.")
-
-    return processed_data
-
 def get_residual(vdot_gt, vdot_est, cutting_f = 100):
     residuals = vdot_gt - vdot_est
     residuals_smoothed = first_order_filter(residuals, cutting_f=cutting_f)

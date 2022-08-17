@@ -1,10 +1,9 @@
-from operator import mod
 import wandb
 import matplotlib.pylab as plt
 import numpy as np
 from matplotlib import patches
 
-class PlotViewlizer():
+class WandbProcessor():
 
     def __init__(self, project_name):
         wandb.init(project=project_name)
@@ -76,6 +75,45 @@ def plot_joint_effort_vs_time(processed_data, start_time, end_time, joint_names,
     x = np.array(x)
     ys = np.array(ys)
     plot_given_keys_vs_time(cut_data, x, ys, joint_names, "t(s)", "u(N*m)", "joint_efforts_vs_t", directory=directory, log_name=log_name, colors=['r', 'b', 'g', 'y', 'k', 'brown', 'pink', 'grey'])
+
+def consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t, gt, est, title, ylabel):
+    """
+    The function will construct organized data struct for plot,
+    """
+
+    datum = {"x":t,
+            "ys":[{"value":gt, "legend":"ground truth", "color":"green"},
+                    {"value":est, "legend":"estimated", "color":"red"}],
+            "title":title,
+            "ylabel":ylabel,
+            "xlabel":"t"
+            }
+    return datum
+
+def plot_by_list_of_dictionaries(data, is_show=False):
+    """
+    The function will create figures as same length of the lenth of data,
+
+    The data is a list, each element in it is dictionary for construct a single figure
+    """
+    for datum in data:
+        plt.figure()
+        x = datum["x"]
+        ys = datum["ys"]
+        for y in ys:
+            if "color" in y:
+                plt.plot(x, y["value"], label=y["legend"], color=y["color"])
+            else:
+                plt.plot(x, y["value"], label=y["legend"],)
+        plt.legend()
+        if "ylabel" in datum:
+            plt.ylabel(datum["ylabel"])
+        if "xlabel" in datum:
+            plt.xlabel(datum["xlabel"])
+        if "title" in datum:
+            plt.title(datum["title"])         
+    if is_show:
+        plt.show()
 
 def plot_contact_background(cut_data, min_ys, max_ys):
     left_on_ground = []

@@ -1,46 +1,56 @@
-import cvxpy as cp
+from pydrake.solvers import MathematicalProgram 
+from pydrake.solvers import Solve
+import matplotlib.pyplot as plt
 from matplotlib import patches
 import tqdm
-import matplotlib.pyplot as plt
+from plot_utlis import *
 from utils import *
 from scipy.spatial.transform import Rotation
+import numpy as np
+
 class DataProcessor():
 
     def __init__(self):
         pass
 
-    def update_pos_map(self, pos_map, pos_map_inverse):
+    def set_num_of_pos(self, num_pos):
+        self.num_pos = num_pos
+    
+    def set_num_of_vel(self, num_vel):
+        self.num_vel = num_vel
+
+    def set_pos_map(self, pos_map, pos_map_inverse):
         self.pos_map = pos_map
         self.pos_map_inverse = pos_map_inverse
 
-    def update_vel_map(self, vel_map, vel_map_inverse):
+    def set_vel_map(self, vel_map, vel_map_inverse):
         self.vel_map = vel_map
         self.vel_map_inverse = vel_map_inverse
     
-    def update_act_map(self, act_map, act_map_inverse):
+    def set_act_map(self, act_map, act_map_inverse):
         self.act_map = act_map
         self.act_map_inverse = act_map_inverse
 
-    def get_data(self, data):
+    def set_data(self, data):
         self.original_data = data
 
     def construct_dict_for_v_shape_value(self, v):
         dicts = {}
-        for i in range(22):
+        for i in range(self.num_vel):
             dicts[self.vel_map_inverse[i]] = v[i]
         return dicts
 
     def construct_dict_for_q_shape_value(self, q):
         dicts = {}
-        for i in range(23):
+        for i in range(self.num_pos):
             dicts[self.pos_map_inverse[i]] = q[i]
         return dicts
 
     def construct_dict_for_spring_force_value(self, spring_force):
         order_dict = {0:"knee_joint_left", 1:"knee_joint_right", 2:"ankle_spring_joint_left", 3:"ankle_spring_joint_right"}
         dicts = {}
-        for key in order_dict:
-            dicts[order_dict[key]] = spring_force[key]
+        for order in order_dict:
+            dicts[order_dict[order]] = spring_force[order]
         return dicts
 
     def construct_dict_for_u_shape_value(self, u):
@@ -70,42 +80,101 @@ class DataProcessor():
         lambda_c_solved = []
         v_dot_gts = []
         
+        # Selected joints that have encoders in them, such that the corresponding ground truth v_dot are more accurate.
         selected_joints = ["hip_roll_leftdot", "hip_roll_rightdot", "hip_pitch_leftdot", "hip_pitch_rightdot", "hip_yaw_leftdot", "hip_yaw_rightdot",
                         "knee_leftdot", "knee_rightdot", "knee_joint_leftdot", "knee_joint_rightdot", "ankle_joint_leftdot", "ankle_joint_rightdot"]
-        selection_matrix = np.zeros((22,22))
+        selection_matrix = np.zeros((self.num_vel,self.num_vel))
         for selected_joint in selected_joints:
             selection_matrix[self.vel_map[selected_joint], self.vel_map[selected_joint]] = 1
 
-        for i in tqdm.tqdm(range(len(self.original_data))):
+        for i in tqdm.trange(len(self.original_data)):
+            
+            # Initialize the program
+            prog = MathematicalProgram()
 
-            spring_force = cp.Variable(4)
-            v_dot = cp.Variable(22)
+            # Definie decision variables
+            spring_force = prog.NewContinuousVariables(4)
+            v_dot = prog.NewContinuousVariables(self.num_vel)
 
+            # Get the parameters 
             datum = self.original_data[i]
-            v_dot_gt = datum["v_dot_gt"]; num_of_contact = datum["num_contact_unknown"]; A = datum["A"]; B = datum["B"]
-            J_c_active_dot_v = datum["J_c_active_dot_v"]; J_h_active_dot_v = datum["J_h_dot_v"]; gravity = datum["gravity"]
-            bias = datum["bias"]; damping_force = datum["damping_force"]; J_s = datum["J_s"]; u = datum["u"]
-            A_inverse = np.linalg.inv(A); v_dot_gts.append(v_dot_gt)
+            v_dot_gt = datum["v_dot_gt"]
+            num_of_contact = datum["num_contact_unknown"]
+            A = datum["A"]
+            B = datum["B"]
+            J_c_active_dot_v = datum["J_c_active_dot_v"]
+            J_h_active_dot_v = datum["J_h_dot_v"]
+            gravity = datum["gravity"]
+            bias = datum["bias"]
+            damping_force = datum["damping_force"]
+            J_s = datum["J_s"]
+            u = datum["u"]
+            
+            A_inverse = np.linalg.inv(A)
+            
+            v_dot_gts.append(v_dot_gt)
 
             if num_of_contact > 0:
-                b = cp.hstack((
+                b = np.hstack((
                     B @ u + gravity - bias + damping_force + J_s.T @ spring_force,
                     -J_h_active_dot_v,
                     -J_c_active_dot_v,
                 ))
             else:
-                b = cp.hstack((
+                b = np.hstack((
                     B @ u + gravity - bias + damping_force + J_s.T @ spring_force,
                     -J_h_active_dot_v,            
                 ))
 
-            obj = cp.Minimize( cp.norm(selection_matrix@(v_dot_gt - v_dot)))
-            constraints = [(A_inverse @ b)[:22] == v_dot]
+            # Define cost
+            # The cost is define as L2 norm of "selection_matrix @ (v_dot_gt - v_dot)"
+            # Rewrite the function to use AddL2NormCost as |Ax-b|^2
+            prog.Add2NormSquaredCost(selection_matrix, selection_matrix@v_dot_gt, v_dot)
 
-            prob = cp.Problem(obj, constraints)
-            prob.solve()
-            v_dot_of_best_spring_model.append(v_dot.value)
-            best_spring_forces.append(spring_force.value)
+            # Add dynamics constraints:
+
+            # The true constraints should be:
+            # (A_inverse @ b) [:self.num_vel] == v_dot, 
+            # where if num_of_contact > 0:
+            # b = np.hstack((
+            #         B @ u + gravity - bias + damping_force + J_s.T @ spring_force,
+            #         -J_h_active_dot_v,
+            #         -J_c_active_dot_v,
+            #       ))
+            # else: 
+            # b = np.hstack((
+            #         B @ u + gravity - bias + damping_force + J_s.T @ spring_force,
+            #         -J_h_active_dot_v,            
+            #     )),
+            # A is the corresponding coefficients relate the mass matrix, holomonic and contact constraints and other infos, see cassie_model.py for details
+
+            # The constraint is rewritten to compatible to drake optimization funcion.
+            # Separate A_inverse into 
+            # [A_inverse_11, A_inverse_12,
+            # A_inverse_21, A_inverse_22] and rewrite the constraints as
+            # A_inverse 11 @ J_s.T @ spring_force - v_dot = - A_inverse_11 @ (B @ u + gravity - bias +damping_force) + A_inverse_12 @ ( J_h_active_dot_v + J_c_active_dot_v)
+            # [A_inverse_11@J_s.T, -I] [spring_force// v_dot] = - A_inverse_11 @ (B @ u + gravity - bias +damping_force) + A_inverse_12 @ ( J_h_active_dot_v + J_c_active_dot_v) 
+
+            A_inverse_11 = A_inverse[:self.num_vel, :self.num_vel]
+            A_inverse_12 = A_inverse[:self.num_vel, self.num_vel:]
+
+            if num_of_contact > 0:
+                prog.AddLinearEqualityConstraint(
+                    np.hstack((A_inverse_11@J_s.T, -np.eye(self.num_vel))),
+                    - A_inverse_11 @ (B @ u + gravity - bias + damping_force) + A_inverse_12 @ np.hstack((J_h_active_dot_v,J_c_active_dot_v)),
+                    np.hstack((spring_force, v_dot))
+                )
+            else:
+                prog.AddLinearEqualityConstraint(
+                    np.hstack((A_inverse_11@J_s.T, -np.eye(self.num_vel))),
+                    - A_inverse_11 @ (B @ u + gravity - bias + damping_force) + A_inverse_12 @ J_h_active_dot_v,
+                    np.hstack((spring_force, v_dot))
+                )
+
+            result = Solve(prog)
+
+            v_dot_of_best_spring_model.append(result.GetSolution(v_dot))
+            best_spring_forces.append(result.GetSolution(spring_force))
 
         best_spring_forces = np.array(best_spring_forces)
         v_dot_gts = np.array(v_dot_gts)
@@ -116,7 +185,7 @@ class DataProcessor():
 
         return residual, v_dot_of_best_spring_model, best_spring_forces
 
-    def fit_spring_damper_model_of_hip_between_main_body(self, start_time, end_time):
+    def fit_spring_damper_model_of_hip_between_main_body(self, start_time, end_time, is_show=False):
 
         n = len(self.processed_data)
         t = []
@@ -124,7 +193,7 @@ class DataProcessor():
         state_s = []
 
         for datum in self.processed_data:
-            if not (datum['t'] >= start_time and datum['t'] <= end_time):
+            if datum['t'] < start_time or datum['t'] > end_time:
                 continue
             t.append(datum['t'])
             state_dots.append([datum["v"]["hip_roll_leftdot"], datum["v"]["base_wx"], datum["v"]["hip_roll_rightdot"],
@@ -140,9 +209,10 @@ class DataProcessor():
 
         print("Begin fit a spring damper model")
 
-        A = cp.Variable((6,6))
-        residuals = cp.Variable(6*n)
-        offset = cp.Variable((6))
+        prog = MathematicalProgram()
+        A = prog.NewContinuousVariables(6,6)
+        residuals = prog.NewContinuousVariables(6*n)
+        offset = prog.NewContinuousVariables(6)
         """
         A = [0,0,0,1,0,0,
             0,0,0,0,1,0,
@@ -152,14 +222,25 @@ class DataProcessor():
             0,k2/m3,-k2/m3,0,c3/m3,-c2/m3
         ]
         """
-        constraints = [A[:3]==np.array([[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]]),
-                        A[3,2]==0, A[3,5]==0, A[5,0]==0, A[5,3]==0,
-                        A[3,0]+A[3,1]==0, A[3,3]+A[3,4]==0,
-                        A[4,0]+A[4,1]+A[4,2] == 0, A[4,3]+A[4,4]+A[4,5]==0,
-                        A[5,1] + A[5,2] == 0, A[5,4] + A[5,5] == 0]
+        A_shape_constraints = [prog.AddLinearEqualityConstraint(A[0], np.array([0,0,0,1,0,0])),
+                            prog.AddLinearEqualityConstraint(A[1], np.array([0,0,0,0,1,0])),
+                            prog.AddLinearEqualityConstraint(A[2], np.array([0,0,0,0,0,1])),
+                            prog.AddConstraint(A[3,2] == 0),
+                            prog.AddConstraint(A[3,5] == 0),
+                            prog.AddConstraint(A[5,0] == 0),
+                            prog.AddConstraint(A[5,3] == 0),
+                            prog.AddConstraint(A[3,0] + A[3,1] == 0),
+                            prog.AddConstraint(A[3,3] + A[3,4] == 0),
+                            prog.AddConstraint(A[4,0] + A[4,1] + A[4,2] == 0),
+                            prog.AddConstraint(A[4,3] + A[4,4] + A[4,5] == 0),
+                            prog.AddConstraint(A[5,1] + A[5,2] == 0),
+                            prog.AddConstraint(A[5,4] + A[5,5] == 0)
+                            ]
         
+        # residuals[i*6:(i+1)*6] == state_dots[i] - A @ state_s[i] - offset
+        residual_equal_constraints = []
         for i in range(n):
-            constraints.append(residuals[i*6:(i+1)*6] == state_dots[i] - A @ state_s[i] - offset)
+            residual_equal_constraints.append(prog.AddConstraint(residuals[i*6:(i+1)*6] == state_dots[i] - A @ state_s[i] - offset))
 
         obj = cp.Minimize(cp.norm2(residuals))
         
@@ -173,47 +254,25 @@ class DataProcessor():
 
         state_dots_est = np.array(state_dots_est)
 
-        plt.figure()
-        plt.plot(t, state_dots_est[:,0], label='est')
-        plt.plot(t, state_dots[:,0], label='gt')
-        plt.legend()
-        plt.title("left_hip_roll_v")
+        if is_show:
+            self.show_fitted_result_for_spring_damper_model_of_hip_between_main_body(t,state_dots,state_dots_est)
 
-        plt.figure()
-        plt.plot(t, state_dots_est[:,1], label='est')
-        plt.plot(t, state_dots[:,1], label='gt')
-        plt.legend()
-        plt.title("base_wx")
+        return state_dots, state_dots_est, t
+    
+    def show_fitted_result_for_spring_damper_model_of_hip_between_main_body(self,t,state_dots,state_dots_est):
 
-        plt.figure()
-        plt.plot(t, state_dots_est[:,2], label='est')
-        plt.plot(t, state_dots[:,2], label='gt')
-        plt.legend()
-        plt.title("right_hip_roll_v")
+        data_to_show = [
+            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,0],est=state_dots_est[:,0],title="left_hip_roll_v",ylabel="v(rad/s)"),
+            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,1],est=state_dots_est[:,1],title="base_wx",ylabel="v(rad/s)"),
+            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,2],est=state_dots_est[:,2],title="right_hip_roll_v",ylabel="v(rad/s)"),
+            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,3],est=state_dots_est[:,3],title="left_hip_roll_v_dot",ylabel="acc(rad/s^2)"),
+            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,4],est=state_dots_est[:,4],title="base_wx_v_dot",ylabel="acc(rad/s^2)"),
+            consrtuct_plot_datum_pair_for_gt_and_est_vs_time(t,gt=state_dots[:,5],est=state_dots_est[:,5],title="right_hip_v_dot",ylabel="acc(rad/s^2)")
+        ]
 
-        plt.figure()
-        plt.plot(t, state_dots_est[:,3], label='est')
-        plt.plot(t, state_dots[:,3], label='gt')
-        plt.legend()
-        plt.title("left_hip_roll_v_dot")
+        plot_by_list_of_dictionaries(data_to_show,is_show=True)
 
-        plt.figure()
-        plt.plot(t, state_dots_est[:,4], label='est')
-        plt.plot(t, state_dots[:,4], label='gt')
-        plt.legend()
-        plt.title("base_wx_v_dot")
-
-        plt.figure()
-        plt.plot(t, state_dots_est[:,5], label='est')
-        plt.plot(t, state_dots[:,5], label='gt')
-        plt.legend()
-        plt.title("right_hip_v_dot")
-
-        plt.show()
-
-        print("Finish fit a spring damper model")
-
-    def fit_spring_damper_model_of_hip_as_beam(self, start_time, end_time, selected_joint="hip_roll_leftdot"):
+    def fit_spring_damper_model_of_hip_as_beam(self, start_time, end_time, selected_joint="hip_roll_leftdot", is_show=False):
         """
             Assuming there are spring and damping couple with hip roll, this function is going to how it may look like.
             
@@ -232,18 +291,18 @@ class DataProcessor():
         n = len(self.original_data)
 
         for i in range(n):
-            datum_ori = self.original_data[i]
+            datum_original = self.original_data[i]
             datum_processed = self.processed_data[i]
 
             v_dot_best_spring = [datum_processed["v_dot_best_spring_model"][x] for x in datum_processed["v_dot_best_spring_model"]]
 
-            if not (datum_ori['t'] >= start_time and datum_ori['t'] <= end_time):
+            if datum_original['t'] < start_time or datum_original['t'] > end_time:
                 continue
             
             # TODO alternative just choose the residual corresponding the acc?
 
-            tau.append( (datum_ori['M'] @ (datum_ori['v_dot_gt'] - v_dot_best_spring))[self.vel_map[selected_joint]])
-            t.append(datum_ori['t'])
+            tau.append( (datum_original['M'] @ (datum_original['v_dot_gt'] - v_dot_best_spring))[self.vel_map[selected_joint]])
+            t.append(datum_original['t'])
 
         tau = np.array(tau)
         t = np.array(t)
@@ -255,7 +314,7 @@ class DataProcessor():
 
         print("Begin fit spring damping model. Step of signal:{}".format(n))
         
-        for i in tqdm.tqdm(range(max_iter)):
+        for i in tqdm.trange(max_iter):
             # solve q and v
             q_cp = cp.Variable(n)
             v_cp = cp.Variable(n)
@@ -283,23 +342,30 @@ class DataProcessor():
             Cs.append(sol[1])
         
         print("Finish fit spring damping model.")
-        
-        plt.figure()
-        plt.plot(Ks, label="K")
-        plt.plot(Cs, label="C")
-        plt.legend()
-        
-        for i in range(max_iter):
-            plt.figure()
-            plt.plot(t, -Ks[i] * qs[i+1] - Cs[i] * vs[i+1], label="Spring and Damping force")
-            plt.plot(t, tau, label="Virtual Torque")
-            plt.legend()
 
-            plt.plot(t, qs[i+1], label="q")
-            plt.plot(t, vs[i+1], label="v")
-            plt.legend()
-        
-        plt.show()
+        if is_show:
+            self.show_fitted_result_for_spring_damper_model_of_hip_as_beam(Ks, Cs, qs, vs, tau, t)
+
+        # each element in Ks, Cs, qs, vs corresponding to data in one iteration. The final result can be find by e.g. Ks[-1]
+        return Ks, Cs, qs, vs, tau, t
+
+    def show_fitted_result_for_spring_damper_model_of_hip_as_beam(self, Ks, Cs, qs, vs, tau, t):
+        max_iter = len(Ks)
+        # Construc data for plots
+        data_to_plot = []
+        data_to_plot.append({
+            "x":range(len(Ks)), 
+            "ys":[{"legend":"K", "value":Ks},
+                    {"legend":"C", "value":Cs}]
+            })
+        for i in range(max_iter):
+            data_to_plot.append({
+            "x":t,
+            "ys":[{"legend":"Spring and Damping force", "value":-Ks[i] * qs[i+1] - Cs[i] * vs[i+1]},
+                {"legend":"Virtual Torque", "value":tau}],
+            })
+
+        plot_by_list_of_dictionaries(data_to_plot, is_show=True)
 
     def calc_spring_constant(self, q, best_spring_forces):
         
@@ -339,8 +405,6 @@ class DataProcessor():
         print(f"{'Ankle left':<15} {ankle_left_sol[0]:>10.2f} {ankle_left_sol[1]:>10.2f}")
         print(f"{'Ankle left':<15} {ankle_right_sol[0]:>10.2f} {ankle_right_sol[1]:>10.2f}")
 
-        import pdb; pdb.set_trace()
-
     def show_hip_residuals_given_time_period(self, start_time, end_time, residual_name):
 
         threshholds = {"hip_roll_leftdot":100,
@@ -362,17 +426,17 @@ class DataProcessor():
                                 "hip_yaw_rightdot":'yellow'}
     
         for datum in self.processed_data:
-            if not (datum['t'] >= start_time and datum['t'] <= end_time):
+            if datum['t'] < start_time or datum['t'] > end_time:
                 continue
             t.append(datum['t'])
             single_residual_info = datum[residual_name]
-            for key in single_residual_info:
-                if key not in threshholds:
+            for joint_name in single_residual_info:
+                if joint_name not in threshholds:
                     continue
-                if key in residuals:
-                    residuals[key].append(single_residual_info[key])
+                if joint_name in residuals:
+                    residuals[joint_name].append(single_residual_info[joint_name])
                 else:
-                    residuals[key] = [single_residual_info[key]]
+                    residuals[joint_name] = [single_residual_info[joint_name]]
 
         t = np.array(t)
 
@@ -381,27 +445,27 @@ class DataProcessor():
 
         plt.figure()
 
-        for key in residuals:
-            residuals[key] = np.array(residuals[key])
-            if max_value is None or np.max(residuals[key]) > max_value:
-                max_value = np.max(residuals[key])
-            if min_value is None or np.min(residuals[key]) < min_value:
-                min_value = np.min(residuals[key])
-            plt.plot(t, residuals[key], label=key, color=color_corresponding[key])
+        for joint_name in residuals:
+            residuals[joint_name] = np.array(residuals[joint_name])
+            if max_value is None or np.max(residuals[joint_name]) > max_value:
+                max_value = np.max(residuals[joint_name])
+            if min_value is None or np.min(residuals[joint_name]) < min_value:
+                min_value = np.min(residuals[joint_name])
+            plt.plot(t, residuals[joint_name], label=joint_name, color=color_corresponding[joint_name])
 
         rects = []
 
-        for key in residuals:
-            indices = np.argwhere(np.abs(residuals[key])>threshholds[key])
+        for joint_name in residuals:
+            indices = np.argwhere(np.abs(residuals[joint_name])>threshholds[joint_name])
             if indices.shape[0] == 0:
                 continue
             start_index = indices[0]
             end_index = indices[-1]
-            rect = patches.Rectangle((t[start_index], min_value), t[end_index] - t[start_index], max_value-min_value, color=color_corresponding[key], alpha=0.8)
+            rect = patches.Rectangle((t[start_index], min_value), t[end_index] - t[start_index], max_value-min_value, color=color_corresponding[joint_name], alpha=0.8)
             rects.append({"rect":rect,
                         "start_index":start_index,
                         "end_index":end_index})
-        rects.sort(key=lambda x: x["start_index"])
+        rects.sort(joint_name=lambda x: x["start_index"])
         
         for rect in rects:
             plt.gca().add_patch(rect["rect"])
@@ -423,7 +487,7 @@ class DataProcessor():
                         "knee_leftdot", "knee_rightdot", "knee_joint_leftdot", "knee_joint_rightdot", "ankle_joint_leftdot", "ankle_joint_rightdot"]
 
         for datum in self.processed_data:
-            if not (datum['t'] >= start_time and datum['t'] <= end_time):
+            if datum['t'] < start_time or datum['t'] > end_time:
                 continue
             if act_start_time is None or datum["t"] < act_start_time:
                 act_start_time = datum["t"]
@@ -431,26 +495,26 @@ class DataProcessor():
                 act_end_time = datum["t"]
             
             single_residual_info = datum[residual_name]
-            for key in single_residual_info:
-                if key not in joints_name:
+            for joint_name in single_residual_info:
+                if joint_name not in joints_name:
                     continue
-                if key in residuals:
-                    residuals[key].append(single_residual_info[key])
+                if joint_name in residuals:
+                    residuals[joint_name].append(single_residual_info[joint_name])
                 else:
-                    residuals[key] = [single_residual_info[key]]
+                    residuals[joint_name] = [single_residual_info[joint_name]]
         
         print("time period:{} to {}".format(act_start_time, act_end_time))
         print(f"{'joint_name':<28} {'mean absolute':>13} {'mean':>10} {'max abs':>10} {'freq':>10} {'mag':>10}")
-        for key in residuals:
-            residuals[key] = np.array(residuals[key])
-            xf, freq = get_freq_domain(residuals[key])
-            print(f"{key:<28} {np.mean(np.abs(residuals[key])):13.2f} {np.mean(residuals[key]):10.2f} {np.max(np.abs(residuals[key])):10.2f} {freq[np.argmax(xf[1:])+1]:10.2f} {np.max(xf[1:]):10.2f}" )
+        for joint_name in residuals:
+            residuals[joint_name] = np.array(residuals[joint_name])
+            xf, freq = get_freq_domain(residuals[joint_name])
+            print(f"{joint_name:<28} {np.mean(np.abs(residuals[joint_name])):13.2f} {np.mean(residuals[joint_name]):10.2f} {np.max(np.abs(residuals[joint_name])):10.2f} {freq[np.argmax(xf[1:])+1]:10.2f} {np.max(xf[1:]):10.2f}" )
             if is_show_freq_plot:
                 plt.figure()
                 plt.plot(freq, xf)
                 plt.xlabel("freq")
                 plt.ylabel("mag")
-                plt.title(key)
+                plt.title(joint_name)
 
         if is_show_freq_plot:
             plt.show()

@@ -19,19 +19,19 @@ class LogProcessor():
         self.channels = {self.state_channels_name:dairlib.lcmt_robot_output,
                         self.contact_channels_name:dairlib.lcmt_contact}
 
-    def update_pos_map(self, pos_map, pos_map_inverse):
+    def set_pos_map(self, pos_map, pos_map_inverse):
         self.pos_map = pos_map
         self.pos_map_inverse = pos_map_inverse
     
-    def update_vel_map(self, vel_map, vel_map_inverse):
+    def set_vel_map(self, vel_map, vel_map_inverse):
         self.vel_map = vel_map
         self.vel_map_inverse = vel_map_inverse
 
-    def update_act_map(self, act_map, act_map_inverse):
+    def set_act_map(self, act_map, act_map_inverse):
         self.act_map = act_map
         self.act_map_inverse = act_map_inverse
 
-    def update_log_path(self, path):
+    def set_log_path(self, path):
         self.path = path
         self.dir = os.path.split(path)[0]
         self.file_name = os.path.split(path)[1]

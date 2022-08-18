@@ -111,8 +111,9 @@ class ImpedanceController : public LeafSystem<double> {
   // computes the control input
   void CalcControl(const drake::systems::Context<double>& context,
                     TimestampedVector<double>* output) const;
-  // computes the rotational error of the rotational matrix R w.r.t orientation_d_
-  Vector3d CalcRotationalError(const RotationMatrix<double>& R) const;
+  // computes the rotational error
+  Eigen::Vector3d CalcRotationalError(const drake::math::RotationMatrix<double>& R,
+    const Quaterniond& orientation_d) const;
   // computes the contact jacobians in J_n and J_t
   void CalcContactJacobians(const std::vector<SortedPair<GeometryId>>& contact_pairs,
                     VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;

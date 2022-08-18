@@ -31,7 +31,7 @@
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 
-//#define ROS
+// #define ROS
 
 #ifdef ROS
 
@@ -149,7 +149,7 @@ int DoMain(int argc, char* argv[]){
     LcmSubscriberSystem::Make<dairlib::lcmt_c3>(
       "CONTROLLER_INPUT", &drake_lcm));
   auto c3_receiver = 
-    builder.AddSystem<systems::RobotC3Receiver>(10, 9, 6, 9);
+    builder.AddSystem<systems::RobotC3Receiver>(14, 9, 6, 9);
   builder.Connect(c3_subscriber->get_output_port(0),
     c3_receiver->get_input_port(0));
   builder.Connect(c3_receiver->get_output_port(0),

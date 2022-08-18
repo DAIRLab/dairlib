@@ -34,6 +34,7 @@ from pydairlib.cassie.cassie_traj_visualizer import CassieTrajVisualizer
 # Plant and Simulation Constants
 OSC_GAINS = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
 OSQP_SETTINGS = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
+SIM_URDF = 'examples/Cassie/urdf/cassie_v2_self_collision.urdf'
 URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
@@ -124,8 +125,8 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         self.simulate_until = self.ss_time + 0.1
 
-    def make(self, controller, urdf=URDF):
-        super().make(controller, urdf)
+    def make(self, controller, urdf=SIM_URDF):
+        super().make(controller, urdf=urdf)
         self.depth_image_output_port = \
             self.cassie_sim.get_camera_out_output_port()
         self.depth_camera_pose_output_port = \
@@ -291,23 +292,37 @@ class StepnetDataGenerator(DrakeCassieGym):
                 self.drake_simulator.get_mutable_context()
             )
         )
-        u_v = self.depth_camera_info.intrinsic_matrix() @ \
-              (pose.inverse().multiply(target))
-        u_v = (u_v[:2] / u_v[2])
-        u = u_v[0]
-        v = u_v[1]
 
-        if not (0 <= u <= self.depth_camera_info.width() and
-                0 <= v <= self.depth_camera_info.height()):
-            return np.copy(image), np.random.normal(0, var_z)
+        npoints = 100
+        target_ray = np.vstack(
+            (np.repeat(target[:2].reshape(2,1), npoints, axis=1),
+             np.linspace(-1.0, 1.0, npoints))
+        )
+        uvs = self.depth_camera_info.intrinsic_matrix() @ \
+              pose.inverse().multiply(target_ray)
+        uvs /= uvs[2,:]
 
-        depth_pixel = np.array((u, v, image[int(v), int(u)][0]))
+        # Get rid of out of bounds pixels
+        uvs = uvs[:, np.argwhere(0 <= uvs[0]).ravel()]
+        uvs = uvs[:, np.argwhere(uvs[0] < self.depth_camera_info.width()).ravel()]
+        uvs = uvs[:, np.argwhere(0 <= uvs[1]).ravel()]
+        uvs = uvs[:, np.argwhere(uvs[1] < self.depth_camera_info.height()).ravel()]
+        vus = uvs.astype('int')[:2]
 
-        return np.copy(image), \
-            pose.multiply(
-                np.linalg.inv(self.depth_camera_info.intrinsic_matrix()) @
-                depth_pixel
-            )[-1] + np.random.normal(0, var_z)
+        depth_pixels = np.vstack(
+            (uvs[:2], image.squeeze()[vus[1], vus[0]])
+        )
+
+        worldpoint_candidates = pose.multiply(np.linalg.inv(
+            self.depth_camera_info.intrinsic_matrix()) @ depth_pixels
+        )
+        idx_of_closest_match = np.argmin(
+            np.linalg.norm(
+                worldpoint_candidates[:2] - np.expand_dims(target[:2], axis=-1),
+                axis=0)
+        )
+
+        return np.copy(image), worldpoint_candidates[2, idx_of_closest_match]
 
     def step(self, footstep_target):
         return super().step(fixed_ports=[FixedVectorInputPort(

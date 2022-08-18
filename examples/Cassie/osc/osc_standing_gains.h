@@ -8,6 +8,7 @@
 using Eigen::MatrixXd;
 
 struct OSCStandingGains : OSCGains {
+  double weight_scaling;
   int rows;
   int cols;
   double HipYawKp;
@@ -34,6 +35,7 @@ struct OSCStandingGains : OSCGains {
   template <typename Archive>
   void Serialize(Archive* a) {
     OSCGains::Serialize(a);
+    a->Visit(DRAKE_NVP(weight_scaling));
     a->Visit(DRAKE_NVP(rows));
     a->Visit(DRAKE_NVP(cols));
     a->Visit(DRAKE_NVP(CoMKp));
@@ -68,5 +70,15 @@ struct OSCStandingGains : OSCGains {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         PelvisW.data(), rows, cols);
     W_hip_yaw = HipYawW * MatrixXd::Identity(1, 1);
+
+
+    w_accel *= weight_scaling;
+    w_input *= weight_scaling;
+    w_input_reg *= weight_scaling;
+    w_lambda *= weight_scaling;
+    w_soft_constraint *= weight_scaling;
+    W_pelvis *= weight_scaling;
+    W_com *= weight_scaling;
+    W_hip_yaw *= weight_scaling;
   }
 };

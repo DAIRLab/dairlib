@@ -179,7 +179,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true, false);
+      plant, plant, plant_context.get(), plant_context.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_RUNNING", &lcm, TriggerTypeSet({TriggerType::kForced})));

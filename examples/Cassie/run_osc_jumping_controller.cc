@@ -362,7 +362,6 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_fixed_ankle_spring);
 
   osc->AddKinematicConstraint(&evaluators);
-  std::cout << " here: " << std::endl;
 
   /**** Tracking Data for OSC *****/
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(

@@ -208,7 +208,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true, false);
+      plant, plant, plant_context.get(), plant_context.get(), true);
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations);
   auto liftoff_event_time =

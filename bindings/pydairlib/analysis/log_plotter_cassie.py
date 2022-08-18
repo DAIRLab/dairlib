@@ -13,6 +13,7 @@ from spring_compensation import SpringCompensation
 
 def main():
     config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
+    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_standing_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
@@ -160,7 +161,8 @@ def main():
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_qp_solve_time:
-        mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+        plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_active_tracking_datas:
         mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)

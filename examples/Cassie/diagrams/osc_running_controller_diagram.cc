@@ -171,7 +171,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true, false);
+      plant, plant, plant_context.get(), plant_context.get(), true);
   auto radio_parser = builder.AddSystem<systems::RadioParser>();
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(

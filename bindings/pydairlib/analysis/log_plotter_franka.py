@@ -142,6 +142,7 @@ def main():
 
     franka_channels = \
       {'FRANKA_INPUT': dairlib.lcmt_robot_input,
+       'FRANKA_INPUT_WO_G': dairlib.lcmt_robot_input,
        'FRANKA_OUTPUT': dairlib.lcmt_robot_output,
        'FRANKA_STATE_ESTIMATE': dairlib.lcmt_robot_output,
        'CONTROLLER_INPUT': dairlib.lcmt_c3,
@@ -174,7 +175,7 @@ def main():
                      franka_channels,                           # lcm channels
                      config['end_time'],                        # end time
                      mbp_plots.load_default_franka_channels,    # processing callback
-                     plant, "FRANKA_STATE_ESTIMATE", "FRANKA_INPUT",
+                     plant, "FRANKA_STATE_ESTIMATE", "FRANKA_INPUT_WO_G",
                      "CONTROLLER_INPUT", "CAM0_OUTPUT", "CAM1_OUTPUT",
                      "CAM2_OUTPUT", "VISION_OUTPUT")   
                      

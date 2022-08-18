@@ -2,11 +2,11 @@
 
 # impedance control parameters
 translational_stiffness: 500 # 200
-rotational_stiffness: 40 # 2
+rotational_stiffness: 10 # 2
 damping_ratio: 1
-stiffness_null: 10 # try changing to 2
+stiffness_null: 4 # try changing to 2
 damping_null: 4 # try changing to using damping ratio null
-q_null_desired: [0, 0.361, 0, -2.223, 0, 2, 0]
+q_null_desired: [0, 0.361, 0, -2.223, 0, 2.584, 0]
 moving_offset: 0 #0.0005
 pushing_offset: 0 #-0.001
 
@@ -60,8 +60,8 @@ enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to b
 ball_radius: 0.0315           # changes need to be consistent with sphere urdf, geometry mesh, AND vision
 finger_radius: 0.0195         # changes need to be consistent with franka_box and model urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with franka_box urdf
-table_offset: -0.0235         # chances need to be consistent with franka_box, model urdf, AND vision
-model_table_offset: -0.0235   # changes need to be consistent with model urdf
+table_offset: -0.0245         # chances need to be consistent with franka_box, model urdf, AND vision
+model_table_offset: -0.0245   # changes need to be consistent with model urdf
 
 # Misc
 contact_threshold: 0.01
@@ -70,8 +70,8 @@ enable_contact: 1
 ball_stddev: 0.0001 # standard deviation of 0-mean noise on ball state estimation
 
 # gaiting parameters
-roll_phase: 1.5  # 1
-return_phase: 0.75 # 0.5
+roll_phase: 1  #2.5
+return_phase: 0.5 #0.75
 gait_parameters: [0.02, 0.0951, 0.0911, 0.0691] # try playing with first param here
 # gait parameters represent height above the table
 

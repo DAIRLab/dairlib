@@ -126,7 +126,7 @@ class DataCollectionParams(StepnetDataClass):
     target_to_map_tf: np.ndarray = None
 
     """ Depth scaling for conversion to .png  """
-    depth_scale: float = 25.5*2
+    depth_scale: float = 6553.5 # (2^16 - 1) / 2
 
     """ Terrain and terrain parameters """
     randomization_bounds: DomainRandomizationBounds = \

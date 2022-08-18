@@ -24,6 +24,7 @@ def update_filedata(filedata, param):
   # is a substring of MODEL_TABLE_ORIGIN
   filedata = filedata.replace('MODEL_TABLE_ORIGIN', str(param['model_table_offset']-0.05))
   filedata = filedata.replace('TABLE_ORIGIN', str(param['table_offset']-0.05))
+  filedata = filedata.replace('CONNECTION_ORIGIN', str(param['table_offset'] / 2.0))
   filedata = filedata.replace('<box size=\"0.3 0.3 TABLE_OFFSET\"/>', 
                               '<box size=\"0.3 0.3 {}\"/>'.format(abs(param['table_offset'])))
   

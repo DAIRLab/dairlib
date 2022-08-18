@@ -646,7 +646,7 @@
     <!-- Visual box to connect franka to box (table) -->
       <link name="connection">
         <visual>
-          <origin xyz="-0.05 0 -0.01505" />
+          <origin xyz="-0.05 0 -0.01225" />
           <geometry>
             <box size="0.3 0.3 0.0245"/>
           </geometry>

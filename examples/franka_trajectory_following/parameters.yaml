@@ -2,7 +2,7 @@
 
 # impedance control parameters
 translational_stiffness: 500 # 200
-rotational_stiffness: 10 # 2
+rotational_stiffness: 15 # 2
 damping_ratio: 1
 stiffness_null: 4 # try changing to 2
 damping_null: 4 # try changing to using damping ratio null

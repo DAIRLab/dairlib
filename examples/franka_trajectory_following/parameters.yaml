@@ -2,7 +2,7 @@
 
 # impedance control parameters
 translational_stiffness: 500 # 200
-rotational_stiffness: 15 # 2
+rotational_stiffness: 10 # 2
 damping_ratio: 1
 stiffness_null: 4 # try changing to 2
 damping_null: 4 # try changing to using damping ratio null
@@ -14,8 +14,8 @@ pushing_offset: 0 #-0.001
 mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
 Q_finger: 500           # finger xyz cost
-Q_ball_x: 20000  #10000
-Q_ball_y: 20000  #10000
+Q_ball_x: 30000  #10000
+Q_ball_y: 30000  #10000
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
@@ -71,8 +71,8 @@ ball_stddev: 0.0001 # standard deviation of 0-mean noise on ball state estimatio
 
 # gaiting parameters
 roll_phase: 1.5  # 1
-return_phase: 0.5 # 0.5
-gait_parameters: [0.02, 0.0951, 0.0911, 0.0791] # try playing with first param here
+return_phase: 0.75 # 0.5
+gait_parameters: [0.02, 0.0951, 0.0911, 0.0691] # try playing with first param here
 # gait parameters represent height above the table
 
 # filters

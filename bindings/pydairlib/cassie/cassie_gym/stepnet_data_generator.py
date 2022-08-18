@@ -38,7 +38,7 @@ URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
-INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
+INITIAL_CONDITIONS_FILE = '.learning_data/augmented_hardware_ics.npy'
 MAX_ERROR = 1.0
 
 
@@ -420,6 +420,7 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         target_w, target_b = self.get_footstep_target_with_random_offset()
         target_w[-1] = 0
+        target_b[-1] = 0
 
         # Get the current swing leg
         swing = self.swing_states[

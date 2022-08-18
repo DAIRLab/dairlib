@@ -221,12 +221,11 @@ class CassieFootstepEnv(DrakeCassieGym):
             else:
                 target[0:2] += action[5:7] * self.params.step_loc_scaling
 
-                      )
         if self.blind:
             alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
                           target + \
                           self.sim_plant.CalcCenterOfMassPositionInWorld(
-                              self.plant_context
+                              self.plant_context)
             alip_target[2] = 0.0
         else:
             # TODO(hersh500): lookup the correct height from the depth image.
@@ -303,8 +302,8 @@ class CassieFootstepEnv(DrakeCassieGym):
         K = self.get_camera_matrix()
         pt_b1 = np.array([pt_b[0], pt_b[1], -1.1])
         pt_b2 = np.array([pt_b[0], pt_b[1], 0])
-        pt_c1 = b2c.rotation().matrix() @ pt_b1 + b2c.translation()
-        pt_c2 = b2c.rotation().matrix() @ pt_b2 + b2c.translation()
+        pt_c1 = b2c.multiply(pt_b1)
+        pt_c2 = b2c.multiply(pt_b2)
         found_point = False
         theta = 0.01
         while not found_point and theta <= 1:
@@ -323,7 +322,7 @@ class CassieFootstepEnv(DrakeCassieGym):
             return -1.1
         else:
             c2b = b2c.inverse()
-            pt_b = c2b.rotation().matrix() @ pt_c + c2b.translation()
+            pt_b = c2b.multiply(pt_c)
             return pt_b[2]
 
 

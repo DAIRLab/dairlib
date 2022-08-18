@@ -322,7 +322,8 @@ class StepnetDataGenerator(DrakeCassieGym):
                 axis=0)
         )
 
-        return np.copy(image), worldpoint_candidates[2, idx_of_closest_match]
+        return np.copy(image), worldpoint_candidates[2, idx_of_closest_match] +\
+            np.random.normal(scale=var_z)
 
     def step(self, footstep_target):
         return super().step(fixed_ports=[FixedVectorInputPort(

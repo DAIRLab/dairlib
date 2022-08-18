@@ -1,5 +1,7 @@
 #include "options_tracking_data.h"
 
+#include <iostream>
+
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -100,10 +102,10 @@ void OptionsTrackingData::UpdateYddotCmd(double t,
 }
 
 void OptionsTrackingData::UpdateW(double t, double t_since_state_switch) {
-  if(weight_trajectory_  != nullptr){
-    time_varying_weight_ = weight_trajectory_->value(t - ).row(0)[0] * W_;
-  }
-  else{
+  if (weight_trajectory_ != nullptr) {
+    time_varying_weight_ =
+        weight_trajectory_->value(time_through_trajectory_).row(0)[0] * W_;
+  } else {
     time_varying_weight_ = W_;
   }
 }
@@ -133,9 +135,9 @@ void OptionsTrackingData::SetTimeVaryingGains(
 
 void OptionsTrackingData::SetTimeVaryingWeights(
     const drake::trajectories::Trajectory<double>& weight_trajectory) {
-//  DRAKE_DEMAND(weight_trajectory.cols() == n_ydot_);
-//  DRAKE_DEMAND(weight_trajectory.rows() == n_ydot_);
-//  DRAKE_DEMAND(weight_trajectory.start_time() == 0);
+  //  DRAKE_DEMAND(weight_trajectory.cols() == n_ydot_);
+  //  DRAKE_DEMAND(weight_trajectory.rows() == n_ydot_);
+  //  DRAKE_DEMAND(weight_trajectory.start_time() == 0);
   weight_trajectory_ = &weight_trajectory;
 }
 void OptionsTrackingData::SetFeedforwardAccelMultiplier(

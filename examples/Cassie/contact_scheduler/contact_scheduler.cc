@@ -181,6 +181,11 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
       // Store the ground height of the stance foot
 
       // TODO(yangwill): calculate end of stance duration
+      double stance_scale = (0.016) / (pelvis_zdot * pelvis_zdot);
+      stance_scale = drake::math::saturate(stance_scale, 0.9, 1.2);
+      std::cout << "stance scale: " << stance_scale << std::endl;
+      //      double next_transition_time =
+      //          stored_transition_time + stance_scale * 0.25;
       double next_transition_time = stored_transition_time + 0.25;
       state->get_mutable_discrete_state(nominal_state_durations_index_)[0] =
           next_transition_time - stored_transition_time;
@@ -205,15 +210,9 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
                                 2 * g * (rest_length_ - pelvis_z))) /
             g;
       }
-//      std::cout << "time_to_touchdown: " << time_to_touchdown << std::endl;
-//      std::cout << "rest_length_: " << rest_length_ << std::endl;
-//      std::cout << "pelvis_z: " << pelvis_pos[2] << std::endl;
-//      std::cout << "ground_height: "
-//                << state->get_discrete_state(ground_height_index_).value()[0]
-//                << std::endl;
-//      std::cout << "rest_length: " << pelvis_z << std::endl;
-      double time_to_touchdown_saturated =
-          drake::math::saturate(time_to_touchdown, 0.08, 0.12);
+      //      double time_to_touchdown_saturated =
+      //          drake::math::saturate(time_to_touchdown, 0.08, 0.12);
+      double time_to_touchdown_saturated = 0.12;
       double next_transition_time =
           stored_transition_time + time_to_touchdown_saturated;
       state->get_mutable_discrete_state(nominal_state_durations_index_)[1] =

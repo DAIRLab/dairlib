@@ -471,16 +471,16 @@ void OperationalSpaceControl::Build() {
   /// hard constraint version
 //    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
 //  }
-  blend_constraint_ =
-      prog_
-          ->AddBoundingBoxConstraint(
-              VectorXd::Zero(4), VectorXd::Zero(4),
-              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
-               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
-               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
-               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
-          .evaluator()
-          .get();
+//  blend_constraint_ =
+//      prog_
+//          ->AddBoundingBoxConstraint(
+//              VectorXd::Zero(4), VectorXd::Zero(4),
+//              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+//               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+//               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+//               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
+//          .evaluator()
+//          .get();
 
   for (int i = -1; i < 5; ++i) {
     solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
@@ -512,7 +512,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 VectorXd OperationalSpaceControl::SolveQp(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
-    double time_since_last_state_switch, double alpha,
+    double t_since_last_state_switch, double alpha,
     int next_fsm_state) const {
   // Get active contact indices
   std::set<int> active_contact_set = {};
@@ -563,7 +563,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd v_proj = VectorXd::Zero(n_v_);
   if (near_impact) {
     UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t,
-                                    time_since_last_state_switch, fsm_state,
+                                    t_since_last_state_switch, fsm_state,
                                     next_fsm_state, M);
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_;
@@ -669,8 +669,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     auto tracking_data = tracking_data_vec_->at(i).get();
 
     if (tracking_data->IsActive(fsm_state) &&
-        time_since_last_state_switch >= t_s_vec_.at(i) &&
-        time_since_last_state_switch <= t_e_vec_.at(i)) {
+        t_since_last_state_switch >= t_s_vec_.at(i) &&
+        t_since_last_state_switch <= t_e_vec_.at(i)) {
       // Check whether or not it is a constant trajectory, and update
       // TrackingData
       if (fixed_position_vec_.at(i).size() != 0) {
@@ -678,7 +678,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         tracking_data->Update(
             x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-            time_since_last_state_switch, fsm_state, v_proj);
+            t_since_last_state_switch, fsm_state, v_proj);
       } else {
         // Read in traj from input port
         const string& traj_name = tracking_data->GetName();
@@ -691,7 +691,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         // Update
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t,
-                              time_since_last_state_switch, fsm_state, v_proj);
+                              t_since_last_state_switch, fsm_state, v_proj);
       }
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
@@ -736,12 +736,12 @@ VectorXd OperationalSpaceControl::SolveQp(
 //      if (prev_distinct_fsm_state_ == right_support_state_) {
 //        // We want left foot force to gradually increase
 //        alpha_left = -1;
-//        alpha_right = time_since_last_state_switch /
-//            (ds_duration_ - time_since_last_state_switch);
+//        alpha_right = t_since_last_state_switch /
+//            (ds_duration_ - t_since_last_state_switch);
 //
 //      } else if (prev_distinct_fsm_state_ == left_support_state_) {
-//        alpha_left = time_since_last_state_switch /
-//            (ds_duration_ - time_since_last_state_switch);
+//        alpha_left = t_since_last_state_switch /
+//            (ds_duration_ - t_since_last_state_switch);
 //        alpha_right = -1;
 //      }
 //      A(0, 0) = alpha_left / 2;
@@ -753,12 +753,12 @@ VectorXd OperationalSpaceControl::SolveQp(
 //      A(0, 6) = 1;
 //      A(0, 7) = 1;
 //    }
-  VectorXd normals = VectorXd(4);
-  normals << lambda_c_sol_->segment(kSpaceDim * 0 + 2, 1),
-      lambda_c_sol_->segment(kSpaceDim * 1 + 2, 1),
-      lambda_c_sol_->segment(kSpaceDim * 2 + 2, 1),
-      lambda_c_sol_->segment(kSpaceDim * 3 + 2, 1);
-  blend_constraint_->UpdateCoefficients(MatrixXd::Identity(4, 4), normals - 25 * VectorXd::Ones(4), normals + 25 * VectorXd::Ones(4));
+//  VectorXd normals = VectorXd(4);
+//  normals << lambda_c_sol_->segment(kSpaceDim * 0 + 2, 1),
+//      lambda_c_sol_->segment(kSpaceDim * 1 + 2, 1),
+//      lambda_c_sol_->segment(kSpaceDim * 2 + 2, 1),
+//      lambda_c_sol_->segment(kSpaceDim * 3 + 2, 1);
+//  blend_constraint_->UpdateCoefficients(MatrixXd::Identity(4, 4), normals - 25 * VectorXd::Ones(4), normals + 25 * VectorXd::Ones(4));
 //  }
 
   // test joint-level input cost by fsm state
@@ -1164,9 +1164,9 @@ void OperationalSpaceControl::CheckTracking(
       (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
-//  if (soft_constraint_cost_ > 5e3 || isnan(soft_constraint_cost_)) {
-//    output->get_mutable_value()(0) = 1.0;
-//  }
+  if (soft_constraint_cost_ > 5e3 || isnan(soft_constraint_cost_)) {
+    output->get_mutable_value()(0) = 1.0;
+  }
 }
 
 }  // namespace dairlib::systems::controllers

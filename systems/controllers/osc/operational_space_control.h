@@ -208,7 +208,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           const Eigen::VectorXd& x_wo_spr,
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,
-                          double time_since_last_state_switch, double alpha,
+                          double t_since_last_state_switch, double alpha,
                           int next_fsm_state) const;
 
   // Solves the optimization problem:

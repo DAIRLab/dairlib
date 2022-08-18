@@ -121,6 +121,8 @@ class OscTrackingData {
   bool use_springs_in_eval_ = true;
   bool impact_invariant_projection_ = false;
 
+  double time_through_trajectory_ = 0;
+
   // Actual outputs, Jacobian and dJ/dt * v
   Eigen::VectorXd y_;
   Eigen::VectorXd error_y_;

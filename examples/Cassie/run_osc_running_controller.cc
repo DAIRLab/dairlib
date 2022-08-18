@@ -427,7 +427,7 @@ int DoMain(int argc, char* argv[]) {
 
   PiecewisePolynomial<double> foot_traj_weight_trajectory =
       PiecewisePolynomial<double>::FirstOrderHold(
-          {0, 0.25 + 0.2}, {0.5 * VectorXd::Ones(1), VectorXd::Ones(1)});
+          {0, 0.25 + 0.2}, {0.5 * VectorXd::Ones(1), 5.0 * VectorXd::Ones(1)});
   //  PiecewisePolynomial<double> foot_traj_weight_trajectory =
   //      PiecewisePolynomial<double>::FirstOrderHold(
   //          {0, 0.25 + 0.2}, {VectorXd::Ones(1), VectorXd::Ones(1)});

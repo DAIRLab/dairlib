@@ -286,6 +286,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                 self.drake_simulator.get_mutable_context()
             )
         ).data
+        # Get the depth camera pose in the world frame
         pose = self.depth_camera_pose_output_port.Eval(
             self.diagram.GetMutableSubsystemContext(
                 self.cassie_sim,
@@ -293,6 +294,8 @@ class StepnetDataGenerator(DrakeCassieGym):
             )
         )
 
+        # Make a line segment from [target_x, target_y, -1] to
+        # [target_x, target_y, 1]
         npoints = 100
         target_ray = np.vstack(
             (np.repeat(target[:2].reshape(2,1), npoints, axis=1),
@@ -300,28 +303,31 @@ class StepnetDataGenerator(DrakeCassieGym):
         )
         uvs = self.depth_camera_info.intrinsic_matrix() @ \
               pose.inverse().multiply(target_ray)
-        uvs /= uvs[2,:]
+        uvs /= uvs[2,:] # normalize by homogenous coordinate
 
-        # Get rid of out of bounds pixels
+        # Get rid of candidate points which are outside the image
         uvs = uvs[:, np.argwhere(0 <= uvs[0]).ravel()]
         uvs = uvs[:, np.argwhere(uvs[0] < self.depth_camera_info.width()).ravel()]
         uvs = uvs[:, np.argwhere(0 <= uvs[1]).ravel()]
         uvs = uvs[:, np.argwhere(uvs[1] < self.depth_camera_info.height()).ravel()]
         vus = uvs.astype('int')[:2]
 
+        # List of pixels which might be our target -> list of world points
         depth_pixels = np.vstack(
             (uvs[:2], image.squeeze()[vus[1], vus[0]])
         )
-
         worldpoint_candidates = pose.multiply(np.linalg.inv(
             self.depth_camera_info.intrinsic_matrix()) @ depth_pixels
         )
+
+        # Which world point has x and y values closest to the target?
         idx_of_closest_match = np.argmin(
             np.linalg.norm(
                 worldpoint_candidates[:2] - np.expand_dims(target[:2], axis=-1),
                 axis=0)
         )
 
+        # Return the image and at the best match + noise
         return np.copy(image), worldpoint_candidates[2, idx_of_closest_match] +\
             np.random.normal(scale=var_z)
 

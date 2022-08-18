@@ -4,6 +4,8 @@
 #include <utility>
 
 #include <drake/multibody/plant/multibody_plant.h>
+#include "multibody/boxy_height_map.h"
+#include "systems/cameras/camera_utils.h"
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/diagram.h"
@@ -49,15 +51,28 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
     return this->get_output_port(camera_out_output_port_index_);
   }
 
+  int get_camera_type() const {
+    return camera_type_;
+  }
+
   drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
 
+  drake::math::RigidTransform<double> get_cam_transform() {
+    return cam_transform_;
+  }
+
+  double get_height_at(double x, double y);
+
  private:
 
   drake::multibody::MultibodyPlant<double>* plant_;
+  multibody::BoxyHeightMap hmap_;
+  drake::math::RigidTransform<double> cam_transform_;
   const systems::SimCassieSensorAggregator* sensor_aggregator_;
   drake::geometry::SceneGraph<double>* scene_graph_;
+  const camera::D455ImageSize camera_type_ = camera::D455ImageSize::k640x480;
   const int actuation_input_port_index_ = 0;
   const int radio_input_port_index_ = 1;
   const int state_output_port_index_ = 0;

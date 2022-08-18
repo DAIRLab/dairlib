@@ -3,6 +3,9 @@ import gym
 import numpy as np
 from dataclasses import dataclass
 from scipy.spatial.transform import Rotation as R
+import time
+import yaml
+import matplotlib.pyplot as plt
 
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.math import RigidTransform, RotationMatrix
@@ -47,6 +50,7 @@ OSQP_SETTINGS = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
 URDF = 'examples/Cassie/urdf/cassie_v2_sc.urdf'
 MBP_TIMESTEP = 8e-5
 
+CAMERA_CONFIGS = "./systems/cameras/dair_d455.yaml"
 INITIAL_CONDITIONS_FILE = './learning_data/initial_conditions.npy'
 INITIAL_CONDITIONS_FILE_CSV = "./learning_data/cassie_initial_conditions.csv"
 
@@ -55,9 +59,12 @@ INITIAL_CONDITIONS_FILE_CSV = "./learning_data/cassie_initial_conditions.csv"
 class FootstepGymParams(CassieGymParams):
     n_stack: int = 4
     action_rate: int = 5
-    reward_weights = [0.2, -0.2]
-    goal_x = 4.0
-    step_loc_scaling = 0.1
+    reward_weights: tuple = (0.2, -0.2)
+    goal_x: float = 4.0
+    step_loc_scaling: float = 0.1
+    terrain_randomize: bool = False 
+    max_initial_x: float = 20 
+    min_initial_x: float = -20
 
     @staticmethod
     def make_random(ic_file_path):
@@ -135,8 +142,18 @@ class CassieFootstepEnv(DrakeCassieGym):
 
         self.add_controller()
         self.make(self.controller)
+        with open(CAMERA_CONFIGS, 'r') as f:
+            self.camera_config = yaml.safe_load(f)[self.cassie_sim.get_camera_type()]
         return
 
+  
+    def get_camera_matrix(self, config=None):
+        if config is None:
+            config = self.camera_config
+        return np.array([[config["focal_x"], 0, config["center_x"]],
+                         [0, config["focal_y"], config["center_y"]],
+                         [0, 0, 1]])
+            
 
     def add_controller(self):
         self.controller_plant = MultibodyPlant(MBP_TIMESTEP)
@@ -178,13 +195,11 @@ class CassieFootstepEnv(DrakeCassieGym):
 
     # Action space is radio cmd + footstep target for Cassie
     # Footstep target is deviation from the alip target.
-    # TODO(hersh500): current policy is doing a lot of centerline crossing.
     def step(self, action=None):
         # Process radio actions
         radio = np.zeros((18,))
         if action is not None:
             # xdot, ydot, yaw_dot
-            # radio[(2,3,5)] = action[0:3]
             # Ew.
             radio[2], radio[3], radio[5] = action[0], action[1], action[2]
         else:
@@ -197,6 +212,7 @@ class CassieFootstepEnv(DrakeCassieGym):
 
         if action is None:
             target = self.alip_target_port.Eval(self.controller_context)
+            print(f"target = {target}")
         else:
             # target = np.zeros(3)
             target = self.alip_target_port.Eval(self.controller_context)
@@ -204,19 +220,19 @@ class CassieFootstepEnv(DrakeCassieGym):
                 target[0:2] += action[3:5] * self.params.step_loc_scaling
             else:
                 target[0:2] += action[5:7] * self.params.step_loc_scaling
-            # TODO(hersh500): better way to do this?
-            # target[2] = -self.cassie_state.get_fb_positions()[2]
 
-        alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
-                      target + \
-                      self.sim_plant.CalcCenterOfMassPositionInWorld(
-                          self.plant_context
                       )
         if self.blind:
+            alip_target = self.pelvis_pose(self.plant_context).rotation().matrix() @ \
+                          target + \
+                          self.sim_plant.CalcCenterOfMassPositionInWorld(
+                              self.plant_context
             alip_target[2] = 0.0
         else:
             # TODO(hersh500): lookup the correct height from the depth image.
-            raise NotImplementedError("Haven't implemented depth images lookup yet.")
+            image = self.get_current_depth_image()
+            # alip_targets are relative to CoM though, and not pelvis. how to reconcile?
+            pt_b = self.lookup_height(image, [alip_target[0], alip_target[1]])
         if self.visualize:
             # print(f"radio command = {radio[2:6]}")
             # print(f"step cmd for {swing} foot is {target}")
@@ -269,6 +285,48 @@ class CassieFootstepEnv(DrakeCassieGym):
             rs[13] = 1
         return rs
 
+    def get_current_depth_image(self):
+        return np.copy(
+            self.depth_image_output_port.Eval(
+                self.diagram.GetMutableSubsystemContext(
+                    self.cassie_sim,
+                    self.drake_simulator.get_mutable_context()
+                )
+            ).data
+        )
+
+
+    # gets body-frame z height of the footstep based on the depth image
+    # pt_b = (x_b, y_b)
+    def lookup_height(self, img, pt_b):
+        b2c = self.cassie_sim.get_cam_transform().inverse()
+        K = self.get_camera_matrix()
+        pt_b1 = np.array([pt_b[0], pt_b[1], -1.1])
+        pt_b2 = np.array([pt_b[0], pt_b[1], 0])
+        pt_c1 = b2c.rotation().matrix() @ pt_b1 + b2c.translation()
+        pt_c2 = b2c.rotation().matrix() @ pt_b2 + b2c.translation()
+        found_point = False
+        theta = 0.01
+        while not found_point and theta <= 1:
+            # search along upward-pointing ray until pixel z matches cam frame z
+            pt_c = pt_c1 + theta * (pt_c2 - pt_c1)
+            pt_c_norm = pt_c/pt_c[2]
+            pt_im = K @ pt_c_norm
+            try:
+                im_z = img[int(pt_im[1])][int(pt_im[0])]  # x = row, y = col
+            except IndexError:
+                return -self.pelvis_pose(self.plant_context).translation()[2]
+            if np.abs(im_z - pt_c[2]) < 5e-3:
+                found_point = True
+            theta += 0.01
+        if not found_point:
+            return -1.1
+        else:
+            c2b = b2c.inverse()
+            pt_b = c2b.rotation().matrix() @ pt_c + c2b.translation()
+            return pt_b[2]
+
+
     # Utilities copied over from StepNetGenerator
     def calc_foot_position_in_world(self, context, side):
         return self.sim_plant.CalcPointsPositions(
@@ -285,6 +343,7 @@ class CassieFootstepEnv(DrakeCassieGym):
         '''
         # self.params.x_init = self.draw_good_ic() 
         # randomizing initial condition should help with always picking the same action.
+
         self.params.x_init = self.draw_random_initial_condition()
         s = super().reset()
         actions = np.zeros(self.n_actions)
@@ -297,16 +356,16 @@ class CassieFootstepEnv(DrakeCassieGym):
             body=self.sim_plant.GetBodyByName("pelvis"))
 
 
-    # what is this actually doing?
-    def move_robot_to_origin(self, x):
+    def move_robot(self, x, pos):
         self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
         x[CASSIE_FB_POSITION_SLICE] = (
             x[CASSIE_FB_POSITION_SLICE] -
-            self.calc_foot_position_in_world(self.calc_context, 'left')
+            self.calc_foot_position_in_world(self.calc_context, 'left') +
+            np.array([pos[0], pos[1], pos[2]])
         )
         # TODO(hersh): should rotate robot to the origin by applying
         # inverse yaw rotation from the rotation matrix. Currently
-        # just zero-ing out the yaw but that's kinda hacky.
+        # just zero-ing out the yaw but that's hacky.
         rot = x[CASSIE_QUATERNION_SLICE]
         w = rot[0]
         rot[0:3] = rot[1:4]
@@ -329,9 +388,25 @@ class CassieFootstepEnv(DrakeCassieGym):
             self.initial_condition_bank.shape[0],
             size=1,
             replace=False)
-        return self.move_robot_to_origin(
-            self.initial_condition_bank[idx].ravel()
-        )
+        if not self.params.terrain_randomize:
+            return self.move_robot(
+                self.initial_condition_bank[idx].ravel(),
+                (0, 0, 0)
+            )
+        else:
+            # pick a position at random
+            cond = False
+            while not cond:
+                new_x = np.random.uniform(self.params.min_initial_x, self.params.max_initial_x)
+                height_at_x = self.cassie_sim.get_height_at(new_x, 0)
+                plus_x = np.abs(self.cassie_sim.get_height_at(new_x + 0.05, 0) - height_at_x)
+                minus_x = np.abs(self.cassie_sim.get_height_at(new_x - 0.05, 0) - height_at_x)
+                if plus_x < 1e-2 and minus_x < 1e-2:
+                    cond = True
+            return self.move_robot(
+                self.initial_condition_bank[idx].ravel(),
+                (new_x, 0, height_at_x)
+            )
 
 
     def draw_good_ic(self):
@@ -358,18 +433,23 @@ class CassieFootstepEnv(DrakeCassieGym):
         return self.move_robot_to_origin(new_ic.ravel())
 
 
-    # Returns lookup in depth image.
-    def getBodyHeightFromDepthImage(self, x_b, y_b):
-        return 0
-
-
     def test_env(self):
-        # ic = self.draw_random_initial_condition()
-        ic = self.draw_good_ic()
-        s = self.reset(ic)
-        while self.current_time < 5 and not self.terminated:
-            s, r, d, _ = self.step()
+        for i in range(3):
+            s = self.reset()
+            while self.current_time < 5 and not self.terminated:
+                s, r, d, _ = self.step()
         return
+
+    def test_depth_lookup(self):
+        s = self.reset()
+        s, r, d, i = self.step()
+        image = self.get_current_depth_image()
+        plt.imshow(image[:,:,0], cmap='gray')
+        plt.show()
+        pt_b = np.array([0.2, 0])
+        z = self.lookup_height(image, pt_b)
+        print(f"z = {z}")
+        print(f"{self.pelvis_pose(self.plant_context).translation()}")
 
 
 # is there a good way to reconcile this with the params class?
@@ -379,9 +459,10 @@ def make_footstep_env_fn(rank,
                          blind=True,
                          goal_x=4.0,
                          max_step_magnitude=0.0,
-                         reward_weights=[0.2, -0.1]):
+                         reward_weights=[0.2, -0.1],
+                         terrain_randomize=False):
     def _init():
-        params = FootstepGymParams(max_step_magnitude=max_step_magnitude)
+        params = FootstepGymParams(max_step_magnitude=max_step_magnitude, terrain_randomize=terrain_randomize)
         env = CassieFootstepEnv(visualize=visualize, blind=blind, params=params)
         env.seed(seed+rank)
         return env
@@ -390,8 +471,8 @@ def make_footstep_env_fn(rank,
 
 # test out this env with providing no actions
 def main():
-    env = CassieFootstepEnv(visualize=True, blind=True, params=FootstepGymParams())
-    env.test_env()
+    env = CassieFootstepEnv(visualize=True, blind=True, params=FootstepGymParams(max_step_magnitude=0.0, terrain_randomize=False))
+    env.test_depth_lookup()
 
 if __name__ == "__main__":
     main()

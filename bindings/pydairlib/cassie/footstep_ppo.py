@@ -10,8 +10,8 @@ from pydairlib.cassie.cassie_gym.drake_cassie_gym import make_vec_env
 from pydairlib.cassie.cassie_gym.footstep_env import CassieFootstepEnv, \
     make_footstep_env_fn
 
-# TODO(hersh500): save model checkpoints, also implement yaml configs for these 
-# so I remember experiment settings.
+# TODO(hersh500): save model checkpoints, 
+# also implement yaml configs for these so I remember experiment settings.
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--eval", type=bool, default=False)
@@ -40,10 +40,10 @@ def main():
         if pretrained:
             directory = args.path
             model = PPO.load(directory)
-            env = make_vec_env(make_footstep_env_fn, n_envs, 50, max_step_magnitude=0, blind=True)
+            env = make_vec_env(make_footstep_env_fn, n_envs, 50, max_step_magnitude=0.07, blind=True, terrain_randomize=True)
             model.set_env(env)
         else:
-            env = make_vec_env(make_footstep_env_fn, n_envs, 50, max_step_magnitude=0, blind=True)
+            env = make_vec_env(make_footstep_env_fn, n_envs, 50, max_step_magnitude=0.07, blind=True, terrain_randomize=True)
             model = PPO("MlpPolicy",
                         env,
                         verbose=1,
@@ -52,7 +52,7 @@ def main():
                         batch_size=512)
         eval_env = make_vec_env(make_footstep_env_fn, 1, 30)
         try:
-            model.learn(1e6, eval_env=eval_env, eval_freq=256)
+            model.learn(1.5e6, eval_env=eval_env, eval_freq=256)
         except KeyboardInterrupt:
             pass
         model.save(os.path.join(logdir, "ppo_model"))

@@ -85,7 +85,7 @@ BoxyHeightMap BoxyHeightMap::MakeRandomMap() {
 
 BoxyHeightMap BoxyHeightMap::MakeRandomMap(
     const Vector3d& normal, double yaw, double mu, double height) {
-  int n_boxes = rand() % 30 + 5;
+  int n_boxes = rand() % 100 + 5;
   BoxyHeightMap boxy(normal, 5, 0.5, yaw, mu);
   boxy.AppendBox(0, 0.4);
   for (int i = 0; i < n_boxes; i++) {

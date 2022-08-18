@@ -56,7 +56,7 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
     const std::string& urdf, bool visualize, double mu, double map_yaw,
     const Eigen::Vector3d& normal, double map_height) {
 
-  drake::math::RigidTransform<double> cam_transform =
+  cam_transform_ =
       drake::math::RigidTransform<double>(
           camera::MakeXZAlignedCameraRotation(-0.85*M_PI/2),
           Eigen::Vector3d(0.175, 0, 0.15));
@@ -72,13 +72,12 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  multibody::BoxyHeightMap hmap =
-    multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu, map_height);
+  hmap_ = multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu, map_height);
 //  multibody::CubeHeightMap hmap =
 //      multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu);
-  hmap.AddHeightMapToPlant(plant_, scene_graph_);
+  hmap_.AddHeightMapToPlant(plant_, scene_graph_);
   plant_->RegisterVisualGeometry(plant_->GetBodyByName("pelvis"),
-                                 cam_transform,
+                                 cam_transform_,
                                  drake::geometry::Box(0.15, 0.025, 0.025),
                                  "realsense_box");
   plant_->Finalize();
@@ -107,15 +106,14 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   // Add camera model
   const auto& [color_camera, depth_camera] =
-  camera::MakeDairD455CameraModel(renderer_name,
-                                  camera::D455ImageSize::k640x480);
+  camera::MakeDairD455CameraModel(renderer_name, camera_type_);
   const std::optional<drake::geometry::FrameId> parent_body_id =
       plant_->GetBodyFrameIdIfExists(
           plant_->GetFrameByName("pelvis").body().index());
 
 
   auto camera = builder.AddSystem<drake::systems::sensors::RgbdSensor>(
-      parent_body_id.value(), cam_transform, color_camera, depth_camera);
+      parent_body_id.value(), cam_transform_, color_camera, depth_camera);
 
 
   // connect leaf systems
@@ -159,5 +157,10 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
   this->set_name("cassie_sim_diagram");
 //  DrawAndSaveDiagramGraph(*this);
 }
+
+double CassieVisionSimDiagram::get_height_at(double x, double y) {
+  return hmap_.GetHeightInWorld({x, y});
+}
+
 }  // namespace examples
 }  // namespace dairlib

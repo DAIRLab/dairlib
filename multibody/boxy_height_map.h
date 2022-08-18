@@ -14,6 +14,7 @@ struct box2d {
 
 class BoxyHeightMap {
  public:
+  BoxyHeightMap()=default;
   BoxyHeightMap(const Eigen::Vector3d &normal, double dim_y, double dim_z,
                 double rot_z, double mu) : R_(MakeRotation(normal, rot_z)),
                                 xmap_(MakeRotation(normal, rot_z).inverse().matrix().block(0,0,1,2)),

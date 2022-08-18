@@ -121,7 +121,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  20);  //30
+  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  30);  //30
   prog_.SetSolverOptions(OSQPoptions_);
 }
 
@@ -288,15 +288,15 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
     }
   }
 
-  /// initialize decision variables to warm start
-  if (warm_start_){
-    for (int i = 0; i < N_; i++){
-      prog_.SetInitialGuess(x_[i], warm_start_x_[i]);
-      prog_.SetInitialGuess(lambda_[i], warm_start_lambda_[i]);
-      prog_.SetInitialGuess(u_[i], warm_start_u_[i]);
-    }
-    prog_.SetInitialGuess(x_[N_], warm_start_x_[N_]);
-  }
+//  /// initialize decision variables to warm start
+//  if (warm_start_){
+//    for (int i = 0; i < N_; i++){
+//      prog_.SetInitialGuess(x_[i], warm_start_x_[i]);
+//      prog_.SetInitialGuess(lambda_[i], warm_start_lambda_[i]);
+//      prog_.SetInitialGuess(u_[i], warm_start_u_[i]);
+//    }
+//    prog_.SetInitialGuess(x_[N_], warm_start_x_[N_]);
+//  }
 
   MathematicalProgramResult result = osqp_.Solve(prog_);
   VectorXd xSol = result.GetSolution(x_[0]);

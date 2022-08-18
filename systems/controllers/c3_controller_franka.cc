@@ -464,6 +464,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     state_next(11) = clamped_velocity(1);
     state_next(12) = clamped_velocity(2);
 
+    std::cout << "velocity limit(c3)" << std::endl;
+
     /// update the user
     // std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
     // std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;

@@ -38,7 +38,7 @@ def collect_data_from_random_map(size, seed, params):
     return data
 
 
-def collect_and_save_data_from_random_map(i, size, params):
+def collect_and_save_data_from_random_map(i, size, params: DataCollectionParams):
     data = collect_data_from_random_map(size, i*params.nsteps, params)
     print(i)
     ni = ndigits(params.nmaps)
@@ -46,11 +46,11 @@ def collect_and_save_data_from_random_map(i, size, params):
     for j, step in enumerate(data):
         # Proces the depth image and save as PNG
         depth = np.nan_to_num(step['depth'], posinf=0).squeeze()
-        depth = (params.depth_scale * depth).astype('uint8')
+        depth = (params.depth_scale * depth).astype('uint16')
         im = Image.fromarray(depth)
         robot = {key: step[key] for key in ['state', 'target', 'time', 'error']}
-        im.save(os.path.join(DEPTH_DIR, f'{i:0{ni}}_{j:0{nj}}.png'))
-        pt_save(robot, os.path.join(ROBO_DIR, f'{i:0{ni}}_{j:0{nj}}.pt'))
+        im.save(os.path.join(params.depth_path, f'{i:0{ni}}_{j:0{nj}}.png'))
+        pt_save(robot, os.path.join(params.robot_path, f'{i:0{ni}}_{j:0{nj}}.pt'))
 
 
 def collect_flat_ground_data(size, seed, params):

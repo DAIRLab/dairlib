@@ -1,7 +1,7 @@
 # Log time to stop at (seconds, -1 for whole log)
 end_time: -1
 save_plots: true
-show_plots: true
+show_plots: false
 
 # Desired Franka plots
 plot_joint_positions: true

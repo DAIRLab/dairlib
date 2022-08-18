@@ -341,6 +341,12 @@ int DoMain(int argc, char* argv[]) {
   right_foot_tracking_data->AddStateAndPointToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_right");
 
+  left_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_left");
+  right_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_right");
+
+
   auto left_foot_yz_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -367,6 +373,11 @@ int DoMain(int argc, char* argv[]) {
   right_hip_tracking_data->AddStateAndPointToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
   left_hip_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+
+  left_hip_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(
       RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
 
   auto left_hip_yz_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
@@ -414,22 +425,20 @@ int DoMain(int argc, char* argv[]) {
   right_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
 
-  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_leftdot"],
-  //  RUNNING_FSM_STATE::LEFT_STANCE);
-  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_roll_rightdot"],
-  //  RUNNING_FSM_STATE::RIGHT_STANCE);
-  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_leftdot"],
-  //  RUNNING_FSM_STATE::LEFT_STANCE);
-  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["hip_pitch_rightdot"],
-  //  RUNNING_FSM_STATE::RIGHT_STANCE);
-  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_leftdot"],
-  //  RUNNING_FSM_STATE::LEFT_STANCE);
-  //  pelvis_trans_rel_tracking_data->AddJointAndStateToIgnoreInJacobian(vel_map["knee_joint_rightdot"],
-  //  RUNNING_FSM_STATE::RIGHT_STANCE);
+  PiecewisePolynomial<double> foot_traj_weight_trajectory =
+      PiecewisePolynomial<double>::FirstOrderHold(
+          {0, 0.25 + 0.2}, {0.5 * VectorXd::Ones(1), VectorXd::Ones(1)});
+  //  PiecewisePolynomial<double> foot_traj_weight_trajectory =
+  //      PiecewisePolynomial<double>::FirstOrderHold(
+  //          {0, 0.25 + 0.2}, {VectorXd::Ones(1), VectorXd::Ones(1)});
+  left_foot_rel_tracking_data->SetTimeVaryingWeights(
+      foot_traj_weight_trajectory);
+  right_foot_rel_tracking_data->SetTimeVaryingWeights(
+      foot_traj_weight_trajectory);
 
   //  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
   //  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});
-  pelvis_trans_rel_tracking_data->DisableFeedforwardAccel({2});
+  //  pelvis_trans_rel_tracking_data->DisableFeedforwardAccel({2});
   //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
   //  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
   //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
@@ -444,8 +453,8 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
   osc->AddTrackingData(std::move(left_foot_rel_tracking_data));
   osc->AddTrackingData(std::move(right_foot_rel_tracking_data));
-  osc->AddTrackingData(std::move(left_foot_yz_rel_tracking_data));
-  osc->AddTrackingData(std::move(right_foot_yz_rel_tracking_data));
+//  osc->AddTrackingData(std::move(left_foot_yz_rel_tracking_data));
+//  osc->AddTrackingData(std::move(right_foot_yz_rel_tracking_data));
 
   auto heading_traj_generator =
       builder.AddSystem<cassie::osc::HeadingTrajGenerator>(plant,
@@ -599,10 +608,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("right_ft_traj"));
-  builder.Connect(l_foot_traj_generator->get_output_port(0),
-                  osc->get_input_port_tracking_data("left_ft_z_traj"));
-  builder.Connect(r_foot_traj_generator->get_output_port(0),
-                  osc->get_input_port_tracking_data("right_ft_z_traj"));
+//  builder.Connect(l_foot_traj_generator->get_output_port(0),
+//                  osc->get_input_port_tracking_data("left_ft_z_traj"));
+//  builder.Connect(r_foot_traj_generator->get_output_port(0),
+//                  osc->get_input_port_tracking_data("right_ft_z_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),

@@ -31,6 +31,8 @@ class OptionsTrackingData : public OscTrackingData {
       const drake::trajectories::Trajectory<double>& ff_accel_multiplier);
   const drake::trajectories::Trajectory<double>* ff_accel_multiplier_ = nullptr;
 
+  const Eigen::MatrixXd& GetWeight() const override { return time_varying_weight_; }
+
   // Additional feature -- ViewFrame
   const multibody::ViewFrame<double>* view_frame_;
   Eigen::Matrix3d view_frame_rot_T_;
@@ -57,6 +59,7 @@ class OptionsTrackingData : public OscTrackingData {
   void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
   void UpdateYddotDes(double t, double t_since_state_switch) override;
   void UpdateYddotCmd(double t, double t_since_state_switch) override;
+  void UpdateW(double t, double t_since_state_switch);
 
   const drake::trajectories::Trajectory<double>* gain_multiplier_ = nullptr;
   const drake::trajectories::Trajectory<double>* weight_trajectory_ = nullptr;
@@ -66,6 +69,7 @@ class OptionsTrackingData : public OscTrackingData {
   // Members of low-pass filter
   Eigen::VectorXd filtered_y_;
   Eigen::VectorXd filtered_ydot_;
+  Eigen::MatrixXd time_varying_weight_;
   double tau_ = -1;
   std::set<int> low_pass_filter_element_idx_;
   double last_timestamp_ = -1;

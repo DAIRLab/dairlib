@@ -81,7 +81,7 @@ PelvisRotKd:
 SwingFootW:
   [ 10,    0,    0,
     0,   10,    0,
-    0,    0,   1 ]
+    0,    0,   5 ]
 SwingFootKp:
   [75,    0,    0,
    0,  50,    0,

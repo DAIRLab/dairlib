@@ -87,7 +87,7 @@ class OscTrackingData {
   const Eigen::MatrixXd& GetJ() const { return J_; }
   const Eigen::VectorXd& GetJdotTimesV() const { return JdotV_; }
   const Eigen::VectorXd& GetYddotCommand() const { return yddot_command_; }
-  const Eigen::MatrixXd& GetWeight() const { return W_; }
+  virtual const Eigen::MatrixXd& GetWeight() const { return W_; }
 
   // Getters
   const std::string& GetName() const { return name_; };

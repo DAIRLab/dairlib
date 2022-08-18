@@ -37,7 +37,6 @@ void OptionsTrackingData::UpdateActual(
     JdotV_ = view_frame_rot_T_ * JdotV_;
   }
 
-  W_ = weight_trajectory_->value(t) * W_;
   UpdateFilters(t);
 }
 
@@ -83,9 +82,6 @@ void OptionsTrackingData::UpdateYddotDes(double t,
     yddot_des_converted_ = ff_accel_multiplier_->value(t_since_state_switch) *
                            yddot_des_converted_;
   }
-  //  if(this->GetName() == "pelvis_trans_traj"){
-  //    yddot_des_converted_[2] -= 9.81;
-  //  }
 }
 
 void OptionsTrackingData::UpdateYddotCmd(double t,
@@ -100,6 +96,16 @@ void OptionsTrackingData::UpdateYddotCmd(double t,
 
   yddot_command_ = yddot_des_converted_ +
                    gain_multiplier * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
+  UpdateW(t, t_since_state_switch);
+}
+
+void OptionsTrackingData::UpdateW(double t, double t_since_state_switch) {
+  if(weight_trajectory_  != nullptr){
+    time_varying_weight_ = weight_trajectory_->value(t - ).row(0)[0] * W_;
+  }
+  else{
+    time_varying_weight_ = W_;
+  }
 }
 
 void OptionsTrackingData::SetLowPassFilter(double tau,
@@ -127,10 +133,10 @@ void OptionsTrackingData::SetTimeVaryingGains(
 
 void OptionsTrackingData::SetTimeVaryingWeights(
     const drake::trajectories::Trajectory<double>& weight_trajectory) {
-  DRAKE_DEMAND(weight_trajectory.cols() == n_ydot_);
-  DRAKE_DEMAND(weight_trajectory.rows() == n_ydot_);
-  DRAKE_DEMAND(weight_trajectory.start_time() == 0);
-  gain_multiplier_ = &weight_trajectory;
+//  DRAKE_DEMAND(weight_trajectory.cols() == n_ydot_);
+//  DRAKE_DEMAND(weight_trajectory.rows() == n_ydot_);
+//  DRAKE_DEMAND(weight_trajectory.start_time() == 0);
+  weight_trajectory_ = &weight_trajectory;
 }
 void OptionsTrackingData::SetFeedforwardAccelMultiplier(
     const drake::trajectories::Trajectory<double>& ff_accel_multiplier) {

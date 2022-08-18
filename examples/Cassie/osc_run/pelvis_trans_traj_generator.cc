@@ -5,6 +5,7 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
+#include <iostream>
 
 using std::string;
 using std::vector;
@@ -82,7 +83,7 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GeneratePelvisTraj(
 }
 
 PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
-    const VectorXd& x, double t_0, double t_f, int fsm_state) const {
+    const VectorXd& x, double t0, double tf, int fsm_state) const {
   // fsm_state should be unused
   if (fsm_state >= 2) {
     // flight phase trajectory should be unused
@@ -116,9 +117,12 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   //  } else {
   //    breaks << 0.4, 0.65, 0.8;
   //  }
-  breaks << t_0, t_f;
+  breaks << t0, tf;
   MatrixXd samples(3, 2);
   MatrixXd samples_dot(3, 2);
+
+//  std::cout << "t0:" << t0 << std::endl;
+//  std::cout << "tf:" << tf << std::endl;
   //  samples << pelvis_pos, pelvis_pos + 0.5 * rddot * dt * dt;
   //  samples_dot << pelvis_vel, pelvis_vel + rddot * dt;
 
@@ -132,10 +136,10 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   }
   //   samples << 0, 0, 0, y_dist_des, y_dist_des,  y_dist_des, rest_length_,
   //   rest_length_ + 0.05, rest_length_;
-  //  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ +
-  //  0.05; samples_dot << 0, 0, 0, 0, 0.25, 0.0;
-  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
-  //   return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
+  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ + rest_length_offset_;
+//  samples_dot << 0, 0, 0, 0, 0.25, 0.0;
+  //  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
+  return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
   //  return PiecewisePolynomial<double>::CubicHermite(
   //      breaks, samples, samples_dot);
   //  return PiecewisePolynomial<double>::CubicShapePreserving(breaks, samples);

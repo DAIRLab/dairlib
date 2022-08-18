@@ -37,6 +37,7 @@ void OptionsTrackingData::UpdateActual(
     JdotV_ = view_frame_rot_T_ * JdotV_;
   }
 
+  W_ = weight_trajectory_->value(t) * W_;
   UpdateFilters(t);
 }
 
@@ -82,9 +83,9 @@ void OptionsTrackingData::UpdateYddotDes(double t,
     yddot_des_converted_ = ff_accel_multiplier_->value(t_since_state_switch) *
                            yddot_des_converted_;
   }
-//  if(this->GetName() == "pelvis_trans_traj"){
-//    yddot_des_converted_[2] -= 9.81;
-//  }
+  //  if(this->GetName() == "pelvis_trans_traj"){
+  //    yddot_des_converted_[2] -= 9.81;
+  //  }
 }
 
 void OptionsTrackingData::UpdateYddotCmd(double t,
@@ -122,6 +123,14 @@ void OptionsTrackingData::SetTimeVaryingGains(
   DRAKE_DEMAND(gain_multiplier.rows() == n_ydot_);
   DRAKE_DEMAND(gain_multiplier.start_time() == 0);
   gain_multiplier_ = &gain_multiplier;
+}
+
+void OptionsTrackingData::SetTimeVaryingWeights(
+    const drake::trajectories::Trajectory<double>& weight_trajectory) {
+  DRAKE_DEMAND(weight_trajectory.cols() == n_ydot_);
+  DRAKE_DEMAND(weight_trajectory.rows() == n_ydot_);
+  DRAKE_DEMAND(weight_trajectory.start_time() == 0);
+  gain_multiplier_ = &weight_trajectory;
 }
 void OptionsTrackingData::SetFeedforwardAccelMultiplier(
     const drake::trajectories::Trajectory<double>& ff_accel_multiplier) {

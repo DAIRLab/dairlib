@@ -148,6 +148,9 @@ class OscTrackingData {
   // If `state_` is empty, then the tracking is always on.
   std::set<int> active_fsm_states_;
 
+  // Cost weights
+  Eigen::MatrixXd W_;
+
   /// OSC calculates feedback positions/velocities from `plant_w_spr_`,
   /// but in the optimization it uses `plant_wo_spr_`. The reason of using
   /// MultibodyPlant without springs is that the OSC cannot track desired
@@ -160,7 +163,6 @@ class OscTrackingData {
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
  private:
-
   void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
                      double t, double t_since_state_switch);
   // Update actual output methods
@@ -188,9 +190,6 @@ class OscTrackingData {
 
   // Trajectory name
   std::string name_;
-
-  // Cost weights
-  Eigen::MatrixXd W_;
 };
 
 }  // namespace controllers

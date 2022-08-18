@@ -226,7 +226,8 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       builder.AddSystem<PelvisTransTrajGenerator>(
           plant, plant_context.get(), default_traj, feet_contact_points,
           osc_running_gains.relative_pelvis);
-  pelvis_trans_traj_generator->SetSLIPParams(osc_running_gains.rest_length);
+  pelvis_trans_traj_generator->SetSLIPParams(
+      osc_running_gains.rest_length, osc_running_gains.rest_length_offset);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_left", "pelvis",
       osc_running_gains.relative_feet, LEFT_STANCE);
@@ -236,11 +237,13 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   l_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
-      osc_running_gains.rest_length, osc_running_gains.footstep_lateral_offset,
+      osc_running_gains.rest_length, osc_running_gains.rest_length_offset,
+      osc_running_gains.footstep_lateral_offset,
       osc_running_gains.footstep_sagital_offset,
       osc_running_gains.mid_foot_height);
   r_foot_traj_generator->SetFootPlacementOffsets(
-      osc_running_gains.rest_length, osc_running_gains.footstep_lateral_offset,
+      osc_running_gains.rest_length, osc_running_gains.rest_length_offset,
+      osc_running_gains.footstep_lateral_offset,
       osc_running_gains.footstep_sagital_offset,
       osc_running_gains.mid_foot_height);
 

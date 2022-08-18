@@ -27,6 +27,7 @@ struct OSCRunningGains : OSCGains {
   bool relative_feet;
   bool relative_pelvis;
   double rest_length;
+  double rest_length_offset;
   double stance_duration;
   double flight_duration;
 
@@ -82,6 +83,7 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(relative_feet));
     a->Visit(DRAKE_NVP(relative_pelvis));
     a->Visit(DRAKE_NVP(rest_length));
+    a->Visit(DRAKE_NVP(rest_length_offset));
     a->Visit(DRAKE_NVP(stance_duration));
     a->Visit(DRAKE_NVP(flight_duration));
     a->Visit(DRAKE_NVP(footstep_lateral_offset));

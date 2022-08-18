@@ -201,10 +201,14 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   /// REGULARIZATION COSTS
   osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
-  osc->SetInputSmoothingWeights(osc_gains.w_input_reg * osc_gains.W_input_regularization);
-  osc->SetInputCostWeights(osc_gains.w_input * osc_gains.W_input_regularization);
-  osc->SetLambdaContactRegularizationWeight(osc_gains.w_lambda * osc_gains.W_lambda_c_regularization);
-  osc->SetLambdaHolonomicRegularizationWeight(osc_gains.w_lambda * osc_gains.W_lambda_h_regularization);
+  osc->SetInputSmoothingWeights(osc_gains.w_input_reg *
+                                osc_gains.W_input_regularization);
+  osc->SetInputCostWeights(osc_gains.w_input *
+                           osc_gains.W_input_regularization);
+  osc->SetLambdaContactRegularizationWeight(
+      osc_gains.w_lambda * osc_gains.W_lambda_c_regularization);
+  osc->SetLambdaHolonomicRegularizationWeight(
+      osc_gains.w_lambda * osc_gains.W_lambda_h_regularization);
   // Soft constraint on contacts
   osc->SetSoftConstraintWeight(osc_gains.w_soft_constraint);
 
@@ -288,7 +292,8 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<PelvisTransTrajGenerator>(
           plant, plant_context.get(), default_traj, feet_contact_points,
           osc_gains.relative_pelvis);
-  pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length);
+  pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length,
+                                             osc_gains.rest_length_offset);
 
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_left", "pelvis", osc_gains.relative_feet,
@@ -299,11 +304,13 @@ int DoMain(int argc, char* argv[]) {
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
-      osc_gains.rest_length, osc_gains.footstep_lateral_offset,
-      osc_gains.footstep_sagital_offset, osc_gains.mid_foot_height);
+      osc_gains.rest_length, osc_gains.rest_length_offset,
+      osc_gains.footstep_lateral_offset, osc_gains.footstep_sagital_offset,
+      osc_gains.mid_foot_height);
   r_foot_traj_generator->SetFootPlacementOffsets(
-      osc_gains.rest_length, osc_gains.footstep_lateral_offset,
-      osc_gains.footstep_sagital_offset, osc_gains.mid_foot_height);
+      osc_gains.rest_length, osc_gains.rest_length_offset,
+      osc_gains.footstep_lateral_offset, osc_gains.footstep_sagital_offset,
+      osc_gains.mid_foot_height);
 
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,

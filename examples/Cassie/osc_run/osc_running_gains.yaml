@@ -1,10 +1,10 @@
 w_input: 0.00000
 w_input_reg: 0.0001
-w_accel: 0.00001
+w_accel: 0.0000
 w_soft_constraint: 100
-w_lambda: 0.00001
+w_lambda: 0.0001
 impact_threshold: 0.025
-impact_tau: 0.005
+impact_tau: 0.01
 mu: 0.6
 weight_scaling: 1.0
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
@@ -34,6 +34,7 @@ vel_scale_trans_lateral: -0.0
 
 # SLIP parameters
 rest_length: 0.85
+rest_length_offset: 0.025
 stance_duration: 0.0
 flight_duration: 0.0
 
@@ -42,15 +43,15 @@ swing_toe_kp: 1500
 swing_toe_kd: 10
 
 w_hip_yaw: 2.5
-hip_yaw_kp: 40
-hip_yaw_kd: 1
+hip_yaw_kp: 100
+hip_yaw_kd: 5
 # Foot placement parameters
 #footstep_offset: -0.05
-footstep_sagital_offset: -0.08
-footstep_lateral_offset: 0.01 # drake
+footstep_sagital_offset: -0.04
+footstep_lateral_offset: 0.02 # drake
 mid_foot_height: 0.05
 FootstepKd:
-  [ 0.18,     0,  0,
+  [ 0.2,     0,  0,
     0,     0.7, 0,
     0,        0,  0 ]
 PelvisW:
@@ -60,7 +61,7 @@ PelvisW:
 PelvisKp:
   [ -50,    0,    0,
     0,    50,    0,
-    0,    0,   150]
+    0,    0,   200]
 PelvisKd:
   [ 1,    0,   0,
     0,    1,   0,
@@ -70,20 +71,20 @@ PelvisRotW:
     0,  10,   0,
     0,   0,  1 ]
 PelvisRotKp:
-  [50.,   0,   0,
+  [40.,   0,   0,
    0,  100.,   0,
    0,    0,  1.]
 PelvisRotKd:
   [4.,   0,  0,
    0,   5.,  0,
-   0,    0,  1.]
+   0,    0,  0.]
 SwingFootW:
   [ 10,    0,    0,
     0,   10,    0,
     0,    0,   1 ]
 SwingFootKp:
-  [125,    0,    0,
-   0,  100,    0,
+  [75,    0,    0,
+   0,  50,    0,
    0,     0,  50]
 SwingFootKd:
   [ 5.,   0,   0,
@@ -96,9 +97,9 @@ LiftoffSwingFootW:
 LiftoffSwingFootKp:
   [50,    0,    0,
    0,   50,    0,
-   0,    0,  50]
+   0,    0,  15]
 LiftoffSwingFootKd:
   [ 1,   0,   0,
     0,  1,   0,
-    0,   0,  0]
+    0,   0,  1]
 

@@ -24,7 +24,9 @@ class OptionsTrackingData : public OscTrackingData {
   //  finite state
   void SetTimeVaryingGains(
       const drake::trajectories::Trajectory<double>& gain_multiplier);
-  const drake::trajectories::Trajectory<double>* gain_multiplier_ = nullptr;
+  void SetTimeVaryingWeights(
+      const drake::trajectories::Trajectory<double>& weight_trajectory);
+
   void SetFeedforwardAccelMultiplier(
       const drake::trajectories::Trajectory<double>& ff_accel_multiplier);
   const drake::trajectories::Trajectory<double>* ff_accel_multiplier_ = nullptr;
@@ -44,18 +46,20 @@ class OptionsTrackingData : public OscTrackingData {
   };
 
  private:
-  void UpdateActual(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr,
-      const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr,
-      double t) override;
+  void UpdateActual(const Eigen::VectorXd& x_w_spr,
+                    const drake::systems::Context<double>& context_w_spr,
+                    const Eigen::VectorXd& x_wo_spr,
+                    const drake::systems::Context<double>& context_wo_spr,
+                    double t) override;
 
   void UpdateFilters(double t);
   void UpdateYError() override;
   void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
   void UpdateYddotDes(double t, double t_since_state_switch) override;
   void UpdateYddotCmd(double t, double t_since_state_switch) override;
+
+  const drake::trajectories::Trajectory<double>* gain_multiplier_ = nullptr;
+  const drake::trajectories::Trajectory<double>* weight_trajectory_ = nullptr;
 
   bool with_view_frame_ = false;
 

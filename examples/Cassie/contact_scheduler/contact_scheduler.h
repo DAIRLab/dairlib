@@ -25,7 +25,7 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
                    double near_impact_threshold = 0, double tau = 0.0025,
                    BLEND_FUNC blend_func = SIGMOID);
 
-  void SetSLIPParams(double rest_length) { rest_length_; }
+  void SetSLIPParams(double rest_length) { rest_length_ = rest_length; }
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }

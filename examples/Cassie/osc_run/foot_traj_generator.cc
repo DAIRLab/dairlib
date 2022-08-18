@@ -301,41 +301,6 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           T_waypoints, Y, false);
   return swing_foot_spline;
-
-  //  if (is_left_foot_) {
-  //    return swing_foot_spline;
-  //  } else {
-  //    MatrixXd Y0 = MatrixXd::Zero(3, 3);
-  //    MatrixXd Ydot0 = MatrixXd::Zero(3, 3);
-  //    MatrixXd Y1 = MatrixXd::Zero(2, 3);
-  //    MatrixXd Ydot1 = MatrixXd::Zero(2, 3);
-  //    std::vector<MatrixXd> Y0(T_waypoints_0.size(), VectorXd::Zero(3));
-  //    std::vector<MatrixXd> Ydot0(T_waypoints_0.size(), VectorXd::Zero(3));
-  //    std::vector<MatrixXd> Y2(T_waypoints_1.size(), VectorXd::Zero(3));
-  //    std::vector<MatrixXd> Ydot2(T_waypoints_1.size(), VectorXd::Zero(3));
-  //    Y0[0] = swing_foot_spline.value(state_durations_[2]);
-  //    Y0[1] = swing_foot_spline.value(T_waypoints[1]);
-  //    Y0[2] = swing_foot_spline.value(T_waypoints[2]);
-  //    Ydot0[0] = swing_foot_spline.EvalDerivative(state_durations_[2], 1);
-  //    Ydot0[1] = swing_foot_spline.EvalDerivative(T_waypoints[1], 1);
-  //    Ydot0[2] = swing_foot_spline.EvalDerivative(T_waypoints[2], 1);
-  //    Y2[0] = swing_foot_spline.value(state_durations_[1]);
-  //    Y2[1] = swing_foot_spline.value(state_durations_[2]);
-  //    Ydot2[0] = swing_foot_spline.EvalDerivative(state_durations_[1], 1);
-  //    Ydot2[1] = swing_foot_spline.EvalDerivative(state_durations_[2], 1);
-  //    PiecewisePolynomial<double> offset_swing_foot_spline =
-  //        PiecewisePolynomial<double>::CubicHermite(T_waypoints_0, Y0, Ydot0);
-  //    offset_swing_foot_spline.ConcatenateInTime(
-  //        PiecewisePolynomial<double>::ZeroOrderHold(T_waypoints_1, Y2));
-  //    offset_swing_foot_spline.ConcatenateInTime(
-  //        PiecewisePolynomial<double>::CubicHermite(T_waypoints_2, Y2,
-  //        Ydot2));
-  //    for (auto t: offset_swing_foot_spline.get_segment_times()) {
-  //      std::cout << t << std::endl;
-  //    }
-  //    return offset_swing_foot_spline;
-  //}
-  //  return swing_foot_spline;
 }
 
 void FootTrajGenerator::CalcTraj(
@@ -356,25 +321,13 @@ void FootTrajGenerator::CalcTraj(
           traj);
   if (is_left_foot_) {
     if (fsm_state != LEFT_STANCE) {
-      //      *casted_traj =  PiecewisePolynomial<double>(Vector3d{0, 0,
-      //      rest_length_});
       *casted_traj = GenerateFlightTraj(context);
     }
-    //    else{
-    //      *casted_traj =  PiecewisePolynomial<double>(Vector3d{0, 0,
-    //      rest_length_});
-    //    }
 
   } else {
     if (fsm_state != RIGHT_STANCE) {
       *casted_traj = GenerateFlightTraj(context);
-      //      *casted_traj =  PiecewisePolynomial<double>(Vector3d{0, 0,
-      //      rest_length_});
     }
-    //    else{
-    //      *casted_traj =  PiecewisePolynomial<double>(Vector3d{0, 0,
-    //      rest_length_});
-    //    }
   }
 }
 

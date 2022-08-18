@@ -1164,9 +1164,9 @@ void OperationalSpaceControl::CheckTracking(
       (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
-  if (soft_constraint_cost_ > 5e3 || isnan(soft_constraint_cost_)) {
-    output->get_mutable_value()(0) = 1.0;
-  }
+//  if (soft_constraint_cost_ > 5e3 || isnan(soft_constraint_cost_)) {
+//    output->get_mutable_value()(0) = 1.0;
+//  }
 }
 
 }  // namespace dairlib::systems::controllers

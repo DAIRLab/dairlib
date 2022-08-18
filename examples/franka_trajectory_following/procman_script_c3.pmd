@@ -40,11 +40,7 @@ group "5.[HW] C3 Computer" {
         exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo --TTL 1";
         host = "localhost";
     }
-    cmd "b.[HW] visualizer" {
-        exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_STATE_ESTIMATE";
-        host = "localhost";
-    }
-    cmd "c.log parameters" {
+    cmd "b.log parameters" {
         exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging c3_computer";
         host = "localhost";
     }
@@ -61,6 +57,10 @@ group "6.[HW] Franka Computer" {
     }
     cmd "c.[HW] run_state_estimator" {
         exec = "bazel-bin/examples/franka_trajectory_following/run_state_estimator --channel FRANKA_ROS_OUTPUT --TTL 1";
+        host = "localhost";
+    }
+    cmd "d.[HW] visualizer" {
+        exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_STATE_ESTIMATE";
         host = "localhost";
     }
 }

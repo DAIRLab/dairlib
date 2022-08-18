@@ -30,7 +30,7 @@ q_init_finger: [0, 0, 0.0775] # TODO: tune this
 #q_init_finger: [0, 0, 0.0399] # parameters that work for wrong EE model
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
-velocity_limit: 0.5
+velocity_limit: 1
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
@@ -46,7 +46,7 @@ realtime_rate: 1.0
 # trajectory parameters
 traj_radius: 0.1
 phase: 0 # starting at 180 avoids first hard push
-x_c: 0.5
+x_c: 0.55
 y_c: 0
 degree_increment: 20
 time_increment: 4
@@ -60,8 +60,8 @@ enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to b
 ball_radius: 0.0315           # changes need to be consistent with sphere urdf, geometry mesh, AND vision
 finger_radius: 0.0195         # changes need to be consistent with franka_box and model urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with franka_box urdf
-table_offset: -0.0245         # chances need to be consistent with franka_box, model urdf, AND vision
-model_table_offset: -0.0245   # changes need to be consistent with model urdf
+table_offset: -0.0235         # chances need to be consistent with franka_box, model urdf, AND vision
+model_table_offset: -0.0235   # changes need to be consistent with model urdf
 
 # Misc
 contact_threshold: 0.01
@@ -72,7 +72,7 @@ ball_stddev: 0.0001 # standard deviation of 0-mean noise on ball state estimatio
 # gaiting parameters
 roll_phase: 1.5  # 1
 return_phase: 0.5 # 0.5
-gait_parameters: [0.02, 0.0951, 0.0911, 0.0691] # try playing with first param here
+gait_parameters: [0.02, 0.0951, 0.0911, 0.0791] # try playing with first param here
 # gait parameters represent height above the table
 
 # filters

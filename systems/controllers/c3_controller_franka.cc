@@ -129,6 +129,7 @@ C3Controller_franka::C3Controller_franka(
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
       "examples/franka_trajectory_following/parameters.yaml");
+  max_desired_velocity_ = param_.velocity_limit;
 
   // filter info
   prev_timestamp_ = 0;
@@ -183,9 +184,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
 
   // parse some useful values
-  double period = param_.period;
-  double duty_cycle = param_.duty_cycle;
-  double return_cycle = 1-duty_cycle;
+  double roll_phase = param_.roll_phase;
+  double return_phase = param_.return_phase;
+  double period = roll_phase + return_phase;
   double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2 + first_message_time_;
   double x_c = param_.x_c;
   double y_c = param_.y_c;
@@ -304,24 +305,24 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   Vector3d error_hat = error_xy / error_xy.norm();
 
   // compute phase
-  double shifted_time = timestamp - settling_time -  return_cycle * period;
+  double shifted_time = timestamp - settling_time -  return_phase;
   if (shifted_time < 0) shifted_time += period;
   double ts = shifted_time - period * floor((shifted_time / period));
   double back_dist = param_.gait_parameters(0);
   
   /// rolling phase
-  if ( ts < period*duty_cycle ) {
+  if ( ts < roll_phase ) {
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
   }
   /// upwards phase
-  else if (ts < period * (duty_cycle+param_.duty_cycle_upwards_ratio * return_cycle)){
+  else if (ts < roll_phase + return_phase / 3){
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
   }
   /// side ways phase
-  else if( ts < period * (duty_cycle+0.66 * return_cycle) ) {
+  else if( ts < roll_phase + 2 * return_phase / 3 ) {
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
     traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
@@ -399,7 +400,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   MatrixXd Qnew;
   Qnew = Q_[0];
 
-  if (ts > period * duty_cycle){
+  if (ts > roll_phase){
     double Qnew_finger = param_.Qnew_finger;
     Qnew(0,0) = Qnew_finger;
     Qnew(1,1) = Qnew_finger;

@@ -14,8 +14,8 @@ pushing_offset: 0 #-0.001
 mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
 Q_finger: 500           # finger xyz cost
-Q_ball_x: 30000  #10000
-Q_ball_y: 30000  #10000
+Q_ball_x: 20000  #10000
+Q_ball_y: 20000  #10000
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
@@ -30,6 +30,7 @@ q_init_finger: [0, 0, 0.0775] # TODO: tune this
 #q_init_finger: [0, 0, 0.0399] # parameters that work for wrong EE model
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
+velocity_limit: 0.5
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
@@ -45,7 +46,7 @@ realtime_rate: 1.0
 # trajectory parameters
 traj_radius: 0.1
 phase: 0 # starting at 180 avoids first hard push
-x_c: 0.55
+x_c: 0.5
 y_c: 0
 degree_increment: 20
 time_increment: 4
@@ -69,9 +70,8 @@ enable_contact: 1
 ball_stddev: 0.0001 # standard deviation of 0-mean noise on ball state estimation
 
 # gaiting parameters
-period: 1.5  #2.5
-duty_cycle: 0.67 #0.75
-duty_cycle_upwards_ratio: 0.33 # need better name here
+roll_phase: 1.5  # 1
+return_phase: 0.5 # 0.5
 gait_parameters: [0.02, 0.0951, 0.0911, 0.0691] # try playing with first param here
 # gait parameters represent height above the table
 

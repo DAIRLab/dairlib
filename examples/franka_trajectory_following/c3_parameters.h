@@ -39,6 +39,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(q_init_finger));
     a->Visit(DRAKE_NVP(q_init_ball_c3));
     a->Visit(DRAKE_NVP(dt));
+    a->Visit(DRAKE_NVP(velocity_limit));
 
     // initialization/simulation parameters
     a->Visit(DRAKE_NVP(q_init_franka));
@@ -76,9 +77,8 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(ball_stddev));
 
     // gaiting params
-    a->Visit(DRAKE_NVP(period));
-    a->Visit(DRAKE_NVP(duty_cycle));
-    a->Visit(DRAKE_NVP(duty_cycle_upwards_ratio));
+    a->Visit(DRAKE_NVP(roll_phase));
+    a->Visit(DRAKE_NVP(return_phase));
     a->Visit(DRAKE_NVP(gait_parameters));
 
     // filter params
@@ -116,6 +116,7 @@ struct C3Parameters {
   VectorXd q_init_finger;
   VectorXd q_init_ball_c3;
   double dt;
+  double velocity_limit;
 
   // initialization/simulation parameters
   VectorXd q_init_franka;
@@ -151,9 +152,8 @@ struct C3Parameters {
   double ball_stddev;
 
   // gaiting parameters
-  double period;
-  double duty_cycle;
-  double duty_cycle_upwards_ratio;
+  double roll_phase;
+  double return_phase;
   VectorXd gait_parameters;
   
   // test parameters

@@ -118,6 +118,11 @@ class ImpedanceController : public LeafSystem<double> {
                     VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;
   void CheckJointLimits(const VectorXd& q, double timestamp) const;
   void ClampJointTorques(VectorXd& tau, double timestamp) const;
+
+  /*
+  NOTE: THE TIMING FUNCTIONALITY IN THIS FUNCTION IS VERY MUCH OUT OF DATE!!
+  THIS FUNCTION SHOULD NOT BE USED IN ITS CURRENT STATE
+  */
   Vector3d ApplyHeuristic(
       const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
       const VectorXd& x, const VectorXd& x_dot,

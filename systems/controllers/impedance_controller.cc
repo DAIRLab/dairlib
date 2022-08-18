@@ -320,16 +320,23 @@ Vector3d ImpedanceController::ApplyHeuristic(
     const VectorXd& x, const VectorXd& x_dot,
     const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
     double settling_time, double timestamp) const {
+
+  /*
+  NOTE: THE TIMING FUNCTIONALITY IN THIS FUNCTION IS VERY MUCH OUT OF DATE!!
+  THIS FUNCTION SHOULD NOT BE USED IN ITS CURRENT STATE
+  */
   
   Vector3d xd_new = xd;
   Vector3d ball_to_EE = (x-ball_xyz) / (x-ball_xyz).norm();
 
-  double period = param_.period;
-  double duty_cycle = param_.duty_cycle;
-  double shifted_time = timestamp - settling_time;
+  double roll_phase = param_.roll_phase;
+  double return_phase = param_.return_phase;
+  double period = roll_phase + return_phase;
+  double shifted_time = timestamp - settling_time - return_phase;
+  if (shifted_time < 0) shifted_time += period;
   double ts = shifted_time - period * floor((shifted_time / period));
 
-  if (lambda.norm() > param_.contact_threshold && ts < period * duty_cycle && x_dot(2) < 0){
+  if (lambda.norm() > param_.contact_threshold && ts < roll_phase && x_dot(2) < 0){
     double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
     if (diff > 0){
       xd_new = xd_new - diff*ball_to_EE;

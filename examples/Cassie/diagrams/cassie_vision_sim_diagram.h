@@ -14,6 +14,14 @@
 namespace dairlib {
 namespace examples {
 
+enum VisionSimTerrainType {
+  kFlat = 0,
+  kStairs = 1,
+  kBoxy = 2,
+  kCubic = 3,
+  kCubicWithVoids = 4,
+};
+
 class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieVisionSimDiagram)
@@ -23,7 +31,8 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
       std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
       const Eigen::Vector3d& camera_position, double pitch,
       const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf",
-      bool add_terrain = false,bool visualize = false, double mu = 0.8,
+      VisionSimTerrainType terrain_type = kFlat,
+      bool visualize = false, double mu = 0.8,
       double map_yaw=0, const Eigen::Vector3d& normal=Eigen::Vector3d::UnitZ());
 
   /// @return the input port for the actuation command.

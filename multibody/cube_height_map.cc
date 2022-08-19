@@ -22,20 +22,29 @@ CubeHeightMap::CubeHeightMap(MatrixXd heights, double dim_x, double dim_y,
     y_resolution_ = dim_y_ / ny_;
 }
 
-void CubeHeightMap::AddHeightMapToPlant(
+void CubeHeightMap::AddToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph) {
+  AddToPlantWithRandomVoids(plant, scene_graph, -1.0);
+}
+
+void CubeHeightMap::AddToPlantWithRandomVoids(
+    drake::multibody::MultibodyPlant<double> *plant,
+    drake::geometry::SceneGraph<double> *scene_graph,
+    double missing_ratio) {
   for (int x_idx = 0; x_idx < nx_; x_idx ++) {
     for (int y_idx = 0; y_idx < ny_; y_idx++) {
-      Vector3d box_center(x_resolution_ * (x_idx - (double)(nx_ - 1.0)/2.0),
-                          y_resolution_ * (y_idx - (double)(ny_ - 1.0)/2.0),
-                          heights_(x_idx, y_idx) - dim_z_ / 2);
-      RigidTransformd X_WB(X_WM_.rotation(),
-                           X_WM_.translation() +
-                           X_WM_.rotation().matrix() * box_center);
-      AddBox<double>(plant, scene_graph, X_WB,
-                     Vector3d(x_resolution_, y_resolution_, dim_z_),
-                     mu_);
+      if (randd(0, 1.0) > missing_ratio) {
+        Vector3d box_center(x_resolution_ * (x_idx - (double)(nx_ - 1.0)/2.0),
+                            y_resolution_ * (y_idx - (double)(ny_ - 1.0)/2.0),
+                            heights_(x_idx, y_idx) - dim_z_ / 2);
+        RigidTransformd X_WB(X_WM_.rotation(),
+                             X_WM_.translation() +
+                                 X_WM_.rotation().matrix() * box_center);
+        AddBox<double>(plant, scene_graph, X_WB,
+                       Vector3d(x_resolution_, y_resolution_, dim_z_),
+                       mu_);
+      }
     }
   }
 }

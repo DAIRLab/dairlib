@@ -12,8 +12,12 @@ class CubeHeightMap {
                 double dim_z, const Eigen::Vector3d& normal,
                 const Eigen::Vector3d& origin, double rot_z, double mu);
 
-  void AddHeightMapToPlant(drake::multibody::MultibodyPlant<double>* plant,
-                           drake::geometry::SceneGraph<double>* scene_graph);
+  void AddToPlant(drake::multibody::MultibodyPlant<double>* plant,
+                  drake::geometry::SceneGraph<double>* scene_graph);
+
+  void AddToPlantWithRandomVoids(
+      drake::multibody::MultibodyPlant<double>* plant,
+      drake::geometry::SceneGraph<double>* scene_graph, double missing_ratio);
 
   static CubeHeightMap MakeRandomMap(const Eigen::Vector3d& normal,
                                           double rotz, double mu);

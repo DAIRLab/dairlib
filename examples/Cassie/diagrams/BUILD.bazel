@@ -88,6 +88,7 @@ cc_library(
         "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
         "//multibody:boxy_height_map",
         "//multibody:cube_height_map",
+        "//multibody:stairs",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/cameras:camera_utils",

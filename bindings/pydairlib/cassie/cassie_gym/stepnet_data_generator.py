@@ -318,7 +318,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                 continue
             if np.abs(im_z - pt_c[2]) < 5e-3:
                 found_point = True
-            theta += 0.01
+            theta += 0.005
         if not found_point:
             return np.copy(image), np.random.normal(scale=var_z)
         else:

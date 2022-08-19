@@ -24,7 +24,7 @@ void BoxyHeightMap::AppendBox(double h, double w) {
   box_w_.push_back(w);
 }
 
-void BoxyHeightMap::AddHeightMapToPlant(
+void BoxyHeightMap::AddToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph) {
   for (int i = 0; i < box_w_.size(); i++) {

@@ -13,6 +13,7 @@ namespace pydairlib {
 
 using examples::CassieSimDiagram;
 using examples::CassieVisionSimDiagram;
+using examples::VisionSimTerrainType;
 
 PYBIND11_MODULE(simulators, m) {
   m.doc() = "Binding controller factories for Cassie";
@@ -43,19 +44,26 @@ PYBIND11_MODULE(simulators, m) {
            py_rvp::reference_internal);
 
 
+  py::enum_<VisionSimTerrainType>(m, "VisionSimTerrainType")
+      .value("kFlat", VisionSimTerrainType::kFlat)
+      .value("kStairs", VisionSimTerrainType::kStairs)
+      .value("kBoxy", VisionSimTerrainType::kBoxy)
+      .value("kCubic", VisionSimTerrainType::kCubic)
+      .value("kCubicWithVoids", VisionSimTerrainType::kCubicWithVoids);
+
   py::class_<dairlib::examples::CassieVisionSimDiagram,
              drake::systems::Diagram<double>>(m, "CassieVisionSimDiagram")
       .def(py::init<
                std::unique_ptr<drake::multibody::MultibodyPlant<double>>,
                const Eigen::VectorXd&, double,
-               const std::string &, bool, bool, double, double,
+               const std::string &, VisionSimTerrainType, bool, double, double,
                Eigen::Vector3d>(),
            py::arg("plant"),
            py::arg("camera_position"),
            py::arg("camera_pitch"),
            py::arg("urdf"),
+           py::arg("terrain_type"),
            py::arg("visualize"),
-           py::arg("add_terrain"),
            py::arg("mu"),
            py::arg("map_yaw"),
            py::arg("normal"))

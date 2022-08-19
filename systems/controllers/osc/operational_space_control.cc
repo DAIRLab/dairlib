@@ -848,7 +848,6 @@ VectorXd OperationalSpaceControl::SolveQp(
 //            blend_out * u_sol_->row(1) + (1 - blend_out) * u_prev_[1].row(1);
 //      }
 //    }
-    *u_prev_ = *u_sol_;
     initial_guess_x_[fsm_state] = result.GetSolution();
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
@@ -1096,8 +1095,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     }
     output->tracking_data[i] = osc_output;
   }
-  //  std::cout << total_cost_ << std::endl;
-//  *u_prev_ = *u_sol_;
+  *u_prev_ = *u_sol_;
   output->num_tracking_data = output->tracking_data_names.size();
   output->num_regularization_costs = output->regularization_cost_names.size();
 }

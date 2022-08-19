@@ -2,7 +2,10 @@
 
 #include <iostream>
 
+#include "drake/common/trajectories/piecewise_quaternion.h"
+
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using std::string;
@@ -51,14 +54,28 @@ void OptionsTrackingData::UpdateFilters(double t) {
     } else if (t != last_timestamp_) {
       double dt = t - last_timestamp_;
       double alpha = dt / (dt + tau_);
-      filtered_y_ = alpha * y_ + (1 - alpha) * filtered_y_;
+      if (n_y_ == 4) {  // quaternion
+        auto slerp = drake::trajectories::PiecewiseQuaternionSlerp<double>(
+            {0, 1}, {Quaterniond(y_[0], y_[1], y_[2], y_[3]),
+                     Quaterniond(filtered_y_[0], filtered_y_[1], filtered_y_[2],
+                                 filtered_y_[3])});
+        filtered_y_ = slerp.value(1 - alpha);
+      } else {
+        filtered_y_ = alpha * y_ + (1 - alpha) * filtered_y_;
+      }
       filtered_ydot_ = alpha * ydot_ + (1 - alpha) * filtered_ydot_;
     }
 
     // Assign filtered values
-    for (auto idx : low_pass_filter_element_idx_) {
-      y_(idx) = filtered_y_(idx);
-      ydot_(idx) = filtered_ydot_(idx);
+    if (n_y_ == 4){
+      y_ = filtered_y_;
+      ydot_ = filtered_ydot_;
+    }
+    else{
+      for (auto idx : low_pass_filter_element_idx_) {
+        y_(idx) = filtered_y_(idx);
+        ydot_(idx) = filtered_ydot_(idx);
+      }
     }
     // Update timestamp
     last_timestamp_ = t;
@@ -115,7 +132,7 @@ void OptionsTrackingData::SetLowPassFilter(double tau,
   DRAKE_DEMAND(tau > 0);
   tau_ = tau;
 
-  DRAKE_DEMAND(n_y_ == n_ydot_);  // doesn't support quaternion yet
+//  DRAKE_DEMAND(n_y_ == n_ydot_);  // doesn't support quaternion yet
   if (element_idx.empty()) {
     for (int i = 0; i < n_y_; i++) {
       low_pass_filter_element_idx_.insert(i);

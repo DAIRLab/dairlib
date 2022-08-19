@@ -221,7 +221,7 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant.num_velocities();
 
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  osc->SetInputSmoothingWeights(gains.w_input * gains.W_input_regularization);
+  osc->SetInputSmoothingWeights(gains.w_input_reg * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(gains.w_lambda *
                                               gains.W_lambda_h_regularization);
@@ -245,6 +245,7 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_rot_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
       osc_gains.W_pelvis * FLAGS_cost_weight_multiplier, plant, plant);
   pelvis_rot_traj->AddFrameToTrack("pelvis");
+  pelvis_rot_traj->SetLowPassFilter(0.1, {0, 1, 2});
   osc->AddTrackingData(std::move(pelvis_rot_traj));
 
   // Hip yaw joint tracking

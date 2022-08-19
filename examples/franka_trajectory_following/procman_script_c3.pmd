@@ -146,11 +146,11 @@ script "stop_c3_cmds" {
 
 script "stop_franka_cmds" {
     stop cmd "b.ROS impedance";
+    stop cmd "a.start_logging";
+    stop cmd "b.start_filming";
     stop group "5.[HW] C3 Computer";
     stop group "6.[HW] Franka Computer";
     stop cmd "9.lcmspy";
-    stop cmd "a.start_logging";
-    stop cmd "b.start_filming";
     start cmd "c.process_logs";
     start cmd "d.process_frames";
 }

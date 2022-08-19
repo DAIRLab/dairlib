@@ -118,7 +118,7 @@ C3Controller_franka::C3Controller_franka(
 
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
-          TimestampedVector<double>(34), &C3Controller_franka::CalcControl)
+          TimestampedVector<double>(38), &C3Controller_franka::CalcControl)
       .get_index();
 
   q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
@@ -134,40 +134,6 @@ C3Controller_franka::C3Controller_franka(
   // filter info
   prev_timestamp_ = 0;
   dt_filter_length_ = param_.dt_filter_length;
-
-  // prev_position_ = VectorXd::Zero(3);
-
-  // prev_velocity_ = VectorXd::Zero(3);
-
-  // for(int i = 0 ; i < 10; i++){
-  //   past_velocities_.push_back(Vector3d::Zero(3));
-  // }
-
-  /// print maps
-//  std::cout << "q_map_franka_" << std::endl;
-//  for (auto const& item : q_map_franka_) {
-//    std::cout << item.first << ": " << item.second << std::endl;
-//  }
-//  std::cout << std::endl;
-//
-//  std::cout << "v_map_franka_" << std::endl;
-//  for (auto const& item : v_map_franka_) {
-//    std::cout << item.first << ": " << item.second << std::endl;
-//  }
-//  std::cout << std::endl;
-//
-//  std::cout << "q_map_" << std::endl;
-//  for (auto const& item : q_map_) {
-//    std::cout << item.first << ": " << item.second << std::endl;
-//  }
-//  std::cout << std::endl;
-//
-//  std::cout << "v_map" << std::endl;
-//  for (auto const& item : v_map_) {
-//    std::cout << item.first << ": " << item.second << std::endl;
-//  }
-//  std::cout << std::endl;
-
 }
 
 void C3Controller_franka::CalcControl(const Context<double>& context,
@@ -204,26 +170,22 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                                                                    param_.stabilize_time1 + first_message_time_,
                                                                    param_.move_time, param_.stabilize_time2);
     
+    Eigen::Quaterniond orientation_d(0, 1, 0, 0);
+
     // fill st_desired
     VectorXd traj = pp_.value(timestamp);
-    VectorXd st_desired = VectorXd::Zero(34);
+    VectorXd st_desired = VectorXd::Zero(38);
     st_desired.head(3) << target[0];
-    st_desired(7) = finish(0);
-    st_desired(8) = finish(1);
-    st_desired(9) = ball_radius + table_offset;
-    st_desired(10) = target[1][0];
-    st_desired(11) = target[1][1];
-    st_desired(12) = target[1][2];
-    st_desired(28) = finish(0);
-    st_desired(29) = finish(1);
-    st_desired(30) = ball_radius + table_offset;
+    st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
+    st_desired.segment(11, 3) << finish(0), finish(1), ball_radius + table_offset;
+    st_desired.segment(14, 3) << target[1];
+    st_desired.segment(32, 3) << finish(0), finish(1), ball_radius + table_offset;
     st_desired.tail(3) << finish(0), finish(1), ball_radius + table_offset;
 
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
     prev_timestamp_ = (timestamp);
-    // prev_position_ << finish(0), finish(1), ball_radius + table_offset;
-    // prev_velocity_ << 0, 0, 0;
+
     return;
   }
 
@@ -272,9 +234,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd v(9);
   v << end_effector_dot, ball_dot;
   VectorXd u = VectorXd::Zero(3);
-
-//  std::cout << "vel" << std::endl;
-//  std::cout << v << std::endl;
 
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
   state << end_effector, q_plant.tail(7), end_effector_dot, v_plant.tail(6);
@@ -335,6 +294,23 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
+  /// compute desired orientation
+  Vector3d axis = VectorXd::Zero(3);
+  if (param_.axis_option == 1){
+    // OPTION 1: tilt EE away from the desired direction of the ball
+    axis << error_hat(1), -error_hat(0), 0;
+  }
+  else if (param_.axis_option == 2){
+    // OPTION 2: tilt EE toward the center of the circle trajectory
+    axis << ball_xyz(1)-y_c, -(ball_xyz(0)-x_c), 0;
+    axis = axis / axis.norm();
+  }
+
+  Eigen::AngleAxis<double> angle_axis(PI * param_.orientation_degrees / 180.0, axis);
+  RotationMatrix<double> rot(angle_axis);
+  Quaterniond temp(0, 1, 0, 0);
+  RotationMatrix<double> default_orientation(temp);
+  VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   /// update autodiff
   VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
@@ -475,8 +451,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd force_des = VectorXd::Zero(6);
   force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
-  VectorXd st_desired(force_des.size() + state_next.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
-  st_desired << state_next, force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+  VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
 
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);

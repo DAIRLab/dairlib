@@ -74,11 +74,11 @@ ImpedanceController::ImpedanceController(
               OutputVector<double>(num_positions, num_velocities, num_inputs))
           .get_index();
   
-  // xee: 3D, xball: 7D, xee_dot: 3D, xball_dot: 6D, lambda: 6D (Total: 25D)
+  // xee: 7D, xball: 7D, xee_dot: 3D, xball_dot: 6D, lambda: 6D (Total: 29D + visuals)
   c3_state_input_port_ =
       this->DeclareVectorInputPort(
               "xee, xball, xee_dot, xball_dot, lambda, visualization",
-              TimestampedVector<double>(34))
+              TimestampedVector<double>(38))
           .get_index();
 
   control_output_port_ = this->DeclareVectorOutputPort(
@@ -138,6 +138,8 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   auto c3_output =
       (TimestampedVector<double>*) this->EvalVectorInput(context, c3_state_input_port_);
 
+
+  // TODO: parse out info here
   VectorXd state = c3_output->get_data();
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);
@@ -146,8 +148,9 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   Vector3d ball_xyz(state(28), state(29), state(30));
 
   xd.tail(3) << state.head(3);
-  xd_dot.tail(3) << state(10), state(11), state(12);
-  lambda << state(20), state(21), state(22), state(23), state(24);
+  Quaterniond orientation_d(state(3), state(4), state(5), state(6));
+  xd_dot.tail(3) << state.segment(14, 3);
+  lambda << state.segment(24, 5);
   
   //update the context_
   plant_.SetPositions(&context_, q);
@@ -198,7 +201,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // compute position control input
   VectorXd xtilde = xd - x;
-  xtilde.head(3) << this->CalcRotationalError(R);
+  xtilde.head(3) << this->CalcRotationalError(R, orientation_d);
   VectorXd xtilde_dot = xd_dot - x_dot;
 
   MatrixXd M_inv = M_franka.inverse();
@@ -249,15 +252,16 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   }
 }
 
-Vector3d ImpedanceController::CalcRotationalError(const RotationMatrix<double>& R) const {
+Vector3d ImpedanceController::CalcRotationalError(const RotationMatrix<double>& R,
+    const Quaterniond& orientation_d) const {
   // compute rotational error, computational steps taken from
   // https://github.com/frankaemika/libfranka/blob/master/examples/cartesian_impedance_control.cpp
   Quaterniond orientation = R.ToQuaternion();
 
-  if (orientation_d_.coeffs().dot(orientation.coeffs()) < 0.0){
+  if (orientation_d.coeffs().dot(orientation.coeffs()) < 0.0){
     orientation.coeffs() << -orientation.coeffs();
   }
-  Quaterniond error_quaternion(orientation.inverse() * orientation_d_);
+  Quaterniond error_quaternion(orientation.inverse() * orientation_d);
   Vector3d error_quaternion_no_w(error_quaternion.x(), error_quaternion.y(), error_quaternion.z());
   return R.matrix() * error_quaternion_no_w;
 }

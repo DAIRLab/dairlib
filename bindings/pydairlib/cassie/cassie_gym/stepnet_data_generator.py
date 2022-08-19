@@ -24,7 +24,7 @@ from pydairlib.cassie.cassie_gym.config_types import \
 from pydairlib.cassie.cassie_gym.drake_cassie_gym import \
     DrakeCassieGym,\
     FixedVectorInputPort
-from pydairlib.cassie.simulators import CassieVisionSimDiagram
+from pydairlib.cassie.simulators import CassieVisionSimDiagram, VisionSimTerrainType
 from pydairlib.cassie.cassie_gym.cassie_env_state import \
     CASSIE_QUATERNION_SLICE, CASSIE_POSITION_SLICE, CASSIE_OMEGA_SLICE,\
     CASSIE_VELOCITY_SLICE, CASSIE_JOINT_POSITION_SLICE,\
@@ -168,7 +168,13 @@ class StepnetDataGenerator(DrakeCassieGym):
 
     def reset(self, new_x_init=None):
         if new_x_init is not None:
-            self.params.x_init = new_x_init
+            if self.params.terrain_type == VisionSimTerrainType.kStairs:
+                self.params.x_init = self.get_robot_centric_state(
+                    new_x_init,
+                    fsm=0
+                )
+            else:
+                self.params.x_init = new_x_init
         super().reset()
 
     def remap_joints_left_to_right(self, x):
@@ -238,13 +244,14 @@ class StepnetDataGenerator(DrakeCassieGym):
         yaw = np.arctan2(b_x[1], b_x[0])
         return RotationMatrix.MakeZRotation(yaw)
 
-    def get_robot_centric_state(self, x):
+    def get_robot_centric_state(self, x, fsm=None):
         # Get the robot state
         xc = np.copy(x)
         self.sim_plant.SetPositionsAndVelocities(self.calc_context, xc)
 
         # Get the current stance leg
-        fsm = self.fsm_output_port.Eval(self.controller_context)
+        if fsm is None:
+            fsm = self.fsm_output_port.Eval(self.controller_context)
         stance = self.fsm_state_stances[int(fsm)]
 
         # Align the robot state with the robot yaw
@@ -510,13 +517,13 @@ class StepnetDataGenerator(DrakeCassieGym):
 
 
 def test_data_collection():
-    gym_env = StepnetDataGenerator.make_randomized_env(
-        DataGeneratorParams(), DomainRandomizationBounds(), visualize=True)
     i = 0
     while True:
+        gym_env = StepnetDataGenerator.make_randomized_env(
+            DataGeneratorParams(), DomainRandomizationBounds(), visualize=True)
         data = gym_env.get_stepnet_data_point(seed=i)
         i += 1
-    gym_env.free_sim()
+        gym_env.free_sim()
 
 
 def test_flat_collection():

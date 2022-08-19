@@ -68,8 +68,6 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  //multibody::BoxyHeightMap hmap =
-  //  multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
 
   cam_transform_ = drake::math::RigidTransformd(
       camera::MakeXZAlignedCameraRotation(camera_pitch),camera_position);
@@ -88,17 +86,20 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
           multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu);
       hmap.AddToPlantWithRandomVoids(
           plant_, scene_graph_, multibody::randd(0.1, 0.4));
+      break;
     }
     case kBoxy: {
       srand(time(0));
       multibody::BoxyHeightMap hmap =
           multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
       hmap.AddToPlant(plant_, scene_graph_);
+      break;
     }
     case kStairs: {
       srand(time(0));
       multibody::Stairs hmap = multibody::Stairs::MakeRandomMap(mu);
       hmap.AddToPlant(plant_, scene_graph_);
+      break;
     }
     case kFlat:
       multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu, normal);

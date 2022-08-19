@@ -113,7 +113,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                 has_double_stance=True,
                 osc_gains_filename=OSC_GAINS,
                 osqp_settings_filename=OSQP_SETTINGS,
-                single_stance_time_override=self.ss_times
+                single_stance_time_override=self.ss_time
             )
         else:
             self.ss_time = 0.3
@@ -124,7 +124,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                 osqp_settings_filename=OSQP_SETTINGS
             )
 
-        self.simulate_until = self.ss_time + 0.1
+        self.simulate_until = self.ss_time + 0.25
 
     def make(self, controller, urdf=SIM_URDF):
         super().make(controller, urdf=urdf)
@@ -363,10 +363,11 @@ class StepnetDataGenerator(DrakeCassieGym):
             low=self.data_gen_params.radio_lb,
             high=self.data_gen_params.radio_ub
         )
-        radio[9] = np.random.uniform(
-            low=-self.data_gen_params.target_yaw_noise_bound,
-            high=self.data_gen_params.target_yaw_noise_bound
-        )
+        if self.data_gen_params.randomize_yaw:
+            radio[9] = np.random.uniform(
+                low=-self.data_gen_params.target_yaw_noise_bound,
+                high=self.data_gen_params.target_yaw_noise_bound
+            )
 
         self.cassie_sim.get_radio_input_port().FixValue(
             context=self.cassie_sim_context,
@@ -424,7 +425,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                 return {
                     'depth': depth_image,
                     'state': x,
-                    'target': target_b,
+                    'target': {'xyz': target_b, 'yaw': radio[9]},
                     'time': self.ss_time,
                     'error': MAX_ERROR
                 }
@@ -437,7 +438,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         return {
             'depth': depth_image,
             'state': x,
-            'target': target_b,
+            'target': {'xyz': target_b, 'yaw': radio[9]},
             'time': self.ss_time,
             'error': error
         }
@@ -468,7 +469,7 @@ class StepnetDataGenerator(DrakeCassieGym):
             if self.check_termination():
                 return {
                     'state': x,
-                    'target': target_b,
+                    'target': {'xyz': target_b, 'yaw': radio[9]},
                     'time': self.ss_time,
                     'error': MAX_ERROR
                 }
@@ -480,7 +481,7 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         return {
             'state': x,
-            'target': target_b,
+            'target': {'xyz': target_b, 'yaw': radio[9]},
             'time': self.ss_time,
             'error': error
         }

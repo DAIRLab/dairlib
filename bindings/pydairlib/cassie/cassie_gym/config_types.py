@@ -111,8 +111,8 @@ class DataGeneratorParams(StepnetDataClass):
     target_xyz_noise_bound: np.ndarray = default_array([0.25, 0.25, 0.0])
     target_yaw_noise_bound: float = 1.0
     target_time_bounds: np.ndarray = default_array([0.1, 0.6])
-    randomize_time: bool = False
-    randomize_yaw: bool = False
+    randomize_time: bool = True
+    randomize_yaw: bool = True
 
     """ Bounds on footstep coordinates"""
     target_lb: np.ndarray = default_array([-2.0, -1.5, -0.5])

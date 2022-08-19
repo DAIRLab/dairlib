@@ -19,6 +19,8 @@ class DomainRandomizationBounds(StepnetDataClass):
     normal: np.ndarray = default_array([0.1, 0.1, 0.0])
     map_yaw: np.ndarray = default_array([-np.pi, np.pi])
     mu: np.ndarray = default_array([0.4, 1.0])
+    camera_position: np.ndarray = default_array([0, 0, 0])
+    camera_pitch: float = 0
 
 
 class CassieGymParams(StepnetDataClass):
@@ -34,6 +36,8 @@ class CassieGymParams(StepnetDataClass):
          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     map_yaw: float = 0
     mu: float = 0.8
+    camera_position: np.ndarray = default_array([0.175, 0, 0.15])
+    camera_pitch: float = -0.85 * np.pi / 2
     add_terrain: bool = False
 
     @staticmethod
@@ -49,12 +53,24 @@ class CassieGymParams(StepnetDataClass):
             high=domain.map_yaw[1]
         )
         mu = np.random.uniform(low=domain.mu[0], high=domain.mu[1])
+        camera_position = CassieGymParams().camera_position + \
+            np.random.uniform(
+                low=-domain.camera_position,
+                high=domain.camera_position
+            )
+        camera_pitch = CassieGymParams().camera_pitch + \
+            np.random.uniform(
+                low=-domain.camera_pitch,
+                high=domain.camera_pitch
+            )
         return CassieGymParams(
             terrain_normal=normal,
             x_init=x,
             map_yaw=map_yaw,
             mu=mu,
-            add_terrain=True
+            add_terrain=True,
+            camera_position=camera_position,
+            camera_pitch=camera_pitch
         )
 
     @staticmethod
@@ -92,8 +108,8 @@ class DataGeneratorParams(StepnetDataClass):
     depth_camera_info: DepthCameraInfo = DepthCameraInfo()
 
     """ How much noise to add to target footsteps """
-    target_xyz_noise_bound: np.ndarray = default_array([1.0, 1.0, 0.0])
-    target_yaw_noise_bound: float = np.pi / 2
+    target_xyz_noise_bound: np.ndarray = default_array([0.25, 0.25, 0.0])
+    target_yaw_noise_bound: float = 1.0
     target_time_bounds: np.ndarray = default_array([0.1, 0.6])
     randomize_time: bool = False
     randomize_yaw: bool = False
@@ -103,10 +119,11 @@ class DataGeneratorParams(StepnetDataClass):
     target_ub: np.ndarray = default_array([2.0, 1.5, 0.5])
 
     """ Bounds on radio commands """
-    radio_bound: np.ndarray = default_array([1.0, 1.0])
+    radio_lb: np.ndarray = default_array([-0.5, -1.0])
+    radio_ub: np.ndarray = default_array([0.5, 1.0])
 
     """ simulation params """
-    depth_var_z: float = 0.01
+    depth_var_z: float = 0.0
     sim_duration: float = 0.35
     max_error: float = 1.0
 

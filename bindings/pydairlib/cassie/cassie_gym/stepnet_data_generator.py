@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -39,7 +40,7 @@ URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
-INITIAL_CONDITIONS_FILE = '.learning_data/augmented_hardware_ics.npy'
+INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
 MAX_ERROR = 1.0
 
 
@@ -90,7 +91,6 @@ class StepnetDataGenerator(DrakeCassieGym):
         # Depth camera
         self.depth_camera_info = \
             self.data_gen_params.depth_camera_info.as_drake_camera_info()
-
 
         # Spare plant context for calculations
         self.calc_context = None
@@ -279,7 +279,7 @@ class StepnetDataGenerator(DrakeCassieGym):
             ).data
         )
 
-    def get_noisy_height_from_current_depth_image(self, var_z, target):
+    def get_noisy_height_from_current_depth_image(self, var_z, target_w):
         image = self.depth_image_output_port.Eval(
             self.diagram.GetMutableSubsystemContext(
                 self.cassie_sim,
@@ -287,56 +287,51 @@ class StepnetDataGenerator(DrakeCassieGym):
             )
         ).data
         # Get the depth camera pose in the world frame
-        pose = self.depth_camera_pose_output_port.Eval(
+        X_WC = self.depth_camera_pose_output_port.Eval(
             self.diagram.GetMutableSubsystemContext(
                 self.cassie_sim,
                 self.drake_simulator.get_mutable_context()
             )
         )
 
-        # Make a line segment from [target_x, target_y, -1] to
-        # [target_x, target_y, 1]
-        npoints = 100
-        target_ray = np.vstack(
-            (np.repeat(target[:2].reshape(2,1), npoints, axis=1),
-             np.linspace(-1.0, 1.0, npoints))
+        X_CW = X_WC.inverse()
+        K = self.depth_camera_info.intrinsic_matrix()
+        pt_w1 = np.array([target_w[0], target_w[1], -0.5])
+        pt_w2 = np.array([target_w[0], target_w[1], 1.0])
+        pt_c1 = X_CW.multiply(pt_w1)
+        pt_c2 = X_CW.multiply(pt_w2)
+
+        found_point = False
+        theta = 0.01
+        while not found_point and theta <= 1:
+            # search along upward-pointing ray until pixel z matches cam frame z
+            pt_c = pt_c1 + theta * (pt_c2 - pt_c1)
+            pt_c_norm = pt_c/pt_c[2]
+            pt_im = (K @ pt_c_norm).astype('int')
+            try:
+                im_z = image[pt_im[1]][pt_im[0]]  # x = row, y = col
+            except IndexError:
+                theta += .005
+                continue
+            if np.abs(im_z - pt_c[2]) < 5e-3:
+                found_point = True
+            theta += 0.01
+        if not found_point:
+            return np.copy(image), np.random.normal(scale=var_z)
+        else:
+            pt_b = X_WC.multiply(pt_c)
+            return np.copy(image), pt_b[2] + np.random.normal(scale=var_z)
+
+    def step(self, footstep_target: np.ndarray, radio: np.ndarray):
+        return super().step(
+            radio=radio,
+            fixed_ports=[
+                FixedVectorInputPort(
+                    input_port=self.foot_target_input_port,
+                    context=self.controller_context,
+                    value=footstep_target)
+            ]
         )
-        uvs = self.depth_camera_info.intrinsic_matrix() @ \
-              pose.inverse().multiply(target_ray)
-        uvs /= uvs[2,:] # normalize by homogenous coordinate
-
-        # Get rid of candidate points which are outside the image
-        uvs = uvs[:, np.argwhere(0 <= uvs[0]).ravel()]
-        uvs = uvs[:, np.argwhere(uvs[0] < self.depth_camera_info.width()).ravel()]
-        uvs = uvs[:, np.argwhere(0 <= uvs[1]).ravel()]
-        uvs = uvs[:, np.argwhere(uvs[1] < self.depth_camera_info.height()).ravel()]
-        vus = uvs.astype('int')[:2]
-
-        # List of pixels which might be our target -> list of world points
-        depth_pixels = np.vstack(
-            (uvs[:2], image.squeeze()[vus[1], vus[0]])
-        )
-        worldpoint_candidates = pose.multiply(np.linalg.inv(
-            self.depth_camera_info.intrinsic_matrix()) @ depth_pixels
-        )
-
-        # Which world point has x and y values closest to the target?
-        idx_of_closest_match = np.argmin(
-            np.linalg.norm(
-                worldpoint_candidates[:2] - np.expand_dims(target[:2], axis=-1),
-                axis=0)
-        )
-
-        # Return the image and at the best match + noise
-        return np.copy(image), worldpoint_candidates[2, idx_of_closest_match] +\
-            np.random.normal(scale=var_z)
-
-    def step(self, footstep_target):
-        return super().step(fixed_ports=[FixedVectorInputPort(
-            input_port=self.foot_target_input_port,
-            context=self.controller_context,
-            value=footstep_target
-        )])
 
     def draw_random_initial_condition(self):
         if self.initial_condition_bank is None:
@@ -356,13 +351,18 @@ class StepnetDataGenerator(DrakeCassieGym):
         # Apply a random velocity command
         radio = np.zeros((18,))
         radio[2:4] = np.random.uniform(
-            low=-self.data_gen_params.radio_bound,
-            high=self.data_gen_params.radio_bound
+            low=self.data_gen_params.radio_lb,
+            high=self.data_gen_params.radio_ub
+        )
+        radio[9] = np.random.uniform(
+            low=-self.data_gen_params.target_yaw_noise_bound,
+            high=self.data_gen_params.target_yaw_noise_bound
         )
 
         self.cassie_sim.get_radio_input_port().FixValue(
             context=self.cassie_sim_context,
-            value=radio)
+            value=radio
+        )
         # Get the current ALIP footstep target in the body yaw frame
         com_w = self.sim_plant.CalcCenterOfMassPositionInWorld(
             self.plant_context)
@@ -383,7 +383,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         target_w = self.make_robot_yaw_to_world_rotation(
             self.plant_context).matrix() @ target_b
 
-        return target_w, target_b
+        return target_w, target_b, radio
 
     def get_stepnet_data_point(self, seed=0):
         np.random.seed(seed)
@@ -393,7 +393,8 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.reset(x_pre)
         x = self.get_robot_centric_state(x_pre)
 
-        target_w, target_b = self.get_footstep_target_with_random_offset()
+        target_w, target_b, radio = \
+            self.get_footstep_target_with_random_offset()
 
         depth_image, target_z = \
             self.get_noisy_height_from_current_depth_image(
@@ -408,7 +409,7 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         # Step the simulation forward until middle of next double stance
         while self.current_time < self.simulate_until:
-            self.step(footstep_target=target_w)
+            self.step(footstep_target=target_w, radio=radio)
             # Abort and return max error if something crazy happens
             if self.check_termination():
                 return {
@@ -440,7 +441,8 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.reset(x_pre)
         x = self.get_robot_centric_state(x_pre)
 
-        target_w, target_b = self.get_footstep_target_with_random_offset()
+        target_w, target_b, radio = \
+            self.get_footstep_target_with_random_offset()
         target_w[-1] = 0
         target_b[-1] = 0
 
@@ -452,7 +454,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         # Step the simulation forward until about the
         # middle of next double stance
         while self.current_time < self.simulate_until:
-            self.step(footstep_target=target_w)
+            self.step(footstep_target=target_w, radio=radio)
             # Abort and return max error if something crazy happens
             if self.check_termination():
                 return {

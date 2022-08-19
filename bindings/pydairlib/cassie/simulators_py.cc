@@ -47,9 +47,12 @@ PYBIND11_MODULE(simulators, m) {
              drake::systems::Diagram<double>>(m, "CassieVisionSimDiagram")
       .def(py::init<
                std::unique_ptr<drake::multibody::MultibodyPlant<double>>,
+               const Eigen::VectorXd&, double,
                const std::string &, bool, bool, double, double,
                Eigen::Vector3d>(),
            py::arg("plant"),
+           py::arg("camera_position"),
+           py::arg("camera_pitch"),
            py::arg("urdf"),
            py::arg("visualize"),
            py::arg("add_terrain"),
@@ -76,6 +79,7 @@ PYBIND11_MODULE(simulators, m) {
       .def("get_camera_pose_output_port",
            &CassieVisionSimDiagram::get_camera_pose_output_port,
            py_rvp::reference_internal)
+      .def("X_BC", &CassieVisionSimDiagram::X_BC)
       .def_static("default_camera_transform",
            &CassieVisionSimDiagram::default_camera_transform);
 }

@@ -53,6 +53,7 @@ using Eigen::VectorXd;
 
 CassieVisionSimDiagram::CassieVisionSimDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
+    const Vector3d& camera_position, double camera_pitch,
     const std::string& urdf, bool visualize, bool add_terrain, double mu,
     double map_yaw, const Eigen::Vector3d& normal) {
 
@@ -69,6 +70,9 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
   //multibody::BoxyHeightMap hmap =
   //  multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
+
+  cam_transform_ = drake::math::RigidTransformd(
+      camera::MakeXZAlignedCameraRotation(camera_pitch),camera_position);
 
   if (add_terrain) {
     multibody::CubeHeightMap hmap =

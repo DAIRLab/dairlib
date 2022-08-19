@@ -130,7 +130,7 @@ def main(args):
 
 
 def test():
-    test_flat_collection()
+    test_data_collection()
 
 
 def save_config_test(args):
@@ -164,5 +164,5 @@ if __name__ == "__main__":
     except:
         parser.print_help()
         sys.exit(0)
-    main(args)
-    # test()
+    # main(args)
+    test()

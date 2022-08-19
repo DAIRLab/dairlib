@@ -21,6 +21,7 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
   /// @param[in] urdf filepath containing the osc_running_gains.
   CassieVisionSimDiagram(
       std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
+      const Eigen::Vector3d& camera_position, double pitch,
       const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf",
       bool add_terrain = false,bool visualize = false, double mu = 0.8,
       double map_yaw=0, const Eigen::Vector3d& normal=Eigen::Vector3d::UnitZ());
@@ -64,6 +65,10 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
       camera::MakeXZAlignedCameraRotation(-0.85*M_PI/2),
       Eigen::Vector3d(0.175, 0, 0.15)
     };
+  }
+
+  drake::math::RigidTransform<double> X_BC() {
+    return cam_transform_;
   }
 
  private:

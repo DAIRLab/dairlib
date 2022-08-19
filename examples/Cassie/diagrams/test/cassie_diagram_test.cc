@@ -30,7 +30,7 @@ int DoMain(int argc, char* argv[]){
 
   auto sim_plant = std::make_unique<MultibodyPlant<double>>(8e-5);
   auto sim_diagram = builder.AddSystem<CassieVisionSimDiagram>(
-      std::move(sim_plant));
+      std::move(sim_plant), Eigen::Vector3d(0.17, 0.05, 0.17), -1.33);
   auto& plant = sim_diagram->get_plant();
 
   builder.Connect(sim_diagram->get_state_output_port(),

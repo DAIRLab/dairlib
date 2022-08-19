@@ -58,6 +58,8 @@ class DrakeCassieGym:
         self.controller = controller
         self.cassie_sim = CassieVisionSimDiagram(
             plant=self.plant,
+            camera_position=self.params.camera_position,
+            camera_pitch=self.params.camera_pitch,
             urdf=urdf,
             visualize=self.visualize,
             add_terrain=self.params.add_terrain,
@@ -128,7 +130,6 @@ class DrakeCassieGym:
         return
 
     def advance_to(self, time):
-
         while self.current_time < time and not self.terminated:
             self.step()
         return

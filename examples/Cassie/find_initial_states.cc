@@ -54,23 +54,23 @@ Eigen::VectorXd SolveIK(
 
   // Add contact points
   auto stance_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, stance_toe.first, stance_toe.second, Matrix3d::Identity(),
-      stance_toe_pos, {1, 2});
+      plant, stance_toe.first, stance_toe.second,  Vector3d::UnitZ(),
+      stance_toe_pos, true);
   evaluators.add_evaluator(&stance_toe_evaluator);
 
   auto stance_heel_evaluator = multibody::WorldPointEvaluator(
       plant, stance_heel.first, stance_heel.second, Vector3d::UnitZ(),
-      stance_heel_pos, false);
+      stance_heel_pos, true);
   evaluators.add_evaluator(&stance_heel_evaluator);
 
   auto swing_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, swing_toe.first, swing_toe.second, Matrix3d::Identity(),
-      swing_toe_pos, {1, 2});
+      plant, swing_toe.first, swing_toe.second,  Vector3d::UnitZ(),
+      swing_toe_pos, true);
   evaluators.add_evaluator(&swing_toe_evaluator);
 
   auto swing_heel_evaluator = multibody::WorldPointEvaluator(
       plant, swing_heel.first, swing_heel.second, Vector3d::UnitZ(),
-      swing_heel_pos, false);
+      swing_heel_pos, true);
   evaluators.add_evaluator(&swing_heel_evaluator);
 
   auto program = multibody::MultibodyProgram(plant);
@@ -120,10 +120,10 @@ Eigen::VectorXd SolveIK(
       lambda.segment(11, 3));
 
   // Add minimum normal forces on all contact points
-  program.AddLinearConstraint(lambda(4) >= 40);
-  program.AddLinearConstraint(lambda(7) >= 40);
-  program.AddLinearConstraint(lambda(10) >= 40);
-  program.AddLinearConstraint(lambda(13) >= 40);
+  program.AddLinearConstraint(lambda(4) >= 50);
+  program.AddLinearConstraint(lambda(7) >= 50);
+  program.AddLinearConstraint(lambda(10) >= 50);
+  program.AddLinearConstraint(lambda(13) >= 50);
 
   // Add costs
   double s = 10;
@@ -153,7 +153,7 @@ Eigen::VectorXd SolveIK(
     program.SetSolverOption(drake::solvers::IpoptSolver::id(),
                             "tol", 1e-2);
     program.SetSolverOption(drake::solvers::IpoptSolver::id(),
-                            "constr_viol_tol", 1e-4);
+                            "constr_viol_tol", 1e-3);
     drake::solvers::IpoptSolver ipopt_solver;
     result = ipopt_solver.Solve(program, program.initial_guess());
   } else {
@@ -165,18 +165,34 @@ Eigen::VectorXd SolveIK(
                           1e-2);
     program.SetSolverOption(drake::solvers::SnoptSolver::id(),
                           "Major feasibility tolerance",
-                          1e-4);
+                          1e-3);
     result = drake::solvers::Solve(program, program.initial_guess());
   }
 
-  std::cout << to_string(result.get_solution_result()) << std::endl;
+  std::cout << to_string(result.get_solution_result());
   *is_success = result.is_success();
+
   VectorXd q_result = result.GetSolution(q);
   VectorXd v_result = result.GetSolution(v);
   VectorXd u_result = result.GetSolution(u);
   VectorXd lambda_result = result.GetSolution(lambda);
   VectorXd sol(q_result.size() + v_result.size());
   sol << q_result, v_result;
+
+  if (*is_success) {
+    plant.SetPositionsAndVelocities(&context, sol);
+    drake::multibody::SpatialVelocity<double> foot_vel_right =
+        plant.GetBodyByName("toe_right").EvalSpatialVelocityInWorld(context);
+    drake::multibody::SpatialVelocity<double> foot_vel_left =
+        plant.GetBodyByName("toe_right").EvalSpatialVelocityInWorld(context);
+    *is_success =
+        (foot_vel_left.translational().norm() < 0.06) &&
+            (foot_vel_right.translational().norm() < 0.06);
+    std::cout << (*is_success ? ": Validation Successful" : ": Validation failed") << std::endl;
+  } else {
+    std::cout << std::endl;
+  }
+
   return sol;
 }
 
@@ -223,8 +239,9 @@ void FindInitialStates(
   Vector3d mid_to_toe_w = swing_points.col(0) - swing_points.col(3);
   Vector3d mid_to_heel_w = -mid_to_toe_w;
 
+  double h_nom = 0.95;
   VectorXd heights = VectorXd::LinSpaced(
-      n_heights, q(6) - height_offset_bound, q(6) + height_offset_bound);
+      n_heights, h_nom - height_offset_bound, h_nom + height_offset_bound);
   std::cout << "Heights: " << heights.transpose() << "\n";
   VectorXd radii = VectorXd::LinSpaced(
       n_swing_radii, swing_foot_offset_bound_radius / n_swing_radii,
@@ -234,10 +251,8 @@ void FindInitialStates(
       n_swing_angle, 0,
       2 *M_PI * ((double) (n_swing_angle) / (double) (n_swing_angle + 1)));
   std::cout << "SWA: " << swing_angles.transpose() << "\n";
-  VectorXd pelvis_vel_angles = VectorXd::LinSpaced(
-      n_pelvis_vel_angle, 0,
-      2 * M_PI * ((double) (n_pelvis_vel_angle)
-          / (double) (n_pelvis_vel_angle+1)));
+  VectorXd pelvis_vel_angles = VectorXd::Zero(10);
+  pelvis_vel_angles << 0, M_PI / 6, M_PI / 3, M_PI / 2, 2* M_PI / 3, 5* M_PI / 6, M_PI, 5 * M_PI / 4, 3 * M_PI / 2, 7 * M_PI / 4;
   std::cout << "PVA: " << pelvis_vel_angles.transpose() << "\n";
   VectorXd pelvis_vel = VectorXd::LinSpaced(
       n_pelvis_vel, pelvis_vel_xy_bound / n_pelvis_vel, pelvis_vel_xy_bound);
@@ -249,11 +264,12 @@ void FindInitialStates(
       for (int idx_asw = 0; idx_asw < n_swing_angle; idx_asw++) {
         for (int idx_vp = 0; idx_vp < n_pelvis_vel; idx_vp++) {
           for (int idx_ap = 0; idx_ap < n_pelvis_vel_angle; idx_ap++) {
-            double height = heights(idx_h);
-            double r_sw = radii(idx_rsw);
-            double a_sw = swing_angles(idx_asw);
-            double v = pelvis_vel(idx_vp);
-            double ap = pelvis_vel_angles(idx_ap);
+            auto noise = VectorXd::Random(5);
+            double height = heights(idx_h) + 0.025 * noise(0);
+            double r_sw = radii(idx_rsw) + 0.025 * noise(1);
+            double a_sw = swing_angles(idx_asw) + 0.174553 * noise(2);
+            double v = pelvis_vel(idx_vp) + 0.2 * noise(3);
+            double ap = pelvis_vel_angles(idx_ap) + 0.26 *  noise(4);
             bool is_success;
             Vector3d swing_mid_pos_adjusted =
                 swing_pos.col(2) + r_sw * Vector3d(cos(a_sw), sin(a_sw), 0);
@@ -291,7 +307,7 @@ int do_main(int argc, char* argv[]){
     FindInitialStates(plant, x.head(23), x.tail(22), VectorXd::Zero(10),
                       context.get(), LeftToeFront(plant), LeftToeRear(plant),
                       RightToeFront(plant), RightToeRear(plant), 0.05, 0.15, 1.0,
-                      FLAGS_csvsavepath, 5, 5, 5, 5, 5);
+                      FLAGS_csvsavepath, 4, 4, 6, 10, 4);
   }
 
   return 0;

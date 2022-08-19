@@ -245,7 +245,7 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_rot_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
       osc_gains.W_pelvis * FLAGS_cost_weight_multiplier, plant, plant);
   pelvis_rot_traj->AddFrameToTrack("pelvis");
-  pelvis_rot_traj->SetLowPassFilter(0.1, {0, 1, 2});
+  pelvis_rot_traj->SetLowPassFilter(osc_gains.center_of_mass_filter_tau, {0, 1, 2});
   osc->AddTrackingData(std::move(pelvis_rot_traj));
 
   // Hip yaw joint tracking

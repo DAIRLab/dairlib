@@ -1,5 +1,5 @@
 w_input: 0.00000
-w_accel: 0.00001
+w_accel: 0.000001
 w_input_reg: 0.001
 w_soft_constraint: 100
 w_lambda: 0.0001
@@ -23,8 +23,8 @@ W_lambda_h_reg: [ 0.001, 0.001, 0.001,
 
 relative_feet: true
 relative_pelvis: true
-#ekf_filter_tau: [ 0.001, 0.01, 0.001 ]
-ekf_filter_tau: [0.05, 0.1, 0.01]
+ekf_filter_tau: [ 0.001, 0.01, 0.001 ]
+#ekf_filter_tau: [0.05, 0.1, 0.01]
 
 
 # High level command gains (with radio)
@@ -34,7 +34,7 @@ vel_scale_trans_lateral: -0.0
 
 # SLIP parameters
 rest_length: 0.85
-rest_length_offset: 0.00
+rest_length_offset: 0.025
 stance_duration: 0.0
 flight_duration: 0.0
 
@@ -63,7 +63,7 @@ PelvisKp:
     0,    25,    0,
     0,    0,   150]
 PelvisKd:
-  [ 1,    0,   0,
+  [ 2,    0,   0,
     0,    1,   0,
     0,    0,  2 ]
 PelvisRotW:
@@ -79,17 +79,17 @@ PelvisRotKd:
    0,   5.,  0,
    0,    0,  0.]
 SwingFootW:
-  [10,    0,    0,
-   0,   10,    0,
+  [1,    0,    0,
+   0,   1,    0,
    0,    0,   1]
 SwingFootKp:
-  [125,    0,    0,
-   0,  50,    0,
+  [75,    0,    0,
+   0,  75,    0,
    0,     0,  50]
 SwingFootKd:
   [5.,   0,   0,
    0,   5.,   0,
-   0,   0,  0.1]
+   0,   0,  1]
 LiftoffSwingFootW:
   [0.1,    0,    0,
    0,   10,    0,

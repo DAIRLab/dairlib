@@ -136,6 +136,8 @@ def main():
     if plot_config.plot_tracking_costs:
         plot = mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plot.attach()
+        plt.ylim([0, 200])
 
     if plot_config.tracking_datas_to_plot:
         for traj_name, config in plot_config.tracking_datas_to_plot.items():

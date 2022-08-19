@@ -428,6 +428,9 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> foot_traj_weight_trajectory =
       PiecewisePolynomial<double>::FirstOrderHold(
           {0, 0.25 + 0.2}, {0.5 * VectorXd::Ones(1), 5.0 * VectorXd::Ones(1)});
+  PiecewisePolynomial<double> foot_traj_gain_trajectory =
+      PiecewisePolynomial<double>::FirstOrderHold(
+          {0, 0.25 + 0.2}, {0.5 * MatrixXd::Identity(3, 3), 2.0 * MatrixXd::Identity(3, 3)});
   //  PiecewisePolynomial<double> foot_traj_weight_trajectory =
   //      PiecewisePolynomial<double>::FirstOrderHold(
   //          {0, 0.25 + 0.2}, {VectorXd::Ones(1), VectorXd::Ones(1)});
@@ -435,6 +438,10 @@ int DoMain(int argc, char* argv[]) {
       foot_traj_weight_trajectory);
   right_foot_rel_tracking_data->SetTimeVaryingWeights(
       foot_traj_weight_trajectory);
+  left_foot_rel_tracking_data->SetTimeVaryingGains(
+      foot_traj_gain_trajectory);
+  right_foot_rel_tracking_data->SetTimeVaryingGains(
+      foot_traj_gain_trajectory);
 
   //  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
   //  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});

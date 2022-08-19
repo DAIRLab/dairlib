@@ -701,8 +701,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
       tracking_cost_.at(i)->UpdateCoefficients(
-          (J_t.transpose() * W) * J_t, J_t.transpose() * W * (JdotV_t - ddy_t),
-          constant_term.transpose() * W * constant_term, true);
+          J_t.transpose() * W * J_t + W_joint_accel_, J_t.transpose() * W * (JdotV_t - ddy_t),
+          constant_term.transpose() * W * constant_term);
       //      tracking_cost_.at(i)->UpdateCoefficients(
       //          J_t.transpose() * W * J_t, VectorXd::Zero(n_v_), 0.5 *
       //          constant_term.transpose() * W * constant_term);
@@ -783,12 +783,12 @@ VectorXd OperationalSpaceControl::SolveQp(
                                                  VectorXd::Zero(n_c_));
   }
 
-  if (!solvers_.at(fsm_state)->IsInitialized()) {
-    solvers_.at(fsm_state)->InitializeSolver(*prog_, solver_options_);
+  if (!solvers_.at(0)->IsInitialized()) {
+    solvers_.at(0)->InitializeSolver(*prog_, solver_options_);
   }
 
   if (initial_guess_x_.count(fsm_state) > 0) {
-    solvers_.at(fsm_state)->WarmStart(initial_guess_x_.at(fsm_state),
+    solvers_.at(0)->WarmStart(initial_guess_x_.at(fsm_state),
                                       initial_guess_y_.at(fsm_state));
   }
 
@@ -798,7 +798,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     auto osqp_solver = drake::solvers::OsqpSolver();
     result = osqp_solver.Solve(*prog_, std::nullopt, solver_options_);
   } else {
-    result = solvers_.at(fsm_state)->Solve(*prog_);
+    result = solvers_.at(0)->Solve(*prog_);
   }
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
@@ -853,7 +853,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
     //    *u_prev_ = VectorXd::Zero(n_u_);
-    *u_prev_ = 0.9 * *u_sol_ + VectorXd::Random(n_u_);
+    *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
   }
 
   for (auto& tracking_data : *tracking_data_vec_) {

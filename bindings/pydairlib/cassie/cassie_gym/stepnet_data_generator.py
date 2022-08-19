@@ -465,7 +465,6 @@ class StepnetDataGenerator(DrakeCassieGym):
         while self.current_time < self.simulate_until:
             self.step(footstep_target=new_target_w, radio=radio)
             if self.check_termination():
-                print(MAX_ERROR)
                 return self.make_data_dict(
                     depth_image, x, target_b, radio[9], MAX_ERROR)
 

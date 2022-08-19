@@ -15,7 +15,7 @@ using drake::math::RotationMatrixd;
 void Stairs::AddToPlant(drake::multibody::MultibodyPlant<double> *plant,
                         drake::geometry::SceneGraph<double> *scene_graph) {
   auto boxy = BoxyHeightMap(Vector3d::UnitZ(), width_, height_ * 1.5, 0, mu_);
-  boxy.AppendBox(0, 0.4);
+  boxy.AppendBox(0, 0.5);
   double sign = (stair_direction_ == kUp) ? 1.0 : -1.0;
   for (int i = 0; i < n_; i++) {
     boxy.AppendBox((i+1) * sign * height_, depth_);
@@ -37,8 +37,8 @@ void Stairs::AddToPlant(drake::multibody::MultibodyPlant<double> *plant,
 
 Stairs Stairs::MakeRandomMap(double mu) {
   double width = randd(1.0, 2.5);
-  double depth = randd(0.2, 0.3);
-  double height = randd(0.1, 0.25);
+  double depth = randd(0.24, 0.31);
+  double height = randd(0.1, 0.21);
   double n =  3 + rand() % 5;
   bool add_walls = rand() % 2;
   StairDirection direction = (rand() % 2) ? kUp : kDown;

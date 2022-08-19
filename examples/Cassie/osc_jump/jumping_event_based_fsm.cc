@@ -95,7 +95,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   prev_time << timestamp;
 
   if (abs(transition_times_[BALANCE] - timestamp -
-          round(transition_times_[BALANCE] - timestamp)) < 1e-4) {
+          round(transition_times_[BALANCE] - timestamp)) < 1e-3) {
     std::cout << "Time until crouch: "
               << round(transition_times_[BALANCE] - timestamp) << std::endl;
   }

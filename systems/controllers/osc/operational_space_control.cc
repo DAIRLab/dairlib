@@ -50,8 +50,8 @@ using multibody::WorldPointEvaluator;
 OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr,
-    drake::systems::Context<double> *context_w_spr,
-    drake::systems::Context<double> *context_wo_spr,
+    drake::systems::Context<double>* context_w_spr,
+    drake::systems::Context<double>* context_wo_spr,
     bool used_with_finite_state_machine)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
@@ -59,7 +59,7 @@ OperationalSpaceControl::OperationalSpaceControl(
       context_wo_spr_(context_wo_spr),
       world_w_spr_(plant_w_spr_.world_frame()),
       world_wo_spr_(plant_wo_spr_.world_frame()),
-      used_with_finite_state_machine_(used_with_finite_state_machine){
+      used_with_finite_state_machine_(used_with_finite_state_machine) {
   this->set_name("OSC");
 
   n_q_ = plant_wo_spr.num_positions();
@@ -79,7 +79,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     fsm_port_ =
         this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
     clock_port_ = this->DeclareVectorInputPort("clock", BasicVector<double>(1))
-        .get_index();
+                      .get_index();
     impact_info_port_ =
         this->DeclareVectorInputPort("next_fsm, t_to_impact",
                                      ImpactInfoVector<double>(0, 0, kSpaceDim))
@@ -93,18 +93,18 @@ OperationalSpaceControl::OperationalSpaceControl(
   }
 
   osc_output_port_ = this->DeclareVectorOutputPort(
-          "u, t", TimestampedVector<double>(n_u_w_spr),
-          &OperationalSpaceControl::CalcOptimalInput)
-      .get_index();
+                             "u, t", TimestampedVector<double>(n_u_w_spr),
+                             &OperationalSpaceControl::CalcOptimalInput)
+                         .get_index();
   osc_debug_port_ =
       this->DeclareAbstractOutputPort(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
           .get_index();
 
   failure_port_ = this->DeclareVectorOutputPort(
-          "failure_signal", TimestampedVector<double>(1),
-          &OperationalSpaceControl::CheckTracking)
-      .get_index();
+                          "failure_signal", TimestampedVector<double>(1),
+                          &OperationalSpaceControl::CheckTracking)
+                      .get_index();
 
   const std::map<string, int>& vel_map_wo_spr =
       multibody::MakeNameToVelocitiesMap(plant_wo_spr);
@@ -145,9 +145,9 @@ OperationalSpaceControl::OperationalSpaceControl(
     }
     if (joint.type_name() == "prismatic" &&
         (joint.position_lower_limits()[0] !=
-            -std::numeric_limits<double>::infinity() ||
-            (joint.position_upper_limits()[0] !=
-                std::numeric_limits<double>::infinity()))) {
+             -std::numeric_limits<double>::infinity() ||
+         (joint.position_upper_limits()[0] !=
+          std::numeric_limits<double>::infinity()))) {
       std::cerr << "Warning: joint limits have not been implemented for "
                    "prismatic joints: "
                 << std::endl;
@@ -183,13 +183,13 @@ void OperationalSpaceControl::AddInputCostByJointAndFsmState(
 
 // Constraint methods
 void OperationalSpaceControl::AddContactPoint(
-    const WorldPointEvaluator<double> *evaluator) {
+    const WorldPointEvaluator<double>* evaluator) {
   single_contact_mode_ = true;
   AddStateAndContactPoint(-1, evaluator);
 }
 
 void OperationalSpaceControl::AddStateAndContactPoint(
-    int state, const WorldPointEvaluator<double> *evaluator) {
+    int state, const WorldPointEvaluator<double>* evaluator) {
   DRAKE_DEMAND(&evaluator->plant() == &plant_wo_spr_);
 
   // Find the new contact in all_contacts_
@@ -213,7 +213,7 @@ void OperationalSpaceControl::AddStateAndContactPoint(
 }
 
 void OperationalSpaceControl::AddKinematicConstraint(
-    const multibody::KinematicEvaluatorSet<double> *evaluators) {
+    const multibody::KinematicEvaluatorSet<double>* evaluators) {
   DRAKE_DEMAND(&evaluators->plant() == &plant_wo_spr_);
   kinematic_evaluators_ = evaluators;
 }
@@ -256,11 +256,11 @@ void OperationalSpaceControl::CheckCostSettings() {
   }
   if (W_input_smoothing_.size() != 0) {
     DRAKE_DEMAND((W_input_smoothing_.rows() == n_u_) &&
-        (W_input_smoothing_.cols() == n_u_));
+                 (W_input_smoothing_.cols() == n_u_));
   }
   if (W_joint_accel_.size() != 0) {
     DRAKE_DEMAND((W_joint_accel_.rows() == n_v_) &&
-        (W_joint_accel_.cols() == n_v_));
+                 (W_joint_accel_.cols() == n_v_));
   }
 }
 void OperationalSpaceControl::CheckConstraintSettings() {
@@ -287,8 +287,8 @@ void OperationalSpaceControl::Build() {
 
   // Size of decision variable
   n_h_ = (kinematic_evaluators_ == nullptr)
-         ? 0
-         : kinematic_evaluators_->count_full();
+             ? 0
+             : kinematic_evaluators_->count_full();
   n_c_ = kSpaceDim * all_contacts_.size();
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
@@ -319,7 +319,6 @@ void OperationalSpaceControl::Build() {
   lambda_c_sol_->setZero();
   lambda_h_sol_->setZero();
   u_prev_->setZero();
-
 
   // Add decision variables
   dv_ = prog_->NewContinuousVariables(n_v_, "dv");
@@ -392,8 +391,8 @@ void OperationalSpaceControl::Build() {
   // 1. input cost
   if (W_input_.size() > 0) {
     input_cost_ = prog_->AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u_)
-        .evaluator()
-        .get();
+                      .evaluator()
+                      .get();
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
@@ -412,7 +411,11 @@ void OperationalSpaceControl::Build() {
   // 3. constraint force cost
   if (W_lambda_h_reg_.size() > 0) {
     DRAKE_DEMAND(W_lambda_h_reg_.rows() == n_h_);
-    prog_->AddQuadraticCost(W_lambda_h_reg_, VectorXd::Zero(n_h_), lambda_h_);
+    lambda_h_smoothing_cost_ =
+        prog_
+            ->AddQuadraticCost(W_lambda_h_reg_, VectorXd::Zero(n_h_), lambda_h_)
+            .evaluator()
+            .get();
   }
   // 4. Soft constraint cost
   if (w_soft_constraint_ > 0) {
@@ -427,10 +430,11 @@ void OperationalSpaceControl::Build() {
             .evaluator()
             .get();
   }
-//  input_smoothing_constraint_ =
-//      prog_->AddBoundingBoxConstraint(VectorXd::Zero(n_u_), VectorXd::Zero(n_u_), u_)
-//          .evaluator()
-//          .get();
+  //  input_smoothing_constraint_ =
+  //      prog_->AddBoundingBoxConstraint(VectorXd::Zero(n_u_),
+  //      VectorXd::Zero(n_u_), u_)
+  //          .evaluator()
+  //          .get();
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     tracking_cost_.push_back(prog_
@@ -449,38 +453,38 @@ void OperationalSpaceControl::Build() {
           .get());
 
   // (Testing) 6. contact force blending
-//  if (ds_duration_ > 0) {
-//    epsilon_blend_ =
-//        prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
-//    blend_constraint_ =
-//        prog_
-//            ->AddLinearEqualityConstraint(
-//                MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim), VectorXd::Zero(1),
-//                {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
-//                 lambda_c_.segment(kSpaceDim * 1 + 2, 1),
-//                 lambda_c_.segment(kSpaceDim * 2 + 2, 1),
-//                 lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
-//            .evaluator()
-//            .get();
-  /// Soft constraint version
-  //  DRAKE_DEMAND(w_blend_constraint_ > 0);
-  //      prog_->AddQuadraticCost(
-  //          w_blend_constraint_ *
-  //              MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
-  //          VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
-  /// hard constraint version
-//    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
-//  }
-//  blend_constraint_ =
-//      prog_
-//          ->AddBoundingBoxConstraint(
-//              VectorXd::Zero(4), VectorXd::Zero(4),
-//              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
-//               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
-//               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
-//               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
-//          .evaluator()
-//          .get();
+  if (ds_duration_ > 0) {
+    epsilon_blend_ =
+        prog_->NewContinuousVariables(n_c_ / kSpaceDim, "epsilon_blend");
+    blend_constraint_ =
+        prog_
+            ->AddLinearEqualityConstraint(
+                MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim), VectorXd::Zero(1),
+                {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+                 lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
+            .evaluator()
+            .get();
+    /// Soft constraint version
+    //  DRAKE_DEMAND(w_blend_constraint_ > 0);
+    //  prog_->AddQuadraticCost(
+    //      w_blend_constraint_ *
+    //          MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
+    //      VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
+    /// hard constraint version
+    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
+  }
+  //  blend_constraint_ =
+  //      prog_
+  //          ->AddBoundingBoxConstraint(
+  //              VectorXd::Zero(4), VectorXd::Zero(4),
+  //              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
+  //               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
+  //               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
+  //               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
+  //          .evaluator()
+  //          .get();
 
   for (int i = -1; i < 5; ++i) {
     solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
@@ -489,16 +493,16 @@ void OperationalSpaceControl::Build() {
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double> *discrete_state) const {
-  const BasicVector<double> *fsm_output =
-      (BasicVector<double> *) this->EvalVectorInput(context, fsm_port_);
+    drake::systems::DiscreteValues<double>* discrete_state) const {
+  const BasicVector<double>* fsm_output =
+      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
-  const OutputVector<double> *robot_output =
-      (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double timestamp = robot_output->get_timestamp();
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-      .get_mutable_value();
+                            .get_mutable_value();
   if (fsm_state(0) != prev_fsm_state(0)) {
     prev_distinct_fsm_state_ = prev_fsm_state(0);
     prev_fsm_state(0) = fsm_state(0);
@@ -512,8 +516,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 VectorXd OperationalSpaceControl::SolveQp(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
-    double t_since_last_state_switch, double alpha,
-    int next_fsm_state) const {
+    double t_since_last_state_switch, double alpha, int next_fsm_state) const {
   // Get active contact indices
   std::set<int> active_contact_set = {};
   if (single_contact_mode_) {
@@ -523,10 +526,10 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (map_iterator != contact_indices_map_.end()) {
       active_contact_set = map_iterator->second;
     } else {
-      static const drake::logging::Warn log_once(const_cast<char *>(
-                                                     (std::to_string(fsm_state) +
-                                                         " is not a valid finite state machine state in OSC.")
-                                                         .c_str()));
+      static const drake::logging::Warn log_once(const_cast<char*>(
+          (std::to_string(fsm_state) +
+           " is not a valid finite state machine state in OSC.")
+              .c_str()));
     }
   }
 
@@ -683,7 +686,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         // Read in traj from input port
         const string& traj_name = tracking_data->GetName();
         int port_index = traj_name_to_port_index_map_.at(traj_name);
-        const drake::AbstractValue *input_traj =
+        const drake::AbstractValue* input_traj =
             this->EvalAbstractInput(context, port_index);
         DRAKE_DEMAND(input_traj != nullptr);
         const auto& traj =
@@ -701,7 +704,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
       tracking_cost_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t + W_joint_accel_, J_t.transpose() * W * (JdotV_t - ddy_t),
+          J_t.transpose() * W * J_t + W_joint_accel_,
+          J_t.transpose() * W * (JdotV_t - ddy_t),
           constant_term.transpose() * W * constant_term);
       //      tracking_cost_.at(i)->UpdateCoefficients(
       //          J_t.transpose() * W * J_t, VectorXd::Zero(n_v_), 0.5 *
@@ -717,49 +721,44 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Add joint limit constraints
   VectorXd w_joint_limit =
       K_joint_pos * (x_wo_spr.head(plant_wo_spr_.num_positions())
-          .tail(n_revolute_joints_) -
-          q_max_)
-          .cwiseMax(0) +
-          K_joint_pos * (x_wo_spr.head(plant_wo_spr_.num_positions())
-              .tail(n_revolute_joints_) -
-              q_min_)
-              .cwiseMin(0);
+                         .tail(n_revolute_joints_) -
+                     q_max_)
+                        .cwiseMax(0) +
+      K_joint_pos * (x_wo_spr.head(plant_wo_spr_.num_positions())
+                         .tail(n_revolute_joints_) -
+                     q_min_)
+                        .cwiseMin(0);
   joint_limit_cost_.at(0)->UpdateCoefficients(w_joint_limit, 0);
 
   // (Testing) 6. blend contact forces during double support phase
-//  if (ds_duration_ > 0) {
-//    MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
-//    if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
-//        ds_states_.end()) {
-//      double alpha_left = 0;
-//      double alpha_right = 0;
-//      if (prev_distinct_fsm_state_ == right_support_state_) {
-//        // We want left foot force to gradually increase
-//        alpha_left = -1;
-//        alpha_right = t_since_last_state_switch /
-//            (ds_duration_ - t_since_last_state_switch);
-//
-//      } else if (prev_distinct_fsm_state_ == left_support_state_) {
-//        alpha_left = t_since_last_state_switch /
-//            (ds_duration_ - t_since_last_state_switch);
-//        alpha_right = -1;
-//      }
-//      A(0, 0) = alpha_left / 2;
-//      A(0, 1) = alpha_left / 2;
-//      A(0, 2) = alpha_right / 2;
-//      A(0, 3) = alpha_right / 2;
-//      A(0, 4) = 1;
-//      A(0, 5) = 1;
-//      A(0, 6) = 1;
-//      A(0, 7) = 1;
-//    }
-//  VectorXd normals = VectorXd(4);
-//  normals << lambda_c_sol_->segment(kSpaceDim * 0 + 2, 1),
-//      lambda_c_sol_->segment(kSpaceDim * 1 + 2, 1),
-//      lambda_c_sol_->segment(kSpaceDim * 2 + 2, 1),
-//      lambda_c_sol_->segment(kSpaceDim * 3 + 2, 1);
-//  blend_constraint_->UpdateCoefficients(MatrixXd::Identity(4, 4), normals - 25 * VectorXd::Ones(4), normals + 25 * VectorXd::Ones(4));
-//  }
+  if (ds_duration_ > 0) {
+    MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
+    if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
+        ds_states_.end()) {
+      double alpha_left = 0;
+      double alpha_right = 0;
+      if (prev_distinct_fsm_state_ == right_support_state_) {
+        // We want left foot force to gradually increase
+        alpha_left = -1;
+        alpha_right = t_since_last_state_switch /
+                      (ds_duration_ - t_since_last_state_switch);
+
+      } else if (prev_distinct_fsm_state_ == left_support_state_) {
+        alpha_left = t_since_last_state_switch /
+                     (ds_duration_ - t_since_last_state_switch);
+        alpha_right = -1;
+      }
+      A(0, 0) = alpha_left / 2;
+      A(0, 1) = alpha_left / 2;
+      A(0, 2) = alpha_right / 2;
+      A(0, 3) = alpha_right / 2;
+      A(0, 4) = 1;
+      A(0, 5) = 1;
+      A(0, 6) = 1;
+      A(0, 7) = 1;
+    }
+    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
+  }
 
   // test joint-level input cost by fsm state
   if (!fsm_to_w_input_map_.empty()) {
@@ -774,13 +773,18 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0 && initial_guess_x_.count(fsm_state) > 0) {
-    input_smoothing_cost_->UpdateCoefficients(
-        W_input_smoothing_, -W_input_smoothing_ * *u_prev_);
+    input_smoothing_cost_->UpdateCoefficients(W_input_smoothing_,
+                                              -W_input_smoothing_ * *u_prev_);
   }
 
   if (W_lambda_c_reg_.size() > 0) {
-    lambda_c_smoothing_cost_->UpdateCoefficients(1000 * alpha * W_lambda_c_reg_,
+    lambda_c_smoothing_cost_->UpdateCoefficients(alpha * W_lambda_c_reg_,
                                                  VectorXd::Zero(n_c_));
+  }
+
+  if (W_lambda_h_reg_.size() > 0) {
+    lambda_h_smoothing_cost_->UpdateCoefficients(alpha * W_lambda_h_reg_,
+                                                 VectorXd::Zero(n_h_));
   }
 
   if (!solvers_.at(0)->IsInitialized()) {
@@ -789,7 +793,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   if (initial_guess_x_.count(fsm_state) > 0) {
     solvers_.at(0)->WarmStart(initial_guess_x_.at(fsm_state),
-                                      initial_guess_y_.at(fsm_state));
+                              initial_guess_y_.at(fsm_state));
   }
 
   // Solve the QP
@@ -809,45 +813,55 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
-//    double window = 0.01;
-//    double tau = 0.005;
-//    double state_2_start = 0.2;
-//    double state_2_end = 0.3;
-//    double state_3_start = 0.5;
-//    double state_3_end = 0.6;
-//    if (fsm_state >= 2 && initial_guess_x_.size() == 4) {
-//      double clock_time;
-//      if (this->get_input_port(clock_port_).HasValue(context)) {
-//        auto clock = this->EvalVectorInput(context, clock_port_);
-//        clock_time = clock->get_value()(0);
-//      }
-//      if (fsm_state == 2) {
-//        double blend_in = 1 - exp(-((0.3 - clock_time) + window) / tau);
-//        double blend_out = 1 - exp(-((clock_time - 0.2) + window) / tau);
-//        double blend_in = (state_2_end - clock_time) / (state_2_end - state_2_start);
-//        double blend_out = 1 - (state_2_end - clock_time) / (state_2_end - state_2_start);
-//        u_sol_->row(6) =
-//            blend_out * u_sol_->row(6) + (1 - blend_out) * u_prev_[0].row(6);
-//        u_sol_->row(7) =
-//            blend_in * u_sol_->row(7) + (1 - blend_in) * u_prev_[1].row(7);
-//        u_sol_->row(0) =
-//            blend_out * u_sol_->row(0) + (1 - blend_out) * u_prev_[0].row(0);
-//        u_sol_->row(1) =
-//            blend_in * u_sol_->row(1) + (1 - blend_in) * u_prev_[1].row(1);
-//      }
-//      if (fsm_state == 3) {
-//          double blend_in = (state_3_end - clock_time) / (state_3_end - state_3_start);
-//          double blend_out = 1 - (state_3_end - clock_time) / (state_3_end - state_3_start);
-//        u_sol_->row(6) =
-//            blend_in * u_sol_->row(6) + (1 - blend_in) * u_prev_[0].row(6);
-//        u_sol_->row(7) =
-//            blend_out * u_sol_->row(7) + (1 - blend_out) * u_prev_[1].row(7);
-//        u_sol_->row(0) =
-//            blend_in * u_sol_->row(0) + (1 - blend_in) * u_prev_[0].row(0);
-//        u_sol_->row(1) =
-//            blend_out * u_sol_->row(1) + (1 - blend_out) * u_prev_[1].row(1);
-//      }
-//    }
+    //    double window = 0.01;
+    //    double tau = 0.005;
+    //    double state_2_start = 0.2;
+    //    double state_2_end = 0.3;
+    //    double state_3_start = 0.5;
+    //    double state_3_end = 0.6;
+    //    if (fsm_state >= 2 && initial_guess_x_.size() == 4) {
+    //      double clock_time;
+    //      if (this->get_input_port(clock_port_).HasValue(context)) {
+    //        auto clock = this->EvalVectorInput(context, clock_port_);
+    //        clock_time = clock->get_value()(0);
+    //      }
+    //      if (fsm_state == 2) {
+    //        double blend_in = 1 - exp(-((0.3 - clock_time) + window) / tau);
+    //        double blend_out = 1 - exp(-((clock_time - 0.2) + window) /
+    //        tau); double blend_in = (state_2_end - clock_time) /
+    //        (state_2_end - state_2_start); double blend_out = 1 -
+    //        (state_2_end - clock_time) / (state_2_end - state_2_start);
+    //        u_sol_->row(6) =
+    //            blend_out * u_sol_->row(6) + (1 - blend_out) *
+    //            u_prev_[0].row(6);
+    //        u_sol_->row(7) =
+    //            blend_in * u_sol_->row(7) + (1 - blend_in) *
+    //            u_prev_[1].row(7);
+    //        u_sol_->row(0) =
+    //            blend_out * u_sol_->row(0) + (1 - blend_out) *
+    //            u_prev_[0].row(0);
+    //        u_sol_->row(1) =
+    //            blend_in * u_sol_->row(1) + (1 - blend_in) *
+    //            u_prev_[1].row(1);
+    //      }
+    //      if (fsm_state == 3) {
+    //          double blend_in = (state_3_end - clock_time) / (state_3_end -
+    //          state_3_start); double blend_out = 1 - (state_3_end -
+    //          clock_time) / (state_3_end - state_3_start);
+    //        u_sol_->row(6) =
+    //            blend_in * u_sol_->row(6) + (1 - blend_in) *
+    //            u_prev_[0].row(6);
+    //        u_sol_->row(7) =
+    //            blend_out * u_sol_->row(7) + (1 - blend_out) *
+    //            u_prev_[1].row(7);
+    //        u_sol_->row(0) =
+    //            blend_in * u_sol_->row(0) + (1 - blend_in) *
+    //            u_prev_[0].row(0);
+    //        u_sol_->row(1) =
+    //            blend_out * u_sol_->row(1) + (1 - blend_out) *
+    //            u_prev_[1].row(1);
+    //      }
+    //    }
     initial_guess_x_[fsm_state] = result.GetSolution();
     initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
   } else {
@@ -910,7 +924,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
         // Read in traj from input port
         const string& traj_name = tracking_data->GetName();
         int port_index = traj_name_to_port_index_map_.at(traj_name);
-        const drake::AbstractValue *input_traj =
+        const drake::AbstractValue* input_traj =
             EvalAbstractInput(context, port_index);
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
@@ -952,58 +966,58 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   b_constrained << Ab, d;
 
   ii_lambda_sol_ = A_constrained.completeOrthogonalDecomposition()
-      .solve(b_constrained)
-      .head(active_constraint_dim);
+                       .solve(b_constrained)
+                       .head(active_constraint_dim);
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
-    const Context<double>& context, dairlib::lcmt_osc_output *output) const {
+    const Context<double>& context, dairlib::lcmt_osc_output* output) const {
   auto state =
-      (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   total_cost_ = 0;
   int fsm_state = -1;
   if (used_with_finite_state_machine_) {
     auto fsm_output =
-        (BasicVector<double> *) this->EvalVectorInput(context, fsm_port_);
+        (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
     fsm_state = fsm_output->get_value()(0);
   }
 
   double time_since_last_state_switch =
       used_with_finite_state_machine_
-      ? state->get_timestamp() -
-          context.get_discrete_state(prev_event_time_idx_).get_value()(0)
-      : state->get_timestamp();
+          ? state->get_timestamp() -
+                context.get_discrete_state(prev_event_time_idx_).get_value()(0)
+          : state->get_timestamp();
 
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_state;
   double input_cost =
       (W_input_.size() > 0)
-      ? (0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_))(0)
-      : 0;
+          ? (0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_))(0)
+          : 0;
   double acceleration_cost =
       (W_joint_accel_.size() > 0)
-      ? (0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_))(0)
-      : 0;
+          ? (0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_))(0)
+          : 0;
   double soft_constraint_cost =
       (w_soft_constraint_ > 0)
-      ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
-          (*epsilon_sol_))(0)
-      : 0;
+          ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
+             (*epsilon_sol_))(0)
+          : 0;
   double input_smoothing_cost =
       (W_input_smoothing_.size() > 0)
-      ? (0.5 * (*u_sol_ - *u_prev_).transpose() *
-          W_input_smoothing_ * (*u_sol_ - *u_prev_))(0)
-      : 0;
+          ? (0.5 * (*u_sol_ - *u_prev_).transpose() * W_input_smoothing_ *
+             (*u_sol_ - *u_prev_))(0)
+          : 0;
   double lambda_h_cost = (W_lambda_h_reg_.size() > 0)
-                         ? (0.5 * (*lambda_h_sol_).transpose() *
-          W_lambda_h_reg_ * (*lambda_h_sol_))(0)
-                         : 0;
+                             ? (0.5 * (*lambda_h_sol_).transpose() *
+                                W_lambda_h_reg_ * (*lambda_h_sol_))(0)
+                             : 0;
   double lambda_c_cost = (W_lambda_c_reg_.size() > 0)
-                         ? (0.5 * (*lambda_c_sol_).transpose() *
-          W_lambda_c_reg_ * (*lambda_c_sol_))(0)
-                         : 0;
+                             ? (0.5 * (*lambda_c_sol_).transpose() *
+                                W_lambda_c_reg_ * (*lambda_c_sol_))(0)
+                             : 0;
   total_cost_ += input_cost + acceleration_cost + soft_constraint_cost +
-      input_smoothing_cost + lambda_h_cost + lambda_c_cost;
+                 input_smoothing_cost + lambda_h_cost + lambda_c_cost;
   soft_constraint_cost_ = soft_constraint_cost;
   output->regularization_costs.clear();
   output->regularization_cost_names.clear();
@@ -1090,7 +1104,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       output->tracking_costs[i] =
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
-              (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
+           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
       total_cost_ += output->tracking_costs[i];
     }
     output->tracking_data[i] = osc_output;
@@ -1102,15 +1116,15 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
 void OperationalSpaceControl::CalcOptimalInput(
     const drake::systems::Context<double>& context,
-    systems::TimestampedVector<double> *control) const {
+    systems::TimestampedVector<double>* control) const {
   // Read in current state and time
   auto robot_output =
-      (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
-      plant_w_spr_.num_velocities());
+                   plant_w_spr_.num_velocities());
   x_w_spr << q_w_spr, v_w_spr;
 
   double timestamp = robot_output->get_timestamp();
@@ -1135,7 +1149,7 @@ void OperationalSpaceControl::CalcOptimalInput(
     double alpha = 0;
     int next_fsm_state = -1;
     if (this->get_input_port_impact_info().HasValue(context)) {
-      auto impact_info = (ImpactInfoVector<double> *) this->EvalVectorInput(
+      auto impact_info = (ImpactInfoVector<double>*)this->EvalVectorInput(
           context, impact_info_port_);
       alpha = impact_info->GetAlpha();
       next_fsm_state = impact_info->GetCurrentContactMode();
@@ -1157,9 +1171,9 @@ void OperationalSpaceControl::CalcOptimalInput(
 
 void OperationalSpaceControl::CheckTracking(
     const drake::systems::Context<double>& context,
-    TimestampedVector<double> *output) const {
+    TimestampedVector<double>* output) const {
   auto robot_output =
-      (OutputVector<double> *) this->EvalVectorInput(context, state_port_);
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
   if (soft_constraint_cost_ > 5e3 || isnan(soft_constraint_cost_)) {

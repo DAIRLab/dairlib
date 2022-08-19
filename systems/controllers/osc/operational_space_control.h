@@ -341,6 +341,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
   drake::solvers::QuadraticCost* input_smoothing_cost_;
   drake::solvers::QuadraticCost* lambda_c_smoothing_cost_;
+  drake::solvers::QuadraticCost* lambda_h_smoothing_cost_;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;
@@ -407,7 +408,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<int> ds_states_;
   double w_blend_constraint_ = 0.1;  // for soft constraint
   mutable double prev_distinct_fsm_state_ = -1;
-  drake::solvers::BoundingBoxConstraint* blend_constraint_;
+  drake::solvers::LinearEqualityConstraint* blend_constraint_;
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
 //  drake::solvers::BoundingBoxConstraint* contact_force_smoothing_constraint_;
 

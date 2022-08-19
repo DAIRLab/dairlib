@@ -89,7 +89,6 @@ def terrain_main(collection_params):
         if not os.path.isdir(path):
             os.makedirs(path)
 
-    collect_and_save_data_from_random_map(0, 1, collection_params)
     for j in range(int(collection_params.nmaps / collection_params.nthreads)):
         with multiprocessing.Pool(collection_params.nthreads) as pool:
             results = [
@@ -164,5 +163,5 @@ if __name__ == "__main__":
     except:
         parser.print_help()
         sys.exit(0)
-    # main(args)
-    test()
+    main(args)
+    # test()

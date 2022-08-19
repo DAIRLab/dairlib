@@ -171,12 +171,12 @@ class DataCollectionParams(StepnetDataClass):
 
 def recursive_to_list_traverse(top_level_dict):
     for key, value in top_level_dict.items():
-        print(key)
+        # print(key)
         if type(value) is dict:
-            print('recurse')
+            # print('recurse')
             recursive_to_list_traverse(value)
         if type(value) is np.ndarray:
-            print('ndarray')
+            # print('ndarray')
             top_level_dict[key] = value.tolist()
 
 

@@ -67,6 +67,9 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_footstep_target_input_port",
           &FootstepTargetControllerDiagram::get_footstep_target_input_port,
           py_rvp::reference_internal)
+      .def("get_com_z_input_port",
+           &FootstepTargetControllerDiagram::get_com_z_input_port,
+           py_rvp::reference_internal)
       .def("get_control_output_port",
           &FootstepTargetControllerDiagram::get_control_output_port,
           py_rvp::reference_internal)

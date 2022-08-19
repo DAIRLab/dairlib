@@ -64,6 +64,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.foot_target_input_port = None
         self.alip_target_port = None
         self.initial_condition_bank = None
+        self.com_z_port = None
 
         # Multibody objects
         self.fsm_state_stances = {
@@ -137,11 +138,13 @@ class StepnetDataGenerator(DrakeCassieGym):
             self.controller.get_footstep_target_input_port()
         self.alip_target_port = \
             self.controller.get_alip_target_footstep_port()
+        self.com_z_port = \
+            self.controller.get_com_z_input_port()
 
         # Multibody objects for Cassie's feet
         self.foot_frames = {
             'left': self.sim_plant.GetBodyByName("toe_left").body_frame(),
-             'right': self.sim_plant.GetBodyByName("toe_right").body_frame()
+            'right': self.sim_plant.GetBodyByName("toe_right").body_frame()
         }
         self.contact_pt_in_ft_frame = np.array([0.02115, 0.056, 0])
 
@@ -329,7 +332,13 @@ class StepnetDataGenerator(DrakeCassieGym):
                 FixedVectorInputPort(
                     input_port=self.foot_target_input_port,
                     context=self.controller_context,
-                    value=footstep_target)
+                    value=footstep_target
+                ),
+                FixedVectorInputPort(
+                    input_port=self.com_z_port,
+                    context=self.controller_context,
+                    value=np.array([0.85+footstep_target[2]])
+                )
             ]
         )
 

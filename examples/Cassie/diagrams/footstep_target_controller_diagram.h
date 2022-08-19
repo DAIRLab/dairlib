@@ -63,6 +63,12 @@ class FootstepTargetControllerDiagram final
     return this->get_input_port(footstep_input_port_index_);
   };
 
+  /// @return the input port for the desired com_z at touchdown relative to
+  /// the current stance foot position
+  const drake::systems::InputPort<double>& get_com_z_input_port() const {
+    return this->get_input_port(com_z_input_port_index_);
+  };
+
   /// @return the output port for the controller torques.
   const drake::systems::OutputPort<double>& get_control_output_port() const {
     return this->get_output_port(control_output_port_index_);
@@ -169,13 +175,14 @@ class FootstepTargetControllerDiagram final
 
   std::unique_ptr<JointSpaceTrackingData> swing_hip_yaw_traj;
 
-  const int state_input_port_index_ = 0;
-  const int radio_input_port_index_ = 1;
-  const int footstep_input_port_index_ = 2;
-  const int control_output_port_index_ = 0;
-  const int torque_output_port_index_ = 1;
-  const int fsm_output_port_index_ = 2;
-  const int alip_target_output_port_ = 3;
+  const drake::systems::InputPortIndex state_input_port_index_ = drake::systems::InputPortIndex(0);
+  const drake::systems::InputPortIndex radio_input_port_index_ = drake::systems::InputPortIndex(1);
+  const drake::systems::InputPortIndex footstep_input_port_index_ = drake::systems::InputPortIndex(2);
+  const drake::systems::InputPortIndex com_z_input_port_index_ = drake::systems::InputPortIndex(3);
+  const drake::systems::OutputPortIndex control_output_port_index_ = drake::systems::OutputPortIndex(0);
+  const drake::systems::OutputPortIndex torque_output_port_index_ = drake::systems::OutputPortIndex(1);
+  const drake::systems::OutputPortIndex fsm_output_port_index_ = drake::systems::OutputPortIndex(2);
+  const drake::systems::OutputPortIndex alip_target_output_port_ = drake::systems::OutputPortIndex(3);
 //  const int controller_failure_port_index_ = 3;
 
   const std::string control_channel_name_ = "OSC_WALKING";

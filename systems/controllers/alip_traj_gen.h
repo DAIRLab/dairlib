@@ -47,7 +47,8 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
       contact_points_in_each_state, const Eigen::MatrixXd& Q,
-      const Eigen::MatrixXd& R, bool filter_alip_state = true);
+      const Eigen::MatrixXd& R, bool filter_alip_state = true,
+      bool target_com_z = false);
 
   // Input port getters
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -59,6 +60,12 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_touchdown_time()
   const {
     return this->get_input_port(touchdown_time_port_);
+  }
+  // Input port for the desired CoM height at the following touchdown relative
+  // to the current stance foot
+  const drake::systems::InputPort<double>& get_input_port_target_com_z() const {
+    DRAKE_ASSERT(target_com_z_);
+    return this->get_input_port(com_z_input_port_);
   }
 
   // Output port getters
@@ -86,7 +93,9 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
   ConstructAlipComTraj(const Eigen::Vector3d& CoM,
                        const Eigen::Vector3d& stance_foot_pos,
-                       const Eigen::Vector4d& x_alip, double start_time,
+                       const Eigen::Vector4d& x_alip,
+                       double com_z_rel_to_stance_at_next_td,
+                       double start_time,
                        double end_time_of_this_fsm_state) const;
 
   drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
@@ -105,12 +114,13 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   }
 
   // Port indices
-  int state_port_;
-  int fsm_port_;
-  int touchdown_time_port_;
+  drake::systems::InputPortIndex state_port_;
+  drake::systems::InputPortIndex fsm_port_;
+  drake::systems::InputPortIndex touchdown_time_port_;
+  drake::systems::InputPortIndex com_z_input_port_;
 
-  int output_port_alip_state_;
-  int output_port_com_;
+  drake::systems::OutputPortIndex output_port_alip_state_;
+  drake::systems::OutputPortIndex output_port_com_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
@@ -126,12 +136,13 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& world_;
 
   bool filter_alip_state_;
+  bool target_com_z_;
   double m_;
 
-  int alip_filter_idx_;
-  int com_z_idx_;
-  int prev_fsm_idx_;
-  int prev_foot_idx_;
+  drake::systems::AbstractStateIndex alip_filter_idx_;
+  drake::systems::DiscreteStateIndex com_z_idx_;
+  drake::systems::DiscreteStateIndex prev_fsm_idx_;
+  drake::systems::DiscreteStateIndex prev_foot_idx_;
 };
 
 }  // namespace systems

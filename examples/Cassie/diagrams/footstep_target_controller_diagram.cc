@@ -215,7 +215,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
       plant, plant_context.get(), gains.lipm_height,
       unordered_fsm_states, unordered_state_durations,
       contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
-      gains.R_alip_kalman_filter.asDiagonal(), false);
+      gains.R_alip_kalman_filter.asDiagonal(), false, true);
   auto footstep_planner =
       builder.AddSystem<systems::AlipFootstepPlanner>(
           plant, plant_context.get(), left_right_support_fsm_states,
@@ -474,6 +474,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
   builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
   builder.ExportInput(swing_ft_traj_generator->get_input_port_footstep_target(), "footstep_target");
+  builder.ExportInput(alip_traj_generator->get_input_port_target_com_z(), "target_com_z_at_touchdown");
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
   builder.ExportOutput(osc->get_osc_output_port(), "u, t");
   builder.ExportOutput(fsm->get_output_port_fsm(), "fsm");

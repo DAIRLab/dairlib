@@ -52,6 +52,6 @@ tracking_datas_to_plot: {
   #  left_ft_traj: { 'dims': [ 0, 1, 2 ], 'derivs': ['pos', 'accel' ] },
   #  left_ft_z_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] },
   #  right_ft_z_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] },
-  #  left_toe_angle_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
+    left_toe_angle_traj: { 'dims': [ 0 ], 'derivs': [ 'pos' ] },
   #  right_toe_angle_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
 }

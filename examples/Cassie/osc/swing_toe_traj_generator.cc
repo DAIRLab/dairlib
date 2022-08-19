@@ -63,7 +63,7 @@ void SwingToeTrajGenerator::CalcTraj(
   double deviation_from_ground_plane = (atan2(foot(2), foot.head(2).norm()));
   // Get current difference between
   VectorXd des_swing_toe_angle = VectorXd(1);
-  des_swing_toe_angle << swing_toe_angle + deviation_from_ground_plane + 0.05;
+  des_swing_toe_angle << swing_toe_angle + deviation_from_ground_plane + 0.02;
 //  des_swing_toe_angle << swing_toe_angle + deviation_from_ground_plane;
 
   auto* pp_traj =

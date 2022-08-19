@@ -22,7 +22,7 @@ class DomainRandomizationBounds(StepnetDataClass):
     mu: np.ndarray = default_array([0.4, 1.0])
     camera_position: np.ndarray = default_array([0, 0, 0])
     camera_pitch: float = 0
-    terrain_cumulative_likelihoods: np.ndarray  =default_array([
+    terrain_cumulative_likelihoods: np.ndarray=default_array([
         0.60,   # Cubic
         0.75,   # Cubic with voids
         0.85,   # Stairs
@@ -129,7 +129,7 @@ class DataGeneratorParams(StepnetDataClass):
     """ How much noise to add to target footsteps """
     target_xyz_noise_bound: np.ndarray = default_array([0.25, 0.25, 0.0])
     target_yaw_noise_bound: float = 1.0
-    target_time_bounds: np.ndarray = default_array([0.1, 0.6])
+    target_time_bounds: np.ndarray = default_array([0.1, 0.5])
     randomize_time: bool = True
     randomize_yaw: bool = True
 

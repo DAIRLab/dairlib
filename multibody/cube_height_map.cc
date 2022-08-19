@@ -34,7 +34,8 @@ void CubeHeightMap::AddToPlantWithRandomVoids(
     double missing_ratio) {
   for (int x_idx = 0; x_idx < nx_; x_idx ++) {
     for (int y_idx = 0; y_idx < ny_; y_idx++) {
-      if (randd(0, 1.0) > missing_ratio) {
+      // add the box if we get lucky or if it's the center box
+      if (randd(0, 1.0) > missing_ratio || (x_idx == nx_ / 2 && y_idx == ny_ / 2)) {
         Vector3d box_center(x_resolution_ * (x_idx - (double)(nx_ - 1.0)/2.0),
                             y_resolution_ * (y_idx - (double)(ny_ - 1.0)/2.0),
                             heights_(x_idx, y_idx) - dim_z_ / 2);

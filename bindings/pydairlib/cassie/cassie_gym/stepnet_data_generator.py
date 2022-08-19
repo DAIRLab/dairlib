@@ -40,7 +40,7 @@ URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
-INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
+INITIAL_CONDITIONS_FILE = '.learning_data/augmented_hardware_ics.npy'
 MAX_ERROR = 1.0
 
 
@@ -56,6 +56,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         self.data_gen_params = data_gen_params
         self.simulate_until = 0
         self.ss_time = 0
+        self.ds_time = 0.1
 
         # Simulation Infrastructure
         self.fsm_output_port = None
@@ -363,6 +364,20 @@ class StepnetDataGenerator(DrakeCassieGym):
             ].ravel()
         )
 
+    def get_alip_footstep_target(self, radio):
+        self.cassie_sim.get_radio_input_port().FixValue(
+            context=self.cassie_sim_context,
+            value=radio
+        )
+        # Get the current ALIP footstep target in the body yaw frame
+        com_w = self.sim_plant.CalcCenterOfMassPositionInWorld(
+            self.plant_context)
+
+        alip_target_b = self.alip_target_port.Eval(self.controller_context) + \
+                        ReExpressWorldVector3InBodyYawFrame(
+                            self.plant, self.plant_context, "pelvis", com_w)
+        return alip_target_b
+
     def get_footstep_target_with_random_offset(self):
         # Apply a random velocity command
         radio = np.zeros((18,))
@@ -376,16 +391,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                 high=self.data_gen_params.target_yaw_noise_bound
             )
 
-        self.cassie_sim.get_radio_input_port().FixValue(
-            context=self.cassie_sim_context,
-            value=radio
-        )
-        # Get the current ALIP footstep target in the body yaw frame
-        com_w = self.sim_plant.CalcCenterOfMassPositionInWorld(
-            self.plant_context)
-        alip_target_b = self.alip_target_port.Eval(self.controller_context) + \
-            ReExpressWorldVector3InBodyYawFrame(
-                self.plant, self.plant_context, "pelvis", com_w)
+        alip_target_b = self.get_alip_footstep_target(radio)
 
         # Apply a random offset to the target XY position
         target = alip_target_b + np.random.uniform(
@@ -401,6 +407,15 @@ class StepnetDataGenerator(DrakeCassieGym):
             self.plant_context).matrix() @ target_b
 
         return target_w, target_b, radio
+
+    def make_data_dict(self, depth, x, xyz, yaw, error):
+        return {
+            'depth': depth,
+            'state': x,
+            'target': {'xyz': xyz, 'yaw': yaw},
+            'time': self.ss_time,
+            'error': error
+        }
 
     def get_stepnet_data_point(self, seed=0):
         np.random.seed(seed)
@@ -424,31 +439,43 @@ class StepnetDataGenerator(DrakeCassieGym):
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
 
+        og_foot_position = \
+            self.calc_foot_position_in_world(self.plant_context, swing)
+
         # Step the simulation forward until middle of next double stance
-        while self.current_time < self.simulate_until:
+        while self.current_time < self.ss_time + self.ds_time:
             self.step(footstep_target=target_w, radio=radio)
             # Abort and return max error if something crazy happens
+
+            if self.current_time > self.ss_time / 2 and np.linalg.norm(
+                self.calc_foot_position_in_world(
+                    self.plant_context, swing) - og_foot_position) < 4e-2:
+                return self.get_stepnet_data_point(
+                    np.random.randint(low=0, high=1e5)
+                )
             if self.check_termination():
-                return {
-                    'depth': depth_image,
-                    'state': x,
-                    'target': {'xyz': target_b, 'yaw': radio[9]},
-                    'time': self.ss_time,
-                    'error': MAX_ERROR
-                }
+                return self.make_data_dict(
+                    depth_image, x, target_b, radio[9], MAX_ERROR)
+
+        new_target_b = self.get_alip_footstep_target(radio)
+        new_target_w = self.make_robot_yaw_to_world_rotation(
+            self.plant_context).matrix() @ new_target_b
+        _, new_target_w[2] = \
+            self.get_noisy_height_from_current_depth_image(0, new_target_w)
+        while self.current_time < self.simulate_until:
+            self.step(footstep_target=new_target_w, radio=radio)
+            if self.check_termination():
+                print(MAX_ERROR)
+                return self.make_data_dict(
+                    depth_image, x, target_b, radio[9], MAX_ERROR)
 
         # Calculate error
         swing_foot_final_pos = self.calc_foot_position_in_world(
             self.plant_context, swing)
-        error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target_w))
 
-        return {
-            'depth': depth_image,
-            'state': x,
-            'target': {'xyz': target_b, 'yaw': radio[9]},
-            'time': self.ss_time,
-            'error': error
-        }
+        error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target_w))
+        return self.make_data_dict(
+            depth_image, x, target_b, radio[9], error)
 
     def get_flat_ground_stepnet_datapoint(self, seed=0):
         np.random.seed(seed)

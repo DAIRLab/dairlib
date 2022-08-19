@@ -3,14 +3,14 @@
 #include <drake/systems/primitives/constant_vector_source.h>
 #include <drake/systems/primitives/zero_order_hold.h>
 
-#include "dairlib/lcmt_cassie_out.hpp"
+
 #include "dairlib/lcmt_robot_input.hpp"
-#include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/boxy_height_map.h"
 #include "multibody/cube_height_map.h"
+#include "multibody/stairs.h"
 #include "systems/framework/geared_motor.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -54,8 +54,8 @@ using Eigen::VectorXd;
 CassieVisionSimDiagram::CassieVisionSimDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
     const Vector3d& camera_position, double camera_pitch,
-    const std::string& urdf, bool visualize, bool add_terrain, double mu,
-    double map_yaw, const Eigen::Vector3d& normal) {
+    const std::string& urdf, VisionSimTerrainType terrain_type, bool visualize,
+    double mu, double map_yaw, const Eigen::Vector3d& normal) {
 
   DiagramBuilder<double> builder;
   scene_graph_ = builder.AddSystem<SceneGraph>();
@@ -68,18 +68,41 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  //multibody::BoxyHeightMap hmap =
-  //  multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
 
   cam_transform_ = drake::math::RigidTransformd(
       camera::MakeXZAlignedCameraRotation(camera_pitch),camera_position);
 
-  if (add_terrain) {
-    multibody::CubeHeightMap hmap =
-        multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu);
-    hmap.AddHeightMapToPlant(plant_, scene_graph_);
-  } else {
-    multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu, normal);
+  switch (terrain_type) {
+    case kCubic: {
+      srand(time(0));
+      multibody::CubeHeightMap hmap =
+          multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu);
+      hmap.AddToPlant(plant_, scene_graph_);
+      break;
+    }
+    case kCubicWithVoids: {
+      srand(time(0));
+      multibody::CubeHeightMap hmap =
+          multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu);
+      hmap.AddToPlantWithRandomVoids(
+          plant_, scene_graph_, multibody::randd(0.1, 0.4));
+      break;
+    }
+    case kBoxy: {
+      srand(time(0));
+      multibody::BoxyHeightMap hmap =
+          multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu);
+      hmap.AddToPlant(plant_, scene_graph_);
+      break;
+    }
+    case kStairs: {
+      srand(time(0));
+      multibody::Stairs hmap = multibody::Stairs::MakeRandomMap(mu);
+      hmap.AddToPlant(plant_, scene_graph_);
+      break;
+    }
+    case kFlat:
+      multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu, normal);
   }
 
   plant_->RegisterVisualGeometry(plant_->GetBodyByName("pelvis"),

@@ -58,6 +58,17 @@ cc_library(
 )
 
 cc_library(
+    name = "stairs",
+    srcs = ["stairs.cc"],
+    hdrs = ["stairs.h"],
+    deps = [
+        ":boxy_height_map",
+        ":utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "visualization_utils",
     srcs = [
         "visualization_utils.cc",

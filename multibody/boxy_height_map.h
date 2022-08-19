@@ -23,8 +23,8 @@ class BoxyHeightMap {
 
   void AppendBox(double h, double w);
   void AppendBox(Eigen::Vector2d hw) { AppendBox(hw(0), hw(1));}
-  void AddHeightMapToPlant(drake::multibody::MultibodyPlant<double>* plant,
-                           drake::geometry::SceneGraph<double>* scene_graph);
+  void AddToPlant(drake::multibody::MultibodyPlant<double>* plant,
+                  drake::geometry::SceneGraph<double>* scene_graph);
 
   double GetHeightInWorld(const Eigen::Vector2d &xy_pos) const ;
   Eigen::MatrixXd GetHeightMap(const Eigen::VectorXd &x_grid,
@@ -37,7 +37,6 @@ class BoxyHeightMap {
       const Eigen::Vector3d& normal, double rotz);
 
  private:
-
 
   drake::math::RotationMatrixd R_;
   Eigen::RowVector2d xmap_;

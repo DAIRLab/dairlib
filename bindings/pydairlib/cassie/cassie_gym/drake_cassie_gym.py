@@ -62,7 +62,7 @@ class DrakeCassieGym:
             camera_pitch=self.params.camera_pitch,
             urdf=urdf,
             visualize=self.visualize,
-            add_terrain=self.params.add_terrain,
+            terrain_type=self.params.terrain_type,
             mu=self.params.mu,
             map_yaw=self.params.map_yaw,
             normal=self.params.terrain_normal)

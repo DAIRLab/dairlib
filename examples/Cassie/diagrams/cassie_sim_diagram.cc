@@ -43,7 +43,7 @@ CassieSimDiagram::CassieSimDiagram(
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
   BoxyHeightMap boxes = BoxyHeightMap::MakeRandomMap();
-  boxes.AddHeightMapToPlant(plant_, scene_graph_);
+  boxes.AddToPlant(plant_, scene_graph_);
   plant_->Finalize();
 
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(*plant_);

@@ -3,7 +3,8 @@ import numpy as np
 from pydantic import BaseModel, Field
 
 from pydrake.systems.sensors import CameraInfo
-from pydairlib.cassie.simulators import CassieVisionSimDiagram
+from pydairlib.cassie.simulators import \
+    CassieVisionSimDiagram, VisionSimTerrainType
 
 
 def default_array(default):
@@ -21,6 +22,13 @@ class DomainRandomizationBounds(StepnetDataClass):
     mu: np.ndarray = default_array([0.4, 1.0])
     camera_position: np.ndarray = default_array([0, 0, 0])
     camera_pitch: float = 0
+    terrain_cumulative_likelihoods: np.ndarray  =default_array([
+        0.60,   # Cubic
+        0.75,   # Cubic with voids
+        0.85,   # Stairs
+        0.95,   # Boxy
+        1.00    # Flat
+    ])
 
 
 class CassieGymParams(StepnetDataClass):
@@ -38,7 +46,7 @@ class CassieGymParams(StepnetDataClass):
     mu: float = 0.8
     camera_position: np.ndarray = default_array([0.175, 0, 0.15])
     camera_pitch: float = -0.85 * np.pi / 2
-    add_terrain: bool = False
+    terrain_type: VisionSimTerrainType = VisionSimTerrainType.kFlat
 
     @staticmethod
     def make_random(ic_file_path, domain=DomainRandomizationBounds()):
@@ -63,12 +71,23 @@ class CassieGymParams(StepnetDataClass):
                 low=-domain.camera_pitch,
                 high=domain.camera_pitch
             )
+        terrain_type = VisionSimTerrainType.kCubic
+        terr_draw = np.random.uniform(low=0.0, high=1.0)
+        if terr_draw > domain.terrain_cumulative_likelihoods[0]:
+            terrain_type = VisionSimTerrainType.kCubicWithVoids
+            if terr_draw > domain.terrain_cumulative_likelihoods[1]:
+                terrain_type = VisionSimTerrainType.kStairs
+                if terr_draw > domain.terrain_cumulative_likelihoods[2]:
+                    terrain_type = VisionSimTerrainType.kBoxy
+                    if terr_draw > domain.terrain_cumulative_likelihoods[3]:
+                        terrain_type = VisionSimTerrainType.kFlat
+
         return CassieGymParams(
             terrain_normal=normal,
             x_init=x,
             map_yaw=map_yaw,
             mu=mu,
-            add_terrain=True,
+            terrain_type= terrain_type,
             camera_position=camera_position,
             camera_pitch=camera_pitch
         )

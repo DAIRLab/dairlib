@@ -2,7 +2,7 @@
 
 [DOCS ARE STILL A WORK IN PROGRESS]
 
-This directory contains the majority of the code required to run the C3-Franka ball rolling experiment.  The documentation will be structured as follows:
+This directory contains the majority of the code required to run the C3-Franka ball rolling experiment.  Many of the instructions in this `README.md` are specific to the Franka setup in GRASP lab.  To run the commands on a separate setup, substitute the correct file paths where necessary.  The documentation is structured as follows:
 1. [Installation](#Installation)
 2. [Calibration](#Calibration)
 3. [Experiments](#Experiments)
@@ -13,40 +13,42 @@ This directory contains the majority of the code required to run the C3-Franka b
 ## Installation
     
 ## Calibration
-Note: These instructions are specific to running the experiment on the C3-Franka PCs in the GRASP lab.  To run the experiment on other another setup, substitute the appropriate directory paths as required.
+More details about the functionality of each command can be found in the [kuka_vision repository](https://github.com/DAIRLab/kuka-vision)
 
-### Camera Extrinsics and Table Mask Calibration
-More details about the functionality of each command can be found in the [kuka_vision Repository](https://github.com/DAIRLab/kuka-vision)
-
-#### Extrinics Calibration
+### Camera Extrinics Calibration
 1. Place the calibration board on the table.  Make sure the tag labels match the labels on the table.                                                                                                  
-2. Open 4 terminals.  In terminator, this can be done with `Ctrl+Shift+E` or `Ctrl+Shift+O`
-3. cd into `~/april_tag/tagslam_config` and source the `devel/setup.bash` in all terminals
+2. Open 4 terminals.  In terminator, this can be done with `Ctrl+Shift+E` or `Ctrl+Shift+O`.  In each terminal:
 ```
-cd ~/april_tag/tagslam_config
+cd ~/apriltag/tagslam_root
 source devel/setup.bash
 ```
-4. `roscore`
-5. Move the Pointgrey cameras to a highspeed bus
+3. Move the Pointgrey cameras to a highspeed bus
 ```
 sudo sh -c 'echo 1000 > /sys/module/usbcore/parameters/usbfs_memory_mb'
 ```
-6. Start cameras: `roslaunch kuka_vision kuka_online_cam_sync.launch`
-7. Erase existing calibration in `camera_poses.yaml`
+4. Start cameras.
+```
+roslaunch kuka_vision kuka_online_cam_sync.launch
+```
+5. Erase existing calibration in `camera_poses.yaml`
 ```
 cp src/kuka_vision/tagslam_config/calib_camera_poses.yaml src/kuka_vision/tagslam_config/camera_poses.yaml
 ```
-8. Start the calibration: `roslaunch kuka_vision kuka_online_board_calib.launch`
-9. Open `rviz`.  Click `Add` and add `TF`.  Ensure that all the cameras and tags look like they are in reasonable locations.  Feel free to close `rviz` afterwards.
-
-10. Dump the calibration to the correct location:
+6. Start the calibration:
 ```
-rosservice call /tagslam/dump && cp ~/.ros/camera_poses.yaml src/kuka_vision/tagslam_config/camera_poses.yaml
+roslaunch kuka_vision kuka_online_board_calib.launch
+```
+7. Open `rviz`.  Click `Add` and add `TF`.  Ensure that all the cameras and tags look like they are in reasonable locations.  Feel free to close `rviz` afterwards.
+
+8. Dump the calibration to the correct location:
+```
+rosservice call /tagslam/dump
+cp ~/.ros/camera_poses.yaml src/kuka_vision/tagslam_config/camera_poses.yaml
 ```
 
 These steps will write the extrinic camera info into ```src/kuka_vision/tagslam_config/camera_poses.yaml```.  The pose is the position of the camera in the world frame (franka base frame) in meters, and the rotation is the orientation of the camera in the world frame.
 
-#### Table Mask Calibration
+### Table Mask Calibration
 Ensure that the entire table is visible (not occluded by the ball or the franka)
 1. ```cd ~/adam_ws/franka_ws/catkin_ws```
 2. ```source devel/setup.bash```
@@ -57,7 +59,10 @@ Ensure that the entire table is visible (not occluded by the ball or the franka)
 ### Table Height Calibration
 Ensure that the correct end effector is attached before proceeding.
 1. Turn on franka, unlock joints, and enter FCI mode.  Franka desk can be accessed by visiting `172.16.0.2`.
-2. Open procman: `bot-procman-sheriff -l examples/franka_trajectory_following/procman_script_c3.pmd` and run `c.control_node` in group `4.ROS Controllers`.
+2. Open procman and run `c.control_node` in group `4.ROS Controllers`.
+```
+bot-procman-sheriff -l examples/franka_trajectory_following/procman_script_c3.pmd
+```
 3. Echo the `/franka_state_controller/franka_states` topic and examine the `O_T_EE` field.  This is a 4x4 homogeneous transform matrix organized in column major order.  The center of the EE in the base frame is stored in elements 13-15.  For info about the `O_T_EE`, see the [franka docs](#https://frankaemika.github.io/libfranka/structfranka_1_1RobotState.html#a193781d47722b32925e0ea7ac415f442).
 ```
 rostopic echo /franka_state_controller/franka_states
@@ -76,11 +81,11 @@ Most commands for the experiment can be run through `procman`.  An example photo
 ### Setting up LCM networking
 These steps are requried for both sim and hardware experiments in the GRASP lab set up.  If you would like to run all processes, including C3 on the same machine, you can skip these steps since LCM networking won't be used.
 1. On Franka PC: `sudo ip route add eno1`
-2. On C3 PC: `sudo ip route add <device>`.  **TODO: update device.**
-3. Test LCM communciation
+2. On C3 PC: `sudo ip route add <device>`.  `<device>` can be found by running `supo ip addr`.
+3. Test LCM communciation:
 ```
 iperf -c 239.255.76.67 -u -b 20m -f m -i 1 -t 300    # to send from one computer to another
-**TODO: find the receiving command** # to receive messages from anotehr computer
+iperf -s -B 239.255.76.67 -u -f m  -i 1              # to receive message from sending computer
 ```
 
 ### Running Experiments in SIM
@@ -106,14 +111,18 @@ source ../franka/catkin_ws/devel/setup.bash
 bot-procman-sheriff -l examples/franka_trajectory_following/procman_script_c3.pmd
 ```
 2. Start `a.roscore` from group `2.ROS`.
-3. Open a new terminal to start the cameras.  Pointgrey cameras take ~1min to warm up.  If you are getting errors, ensure that the cameras are plugged into USB3.0 ports (bottom 4 ports on the back of Franka PC) and that the cameras are on a high speed bus: `sudo sh -c 'echo 1000 > /sys/module/usbcore/parameters/usbfs_memory_mb'`
+3. Open a new terminal to start the cameras.  Pointgrey cameras take ~1min to warm up.  If you are getting errors, ensure that the cameras are plugged into USB3.0 ports
 ```
 cd ~/apriltag/tagslam_root
 source devel/setup.bash
+sudo sh -c 'echo 1000 > /sys/module/usbcore/parameters/usbfs_memory_mb'  # needs to be run once per bootup
 roslaunch kuka_vision kuka_offline_cam_sync_90.launch
 ```
 4. Start group `2.roscore`. During this process, you may see the Pointgrey's drop a few frames as the realsense camera starts up; this is normal.  Click on `b.vision` and ensure that the vision errors look reasonable. If vision change the last 0 flag to 1 in the commmand and rerun to enable visualation. Change the visualization flag back to 0 once you are done debugging.
-5. `rostopic echo /c3/position_estimate`.  Move the ball to the correct starting location.
+5. Move the ball to the correct starting location by examining the output of the vision algorithm.
+```
+rostopic echo /c3/position_estimate
+```
 6. Start `3.safety`.  This step is `**CRITICAL**`.  The `start_franka_cmds` script will start a safety node if you forget, but you should not rely on this feature.  You should see that safety is waiting for register the `TriggerError` ros service.
 7. In the top toolbar of procman, there is a `Scripts` menu.  Click it and start the `start_franka_cmds` script.  This will start all the controllers, logging, and filming.
 8. Once the experiment has concluded, run the `stop_franka_cmds` script from the same `Scripts` menu.  This will stop all the controllers in a safe order and begin processing the logs and video frames.
@@ -140,7 +149,47 @@ bot-procman-sheriff -l examples/franka_trajectory_following/procman_script_c3.pm
 4. Franka PC is running out of memory which can lead to failed builds or other weird behavior.
 
 ## Directory Structure
+This section provides a brief overview of the directory structure for each repository.  For more details about the files in each repository, see [Relevant Files](#Relevant-Files).
+
+### dairlib
+- `examples/franka_trajectory_following`: main repository for C3-Franka experiments (ex. parameter files, diagram building scripts, procman files, c3-specific systems, etc)
+    - `legacy`: directory containing the old python diagram scripts from May 2022
+    - `parameters`: directory containing decent parameters for other balls (out-of-date, should only be used as a rough reference)
+    - `robot_property_fingers`: directory containing urdfs, urdf templates (for `update_urdfs` script), meshes, `EE.json`, etc.
+    - `scripts`: directory containing logging scripts
+    - `systems`: directory containing c3 specific systems
+    - `c3_parameters.h`, `parameters.yaml`: parameter related files
+    - `run*`: cc files for building and running diagrams
+    - `lcm_control_demo`: c3 diagram file
+    - `simulate_franka_lcm`: franka simulator
+    - `visualizer.cc`: visualizer
+    - `procman*`: procman scripts for impedance or c3 experiments
+- `bindings/pydairlib/analysis`: directory that implements log post-processing
+    - `plot_configs`: directory containing `franka_default_plot.yaml`, the config file for log post-processing
+    - `log_plotter_cassie.py`: python script that post processes a log.  Uses utils from other python files in this directory.
+- `director/scripts`: contains visualization script, json files, and usage instructions
+    - `c3_impedance.json`: visualization for C3-Franka experiments
+- `lcmtypes`: directory containing lcm type defintions
+    - `lcmt_ball_positions.lcm`: lcm type for reading ball measurements from vision algorithm.
+    - `lcmt_c3`: lcm type for c3 experiments
+- `solvers`: contains `C3` and `C3MIQP` implementations
+- `systems`: contains several key systems that are used as part of the C3-Franka experiments
+    - `controllers/impedance_controller.h`: impedance_controller implementation (currently franka specific, but easily modifiable to be more general)
+    - `controllers/c3_controller_franka`: `C3MIQP` implementation for C3-Franka experiments.  Velocity limits, gaiting, and experiment initialization are implemented here
+    - `ros`: directory containing the relevant systems for Drake<->ROS.
+    - `robot_lcm_systems.*`: files implementing sending and receiving classes for LCM messages, including `lcmt_c3` messages.
+
+### franka_ws/catkin_ws
+
 
 ## Relevant Files
 
 ## FAQ
+TODO: more questions here
+1. How do I create a new Drake<->Interface?
+2. Vision algorithm is too slow, how can I speed it up?
+3. How do I add/remove new parameters to `parameters.yaml`?
+4. Webcam has arrived, how do I set it up?
+5. Geom error?
+6. C3 target in sim is jumping everywhere?
+7. LCM messages are not being sent across the network.

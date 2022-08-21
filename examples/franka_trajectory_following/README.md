@@ -80,8 +80,11 @@ Most commands for the experiment can be run through `procman`.  An example photo
 
 ### Setting up LCM networking
 These steps are requried for both sim and hardware experiments in the GRASP lab set up.  If you would like to run all processes, including C3 on the same machine, you can skip these steps since LCM networking won't be used.
-1. On Franka PC: `sudo ip route add eno1`
-2. On C3 PC: `sudo ip route add <device>`.  `<device>` can be found by running `supo ip addr`.
+1. On Franka PC:
+```
+sudo ip route add 239.255.76.67 dev eno1
+```
+2. On C3 PC: `sudo ip route add 239.255.76.67 dev <device>`.  `<device>` can be found by running `supo ip addr`.
 3. Test LCM communciation:
 ```
 iperf -c 239.255.76.67 -u -b 20m -f m -i 1 -t 300    # to send from one computer to another

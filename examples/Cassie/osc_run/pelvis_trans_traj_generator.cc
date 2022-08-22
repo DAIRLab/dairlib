@@ -134,9 +134,8 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   } else if (fsm_state == 1) {
     y_dist_des = 0.15;
   }
-  //   samples << 0, 0, 0, y_dist_des, y_dist_des,  y_dist_des, rest_length_,
-  //   rest_length_ + 0.05, rest_length_;
-  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ + rest_length_offset_;
+//  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ + rest_length_offset_;
+  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_;
 //  samples_dot << 0, 0, 0, 0, 0.25, 0.0;
   //  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
   return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);

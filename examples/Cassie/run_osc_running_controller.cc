@@ -430,7 +430,7 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> foot_traj_gain_trajectory =
       PiecewisePolynomial<double>::FirstOrderHold(
           {0, 0.25 + 0.2},
-          {0.5 * MatrixXd::Identity(3, 3), 2.0 * MatrixXd::Identity(3, 3)});
+          {0.5 * MatrixXd::Identity(3, 3), 3.0 * MatrixXd::Identity(3, 3)});
   //  PiecewisePolynomial<double> foot_traj_weight_trajectory =
   //      PiecewisePolynomial<double>::FirstOrderHold(
   //          {0, 0.25 + 0.2}, {VectorXd::Ones(1), VectorXd::Ones(1)});

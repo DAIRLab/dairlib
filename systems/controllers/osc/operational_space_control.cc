@@ -430,11 +430,12 @@ void OperationalSpaceControl::Build() {
             .evaluator()
             .get();
   }
-  //  input_smoothing_constraint_ =
-  //      prog_->AddBoundingBoxConstraint(VectorXd::Zero(n_u_),
-  //      VectorXd::Zero(n_u_), u_)
-  //          .evaluator()
-  //          .get();
+  input_smoothing_constraint_ =
+      prog_
+          ->AddBoundingBoxConstraint(u_min_, u_max_,
+                                     u_)
+          .evaluator()
+          .get();
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     tracking_cost_.push_back(prog_
@@ -704,9 +705,9 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
       tracking_cost_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t + W_joint_accel_,
+          J_t.transpose() * W * J_t,
           J_t.transpose() * W * (JdotV_t - ddy_t),
-          constant_term.transpose() * W * constant_term);
+          constant_term.transpose() * W * constant_term, true);
       //      tracking_cost_.at(i)->UpdateCoefficients(
       //          J_t.transpose() * W * J_t, VectorXd::Zero(n_v_), 0.5 *
       //          constant_term.transpose() * W * constant_term);
@@ -776,6 +777,12 @@ VectorXd OperationalSpaceControl::SolveQp(
     input_smoothing_cost_->UpdateCoefficients(W_input_smoothing_,
                                               -W_input_smoothing_ * *u_prev_);
   }
+
+//  if (w_input_smoothing_constraint_ < 1){
+//    input_smoothing_constraint_->UpdateCoefficients(
+//        MatrixXd::Identity(n_u_, n_u_), *u_prev_ - w_input_smoothing_constraint_ * u_max_,
+//        *u_prev_ + w_input_smoothing_constraint_ * u_max_);
+//  }
 
   if (W_lambda_c_reg_.size() > 0) {
     lambda_c_smoothing_cost_->UpdateCoefficients(alpha * W_lambda_c_reg_,

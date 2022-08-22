@@ -221,7 +221,8 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant.num_velocities();
 
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  osc->SetInputSmoothingWeights(gains.w_input_reg * gains.W_input_regularization);
+  osc->SetInputSmoothingCostWeights(
+      gains.w_input_reg * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(gains.w_lambda *
                                               gains.W_lambda_h_regularization);

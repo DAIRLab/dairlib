@@ -373,7 +373,8 @@ int DoMain(int argc, char* argv[]) {
   int n_u = plant_w_spr.num_actuators();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
-  osc->SetInputSmoothingWeights(gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
+  osc->SetInputSmoothingCostWeights(
+      gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
 
   // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);

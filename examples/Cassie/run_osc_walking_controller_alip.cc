@@ -375,8 +375,8 @@ int DoMain(int argc, char* argv[]) {
                                             osc_walking_gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
                                               osc_walking_gains.W_lambda_h_regularization);
-  osc->SetInputSmoothingWeights(osc_walking_gains.w_input_reg *
-                                MatrixXd::Identity(n_u, n_u));
+  osc->SetInputSmoothingCostWeights(osc_walking_gains.w_input_reg *
+      MatrixXd::Identity(n_u, n_u));
 
   // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);

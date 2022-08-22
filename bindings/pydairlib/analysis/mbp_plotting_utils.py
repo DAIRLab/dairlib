@@ -559,6 +559,22 @@ def plot_lambda_c_sol(osc_debug, time_slice, lambda_slice):
     return ps
 
 
+def plot_lambda_h_sol(osc_debug, time_slice, lambda_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['lambda_h_sol'],
+        {'lambda_h_sol': lambda_slice},
+        {'lambda_h_sol': ['lambda_h_' + i for i in
+                          plotting_utils.slice_to_string_list(lambda_slice)]},
+        {'xlabel': 'time',
+         'ylabel': 'lambda',
+         'title': 'OSC constraint force solution'}, ps)
+    return ps
+
+
 def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(

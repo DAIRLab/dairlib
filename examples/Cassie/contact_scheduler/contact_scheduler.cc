@@ -182,11 +182,11 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
 
       // TODO(yangwill): calculate end of stance duration
       double stance_scale = (0.016) / (pelvis_zdot * pelvis_zdot);
-      stance_scale = drake::math::saturate(stance_scale, 0.9, 1.2);
+      stance_scale = drake::math::saturate(stance_scale, 0.95, 1.05);
       //      std::cout << "stance scale: " << stance_scale << std::endl;
-      //      double next_transition_time =
-      //          stored_transition_time + stance_scale * 0.25;
-      double next_transition_time = stored_transition_time + 0.25;
+      double next_transition_time =
+          stored_transition_time + stance_scale * stance_duration_;
+//      double next_transition_time = stored_transition_time + stance_duration_;
       state->get_mutable_discrete_state(nominal_state_durations_index_)[0] =
           next_transition_time - stored_transition_time;
       if (active_state == LEFT_STANCE) {
@@ -203,16 +203,16 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
                                 {transition_times[RIGHT_FLIGHT], RIGHT_FLIGHT}};
       }
     } else {
-      double time_to_touchdown = 0.1;
+      double time_to_touchdown = flight_duration_;
       if (pelvis_zdot * pelvis_zdot - 2 * g * (rest_length_ - pelvis_z) > 0) {
         time_to_touchdown =
             (pelvis_zdot + sqrt(pelvis_zdot * pelvis_zdot -
                                 2 * g * (rest_length_ - pelvis_z))) /
             g;
       }
-      //      double time_to_touchdown_saturated =
-      //          drake::math::saturate(time_to_touchdown, 0.08, 0.12);
-      double time_to_touchdown_saturated = 0.12;
+      //      double time_to_touchdown_saturated = ;
+      double time_to_touchdown_saturated = drake::math::saturate(
+          time_to_touchdown, 0.9 * flight_duration_, 1.1 * flight_duration_);
       double next_transition_time =
           stored_transition_time + time_to_touchdown_saturated;
       state->get_mutable_discrete_state(nominal_state_durations_index_)[1] =

@@ -227,7 +227,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   int n_u = plant.num_actuators();
   MatrixXd Q_accel = osc_walking_gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
-  osc->SetInputSmoothingWeights(
+  osc->SetInputSmoothingCostWeights(
       osc_walking_gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
   // Soft constraint on contacts
   osc->SetSoftConstraintWeight(osc_walking_gains.w_soft_constraint);

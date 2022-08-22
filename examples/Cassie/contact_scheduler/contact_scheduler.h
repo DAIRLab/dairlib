@@ -26,6 +26,10 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
                    BLEND_FUNC blend_func = SIGMOID);
 
   void SetSLIPParams(double rest_length) { rest_length_ = rest_length; }
+  void SetNominalStepTimings(double stance_duration, double flight_duration) {
+    stance_duration_ = stance_duration;
+    flight_duration_ = flight_duration;
+  }
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
@@ -101,6 +105,8 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
 
   /// SLIP parameters
   double rest_length_;
+  double stance_duration_;
+  double flight_duration_;
 };
 
 }  // namespace dairlib

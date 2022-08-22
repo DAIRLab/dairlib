@@ -144,8 +144,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetAccelerationCostWeights(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
   }
-  void SetInputSmoothingWeights(const Eigen::MatrixXd& W) {
+  void SetInputSmoothingCostWeights(const Eigen::MatrixXd& W) {
     W_input_smoothing_ = W;
+  }
+  void SetInputSmoothingConstraintWeights(const double w) {
+    w_input_smoothing_constraint_ = w;
   }
   void SetSoftConstraintWeight(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
@@ -364,6 +367,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd W_input_smoothing_;
   Eigen::MatrixXd W_lambda_c_reg_;
   Eigen::MatrixXd W_lambda_h_reg_;
+  double w_input_smoothing_constraint_ = 1;
   std::map<int, std::pair<int, double>> fsm_to_w_input_map_; // each pair is (joint index, weight)
 
 

@@ -133,6 +133,8 @@ def main():
     if plot_config.plot_qp_solutions:
         plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 6))
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0, 6))
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
     if plot_config.plot_tracking_costs:
         plot = mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)

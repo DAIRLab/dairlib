@@ -12,7 +12,7 @@ polish: 0
 polish_refine_iter: 0
 verbose: 0
 scaled_termination: 1
-check_termination: 15
+check_termination: 25
 warm_start: 1
 scaling: 1
 adaptive_rho: 1

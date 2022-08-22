@@ -25,7 +25,7 @@ def main():
         directory = args.path
         model = PPO.load(directory)
         # eval_env = make_vec_env(make_radio_swing_ft_env, 1, 10)
-        eval_env = CassieFootstepEnv(visualize=True)
+        eval_env = CassieFootstepEnv(visualize=True, debug=True, blind=False)
         for ep in range(10):
             state = eval_env.reset()
             while True:
@@ -40,17 +40,17 @@ def main():
         if pretrained:
             directory = args.path
             model = PPO.load(directory)
-            env = make_vec_env(make_footstep_env_fn, n_envs, 50, max_step_magnitude=0.07, blind=True, terrain_randomize=True)
+            env = make_vec_env(make_footstep_env_fn, n_envs, 50, max_step_magnitude=0.05, blind=False, terrain_randomize=True, reward_weights=[0.2,-0.4])
             model.set_env(env)
         else:
-            env = make_vec_env(make_footstep_env_fn, n_envs, 50, max_step_magnitude=0.07, blind=True, terrain_randomize=True)
+            env = make_vec_env(make_footstep_env_fn, n_envs, 50, max_step_magnitude=0.05, blind=False, terrain_randomize=True, reward_weights=[0.2,-0.4])
             model = PPO("MlpPolicy",
                         env,
                         verbose=1,
                         tensorboard_log=logdir,
-                        n_steps=int(2048/n_envs),
-                        batch_size=512)
-        eval_env = make_vec_env(make_footstep_env_fn, 1, 30)
+                        n_steps=int(5096/n_envs),
+                        batch_size=1024)
+        eval_env = make_vec_env(make_footstep_env_fn, 1, 30, blind=False)
         try:
             model.learn(1.5e6, eval_env=eval_env, eval_freq=256)
         except KeyboardInterrupt:

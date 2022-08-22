@@ -97,7 +97,7 @@ def csv_ic_to_new_ic(csv_ic):
 
 class CassieFootstepEnv(DrakeCassieGym):
     # Init should be the same as the StepNet generator stuff
-    def __init__(self, visualize=False, blind=True, params=FootstepGymParams()):
+    def __init__(self, visualize=False, blind=True, debug= False, params=FootstepGymParams()):
         # Initialize the base cassie gym simulator
         super().__init__(
             visualize=visualize,
@@ -110,6 +110,7 @@ class CassieFootstepEnv(DrakeCassieGym):
         # TODO(hersh500): add framestacking wrapper
         self.n_stack = params.n_stack
         self.blind = blind
+        self.debug = debug
 
         # Simulation Infrastructure
         self.fsm_output_port = None
@@ -228,13 +229,16 @@ class CassieFootstepEnv(DrakeCassieGym):
                               self.plant_context)
             alip_target[2] = 0.0
         else:
-            # TODO(hersh500): lookup the correct height from the depth image.
             image = self.get_current_depth_image()
-            # alip_targets are relative to CoM though, and not pelvis. how to reconcile?
-            pt_b = self.lookup_height(image, [alip_target[0], alip_target[1]])
-        if self.visualize:
-            # print(f"radio command = {radio[2:6]}")
-            # print(f"step cmd for {swing} foot is {target}")
+            target_p = self.com_to_pelvis_frame(target)
+            z_pelvis = self.lookup_height(image, [target_p[0], target_p[1]])
+            if self.debug:
+                print(f"z_pelvis={z_pelvis}")
+            alip_target = self.pelvis_pose(self.plant_context).multiply(np.array([target_p[0], target_p[1], z_pelvis]))
+
+        if self.visualize and self.debug:
+            print(f"radio command = {radio[2:6]}")
+            print(f"step cmd for {swing} foot is {alip_target}")
             pass
 
         fixed_ports=[FixedVectorInputPort(
@@ -355,6 +359,20 @@ class CassieFootstepEnv(DrakeCassieGym):
             body=self.sim_plant.GetBodyByName("pelvis"))
 
 
+    def com_to_pelvis_frame(self, x):
+        com2world = RigidTransform(p = self.sim_plant.CalcCenterOfMassPositionInWorld(
+                  self.plant_context), R = RotationMatrix(np.eye(3))).inverse()
+        world2pelvis = self.pelvis_pose(self.plant_context)
+        return world2pelvis.multiply(com2world.multiply(x))
+
+
+    def pelvis_to_com_frame(self, x):
+        pelvis2world = self.pelvis_pose(self.plant_context).inverse()
+        world2com = RigidTransform(p = self.sim_plant.CalcCenterOfMassPositionInWorld(
+                  self.plant_context), R = RotationMatrix(np.eye(3))).inverse()
+        return world2com.multiply(pelvis2world.multiply(x))
+
+
     def move_robot(self, x, pos):
         self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
         x[CASSIE_FB_POSITION_SLICE] = (
@@ -470,8 +488,10 @@ def make_footstep_env_fn(rank,
 
 # test out this env with providing no actions
 def main():
-    env = CassieFootstepEnv(visualize=True, blind=True, params=FootstepGymParams(max_step_magnitude=0.0, terrain_randomize=False))
-    env.test_depth_lookup()
+    env = CassieFootstepEnv(visualize=True, blind=False, debug=True, params=FootstepGymParams(max_step_magnitude=0.05, terrain_randomize=False))
+    # env.test_depth_lookup()
+    env.seed(90)
+    env.test_env()
 
 if __name__ == "__main__":
     main()

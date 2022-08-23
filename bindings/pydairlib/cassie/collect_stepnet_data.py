@@ -27,6 +27,7 @@ def ndigits(number):
 
 
 def collect_data_from_random_map(size, seed, params):
+    np.random.seed(seed)
     env = StepnetDataGenerator.make_randomized_env(
         params.generator_params,
         params.randomization_bounds
@@ -151,8 +152,6 @@ def save_config_test(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--terrain', type=str, default='varied', help='\'varied\' or \'flat\'')
-    parser.add_argument('--vary_timing', type=bool, default=False, help='bool: vary step timing or no?')
-    parser.add_argument('--vary_foot_yaw', type=bool, default=False, help='bool: add a yaw target to the controller?')
     parser.add_argument('--nmaps', type=int, default=50000)
     parser.add_argument('--nsteps', type=int, default=10)
     parser.add_argument('--nthreads', type=int, default=5)

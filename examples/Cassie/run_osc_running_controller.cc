@@ -211,6 +211,7 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.w_lambda * osc_gains.W_lambda_h_regularization);
   // Soft constraint on contacts
   osc->SetSoftConstraintWeight(osc_gains.w_soft_constraint);
+  osc->SetJointLimitWeight(osc_gains.w_joint_limit);
 
   // Contact information for OSC
   osc->SetContactFriction(osc_gains.mu);

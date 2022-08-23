@@ -1,14 +1,15 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 
+#include "common/find_resource.h"
 #include "dairlib/lcmt_osc_output.hpp"
 #include "dairlib/lcmt_osc_qp_output.hpp"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -19,7 +20,6 @@
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
-#include "common/find_resource.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -138,8 +138,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
 
   // Regularization cost weights
-  void AddInputCostByJointAndFsmState(
-      const std::string& joint_u_name, int fsm, double w);
+  void AddInputCostByJointAndFsmState(const std::string& joint_u_name, int fsm,
+                                      double w);
   void SetInputCostWeights(const Eigen::MatrixXd& W) { W_input_ = W; }
   void SetAccelerationCostWeights(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
@@ -159,6 +159,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetLambdaHolonomicRegularizationWeight(const Eigen::MatrixXd& W) {
     W_lambda_h_reg_ = W;
   }
+  void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
 
   // Constraint methods
   void DisableAcutationConstraint() { with_input_constraints_ = false; }
@@ -173,11 +174,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
   /// a new state)
-  void AddTrackingData(std::unique_ptr<OscTrackingData> tracking_data, double t_lb = 0,
+  void AddTrackingData(std::unique_ptr<OscTrackingData> tracking_data,
+                       double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
   void AddConstTrackingData(
-      std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v, double t_lb = 0,
-      double t_ub = std::numeric_limits<double>::infinity());
+      std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v,
+      double t_lb = 0, double t_ub = std::numeric_limits<double>::infinity());
   std::vector<std::unique_ptr<OscTrackingData>>* GetAllTrackingData() {
     return tracking_data_vec_.get();
   }
@@ -196,7 +198,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetOsqpSolverOptionsFromYaml(const std::string& yaml_string) {
     SetOsqpSolverOptions(
         drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
-            FindResourceOrThrow(yaml_string)).osqp_options);
+            FindResourceOrThrow(yaml_string))
+            .osqp_options);
   };
   // OSC LeafSystem builder
   void Build();
@@ -337,14 +340,17 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* dynamics_constraint_;
   drake::solvers::LinearEqualityConstraint* holonomic_constraint_;
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
-  drake::solvers::BoundingBoxConstraint* input_smoothing_constraint_;
+//  drake::solvers::BoundingBoxConstraint* input_smoothing_constraint_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
-  std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
+
+  std::vector<drake::solvers::QuadraticCost*> tracking_costs_;
+  drake::solvers::QuadraticCost* accel_cost_;
+  drake::solvers::LinearCost* joint_limit_cost_;
   drake::solvers::QuadraticCost* input_cost_;
-  std::vector<drake::solvers::LinearCost*> joint_limit_cost_;
   drake::solvers::QuadraticCost* input_smoothing_cost_;
-  drake::solvers::QuadraticCost* lambda_c_smoothing_cost_;
-  drake::solvers::QuadraticCost* lambda_h_smoothing_cost_;
+  drake::solvers::QuadraticCost* lambda_c_cost_;
+  drake::solvers::QuadraticCost* lambda_h_cost_;
+  drake::solvers::QuadraticCost* soft_constraint_cost_;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;
@@ -368,17 +374,16 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd W_lambda_c_reg_;
   Eigen::MatrixXd W_lambda_h_reg_;
   double w_input_smoothing_constraint_ = 1;
-  std::map<int, std::pair<int, double>> fsm_to_w_input_map_; // each pair is (joint index, weight)
-
+  // Joint limit penalty
+  double w_joint_limit_ = 0;
+  std::map<int, std::pair<int, double>>
+      fsm_to_w_input_map_;  // each pair is (joint index, weight)
 
   // OSC constraint members
   bool with_input_constraints_ = true;
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
-
-  // Joint limit penalty
-  Eigen::VectorXd w_joint_limit_;
 
   // Map finite state machine state to its active contact indices
   std::map<int, std::set<int>> contact_indices_map_ = {};
@@ -389,7 +394,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_x_ = {};
   mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_y_ = {};
-//  mutable std::unordered_map<int, Eigen::VectorXd> u_prev_ = {};
+  //  mutable std::unordered_map<int, Eigen::VectorXd> u_prev_ = {};
 
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
@@ -414,11 +419,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   mutable double prev_distinct_fsm_state_ = -1;
   drake::solvers::LinearEqualityConstraint* blend_constraint_;
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
-//  drake::solvers::BoundingBoxConstraint* contact_force_smoothing_constraint_;
+  //  drake::solvers::BoundingBoxConstraint*
+  //  contact_force_smoothing_constraint_;
 
   // Optional feature -- regularizing input
-  mutable double total_cost_ = 0;
-  mutable double soft_constraint_cost_ = 0;
+//  mutable double total_cost_ = 0;
+//  mutable double soft_constraint_cost_ = 0;
 };
 
 }  // namespace dairlib::systems::controllers

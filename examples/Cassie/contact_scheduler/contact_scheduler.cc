@@ -212,7 +212,7 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
       }
       //      double time_to_touchdown_saturated = ;
       double time_to_touchdown_saturated = drake::math::saturate(
-          time_to_touchdown, 0.9 * flight_duration_, 1.1 * flight_duration_);
+          time_to_touchdown, 0.75 * flight_duration_, 1.1 * flight_duration_);
       double next_transition_time =
           stored_transition_time + time_to_touchdown_saturated;
       state->get_mutable_discrete_state(nominal_state_durations_index_)[1] =

@@ -38,6 +38,7 @@ struct OSCRunningGains : OSCGains {
   std::vector<double> ekf_filter_tau;
   double rot_filter_tau;
   double w_input_accel;
+  double w_joint_limit;
 
   // swing foot tracking
   std::vector<double> SwingFootW;
@@ -94,6 +95,7 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(ekf_filter_tau));
     a->Visit(DRAKE_NVP(rot_filter_tau));
     a->Visit(DRAKE_NVP(w_input_accel));
+    a->Visit(DRAKE_NVP(w_joint_limit));
 
 
     a->Visit(DRAKE_NVP(PelvisW));
@@ -172,6 +174,7 @@ struct OSCRunningGains : OSCGains {
     w_input_reg *= weight_scaling;
     w_lambda *= weight_scaling;
     w_soft_constraint *= weight_scaling;
+    w_joint_limit *= weight_scaling;
     W_pelvis *= weight_scaling;
     W_pelvis_rot *= weight_scaling;
     W_swing_foot *= weight_scaling;

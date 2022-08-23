@@ -197,7 +197,6 @@ int DoMain(int argc, char* argv[]) {
 
   osc->AddKinematicConstraint(&evaluators);
 
-
   // Friction coefficient
   osc->SetContactFriction(gains.mu);
   // Add contact points
@@ -221,11 +220,12 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant.num_velocities();
 
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  osc->SetInputSmoothingCostWeights(
-      gains.w_input_reg * gains.W_input_regularization);
+  osc->SetInputSmoothingCostWeights(gains.w_input_reg *
+                                    gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(gains.w_lambda *
                                               gains.W_lambda_h_regularization);
+  osc->SetJointLimitWeight(1.0);
 
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
@@ -246,7 +246,8 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_rot_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
       osc_gains.W_pelvis * FLAGS_cost_weight_multiplier, plant, plant);
   pelvis_rot_traj->AddFrameToTrack("pelvis");
-  pelvis_rot_traj->SetLowPassFilter(osc_gains.center_of_mass_filter_tau, {0, 1, 2});
+  pelvis_rot_traj->SetLowPassFilter(osc_gains.center_of_mass_filter_tau,
+                                    {0, 1, 2});
   osc->AddTrackingData(std::move(pelvis_rot_traj));
 
   // Hip yaw joint tracking

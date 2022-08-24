@@ -8,7 +8,7 @@ cc_library(
     hdrs = ["alip_s2s_planner.h"],
     deps = [
         ":alip_utils",
-        ":convex_foothold",
+        "//geometry:convex_foothold",
         "//multibody:utils",
         "//systems/controllers:control_utils",
         "//systems/filters:s2s_kalman_filter",
@@ -23,15 +23,6 @@ cc_library(
     hdrs = ["alip_utils.h"],
     deps = [
         "//multibody:utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "convex_foothold",
-    srcs = ["convex_foothold.cc"],
-    hdrs = ["convex_foothold.h"],
-    deps = [
         "@drake//:drake_shared_library",
     ],
 )

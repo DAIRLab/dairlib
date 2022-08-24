@@ -4,7 +4,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/footstep_planning/convex_foothold.h"
+#include "geometry/convex_foothold.h"
 
 namespace dairlib::systems::controllers {
 
@@ -41,7 +41,7 @@ class AlipS2SPlanner : public drake::systems::LeafSystem<double> {
       drake::EigenPtr<Eigen::Vector2d> p_sw,
       drake::EigenPtr<Eigen::Vector2d> p_com) const;
 
-  double CalcFootstepTimingOffset(const ConvexFoothold& foothold,
+  double CalcFootstepTimingOffset(const geometry::ConvexFoothold& foothold,
       const Eigen::Vector2d& p_sw, const Eigen::Vector2d& p_com) const;
 
   // drake input ports

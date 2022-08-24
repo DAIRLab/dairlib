@@ -4,7 +4,7 @@
 
 // dairlib includes
 #include "alip_s2s_planner.h"
-#include "convex_foothold.h"
+#include "geometry/convex_foothold.h"
 #include "systems/filters/s2s_kalman_filter.h"
 
 // drake includes
@@ -12,6 +12,8 @@
 #include "drake/solvers/mathematical_program_result.h"
 
 namespace dairlib::systems::controllers {
+
+using geometry::ConvexFoothold;
 
 using alip_utils::PointOnFramed;
 using alip_utils::CalcA;
@@ -100,10 +102,8 @@ AlipS2SPlanner::AlipS2SPlanner(const MultibodyPlant<double>& plant,
       "x, u, t", OutputVector<double>(nq_, nv_, nu_)).get_index();
   vdes_input_port_ = this->DeclareVectorInputPort(
       "xy walking speed", BasicVector<double>(2)).get_index();
-  ConvexFoothold model_foothold(MatrixXd::Zero(0,0), VectorXd::Zero(0, 0),
-                                MatrixXd::Zero(0, 0), VectorXd::Zero(0, 0));
   foothold_input_port_ = this->DeclareAbstractInputPort(
-      "next stepping stone", drake::Value<ConvexFoothold>(model_foothold))
+      "next stepping stone", drake::Value<ConvexFoothold>())
           .get_index();
 
   // Direct state output ports
@@ -180,7 +180,7 @@ EventStatus AlipS2SPlanner::UnrestrictedUpdate(const Context<double>& context,
     t_step += CalcFootstepTimingOffset(foothold, p_hat_sw, p_hat_com);
     CalcNominalAlipFootTarget(vdes, alip_state, t_step, &p_hat_sw, &p_hat_com);
 
-    Vector2d p_sw_des = foothold.ProjectPointToSet(p_hat_sw);
+    Vector2d p_sw_des = p_hat_sw; // TODO: implement projection
     // TODO: Make a 3D swing foot target and update the corresponding
     //  DiscreteState
 

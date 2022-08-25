@@ -91,6 +91,12 @@ void AlipMINLP::AddInputCost(double R) {
 
 void AlipMINLP::Build() {
   mode_sequnces_ = GetPossibleModeSequences();
+  for (auto& seq : mode_sequnces_) {
+    for (auto& i : seq){
+      std::cout << i << " ";
+    }
+    std::cout << std::endl;
+  }
   for (int i = 0; i < nmodes_; i++) {
     tt_.push_back(prog_.NewContinuousVariables(1, "t"));
   }
@@ -115,6 +121,8 @@ void AlipMINLP::AddMode(int nk) {
   }
   nmodes_ += 1;
   nknots_.push_back(nk);
+  xx_.push_back(xknots);
+  uu_.push_back(uknots);
 }
 
 void AlipMINLP::MakeIndividualFootholdConstraint(int idx_mode,
@@ -123,7 +131,7 @@ void AlipMINLP::MakeIndividualFootholdConstraint(int idx_mode,
   const auto& [A_eq, b_eq] = footholds_.at(idx_foothold).GetEqualityConstraintMatrices();
   footstep_c_.push_back(
       {prog_.AddLinearConstraint(
-          A, -numeric_limits<double>::infinity()*Vector3d::Ones(),
+          A, -numeric_limits<double>::infinity()*VectorXd::Ones(b.rows()),
           b, pp_.at(idx_mode)),
        prog_.AddLinearEqualityConstraint(
            A_eq, b_eq, pp_.at(idx_mode)
@@ -134,7 +142,7 @@ void AlipMINLP::MakeIndividualFootholdConstraint(int idx_mode,
 void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
   DRAKE_ASSERT(foothold_idxs.size() == nmodes_);
   for (int i = 0; i < foothold_idxs.size(); i++) {
-    MakeIndividualFootholdConstraint(i, foothold_idxs.at(i));
+    MakeIndividualFootholdConstraint(i+1, foothold_idxs.at(i));
   }
 }
 
@@ -148,7 +156,8 @@ void AlipMINLP::MakeResetConstraints() {
     reset_map_c_.push_back(
         prog_.AddLinearEqualityConstraint(
             A_eq, Vector4d::Zero(),
-            {xx_.at(i).back(), xx_.at(i+1).front(), pp_.at(i), pp_.at(i+1)}));
+            {xx_.at(i).back(), xx_.at(i+1).front(),
+             pp_.at(i).head<2>(), pp_.at(i+1).head<2>()}));
   }
 }
 
@@ -239,7 +248,7 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
 }
 
 vector<vector<int>> AlipMINLP::GetPossibleModeSequences() {
-  return cartesian_product(footholds_.size(), nmodes_);
+  return cartesian_product(footholds_.size(), nmodes_ - 1);
 }
 
 vector<Vector3d> AlipMINLP::GetFootstepSolution() const {

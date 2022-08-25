@@ -18,9 +18,9 @@ void ConvexFoothold::AddHalfspace(Vector3d a, VectorXd b) {
     A_ = a.transpose();
     b_ = b;
   } else {
-    A_.resize(1, Eigen::NoChange);
+    A_.conservativeResize(A_.rows() + 1, Eigen::NoChange);
     A_.bottomRows(1) = a.transpose();
-    b_.resize(1);
+    b_.conservativeResize(b_.rows() + 1);
     b_.tail(1) = b;
   }
 }

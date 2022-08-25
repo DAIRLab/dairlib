@@ -11,13 +11,13 @@
 
 namespace dairlib::systems::controllers {
 
-std::vector<std::vector<int>> cartesian_product(unsigned long range, int sets) {
+inline std::vector<std::vector<int>> cartesian_product(unsigned long range, int sets) {
 
   auto products = std::vector<std::vector<int>>();
   for (int i = 0; i < pow(range, sets); i++) {
-    products.emplace_back(std::vector<int>(range, 0));
+    products.emplace_back(std::vector<int>(sets, 0));
   }
-  auto counter = std::vector<int>(range, 0); // array of zeroes
+  auto counter = std::vector<int>(sets, 0); // array of zeroes
   for (auto &product : products) {
     product = counter;
 
@@ -67,6 +67,11 @@ class AlipMINLP {
   void AddTrackingCost(std::vector<std::vector<Eigen::Vector4d>> xd,
                        Eigen::Matrix4d Q);
   void AddInputCost(double R);
+
+  void AddFootholds(std::vector<geometry::ConvexFoothold> footholds) {
+    footholds_ = footholds;
+  }
+
   void Build();
   std::vector<std::vector<Eigen::Vector4d>> MakeXdesTrajForVdes(
       double vdes, double step_width, double Ts, double nk) const;
@@ -114,13 +119,13 @@ class AlipMINLP {
 
   std::vector<std::vector<Binding<drake::solvers::Constraint>>> dynamics_c_;
   std::vector<std::pair<Binding<LinearConstraint>, Binding<LinearEqualityConstraint>>> footstep_c_;
-  std::vector<Binding<LinearEqualityConstraint>> reset_map_c_;
-  std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_;
+  std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
+  std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_{};
   LinearEqualityConstraint *initial_state_c_;
   LinearEqualityConstraint *initial_foot_c_;
 
-  std::vector<std::vector<Binding<QuadraticCost>>> tracking_costs_;
-  std::vector<std::vector<Binding<QuadraticCost>>> input_costs_;
+  std::vector<std::vector<Binding<QuadraticCost>>> tracking_costs_{};
+  std::vector<std::vector<Binding<QuadraticCost>>> input_costs_{};
 
   std::vector<drake::solvers::MathematicalProgramResult> solutions_;
   std::vector<std::vector<int>> mode_sequnces_{};

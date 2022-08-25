@@ -1,0 +1,12 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "alip_minlp_test",
+    srcs = ["alip_minlp_test.cc"],
+    deps = [
+        "//systems/controllers/footstep_planning:alip_minlp",
+        "@drake//:drake_shared_library",
+    ],
+)

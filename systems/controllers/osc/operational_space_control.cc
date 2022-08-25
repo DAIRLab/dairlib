@@ -796,12 +796,12 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   MathematicalProgramResult result;
-  if (fsm_state == -1) {
-    auto osqp_solver = drake::solvers::OsqpSolver();
-    result = osqp_solver.Solve(*prog_, std::nullopt, solver_options_);
-  } else {
-    result = solvers_.at(0)->Solve(*prog_);
-  }
+  //  if (fsm_state == -1) {
+  //    auto osqp_solver = drake::solvers::OsqpSolver();
+  //    result = osqp_solver.Solve(*prog_, std::nullopt, solver_options_);
+  //  } else {
+  result = solvers_.at(0)->Solve(*prog_);
+  //  }
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   if (result.is_success()) {
@@ -1070,8 +1070,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     }
     output->tracking_data[i] = osc_output;
   }
-//  output->regularization_costs.push_back(total_cost);
-//  output->regularization_cost_names.push_back("total_cost");
+  //  output->regularization_costs.push_back(total_cost);
+  //  output->regularization_cost_names.push_back("total_cost");
 
   *u_prev_ = *u_sol_;
   output->num_tracking_data = output->tracking_data_names.size();

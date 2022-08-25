@@ -15,21 +15,22 @@ struct OSCStandingGains : OSCGains {
   double HipYawKd;
   double HipYawW;
   double center_of_mass_filter_tau;
-  std::vector<double> CoMKp;
-  std::vector<double> CoMKd;
+  double rot_filter_tau;
+  std::vector<double> PelvisW;
+  std::vector<double> PelvisKp;
+  std::vector<double> PelvisKd;
+  std::vector<double> PelvisRotW;
   std::vector<double> PelvisRotKp;
   std::vector<double> PelvisRotKd;
-  std::vector<double> CoMW;
-  std::vector<double> PelvisW;
 
-  MatrixXd K_p_com;
-  MatrixXd K_d_com;
+  MatrixXd W_pelvis;
   MatrixXd K_p_pelvis;
   MatrixXd K_d_pelvis;
+  MatrixXd W_pelvis_rot;
+  MatrixXd K_p_pelvis_rot;
+  MatrixXd K_d_pelvis_rot;
   MatrixXd K_p_hip_yaw;
   MatrixXd K_d_hip_yaw;
-  MatrixXd W_com;
-  MatrixXd W_pelvis;
   MatrixXd W_hip_yaw;
 
   template <typename Archive>
@@ -38,37 +39,38 @@ struct OSCStandingGains : OSCGains {
     a->Visit(DRAKE_NVP(weight_scaling));
     a->Visit(DRAKE_NVP(rows));
     a->Visit(DRAKE_NVP(cols));
-    a->Visit(DRAKE_NVP(CoMKp));
-    a->Visit(DRAKE_NVP(CoMKd));
+    a->Visit(DRAKE_NVP(PelvisW));
+    a->Visit(DRAKE_NVP(PelvisKp));
+    a->Visit(DRAKE_NVP(PelvisKd));
+    a->Visit(DRAKE_NVP(PelvisRotW));
     a->Visit(DRAKE_NVP(PelvisRotKp));
     a->Visit(DRAKE_NVP(PelvisRotKd));
     a->Visit(DRAKE_NVP(HipYawKp));
     a->Visit(DRAKE_NVP(HipYawKd));
-    a->Visit(DRAKE_NVP(CoMW));
-    a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(HipYawW));
     a->Visit(DRAKE_NVP(center_of_mass_filter_tau));
+    a->Visit(DRAKE_NVP(rot_filter_tau));
 
-    K_p_com = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        CoMKp.data(), rows, cols);
-    K_d_com = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        CoMKd.data(), rows, cols);
-    K_p_pelvis = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        PelvisRotKp.data(), rows, cols);
-    K_d_pelvis = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        PelvisRotKd.data(), rows, cols);
-    K_p_hip_yaw = HipYawKp * MatrixXd::Identity(1, 1);
-    K_d_hip_yaw = HipYawKd * MatrixXd::Identity(1, 1);
-    W_com = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        CoMW.data(), rows, cols);
     W_pelvis = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        PelvisW.data(), rows, cols);
+        this->PelvisW.data(), 3, 3);
+    K_p_pelvis = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisKp.data(), 3, 3);
+    K_d_pelvis = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisKd.data(), 3, 3);
+    W_pelvis_rot = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisRotW.data(), 3, 3);
+    K_p_pelvis_rot = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisRotKp.data(), 3, 3);
+    K_d_pelvis_rot = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->PelvisRotKd.data(), 3, 3);
+    K_p_hip_yaw = HipYawKp * MatrixXd::Identity(1, 1);
+    K_d_hip_yaw = HipYawKd * MatrixXd::Identity(1, 1);
     W_hip_yaw = HipYawW * MatrixXd::Identity(1, 1);
 
 
@@ -77,8 +79,8 @@ struct OSCStandingGains : OSCGains {
     w_input_reg *= weight_scaling;
     w_lambda *= weight_scaling;
     w_soft_constraint *= weight_scaling;
+    W_pelvis_rot *= weight_scaling;
     W_pelvis *= weight_scaling;
-    W_com *= weight_scaling;
-    W_hip_yaw *= weight_scaling;
+    W_pelvis_rot *= weight_scaling;    W_hip_yaw *= weight_scaling;
   }
 };

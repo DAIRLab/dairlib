@@ -16,6 +16,7 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/options_tracking_data.h"
 #include "systems/controllers/osc/osc_gains.h"
+#include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -49,6 +50,8 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::RelativeTranslationTrackingData;
+
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -227,33 +230,33 @@ int DoMain(int argc, char* argv[]) {
                                               gains.W_lambda_h_regularization);
   osc->SetJointLimitWeight(1.0);
 
-  // Center of mass tracking
-  // Weighting x-y higher than z, as they are more important to balancing
-  //  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
-  //                                      W_com * FLAGS_cost_weight_multiplier,
-  //                                      plant, plant);
-  auto center_of_mass_traj = std::make_unique<TransTaskSpaceTrackingData>(
-      "com_traj", osc_gains.K_p_com, osc_gains.K_d_com,
-      osc_gains.W_com * FLAGS_cost_weight_multiplier, plant, plant);
-  center_of_mass_traj->AddPointToTrack("pelvis");
-  //  double cutoff_freq = 5; // in Hz
-  //  double tau = 1 / (2 * M_PI * cutoff_freq);
-  center_of_mass_traj->SetLowPassFilter(osc_gains.center_of_mass_filter_tau,
-                                        {1});
-  osc->AddTrackingData(std::move(center_of_mass_traj));
-  // Pelvis rotation tracking
-  auto pelvis_rot_traj = std::make_unique<RotTaskSpaceTrackingData>(
-      "pelvis_rot_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
-      osc_gains.W_pelvis * FLAGS_cost_weight_multiplier, plant, plant);
-  pelvis_rot_traj->AddFrameToTrack("pelvis");
-  pelvis_rot_traj->SetLowPassFilter(osc_gains.center_of_mass_filter_tau,
-                                    {0, 1, 2});
-  osc->AddTrackingData(std::move(pelvis_rot_traj));
 
-  // Hip yaw joint tracking
-  // We use hip yaw joint tracking instead of pelvis yaw tracking because the
-  // foot sometimes rotates about yaw, and we need hip yaw joint to go back to
-  // 0.
+  const auto& pelvis = plant.GetBodyByName("pelvis");
+  multibody::WorldYawViewFrame view_frame(pelvis);
+  auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
+      "pelvis_trans_traj", MatrixXd::Zero(3, 3), MatrixXd::Zero(3, 3),
+      MatrixXd::Zero(3, 3), plant, plant);
+  auto stance_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
+      "stance_ft_traj", MatrixXd::Zero(3, 3), MatrixXd::Zero(3, 3),
+      MatrixXd::Zero(3, 3), plant, plant);
+  pelvis_tracking_data->AddPointToTrack("pelvis");
+  stance_foot_tracking_data->AddPointToTrack("toe_left");
+  auto pelvis_trans_rel_tracking_data =
+      std::make_unique<RelativeTranslationTrackingData>(
+          "pelvis_trans_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
+          osc_gains.W_pelvis_rot, plant, plant, pelvis_tracking_data.get(),
+          stance_foot_tracking_data.get());
+  pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
+  auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
+      "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
+      osc_gains.W_pelvis_rot, plant, plant);
+  pelvis_rot_tracking_data->AddFrameToTrack("pelvis");
+  pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
+                                             {0, 1, 2});
+  osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
+  osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
+
+
   auto left_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "left_hip_yaw_traj", osc_gains.K_d_hip_yaw, osc_gains.K_p_hip_yaw,
       osc_gains.W_hip_yaw, plant, plant);
@@ -274,7 +277,7 @@ int DoMain(int argc, char* argv[]) {
                   command_sender->get_input_port(0));
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
-                  osc->get_input_port_tracking_data("com_traj"));
+                  osc->get_input_port_tracking_data("pelvis_trans_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_rot_traj"));
 

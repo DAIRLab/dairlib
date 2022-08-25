@@ -1,4 +1,3 @@
-
 # Set xy PD gains so they do not effect  passive LIPM dynamics at capture
 # point, when x = sqrt(l/g) * xdot
 # Passive dynamics: xddot = g/l * x
@@ -9,8 +8,8 @@
 
 rows: 3
 cols: 3
-w_input: 0.00001
-w_accel: 0.0000001
+w_input: 0.0
+w_accel: 0.1
 w_lambda: 0.000001
 #W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
 #           1, 1, 1, 1, 0.01, 0.001,
@@ -18,7 +17,7 @@ w_lambda: 0.000001
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
            1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
            1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001 ]
-W_input_reg: [ 1, 0.9, 0.5, 0.1, 5,
+W_input_reg: [ 1, 0.9, 0.6, 0.3, 5,
                1, 0.9, 0.5, 0.1, 5 ]
 W_lambda_c_reg: [ 1, 0.001, 0.01,
                   1, 0.001, 0.01,
@@ -27,39 +26,40 @@ W_lambda_c_reg: [ 1, 0.001, 0.01,
 #W_lambda_h_reg: [ 0.02, 0.02 ]
 W_lambda_h_reg: [ 0.001, 0.001, 0.001,
                   0.001, 0.002, 0.002 ]
-w_soft_constraint: 0
-w_input_reg: 0.0001
+w_soft_constraint: 100
+w_input_reg: 0.00
 impact_threshold: 0.00
-center_of_mass_filter_tau: 0.005
+center_of_mass_filter_tau: 0.01
+rot_filter_tau: 0.01
 impact_tau: 0.00
 mu: 0.6
 weight_scaling: 1.0
-HipYawKp: 10
-HipYawKd: 1
-HipYawW: 1
-CoMW:
-  [ 20, 0,  0,
-    0, 20,  0,
-    0, 0,  20 ]
+HipYawKp: 40
+HipYawKd: 5
+HipYawW: 0
 PelvisW:
-  [ 0.1, 0, 0,
-    0, 0.1, 0,
-    0, 0, 0.1 ]
-CoMKp:
-  [ 20,    0,    0,
-    0,  20,    0,
-    0,    0,  50 ]
-CoMKd:
-  [  1,    0,    0,
-     0,    0.1,    0,
-     0,    0,    4]
+  [20,    0,    0,
+   0,     2,    0,
+   0,     0,   20]
+PelvisKp:
+  [100,   0,    0,
+   0,   50,    0,
+   0,    0,  50]
+PelvisKd:
+  [ 15,    0,   0,
+    0,    5,   0,
+    0,    0,   10]
+PelvisRotW:
+  [5,  0,   0,
+   0,  5,   0,
+   0,    0,  1]
 PelvisRotKp:
-  [10,  0,   0,
-   0,  30,   0,
-   0,   0,  5]
+  [25,   0,   0,
+   0,  50,   0,
+   0,    0,   50]
 PelvisRotKd:
-  [0.1,  0,   0,
-   0,  0.1,   0,
+  [0.1,   0,  0,
+   0,   10,  0,
    0,    0,  1]
 
 

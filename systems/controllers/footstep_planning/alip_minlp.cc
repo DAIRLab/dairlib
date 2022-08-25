@@ -91,12 +91,6 @@ void AlipMINLP::AddInputCost(double R) {
 
 void AlipMINLP::Build() {
   mode_sequnces_ = GetPossibleModeSequences();
-  for (auto& seq : mode_sequnces_) {
-    for (auto& i : seq){
-      std::cout << i << " ";
-    }
-    std::cout << std::endl;
-  }
   for (int i = 0; i < nmodes_; i++) {
     tt_.push_back(prog_.NewContinuousVariables(1, "t"));
   }

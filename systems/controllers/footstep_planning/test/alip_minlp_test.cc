@@ -24,7 +24,6 @@ int do_main(int argc, char* argv[]) {
     foothold.SetContactPlane(Vector3d::UnitZ(), Vector3d::Zero());
     for (auto& i : {-1.0, 1.0}){
       for (auto& j: {-1.0, 1.0}) {
-        std::cout << Vector3d(i, j, 0).transpose() << std::endl;
         foothold.AddFace(Vector3d(i, j, 0), o + Vector3d(0.05 * i, 0.05 * j, 0));
       }
     }

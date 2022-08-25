@@ -279,7 +279,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   //qd << qd_.head(4), q(4), q(5), q(6);
   tau += N * (K_null_*(qd_-q_franka) - B_null_*v_franka);
 
-  //this->CheckJointLimits(q.head(7), timestamp);
+//  this->CheckJointLimits(q.head(7), timestamp);
   this->ClampJointTorques(tau, timestamp);
 
   control->SetDataVector(tau);

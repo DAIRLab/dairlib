@@ -242,4 +242,44 @@ vector<vector<int>> AlipMINLP::GetPossibleModeSequences() {
   return cartesian_product(footholds_.size(), nmodes_);
 }
 
+vector<Vector3d> AlipMINLP::GetFootstepSolution() const {
+  vector<Vector3d> pp;
+  for (auto& p : pp_){
+    pp.push_back(solutions_.front().GetSolution(p));
+  }
+  return pp;
+}
+
+vector<vector<Vector4d>> AlipMINLP::GetStateSolution() const {
+  vector<vector<Vector4d>> xx;
+  for(auto& x : xx_) {
+    vector<Vector4d> xknots;
+    for (auto& knot : x) {
+      xknots.push_back(solutions_.front().GetSolution(knot));
+    }
+    xx.push_back(xknots);
+  }
+  return xx;
+}
+
+vector<vector<VectorXd>> AlipMINLP::GetInputSolution() const {
+  vector<vector<VectorXd>> uu;
+  for(auto& u : uu_) {
+    vector<VectorXd> uknots;
+    for (auto& knot : u) {
+      uknots.push_back(solutions_.front().GetSolution(knot));
+    }
+    uu.push_back(uknots);
+  }
+  return uu;
+}
+
+VectorXd AlipMINLP::GetTimingSolution() const {
+  VectorXd tt = VectorXd::Zero(nmodes_);
+  for (int i = 0; i < nmodes_; i++) {
+    tt.segment(i, 1) = solutions_.front().GetSolution(tt_.at(i));
+  }
+  return tt;
+}
+
 }

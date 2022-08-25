@@ -78,7 +78,7 @@ class AlipMINLP {
   // Getting the solution
   std::vector<Eigen::Vector3d> GetFootstepSolution() const;
   std::vector<std::vector<Eigen::Vector4d>> GetStateSolution() const;
-  std::vector<std::vector<double>> GetInputSolution() const;
+  std::vector<std::vector<Eigen::VectorXd>> GetInputSolution() const;
   Eigen::VectorXd GetTimingSolution() const;
 
   void set_m(double m) { m_ = m; }

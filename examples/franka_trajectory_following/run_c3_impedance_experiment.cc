@@ -120,7 +120,7 @@ int DoMain(int argc, char* argv[]){
   MatrixXd B = MatrixXd::Zero(6,6);
   K.block(0,0,3,3) << rotational_stiffness * MatrixXd::Identity(3,3);
   K.block(3,3,3,3) << translational_stiffness * MatrixXd::Identity(3,3);
-  B.block(0,0,3,3) << 6 * MatrixXd::Identity(3,3);
+  B.block(0,0,3,3) << param.rotational_damping * MatrixXd::Identity(3,3);
   B.block(3,3,3,3) << 2 * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
 
   MatrixXd K_null = param.stiffness_null * MatrixXd::Identity(7,7);

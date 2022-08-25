@@ -7,6 +7,7 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "common/discrete_time_filter.h"
 
 namespace dairlib {
 namespace cassie {
@@ -47,6 +48,10 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
     return this->get_input_port(radio_port_);
   }
 
+  void SetCommandFilter(double alpha){
+    target_pos_filter_->UpdateParameters(alpha);
+  }
+
  private:
   void CalcDesiredTraj(const drake::systems::Context<double>& context,
                        drake::trajectories::Trajectory<double>* traj) const;
@@ -69,9 +74,11 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
 
 
   // Testing -- filtering for center of support polygon
-  double cutoff_freq_ = 0.05;  // in Hz.
-  mutable Eigen::Vector3d filtered_feet_center_pos_ = Eigen::Vector3d::Zero();
-  mutable Eigen::Vector3d filtered_target_pos_ = Eigen::Vector3d::Zero();
+  double cutoff_freq_ = 0.5;  // in Hz.
+//  mutable Eigen::Vector3d filtered_feet_center_pos_ = Eigen::Vector3d::Zero();
+//  mutable Eigen::Vector3d filtered_target_pos_ = Eigen::Vector3d::Zero();
+
+  std::unique_ptr<FirstOrderLowPassFilter> target_pos_filter_;
   mutable double last_timestamp_ = 0;
 };
 

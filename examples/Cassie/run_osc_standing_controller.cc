@@ -48,10 +48,9 @@ using multibody::FixedJointEvaluator;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
+using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::RelativeTranslationTrackingData;
-
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -153,9 +152,13 @@ int DoMain(int argc, char* argv[]) {
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
       plant, context_w_spr.get(), feet_contact_points, FLAGS_height,
       FLAGS_use_radio);
+  com_traj_generator->SetCommandFilter(
+      osc_gains.center_of_mass_command_filter_alpha);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
           plant, context_w_spr.get(), feet_contact_points, "pelvis_rot_traj");
+  pelvis_rot_traj_generator->SetCommandFilter(
+      osc_gains.orientation_command_filter_alpha);
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
@@ -230,7 +233,6 @@ int DoMain(int argc, char* argv[]) {
                                               gains.W_lambda_h_regularization);
   osc->SetJointLimitWeight(1.0);
 
-
   const auto& pelvis = plant.GetBodyByName("pelvis");
   multibody::WorldYawViewFrame view_frame(pelvis);
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
@@ -243,11 +245,11 @@ int DoMain(int argc, char* argv[]) {
   stance_foot_tracking_data->AddPointToTrack("toe_left");
   auto pelvis_trans_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
-          "pelvis_trans_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
-          osc_gains.W_pelvis_rot, plant, plant, pelvis_tracking_data.get(),
-          stance_foot_tracking_data.get());
-  pelvis_trans_rel_tracking_data->SetLowPassFilter(osc_gains.center_of_mass_filter_tau,
-                                             {0, 1, 2});
+          "pelvis_trans_traj", osc_gains.K_p_pelvis_rot,
+          osc_gains.K_d_pelvis_rot, osc_gains.W_pelvis_rot, plant, plant,
+          pelvis_tracking_data.get(), stance_foot_tracking_data.get());
+  pelvis_trans_rel_tracking_data->SetLowPassFilter(
+      osc_gains.center_of_mass_filter_tau, {0, 1, 2});
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
@@ -257,7 +259,6 @@ int DoMain(int argc, char* argv[]) {
                                              {0, 1, 2});
   osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
-
 
   auto left_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "left_hip_yaw_traj", osc_gains.K_d_hip_yaw, osc_gains.K_p_hip_yaw,

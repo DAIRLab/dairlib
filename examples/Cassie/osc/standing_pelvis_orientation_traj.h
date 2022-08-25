@@ -7,6 +7,7 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "common/discrete_time_filter.h"
 
 namespace dairlib::cassie::osc {
 
@@ -26,6 +27,9 @@ class StandingPelvisOrientationTraj
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
+  void SetCommandFilter(double alpha){
+    target_orientation_filter_->UpdateParameters(alpha);
+  }
 
  private:
   void CalcTraj(const drake::systems::Context<double>& context,
@@ -41,6 +45,9 @@ class StandingPelvisOrientationTraj
       feet_contact_points_;
   int state_port_;
   int radio_port_;
+
+  std::unique_ptr<FirstOrderLowPassFilter> target_orientation_filter_;
+
 };
 
 }  // namespace dairlib::cassie::osc

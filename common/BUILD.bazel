@@ -6,6 +6,7 @@ cc_library(
         ":find_resource",
         ":eigen_utils",
         ":file_utils",
+        ":discrete_time_filter",
         ":blending_utils",
         "@drake//:drake_shared_library",
     ],
@@ -55,6 +56,19 @@ cc_library(
     ],
     hdrs = [
         "blending_utils.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "discrete_time_filter",
+    srcs = [
+        "discrete_time_filter.cc",
+    ],
+    hdrs = [
+        "discrete_time_filter.h",
     ],
     deps = [
         "@drake//:drake_shared_library",

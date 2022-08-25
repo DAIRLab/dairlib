@@ -28,17 +28,18 @@ StandingPelvisOrientationTraj::StandingPelvisOrientationTraj(
       context_(context),
       world_(plant_.world_frame()),
       feet_contact_points_(feet_contact_points) {
+  target_orientation_filter_ =
+      std::make_unique<FirstOrderLowPassFilter>(1.0, 3);
+
   // Input/Output setup
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
-  radio_port_ =
-      this->DeclareAbstractInputPort("radio_out",
-                                     drake::Value<dairlib::lcmt_radio_out>{})
-          .get_index();
+                    .get_index();
+  radio_port_ = this->DeclareAbstractInputPort(
+                        "radio_out", drake::Value<dairlib::lcmt_radio_out>{})
+                    .get_index();
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->set_name(traj_name);
@@ -77,15 +78,15 @@ void StandingPelvisOrientationTraj::CalcTraj(
   VectorXd r_foot = pt_2 - pt_3;
   //  l_foot_proj = l_foot.dot()
   Vector3d rpy;
-  rpy << radio_out->channel[1],
-      radio_out->channel[2],
+  rpy << radio_out->channel[1], radio_out->channel[2],
       drake::math::wrap_to(
           0.5 * (atan2(l_foot(1), l_foot(0)) + atan2(r_foot(1), r_foot(0))),
-          -M_PI, M_PI) +
+          -M_PI/4, M_PI/4) +
           radio_out->channel[3];
 
-  auto rot_mat =
-      drake::math::RotationMatrix<double>(drake::math::RollPitchYaw(rpy));
+  target_orientation_filter_->Update(rpy);
+  auto rot_mat = drake::math::RotationMatrix<double>(drake::math::RollPitchYaw(
+      static_cast<Vector3d>(target_orientation_filter_->Value())));
 
   *casted_traj = PiecewisePolynomial<double>(rot_mat.ToQuaternionAsVector4());
 }

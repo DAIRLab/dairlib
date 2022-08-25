@@ -16,6 +16,8 @@ struct OSCStandingGains : OSCGains {
   double HipYawW;
   double center_of_mass_filter_tau;
   double rot_filter_tau;
+  double center_of_mass_command_filter_alpha;
+  double orientation_command_filter_alpha;
   std::vector<double> PelvisW;
   std::vector<double> PelvisKp;
   std::vector<double> PelvisKd;
@@ -50,6 +52,8 @@ struct OSCStandingGains : OSCGains {
     a->Visit(DRAKE_NVP(HipYawW));
     a->Visit(DRAKE_NVP(center_of_mass_filter_tau));
     a->Visit(DRAKE_NVP(rot_filter_tau));
+    a->Visit(DRAKE_NVP(center_of_mass_command_filter_alpha));
+    a->Visit(DRAKE_NVP(orientation_command_filter_alpha));
 
     W_pelvis = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

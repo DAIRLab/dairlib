@@ -35,6 +35,8 @@ StandingComTraj::StandingComTraj(
       feet_contact_points_(feet_contact_points),
       height_(height),
       set_target_height_by_radio_(set_target_height_by_radio) {
+
+  target_pos_filter_ = std::make_unique<FirstOrderLowPassFilter>(1.0, 3);
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
                         "x, u, t", OutputVector<double>(plant.num_positions(),
@@ -145,24 +147,14 @@ void StandingComTraj::CalcDesiredTraj(
   desired_com_pos_offset << 0.05, -mid_point_y, contact_pos_sum(2);
   Vector3d desired_com_pos = desired_com_pos_offset + target_pos;
 
-  if (filtered_target_pos_.norm() == 0) {
-    //    // Initialize
-    filtered_target_pos_ = desired_com_pos;
-  }
-  if (robot_output->get_timestamp() != last_timestamp_) {
-    double dt = robot_output->get_timestamp() - last_timestamp_;
-    last_timestamp_ = robot_output->get_timestamp();
-    double alpha =
-        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
-    filtered_target_pos_ =
-        alpha * desired_com_pos + (1 - alpha) * filtered_target_pos_;
-  }
+  target_pos_filter_->Update(desired_com_pos);
+
 
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *pp_traj = PiecewisePolynomial<double>(filtered_target_pos_);
+  *pp_traj = PiecewisePolynomial<double>(target_pos_filter_->Value());
 }
 
 }  // namespace osc

@@ -71,6 +71,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   // Testing -- filtering for center of support polygon
   double cutoff_freq_ = 0.05;  // in Hz.
   mutable Eigen::Vector3d filtered_feet_center_pos_ = Eigen::Vector3d::Zero();
+  mutable Eigen::Vector3d filtered_target_pos_ = Eigen::Vector3d::Zero();
   mutable double last_timestamp_ = 0;
 };
 

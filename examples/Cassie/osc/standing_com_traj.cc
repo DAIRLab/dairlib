@@ -89,6 +89,8 @@ void StandingComTraj::CalcDesiredTraj(
   target_height = drake::math::saturate(target_height, kMinHeight, kMaxHeight);
   double x_offset = kCoMXScale * radio_out->channel[4];
   double y_offset = kCoMYScale * radio_out->channel[5];
+  Vector3d target_pos;
+  target_pos << x_offset, y_offset, target_height;
   VectorXd q = robot_output->GetPositions();
 
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
@@ -118,19 +120,16 @@ void StandingComTraj::CalcDesiredTraj(
                               right_toe_position + right_heel_position) /
                              4;
   //  }
-  double mid_point_x = ((left_toe_position[0] - left_heel_position[0]) +
-                        (right_toe_position[0] - right_heel_position[0])) /
-                       2;
+  //  double mid_point_x = ((left_toe_position[0] - left_heel_position[0]) +
+  //                        (right_toe_position[0] - right_heel_position[0])) /
+  //                       2;
   double mid_point_y = ((left_toe_position[1] - right_toe_position[1]) +
                         (left_heel_position[1] - right_heel_position[1])) /
                        4;
   //  Vector3d feet_center_pos = contact_pos_sum / 4;
 
   // Testing -- filtering feet_center_pos
-  //  if (filtered_feet_center_pos_.norm() == 0) {
-  //    // Initialize
-  //    filtered_feet_center_pos_ = feet_center_pos;
-  //  }
+
   //  if (robot_output->get_timestamp() != last_timestamp_) {
   //    double dt = robot_output->get_timestamp() - last_timestamp_;
   //    last_timestamp_ = robot_output->get_timestamp();
@@ -142,14 +141,28 @@ void StandingComTraj::CalcDesiredTraj(
   //  feet_center_pos = filtered_feet_center_pos_;
 
   // Desired com pos
-  Vector3d desired_com_pos(x_offset, -mid_point_y + y_offset,
-                           contact_pos_sum(2) + target_height);
+  Vector3d desired_com_pos_offset;
+  desired_com_pos_offset << 0.05, -mid_point_y, contact_pos_sum(2);
+  Vector3d desired_com_pos = desired_com_pos_offset + target_pos;
+
+  if (filtered_target_pos_.norm() == 0) {
+    //    // Initialize
+    filtered_target_pos_ = desired_com_pos;
+  }
+  if (robot_output->get_timestamp() != last_timestamp_) {
+    double dt = robot_output->get_timestamp() - last_timestamp_;
+    last_timestamp_ = robot_output->get_timestamp();
+    double alpha =
+        2 * M_PI * dt * cutoff_freq_ / (2 * M_PI * dt * cutoff_freq_ + 1);
+    filtered_target_pos_ =
+        alpha * desired_com_pos + (1 - alpha) * filtered_target_pos_;
+  }
 
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *pp_traj = PiecewisePolynomial<double>(desired_com_pos);
+  *pp_traj = PiecewisePolynomial<double>(filtered_target_pos_);
 }
 
 }  // namespace osc

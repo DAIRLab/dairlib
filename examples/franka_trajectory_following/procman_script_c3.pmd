@@ -18,6 +18,10 @@ group "2.ROS" {
         exec = "roslaunch realsense2_camera rs_camera.launch";
         host = "localhost";
     }
+    cmd "d.echo ball" {
+        exec = "rostopic echo /c3/position_estimate";
+        host = "localhost";
+    }
 }
 
 group "4.ROS controlers" {
@@ -31,10 +35,6 @@ group "4.ROS controlers" {
     }
     cmd "c.control_node" {
         exec = "roslaunch franka_control franka_control.launch robot_ip:=172.16.0.2 load_gripper:=false";
-        host = "localhost";
-    }
-    cmd "d.echo ball" {
-        exec = "rostopic echo /c3/position_estimate";
         host = "localhost";
     }
 }

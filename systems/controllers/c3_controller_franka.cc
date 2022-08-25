@@ -143,6 +143,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
 
+
+
   if (!received_first_message_){
     received_first_message_ = true;
     first_message_time_ = timestamp;
@@ -169,8 +171,17 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
                                                                    param_.stabilize_time1 + first_message_time_,
                                                                    param_.move_time, param_.stabilize_time2);
-    
-    Eigen::Quaterniond orientation_d(0, 1, 0, 0);
+
+    //Eigen::Quaterniond orientation_d(0, 1, 0, 0);
+
+    Eigen::Quaterniond default_quat(0, 1, 0, 0);
+    RotationMatrix<double> Rd(default_quat);
+
+    double duration = settling_time - first_message_time_;
+    double t = timestamp - first_message_time_;
+
+    RotationMatrix<double> rot_y = RotationMatrix<double>::MakeYRotation((t / duration) * param_.orientation_degrees * 3.14 / 180);
+    Eigen::Quaterniond orientation_d = (Rd * rot_y).ToQuaternion();
 
     // fill st_desired
     VectorXd traj = pp_.value(timestamp);
@@ -196,8 +207,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   Vector3d EE_offset_ = param_.EE_offset;
   const drake::math::RigidTransform<double> H_mat =
       plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
-  const RotationMatrix<double> Rotation = H_mat.rotation();
-  Vector3d end_effector = H_mat.translation() + Rotation*EE_offset_;
+  const RotationMatrix<double> R_current = H_mat.rotation();
+  Vector3d end_effector = H_mat.translation() + R_current*EE_offset_;
 
   // jacobian and end_effector_dot
   auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
@@ -276,9 +287,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   /// upwards phase
   else if (ts < roll_phase + return_phase / 3){
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
     traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
+
   }
   /// side ways phase
   else if( ts < roll_phase + 2 * return_phase / 3 ) {
@@ -306,11 +318,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     axis = axis / axis.norm();
   }
 
-  Eigen::AngleAxis<double> angle_axis(PI * param_.orientation_degrees / 180.0, axis);
-  RotationMatrix<double> rot(angle_axis);
-  Quaterniond temp(0, 1, 0, 0);
-  RotationMatrix<double> default_orientation(temp);
-  VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
+//  Eigen::AngleAxis<double> angle_axis(PI * param_.orientation_degrees / 180.0, axis);
+//  RotationMatrix<double> rot(angle_axis);
+  RotationMatrix<double> rot = RotationMatrix<double>::MakeYRotation(-param_.orientation_degrees * 3.14 / 180);
+  RotationMatrix<double> default_orientation(Quaterniond(0, 1, 0, 0));
+  RotationMatrix<double> R_desired = rot * default_orientation;  /// compute interpolated orientation
+  Eigen::AngleAxis<double> R_cd = (R_current.inverse() * R_desired).ToAngleAxis();
+  double max_delta_angle = 0.5 * 3.14 / 180.0;
+  R_cd.angle() = (R_cd.angle() > max_delta_angle) ? max_delta_angle : R_cd.angle();
+  R_cd.angle() = (R_cd.angle() < -max_delta_angle) ? -max_delta_angle : R_cd.angle();
+  VectorXd orientation_d = (R_current * RotationMatrix<double>(R_cd)).ToQuaternionAsVector4();
+
+  // VectorXd orientation_d = (R_desired).ToQuaternionAsVector4();
 
   /// update autodiff
   VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
@@ -452,8 +471,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   force_des << force(0), force(2), force(4), force(5), force(6), force(7);
 
   VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
-  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
 
+  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+  
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 

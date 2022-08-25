@@ -115,14 +115,13 @@ int DoMain(int argc, char* argv[]){
 
   double translational_stiffness = param.translational_stiffness;
   double rotational_stiffness = param.rotational_stiffness;
-  double damping_ratio = param.damping_ratio;
 
   MatrixXd K = MatrixXd::Zero(6,6);
   MatrixXd B = MatrixXd::Zero(6,6);
   K.block(0,0,3,3) << rotational_stiffness * MatrixXd::Identity(3,3);
   K.block(3,3,3,3) << translational_stiffness * MatrixXd::Identity(3,3);
-  B.block(0,0,3,3) << 2 * damping_ratio * sqrt(rotational_stiffness) * MatrixXd::Identity(3,3);
-  B.block(3,3,3,3) << 2 * damping_ratio * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
+  B.block(0,0,3,3) << 6 * MatrixXd::Identity(3,3);
+  B.block(3,3,3,3) << 2 * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
 
   MatrixXd K_null = param.stiffness_null * MatrixXd::Identity(7,7);
   MatrixXd B_null = param.damping_null * MatrixXd::Identity(7,7);
@@ -193,7 +192,7 @@ int DoMain(int argc, char* argv[]){
         LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           "FRANKA_INPUT_WO_G", &drake_lcm, 
           {drake::systems::TriggerType::kForced}, 0.0));
-    builder.Connect(controller->get_output_port(),
+    builder.Connect(controller->get_output_port(),    
         ros_lcm_sender->get_input_port());
     builder.Connect(ros_lcm_sender->get_output_port(),
         echo_ros_lcm->get_input_port());

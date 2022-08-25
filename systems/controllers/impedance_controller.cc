@@ -117,7 +117,19 @@ ImpedanceController::ImpedanceController(
     0, -1,  0,
     0,  0, -1;
   RotationMatrix<double> Rd(Rd_eigen);
+  // RotationMatrix<double> rot_y = RotationMatrix<double>::MakeYRotation(20 * 3.14 / 180.0);
+  // orientation_d_ = (Rd * rot_y).ToQuaternion();
   orientation_d_ = Rd.ToQuaternion();
+
+  // TODO: prototyping integrator term
+  // if this works, will need to make this more principled
+  // pass in integrator gains from constructor, use states instead of mutables, etc
+  integrator_ = VectorXd::Zero(6);
+  I_ = MatrixXd::Zero(6,6);
+  I_.block(0,0,3,3) << param_.rotational_integral_gain * MatrixXd::Identity(3,3);
+  I_.block(3,3,3,3) << param_.translational_integral_gain * MatrixXd::Identity(3,3);
+
+  prev_time_ = 0.0;
 }
 
 
@@ -141,11 +153,13 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // TODO: parse out info here
   VectorXd state = c3_output->get_data();
+
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);
   VectorXd lambda = VectorXd::Zero(5); // does not contain the slack variable
   Vector3d ball_xyz_d(state(25), state(26), state(27));
   Vector3d ball_xyz(state(28), state(29), state(30));
+
 
   xd.tail(3) << state.head(3);
   Quaterniond orientation_d(state(3), state(4), state(5), state(6));
@@ -192,6 +206,16 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   x.tail(3) << d;
   VectorXd x_dot = J_franka * v_franka;
 
+  // compute xd_dot.head(3) angular velocity
+  // RotationMatrix<double> R_d(orientation_d);
+  // Eigen::AngleAxis<double> w_d_aa = (R.inverse() * R_d).ToAngleAxis();
+  // std::cout <<  w_d_aa.angle() << std::endl << std::endl;
+  // w_d_aa.angle() = 0.1 * w_d_aa.angle() / 70.0;
+
+
+
+  // Quaterniond w_desired = RotationMatrix<double>(w_d_aa).ToQuaternion();
+
   double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
   if (enable_heuristic_ && timestamp > settling_time){
     Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
@@ -199,16 +223,39 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     xd.tail(3) << xd_new;
   }
 
-  // compute position control input
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R, orientation_d);
+  // std::cout << xtilde << std::endl << std::endl;
   VectorXd xtilde_dot = xd_dot - x_dot;
+
+  // double ang_speed = x_dot.head(3).norm();
+  // Eigen::Vector3d axis = x_dot.head(3) / ang_speed;
+  // if (ang_speed > 0.001){
+  //   RotationMatrix<double> w_current(Eigen::AngleAxis<double>(ang_speed, axis));
+  //   xtilde_dot.head(3) = this->CalcRotationalError(w_current, w_desired);
+  // }
+  // else{
+  //   RotationMatrix<double> w_current(Eigen::AngleAxis<double>(0, Vector3d(1, 0, 0)));
+  //   xtilde_dot.head(3) = this->CalcRotationalError(w_current, w_desired);
+  // }
 
   MatrixXd M_inv = M_franka.inverse();
   MatrixXd Lambda = (J_franka * M_inv * J_franka.transpose()).inverse(); // apparent end effector mass matrix
-  // VectorXd tau = J_franka.transpose() * Lambda * (K_*xtilde + B_*xtilde_dot) + C_franka - tau_g_franka;
-  VectorXd tau = J_franka.transpose() * Lambda * (K_*xtilde + B_*xtilde_dot) + C_franka;
-
+  
+  /// integral term
+  VectorXd tau_int = VectorXd::Zero(7);
+  if (timestamp > 1) {
+    double dt = timestamp - prev_time_;
+    VectorXd integrator_temp = integrator_;
+    integrator_ += xtilde * dt;
+    tau_int = J_franka.transpose() * Lambda * I_*integrator_;
+    if (SaturatedClamp(tau_int, param_.integrator_clamp)){
+      std::cout << "clamped integrator torque" << std::endl;
+      integrator_ = integrator_temp;
+      ClampIntegratorTorque(tau_int, param_.integrator_clamp);
+    }
+  }
+  VectorXd tau = J_franka.transpose() * Lambda * (K_*xtilde + B_*xtilde_dot) + tau_int + C_franka;
   
   // add feedforward force term if contact is desired
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
@@ -237,6 +284,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
+  prev_time_ = timestamp;
   
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
@@ -245,8 +293,9 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   int print_enabled = 0; // print flag
   if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp && timestamp >= settling_time){
     std::cout << std::setprecision(6) << std::fixed;
-
+    
     std::cout << timestamp << std::endl;
+    std::cout << "xtilde\n" << xtilde << std::endl;
 
     std::cout << std::endl;
   }
@@ -317,6 +366,28 @@ void ImpedanceController::ClampJointTorques(VectorXd& tau, double timestamp) con
       tau(i) = sign * thresholds(i);
     }
   }
+}
+
+void ImpedanceController::ClampIntegratorTorque(VectorXd& tau, const VectorXd& clamp) const {
+  for (int i = 0; i < tau.size(); i++){
+    int sign = 1;
+    if (tau(i) < 0) sign = -1;
+
+    if (abs(tau(i)) > clamp(i)){
+      tau(i) = sign * clamp(i);
+    }
+  }
+}
+
+bool ImpedanceController::SaturatedClamp(const VectorXd& tau, const VectorXd& clamp) const {
+  for (int i = 0; i < tau.size(); i++){
+    if (abs(tau(i)) > clamp(i)){
+      return true;
+    }
+  }
+
+
+  return false;
 }
 
 Vector3d ImpedanceController::ApplyHeuristic(

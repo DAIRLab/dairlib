@@ -130,8 +130,11 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
       RotationMatrix<double> curr_orientation(quaternion);
       RotationMatrix<double> rotation = this->RodriguesFormula(w / w.norm(), w.norm() * dt);
       VectorXd new_orientation = (rotation * curr_orientation).ToQuaternionAsVector4();
+      // state->get_mutable_discrete_state(orientation_idx_).get_mutable_value() 
+      //   << new_orientation;
       state->get_mutable_discrete_state(orientation_idx_).get_mutable_value() 
-        << new_orientation;
+        << 1, 0, 0, 0;
+      
 
     }
     /// update prev_time

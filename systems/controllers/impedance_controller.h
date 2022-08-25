@@ -119,6 +119,8 @@ class ImpedanceController : public LeafSystem<double> {
                     VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;
   void CheckJointLimits(const VectorXd& q, double timestamp) const;
   void ClampJointTorques(VectorXd& tau, double timestamp) const;
+  void ClampIntegratorTorque(VectorXd& tau, const VectorXd& clamp) const;
+  bool SaturatedClamp(const VectorXd& tau, const VectorXd& clamp) const;
 
   /*
   NOTE: THE TIMING FUNCTIONALITY IN THIS FUNCTION IS VERY MUCH OUT OF DATE!!
@@ -142,6 +144,7 @@ class ImpedanceController : public LeafSystem<double> {
   drake::systems::Context<double>& context_f_;
   const Eigen::MatrixXd K_;
   const Eigen::MatrixXd B_;
+  Eigen::MatrixXd I_;
   const MatrixXd K_null_;
   const MatrixXd B_null_;
   const VectorXd qd_;
@@ -156,6 +159,9 @@ class ImpedanceController : public LeafSystem<double> {
   Eigen::VectorXd lower_limits_;
   Eigen::VectorXd joint_ranges_;
   Eigen::VectorXd torque_limits_;
+
+  mutable Eigen::VectorXd integrator_;
+  mutable double prev_time_;
 
   // frame, EE, and contact info
   const drake::multibody::BodyFrame<double>* EE_frame_;

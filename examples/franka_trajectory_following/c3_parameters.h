@@ -13,7 +13,11 @@ struct C3Parameters {
     // impedance control parameters
     a->Visit(DRAKE_NVP(translational_stiffness));
     a->Visit(DRAKE_NVP(rotational_stiffness));
-    a->Visit(DRAKE_NVP(damping_ratio));
+    a->Visit(DRAKE_NVP(translational_damping_ratio));
+    a->Visit(DRAKE_NVP(rotational_damping));
+    a->Visit(DRAKE_NVP(translational_integral_gain));
+    a->Visit(DRAKE_NVP(rotational_integral_gain));
+    a->Visit(DRAKE_NVP(integrator_clamp));
     a->Visit(DRAKE_NVP(stiffness_null));
     a->Visit(DRAKE_NVP(damping_null));
     a->Visit(DRAKE_NVP(q_null_desired));
@@ -92,7 +96,11 @@ struct C3Parameters {
   // impedance control parameters
   double translational_stiffness;
   double rotational_stiffness;
-  double damping_ratio;
+  double translational_damping_ratio;
+  double rotational_damping;
+  double translational_integral_gain;
+  double rotational_integral_gain;
+  VectorXd integrator_clamp;
   double stiffness_null;
   double damping_null;
   VectorXd q_null_desired;

@@ -116,14 +116,13 @@ int DoMain(int argc, char* argv[]){
 
   double translational_stiffness = param.translational_stiffness;
   double rotational_stiffness = param.rotational_stiffness;
-  double damping_ratio = param.damping_ratio;
 
   MatrixXd K = MatrixXd::Zero(6,6);
   MatrixXd B = MatrixXd::Zero(6,6);
   K.block(0,0,3,3) << rotational_stiffness * MatrixXd::Identity(3,3);
   K.block(3,3,3,3) << translational_stiffness * MatrixXd::Identity(3,3);
-  B.block(0,0,3,3) << 2 * damping_ratio * sqrt(rotational_stiffness) * MatrixXd::Identity(3,3);
-  B.block(3,3,3,3) << 2 * damping_ratio * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
+  B.block(0,0,3,3) << param.rotational_damping * MatrixXd::Identity(3,3);
+  B.block(3,3,3,3) << 2 * param.translational_damping_ratio * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
 
   MatrixXd K_null = param.stiffness_null * MatrixXd::Identity(7,7);
   MatrixXd B_null = param.damping_null * MatrixXd::Identity(7,7);
@@ -170,7 +169,7 @@ int DoMain(int argc, char* argv[]){
   // points[0] = Vector3d(0.55, 0.0, 0.12);
   // points[1] = Vector3d(0.60, 0.05, 0.20);
 
-  double time_inc = 2;
+  double time_inc = 5;
   double num_points = 5;
 
   double l = 0.15;
@@ -183,6 +182,16 @@ int DoMain(int argc, char* argv[]){
   points[3] = Vector3d(0.55-l, 0.0, 0.12);
   points[4] = Vector3d(0.55, 0.0, 0.12);
 
+  // double time_inc = 5;
+  // double num_points = 2;
+
+  // double l = 0.15;
+
+  // std::vector<MatrixXd> points(num_points);
+  // std::vector<double> times;
+  // points[0] = Vector3d(0.55, 0.0, 0.12);
+  // points[1] = Vector3d(0.55, 0.0, 0.12);
+  // // points[1] = Vector3d(0.55, 0.1, param.gait_parameters(1) + param.table_offset);
 
   for (int i = 0; i < num_points; i++){
     times.push_back(i*time_inc);

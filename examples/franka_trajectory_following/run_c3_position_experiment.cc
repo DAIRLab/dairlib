@@ -70,9 +70,13 @@ int DoMain(int argc, char* argv[]){
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
     "examples/franka_trajectory_following/parameters.yaml");
   drake::lcm::DrakeLcm drake_lcm;
+  DiagramBuilder<double> builder;
 
   /* -------------------------------------------------------------------------------------------*/
   /// get trajectory info from c3
+  auto c3_subscriber = builder.AddSystem(
+    LcmSubscriberSystem::Make<dairlib::lcmt_c3>(
+      "CONTROLLER_INPUT", &drake_lcm));
   auto c3_receiver = 
     builder.AddSystem<systems::RobotC3Receiver>(14, 9, 6, 9);
   auto subvector_passthrough = builder.AddSystem<systems::TSSubvectorPassThrough<double>>(
@@ -80,7 +84,7 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(c3_subscriber->get_output_port(0),
     c3_receiver->get_input_port(0));
   builder.Connect(c3_receiver->get_output_port(0),
-    subvector_passthrough.get_input_port(0));
+    subvector_passthrough->get_input_port());
 
   /* -------------------------------------------------------------------------------------------*/
   /// Send to ROS
@@ -98,13 +102,9 @@ int DoMain(int argc, char* argv[]){
 
   auto diagram = builder.Build();
   // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_run_c3_impedance_experiments");
-
-
   auto context_d = diagram->CreateDefaultContext();
-  auto& receiver_context = diagram->GetMutableSubsystemContext(*state_receiver, context_d.get());
-  (void) receiver_context; // suppressed unused variable warning
 
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+  systems::LcmDrivenLoop<dairlib::lcmt_c3> loop(
       &drake_lcm, std::move(diagram), c3_receiver, "CONTROLLER_INPUT", true);
   
   /// initialize message
@@ -132,7 +132,7 @@ int DoMain(int argc, char* argv[]){
   auto& diagram_context = loop.get_diagram_mutable_context();
   auto& ik_subscriber_context =
       loop.get_diagram()->GetMutableSubsystemContext(*c3_subscriber,
-                                                      &diagram_context);`
+                                                      &diagram_context);
   // Note that currently the LcmSubscriber stores the lcm message in the first
   // state of the leaf system (we hard coded index 0 here)
   auto& mutable_state =

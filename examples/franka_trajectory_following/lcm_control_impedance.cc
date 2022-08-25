@@ -93,14 +93,13 @@ int DoMain(int argc, char* argv[]){
 
   double translational_stiffness = param.translational_stiffness;
   double rotational_stiffness = param.rotational_stiffness;
-  double damping_ratio = param.damping_ratio;
 
   MatrixXd K = MatrixXd::Zero(6,6);
   MatrixXd B = MatrixXd::Zero(6,6);
   K.block(0,0,3,3) << rotational_stiffness * MatrixXd::Identity(3,3);
   K.block(3,3,3,3) << translational_stiffness * MatrixXd::Identity(3,3);
-  B.block(0,0,3,3) << 2 * damping_ratio * sqrt(rotational_stiffness) * MatrixXd::Identity(3,3);
-  B.block(3,3,3,3) << 2 * damping_ratio * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
+  B.block(0,0,3,3) << param.rotational_stiffness * sqrt(rotational_stiffness) * MatrixXd::Identity(3,3);
+  B.block(3,3,3,3) << 2 * param.translational_damping_ratio * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
 
   MatrixXd K_null = param.stiffness_null * MatrixXd::Identity(7,7);
   MatrixXd B_null = param.damping_null * MatrixXd::Identity(7,7);

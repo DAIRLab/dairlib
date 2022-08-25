@@ -17,10 +17,12 @@ import yaml
 from examples.franka_trajectory_following.scripts.franka_logging_utils import get_most_recent_logs
 
 DAIR_PATH = "/home/dair-manipulation/adam_ws/dairlib"
+plot_dpi = 1000
 
 def check_flag_and_save(ps, filename, format='svg', save_flag=False):
   if save_flag:
-    ps.fig.savefig(filename, format=format)
+    global plot_dpi
+    ps.fig.savefig(filename, format=format, dpi=plot_dpi)
 
 def augment_data(lcm_data1, lcm_data2, t1_key, t2_key, key1, key2):
   '''
@@ -121,6 +123,9 @@ def main():
     config_path = 'bindings/pydairlib/analysis/plot_configs/franka_default_plot.yaml'
     with open(config_path, 'r') as stream:
       config = yaml.safe_load(stream)
+
+    global plot_dpi
+    plot_dpi = config['plot_dpi']
 
     ''' Get the plant '''
     builder = DiagramBuilder()
@@ -299,7 +304,7 @@ def main():
     if config['plot_desired_EE_forces']:
       solve_times_ps = mbp_plots.plot_c3_plan(
         c3_output, 'solve_times', t_c3_slice)
-      check_flag_and_save(desired_EE_force_ps,
+      check_flag_and_save(solve_times_ps,
         "{}/{}/figures/c3_solve_times{}.svg".format(logdir, log_num, log_num),
         save_flag = config['save_plots'])
 
@@ -315,7 +320,11 @@ def main():
         save_flag = config['save_plots'])
 
       t, v_aug, xdot_aug = augment_data(robot_output, c3_output, 't_x', 't', 'v', 'xdot_d')
-      EE_velocity_error = plot_EE_velocity_error(t, q_aug, v_aug, xdot_aug, plant, context, frame, pt_on_frame)
+      EE_velocity_error_ps = plot_EE_velocity_error(t, q_aug, v_aug, xdot_aug, plant, context, frame, pt_on_frame)
+      check_flag_and_save(EE_velocity_error_ps,
+        "{}/{}/figures/EE_velocity_error{}.svg".format(logdir, log_num, log_num),
+        save_flag = config['save_plots'])
+
 
     ''' Plot Unfiltered Vision Position Estimate '''
     if config['plot_unfiltered_ball_position']:
@@ -365,7 +374,10 @@ def main():
         save_flag = config['save_plots'])
 
     if config['show_plots']:
+      print("Finished making plots. Showing plots now.")
       plt.show()
+    else:
+      print("Finished making plots.")
 
 
 if __name__ == '__main__':

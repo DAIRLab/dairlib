@@ -8,7 +8,8 @@ This directory contains the majority of the code required to run the C3-Franka b
 3. [Experiments](#Experiments)
 4. [Directory Structure](#Directory-Structure)
 5. [Relevant Files](#Relevant-Files)
-6. [FAQ](#FAQ)
+6. [Network Addresses](#Network-Addresses)
+7. [FAQ](#FAQ)
 
 ## Installation
     
@@ -110,7 +111,7 @@ Before beginning, make sure all the calibration steps have been completed.
 1. Start procman
 ```
 cd ~/adam_ws/dairlib
-source ../franka_ws/catkin_ws/devel/setup.bash
+source ../franka/catkin_ws/devel/setup.bash
 bot-procman-sheriff -l examples/franka_trajectory_following/procman_script_c3.pmd
 ```
 2. Start `a.roscore` from group `2.ROS`.
@@ -182,10 +183,91 @@ This section provides a brief overview of the directory structure for each repos
     - `ros`: directory containing the relevant systems for Drake<->ROS.
     - `robot_lcm_systems.*`: files implementing sending and receiving classes for LCM messages, including `lcmt_c3` messages.
 
-### franka_ws/catkin_ws
+### franka_ws/catkin_ws/franka_ros
+- `franka_control`: directory containing launch and src files for the franka control node.  The safety trigger is implemented in the control node in `franka_control/src/franka_control_node.cpp` (see the `has_error` variable).
+- `franka_example_controllers`: directory containing all the example controllers, `move_to_start`, as well as the `drake_impedance_controller`.  For more details on writing controllers, see [Writing your own controller](https://frankaemika.github.io/docs/franka_ros.html#writing-your-own-controller) in the Franka documentation.
+    - `include/franka_example_controllers/drake_impedance_controller.h`: header file for the `drake_impedance_controller`.
+    - `src/drake_impedance_controller.h`: source file for the `drake_impedance_controller`
+- `franka_msgs/srv`: directory containing the declaration of the `TriggerError` service which is used by safety to stop the robot.
+- `franka_safety`: directory containing scripts for safety
+    - `parameters_safety.yaml`: yaml file containing safety limits
+    - `safety.py`: safety script
+
+### franka_ws/catkin_ws/franka_vision
+- `src/MaskFinder.py`: `MaskFinder` GUI implementation.  Used by `table_mask_calib.py` and `ball_mask_calib.py` to generate the appropriate masks.
+- `src/ball_mask_calib.py`: uses `MaskFinder` to find mask parameters for the ball.  Only required for the mask vision algorithm.
+- `src/table_mask_calib.py`: uses `MaskFinder` to create a static binary mask of the table.  Strongly recommended for both the mask and hough vision algorithms.
+- `src/pointgrey.py`: vision script that implements both the mask and hough transform methods for the pointgrey cameras.  Takes arguments `<method>` and `<visualization_flag>`.  `<method>` can be either `mask` or `hough`; `visualization_flag>` can be 0 or 1.
+- `src/realsense.py`: vision script that implements both the mask and hough transform methods for the realsense camera (has not been maintained for some time).
+- `calibration`: directory containing which stores the static binary table masks and the ball mask parameters.  These masks can be modified by calling the appropriate `mask_calib` scripts described above.
 
 
 ## Relevant Files
+This section provides a more detailed overview of the relevant files, how they are implemented, and how they should be used.
+### dairlib
+
+##### examples/franka_trjacetory_following/parameters.yaml
+
+This table describes each parameter and lists the relevant files that use each parameter.  **Note that the relevant files column is not exhaustive.**  To determine all the files that use a parameter, run
+```
+grep -r <parameter> <dairlib_path>
+```
+
+| Parameter      | Type     | Units/Frame |  Functionality | Relevant Files |  Comments |
+| :---        |    :----:   |          :---: | :--- | :--- | :------ |
+|translational_stiffness | double | N/m | impedance controller translational stiffness | run_impedance_experiment.cc, run_c3_impedance_experiment.cc | |
+|rotational_stiffness | double | Nm/rad | impedance controller rotational stiffness | See above | |
+|translational_damping_ratio | double | N/A | translational damping ratio for impedance controller: actual damping is computed as 2*translational_damping_ratio * sqrt(translational_stiffness) | See above | |
+|rotational_damping | double | Nm*s/rad | rotational damping gains for impedance controller | See above | |
+|translational_integral_gain | double | | translational integral gain for impedance controller | impedance_controller.cc | |
+|rotational_integral_gain | double | | rotational integral gain for impedance controller | impedance_controller.cc | |
+|stiffness_null | double | Nm/rad | nullspace stiffess ratio for rotation and translation | run_impedance_experiment.cc, run_c3_impedance_experiment.cc | |
+|damping_null | double | Nm*s/rad | nullspace damping rotation and translation | See above | |
+|q_null_desired | VectorXd | rad | nullspace target | See above | |
+|moving_offset, pushing_offset | double | m | old parameters for heuristics | impedance_controller.* | |
+| mu | double | N/A | friction coefficient for urdfs | urdfs, LCSFactory? | Currently (08-26-22), `update_urdfs.py` does not update this parameter in the urdfs |
+| Q_default | double |  | default Q gain for C3 | lcm_control_demo.cc | |
+| Q_finger | double |  | Q gain for the end effector xyz | lcm_control_demo.cc | |
+| Q_ball_x, Q_ball_y | double |  | Q gain for the balls x and y position respectively | lcm_control_demo.cc | |
+| Q_finger_vel, Q_ball_vel | double |  | Q gain for the finger and ball velocity respectively | lcm_control_demo.cc | |
+| Qnew_finger, Qnew_ball_x, Qnew_ball_y | double |  | Q gain for the finger xyz, ball_x, and ball_y during the return phase respectively | lcm_control_demo.cc | |
+| R | double |  | R gain for the finger xyz, ball_x, and ball_y during the return phase respectively | lcm_control_demo.cc | | G | double |  | G gain for C3 | lcm_control_demo.cc | |
+| G | double |  | G gain for C3 | lcm_control_demo.cc | |
+| U_default | double | default U cost for C3 | lcm_control_demo.cc | |
+|U_pos_vel | double | | U cost for first 19 states in C3 (finger and ball position and velocity) | lcm_control_demo.cc | |
+|U_u | double | | U cost for the control inputs (u) in C3) | lcm_control_demo.cc | |
+|q_init_finger | VectorXd| m above table surface | desired height of finger above the table surface during the roll phase | lcm_control_demo.cc | Only the last element of this vector is being used.  This parameter could be reduced to a single double |
+|q_init_ball_c3 | VectorXd| orientation in quaternions | initial pose of the ball, last 3 elements are not used (overridden after initialization) | lcm_control_demo.cc | Only the first 4 elements of this vector are being used.  This parameter could be reduced to a 4d vector |
+|dt | double | s | initial estimate for the period of C3 | lcm_control_demo.cc, c3_controller_franka.* |  |
+|velocity_limit | double | m/s | maximum desired velocity returned from C3 | c3_controller_franka.* | Implemented to prevent C3 from returning dangerous set points |
+| orientation_degrees | double | degrees | angle of orientaiton target |  c3_controller_franka.* | impedance_controller.* used to use this parameter while we were hacking together some experiments, but generally all the orientation targets should be specified through C3 |
+| axis_option | int | | Choose between 1 or 2 to switch between the two axis options for the target orientation. | c3_controller_franka.* | Option 1: rotate away from the target position.  Option 2: rotate towards the center of the ball trajectory.|
+| traj_radius | double | m | Radius of the target ball trajectory | c3_state_estimator.cc, simulate_franka_lcm.cc, run_c3_position_experiment.cc, lcm_control_demo.cc, run_c3_impedance_experiment.cc, c3_controller_franka.cc | Also used for computing the initial position of the ball. |
+| phase | double | degrees | Starting phase of the circular trajectory | See above | Also used for computing the initial position of the ball. |
+| x_c, y_c | double | m in Franka base frame | Center of the target circular trajectory | See above | Also used for computing the initial position of the ball. |
+| degree_increment | double | degrees | Controls speed of target trajectory | c3_controller_franka.cc | Only used if enable_adaptive_path is  0, degree_increment must also be positive |
+| time_increment | double | s | Desired time to travel degree_increment along the circle | c3_controller_franka.cc | Only used if enable_adaptive_path is  0 |
+| hold_order | int |  | Order of the generated trajectory.  0 for a 'discontinuous' trajectory, 1 for a linearly interpolated trajectory.  | c3_controller_franka.cc | Only used if enable_adaptive_path is  0 |
+| lead_angle | double | degrees | Controls the distance between the ball's current position and target position | c3_controller_franka.cc | Only used if enable_adaptive_path is  1.  If lead angle is positive, the circle will be drawn CW, otherwise, the circle will be drawn CCW |
+| enable_adaptive_path | int | | Controls the way the target trajectory is generated | c3_controller_franka.cc | 0 for set waypoints, 1 to compute way points based on current state |
+| ball_radius | double | m | radius of the manipulated sphere | urdfs, c3_state_estimator.cc, simulate_franka_lcm.cc, run_c3_position_experiment.cc, lcm_control_demo.cc, run_c3_impedance_experiment.cc, update_urdfs.py, c3_controller_franka.cc, impedance_controller.cc | `update_urdfs.py` must be called when changing this parameter.  This parameter is also queried by `franka_vision` code.  Usage in `impedance_controller.cc` is legacy. |
+| finger_radius | double | m | radius of the end effector (finger) | urdfs,  update_urdfs.py, c3_controller_franka.cc, impedance_controller.cc | `update_urdfs.py` must be called when changing this parameter.  Usage in `impedance_controller.cc` is legacy.|
+| EE_offset | VectorXd | m, Franka Frame 7 | position of the center of the finger in Franka frame 7 (last frame) | urdfs, log_plotter_franka.py, update_urdfs.py, c3_controller_franka.cc, impedance_controller.* | `update_urdfs.py` must be called when changing this parameter.|
+| table_offset | double | m in Franka base frame |z height of table surface from Franka's world frame (negative for below, positive for above) | urdfs, c3_state_estimator.cc, simulate_franka_lcm.cc, run_c3_position_experiment.cc, run_impedance_experiment.cc, run_c3_impedance_experiment.cc, update_urdfs.py, c3_controller_franka.cc | `update_urdfs.py` must be called when changing this parameter.  This parameter is also queried by `franka_vision` code. |
+| model_table_offset | double | m in Franka base frame |z height of table surface from Franka's world frame in C3's world model | urdfs, update_urdfs.py | `update_urdfs.py` must be called when changing this parameter.|
+| contact_threshold | double | N | Threshold for feedforward contact force to be added in the impedance controller | impedance_controller.cc | |
+| enable_heuristic | int | | Flag to indicate if model moving/pushing heuristics should be used. | impedance_controller.cc | Legacy feature, hasn't been maintained in a while. |
+| enable_flag | int | | Flag to indicate if the feedforward force should be added to the controller. | impedance_controller.* |  |
+| ball_stddev | double | m | std_dev of noise added to the ball position during simulation.  Assumes guassian noise. | run_state_estimator, c3_controller_franka.cc |  c3_controller_franka.cc uses this parameter through the StateEstimation function which is no longer used.  The noise is now added through the FrankaOutputToBallPosition system instead. |
+| roll_phase | double | s | Duration of the roll phase of the gait |  c3_controller_franka.cc, impedance_controller.cc | Usage in impedance_controller.cc has not been maintained in some time (used in the heuristic function). |
+| return phase | double | s | Duration of the return phase of the gait |  c3_controller_franka.cc, impedance_controller.cc | Usage in impedance_controller.cc has not been maintained in some time (used in the heuristic function). |
+| gait_parameters | VectorXd | m | Parameters that control the rolling gait.  Index 0: controls how far behind the ball the finger should travel at the end of the gait.  Index 1: controls the height of the finger during the first part of the return phase.  Index 2: controls the height of finger during the second part of the return phase.  Index 3: controls the height of the finger during the last part of the return phase. | c3_controller_franka.cc | These parameters tend to make a big difference. |
+| dt_filter_length | int | | Length of the moving average filter to compute the C3 dt | c3_controller_franka.* | |
+| alpha_p, alpha_v | double | | Exponential filter parameters | c3_controller_franka.* | These parameters aren't actually used.  c3_state_estimator.* uses a hard coded filter value. |
+
+
+
+## Network Addresses
 
 ## FAQ
 TODO: more questions here

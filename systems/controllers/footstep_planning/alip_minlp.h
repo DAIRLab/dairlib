@@ -49,6 +49,10 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
   AlipDynamicsConstraint(double m, double H);
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>>& x,
                           drake::VectorX<drake::AutoDiffXd>* y) const;
+
+  void set_m(double m) {m_ = m;}
+  void set_H(double H) {H_ = H;}
+
  private:
   double m_;
   double H_;
@@ -129,6 +133,7 @@ class AlipMINLP {
 
   std::vector<drake::solvers::MathematicalProgramResult> solutions_;
   std::vector<std::vector<int>> mode_sequnces_{};
+  std::vector<std::vector<Eigen::Vector4d>> xd_;
 
 };
 }

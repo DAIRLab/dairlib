@@ -74,6 +74,7 @@ void AlipMINLP::AddTrackingCost(vector<vector<Eigen::Vector4d>> xd,
     }
     tracking_costs_.push_back(QQ);
   }
+  xd_ = xd;
 }
 
 void AlipMINLP::AddInputCost(double R) {
@@ -99,6 +100,11 @@ void AlipMINLP::Build() {
   MakeTimingBoundsConstraint();
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
+//  for (int i = 0; i < nmodes_; i++) {
+//    for(int k = 0; k < nknots_.at(i); k++) {
+//      prog_.SetInitialGuess(xx_.at(i).at(k), xd_.at(i).at(k));
+//    }
+//  }
 }
 
 void AlipMINLP::AddMode(int nk) {

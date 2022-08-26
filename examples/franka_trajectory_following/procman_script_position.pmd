@@ -1,0 +1,45 @@
+group "1.director" {
+    cmd "drake-director" {
+        exec = "bazel-bin/director/drake-director --script director/scripts/VisualizationGUI.py";
+        host = "localhost";
+    }
+}
+
+group "2.ROS" {
+    cmd "a.roscore" {
+        exec = "roscore";
+        host = "localhost";
+    }
+}
+
+cmd "3.safety" {
+    exec = "rosrun franka_safety safety.py";
+    host = "localhost";
+}
+
+group "4.ROS controlers" {
+    cmd "a.move to start" {
+        exec = "roslaunch franka_example_controllers move_to_start.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "localhost";
+    }
+    cmd "b.ROS position" {
+        exec = "roslaunch franka_example_controllers drake_pose_controller.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "localhost";
+    }
+}
+
+group "5.[HW] Position Experiments" {
+    cmd "a.Position" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_position_experiment";
+        host = "localhost";
+    }
+    cmd "b.ROS->LCM" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_impedance_ros_to_lcm";
+        host = "localhost";
+    }
+}
+
+cmd "6.lcmspy" {
+    exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+    host = "localhost";
+}

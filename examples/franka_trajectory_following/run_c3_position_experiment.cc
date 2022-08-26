@@ -24,12 +24,12 @@
 #include "multibody/multibody_utils.h"
 #include "systems/system_utils.h"
 #include "systems/primitives/timestamped_subvector_pass_through.h"
+#include "systems/controllers/impedance_controller.h"
 
 #include "examples/franka_trajectory_following/c3_parameters.h"
 #include "examples/franka_trajectory_following/systems/c3_trajectory_source.h"
 #include "examples/franka_trajectory_following/systems/gravity_compensator.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 
 #define ROS
@@ -88,20 +88,19 @@ int DoMain(int argc, char* argv[]){
 
   /* -------------------------------------------------------------------------------------------*/
   /// Send to ROS
-    ros::init(argc, argv, "c3_impedance_controller");
+    ros::init(argc, argv, "c3_position_controller");
     ros::NodeHandle node_handle;
     signal(SIGINT, SigintHandler);
 
     auto c3_to_ros = builder.AddSystem<systems::TimestampedVectorToROS>(7);
     // try making this kForced
     auto ros_publisher = builder.AddSystem(
-        systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/pose_d", &node_handle, .0005));
+        systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/pose_d", &node_handle, 1 / 80.0));
     
     builder.Connect(subvector_passthrough->get_output_port(), c3_to_ros->get_input_port());
     builder.Connect(c3_to_ros->get_output_port(), ros_publisher->get_input_port());
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_run_c3_impedance_experiments");
   auto context_d = diagram->CreateDefaultContext();
 
   systems::LcmDrivenLoop<dairlib::lcmt_c3> loop(

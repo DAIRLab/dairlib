@@ -249,6 +249,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
   state << end_effector, q_plant.tail(7), end_effector_dot, v_plant.tail(6);
 
+
+  ///change this for adaptive path
   VectorXd traj_desired_vector = pp_.value(timestamp);
   // compute adaptive path if enable_adaptive_path is 1
   if (param_.enable_adaptive_path == 1){

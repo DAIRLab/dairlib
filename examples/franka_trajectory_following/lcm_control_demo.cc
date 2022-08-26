@@ -179,6 +179,7 @@ int DoMain(int argc, char* argv[]){
     theta(i) = values[i];
   }
 
+  ///change this part for different shapes
   std::vector<VectorXd> xtraj;
   for (int i = 0; i < (int) values.size(); i++){
     double angle = theta(i);

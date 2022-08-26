@@ -19,9 +19,9 @@ pushing_offset: 0 #-0.001
 # c3 parameters
 mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
-Q_finger: 500           # finger xyz cost
-Q_ball_x: 30000 #10000
-Q_ball_y: 30000  #10000
+Q_finger: 1000           # finger xyz cost
+Q_ball_x: 50000 #10000
+Q_ball_y: 50000  #10000
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
@@ -36,14 +36,15 @@ q_init_finger: [0, 0, 0.0775]
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
 velocity_limit: 1
-orientation_degrees: -10
+orientation_degrees: 0
 axis_option: 1
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
 q_init_ball: [1, 0, 0, 0] # xyz computed according to x_c, y_c, traj_radius, phase, and ball_radius
 initial_start: [0.55, 0, 0.12]
-initial_finish: [0, 0, 0.09]  # xy computed according to x_c, y_c, traj_radius, and phase
+initial_finish: [0, 0, 0.09]  # [0, 0, 0.07]  # xy computed according to x_c, y_c, traj_radius, and phase
+>>>>>>> Stashed changes
 stabilize_time1: 0.5 #0.5
 move_time: 3 #0.75
 stabilize_time2: 0.75 #0.75
@@ -67,8 +68,8 @@ enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to b
 ball_radius: 0.0315           # changes need to be consistent with sphere urdf, geometry mesh, AND vision
 finger_radius: 0.0195         # changes need to be consistent with franka_box and model urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with franka_box urdf
-table_offset: -0.0031          # chances need to be consistent with franka_box, model urdf, AND vision
-model_table_offset: -0.0031    # changes need to be consistent with model urdf
+table_offset: -0.0031 #-0.0245      # chances need to be consistent with franka_box, model urdf, AND vision
+model_table_offset: -0.0031 #-0.0245 # changes need to be consistent with model urdf
 
 # Misc
 contact_threshold: 0.01
@@ -79,7 +80,7 @@ ball_stddev: 0.0000 # standard deviation of 0-mean noise on ball state estimatio
 # gaiting parameters
 roll_phase: 1  #2.5
 return_phase: 0.5 #0.75
-gait_parameters: [0.035, 0.0951, 0.0911, 0.0691] # try playing with first param here
+gait_parameters: [0.03, 0.0951, 0.0911, 0.0691] # try playing with first param here
 # gait parameters represent height above the table
 
 # filters

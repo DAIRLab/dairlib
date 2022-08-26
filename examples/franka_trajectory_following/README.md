@@ -203,7 +203,7 @@ This section provides a brief overview of the directory structure for each repos
 
 
 ## Relevant Files
-This section provides a more detailed overview of the relevant files, how they are implemented, and how they should be used.
+This section provides a more detailed overview of the relevant files, how they are implemented, and how they should be used.  This section is not yet complete.  For specific file description requests, feel free to email adam.wei@mail.utoronto.ca.
 ### dairlib
 
 ##### examples/franka_trjacetory_following/parameters.yaml
@@ -270,11 +270,40 @@ grep -r <parameter> <dairlib_path>
 ## Network Addresses
 
 ## FAQ
-TODO: more questions here
 1. How do I create a new Drake<->Interface?
+Dairlib provides two systems: `ros_subscriber_system` and `ros_publsiher_system`.  The `ros_subscriber_system` subscribes to a rostopic and outputs the ROS messages as `AbstractValue`s; the `ros_publisher_system` takes in a ROS message as a `AbstractValue` and publishes it.  To complete the interface, simply write a system that converts your LCM message type to the desired ROS message type or vise versa, and connect them to the appropriate ros publisher/subcriber systems.
+
 2. Vision algorithm is too slow, how can I speed it up?
+The hough algorithm in `franka_vision/src/pointgrey.py` can be tuned to trade off speed for accuracy and precision.  For faster circle detection, try playing with blurring, increasing the `dp` argument in the hough transform, or decreasing the range of ball radii the algorithm is looking for.  Also try recalibrating the table mask.
+
 3. How do I add/remove new parameters to `parameters.yaml`?
+Step 1: add/remove the parameter from `parameters.yaml`
+Step 2: add/remove the parameter as a member to the `C3Parameters` struct.
+Step 3: add/remove the parameter to the `Serialize` member function in `C3Parameters`.
+Step 4: Rebuild
+
 4. Webcam has arrived, how do I set it up?
+Try using `ffmpeg`.  Ask Will for more details
 5. Geom error?
+This usually means the cameras could not see the ball, or it thinks the ball is in some physically infeasible spot (ex. in the robot)
+
 6. C3 target in sim is jumping everywhere?
+This can happen if C3 is running on both the Franka and the C3 PC.
+
 7. LCM messages are not being sent across the network.
+Try the following steps until it works. Restart procmans, sudo ip route add command, test LCM connection through terminal, check memory availability on Franka computer, restart computers, ask Cassie guys for help 😊.
+
+8. Dairlib won't build.
+Check if the computer has enough memory (Franka PC is low on memory).  Also check the BAZEL files and the `#define ROS` statements and set them appropriately.  Since only some GRASP computers have ROS, the BAZEL file tends to get editted frequently which might lead to build issues for other users.  In the future, we should look into build flags to have a more streamlined build process.
+
+9. When should I restart the safety script?
+If you are unsure, or if you are reading this question, that means you should probably restart safety.  Serious answer, you should restart safety whenever you get an error related to the `TriggerError` service, but it never hurts to restart safety more frequently anyways.
+
+10. How come I can't watch the videos from the logs?
+For some reason, you can't watch the mp4 files from the harddrive.  Send the video over slack, or copy it into a directory outside the harddrive.
+
+11. The pointgrey camera's drop frames when realsense starts.  Is this normal?
+Yes.
+
+12. When should I recalibrate cameras?
+When you get `Discarding measurement` errors from 1 or more cameras.

@@ -31,6 +31,7 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
+    import pdb; pdb.set_trace()
     ''' Read the log '''
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
@@ -58,6 +59,8 @@ def main():
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
     print('Log start time: ', robot_output['t_x'][0])
+
+    print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
     # import time
     # time_start = time.time()
     # time.sleep(1)
@@ -79,12 +82,16 @@ def main():
 
     # Plot joint positions
     if plot_config.plot_joint_positions:
-        mbp_plots.plot_joint_positions(robot_output, pos_names,
+        plot = mbp_plots.plot_joint_positions(robot_output, pos_names,
                                        7 if use_floating_base else 0, t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
     # Plot specific positions
     if plot_config.pos_names:
-        mbp_plots.plot_positions_by_name(robot_output, plot_config.pos_names,
+        plot = mbp_plots.plot_positions_by_name(robot_output, plot_config.pos_names,
                                          t_x_slice, pos_map)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
 
     ''' Plot Velocities '''
     # Plot floating base velocities if applicable
@@ -127,6 +134,10 @@ def main():
 
 
     ''' Plot OSC '''
+    if plot_config.plot_tracking_costs:
+        plot = mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plt.ylim([0, 400])
     if plot_config.plot_qp_costs:
         plot = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
@@ -135,11 +146,7 @@ def main():
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
         plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0, 6))
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-    if plot_config.plot_tracking_costs:
-        plot = mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-        plot.attach()
-        plt.ylim([0, 200])
+
 
     if plot_config.tracking_datas_to_plot:
         for traj_name, config in plot_config.tracking_datas_to_plot.items():

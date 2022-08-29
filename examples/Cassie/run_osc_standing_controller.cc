@@ -248,15 +248,19 @@ int DoMain(int argc, char* argv[]) {
           "pelvis_trans_traj", osc_gains.K_p_pelvis_rot,
           osc_gains.K_d_pelvis_rot, osc_gains.W_pelvis_rot, plant, plant,
           pelvis_tracking_data.get(), stance_foot_tracking_data.get());
-  pelvis_trans_rel_tracking_data->SetLowPassFilter(
-      osc_gains.center_of_mass_filter_tau, {0, 1, 2});
+  if (osc_gains.center_of_mass_filter_tau > 0) {
+    pelvis_trans_rel_tracking_data->SetLowPassFilter(
+        osc_gains.center_of_mass_filter_tau, {0, 1, 2});
+  }
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
       osc_gains.W_pelvis_rot, plant, plant);
   pelvis_rot_tracking_data->AddFrameToTrack("pelvis");
-  pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
-                                             {0, 1, 2});
+  if (osc_gains.rot_filter_tau > 0) {
+    pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
+                                               {0, 1, 2});
+  }
   osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 

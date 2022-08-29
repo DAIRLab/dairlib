@@ -184,6 +184,7 @@ class MuJoCoCassieGym():
         return velocity_command
 
     def step(self, action=np.zeros(18)):
+
         if not self.initialized:
             print("Call make() before calling step() or advance()")
 
@@ -196,9 +197,9 @@ class MuJoCoCassieGym():
         self.robot_output_sender.get_input_port_state().FixValue(self.robot_output_sender_context, self.cassie_state.x)
         action = self.velocity_profile(next_timestep)
         self.radio_input_port.FixValue(self.controller_context, action)
-
         u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
+        # import pdb; pdb.set_trace()
         self.drake_sim.AdvanceTo(next_timestep)
         # self.reward_func.reset_clock_reward()
         while self.simulator.time() < next_timestep:

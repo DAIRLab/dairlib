@@ -77,9 +77,11 @@ class DrakeCassieGym():
         return
 
     def advance_to(self, time):
+        cumulative_reward = 0
         while self.current_time < time and not self.terminated:
-            self.step()
-        return
+            _, reward = self.step()
+            cumulative_reward += reward
+        return cumulative_reward
 
     def check_termination(self):
         return self.cassie_state.get_fb_positions()[2] < 0.4

@@ -144,7 +144,7 @@ void StandingComTraj::CalcDesiredTraj(
 
   // Desired com pos
   Vector3d desired_com_pos_offset;
-  desired_com_pos_offset << 0.05, -mid_point_y, contact_pos_sum(2);
+  desired_com_pos_offset << 0.04, -mid_point_y, contact_pos_sum(2);
   Vector3d desired_com_pos = desired_com_pos_offset + target_pos;
 
   target_pos_filter_->Update(desired_com_pos);

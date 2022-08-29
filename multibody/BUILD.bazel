@@ -144,3 +144,11 @@ cc_binary(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "curriculum_terrain_config",
+    hdrs = ["curriculum_terrain_config.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

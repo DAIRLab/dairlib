@@ -2,6 +2,7 @@
 
 #include <drake/systems/primitives/constant_vector_source.h>
 #include <drake/systems/primitives/zero_order_hold.h>
+#include <drake/common/yaml/yaml_io.h>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -9,6 +10,7 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/curriculum_terrain_config.h"
 #include "multibody/boxy_height_map.h"
 #include "multibody/cube_height_map.h"
 #include "systems/framework/geared_motor.h"
@@ -32,6 +34,7 @@
 #include "drake/systems/sensors/rgbd_sensor.h"
 #include "drake/geometry/render_vtk/render_engine_vtk_params.h"
 #include "drake/geometry/render_vtk/factory.h"
+#include "drake/common/yaml/yaml_io.h"
 
 namespace dairlib {
 namespace examples {
@@ -54,7 +57,7 @@ using Eigen::VectorXd;
 CassieVisionSimDiagram::CassieVisionSimDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
     const std::string& urdf, bool visualize, double mu, double map_yaw,
-    const Eigen::Vector3d& normal, double map_height) {
+    const Eigen::Vector3d& normal, const std::string& map_config_fname) {
 
   cam_transform_ =
       drake::math::RigidTransform<double>(
@@ -72,6 +75,10 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
+  auto gains = drake::yaml::LoadYamlFile<CurriculumTerrainInfo>(map_config_fname);
+
+  // TODO(hersh500): create a terrain curriculum heightmap class for this, that takes in the
+  // config info.
   hmap_ = multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu, map_height);
 //  multibody::CubeHeightMap hmap =
 //      multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu);

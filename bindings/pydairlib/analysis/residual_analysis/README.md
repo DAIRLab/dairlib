@@ -23,6 +23,6 @@ Refer to "cassie_model.py":
 
 ## For post-data process:
 
-Refer to "data_processor.py":
+Refer to "residual_processor.py":
 
-There are some other functionality such as fit spring stiffness which is not used in residual_analysis.py
+The also provide some other functionality such as fit spring stiffness which maybe useful but not include in the residual_analysis.py main file

@@ -111,7 +111,7 @@ Before beginning, make sure all the calibration steps have been completed.
 1. Start procman
 ```
 cd ~/adam_ws/dairlib
-source ../franka/catkin_ws/devel/setup.bash
+source ../franka_ws/catkin_ws/devel/setup.bash
 bot-procman-sheriff -l examples/franka_trajectory_following/procman_script_c3.pmd
 ```
 2. Start `a.roscore` from group `2.ROS`.

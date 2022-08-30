@@ -18,6 +18,19 @@ cc_library(
 )
 
 cc_library(
+    name = "alip_minlp_footstep_controller",
+    srcs = ["alip_minlp_footstep_controller.cc"],
+    hdrs = ["alip_minlp_footstep_controller.h"],
+    deps = [
+        ":alip_minlp",
+        ":alip_utils",
+        "//geometry:convex_foothold",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library"
+    ],
+)
+
+cc_library(
     name = "alip_nlp",
     srcs = ["alip_nlp.cc"],
     hdrs = ["alip_nlp.h"],

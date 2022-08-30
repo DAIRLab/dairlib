@@ -132,13 +132,12 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
                                &hip_pos);
     foot_pos = rot.transpose() * foot_pos;
     hip_pos = rot.transpose() * hip_pos;
-    auto pelvis_vel = discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
-                          .get_mutable_value();
-    pelvis_vel = 0.99 * v.segment(3, 3) + 0.01 * pelvis_vel;
-    auto last_stance_time =
-        discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
-            .get_mutable_value();
-    last_stance_time[0] = robot_output->get_timestamp();
+    //    auto pelvis_vel =
+    //    discrete_state->get_mutable_value(pelvis_vel_est_idx_); pelvis_vel =
+    //    0.99 * v.segment(3, 3) + 0.01 * pelvis_vel; auto last_stance_time =
+    //        discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
+    //            .get_mutable_value();
+    //    last_stance_time[0] = robot_output->get_timestamp();
     //    pelvis_vel = v.segment(3, 3);
     //    std::cout << "stance state: " << stance_state_ << std::endl;
     //    pelvis_vel = Vector3d::Zero();
@@ -158,6 +157,13 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   double clock = this->EvalVectorInput(context, clock_port_)->get_value()(0);
   const auto& mode_lengths =
       this->EvalVectorInput(context, contact_scheduler_port_)->get_value();
+
+  double pelvis_t0 = mode_lengths[0];
+  double pelvis_tf = mode_lengths[1];
+  double left_t0 = mode_lengths[2];
+  double left_tf = mode_lengths[3];
+  double right_t0 = mode_lengths[4];
+  double right_tf = mode_lengths[5];
 
   // Offset between 0 and 2
   double lateral_radio_tuning = 1.0;
@@ -189,9 +195,6 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
 
   Vector3d desired_pelvis_vel;
   desired_pelvis_vel << desired_pelvis_vel_xy, 0;
-  /// ALIP
-  // x refers to sagital plane
-  // y refers to the lateral plane
   auto foot_pos = context.get_discrete_state(initial_foot_pos_idx_).get_value();
   Vector3d pelvis_pos;
   plant_.CalcPointsPositions(*context_, hip_frame_, Vector3d::Zero(), world_,
@@ -199,7 +202,7 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
 
   VectorXd pelvis_vel = v.segment(3, 3);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
-  VectorXd foot_end_pos_des = Kd_ * (pelvis_vel_err);
+  VectorXd foot_end_pos_des = 0.5 * (pelvis_tf - pelvis_t0) * rot.transpose() * pelvis_vel + Kd_ * (pelvis_vel_err);
 
   if (is_left_foot_) {
     foot_end_pos_des(1) += lateral_radio_tuning * lateral_offset_;
@@ -207,97 +210,49 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
     foot_end_pos_des(1) -= lateral_radio_tuning * lateral_offset_;
   }
   foot_end_pos_des(0) += sagital_radio_tuning * sagital_offset_;
-  foot_end_pos_des(2) = 0;
+  foot_end_pos_des(2) = -rest_length_ - rest_length_offset_;
 
-  double pelvis_t0 = mode_lengths[0];
-  double pelvis_tf = mode_lengths[1];
-  double left_t0 = mode_lengths[2];
-  double left_tf = mode_lengths[3];
-  double right_t0 = mode_lengths[4];
-  double right_tf = mode_lengths[5];
+
 
   std::vector<double> T_waypoints;
   std::vector<double> T_waypoints_0;
   std::vector<double> T_waypoints_1;
   std::vector<double> T_waypoints_2;
 
-  // Storing old method for record keeping
-  //  T_waypoints = {
-  //      state_durations_[1],
-  //      state_durations_[1] + 0.5 * (state_durations_[4] -
-  //      state_durations_[1]), state_durations_[4]};
-
-  //  T_waypoints_0 = {
-  //      state_durations_[0],
-  //      (state_durations_[3] - state_durations_[4]) +
-  //          0.5 * (0.1 + state_durations_[2] - state_durations_[0]),
-  //      state_durations_[2]};
-  //  T_waypoints_1 = {state_durations_[2], state_durations_[3]};
-  //  T_waypoints_2 = {state_durations_[3], state_durations_[4]};
-  //
-  //
-
   if (is_left_foot_) {
-    //    std::cout << "is left foot: " << is_left_foot_ << std::endl;
     T_waypoints = {left_t0, left_t0 + 0.6 * (left_tf - left_t0), left_tf};
-    //    std::cout << T_waypoints.back() - T_waypoints.front() << std::endl;
-    //    std::cout << left_t0 << std::endl;
-    //    std::cout << left_t0 + 0.6 * (left_tf - left_t0) << std::endl;
-    //    std::cout << left_tf << std::endl;
   } else {
-    //    std::cout << "is left foot: " << is_left_foot_ << std::endl;
     T_waypoints = {right_t0, right_t0 + 0.6 * (right_tf - right_t0), right_tf};
-    //    std::cout << T_waypoints.back() - T_waypoints.front() << std::endl;
-    //    std::cout << right_t0 << std::endl;
-    //    std::cout << right_t0 + 0.6 * (right_tf - right_t0) << std::endl;
-    //    std::cout << right_tf << std::endl;
   }
-  //  std::cout << T_waypoints.back() - T_waypoints.front() << std::endl;
-  //  T_waypoints_0 = {
-  //      pelvis_t0,
-  //      (state_durations_[3] - state_durations_[4]) +
-  //          1.5 / 3.0 * (0.1 + state_durations_[2] - pelvis_t0),
-  //      state_durations_[2]};
-  //  T_waypoints_1 = {state_durations_[2], state_durations_[3]};
-  //  T_waypoints_2 = {state_durations_[3], state_durations_[4]};
 
-  //  auto foot_pos =
-  //  context.get_discrete_state(initial_foot_pos_idx_).get_value();
   auto hip_pos = context.get_discrete_state(initial_hip_pos_idx_).get_value();
   std::vector<MatrixXd> Y(T_waypoints.size(), VectorXd::Zero(3));
   VectorXd start_pos = foot_pos - hip_pos;
   Y[0] = start_pos;
   if (start_pos(2) == 0) {
-    Y[0](2) = -rest_length_ - rest_length_offset_;
+    Y[0](2) = -rest_length_;
   }
-  Y[0](2) -= rest_length_offset_;
-  Y[1] = start_pos + 0.85 * foot_end_pos_des;
-  Y[1](2) = -rest_length_ + mid_foot_height_;
+  //  Y[0](2) -= rest_length_offset_;
+  //  Y[1] = start_pos + 0.8 * foot_end_pos_des;
+  Y[1] = start_pos + 0.75 * (foot_end_pos_des - start_pos);
+  Y[1](2) += mid_foot_height_;
   Y[2] = foot_end_pos_des;
-  Y[2](2) = -rest_length_ - rest_length_offset_;
+//  Y[2](2) = -rest_length_ - rest_length_offset_;
 
   // corrections
   if (is_left_foot_) {
-    Y[1](1) -= 0.25 * lateral_offset_;
+    //    Y[1](1) -= lateral_offset_;
     Y[1](1) = drake::math::saturate(Y[1](1), lateral_offset_, 0.2);
     Y[2](1) = drake::math::saturate(Y[2](1), lateral_offset_, 0.2);
+
   } else {
-    Y[1](1) += 0.25 * lateral_offset_;
+    //    Y[1](1) += lateral_offset_;
     Y[1](1) = drake::math::saturate(Y[1](1), -0.2, -lateral_offset_);
     Y[2](1) = drake::math::saturate(Y[2](1), -0.2, -lateral_offset_);
   }
+  Y[1](0) = drake::math::saturate(Y[1](0), -0.4, 0.4);
+  Y[2](0) = drake::math::saturate(Y[2](0), -0.4, 0.4);
 
-  //  MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-  //  MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
-  //  Y_dot_end(2) = -0.1;
-
-  //  PiecewisePolynomial<double> swing_foot_spline =
-  //      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-  //          T_waypoints, Y, Y_dot_start, Y_dot_end);
-  //  std::cout << "is left foot: " << is_left_foot_ << std::endl;
-  //  for (auto& t :T_waypoints){
-  //    std::cout << "t: " << t << std::endl;
-  //  }
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           T_waypoints, Y, false);
@@ -307,12 +262,6 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
 void FootTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  // Read in current state
-  //  const auto robot_output =
-  //      this->template EvalVectorInput<OutputVector>(context, state_port_);
-  //  VectorXd x = robot_output->GetState();
-  //  double timestamp = robot_output->get_timestamp();
-  //
   //  // Read in finite state machine
   const auto fsm_state =
       this->EvalVectorInput(context, fsm_port_)->get_value()[0];

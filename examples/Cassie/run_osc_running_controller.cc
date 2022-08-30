@@ -477,8 +477,11 @@ int DoMain(int argc, char* argv[]) {
       RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
-  pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
-                                             {0, 1, 2});
+
+  if(osc_gains.rot_filter_tau > 0){
+    pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
+                                               {0, 1, 2});
+  }
   pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 

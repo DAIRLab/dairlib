@@ -202,7 +202,8 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
 
   VectorXd pelvis_vel = v.segment(3, 3);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
-  VectorXd foot_end_pos_des = 0.5 * (pelvis_tf - pelvis_t0) * rot.transpose() * pelvis_vel + Kd_ * (pelvis_vel_err);
+  VectorXd foot_end_pos_des =
+      0.5 * (0.3) * rot.transpose() * pelvis_vel + Kd_ * (pelvis_vel_err);
 
   if (is_left_foot_) {
     foot_end_pos_des(1) += lateral_radio_tuning * lateral_offset_;
@@ -211,8 +212,6 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   }
   foot_end_pos_des(0) += sagital_radio_tuning * sagital_offset_;
   foot_end_pos_des(2) = -rest_length_ - rest_length_offset_;
-
-
 
   std::vector<double> T_waypoints;
   std::vector<double> T_waypoints_0;

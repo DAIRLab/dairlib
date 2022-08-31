@@ -170,7 +170,8 @@ int DoMain(int argc, char* argv[]) {
                                            osc_gains.flight_duration);
 
   /**** Initialize all the leaf systems ****/
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+//  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm;
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_pub =

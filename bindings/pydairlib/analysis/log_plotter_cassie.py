@@ -31,7 +31,6 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
-    import pdb; pdb.set_trace()
     ''' Read the log '''
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")

@@ -1,0 +1,14 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "run_alip_minlp_controller",
+    srcs = ["run_alip_minlp_controller.cc"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//geometry:convex_foothold",
+        "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
+        "@drake//:drake_shared_library",
+    ],
+)

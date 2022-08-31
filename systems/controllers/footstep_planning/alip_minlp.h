@@ -70,6 +70,8 @@ class AlipMINLP {
   // Problem setup
   void AddMode(int nk);
   void AddInputCost(double R);
+  void ActivateInitialTimeConstraint(double t);
+  void DeactivateInitialTimeConstraint();
   void UpdateTrackingCost(const std::vector<std::vector<Eigen::Vector4d>>& xd);
   void AddTrackingCost(const std::vector<std::vector<Eigen::Vector4d>> &xd,
                        const Eigen::Matrix4d &Q);
@@ -120,6 +122,7 @@ class AlipMINLP {
   void MakeTimingBoundsConstraint();
   void MakeInitialStateConstraint();
   void MakeInitialFootstepConstraint();
+  void MakeInitialTimeConstraint();
   std::vector<std::vector<int>> GetPossibleModeSequences();
 
   std::vector<geometry::ConvexFoothold> footholds_;

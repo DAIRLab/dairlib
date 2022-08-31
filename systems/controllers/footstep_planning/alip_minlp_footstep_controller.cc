@@ -13,10 +13,9 @@ using Eigen::MatrixXd;
 
 using drake::AbstractValue;
 using drake::multibody::MultibodyPlant;
+using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::State;
-using drake::systems::DiscreteState;
-using drake::systemms::AbstractState;
 
 AlipMINLPFootstepController::AlipMINLPFootstepController(
     const drake::multibody::MultibodyPlant<double> &plant,
@@ -97,6 +96,31 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
 
+  // First, evaluate the output ports
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      this->EvalVectorInput(context, state_input_port_));
+  const Vector2d vdes =
+      this->EvalVectorInput(context, vdes_input_port_)->get_value();
+  const std::vector<ConvexFoothold> footholds =
+      this->EvalAbstractInput(context, foothold_input_port_)
+      ->get_value<std::vector<ConvexFoothold>>();
+
+  double t_next_impact =
+      state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
+  double t = robot_output->get_timestamp();
+
+  auto& trajopt =
+      state->get_mutable_abstract_state<AlipMINLP>(alip_minlp_index_);
+
+  if (t >= t_next_impact) {
+    // fsm transition
+  } else if ((t_next_impact - t) < gains_.T_min_until_touchdown) {
+    trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
+  }
+
+  // TODO: Solve the OCP and assign results
+
+  return drake::systems::EventStatus::Succeeded();
 }
 
 

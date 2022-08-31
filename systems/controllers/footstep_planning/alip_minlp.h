@@ -48,7 +48,7 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
  public:
   AlipDynamicsConstraint(double m, double H);
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>>& x,
-                          drake::VectorX<drake::AutoDiffXd>* y) const;
+                          drake::VectorX<drake::AutoDiffXd>* y) const override;
 
   void set_m(double m) {m_ = m;}
   void set_H(double H) {H_ = H;}
@@ -63,25 +63,33 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
 
 class AlipMINLP {
  public:
-
-  AlipMINLP(double m, double H) : m_(m), H_(H) {}
+  AlipMINLP(double m, double H) : m_(m), H_(H) {};
+  AlipMINLP(const AlipMINLP& rhs);
+  AlipMINLP& operator=(const AlipMINLP& rhs);
 
   // Problem setup
   void AddMode(int nk);
-  void AddTrackingCost(std::vector<std::vector<Eigen::Vector4d>> xd,
-                       Eigen::Matrix4d Q);
   void AddInputCost(double R);
+  void UpdateTrackingCost(const std::vector<std::vector<Eigen::Vector4d>>& xd);
+  void AddTrackingCost(const std::vector<std::vector<Eigen::Vector4d>> &xd,
+                       const Eigen::Matrix4d &Q);
 
-  void AddFootholds(std::vector<geometry::ConvexFoothold> footholds) {
-    footholds_ = footholds;
+  void AddFootholds(const std::vector<geometry::ConvexFoothold>& footholds) {
+    footholds_.insert(footholds_.end(), footholds.begin(), footholds.end());
+  }
+  void ClearFootholds() {footholds_.clear();}
+
+  void ChangeFootholds(const std::vector<geometry::ConvexFoothold>& footholds) {
+    ClearFootholds();
+    AddFootholds(footholds);
   }
 
   void Build();
   std::vector<std::vector<Eigen::Vector4d>> MakeXdesTrajForVdes(
-      double vdes, double step_width, double Ts, double nk) const;
+      const Eigen::Vector2d& vdes, double step_width, double Ts, double nk) const;
 
   // Solving the problem
-  void CalcOptimalFoostepPlan(
+  void CalcOptimalFootstepPlan(
       const Eigen::Vector4d &x, const Eigen::Vector3d &p);
 
   // Getting the solution
@@ -115,7 +123,7 @@ class AlipMINLP {
   std::vector<std::vector<int>> GetPossibleModeSequences();
 
   std::vector<geometry::ConvexFoothold> footholds_;
-  MathematicalProgram prog_ = MathematicalProgram{};
+  std::unique_ptr<MathematicalProgram> prog_ = std::make_unique<MathematicalProgram>();
   std::vector<VectorXDecisionVariable> pp_;
   std::vector<std::vector<VectorXDecisionVariable>> xx_;
   std::vector<std::vector<VectorXDecisionVariable>> uu_;
@@ -125,8 +133,8 @@ class AlipMINLP {
   std::vector<std::pair<Binding<LinearConstraint>, Binding<LinearEqualityConstraint>>> footstep_c_;
   std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
   std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_{};
-  LinearEqualityConstraint *initial_state_c_;
-  LinearEqualityConstraint *initial_foot_c_;
+  LinearEqualityConstraint *initial_state_c_ = nullptr;
+  LinearEqualityConstraint *initial_foot_c_ = nullptr;
 
   std::vector<std::vector<Binding<QuadraticCost>>> tracking_costs_{};
   std::vector<std::vector<Binding<QuadraticCost>>> input_costs_{};
@@ -134,6 +142,8 @@ class AlipMINLP {
   std::vector<drake::solvers::MathematicalProgramResult> solutions_;
   std::vector<std::vector<int>> mode_sequnces_{};
   std::vector<std::vector<Eigen::Vector4d>> xd_;
-
+  Eigen::MatrixXd Q_;
+  double R_ = 0;
+  bool built_ = false;
 };
 }

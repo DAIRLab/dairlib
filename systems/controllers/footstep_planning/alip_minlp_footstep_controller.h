@@ -15,9 +15,11 @@ using alip_utils::PointOnFramed;
 struct AlipMINLPGains {
   double T_min_until_touchdown;
   double hdes;
+  double stance_width;
   int nmodes;
   int knots_per_mode;
   Eigen::Matrix4d Q;
+  Eigen::MatrixXd R;
 };
 
 class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
@@ -29,6 +31,34 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
       std::vector<double> left_right_stance_durations,
       std::vector<PointOnFramed> left_right_foot,
       const AlipMINLPGains& gains);
+
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return this->get_input_port(state_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_vdes() const {
+    return this->get_input_port(vdes_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_footholds() const {
+    return this->get_input_port(foothold_input_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
+    return this->get_output_port(fsm_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_next_impact_time()
+  const {
+    return this->get_output_port(next_impact_time_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_prev_impact_time()
+  const {
+    return this->get_output_port(prev_impact_time_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_footstep_target()
+  const {
+    return this->get_output_port(footstep_target_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_com_traj() const {
+    return this->get_output_port(com_traj_output_port_);
+  }
  private:
 
   // System callbacks
@@ -36,20 +66,14 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
 
-//  void CopyFsmOutput(const drake::systems::Context<double>& context,
-//                     drake::systems::BasicVector<double>* fsm);
-//  void CopyTimeSinceSwitchOutput(const drake::systems::Context<double>& context,
-//                                 drake::systems::BasicVector<double>* t);
-//  void CopyTimeUntilSwitchOutput(const drake::systems::Context<double>& context,
-//                                 drake::systems::BasicVector<double>* t);
   void CopyNextFootstepOutput(const drake::systems::Context<double>& context,
-                              drake::systems::BasicVector<double>* p_B_FC);
-  void CopyCoMTrajOutput(const drake::systems::BasicVector<double>& context,
-                         lcmt_saved_traj* traj_msg);
+                              drake::systems::BasicVector<double>* p_B_FC) const;
+  void CopyCoMTrajOutput(const drake::systems::Context<double>& context,
+                         lcmt_saved_traj* traj_msg) const;
 
 
   // drake input ports
-  drake::systems::InputPortIndex robot_state_index_;
+  drake::systems::InputPortIndex state_input_port_;
   drake::systems::InputPortIndex vdes_input_port_;
   drake::systems::InputPortIndex foothold_input_port_;
 

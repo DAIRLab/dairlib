@@ -102,6 +102,7 @@ void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
     tracking_costs_.push_back(QQ);
   }
   xd_ = xd;
+  Q_ = Q;
 }
 
 void AlipMINLP::AddInputCost(double R) {

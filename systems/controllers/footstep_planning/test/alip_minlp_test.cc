@@ -4,6 +4,7 @@ namespace dairlib::systems::controllers {
 
 using geometry::ConvexFoothold;
 
+using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::Matrix4d;
@@ -34,15 +35,33 @@ int do_main(int argc, char* argv[]) {
   trajopt.AddMode(10);
   trajopt.AddMode(10);
   trajopt.AddMode(10);
-  auto xd = trajopt.MakeXdesTrajForVdes(1.0, 0.1, 0.35, 10);
+  auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity());
   trajopt.AddInputCost(10);
   trajopt.Build();
+
   auto start = std::chrono::high_resolution_clock::now();
   trajopt.CalcOptimalFootstepPlan(xd.front().front(), p0);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "solve time: " << elapsed.count() << std::endl;
+
+
+  // Check Copy Constuctor
+  AlipMINLP trajopt2(trajopt);
+
+  // Check Copy Assignemnt
+  AlipMINLP trajopt3(0, 0);
+  trajopt3 = trajopt;
+  trajopt2.CalcOptimalFootstepPlan(xd.front().front(), p0);
+  trajopt3.CalcOptimalFootstepPlan(xd.front().front(), p0);
+
+  int i = 1; int j = 3;
+  std::cout << "random x check: \n" <<
+      trajopt.GetStateSolution().at(i).at(j).transpose() << "\n" <<
+      trajopt2.GetStateSolution().at(i).at(j).transpose() << "\n" <<
+      trajopt3.GetStateSolution().at(i).at(j).transpose() << std::endl;
+
   return 0;
 }
 

@@ -66,11 +66,12 @@ void AlipDynamicsConstraint::EvaluateConstraint(
   *y = InitializeAutoDiff(y0, dy);
 }
 
-//// Expensive copy constructor, but it must be done!
+
 AlipMINLP::AlipMINLP(const AlipMINLP &rhs) {
   *this = rhs;
 }
 
+// Expensive copy assignment, but it must be done!
 AlipMINLP& AlipMINLP::operator=(const AlipMINLP &rhs) {
   if (this != &rhs) {
     m_ = rhs.m_;
@@ -119,6 +120,17 @@ void AlipMINLP::AddInputCost(double R) {
   R_ = R;
 }
 
+void AlipMINLP::ActivateInitialTimeConstraint(double t) {
+  DRAKE_DEMAND(built_ && initial_time_c_);
+  initial_time_c_->UpdateCoefficients(MatrixXd::Ones(1,1), t * VectorXd::Ones(1));
+}
+
+void AlipMINLP::DeactivateInitialTimeConstraint() {
+  if (initial_time_c_) {
+    initial_time_c_->UpdateCoefficients(MatrixXd::Zero(1,1), VectorXd::Zero(1));
+  }
+}
+
 void AlipMINLP::Build() {
   mode_sequnces_ = GetPossibleModeSequences();
   for (int i = 0; i < nmodes_; i++) {
@@ -129,6 +141,7 @@ void AlipMINLP::Build() {
   MakeTimingBoundsConstraint();
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
+  MakeInitialTimeConstraint();
   built_ = true;
 }
 
@@ -149,6 +162,16 @@ void AlipMINLP::AddMode(int nk) {
   xx_.push_back(xknots);
   uu_.push_back(uknots);
 }
+
+void AlipMINLP::UpdateTrackingCost(const vector<vector<Vector4d>> &xd) {
+  for(int n = 0; n < nmodes_; n++) {
+    for (int k = 0; k < nknots_.at(n); k++) {
+      tracking_costs_.at(n).at(k).evaluator()->
+          UpdateCoefficients(2.0*Q_, -2.0*Q_ * xd.at(n).at(k));
+    }
+  }
+}
+
 void AlipMINLP::MakeIndividualFootholdConstraint(int idx_mode,
                                                  int idx_foothold) {
   const auto& [A, b] = footholds_.at(idx_foothold).GetConstraintMatrices();
@@ -217,6 +240,12 @@ void AlipMINLP::MakeTimingBoundsConstraint() {
   }
 }
 
+void AlipMINLP::MakeInitialTimeConstraint() {
+  initial_time_c_ = prog_->AddLinearEqualityConstraint(
+      MatrixXd::Zero(1, 1), VectorXd::Zero(1), tt_.front()
+      ).evaluator().get();
+}
+
 void AlipMINLP::ClearFootholdConstraints() {
   for (auto & i : footstep_c_) {
     prog_->RemoveConstraint(i.first);
@@ -247,7 +276,8 @@ void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
 }
 
 vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
-    const Vector2d& vdes, double step_width, double Ts, double nk) const {
+    const Vector2d& vdes, double step_width, double Ts, double nk,
+    int stance) const {
   double omega = sqrt(9.81 / H_);
   double frac = 1 / (m_ * H_ * omega);
   double Ly = H_ * m_ * vdes(0);
@@ -258,7 +288,7 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
 
   Eigen::MatrixPower<Matrix4d> APow(Ad);
   for (int i = 0; i < nmodes_; i++) {
-    double s = (i % 2 == 0) ? 1.0 : -1.0;
+    double s = stance * ((i % 2 == 0) ? 1.0 : -1.0);
     Vector4d x0(
         -frac * tanh(omega * Ts /2) * Ly,
         s / 2 * step_width,
@@ -271,6 +301,33 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
     xx.push_back(x);
   }
   return xx;
+}
+
+vector<Vector4d> AlipMINLP::MakeXdesTrajForCurrentStep(
+    const Vector2d &vdes, double t_current, double t_remain,
+    double Ts, double step_width, int stance, double nk) const {
+
+  double omega = sqrt(9.81 / H_);
+  double frac = 1 / (m_ * H_ * omega);
+  double Ly = H_ * m_ * vdes(0);
+  double Lx = H_ * m_ * omega * step_width * atanh(omega * Ts / 2);
+  double dLx = - H_ * m_ * vdes(1);
+
+  MatrixXd Ad0 = (t_current * alip_utils::CalcA(H_, m_)).exp();
+  Matrix4d Ad = ((t_remain / (nk-1)) * alip_utils::CalcA(H_, m_)).exp();
+  Eigen::MatrixPower<Matrix4d> APow(Ad);
+
+  Vector4d x0(
+      -frac * tanh(omega * Ts /2) * Ly,
+      static_cast<double>(stance) / 2 * step_width,
+      static_cast<double>(stance) / 2 * Lx + dLx,
+      Ly);
+  x0 = Ad0 * x0;
+  vector<Vector4d> x;
+  for (int k = 0; k < nk; k++) {
+    x.emplace_back(APow(k) * x0);
+  }
+  return x;
 }
 
 vector<vector<int>> AlipMINLP::GetPossibleModeSequences() {

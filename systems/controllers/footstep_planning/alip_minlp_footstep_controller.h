@@ -67,7 +67,7 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
       drake::systems::State<double>* state) const;
 
   void CopyNextFootstepOutput(const drake::systems::Context<double>& context,
-                              drake::systems::BasicVector<double>* p_B_FC) const;
+                              drake::systems::BasicVector<double>* p_W) const;
   void CopyCoMTrajOutput(const drake::systems::Context<double>& context,
                          lcmt_saved_traj* traj_msg) const;
 

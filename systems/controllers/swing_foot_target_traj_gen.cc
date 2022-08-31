@@ -224,9 +224,6 @@ void SwingFootTargetTrajGen::CalcTrajs(
   // Generate trajectory if it's currently in swing phase.
   // Otherwise, generate a constant trajectory
   if (is_single_support_phase) {
-    // Read in current robot state
-    const OutputVector<double>* robot_output =
-        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
     // Get the start time and the end time of the current stance phase
     double start_time_of_this_interval = liftoff_time(0);

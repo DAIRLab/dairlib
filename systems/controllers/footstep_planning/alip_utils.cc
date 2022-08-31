@@ -30,7 +30,7 @@ void CalcAlipState(const MultibodyPlant<double>& plant, Context<double>* context
                                plant.world_frame(), &position);
     stance_foot_pos += position;
   }
-  stance_foot_pos /= stance_feet.size();
+  stance_foot_pos /= static_cast<double>(stance_feet.size());
 
   Vector3d L = plant.CalcSpatialMomentumInWorldAboutPoint(
       *context, stance_foot_pos).rotational();

@@ -93,6 +93,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       .get_index();
 }
 
+// TODO: express footholds and alip state in pelvis yaw frame
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
 
@@ -107,21 +108,64 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   double t_next_impact =
       state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
+  double t_prev_impact =
+      state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
   double t = robot_output->get_timestamp();
 
   auto& trajopt =
       state->get_mutable_abstract_state<AlipMINLP>(alip_minlp_index_);
+  trajopt.ChangeFootholds(footholds);
+
+  int fsm_idx = static_cast<int>(
+      state->get_discrete_state(fsm_state_idx_).get_value()(0));
 
   if (t >= t_next_impact) {
-    // fsm transition
+    trajopt.DeactivateInitialTimeConstraint();
+    fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx + 1;
+    state->get_mutable_discrete_state(fsm_state_idx_).set_value(fsm_idx*VectorXd::Ones(1));
+    state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(t * VectorXd::Ones(1));
+    t_prev_impact = t;
+    t_next_impact = t + stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx));
   } else if ((t_next_impact - t) < gains_.T_min_until_touchdown) {
     trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
   }
 
-  // TODO: Solve the OCP and assign results
+  int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? 1 : -1;
+  Vector3d CoM_w, p_w, L;
+  alip_utils::CalcAlipState(
+      plant_, context_, robot_output->GetState(),
+      {stance_foot_map_.at(left_right_stance_fsm_states_.at(fsm_idx))},
+      &CoM_w, &L, &p_w);
 
+  auto xd  = trajopt.MakeXdesTrajForVdes(
+      vdes, gains_.stance_width,
+      stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
+      gains_.knots_per_mode, stance);
+  xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
+      vdes, t - t_prev_impact, t_next_impact - t,
+      stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
+      gains_.stance_width, stance, gains_.knots_per_mode);
+  trajopt.UpdateTrackingCost(xd);
+
+  Vector4d x;
+  x.head<2>() = CoM_w.head<2>() - p_w.head<2>();
+  x.tail<2>() = L.head<2>();
+  trajopt.CalcOptimalFootstepPlan(x, p_w);
+
+  double t0 = trajopt.GetTimingSolution()(0);
+  state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
+      (t + t0) * VectorXd::Ones(1));
   return drake::systems::EventStatus::Succeeded();
 }
 
+void AlipMINLPFootstepController::CopyNextFootstepOutput(
+    const Context<double> &context, BasicVector<double> *p_B_FC) const {
+  auto& trajopt = context.get_abstract_state<AlipMINLP>(alip_minlp_index_);
+  p_B_FC->set_value(trajopt.GetFootstepSolution().at(1));
+}
+
+void AlipMINLPFootstepController::CopyCoMTrajOutput(const drake::systems::Context<
+    double> &context, lcmt_saved_traj *traj_msg) const {
+}
 
 }

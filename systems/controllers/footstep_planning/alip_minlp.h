@@ -88,7 +88,11 @@ class AlipMINLP {
 
   void Build();
   std::vector<std::vector<Eigen::Vector4d>> MakeXdesTrajForVdes(
-      const Eigen::Vector2d& vdes, double step_width, double Ts, double nk) const;
+      const Eigen::Vector2d& vdes, double step_width, double Ts, double nk,
+      int stance=1) const;
+  std::vector<Eigen::Vector4d> MakeXdesTrajForCurrentStep(
+      const Eigen::Vector2d& vdes, double t_current, double t_remain,
+      double Ts, double step_width, int stance, double nk) const;
 
   // Solving the problem
   void CalcOptimalFootstepPlan(
@@ -102,6 +106,7 @@ class AlipMINLP {
 
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
+  std::vector<std::vector<Eigen::Vector4d>> get_xd(){ return xd_;}
 
  private:
 
@@ -138,6 +143,7 @@ class AlipMINLP {
   std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_{};
   LinearEqualityConstraint *initial_state_c_ = nullptr;
   LinearEqualityConstraint *initial_foot_c_ = nullptr;
+  LinearEqualityConstraint *initial_time_c_ = nullptr;
 
   std::vector<std::vector<Binding<QuadraticCost>>> tracking_costs_{};
   std::vector<std::vector<Binding<QuadraticCost>>> input_costs_{};

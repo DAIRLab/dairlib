@@ -8,6 +8,7 @@
 #include "drake/solvers/solve.h"
 #include "drake/solvers/ipopt_solver.h"
 #include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/nlopt_solver.h"
 
 namespace dairlib::systems::controllers{
 
@@ -31,6 +32,8 @@ using drake::math::InitializeAutoDiff;
 using drake::solvers::Solve;
 using drake::solvers::Binding;
 using drake::solvers::IpoptSolver;
+using drake::solvers::NloptSolver;
+using drake::solvers::SnoptSolver;
 using drake::solvers::QuadraticCost;
 using drake::solvers::DecisionVariable;
 using drake::solvers::LinearConstraint;
@@ -97,8 +100,6 @@ void AlipMINLP::AddInputCost(double R) {
   }
   R_ = R;
 }
-
-
 
 void AlipMINLP::ActivateInitialTimeConstraint(double t) {
   DRAKE_DEMAND(built_ && initial_time_c_);
@@ -180,7 +181,7 @@ void AlipMINLP::MakeResetConstraints() {
   A_eq.topLeftCorner<4, 4>() = Matrix4d::Identity();
   A_eq.block<4, 4>(0, 4) = -Matrix4d::Identity();
   A_eq.block<2, 2>(0, 8) = Eigen::Matrix2d::Identity();
-  A_eq.block<2, 2>(0, 10) = Eigen::Matrix2d::Identity();
+  A_eq.block<2, 2>(0, 10) = -Eigen::Matrix2d::Identity();
   for (int i = 0; i < (nmodes_ - 1); i++) {
     reset_map_c_.push_back(
         prog_->AddLinearEqualityConstraint(
@@ -258,7 +259,7 @@ void AlipMINLP::UpdateInitialGuess() {
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {
-  auto solver = drake::solvers::SnoptSolver();
+  auto solver = SnoptSolver();
   if (mode_sequnces_.empty()) {
     solutions_.push_back(solver.Solve(*prog_));
   } else {

@@ -116,6 +116,10 @@ class AlipMINLP {
   void set_H(double H) { H_ = H; }
   std::vector<std::vector<Eigen::Vector4d>> get_xd(){ return xd_;}
 
+  int nmodes() const {return nmodes_;}
+  std::vector<int> nknots() const {return nknots_;}
+
+
  private:
 
   int np_ = 3;

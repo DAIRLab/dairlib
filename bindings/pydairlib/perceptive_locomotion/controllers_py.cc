@@ -36,7 +36,9 @@ PYBIND11_MODULE(controllers, m) {
       .def("GetFootstepSolution", &AlipMINLP::GetFootstepSolution)
       .def("GetStateSolution", &AlipMINLP::GetStateSolution)
       .def("GetInputSolution", &AlipMINLP::GetInputSolution)
-      .def("GetTimingSolution", &AlipMINLP::GetTimingSolution);
+      .def("GetTimingSolution", &AlipMINLP::GetTimingSolution)
+      .def("nmodes", &AlipMINLP::nmodes)
+      .def("nknots", &AlipMINLP::nknots);
 }
 
 

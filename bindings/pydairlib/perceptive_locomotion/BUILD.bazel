@@ -11,18 +11,14 @@ load(
     "pybind_py_library",
 )
 
-pybind_py_library(
-    name = "convex_foothold_py",
-    cc_deps = [
-        "//geometry:convex_foothold",
-        "@drake//:drake_shared_library",
+py_binary(
+    name = "alip_minlp_test",
+    srcs = ["alip_minlp_test.py"],
+    deps = [
+        ":perceptive_locomotion",
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/geometry:convex_foothold_py",
     ],
-    cc_so_name = "convex_foothold",
-    cc_srcs = ["convex_foothold_py.cc"],
-    py_deps = [
-        ":module_py",
-    ],
-    py_imports = ["."],
 )
 
 # This determines how `PYTHONPATH` is configured, and how to install the
@@ -40,13 +36,29 @@ py_library(
     ],
 )
 
+pybind_py_library(
+    name = "controllers_py",
+    cc_deps = [
+        "//systems/controllers/footstep_planning:alip_minlp",
+        "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "controllers",
+    cc_srcs = ["controllers_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 PY_LIBRARIES = [
-    ":convex_foothold_py",
+    ":controllers_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "geometry",
+    name = "perceptive_locomotion",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

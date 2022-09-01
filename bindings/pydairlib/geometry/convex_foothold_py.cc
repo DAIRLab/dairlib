@@ -12,19 +12,18 @@ namespace pydairlib {
 
 using geometry::ConvexFoothold;
 
-PYBIND11_MODULE(controllers, m) {
+PYBIND11_MODULE(convex_foothold, m) {
 m.doc() = "Binding geometry utils";
 
 using py_rvp = py::return_value_policy;
 
-py::class_<ConvexFoothold>(
-    m, "ConvexFoothold")
+py::class_<ConvexFoothold>(m, "ConvexFoothold")
+    .def(py::init<>())
     .def("SetContactPlane", &ConvexFoothold::SetContactPlane)
     .def("AddHalfspace", &ConvexFoothold::AddHalfspace)
     .def("AddFace", &ConvexFoothold::AddFace)
     .def("GetConstraintMatrices", &ConvexFoothold::GetConstraintMatrices)
-    .def("GetEqualityConstraintMatrices", &ConvexFoothold::GetEqualityConstraintMatrices)
-    .def("GetVertices", &ConvexFoothold::GetVertices);
+    .def("GetEqualityConstraintMatrices", &ConvexFoothold::GetEqualityConstraintMatrices);
 }
 
 }

@@ -447,7 +447,7 @@ void OperationalSpaceControl::Build() {
   }
 
   // 5. Joint Limit cost
-  K_joint_pos = w_joint_limit_ * W_joint_accel_.bottomRightCorner(
+  K_joint_pos_ = w_joint_limit_ * W_joint_accel_.bottomRightCorner(
                                      n_revolute_joints_, n_revolute_joints_);
   joint_limit_cost_ = prog_
                           ->AddLinearCost(VectorXd::Zero(n_revolute_joints_), 0,
@@ -717,11 +717,11 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Add joint limit constraints
   VectorXd w_joint_limit =
-      K_joint_pos * (x_wo_spr.head(plant_wo_spr_.num_positions())
+      K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
                          .tail(n_revolute_joints_) -
                      q_max_)
                         .cwiseMax(0) +
-      K_joint_pos * (x_wo_spr.head(plant_wo_spr_.num_positions())
+      K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
                          .tail(n_revolute_joints_) -
                      q_min_)
                         .cwiseMin(0);

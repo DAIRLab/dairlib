@@ -311,8 +311,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd q_max_;
 
   // robot joint limits
-  Eigen::MatrixXd K_joint_pos;
-  Eigen::MatrixXd K_joint_vel;
+  Eigen::MatrixXd K_joint_pos_;
+  Eigen::MatrixXd K_joint_vel_;
 
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;

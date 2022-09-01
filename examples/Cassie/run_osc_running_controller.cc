@@ -201,7 +201,7 @@ int DoMain(int argc, char* argv[]) {
   /// REGULARIZATION COSTS
   osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
   osc->SetInputSmoothingCostWeights(osc_gains.w_input_reg *
-      osc_gains.W_input_regularization);
+                                    osc_gains.W_input_regularization);
   osc->SetInputSmoothingConstraintWeights(osc_gains.w_input_accel);
   osc->SetInputCostWeights(osc_gains.w_input *
                            osc_gains.W_input_regularization);
@@ -427,11 +427,12 @@ int DoMain(int argc, char* argv[]) {
 
   PiecewisePolynomial<double> foot_traj_weight_trajectory =
       PiecewisePolynomial<double>::FirstOrderHold(
-          {0, 0.25 + 0.2}, {0.5 * VectorXd::Ones(1), 5.0 * VectorXd::Ones(1)});
+          {0, osc_gains.stance_duration + 2 * osc_gains.flight_duration},
+          {0.5 * VectorXd::Ones(1), 5.0 * VectorXd::Ones(1)});
   PiecewisePolynomial<double> foot_traj_gain_trajectory =
       PiecewisePolynomial<double>::FirstOrderHold(
-          {0, 0.25 + 0.2},
-          {0.5 * MatrixXd::Identity(3, 3), 3.0 * MatrixXd::Identity(3, 3)});
+          {0, osc_gains.stance_duration + 2 * osc_gains.flight_duration},
+          {0.5 * MatrixXd::Identity(3, 3), 2.0 * MatrixXd::Identity(3, 3)});
   //  PiecewisePolynomial<double> foot_traj_weight_trajectory =
   //      PiecewisePolynomial<double>::FirstOrderHold(
   //          {0, 0.25 + 0.2}, {VectorXd::Ones(1), VectorXd::Ones(1)});
@@ -478,7 +479,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
 
-  if(osc_gains.rot_filter_tau > 0){
+  if (osc_gains.rot_filter_tau > 0) {
     pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
                                                {0, 1, 2});
   }
@@ -554,12 +555,12 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(contact_scheduler->get_output_port_clock(),
                   osc->get_input_port_clock());
 
-  if (osc_gains.ekf_filter_tau[0] > 0){
+  if (osc_gains.ekf_filter_tau[0] > 0) {
     builder.Connect(state_receiver->get_output_port(0),
                     ekf_filter->get_input_port());
     builder.Connect(ekf_filter->get_output_port(),
                     osc->get_robot_output_input_port());
-  }else{
+  } else {
     builder.Connect(state_receiver->get_output_port(0),
                     osc->get_robot_output_input_port());
   }

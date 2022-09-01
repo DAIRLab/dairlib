@@ -18,14 +18,14 @@ int do_main(int argc, char* argv[]) {
       p0,
       Vector3d(0.4, 0, 0),
       Vector3d(0.5, 0.1, 0),
-      Vector3d(0.75, -0.1, 0)
+//      Vector3d(0.75, -0.1, 0)
   };
   for (auto& o: origins) {
     auto foothold = ConvexFoothold();
     foothold.SetContactPlane(Vector3d::UnitZ(), Vector3d::Zero());
     for (auto& i : {-1.0, 1.0}){
       for (auto& j: {-1.0, 1.0}) {
-        foothold.AddFace(Vector3d(i, j, 0), o + Vector3d(0.05 * i, 0.05 * j, 0));
+        foothold.AddFace(Vector3d(i, j, 0), o + Vector3d(0.5 * i, 0.5 * j, 0));
       }
     }
     footholds.push_back(foothold);
@@ -37,6 +37,7 @@ int do_main(int argc, char* argv[]) {
   trajopt.AddMode(10);
   auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity());
+  trajopt.SetNominalStanceTime(0.35, 0.35);
   trajopt.AddInputCost(10);
   trajopt.Build();
 
@@ -45,6 +46,14 @@ int do_main(int argc, char* argv[]) {
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "solve time: " << elapsed.count() << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
+  trajopt.CalcOptimalFootstepPlan(xd.front().front(), p0, true);
+  finish = std::chrono::high_resolution_clock::now();
+  elapsed = finish - start;
+  std::cout << "solve time: " << elapsed.count() << std::endl;
+
+
 
 
   // Check Copy Constuctor

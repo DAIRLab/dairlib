@@ -95,17 +95,16 @@ class AlipMINLP {
       double Ts, double step_width, int stance, double nk) const;
 
   void UpdateInitialGuess(Eigen::Vector3d p0);
+  void UpdateInitialGuess();
   void SetNominalStanceTime(double t0, double Ts) {
     std::vector<double> T(nmodes_, Ts);
     T.front() = t0;
     td_ = T;
   }
 
-  void UpdateInitialGuess(Eigen::Vector3d p0, Eigen::VectorXd warmstart);
-
   // Solving the problem
   void CalcOptimalFootstepPlan(
-      const Eigen::Vector4d &x, const Eigen::Vector3d &p);
+      const Eigen::Vector4d &x, const Eigen::Vector3d &p, bool warmstart=false);
 
   // Getting the solution
   std::vector<Eigen::Vector3d> GetFootstepSolution() const;
@@ -151,6 +150,7 @@ class AlipMINLP {
   std::vector<std::pair<Binding<LinearConstraint>, Binding<LinearEqualityConstraint>>> footstep_c_;
   std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
   std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_{};
+  std::shared_ptr<AlipDynamicsConstraint> dynamics_evaluator_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_time_c_ = nullptr;

@@ -116,7 +116,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   if (t_next_impact == 0.0) { t_next_impact = t + stance_duration_map_.at(0);}
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
-  if (t_prev_impact == 0.0) {t_prev_impact = t;}
+  if (t_prev_impact == 0.0) { t_prev_impact = t; }
+
   auto& trajopt =
       state->get_mutable_abstract_state<AlipMINLP>(alip_minlp_index_);
   trajopt.ChangeFootholds(footholds);
@@ -124,7 +125,9 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   int fsm_idx = static_cast<int>(
       state->get_discrete_state(fsm_state_idx_).get_value()(0));
 
+  bool warmstart = true;
   if (t >= t_next_impact) {
+    warmstart = false;
     std::cout << "updating fsm" << std::endl;
     trajopt.DeactivateInitialTimeConstraint();
     fsm_idx ++;
@@ -144,6 +147,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       {stance_foot_map_.at(left_right_stance_fsm_states_.at(fsm_idx))},
       &CoM_w, &L, &p_w);
 
+  trajopt.set_H(CoM_w(2) - p_w(2));
+
   auto xd  = trajopt.MakeXdesTrajForVdes(
       vdes, gains_.stance_width,
       stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
@@ -159,7 +164,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   Vector4d x;
   x.head<2>() = CoM_w.head<2>() - p_w.head<2>();
   x.tail<2>() = L.head<2>();
-  trajopt.CalcOptimalFootstepPlan(x, p_w);
+  trajopt.CalcOptimalFootstepPlan(x, p_w, warmstart);
 
   double t0 = trajopt.GetTimingSolution()(0);
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(

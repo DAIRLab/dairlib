@@ -191,13 +191,13 @@ void AlipMINLP::MakeResetConstraints() {
 }
 
 void AlipMINLP::MakeDynamicsConstraints() {
-  auto dynamics_constraint = std::make_shared<AlipDynamicsConstraint>(m_, H_);
+  dynamics_evaluator_ = std::make_shared<AlipDynamicsConstraint>(m_, H_);
   for (int i = 0; i < nmodes_; i++) {
     vector<Binding<drake::solvers::Constraint>> dyn_c_this_mode{};
     for (int k = 0; k < nknots_.at(i)-1; k++) {
       dyn_c_this_mode.push_back(
           prog_->AddConstraint(
-              dynamics_constraint,
+              dynamics_evaluator_,
               {xx_.at(i).at(k), uu_.at(i).at(k), xx_.at(i).at(k+1), tt_.at(i)}));
     }
     dynamics_c_.push_back(dyn_c_this_mode);
@@ -252,6 +252,11 @@ void AlipMINLP::UpdateInitialGuess(Vector3d p0) {
   }
 }
 
+void AlipMINLP::UpdateInitialGuess() {
+  DRAKE_DEMAND(solutions_.front().is_success());
+  prog_->SetInitialGuessForAllVariables(solutions_.front().GetSolution());
+}
+
 void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = drake::solvers::SnoptSolver();
   if (mode_sequnces_.empty()) {
@@ -271,9 +276,16 @@ void AlipMINLP::SolveOCProblemAsIs() {
 }
 
 void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
-                                        const Eigen::Vector3d &p) {
+                                        const Eigen::Vector3d &p,
+                                        bool warmstart) {
   DRAKE_DEMAND(built_);
-  UpdateInitialGuess(p);
+  if (warmstart && !solutions_.empty() && solutions_.front().is_success()) {
+    UpdateInitialGuess();
+  } else {
+    UpdateInitialGuess(p);
+  }
+  dynamics_evaluator_->set_H(H_);
+  dynamics_evaluator_->set_m(m_);
   initial_state_c_->UpdateCoefficients(Matrix4d::Identity(), x);
   initial_foot_c_->UpdateCoefficients(Matrix3d::Identity(), p);
   SolveOCProblemAsIs();

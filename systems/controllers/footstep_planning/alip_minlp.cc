@@ -6,6 +6,7 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/solve.h"
+#include "drake/solvers/ipopt_solver.h"
 
 namespace dairlib::systems::controllers{
 
@@ -28,6 +29,7 @@ using drake::math::InitializeAutoDiff;
 
 using drake::solvers::Solve;
 using drake::solvers::Binding;
+using drake::solvers::IpoptSolver;
 using drake::solvers::QuadraticCost;
 using drake::solvers::DecisionVariable;
 using drake::solvers::LinearConstraint;
@@ -66,36 +68,11 @@ void AlipDynamicsConstraint::EvaluateConstraint(
   *y = InitializeAutoDiff(y0, dy);
 }
 
-
-AlipMINLP::AlipMINLP(const AlipMINLP &rhs) {
-  *this = rhs;
-}
-
-// Expensive copy assignment, but it must be done!
-AlipMINLP& AlipMINLP::operator=(const AlipMINLP &rhs) {
-  if (this != &rhs) {
-    m_ = rhs.m_;
-    H_ = rhs.H_;
-    AddFootholds(rhs.footholds_);
-    for (int i = 0; i < rhs.nmodes_; i++) {
-      AddMode(rhs.nknots_.at(i));
-    }
-    if (!rhs.xd_.empty()) {
-      AddTrackingCost(rhs.xd_, rhs.Q_);
-    }
-    if (rhs.R_ > 0) {
-      AddInputCost(rhs.R_);
-    }
-    if (rhs.built_) {
-      Build();
-    }
-  }
-  return *this;
-}
-
 void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
                                 const Matrix4d &Q) {
+  DRAKE_DEMAND(xd.size() == nmodes_);
   for (int i = 0; i < nmodes_; i++){
+    DRAKE_DEMAND(xd.at(i).size() == nknots_.at(i));
     vector<Binding<QuadraticCost>> QQ;
     for (int k = 0; k < nknots_.at(i); k++){
       QQ.push_back(prog_->AddQuadraticErrorCost(Q, xd.at(i).at(k), xx_.at(i).at(k)));
@@ -142,6 +119,7 @@ void AlipMINLP::Build() {
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
   MakeInitialTimeConstraint();
+  prog_->SetSolverOption(IpoptSolver::id(), "print_level", 4);
   built_ = true;
 }
 
@@ -224,12 +202,12 @@ void AlipMINLP::MakeDynamicsConstraints() {
 
 void AlipMINLP::MakeInitialFootstepConstraint() {
   initial_foot_c_ = prog_->AddLinearEqualityConstraint(
-      Matrix3d::Identity(), Vector3d::Zero(), pp_.at(0)).evaluator().get();
+      Matrix3d::Identity(), Vector3d::Zero(), pp_.at(0)).evaluator();
 }
 
 void AlipMINLP::MakeInitialStateConstraint() {
   initial_state_c_ = prog_->AddLinearEqualityConstraint(
-      Matrix4d::Identity(), Vector4d::Zero(), xx_.at(0).at(0)).evaluator().get();
+      Matrix4d::Identity(), Vector4d::Zero(), xx_.at(0).at(0)).evaluator();
 }
 
 void AlipMINLP::MakeTimingBoundsConstraint() {
@@ -243,7 +221,7 @@ void AlipMINLP::MakeTimingBoundsConstraint() {
 void AlipMINLP::MakeInitialTimeConstraint() {
   initial_time_c_ = prog_->AddLinearEqualityConstraint(
       MatrixXd::Zero(1, 1), VectorXd::Zero(1), tt_.front()
-      ).evaluator().get();
+      ).evaluator();
 }
 
 void AlipMINLP::ClearFootholdConstraints() {
@@ -255,9 +233,10 @@ void AlipMINLP::ClearFootholdConstraints() {
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {
+  auto solver = IpoptSolver();
   for (auto& seq: mode_sequnces_) {
     MakeFootstepConstraints(seq);
-    solutions_.push_back(Solve(*prog_));
+    solutions_.push_back(solver.Solve(*prog_));
     ClearFootholdConstraints();
   }
   std::sort(

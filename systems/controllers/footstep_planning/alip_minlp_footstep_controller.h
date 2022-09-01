@@ -105,9 +105,6 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   std::map<int, double> stance_duration_map_;
   double double_stance_duration_;
 
-  // mathematical program
-  drake::solvers::SnoptSolver solver_;
-
   // gains
   AlipMINLPGains gains_;
 };

@@ -7,8 +7,15 @@ cc_binary(
     srcs = ["run_alip_minlp_controller.cc"],
     deps = [
         "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc:osc",
+        "//examples/Cassie/systems:cassie_out_to_radio",
         "//geometry:convex_foothold",
         "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
+        "@gflags"
     ],
 )

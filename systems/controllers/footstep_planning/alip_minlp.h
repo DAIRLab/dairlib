@@ -64,8 +64,8 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
 class AlipMINLP {
  public:
   AlipMINLP(double m, double H) : m_(m), H_(H) {};
-  AlipMINLP(const AlipMINLP& rhs);
-  AlipMINLP& operator=(const AlipMINLP& rhs);
+  AlipMINLP(const AlipMINLP& rhs)=default;
+  AlipMINLP& operator=(const AlipMINLP& rhs)=default;
 
   // Problem setup
   void AddMode(int nk);
@@ -131,7 +131,8 @@ class AlipMINLP {
   std::vector<std::vector<int>> GetPossibleModeSequences();
 
   std::vector<geometry::ConvexFoothold> footholds_;
-  std::unique_ptr<MathematicalProgram> prog_ = std::make_unique<MathematicalProgram>();
+  drake::copyable_unique_ptr<MathematicalProgram>
+      prog_{std::make_unique<MathematicalProgram>()};
   std::vector<VectorXDecisionVariable> pp_;
   std::vector<std::vector<VectorXDecisionVariable>> xx_;
   std::vector<std::vector<VectorXDecisionVariable>> uu_;
@@ -141,9 +142,9 @@ class AlipMINLP {
   std::vector<std::pair<Binding<LinearConstraint>, Binding<LinearEqualityConstraint>>> footstep_c_;
   std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
   std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_{};
-  LinearEqualityConstraint *initial_state_c_ = nullptr;
-  LinearEqualityConstraint *initial_foot_c_ = nullptr;
-  LinearEqualityConstraint *initial_time_c_ = nullptr;
+  std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
+  std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
+  std::shared_ptr<LinearEqualityConstraint> initial_time_c_ = nullptr;
 
   std::vector<std::vector<Binding<QuadraticCost>>> tracking_costs_{};
   std::vector<std::vector<Binding<QuadraticCost>>> input_costs_{};

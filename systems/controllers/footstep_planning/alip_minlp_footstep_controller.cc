@@ -60,6 +60,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt.AddTrackingCost(xd, gains_.Q);
   trajopt.AddInputCost(gains_.R(0,0));
   trajopt.Build();
+  trajopt.CalcOptimalFootstepPlan(Vector4d::Zero(), Vector3d::Zero());
   alip_minlp_index_ = DeclareAbstractState(*AbstractValue::Make<AlipMINLP>(trajopt));
 
   // State Update
@@ -84,19 +85,17 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       "t_prev", prev_impact_time_state_idx_)
       .get_index();
   footstep_target_output_port_ = DeclareVectorOutputPort(
-      "p_SW", 3, &AlipMINLPFootstepController::CopyNextFootstepOutput,
-      {abstract_state_ticket(alip_minlp_index_)})
+      "p_SW", 3, &AlipMINLPFootstepController::CopyNextFootstepOutput)
       .get_index();
   com_traj_output_port_ = DeclareAbstractOutputPort(
-      "lcmt_saved_traj", &AlipMINLPFootstepController::CopyCoMTrajOutput,
-      {abstract_state_ticket(alip_minlp_index_)})
+      "lcmt_saved_traj", &AlipMINLPFootstepController::CopyCoMTrajOutput)
       .get_index();
 }
 
 // TODO: express footholds and alip state in pelvis yaw frame
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
-
+  std::cout << "updating" << std::endl;
   // First, evaluate the output ports
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));

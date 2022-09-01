@@ -314,7 +314,6 @@ void DoMain() {
     solver_options.SetOption(id, "dual_inf_tol", tol);                // NOLINT
     solver_options.SetOption(id, "constr_viol_tol", tol);             // NOLINT
     solver_options.SetOption(id, "compl_inf_tol", tol);               // NOLINT
-    solver_options.SetOption(id, "max_iter", 1e5);                    // NOLINT
     solver_options.SetOption(id, "nlp_lower_bound_inf", -1e6);        // NOLINT
     solver_options.SetOption(id, "nlp_upper_bound_inf", 1e6);         // NOLINT
     solver_options.SetOption(id, "print_timing_statistics", "yes");   // NOLINT
@@ -463,6 +462,21 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   double eps = 1e-4;
 
   double midpoint = 0.045;
+
+  // bounding box constraints on all decision variables
+  for (int i = 0; i < mode_lengths.size(); ++i) {
+    for (int j = 0; j < mode_lengths[i]; ++i) {
+      //      auto state_vars_ij = trajopt->state_vars(i, j);
+      //      auto input_vars_ij = trajopt->input_vars(i, j);
+      auto force_vars_ij = trajopt->force_vars(i, j);
+      prog->AddBoundingBoxConstraint(VectorXd::Constant(force_vars_ij.rows(), -200),
+                                     VectorXd::Constant(force_vars_ij.rows(), 200),
+                                     force_vars_ij);
+      prog->AddBoundingBoxConstraint(VectorXd::Constant(force_vars_ij.rows(), -200),
+                                     VectorXd::Constant(force_vars_ij.rows(), 200),
+                                     force_vars_ij);
+    }
+  }
 
   // position constraints
   prog->AddBoundingBoxConstraint(0 - midpoint, 0 - midpoint,

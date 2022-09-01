@@ -53,6 +53,7 @@ int do_main(int argc, char* argv[]) {
   // Check Copy Assignemnt
   AlipMINLP trajopt3(0, 0);
   trajopt3 = trajopt;
+  std::cout << "check accessing the solution: " << trajopt3.GetStateSolution().at(0).at(0).transpose() << "\n";
   trajopt2.CalcOptimalFootstepPlan(xd.front().front(), p0);
   trajopt3.CalcOptimalFootstepPlan(xd.front().front(), p0);
 

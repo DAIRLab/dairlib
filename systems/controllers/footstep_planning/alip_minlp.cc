@@ -7,6 +7,7 @@
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/solve.h"
 #include "drake/solvers/ipopt_solver.h"
+#include "drake/solvers/snopt_solver.h"
 
 namespace dairlib::systems::controllers{
 
@@ -119,7 +120,7 @@ void AlipMINLP::Build() {
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
   MakeInitialTimeConstraint();
-  prog_->SetSolverOption(IpoptSolver::id(), "print_level", 4);
+//  prog_->SetSolverOption(IpoptSolver::id(), "print_level", 4);
   built_ = true;
 }
 
@@ -233,11 +234,15 @@ void AlipMINLP::ClearFootholdConstraints() {
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {
-  auto solver = IpoptSolver();
-  for (auto& seq: mode_sequnces_) {
-    MakeFootstepConstraints(seq);
+  auto solver = drake::solvers::SnoptSolver();
+  if (mode_sequnces_.empty()) {
     solutions_.push_back(solver.Solve(*prog_));
-    ClearFootholdConstraints();
+  } else {
+    for (auto& seq: mode_sequnces_) {
+      MakeFootstepConstraints(seq);
+      solutions_.push_back(solver.Solve(*prog_));
+      ClearFootholdConstraints();
+    }
   }
   std::sort(
       solutions_.begin(), solutions_.end(),

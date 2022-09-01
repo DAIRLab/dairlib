@@ -95,7 +95,7 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   // Multibody Plant Parameters
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  std::map<int, alip_utils::PointOnFramed> stance_foot_map_;
+  std::map<int, const alip_utils::PointOnFramed> stance_foot_map_;
   int nq_;
   int nv_;
   int nu_;

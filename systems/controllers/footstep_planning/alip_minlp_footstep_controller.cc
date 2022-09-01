@@ -1,5 +1,6 @@
 #include "alip_minlp_footstep_controller.h"
 #include "systems/framework/output_vector.h"
+#include "multibody/multibody_utils.h"
 
 namespace dairlib::systems::controllers {
 
@@ -36,11 +37,12 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 
   nq_ = plant_.num_positions();
   nv_ = plant_.num_velocities();
-  nu_ = plant.num_actuators();
+  nu_ = plant_.num_actuators();
 
   // TODO: @Brian-Acosta Add double stance here when appropriate
   for (int i = 0; i < left_right_stance_fsm_states_.size(); i++){
-    stance_duration_map_[i] = left_right_stance_durations.at(i);
+    stance_duration_map_.insert({left_right_stance_fsm_states_.at(i), left_right_stance_durations.at(i)});
+    stance_foot_map_.insert({left_right_stance_fsm_states_.at(i), left_right_foot.at(i)});
   }
 
   // Must declare the discrete states before assigning their output ports so
@@ -61,6 +63,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt.AddInputCost(gains_.R(0,0));
   trajopt.Build();
   trajopt.CalcOptimalFootstepPlan(Vector4d::Zero(), Vector3d::Zero());
+  std::cout << "solution is: " << trajopt.GetFootstepSolution().at(0).transpose() << std::endl;
   alip_minlp_index_ = DeclareAbstractState(*AbstractValue::Make<AlipMINLP>(trajopt));
 
   // State Update
@@ -95,7 +98,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 // TODO: express footholds and alip state in pelvis yaw frame
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
-  std::cout << "updating" << std::endl;
+
   // First, evaluate the output ports
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
@@ -105,12 +108,14 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       this->EvalAbstractInput(context, foothold_input_port_)
       ->get_value<std::vector<ConvexFoothold>>();
 
-  double t_next_impact =
-      state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
-  double t_prev_impact =
-      state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
   double t = robot_output->get_timestamp();
 
+  double t_next_impact =
+      state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
+  if (t_next_impact == 0.0) { t_next_impact = stance_duration_map_.at(0);}
+
+  double t_prev_impact =
+      state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
   auto& trajopt =
       state->get_mutable_abstract_state<AlipMINLP>(alip_minlp_index_);
   trajopt.ChangeFootholds(footholds);
@@ -119,8 +124,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       state->get_discrete_state(fsm_state_idx_).get_value()(0));
 
   if (t >= t_next_impact) {
+    std::cout << "updating fsm" << std::endl;
     trajopt.DeactivateInitialTimeConstraint();
-    fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx + 1;
+    fsm_idx ++;
+    fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
     state->get_mutable_discrete_state(fsm_state_idx_).set_value(fsm_idx*VectorXd::Ones(1));
     state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(t * VectorXd::Ones(1));
     t_prev_impact = t;
@@ -128,8 +135,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   } else if ((t_next_impact - t) < gains_.T_min_until_touchdown) {
     trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
   }
-
   int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? 1 : -1;
+
   Vector3d CoM_w, p_w, L;
   alip_utils::CalcAlipState(
       plant_, context_, robot_output->GetState(),

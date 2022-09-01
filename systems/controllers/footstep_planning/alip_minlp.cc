@@ -98,6 +98,8 @@ void AlipMINLP::AddInputCost(double R) {
   R_ = R;
 }
 
+
+
 void AlipMINLP::ActivateInitialTimeConstraint(double t) {
   DRAKE_DEMAND(built_ && initial_time_c_);
   initial_time_c_->UpdateCoefficients(MatrixXd::Ones(1,1), t * VectorXd::Ones(1));
@@ -149,6 +151,7 @@ void AlipMINLP::UpdateTrackingCost(const vector<vector<Vector4d>> &xd) {
           UpdateCoefficients(2.0*Q_, -2.0*Q_ * xd.at(n).at(k));
     }
   }
+  xd_ = xd;
 }
 
 void AlipMINLP::MakeIndividualFootholdConstraint(int idx_mode,
@@ -233,6 +236,22 @@ void AlipMINLP::ClearFootholdConstraints() {
   footstep_c_.clear();
 }
 
+void AlipMINLP::UpdateInitialGuess(Vector3d p0) {
+  // Update state initial guess
+  DRAKE_DEMAND(!td_.empty());
+  for(int n = 0; n < nmodes_; n++) {
+    for (int k = 0; k < nknots_.at(n); k++) {
+      prog_->SetInitialGuess(xx_.at(n).at(k), xd_.at(n).at(k));
+    }
+    prog_->SetInitialGuess(tt_.at(n), td_.at(n) * VectorXd::Ones(1));
+  }
+  for(int n = 1; n < nmodes_; n++) {
+    Vector2d p1 = (xd_.at(n-1).back() - xd_.at(n).front()).head<2>() + p0.head<2>();
+    prog_->SetInitialGuess(pp_.at(n).head<2>(), p1);
+    p0.head<2>() = p1;
+  }
+}
+
 void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = drake::solvers::SnoptSolver();
   if (mode_sequnces_.empty()) {
@@ -254,6 +273,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
 void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
                                         const Eigen::Vector3d &p) {
   DRAKE_DEMAND(built_);
+  UpdateInitialGuess(p);
   initial_state_c_->UpdateCoefficients(Matrix4d::Identity(), x);
   initial_foot_c_->UpdateCoefficients(Matrix3d::Identity(), p);
   SolveOCProblemAsIs();

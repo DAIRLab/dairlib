@@ -94,6 +94,15 @@ class AlipMINLP {
       const Eigen::Vector2d& vdes, double t_current, double t_remain,
       double Ts, double step_width, int stance, double nk) const;
 
+  void UpdateInitialGuess(Eigen::Vector3d p0);
+  void SetNominalStanceTime(double t0, double Ts) {
+    std::vector<double> T(nmodes_, Ts);
+    T.front() = t0;
+    td_ = T;
+  }
+
+  void UpdateInitialGuess(Eigen::Vector3d p0, Eigen::VectorXd warmstart);
+
   // Solving the problem
   void CalcOptimalFootstepPlan(
       const Eigen::Vector4d &x, const Eigen::Vector3d &p);
@@ -152,7 +161,9 @@ class AlipMINLP {
   std::vector<drake::solvers::MathematicalProgramResult> solutions_;
   std::vector<std::vector<int>> mode_sequnces_{};
   std::vector<std::vector<Eigen::Vector4d>> xd_;
+  std::vector<double> td_;
   Eigen::MatrixXd Q_;
+
   double R_ = 0;
   bool built_ = false;
 };

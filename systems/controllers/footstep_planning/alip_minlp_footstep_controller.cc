@@ -61,6 +61,8 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       gains_.knots_per_mode);
   trajopt.AddTrackingCost(xd, gains_.Q);
   trajopt.AddInputCost(gains_.R(0,0));
+  trajopt.SetNominalStanceTime(left_right_stance_durations.at(0),
+                               left_right_stance_durations.at(1));
   trajopt.Build();
   trajopt.CalcOptimalFootstepPlan(Vector4d::Zero(), Vector3d::Zero());
   std::cout << "solution is: " << trajopt.GetFootstepSolution().at(0).transpose() << std::endl;
@@ -98,7 +100,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 // TODO: express footholds and alip state in pelvis yaw frame
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
-
+  auto start = std::chrono::high_resolution_clock::now();
   // First, evaluate the output ports
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
@@ -109,13 +111,12 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       ->get_value<std::vector<ConvexFoothold>>();
 
   double t = robot_output->get_timestamp();
-
   double t_next_impact =
       state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
-  if (t_next_impact == 0.0) { t_next_impact = stance_duration_map_.at(0);}
-
+  if (t_next_impact == 0.0) { t_next_impact = t + stance_duration_map_.at(0);}
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
+  if (t_prev_impact == 0.0) {t_prev_impact = t;}
   auto& trajopt =
       state->get_mutable_abstract_state<AlipMINLP>(alip_minlp_index_);
   trajopt.ChangeFootholds(footholds);
@@ -135,7 +136,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   } else if ((t_next_impact - t) < gains_.T_min_until_touchdown) {
     trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
   }
-  int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? 1 : -1;
+  int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
 
   Vector3d CoM_w, p_w, L;
   alip_utils::CalcAlipState(
@@ -152,6 +153,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
       gains_.stance_width, stance, gains_.knots_per_mode);
   trajopt.UpdateTrackingCost(xd);
+  trajopt.SetNominalStanceTime(t_next_impact - t,
+           stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)));
 
   Vector4d x;
   x.head<2>() = CoM_w.head<2>() - p_w.head<2>();
@@ -161,6 +164,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   double t0 = trajopt.GetTimingSolution()(0);
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
       (t + t0) * VectorXd::Ones(1));
+
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "solve time: " << elapsed.count() << std::endl;
   return drake::systems::EventStatus::Succeeded();
 }
 

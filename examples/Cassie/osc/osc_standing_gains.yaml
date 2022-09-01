@@ -30,7 +30,7 @@ w_soft_constraint: 100
 w_input_reg: 0.00
 impact_threshold: 0.00
 center_of_mass_filter_tau: 0.001
-rot_filter_tau: 0.01
+rot_filter_tau: 0.05
 center_of_mass_command_filter_alpha: 0.05
 orientation_command_filter_alpha: 0.0005
 impact_tau: 0.00
@@ -40,16 +40,16 @@ HipYawKp: 40
 HipYawKd: 5
 HipYawW: 0
 PelvisW:
-  [20,    0,    0,
+  [1,    0,    0,
    0,     2,    0,
    0,     0,   10]
 PelvisKp:
-  [100,   0,    0,
+  [50,   0,    0,
    0,   50,    0,
    0,    0,  75]
 PelvisKd:
-  [ 1,    0,   0,
-    0,    1,   0,
+  [ 0.1,    0,   0,
+    0,    0.1,   0,
     0,    0,   1]
 PelvisRotW:
   [5,  0,   0,
@@ -57,11 +57,11 @@ PelvisRotW:
    0,    0,  1]
 PelvisRotKp:
   [25,   0,   0,
-   0,  50,   0,
+   0,  10,   0,
    0,    0,   50]
 PelvisRotKd:
-  [0.1,   0,  0,
-   0,   10,  0,
-   0,    0,  1]
+  [0,   0,  0,
+   0,   0.1,  0,
+   0,    0,  0.1]
 
 

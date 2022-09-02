@@ -26,6 +26,21 @@ cc_library(
 )
 
 cc_library(
+    name = "fsm_lcm_systems",
+    srcs = ["fsm_lcm_systems.cc"],
+    hdrs = [
+        "fsm_lcm_systems.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
     name = "vector_aggregator",
     hdrs = [
         "vector_aggregator.h",

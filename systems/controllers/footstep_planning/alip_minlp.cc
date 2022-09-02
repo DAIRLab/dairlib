@@ -123,7 +123,7 @@ void AlipMINLP::Build() {
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
   MakeInitialTimeConstraint();
-//  prog_->SetSolverOption(IpoptSolver::id(), "print_level", 4);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations limit", 1);
   built_ = true;
 }
 

@@ -1,0 +1,9 @@
+package dairlib;
+
+struct lcmt_fsm_info
+{
+  int64_t timestamp_us;
+  int64_t prev_switch_time_us;
+  int64_t next_switch_time_us;
+  int32_t fsm_state;
+}

@@ -184,6 +184,7 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
 
 void AlipMINLPFootstepController::CopyCoMTrajOutput(const drake::systems::Context<
     double> &context, lcmt_saved_traj *traj_msg) const {
+
 }
 
 }

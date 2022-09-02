@@ -27,7 +27,7 @@ cc_library(
         "//geometry:convex_foothold",
         "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
-        "@drake//:drake_shared_library"
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -39,7 +39,7 @@ cc_library(
         ":alip_utils",
         "//geometry:convex_foothold",
         "//solvers:constraints",
-        "@drake//:drake_shared_library"
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -51,7 +51,7 @@ cc_library(
         ":alip_utils",
         "//geometry:convex_foothold",
         "//solvers:constraints",
-        "@drake//:drake_shared_library"
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -61,6 +61,16 @@ cc_library(
     hdrs = ["alip_utils.h"],
     deps = [
         "//multibody:utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "footstep_lcm_systems",
+    srcs = ["footstep_lcm_systems.cc"],
+    hdrs = ["footstep_lcm_systems.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
     ],
 )

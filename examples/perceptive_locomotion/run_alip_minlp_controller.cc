@@ -7,7 +7,9 @@
 #include "multibody/multibody_utils.h"
 
 #include "systems/controllers/footstep_planning/alip_minlp_footstep_controller.h"
+#include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
@@ -32,6 +34,8 @@ using geometry::ConvexFoothold;
 using systems::controllers::alip_utils::PointOnFramed;
 using systems::controllers::AlipMINLPGains;
 using systems::controllers::AlipMINLPFootstepController;
+using systems::controllers::FootstepSender;
+using systems::FsmSender;
 
 using drake::multibody::Frame;
 using drake::systems::DiagramBuilder;
@@ -128,13 +132,12 @@ int DoMain(int argc, char* argv[]) {
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant_w_spr, context_w_spr.get(), 0.5, 1.0, 0.5);
 
-  auto [footstep_scope, footstep_scope_pub] =
-      drake::systems::lcm::LcmScopeSystem::AddToBuilder(
-          &builder,
-          &lcm_local,
-          foot_placement_controller->get_output_port_footstep_target(),
-          "FOOTSTEP_SCOPE",
-          0);
+  auto footstep_sender = builder.AddSystem<FootstepSender>();
+  auto footstep_pub_ptr = LcmPublisherSystem::Make<dairlib::lcmt_footstep_target>("NEXT_FOOTSTEP", &lcm_local);
+  auto footstep_pub = builder.AddSystem(std::move(footstep_pub_ptr));
+  auto fsm_sender = builder.AddSystem<FsmSender>(plant_w_spr);
+  auto fsm_pub_ptr = LcmPublisherSystem::Make<dairlib::lcmt_fsm_info>("ALIP_FSM", &lcm_local);
+  auto fsm_pub = builder.AddSystem(std::move(fsm_pub_ptr));
 
   // --- Connect the diagram --- //
   // State Reciever connections
@@ -142,6 +145,8 @@ int DoMain(int argc, char* argv[]) {
                   high_level_command->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   foot_placement_controller->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(0),
+                  fsm_sender->get_input_port_state());
 
   // planner ports
   builder.Connect(high_level_command->get_xy_output_port(),
@@ -149,15 +154,28 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(foothold_oracle->get_output_port(),
                   foot_placement_controller->get_input_port_footholds());
 
+  // planner out ports
+  builder.Connect(foot_placement_controller->get_output_port_fsm(),
+                  fsm_sender->get_input_port_fsm());
+  builder.Connect(foot_placement_controller->get_output_port_prev_impact_time(),
+                  fsm_sender->get_input_port_prev_switch_time());
+  builder.Connect(foot_placement_controller->get_output_port_next_impact_time(),
+                  fsm_sender->get_input_port_next_switch_time());
+  builder.Connect(foot_placement_controller->get_output_port_footstep_target(),
+                  footstep_sender->get_input_port());
+
   // misc
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
   builder.Connect(cassie_out_to_radio->get_output_port(),
                   high_level_command->get_radio_port());
+  builder.Connect(fsm_sender->get_output_port_fsm_info(),
+                  fsm_pub->get_input_port());
+  builder.Connect(*footstep_sender, *footstep_pub);
 
   // Create the diagram
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("AlipMINLP foot placement controller");
-//  DrawAndSaveDiagramGraph(*owned_diagram, "planner");
+  DrawAndSaveDiagramGraph(*owned_diagram, "../planner");
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

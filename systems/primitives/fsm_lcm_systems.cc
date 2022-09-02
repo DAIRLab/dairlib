@@ -13,7 +13,7 @@ using drake::multibody::MultibodyPlant;
 
 
 FsmReciever::FsmReciever(const MultibodyPlant<double> &plant) {
-
+  this->set_name("FSM Receiver");
   input_port_lcmt_fsm_info_ = this->DeclareAbstractInputPort(
       "lcmt_fsm_info", drake::Value<lcmt_fsm_info>({0,0,0,0})).get_index();
   input_port_state_ = this->DeclareVectorInputPort(
@@ -102,13 +102,14 @@ void FsmReciever::CopyTimeUntilSwitch(const Context<double> &context,
 }
 
 FsmSender::FsmSender(const drake::multibody::MultibodyPlant<double> &plant) {
+  this->set_name("FSM Sender");
   input_port_state_ = this->DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(plant.num_positions(),
                                       plant.num_velocities(),
                                       plant.num_actuators())).get_index();
   input_port_fsm_ = this->DeclareVectorInputPort("fsm", 1).get_index();
-  input_port_prev_switch_time_ = this->DeclareVectorInputPort("fsm", 1).get_index();
-  input_port_next_switch_time_ = this->DeclareVectorInputPort("fsm", 1).get_index();
+  input_port_prev_switch_time_ = this->DeclareVectorInputPort("prev_switch_time", 1).get_index();
+  input_port_next_switch_time_ = this->DeclareVectorInputPort("next_switch_time", 1).get_index();
   output_port_fsm_info_ = this->DeclareAbstractOutputPort(
       "fsm_info", dairlib::lcmt_fsm_info(),&FsmSender::CopyInputsToMessage)
   .get_index();

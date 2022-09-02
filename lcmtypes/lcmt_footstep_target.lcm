@@ -1,0 +1,6 @@
+package dairlib;
+
+struct lcmt_footstep_target
+{
+  double target[3];
+}

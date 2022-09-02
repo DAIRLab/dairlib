@@ -100,8 +100,9 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 // TODO: express footholds and alip state in pelvis yaw frame
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
+
   auto start = std::chrono::high_resolution_clock::now();
-  // First, evaluate the output ports
+
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
   const Vector2d vdes =
@@ -113,9 +114,11 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   double t = robot_output->get_timestamp();
   double t_next_impact =
       state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
-  if (t_next_impact == 0.0) { t_next_impact = t + stance_duration_map_.at(0);}
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
+
+  // On the first iteration, we don't want to switch immediately
+  if (t_next_impact == 0.0) { t_next_impact = t + stance_duration_map_.at(0);}
   if (t_prev_impact == 0.0) { t_prev_impact = t; }
 
   auto& trajopt =
@@ -157,6 +160,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       vdes, t - t_prev_impact, t_next_impact - t,
       stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
       gains_.stance_width, stance, gains_.knots_per_mode);
+  
   trajopt.UpdateTrackingCost(xd);
   trajopt.SetNominalStanceTime(t_next_impact - t,
            stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)));

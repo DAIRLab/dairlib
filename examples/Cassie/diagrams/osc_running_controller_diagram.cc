@@ -177,8 +177,8 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       builder.AddSystem<systems::ControllerFailureAggregator>(
           control_channel_name_, 1);
   std::vector<double> tau = {.05, .01, .01};
-  auto ekf_filter =
-      builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
+//  auto ekf_filter =
+//      builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
 
   /**** OSC setup ****/
   // Cost
@@ -452,8 +452,6 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                   osc->get_input_port_clock());
 
   builder.Connect(state_receiver->get_output_port(0),
-                  ekf_filter->get_input_port());
-  builder.Connect(ekf_filter->get_output_port(),
                   osc->get_robot_output_input_port());
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),

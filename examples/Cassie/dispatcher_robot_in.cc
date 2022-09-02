@@ -15,6 +15,8 @@
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
+
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/framework/diagram.h"
@@ -222,7 +224,7 @@ int do_main(int argc, char* argv[]) {
       &(loop.get_diagram()->GetMutableSubsystemContext(
           *config_receiver, &loop.get_diagram_mutable_context())),
       msg);
-
+  DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 
   return 0;

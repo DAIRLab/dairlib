@@ -193,8 +193,8 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact_timing>(
           "CONTACT_TIMING", &lcm, TriggerTypeSet({TriggerType::kForced})));
   //  std::vector<double> tau = {.05, .01, .01};
-  auto ekf_filter = builder.AddSystem<systems::FloatingBaseVelocityFilter>(
-      plant, osc_gains.ekf_filter_tau);
+//  auto ekf_filter = builder.AddSystem<systems::FloatingBaseVelocityFilter>(
+//      plant, osc_gains.ekf_filter_tau);
 
   /**** OSC setup ****/
   // Cost
@@ -555,15 +555,15 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(contact_scheduler->get_output_port_clock(),
                   osc->get_input_port_clock());
 
-  if (osc_gains.ekf_filter_tau[0] > 0) {
-    builder.Connect(state_receiver->get_output_port(0),
-                    ekf_filter->get_input_port());
-    builder.Connect(ekf_filter->get_output_port(),
-                    osc->get_robot_output_input_port());
-  } else {
-    builder.Connect(state_receiver->get_output_port(0),
-                    osc->get_robot_output_input_port());
-  }
+//  if (osc_gains.ekf_filter_tau[0] > 0) {
+//    builder.Connect(state_receiver->get_output_port(0),
+//                    ekf_filter->get_input_port());
+//    builder.Connect(ekf_filter->get_output_port(),
+//                    osc->get_robot_output_input_port());
+//  } else {
+  builder.Connect(state_receiver->get_output_port(0),
+                  osc->get_robot_output_input_port());
+//  }
 
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),

@@ -17,6 +17,7 @@
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -318,7 +319,9 @@ int do_main(int argc, char* argv[]) {
 
   // Create the diagram, simulator, and context.
   auto owned_diagram = builder.Build();
+  owned_diagram->set_name(("dispatcher_robot_out"));
   const auto& diagram = *owned_diagram;
+  DrawAndSaveDiagramGraph(diagram);
   drake::systems::Simulator<double> simulator(std::move(owned_diagram));
   auto& diagram_context = simulator.get_mutable_context();
 

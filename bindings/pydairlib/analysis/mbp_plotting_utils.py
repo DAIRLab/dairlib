@@ -383,12 +383,6 @@ def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
                             ylabel='Efforts (Nm)', title='Select Joint Efforts')
 
 
-def plot_commanded_efforts(robot_input, u_names, time_slice):
-    return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
-                      time_slice, ylabel='Efforts (Nm)',
-                      title='Commanded Joint Efforts')
-
-
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
                           pts, dims):
     dim_map = ['_x', '_y', '_z']

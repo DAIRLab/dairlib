@@ -9,7 +9,7 @@
 rows: 3
 cols: 3
 w_input: 0.0
-w_accel: 0.001
+w_accel: 0.000
 w_lambda: 0.000000
 #W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
 #           1, 1, 1, 1, 0.01, 0.001,
@@ -29,8 +29,8 @@ W_lambda_h_reg: [ 0.001, 0.001, 0.001,
 w_soft_constraint: 100
 w_input_reg: 0.00
 impact_threshold: 0.00
-center_of_mass_filter_tau: 0.001
-rot_filter_tau: 0.05
+center_of_mass_filter_tau: 0.0001
+rot_filter_tau: 0.001
 center_of_mass_command_filter_alpha: 0.05
 orientation_command_filter_alpha: 0.0005
 impact_tau: 0.00
@@ -40,28 +40,28 @@ HipYawKp: 40
 HipYawKd: 5
 HipYawW: 0
 PelvisW:
-  [1,    0,    0,
-   0,     2,    0,
-   0,     0,   10]
+  [ 1,    0,    0,
+    0,     2,    0,
+    0,     0,   2 ]
 PelvisKp:
-  [50,   0,    0,
-   0,   50,    0,
-   0,    0,  75]
+  [ 50,   0,    0,
+    0,   50,    0,
+    0,    0,  75 ]
 PelvisKd:
-  [ 0.1,    0,   0,
-    0,    0.1,   0,
-    0,    0,   1]
+  [ 10,    0,   0,
+    0,    10,   0,
+    0,    0, 10 ]
 PelvisRotW:
-  [5,  0,   0,
-   0,  5,   0,
-   0,    0,  1]
+  [ 5,  0,   0,
+    0,  5,   0,
+    0,    0,  1 ]
 PelvisRotKp:
-  [25,   0,   0,
-   0,  10,   0,
-   0,    0,   50]
+  [ 25,   0,   0,
+    0,  75,   0,
+    0,    0,   50 ]
 PelvisRotKd:
-  [0,   0,  0,
-   0,   0.1,  0,
-   0,    0,  0.1]
+  [ 10,   0,  0,
+    0,   10,  0,
+    0,    0,  10 ]
 
 

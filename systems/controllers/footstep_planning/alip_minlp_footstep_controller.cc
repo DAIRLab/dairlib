@@ -108,9 +108,16 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       this->EvalVectorInput(context, state_input_port_));
   const Vector2d vdes =
       this->EvalVectorInput(context, vdes_input_port_)->get_value();
-  const std::vector<ConvexFoothold> footholds =
+  std::vector<ConvexFoothold> footholds =
       this->EvalAbstractInput(context, foothold_input_port_)
       ->get_value<std::vector<ConvexFoothold>>();
+
+  VectorXd robot_state = robot_output->GetState();
+  multibody::SetPositionsAndVelocitiesIfNew(plant_, robot_state, *context_);
+  for (auto& foothold : footholds) {
+    foothold.ReExpressInNewFrame(multibody::GetBodyYawRotation_R_WB(
+        plant_, *context_, "pelvis"));
+  }
 
   double t = robot_output->get_timestamp();
   double t_next_impact =

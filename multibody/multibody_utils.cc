@@ -30,6 +30,7 @@ using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::Vector2d;
 using Eigen::MatrixXd;
+using Eigen::Matrix3d;
 using std::map;
 using std::string;
 using std::vector;
@@ -520,9 +521,9 @@ Vector3d ReExpressWorldVector3InBodyYawFrame(const MultibodyPlant<T>& plant,
                                              const Context<T>& context,
                                              const std::string& body_name,
                                              const Vector3d& vec) {
-  Vector3d pelvis_x =
+  Vector3d body_x =
       plant.GetBodyByName(body_name).EvalPoseInWorld(context).rotation().col(0);
-  double yaw  = atan2(pelvis_x(1), pelvis_x(0));
+  double yaw  = atan2(body_x(1), body_x(0));
   return Vector3d(cos(yaw) * vec(0) + sin(yaw)*vec(1),
                   -sin(yaw) * vec(0) + cos(yaw)*vec(1),
                   vec(2));
@@ -533,11 +534,21 @@ Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<T>& plant,
                                              const Context<T>& context,
                                              const std::string& body_name,
                                              const Vector2d& vec) {
-  Vector3d pelvis_x =
+  Vector3d body_x =
       plant.GetBodyByName(body_name).EvalPoseInWorld(context).rotation().col(0);
-  double yaw  = atan2(pelvis_x(1), pelvis_x(0));
+  double yaw  = atan2(body_x(1), body_x(0));
   return Vector2d(cos(yaw) * vec(0) + sin(yaw)*vec(1),
                   -sin(yaw) * vec(0) + cos(yaw)*vec(1));
+}
+
+// More sugar for body yaw rotations
+template <typename T>
+Matrix3d GetBodyYawRotation_R_WB(const MultibodyPlant<T>& plant,
+                                   const Context<T>& context,
+                                   const std::string& body_name) {
+  Vector3d body_x = plant.GetBodyByName(body_name).EvalPoseInWorld(context).rotation().col(0);
+  double yaw = atan2(body_x(1), body_x(0));
+  return RotationMatrix<double>::MakeZRotation(yaw).matrix();
 }
 
 Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
@@ -572,6 +583,7 @@ template bool HasQuaternion(const MultibodyPlant<double>& plant);  // NOLINT
 template bool HasQuaternion(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template Vector3d ReExpressWorldVector3InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector3d& vec); //NOLINT
 template Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector2d& vec); //NOLINT
+template Matrix3d GetBodyYawRotation_R_WB(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name); // NOLINT
 template map<string, int> MakeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd> &plant);  // NOLINT
 template map<string, int> MakeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant);  // NOLINT

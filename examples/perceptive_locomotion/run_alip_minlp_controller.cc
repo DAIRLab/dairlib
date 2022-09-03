@@ -19,7 +19,6 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/primitives/constant_value_source.h"
-#include "drake/systems/lcm/lcm_scope_system.h"
 
 namespace dairlib {
 

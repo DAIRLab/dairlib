@@ -12,6 +12,7 @@ namespace dairlib::geometry {
    std::pair<Eigen::MatrixXd, Eigen::VectorXd>GetConstraintMatrices() const;
    std::pair<Eigen::MatrixXd, Eigen::VectorXd>GetEqualityConstraintMatrices() const;
    std::vector<Eigen::Vector3d> GetVertices();
+   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
 
   private:
    Eigen::Vector3d SolveForVertexSharedByFaces(int i, int j);

@@ -4,6 +4,7 @@
 
 namespace dairlib::systems::controllers {
 
+using multibody::ReExpressWorldVector3InBodyYawFrame;
 using geometry::ConvexFoothold;
 
 using Eigen::Vector2d;

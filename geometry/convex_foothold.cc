@@ -13,6 +13,13 @@ void ConvexFoothold::SetContactPlane(Eigen::Vector3d normal,
   b_eq_ = normal.dot(pt) * VectorXd::Ones(1);
 }
 
+// Rotate the coordinate frame so that the constraint A x_W <= b
+// becomes A R_WF x_F <= b
+void ConvexFoothold::ReExpressInNewFrame(const Eigen::Matrix3d &R_WF) {
+  A_ = A_ * R_WF;
+  A_eq_ * R_WF;
+}
+
 void ConvexFoothold::AddHalfspace(Vector3d a, VectorXd b) {
   if (A_.rows() == 0) {
     A_ = a.transpose();

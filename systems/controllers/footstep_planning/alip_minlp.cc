@@ -9,6 +9,7 @@
 #include "drake/solvers/ipopt_solver.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/nlopt_solver.h"
+#include "drake/solvers/osqp_solver.h"
 
 namespace dairlib::systems::controllers{
 
@@ -68,7 +69,7 @@ void AlipDynamicsConstraint::EvaluateConstraint(
   dy.block(0, 0, 4, 4) = Ad;
   dy.col(4) = Bd;
   dy.block(0, 5, 4, 4) = -Matrix4d::Identity();
-  dy.rightCols(1) = A_ * (Ad * x0 + A_ * Ad * B_ * u0);
+  dy.rightCols(1) = A_ * Ad * x0 + Ad * B_ * u0;
   *y = InitializeAutoDiff(y0, dy);
 }
 
@@ -104,12 +105,14 @@ void AlipMINLP::AddInputCost(double R) {
 void AlipMINLP::ActivateInitialTimeConstraint(double t) {
   DRAKE_DEMAND(built_ && initial_time_c_);
   initial_time_c_->UpdateCoefficients(MatrixXd::Ones(1,1), t * VectorXd::Ones(1));
+  ts_bounds_c_.front().evaluator()->UpdateLowerBound(VectorXd::Zero(1));
 }
 
 void AlipMINLP::DeactivateInitialTimeConstraint() {
   if (initial_time_c_) {
     initial_time_c_->UpdateCoefficients(MatrixXd::Zero(1,1), VectorXd::Zero(1));
   }
+  ts_bounds_c_.front().evaluator()->UpdateLowerBound(tmin_ * VectorXd::Ones(1));
 }
 
 void AlipMINLP::Build() {
@@ -123,7 +126,7 @@ void AlipMINLP::Build() {
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
   MakeInitialTimeConstraint();
-  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations limit", 1);
+//  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations limit", 5);
   built_ = true;
 }
 
@@ -216,10 +219,11 @@ void AlipMINLP::MakeInitialStateConstraint() {
 }
 
 void AlipMINLP::MakeTimingBoundsConstraint() {
+  DRAKE_DEMAND(tmin_ > 0);
   for (int i = 0; i < nmodes_; i++) {
     ts_bounds_c_.push_back(
       prog_->AddBoundingBoxConstraint(
-          VectorXd::Zero(1), VectorXd::Ones(1), tt_.at(i)));
+          tmin_ * VectorXd::Ones(1), VectorXd::Ones(1), tt_.at(i)));
   }
 }
 
@@ -260,6 +264,10 @@ void AlipMINLP::UpdateInitialGuess() {
 
 void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = SnoptSolver();
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance", 1e-6);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major optimality tolerance", 1e-6);
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", "../snopt_alip.out");
+
   if (mode_sequnces_.empty()) {
     solutions_.push_back(solver.Solve(*prog_));
   } else {

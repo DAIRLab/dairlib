@@ -5,9 +5,9 @@ channel_osc: "OSC_DEBUG_WALKING"
 use_archived_lcmtypes: false
 
 # Approximate log time to start at relative to the first timestamp in the log
-start_time: 0
+start_time: 3
 # Duration of time to plot (seconds, -1 for whole log)
-duration: 2
+duration: 1.6
 
 # Plant properties
 use_springs: true
@@ -16,7 +16,7 @@ use_floating_base: true
 # Desired RobotOutput plots
 plot_floating_base_positions: false
 plot_floating_base_velocities: false
-plot_floating_base_velocity_body_frame: true
+plot_floating_base_velocity_body_frame: false
 plot_joint_positions: false
 plot_joint_velocities: false
 plot_measured_efforts: true
@@ -39,5 +39,5 @@ plot_qp_costs: true
 plot_tracking_costs: true
 plot_qp_solve_time: true
 tracking_datas_to_plot:
-  alip_com_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'vel' ] }
-  swing_ft_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'accel' ] }
+  alip_com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+  swing_ft_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }

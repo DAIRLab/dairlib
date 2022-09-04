@@ -32,6 +32,7 @@ PYBIND11_MODULE(controllers, m) {
       .def("MakeXdesTrajForVdes", &AlipMINLP::MakeXdesTrajForVdes)
       .def("MakeXdesTrajForCurrentStep", &AlipMINLP::MakeXdesTrajForCurrentStep)
       .def("SetNominalStanceTime", &AlipMINLP::SetNominalStanceTime)
+      .def("SetMinimumStanceTime", &AlipMINLP::SetMinimumStanceTime)
       .def("CalcOptimalFootstepPlan", &AlipMINLP::CalcOptimalFootstepPlan)
       .def("GetFootstepSolution", &AlipMINLP::GetFootstepSolution)
       .def("GetStateSolution", &AlipMINLP::GetStateSolution)

@@ -108,7 +108,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
 
   auto gains = AlipMINLPGains{
-    0.1, 0.85, 0.1, 3, 15,
+    0.1, 0.85, 0.2, 3, 5,
     Matrix4d::Identity(), 10 * MatrixXd::Ones(1,1)};
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(

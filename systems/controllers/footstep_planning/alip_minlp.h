@@ -96,6 +96,7 @@ class AlipMINLP {
 
   void UpdateInitialGuess(Eigen::Vector3d p0);
   void UpdateInitialGuess();
+  void SetMinimumStanceTime(double tmin) {tmin_ = tmin;};
   void SetNominalStanceTime(double t0, double Ts) {
     std::vector<double> T(nmodes_, Ts);
     T.front() = t0;
@@ -169,6 +170,7 @@ class AlipMINLP {
   Eigen::MatrixXd Q_;
 
   double R_ = 0;
+  double tmin_ = 0;
   bool built_ = false;
 };
 }

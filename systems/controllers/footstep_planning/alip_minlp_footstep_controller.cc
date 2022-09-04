@@ -67,6 +67,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt.AddInputCost(gains_.R(0,0));
   trajopt.SetNominalStanceTime(left_right_stance_durations.at(0),
                                left_right_stance_durations.at(1));
+  trajopt.SetMinimumStanceTime(gains_.T_min_until_touchdown);
   trajopt.Build();
   trajopt.CalcOptimalFootstepPlan(Vector4d::Zero(), Vector3d::Zero());
   std::cout << "solution is: " << trajopt.GetFootstepSolution().at(0).transpose() << std::endl;
@@ -125,9 +126,14 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
 
-  // On the first iteration, we don't want to switch immediately
-  if (t_next_impact == 0.0) { t_next_impact = t + stance_duration_map_.at(0);}
-  if (t_prev_impact == 0.0) { t_prev_impact = t; }
+  // On the first iteration, we don't want to switch immediately,
+  // and we don't want to warmstart
+  bool warmstart = true;
+  if (t_next_impact == 0.0) {
+    t_next_impact = t + stance_duration_map_.at(0);
+    t_prev_impact = t;
+    warmstart = false;
+  }
 
   auto& trajopt =
       state->get_mutable_abstract_state<AlipMINLP>(alip_minlp_index_);
@@ -136,7 +142,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   int fsm_idx = static_cast<int>(
       state->get_discrete_state(fsm_state_idx_).get_value()(0));
 
-  bool warmstart = true;
   if (t >= t_next_impact) {
     warmstart = false;
     std::cout << "updating fsm" << std::endl;
@@ -195,6 +200,8 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
   const auto& pp = trajopt.GetFootstepSolution();
   const auto& xx = trajopt.GetStateSolution();
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
+  std::cout << "CoM now:" << (pp.at(0).head<2>() + xx.front().front().head<2>()).transpose();
+  std::cout << "\nCoM Then:" << (pp.at(0).head<2>() + xx.front().back().head<2>()).transpose() << std::endl;
   footstep_in_com_yaw_frame.head(2) = (pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
   footstep_in_com_yaw_frame(2) = -gains_.hdes;
   p_B_FC->set_value(footstep_in_com_yaw_frame);

@@ -23,7 +23,7 @@ def PlotCoMTrajSolution(trajopt):
             line_y = [xy[0], pp[i][0]]
             plt.plot(line_x, line_y, color='black')
     plt.xlim([-0.5, 0.5])
-    plt.ylim([-0.25, 0.75])
+    plt.ylim([-0.25, 1.75])
 
 
 
@@ -62,9 +62,11 @@ def main():
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
-    xd = trajopt.MakeXdesTrajForVdes(np.array([1.0, 0.0]), 0.1, 0.35, nk, 1)
+    trajopt.AddMode(nk)
+    xd = trajopt.MakeXdesTrajForVdes(np.array([1.0, 0.0]), 0.1, 0.35, nk, -1)
     trajopt.AddTrackingCost(xd, np.eye(4))
     trajopt.SetNominalStanceTime(0.35, 0.35)
+    trajopt.SetMinimumStanceTime(0.1)
     trajopt.AddInputCost(10)
     trajopt.Build()
     trajopt.CalcOptimalFootstepPlan(xd[0][0].ravel(), np.array(p0), False)

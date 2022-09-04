@@ -9,6 +9,7 @@ from process_lcm_log import get_log_data
 from cassie_plot_config import CassiePlotConfig
 import cassie_plotting_utils as cassie_plots
 import mbp_plotting_utils as mbp_plots
+from pydairlib.common.plot_styler import PlotStyler
 
 
 def main():
@@ -51,6 +52,9 @@ def main():
                                       plot_config.duration,
                                       mbp_plots.load_force_channels,  # processing callback
                                       'CASSIE_CONTACT_DRAKE')  # processing callback arguments
+
+    ps = PlotStyler()
+    ps.set_default_styling()
 
     print('Finished processing log - making plots')
     # Define x time slice

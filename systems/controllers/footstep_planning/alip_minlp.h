@@ -46,7 +46,7 @@ using drake::solvers::LinearEqualityConstraint;
 
 class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
  public:
-  AlipDynamicsConstraint(double m, double H);
+  AlipDynamicsConstraint(double m, double H, double n);
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>>& x,
                           drake::VectorX<drake::AutoDiffXd>* y) const override;
 
@@ -56,6 +56,7 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
  private:
   double m_;
   double H_;
+  double n_;
   Eigen::Matrix4d A_;
   Eigen::Matrix4d A_inv_;
   Eigen::MatrixXd B_;

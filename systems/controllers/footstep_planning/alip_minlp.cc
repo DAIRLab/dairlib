@@ -44,12 +44,15 @@ using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::LinearEqualityConstraint;
 
-AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H) :
+AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
     NonlinearConstraint<AutoDiffXd>(
-        4, 10, Vector4d::Zero(), Vector4d::Zero(), "dynamics"), m_(m), H_(H) {
+        4, 10, Vector4d::Zero(), Vector4d::Zero(), "dynamics"),
+    m_(m), H_(H), n_(n) {
+
   A_ = alip_utils::CalcA(H_, m_);
   A_inv_ = A_.inverse();
   B_ = Vector4d(0, 0, 0, 1);
+
 }
 
 void AlipDynamicsConstraint::EvaluateConstraint(
@@ -59,7 +62,7 @@ void AlipDynamicsConstraint::EvaluateConstraint(
   Vector4d x0 = xd.head(4);
   VectorXd u0 = xd.segment(4, 1);
   Vector4d x1 = xd.segment(5, 4);
-  double t = xd(xd.size() -1);
+  double t = xd(xd.size() -1) / n_;
 
   Matrix4d Ad = (t * A_).exp();
   Vector4d Bd = A_inv_ * (Ad - Matrix4d::Identity()) * B_;
@@ -69,7 +72,7 @@ void AlipDynamicsConstraint::EvaluateConstraint(
   dy.block(0, 0, 4, 4) = Ad;
   dy.col(4) = Bd;
   dy.block(0, 5, 4, 4) = -Matrix4d::Identity();
-  dy.rightCols(1) = A_ * Ad * x0 + Ad * B_ * u0;
+  dy.rightCols(1) = (1 / n_) *  A_ * Ad * x0 + Ad * B_ * u0;
   *y = InitializeAutoDiff(y0, dy);
 }
 
@@ -195,7 +198,7 @@ void AlipMINLP::MakeResetConstraints() {
 }
 
 void AlipMINLP::MakeDynamicsConstraints() {
-  dynamics_evaluator_ = std::make_shared<AlipDynamicsConstraint>(m_, H_);
+  dynamics_evaluator_ = std::make_shared<AlipDynamicsConstraint>(m_, H_, nknots_.front());
   for (int i = 0; i < nmodes_; i++) {
     vector<Binding<drake::solvers::Constraint>> dyn_c_this_mode{};
     for (int k = 0; k < nknots_.at(i)-1; k++) {

@@ -200,8 +200,6 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
   const auto& pp = trajopt.GetFootstepSolution();
   const auto& xx = trajopt.GetStateSolution();
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
-  std::cout << "CoM now:" << (pp.at(0).head<2>() + xx.front().front().head<2>()).transpose();
-  std::cout << "\nCoM Then:" << (pp.at(0).head<2>() + xx.front().back().head<2>()).transpose() << std::endl;
   footstep_in_com_yaw_frame.head(2) = (pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
   footstep_in_com_yaw_frame(2) = -gains_.hdes;
   p_B_FC->set_value(footstep_in_com_yaw_frame);

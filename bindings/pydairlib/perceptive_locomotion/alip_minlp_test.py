@@ -23,7 +23,7 @@ def PlotCoMTrajSolution(trajopt):
             line_y = [xy[0], pp[i][0]]
             plt.plot(line_x, line_y, color='black')
     plt.xlim([-0.5, 0.5])
-    plt.ylim([-0.25, 1.75])
+    plt.ylim([-0.25, pp[-1][0] + xx[-1][-1][0]])
 
 
 

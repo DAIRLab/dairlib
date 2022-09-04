@@ -11,8 +11,6 @@
 
 #include <drake/math/saturate.h>
 
-using std::cout;
-using std::endl;
 using std::string;
 using std::vector;
 
@@ -335,11 +333,7 @@ int ALIPTrajGenerator::GetModeIdx(int fsm_state) const {
                  unordered_fsm_states_.end(),
                  fsm_state);
   int mode_index = std::distance(unordered_fsm_states_.begin(), it);
-  if (it == unordered_fsm_states_.end()) {
-    cout << "WARNING: fsm state number " << fsm_state
-         << " doesn't exist in ALIPTrajGenerator\n";
-    mode_index = 0;
-  }
+  DRAKE_DEMAND(it != unordered_fsm_states_.end());
   return mode_index;
 }
 

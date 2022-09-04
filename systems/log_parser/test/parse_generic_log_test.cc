@@ -1,4 +1,5 @@
 #include <string>
+#include <iostream>
 #include "systems/log_parser/generic_lcm_log_parser.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/robot_lcm_systems.h"

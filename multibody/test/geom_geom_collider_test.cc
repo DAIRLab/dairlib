@@ -1,6 +1,7 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
 #include "common/find_resource.h"
+#include <iostream>
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"

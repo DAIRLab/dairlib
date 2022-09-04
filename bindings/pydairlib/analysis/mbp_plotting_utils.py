@@ -464,7 +464,7 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
 
 
 def plot_qp_costs(osc_debug, time_slice):
-    regularization_cost = osc_debug['regularization_costs'].regularization_costs
+    regularization_cost = osc_debug['regularization_costs']
     data_dict = \
         {key: val for key, val in regularization_cost.items()}
     data_dict['t_osc'] = osc_debug['t_osc']

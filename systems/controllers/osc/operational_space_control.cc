@@ -1,6 +1,7 @@
 #include "systems/controllers/osc/operational_space_control.h"
 
 #include <drake/multibody/plant/multibody_plant.h>
+#include <iostream>
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
@@ -50,7 +51,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_wo_spr,
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
-    bool used_with_finite_state_machine, bool print_tracking_info,
+    bool used_with_finite_state_machine,
     double qp_time_limit)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
@@ -59,7 +60,6 @@ OperationalSpaceControl::OperationalSpaceControl(
       world_w_spr_(plant_w_spr_.world_frame()),
       world_wo_spr_(plant_wo_spr_.world_frame()),
       used_with_finite_state_machine_(used_with_finite_state_machine),
-      print_tracking_info_(print_tracking_info),
       qp_time_limit_(qp_time_limit) {
   this->set_name("OSC");
 
@@ -461,8 +461,8 @@ void OperationalSpaceControl::Build() {
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
 
-  solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  solver_->InitializeSolver(*prog_, solver_options_);
+  solver_ = std::make_unique<drake::solvers::OsqpSolver>();
+  prog_->SetSolverOptions(solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -681,7 +681,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       // 0.5 * (JdotV - y_command)^T * W * (JdotV - y_command),
       // since it doesn't change the result of QP.
       tracking_cost_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t));
+          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t), 0, true);
     } else {
       tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                                VectorXd::Zero(n_v_));
@@ -747,7 +747,6 @@ VectorXd OperationalSpaceControl::SolveQp(
                                         -W_input_smoothing_ * (*u_sol_));
   }
 
-  // Solve the QP
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
@@ -973,9 +972,6 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   double timestamp = robot_output->get_timestamp();
   double current_time = timestamp;
-  if (print_tracking_info_) {
-    cout << "\n\ncurrent_time = " << current_time << endl;
-  }
 
   VectorXd x_wo_spr(n_q_ + n_v_);
   x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,

@@ -114,7 +114,7 @@ DEFINE_bool(is_two_phase, true,
             "true: only right/left single support"
             "false: both double and single support");
 
-DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
+//DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -312,7 +312,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
-      false, FLAGS_qp_time_limit);
+      0);
 
   // Cost
   int n_v = plant_w_spr.num_velocities();
@@ -394,6 +394,9 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(post_right_double_support_state,
                                  &right_heel_evaluator);
   }
+
+  osc->SetOsqpSolverOptionsFromYaml(
+      "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
 
   // Swing foot tracking
   std::vector<double> swing_ft_gain_multiplier_breaks{

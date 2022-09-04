@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "multibody/multibody_utils.h"
 
@@ -310,9 +311,6 @@ VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(
     VectorXDecisionVariable ret(num_states());
     return x_vars().segment((mode_start_[mode] + time_index) * num_states(),
                             num_states());
-    // std::cout << Eigen::VectorBlock<VectorXDecisionVariable>(ret, 0,
-    // num_states())  << std::endl; return
-    // Eigen::VectorBlock<VectorXDecisionVariable>(ret, 0, num_states());
   }
 }
 

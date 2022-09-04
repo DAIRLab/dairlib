@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drake/solvers/mathematical_program.h>
 #include <osqp.h>
 
 #include "drake/common/drake_copyable.h"
@@ -33,10 +34,28 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
   static bool is_enabled();
   static bool ProgramAttributesSatisfied(
       const drake::solvers::MathematicalProgram&);
+  static std::string UnsatisfiedProgramAttributes(
+      const drake::solvers::MathematicalProgram&);
   //@}
 
   void InitializeSolver(const drake::solvers::MathematicalProgram&,
                         const drake::solvers::SolverOptions&);
+
+  /// Solver will automatically reenable warm starting after a successful solve
+  void DisableWarmStart() const {
+    osqp_settings_->warm_start = false;
+    warm_start_ = false;
+    is_init_ = false;
+  }
+  /// Solver will automatically reenable warm starting after a successful solve
+  void EnableWarmStart() const {
+    osqp_settings_->warm_start = true;
+    warm_start_ = true;
+  }
+
+  void WarmStart(const Eigen::VectorXd& primal, const Eigen::VectorXd& dual);
+
+  bool IsInitialized() const { return is_init_; }
 
   // A using-declaration adds these methods into our class's Doxygen.
   using SolverBase::Solve;
@@ -47,8 +66,10 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
                drake::solvers::MathematicalProgramResult*) const final;
 
   OSQPData* osqp_data_;
-  OSQPSettings* osqp_settings_;
-  OSQPWorkspace* workspace_;
+  mutable OSQPSettings* osqp_settings_;
+  mutable OSQPWorkspace* workspace_;
+  mutable bool warm_start_ = true;
+  mutable bool is_init_ = false;
 };
 }  // namespace solvers
 }  // namespace dairlib

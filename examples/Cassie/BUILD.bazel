@@ -191,17 +191,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "standalone_multibody_sim",
-    srcs = ["standalone_multibody_sim.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "multibody_sim",
     srcs = ["multibody_sim.cc"],
     deps = [
@@ -280,6 +269,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/primitives:vector_aggregator",
         "@drake//:drake_shared_library",
+        "@lcm",
     ],
 )
 
@@ -339,6 +329,7 @@ cc_binary(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
+        "@lcm",
         "@gflags",
     ],
 )
@@ -349,6 +340,7 @@ cc_binary(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
+        "@lcm",
         "@gflags",
     ],
 )

@@ -247,8 +247,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true,
-      false, 0);
+      plant, plant, plant_context.get(), plant_context.get(), true, 0);
 
   // Cost
   int n_v = plant.num_velocities();

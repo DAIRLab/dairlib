@@ -2,7 +2,7 @@
 channel_x: "CASSIE_STATE_SIMULATION"
 channel_u: "OSC_WALKING"
 channel_osc: "OSC_DEBUG_WALKING"
-use_archived_lcmtypes: true
+use_archived_lcmtypes: false
 
 # Approximate log time to start at relative to the first timestamp in the log
 start_time: 0

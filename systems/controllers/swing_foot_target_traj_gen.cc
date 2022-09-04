@@ -42,7 +42,6 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     std::vector<int> left_right_support_fsm_states,
-    std::vector<double> left_right_support_durations,
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
     left_right_foot,
     double mid_foot_height, double desired_final_foot_height,
@@ -56,12 +55,10 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
       desired_final_vertical_foot_velocity_(
           desired_final_vertical_foot_velocity),
       relative_to_com_(relative_to_com) {
+
   this->set_name("swing_ft_traj");
-
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
-  DRAKE_DEMAND(left_right_support_durations.size() == 2);
   DRAKE_DEMAND(left_right_foot.size() == 2);
-
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -69,16 +66,13 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
                                           plant.num_velocities(),
                                           plant.num_actuators()))
       .get_index();
-  fsm_port_ =
-      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
+  fsm_port_ = this->DeclareVectorInputPort("fsm", 1).get_index();
   liftoff_time_port_ =
-      this->DeclareVectorInputPort("t_liftoff", BasicVector<double>(1))
-          .get_index();
-
+      this->DeclareVectorInputPort("t_liftoff", 1).get_index();
+  touchdown_time_port_ =
+      this->DeclareVectorInputPort("t_touchdown", 1).get_index();
   footstep_target_port_ =
-      this->DeclareVectorInputPort("desired footstep target",
-                                   BasicVector<double>(3))
-          .get_index();
+      this->DeclareVectorInputPort("desired footstep target",3).get_index();
 
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
@@ -92,15 +86,12 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
 
   // The swing foot position in the beginning of the swing phase
   liftoff_swing_foot_pos_idx_ = this->DeclareDiscreteState(3);
+
   // The last state of FSM
   prev_fsm_state_idx_ = this->DeclareDiscreteState(
       -std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
 
   // Construct maps
-  duration_map_.insert({left_right_support_fsm_states.at(0),
-                        left_right_support_durations.at(0)});
-  duration_map_.insert({left_right_support_fsm_states.at(1),
-                        left_right_support_durations.at(1)});
   stance_foot_map_.insert(
       {left_right_support_fsm_states.at(0), left_right_foot.at(0)});
   stance_foot_map_.insert(
@@ -153,8 +144,7 @@ EventStatus SwingFootTargetTrajGen::DiscreteVariableUpdate(
 }
 
 PiecewisePolynomial<double> SwingFootTargetTrajGen::CreateSplineForSwingFoot(
-    const double start_time_of_this_interval,
-    const double end_time_of_this_interval, const double stance_duration,
+    double start_time_of_this_interval, double end_time_of_this_interval,
     const Vector3d& init_swing_foot_pos, const Vector3d& final_swing_foot_pos)
     const {
 
@@ -207,8 +197,10 @@ void SwingFootTargetTrajGen::CalcTrajs(
   const auto swing_foot_pos_at_liftoff =
       context.get_discrete_state(liftoff_swing_foot_pos_idx_).get_value();
   // Read in finite state machine switch time
-  VectorXd liftoff_time =
-      this->EvalVectorInput(context, liftoff_time_port_)->get_value();
+  double liftoff_time =
+      this->EvalVectorInput(context, liftoff_time_port_)->get_value()(0);
+  double touchdown_time =
+      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
 
   // Read in finite state machine
   int fsm_state =
@@ -224,19 +216,11 @@ void SwingFootTargetTrajGen::CalcTrajs(
   // Generate trajectory if it's currently in swing phase.
   // Otherwise, generate a constant trajectory
   if (is_single_support_phase) {
-
-    // Get the start time and the end time of the current stance phase
-    double start_time_of_this_interval = liftoff_time(0);
-    double end_time_of_this_interval =
-        liftoff_time(0) + duration_map_.at(fsm_state);
-
     // Ensure current_time < end_time_of_this_interval to avoid error in
     // creating trajectory.
-    // Ensure "current_time < end_time" to avoid error in
-    // creating trajectory.
-    start_time_of_this_interval = drake::math::saturate(
-        start_time_of_this_interval, -std::numeric_limits<double>::infinity(),
-        end_time_of_this_interval - 0.001);
+    double start_time_of_this_interval = drake::math::saturate(
+        liftoff_time, -std::numeric_limits<double>::infinity(),
+        touchdown_time - 0.001);
 
     // Swing foot position at touchdown
     Vector3d footstep_target =
@@ -244,8 +228,8 @@ void SwingFootTargetTrajGen::CalcTrajs(
 
     // Assign traj
     *pp_traj = CreateSplineForSwingFoot(
-        start_time_of_this_interval, end_time_of_this_interval,
-        duration_map_.at(fsm_state), swing_foot_pos_at_liftoff, footstep_target);
+        start_time_of_this_interval, touchdown_time,
+        swing_foot_pos_at_liftoff, footstep_target);
   } else {
     // Assign a constant traj
     *pp_traj = PiecewisePolynomial<double>(Vector3d::Zero());

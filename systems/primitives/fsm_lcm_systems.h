@@ -11,9 +11,9 @@ namespace systems {
 /// as timing information related to the next switching time. It takes the robot
 /// state OutputVector as in input in order to synchronize it's clock
 /// to the clock sending the fsm commands.
-class FsmReciever : public drake::systems::LeafSystem<double> {
+class FsmReceiver : public drake::systems::LeafSystem<double> {
  public:
-  FsmReciever(const drake::multibody::MultibodyPlant<double>& plant);
+  FsmReceiver(const drake::multibody::MultibodyPlant<double>& plant);
 
   const drake::systems::InputPort<double>& get_input_port_fsm_info() {
     return this->get_input_port(input_port_lcmt_fsm_info_);

@@ -12,7 +12,7 @@ using drake::systems::BasicVector;
 using drake::multibody::MultibodyPlant;
 
 
-FsmReciever::FsmReciever(const MultibodyPlant<double> &plant) {
+FsmReceiver::FsmReceiver(const MultibodyPlant<double> &plant) {
   this->set_name("FSM Receiver");
   input_port_lcmt_fsm_info_ = this->DeclareAbstractInputPort(
       "lcmt_fsm_info", drake::Value<lcmt_fsm_info>({0,0,0,0})).get_index();
@@ -22,26 +22,26 @@ FsmReciever::FsmReciever(const MultibodyPlant<double> &plant) {
                                       plant.num_actuators())).get_index();
 
   output_port_fsm_ = this->DeclareVectorOutputPort(
-          "fsm", 1, &FsmReciever::CopyFsm)
+          "fsm", 1, &FsmReceiver::CopyFsm)
       .get_index();
   output_port_prev_switch_time_ = this->DeclareVectorOutputPort(
-          "next_switch_time", 1, &FsmReciever::CopyPrevSwitchTime)
+          "next_switch_time", 1, &FsmReceiver::CopyPrevSwitchTime)
       .get_index();
   output_port_next_switch_time_ = this->DeclareVectorOutputPort(
-          "next_switch_time", 1, &FsmReciever::CopyNextSwitchTime)
+          "next_switch_time", 1, &FsmReceiver::CopyNextSwitchTime)
       .get_index();
   output_port_seconds_since_prev_switch_ = this->DeclareVectorOutputPort(
-          "next_switch_time", 1, &FsmReciever::CopyTimeSinceSwitch)
+          "next_switch_time", 1, &FsmReceiver::CopyTimeSinceSwitch)
       .get_index();
   output_port_seconds_until_next_switch_ = this->DeclareVectorOutputPort(
-          "next_switch_time", 1, &FsmReciever::CopyTimeUntilSwitch)
+          "next_switch_time", 1, &FsmReceiver::CopyTimeUntilSwitch)
       .get_index();
 
   offset_idx_ = this->DeclareDiscreteState(1);
-  DeclarePerStepUnrestrictedUpdateEvent(&FsmReciever::UnrestrictedUpdate);
+  DeclarePerStepUnrestrictedUpdateEvent(&FsmReceiver::UnrestrictedUpdate);
 }
 
-drake::systems::EventStatus FsmReciever::UnrestrictedUpdate(
+drake::systems::EventStatus FsmReceiver::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
   const auto& fsm_msg = eval_fsm_port(context);
   double t = dynamic_cast<const OutputVector<double>*>(
@@ -51,7 +51,7 @@ drake::systems::EventStatus FsmReciever::UnrestrictedUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
-const dairlib::lcmt_fsm_info& FsmReciever::eval_fsm_port(
+const dairlib::lcmt_fsm_info& FsmReceiver::eval_fsm_port(
     const drake::systems::Context<double>& context) const {
   const drake::AbstractValue* input =
       this->EvalAbstractInput(context, input_port_lcmt_fsm_info_);
@@ -60,13 +60,13 @@ const dairlib::lcmt_fsm_info& FsmReciever::eval_fsm_port(
   return fsm_msg;
 }
 
-void FsmReciever::CopyFsm(const Context<double> &context,
+void FsmReceiver::CopyFsm(const Context<double> &context,
                           BasicVector<double> *y) const {
   const auto& fsm_msg = eval_fsm_port(context);
   y->get_mutable_value()(0) = fsm_msg.fsm_state;
 }
 
-void FsmReciever::CopyPrevSwitchTime(const Context<double> &context,
+void FsmReceiver::CopyPrevSwitchTime(const Context<double> &context,
                                      BasicVector<double> *y) const {
   const auto& fsm_msg = eval_fsm_port(context);
   double offset = context.get_discrete_state(offset_idx_).get_value()(0);
@@ -74,14 +74,14 @@ void FsmReciever::CopyPrevSwitchTime(const Context<double> &context,
       static_cast<double>(fsm_msg.prev_switch_time_us) * 1e-6 + offset;
 }
 
-void FsmReciever::CopyNextSwitchTime(const Context<double> &context,
+void FsmReceiver::CopyNextSwitchTime(const Context<double> &context,
                                      BasicVector<double> *y) const {
   const auto& fsm_msg = eval_fsm_port(context);
   double offset = context.get_discrete_state(offset_idx_).get_value()(0);
   y->get_mutable_value()(0) =
       static_cast<double>(fsm_msg.next_switch_time_us) * 1e-6 + offset;
 }
-void FsmReciever::CopyTimeSinceSwitch(const Context<double> &context,
+void FsmReceiver::CopyTimeSinceSwitch(const Context<double> &context,
                                       BasicVector<double> *y) const {
   const auto& fsm_msg = eval_fsm_port(context);
   double offset = context.get_discrete_state(offset_idx_).get_value()(0);
@@ -91,7 +91,7 @@ void FsmReciever::CopyTimeSinceSwitch(const Context<double> &context,
       t - (static_cast<double>(fsm_msg.prev_switch_time_us) * 1e-6 + offset);
 }
 
-void FsmReciever::CopyTimeUntilSwitch(const Context<double> &context,
+void FsmReceiver::CopyTimeUntilSwitch(const Context<double> &context,
                                       BasicVector<double> *y) const {
   const auto& fsm_msg = eval_fsm_port(context);
   double offset = context.get_discrete_state(offset_idx_).get_value()(0);

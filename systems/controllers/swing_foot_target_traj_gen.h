@@ -21,7 +21,6 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
       std::vector<int> left_right_support_fsm_states,
-      std::vector<double> left_right_support_durations,
       std::vector<std::pair<const Eigen::Vector3d,
                             const drake::multibody::Frame<double>&>>
       left_right_foot,
@@ -39,6 +38,10 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
   const {
     return this->get_input_port(liftoff_time_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_next_fsm_switch_time()
+  const {
+    return this->get_input_port(touchdown_time_port_);
+  }
   const drake::systems::InputPort<double>& get_input_port_footstep_target()
   const {
     return this->get_input_port(footstep_target_port_);
@@ -50,8 +53,7 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   drake::trajectories::PiecewisePolynomial<double> CreateSplineForSwingFoot(
-      const double start_time_of_this_interval,
-      const double end_time_of_this_interval, const double stance_duration,
+      double start_time_of_this_interval, double end_time_of_this_interval,
       const Eigen::Vector3d& init_swing_foot_pos,
       const Eigen::Vector3d& final_swing_foot_pos) const;
 
@@ -61,6 +63,7 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
   int state_port_;
   int fsm_port_;
   int liftoff_time_port_;
+  int touchdown_time_port_;
   int footstep_target_port_;
 
   int liftoff_swing_foot_pos_idx_;
@@ -79,13 +82,13 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
   bool relative_to_com_;
 
   // Maps
-  std::map<int, std::pair<const Eigen::Vector3d,
-                          const drake::multibody::Frame<double>&>>
-      stance_foot_map_;
-  std::map<int, std::pair<const Eigen::Vector3d,
-                          const drake::multibody::Frame<double>&>>
-      swing_foot_map_;
-  std::map<int, double> duration_map_;
+  std::map<int,
+          std::pair<const Eigen::Vector3d,
+                    const drake::multibody::Frame<double>&>> stance_foot_map_;
+  std::map<int,
+          std::pair<const Eigen::Vector3d,
+                    const drake::multibody::Frame<double>&>> swing_foot_map_;
+
 };
 
 }  // namespace systems

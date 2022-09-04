@@ -29,6 +29,8 @@
 #include "systems/system_utils.h"
 
 #include "drake/common/yaml/yaml_io.h"
+#include "drake/systems/primitives/adder.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/framework/diagram_builder.h"
 
 namespace dairlib {
@@ -226,9 +228,12 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
   auto swing_ft_traj_generator =
       builder.AddSystem<systems::SwingFootTargetTrajGen>(
           plant, plant_context.get(), left_right_support_fsm_states,
-          left_right_support_state_durations, left_right_foot,
-          gains.mid_foot_height, gains.final_foot_height,
+          left_right_foot,gains.mid_foot_height, gains.final_foot_height,
           gains.final_foot_velocity_z, false);
+  auto stance_duration_adder = builder.AddSystem<drake::systems::Adder<double>>(2,1);
+  auto stance_duration =
+      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
+          left_support_duration * VectorXd::Ones(1));
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant, plant_context.get(), pos_map["toe_left"],
@@ -452,7 +457,12 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
                   footstep_planner->get_input_port_vdes());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   footstep_planner->get_input_port_fsm_switch_time());
-
+  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
+                  stance_duration_adder->get_input_port(0));
+  builder.Connect(stance_duration->get_output_port(),
+                  stance_duration_adder->get_input_port(1));
+  builder.Connect(stance_duration_adder->get_output_port(),
+                  swing_ft_traj_generator->get_input_port_next_fsm_switch_time());
 
   builder.Connect(alip_traj_generator->get_output_port_com(),
                   osc->get_tracking_data_input_port("alip_com_traj"));

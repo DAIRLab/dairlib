@@ -29,7 +29,10 @@
 #include "systems/system_utils.h"
 
 #include "drake/common/yaml/yaml_io.h"
+#include "drake/systems/primitives/adder.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/framework/diagram_builder.h"
+
 
 namespace dairlib {
 
@@ -222,13 +225,17 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   auto swing_ft_traj_generator =
       builder.AddSystem<systems::SwingFootTargetTrajGen>(
           plant, plant_context.get(), left_right_support_fsm_states,
-          left_right_support_state_durations, left_right_foot,
-          gains.mid_foot_height, gains.final_foot_height,
+           left_right_foot,gains.mid_foot_height, gains.final_foot_height,
           gains.final_foot_velocity_z);
+  auto stance_duration_adder = builder.AddSystem<drake::systems::Adder<double>>(2,1);
+  auto stance_duration =
+      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
+          left_support_duration * VectorXd::Ones(1));
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant, plant_context.get(), pos_map["toe_left"],
           left_foot_points, "left_toe_angle_traj");
+
   auto right_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant, plant_context.get(), pos_map["toe_right"],
@@ -441,6 +448,14 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
                   swing_ft_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(footstep_planner->get_output_port(),
                   swing_ft_traj_generator->get_input_port_footstep_target());
+  //
+  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
+                  stance_duration_adder->get_input_port(0));
+  builder.Connect(stance_duration->get_output_port(),
+                  stance_duration_adder->get_input_port(1));
+  builder.Connect(stance_duration_adder->get_output_port(),
+                  swing_ft_traj_generator->get_input_port_next_fsm_switch_time());
+  //
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
 

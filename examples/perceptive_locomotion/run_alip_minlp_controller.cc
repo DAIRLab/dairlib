@@ -53,9 +53,6 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
-DEFINE_string(channel_u, "CASSIE_INPUT",
-              "The name of the channel which publishes command");
-
 DEFINE_string(channel_foot, "FOOTSTEP_TARGET",
               "LCM channel for footstep target");
 

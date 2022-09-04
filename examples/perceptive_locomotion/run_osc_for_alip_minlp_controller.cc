@@ -1,20 +1,32 @@
 #include <gflags/gflags.h>
 
+// lcmtypes
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_fsm_info.hpp"
+#include "dairlib/lcmt_footstep_target.hpp"
+
+// Cassie and multibody
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/systems/simulator_drift.h"
+#include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/hip_yaw_traj_gen.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
-#include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/osc_walking_gains_alip.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/fsm_event_time.h"
-#include "systems/controllers/alip_traj_gen.h"
+
+// MPC related
+#include "systems/primitives/fsm_lcm_systems.h"
+#include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
+#include "systems/controllers/lcm_trajectory_receiver.h"
+#include "systems/controllers/swing_foot_target_traj_gen.h"
+
+// OSC
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -22,12 +34,10 @@
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
-#include "systems/controllers/alip_swing_ft_traj_gen.h"
-#include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/robot_lcm_systems.h"
 
+// drake
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -55,6 +65,11 @@ using drake::systems::lcm::LcmScopeSystem;
 using drake::systems::TriggerTypeSet;
 
 using multibody::WorldYawViewFrame;
+using systems::FsmReceiver;
+using systems::SwingFootTargetTrajGen;
+using systems::controllers::LcmTrajectoryReceiver;
+using systems::controllers::TrajectoryType;
+using systems::controllers::FootstepReceiver;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
@@ -74,24 +89,30 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
-DEFINE_bool(use_radio, false,
-            "Set to true if sending high level commands from radio controller");
-DEFINE_string(
-    cassie_out_channel, "CASSIE_OUTPUT_ECHO",
-    "The name of the channel to receive the cassie out structure from.");
+
+DEFINE_string(channel_foot, "FOOTSTEP_TARGET",
+              "LCM channel for footstep target");
+
+DEFINE_string(channel_com, "ALIP_COM_TRAJ",
+              "LCM channel for center of mass trajectory");
+
+DEFINE_string(fsm_channel, "FSM", "lcm channel for fsm");
+
+DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
+              "The name of the channel to receive the cassie "
+              "out structure from.");
+
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains_alip.yaml",
               "Filepath containing gains");
+
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
-DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 
 DEFINE_bool(is_two_phase, true,
             "true: only right/left single support"
             "false: both double and single support");
-DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
-DEFINE_bool(publish_filtered_state, false,
-            "whether to publish the low pass filtered state");
+DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -136,18 +157,6 @@ int DoMain(int argc, char* argv[]) {
   // Create state receiver.
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
-  auto pelvis_filt =
-      builder.AddSystem<systems::FloatingBaseVelocityFilter>(
-          plant_w_spr, gains.pelvis_xyz_vel_filter_tau);
-  builder.Connect(*state_receiver, *pelvis_filt);
-
-  if (FLAGS_publish_filtered_state) {
-    auto [filtered_state_scope, filtered_state_sender]=
-    // AddToBuilder will add the systems to the diagram and connect their ports
-    LcmScopeSystem::AddToBuilder(
-        &builder, &lcm_local,pelvis_filt->get_output_port(),
-        "CASSIE_STATE_FB_FILTERED", 0);
-  }
 
   // Create command sender.
   auto command_pub =
@@ -161,38 +170,25 @@ int DoMain(int argc, char* argv[]) {
 
   auto cassie_out_to_radio =
       builder.AddSystem<systems::CassieOutToRadio>();
-
-  // Create human high-level control
-  Eigen::Vector2d global_target_position(gains.global_target_position_x,
-                                         gains.global_target_position_y);
-  Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
-                                       gains.yaw_deadband_radius);
-  cassie::osc::HighLevelCommand* high_level_command;
-  if (FLAGS_use_radio) {
-    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-        plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
-        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral, 0.4);
-    auto cassie_out_receiver =
-        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+  auto cassie_out_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
             FLAGS_cassie_out_channel, &lcm_local));
-    builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
-    builder.Connect(cassie_out_to_radio->get_output_port(),
+  auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+      plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
+      gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral, 0.4);
+
+
+  builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
+  builder.Connect(cassie_out_to_radio->get_output_port(),
                     high_level_command->get_radio_port());
-  } else {
-    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-        plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
-        gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
-        gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
-        gains.vel_max_lateral, gains.target_pos_offset, global_target_position,
-        params_of_no_turning);
-  }
-  builder.Connect(pelvis_filt->get_output_port(0),
+
+  builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
 
   // Create heading traj generator
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
       plant_w_spr, context_w_spr.get());
-  builder.Connect(pelvis_filt->get_output_port(),
+  builder.Connect(state_receiver->get_output_port(),
                   head_traj_gen->get_state_input_port());
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
@@ -216,37 +212,26 @@ int DoMain(int argc, char* argv[]) {
     state_durations = {left_support_duration, double_support_duration,
                        right_support_duration, double_support_duration};
   }
-  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      plant_w_spr, fsm_states, state_durations);
-  builder.Connect(pelvis_filt->get_output_port(0),
+  auto fsm = builder.AddSystem<FsmReceiver>(plant_w_spr);
+  builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_input_port_state());
 
   // Create leafsystem that record the switching time of the FSM
   std::vector<int> single_support_states = {left_stance_state,
                                             right_stance_state};
-  auto liftoff_event_time =
-      builder.AddSystem<systems::FiniteStateMachineEventTime>(
-          plant_w_spr, single_support_states);
-  liftoff_event_time->set_name("liftoff_time");
-  builder.Connect(fsm->get_output_port(0),
-                  liftoff_event_time->get_input_port_fsm());
-  builder.Connect(pelvis_filt->get_output_port(0),
-                  liftoff_event_time->get_input_port_state());
   std::vector<int> double_support_states = {post_left_double_support_state,
                                             post_right_double_support_state};
-  auto touchdown_event_time =
-      builder.AddSystem<systems::FiniteStateMachineEventTime>(
-          plant_w_spr, double_support_states);
-  touchdown_event_time->set_name("touchdown_time");
-  builder.Connect(fsm->get_output_port(0),
-                  touchdown_event_time->get_input_port_fsm());
-  builder.Connect(pelvis_filt->get_output_port(0),
-                  touchdown_event_time->get_input_port_state());
 
-  // Create CoM trajectory generator
-  // Note that we are tracking COM acceleration instead of position and velocity
-  // because we construct the LIPM traj which starts from the current state
-  double desired_com_height = gains.lipm_height;
+  // Get CoM traj from MPC over lcm
+  auto com_traj_subscriber_ptr =
+      LcmSubscriberSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_local);
+  auto com_traj_sub = builder.AddSystem(std::move(com_traj_subscriber_ptr));
+  auto com_traj_receiver = builder.AddSystem<LcmTrajectoryReceiver>(
+          "com_traj", TrajectoryType::kCubicShapePreserving);
+  builder.Connect(*com_traj_sub, *com_traj_receiver);
+
+
+  // Create swing leg trajectory generator
   vector<int> unordered_fsm_states;
   vector<double> unordered_state_durations;
   vector<vector<std::pair<const Vector3d, const Frame<double>&>>>
@@ -268,45 +253,22 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({left_toe_mid});
     contact_points_in_each_state.push_back({right_toe_mid});
   }
-  auto alip_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), desired_com_height,
-      unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
-      gains.R_alip_kalman_filter.asDiagonal());
 
-  builder.Connect(fsm->get_output_port(0),
-                  alip_traj_generator->get_input_port_fsm());
-  builder.Connect(touchdown_event_time->get_output_port_event_time(),
-                  alip_traj_generator->get_input_port_touchdown_time());
-  builder.Connect(pelvis_filt->get_output_port(0),
-                  alip_traj_generator->get_input_port_state());
 
-  // Create swing leg trajectory generator
-  // Since the ground is soft in the simulation, we raise the desired final
-  // foot height by 1 cm. The controller is sensitive to this number, should
-  // tune this every time we change the simulation parameter or when we move
-  // to the hardware testing.
-  // Additionally, implementing a double support phase might mitigate the
-  // instability around state transition.
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
                                                        right_support_duration};
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
-  auto swing_ft_traj_generator =
-      builder.AddSystem<systems::AlipSwingFootTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
-          left_right_support_state_durations, left_right_foot, "pelvis",
-          double_support_duration, gains.mid_foot_height,
-          gains.final_foot_height, gains.final_foot_velocity_z,
-          gains.max_CoM_to_footstep_dist, gains.footstep_offset,
-          gains.center_line_offset);
-  builder.Connect(fsm->get_output_port(0),
+
+  auto swing_ft_traj_generator = builder.AddSystem<SwingFootTargetTrajGen>()
+
+  builder.Connect(fsm->get_output_port_fsm(),
                   swing_ft_traj_generator->get_input_port_fsm());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   swing_ft_traj_generator->get_input_port_fsm_switch_time());
-  builder.Connect(pelvis_filt->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   swing_ft_traj_generator->get_input_port_state());
   builder.Connect(alip_traj_generator->get_output_port_alip_state(),
                   swing_ft_traj_generator->get_input_port_alip_state());
@@ -327,9 +289,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
-  builder.Connect(pelvis_filt->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   left_toe_angle_traj_gen->get_state_input_port());
-  builder.Connect(pelvis_filt->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
 
   // Create Operational space control
@@ -553,7 +515,7 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
 
   // Connect ports
-  builder.Connect(pelvis_filt->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   builder.Connect(alip_traj_generator->get_output_port_com(),

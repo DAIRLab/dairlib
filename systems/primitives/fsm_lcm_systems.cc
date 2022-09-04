@@ -25,16 +25,16 @@ FsmReceiver::FsmReceiver(const MultibodyPlant<double> &plant) {
           "fsm", 1, &FsmReceiver::CopyFsm)
       .get_index();
   output_port_prev_switch_time_ = this->DeclareVectorOutputPort(
-          "next_switch_time", 1, &FsmReceiver::CopyPrevSwitchTime)
+          "prev_switch_time", 1, &FsmReceiver::CopyPrevSwitchTime)
       .get_index();
   output_port_next_switch_time_ = this->DeclareVectorOutputPort(
           "next_switch_time", 1, &FsmReceiver::CopyNextSwitchTime)
       .get_index();
   output_port_seconds_since_prev_switch_ = this->DeclareVectorOutputPort(
-          "next_switch_time", 1, &FsmReceiver::CopyTimeSinceSwitch)
+          "time_since_prev_switch", 1, &FsmReceiver::CopyTimeSinceSwitch)
       .get_index();
   output_port_seconds_until_next_switch_ = this->DeclareVectorOutputPort(
-          "next_switch_time", 1, &FsmReceiver::CopyTimeUntilSwitch)
+          "time_to_next_switch", 1, &FsmReceiver::CopyTimeUntilSwitch)
       .get_index();
 
   offset_idx_ = this->DeclareDiscreteState(1);

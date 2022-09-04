@@ -116,7 +116,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       plant_, robot_output->GetState(), context_);
   for (auto& foothold : footholds) {
     foothold.ReExpressInNewFrame(
-        GetBodyYawRotation_R_WB<double>(plant_, context, "pelvis"));
+        GetBodyYawRotation_R_WB<double>(plant_, *context_, "pelvis"));
   }
 
   double t = robot_output->get_timestamp();
@@ -192,11 +192,18 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 void AlipMINLPFootstepController::CopyNextFootstepOutput(
     const Context<double> &context, BasicVector<double> *p_B_FC) const {
   auto& trajopt = context.get_abstract_state<AlipMINLP>(alip_minlp_index_);
-  p_B_FC->set_value(trajopt.GetFootstepSolution().at(1));
+  const auto& pp = trajopt.GetFootstepSolution();
+  const auto& xx = trajopt.GetStateSolution();
+  Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
+  footstep_in_com_yaw_frame.head(2) = (pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
+  footstep_in_com_yaw_frame(2) = -gains_.hdes;
+  p_B_FC->set_value(footstep_in_com_yaw_frame);
 }
 
 void AlipMINLPFootstepController::CopyCoMTrajOutput(
     const Context<double> &context, lcmt_saved_traj *traj_msg) const {
+  DRAKE_ASSERT(traj_msg != nullptr);
+
   const auto& trajopt =
       context.get_abstract_state<AlipMINLP>(alip_minlp_index_);
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
@@ -218,13 +225,14 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   int nm = gains_.nmodes;
   int n = (nk - 1) * nm + 1;
   double knot_frac = 1.0 / (nk - 1);
+
   MatrixXd com_knots = MatrixXd::Zero(3, n);
   VectorXd t = VectorXd::Zero(n);
 
   // TODO: Make this readable
   for (int i = 0; i < gains_.nmodes; i++) {
     for (int k = 0; k < gains_.knots_per_mode - 1; k++) {
-      int idx = i * nk + k;
+      int idx = i * (nk-1) + k;
       const Vector3d& pn = (i == gains_.nmodes - 1) ? pp.at(i) : pp.at(i + 1);
       t(idx) = t0 + tt(i) * k * knot_frac;
       com_knots.col(idx).head(2) = pp.at(i).head(2) + xx.at(i).at(k).head(2);
@@ -238,8 +246,8 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
 
   com_traj.datapoints = com_knots;
   com_traj.time_vector = t;
-  LcmTrajectory lcm_traj;
-  lcm_traj.AddTrajectory(com_traj.traj_name, com_traj);
+
+  LcmTrajectory lcm_traj({com_traj}, {"com_traj"}, "com_traj", "com_traj");
   *traj_msg = lcm_traj.GenerateLcmObject();
 }
 

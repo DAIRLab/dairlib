@@ -544,8 +544,8 @@ Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<T>& plant,
 // More sugar for body yaw rotations
 template <typename T>
 Matrix3d GetBodyYawRotation_R_WB(const MultibodyPlant<T>& plant,
-                                   const Context<T>& context,
-                                   const std::string& body_name) {
+                                 const Context<T>& context,
+                                 const std::string& body_name) {
   Vector3d body_x = plant.GetBodyByName(body_name).EvalPoseInWorld(context).rotation().col(0);
   double yaw = atan2(body_x(1), body_x(0));
   return RotationMatrix<double>::MakeZRotation(yaw).matrix();

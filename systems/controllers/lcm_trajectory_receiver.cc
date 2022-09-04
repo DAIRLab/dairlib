@@ -20,7 +20,6 @@ LcmTrajectoryReceiver::LcmTrajectoryReceiver(
 
   this->DeclareAbstractInputPort("lcmt_saved_traj", drake::Value<lcmt_saved_traj>{});
 
-  // TODO: fix this
   PiecewisePolynomial<double> empty_traj(VectorXd::Zero(0));
   Trajectory<double>& traj_inst = empty_traj;
   this->DeclareAbstractOutputPort(

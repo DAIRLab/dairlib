@@ -173,7 +173,7 @@ template <typename T>
 Eigen::Matrix3d GetBodyYawRotation_R_WB(
     const drake::multibody::MultibodyPlant<T>& plant,
     const drake::systems::Context<T>& context,
-    std::string& body_name);
+    const std::string& body_name);
 
 
 /// Computes the matrix for mapping global roll-pitch-yaw angular velocity to

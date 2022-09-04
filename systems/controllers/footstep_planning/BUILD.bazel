@@ -25,6 +25,7 @@ cc_library(
         ":alip_minlp",
         ":alip_utils",
         "//geometry:convex_foothold",
+        "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

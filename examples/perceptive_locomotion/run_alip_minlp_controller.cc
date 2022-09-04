@@ -1,6 +1,9 @@
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_footstep_target.hpp"
+#include "dairlib/lcmt_fsm_info.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
@@ -53,9 +56,17 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 
-DEFINE_string(
-    cassie_out_channel, "CASSIE_OUTPUT_ECHO",
-    "The name of the channel to receive the cassie out structure from.");
+DEFINE_string(channel_foot, "FOOTSTEP_TARGET",
+              "LCM channel for footstep target");
+
+DEFINE_string(channel_com, "ALIP_COM_TRAJ",
+              "LCM channel for center of mass trajectory");
+
+DEFINE_string(fsm_channel, "FSM", "lcm channel for fsm");
+
+DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
+              "The name of the channel to receive the cassie "
+              "out structure from.");
 
 DEFINE_bool(is_two_phase, true,
             "true: only right/left single support"
@@ -123,8 +134,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
 
   auto cassie_out_receiver =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+      builder.AddSystem(LcmSubscriberSystem::Make<lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
+
   auto cassie_out_to_radio =
       builder.AddSystem<systems::CassieOutToRadio>();
 
@@ -132,11 +144,15 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), 0.5, 1.0, 0.5);
 
   auto footstep_sender = builder.AddSystem<FootstepSender>();
-  auto footstep_pub_ptr = LcmPublisherSystem::Make<dairlib::lcmt_footstep_target>("NEXT_FOOTSTEP", &lcm_local);
+  auto footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);
   auto footstep_pub = builder.AddSystem(std::move(footstep_pub_ptr));
+
   auto fsm_sender = builder.AddSystem<FsmSender>(plant_w_spr);
-  auto fsm_pub_ptr = LcmPublisherSystem::Make<dairlib::lcmt_fsm_info>("ALIP_FSM", &lcm_local);
+  auto fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_fsm_channel, &lcm_local);
   auto fsm_pub = builder.AddSystem(std::move(fsm_pub_ptr));
+
+  auto com_traj_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_local);
+  auto com_traj_pub = builder.AddSystem(std::move(com_traj_pub_ptr));
 
   // --- Connect the diagram --- //
   // State Reciever connections
@@ -162,6 +178,8 @@ int DoMain(int argc, char* argv[]) {
                   fsm_sender->get_input_port_next_switch_time());
   builder.Connect(foot_placement_controller->get_output_port_footstep_target(),
                   footstep_sender->get_input_port());
+  builder.Connect(foot_placement_controller->get_output_port_com_traj(),
+                  com_traj_pub->get_input_port());
 
   // misc
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);

@@ -276,7 +276,7 @@ int DoMain(int argc, char* argv[]) {
   auto swing_ft_traj_generator = builder.AddSystem<SwingFootTargetTrajGen>(
       plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
       left_right_foot, gains.mid_foot_height, gains.final_foot_height,
-      gains.final_foot_velocity_z, true);
+      gains.final_foot_velocity_z, false);
 
   builder.Connect(fsm->get_output_port_fsm(),
                   swing_ft_traj_generator->get_input_port_fsm());
@@ -420,7 +420,7 @@ int DoMain(int argc, char* argv[]) {
           swing_ft_accel_gain_multiplier_samples);
 
   TransTaskSpaceTrackingData swing_foot_data(
-      "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
@@ -436,18 +436,18 @@ int DoMain(int argc, char* argv[]) {
                            plant_w_spr, plant_w_spr);
   com_data.AddFiniteStateToTrack(left_stance_state);
   com_data.AddFiniteStateToTrack(right_stance_state);
-  RelativeTranslationTrackingData swing_ft_traj_local(
-      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
-      &com_data);
-  WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
-  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
-
-  swing_ft_traj_local.SetTimeVaryingGains(
-      swing_ft_gain_multiplier_gain_multiplier);
-  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
-      swing_ft_accel_gain_multiplier_gain_multiplier);
-  osc->AddTrackingData(&swing_ft_traj_local);
+//  RelativeTranslationTrackingData swing_ft_traj_local(
+//      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+//      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
+//      &com_data);
+//  WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
+//  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
+//
+//  swing_ft_traj_local.SetTimeVaryingGains(
+//      swing_ft_gain_multiplier_gain_multiplier);
+//  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+//      swing_ft_accel_gain_multiplier_gain_multiplier);
+  osc->AddTrackingData(&swing_foot_data);
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);

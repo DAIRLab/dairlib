@@ -108,8 +108,8 @@ int DoMain(int argc, char* argv[]) {
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
 
   auto gains = AlipMINLPGains{
-    0.2, 0.85, 0.2, 3, 10,
-    Matrix4d::Identity(), 10 * MatrixXd::Ones(1,1)};
+    0.1, 0.85, 0.2, 3, 10,
+    5 * Matrix4d::Identity(), 0.1 * MatrixXd::Ones(1,1)};
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(
           plant_w_spr, context_w_spr.get(), fsm_states, state_durations,

@@ -128,7 +128,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   // On the first iteration, we don't want to switch immediately,
   // and we don't want to warmstart
-  bool warmstart = true;
+  bool warmstart = false;
   if (t_next_impact == 0.0) {
     t_next_impact = t + stance_duration_map_.at(0);
     t_prev_impact = t;
@@ -149,7 +149,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     fsm_idx ++;
     fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
     state->get_mutable_discrete_state(fsm_state_idx_).set_value(fsm_idx*VectorXd::Ones(1));
-    state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(t * VectorXd::Ones(1));
     t_prev_impact = t;
     t_next_impact = t + stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx));
   } else if ((t_next_impact - t) < gains_.T_min_until_touchdown) {
@@ -162,10 +161,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       plant_, context_, robot_output->GetState(),
       {stance_foot_map_.at(left_right_stance_fsm_states_.at(fsm_idx))},
       &CoM_w, &L, &p_w);
-  CoM_w = ReExpressWorldVector3InBodyYawFrame<double>(
-      plant_, *context_, "pelvis", CoM_w);
-  p_w = ReExpressWorldVector3InBodyYawFrame(
-      plant_, *context_, "pelvis", p_w);
+//  CoM_w = ReExpressWorldVector3InBodyYawFrame<double>(
+//      plant_, *context_, "pelvis", CoM_w);
+//  p_w = ReExpressWorldVector3InBodyYawFrame(
+//      plant_, *context_, "pelvis", p_w);
 
   trajopt.set_H(CoM_w(2) - p_w(2));
 
@@ -173,14 +172,15 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       vdes, gains_.stance_width,
       stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
       gains_.knots_per_mode, stance);
-  xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
-      vdes, t - t_prev_impact, t_next_impact - t,
-      stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
-      gains_.stance_width, stance, gains_.knots_per_mode);
+
+  //  xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
+  //      vdes, t - t_prev_impact, t_next_impact - t,
+  //      stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
+  //      gains_.stance_width, stance, gains_.knots_per_mode);
   
   trajopt.UpdateTrackingCost(xd);
-  trajopt.SetNominalStanceTime(t_next_impact - t,
-           stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)));
+  //  trajopt.SetNominalStanceTime(t_next_impact - t,
+  //           stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)));
 
   Vector4d x;
   x.head<2>() = CoM_w.head<2>() - p_w.head<2>();
@@ -202,8 +202,8 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
   const auto& pp = trajopt.GetFootstepSolution();
   const auto& xx = trajopt.GetStateSolution();
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
-  footstep_in_com_yaw_frame.head(2) = (pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
-  footstep_in_com_yaw_frame(2) = -gains_.hdes;
+  footstep_in_com_yaw_frame.head(2) = pp.at(1).head<2>(); //(pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
+  footstep_in_com_yaw_frame(2) = 0; //-gains_.hdes;
   p_B_FC->set_value(footstep_in_com_yaw_frame);
 }
 

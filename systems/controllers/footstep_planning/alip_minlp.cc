@@ -216,8 +216,8 @@ void AlipMINLP::MakeDynamicsConstraints() {
   dynamics_evaluator_ = std::make_shared<AlipDynamicsConstraint>(
       m_, H_, nknots_.front() - 1.0);
   std::unordered_map<int, double> constraint_scaling;
-  constraint_scaling.insert({2, 1.0 / 6.0});
-  constraint_scaling.insert({3, 1.0/12.0});
+  constraint_scaling.insert({2, 1.0 /10.0});
+  constraint_scaling.insert({3, 1.0/20.0});
   dynamics_evaluator_->SetConstraintScaling(constraint_scaling);
   for (int i = 0; i < nmodes_; i++) {
     vector<Binding<drake::solvers::Constraint>> dyn_c_this_mode{};
@@ -269,13 +269,13 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   // Update state initial guess
   DRAKE_DEMAND(!td_.empty());
 
-  std::vector<Vector4d> xx;
-  xx.push_back(x0);
-  Matrix4d Ad = dynamics_evaluator_->Ad(td_.front());
-  for (int i = 1; i < nknots_.front(); i++) {
-    xx.push_back(Ad * xx.at(i-1));
-  }
-  xd_.front() = xx;
+  //  std::vector<Vector4d> xx;
+  //  xx.push_back(x0);
+  //  Matrix4d Ad = dynamics_evaluator_->Ad(td_.front());
+  //  for (int i = 1; i < nknots_.front(); i++) {
+  //    xx.push_back(Ad * xx.at(i-1));
+  //  }
+  //  xd_.front() = xx;
   for(int n = 0; n < nmodes_; n++) {
     for (int k = 0; k < nknots_.at(n); k++) {
       prog_->SetInitialGuess(xx_.at(n).at(k), xd_.at(n).at(k));
@@ -298,6 +298,7 @@ void AlipMINLP::UpdateInitialGuess() {
 void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = SnoptSolver();
 //  prog_->SetSolverOption(IpoptSolver::id(), "print_level", 0);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations Limit", 20);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance", 1e-5);
   prog_->SetSolverOption(SnoptSolver::id(), "Major optimality tolerance", 1e-5);
   prog_->SetSolverOption(SnoptSolver::id(), "Print file", "../snopt_alip.out");

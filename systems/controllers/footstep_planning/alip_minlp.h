@@ -49,6 +49,7 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
   AlipDynamicsConstraint(double m, double H, double n);
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>>& x,
                           drake::VectorX<drake::AutoDiffXd>* y) const override;
+  Eigen::Matrix4d Ad(double t);
 
   void set_m(double m) {m_ = m;}
   void set_H(double H) {H_ = H;}
@@ -95,7 +96,7 @@ class AlipMINLP {
       const Eigen::Vector2d& vdes, double t_current, double t_remain,
       double Ts, double step_width, int stance, double nk) const;
 
-  void UpdateInitialGuess(Eigen::Vector3d p0);
+  void UpdateInitialGuess(const Eigen::Vector3d &p0, const Eigen::Vector4d &x0);
   void UpdateInitialGuess();
   void SetMinimumStanceTime(double tmin) {tmin_ = tmin;};
   void SetNominalStanceTime(double t0, double Ts) {
@@ -142,6 +143,7 @@ class AlipMINLP {
   void MakeInitialStateConstraint();
   void MakeInitialFootstepConstraint();
   void MakeInitialTimeConstraint();
+  void MakeTerminalCost();
   std::vector<std::vector<int>> GetPossibleModeSequences();
 
   std::vector<geometry::ConvexFoothold> footholds_;
@@ -163,6 +165,7 @@ class AlipMINLP {
 
   std::vector<std::vector<Binding<QuadraticCost>>> tracking_costs_{};
   std::vector<std::vector<Binding<QuadraticCost>>> input_costs_{};
+  std::shared_ptr<QuadraticCost> terminal_cost_;
 
   std::vector<drake::solvers::MathematicalProgramResult> solutions_;
   std::vector<std::vector<int>> mode_sequnces_{};

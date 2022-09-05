@@ -23,7 +23,7 @@ def PlotCoMTrajSolution(trajopt):
             line_y = [xy[0], pp[i][0]]
             plt.plot(line_x, line_y, color='black')
     plt.xlim([-0.5, 0.5])
-    plt.ylim([-0.25, pp[-1][0] + xx[-1][-1][0]])
+    plt.ylim([-0.5, pp[-1][0] + xx[-1][-1][0]])
 
 
 
@@ -40,12 +40,13 @@ def PlotInputSolution(trajopt):
 
 
 def main():
-    trajopt = AlipMINLP(32, 0.85)
+    trajopt = AlipMINLP(32, 0.9)
 
     footholds = []
     p0 = [0.0, 0, 0]
     for o in [
-        p0
+        p0,
+        np.array([0.0, -0.1, 0.0])
     ]:
         # Make a rhombic foothold
         foothold = ConvexFoothold()
@@ -54,7 +55,7 @@ def main():
             for j in [-1, 1]:
                 foothold.AddFace(
                     np.array([i, j, 0]),
-                    np.array(o) + np.array([100*i, 100*j, 0])
+                    np.array(o) + np.array([10*i, 10*j, 0])
                 )
         footholds.append(foothold)
     trajopt.AddFootholds(footholds)
@@ -62,17 +63,18 @@ def main():
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
-    trajopt.AddMode(nk)
-    xd = trajopt.MakeXdesTrajForVdes(np.array([1.0, 0.0]), 0.1, 0.35, nk, -1)
-    trajopt.AddTrackingCost(xd, np.eye(4))
+    xd = trajopt.MakeXdesTrajForVdes(np.array([0.2, 0.2]), 0.3, 0.35, nk, -1)
+    trajopt.AddTrackingCost(xd, 1*np.eye(4))
     trajopt.SetNominalStanceTime(0.35, 0.35)
     trajopt.SetMinimumStanceTime(0.1)
-    trajopt.AddInputCost(10)
+    trajopt.AddInputCost(0.1)
     trajopt.Build()
-    trajopt.CalcOptimalFootstepPlan(xd[0][0].ravel(), np.array(p0), False)
+    # trajopt.ActivateInitialTimeConstraint(0.35)
+    trajopt.CalcOptimalFootstepPlan(np.array([0.0, -0.1, 0.0, 10]), np.array(p0), False)
+    print(trajopt.GetTimingSolution())
     PlotCoMTrajSolution(trajopt)
     plt.show()
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
 
 if __name__ == "__main__":

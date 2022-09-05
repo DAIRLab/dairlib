@@ -44,6 +44,9 @@ using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::LinearEqualityConstraint;
 
+using drake::VectorX;
+using drake::Vector4;
+
 AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
     NonlinearConstraint<AutoDiffXd>(
         4, 10, Vector4d::Zero(), Vector4d::Zero(), "dynamics"),
@@ -72,8 +75,13 @@ void AlipDynamicsConstraint::EvaluateConstraint(
   dy.block(0, 0, 4, 4) = Ad;
   dy.col(4) = Bd;
   dy.block(0, 5, 4, 4) = -Matrix4d::Identity();
-  dy.rightCols(1) = (1 / n_) *  A_ * Ad * x0 + Ad * B_ * u0;
+  dy.rightCols(1) = (1 / n_) *  (A_ * Ad * x0 + Ad * B_ * u0);
+//  std::cout << dy << "\n" << std::endl;
   *y = InitializeAutoDiff(y0, dy);
+}
+
+Matrix4d AlipDynamicsConstraint::Ad(double t) {
+  return (A_ * t / n_).exp();
 }
 
 void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
@@ -89,6 +97,11 @@ void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
   }
   xd_ = xd;
   Q_ = Q;
+}
+
+void AlipMINLP::MakeTerminalCost(){
+  terminal_cost_ = prog_->AddQuadraticCost(
+      20.0*Q_, -20.0*Q_ *xd_.back().back(), xx_.back().back()).evaluator();
 }
 
 void AlipMINLP::AddInputCost(double R) {
@@ -129,6 +142,7 @@ void AlipMINLP::Build() {
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
   MakeInitialTimeConstraint();
+  MakeTerminalCost();
 //  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations limit", 5);
   built_ = true;
 }
@@ -158,6 +172,7 @@ void AlipMINLP::UpdateTrackingCost(const vector<vector<Vector4d>> &xd) {
           UpdateCoefficients(2.0*Q_, -2.0*Q_ * xd.at(n).at(k));
     }
   }
+  terminal_cost_->UpdateCoefficients(20.0 * Q_, -20.0 * Q_ * xd.back().back());
   xd_ = xd;
 }
 
@@ -198,7 +213,12 @@ void AlipMINLP::MakeResetConstraints() {
 }
 
 void AlipMINLP::MakeDynamicsConstraints() {
-  dynamics_evaluator_ = std::make_shared<AlipDynamicsConstraint>(m_, H_, nknots_.front());
+  dynamics_evaluator_ = std::make_shared<AlipDynamicsConstraint>(
+      m_, H_, nknots_.front() - 1.0);
+  std::unordered_map<int, double> constraint_scaling;
+  constraint_scaling.insert({2, 1.0 / 6.0});
+  constraint_scaling.insert({3, 1.0/12.0});
+  dynamics_evaluator_->SetConstraintScaling(constraint_scaling);
   for (int i = 0; i < nmodes_; i++) {
     vector<Binding<drake::solvers::Constraint>> dyn_c_this_mode{};
     for (int k = 0; k < nknots_.at(i)-1; k++) {
@@ -244,19 +264,29 @@ void AlipMINLP::ClearFootholdConstraints() {
   footstep_c_.clear();
 }
 
-void AlipMINLP::UpdateInitialGuess(Vector3d p0) {
+void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
+                                   const Eigen::Vector4d &x0) {
   // Update state initial guess
   DRAKE_DEMAND(!td_.empty());
+
+  std::vector<Vector4d> xx;
+  xx.push_back(x0);
+  Matrix4d Ad = dynamics_evaluator_->Ad(td_.front());
+  for (int i = 1; i < nknots_.front(); i++) {
+    xx.push_back(Ad * xx.at(i-1));
+  }
+  xd_.front() = xx;
   for(int n = 0; n < nmodes_; n++) {
     for (int k = 0; k < nknots_.at(n); k++) {
       prog_->SetInitialGuess(xx_.at(n).at(k), xd_.at(n).at(k));
     }
     prog_->SetInitialGuess(tt_.at(n), td_.at(n) * VectorXd::Ones(1));
   }
+  Vector3d ptemp = p0;
   for(int n = 1; n < nmodes_; n++) {
-    Vector2d p1 = (xd_.at(n-1).back() - xd_.at(n).front()).head<2>() + p0.head<2>();
+    Vector2d p1 = (xd_.at(n-1).back() - xd_.at(n).front()).head<2>() + ptemp.head<2>();
     prog_->SetInitialGuess(pp_.at(n).head<2>(), p1);
-    p0.head<2>() = p1;
+    ptemp.head<2>() = p1;
   }
 }
 
@@ -267,8 +297,9 @@ void AlipMINLP::UpdateInitialGuess() {
 
 void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = SnoptSolver();
-  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance", 1e-6);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major optimality tolerance", 1e-6);
+//  prog_->SetSolverOption(IpoptSolver::id(), "print_level", 0);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance", 1e-5);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major optimality tolerance", 1e-5);
   prog_->SetSolverOption(SnoptSolver::id(), "Print file", "../snopt_alip.out");
 
   if (mode_sequnces_.empty()) {
@@ -294,7 +325,7 @@ void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
   if (warmstart && !solutions_.empty() && solutions_.front().is_success()) {
     UpdateInitialGuess();
   } else {
-    UpdateInitialGuess(p);
+    UpdateInitialGuess(p, x);
   }
   dynamics_evaluator_->set_H(H_);
   dynamics_evaluator_->set_m(m_);

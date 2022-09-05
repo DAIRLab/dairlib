@@ -190,6 +190,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   double t0 = trajopt.GetTimingSolution()(0);
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
       (t + t0) * VectorXd::Ones(1));
+  state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(
+      t_prev_impact * VectorXd::Ones(1));
 
   return drake::systems::EventStatus::Succeeded();
 }

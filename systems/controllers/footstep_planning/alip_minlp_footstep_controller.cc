@@ -128,7 +128,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   // On the first iteration, we don't want to switch immediately,
   // and we don't want to warmstart
-  bool warmstart = false;
+  bool warmstart = true;
   if (t_next_impact == 0.0) {
     t_next_impact = t + stance_duration_map_.at(0);
     t_prev_impact = t;
@@ -173,14 +173,14 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
       gains_.knots_per_mode, stance);
 
-  //  xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
-  //      vdes, t - t_prev_impact, t_next_impact - t,
-  //      stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
-  //      gains_.stance_width, stance, gains_.knots_per_mode);
+    xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
+        vdes, t - t_prev_impact, t_next_impact - t,
+        stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
+        gains_.stance_width, stance, gains_.knots_per_mode);
   
   trajopt.UpdateTrackingCost(xd);
-  //  trajopt.SetNominalStanceTime(t_next_impact - t,
-  //           stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)));
+  trajopt.SetNominalStanceTime(t_next_impact - t,
+          stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)));
 
   Vector4d x;
   x.head<2>() = CoM_w.head<2>() - p_w.head<2>();

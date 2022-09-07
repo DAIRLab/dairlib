@@ -1,7 +1,9 @@
+#include <iostream>
 #include "alip_minlp_footstep_controller.h"
+#include "common/eigen_utils.h"
 #include "lcm/lcm_trajectory.h"
-#include "systems/framework/output_vector.h"
 #include "multibody/multibody_utils.h"
+#include "systems/framework/output_vector.h"
 
 namespace dairlib::systems::controllers {
 
@@ -54,6 +56,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   fsm_state_idx_ = DeclareDiscreteState(1);
   next_impact_time_state_idx_ = DeclareDiscreteState(1);
   prev_impact_time_state_idx_ = DeclareDiscreteState(1);
+  initial_conditions_state_idx_ = DeclareDiscreteState(4+3);
 
   // Build the optimization problem
   auto trajopt = AlipMINLP(plant_.CalcTotalMass(*context_), gains_.hdes);
@@ -100,6 +103,9 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   com_traj_output_port_ = DeclareAbstractOutputPort(
       "lcmt_saved_traj", &AlipMINLPFootstepController::CopyCoMTrajOutput)
       .get_index();
+  mpc_debug_output_port_ = DeclareAbstractOutputPort(
+      "lcmt_mpc_debug", &AlipMINLPFootstepController::CopyMpcSolutionToLcm)
+      .get_index();
 }
 
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
@@ -130,6 +136,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   // and we don't want to warmstart
   bool warmstart = true;
   if (t_next_impact == 0.0) {
+    std::cout << "first iteration!" << std::endl;
     t_next_impact = t + stance_duration_map_.at(0);
     t_prev_impact = t;
     warmstart = false;
@@ -186,12 +193,17 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   x.head<2>() = CoM_w.head<2>() - p_w.head<2>();
   x.tail<2>() = L.head<2>();
   trajopt.CalcOptimalFootstepPlan(x, p_w, warmstart);
+  VectorXd ic = VectorXd::Zero(7);
+  ic.head<4>() = x;
+  ic.tail<3>() = p_w;
 
   double t0 = trajopt.GetTimingSolution()(0);
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
       (t + t0) * VectorXd::Ones(1));
   state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(
       t_prev_impact * VectorXd::Ones(1));
+  state->get_mutable_discrete_state(
+      initial_conditions_state_idx_).set_value(ic);
 
   return drake::systems::EventStatus::Succeeded();
 }
@@ -256,6 +268,54 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
 
   LcmTrajectory lcm_traj({com_traj}, {"com_traj"}, "com_traj", "com_traj");
   *traj_msg = lcm_traj.GenerateLcmObject();
+}
+
+void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
+    const Context<double> &context, lcmt_mpc_debug *mpc_debug) const {
+  // Get the debug info from the context
+  const auto& trajopt =
+      context.get_abstract_state<AlipMINLP>(alip_minlp_index_);
+  const auto& ic =
+      context.get_discrete_state(initial_conditions_state_idx_).get_value();
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      this->EvalVectorInput(context, state_input_port_));
+  int utime = static_cast<int>(robot_output->get_timestamp() * 1e6);
+  double fsmd = context.get_discrete_state(fsm_state_idx_).get_value()(0);
+  int fsm = left_right_stance_fsm_states_.at(static_cast<int>(fsmd));
+
+  const auto& pp_sol = trajopt.GetFootstepSolution();
+  const auto& xx_sol = trajopt.GetStateSolution();
+  const auto& uu_sol = trajopt.GetInputSolution();
+  const auto& tt_sol = trajopt.GetTimingSolution();
+
+  mpc_debug->utime = utime;
+  mpc_debug->fsm_state = fsm;
+  mpc_debug->nx = 4;
+  mpc_debug->nu = 1;
+  mpc_debug->np = 3;
+  mpc_debug->nm = gains_.nmodes;
+  mpc_debug->nk = gains_.knots_per_mode;
+  mpc_debug->nk_minus_one = mpc_debug->nk - 1;
+  mpc_debug->x0 = CopyVectorXdToStdVector(ic.head<4>());
+  mpc_debug->p0 = CopyVectorXdToStdVector(ic.tail<3>());
+
+  mpc_debug->pp.clear();
+  mpc_debug->xx.clear();
+  mpc_debug->uu.clear();
+  for (int n = 0; n < gains_.nmodes; n++) {
+    mpc_debug->pp.push_back(CopyVectorXdToStdVector(pp_sol.at(n)));
+    std::vector<std::vector<double>> xx_temp;
+    std::vector<std::vector<double>> uu_temp;
+    for (int k = 0; k < gains_.knots_per_mode; k++) {
+      xx_temp.push_back(CopyVectorXdToStdVector(xx_sol.at(n).at(k)));
+    }
+    for(int k = 0; k < gains_.knots_per_mode - 1; k++) {
+      uu_temp.push_back(CopyVectorXdToStdVector(uu_sol.at(n).at(k)));
+    }
+    mpc_debug->xx.push_back(xx_temp);
+    mpc_debug->uu.push_back(uu_temp);
+  }
+  mpc_debug->tt = CopyVectorXdToStdVector(tt_sol);
 }
 
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <dairlib/lcmt_saved_traj.hpp>
+#include <dairlib/lcmt_mpc_debug.hpp>
 
 #include "alip_utils.h"
 #include "alip_minlp.h"
@@ -59,6 +60,10 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_com_traj() const {
     return this->get_output_port(com_traj_output_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_mpc_debug() const {
+    return this->get_output_port(mpc_debug_output_port_);
+  }
+
  private:
 
   // System callbacks
@@ -70,6 +75,8 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
                               drake::systems::BasicVector<double>* p_W) const;
   void CopyCoMTrajOutput(const drake::systems::Context<double>& context,
                          lcmt_saved_traj* traj_msg) const;
+  void CopyMpcSolutionToLcm(const drake::systems::Context<double>& context,
+                            lcmt_mpc_debug* mpc_debug) const;
 
 
   // drake input ports
@@ -83,12 +90,13 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex prev_impact_time_output_port_;
   drake::systems::OutputPortIndex footstep_target_output_port_;
   drake::systems::OutputPortIndex com_traj_output_port_;
+  drake::systems::OutputPortIndex mpc_debug_output_port_;
 
   // controller states
   drake::systems::DiscreteStateIndex fsm_state_idx_;
   drake::systems::DiscreteStateIndex next_impact_time_state_idx_;
   drake::systems::DiscreteStateIndex prev_impact_time_state_idx_;
-
+  drake::systems::DiscreteStateIndex initial_conditions_state_idx_;
   // abstract states
   drake::systems::AbstractStateIndex alip_minlp_index_;
 

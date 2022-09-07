@@ -6,6 +6,7 @@
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_fsm_info.hpp"
 #include "dairlib/lcmt_footstep_target.hpp"
+#include "dairlib/lcmt_mpc_debug.hpp"
 
 // Cassie and multibody
 #include "examples/Cassie/cassie_utils.h"
@@ -236,7 +237,9 @@ int DoMain(int argc, char* argv[]) {
   auto fsm_pub = builder.AddSystem(std::move(fsm_pub_ptr));
   auto com_traj_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_local);
   auto com_traj_pub = builder.AddSystem(std::move(com_traj_pub_ptr));
-
+  auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(
+      "ALIP_MINLP_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced}));
+  auto mpc_debug_pub = builder.AddSystem(std::move(mpc_debug_pub_ptr));
   // --- Connect the mpc diagram subparts --- //
   // State Reciever connections
   builder.Connect(state_receiver->get_output_port(0),
@@ -261,12 +264,13 @@ int DoMain(int argc, char* argv[]) {
                   footstep_sender->get_input_port());
   builder.Connect(foot_placement_controller->get_output_port_com_traj(),
                   com_traj_pub->get_input_port());
+  builder.Connect(foot_placement_controller->get_output_port_mpc_debug(),
+                  mpc_debug_pub->get_input_port());
 
   // misc
   builder.Connect(fsm_sender->get_output_port_fsm_info(),
                   fsm_pub->get_input_port());
   builder.Connect(*footstep_sender, *footstep_pub);
-  std:: cout << "check1\n";
 
   /* --- OSC Setup ---*/
 
@@ -279,10 +283,6 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-
-
-
-  std:: cout << "check2\n";
 
   // Create translate com_traj from lcm
   auto com_traj_receiver = builder.AddSystem<LcmTrajectoryReceiver>(
@@ -339,7 +339,6 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
       left_right_foot, gains.mid_foot_height, gains.final_foot_height,
       gains.final_foot_velocity_z, false);
-  std:: cout << "check3\n";
 
   builder.Connect(foot_placement_controller->get_output_port_fsm(),
                   swing_ft_traj_generator->get_input_port_fsm());
@@ -351,7 +350,6 @@ int DoMain(int argc, char* argv[]) {
                   swing_ft_traj_generator->get_input_port_state());
   builder.Connect(foot_placement_controller->get_output_port_footstep_target(),
                   swing_ft_traj_generator->get_input_port_footstep_target());
-  std:: cout << "check4\n";
 
   // Swing toe joint trajectory
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
@@ -587,7 +585,6 @@ int DoMain(int argc, char* argv[]) {
   }
   osc->Build();
 
-  std:: cout << "check5\n";
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
@@ -608,7 +605,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
                   osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
 
-  std:: cout << "check6\n";
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.

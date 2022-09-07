@@ -267,7 +267,7 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
                                    const Eigen::Vector4d &x0) {
   // Update state initial guess
   DRAKE_DEMAND(!td_.empty());
-
+    /*
     std::vector<Vector4d> xx;
     xx.push_back(x0);
     Matrix4d Ad = dynamics_evaluator_->Ad(td_.front());
@@ -275,6 +275,7 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
       xx.push_back(Ad * xx.at(i-1));
     }
     xd_.front() = xx;
+     */
   for(int n = 0; n < nmodes_; n++) {
     for (int k = 0; k < nknots_.at(n); k++) {
       prog_->SetInitialGuess(xx_.at(n).at(k), xd_.at(n).at(k));
@@ -297,7 +298,7 @@ void AlipMINLP::UpdateInitialGuess() {
 void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = SnoptSolver();
 //  prog_->SetSolverOption(IpoptSolver::id(), "print_level", 0);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations Limit", 1);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations Limit", 10);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance", 1e-5);
   prog_->SetSolverOption(SnoptSolver::id(), "Major optimality tolerance", 1e-5);
   prog_->SetSolverOption(SnoptSolver::id(), "Print file", "../snopt_alip.out");

@@ -24,6 +24,7 @@ cc_library(
     deps = [
         ":alip_minlp",
         ":alip_utils",
+        "//common:eigen_utils",
         "//geometry:convex_foothold",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",

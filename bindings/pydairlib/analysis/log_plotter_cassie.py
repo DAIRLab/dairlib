@@ -12,11 +12,12 @@ import mbp_plotting_utils as mbp_plots
 from pydairlib.common.plot_styler import PlotStyler
 
 
-def main():
-    config_folder = 'bindings/pydairlib/analysis/plot_configs/'
-    config_file = config_folder + 'cassie_default_plot.yaml'
-    # config_file = config_folder + 'cassie_running_plot.yaml'
-    plot_config = CassiePlotConfig(config_file)
+def plotter_main(plot_config, log):
+    """
+        workhorse function to construct plots given an lcmlog and a plot config.
+        Note that to allow for more modularity, this function
+        doesn't call plt.show()
+    """
 
     use_floating_base = plot_config.use_floating_base
     use_springs = plot_config.use_springs
@@ -31,9 +32,6 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
-    ''' Read the log '''
-    filename = sys.argv[1]
-    log = lcm.EventLog(filename, "r")
     default_channels = cassie_plots.cassie_default_channels
     if plot_config.use_archived_lcmtypes:
         default_channels = cassie_plots.cassie_default_channels_archive
@@ -141,6 +139,16 @@ def main():
 
     if plot_config.plot_qp_solve_time:
         mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+
+
+def main():
+    config_folder = 'bindings/pydairlib/analysis/plot_configs/'
+    config_file = config_folder + 'cassie_default_plot.yaml'
+    plot_config = CassiePlotConfig(config_file)
+
+    filename = sys.argv[1]
+    log = lcm.EventLog(filename, "r")
+    plotter_main(plot_config, log)
 
     plt.show()
 

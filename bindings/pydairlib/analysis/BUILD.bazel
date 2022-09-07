@@ -112,7 +112,7 @@ py_binary(
     srcs = ["mpc_plotter_cassie.py"],
     data = [
         "//examples/Cassie:cassie_urdf",
-        "@lcm:lcm-python",
+        "@lcm//:lcm-python",
     ],
     deps = [
         ":mpc_plot_config",

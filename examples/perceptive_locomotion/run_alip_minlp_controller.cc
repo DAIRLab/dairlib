@@ -108,8 +108,8 @@ int DoMain(int argc, char* argv[]) {
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
 
   auto gains = AlipMINLPGains{
-      0.1,  // t_commit
-      0.15, // t_min
+      0.25,  // t_commit
+      0.2, // t_min
       0.85, // h_des
       0.2,  // stance_width
       3,    // nmodes

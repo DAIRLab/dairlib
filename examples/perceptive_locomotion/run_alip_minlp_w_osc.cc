@@ -212,8 +212,8 @@ int DoMain(int argc, char* argv[]) {
   /* --- MPC setup --- */
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
   auto gains_mpc = AlipMINLPGains{
-      0.1,  // t_commit
-      0.15, // t_min
+      0.25,  // t_commit
+      0.2,  // t_min
       0.85, // h_des
       0.2,  // stance_width
       3,    // nmodes
@@ -293,7 +293,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create translate com_traj from lcm
   auto com_traj_receiver = builder.AddSystem<LcmTrajectoryReceiver>(
-      "com_traj", TrajectoryType::kCubicShapePreserving);
+      "com_traj", TrajectoryType::kFOH);
   builder.Connect(foot_placement_controller->get_output_port_com_traj(),
                   com_traj_receiver->get_input_port());
 

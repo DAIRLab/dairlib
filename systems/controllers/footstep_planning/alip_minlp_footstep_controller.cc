@@ -267,6 +267,8 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   com_traj.datapoints = com_knots;
   com_traj.time_vector = t;
 
+  std::cout << com_traj.time_vector.transpose() << std::endl;
+
   LcmTrajectory lcm_traj({com_traj}, {"com_traj"}, "com_traj", "com_traj");
   *traj_msg = lcm_traj.GenerateLcmObject();
 }

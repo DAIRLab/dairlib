@@ -40,6 +40,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   DRAKE_DEMAND(left_right_stance_fsm_states_.size() == 2);
   DRAKE_DEMAND(left_right_stance_durations.size() == 2);
   DRAKE_DEMAND(left_right_foot.size() == 2);
+  DRAKE_DEMAND(gains_.t_commit > gains_.t_min);
 
   nq_ = plant_.num_positions();
   nv_ = plant_.num_velocities();
@@ -70,7 +71,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt.AddInputCost(gains_.R(0,0));
   trajopt.SetNominalStanceTime(left_right_stance_durations.at(0),
                                left_right_stance_durations.at(1));
-  trajopt.SetMinimumStanceTime(gains_.T_min_until_touchdown);
+  trajopt.SetMinimumStanceTime(gains_.t_min);
   trajopt.Build();
   trajopt.CalcOptimalFootstepPlan(Vector4d::Zero(), Vector3d::Zero());
   std::cout << "solution is: " << trajopt.GetFootstepSolution().at(0).transpose() << std::endl;
@@ -134,7 +135,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   // On the first iteration, we don't want to switch immediately,
   // and we don't want to warmstart
-  bool warmstart = true;
+  bool warmstart = false;
   if (t_next_impact == 0.0) {
     std::cout << "first iteration!" << std::endl;
     t_next_impact = t + stance_duration_map_.at(0);
@@ -158,7 +159,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     state->get_mutable_discrete_state(fsm_state_idx_).set_value(fsm_idx*VectorXd::Ones(1));
     t_prev_impact = t;
     t_next_impact = t + stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx));
-  } else if ((t_next_impact - t) < gains_.T_min_until_touchdown) {
+  } else if ((t_next_impact - t) < gains_.t_commit) {
     trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
   }
   int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;

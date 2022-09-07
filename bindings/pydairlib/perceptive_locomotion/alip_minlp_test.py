@@ -26,7 +26,6 @@ def PlotCoMTrajSolution(trajopt):
     plt.ylim([-0.5, pp[-1][0] + xx[-1][-1][0]])
 
 
-
 def PlotInputSolution(trajopt):
     plt.figure()
     u = trajopt.GetInputSolution()
@@ -63,14 +62,14 @@ def main():
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
-    xd = trajopt.MakeXdesTrajForVdes(np.array([0.2, 0.2]), 0.3, 0.35, nk, -1)
+    xd = trajopt.MakeXdesTrajForVdes(np.array([0.5, 0]), 0.3, 0.35, nk, -1)
     trajopt.AddTrackingCost(xd, 1*np.eye(4))
     trajopt.SetNominalStanceTime(0.35, 0.35)
     trajopt.SetMinimumStanceTime(0.1)
     trajopt.AddInputCost(0.1)
     trajopt.Build()
     # trajopt.ActivateInitialTimeConstraint(0.35)
-    trajopt.CalcOptimalFootstepPlan(np.array([0.0, -0.1, 0.0, 10]), np.array(p0), False)
+    trajopt.CalcOptimalFootstepPlan(xd[0][0], np.array(p0), False)
     print(trajopt.GetTimingSolution())
     PlotCoMTrajSolution(trajopt)
     plt.show()

@@ -14,4 +14,5 @@ class MpcPlotConfig:
         data = load(io.open(filename, 'r'), Loader=Loader)
         self.cassie_plot_config = \
             CassiePlotConfig(data["cassie_plot_config_filename"])
-        
+        self.start_time = data["start_time"]
+        self.end_time = data["end_time"]

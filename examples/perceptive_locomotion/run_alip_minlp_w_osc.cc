@@ -212,8 +212,15 @@ int DoMain(int argc, char* argv[]) {
   /* --- MPC setup --- */
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
   auto gains_mpc = AlipMINLPGains{
-      0.1, 0.85, 0.2, 3, 10,
-      5 * Matrix4d::Identity(), 0.1 * MatrixXd::Ones(1,1)};
+      0.1,  // t_commit
+      0.15, // t_min
+      0.85, // h_des
+      0.2,  // stance_width
+      3,    // nmodes
+      10,   // knots per mode
+      5 * Matrix4d::Identity(),   // Q
+      0.1 * MatrixXd::Ones(1,1)   // R
+  };
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(
           plant_w_spr, context_w_spr.get(), fsm_states, state_durations,

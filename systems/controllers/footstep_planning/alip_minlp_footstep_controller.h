@@ -14,7 +14,8 @@ namespace dairlib::systems::controllers {
 using alip_utils::PointOnFramed;
 
 struct AlipMINLPGains {
-  double T_min_until_touchdown;
+  double t_min;
+  double t_commit;
   double hdes;
   double stance_width;
   int nmodes;

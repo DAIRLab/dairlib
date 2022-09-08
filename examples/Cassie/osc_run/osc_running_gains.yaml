@@ -32,7 +32,7 @@ ekf_filter_tau: [ 0.001, 0.01, 0.001 ]
 vel_scale_rot: -2
 vel_scale_trans_sagital: 1.0
 vel_scale_trans_lateral: -0.1
-target_vel_filter_alpha: 0.25
+target_vel_filter_alpha: 0.001
 
 # SLIP parameters
 rest_length: 0.85
@@ -54,11 +54,11 @@ footstep_lateral_offset: 0.07 # drake
 mid_foot_height: 0.15
 FootstepKd:
   [ 0.13,     0,  0,
-    0,     0.17, 0,
+    0,     0.25, 0,
     0,        0,  0 ]
 PelvisW:
   [ 0,     0,    0,
-    0,    0.1,    0,
+    0,    1,    0,
     0,     0,    5]
 PelvisKp:
   [ 0,    0,    0,

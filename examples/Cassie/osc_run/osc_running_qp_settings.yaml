@@ -8,7 +8,7 @@ eps_dual_inf: 1e-5
 alpha: 1.6
 linsys_solver: 0
 delta: 1e-6
-polish: 0
+polish: 1
 polish_refine_iter: 0
 verbose: 0
 scaled_termination: 1

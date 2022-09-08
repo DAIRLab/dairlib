@@ -321,7 +321,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool is_quaternion_;
 
   // Solver
-  std::unordered_map<int, std::unique_ptr<solvers::FastOsqpSolver>> solvers_;
+  std::unordered_map<int, std::unique_ptr<drake::solvers::OsqpSolver>> solvers_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
@@ -344,13 +344,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
 
   std::vector<drake::solvers::QuadraticCost*> tracking_costs_;
-  drake::solvers::QuadraticCost* accel_cost_;
-  drake::solvers::LinearCost* joint_limit_cost_;
-  drake::solvers::QuadraticCost* input_cost_;
-  drake::solvers::QuadraticCost* input_smoothing_cost_;
-  drake::solvers::QuadraticCost* lambda_c_cost_;
-  drake::solvers::QuadraticCost* lambda_h_cost_;
-  drake::solvers::QuadraticCost* soft_constraint_cost_;
+  drake::solvers::QuadraticCost* accel_cost_ = nullptr;
+  drake::solvers::LinearCost* joint_limit_cost_ = nullptr;
+  drake::solvers::QuadraticCost* input_cost_ = nullptr;
+  drake::solvers::QuadraticCost* input_smoothing_cost_ = nullptr;
+  drake::solvers::QuadraticCost* lambda_c_cost_ = nullptr;
+  drake::solvers::QuadraticCost* lambda_h_cost_ = nullptr;
+  drake::solvers::QuadraticCost* soft_constraint_cost_ = nullptr;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;

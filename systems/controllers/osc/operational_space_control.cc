@@ -447,13 +447,15 @@ void OperationalSpaceControl::Build() {
   }
 
   // 5. Joint Limit cost
-  K_joint_pos_ = w_joint_limit_ * W_joint_accel_.bottomRightCorner(
-                                     n_revolute_joints_, n_revolute_joints_);
-  joint_limit_cost_ = prog_
-                          ->AddLinearCost(VectorXd::Zero(n_revolute_joints_), 0,
-                                          dv_.tail(n_revolute_joints_))
-                          .evaluator()
-                          .get();
+  if (w_joint_limit_ > 0) {
+    K_joint_pos_ = w_joint_limit_ * W_joint_accel_.bottomRightCorner(
+                                        n_revolute_joints_, n_revolute_joints_);
+    joint_limit_cost_ = prog_
+                            ->AddLinearCost(VectorXd::Zero(n_revolute_joints_),
+                                            0, dv_.tail(n_revolute_joints_))
+                            .evaluator()
+                            .get();
+  }
 
   // (Testing) 6. contact force blending
   if (ds_duration_ > 0) {
@@ -490,8 +492,10 @@ void OperationalSpaceControl::Build() {
   //          .get();
 
   for (int i = -1; i < 5; ++i) {
-    solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
+//    solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
+    solvers_[i] = std::make_unique<drake::solvers::OsqpSolver>();
   }
+  prog_->SetSolverOptions(solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -716,16 +720,18 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Add joint limit constraints
-  VectorXd w_joint_limit =
-      K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
-                         .tail(n_revolute_joints_) -
-                     q_max_)
-                        .cwiseMax(0) +
-      K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
-                         .tail(n_revolute_joints_) -
-                     q_min_)
-                        .cwiseMin(0);
-  joint_limit_cost_->UpdateCoefficients(w_joint_limit, 0);
+  if (w_joint_limit_ > 0) {
+    VectorXd w_joint_limit =
+        K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
+                            .tail(n_revolute_joints_) -
+                        q_max_)
+                           .cwiseMax(0) +
+        K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
+                            .tail(n_revolute_joints_) -
+                        q_min_)
+                           .cwiseMin(0);
+    joint_limit_cost_->UpdateCoefficients(w_joint_limit, 0);
+  }
 
   // (Testing) 6. blend contact forces during double support phase
   if (ds_duration_ > 0) {
@@ -785,18 +791,20 @@ VectorXd OperationalSpaceControl::SolveQp(
                                        VectorXd::Zero(n_h_));
   }
 
-  if (!solvers_.at(0)->IsInitialized()) {
-    solvers_.at(0)->InitializeSolver(*prog_, solver_options_);
-  }
-
-  if (initial_guess_x_.count(fsm_state) > 0) {
-    solvers_.at(0)->WarmStart(initial_guess_x_.at(fsm_state),
-                              initial_guess_y_.at(fsm_state));
-  }
+//  if (!solvers_.at(0)->IsInitialized()) {
+//    solvers_.at(0)->InitializeSolver(*prog_, solver_options_);
+//  }
+//
+//  if (initial_guess_x_.count(0) > 0) {
+//    solvers_.at(0)->WarmStart(initial_guess_x_.at(0),
+//                              initial_guess_y_.at(0));
+//  }
 
   // Solve the QP
   MathematicalProgramResult result;
   result = solvers_.at(0)->Solve(*prog_);
+  //  auto osqp_solver = drake::solvers::OsqpSolver();
+  //  result = osqp_solver.Solve(*prog_, std::nullopt, solver_options_);
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   if (result.is_success()) {
@@ -806,8 +814,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
-    initial_guess_x_[fsm_state] = result.GetSolution();
-    initial_guess_y_[fsm_state] = result.get_solver_details<OsqpSolver>().y;
+    initial_guess_x_[0] = result.GetSolution();
+    initial_guess_y_[0] = result.get_solver_details<OsqpSolver>().y;
   } else {
     //    *u_prev_ = VectorXd::Zero(n_u_);
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
@@ -960,9 +968,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   if (soft_constraint_cost_) {
     soft_constraint_cost_->Eval(*epsilon_sol_, &y_soft_constraint_cost);
   }
-  if (joint_limit_cost_) {
-    joint_limit_cost_->Eval(*dv_sol_, &y_joint_limit_cost);
-  }
+  //  if (joint_limit_cost_) {
+  //    joint_limit_cost_->Eval(*dv_sol_, &y_joint_limit_cost);
+  //  }
   double acceleration_cost = (accel_cost_ != nullptr) ? y_accel_cost[0] : 0;
   double input_cost = (input_cost_ != nullptr) ? y_input_cost[0] : 0;
   double input_smoothing_cost =
@@ -971,12 +979,11 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       (soft_constraint_cost_ != nullptr) ? y_soft_constraint_cost[0] : 0;
   double lambda_c_cost = (lambda_c_cost_ != nullptr) ? y_lambda_c_cost[0] : 0;
   double lambda_h_cost = (lambda_h_cost_ != nullptr) ? y_lambda_h_cost[0] : 0;
-  double joint_limit_cost =
-      (joint_limit_cost_ != nullptr) ? y_joint_limit_cost[0] : 0;
+  //  double joint_limit_cost =
+  //      (joint_limit_cost_ != nullptr) ? y_joint_limit_cost[0] : 0;
 
   total_cost += input_cost + acceleration_cost + soft_constraint_cost +
-                input_smoothing_cost + lambda_h_cost + lambda_c_cost +
-                joint_limit_cost;
+                input_smoothing_cost + lambda_h_cost + lambda_c_cost;
   output->regularization_costs.clear();
   output->regularization_cost_names.clear();
 
@@ -993,8 +1000,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->regularization_cost_names.push_back("lambda_c_cost");
   output->regularization_costs.push_back(lambda_h_cost);
   output->regularization_cost_names.push_back("lambda_h_cost");
-  output->regularization_costs.push_back(joint_limit_cost);
-  output->regularization_cost_names.push_back("joint_limit_cost");
+  //  output->regularization_costs.push_back(joint_limit_cost);
+  //  output->regularization_cost_names.push_back("joint_limit_cost");
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();

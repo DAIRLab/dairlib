@@ -222,8 +222,8 @@ int DoMain(int argc, char* argv[]) {
   /* --- MPC setup --- */
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
   auto gains_mpc = AlipMINLPGains{
-      0.2,  // t_commit
-      0.175,  // t_min
+      0.26,  // t_commit
+      0.25,  // t_min
       0.5,    // t_max
       0.9 * plant_w_spr.CalcTotalMass(*context_w_spr) * 9.81 * (right_toe.first - right_heel.first).norm() / 2.0,
       gains.lipm_height, // h_des

@@ -74,7 +74,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt.AddInputCost(gains_.R(0,0));
   trajopt.UpdateNominalStanceTime(left_right_stance_durations.at(0),
                                   left_right_stance_durations.at(1));
-  trajopt.SetMinimumStanceTime(gains_.t_min + double_stance_duration_);
+  trajopt.SetMinimumStanceTime(gains_.t_min);
   trajopt.SetMaximumStanceTime(gains_.t_max);
   trajopt.SetInputLimit(gains_.u_max);
   trajopt.Build();

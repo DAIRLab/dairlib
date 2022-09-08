@@ -26,7 +26,7 @@ W_lambda_c_reg: [ 1, 0.001, 0.01,
 #W_lambda_h_reg: [ 0.02, 0.02 ]
 W_lambda_h_reg: [ 0.001, 0.001, 0.001,
                   0.001, 0.002, 0.002 ]
-w_soft_constraint: 100
+w_soft_constraint: 0
 w_input_reg: 0.00
 impact_threshold: 0.00
 center_of_mass_filter_tau: 0.0001

@@ -4,7 +4,7 @@ w_accel: 0.0001
 w_soft_constraint: 1000
 w_lambda: 0.1
 w_input_accel: 0.1
-w_joint_limit: 50
+w_joint_limit: 0
 impact_threshold: 0.050
 impact_tau: 0.005
 weight_scaling: 1.0
@@ -32,15 +32,16 @@ ekf_filter_tau: [ 0.001, 0.01, 0.001 ]
 vel_scale_rot: -2
 vel_scale_trans_sagital: 1.0
 vel_scale_trans_lateral: -0.1
+target_vel_filter_alpha: 0.25
 
 # SLIP parameters
 rest_length: 0.85
-rest_length_offset: 0.05
+rest_length_offset: 0.025
 stance_duration: 0.3
 flight_duration: 0.09
 
 w_swing_toe: 0.001
-swing_toe_kp: 1000
+swing_toe_kp: 1500
 swing_toe_kd: 10
 
 w_hip_yaw: 2.5
@@ -70,7 +71,7 @@ PelvisKd:
 PelvisRotW:
   [10,  0,   0,
    0,  5,   0,
-   0,   0,  0.1]
+   0,   0,  1]
 PelvisRotKp:
   [150.,   0,   0,
    0,  200.,   0,
@@ -86,7 +87,7 @@ SwingFootW:
 SwingFootKp:
   [125,   0,    0,
    0,    75,    0,
-   0,     0,  150]
+   0,     0,  75]
 SwingFootKd:
   [5.,   0,   0,
    0,   5.,   0,

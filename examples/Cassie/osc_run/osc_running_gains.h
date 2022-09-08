@@ -24,6 +24,7 @@ struct OSCRunningGains : OSCGains {
   double vel_scale_rot;
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
+  double target_vel_filter_alpha;
   bool relative_feet;
   bool relative_pelvis;
   double rest_length;
@@ -121,6 +122,7 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(vel_scale_rot));
     a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
     a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
+    a->Visit(DRAKE_NVP(target_vel_filter_alpha));
 
     W_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

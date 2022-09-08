@@ -312,6 +312,8 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.rest_length, osc_gains.rest_length_offset,
       osc_gains.footstep_lateral_offset, osc_gains.footstep_sagital_offset,
       osc_gains.mid_foot_height);
+  l_foot_traj_generator->SetCommandFilter(osc_gains.target_vel_filter_alpha);
+  r_foot_traj_generator->SetCommandFilter(osc_gains.target_vel_filter_alpha);
 
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,

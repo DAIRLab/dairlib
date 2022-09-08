@@ -45,6 +45,8 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
       stance_state_(stance_state) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
+  target_vel_filter_ =
+      std::make_unique<FirstOrderLowPassFilter>(1.0, 2);
 
   if (foot_name == "toe_left") {
     is_left_foot_ = true;
@@ -194,7 +196,9 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   // with OSU DRL
 
   Vector3d desired_pelvis_vel;
-  desired_pelvis_vel << desired_pelvis_vel_xy, 0;
+  target_vel_filter_->Update(desired_pelvis_vel_xy);
+  desired_pelvis_vel << target_vel_filter_->Value(), 0;
+
   auto foot_pos = context.get_discrete_state(initial_foot_pos_idx_).get_value();
   Vector3d pelvis_pos;
   plant_.CalcPointsPositions(*context_, hip_frame_, Vector3d::Zero(), world_,

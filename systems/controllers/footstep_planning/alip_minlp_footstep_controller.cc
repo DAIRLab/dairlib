@@ -69,12 +69,11 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       gains_.knots_per_mode);
   trajopt.AddTrackingCost(xd, gains_.Q);
   trajopt.AddInputCost(gains_.R(0,0));
-  trajopt.SetNominalStanceTime(left_right_stance_durations.at(0),
-                               left_right_stance_durations.at(1));
+  trajopt.UpdateNominalStanceTime(left_right_stance_durations.at(0),
+                                  left_right_stance_durations.at(1));
   trajopt.SetMinimumStanceTime(gains_.t_min);
   trajopt.Build();
   trajopt.CalcOptimalFootstepPlan(Vector4d::Zero(), Vector3d::Zero());
-  std::cout << "solution is: " << trajopt.GetFootstepSolution().at(0).transpose() << std::endl;
   alip_minlp_index_ = DeclareAbstractState(*AbstractValue::Make<AlipMINLP>(trajopt));
 
   // State Update
@@ -163,12 +162,17 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
   }
   int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
-
+  const int fsm_state = curr_fsm(fsm_idx);
   Vector3d CoM_w, p_w, L;
   alip_utils::CalcAlipState(
       plant_, context_, robot_output->GetState(),
-      {stance_foot_map_.at(left_right_stance_fsm_states_.at(fsm_idx))},
-      &CoM_w, &L, &p_w);
+      {stance_foot_map_.at(fsm_state)}, &CoM_w, &L, &p_w);
+
+  const auto pnext_pose =
+      stance_foot_map_.at(next_fsm(fsm_idx)).second.CalcPoseInWorld(*context_);
+  Vector3d pnext_w = pnext_pose.translation() +
+      pnext_pose.rotation() * stance_foot_map_.at(next_fsm(fsm_idx)).first;
+
 //  CoM_w = ReExpressWorldVector3InBodyYawFrame<double>(
 //      plant_, *context_, "pelvis", CoM_w);
 //  p_w = ReExpressWorldVector3InBodyYawFrame(
@@ -177,18 +181,17 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   trajopt.set_H(CoM_w(2) - p_w(2));
 
   auto xd  = trajopt.MakeXdesTrajForVdes(
-      vdes, gains_.stance_width,
-      stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
+      vdes, gains_.stance_width, stance_duration_map_.at(fsm_state),
       gains_.knots_per_mode, stance);
 
     xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
         vdes, t - t_prev_impact, t_next_impact - t,
-        stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)),
-        gains_.stance_width, stance, gains_.knots_per_mode);
+        stance_duration_map_.at(fsm_state), gains_.stance_width, stance,
+        gains_.knots_per_mode);
   
   trajopt.UpdateTrackingCost(xd);
-  trajopt.SetNominalStanceTime(t_next_impact - t,
-          stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx)));
+  trajopt.UpdateNominalStanceTime(
+      t_next_impact - t, stance_duration_map_.at(fsm_state));
 
   Vector4d x;
   x.head<2>() = CoM_w.head<2>() - p_w.head<2>();
@@ -197,6 +200,21 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   VectorXd ic = VectorXd::Zero(7);
   ic.head<4>() = x;
   ic.tail<3>() = p_w;
+
+  // Update reachable footholds
+  ConvexFoothold inflating_workspace;
+  ConvexFoothold fixed_workspace;
+  Vector3d robot_center = CoM_w;
+  robot_center(2) = 0;
+  fixed_workspace.AddFace(-stance*Vector3d::UnitY(), robot_center);
+
+  inflating_workspace.AddFace(Vector3d::UnitX(), pnext_w + Vector3d::UnitX());
+  inflating_workspace.AddFace(Vector3d::UnitY(), pnext_w + Vector3d::UnitY());
+  inflating_workspace.AddFace(-Vector3d::UnitX(), pnext_w - Vector3d::UnitX());
+  inflating_workspace.AddFace(-Vector3d::UnitY(), pnext_w - Vector3d::UnitX());
+
+  trajopt.UpdateNextFootstepReachabilityConstraint(
+      fixed_workspace, inflating_workspace);
 
   double t0 = trajopt.GetTimingSolution()(0);
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
@@ -295,7 +313,7 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
       this->EvalVectorInput(context, state_input_port_));
   int utime = static_cast<int>(robot_output->get_timestamp() * 1e6);
   double fsmd = context.get_discrete_state(fsm_state_idx_).get_value()(0);
-  int fsm = left_right_stance_fsm_states_.at(static_cast<int>(fsmd));
+  int fsm = curr_fsm(static_cast<int>(fsmd));
 
   const auto& pp_sol = trajopt.GetFootstepSolution();
   const auto& xx_sol = trajopt.GetStateSolution();

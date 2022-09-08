@@ -37,7 +37,7 @@ int do_main(int argc, char* argv[]) {
   trajopt.AddMode(10);
   auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity());
-  trajopt.SetNominalStanceTime(0.35, 0.35);
+  trajopt.UpdateNominalStanceTime(0.35, 0.35);
   trajopt.AddInputCost(10);
   trajopt.Build();
 

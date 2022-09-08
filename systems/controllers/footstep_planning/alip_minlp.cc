@@ -100,8 +100,9 @@ void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
 }
 
 void AlipMINLP::MakeTerminalCost(){
+  Qf_ = .01 * Q_;
   terminal_cost_ = prog_->AddQuadraticCost(
-      20.0*Q_, -20.0*Q_ *xd_.back().back(), xx_.back().back()).evaluator();
+      2.0 * Qf_, -2.0 * Qf_ *xd_.back().back(), xx_.back().back()).evaluator();
 }
 
 void AlipMINLP::AddInputCost(double R) {
@@ -139,6 +140,7 @@ void AlipMINLP::Build() {
   MakeDynamicsConstraints();
   MakeResetConstraints();
   MakeTimingBoundsConstraint();
+  MakeNextFootstepReachabilityConstraint();
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
   MakeInitialTimeConstraint();
@@ -171,7 +173,7 @@ void AlipMINLP::UpdateTrackingCost(const vector<vector<Vector4d>> &xd) {
           UpdateCoefficients(2.0*Q_, -2.0*Q_ * xd.at(n).at(k));
     }
   }
-  terminal_cost_->UpdateCoefficients(20.0 * Q_, -20.0 * Q_ * xd.back().back());
+  terminal_cost_->UpdateCoefficients(2.0 * Qf_, -2.0 * Qf_ * xd.back().back());
   xd_ = xd;
 }
 
@@ -245,7 +247,7 @@ void AlipMINLP::MakeTimingBoundsConstraint() {
   for (int i = 0; i < nmodes_; i++) {
     ts_bounds_c_.push_back(
       prog_->AddBoundingBoxConstraint(
-          tmin_ * VectorXd::Ones(1), VectorXd::Ones(1), tt_.at(i)));
+          tmin_ * VectorXd::Ones(1), tmax_ * VectorXd::Ones(1), tt_.at(i)));
   }
 }
 
@@ -253,6 +255,20 @@ void AlipMINLP::MakeInitialTimeConstraint() {
   initial_time_c_ = prog_->AddLinearEqualityConstraint(
       MatrixXd::Zero(1, 1), VectorXd::Zero(1), tt_.front()
       ).evaluator();
+}
+
+void AlipMINLP::MakeNextFootstepReachabilityConstraint() {
+  next_step_reach_c_fixed_ = prog_->AddLinearConstraint(
+      MatrixXd::Zero(1,3),
+      -numeric_limits<double>::infinity()*VectorXd::Ones(1),
+      VectorXd::Zero(1), pp_.at(1))
+  .evaluator();
+  next_step_reach_c_inflating_ = prog_->AddLinearConstraint(
+      MatrixXd::Zero(1, 4),
+      -numeric_limits<double>::infinity()*VectorXd::Ones(1),
+      VectorXd::Zero(1),
+      {pp_.at(1), tt_.at(1)})
+  .evaluator();
 }
 
 void AlipMINLP::ClearFootholdConstraints() {
@@ -295,6 +311,21 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
 void AlipMINLP::UpdateInitialGuess() {
   DRAKE_DEMAND(solutions_.front().is_success());
   prog_->SetInitialGuessForAllVariables(solutions_.front().GetSolution());
+}
+
+void AlipMINLP::UpdateNextFootstepReachabilityConstraint(
+    const geometry::ConvexFoothold &fixed_workspace,
+    const geometry::ConvexFoothold &inflating_workspace) {
+  const auto& [Af, bf] = fixed_workspace.GetConstraintMatrices();
+  const auto& [Ai, bi] = inflating_workspace.GetConstraintMatrices();
+  MatrixXd Ainf = MatrixXd::Zero(Ai.rows(), 4);
+  Ainf.leftCols(3) = Ai;
+  Ainf.rightCols(1) = -bi * vmax_;
+  double neg_inf  = -numeric_limits<double>::infinity();
+  next_step_reach_c_fixed_->UpdateCoefficients(
+      Af, neg_inf * VectorXd::Ones(bf.rows()), bf);
+  next_step_reach_c_inflating_->UpdateCoefficients(
+      Ainf, neg_inf * VectorXd::Ones(bi.rows()), VectorXd::Zero(bi.rows()));
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {

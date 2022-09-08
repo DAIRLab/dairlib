@@ -110,6 +110,16 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   int nu_;
 
   // Nominal FSM
+  int curr_fsm(int fsm_idx) const {
+    return left_right_stance_fsm_states_.at(fsm_idx);
+  }
+  int next_fsm(int fsm_idx) const {
+    int next= fsm_idx + 1;
+    if (next >= left_right_stance_fsm_states_.size()) {
+      return curr_fsm(0);
+    }
+    return curr_fsm(next);
+  }
   std::vector<int> left_right_stance_fsm_states_;
   std::map<int, double> stance_duration_map_;
   double double_stance_duration_;

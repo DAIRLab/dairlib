@@ -51,7 +51,7 @@ class CassieSystem():
         self.act_map, self.act_map_inverse = self.make_actuator_map()
 
         # Initial other parameters
-        self.piecewice_linear_spring_paras = load(io.open(self.piecewice_linear_spring_config,"r"), Loader=Loader)
+        self.piecewice_linear_spring_params = load(io.open(self.piecewice_linear_spring_config,"r"), Loader=Loader)
         self.initial_spring_and_damping()
 
         # Visualizer
@@ -136,29 +136,29 @@ class CassieSystem():
 
             # left leg touch the ground
             if is_contact[0] == 1:
-                self.K[self.vel_map["knee_joint_leftdot"],self.pos_map["knee_joint_left"]] = self.piecewice_linear_spring_paras["stance"]["knee_spring"]["stiffness"]
-                self.K[self.vel_map["ankle_spring_joint_leftdot"],self.pos_map["ankle_spring_joint_left"]] = self.piecewice_linear_spring_paras["stance"]["ankle_spring"]["stiffness"]
-                self.spring_offset[self.pos_map["knee_joint_left"]] = self.piecewice_linear_spring_paras["stance"]["knee_spring"]["offset"]
-                self.spring_offset[self.pos_map["ankle_spring_joint_left"]] = self.piecewice_linear_spring_paras["stance"]["ankle_spring"]["offset"]
+                self.K[self.vel_map["knee_joint_leftdot"],self.pos_map["knee_joint_left"]] = self.piecewice_linear_spring_params["stance"]["knee_spring"]["stiffness"]
+                self.K[self.vel_map["ankle_spring_joint_leftdot"],self.pos_map["ankle_spring_joint_left"]] = self.piecewice_linear_spring_params["stance"]["ankle_spring"]["stiffness"]
+                self.spring_offset[self.pos_map["knee_joint_left"]] = self.piecewice_linear_spring_params["stance"]["knee_spring"]["offset"]
+                self.spring_offset[self.pos_map["ankle_spring_joint_left"]] = self.piecewice_linear_spring_params["stance"]["ankle_spring"]["offset"]
             # left leg in the air
             else:
-                self.K[self.vel_map["knee_joint_leftdot"],self.pos_map["knee_joint_left"]] = self.piecewice_linear_spring_paras["swing"]["knee_spring"]["stiffness"]
-                self.K[self.vel_map["ankle_spring_joint_leftdot"],self.pos_map["ankle_spring_joint_left"]] = self.piecewice_linear_spring_paras["swing"]["ankle_spring"]["stiffness"]
-                self.spring_offset[self.pos_map["knee_joint_left"]] = self.piecewice_linear_spring_paras["swing"]["knee_spring"]["offset"]
-                self.spring_offset[self.pos_map["ankle_spring_joint_left"]] = self.piecewice_linear_spring_paras["swing"]["ankle_spring"]["offset"]
+                self.K[self.vel_map["knee_joint_leftdot"],self.pos_map["knee_joint_left"]] = self.piecewice_linear_spring_params["swing"]["knee_spring"]["stiffness"]
+                self.K[self.vel_map["ankle_spring_joint_leftdot"],self.pos_map["ankle_spring_joint_left"]] = self.piecewice_linear_spring_params["swing"]["ankle_spring"]["stiffness"]
+                self.spring_offset[self.pos_map["knee_joint_left"]] = self.piecewice_linear_spring_params["swing"]["knee_spring"]["offset"]
+                self.spring_offset[self.pos_map["ankle_spring_joint_left"]] = self.piecewice_linear_spring_params["swing"]["ankle_spring"]["offset"]
                 
             # right leg in the gorund
             if is_contact[1] == 1:
-                self.K[self.vel_map["knee_joint_rightdot"],self.pos_map["knee_joint_right"]] = self.piecewice_linear_spring_paras["stance"]["knee_spring"]["stiffness"]
-                self.K[self.vel_map["ankle_spring_joint_rightdot"],self.pos_map["ankle_spring_joint_right"]] = self.piecewice_linear_spring_paras["stance"]["ankle_spring"]["stiffness"]
-                self.spring_offset[self.pos_map["knee_joint_right"]] = self.piecewice_linear_spring_paras["stance"]["knee_spring"]["offset"]
-                self.spring_offset[self.pos_map["ankle_spring_joint_right"]] = self.piecewice_linear_spring_paras["stance"]["ankle_spring"]["offset"]
+                self.K[self.vel_map["knee_joint_rightdot"],self.pos_map["knee_joint_right"]] = self.piecewice_linear_spring_params["stance"]["knee_spring"]["stiffness"]
+                self.K[self.vel_map["ankle_spring_joint_rightdot"],self.pos_map["ankle_spring_joint_right"]] = self.piecewice_linear_spring_params["stance"]["ankle_spring"]["stiffness"]
+                self.spring_offset[self.pos_map["knee_joint_right"]] = self.piecewice_linear_spring_params["stance"]["knee_spring"]["offset"]
+                self.spring_offset[self.pos_map["ankle_spring_joint_right"]] = self.piecewice_linear_spring_params["stance"]["ankle_spring"]["offset"]
             # right leg in the air
             else:
-                self.K[self.vel_map["knee_joint_rightdot"],self.pos_map["knee_joint_right"]] = self.piecewice_linear_spring_paras["swing"]["knee_spring"]["stiffness"]
-                self.K[self.vel_map["ankle_spring_joint_rightdot"],self.pos_map["ankle_spring_joint_right"]] = self.piecewice_linear_spring_paras["swing"]["ankle_spring"]["stiffness"]
-                self.spring_offset[self.pos_map["knee_joint_right"]] = self.piecewice_linear_spring_paras["swing"]["knee_spring"]["offset"]
-                self.spring_offset[self.pos_map["ankle_spring_joint_right"]] = self.piecewice_linear_spring_paras["swing"]["ankle_spring"]["offset"]
+                self.K[self.vel_map["knee_joint_rightdot"],self.pos_map["knee_joint_right"]] = self.piecewice_linear_spring_params["swing"]["knee_spring"]["stiffness"]
+                self.K[self.vel_map["ankle_spring_joint_rightdot"],self.pos_map["ankle_spring_joint_right"]] = self.piecewice_linear_spring_params["swing"]["ankle_spring"]["stiffness"]
+                self.spring_offset[self.pos_map["knee_joint_right"]] = self.piecewice_linear_spring_params["swing"]["knee_spring"]["offset"]
+                self.spring_offset[self.pos_map["ankle_spring_joint_right"]] = self.piecewice_linear_spring_params["swing"]["ankle_spring"]["offset"]
             
         damping_force = -self.C @ v
         spring_force = -self.K @ (q - self.spring_offset)

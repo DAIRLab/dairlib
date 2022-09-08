@@ -31,6 +31,8 @@ struct OSCRunningGains : OSCGains {
   double rest_length_offset;
   double stance_duration;
   double flight_duration;
+  double stance_variance;
+  double flight_variance;
 
   double footstep_lateral_offset;
   double footstep_sagital_offset;
@@ -90,6 +92,8 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(rest_length_offset));
     a->Visit(DRAKE_NVP(stance_duration));
     a->Visit(DRAKE_NVP(flight_duration));
+    a->Visit(DRAKE_NVP(stance_variance));
+    a->Visit(DRAKE_NVP(flight_variance));
     a->Visit(DRAKE_NVP(footstep_lateral_offset));
     a->Visit(DRAKE_NVP(footstep_sagital_offset));
     a->Visit(DRAKE_NVP(mid_foot_height));

@@ -30,6 +30,10 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
     stance_duration_ = stance_duration;
     flight_duration_ = flight_duration;
   }
+  void SetMaxStepTimingVariance(double stance_variance, double flight_variance) {
+    stance_variance_ = stance_variance;
+    flight_variance_ = flight_variance;
+  }
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
@@ -107,6 +111,8 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   double rest_length_;
   double stance_duration_;
   double flight_duration_;
+  double stance_variance_;
+  double flight_variance_;
 };
 
 }  // namespace dairlib

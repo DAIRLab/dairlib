@@ -168,6 +168,8 @@ int DoMain(int argc, char* argv[]) {
   contact_scheduler->SetSLIPParams(osc_gains.rest_length);
   contact_scheduler->SetNominalStepTimings(osc_gains.stance_duration,
                                            osc_gains.flight_duration);
+  contact_scheduler->SetMaxStepTimingVariance(osc_gains.stance_variance,
+                                              osc_gains.flight_variance);
 
   /**** Initialize all the leaf systems ****/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");

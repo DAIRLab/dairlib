@@ -121,8 +121,6 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
   double transition_time = upcoming_transitions.at(3).first;
   RUNNING_FSM_STATE transition_state = upcoming_transitions.at(3).second;
   if (current_time > transition_time) {
-    //    std::cout << "transitioning to: " << transition_state << std::endl;
-    //    std::cout << "at: " << transition_time << std::endl;
     active_state = transition_state;
   }
   VectorXd q = robot_output->GetPositions();
@@ -182,11 +180,12 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
 
       // TODO(yangwill): calculate end of stance duration
       double stance_scale = (rest_length_) / (pelvis_z);
-      stance_scale = drake::math::saturate(stance_scale, 0.9, 1.2);
-      //      std::cout << "stance scale: " << stance_scale << std::endl;
+      stance_scale = drake::math::saturate(stance_scale, 1 - stance_variance_,
+                                           1 + stance_variance_);
       double next_transition_time =
           stored_transition_time + stance_scale * stance_duration_;
-//      double next_transition_time = stored_transition_time + stance_duration_;
+      //      double next_transition_time = stored_transition_time +
+      //      stance_duration_;
       state->get_mutable_discrete_state(nominal_state_durations_index_)[0] =
           next_transition_time - stored_transition_time;
       if (active_state == LEFT_STANCE) {
@@ -203,16 +202,17 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
                                 {transition_times[RIGHT_FLIGHT], RIGHT_FLIGHT}};
       }
     } else {
-      double time_to_touchdown = flight_duration_;
+      // set default to minimum touchdown time in case pelvis is below rest length
+      double time_to_touchdown = (1 - flight_variance_) * flight_duration_;
       if (pelvis_zdot * pelvis_zdot - 2 * g * (rest_length_ - pelvis_z) > 0) {
         time_to_touchdown =
             (pelvis_zdot + sqrt(pelvis_zdot * pelvis_zdot -
                                 2 * g * (rest_length_ - pelvis_z))) /
             g;
       }
-      //      double time_to_touchdown_saturated = ;
       double time_to_touchdown_saturated = drake::math::saturate(
-          time_to_touchdown, 0.75 * flight_duration_, 1.1 * flight_duration_);
+          time_to_touchdown, (1 - flight_variance_) * flight_duration_,
+          (1 + flight_variance_) * flight_duration_);
       double next_transition_time =
           stored_transition_time + time_to_touchdown_saturated;
       state->get_mutable_discrete_state(nominal_state_durations_index_)[1] =

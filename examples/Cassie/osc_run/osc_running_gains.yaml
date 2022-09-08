@@ -39,6 +39,9 @@ rest_length: 0.85
 rest_length_offset: 0.025
 stance_duration: 0.3
 flight_duration: 0.09
+# max percent variance
+stance_variance: 0.1
+flight_variance: 0.3
 
 w_swing_toe: 0.001
 swing_toe_kp: 1500

@@ -123,13 +123,18 @@ void AlipMINLP::ActivateInitialTimeConstraint(double t) {
   DRAKE_DEMAND(built_ && initial_time_c_);
   initial_time_c_->UpdateCoefficients(MatrixXd::Ones(1,1), t * VectorXd::Ones(1));
   ts_bounds_c_.front().evaluator()->UpdateLowerBound(VectorXd::Zero(1));
+  ts_bounds_c_.front().evaluator()->UpdateUpperBound(VectorXd::Ones(1));
 }
 
-void AlipMINLP::DeactivateInitialTimeConstraint() {
+void AlipMINLP::UpdateInitialTimeConstraint(double tmax) {
   if (initial_time_c_) {
     initial_time_c_->UpdateCoefficients(MatrixXd::Zero(1,1), VectorXd::Zero(1));
   }
   ts_bounds_c_.front().evaluator()->UpdateLowerBound(tmin_ * VectorXd::Ones(1));
+  ts_bounds_c_.front().evaluator()->UpdateUpperBound(tmax * VectorXd::Ones(1));
+  // Note - we use tmax instead of tmax_ because we want to be able to let
+  // the max initial step time decrease as the current stance time increases -
+  // keeping the maximum step duration constant
 }
 
 void AlipMINLP::Build() {
@@ -137,8 +142,9 @@ void AlipMINLP::Build() {
   for (int i = 0; i < nmodes_; i++) {
     tt_.push_back(prog_->NewContinuousVariables(1, "t"));
   }
-  MakeDynamicsConstraints();
   MakeResetConstraints();
+  MakeDynamicsConstraints();
+  MakeInputBoundConstaints();
   MakeTimingBoundsConstraint();
   MakeNextFootstepReachabilityConstraint();
   MakeInitialStateConstraint();
@@ -242,8 +248,20 @@ void AlipMINLP::MakeInitialStateConstraint() {
       Matrix4d::Identity(), Vector4d::Zero(), xx_.at(0).at(0)).evaluator();
 }
 
+void AlipMINLP::MakeInputBoundConstaints() {
+  DRAKE_DEMAND(umax_ >= 0 && !uu_.empty());
+  for (const auto& vec : uu_) {
+    for (const auto& u : vec) {
+      input_bounds_c_.push_back(
+          prog_->AddBoundingBoxConstraint(-umax_, umax_, u)
+      );
+    }
+  }
+}
+
 void AlipMINLP::MakeTimingBoundsConstraint() {
   DRAKE_DEMAND(tmin_ > 0);
+  DRAKE_DEMAND(tmax_ > tmin_);
   for (int i = 0; i < nmodes_; i++) {
     ts_bounds_c_.push_back(
       prog_->AddBoundingBoxConstraint(

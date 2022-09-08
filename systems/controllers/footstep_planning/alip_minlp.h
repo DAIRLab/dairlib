@@ -73,6 +73,8 @@ class AlipMINLP {
   void AddMode(int nk);
   void AddInputCost(double R);
   void SetMinimumStanceTime(double tmin) {tmin_ = tmin;};
+  void SetMaximumStanceTime(double tmax) {tmax_ = tmax;};
+  void SetInputLimit(double umax) {umax_ = umax;};
   void AddTrackingCost(const std::vector<std::vector<Eigen::Vector4d>> &xd,
   const Eigen::Matrix4d &Q);
   void AddFootholds(const std::vector<geometry::ConvexFoothold>& footholds) {
@@ -90,7 +92,7 @@ class AlipMINLP {
 
   // per solve updates
   void UpdateInitialGuess();
-  void DeactivateInitialTimeConstraint();
+  void UpdateInitialTimeConstraint(double tmax);
   void ActivateInitialTimeConstraint(double t);
   void UpdateNextFootstepReachabilityConstraint(
       const geometry::ConvexFoothold& fixed_workspace,
@@ -137,8 +139,9 @@ class AlipMINLP {
   int nu_ = 1;
   int nmodes_ = 0;
   double R_ = 0;
+  double umax_ = -1;
   double tmin_ = 0;   // gainify
-  double tmax_ = 0.5; // gainify
+  double tmax_ = 0;
   double vmax_ = 5.0; // avg 2 m/s
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd Qf_;
@@ -154,14 +157,15 @@ class AlipMINLP {
   void MakeResetConstraints();
   void MakeDynamicsConstraints();
   void ClearFootholdConstraints();
+  void MakeInputBoundConstaints();
   void MakeInitialTimeConstraint();
   void MakeTimingBoundsConstraint();
   void MakeInitialStateConstraint();
   void MakeInitialFootstepConstraint();
   void MakeNextFootstepReachabilityConstraint();
   std::vector<std::vector<int>> GetPossibleModeSequences();
-  void MakeIndividualFootholdConstraint(int idx_mode, int idx_foothold);
   void MakeFootstepConstraints(std::vector<int> foothold_idxs);
+  void MakeIndividualFootholdConstraint(int idx_mode, int idx_foothold);
 
   // per solve updates and solve steps
   void SolveOCProblemAsIs();
@@ -177,6 +181,7 @@ class AlipMINLP {
 
   // constraints
   std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_{};
+  std::vector<Binding<BoundingBoxConstraint>> input_bounds_c_{};
   std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_time_c_ = nullptr;

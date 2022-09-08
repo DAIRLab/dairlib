@@ -124,7 +124,7 @@ DEFINE_string(gains_filename,
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 
-DEFINE_bool(is_two_phase, true,
+DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
 
@@ -182,9 +182,18 @@ int DoMain(int argc, char* argv[]) {
   double double_support_duration = gains.ds_time;
 
   vector<int> fsm_states;
+  vector<int> left_right_fsm_states;
+  vector<int> post_left_right_fsm_states;
   vector<double> state_durations;
+  vector<double> single_stance_durations =
+      {left_support_duration, right_support_duration};
+
+  left_right_fsm_states = {left_stance_state, right_stance_state};
+  post_left_right_fsm_states = {post_right_double_support_state,
+                                post_left_double_support_state};
+
   if (FLAGS_is_two_phase) {
-    fsm_states = {left_stance_state, right_stance_state};
+    fsm_states = left_right_fsm_states;
     state_durations = {left_support_duration, right_support_duration};
   } else {
     fsm_states = {left_stance_state, post_left_double_support_state,
@@ -213,8 +222,10 @@ int DoMain(int argc, char* argv[]) {
   /* --- MPC setup --- */
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
   auto gains_mpc = AlipMINLPGains{
-      0.25,  // t_commit
-      0.22,  // t_min
+      0.2,  // t_commit
+      0.175,  // t_min
+      0.5,    // t_max
+      0.9 * plant_w_spr.CalcTotalMass(*context_w_spr) * 9.81 * (right_toe.first - right_heel.first).norm() / 2.0,
       gains.lipm_height, // h_des
       gains.footstep_offset,  // stance_width
       3,    // nmodes
@@ -224,8 +235,11 @@ int DoMain(int argc, char* argv[]) {
   };
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(
-          plant_w_spr, context_w_spr.get(), fsm_states, state_durations,
+          plant_w_spr, context_w_spr.get(), left_right_fsm_states,
+          post_left_right_fsm_states, single_stance_durations,
+          double_support_duration,
           left_right_toe, gains_mpc);
+
   ConvexFoothold big_square;
   big_square.SetContactPlane(Vector3d::UnitZ(), Vector3d::Zero()); // Flat Ground
   big_square.AddFace(Vector3d::UnitX(), 100 * Vector3d::UnitX());

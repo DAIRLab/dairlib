@@ -16,6 +16,8 @@ using alip_utils::PointOnFramed;
 struct AlipMINLPGains {
   double t_commit;
   double t_min;
+  double t_max;
+  double u_max;
   double hdes;
   double stance_width;
   int nmodes;
@@ -30,7 +32,9 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* plant_context,
       std::vector<int> left_right_stance_fsm_states,
+      std::vector<int> post_left_right_fsm_states,
       std::vector<double> left_right_stance_durations,
+      double double_stance_duration,
       std::vector<PointOnFramed> left_right_foot,
       const AlipMINLPGains& gains);
 
@@ -71,6 +75,12 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   drake::systems::EventStatus UnrestrictedUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
+
+  void CopyFsmOutput(const drake::systems::Context<double>& context,
+                     drake::systems::BasicVector<double>* fsm) const;
+
+  void CopyPrevImpactTimeOutput(const drake::systems::Context<double>& context,
+                                drake::systems::BasicVector<double>* t) const;
 
   void CopyNextFootstepOutput(const drake::systems::Context<double>& context,
                               drake::systems::BasicVector<double>* p_W) const;
@@ -121,6 +131,7 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
     return curr_fsm(next);
   }
   std::vector<int> left_right_stance_fsm_states_;
+  std::vector<int> post_left_right_fsm_states_;
   std::map<int, double> stance_duration_map_;
   double double_stance_duration_;
 

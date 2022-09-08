@@ -66,6 +66,8 @@ def main():
     trajopt.AddTrackingCost(xd, 1*np.eye(4))
     trajopt.UpdateNominalStanceTime(0.35, 0.35)
     trajopt.SetMinimumStanceTime(0.1)
+    trajopt.SetMaximumStanceTime(0.35)
+    trajopt.SetInputLimit(9.81*30*0.1 / 2)
     trajopt.AddInputCost(0.1)
     trajopt.Build()
     # trajopt.ActivateInitialTimeConstraint(0.35)

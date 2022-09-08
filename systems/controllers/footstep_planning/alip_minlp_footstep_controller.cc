@@ -25,15 +25,18 @@ using drake::systems::Context;
 using drake::systems::State;
 
 AlipMINLPFootstepController::AlipMINLPFootstepController(
-    const drake::multibody::MultibodyPlant<double> &plant,
-    drake::systems::Context<double> *plant_context,
+    const MultibodyPlant<double>& plant, Context<double>* plant_context,
     std::vector<int> left_right_stance_fsm_states,
+    std::vector<int> post_left_right_fsm_states,
     std::vector<double> left_right_stance_durations,
+    double double_stance_duration,
     std::vector<PointOnFramed> left_right_foot,
     const AlipMINLPGains& gains) :
     plant_(plant),
     context_(plant_context),
     left_right_stance_fsm_states_(left_right_stance_fsm_states),
+    post_left_right_fsm_states_(post_left_right_fsm_states),
+    double_stance_duration_(double_stance_duration),
     gains_(gains) {
 
   // just alternating single stance phases for now.
@@ -71,7 +74,9 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt.AddInputCost(gains_.R(0,0));
   trajopt.UpdateNominalStanceTime(left_right_stance_durations.at(0),
                                   left_right_stance_durations.at(1));
-  trajopt.SetMinimumStanceTime(gains_.t_min);
+  trajopt.SetMinimumStanceTime(gains_.t_min + double_stance_duration_);
+  trajopt.SetMaximumStanceTime(gains_.t_max);
+  trajopt.SetInputLimit(gains_.u_max);
   trajopt.Build();
   trajopt.CalcOptimalFootstepPlan(Vector4d::Zero(), Vector3d::Zero());
   alip_minlp_index_ = DeclareAbstractState(*AbstractValue::Make<AlipMINLP>(trajopt));
@@ -90,13 +95,15 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       .get_index();
 
   // output ports
-  fsm_output_port_ = DeclareStateOutputPort("fsm", fsm_state_idx_).get_index();
+
   next_impact_time_output_port_ = DeclareStateOutputPort(
       "t_next", next_impact_time_state_idx_)
       .get_index();
-  prev_impact_time_output_port_ = DeclareStateOutputPort(
-      "t_prev", prev_impact_time_state_idx_)
-      .get_index();
+
+  prev_impact_time_output_port_ = DeclareVectorOutputPort(
+      "t_prev", 1, &AlipMINLPFootstepController::CopyPrevImpactTimeOutput).get_index();
+  fsm_output_port_ = DeclareVectorOutputPort(
+      "fsm", 1, &AlipMINLPFootstepController::CopyFsmOutput).get_index();
   footstep_target_output_port_ = DeclareVectorOutputPort(
       "p_SW", 3, &AlipMINLPFootstepController::CopyNextFootstepOutput)
       .get_index();
@@ -149,18 +156,25 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   int fsm_idx = static_cast<int>(
       state->get_discrete_state(fsm_state_idx_).get_value()(0));
 
+  bool committed = false;
   if (t >= t_next_impact) {
     warmstart = false;
     std::cout << "updating fsm" << std::endl;
-    trajopt.DeactivateInitialTimeConstraint();
     fsm_idx ++;
     fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
     state->get_mutable_discrete_state(fsm_state_idx_).set_value(fsm_idx*VectorXd::Ones(1));
     t_prev_impact = t;
     t_next_impact = t + stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx));
   } else if ((t_next_impact - t) < gains_.t_commit) {
-    trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
+    committed = true;
   }
+
+  if (committed) {
+    trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
+  } else {
+    trajopt.UpdateInitialTimeConstraint(gains_.t_max - (t - t_prev_impact));
+  }
+
   int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
   const int fsm_state = curr_fsm(fsm_idx);
   Vector3d CoM_w, p_w, L;
@@ -207,6 +221,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   Vector3d robot_center = CoM_w;
   robot_center(2) = 0;
   fixed_workspace.AddFace(-stance*Vector3d::UnitY(), robot_center);
+  fixed_workspace.AddFace(stance * Vector3d::UnitY(),
+                          robot_center + stance * Vector3d::UnitY());
+  fixed_workspace.AddFace(Vector3d::UnitX(), robot_center + Vector3d::UnitX());
+  fixed_workspace.AddFace(-Vector3d::UnitX(), robot_center - Vector3d::UnitX());
 
   inflating_workspace.AddFace(Vector3d::UnitX(), pnext_w + Vector3d::UnitX());
   inflating_workspace.AddFace(Vector3d::UnitY(), pnext_w + Vector3d::UnitY());
@@ -349,5 +367,35 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
   }
   mpc_debug->tt = CopyVectorXdToStdVector(tt_sol);
 }
+
+void AlipMINLPFootstepController::CopyFsmOutput(
+    const Context<double> &context, BasicVector<double> *fsm) const {
+  double t_prev =
+      context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      this->EvalVectorInput(context, state_input_port_));
+  int fsm_idx = static_cast<int>(
+      context.get_discrete_state(fsm_state_idx_).get_value()(0));
+
+  if(robot_output->get_timestamp() - t_prev < double_stance_duration_) {
+    fsm->set_value(VectorXd::Ones(1) * post_left_right_fsm_states_.at(fsm_idx));
+  } else {
+    fsm->set_value(VectorXd::Ones(1) * left_right_stance_fsm_states_.at(fsm_idx));
+  }
+}
+
+void AlipMINLPFootstepController::CopyPrevImpactTimeOutput(
+    const Context<double> &context, BasicVector<double> *t) const {
+  double t_prev =
+      context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      this->EvalVectorInput(context, state_input_port_));
+  if (robot_output->get_timestamp() - t_prev < double_stance_duration_) {
+    t->set_value(VectorXd::Ones(1) * t_prev);
+  } else {
+    t->set_value(VectorXd::Ones(1) * (t_prev + double_stance_duration_));
+  }
+}
+
 
 }

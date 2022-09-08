@@ -27,8 +27,8 @@ vel_max_lateral: 0  # 0.3
 target_pos_offset: 0  # -0.16
 
 # Finite state machine
-ss_time: 0.3
-ds_time: 0.1
+ss_time: 0.4
+ds_time: 0.05
 
 # Distance of contact point from foot rear (0 is heel, 1 is toe)
 contact_point_pos: 0.5
@@ -39,10 +39,10 @@ footstep_offset: 0.18
 center_line_offset: 0.04
 mid_foot_height: 0.14
 final_foot_height: -0.05
-final_foot_velocity_z: -1
+final_foot_velocity_z: -0.1
 
 # LIPM trajectory
-lipm_height: 0.75
+lipm_height: 0.8
 
 # OSC gains
 mu: 0.8

@@ -95,11 +95,19 @@ int DoMain(int argc, char* argv[]) {
   // Create finite state machine
   int left_stance_state = 0;
   int right_stance_state = 1;
-  double single_support_duration = 0.35;
-  std::vector<int> fsm_states;
+  int post_left_double_support_state = 3;
+  int post_right_double_support_state = 4;
+  double single_support_duration = 0.4;
+  double double_support_duration = 0.05;
+
+
+  std::vector<int> left_right_fsm_states;
+  std::vector<int> post_left_right_fsm_states;
   std::vector<double> state_durations;
 
-  fsm_states = {left_stance_state, right_stance_state};
+  left_right_fsm_states = {left_stance_state, right_stance_state};
+  post_left_right_fsm_states = {post_right_double_support_state,
+                                post_left_double_support_state};
   state_durations = {single_support_duration, single_support_duration};
 
   Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
@@ -110,6 +118,9 @@ int DoMain(int argc, char* argv[]) {
   auto gains = AlipMINLPGains{
       0.25,  // t_commit
       0.2, // t_min
+      0.5, // t_max
+      // u_max
+      plant_w_spr.CalcTotalMass(*context_w_spr) * 9.81 * (right_toe.first - right_heel.first).norm() / 2.0,
       0.85, // h_des
       0.2,  // stance_width
       3,    // nmodes
@@ -119,7 +130,8 @@ int DoMain(int argc, char* argv[]) {
   };
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(
-          plant_w_spr, context_w_spr.get(), fsm_states, state_durations,
+          plant_w_spr, context_w_spr.get(), left_right_fsm_states,
+          post_left_right_fsm_states, state_durations, double_support_duration,
           left_right_toe, gains);
 
   ConvexFoothold big_square;

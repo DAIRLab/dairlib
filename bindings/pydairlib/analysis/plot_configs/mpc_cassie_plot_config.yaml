@@ -39,12 +39,12 @@ foot_xyz_to_plot: { 'right': [ 0, 1, 2 ], 'left': [ 0, 1, 2 ] }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: true
+plot_qp_costs: false
 plot_tracking_costs: true
-plot_qp_solve_time: true
+plot_qp_solve_time: false
 tracking_datas_to_plot:
   alip_com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
   swing_ft_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
-  pelvis_heading_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
-  pelvis_balance_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
-  swing_hip_yaw_traj: {'dims': [0], 'derivs': ['accel']}
+#  pelvis_heading_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+#  pelvis_balance_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+#  swing_hip_yaw_traj: {'dims': [0], 'derivs': ['accel']}

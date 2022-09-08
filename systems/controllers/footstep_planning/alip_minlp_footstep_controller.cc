@@ -135,7 +135,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   // On the first iteration, we don't want to switch immediately,
   // and we don't want to warmstart
-  bool warmstart = false;
+  bool warmstart = true;
   if (t_next_impact == 0.0) {
     std::cout << "first iteration!" << std::endl;
     t_next_impact = t + stance_duration_map_.at(0);

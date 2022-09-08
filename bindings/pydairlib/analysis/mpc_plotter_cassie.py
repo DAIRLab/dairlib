@@ -28,13 +28,15 @@ def plot_com_traj_solution(xx, pp, fsm, x0, p0):
             ) for n in range(nm)
         ]
     )
+    # Plot the CoM traj
     plt.plot(-xy_traj[1], xy_traj[0], color=traj_colors[fsm], linewidth=2)
-    for i in range(nm):
-        for k in range(nk):
-            xy = xx[i][k].ravel()[:2] + pp[i][:2]
-            line_x = [-xy[1], -pp[i][1]]
-            line_y = [xy[0], pp[i][0]]
-            plt.plot(line_x, line_y, color='black', linewidth=1)
+    # Plot lines from the footstep to the CoM
+    # for i in range(nm):
+    #     for k in range(nk):
+    #         xy = xx[i][k].ravel()[:2] + pp[i][:2]
+    #         line_x = [-xy[1], -pp[i][1]]
+    #         line_y = [xy[0], pp[i][0]]
+    #         plt.plot(line_x, line_y, color='black', linewidth=1)
 
     x = x0[:3] + p0
     plt.plot(-x[1], x[0], color=traj_colors[fsm], marker='X', markersize=20)
@@ -74,7 +76,7 @@ def main():
     idx = -1
     t = mpc_debug.t_mpc[idx]
     plt.figure()
-    i = slice(0, len(mpc_debug.t_mpc), int(len(mpc_debug.t_mpc) / 10))
+    i = slice(0, len(mpc_debug.t_mpc), int(len(mpc_debug.t_mpc) / 50))
     for t in mpc_debug.t_mpc[i]:
         plot_com_traj_solution(
             mpc_debug.xxs[t],

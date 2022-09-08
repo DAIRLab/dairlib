@@ -214,9 +214,9 @@ int DoMain(int argc, char* argv[]) {
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
   auto gains_mpc = AlipMINLPGains{
       0.25,  // t_commit
-      0.2,  // t_min
-      0.85, // h_des
-      0.2,  // stance_width
+      0.22,  // t_min
+      gains.lipm_height, // h_des
+      gains.footstep_offset,  // stance_width
       3,    // nmodes
       10,   // knots per mode
       5 * Matrix4d::Identity(),   // Q
@@ -493,12 +493,12 @@ int DoMain(int argc, char* argv[]) {
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  swing_foot_data.SetTimeVaryingGains(
+      swing_ft_gain_multiplier_gain_multiplier);
+  swing_foot_data.SetFeedforwardAccelMultiplier(
+      swing_ft_accel_gain_multiplier_gain_multiplier);
 
   auto vel_map = MakeNameToVelocitiesMap<double>(plant_w_spr);
-  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_right"], left_stance_state);
-  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_left"], right_stance_state);
 
   ComTrackingData com_data("com_data", gains.K_p_swing_foot,
                            gains.K_d_swing_foot, gains.W_swing_foot,

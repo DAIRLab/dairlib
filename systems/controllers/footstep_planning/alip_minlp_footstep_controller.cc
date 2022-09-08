@@ -228,47 +228,54 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
       context.get_abstract_state<AlipMINLP>(alip_minlp_index_);
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
-  double t0 = robot_output->get_timestamp();
-
-  const auto& xx = trajopt.GetStateSolution();
-  const auto& pp = trajopt.GetFootstepSolution();
-  const auto& tt = trajopt.GetTimingSolution();
-
   double t_prev_switch =
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
   double t_next_switch =
       context.get_discrete_state(next_impact_time_state_idx_).get_value()(0);
 
+  double t0 = robot_output->get_timestamp();
+  const auto& xx = trajopt.GetStateSolution();
+  const auto& pp = trajopt.GetFootstepSolution();
+  const auto& tt = trajopt.GetTimingSolution();
+
   LcmTrajectory::Trajectory com_traj;
 
   com_traj.traj_name = "com_traj";
-  for (int i = 0; i < 3; i++) {
-    com_traj.datatypes.emplace_back("double");
-  }
+  com_traj.datatypes = vector<std::string>(3, "double");
 
   int nk = gains_.knots_per_mode;
   int nm = gains_.nmodes;
-  int n = (nk - 1) * nm + 1;
-  double knot_frac = 1.0 / (nk - 1);
+  int N = (nk - 1) * nm + 1;
+  double s = 1.0 / (nk - 1);
 
-  MatrixXd com_knots = MatrixXd::Zero(3, n);
-  VectorXd t = VectorXd::Zero(n);
+  MatrixXd com_knots = MatrixXd::Zero(3, N);
+  VectorXd t = VectorXd::Zero(N);
 
   // TODO: Make this readable
-  for (int i = 0; i < gains_.nmodes; i++) {
-    for (int k = 0; k < gains_.knots_per_mode - 1; k++) {
-      int idx = i * (nk-1) + k;
-      const Vector3d& pn = (i == gains_.nmodes - 1) ? pp.at(i) : pp.at(i + 1);
-      t(idx) = t0 + tt(i) * k * knot_frac;
-      com_knots.col(idx).head(2) = pp.at(i).head(2) + xx.at(i).at(k).head(2);
-      double lerp = (t(idx) - t_prev_switch) / (t_next_switch - t_prev_switch);
-      com_knots(2, idx) = gains_.hdes + lerp * (pn - pp.at(i))(2);
+  for (int n = 0; n < nm; n++) {
+    const Vector3d& pcurr = pp.at(n);
+    const Vector3d& pnext = pp.at(std::min(n+1, nm-1));
+    for (int k = 0; k < nk - 1; k++) {
+      int idx = n * (nk-1) + k;
+      double tk = t0 + tt(n) * k * s;
+      double lerp = (tk - t_prev_switch) / (t_next_switch - t_prev_switch);
+      t(idx) = tk;
+      com_knots.col(idx).head(2) = pcurr.head(2) + xx.at(n).at(k).head(2);
+      com_knots(2, idx) = gains_.hdes + lerp * (pnext - pcurr)(2);
     }
-    t0 += tt(i);
+    t0 += tt(n);
   }
-  t(n-1) = 2 * t(n-2) - t(n-3);
+  t(N-1) = 2 * t(N-2) - t(N-3);
   com_knots.topRightCorner(2, 1) = xx.back().back().head(2) + pp.back().head(2);
   com_knots.bottomRightCorner(1, 1)(0,0) = gains_.hdes;
+
+  // If we've basically already finished this mode,
+  // let's move to the next so we don't get weird trajectory stuff
+  if (t(nk-2) - t(0) < .01) {
+    com_knots = com_knots.rightCols((nm-1) * (nk-1));
+    t = t.tail((nm-1)*(nk-1) + 1);
+    t(0) = robot_output->get_timestamp();
+  }
 
   com_traj.datapoints = com_knots;
   com_traj.time_vector = t;

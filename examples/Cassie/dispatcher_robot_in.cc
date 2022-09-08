@@ -43,7 +43,7 @@ DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
 DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
-DEFINE_double(max_joint_velocity, 20,
+DEFINE_double(max_joint_velocity, 50,
               "Maximum joint velocity before error is triggered");
 DEFINE_double(input_limit, 300,
               "Maximum torque limit. Negative values are inf.");

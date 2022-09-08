@@ -222,6 +222,13 @@ void SwingFootTargetTrajGen::CalcTrajs(
         liftoff_time, -std::numeric_limits<double>::infinity(),
         touchdown_time - 0.001);
 
+    // SOME DEBUGGING
+//    const OutputVector<double>* robot_output =
+//        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+//    std::cout << "t, ts, te: " << robot_output->get_timestamp() << ", "
+//                               << liftoff_time << ", "
+//                               << touchdown_time << std::endl;
+
     // Swing foot position at touchdown
     Vector3d footstep_target =
         this->EvalVectorInput(context, footstep_target_port_)->get_value();

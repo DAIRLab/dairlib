@@ -117,7 +117,8 @@ DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie "
               "out structure from.");
 
-DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains_alip.yaml",
+DEFINE_string(gains_filename,
+              "examples/perceptive_locomotion/gains/osc_gains.yaml",
               "Filepath containing gains");
 
 DEFINE_bool(publish_osc_data, true,
@@ -293,7 +294,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create translate com_traj from lcm
   auto com_traj_receiver = builder.AddSystem<LcmTrajectoryReceiver>(
-      "com_traj", TrajectoryType::kFOH);
+      "com_traj", TrajectoryType::kCubicShapePreserving);
   builder.Connect(foot_placement_controller->get_output_port_com_traj(),
                   com_traj_receiver->get_input_port());
 

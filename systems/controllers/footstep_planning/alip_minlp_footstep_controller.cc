@@ -234,6 +234,11 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   const auto& pp = trajopt.GetFootstepSolution();
   const auto& tt = trajopt.GetTimingSolution();
 
+  double t_prev_switch =
+      context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
+  double t_next_switch =
+      context.get_discrete_state(next_impact_time_state_idx_).get_value()(0);
+
   LcmTrajectory::Trajectory com_traj;
 
   com_traj.traj_name = "com_traj";
@@ -256,7 +261,8 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
       const Vector3d& pn = (i == gains_.nmodes - 1) ? pp.at(i) : pp.at(i + 1);
       t(idx) = t0 + tt(i) * k * knot_frac;
       com_knots.col(idx).head(2) = pp.at(i).head(2) + xx.at(i).at(k).head(2);
-      com_knots(2, idx) = gains_.hdes + k * knot_frac * (pn - pp.at(i))(2);
+      double lerp = (t(idx) - t_prev_switch) / (t_next_switch - t_prev_switch);
+      com_knots(2, idx) = gains_.hdes + lerp * (pn - pp.at(i))(2);
     }
     t0 += tt(i);
   }
@@ -266,8 +272,6 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
 
   com_traj.datapoints = com_knots;
   com_traj.time_vector = t;
-
-  std::cout << com_traj.time_vector.transpose() << std::endl;
 
   LcmTrajectory lcm_traj({com_traj}, {"com_traj"}, "com_traj", "com_traj");
   *traj_msg = lcm_traj.GenerateLcmObject();

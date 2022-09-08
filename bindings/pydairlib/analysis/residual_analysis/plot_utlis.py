@@ -28,7 +28,7 @@ def plot_spring_force_vs_time(processed_data, start_time, end_time, directory=No
     x = np.array(x)
     ys = np.array(ys)
 
-    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "force (N*m)", "spring_force_vs_t", directory=directory, log_name=log_name)
+    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "force (N*m)", "spring_force_vs_t", directory=directory, log_name=log_name, is_show=is_show)
 
 def plot_spring_force_vs_q(processed_data, start_time, end_time, is_sorted=False, directory=None, log_name=None, is_show=False):
     cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
@@ -64,7 +64,7 @@ def plot_joint_residuals_vs_time(processed_data, start_time, end_time, joint_nam
     x = np.array(x)
     ys = np.array(ys)
     legends = ["ground truth", "estimated"]
-    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "acc(rad/s^2)", "vdot_of_{}".format(joint_name), directory=directory, log_name=log_name)
+    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "acc(rad/s^2)", "vdot_of_{}".format(joint_name), directory=directory, log_name=log_name, is_show=is_show)
 
 def plot_joint_effort_vs_time(processed_data, start_time, end_time, joint_names, directory=None, log_name=None, is_show=False):
     cut_data = get_data_of_selected_time(processed_data, start_time, end_time)
@@ -74,7 +74,7 @@ def plot_joint_effort_vs_time(processed_data, start_time, end_time, joint_names,
         ys.append([x["u"][joint_name] for x in cut_data])
     x = np.array(x)
     ys = np.array(ys)
-    plot_given_keys_vs_time(cut_data, x, ys, joint_names, "t(s)", "u(N*m)", "joint_efforts_vs_t", directory=directory, log_name=log_name, colors=['r', 'b', 'g', 'y', 'k', 'brown', 'pink', 'grey'])
+    plot_given_keys_vs_time(cut_data, x, ys, joint_names, "t(s)", "u(N*m)", "joint_efforts_vs_t", directory=directory, log_name=log_name, colors=['r', 'b', 'g', 'y', 'k', 'brown', 'pink', 'grey'], is_show=is_show)
 
 def construct_plot_datum_pair_for_gt_and_est_vs_time(t, gt, est, title, ylabel):
     """
@@ -165,7 +165,7 @@ def plot_joint_velocity_vs_time(processed_data, start_time, end_time, joint_name
     x = np.array(x)
     ys = np.array(ys)
     legends = ["v"]
-    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "v(rad/s)", "velocity_of_{}".format(joint_name))
+    plot_given_keys_vs_time(cut_data, x, ys, legends, "t(s)", "v(rad/s)", "velocity_of_{}".format(joint_name), is_show=is_show)
 
 def plot_given_keys_vs_time(cut_data, x, ys, legends, xlabel, ylabel, title, colors=None, directory=None, log_name=None, is_show=False):
 

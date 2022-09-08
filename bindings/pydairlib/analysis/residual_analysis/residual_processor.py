@@ -1,3 +1,4 @@
+from concurrent.futures import BrokenExecutor
 from pydrake.solvers import MathematicalProgram 
 from pydrake.solvers import Solve
 import matplotlib.pyplot as plt
@@ -171,7 +172,7 @@ class CassieResidualAnalyzer():
 
         return residual, v_dot_of_best_spring_model, best_spring_forces
 
-    def calc_spring_constant(self, q, best_spring_forces):
+    def calc_spring_constant(self, q, best_spring_forces, is_show_value=False):
         
         n = q.shape[0]
 
@@ -202,14 +203,19 @@ class CassieResidualAnalyzer():
         ankle_left_sol = np.linalg.inv(A_ankle_left.T @ A_ankle_left) @ A_ankle_left.T @ b_ankle_left
         ankle_right_sol = np.linalg.inv(A_ankle_right.T @ A_ankle_right) @ A_ankle_right.T @ b_ankle_right
 
-        print(f"{'Joint name':>15} {'K':>10} {'Offset':>10}")
+        K = -np.array([knee_left_sol[0], knee_right_sol[0], ankle_left_sol[0], ankle_right_sol[0]])
+        offset = -np.array([knee_left_sol[1]/knee_left_sol[0], knee_right_sol[1]/knee_right_sol[0], ankle_left_sol[1]/ankle_left_sol[0], ankle_right_sol[1]/ankle_right_sol[0]])
 
-        print(f"{'Knee left':<15} {knee_left_sol[0]:>10.2f} {knee_left_sol[1]:>10.2f}")
-        print(f"{'Knee right':<15} {knee_right_sol[0]:>10.2f} {knee_right_sol[1]:>10.2f}")
-        print(f"{'Ankle left':<15} {ankle_left_sol[0]:>10.2f} {ankle_left_sol[1]:>10.2f}")
-        print(f"{'Ankle left':<15} {ankle_right_sol[0]:>10.2f} {ankle_right_sol[1]:>10.2f}")
+        if is_show_value:
+            print(f"{'Joint name':>15} {'K':>10} {'Offset':>10}")
+            print(f"{'Knee left':<15} {K[0]:>10.2f} {offset[0]:>10.2f}")
+            print(f"{'Knee right':<15} {K[1]:>10.2f} {offset[1]:>10.2f}")
+            print(f"{'Ankle left':<15} {K[2]:>10.2f} {offset[2]:>10.2f}")
+            print(f"{'Ankle left':<15} {K[3]:>10.2f} {offset[3]:>10.2f}")
 
-    def show_hip_residuals_given_time_period(self, start_time, end_time, residual_name="v_dot_changed_stiffness_spring_model"):
+        return K, offset
+
+    def show_hip_residuals_given_time_period(self, start_time, end_time, residual_name="residual_for_best_spring_model"):
 
         threshholds = {"hip_roll_leftdot":100,
                         "hip_roll_rightdot":100,
@@ -284,7 +290,118 @@ class CassieResidualAnalyzer():
         plt.legend()
         plt.show()
 
-    def calc_residuals_info_at_given_period(self, start_time, end_time, joints_name, residual_name, is_show_freq_plot):
+    def calc_contact_mode_changed_time_points(self, is_contact, t, stable_threshold=0.02):
+
+        left_leg_leaving_time_points = []
+        left_leg_landing_time_points = []
+        right_leg_leaving_time_points = []
+        right_leg_landing_time_points = []
+
+        pre_time_point_left_mode = is_contact[0,0]
+        pre_time_point_right_mode = is_contact[0,1]
+
+        for i in range(1, is_contact.shape[0]):
+
+            if pre_time_point_left_mode != is_contact[i,0]:
+                is_stable = True
+                j = i
+                while j < t.shape[0]-1 and t[j] < t[i] + stable_threshold:
+                    j += 1
+                    if is_contact[j,0] != is_contact[i,0]:
+                        is_stable = False
+                        break
+                if is_stable:
+                    if pre_time_point_left_mode == 0:
+                        left_leg_landing_time_points.append(t[i])
+                    else:
+                        left_leg_leaving_time_points.append(t[i])
+                    pre_time_point_left_mode = is_contact[i,0]
+
+            if pre_time_point_right_mode != is_contact[i,1]:
+                is_stable = True
+                j = i
+                while j < t.shape[0]-1 and t[j] < t[i] + stable_threshold:
+                    j += 1
+                    if is_contact[j,1] != is_contact[i,1]:
+                        is_stable = False
+                        break
+                if is_stable:
+                    if pre_time_point_right_mode == 0:
+                        right_leg_landing_time_points.append(t[i])
+                    else:
+                        right_leg_leaving_time_points.append(t[i])
+                    pre_time_point_right_mode = is_contact[i,1]
+        
+        left_leg_leaving_time_points = np.array(left_leg_leaving_time_points)
+        left_leg_landing_time_points = np.array(left_leg_landing_time_points)
+        right_leg_leaving_time_points = np.array(right_leg_leaving_time_points)
+        right_leg_landing_time_points = np.array(right_leg_landing_time_points)
+
+        return left_leg_leaving_time_points, left_leg_landing_time_points, right_leg_leaving_time_points, right_leg_landing_time_points
+
+    def calc_contact_mode_maintained_time_periods(self, is_contact, t, stable_threshold=0.05):
+        
+        left_leg_on_the_air_time_periods = []
+        left_leg_on_the_ground_time_periods = []
+        right_leg_on_the_air_time_periods = []
+        right_leg_on_the_ground_time_periods = []
+
+        pre_left_leg_mode = is_contact[0,0]
+        pre_left_leg_mode_start_time = t[0]
+        pre_right_leg_mode = is_contact[0,1]
+        pre_right_leg_mode_start_time = t[0]
+
+        for i in range(1, is_contact.shape[0]):
+
+            if pre_left_leg_mode != is_contact[i,0]:
+                if pre_left_leg_mode == 0:
+                    left_leg_on_the_air_time_periods.append([pre_left_leg_mode_start_time, t[i-1]])
+                else:
+                    left_leg_on_the_ground_time_periods.append([pre_left_leg_mode_start_time, t[i-1]])
+                pre_left_leg_mode_start_time = t[i]
+                pre_left_leg_mode = is_contact[i,0]
+            
+            if pre_right_leg_mode != is_contact[i,1]:
+                if pre_right_leg_mode == 0:
+                    right_leg_on_the_air_time_periods.append([pre_right_leg_mode_start_time, t[i-1]])
+                else:
+                    right_leg_on_the_ground_time_periods.append([pre_right_leg_mode_start_time, t[i-1]])
+                pre_right_leg_mode_start_time = t[i]
+                pre_right_leg_mode = is_contact[i,1]
+
+        left_leg_on_the_air_time_periods = np.array([[x[0], x[1]] for x in left_leg_on_the_air_time_periods if x[1] - x[0] > stable_threshold])
+        left_leg_on_the_ground_time_periods = np.array([[x[0], x[1]] for x in left_leg_on_the_ground_time_periods if x[1] - x[0] > stable_threshold])
+        right_leg_on_the_air_time_periods = np.array([[x[0], x[1]] for x in right_leg_on_the_air_time_periods if x[1] - x[0] > stable_threshold])
+        right_leg_on_the_ground_time_periods = np.array([[x[0], x[1]] for x in right_leg_on_the_ground_time_periods if x[1] - x[0] > stable_threshold])
+
+        return left_leg_on_the_air_time_periods, left_leg_on_the_ground_time_periods, right_leg_on_the_air_time_periods, right_leg_on_the_ground_time_periods
+
+    def calc_residuals_of_linear_spring_given_time_periods(self, start_time, end_time):
+        
+        residuals = []
+
+        start_index = 0
+        while self.processed_data[start_index]["t"] < start_time:
+            start_index += 1
+        end_index = len(self.processed_data)-1
+        while self.processed_data[end_index]["t"] > end_time:
+            end_index -= 1
+
+        for datum in self.processed_data[start_index:end_index]:
+            linear_spring_force = -self.fitted_K * (np.array([datum["q"]["knee_joint_left"], 
+                                    datum["q"]["knee_joint_right"], 
+                                    datum["q"]["ankle_spring_joint_left"], 
+                                    datum["q"]["ankle_spring_joint_right"]]) - self.fitted_offset)
+            residuals.append(np.array([datum["spring_force_of_best_spring_model"]["knee_joint_left"],
+                        datum["spring_force_of_best_spring_model"]["knee_joint_right"],
+                        datum["spring_force_of_best_spring_model"]["ankle_spring_joint_left"],
+                        datum["spring_force_of_best_spring_model"]["ankle_spring_joint_right"]]) - linear_spring_force)
+                    
+        residuals = np.array(residuals)
+
+        return residuals
+
+    def calc_residuals_info_at_given_period(self, start_time, end_time, joints_name, residual_name="residual_for_best_spring_model", is_show_freq_plot=False, is_show_numerical_value=False):
         
         residuals = {}
 
@@ -319,21 +436,27 @@ class CassieResidualAnalyzer():
                 else:
                     residuals[joint_name] = [single_residual_info[joint_name]]
         
-        print("time period:{} to {}".format(act_start_time, act_end_time))
-        print(f"{'joint_name':<28} {'mean absolute':>13} {'mean':>10} {'max abs':>10} {'freq':>10} {'mag':>10}")
         for joint_name in residuals:
             residuals[joint_name] = np.array(residuals[joint_name])
-            xf, freq = get_freq_domain(residuals[joint_name])
-            print(f"{joint_name:<28} {np.mean(np.abs(residuals[joint_name])):13.2f} {np.mean(residuals[joint_name]):10.2f} {np.max(np.abs(residuals[joint_name])):10.2f} {freq[np.argmax(xf[1:])+1]:10.2f} {np.max(xf[1:]):10.2f}" )
-            if is_show_freq_plot:
+        
+        if is_show_numerical_value:
+            print("time period:{} to {}".format(act_start_time, act_end_time))
+            print(f"{'joint_name':<28} {'mean absolute':>13} {'mean':>10} {'max abs':>10} {'freq':>10} {'mag':>10}")
+            for joint_name in residuals:
+                xf, freq = get_freq_domain(residuals[joint_name])
+                print(f"{joint_name:<28} {np.mean(np.abs(residuals[joint_name])):13.2f} {np.mean(residuals[joint_name]):10.2f} {np.max(np.abs(residuals[joint_name])):10.2f} {freq[np.argmax(xf[1:])+1]:10.2f} {np.max(xf[1:]):10.2f}" )
+
+        if is_show_freq_plot:
+            for joint_name in residuals:
+                xf, freq = get_freq_domain(residuals[joint_name])
                 plt.figure()
                 plt.plot(freq, xf)
                 plt.xlabel("freq")
                 plt.ylabel("mag")
                 plt.title(joint_name)
-
-        if is_show_freq_plot:
             plt.show()
+
+        return residuals
 
     def process_data(self):
         processed_data = []
@@ -354,6 +477,9 @@ class CassieResidualAnalyzer():
 
         # Calculate residual for best spring 
         residual_of_best_spring_model, v_dot_of_best_spring_model, best_spring_forces = self.fit_best_spring()
+
+        # Calculate fitted linear spring model
+        self.fitted_K, self.fitted_offset = self.calc_spring_constant(q, best_spring_forces)
 
         for i in range(n):
             datum = {}; datum["t"] = t[i]; datum["q"] = self.construct_dict_for_q_shape_value(q[i]); 

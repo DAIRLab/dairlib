@@ -187,10 +187,12 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   Vector3d pnext_w = pnext_pose.translation() +
       pnext_pose.rotation() * stance_foot_map_.at(next_fsm(fsm_idx)).first;
 
-//  CoM_w = ReExpressWorldVector3InBodyYawFrame<double>(
-//      plant_, *context_, "pelvis", CoM_w);
-//  p_w = ReExpressWorldVector3InBodyYawFrame(
-//      plant_, *context_, "pelvis", p_w);
+  CoM_w = ReExpressWorldVector3InBodyYawFrame<double>(
+      plant_, *context_, "pelvis", CoM_w);
+  p_w = ReExpressWorldVector3InBodyYawFrame(
+      plant_, *context_, "pelvis", p_w);
+  pnext_w = ReExpressWorldVector3InBodyYawFrame<double>(
+      plant_, *context_, "pelvis", pnext_w);
 
   trajopt.set_H(CoM_w(2) - p_w(2));
 
@@ -222,7 +224,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   robot_center(2) = 0;
   fixed_workspace.AddFace(-stance*Vector3d::UnitY(), robot_center);
   fixed_workspace.AddFace(stance * Vector3d::UnitY(),
-                          robot_center + stance * Vector3d::UnitY());
+                          robot_center + 0.75 * stance * Vector3d::UnitY());
   fixed_workspace.AddFace(Vector3d::UnitX(), robot_center + Vector3d::UnitX());
   fixed_workspace.AddFace(-Vector3d::UnitX(), robot_center - Vector3d::UnitX());
 
@@ -251,8 +253,8 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
   const auto& pp = trajopt.GetFootstepSolution();
   const auto& xx = trajopt.GetStateSolution();
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
-  footstep_in_com_yaw_frame.head(2) = pp.at(1).head<2>(); //(pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
-  footstep_in_com_yaw_frame(2) = 0; //-gains_.hdes;
+  footstep_in_com_yaw_frame.head(2) = (pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
+  footstep_in_com_yaw_frame(2) = -gains_.hdes;
   p_B_FC->set_value(footstep_in_com_yaw_frame);
 }
 
@@ -307,7 +309,7 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
 
   // If we've basically already finished this mode,
   // let's move to the next so we don't get weird trajectory stuff
-  if (t(nk-2) - t(0) < .01) {
+  if (t(nk-2) - t(0) < .0001) {
     com_knots = com_knots.rightCols((nm-1) * (nk-1));
     t = t.tail((nm-1)*(nk-1) + 1);
     t(0) = robot_output->get_timestamp();

@@ -19,9 +19,9 @@ plot_floating_base_velocities: false
 plot_floating_base_velocity_body_frame: false
 plot_joint_positions: false
 plot_joint_velocities: false
-plot_measured_efforts: false
-plot_commanded_efforts: false
-plot_contact_forces: false
+plot_measured_efforts: true
+plot_commanded_efforts: true
+plot_contact_forces: true
 special_positions_to_plot: [ ]
 special_velocities_to_plot: [ ]
 special_efforts_to_plot: [ ]

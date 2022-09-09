@@ -100,7 +100,7 @@ void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
 }
 
 void AlipMINLP::MakeTerminalCost(){
-  Qf_ = .01 * Q_;
+  Qf_ = 20 * Q_;
   terminal_cost_ = prog_->AddQuadraticCost(
       2.0 * Qf_, -2.0 * Qf_ *xd_.back().back(), xx_.back().back()).evaluator();
 }
@@ -281,6 +281,9 @@ void AlipMINLP::MakeNextFootstepReachabilityConstraint() {
       -numeric_limits<double>::infinity()*VectorXd::Ones(1),
       VectorXd::Zero(1), pp_.at(1))
   .evaluator();
+  //debugging
+  return;
+
   next_step_reach_c_inflating_ = prog_->AddLinearConstraint(
       MatrixXd::Zero(1, 4),
       -numeric_limits<double>::infinity()*VectorXd::Ones(1),
@@ -334,6 +337,7 @@ void AlipMINLP::UpdateInitialGuess() {
 void AlipMINLP::UpdateNextFootstepReachabilityConstraint(
     const geometry::ConvexFoothold &fixed_workspace,
     const geometry::ConvexFoothold &inflating_workspace) {
+
   const auto& [Af, bf] = fixed_workspace.GetConstraintMatrices();
   const auto& [Ai, bi] = inflating_workspace.GetConstraintMatrices();
   MatrixXd Ainf = MatrixXd::Zero(Ai.rows(), 4);
@@ -342,6 +346,9 @@ void AlipMINLP::UpdateNextFootstepReachabilityConstraint(
   double neg_inf  = -numeric_limits<double>::infinity();
   next_step_reach_c_fixed_->UpdateCoefficients(
       Af, neg_inf * VectorXd::Ones(bf.rows()), bf);
+
+  return;
+  // debugging
   next_step_reach_c_inflating_->UpdateCoefficients(
       Ainf, neg_inf * VectorXd::Ones(bi.rows()), VectorXd::Zero(bi.rows()));
 }
@@ -349,9 +356,9 @@ void AlipMINLP::UpdateNextFootstepReachabilityConstraint(
 void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = SnoptSolver();
 //  prog_->SetSolverOption(IpoptSolver::id(), "print_level", 0);
-//  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations Limit", 10);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance", 1e-7);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major optimality tolerance", 1e-7);
+//  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations Limit", 15);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance", 1e-5);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major optimality tolerance", 1e-5);
   prog_->SetSolverOption(SnoptSolver::id(), "Print file", "../snopt_alip.out");
   solutions_.clear();
   if (mode_sequnces_.empty()) {

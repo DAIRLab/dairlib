@@ -28,7 +28,7 @@ target_pos_offset: 0  # -0.16
 
 # Finite state machine
 ss_time: 0.4
-ds_time: 0.05
+ds_time: 0.075
 
 # Distance of contact point from foot rear (0 is heel, 1 is toe)
 contact_point_pos: 0.5
@@ -37,12 +37,12 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.18
 center_line_offset: 0.04
-mid_foot_height: 0.14
-final_foot_height: -0.05
-final_foot_velocity_z: -0.1
+mid_foot_height: 0.12
+final_foot_height: 0.0
+final_foot_velocity_z: -2
 
 # LIPM trajectory
-lipm_height: 0.8
+lipm_height: 0.82
 
 # OSC gains
 mu: 0.8
@@ -61,11 +61,11 @@ hip_yaw_kd: 1
 
 CoMW:
   [   4,    0,     0,
-      0,    0.1,     0,
+      0,    0,     0,
       0,    0,    10]
 CoMKp:
-  [   50,    0,     0,
-      0,    50,     0,
+  [   50,   0,     0,
+      0,    0,     0,
       0,    0,    50]
 CoMKd:
   [   1,    0,     0,
@@ -103,13 +103,13 @@ SwingFootW:
     0,    4,     0,
     0,    0,     4]
 SwingFootKp:
-  [ 150,    0,     0,
-    0,  150,     0,
+  [ 150,  0,     0,
+    0,  200,     0,
     0,    0,   200]
 SwingFootKd:
-  [   1,    0,     0,
-      0,    1,     0,
-      0,    0,     1]
+  [1,    0,     0,
+   0,    1,     0,
+   0,    0,     1]
 
 AlipKalmanQ:
   [.001, .001, .01, .01]

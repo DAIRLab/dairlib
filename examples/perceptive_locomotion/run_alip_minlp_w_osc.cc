@@ -231,7 +231,7 @@ int DoMain(int argc, char* argv[]) {
       3,    // nmodes
       10,   // knots per mode
       5 * Matrix4d::Identity(),   // Q
-      0.1 * MatrixXd::Ones(1,1)   // R
+      MatrixXd::Ones(1,1)   // R
   };
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(
@@ -360,7 +360,7 @@ int DoMain(int argc, char* argv[]) {
   auto swing_ft_traj_generator = builder.AddSystem<SwingFootTargetTrajGen>(
       plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
       left_right_foot, gains.mid_foot_height, gains.final_foot_height,
-      gains.final_foot_velocity_z, false);
+      gains.final_foot_velocity_z, true);
 
   builder.Connect(foot_placement_controller->get_output_port_fsm(),
                   swing_ft_traj_generator->get_input_port_fsm());
@@ -486,12 +486,12 @@ int DoMain(int argc, char* argv[]) {
       0, left_support_duration / 2, left_support_duration};
   std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples(
       3, drake::MatrixX<double>::Identity(3, 3));
-  swing_ft_gain_multiplier_samples[2](2, 2) *= 0.3;
+//  swing_ft_gain_multiplier_samples[2](2, 2) *= 0.3;
   PiecewisePolynomial<double> swing_ft_gain_multiplier_gain_multiplier =
       PiecewisePolynomial<double>::FirstOrderHold(
           swing_ft_gain_multiplier_breaks, swing_ft_gain_multiplier_samples);
   std::vector<double> swing_ft_accel_gain_multiplier_breaks{
-      0, left_support_duration / 2, left_support_duration * 3 / 4,
+      0, left_support_duration / 3, left_support_duration * 0.6,
       left_support_duration};
   std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples(
       4, drake::MatrixX<double>::Identity(3, 3));
@@ -507,10 +507,10 @@ int DoMain(int argc, char* argv[]) {
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
-  swing_foot_data.SetTimeVaryingGains(
-      swing_ft_gain_multiplier_gain_multiplier);
-  swing_foot_data.SetFeedforwardAccelMultiplier(
-      swing_ft_accel_gain_multiplier_gain_multiplier);
+//  swing_foot_data.SetTimeVaryingGains(
+//      swing_ft_gain_multiplier_gain_multiplier);
+//  swing_foot_data.SetFeedforwardAccelMultiplier(
+//      swing_ft_accel_gain_multiplier_gain_multiplier);
 
   auto vel_map = MakeNameToVelocitiesMap<double>(plant_w_spr);
 
@@ -520,18 +520,18 @@ int DoMain(int argc, char* argv[]) {
   com_data.AddFiniteStateToTrack(left_stance_state);
   com_data.AddFiniteStateToTrack(right_stance_state);
 
-//  RelativeTranslationTrackingData swing_ft_traj_local(
-//      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-//      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
-//      &com_data);
-//  WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
-//  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
-//
-//  swing_ft_traj_local.SetTimeVaryingGains(
-//      swing_ft_gain_multiplier_gain_multiplier);
-//  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
-//      swing_ft_accel_gain_multiplier_gain_multiplier);
-  osc->AddTrackingData(&swing_foot_data);
+  RelativeTranslationTrackingData swing_ft_traj_local(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
+      &com_data);
+  WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
+  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
+
+  swing_ft_traj_local.SetTimeVaryingGains(
+      swing_ft_gain_multiplier_gain_multiplier);
+  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+      swing_ft_accel_gain_multiplier_gain_multiplier);
+  osc->AddTrackingData(&swing_ft_traj_local);
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);

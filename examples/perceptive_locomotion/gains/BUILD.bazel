@@ -1,0 +1,12 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "alip_minlp_gains",
+    hdrs = ["alip_minlp_gains.h"],
+    deps = [
+        "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
+        "@drake//:drake_shared_library"
+    ],
+)

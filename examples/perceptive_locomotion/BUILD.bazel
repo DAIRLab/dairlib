@@ -57,6 +57,7 @@ cc_binary(
         "//examples/Cassie/osc",
         "//examples/Cassie/systems:cassie_out_to_radio",
         "//examples/Cassie/systems:simulator_drift",
+        "//examples/perceptive_locomotion/gains:alip_minlp_gains",
         "//geometry:convex_foothold",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",

@@ -159,12 +159,11 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   bool committed = false;
   if (t >= t_next_impact) {
     warmstart = false;
-    std::cout << "updating fsm" << std::endl;
     fsm_idx ++;
     fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
     state->get_mutable_discrete_state(fsm_state_idx_).set_value(fsm_idx*VectorXd::Ones(1));
     t_prev_impact = t;
-    t_next_impact = t + stance_duration_map_.at(left_right_stance_fsm_states_.at(fsm_idx));
+    t_next_impact = t + stance_duration_map_.at(curr_fsm(fsm_idx));
   } else if ((t_next_impact - t) < gains_.t_commit) {
     committed = true;
   }
@@ -222,9 +221,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   ConvexFoothold fixed_workspace;
   Vector3d robot_center = CoM_w;
   robot_center(2) = 0;
-  fixed_workspace.AddFace(-stance*Vector3d::UnitY(), robot_center);
+  fixed_workspace.AddFace(-stance*Vector3d::UnitY(),
+                          robot_center - 0.025 * stance * Vector3d::UnitY());
   fixed_workspace.AddFace(stance * Vector3d::UnitY(),
-                          robot_center + 0.75 * stance * Vector3d::UnitY());
+                          robot_center + 0.5 * stance * Vector3d::UnitY());
   fixed_workspace.AddFace(Vector3d::UnitX(), robot_center + Vector3d::UnitX());
   fixed_workspace.AddFace(-Vector3d::UnitX(), robot_center - Vector3d::UnitX());
 
@@ -289,7 +289,6 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   MatrixXd com_knots = MatrixXd::Zero(3, N);
   VectorXd t = VectorXd::Zero(N);
 
-  // TODO: Make this readable
   for (int n = 0; n < nm; n++) {
     const Vector3d& pcurr = pp.at(n);
     const Vector3d& pnext = pp.at(std::min(n+1, nm-1));

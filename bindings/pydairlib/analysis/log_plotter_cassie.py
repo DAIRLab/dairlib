@@ -154,6 +154,7 @@ def main():
                     plot = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
                                                             deriv, t_osc_slice)
                     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+                    plot.save_fig(traj_name + '_' + deriv + '_' + str(dim)  + '.png')
 
     ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:
@@ -175,8 +176,8 @@ def main():
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_active_tracking_datas:
-        mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-
+        plot = mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plot.save_fig('active_tracking_datas.png')
     plt.show()
 
 

@@ -636,3 +636,5 @@ def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal, fsm_
         legend = ax.legend(handles=tracking_data_legend_elements, loc=1)
         # ax.add_artist(legend)
         ax.relim()
+
+    return ps

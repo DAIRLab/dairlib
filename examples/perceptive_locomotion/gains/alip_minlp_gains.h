@@ -20,9 +20,14 @@ struct AlipMINLPGainsImport {
   std::vector<double> qf;
   std::vector<double> q;
   std::vector<double> r;
+  bool filter_alip_state;
+  std::vector<double> qfilt;
+  std::vector<double> rfilt;
   Eigen::Matrix4d Qf;
   Eigen::Matrix4d Q;
   Eigen::MatrixXd R;
+  Eigen::Vector4d Qfilt_diagonal;
+  Eigen::Vector4d Rfilt_diagonal;
 
   dairlib::systems::controllers::AlipMINLPGains gains;
 
@@ -41,6 +46,9 @@ struct AlipMINLPGainsImport {
     a->Visit(DRAKE_NVP(qf));
     a->Visit(DRAKE_NVP(q));
     a->Visit(DRAKE_NVP(r));
+    a->Visit(DRAKE_NVP(filter_alip_state));
+    a->Visit(DRAKE_NVP(qfilt));
+    a->Visit(DRAKE_NVP(rfilt));
 
     Qf = Eigen::Map<
         Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(this->qf.data());
@@ -48,6 +56,8 @@ struct AlipMINLPGainsImport {
         Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(this->q.data());
     R = Eigen::Map<
         Eigen::Matrix<double, 1, 1, Eigen::RowMajor>>(this->r.data());
+    Qfilt_diagonal = Eigen::Vector4d::Map(this->qfilt.data());
+    Rfilt_diagonal = Eigen::Vector4d::Map(this->rfilt.data());
 
     this->gains = dairlib::systems::controllers::AlipMINLPGains {
         this->t_commit,
@@ -58,8 +68,19 @@ struct AlipMINLPGainsImport {
         this->stance_width,
         this->nmodes,
         this->knots_per_mode,
+        this->filter_alip_state,
         this->Q,
         this->R
     };
+  }
+
+  void SetFilterData(double m, double H) {
+    Eigen::Matrix4d A = dairlib::systems::controllers::alip_utils::CalcA(H, m);
+    Eigen::MatrixXd B = -Eigen::MatrixXd::Identity(4,2);
+    MatrixXd C = MatrixXd::Identity(4,4);
+    MatrixXd G = MatrixXd::Identity(4,4);
+    Eigen::Matrix4d Qfilt = this->Qfilt_diagonal.asDiagonal();
+    Eigen::Matrix4d Rfilt = this->Rfilt_diagonal.asDiagonal();
+    this->gains.filter_data = {{A, B, C, Qfilt, Rfilt}, G};
   }
 };

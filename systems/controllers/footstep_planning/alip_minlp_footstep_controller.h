@@ -5,6 +5,7 @@
 #include "alip_utils.h"
 #include "alip_minlp.h"
 #include "geometry/convex_foothold.h"
+#include "systems/filters/s2s_kalman_filter.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/snopt_solver.h"
@@ -22,8 +23,10 @@ struct AlipMINLPGains {
   double stance_width;
   int nmodes;
   int knots_per_mode;
+  bool filter_alip_state;
   Eigen::Matrix4d Q;
   Eigen::MatrixXd R;
+  S2SKalmanFilterData filter_data;
 };
 
 class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
@@ -90,6 +93,7 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
                             lcmt_mpc_debug* mpc_debug) const;
 
 
+
   // drake input ports
   drake::systems::InputPortIndex state_input_port_;
   drake::systems::InputPortIndex vdes_input_port_;
@@ -108,8 +112,10 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex next_impact_time_state_idx_;
   drake::systems::DiscreteStateIndex prev_impact_time_state_idx_;
   drake::systems::DiscreteStateIndex initial_conditions_state_idx_;
+
   // abstract states
-  drake::systems::AbstractStateIndex alip_minlp_index_;
+  drake::systems::AbstractStateIndex alip_minlp_idx_;
+  drake::systems::AbstractStateIndex alip_filter_idx_;
 
   // Multibody Plant Parameters
   const drake::multibody::MultibodyPlant<double>& plant_;

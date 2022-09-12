@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iostream>
 
 #include "alip_minlp.h"
 #include "alip_utils.h"
@@ -76,7 +77,6 @@ void AlipDynamicsConstraint::EvaluateConstraint(
   dy.col(4) = Bd;
   dy.block(0, 5, 4, 4) = -Matrix4d::Identity();
   dy.rightCols(1) = (1 / n_) *  (A_ * Ad * x0 + Ad * B_ * u0);
-//  std::cout << dy << "\n" << std::endl;
   *y = InitializeAutoDiff(y0, dy);
 }
 
@@ -132,9 +132,10 @@ void AlipMINLP::UpdateInitialTimeConstraint(double tmax) {
   }
   ts_bounds_c_.front().evaluator()->UpdateLowerBound(tmin_ * VectorXd::Ones(1));
   ts_bounds_c_.front().evaluator()->UpdateUpperBound(tmax * VectorXd::Ones(1));
-  // Note - we use tmax instead of tmax_ because we want to be able to let
-  // the max initial step time decrease as the current stance time increases -
-  // keeping the maximum step duration constant
+  // Note - we use the local variable tmax instead of member variable tmax_
+  // because we want to be able to let the max initial step time decrease as
+  // the current stance time increases - keeping the maximum
+  // total step duration constant
 }
 
 void AlipMINLP::Build() {

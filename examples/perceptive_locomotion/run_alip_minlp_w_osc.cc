@@ -155,6 +155,9 @@ int DoMain(int argc, char *argv[]) {
   plant_w_spr.Finalize();
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
 
+  gains_mpc.SetFilterData(
+      plant_w_spr.CalcTotalMass(*context_w_spr), gains_mpc.h_des);
+
   // Build the controller diagram
   DiagramBuilder<double> builder;
 

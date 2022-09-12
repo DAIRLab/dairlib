@@ -144,7 +144,7 @@ drake::systems::EventStatus ALIPTrajGenerator::UnrestrictedUpdate(
     x_alip.tail(2) = L.head(2);
 
     // Filter the alip state
-    filter_data.A = CalcA(CoM(2));
+    filter_data.A = CalcA(CoM(2) - stance_foot_pos(2));
     if (fsm_state == prev_fsm) {
       filter.Update(filter_data, Vector2d::Zero(), x_alip,
                     robot_output->get_timestamp());

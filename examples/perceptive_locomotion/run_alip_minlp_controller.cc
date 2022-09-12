@@ -15,6 +15,7 @@
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
 
 #include "geometry/convex_foothold.h"
 
@@ -64,6 +65,10 @@ DEFINE_string(fsm_channel, "FSM", "lcm channel for fsm");
 DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie "
               "out structure from.");
+
+DEFINE_string(minlp_gains_filename,
+              "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
+              "Filepath to alip minlp gains");
 
 DEFINE_bool(is_two_phase, true,
             "true: only right/left single support"
@@ -115,24 +120,16 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe_mid = PointOnFramed(mid_contact_point, plant_w_spr.GetFrameByName("toe_right"));
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
 
-  auto gains = AlipMINLPGains{
-      0.25,  // t_commit
-      0.2, // t_min
-      0.5, // t_max
-      // u_max
-      plant_w_spr.CalcTotalMass(*context_w_spr) * 9.81 * (right_toe.first - right_heel.first).norm() / 2.0,
-      0.85, // h_des
-      0.2,  // stance_width
-      3,    // nmodes
-      10,   // knots per mode
-      5 * Matrix4d::Identity(),   // Q
-      0.1 * MatrixXd::Ones(1,1)   // R
-  };
+  auto gains_mpc =
+      drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
+  gains_mpc.SetFilterData(
+      plant_w_spr.CalcTotalMass(*context_w_spr), gains_mpc.h_des);
+
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, state_durations, double_support_duration,
-          left_right_toe, gains);
+          left_right_toe, gains_mpc.gains);
 
   ConvexFoothold big_square;
   big_square.SetContactPlane(Vector3d::UnitZ(), Vector3d::Zero()); // Flat Ground

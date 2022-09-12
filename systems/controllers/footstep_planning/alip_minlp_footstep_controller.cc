@@ -9,6 +9,7 @@ namespace dairlib::systems::controllers {
 
 using multibody::ReExpressWorldVector3InBodyYawFrame;
 using multibody::GetBodyYawRotation_R_WB;
+using multibody::SetPositionsAndVelocitiesIfNew;
 using geometry::ConvexFoothold;
 
 using Eigen::Vector2d;
@@ -79,7 +80,15 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt.SetInputLimit(gains_.u_max);
   trajopt.Build();
   trajopt.CalcOptimalFootstepPlan(Vector4d::Zero(), Vector3d::Zero());
-  alip_minlp_index_ = DeclareAbstractState(*AbstractValue::Make<AlipMINLP>(trajopt));
+  alip_minlp_idx_ = DeclareAbstractState(*AbstractValue::Make<AlipMINLP>(trajopt));
+
+  if (gains_.filter_alip_state) {
+    auto filter = S2SKalmanFilter(gains_.filter_data);
+    std::pair<S2SKalmanFilter, S2SKalmanFilterData> model_filter =
+        {filter, gains_.filter_data};
+    alip_filter_idx_ = DeclareAbstractState(drake::Value<
+        std::pair<S2SKalmanFilter, S2SKalmanFilterData>>(model_filter));
+  }
 
   // State Update
   this->DeclarePerStepUnrestrictedUpdateEvent(
@@ -118,30 +127,42 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
 
+  // evaluate input ports
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
   const Vector2d vdes =
       this->EvalVectorInput(context, vdes_input_port_)->get_value();
-  std::vector<ConvexFoothold> footholds =
-      this->EvalAbstractInput(context, foothold_input_port_)
-      ->get_value<std::vector<ConvexFoothold>>();
+  double t_next_impact =
+      state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
+  double t_prev_impact =
+      state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
+  auto footholds = this->EvalAbstractInput(context, foothold_input_port_)->
+      get_value<std::vector<ConvexFoothold>>();
 
-  multibody::SetPositionsAndVelocitiesIfNew<double>(
-      plant_, robot_output->GetState(), context_);
+  // get variables from robot_output
+  const VectorXd robot_state = robot_output->GetState();
+  double t = robot_output->get_timestamp();
+
+  // re-express footholds in robot yaw frame
+  SetPositionsAndVelocitiesIfNew<double>(plant_, robot_state, context_);
   for (auto& foothold : footholds) {
     foothold.ReExpressInNewFrame(
         GetBodyYawRotation_R_WB<double>(plant_, *context_, "pelvis"));
   }
 
-  double t = robot_output->get_timestamp();
-  double t_next_impact =
-      state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
-  double t_prev_impact =
-      state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
-
-  // On the first iteration, we don't want to switch immediately,
-  // and we don't want to warmstart
+  // initialize local variables
+  auto& trajopt = state->get_mutable_abstract_state<AlipMINLP>(alip_minlp_idx_);
+  int fsm_idx =
+      static_cast<int>(state->get_discrete_state(fsm_state_idx_).get_value()(0));
   bool warmstart = true;
+  bool committed = false;
+  bool fsm_switch = false;
+  Vector3d CoM_w;
+  Vector3d p_w;
+  Vector3d p_next;
+  Vector3d L;
+
+  // On the first iteration, we don't want to switch immediately or warmstart
   if (t_next_impact == 0.0) {
     std::cout << "first iteration!" << std::endl;
     t_next_impact = t + stance_duration_map_.at(0);
@@ -149,49 +170,54 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     warmstart = false;
   }
 
-  auto& trajopt =
-      state->get_mutable_abstract_state<AlipMINLP>(alip_minlp_index_);
-  trajopt.ChangeFootholds(footholds);
-
-  int fsm_idx = static_cast<int>(
-      state->get_discrete_state(fsm_state_idx_).get_value()(0));
-
-  bool committed = false;
+  // Check if it's time to switch the fsm or commit to the current footstep
   if (t >= t_next_impact) {
     warmstart = false;
+    fsm_switch = true;
     fsm_idx ++;
     fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
-    state->get_mutable_discrete_state(fsm_state_idx_).set_value(fsm_idx*VectorXd::Ones(1));
     t_prev_impact = t;
     t_next_impact = t + stance_duration_map_.at(curr_fsm(fsm_idx));
   } else if ((t_next_impact - t) < gains_.t_commit) {
     committed = true;
   }
 
-  if (committed) {
-    trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
-  } else {
-    trajopt.UpdateInitialTimeConstraint(gains_.t_max - (t - t_prev_impact));
+  // shorthands for the current stance foot
+  const int fsm_state = curr_fsm(fsm_idx);
+  int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
+
+  // get the alip state
+  alip_utils::CalcAlipState(
+      plant_, context_, robot_state, {stance_foot_map_.at(fsm_state)},
+      &CoM_w, &L, &p_w);
+  plant_.CalcPointsPositions(*context_, stance_foot_map_.at(next_fsm(fsm_idx)).second,
+      stance_foot_map_.at(next_fsm(fsm_idx)).first, plant_.world_frame(), &p_next);
+
+  p_next = ReExpressWorldVector3InBodyYawFrame<double>(plant_, *context_, "pelvis", p_next);
+  CoM_w = ReExpressWorldVector3InBodyYawFrame<double>(plant_, *context_, "pelvis", CoM_w);
+  p_w = ReExpressWorldVector3InBodyYawFrame<double>(plant_, *context_, "pelvis", p_w);
+  L = ReExpressWorldVector3InBodyYawFrame<double>(plant_, *context_, "pelvis", L);
+
+  Vector4d x;
+  x.head<2>() = CoM_w.head<2>() - p_w.head<2>();
+  x.tail<2>() = L.head<2>();
+  if (gains_.filter_alip_state) {
+    auto& [filter, filter_data] = state->get_mutable_abstract_state<
+        std::pair<S2SKalmanFilter,S2SKalmanFilterData>>(alip_filter_idx_);
+    filter_data.A =
+        alip_utils::CalcA(CoM_w(2) - p_w(2), plant_.CalcTotalMass(*context_));
+
+    // split this assignment into 2 lines to avoid Eigen compiler error
+    Vector2d u = (p_w - p_next).head<2>();
+    u = fsm_switch ? u : Vector2d::Zero();
+
+    filter.Update(filter_data, u, x, t);
+    x = filter.x();
   }
 
-  int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
-  const int fsm_state = curr_fsm(fsm_idx);
-  Vector3d CoM_w, p_w, L;
-  alip_utils::CalcAlipState(
-      plant_, context_, robot_output->GetState(),
-      {stance_foot_map_.at(fsm_state)}, &CoM_w, &L, &p_w);
-
-  const auto pnext_pose =
-      stance_foot_map_.at(next_fsm(fsm_idx)).second.CalcPoseInWorld(*context_);
-  Vector3d pnext_w = pnext_pose.translation() +
-      pnext_pose.rotation() * stance_foot_map_.at(next_fsm(fsm_idx)).first;
-
-  CoM_w = ReExpressWorldVector3InBodyYawFrame<double>(
-      plant_, *context_, "pelvis", CoM_w);
-  p_w = ReExpressWorldVector3InBodyYawFrame(
-      plant_, *context_, "pelvis", p_w);
-  pnext_w = ReExpressWorldVector3InBodyYawFrame<double>(
-      plant_, *context_, "pelvis", pnext_w);
+  VectorXd ic = VectorXd::Zero(7);
+  ic.head<4>() = x;
+  ic.tail<3>() = p_w;
 
   trajopt.set_H(CoM_w(2) - p_w(2));
 
@@ -199,57 +225,59 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       vdes, gains_.stance_width, stance_duration_map_.at(fsm_state),
       gains_.knots_per_mode, stance);
 
-    xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
-        vdes, t - t_prev_impact, t_next_impact - t,
-        stance_duration_map_.at(fsm_state), gains_.stance_width, stance,
-        gains_.knots_per_mode);
-  
+  xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
+      vdes, t - t_prev_impact, t_next_impact - t,
+      stance_duration_map_.at(fsm_state), gains_.stance_width, stance,
+      gains_.knots_per_mode);
+
+  // Update the trajopt problem data and solve
+  if (committed) {
+    trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
+  } else {
+    trajopt.UpdateInitialTimeConstraint(gains_.t_max - (t - t_prev_impact));
+  }
+  trajopt.ChangeFootholds(footholds);
   trajopt.UpdateTrackingCost(xd);
   trajopt.UpdateNominalStanceTime(
       t_next_impact - t, stance_duration_map_.at(fsm_state));
 
-  Vector4d x;
-  x.head<2>() = CoM_w.head<2>() - p_w.head<2>();
-  x.tail<2>() = L.head<2>();
-  trajopt.CalcOptimalFootstepPlan(x, p_w, warmstart);
-  VectorXd ic = VectorXd::Zero(7);
-  ic.head<4>() = x;
-  ic.tail<3>() = p_w;
-
-  // Update reachable footholds
   ConvexFoothold inflating_workspace;
   ConvexFoothold fixed_workspace;
   Vector3d robot_center = CoM_w;
-  robot_center(2) = 0;
-  fixed_workspace.AddFace(-stance*Vector3d::UnitY(),
+  robot_center(2) = p_w(2);
+  fixed_workspace.AddFace(-stance * Vector3d::UnitY(),
                           robot_center - 0.025 * stance * Vector3d::UnitY());
   fixed_workspace.AddFace(stance * Vector3d::UnitY(),
                           robot_center + 0.5 * stance * Vector3d::UnitY());
   fixed_workspace.AddFace(Vector3d::UnitX(), robot_center + Vector3d::UnitX());
   fixed_workspace.AddFace(-Vector3d::UnitX(), robot_center - Vector3d::UnitX());
 
-  inflating_workspace.AddFace(Vector3d::UnitX(), pnext_w + Vector3d::UnitX());
-  inflating_workspace.AddFace(Vector3d::UnitY(), pnext_w + Vector3d::UnitY());
-  inflating_workspace.AddFace(-Vector3d::UnitX(), pnext_w - Vector3d::UnitX());
-  inflating_workspace.AddFace(-Vector3d::UnitY(), pnext_w - Vector3d::UnitX());
+  inflating_workspace.AddFace(Vector3d::UnitX(), p_next + Vector3d::UnitX());
+  inflating_workspace.AddFace(Vector3d::UnitY(), p_next + Vector3d::UnitY());
+  inflating_workspace.AddFace(-Vector3d::UnitX(), p_next + Vector3d::UnitX());
+  inflating_workspace.AddFace(-Vector3d::UnitY(), p_next + Vector3d::UnitX());
 
   trajopt.UpdateNextFootstepReachabilityConstraint(
       fixed_workspace, inflating_workspace);
 
+  trajopt.CalcOptimalFootstepPlan(x, p_w, warmstart);
+
+  // Update discrete states
   double t0 = trajopt.GetTimingSolution()(0);
+  state->get_mutable_discrete_state(fsm_state_idx_).set_value(
+      fsm_idx*VectorXd::Ones(1));
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
       (t + t0) * VectorXd::Ones(1));
   state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(
       t_prev_impact * VectorXd::Ones(1));
-  state->get_mutable_discrete_state(
-      initial_conditions_state_idx_).set_value(ic);
+  state->get_mutable_discrete_state(initial_conditions_state_idx_).set_value(ic);
 
   return drake::systems::EventStatus::Succeeded();
 }
 
 void AlipMINLPFootstepController::CopyNextFootstepOutput(
     const Context<double> &context, BasicVector<double> *p_B_FC) const {
-  auto& trajopt = context.get_abstract_state<AlipMINLP>(alip_minlp_index_);
+  auto& trajopt = context.get_abstract_state<AlipMINLP>(alip_minlp_idx_);
   const auto& pp = trajopt.GetFootstepSolution();
   const auto& xx = trajopt.GetStateSolution();
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
@@ -263,7 +291,7 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   DRAKE_ASSERT(traj_msg != nullptr);
 
   const auto& trajopt =
-      context.get_abstract_state<AlipMINLP>(alip_minlp_index_);
+      context.get_abstract_state<AlipMINLP>(alip_minlp_idx_);
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
   double t_prev_switch =
@@ -276,12 +304,19 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   multibody::SetPositionsAndVelocitiesIfNew<double>(
       plant_, robot_output->GetState(), context_);
 
-  const auto stance_foot_frame_pose =
-      stance_foot_map_.at(curr_fsm(fsm_idx)).second.CalcPoseInWorld(*context_);
-  Vector3d stance_pos =
-      stance_foot_frame_pose.translation() +
-      stance_foot_frame_pose.rotation() *
-      stance_foot_map_.at(curr_fsm(fsm_idx)).first;
+  Vector3d stance_pos;
+  plant_.CalcPointsPositions(*context_,
+                             stance_foot_map_.at(curr_fsm(fsm_idx)).second,
+                             stance_foot_map_.at(curr_fsm(fsm_idx)).first,
+                             plant_.world_frame(),
+                             &stance_pos);
+  Vector3d swing_pos;
+  plant_.CalcPointsPositions(*context_,
+                             stance_foot_map_.at(next_fsm(fsm_idx)).second,
+                             stance_foot_map_.at(next_fsm(fsm_idx)).first,
+                             plant_.world_frame(),
+                             &swing_pos);
+  double ground_height = std::min(stance_pos(2), swing_pos(2));
 
   double t0 = robot_output->get_timestamp();
   const auto& xx = trajopt.GetStateSolution();
@@ -301,9 +336,7 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   MatrixXd com_knots = MatrixXd::Zero(3, N);
   VectorXd t = VectorXd::Zero(N);
 
-  // TODO (@Brian-Acosta): The solution is in the body yaw frame -
-  //  re-express it back in the world frame
-
+  // Note for tracking the MPC output: this solution is in the body yaw frame
   for (int n = 0; n < nm; n++) {
     const Vector3d& pcurr = pp.at(n);
     const Vector3d& pnext = pp.at(std::min(n+1, nm-1));
@@ -313,13 +346,13 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
       double lerp = (tk - t_prev_switch) / (t_next_switch - t_prev_switch);
       t(idx) = tk;
       com_knots.col(idx).head(2) = pcurr.head(2) + xx.at(n).at(k).head(2);
-      com_knots(2, idx) = stance_pos(2) +  gains_.hdes + lerp * (pnext - pcurr)(2);
+      com_knots(2, idx) = ground_height +  gains_.hdes + lerp * (pnext - pcurr)(2);
     }
     t0 += tt(n);
   }
   t(N-1) = 2 * t(N-2) - t(N-3);
   com_knots.topRightCorner(2, 1) = xx.back().back().head(2) + pp.back().head(2);
-  com_knots.bottomRightCorner(1, 1)(0,0) = gains_.hdes;
+  com_knots.bottomRightCorner(1, 1)(0,0) = ground_height +  gains_.hdes;
 
   // If we've basically already finished this mode,
   // let's move to the next so we don't get weird trajectory stuff
@@ -340,7 +373,7 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
     const Context<double> &context, lcmt_mpc_debug *mpc_debug) const {
   // Get the debug info from the context
   const auto& trajopt =
-      context.get_abstract_state<AlipMINLP>(alip_minlp_index_);
+      context.get_abstract_state<AlipMINLP>(alip_minlp_idx_);
   const auto& ic =
       context.get_discrete_state(initial_conditions_state_idx_).get_value();
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(

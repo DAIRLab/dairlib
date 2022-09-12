@@ -23,8 +23,9 @@
 // MPC related
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
 #include "systems/controllers/footstep_planning/alip_minlp_footstep_controller.h"
-#include "systems/primitives/fsm_lcm_systems.h"
+#include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
+#include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/lcm_trajectory_receiver.h"
 #include "systems/controllers/swing_foot_target_traj_gen.h"
 
@@ -76,6 +77,7 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using multibody::WorldYawViewFrame;
 using systems::FsmReceiver;
 using systems::SwingFootTargetTrajGen;
+using systems::FlatTerrainFootholdSource;
 using systems::controllers::LcmTrajectoryReceiver;
 using systems::controllers::TrajectoryType;
 using systems::controllers::FootstepReceiver;
@@ -135,7 +137,7 @@ DEFINE_bool(is_two_phase, false,
 
 //DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
-int DoMain(int argc, char* argv[]) {
+int DoMain(int argc, char *argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   /* ---  Common setup (MPC and OSC) ---*/
@@ -167,13 +169,13 @@ int DoMain(int argc, char* argv[]) {
   // Get body frames and points
   Vector3d center_of_pressure = left_heel.first +
       osc_gains.contact_point_pos * (left_toe.first - left_heel.first);
-  auto left_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
+  auto left_toe_mid = std::pair<const Vector3d, const Frame<double> &>(
       center_of_pressure, plant_w_spr.GetFrameByName("toe_left"));
-  auto right_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
+  auto right_toe_mid = std::pair<const Vector3d, const Frame<double> &>(
       center_of_pressure, plant_w_spr.GetFrameByName("toe_right"));
-  auto left_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
+  auto left_toe_origin = std::pair<const Vector3d, const Frame<double> &>(
       Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_left"));
-  auto right_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
+  auto right_toe_origin = std::pair<const Vector3d, const Frame<double> &>(
       Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_right"));
 
   // Create state receiver.
@@ -217,8 +219,12 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), osc_gains.vel_scale_rot,
-      osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral, 0.4);
+      plant_w_spr,
+      context_w_spr.get(),
+      osc_gains.vel_scale_rot,
+      osc_gains.vel_scale_trans_sagital,
+      osc_gains.vel_scale_trans_lateral,
+      0.4);
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
   builder.Connect(cassie_out_to_radio->get_output_port(),
                   high_level_command->get_radio_port());
@@ -237,23 +243,28 @@ int DoMain(int argc, char* argv[]) {
           left_right_toe, gains_mpc.gains);
 
   ConvexFoothold big_square;
-  big_square.SetContactPlane(Vector3d::UnitZ(), Vector3d::Zero()); // Flat Ground
+  big_square.SetContactPlane(Vector3d::UnitZ(),
+                             Vector3d::Zero()); // Flat Ground
   big_square.AddFace(Vector3d::UnitX(), 100 * Vector3d::UnitX());
   big_square.AddFace(Vector3d::UnitY(), 100 * Vector3d::UnitY());
   big_square.AddFace(-Vector3d::UnitX(), -100 * Vector3d::UnitX());
   big_square.AddFace(-Vector3d::UnitY(), -100 * Vector3d::UnitY());
   std::vector<ConvexFoothold> footholds = {big_square};
   auto foothold_oracle =
-      builder.AddSystem<ConstantValueSource<double>>(
-          drake::Value<std::vector<ConvexFoothold>>(footholds));
+      builder.AddSystem<FlatTerrainFootholdSource>(
+          plant_w_spr, context_w_spr.get(), left_right_toe);
 
   auto footstep_sender = builder.AddSystem<FootstepSender>();
-  auto footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);
+  auto footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(
+      FLAGS_channel_foot,
+      &lcm_local);
   auto footstep_pub = builder.AddSystem(std::move(footstep_pub_ptr));
   auto fsm_sender = builder.AddSystem<FsmSender>(plant_w_spr);
-  auto fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_channel_fsm, &lcm_local);
+  auto fsm_pub_ptr =
+      LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_channel_fsm, &lcm_local);
   auto fsm_pub = builder.AddSystem(std::move(fsm_pub_ptr));
-  auto com_traj_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_local);
+  auto com_traj_pub_ptr =
+      LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_local);
   auto com_traj_pub = builder.AddSystem(std::move(com_traj_pub_ptr));
   auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(
       "ALIP_MINLP_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced}));
@@ -264,6 +275,7 @@ int DoMain(int argc, char* argv[]) {
                   foot_placement_controller->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm_sender->get_input_port_state());
+  builder.Connect(*state_receiver, *foothold_oracle);
 
   // planner ports
   builder.Connect(high_level_command->get_xy_output_port(),
@@ -324,7 +336,7 @@ int DoMain(int argc, char* argv[]) {
   // Create swing leg trajectory generator
   vector<int> unordered_fsm_states;
   vector<double> unordered_state_durations;
-  vector<vector<std::pair<const Vector3d, const Frame<double>&>>>
+  vector<vector<std::pair<const Vector3d, const Frame<double> &>>>
       contact_points_in_each_state;
   if (FLAGS_is_two_phase) {
     unordered_fsm_states = {left_stance_state, right_stance_state};
@@ -344,14 +356,12 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({right_toe_mid});
   }
 
-
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
   vector<double> left_right_support_state_durations = {left_support_duration,
                                                        right_support_duration};
-  vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
+  vector<std::pair<const Vector3d, const Frame<double> &>> left_right_foot = {
       left_toe_origin, right_toe_origin};
-
 
   auto swing_ft_traj_generator = builder.AddSystem<SwingFootTargetTrajGen>(
       plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
@@ -371,9 +381,9 @@ int DoMain(int argc, char* argv[]) {
 
   // Swing toe joint trajectory
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
-  vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
+  vector<std::pair<const Vector3d, const Frame<double> &>> left_foot_points = {
       left_heel, left_toe};
-  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
+  vector<std::pair<const Vector3d, const Frame<double> &>> right_foot_points = {
       right_heel, right_toe};
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
@@ -438,7 +448,7 @@ int DoMain(int argc, char* argv[]) {
   // Friction coefficient
   osc->SetContactFriction(osc_gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
-  const auto& pelvis = plant_w_spr.GetBodyByName("pelvis");
+  const auto &pelvis = plant_w_spr.GetBodyByName("pelvis");
   multibody::WorldYawViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, left_toe.first, left_toe.second, view_frame,
@@ -504,10 +514,10 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
-//  swing_foot_data.SetTimeVaryingGains(
-//      swing_ft_gain_multiplier_gain_multiplier);
-//  swing_foot_data.SetFeedforwardAccelMultiplier(
-//      swing_ft_accel_gain_multiplier_gain_multiplier);
+  swing_foot_data.SetTimeVaryingGains(
+      swing_ft_gain_multiplier_gain_multiplier);
+  swing_foot_data.SetFeedforwardAccelMultiplier(
+      swing_ft_accel_gain_multiplier_gain_multiplier);
 
   auto vel_map = MakeNameToVelocitiesMap<double>(plant_w_spr);
 
@@ -530,22 +540,32 @@ int DoMain(int argc, char* argv[]) {
       swing_ft_accel_gain_multiplier_gain_multiplier);
   osc->AddTrackingData(&swing_ft_traj_local);
 
-  ComTrackingData center_of_mass_traj("alip_com_traj", osc_gains.K_p_com, osc_gains.K_d_com,
-                                      osc_gains.W_com, plant_w_spr, plant_w_spr);
+  ComTrackingData
+      center_of_mass_traj("alip_com_traj", osc_gains.K_p_com, osc_gains.K_d_com,
+                          osc_gains.W_com, plant_w_spr, plant_w_spr);
+  center_of_mass_traj.SetViewFrame(view_frame);
   // FiniteStatesToTrack cannot be empty
   center_of_mass_traj.AddFiniteStateToTrack(-1);
   osc->AddTrackingData(&center_of_mass_traj);
 
   // Pelvis rotation tracking (pitch and roll)
   RotTaskSpaceTrackingData pelvis_balance_traj(
-      "pelvis_balance_traj", osc_gains.K_p_pelvis_balance, osc_gains.K_d_pelvis_balance,
-      osc_gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
+      "pelvis_balance_traj",
+      osc_gains.K_p_pelvis_balance,
+      osc_gains.K_d_pelvis_balance,
+      osc_gains.W_pelvis_balance,
+      plant_w_spr,
+      plant_w_spr);
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
   RotTaskSpaceTrackingData pelvis_heading_traj(
-      "pelvis_heading_traj", osc_gains.K_p_pelvis_heading, osc_gains.K_d_pelvis_heading,
-      osc_gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
+      "pelvis_heading_traj",
+      osc_gains.K_p_pelvis_heading,
+      osc_gains.K_d_pelvis_heading,
+      osc_gains.W_pelvis_heading,
+      plant_w_spr,
+      plant_w_spr);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj,
                        osc_gains.period_of_no_heading_control);
@@ -564,7 +584,6 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&swing_toe_traj_left);
   osc->AddTrackingData(&swing_toe_traj_right);
 
-
   auto hip_yaw_traj_gen =
       builder.AddSystem<cassie::HipYawTrajGen>(left_stance_state);
 
@@ -577,7 +596,6 @@ int DoMain(int argc, char* argv[]) {
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
                                              "hip_yaw_leftdot");
 
-
   builder.Connect(cassie_out_to_radio->get_output_port(),
                   hip_yaw_traj_gen->get_radio_input_port());
   builder.Connect(foot_placement_controller->get_output_port_fsm(),
@@ -589,7 +607,7 @@ int DoMain(int argc, char* argv[]) {
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
-  if (osc_gains.W_com(0, 0) == 0){
+  if (osc_gains.W_com(0, 0) == 0) {
     osc->SetInputCostWeightForJointAndFsmState(
         "toe_left_motor", left_stance_state, 1.0);
     osc->SetInputCostWeightForJointAndFsmState(
@@ -604,7 +622,8 @@ int DoMain(int argc, char* argv[]) {
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(foot_placement_controller->get_output_port_fsm(), osc->get_fsm_input_port());
+  builder.Connect(foot_placement_controller->get_output_port_fsm(),
+                  osc->get_fsm_input_port());
   builder.Connect(com_traj_receiver->get_output_port(),
                   osc->get_tracking_data_input_port("alip_com_traj"));
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
@@ -640,7 +659,7 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
-  auto& loop_context = loop.get_diagram_mutable_context();
+  auto &loop_context = loop.get_diagram_mutable_context();
 
   loop.Simulate();
 
@@ -649,4 +668,4 @@ int DoMain(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }
+int main(int argc, char *argv[]) { return dairlib::DoMain(argc, argv); }

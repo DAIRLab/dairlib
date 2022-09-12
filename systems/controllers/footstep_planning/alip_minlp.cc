@@ -138,7 +138,6 @@ void AlipMINLP::UpdateInitialTimeConstraint(double tmax) {
 }
 
 void AlipMINLP::Build() {
-  mode_sequnces_ = GetPossibleModeSequences();
   for (int i = 0; i < nmodes_; i++) {
     tt_.push_back(prog_->NewContinuousVariables(1, "t"));
   }
@@ -361,6 +360,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
   prog_->SetSolverOption(SnoptSolver::id(), "Major optimality tolerance", 1e-5);
   prog_->SetSolverOption(SnoptSolver::id(), "Print file", "../snopt_alip.out");
   solutions_.clear();
+  mode_sequnces_ = GetPossibleModeSequences();
   if (mode_sequnces_.empty()) {
     solutions_.push_back(solver.Solve(*prog_));
   } else {

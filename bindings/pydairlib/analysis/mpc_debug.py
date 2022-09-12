@@ -20,7 +20,7 @@ class MpcDebug:
                 self.xxs[t]
             )
             self.uus[t] = self.recursive_list_to_numpy(
-                self.uus
+                self.uus[t]
             )
             self.pps[t] = self.recursive_list_to_numpy(
                 self.pps[t]

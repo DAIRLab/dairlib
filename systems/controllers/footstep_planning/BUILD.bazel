@@ -68,11 +68,24 @@ cc_library(
 )
 
 cc_library(
+    name = "flat_terrain_foothold_source",
+    srcs = ["flat_terrain_foothold_source.cc"],
+    hdrs = ["flat_terrain_foothold_source.h"],
+    deps = [
+        ":alip_utils",
+        "//geometry:convex_foothold",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ]
+)
+
+cc_library(
     name = "footstep_lcm_systems",
     srcs = ["footstep_lcm_systems.cc"],
     hdrs = ["footstep_lcm_systems.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

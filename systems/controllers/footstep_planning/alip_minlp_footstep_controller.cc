@@ -270,6 +270,18 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
   double t_next_switch =
       context.get_discrete_state(next_impact_time_state_idx_).get_value()(0);
+  int fsm_idx = static_cast<int>(
+      context.get_discrete_state(fsm_state_idx_).get_value()(0));
+
+  multibody::SetPositionsAndVelocitiesIfNew<double>(
+      plant_, robot_output->GetState(), context_);
+
+  const auto stance_foot_frame_pose =
+      stance_foot_map_.at(curr_fsm(fsm_idx)).second.CalcPoseInWorld(*context_);
+  Vector3d stance_pos =
+      stance_foot_frame_pose.translation() +
+      stance_foot_frame_pose.rotation() *
+      stance_foot_map_.at(curr_fsm(fsm_idx)).first;
 
   double t0 = robot_output->get_timestamp();
   const auto& xx = trajopt.GetStateSolution();
@@ -289,6 +301,9 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   MatrixXd com_knots = MatrixXd::Zero(3, N);
   VectorXd t = VectorXd::Zero(N);
 
+  // TODO (@Brian-Acosta): The solution is in the body yaw frame -
+  //  re-express it back in the world frame
+
   for (int n = 0; n < nm; n++) {
     const Vector3d& pcurr = pp.at(n);
     const Vector3d& pnext = pp.at(std::min(n+1, nm-1));
@@ -298,7 +313,7 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
       double lerp = (tk - t_prev_switch) / (t_next_switch - t_prev_switch);
       t(idx) = tk;
       com_knots.col(idx).head(2) = pcurr.head(2) + xx.at(n).at(k).head(2);
-      com_knots(2, idx) = gains_.hdes + lerp * (pnext - pcurr)(2);
+      com_knots(2, idx) = stance_pos(2) +  gains_.hdes + lerp * (pnext - pcurr)(2);
     }
     t0 += tt(n);
   }

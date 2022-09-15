@@ -114,7 +114,8 @@ void setInitialEkfState(double t0, const cassie_out_t& cassie_output,
 
   auto program = multibody::MultibodyProgram(plant);
   auto q = program.AddPositionVariables();
-  auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
+  auto kinematic_constraint =
+      program.AddKinematicPositionConstraint(evaluators, q);
 
   // Soft constraint on the joint positions
   int n_joints = plant.num_positions() - 7;

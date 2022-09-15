@@ -161,6 +161,10 @@ int DoMain(int argc, char* argv[]) {
   auto com_traj_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_local);
   auto com_traj_pub = builder.AddSystem(std::move(com_traj_pub_ptr));
 
+  auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(
+      "ALIP_MINLP_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced}));
+  auto mpc_debug_pub = builder.AddSystem(std::move(mpc_debug_pub_ptr));
+
   // --- Connect the diagram --- //
   // State Reciever connections
   builder.Connect(state_receiver->get_output_port(0),
@@ -188,6 +192,8 @@ int DoMain(int argc, char* argv[]) {
                   footstep_sender->get_input_port());
   builder.Connect(foot_placement_controller->get_output_port_com_traj(),
                   com_traj_pub->get_input_port());
+  builder.Connect(foot_placement_controller->get_output_port_mpc_debug(),
+                  mpc_debug_pub->get_input_port());
 
   // misc
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);

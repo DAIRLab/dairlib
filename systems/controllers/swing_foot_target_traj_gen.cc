@@ -165,11 +165,18 @@ PiecewisePolynomial<double> SwingFootTargetTrajGen::CreateSplineForSwingFoot(
   Y[2](1, 0) = final_swing_foot_pos(1);
 
   // z
-  /// We added stance_foot_height because we want the desired trajectory to be
-  /// relative to the stance foot in case the floating base state estimation
-  /// drifts.
+  // scale the mid foot height to reduce the
+  // accelarations needed to achieve shorter step durations
+  double mid_foot_height_scaled =
+      mid_foot_height_ *
+      pow((end_time_of_this_interval - start_time_of_this_interval), 2) / 0.09;
+
+  double mfh =
+      drake::math::saturate(mid_foot_height_scaled, 0.0, mid_foot_height_);
+  std::cout << mid_foot_height_scaled << ", " <<  mfh << std::endl;
+
   Y[0](2, 0) = init_swing_foot_pos(2);
-  Y[1](2, 0) = mid_foot_height_ + final_swing_foot_pos(2);
+  Y[1](2, 0) = mfh + final_swing_foot_pos(2);
   Y[2](2, 0) = desired_final_foot_height_ + final_swing_foot_pos(2);
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);

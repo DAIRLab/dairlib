@@ -143,9 +143,7 @@ int DoMain(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
-  // Get contact frames and position (doesn't matter whether we use
-  // plant_w_spr or plant_wospr because the contact frames exit in both
-  // plants)
+  // Get contact frames and position
   auto left_toe = LeftToeFront(plant_w_spr);
   auto left_heel = LeftToeRear(plant_w_spr);
   auto right_toe = RightToeFront(plant_w_spr);
@@ -283,7 +281,7 @@ int DoMain(int argc, char* argv[]) {
   auto swing_ft_traj_generator = builder.AddSystem<SwingFootTargetTrajGen>(
       plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
       left_right_foot, gains.mid_foot_height, gains.final_foot_height,
-      gains.final_foot_velocity_z, false);
+      gains.final_foot_velocity_z, true);
 
   builder.Connect(fsm->get_output_port_fsm(),
                   swing_ft_traj_generator->get_input_port_fsm());

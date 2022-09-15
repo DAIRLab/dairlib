@@ -11,8 +11,8 @@ weight_scaling: 1.0
 mu: 0.6
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
-           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
-           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001 ]
+           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.0001,
+           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.0001 ]
 W_input_reg: [ 1, 0.9, 0.5, 0.1, 5,
                1, 0.9, 0.5, 0.1, 5 ]
 W_lambda_c_reg: [ 1, 0.001, 0.01,
@@ -26,7 +26,7 @@ W_lambda_h_reg: [ 0.001, 0.001, 0.001,
 relative_feet: true
 relative_pelvis: true
 rot_filter_tau: 0.005
-ekf_filter_tau: [ 0.001, 0.01, 0.001 ]
+ekf_filter_tau: [ 0.05, 0.01, 0.001 ]
 
 # High level command gains (with radio)
 vel_scale_rot: -2
@@ -40,10 +40,10 @@ rest_length_offset: 0.025
 stance_duration: 0.3
 flight_duration: 0.09
 # max percent variance
-stance_variance: 0.1
+stance_variance: 0.3
 flight_variance: 0.3
 
-w_swing_toe: 0.001
+w_swing_toe: 0.01
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
@@ -53,11 +53,11 @@ hip_yaw_kd: 5
 # Foot placement parameters
 #footstep_offset: -0.05
 footstep_sagital_offset: -0.03
-footstep_lateral_offset: 0.07 # drake
+footstep_lateral_offset: 0.06 # drake
 mid_foot_height: 0.15
 FootstepKd:
-  [ 0.13,     0,  0,
-    0,     0.25, 0,
+  [ 0.01,     0,  0,
+    0,     0.3, 0,
     0,        0,  0 ]
 PelvisW:
   [ 0,     0,    0,
@@ -69,7 +69,7 @@ PelvisKp:
     0,    0,   155]
 PelvisKd:
   [ 0,    0,   0,
-    0,    2,   0,
+    0,   10,   0,
     0,    0,  5 ]
 PelvisRotW:
   [10,  0,   0,

@@ -57,7 +57,6 @@ def main():
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
-    print('Log start time: ', robot_output['t_x'][0])
 
     print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
     # import time

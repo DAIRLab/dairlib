@@ -290,13 +290,13 @@
       <origin
         xyz="0 0 0"
         rpy="-1.570796 3.14159 0" />
+      <material name="">
+        <color rgba="0.024 0.24 0.5 1.0" />
+      </material>
       <geometry>
         <mesh filename="meshes/agility/shin.obj"
         scale="-1 -1 -1"/>
       </geometry>
-      <material name="">
-        <color rgba="0.024 0.24 0.5 1.0" />
-      </material>
     </visual>
   </link>
 
@@ -427,7 +427,7 @@
         xyz="0 0 0"
         rpy="1.570796 0 0" />
       <geometry>
-        <mesh filename="meshes/heel-spring.obj" />
+        <mesh filename="meshes/agility/heel-spring.obj" />
       </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
@@ -454,7 +454,7 @@
         xyz="0 0 0"
         rpy="1.570796 0 0" />
       <geometry>
-        <mesh filename="meshes/heel-spring.obj" />
+        <mesh filename="meshes/agility/heel-spring.obj" />
       </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
@@ -562,9 +562,10 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="1.570796 0 0" />
+        rpy="1.570796 0 3.14159" />
       <geometry>
-        <mesh filename="meshes/agility/foot.obj" />
+        <mesh filename="meshes/agility/foot.obj"
+        scale="-1 -1 -1"/>
         <!-- <mesh filename="meshes/toe-r.obj" /> -->
       </geometry>
       <material name="">

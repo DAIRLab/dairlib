@@ -1,4 +1,3 @@
-from concurrent.futures import BrokenExecutor
 from pydrake.solvers import MathematicalProgram 
 from pydrake.solvers import Solve
 import matplotlib.pyplot as plt

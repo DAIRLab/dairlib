@@ -20,6 +20,7 @@
 #include "multibody/multibody_utils.h"
 
 // MPC related
+#include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/controllers/lcm_trajectory_receiver.h"
@@ -107,10 +108,14 @@ DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains_alip.yaml",
               "Filepath containing gains");
 
+DEFINE_string(minlp_gains_filename,
+              "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
+              "Filepath to alip minlp gains");
+
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 
-DEFINE_bool(is_two_phase, true,
+DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
 
@@ -121,6 +126,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Read-in the parameters
   auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
+  auto gains_mpc =
+      drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -200,9 +207,9 @@ int DoMain(int argc, char* argv[]) {
   int right_stance_state = 1;
   int post_left_double_support_state = 3;
   int post_right_double_support_state = 4;
-  double left_support_duration = gains.ss_time;
-  double right_support_duration = gains.ss_time;
-  double double_support_duration = gains.ds_time;
+  double left_support_duration = gains_mpc.ss_time;
+  double right_support_duration = gains_mpc.ss_time;
+  double double_support_duration = gains_mpc.ds_time;
 
   vector<int> fsm_states;
   vector<double> state_durations;
@@ -425,30 +432,24 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  auto vel_map = MakeNameToVelocitiesMap<double>(plant_w_spr);
-  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_right"], left_stance_state);
-  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_left"], right_stance_state);
-
   ComTrackingData com_data("com_data", gains.K_p_swing_foot,
                            gains.K_d_swing_foot, gains.W_swing_foot,
                            plant_w_spr, plant_w_spr);
   com_data.AddFiniteStateToTrack(left_stance_state);
   com_data.AddFiniteStateToTrack(right_stance_state);
 
-//  RelativeTranslationTrackingData swing_ft_traj_local(
-//      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-//      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
-//      &com_data);
-//  WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
-//  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
-//
-//  swing_ft_traj_local.SetTimeVaryingGains(
-//      swing_ft_gain_multiplier_gain_multiplier);
-//  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
-//      swing_ft_accel_gain_multiplier_gain_multiplier);
-  osc->AddTrackingData(&swing_foot_data);
+  RelativeTranslationTrackingData swing_ft_traj_local(
+      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
+      &com_data);
+  WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
+  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
+
+  swing_ft_traj_local.SetTimeVaryingGains(
+      swing_ft_gain_multiplier_gain_multiplier);
+  swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+      swing_ft_accel_gain_multiplier_gain_multiplier);
+  osc->AddTrackingData(&swing_ft_traj_local);
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);
@@ -463,7 +464,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
-  RotTaskSpaceTrackingData pelvis_heading_traj(
+RotTaskSpaceTrackingData pelvis_heading_traj(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
       gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
   pelvis_heading_traj.AddFrameToTrack("pelvis");

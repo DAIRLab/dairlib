@@ -245,14 +245,6 @@ int DoMain(int argc, char *argv[]) {
           double_support_duration,
           left_right_toe, gains_mpc.gains);
 
-  ConvexFoothold big_square;
-  big_square.SetContactPlane(Vector3d::UnitZ(),
-                             Vector3d::Zero()); // Flat Ground
-  big_square.AddFace(Vector3d::UnitX(), 100 * Vector3d::UnitX());
-  big_square.AddFace(Vector3d::UnitY(), 100 * Vector3d::UnitY());
-  big_square.AddFace(-Vector3d::UnitX(), -100 * Vector3d::UnitX());
-  big_square.AddFace(-Vector3d::UnitY(), -100 * Vector3d::UnitY());
-  std::vector<ConvexFoothold> footholds = {big_square};
   auto foothold_oracle =
       builder.AddSystem<FlatTerrainFootholdSource>(
           plant_w_spr, context_w_spr.get(), left_right_toe);
@@ -272,6 +264,7 @@ int DoMain(int argc, char *argv[]) {
   auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(
       "ALIP_MINLP_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced}));
   auto mpc_debug_pub = builder.AddSystem(std::move(mpc_debug_pub_ptr));
+
   // --- Connect the mpc diagram subparts --- //
   // State Reciever connections
   builder.Connect(state_receiver->get_output_port(0),

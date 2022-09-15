@@ -10,6 +10,7 @@
 #include "multibody/multibody_utils.h"
 
 #include "systems/controllers/footstep_planning/alip_minlp_footstep_controller.h"
+#include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/fsm_lcm_systems.h"
@@ -34,19 +35,20 @@ using Eigen::VectorXd;
 
 using geometry::ConvexFoothold;
 
+using systems::controllers::AlipMINLPFootstepController;
 using systems::controllers::alip_utils::PointOnFramed;
 using systems::controllers::AlipMINLPGains;
-using systems::controllers::AlipMINLPFootstepController;
 using systems::controllers::FootstepSender;
+using systems::FlatTerrainFootholdSource;
 using systems::FsmSender;
 
 using drake::multibody::Frame;
-using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::DiagramBuilder;
 using drake::systems::TriggerTypeSet;
+using drake::systems::ConstantValueSource;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::ConstantValueSource;
 using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
@@ -131,17 +133,9 @@ int DoMain(int argc, char* argv[]) {
           post_left_right_fsm_states, state_durations, double_support_duration,
           left_right_toe, gains_mpc.gains);
 
-  ConvexFoothold big_square;
-  big_square.SetContactPlane(Vector3d::UnitZ(), Vector3d::Zero()); // Flat Ground
-  big_square.AddFace(Vector3d::UnitX(), 100 * Vector3d::UnitX());
-  big_square.AddFace(Vector3d::UnitY(), 100 * Vector3d::UnitY());
-  big_square.AddFace(-Vector3d::UnitX(), -100 * Vector3d::UnitX());
-  big_square.AddFace(-Vector3d::UnitY(), -100 * Vector3d::UnitY());
-  std::vector<ConvexFoothold> footholds = {big_square};
-
   auto foothold_oracle =
-      builder.AddSystem<ConstantValueSource<double>>(
-          drake::Value<std::vector<ConvexFoothold>>(footholds));
+      builder.AddSystem<FlatTerrainFootholdSource>(
+          plant_w_spr, context_w_spr.get(), left_right_toe);
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
@@ -175,6 +169,7 @@ int DoMain(int argc, char* argv[]) {
                   foot_placement_controller->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm_sender->get_input_port_state());
+  builder.Connect(*state_receiver, *foothold_oracle);
 
   // planner ports
   builder.Connect(high_level_command->get_xy_output_port(),

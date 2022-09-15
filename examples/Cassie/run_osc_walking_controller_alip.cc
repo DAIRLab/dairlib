@@ -473,12 +473,6 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  auto vel_map = MakeNameToVelocitiesMap<double>(plant_w_spr);
-  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_right"], left_stance_state);
-  swing_foot_data.AddJointAndStateToIgnoreInJacobian(
-      vel_map["hip_yaw_left"], right_stance_state);
-
   ComTrackingData com_data("com_data", gains.K_p_swing_foot,
                            gains.K_d_swing_foot, gains.W_swing_foot,
                            plant_w_spr, plant_w_spr);

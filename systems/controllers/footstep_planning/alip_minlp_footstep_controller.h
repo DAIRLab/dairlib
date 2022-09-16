@@ -25,6 +25,7 @@ struct AlipMINLPGains {
   int knots_per_mode;
   bool filter_alip_state;
   Eigen::Matrix4d Q;
+  Eigen::Matrix4d Qf;
   Eigen::MatrixXd R;
   S2SKalmanFilterData filter_data;
 };

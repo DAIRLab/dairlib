@@ -58,8 +58,8 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
   double m_;
   double H_;
   double n_;
-  Eigen::Matrix4d A_;
-  Eigen::Matrix4d A_inv_;
+  mutable Eigen::Matrix4d A_;
+  mutable Eigen::Matrix4d A_inv_;
   Eigen::MatrixXd B_;
 };
 
@@ -76,7 +76,7 @@ class AlipMINLP {
   void SetMaximumStanceTime(double tmax) {tmax_ = tmax;};
   void SetInputLimit(double umax) {umax_ = umax;};
   void AddTrackingCost(const std::vector<std::vector<Eigen::Vector4d>> &xd,
-  const Eigen::Matrix4d &Q);
+  const Eigen::Matrix4d &Q, const Eigen::MatrixXd& Qf);
   void AddFootholds(const std::vector<geometry::ConvexFoothold>& footholds) {
     footholds_.insert(footholds_.end(), footholds.begin(), footholds.end());
   }

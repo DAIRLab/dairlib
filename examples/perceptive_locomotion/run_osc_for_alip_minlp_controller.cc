@@ -408,7 +408,7 @@ int DoMain(int argc, char* argv[]) {
       0, left_support_duration / 2, left_support_duration};
   std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples(
       3, drake::MatrixX<double>::Identity(3, 3));
-  swing_ft_gain_multiplier_samples[2](2, 2) *= 0.3;
+  swing_ft_gain_multiplier_samples[2](2, 2) *= 0.5;
   PiecewisePolynomial<double> swing_ft_gain_multiplier_gain_multiplier =
       PiecewisePolynomial<double>::FirstOrderHold(
           swing_ft_gain_multiplier_breaks, swing_ft_gain_multiplier_samples);

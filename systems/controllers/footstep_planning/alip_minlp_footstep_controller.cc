@@ -71,7 +71,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   auto xd = trajopt.MakeXdesTrajForVdes(
       Vector2d::Zero(), gains_.stance_width, stance_duration_map_.at(0),
       gains_.knots_per_mode);
-  trajopt.AddTrackingCost(xd, gains_.Q);
+  trajopt.AddTrackingCost(xd, gains_.Q, gains_.Qf);
   trajopt.AddInputCost(gains_.R(0,0));
   trajopt.UpdateNominalStanceTime(left_right_stance_durations.at(0),
                                   left_right_stance_durations.at(1));
@@ -248,9 +248,9 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   fixed_workspace.AddFace(-stance * Vector3d::UnitY(),
                           robot_center - 0.025 * stance * Vector3d::UnitY());
   fixed_workspace.AddFace(stance * Vector3d::UnitY(),
-                          robot_center + 0.5 * stance * Vector3d::UnitY());
-  fixed_workspace.AddFace(Vector3d::UnitX(), robot_center + Vector3d::UnitX());
-  fixed_workspace.AddFace(-Vector3d::UnitX(), robot_center - Vector3d::UnitX());
+                          robot_center + 0.6 * stance * Vector3d::UnitY());
+  fixed_workspace.AddFace(Vector3d::UnitX(), robot_center +   0.7 * Vector3d::UnitX());
+  fixed_workspace.AddFace(-Vector3d::UnitX(), robot_center - 0.7 * Vector3d::UnitX());
 
   inflating_workspace.AddFace(Vector3d::UnitX(), p_next + Vector3d::UnitX());
   inflating_workspace.AddFace(Vector3d::UnitY(), p_next + Vector3d::UnitY());

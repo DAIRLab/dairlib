@@ -72,14 +72,13 @@ DEFINE_string(minlp_gains_filename,
               "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
               "Filepath to alip minlp gains");
 
-DEFINE_bool(is_two_phase, true,
-            "true: only right/left single support"
-            "false: both double and single support");
-
 DEFINE_bool(spring_model, true, "");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  auto gains_mpc =
+      drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -88,6 +87,9 @@ int DoMain(int argc, char* argv[]) {
                      true, false);
   plant_w_spr.Finalize();
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
+
+  gains_mpc.SetFilterData(
+      plant_w_spr.CalcTotalMass(*context_w_spr), gains_mpc.h_des);
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -104,8 +106,8 @@ int DoMain(int argc, char* argv[]) {
   int right_stance_state = 1;
   int post_left_double_support_state = 3;
   int post_right_double_support_state = 4;
-  double single_support_duration = 0.4;
-  double double_support_duration = 0.05;
+  double single_support_duration = gains_mpc.ss_time;
+  double double_support_duration = gains_mpc.ds_time;
 
 
   std::vector<int> left_right_fsm_states;
@@ -121,11 +123,6 @@ int DoMain(int argc, char* argv[]) {
   auto left_toe_mid = PointOnFramed(mid_contact_point, plant_w_spr.GetFrameByName("toe_left"));
   auto right_toe_mid = PointOnFramed(mid_contact_point, plant_w_spr.GetFrameByName("toe_right"));
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
-
-  auto gains_mpc =
-      drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
-  gains_mpc.SetFilterData(
-      plant_w_spr.CalcTotalMass(*context_w_spr), gains_mpc.h_des);
 
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(

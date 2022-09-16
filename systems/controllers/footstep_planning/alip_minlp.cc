@@ -62,6 +62,9 @@ AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
 void AlipDynamicsConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<AutoDiffXd>> &x,
           drake::VectorX<AutoDiffXd>* y) const {
+  A_ = alip_utils::CalcA(H_, m_);
+  A_inv_ = A_.inverse();
+
   VectorXd xd = drake::math::ExtractValue(x);
   Vector4d x0 = xd.head(4);
   VectorXd u0 = xd.segment(4, 1);
@@ -85,7 +88,7 @@ Matrix4d AlipDynamicsConstraint::Ad(double t) {
 }
 
 void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
-                                const Matrix4d &Q) {
+                                const Matrix4d &Q, const Eigen::MatrixXd& Qf) {
   DRAKE_DEMAND(xd.size() == nmodes_);
   for (int i = 0; i < nmodes_; i++){
     DRAKE_DEMAND(xd.at(i).size() == nknots_.at(i));
@@ -97,10 +100,11 @@ void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
   }
   xd_ = xd;
   Q_ = Q;
+  Qf_ = Qf;
+  MakeTerminalCost();
 }
 
 void AlipMINLP::MakeTerminalCost(){
-  Qf_ = 20 * Q_;
   terminal_cost_ = prog_->AddQuadraticCost(
       2.0 * Qf_, -2.0 * Qf_ *xd_.back().back(), xx_.back().back()).evaluator();
 }
@@ -114,7 +118,7 @@ void AlipMINLP::AddInputCost(double R) {
               R*MatrixXd::Identity(nu_, nu_),
               VectorXd::Zero(nu_), uu_.at(i).at(k)));
     }
-    tracking_costs_.push_back(RR);
+    input_costs_.push_back(RR);
   }
   R_ = R;
 }
@@ -150,7 +154,6 @@ void AlipMINLP::Build() {
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
   MakeInitialTimeConstraint();
-  MakeTerminalCost();
   built_ = true;
 }
 
@@ -330,7 +333,10 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
 }
 
 void AlipMINLP::UpdateInitialGuess() {
-  DRAKE_DEMAND(solutions_.front().is_success());
+  DRAKE_DEMAND(
+      solutions_.front().is_success() ||
+      solutions_.front().get_solution_result() ==
+          drake::solvers::kIterationLimit);
   prog_->SetInitialGuessForAllVariables(solutions_.front().GetSolution());
 }
 
@@ -356,10 +362,10 @@ void AlipMINLP::UpdateNextFootstepReachabilityConstraint(
 void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = SnoptSolver();
 //  prog_->SetSolverOption(IpoptSolver::id(), "print_level", 0);
-//  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations Limit", 15);
+//  prog_->SetSolverOption(SnoptSolver::id(), "Major Iterations Limit", 5);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance", 1e-5);
   prog_->SetSolverOption(SnoptSolver::id(), "Major optimality tolerance", 1e-5);
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", "../snopt_alip.out");
+//  prog_->SetSolverOption(SnoptSolver::id(), "Print file", "../snopt_alip.out");
   solutions_.clear();
   mode_sequnces_ = GetPossibleModeSequences();
   if (mode_sequnces_.empty()) {
@@ -376,16 +382,15 @@ void AlipMINLP::SolveOCProblemAsIs() {
       [](const MathematicalProgramResult& lhs, const MathematicalProgramResult& rhs){
     return lhs.get_optimal_cost() < rhs.get_optimal_cost();
   });
-  if (!solutions_.front().is_success()) {
-    std::cout << "Failed with code " << solutions_.front().get_solution_result() << std::endl;
-  }
 }
 
 void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
                                         const Eigen::Vector3d &p,
                                         bool warmstart) {
   DRAKE_DEMAND(built_);
-  if (warmstart && !solutions_.empty() && solutions_.front().is_success()) {
+  if (warmstart && !solutions_.empty() &&
+      (solutions_.front().is_success() ||
+       solutions_.front().get_solution_result() == drake::solvers::kIterationLimit)) {
     UpdateInitialGuess();
   } else {
     UpdateInitialGuess(p, x);

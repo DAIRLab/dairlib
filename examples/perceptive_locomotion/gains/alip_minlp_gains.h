@@ -70,6 +70,7 @@ struct AlipMINLPGainsImport {
         this->knots_per_mode,
         this->filter_alip_state,
         this->Q,
+        this->Qf,
         this->R
     };
   }

@@ -63,7 +63,7 @@ def main():
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
     xd = trajopt.MakeXdesTrajForVdes(np.array([0.5, 0]), 0.3, 0.35, nk, -1)
-    trajopt.AddTrackingCost(xd, 1*np.eye(4))
+    trajopt.AddTrackingCost(xd, 1*np.eye(4), 20*np.eye(4))
     trajopt.UpdateNominalStanceTime(0.35, 0.35)
     trajopt.SetMinimumStanceTime(0.1)
     trajopt.SetMaximumStanceTime(0.35)

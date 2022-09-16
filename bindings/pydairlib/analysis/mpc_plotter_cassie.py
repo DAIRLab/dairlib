@@ -13,11 +13,15 @@ from log_plotter_cassie import plotter_main
 import dairlib
 
 mpc_channels = {
-    "ALIP_MINLP_DEBUG": dairlib.lcmt_mpc_debug
+    "ALIP_MINLP_DEBUG": dairlib.lcmt_mpc_debug,
+    "ALIP_COM_TRAJ": dairlib.lcmt_saved_traj
 }
 
 
-def plot_com_traj_solution(xx, pp, fsm, x0, p0):
+def plot_com_traj_solution(t_com, com_knots):
+    pass
+
+def plot_com_traj_solution_overhead(xx, pp, fsm, x0, p0):
     nm = len(pp)
     nk = len(xx[0])
     traj_colors = ['blue', 'orange']
@@ -31,12 +35,12 @@ def plot_com_traj_solution(xx, pp, fsm, x0, p0):
     # Plot the CoM traj
     plt.plot(-xy_traj[1], xy_traj[0], color=traj_colors[fsm], linewidth=2)
     # Plot lines from the footstep to the CoM
-    # for i in range(nm):
-    #     for k in range(nk):
-    #         xy = xx[i][k].ravel()[:2] + pp[i][:2]
-    #         line_x = [-xy[1], -pp[i][1]]
-    #         line_y = [xy[0], pp[i][0]]
-    #         plt.plot(line_x, line_y, color='black', linewidth=1)
+    for i in range(nm):
+        for k in range(nk):
+            xy = xx[i][k].ravel()[:2] + pp[i][:2]
+            line_x = [-xy[1], -pp[i][1]]
+            line_y = [xy[0], pp[i][0]]
+            plt.plot(line_x, line_y, color='black', linewidth=1)
 
     x = x0[:3] + p0
     plt.plot(-x[1], x[0], color=traj_colors[fsm], marker='X', markersize=20)
@@ -73,18 +77,15 @@ def main():
         mpc_processing_callback, "ALIP_MINLP_DEBUG"
     )
 
-    idx = -1
+    idx = 200
     t = mpc_debug.t_mpc[idx]
-    plt.figure()
-    i = slice(0, len(mpc_debug.t_mpc), int(len(mpc_debug.t_mpc) / 50))
-    for t in mpc_debug.t_mpc[i]:
-        plot_com_traj_solution(
-            mpc_debug.xxs[t],
-            mpc_debug.pps[t],
-            mpc_debug.fsm[t],
-            mpc_debug.x0[t],
-            mpc_debug.p0[t]
-        )
+    plot_com_traj_solution_overhead(
+        mpc_debug.xxs[t],
+        mpc_debug.pps[t],
+        mpc_debug.fsm[t],
+        mpc_debug.x0[t],
+        mpc_debug.p0[t]
+    )
     plot_foot_targets(mpc_debug, 1)
     plt.show()
 

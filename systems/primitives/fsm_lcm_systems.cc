@@ -71,7 +71,7 @@ void FsmReceiver::CopyPrevSwitchTime(const Context<double> &context,
   const auto& fsm_msg = eval_fsm_port(context);
   double offset = context.get_discrete_state(offset_idx_).get_value()(0);
   y->get_mutable_value()(0) =
-      static_cast<double>(fsm_msg.prev_switch_time_us) * 1e-6 + offset;
+      static_cast<double>(fsm_msg.prev_switch_time_us) * 1e-6;// + offset;
 }
 
 void FsmReceiver::CopyNextSwitchTime(const Context<double> &context,
@@ -79,7 +79,7 @@ void FsmReceiver::CopyNextSwitchTime(const Context<double> &context,
   const auto& fsm_msg = eval_fsm_port(context);
   double offset = context.get_discrete_state(offset_idx_).get_value()(0);
   y->get_mutable_value()(0) =
-      static_cast<double>(fsm_msg.next_switch_time_us) * 1e-6 + offset;
+      static_cast<double>(fsm_msg.next_switch_time_us) * 1e-6;// + offset;
 }
 void FsmReceiver::CopyTimeSinceSwitch(const Context<double> &context,
                                       BasicVector<double> *y) const {

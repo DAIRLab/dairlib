@@ -173,7 +173,6 @@ PiecewisePolynomial<double> SwingFootTargetTrajGen::CreateSplineForSwingFoot(
 
   double mfh =
       drake::math::saturate(mid_foot_height_scaled, 0.0, mid_foot_height_);
-  std::cout << mid_foot_height_scaled << ", " <<  mfh << std::endl;
 
   Y[0](2, 0) = init_swing_foot_pos(2);
   Y[1](2, 0) = mfh + final_swing_foot_pos(2);

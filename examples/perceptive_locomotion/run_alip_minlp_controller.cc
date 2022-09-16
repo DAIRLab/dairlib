@@ -162,7 +162,7 @@ int DoMain(int argc, char* argv[]) {
   auto com_traj_pub = builder.AddSystem(std::move(com_traj_pub_ptr));
 
   auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(
-      "ALIP_MINLP_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced}));
+      "ALIP_MINLP_DEBUG", &lcm_local, 0);
   auto mpc_debug_pub = builder.AddSystem(std::move(mpc_debug_pub_ptr));
 
   // --- Connect the diagram --- //

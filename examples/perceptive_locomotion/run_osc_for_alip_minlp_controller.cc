@@ -451,6 +451,7 @@ int DoMain(int argc, char* argv[]) {
 
   ComTrackingData center_of_mass_traj("alip_com_traj", gains.K_p_com, gains.K_d_com,
                                       gains.W_com, plant_w_spr, plant_w_spr);
+  center_of_mass_traj.SetViewFrame(pelvis_view_frame);
   // FiniteStatesToTrack cannot be empty
   center_of_mass_traj.AddFiniteStateToTrack(-1);
   osc->AddTrackingData(&center_of_mass_traj);

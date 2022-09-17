@@ -95,7 +95,7 @@ cc_binary(
 #            "@drake//manipulation/models/franka_description:models"]
 # )
 
-<<<<<<< Updated upstream
+
 # cc_binary(
 #    name = "run_impedance_ros_to_lcm",
 #    srcs = ["run_impedance_ros_to_lcm.cc"],
@@ -111,7 +111,7 @@ cc_binary(
 #    data = [":trifinger_urdf",
 #            "@drake//manipulation/models/franka_description:models"]
 # )
-=======
+
 cc_binary(
    name = "run_position_experiment",
    srcs = ["run_position_experiment.cc"],

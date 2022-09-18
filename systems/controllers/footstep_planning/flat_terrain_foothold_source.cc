@@ -40,11 +40,18 @@ void FlatTerrainFootholdSource::CalcFoothold(
   multibody::SetPositionsAndVelocitiesIfNew<double>(
       plant_, robot_output->GetState(), context_);
 
-  const auto& pose_left = left_right_foot_.front().second.CalcPoseInWorld(*context_);
-  const auto& pose_right = left_right_foot_.back().second.CalcPoseInWorld(*context_);
-
-  Vector3d left_pos = pose_left.translation() + pose_left.rotation() * left_right_foot_.front().first;
-  Vector3d right_pos = pose_right.translation() + pose_right.rotation() * left_right_foot_.back().first;
+  Vector3d left_pos;
+  plant_.CalcPointsPositions(*context_,
+                             left_right_foot_.front().second,
+                             left_right_foot_.front().first,
+                             plant_.world_frame(),
+                             &left_pos);
+  Vector3d right_pos;
+  plant_.CalcPointsPositions(*context_,
+                             left_right_foot_.back().second,
+                             left_right_foot_.back().first,
+                             plant_.world_frame(),
+                             &right_pos);
 
   double h = std::min(left_pos(2), right_pos(2));
   left_pos(2) = h;

@@ -310,13 +310,7 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
                              stance_foot_map_.at(curr_fsm(fsm_idx)).first,
                              plant_.world_frame(),
                              &stance_pos);
-  Vector3d swing_pos;
-  plant_.CalcPointsPositions(*context_,
-                             stance_foot_map_.at(next_fsm(fsm_idx)).second,
-                             stance_foot_map_.at(next_fsm(fsm_idx)).first,
-                             plant_.world_frame(),
-                             &swing_pos);
-  double ground_height = std::min(stance_pos(2), swing_pos(2));
+  double ground_height = stance_pos(2);
 
   double t0 = robot_output->get_timestamp();
   const auto& xx = trajopt.GetStateSolution();

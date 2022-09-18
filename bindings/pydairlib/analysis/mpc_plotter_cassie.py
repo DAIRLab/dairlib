@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-from mpc_debug import MpcDebug
+from mpc_debug import MpcDebug, LcmTrajectory
 from process_lcm_log import get_log_data
 from mpc_plot_config import MpcPlotConfig
 from log_plotter_cassie import plotter_main
@@ -18,8 +18,15 @@ mpc_channels = {
 }
 
 
-def plot_com_traj_solution(t_com, com_knots):
-    pass
+def plot_com_traj_solutions(lcm_traj_list, dims, slc=None):
+    plt.figure()
+    if slc is None:
+        slc = slice(len(lcm_traj_list))
+
+    for traj in lcm_traj_list[slc]:
+        t, y = traj.trajectories["com_traj"].get_traj_as_cubic_shape_preserving(200)
+        plt.plot(t, y[:, dims])
+
 
 def plot_com_traj_solution_overhead(xx, pp, fsm, x0, p0):
     nm = len(pp)
@@ -55,12 +62,15 @@ def plot_foot_targets(mpc_debug, i):
     plt.plot(mpc_debug.t_mpc, foot_targets.T)
 
 
-def mpc_processing_callback(data, mpc_channel):
+def mpc_processing_callback(data, mpc_channel, com_traj_channel):
     dbg = MpcDebug()
     for msg in data[mpc_channel]:
         dbg.append(msg)
     dbg.to_numpy()
-    return dbg
+    com_trajs = []
+    for msg in data[com_traj_channel]:
+        com_trajs.append(LcmTrajectory(msg))
+    return dbg, com_trajs
 
 
 def main():
@@ -71,21 +81,23 @@ def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
     plotter_main(plot_config.cassie_plot_config, log)
-    mpc_debug = get_log_data(
+    mpc_debug, com_trajs = get_log_data(
         log, mpc_channels,
         plot_config.start_time, plot_config.end_time,
-        mpc_processing_callback, "ALIP_MINLP_DEBUG"
+        mpc_processing_callback, "ALIP_MINLP_DEBUG", "ALIP_COM_TRAJ"
     )
+    plot_com_traj_solutions(com_trajs, [2])
 
     idx = 200
     t = mpc_debug.t_mpc[idx]
-    plot_com_traj_solution_overhead(
-        mpc_debug.xxs[t],
-        mpc_debug.pps[t],
-        mpc_debug.fsm[t],
-        mpc_debug.x0[t],
-        mpc_debug.p0[t]
-    )
+
+    # plot_com_traj_solution_overhead(
+    #     mpc_debug.xxs[t],
+    #     mpc_debug.pps[t],
+    #     mpc_debug.fsm[t],
+    #     mpc_debug.x0[t],
+    #     mpc_debug.p0[t]
+    # )
     plot_foot_targets(mpc_debug, 1)
     plt.show()
 

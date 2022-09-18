@@ -1,5 +1,35 @@
 import numpy as np
 
+from pydrake.trajectories import PiecewisePolynomial
+
+
+class LcmTrajectoryBlock:
+    def __init__(self, block):
+        self.lcm_trajectory_block = block
+
+    @staticmethod
+    def sample(traj, npoints):
+        t = np.linspace(traj.start_time(), traj.end_time(), npoints)
+        samples = np.zeros((t.shape[0], traj.value(traj.start_time()).shape[0]))
+        for i in range(t.shape[0]):
+            samples[i] = traj.value(t[i])[:, 0]
+
+        return t, samples
+
+    def get_traj_as_cubic_shape_preserving(self, npoints):
+        pp_traj = PiecewisePolynomial.CubicShapePreserving(
+            self.lcm_trajectory_block.time_vec,
+            self.lcm_trajectory_block.datapoints
+        )
+        return self.sample(pp_traj, npoints)
+
+
+class LcmTrajectory:
+    def __init__(self, msg):
+        self.trajectories = {}
+        for block in msg.trajectories:
+            self.trajectories[block.trajectory_name] = LcmTrajectoryBlock(block)
+
 
 class MpcDebug:
     def __init__(self):

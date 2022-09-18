@@ -1,4 +1,4 @@
-group "1.director" {
+ group "1.director" {
     cmd "drake-director" {
         exec = "bazel-bin/director/drake-director --script director/scripts/VisualizationGUI.py";
         host = "localhost";
@@ -129,6 +129,13 @@ cmd "9.lcmspy" {
 
 script "start_c3_cmds" {
     start group "5.[HW] C3 Computer";
+}
+
+script "start_sim_example" {
+    start cmd "a.roscore";
+    start cmd "drake-director";
+    wait ms 1000;
+    start group "7.[SIM] C3";
 }
 
 script "start_franka_cmds" {

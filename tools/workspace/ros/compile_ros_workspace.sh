@@ -6,7 +6,7 @@ cd $(dirname "$BASH_SOURCE")
 
 set -e
 
-PACKAGES="roscpp rospy franka_msgs"
+PACKAGES="roscpp rospy franka_msgs sensor_msgs"
 
 rm -rf bundle_ws
 mkdir bundle_ws

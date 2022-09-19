@@ -1,0 +1,20 @@
+package dairlib;
+
+struct lcmt_mpc_solution
+{
+  int32_t nx;
+  int32_t nu;
+  int32_t np;
+
+  int32_t nm;
+  int32_t nk;
+  int32_t nk_minus_one;
+
+  double x0[nx];
+  double p0[np];
+
+  double pp[nm][np];
+  double xx[nm][nk][nx];
+  double uu[nm][nk_minus_one][nu];
+  double tt[nm];
+}

@@ -2,7 +2,6 @@
 #include <iostream>
 
 #include "alip_minlp.h"
-#include "alip_utils.h"
 
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
@@ -62,9 +61,6 @@ AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
 void AlipDynamicsConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<AutoDiffXd>> &x,
           drake::VectorX<AutoDiffXd>* y) const {
-  A_ = alip_utils::CalcA(H_, m_);
-  A_inv_ = A_.inverse();
-
   VectorXd xd = drake::math::ExtractValue(x);
   Vector4d x0 = xd.head(4);
   VectorXd u0 = xd.segment(4, 1);

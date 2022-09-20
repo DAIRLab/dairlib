@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 
+#include "alip_utils.h"
 #include "geometry/convex_foothold.h"
 #include "solvers/nonlinear_constraint.h"
 #include "unsupported/Eigen/MatrixFunctions"
@@ -47,19 +48,28 @@ using drake::solvers::LinearEqualityConstraint;
 class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
  public:
   AlipDynamicsConstraint(double m, double H, double n);
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>>& x,
-                          drake::VectorX<drake::AutoDiffXd>* y) const override;
+  void EvaluateConstraint(
+      const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>>& x,
+      drake::VectorX<drake::AutoDiffXd>* y) const override;
   Eigen::Matrix4d Ad(double t);
 
-  void set_m(double m) {m_ = m;}
-  void set_H(double H) {H_ = H;}
+  void set_m(double m) {
+    m_ = m;
+    A_ = alip_utils::CalcA(H_, m_);
+    A_inv_ = A_.inverse();
+  }
+  void set_H(double H) {
+    H_ = H;
+    A_ = alip_utils::CalcA(H_, m_);
+    A_inv_ = A_.inverse();
+  }
 
  private:
   double m_;
   double H_;
   double n_;
-  mutable Eigen::Matrix4d A_;
-  mutable Eigen::Matrix4d A_inv_;
+  Eigen::Matrix4d A_;
+  Eigen::Matrix4d A_inv_;
   Eigen::MatrixXd B_;
 };
 

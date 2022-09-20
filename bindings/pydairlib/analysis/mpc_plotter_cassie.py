@@ -27,6 +27,18 @@ def plot_com_traj_solutions(lcm_traj_list, dims, slc=None):
         t, y = traj.trajectories["com_traj"].get_traj_as_cubic_shape_preserving(200)
         plt.plot(t, y[:, dims])
 
+def plot_state_traj_over_time(xx):
+    nk = len(xx[0])
+    xx_traj = np.hstack(
+        [
+            np.hstack(
+                [np.expand_dims(xx[n][k], axis=-1) for k in range(nk)]
+            ) for n in range(len(xx))
+        ]
+    )
+    plt.plot(xx_traj.T)
+    plt.legend(['x', 'y', 'Lx', 'Ly'])
+
 
 def plot_com_traj_solution_overhead(xx, pp, fsm, x0, p0):
     nm = len(pp)

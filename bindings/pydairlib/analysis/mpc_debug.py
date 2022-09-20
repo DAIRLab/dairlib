@@ -31,21 +31,23 @@ class LcmTrajectory:
             self.trajectories[block.trajectory_name] = LcmTrajectoryBlock(block)
 
 
-class MpcDebug:
+class MpcSolution:
     def __init__(self):
         self.t_mpc = []
-        self.fsm = {}
-        self.x0 = {}
-        self.p0 = {}
         self.xxs = {}
         self.uus = {}
         self.pps = {}
         self.tts = {}
 
+    def append(self, t, msg):
+        self.t_mpc.append(t)
+        self.xxs[t] = msg.xx
+        self.uus[t] = msg.uu
+        self.pps[t] = msg.pp
+        self.tts[t] = msg.tt
+
     def to_numpy(self):
         for t in self.t_mpc:
-            self.x0[t] = np.array(self.x0[t])
-            self.p0[t] = np.array(self.p0[t])
             self.xxs[t] = self.recursive_list_to_numpy(
                 self.xxs[t]
             )
@@ -57,17 +59,6 @@ class MpcDebug:
             )
             self.tts[t] = np.array(self.tts[t])
 
-    def append(self, msg):
-        t = msg.utime / 1e6
-        self.t_mpc.append(t)
-        self.fsm[t] = msg.fsm_state
-        self.x0[t] = msg.x0
-        self.p0[t] = msg.p0
-        self.xxs[t] = msg.xx
-        self.uus[t] = msg.uu
-        self.pps[t] = msg.pp
-        self.tts[t] = msg.tt
-
     @staticmethod
     # Convert the inner-most list to a numpy array - leaving the rest as a list
     def recursive_list_to_numpy(lst):
@@ -76,3 +67,31 @@ class MpcDebug:
         else:
             lst = np.array(lst)
         return lst
+
+
+class MpcDebug:
+    def __init__(self):
+        self.t_mpc = []
+        self.fsm = {}
+        self.x0 = {}
+        self.p0 = {}
+        self.mpc_trajs = {
+            "solution": MpcSolution(),
+            "guess": MpcSolution(),
+            "desired": MpcSolution()
+        }
+
+    def to_numpy(self):
+        for t in self.t_mpc:
+            self.x0[t] = np.array(self.x0[t])
+            self.p0[t] = np.array(self.p0[t])
+        for key in self.mpc_trajs.keys():
+            self.mpc_trajs[key] = self.mpc_trajs[key].to_numpy()
+
+    def append(self, msg):
+        t = msg.utime / 1e6
+        self.x0[t] = msg.x0
+        self.p0[t] = msg.p0
+        self.mpc_trajs["solution"].append(t, msg.solution)
+        self.mpc_trajs["guess"].append(t, msg.guess)
+        self.mpc_trajs["desired"].append(t, msg.desired)

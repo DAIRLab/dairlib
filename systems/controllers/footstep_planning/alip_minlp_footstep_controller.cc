@@ -221,7 +221,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
         alip_utils::CalcA(h, plant_.CalcTotalMass(*context_));
 
     // split this assignment into 2 lines to avoid Eigen compiler error
-    Vector2d u = (p_w - p_next).head<2>();
+    Vector2d u = (p_b - p_next).head<2>();
     u = fsm_switch ? u : Vector2d::Zero();
 
     filter.Update(filter_data, u, x, t);
@@ -230,7 +230,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   VectorXd ic = VectorXd::Zero(7);
   ic.head<4>() = x;
-  ic.tail<3>() = p_w;
+  ic.tail<3>() = p_b;
 
   // Update desired trajectory
   auto xd  = trajopt.MakeXdesTrajForVdes(
@@ -254,26 +254,19 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   trajopt.UpdateNominalStanceTime(
       t_next_impact - t, stance_duration_map_.at(fsm_state));
 
-  ConvexFoothold inflating_workspace;
-  ConvexFoothold fixed_workspace;
-  Vector3d robot_center = CoM_w;
-  robot_center(2) = p_w(2);
-  fixed_workspace.AddFace(-stance * Vector3d::UnitY(),
-                          robot_center - 0.025 * stance * Vector3d::UnitY());
-  fixed_workspace.AddFace(stance * Vector3d::UnitY(),
-                          robot_center + 0.6 * stance * Vector3d::UnitY());
-  fixed_workspace.AddFace(Vector3d::UnitX(), robot_center +   0.7 * Vector3d::UnitX());
-  fixed_workspace.AddFace(-Vector3d::UnitX(), robot_center - 0.7 * Vector3d::UnitX());
+  ConvexFoothold workspace;
+  Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
 
-  inflating_workspace.AddFace(Vector3d::UnitX(), p_next + Vector3d::UnitX());
-  inflating_workspace.AddFace(Vector3d::UnitY(), p_next + Vector3d::UnitY());
-  inflating_workspace.AddFace(-Vector3d::UnitX(), p_next + Vector3d::UnitX());
-  inflating_workspace.AddFace(-Vector3d::UnitY(), p_next + Vector3d::UnitX());
+  workspace.AddFace(-stance * Vector3d::UnitY(),
+                    com_xy - 0.025 * stance * Vector3d::UnitY());
+  workspace.AddFace(stance * Vector3d::UnitY(),
+                    com_xy + 0.6 * stance * Vector3d::UnitY());
+  workspace.AddFace(Vector3d::UnitX(), com_xy +   0.7 * Vector3d::UnitX());
+  workspace.AddFace(-Vector3d::UnitX(), com_xy - 0.7 * Vector3d::UnitX());
 
-  trajopt.UpdateNextFootstepReachabilityConstraint(
-      fixed_workspace, inflating_workspace);
+  trajopt.UpdateNextFootstepReachabilityConstraint(workspace);
 
-  trajopt.CalcOptimalFootstepPlan(x, p_w, warmstart);
+  trajopt.CalcOptimalFootstepPlan(x, p_b, warmstart);
 
   // Update discrete states
   double t0 = trajopt.GetTimingSolution()(0);
@@ -290,7 +283,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
 void AlipMINLPFootstepController::CopyNextFootstepOutput(
     const Context<double> &context, BasicVector<double> *p_B_FC) const {
-  auto& trajopt = context.get_abstract_state<AlipMINLP>(alip_minlp_idx_);
+  const auto& trajopt = context.get_abstract_state<AlipMINLP>(alip_minlp_idx_);
   const auto& pp = trajopt.GetFootstepSolution();
   const auto& xx = trajopt.GetStateSolution();
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();

@@ -94,8 +94,7 @@ class AlipMINLP {
   void UpdateInitialTimeConstraint(double tmax);
   void ActivateInitialTimeConstraint(double t);
   void UpdateNextFootstepReachabilityConstraint(
-      const geometry::ConvexFoothold& fixed_workspace,
-      const geometry::ConvexFoothold& inflating_workspace);
+      const geometry::ConvexFoothold &workspace);
 
   void UpdateInitialGuess();
   void UpdateInitialGuess(const Eigen::Vector3d &p0, const Eigen::Vector4d &x0);
@@ -160,7 +159,6 @@ class AlipMINLP {
   double umax_ = -1;
   double tmin_ = 0;   // gainify
   double tmax_ = 0;
-  double vmax_ = 5.0; // avg 2 m/s
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd Qf_;
   std::vector<double> td_;

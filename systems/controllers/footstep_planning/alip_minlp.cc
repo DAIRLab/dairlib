@@ -284,15 +284,6 @@ void AlipMINLP::MakeNextFootstepReachabilityConstraint() {
       -numeric_limits<double>::infinity()*VectorXd::Ones(1),
       VectorXd::Zero(1), pp_.at(1))
   .evaluator();
-  //debugging
-  return;
-
-  next_step_reach_c_inflating_ = prog_->AddLinearConstraint(
-      MatrixXd::Zero(1, 4),
-      -numeric_limits<double>::infinity()*VectorXd::Ones(1),
-      VectorXd::Zero(1),
-      {pp_.at(1), tt_.at(1)})
-  .evaluator();
 }
 
 void AlipMINLP::ClearFootholdConstraints() {
@@ -340,23 +331,12 @@ void AlipMINLP::UpdateInitialGuess() {
   prog_->SetInitialGuessForAllVariables(solutions_.front().GetSolution());
 }
 
-void AlipMINLP::UpdateNextFootstepReachabilityConstraint(
-    const geometry::ConvexFoothold &fixed_workspace,
-    const geometry::ConvexFoothold &inflating_workspace) {
+void AlipMINLP::UpdateNextFootstepReachabilityConstraint(const geometry::ConvexFoothold &workspace) {
 
-  const auto& [Af, bf] = fixed_workspace.GetConstraintMatrices();
-  const auto& [Ai, bi] = inflating_workspace.GetConstraintMatrices();
-  MatrixXd Ainf = MatrixXd::Zero(Ai.rows(), 4);
-  Ainf.leftCols(3) = Ai;
-  Ainf.rightCols(1) = -bi * vmax_;
+  const auto& [Af, bf] = workspace.GetConstraintMatrices();
   double neg_inf  = -numeric_limits<double>::infinity();
   next_step_reach_c_fixed_->UpdateCoefficients(
       Af, neg_inf * VectorXd::Ones(bf.rows()), bf);
-
-  return;
-  // debugging
-  next_step_reach_c_inflating_->UpdateCoefficients(
-      Ainf, neg_inf * VectorXd::Ones(bi.rows()), VectorXd::Zero(bi.rows()));
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {
@@ -544,7 +524,7 @@ VectorXd AlipMINLP::GetTimingGuess() const {
 
 VectorXd AlipMINLP::GetDesiredTiming() const {
   const VectorXd tt = Eigen::Map<const VectorXd>(td_.data(), td_.size());
-  return tt;
+  return tt; // NOLINT(performance-no-automatic-move)
 }
 
 }

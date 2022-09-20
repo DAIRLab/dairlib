@@ -24,7 +24,7 @@ def plot_com_traj_solutions(lcm_traj_list, dims, slc=None):
         slc = slice(len(lcm_traj_list))
 
     for traj in lcm_traj_list[slc]:
-        t, y = traj.trajectories["com_traj"].get_traj_as_cubic_shape_preserving(200)
+        t, y = traj.trajectories["com_traj"].get_traj_as_first_order_hold(200)
         plt.plot(t, y[:, dims])
 
 

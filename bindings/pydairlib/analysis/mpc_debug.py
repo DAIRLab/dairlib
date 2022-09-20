@@ -23,6 +23,12 @@ class LcmTrajectoryBlock:
         )
         return self.sample(pp_traj, npoints)
 
+    def get_traj_as_first_order_hold(selfself, npoints):
+        pp_traj = PiecewisePolynomial.FirstOrderHold(
+            self.lcm_trajectory_block.time_vec,
+            self.lcm_trajectory_block.datapoints
+        )
+        return self.sample(pp_traj, npoints)
 
 class LcmTrajectory:
     def __init__(self, msg):

@@ -76,7 +76,7 @@ PelvisBalanceW:
     0,    4,     0,
     0,    0,     0]
 PelvisBalanceKp:
-  [150,      0,    0,
+  [150,    0,    0,
    0,    150,    0,
    0,      0,    0]
 PelvisBalanceKd:
@@ -95,7 +95,7 @@ PelvisHeadingKp:
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    3]
+      0,     0,    5]
 period_of_no_heading_control: 0.0
 
 SwingFootW:

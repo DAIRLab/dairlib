@@ -384,7 +384,7 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
   double omega = sqrt(9.81 / H_);
   double frac = 1 / (m_ * H_ * omega);
   double Ly = H_ * m_ * vdes(0);
-  double Lx = H_ * m_ * omega * step_width * atanh(omega * Ts / 2);
+  double Lx = H_ * m_ * omega * step_width * tanh(omega * Ts / 2);
   double dLx = - H_ * m_ * vdes(1);
   Matrix4d Ad = ((Ts / (nk-1)) * alip_utils::CalcA(H_, m_)).exp();
   vector<vector<Vector4d>> xx;
@@ -413,7 +413,7 @@ vector<Vector4d> AlipMINLP::MakeXdesTrajForCurrentStep(
   double omega = sqrt(9.81 / H_);
   double frac = 1 / (m_ * H_ * omega);
   double Ly = H_ * m_ * vdes(0);
-  double Lx = H_ * m_ * omega * step_width * atanh(omega * Ts / 2);
+  double Lx = H_ * m_ * omega * step_width * tanh(omega * Ts / 2);
   double dLx = - H_ * m_ * vdes(1);
 
   MatrixXd Ad0 = (t_current * alip_utils::CalcA(H_, m_)).exp();

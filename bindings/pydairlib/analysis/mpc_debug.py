@@ -23,7 +23,7 @@ class LcmTrajectoryBlock:
         )
         return self.sample(pp_traj, npoints)
 
-    def get_traj_as_first_order_hold(selfself, npoints):
+    def get_traj_as_first_order_hold(self, npoints):
         pp_traj = PiecewisePolynomial.FirstOrderHold(
             self.lcm_trajectory_block.time_vec,
             self.lcm_trajectory_block.datapoints
@@ -92,12 +92,14 @@ class MpcDebug:
             self.x0[t] = np.array(self.x0[t])
             self.p0[t] = np.array(self.p0[t])
         for key in self.mpc_trajs.keys():
-            self.mpc_trajs[key] = self.mpc_trajs[key].to_numpy()
+            self.mpc_trajs[key].to_numpy()
 
     def append(self, msg):
         t = msg.utime / 1e6
+        self.t_mpc.append(t)
         self.x0[t] = msg.x0
         self.p0[t] = msg.p0
+        self.fsm[t] = msg.fsm_state
         self.mpc_trajs["solution"].append(t, msg.solution)
         self.mpc_trajs["guess"].append(t, msg.guess)
         self.mpc_trajs["desired"].append(t, msg.desired)

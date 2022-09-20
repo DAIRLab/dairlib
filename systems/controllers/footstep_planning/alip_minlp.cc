@@ -226,8 +226,8 @@ void AlipMINLP::MakeDynamicsConstraints() {
   dynamics_evaluator_ = std::make_shared<AlipDynamicsConstraint>(
       m_, H_, nknots_.front() - 1.0);
   std::unordered_map<int, double> constraint_scaling;
-  constraint_scaling.insert({2, 1.0 /10.0});
-  constraint_scaling.insert({3, 1.0/20.0});
+  constraint_scaling.insert({2, 1.0 / 10.0});
+  constraint_scaling.insert({3, 1.0 / 20.0});
   dynamics_evaluator_->SetConstraintScaling(constraint_scaling);
   for (int i = 0; i < nmodes_; i++) {
     vector<Binding<drake::solvers::Constraint>> dyn_c_this_mode{};
@@ -469,12 +469,32 @@ vector<Vector3d> AlipMINLP::GetFootstepSolution() const {
   return pp;
 }
 
+vector<Vector3d> AlipMINLP::GetFootstepGuess() const {
+  vector<Vector3d> pp;
+  for (auto& p : pp_){
+    pp.emplace_back(prog_->GetInitialGuess(p));
+  }
+  return pp;
+}
+
 vector<vector<Vector4d>> AlipMINLP::GetStateSolution() const {
   vector<vector<Vector4d>> xx;
   for(auto& x : xx_) {
     vector<Vector4d> xknots;
     for (auto& knot : x) {
       xknots.emplace_back(solutions_.front().GetSolution(knot));
+    }
+    xx.push_back(xknots);
+  }
+  return xx;
+}
+
+vector<vector<Vector4d>> AlipMINLP::GetStateGuess() const {
+  vector<vector<Vector4d>> xx;
+  for(auto& x : xx_) {
+    vector<Vector4d> xknots;
+    for (auto& knot : x) {
+      xknots.emplace_back(prog_->GetInitialGuess(knot));
     }
     xx.push_back(xknots);
   }
@@ -493,11 +513,37 @@ vector<vector<VectorXd>> AlipMINLP::GetInputSolution() const {
   return uu;
 }
 
+vector<vector<VectorXd>> AlipMINLP::GetInputGuess() const {
+  vector<vector<VectorXd>> uu;
+  for(auto& u : uu_) {
+    vector<VectorXd> uknots;
+    for (auto& knot : u) {
+      uknots.push_back(prog_->GetInitialGuess(knot));
+    }
+    uu.push_back(uknots);
+  }
+  return uu;
+}
+
+
 VectorXd AlipMINLP::GetTimingSolution() const {
   VectorXd tt = VectorXd::Zero(nmodes_);
   for (int i = 0; i < nmodes_; i++) {
     tt.segment(i, 1) = solutions_.front().GetSolution(tt_.at(i));
   }
+  return tt;
+}
+
+VectorXd AlipMINLP::GetTimingGuess() const {
+  VectorXd tt = VectorXd::Zero(nmodes_);
+  for (int i = 0; i < nmodes_; i++) {
+    tt.segment(i, 1) = prog_->GetInitialGuess(tt_.at(i));
+  }
+  return tt;
+}
+
+VectorXd AlipMINLP::GetDesiredTiming() const {
+  const VectorXd tt = Eigen::Map<const VectorXd>(td_.data(), td_.size());
   return tt;
 }
 

@@ -1,9 +1,10 @@
-#include <iostream>
 #include "alip_minlp_footstep_controller.h"
 #include "common/eigen_utils.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
+
+#include <iostream>
 
 namespace dairlib::systems::controllers {
 
@@ -120,7 +121,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       "lcmt_saved_traj", &AlipMINLPFootstepController::CopyCoMTrajOutput)
       .get_index();
   mpc_debug_output_port_ = DeclareAbstractOutputPort(
-      "lcmt_mpc_debug", &AlipMINLPFootstepController::CopyMpcSolutionToLcm)
+      "lcmt_mpc_debug", &AlipMINLPFootstepController::CopyMpcDebugToLcm)
       .get_index();
 }
 
@@ -187,25 +188,37 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
 
   // get the alip state
-  alip_utils::CalcAlipState(
-      plant_, context_, robot_state, {stance_foot_map_.at(fsm_state)},
-      &CoM_w, &L, &p_w);
-  plant_.CalcPointsPositions(*context_, stance_foot_map_.at(next_fsm(fsm_idx)).second,
-      stance_foot_map_.at(next_fsm(fsm_idx)).first, plant_.world_frame(), &p_next);
+  alip_utils::CalcAlipState(plant_,
+                            context_,
+                            robot_state,
+                            {stance_foot_map_.at(fsm_state)},
+                            &CoM_w, &L, &p_w);
+  plant_.CalcPointsPositions(*context_,
+                             stance_foot_map_.at(next_fsm(fsm_idx)).second,
+                             stance_foot_map_.at(next_fsm(fsm_idx)).first,
+                             plant_.world_frame(),
+                             &p_next);
 
-  p_next = ReExpressWorldVector3InBodyYawFrame<double>(plant_, *context_, "pelvis", p_next);
-  CoM_w = ReExpressWorldVector3InBodyYawFrame<double>(plant_, *context_, "pelvis", CoM_w);
-  p_w = ReExpressWorldVector3InBodyYawFrame<double>(plant_, *context_, "pelvis", p_w);
-  L = ReExpressWorldVector3InBodyYawFrame<double>(plant_, *context_, "pelvis", L);
+  p_next = ReExpressWorldVector3InBodyYawFrame<double>(
+      plant_, *context_, "pelvis", p_next);
+  Vector3d CoM_b = ReExpressWorldVector3InBodyYawFrame<double>(
+      plant_, *context_, "pelvis", CoM_w);
+  Vector3d p_b = ReExpressWorldVector3InBodyYawFrame<double>(
+      plant_, *context_, "pelvis", p_w);
+  Vector3d L_b = ReExpressWorldVector3InBodyYawFrame<double>(
+      plant_, *context_, "pelvis", L);
+
 
   Vector4d x;
-  x.head<2>() = CoM_w.head<2>() - p_w.head<2>();
-  x.tail<2>() = L.head<2>();
+  x.head<2>() = CoM_b.head<2>() - p_b.head<2>();
+  x.tail<2>() = L_b.head<2>();
+  double h = CoM_b(2) - p_b(2);
+
   if (gains_.filter_alip_state) {
     auto& [filter, filter_data] = state->get_mutable_abstract_state<
         std::pair<S2SKalmanFilter,S2SKalmanFilterData>>(alip_filter_idx_);
     filter_data.A =
-        alip_utils::CalcA(CoM_w(2) - p_w(2), plant_.CalcTotalMass(*context_));
+        alip_utils::CalcA(h, plant_.CalcTotalMass(*context_));
 
     // split this assignment into 2 lines to avoid Eigen compiler error
     Vector2d u = (p_w - p_next).head<2>();
@@ -219,8 +232,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   ic.head<4>() = x;
   ic.tail<3>() = p_w;
 
-  trajopt.set_H(CoM_w(2) - p_w(2));
-
+  // Update desired trajectory
   auto xd  = trajopt.MakeXdesTrajForVdes(
       vdes, gains_.stance_width, stance_duration_map_.at(fsm_state),
       gains_.knots_per_mode, stance);
@@ -231,6 +243,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       gains_.knots_per_mode);
 
   // Update the trajopt problem data and solve
+  trajopt.set_H(h);
   if (committed) {
     trajopt.ActivateInitialTimeConstraint(t_next_impact - t);
   } else {
@@ -363,7 +376,7 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   *traj_msg = lcm_traj.GenerateLcmObject();
 }
 
-void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
+void AlipMINLPFootstepController::CopyMpcDebugToLcm(
     const Context<double> &context, lcmt_mpc_debug *mpc_debug) const {
   // Get the debug info from the context
   const auto& trajopt =
@@ -372,43 +385,75 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
       context.get_discrete_state(initial_conditions_state_idx_).get_value();
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
+
   int utime = static_cast<int>(robot_output->get_timestamp() * 1e6);
   double fsmd = context.get_discrete_state(fsm_state_idx_).get_value()(0);
   int fsm = curr_fsm(static_cast<int>(fsmd));
 
-  const auto& pp_sol = trajopt.GetFootstepSolution();
-  const auto& xx_sol = trajopt.GetStateSolution();
-  const auto& uu_sol = trajopt.GetInputSolution();
-  const auto& tt_sol = trajopt.GetTimingSolution();
+  CopyMpcSolutionToLcm(trajopt.GetFootstepSolution(),
+                       trajopt.GetStateSolution(),
+                       trajopt.GetInputSolution(),
+                       trajopt.GetTimingSolution(),
+                       &mpc_debug->solution);
+
+  CopyMpcSolutionToLcm(trajopt.GetDesiredFootsteps(),
+                       trajopt.GetDesiredState(),
+                       trajopt.GetDesiredInputs(),
+                       trajopt.GetDesiredTiming(),
+                       &mpc_debug->desired);
+
+  CopyMpcSolutionToLcm(trajopt.GetFootstepGuess(),
+                       trajopt.GetStateGuess(),
+                       trajopt.GetInputGuess(),
+                       trajopt.GetTimingGuess(),
+                       &mpc_debug->guess);
 
   mpc_debug->utime = utime;
   mpc_debug->fsm_state = fsm;
-  mpc_debug->nx = 4;
-  mpc_debug->nu = 1;
-  mpc_debug->np = 3;
-  mpc_debug->nm = gains_.nmodes;
-  mpc_debug->nk = gains_.knots_per_mode;
-  mpc_debug->nk_minus_one = mpc_debug->nk - 1;
-  mpc_debug->x0 = CopyVectorXdToStdVector(ic.head<4>());
-  mpc_debug->p0 = CopyVectorXdToStdVector(ic.tail<3>());
 
-  mpc_debug->pp.clear();
-  mpc_debug->xx.clear();
-  mpc_debug->uu.clear();
+  Vector4d::Map(mpc_debug->x0) = ic.head<4>();
+  Vector3d::Map(mpc_debug->p0) = ic.tail<3>();
+
+}
+
+void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
+    const std::vector<Vector3d> &pp,
+    const std::vector<std::vector<Vector4d>> &xx,
+    const std::vector<std::vector<VectorXd>> &uu,
+    const Eigen::VectorXd &tt,
+    lcmt_mpc_solution *solution) const {
+
+  DRAKE_DEMAND(pp.size() == gains_.nmodes);
+  DRAKE_DEMAND(xx.size() == gains_.nmodes && xx.front().size() == gains_.knots_per_mode);
+  DRAKE_DEMAND(uu.size() == gains_.nmodes && uu.front().size() == gains_.knots_per_mode - 1);
+  DRAKE_DEMAND(tt.rows() == gains_.nmodes);
+
+  solution->nx = 4;
+  solution->nu = 1;
+  solution->np = 3;
+  solution->nm = gains_.nmodes;
+  solution->nk = gains_.knots_per_mode;
+  solution->nk_minus_one = solution->nk - 1;
+
+  solution->pp.clear();
+  solution->xx.clear();
+  solution->uu.clear();
+
   for (int n = 0; n < gains_.nmodes; n++) {
-    mpc_debug->pp.push_back(CopyVectorXdToStdVector(pp_sol.at(n)));
+    solution->pp.push_back(CopyVectorXdToStdVector(pp.at(n)));
     std::vector<std::vector<double>> xx_temp;
     std::vector<std::vector<double>> uu_temp;
     for (int k = 0; k < gains_.knots_per_mode; k++) {
-      xx_temp.push_back(CopyVectorXdToStdVector(xx_sol.at(n).at(k)));
+      xx_temp.push_back(CopyVectorXdToStdVector(xx.at(n).at(k)));
     }
     for(int k = 0; k < gains_.knots_per_mode - 1; k++) {
-      uu_temp.push_back(CopyVectorXdToStdVector(uu_sol.at(n).at(k)));
+      uu_temp.push_back(CopyVectorXdToStdVector(uu.at(n).at(k)));
     }
-    mpc_debug->xx.push_back(xx_temp);
-    mpc_debug->uu.push_back(uu_temp);
+    solution->xx.push_back(xx_temp);
+    solution->uu.push_back(uu_temp);
   }
-  mpc_debug->tt = CopyVectorXdToStdVector(tt_sol);
+  solution->tt = CopyVectorXdToStdVector(tt);
+
 }
 
 void AlipMINLPFootstepController::CopyFsmOutput(

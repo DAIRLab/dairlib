@@ -1,6 +1,7 @@
 #pragma once
 #include <dairlib/lcmt_saved_traj.hpp>
 #include <dairlib/lcmt_mpc_debug.hpp>
+#include <dairlib/lcmt_mpc_solution.hpp>
 
 #include "alip_utils.h"
 #include "alip_minlp.h"
@@ -88,12 +89,31 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
 
   void CopyNextFootstepOutput(const drake::systems::Context<double>& context,
                               drake::systems::BasicVector<double>* p_W) const;
+
   void CopyCoMTrajOutput(const drake::systems::Context<double>& context,
                          lcmt_saved_traj* traj_msg) const;
-  void CopyMpcSolutionToLcm(const drake::systems::Context<double>& context,
-                            lcmt_mpc_debug* mpc_debug) const;
 
+  void CopyMpcDebugToLcm(const drake::systems::Context<double>& context,
+                         lcmt_mpc_debug* mpc_debug) const;
 
+  // Lcm helper functions
+  void CopyMpcSolutionToLcm(const std::vector<Eigen::Vector3d>& pp,
+                            const std::vector<std::vector<Eigen::Vector4d>>& xx,
+                            const std::vector<std::vector<Eigen::VectorXd>>& uu,
+                            const Eigen::VectorXd& tt,
+                            lcmt_mpc_solution* solution) const;
+
+  // FSM helper functions
+  int curr_fsm(int fsm_idx) const {
+    return left_right_stance_fsm_states_.at(fsm_idx);
+  }
+  int next_fsm(int fsm_idx) const {
+    int next= fsm_idx + 1;
+    if (next >= left_right_stance_fsm_states_.size()) {
+      return curr_fsm(0);
+    }
+    return curr_fsm(next);
+  }
 
   // drake input ports
   drake::systems::InputPortIndex state_input_port_;
@@ -126,17 +146,7 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   int nv_;
   int nu_;
 
-  // Nominal FSM
-  int curr_fsm(int fsm_idx) const {
-    return left_right_stance_fsm_states_.at(fsm_idx);
-  }
-  int next_fsm(int fsm_idx) const {
-    int next= fsm_idx + 1;
-    if (next >= left_right_stance_fsm_states_.size()) {
-      return curr_fsm(0);
-    }
-    return curr_fsm(next);
-  }
+  // finite state machine management
   std::vector<int> left_right_stance_fsm_states_;
   std::vector<int> post_left_right_fsm_states_;
   std::map<int, double> stance_duration_map_;

@@ -91,13 +91,13 @@ class AlipMINLP {
       double Ts, double step_width, int stance, double nk) const;
 
   // per solve updates
-  void UpdateInitialGuess();
   void UpdateInitialTimeConstraint(double tmax);
   void ActivateInitialTimeConstraint(double t);
   void UpdateNextFootstepReachabilityConstraint(
       const geometry::ConvexFoothold& fixed_workspace,
       const geometry::ConvexFoothold& inflating_workspace);
 
+  void UpdateInitialGuess();
   void UpdateInitialGuess(const Eigen::Vector3d &p0, const Eigen::Vector4d &x0);
   void UpdateTrackingCost(const std::vector<std::vector<Eigen::Vector4d>>& xd);
   void ChangeFootholds(const std::vector<geometry::ConvexFoothold>& footholds) {
@@ -120,13 +120,31 @@ class AlipMINLP {
   std::vector<std::vector<Eigen::Vector4d>> GetStateSolution() const;
   std::vector<std::vector<Eigen::VectorXd>> GetInputSolution() const;
 
-  // getters and setters
+  // getting the initial guess
+  Eigen::VectorXd GetTimingGuess() const;
+  std::vector<Eigen::Vector3d> GetFootstepGuess() const;
+  std::vector<std::vector<Eigen::Vector4d>> GetStateGuess() const;
+  std::vector<std::vector<Eigen::VectorXd>> GetInputGuess() const;
+
+  // getting the desired solution
+  Eigen::VectorXd GetDesiredTiming() const;
+  std::vector<std::vector<Eigen::Vector4d>> GetDesiredState() const {
+    return xd_;
+  }
+  std::vector<Eigen::Vector3d> GetDesiredFootsteps() const{
+    return std::vector<Eigen::Vector3d>(nmodes_, Eigen::Vector3d::Zero());
+  };
+  std::vector<std::vector<Eigen::VectorXd>> GetDesiredInputs() const {
+    return std::vector<std::vector<Eigen::VectorXd>>(
+        nmodes_, std::vector<Eigen::VectorXd>(
+            nknots_.front() - 1, Eigen::VectorXd::Zero(1)));
+  };
+
+  // misc getters and setters
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
   int nmodes() const {return nmodes_;}
   std::vector<int> nknots() const {return nknots_;}
-  std::vector<std::vector<Eigen::Vector4d>> get_xd(){ return xd_;}
-
 
  private:
 

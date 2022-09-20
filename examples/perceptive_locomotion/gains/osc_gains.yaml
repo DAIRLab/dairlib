@@ -38,8 +38,8 @@ max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
 mid_foot_height: 0.15
-final_foot_height: 0.0
-final_foot_velocity_z: -0.5
+final_foot_height: -0.1
+final_foot_velocity_z: -1
 
 # LIPM trajectory
 lipm_height: 0.83
@@ -64,12 +64,12 @@ CoMW:
       0,    0,     0,
       0,    0,    10]
 CoMKp:
-  [   0,   0,     0,
+  [   10,   0,     0,
       0,    0,     0,
       0,    0,    50]
 CoMKd:
   [   1,    0,     0,
-      0,    1,     0,
+      0,    0,     0,
       0,    0,     2.5]
 PelvisBalanceW:
   [ 2,    0,     0,
@@ -103,12 +103,12 @@ SwingFootW:
     0,    4,     0,
     0,    0,     2]
 SwingFootKp:
-  [ 220,  0,     0,
-    0,  220,     0,
+  [ 200,  0,     0,
+    0,  200,     0,
     0,    0,   100]
 SwingFootKd:
-  [2,    0,     0,
-   0,    2,     0,
+  [1,    0,     0,
+   0,    1,     0,
    0,    0,     1]
 
 AlipKalmanQ:

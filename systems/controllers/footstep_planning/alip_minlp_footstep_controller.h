@@ -149,9 +149,8 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   // finite state machine management
   std::vector<int> left_right_stance_fsm_states_;
   std::vector<int> post_left_right_fsm_states_;
-  std::map<int, double> stance_duration_map_;
   double double_stance_duration_;
-
+  double single_stance_duration_;
   // gains
   AlipMINLPGains gains_;
 };

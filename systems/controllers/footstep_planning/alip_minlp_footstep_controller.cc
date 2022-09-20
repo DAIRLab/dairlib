@@ -39,6 +39,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
     left_right_stance_fsm_states_(left_right_stance_fsm_states),
     post_left_right_fsm_states_(post_left_right_fsm_states),
     double_stance_duration_(double_stance_duration),
+    single_stance_duration_(left_right_stance_durations.front()),
     gains_(gains) {
 
   // just alternating single stance phases for now.
@@ -53,8 +54,8 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 
   // TODO: @Brian-Acosta Add double stance here when appropriate
   for (int i = 0; i < left_right_stance_fsm_states_.size(); i++){
-    stance_duration_map_.insert({left_right_stance_fsm_states_.at(i), left_right_stance_durations.at(i)});
-    stance_foot_map_.insert({left_right_stance_fsm_states_.at(i), left_right_foot.at(i)});
+    stance_foot_map_.insert(
+        {left_right_stance_fsm_states_.at(i), left_right_foot.at(i)});
   }
 
   // Must declare the discrete states before assigning their output ports so
@@ -70,12 +71,12 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
     trajopt.AddMode(gains_.knots_per_mode);
   }
   auto xd = trajopt.MakeXdesTrajForVdes(
-      Vector2d::Zero(), gains_.stance_width, stance_duration_map_.at(0),
+      Vector2d::Zero(), gains_.stance_width, single_stance_duration_,
       gains_.knots_per_mode);
   trajopt.AddTrackingCost(xd, gains_.Q, gains_.Qf);
   trajopt.AddInputCost(gains_.R(0,0));
-  trajopt.UpdateNominalStanceTime(left_right_stance_durations.at(0),
-                                  left_right_stance_durations.at(1));
+  trajopt.UpdateNominalStanceTime(single_stance_duration_,
+                                  single_stance_duration_);
   trajopt.SetMinimumStanceTime(gains_.t_min);
   trajopt.SetMaximumStanceTime(gains_.t_max);
   trajopt.SetInputLimit(gains_.u_max);
@@ -105,15 +106,15 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       .get_index();
 
   // output ports
-
   next_impact_time_output_port_ = DeclareStateOutputPort(
       "t_next", next_impact_time_state_idx_)
       .get_index();
-
   prev_impact_time_output_port_ = DeclareVectorOutputPort(
-      "t_prev", 1, &AlipMINLPFootstepController::CopyPrevImpactTimeOutput).get_index();
+      "t_prev", 1, &AlipMINLPFootstepController::CopyPrevImpactTimeOutput)
+      .get_index();
   fsm_output_port_ = DeclareVectorOutputPort(
-      "fsm", 1, &AlipMINLPFootstepController::CopyFsmOutput).get_index();
+      "fsm", 1, &AlipMINLPFootstepController::CopyFsmOutput)
+      .get_index();
   footstep_target_output_port_ = DeclareVectorOutputPort(
       "p_SW", 3, &AlipMINLPFootstepController::CopyNextFootstepOutput)
       .get_index();
@@ -165,8 +166,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   // On the first iteration, we don't want to switch immediately or warmstart
   if (t_next_impact == 0.0) {
-    std::cout << "first iteration!" << std::endl;
-    t_next_impact = t + stance_duration_map_.at(0);
+    t_next_impact = t + single_stance_duration_;
     t_prev_impact = t;
     warmstart = false;
   }
@@ -178,7 +178,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     fsm_idx ++;
     fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
     t_prev_impact = t;
-    t_next_impact = t + stance_duration_map_.at(curr_fsm(fsm_idx));
+    t_next_impact = t + single_stance_duration_;
   } else if ((t_next_impact - t) < gains_.t_commit) {
     committed = true;
   }
@@ -234,12 +234,12 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   // Update desired trajectory
   auto xd  = trajopt.MakeXdesTrajForVdes(
-      vdes, gains_.stance_width, stance_duration_map_.at(fsm_state),
+      vdes, gains_.stance_width, single_stance_duration_,
       gains_.knots_per_mode, stance);
 
   xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
       vdes, t - t_prev_impact, t_next_impact - t,
-      stance_duration_map_.at(fsm_state), gains_.stance_width, stance,
+      single_stance_duration_, gains_.stance_width, stance,
       gains_.knots_per_mode);
 
   // Update the trajopt problem data and solve
@@ -252,7 +252,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   trajopt.ChangeFootholds(footholds);
   trajopt.UpdateTrackingCost(xd);
   trajopt.UpdateNominalStanceTime(
-      t_next_impact - t, stance_duration_map_.at(fsm_state));
+      t_next_impact - t, single_stance_duration_);
 
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));

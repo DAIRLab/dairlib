@@ -1,6 +1,6 @@
-t_commit: 0.35
-t_min: 0.30
-t_max: 0.5
+t_commit: 0.36
+t_min: 0.35
+t_max: 0.3501
 u_max: 0
 h_des: 0.83
 stance_width: 0.5

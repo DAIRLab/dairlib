@@ -24,7 +24,7 @@ def plot_com_traj_solutions(lcm_traj_list, dims, slc=None):
         slc = slice(len(lcm_traj_list))
 
     for traj in lcm_traj_list[slc]:
-        t, y = traj.trajectories["com_traj"].get_traj_as_first_order_hold(200)
+        t, y = traj.trajectories["com_traj"].get_traj_as_cubic_shape_preserving(200)
         plt.plot(t, y[:, dims])
 
 
@@ -67,6 +67,15 @@ def plot_com_traj_solution_overhead(xx, pp, fsm, x0, p0):
     plt.plot(-p0[1], p0[0], color='black', marker='X', markersize=20)
 
 
+def plot_pmc_loop_time(mpc_debug):
+    plt.figure()
+    looptimes = np.ediff1d(mpc_debug.t_mpc)
+    looptimes = looptimes[looptimes > 0.0001]
+    plt.plot(looptimes)
+    plt.title('Mpc loop times')
+    plt.ylabel('Loop time (s)')
+
+
 def plot_foot_targets(mpc_debug, i):
     plt.figure()
     foot_targets = np.hstack(
@@ -76,7 +85,10 @@ def plot_foot_targets(mpc_debug, i):
         ]
     )
     plt.plot(mpc_debug.t_mpc, foot_targets.T)
-
+    plt.legend(['px', 'py', 'pz'])
+    plt.title('MPC Next foot position solution')
+    plt.xlabel('t (s)')
+    plt.ylabel('Position P (m)')
 
 def mpc_processing_callback(data, mpc_channel, com_traj_channel):
     dbg = MpcDebug()
@@ -105,13 +117,15 @@ def main():
 
     plt.figure()
     plot_state_traj_over_time(
-        mpc_debug.mpc_trajs["desired"].xxs[mpc_debug.t_mpc[0]]
+        mpc_debug.mpc_trajs["desired"].xxs[mpc_debug.t_mpc[5]]
     )
-    plot_com_traj_solutions(com_trajs, [2])
+
+    plot_com_traj_solutions(com_trajs, [0, 1, 2], slc=slice(5, 6))
 
     idx = 50
     t = mpc_debug.t_mpc[idx]
 
+    plt.figure()
     plot_com_traj_solution_overhead(
         mpc_debug.mpc_trajs["solution"].xxs[t],
         mpc_debug.mpc_trajs["solution"].pps[t],
@@ -120,6 +134,7 @@ def main():
         mpc_debug.p0[t]
     )
     plot_foot_targets(mpc_debug, 1)
+    plot_pmc_loop_time(mpc_debug)
     plt.show()
 
 

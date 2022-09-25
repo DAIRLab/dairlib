@@ -1,11 +1,11 @@
-t_commit: 0.36
-t_min: 0.35
-t_max: 0.3501
-u_max: 0
+t_commit: 0.21
+t_min: 0.2
+t_max: 0.5
+u_max: 1
 h_des: 0.83
 stance_width: 0.5
 ss_time: 0.4
-ds_time: 0.025
+ds_time: 0.05
 nmodes: 3
 knots_per_mode: 3
 qf:

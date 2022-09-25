@@ -403,6 +403,7 @@ void AlipMINLPFootstepController::CopyMpcDebugToLcm(
 
   mpc_debug->utime = utime;
   mpc_debug->fsm_state = fsm;
+  mpc_debug->solve_time_us = static_cast<int64_t>(1e6 * trajopt.solve_time());
 
   Vector4d::Map(mpc_debug->x0) = ic.head<4>();
   Vector3d::Map(mpc_debug->p0) = ic.tail<3>();

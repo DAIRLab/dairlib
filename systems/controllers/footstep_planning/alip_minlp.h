@@ -9,6 +9,7 @@
 #include "drake/solvers/decision_variable.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/mathematical_program_result.h"
+#include "drake/solvers/osqp_solver.h"
 
 namespace dairlib::systems::controllers {
 
@@ -37,6 +38,7 @@ inline std::vector<std::vector<int>> cartesian_product(unsigned long range, int 
 
 using drake::solvers::Binding;
 using solvers::NonlinearConstraint;
+using drake::solvers::OsqpSolver;
 using drake::solvers::QuadraticCost;
 using drake::solvers::DecisionVariable;
 using drake::solvers::LinearConstraint;
@@ -63,7 +65,9 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
     A_ = alip_utils::CalcA(H_, m_);
     A_inv_ = A_.inverse();
   }
-
+  static Eigen::Matrix4d Ad(double t, double m, double h, int n) {
+    return ((t / (n-1)) * alip_utils::CalcA(h, m)).exp();
+  }
  private:
   double m_;
   double H_;
@@ -160,6 +164,8 @@ class AlipMINLP {
   // misc getters and setters
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
+  double solve_time() const {
+    return solutions_.front().get_solver_details<OsqpSolver>().solve_time;};
   int nmodes() const {return nmodes_;}
   std::vector<int> nknots() const {return nknots_;}
 

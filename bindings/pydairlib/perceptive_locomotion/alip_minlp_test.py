@@ -42,10 +42,9 @@ def main():
     trajopt = AlipMINLP(32, 0.9)
 
     footholds = []
-    p0 = [0.0, 0, 0]
+    p0 = [0.0, 0.0, 0.0]
     for o in [
         p0,
-        np.array([0.0, -0.1, 0.0])
     ]:
         # Make a rhombic foothold
         foothold = ConvexFoothold()
@@ -62,13 +61,14 @@ def main():
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
-    xd = trajopt.MakeXdesTrajForVdes(np.array([0.5, 0]), 0.3, 0.35, nk, -1)
-    trajopt.AddTrackingCost(xd, 1*np.eye(4), 20*np.eye(4))
+    xd = trajopt.MakeXdesTrajForVdes(np.array([1.0, 0]), 0.35, 0.35, nk, -1)
+
+    trajopt.AddTrackingCost(xd, 1*np.eye(4), 0*np.eye(4))
     trajopt.UpdateNominalStanceTime(0.35, 0.35)
     trajopt.SetMinimumStanceTime(0.1)
     trajopt.SetMaximumStanceTime(0.35)
-    trajopt.SetInputLimit(9.81*30*0.1 / 2)
-    trajopt.AddInputCost(0.1)
+    trajopt.SetInputLimit(1)
+    trajopt.AddInputCost(10)
     trajopt.Build()
     # trajopt.ActivateInitialTimeConstraint(0.35)
     trajopt.CalcOptimalFootstepPlan(xd[0][0], np.array(p0), False)

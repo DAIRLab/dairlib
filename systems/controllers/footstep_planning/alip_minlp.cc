@@ -32,6 +32,7 @@ using drake::math::InitializeAutoDiff;
 
 using drake::solvers::Solve;
 using drake::solvers::Binding;
+using drake::solvers::OsqpSolver;
 using drake::solvers::IpoptSolver;
 using drake::solvers::NloptSolver;
 using drake::solvers::SnoptSolver;
@@ -136,13 +137,17 @@ void AlipMINLP::Build() {
   for (int i = 0; i < nmodes_; i++) {
     tt_(i) = td_.at(i);
   }
-
   MakeResetConstraints();
   MakeDynamicsConstraints();
   MakeInputBoundConstaints();
   MakeNextFootstepReachabilityConstraint();
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
+
+  prog_->SetSolverOption(OsqpSolver::id(), "eps_abs", 1e-6);
+  prog_->SetSolverOption(OsqpSolver::id(), "eps_rel", 1e-6);
+  prog_->SetSolverOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+  prog_->SetSolverOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
   built_ = true;
 }
 
@@ -215,15 +220,15 @@ void AlipMINLP::MakeDynamicsConstraints() {
   for (int i = 0; i < nmodes_; i++) {
     vector<Binding<LinearEqualityConstraint>> dyn_c_this_mode{};
     double t = tt_(i) / (nknots_.at(i) - 1);
-    Matrix4d Ad = (t * alip_utils::CalcA(m_, H_)).exp();
-    Vector4d Bd = alip_utils::CalcA(m_, H_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
+    Matrix4d Ad = (t * alip_utils::CalcA(H_, m_)).exp();
+    Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
 
     Matrix<double, 4, 9> Adyn;
     Adyn.leftCols<4>() = Ad;
     Adyn.col(4) = Bd;
     Adyn.rightCols<4>() = -Matrix4d::Identity();
 
-    for (int k = 0; k < nknots_.at(i)-1; k++) {
+    for (int k = 0; k < nknots_.at(i) - 1; k++) {
       dyn_c_this_mode.push_back(
           prog_->AddLinearEqualityConstraint(
               Adyn, Vector4d::Zero(),
@@ -276,9 +281,9 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   vector<vector<Vector4d>> xg = xd_;
 
   // Set the initial guess for the current mode based on limited time
-  std::vector<Vector4d> xx;
+  vector<Vector4d> xx;
   xx.push_back(x0);
-  Matrix4d Ad = (tt_(0)/ (nknots_.front() - 1) * alip_utils::CalcA(m_, H_)).exp();
+  Matrix4d Ad = (tt_(0) / (nknots_.front() - 1) * alip_utils::CalcA(H_, m_)).exp();
   for (int i = 1; i < nknots_.front(); i++) {
     xx.push_back(Ad * xx.at(i-1));
   }
@@ -290,6 +295,7 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
     }
   }
   Vector3d ptemp = p0;
+  prog_->SetInitialGuess(pp_.front(), p0);
   for(int n = 1; n < nmodes_; n++) {
     Vector2d p1 = (xd_.at(n-1).back() - xd_.at(n).front()).head<2>() + ptemp.head<2>();
     prog_->SetInitialGuess(pp_.at(n).head<2>(), p1);
@@ -343,8 +349,8 @@ void AlipMINLP::UpdateDynamicsConstraints() {
     int nk =  nknots_.at(n) - 1;
     for (int k = 0; k < nk; k++) {
       double t = tt_(n) / nk;
-      Matrix4d Ad = (t * alip_utils::CalcA(m_, H_)).exp();
-      Vector4d Bd = alip_utils::CalcA(m_, H_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
+      Matrix4d Ad = (t * alip_utils::CalcA(H_, m_)).exp();
+      Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
 
       Matrix<double, 4, 9> Adyn;
       Adyn.leftCols<4>() = Ad;

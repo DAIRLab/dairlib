@@ -200,10 +200,10 @@ class AlipMINLP {
   // program and decision variables
   drake::copyable_unique_ptr<MathematicalProgram>
       prog_{std::make_unique<MathematicalProgram>()};
-  std::vector<VectorXDecisionVariable> pp_;
-  std::vector<VectorXDecisionVariable> tt_;
-  std::vector<std::vector<VectorXDecisionVariable>> xx_;
-  std::vector<std::vector<VectorXDecisionVariable>> uu_;
+  std::vector<VectorXDecisionVariable> pp_{};
+  std::vector<VectorXDecisionVariable> tt_{};
+  std::vector<std::vector<VectorXDecisionVariable>> xx_{};
+  std::vector<std::vector<VectorXDecisionVariable>> uu_{};
 
   // constraints
   std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_{};
@@ -213,11 +213,10 @@ class AlipMINLP {
   std::shared_ptr<LinearEqualityConstraint> initial_time_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<LinearConstraint> next_step_reach_c_fixed_ = nullptr;
-  std::shared_ptr<LinearConstraint> next_step_reach_c_inflating_ = nullptr;
   std::shared_ptr<AlipDynamicsConstraint> dynamics_evaluator_ = nullptr;
-  std::vector<std::vector<Binding<drake::solvers::Constraint>>> dynamics_c_;
+  std::vector<std::vector<Binding<drake::solvers::Constraint>>> dynamics_c_{};
   std::vector<std::pair<Binding<LinearConstraint>,
-                        Binding<LinearEqualityConstraint>>> footstep_c_;
+                        Binding<LinearEqualityConstraint>>> footstep_c_{};
 
   // costs
   std::shared_ptr<QuadraticCost> terminal_cost_;

@@ -82,8 +82,12 @@ class AlipMINLP {
   // Problem setup
   void AddMode(int nk);
   void AddInputCost(double R);
-  void SetMinimumStanceTime(double tmin) {tmin_ = tmin;};
-  void SetMaximumStanceTime(double tmax) {tmax_ = tmax;};
+  void SetMinimumStanceTime(double tmin) {
+    tmin_ = std::vector<double>(nmodes_, tmin);
+  };
+  void SetMaximumStanceTime(double tmax) {
+    tmax_ = std::vector<double>(nmodes_, tmax);
+  };
   void SetInputLimit(double umax) {umax_ = umax;};
   void AddTrackingCost(const std::vector<std::vector<Eigen::Vector4d>> &xd,
   const Eigen::Matrix4d &Q, const Eigen::MatrixXd& Qf);
@@ -101,15 +105,15 @@ class AlipMINLP {
       double Ts, double step_width, int stance, double nk) const;
 
   // per solve updates
-  void UpdateInitialTimeConstraint(double tmax);
-  void ActivateInitialTimeConstraint(double t);
+  void UpdateMaximumCurrentStanceTime(double tmax);
+  void ActivateInitialTimeEqualityConstraint(double t);
   void UpdateNextFootstepReachabilityConstraint(
       const geometry::ConvexFoothold &workspace);
 
   void UpdateInitialGuess();
   void UpdateInitialGuess(const Eigen::Vector3d &p0, const Eigen::Vector4d &x0);
   void UpdateTrackingCost(const std::vector<std::vector<Eigen::Vector4d>>& xd);
-  void ChangeFootholds(const std::vector<geometry::ConvexFoothold>& footholds) {
+  void UpdateFootholds(const std::vector<geometry::ConvexFoothold>& footholds) {
     ClearFootholds();
     AddFootholds(footholds);
   }
@@ -118,6 +122,10 @@ class AlipMINLP {
     T.front() = t0;
     td_ = T;
   }
+
+  // Update the dynamics constraint to reflect the current mode timings
+  // after maybe updating the mode timing by one gradient step
+  void UpdateModeTiming(bool take_sqp_step);
 
   // Solving the problem
   void CalcOptimalFootstepPlan(
@@ -167,8 +175,8 @@ class AlipMINLP {
   int nmodes_ = 0;
   double R_ = 0;
   double umax_ = -1;
-  double tmin_ = 0;   // gainify
-  double tmax_ = 0;
+  std::vector<double> tmin_{};
+  std::vector<double> tmax_{};
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd Qf_;
   std::vector<double> td_;
@@ -184,8 +192,6 @@ class AlipMINLP {
   void MakeDynamicsConstraints();
   void ClearFootholdConstraints();
   void MakeInputBoundConstaints();
-  void MakeInitialTimeConstraint();
-  void MakeTimingBoundsConstraint();
   void MakeInitialStateConstraint();
   void MakeInitialFootstepConstraint();
   void MakeNextFootstepReachabilityConstraint();
@@ -195,26 +201,27 @@ class AlipMINLP {
 
   // per solve updates and solve steps
   void SolveOCProblemAsIs();
+  void UpdateTimingGradientStep();
+  void UpdateDynamicsConstraints();
   void ClearFootholds() {footholds_.clear();}
 
   // program and decision variables
   drake::copyable_unique_ptr<MathematicalProgram>
       prog_{std::make_unique<MathematicalProgram>()};
   std::vector<VectorXDecisionVariable> pp_{};
-  std::vector<VectorXDecisionVariable> tt_{};
   std::vector<std::vector<VectorXDecisionVariable>> xx_{};
   std::vector<std::vector<VectorXDecisionVariable>> uu_{};
 
+  // store the mode timing as doubles and take gradient steps external to the QP
+  Eigen::VectorXd tt_;
+
   // constraints
-  std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_{};
   std::vector<Binding<BoundingBoxConstraint>> input_bounds_c_{};
   std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
-  std::shared_ptr<LinearEqualityConstraint> initial_time_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<LinearConstraint> next_step_reach_c_fixed_ = nullptr;
-  std::shared_ptr<AlipDynamicsConstraint> dynamics_evaluator_ = nullptr;
-  std::vector<std::vector<Binding<drake::solvers::Constraint>>> dynamics_c_{};
+  std::vector<std::vector<Binding<LinearEqualityConstraint>>> dynamics_c_{};
   std::vector<std::pair<Binding<LinearConstraint>,
                         Binding<LinearEqualityConstraint>>> footstep_c_{};
 

@@ -128,14 +128,17 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
       VectorXd orientation = state->get_discrete_state(orientation_idx_).value();
       Quaternion<double> quaternion(orientation(0), orientation(1), orientation(2), orientation(3));
       RotationMatrix<double> curr_orientation(quaternion);
-      RotationMatrix<double> rotation = this->RodriguesFormula(w / w.norm(), w.norm() * dt);
+
+      double angle = w.norm()*dt;
+      if (w.norm() < 1e-9) {
+        w(0) = 1;
+      }
+      RotationMatrix<double> rotation(Eigen::AngleAxisd(angle, w / w.norm()));
       VectorXd new_orientation = (rotation * curr_orientation).ToQuaternionAsVector4();
       // state->get_mutable_discrete_state(orientation_idx_).get_mutable_value() 
       //   << new_orientation;
-      state->get_mutable_discrete_state(orientation_idx_).get_mutable_value() 
+      state->get_mutable_discrete_state(orientation_idx_).get_mutable_value()
         << 1, 0, 0, 0;
-      
-
     }
     /// update prev_time
     prev_time = timestamp;
@@ -195,18 +198,6 @@ void C3StateEstimator::OutputEfforts(const drake::systems::Context<double>& cont
   output->SetFromVector(efforts);  
 }
 
-RotationMatrix<double> C3StateEstimator::RodriguesFormula(const Vector3d& axis, double theta) const {
-  double w1 = axis(0);
-  double w2 = axis(1);
-  double w3 = axis(2);
-  
-  Eigen::Matrix3d Sw;
-  Sw << 0, -w3, w2,
-        w3, 0, -w1,
-        -w1, w1, 0;
-  Eigen::Matrix3d R = MatrixXd::Identity(3,3) + sin(theta)*Sw + (1-cos(theta))*Sw*Sw;
-  return RotationMatrix<double>(R);
-}
 
 /* ------------------------------------------------------------------------------ */
 /// Method implementation of FrankaBallToBallPosition class

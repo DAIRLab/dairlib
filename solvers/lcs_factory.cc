@@ -11,6 +11,7 @@
 namespace dairlib {
 namespace solvers {
 
+using std::set;
 using std::vector;
 
 using drake::AutoDiffVecXd;
@@ -410,6 +411,120 @@ LCS LCSFactory::LinearizePlantToLCS(
 
 
   return system;
+}
+
+LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
+      set<int> inactive_lambda_inds) {
+
+  vector<int> remaining_inds;
+
+  // Assumes constant number of contacts per index
+  int n_lambda = other.F_[0].rows();
+
+  // Need to solve for lambda_active in terms of remaining elements
+  // Build temporary [F1, F2] by eliminating rows for inactive
+  for (int i = 0; i < n_lambda; i++) {
+    // active/inactive must be exclusive
+    DRAKE_ASSERT(!active_lambda_inds.count(i) ||
+                 !inactive_lambda_inds.count(i));
+
+    // In C++20, could use contains instead of count
+    if (!active_lambda_inds.count(i) &&
+                 !inactive_lambda_inds.count(i)) {
+      remaining_inds.push_back(i);
+    }
+  }
+
+  int n_remaining = remaining_inds.size();
+  int n_active = active_lambda_inds.size();
+  int n_inactive = inactive_lambda_inds.size();
+
+  vector<MatrixXd> A, B, D, E, F, H;
+  vector<VectorXd> d, c;
+
+  // Build selection matrices:
+  // S_a selects active indices
+  // S_r selects remaining indices
+
+  MatrixXd S_a = MatrixXd::Zero(n_active, n_lambda);
+  MatrixXd S_r = MatrixXd::Zero(n_remaining, n_lambda);
+
+  for (int i = 0; i < n_remaining; i++) {
+    S_r(i, remaining_inds[i]) = 1;
+  }
+  {
+    int i = 0;
+    for (auto ind_j : active_lambda_inds) {
+      S_a(i, ind_j) = 1;
+      i++;
+    }
+  }
+
+
+  for (int k = 0; k < other.N_; k++) {
+    Eigen::BDCSVD<MatrixXd> svd;
+    svd.setThreshold(1e-5);
+    svd.compute(S_a * other.F_[k] * S_a.transpose(),
+               Eigen::ComputeFullU | Eigen::ComputeFullV);
+
+    // F_active likely to be low-rank due to friction, but that should be OK
+    // MatrixXd res = svd.solve(F_ar);
+
+    // Build new complementarity constraints
+    // F_a_inv = pinv(S_a * F * S_a^T)
+    // 0 <= \lambda_k \perp E_k x_k + F_k \lambda_k + H_k u_k + c_k
+    // 0 = S_a *(E x + F S_a^T \lambda_a + F S_r^T \lambda_r + H_k u_k + c_k)
+    // \lambda_a = -F_a_inv * (S_a F S_r^T * lambda_r + S_a E x + S_a H u + S_a c)
+    //
+    // 0 <= \lambda_r \perp S_r (I - F S_a^T F_a_inv S_a) E x + ...
+    //                      S_r (I - F S_a^T F_a_inv S_a) F S_r^T \lambda_r + ...
+    //                      S_r (I - F S_a^T F_a_inv S_a) H u + ...
+    //                      S_r (I - F S_a^T F_a_inv S_a) c
+    //
+    // Calling L = S_r (I - F S_a^T F_a_inv S_a)S_r * other.D_[k] 
+    //  E_k = L E
+    //  F_k = L F S_r^t
+    //  H_k = L H
+    //  c_k = L c
+    // std::cout << S_r << std::endl << std::endl;
+    // std::cout << other.F_[k] << std::endl << std::endl;
+    // std::cout << other.F_[k] << std::endl << std::endl;
+    // auto tmp = S_r * (MatrixXd::Identity(n_lambda, n_lambda) -
+    //              other.F_[k] *  S_a.transpose());
+    MatrixXd L = S_r * (MatrixXd::Identity(n_lambda, n_lambda) -
+                 other.F_[k] *  S_a.transpose() * svd.solve(S_a));
+    MatrixXd E_k = L * other.E_[k];
+    MatrixXd F_k = L * other.F_[k] * S_r.transpose();
+    MatrixXd H_k = L * other.H_[k];
+    MatrixXd c_k = L * other.c_[k];
+
+    // Similarly,
+    //  A_k = A - D * S_a^T * F_a_inv * S_a * E
+    //  B_k = B - D * S_a^T * F_a_inv * S_a * H
+    //  D_k = D * S_r^T - D * S_a^T  * F_a_inv * S_a F S_r^T
+    //  d_k = d - D * S_a^T F_a_inv * S_a * c
+    //
+    //  Calling P = D * S_a^T * F_a_inv * S_a
+    //
+    //  A_k = A - P E
+    //  B_k = B - P H
+    //  D_k = S_r D - P S_r^T
+    //  d_k = d - P c
+    MatrixXd P = other.D_[k] * S_a.transpose() * svd.solve(S_a);
+    MatrixXd A_k = other.A_[k] - P * other.E_[k];
+    MatrixXd B_k = other.B_[k] - P * other.H_[k];
+    MatrixXd D_k = other.D_[k] * S_r.transpose() - P * S_r.transpose();
+    MatrixXd d_k = other.d_[k] - P * other.c_[k];
+    E.push_back(E_k);
+    F.push_back(F_k);
+    H.push_back(H_k);
+    c.push_back(c_k);
+    A.push_back(A_k);
+    B.push_back(B_k);
+    D.push_back(D_k);
+    d.push_back(d_k);
+  }
+  return LCS(A, B, D, d, E, F, H, c);
 }
 
 }  // namespace solvers

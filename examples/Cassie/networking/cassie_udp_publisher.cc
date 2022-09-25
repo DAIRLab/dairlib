@@ -95,7 +95,7 @@ std::string CassieUDPPublisher::make_name(const std::string& address,
 // period or publish period = 0.0 was passed to the constructor).
 drake::systems::EventStatus CassieUDPPublisher::PublishInputAsUDPMessage(
     const drake::systems::Context<double>& context) const {
-  SPDLOG_TRACE(drake::log(), "Publishing UDP {} message", address_);
+  DRAKE_LOGGER_TRACE("Publishing UDP {} message", address_);
 
   // Converts the input into message bytes.
   const drake::AbstractValue* const input_value =

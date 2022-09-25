@@ -7,7 +7,7 @@ stance_width: 0.5
 ss_time: 0.4
 ds_time: 0.05
 nmodes: 3
-knots_per_mode: 3
+knots_per_mode: 10
 qf:
   [1000.0, 0, 0, 0,
    0, 1000.0, 0, 0,

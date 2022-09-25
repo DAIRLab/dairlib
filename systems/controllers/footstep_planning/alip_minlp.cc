@@ -327,6 +327,13 @@ void AlipMINLP::UpdateModeTiming(bool take_sqp_step) {
   UpdateDynamicsConstraints();
 }
 
+void AlipMINLP::UpdateModeTimingsOnTouchdown() {
+  for (int i = 0; i < nmodes_ - 1; i++){
+    tt_(i) = tt_(i+1);
+  }
+  tt_.tail(1)(0) = td_.back();
+}
+
 void AlipMINLP::UpdateTimingGradientStep() {
   for (int n = 0; n < nmodes_; n++) {
     double dLdt_n = 0;
@@ -339,7 +346,7 @@ void AlipMINLP::UpdateTimingGradientStep() {
       VectorXd u = solutions_.front().GetSolution(uu_.at(n).at(k));
       dLdt_n += (1.0 / (nknots_.at(n) - 1)) * nu.dot(A * Ad * x + Ad * B * u);
     }
-    double tnew = tt_(n) + dLdt_n;
+    double tnew = tt_(n) - dLdt_n;
     tt_(n) = std::clamp(tnew, tmin_.at(n), tmax_.at(n));
   }
 }

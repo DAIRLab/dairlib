@@ -130,6 +130,7 @@ class AlipMINLP {
   // Update the dynamics constraint to reflect the current mode timings
   // after maybe updating the mode timing by one gradient step
   void UpdateModeTiming(bool take_sqp_step);
+  void UpdateModeTimingsOnTouchdown();
 
   // Solving the problem
   void CalcOptimalFootstepPlan(

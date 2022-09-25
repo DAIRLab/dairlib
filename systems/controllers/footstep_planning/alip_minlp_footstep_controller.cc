@@ -252,7 +252,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   } else {
     trajopt.UpdateMaximumCurrentStanceTime(gains_.t_max - (t - t_prev_impact));
   }
-  trajopt.UpdateModeTiming(!committed);
+  if (fsm_switch) {
+    trajopt.UpdateModeTimingsOnTouchdown();
+  }
+  trajopt.UpdateModeTiming(!(committed || fsm_switch));
 
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));

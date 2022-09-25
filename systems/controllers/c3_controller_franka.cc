@@ -342,7 +342,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   plant_ad_f_.SetPositionsAndVelocities(
       &context_ad_f_,
       xu_ad.head(plant_f_.num_positions() + plant_f_.num_velocities()));
-  multibody::SetInputsIfNew<AutoDiffXd>(
+  multibody::SetInputsIfNew<AutoDiffXModes(lcs_system_full,
+      active_lambda_inds, inactive_lambda_inds);d>(
       plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
 
 
@@ -357,19 +358,109 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   std::vector<SortedPair<GeometryId>> contact_pairs;
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
-
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1);
 
-  solvers::LCS system_ = system_scaling_pair.first;
+  solvers::LCS lcs_system_full = system_scaling_pair.first;
   // double scaling = system_scaling_pair.second;
 
+  std::set<int> active_lambda_inds;
+  std::set<int> inactive_lambda_inds;
+  active_lambda_inds.insert(3);
+  active_lambda_inds.insert(8);
+  active_lambda_inds.insert(9);
+  active_lambda_inds.insert(10);
+  active_lambda_inds.insert(11);
+  inactive_lambda_inds.insert(1);
+  auto lcs_system = solvers::LCSFactory::FixSomeModes(lcs_system_full,
+      active_lambda_inds, inactive_lambda_inds);
+
+
+  // auto positions = multibody::makeNameToPositionsMap(plant_f_);
+
+  // for ( const auto &[key, value]: positions ) {
+  //       std::cout << key << " " << value << std::endl;
+  // }
+
   C3Options options;
-  int N = (system_.A_).size();
-  int n = ((system_.A_)[0].cols());
-  int m = ((system_.D_)[0].cols());
-  int k = ((system_.B_)[0].cols());
+  int N = (lcs_system.A_).size();
+  int n = ((lcs_system.A_)[0].cols());
+  int m = ((lcs_system.D_)[0].cols());
+  int k = ((lcs_system.B_)[0].cols());
+
+  if (false) {
+
+  ///****** START CHANGE OF VARIABLES *********
+  // Change of variables x->y
+  // y = S*x (selection matrix S)
+  // x = (S^T + W)*y + + x0 for constant x0
+  // W estimates the angular velocity using the linear position
+  // x0 contains the nominal height and quaternion
+  // Hardcoding, but could do automatically
+  // TODO: this will need to adapt to multiple spheres
+  // q = [finger_pos; sphere_quat; sphere_pos]
+  // v = [finger_vel; sphere_ang_vel; sphere_vel]
+  // y = [finger_pos; sphere_pos_2d; finger_vel; sphere_vel_2d]
+  int num_spheres = 1;
+  int ny = n - num_spheres * 9; // remove quat/angvel/z/zdot=3+4+1+1=9
+  int ny_q = plant_f_.num_positions() - 5;
+  MatrixXd S = MatrixXd::Zero(ny, n);
+
+  // finger_pos
+  S.block(0, 0, 3, 3) = MatrixXd::Identity(3, 3);
+  // sphere_pos
+  S.block(3, 7, 2, 2) = MatrixXd::Identity(2, 2);
+
+  // finger_vel
+  S.block(ny_q, plant_f_.num_positions(), 3, 3) = MatrixXd::Identity(3, 3);
+
+  // sphere_vel
+  S.block(ny_q + 3, plant_f_.num_positions() + 6, 2, 2) = MatrixXd::Identity(2, 2);
+
+  // Offset
+  VectorXd x0 = VectorXd::Zero(n);
+  x0(3) = 1;
+  x0(9) = param_.ball_radius;
+
+  // Angular velocity
+  MatrixXd W = MatrixXd::Zero(n, ny);
+
+  W(plant_f_.num_positions() + 3, ny_q + 4) = -param_.ball_radius;
+  W(plant_f_.num_positions() + 4, ny_q + 3) = param_.ball_radius;
+
+  // TODO: actually need all contacts
+
+  // y' = S*'' = S*A*x + S*B*u + S*D*lambda + S*d
+  //           = S*A*(S^T + W)*y + S*B*u + S*D*lambda + S*d + S*A*x0
+  // note that S*A*x0 = 0
+  //
+  // E*x + F*lambda + H*u + c
+  //  = E*(S^T + W)*y + F*lambda + H*u + c + E*x0
+  // note that E*x0 = 0
+  // auto lcs_reduced = LCS(A, B, D, d, E, F, H, c, N);
+
+  // assumes original lcs_system is invariant LCS
+
+  auto A_red = S*lcs_system.A_[0]*(S.transpose()+W);
+  auto B_red = S*lcs_system.B_[0];
+  auto D_red = S*lcs_system.D_[0];
+  auto d_red = S*lcs_system.d_[0];
+  auto E_red = lcs_system.E_[0]*(S.transpose()+W);
+  auto F_red = lcs_system.F_[0];
+  auto H_red = lcs_system.H_[0];
+  auto c_red = lcs_system.c_[0];
+  auto lcs_reduced = dairlib::solvers::LCS(A_red, B_red, D_red, d_red, E_red,
+      F_red, H_red, c_red, N);
+
+  // change dimension definition
+  n = ny;
+
+  // std::cout << F_red << std::endl << std::endl;
+  // std::cout << lcs_system.E_[0]*x0 << std::endl << std::endl;
+
+  ///****** END CHANGE OF VARIABLES *********
+  }
 
 
   /// initialize ADMM variables (delta, w)
@@ -386,6 +477,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     w = w_reset;
     for (int j = 0; j < N; j++) {
       //delta[j].head(n) = xdesired_[0]; //state
+      // delta[j].head(n) << S * state; //state
       delta[j].head(n) << state; //state
     }
   } else {
@@ -393,6 +485,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     delta = delta_reset;
     w = w_reset;
   }
+
 
   MatrixXd Qnew;
   Qnew = Q_[0];
@@ -408,7 +501,16 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
-  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options,
+  // TODO: fix other args to opt()
+  // auto Q_red = (S + W.transpose()) * Qha * (S.transpose() + W);
+
+  std::vector<MatrixXd> G,U;
+  for (int i = 0; i < G_.size(); i++) {
+    G.push_back(G_[i].block(0, 0, n + m + k, n + m + k));
+    U.push_back(U_[i].block(0, 0, n + m + k, n + m + k));
+  }
+
+  solvers::C3MIQP opt(lcs_system, Qha, R_, G, U, traj_desired, options,
     warm_start_delta_, warm_start_binary_, warm_start_x_,
     warm_start_lambda_, warm_start_u_, true);
 

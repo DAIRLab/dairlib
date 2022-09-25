@@ -80,7 +80,7 @@ int DoMain(int argc, char* argv[]){
     1/output_dt, true, 0.0);
 
   /// meshcat visualizer
-    drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+    // drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
     drake::geometry::MeshcatVisualizerParams params;
     params.publish_period = 1.0/30.0;
     auto meshcat = std::make_shared<drake::geometry::Meshcat>();

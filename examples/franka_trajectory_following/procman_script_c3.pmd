@@ -71,7 +71,7 @@ group "6.[HW] Franka Computer" {
 
 group "7.[SIM] C3" {
     cmd "a.[SIM] C3" {
-        exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo --TTL 1";
+        exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo --TTL 0";
         host = "localhost";
     }
     cmd "b.[SIM] franka" {
@@ -83,7 +83,7 @@ group "7.[SIM] C3" {
         host = "localhost";
     }
     cmd "d.[SIM]run_state_estimator" {
-        exec = "bazel-bin/examples/franka_trajectory_following/run_state_estimator --TTL 1";
+        exec = "bazel-bin/examples/franka_trajectory_following/run_state_estimator --TTL 0";
         host = "localhost";
     }
     cmd "e.[SIM] sim visualizer" {

@@ -72,7 +72,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   }
   auto xd = trajopt.MakeXdesTrajForVdes(
       Vector2d::Zero(), gains_.stance_width, single_stance_duration_,
-      gains_.knots_per_mode);
+      gains_.knots_per_mode, -1);
   trajopt.AddTrackingCost(xd, gains_.Q, gains_.Qf);
   trajopt.AddInputCost(gains_.R(0,0));
   trajopt.UpdateNominalStanceTime(single_stance_duration_,

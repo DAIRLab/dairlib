@@ -421,6 +421,9 @@ void AlipMINLP::SolveOCProblemAsIs() {
   });
   if (solutions.front().first.is_success()) {
     solution_ = solutions.front();
+  } else {
+    std::cout << "solve failed with code " <<
+              solutions.front().first.get_solution_result() << std::endl;
   }
 }
 

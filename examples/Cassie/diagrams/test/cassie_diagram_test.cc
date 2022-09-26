@@ -5,6 +5,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/analysis/simulator.h"
 #include <time.h>
+#include <iostream>
 
 namespace dairlib::examples::controllers {
 

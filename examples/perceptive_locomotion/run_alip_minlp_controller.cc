@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_output.hpp"

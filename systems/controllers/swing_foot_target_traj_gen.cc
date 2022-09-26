@@ -14,7 +14,6 @@
 #include "systems/controllers/control_utils.h"
 #include "multibody/multibody_utils.h"
 
-using std::cout;
 using std::endl;
 using std::string;
 

@@ -1,4 +1,5 @@
 #include <gflags/gflags.h>
+#include <iostream>
 
 // lcmtypes
 #include "dairlib/lcmt_robot_input.hpp"

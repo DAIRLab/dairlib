@@ -1,5 +1,5 @@
 #include "systems/controllers/footstep_planning/alip_minlp.h"
-
+#include <iostream>
 namespace dairlib::systems::controllers {
 
 using geometry::ConvexFoothold;

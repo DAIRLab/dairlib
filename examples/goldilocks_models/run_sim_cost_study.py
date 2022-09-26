@@ -1131,6 +1131,13 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
 
   surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
   # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
+  # ax.contour(x, y, z)
+
+  # Add contour values
+  # manual_locations = [(0,0.95)]
+  # manual_locations = [(-0.1,0.95), (0,0.95), (0.05,0.95), (0.1,0.95)]
+  # ax.clabel(surf, levels, inline=False, fontsize=10, colors='k', manual=manual_locations)  # manual=True
+  # ax.clabel(surf, levels, inline=False, fontsize=10, colors='k')
 
   # cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
   # cbar = fig.colorbar(surf, shrink=0.9, aspect=10)

@@ -249,6 +249,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   trajopt.UpdateTrackingCost(xd);
   trajopt.UpdateFootholds(footholds);
   trajopt.UpdateNominalStanceTime(t_next_impact - t, single_stance_duration_);
+
   if (committed) {
     trajopt.ActivateInitialTimeEqualityConstraint(t_next_impact - t);
   } else {

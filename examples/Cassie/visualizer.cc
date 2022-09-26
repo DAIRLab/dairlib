@@ -32,6 +32,7 @@ DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
+using dairlib::systems::InitializeRobotOutputSubscriberWithValidQuaternionPositions;
 using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
@@ -55,13 +56,6 @@ int do_main(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
-  if (FLAGS_floating_base) {
-    // Ground direction
-    Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
-                                  cos(FLAGS_ground_incline));
-    multibody::AddFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
-  }
-
   plant.Finalize();
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -114,8 +108,12 @@ int do_main(int argc, char* argv[]) {
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();
-
   auto context = diagram->CreateDefaultContext();
+
+  auto& state_sub_context = diagram->GetMutableSubsystemContext(
+      *state_sub, context.get());
+  InitializeRobotOutputSubscriberWithValidQuaternionPositions(
+      state_sub_context, plant);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

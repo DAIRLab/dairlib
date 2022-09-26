@@ -10,6 +10,7 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/mathematical_program_result.h"
 #include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/mosek_solver.h"
 
 namespace dairlib::systems::controllers {
 
@@ -39,6 +40,7 @@ inline std::vector<std::vector<int>> cartesian_product(unsigned long range, int 
 using drake::solvers::Binding;
 using solvers::NonlinearConstraint;
 using drake::solvers::OsqpSolver;
+using drake::solvers::MosekSolver;
 using drake::solvers::QuadraticCost;
 using drake::solvers::DecisionVariable;
 using drake::solvers::LinearConstraint;
@@ -166,7 +168,7 @@ class AlipMINLP {
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
   double solve_time() const {
-    return solutions_.front().get_solver_details<OsqpSolver>().solve_time;};
+    return solutions_.front().first.get_solver_details<OsqpSolver>().solve_time;};
   int nmodes() const {return nmodes_;}
   std::vector<int> nknots() const {return nknots_;}
 
@@ -239,7 +241,8 @@ class AlipMINLP {
 
   // Bookkeeping
   bool built_ = false;
-  std::vector<drake::solvers::MathematicalProgramResult> solutions_;
+  std::vector<std::pair<drake::solvers::MathematicalProgramResult,
+              std::vector<std::vector<Eigen::Vector4d>>>> solutions_;
 
 
 

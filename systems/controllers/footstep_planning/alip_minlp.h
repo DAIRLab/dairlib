@@ -168,7 +168,7 @@ class AlipMINLP {
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
   double solve_time() const {
-    return solutions_.front().first.get_solver_details<OsqpSolver>().solve_time;};
+    return solution_.first.get_solver_details<OsqpSolver>().solve_time;};
   int nmodes() const {return nmodes_;}
   std::vector<int> nknots() const {return nknots_;}
 
@@ -241,8 +241,8 @@ class AlipMINLP {
 
   // Bookkeeping
   bool built_ = false;
-  std::vector<std::pair<drake::solvers::MathematicalProgramResult,
-              std::vector<std::vector<Eigen::Vector4d>>>> solutions_;
+  std::pair<drake::solvers::MathematicalProgramResult,
+              std::vector<std::vector<Eigen::Vector4d>>> solution_;
 
 
 

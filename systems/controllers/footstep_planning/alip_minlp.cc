@@ -306,10 +306,10 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
 
 void AlipMINLP::UpdateInitialGuess() {
   DRAKE_DEMAND(
-      solutions_.front().first.is_success() ||
-      solutions_.front().first.get_solution_result() ==
+      solution_.first.is_success() ||
+      solution_.first.get_solution_result() ==
           drake::solvers::kIterationLimit);
-  prog_->SetInitialGuessForAllVariables(solutions_.front().first.GetSolution());
+  prog_->SetInitialGuessForAllVariables(solution_.first.GetSolution());
 }
 
 void AlipMINLP::UpdateNextFootstepReachabilityConstraint(const geometry::ConvexFoothold &workspace) {
@@ -338,17 +338,16 @@ void AlipMINLP::UpdateModeTimingsOnTouchdown() {
 void AlipMINLP::UpdateTimingGradientStep() {
   for (int n = 0; n < nmodes_; n++) {
     double dLdt_n = 0;
-
     for (int k = 0; k < nknots_.at(n) - 1; k++) {
       Matrix4d A = alip_utils::CalcA(H_, m_);
       Vector4d B = Vector4d::UnitW();
       Matrix4d Ad = (A * tt_(n) / (nknots_.at(n) - 1)).exp();
-      Vector4d nu = solutions_.front().second.at(n).at(k);
-      VectorXd x = solutions_.front().first.GetSolution(xx_.at(n).at(k));
-      VectorXd u = solutions_.front().first.GetSolution(uu_.at(n).at(k));
+      Vector4d nu = solution_.second.at(n).at(k);
+      VectorXd x = solution_.first.GetSolution(xx_.at(n).at(k));
+      VectorXd u = solution_.first.GetSolution(uu_.at(n).at(k));
       dLdt_n += (1.0 / (nknots_.at(n) - 1)) * nu.dot(A * Ad * x + Ad * B * u);
     }
-    double tnew = tt_(n) - dLdt_n;
+    double tnew = tt_(n) - 1e-8 * dLdt_n;
     tt_(n) = std::clamp(tnew, tmin_.at(n), tmax_.at(n));
   }
 }
@@ -367,11 +366,13 @@ void AlipMINLP::UpdateDynamicsConstraints() {
       dynamics_c_.at(n).at(k).evaluator()->UpdateCoefficients(Adyn, Vector4d::Zero());
     }
   }
+
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = drake::solvers::OsqpSolver();
-  solutions_.clear();
+  std::vector<std::pair<drake::solvers::MathematicalProgramResult,
+                        std::vector<std::vector<Eigen::Vector4d>>>> solutions;
   mode_sequnces_ = GetPossibleModeSequences();
 
   if (mode_sequnces_.empty()) {
@@ -388,7 +389,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
       }
       dual_solutions.push_back(duals);
     }
-    solutions_.push_back({sol, dual_solutions});
+    solutions.push_back({sol, dual_solutions});
   } else {
     for (auto& seq: mode_sequnces_) {
       ClearFootholdConstraints();
@@ -407,26 +408,29 @@ void AlipMINLP::SolveOCProblemAsIs() {
         }
         dual_solutions.push_back(duals);
       }
-      solutions_.push_back({sol, dual_solutions});
+      solutions.push_back({sol, dual_solutions});
     }
   }
 
   std::sort(
-      solutions_.begin(), solutions_.end(),
+      solutions.begin(), solutions.end(),
       [](
     const std::pair<MathematicalProgramResult, vector<vector<Vector4d>>>& lhs,
     const std::pair<MathematicalProgramResult, vector<vector<Vector4d>>>& rhs){
     return lhs.first.get_optimal_cost() < rhs.first.get_optimal_cost();
   });
+  if (solutions.front().first.is_success()) {
+    solution_ = solutions.front();
+  }
 }
 
 void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
                                         const Eigen::Vector3d &p,
                                         bool warmstart) {
   DRAKE_DEMAND(built_);
-  if (warmstart && !solutions_.empty() &&
-      (solutions_.front().first.is_success() ||
-       solutions_.front().first.get_solution_result() == drake::solvers::kIterationLimit)) {
+  if (warmstart &&
+     (solution_.first.is_success() ||
+     solution_.first.get_solution_result() == drake::solvers::kIterationLimit)){
     UpdateInitialGuess();
   } else {
     UpdateInitialGuess(p, x);
@@ -498,7 +502,7 @@ vector<vector<int>> AlipMINLP::GetPossibleModeSequences() {
 vector<Vector3d> AlipMINLP::GetFootstepSolution() const {
   vector<Vector3d> pp;
   for (auto& p : pp_){
-    pp.emplace_back(solutions_.front().first.GetSolution(p));
+    pp.emplace_back(solution_.first.GetSolution(p));
   }
   return pp;
 }
@@ -516,7 +520,7 @@ vector<vector<Vector4d>> AlipMINLP::GetStateSolution() const {
   for(auto& x : xx_) {
     vector<Vector4d> xknots;
     for (auto& knot : x) {
-      xknots.emplace_back(solutions_.front().first.GetSolution(knot));
+      xknots.emplace_back(solution_.first.GetSolution(knot));
     }
     xx.push_back(xknots);
   }
@@ -540,7 +544,7 @@ vector<vector<VectorXd>> AlipMINLP::GetInputSolution() const {
   for(auto& u : uu_) {
     vector<VectorXd> uknots;
     for (auto& knot : u) {
-      uknots.push_back(solutions_.front().first.GetSolution(knot));
+      uknots.push_back(solution_.first.GetSolution(knot));
     }
     uu.push_back(uknots);
   }

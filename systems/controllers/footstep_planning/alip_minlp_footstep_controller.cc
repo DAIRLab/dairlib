@@ -81,7 +81,9 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt.SetMaximumStanceTime(gains_.t_max);
   trajopt.SetInputLimit(gains_.u_max);
   trajopt.Build();
-  trajopt.CalcOptimalFootstepPlan(Vector4d::Zero(), Vector3d::Zero());
+  trajopt.CalcOptimalFootstepPlan(
+      -0.5 * gains_.stance_width * Vector4d::UnitY(),
+      0.5 * gains_.stance_width * Vector3d::UnitY());
   alip_minlp_idx_ = DeclareAbstractState(*AbstractValue::Make<AlipMINLP>(trajopt));
 
   if (gains_.filter_alip_state) {
@@ -255,7 +257,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   if (fsm_switch) {
     trajopt.UpdateModeTimingsOnTouchdown();
   }
-  trajopt.UpdateModeTiming(!(committed || fsm_switch));
+  trajopt.UpdateModeTiming((!(committed || fsm_switch)) && warmstart);
 
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));

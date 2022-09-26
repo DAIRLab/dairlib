@@ -58,12 +58,11 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   AutoDiffVecXd vdot_no_contact =
       M.ldlt().solve(tau_g + f_app.generalized_forces() + Bu - C);
 
-  // Constant term in dynamics, d_vv = d + A x_0 + B u_0
-  VectorXd d_vv = ExtractValue(vdot_no_contact);
-
   // Derivatives w.r.t. x and u, AB
   MatrixXd AB_v = ExtractGradient(vdot_no_contact);
 
+  // Constant term in dynamics
+  VectorXd d_vv = ExtractValue(vdot_no_contact);
   VectorXd inp_dvv = plant.get_actuation_input_port().Eval(context);
   VectorXd x_dvv(plant.num_positions() + plant.num_velocities() + plant.num_actuators());
   x_dvv << plant.GetPositions(context), plant.GetVelocities(context), inp_dvv;

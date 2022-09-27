@@ -117,6 +117,15 @@ int do_main(int argc, char* argv[]) {
 
   auto context = diagram->CreateDefaultContext();
 
+  /// Initialize the lcm subscriber to avoid triggering runtime errors
+  /// during initialization due to internal checks
+  /// (unit quaternion check in MultibodyPositionToGeometryPose
+  /// internal calculations)
+  auto& state_sub_context = diagram->GetMutableSubsystemContext(
+      *state_sub, context.get());
+  systems::InitializeRobotOutputSubscriberQuaternionPositions(
+      state_sub_context, plant);
+
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
   /// Set realtime rate. Otherwise, runs as fast as possible

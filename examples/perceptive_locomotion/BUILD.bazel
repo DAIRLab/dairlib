@@ -81,3 +81,13 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "run_controller_switch",
+    srcs = ["run_controller_switch.cc"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//lcmtypes:lcmt_robot",
+        "@gflags",
+    ],
+)

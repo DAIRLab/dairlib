@@ -2,7 +2,6 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/solvers/choose_best_solver.h>
@@ -269,7 +268,7 @@ void DoMain() {
   //  auto land_mode = DirconMode<double>(double_stance_constraints,
   //                                      stance_knotpoints, 0.4, 0.6);
   auto crouch_mode = DirconMode<double>(double_stance_constraints,
-                                        stance_knotpoints, 0.5, 1.0);
+                                        stance_knotpoints, 1.0, 2.0);
   auto flight_mode = DirconMode<double>(flight_phase_constraints,
                                         flight_phase_knotpoints, 0.2, 2.0);
   auto land_mode = DirconMode<double>(double_stance_constraints,
@@ -470,12 +469,12 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
       //      auto state_vars_ij = trajopt->state_vars(i, j);
       //      auto input_vars_ij = trajopt->input_vars(i, j);
       auto force_vars_ij = trajopt->force_vars(i, j);
-      prog->AddBoundingBoxConstraint(VectorXd::Constant(force_vars_ij.rows(), -200),
-                                     VectorXd::Constant(force_vars_ij.rows(), 200),
-                                     force_vars_ij);
-      prog->AddBoundingBoxConstraint(VectorXd::Constant(force_vars_ij.rows(), -200),
-                                     VectorXd::Constant(force_vars_ij.rows(), 200),
-                                     force_vars_ij);
+      prog->AddBoundingBoxConstraint(
+          VectorXd::Constant(force_vars_ij.rows(), -200),
+          VectorXd::Constant(force_vars_ij.rows(), 200), force_vars_ij);
+      prog->AddBoundingBoxConstraint(
+          VectorXd::Constant(force_vars_ij.rows(), -200),
+          VectorXd::Constant(force_vars_ij.rows(), 200), force_vars_ij);
     }
   }
 
@@ -652,11 +651,11 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   auto left_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          0.1 * VectorXd::Ones(1), 0.15 * VectorXd::Ones(1));
+          0.1 * VectorXd::Ones(1), 0.2 * VectorXd::Ones(1));
   auto right_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          -0.15 * VectorXd::Ones(1), -0.1 * VectorXd::Ones(1));
+          -0.2 * VectorXd::Ones(1), -0.1 * VectorXd::Ones(1));
   auto left_foot_z_ground_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", pt_front_contact, Eigen::RowVector3d(0, 0, 1),
@@ -908,26 +907,28 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
 
   vector<int> mode_lengths = {FLAGS_knot_points, FLAGS_knot_points,
                               FLAGS_knot_points};
-  //  MatrixXd W = 1e-3 * MatrixXd::Identity(n_v, n_v);
-  //  W(vel_map["hip_pitch_leftdot"], vel_map["hip_pitch_leftdot"]) = 5e-3;
-  //  W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 5e-3;
-  //  W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 1e-3;
-  //  W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 1e-3;
-  //  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
-  //  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
-  //  W *= 2.0 * FLAGS_cost_scaling;
-  //  vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
-  //  for (int mode : {0, 1, 2}) {
-  //    joint_accel_costs.push_back(std::make_shared<JointAccelCost>(
-  //        W, plant, &constraints->mode(mode).evaluators()));
-  //    for (int index = 0; index < mode_lengths[mode]; index++) {
-  //      // Assumes mode_lengths are the same across modes
-  //      auto x_i = trajopt->state_vars(mode, index);
-  //      auto u_i = trajopt->input_vars(mode, index);
-  //      auto l_i = trajopt->force_vars(mode, index);
-  //      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
-  //    }
-  //  }
+  MatrixXd W = 1e-1 * MatrixXd::Identity(n_v, n_v);
+  W(vel_map["hip_pitch_leftdot"], vel_map["hip_pitch_leftdot"]) = 5e1;
+  W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 5e1;
+  W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 5e1;
+  W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 5e1;
+  W(vel_map["hip_yaw_leftdot"], vel_map["hip_yaw_leftdot"]) *= 1e2;
+  W(vel_map["hip_yaw_rightdot"], vel_map["hip_yaw_rightdot"]) *= 1e2;
+  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
+  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
+  W *= 2.0 * FLAGS_cost_scaling;
+  vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
+  for (int mode : {0, 1, 2}) {
+    joint_accel_costs.push_back(std::make_shared<JointAccelCost>(
+        W, plant, &constraints->mode(mode).evaluators()));
+    for (int index = 0; index < mode_lengths[mode]; index++) {
+      // Assumes mode_lengths are the same across modes
+      auto x_i = trajopt->state_vars(mode, index);
+      auto u_i = trajopt->input_vars(mode, index);
+      auto l_i = trajopt->force_vars(mode, index);
+      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
+    }
+  }
 }
 
 /******

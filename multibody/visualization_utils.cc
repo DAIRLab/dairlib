@@ -37,11 +37,11 @@ void ConnectTrajectoryVisualizer(
     drake::geometry::SceneGraph<double>* scene_graph,
     const Trajectory<double>& trajectory) {
   auto empty_plant = std::make_unique<MultibodyPlant<double>>(0.0);
-  ConnectTrajectoryVisualizer(plant, builder, scene_graph, trajectory,
+  ConnectTrajectoryVisualizerWithCoM(plant, builder, scene_graph, trajectory,
                               *empty_plant);
 }
 
-void ConnectTrajectoryVisualizer(
+void ConnectTrajectoryVisualizerWithCoM(
     const MultibodyPlant<double>* plant,
     drake::systems::DiagramBuilder<double>* builder,
     drake::geometry::SceneGraph<double>* scene_graph,

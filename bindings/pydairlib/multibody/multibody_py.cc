@@ -5,6 +5,7 @@
 
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
+#include "multibody/visualization_utils.h"
 
 namespace py = pybind11;
 
@@ -24,6 +25,10 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<std::string, int, Eigen::VectorXd, std::string>())
       .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"));
 
+  m.def("ConnectTrajectoryVisualizer",
+        &dairlib::multibody::ConnectTrajectoryVisualizer, py::arg("plant"),
+        py::arg("builder"), py::arg("scene_graph"), py::arg("trajectory"));
+
   m.def("MakeNameToPositionsMap",
         &dairlib::multibody::MakeNameToPositionsMap<double>, py::arg("plant"))
       .def("MakeNameToVelocitiesMap",
@@ -42,8 +47,7 @@ PYBIND11_MODULE(multibody, m) {
            py::arg("plant"), py::arg("scene_graph"), py::arg("mu_static"),
            py::arg("mu_kinetic"),
            py::arg("normal_W") = Eigen::Vector3d(0, 0, 1),
-           py::arg("stiffness") = 0,
-           py::arg("dissipation_rate") = 0,
+           py::arg("stiffness") = 0, py::arg("dissipation_rate") = 0,
            py::arg("show_ground") = 1);
 }
 

@@ -398,9 +398,10 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="1.570796 0 0" />
+        rpy="1.570796 0 3.14159" />
       <geometry>
-        <mesh filename="meshes/agility/tarsus.obj" />
+        <mesh filename="meshes/agility/tarsus.obj"
+        scale="-1 -1 -1"/>
       </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
@@ -512,7 +513,6 @@
         rpy="1.570796 0 0" />
       <geometry>
         <mesh filename="meshes/agility/foot.obj" />
-        <!-- <mesh filename="meshes/toe.obj" /> -->
       </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
@@ -566,7 +566,6 @@
       <geometry>
         <mesh filename="meshes/agility/foot.obj"
         scale="-1 -1 -1"/>
-        <!-- <mesh filename="meshes/toe-r.obj" /> -->
       </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />

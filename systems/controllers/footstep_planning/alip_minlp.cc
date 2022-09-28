@@ -211,6 +211,7 @@ void AlipMINLP::MakeResetConstraints() {
             A_eq, Vector4d::Zero(),
             {xx_.at(i).back(), xx_.at(i+1).front(),
              pp_.at(i).head<2>(), pp_.at(i+1).head<2>()}));
+    reset_map_c_.back().evaluator()->set_description("reset map constraint");
   }
 }
 
@@ -221,7 +222,7 @@ void AlipMINLP::MakeDynamicsConstraints() {
     Matrix4d Ad = (t * alip_utils::CalcA(H_, m_)).exp();
     Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
 
-    Matrix<double, 4, 9> Adyn;
+    Matrix<double, 4, 9> Adyn = Matrix<double, 4, 9>::Zero();
     Adyn.leftCols<4>() = Ad;
     Adyn.col(4) = Bd;
     Adyn.rightCols<4>() = -Matrix4d::Identity();

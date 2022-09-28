@@ -5,3 +5,6 @@
 /// from an Eigen::VectorXd.
 std::vector<double> CopyVectorXdToStdVector(
     const Eigen::VectorXd& eigen_vec);
+
+std::vector<float> CopyVectorXdToStdFloatVector(
+    const Eigen::VectorXd& eigen_vec);

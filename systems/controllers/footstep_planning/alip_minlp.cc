@@ -131,7 +131,7 @@ void AlipMINLP::UpdateMaximumCurrentStanceTime(double tmax) {
   tmax_.at(0) = tmax;
 }
 
-void AlipMINLP::Build() {
+void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
   DRAKE_ASSERT(!td_.empty());
 
   tt_ = VectorXd::Zero(nmodes_);
@@ -145,10 +145,7 @@ void AlipMINLP::Build() {
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
 
-  prog_->SetSolverOption(OsqpSolver::id(), "eps_abs", 1e-6);
-  prog_->SetSolverOption(OsqpSolver::id(), "eps_rel", 1e-6);
-  prog_->SetSolverOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-  prog_->SetSolverOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+  prog_->SetSolverOptions(options);
   built_ = true;
 }
 

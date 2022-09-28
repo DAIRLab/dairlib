@@ -1,4 +1,8 @@
 #include "systems/controllers/footstep_planning/alip_minlp.h"
+#include "common/find_resource.h"
+#include "drake/common/yaml/yaml_io.h"
+#include "solvers/osqp_solver_options.h"
+
 #include <iostream>
 namespace dairlib::systems::controllers {
 
@@ -38,8 +42,16 @@ int do_main(int argc, char* argv[]) {
   auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
   trajopt.UpdateNominalStanceTime(0.35, 0.35);
+  trajopt.SetInputLimit(1);
   trajopt.AddInputCost(10);
-  trajopt.Build();
+
+  const auto& planner_solver_options =
+      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+          FindResourceOrThrow(
+              "examples/perceptive_locomotion/gains/osqp_options_planner.yaml"
+          ));
+
+  trajopt.Build(planner_solver_options.osqp_options);
 
   auto start = std::chrono::high_resolution_clock::now();
   trajopt.CalcOptimalFootstepPlan(xd.front().front(), p0);

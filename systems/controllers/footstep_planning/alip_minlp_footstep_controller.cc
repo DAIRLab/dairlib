@@ -33,7 +33,8 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
     std::vector<double> left_right_stance_durations,
     double double_stance_duration,
     std::vector<PointOnFramed> left_right_foot,
-    const AlipMINLPGains& gains) :
+    const AlipMINLPGains& gains,
+    const drake::solvers::SolverOptions& trajopt_solver_options) :
     plant_(plant),
     context_(plant_context),
     left_right_stance_fsm_states_(left_right_stance_fsm_states),
@@ -52,7 +53,6 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   nv_ = plant_.num_velocities();
   nu_ = plant_.num_actuators();
 
-  // TODO: @Brian-Acosta Add double stance here when appropriate
   for (int i = 0; i < left_right_stance_fsm_states_.size(); i++){
     stance_foot_map_.insert(
         {left_right_stance_fsm_states_.at(i), left_right_foot.at(i)});
@@ -80,7 +80,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt.SetMinimumStanceTime(gains_.t_min);
   trajopt.SetMaximumStanceTime(gains_.t_max);
   trajopt.SetInputLimit(gains_.u_max);
-  trajopt.Build();
+  trajopt.Build(trajopt_solver_options);
   trajopt.CalcOptimalFootstepPlan(
       -0.5 * gains_.stance_width * Vector4d::UnitY(),
       0.5 * gains_.stance_width * Vector3d::UnitY());
@@ -258,7 +258,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   if (fsm_switch) {
     trajopt.UpdateModeTimingsOnTouchdown();
   }
-  trajopt.UpdateModeTiming((!(committed || fsm_switch)) && warmstart);
+  trajopt.UpdateModeTiming(false);
 
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));

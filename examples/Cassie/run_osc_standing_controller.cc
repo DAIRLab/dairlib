@@ -61,6 +61,10 @@ DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
 DEFINE_bool(use_radio, false, "use the radio to set height or not");
+DEFINE_bool(publish_osc, false,
+            "only publish debug if needed to avoid excess LCM traffic "
+            "when running many controllers");
+
 DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
@@ -194,11 +198,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
-  // Create osc debug sender.
-  auto osc_debug_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG_STANDING", &lcm_local,
-          TriggerTypeSet({TriggerType::kForced})));
 
   // Create desired center of mass traj
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
@@ -308,11 +307,20 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));
-  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_rot_traj"));
+
+  // Create osc debug sender and add to diagram if desired
+  auto osc_debug_pub_ptr = LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+      "OSC_DEBUG_STANDING", &lcm_local,
+      TriggerTypeSet({TriggerType::kForced}));
+  if (FLAGS_publish_osc) {
+    auto osc_debug_pub =
+        builder.AddSystem(std::move(osc_debug_pub_ptr));
+    builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+  }
 
   // Create the diagram
   auto owned_diagram = builder.Build();

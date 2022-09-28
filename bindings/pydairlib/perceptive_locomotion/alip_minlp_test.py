@@ -72,7 +72,9 @@ def main():
     trajopt.Build()
     # trajopt.ActivateInitialTimeConstraint(0.35)
     trajopt.CalcOptimalFootstepPlan(xd[0][0], np.array(p0), False)
-    print(trajopt.GetTimingSolution())
+
+    import pdb; pdb.set_trace()
+
     PlotCoMTrajSolution(trajopt)
     plt.show()
     # import pdb; pdb.set_trace()

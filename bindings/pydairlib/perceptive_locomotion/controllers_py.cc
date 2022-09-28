@@ -44,6 +44,8 @@ PYBIND11_MODULE(controllers, m) {
       .def("GetStateGuess", &AlipMINLP::GetStateGuess)
       .def("GetInputGuess", &AlipMINLP::GetInputGuess)
       .def("GetTimingSGuess", &AlipMINLP::GetTimingGuess)
+      .def("get_prog", &AlipMINLP::get_prog, py_rvp::reference_internal)
+      .def("get_solution", &AlipMINLP::get_solution, py_rvp::reference_internal)
       .def("nmodes", &AlipMINLP::nmodes)
       .def("nknots", &AlipMINLP::nknots);
 }

@@ -904,15 +904,15 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.lambda_h_dim = n_h_;
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = n_c_active_;
-  qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
-  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
-  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
-  qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
-  qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
+  qp_output.u_sol = CopyVectorXdToStdFloatVector(*u_sol_);
+  qp_output.lambda_c_sol = CopyVectorXdToStdFloatVector(*lambda_c_sol_);
+  qp_output.lambda_h_sol = CopyVectorXdToStdFloatVector(*lambda_h_sol_);
+  qp_output.dv_sol = CopyVectorXdToStdFloatVector(*dv_sol_);
+  qp_output.epsilon_sol = CopyVectorXdToStdFloatVector(*epsilon_sol_);
   output->qp_output = qp_output;
 
   output->tracking_data.reserve(tracking_data_vec_->size());
-  output->tracking_costs = std::vector<double>(tracking_data_vec_->size());
+  output->tracking_costs = std::vector<float>(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -927,20 +927,20 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       osc_output.name = tracking_data->GetName();
       // This should always be true
       osc_output.is_active = tracking_data->IsActive(fsm_state);
-      osc_output.y = CopyVectorXdToStdVector(tracking_data->GetY());
-      osc_output.y_des = CopyVectorXdToStdVector(tracking_data->GetYDes());
-      osc_output.error_y = CopyVectorXdToStdVector(tracking_data->GetErrorY());
-      osc_output.ydot = CopyVectorXdToStdVector(tracking_data->GetYdot());
+      osc_output.y = CopyVectorXdToStdFloatVector(tracking_data->GetY());
+      osc_output.y_des = CopyVectorXdToStdFloatVector(tracking_data->GetYDes());
+      osc_output.error_y = CopyVectorXdToStdFloatVector(tracking_data->GetErrorY());
+      osc_output.ydot = CopyVectorXdToStdFloatVector(tracking_data->GetYdot());
       osc_output.ydot_des =
-          CopyVectorXdToStdVector(tracking_data->GetYdotDes());
+          CopyVectorXdToStdFloatVector(tracking_data->GetYdotDes());
       osc_output.error_ydot =
-          CopyVectorXdToStdVector(tracking_data->GetErrorYdot());
+          CopyVectorXdToStdFloatVector(tracking_data->GetErrorYdot());
       osc_output.yddot_des =
-          CopyVectorXdToStdVector(tracking_data->GetYddotDes());
+          CopyVectorXdToStdFloatVector(tracking_data->GetYddotDes());
       osc_output.yddot_command =
-          CopyVectorXdToStdVector(tracking_data->GetYddotCommand());
+          CopyVectorXdToStdFloatVector(tracking_data->GetYddotCommand());
       osc_output.yddot_command_sol =
-          CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
+          CopyVectorXdToStdFloatVector(tracking_data->GetYddotCommandSol());
       output->tracking_data.push_back(osc_output);
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();

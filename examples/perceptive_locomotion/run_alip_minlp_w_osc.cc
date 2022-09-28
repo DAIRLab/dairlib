@@ -238,12 +238,17 @@ int DoMain(int argc, char *argv[]) {
 
   /* --- MPC setup --- */
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
+  const auto& planner_solver_options =
+      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+          FindResourceOrThrow(
+              "examples/perceptive_locomotion/gains/osqp_options_planner.yaml"
+          ));
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, single_stance_durations,
           double_support_duration,
-          left_right_toe, gains_mpc.gains);
+          left_right_toe, gains_mpc.gains, planner_solver_options.osqp_options);
 
   auto foothold_oracle =
       builder.AddSystem<FlatTerrainFootholdSource>(
@@ -482,7 +487,7 @@ int DoMain(int argc, char *argv[]) {
   }
 
   osc->SetOsqpSolverOptionsFromYaml(
-      "examples/perceptive_locomotion/gains/osqp_options.yaml");
+      "examples/perceptive_locomotion/gains/osqp_options_osc.yaml");
 
   // Swing foot tracking
   std::vector<double> swing_ft_gain_multiplier_breaks{

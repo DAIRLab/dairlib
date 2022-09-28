@@ -7,13 +7,13 @@ struct lcmt_osc_tracking_data
   string name;
   boolean is_active;
 
-  double y [y_dim];
-  double y_des [y_dim];
-  double error_y [ydot_dim];
-  double ydot [ydot_dim];
-  double ydot_des [ydot_dim];
-  double error_ydot [ydot_dim];
-  double yddot_des [ydot_dim];
-  double yddot_command [ydot_dim];
-  double yddot_command_sol [ydot_dim];
+  float y [y_dim];
+  float y_des [y_dim];
+  float error_y [ydot_dim];
+  float ydot [ydot_dim];
+  float ydot_des [ydot_dim];
+  float error_ydot [ydot_dim];
+  float yddot_des [ydot_dim];
+  float yddot_command [ydot_dim];
+  float yddot_command_sol [ydot_dim];
 }

@@ -6,6 +6,8 @@ cc_binary(
     name = "alip_minlp_test",
     srcs = ["alip_minlp_test.cc"],
     deps = [
+        "//common:find_resource",
+        "//solvers:osqp_solver_options",
         "//systems/controllers/footstep_planning:alip_minlp",
         "@drake//:drake_shared_library",
     ],

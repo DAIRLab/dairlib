@@ -41,7 +41,8 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
       std::vector<double> left_right_stance_durations,
       double double_stance_duration,
       std::vector<PointOnFramed> left_right_foot,
-      const AlipMINLPGains& gains);
+      const AlipMINLPGains& gains,
+      const drake::solvers::SolverOptions& trajopt_solver_options);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);

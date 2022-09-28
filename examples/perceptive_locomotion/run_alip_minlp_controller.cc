@@ -11,6 +11,7 @@
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/multibody_utils.h"
 
+#include "solvers/osqp_solver_options.h"
 #include "systems/controllers/footstep_planning/alip_minlp_footstep_controller.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
@@ -126,11 +127,16 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe_mid = PointOnFramed(mid_contact_point, plant_w_spr.GetFrameByName("toe_right"));
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
 
+  const auto& planner_solver_options =
+      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+      FindResourceOrThrow(
+          "examples/perceptive_locomotion/gains/osqp_options_planner.yaml"
+      ));
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, state_durations, double_support_duration,
-          left_right_toe, gains_mpc.gains);
+          left_right_toe, gains_mpc.gains, planner_solver_options.osqp_options);
 
   auto foothold_oracle =
       builder.AddSystem<FlatTerrainFootholdSource>(

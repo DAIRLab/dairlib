@@ -7,10 +7,10 @@ struct lcmt_osc_qp_output
   int32_t lambda_h_dim;
   int32_t v_dim;
   int32_t epsilon_dim;
-  double solve_time;
-  double u_sol[u_dim];
-  double lambda_c_sol[lambda_c_dim];
-  double lambda_h_sol[lambda_h_dim];
-  double dv_sol[v_dim];
-  double epsilon_sol[epsilon_dim];
+  float solve_time;
+  float u_sol[u_dim];
+  float lambda_c_sol[lambda_c_dim];
+  float lambda_h_sol[lambda_h_dim];
+  float dv_sol[v_dim];
+  float epsilon_sol[epsilon_dim];
 }

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solver_options.h"
 
 namespace dairlib::solvers{

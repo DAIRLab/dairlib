@@ -102,7 +102,7 @@ class AlipMINLP {
   }
 
 
-  void Build();
+  void Build(const drake::solvers::SolverOptions& solver_options);
   std::vector<std::vector<Eigen::Vector4d>> MakeXdesTrajForVdes(
       const Eigen::Vector2d& vdes, double step_width, double Ts, double nk,
       int stance=1) const;
@@ -171,6 +171,9 @@ class AlipMINLP {
     return solution_.first.get_solver_details<OsqpSolver>().solve_time;};
   int nmodes() const {return nmodes_;}
   std::vector<int> nknots() const {return nknots_;}
+
+  drake::solvers::MathematicalProgram* get_prog() {return prog_.get_mutable();}
+  drake::solvers::MathematicalProgramResult& get_solution() {return solution_.first;}
 
  private:
 

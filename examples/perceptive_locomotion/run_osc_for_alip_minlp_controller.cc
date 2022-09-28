@@ -402,7 +402,7 @@ int DoMain(int argc, char* argv[]) {
   }
 
   osc->SetOsqpSolverOptionsFromYaml(
-      "examples/perceptive_locomotion/gains/osqp_options.yaml");
+      "examples/perceptive_locomotion/gains/osqp_options_osc.yaml");
 
   // Swing foot tracking
   std::vector<double> swing_ft_gain_multiplier_breaks{

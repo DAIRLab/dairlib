@@ -54,6 +54,7 @@ cc_library(
         ":alip_utils",
         "//geometry:convex_foothold",
         "//solvers:constraints",
+        "//solvers:optimization_utils",
         "@drake//:drake_shared_library",
     ],
 )

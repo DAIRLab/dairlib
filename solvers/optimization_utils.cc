@@ -171,5 +171,34 @@ int CountConstraintRows(const MathematicalProgram& prog) {
   return n;
 }
 
+void print_constraint(
+    const std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>& constraints) {
+  for (auto &constr : constraints) {
+    std::cout << constr.evaluator()->get_description() << ":\n A:\n"
+              << constr.evaluator()->get_sparse_A() << "\nub:\n"
+              << constr.evaluator()->upper_bound() << "\nlb\n"
+              << constr.evaluator()->lower_bound() << std::endl;
+  }
+}
+
+void print_constraint(
+    const std::vector<drake::solvers::Binding<drake::solvers::LinearEqualityConstraint>>& constraints) {
+  for (auto &constr : constraints) {
+    std::cout << constr.evaluator()->get_description() << ":\n A:\n"
+              << constr.evaluator()->get_sparse_A() << "\nb:\n"
+              << constr.evaluator()->upper_bound() << std::endl;
+  }
+}
+
+void print_constraint(
+    const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>& constraints) {
+  for (auto &constraint : constraints) {
+    auto constr = dynamic_cast<drake::solvers::LinearConstraint*>(constraint.evaluator().get());
+    std::cout << constr->get_description() << ":\n A:\n"
+              << constr->get_sparse_A() << "\nb:\n"
+              << constr->upper_bound() << std::endl;
+  }
+}
+
 }  // namespace solvers
 }  // namespace dairlib

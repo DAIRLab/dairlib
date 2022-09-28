@@ -59,5 +59,16 @@ double SecondOrderCost(const drake::solvers::MathematicalProgram& prog,
 /// the dimension of f(x)
 int CountConstraintRows(const drake::solvers::MathematicalProgram& prog);
 
+/// Convenience functions to print out constraint matrices
+void print_constraint(
+    const std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>& constraint);
+void print_constraint(
+    const std::vector<drake::solvers::Binding<drake::solvers::LinearEqualityConstraint>>& constraint);
+
+/// Note that this is just a useful wrapper for linear constraints -
+/// not for general nonlinear constraints
+void print_constraint(
+    const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>& constraint);
+
 }  // namespace solvers
 }  // namespace dairlib

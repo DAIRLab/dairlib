@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "alip_minlp.h"
+#include "solvers/optimization_utils.h"
 
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
@@ -132,8 +133,7 @@ void AlipMINLP::UpdateMaximumCurrentStanceTime(double tmax) {
 }
 
 void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
-  DRAKE_ASSERT(!td_.empty());
-
+  DRAKE_ASSERT(td_.size() == nmodes_);
   tt_ = VectorXd::Zero(nmodes_);
   for (int i = 0; i < nmodes_; i++) {
     tt_(i) = td_.at(i);
@@ -200,7 +200,7 @@ void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
 }
 
 void AlipMINLP::MakeResetConstraints() {
-  Matrix<double, 4, 12> A_eq;
+  Matrix<double, 4, 12> A_eq = Matrix<double, 4, 12>::Zero();
   A_eq.topLeftCorner<4, 4>() = Matrix4d::Identity();
   A_eq.block<4, 4>(0, 4) = -Matrix4d::Identity();
   A_eq.block<2, 2>(0, 8) = Eigen::Matrix2d::Identity();
@@ -231,6 +231,8 @@ void AlipMINLP::MakeDynamicsConstraints() {
           prog_->AddLinearEqualityConstraint(
               Adyn, Vector4d::Zero(),
               {xx_.at(i).at(k), uu_.at(i).at(k), xx_.at(i).at(k+1)}));
+      dyn_c_this_mode.back().evaluator()->
+      set_description("dynamics" + std::to_string(i) + "_" + std::to_string(k));
     }
     dynamics_c_.push_back(dyn_c_this_mode);
   }
@@ -370,6 +372,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
   auto solver = drake::solvers::OsqpSolver();
   std::vector<std::pair<drake::solvers::MathematicalProgramResult,
                         std::vector<std::vector<Eigen::Vector4d>>>> solutions;
+
   mode_sequnces_ = GetPossibleModeSequences();
 
   if (mode_sequnces_.empty()) {
@@ -421,6 +424,12 @@ void AlipMINLP::SolveOCProblemAsIs() {
   } else {
     std::cout << "solve failed with code " <<
               solutions.front().first.get_solution_result() << std::endl;
+  }
+  if (std::isnan(solution_.first.get_optimal_cost())) {
+    std::cout << "NaNs slipped through unnoticed."
+                 "Dumping out all the constraints to see what's up\n";
+    const auto& constraints = prog_->GetAllConstraints();
+    solvers::print_constraint(constraints);
   }
 }
 

@@ -510,9 +510,6 @@ RotTaskSpaceTrackingData pelvis_heading_traj(
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
-  osc->SetOsqpSolverOptionsFromYaml(
-      "examples/perceptive_locomotion/gains/osqp_options.yaml");
-
   if (gains.W_com(0,0) == 0){
     osc->SetInputCostWeightForJointAndFsmState(
         "toe_left_motor", left_stance_state, 1.0);

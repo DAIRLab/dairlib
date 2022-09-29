@@ -4,7 +4,7 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "trifinger_urdf",
+    name = "urdf",
     data = glob([
     	"robot_properties_fingers/urdf/**",
     	"robot_properties_fingers/urdf/pro/**",
@@ -13,7 +13,7 @@ cc_library(
     	"robot_properties_fingers/meshes/pro/**",
     	"robot_properties_fingers/meshes/pro/detailed/**",
     	"robot_properties_fingers/meshes/edu/**",
-        "robot_properties_fingers/cube/**"])
+      "robot_properties_fingers/cube/**"])
 )
 
 cc_library(
@@ -35,7 +35,7 @@ cc_binary(
         "//systems:system_utils",
         "@drake//:drake_shared_library",
     ],
-    data = [":trifinger_urdf",
+    data = [":urdf",
             "@drake//manipulation/models/franka_description:models"]
 )
 
@@ -54,7 +54,7 @@ cc_binary(
         "//systems:system_utils",
         "@drake//:drake_shared_library",
     ],
-    data = [":trifinger_urdf",
+    data = [":urdf",
             "@drake//manipulation/models/franka_description:models"]
 )
 
@@ -71,7 +71,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    data = [":trifinger_urdf",
+    data = [":urdf",
             "@drake//manipulation/models/franka_description:models"]
 )
 
@@ -91,7 +91,7 @@ cc_binary(
 #        "@drake//:drake_shared_library",
 #        "@gflags",
 #    ],
-#    data = [":trifinger_urdf",
+#    data = [":urdf",
 #            "@drake//manipulation/models/franka_description:models"]
 # )
 
@@ -108,7 +108,7 @@ cc_binary(
 #        "//systems:system_utils",
 #        "@drake//:drake_shared_library",
 #    ],
-#    data = [":trifinger_urdf",
+#    data = [":urdf",
 #            "@drake//manipulation/models/franka_description:models"]
 # )
 
@@ -128,7 +128,7 @@ cc_binary(
        "@drake//:drake_shared_library",
        "@gflags",
    ],
-   data = [":trifinger_urdf",
+   data = [":urdf",
            "@drake//manipulation/models/franka_description:models",
            "@drake//:drake_shared_library"]
 )
@@ -145,7 +145,7 @@ cc_binary(
        "//systems:system_utils",
        "@drake//:drake_shared_library",
    ],
-   data = [":trifinger_urdf",
+   data = [":urdf",
            "@drake//manipulation/models/franka_description:models"]
 )
 
@@ -165,7 +165,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    data = [":trifinger_urdf",
+    data = [":urdf",
             "@drake//manipulation/models/franka_description:models"]
 )
 
@@ -186,7 +186,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    data = [":trifinger_urdf",
+    data = [":urdf",
             "@drake//manipulation/models/franka_description:models",
             "@drake//:drake_shared_library",]
 )
@@ -204,7 +204,7 @@ cc_binary(
 #        "@drake//:drake_shared_library",
 #        "@gflags"
 #    ],
-#    data = [":trifinger_urdf",
+#    data = [":urdf",
 #            "@drake//manipulation/models/franka_description:models"]
 # )
 
@@ -218,7 +218,7 @@ cc_binary(
           "//systems/framework:lcm_driven_loop",
           "@gflags"
   ],
-  data = ["//examples/franka_trajectory_following:trifinger_urdf",
+  data = ["//examples/franka_trajectory_following:urdf",
           "@drake//manipulation/models/franka_description:models"
   ],
 )
@@ -236,6 +236,6 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    data = [":trifinger_urdf",
+    data = [":urdf",
         "@drake//manipulation/models/franka_description:models"]
 )

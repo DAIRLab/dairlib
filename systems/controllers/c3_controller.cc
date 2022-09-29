@@ -178,16 +178,17 @@ std::vector<SortedPair<GeometryId>> contact_pairs;
   // multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, &state,
   // &context_);
 
-
-  solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
+  double dt = .1;
+  int N = 5;
+  auto lcs_solution = solvers::LCSFactory::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_);
+      num_friction_directions_, mu_,dt, N);
+  dairlib::solvers::LCS system_ = lcs_solution.first;
 
 
   //std::cout << system_.d_[0] << std::endl;
 
   C3Options options;
-  int N = (system_.A_).size();
   int n = ((system_.A_)[0].cols());
   int m = ((system_.D_)[0].cols());
   int k = ((system_.B_)[0].cols());

@@ -144,7 +144,7 @@ int DoMain(int argc, char* argv[]){
     param.U_pos_vel * MatrixXd::Identity(nq+nv,nq+nv);
   Uinit.block(nq+nv+6*nc, nq+nv+6*nc, nu, nu) << 
     param.U_u * MatrixXd::Identity(nu, nu);
-  
+
   VectorXd xdesiredinit = VectorXd::Zero(nq+nv);
   xdesiredinit.head(nq) << q;
 

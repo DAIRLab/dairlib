@@ -81,7 +81,7 @@ py_binary(
 py_binary(
     name = "log_plotter_franka",
     srcs = ["log_plotter_franka.py"],
-    data = ["//examples/franka_trajectory_following:trifinger_urdf",
+    data = ["//examples/franka_trajectory_following:urdf",
             "@drake//manipulation/models/franka_description:models",
             "@lcm//:lcm-python"],
     deps = [

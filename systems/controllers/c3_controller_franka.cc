@@ -83,31 +83,31 @@ C3Controller_franka::C3Controller_franka(
       G_(G),
       U_(U),
       xdesired_(xdesired),
-      pp_(pp){
+      pp_(pp),
+      time_horizon_(5) {
 
 
   // initialize warm start
-  int time_horizon = 5;
+  // TODO: extract these from the plant
   int nx = 19;
   int nlambda = 12;
   int nu = 3;
 
-  for (int i = 0; i < time_horizon; i++){
+  for (int i = 0; i < time_horizon_; i++){
     warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
   }
-  for (int i = 0; i < time_horizon; i++){
+  for (int i = 0; i < time_horizon_; i++){
     warm_start_binary_.push_back(VectorXd::Zero(nlambda));
   }
-  for (int i = 0; i < time_horizon+1; i++){
+  for (int i = 0; i < time_horizon_+1; i++){
     warm_start_x_.push_back(VectorXd::Zero(nx));
   }
-  for (int i = 0; i < time_horizon; i++){
+  for (int i = 0; i < time_horizon_; i++){
     warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
   }
-  for (int i = 0; i < time_horizon; i++){
+  for (int i = 0; i < time_horizon_; i++){
     warm_start_u_.push_back(VectorXd::Zero(nu));
   }
-  
 
   state_input_port_ =
       this->DeclareVectorInputPort(
@@ -127,6 +127,7 @@ C3Controller_franka::C3Controller_franka(
   v_map_ = multibody::makeNameToVelocitiesMap(plant_);
 
   // get c3_parameters
+  // TODO: file should be an argument
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
       "examples/franka_trajectory_following/parameters.yaml");
   max_desired_velocity_ = param_.velocity_limit;
@@ -342,8 +343,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   plant_ad_f_.SetPositionsAndVelocities(
       &context_ad_f_,
       xu_ad.head(plant_f_.num_positions() + plant_f_.num_velocities()));
-  multibody::SetInputsIfNew<AutoDiffXModes(lcs_system_full,
-      active_lambda_inds, inactive_lambda_inds);d>(
+  multibody::SetInputsIfNew<AutoDiffXd>(
       plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
 
 
@@ -358,9 +358,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   std::vector<SortedPair<GeometryId>> contact_pairs;
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
-  auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+  auto system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_, 0.1);
+      num_friction_directions_, mu_, 0.1, time_horizon_);
 
   solvers::LCS lcs_system_full = system_scaling_pair.first;
   // double scaling = system_scaling_pair.second;
@@ -373,9 +373,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   active_lambda_inds.insert(10);
   active_lambda_inds.insert(11);
   inactive_lambda_inds.insert(1);
-  auto lcs_system = solvers::LCSFactory::FixSomeModes(lcs_system_full,
+  auto lcs_system_fixed = solvers::LCSFactory::FixSomeModes(lcs_system_full,
       active_lambda_inds, inactive_lambda_inds);
 
+  auto& lcs_system =
+      param_.fix_sticking_ground ? lcs_system_fixed : lcs_system_full;
 
   // auto positions = multibody::makeNameToPositionsMap(plant_f_);
 
@@ -388,6 +390,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   int n = ((lcs_system.A_)[0].cols());
   int m = ((lcs_system.D_)[0].cols());
   int k = ((lcs_system.B_)[0].cols());
+
+  std::cout << m << std::endl;
 
   if (false) {
 
@@ -535,9 +539,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
 
   ///calculate state and force
-  auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+  auto system_scaling_pair2 = solvers::LCSFactory::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_, dt);
+      num_friction_directions_, mu_, dt, time_horizon_);
 
   solvers::LCS system2_ = system_scaling_pair2.first;
   double scaling2 = system_scaling_pair2.second;

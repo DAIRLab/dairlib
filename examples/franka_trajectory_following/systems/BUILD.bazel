@@ -35,7 +35,7 @@ cc_binary(
           "//systems/ros:ros_pubsub_systems",
           "//systems/ros:c3_ros_conversions"
   ],
-  data = ["//examples/franka_trajectory_following:trifinger_urdf",
+  data = ["//examples/franka_trajectory_following:urdf",
           "@drake//manipulation/models/franka_description:models"
   ],
   tags=["ros"],

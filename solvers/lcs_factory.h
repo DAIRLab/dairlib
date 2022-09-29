@@ -26,14 +26,16 @@ class LCSFactory {
   /// @param contact_geoms
   /// @param num_friction faces
   /// @param mu
-  static LCS LinearizePlantToLCS(
+  /// @oaram dt The timestep for discretization
+  /// @param N
+  static std::pair<LCS,double> LinearizePlantToLCS(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       const drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
-      int num_friction_directions, double mu);
+      int num_friction_directions, double mu, double dt, int N);
 
   /// Create an LCS by fixing some modes from another LCS
   /// Ignores generated inequalities that correspond to these modes, but

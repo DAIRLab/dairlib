@@ -50,12 +50,10 @@ cc_library(
     srcs = [
         "lcs.cc",
         "lcs_factory.cc",
-        "lcs_factory_franka.cc"
     ],
     hdrs = [
         "lcs.h",
         "lcs_factory.h",
-        "lcs_factory_franka.h"
     ],
     deps = [
         "//multibody/kinematic",
@@ -156,6 +154,19 @@ cc_test(
         "@drake//common/test_utilities:eigen_matrix_compare",
         "@gtest//:main",
     ],
+)
+
+cc_test(
+    name = "lcs_factory_test",
+    size = "small",
+    srcs = ["test/lcs_factory_test.cc"],
+    deps = [
+        ":lcs",
+        "@drake//common/test_utilities:eigen_matrix_compare",
+        "@gtest//:main",
+    ],
+    data = ["//examples/franka_trajectory_following:urdf",
+            "@drake//manipulation/models/franka_description:models"]
 )
 
 

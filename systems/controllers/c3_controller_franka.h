@@ -17,7 +17,7 @@
 #include "common/find_resource.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "solvers/lcs_factory_franka.h"
+#include "solvers/lcs_factory.h"
 
 #include "drake/common/autodiff.h"
 #include "drake/geometry/scene_graph.h"
@@ -117,6 +117,7 @@ class C3Controller_franka : public LeafSystem<double> {
   std::map<string, int> v_map_;
   const double PI{3.14159265359};
   double max_desired_velocity_;
+  const int time_horizon_;
 
   // dt filter
   // TODO: make all the mutable variables drake states

@@ -20,8 +20,8 @@ pushing_offset: 0 #-0.001
 mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
 Q_finger: 1000           # finger xyz cost
-Q_ball_x: 50000 #10000
-Q_ball_y: 50000  #10000
+Q_ball_x: 10000 #10000
+Q_ball_y: 10000  #10000
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
@@ -38,6 +38,7 @@ dt: 0.015 # 0.03
 velocity_limit: 1
 orientation_degrees: 0
 axis_option: 1
+fix_sticking_ground: True
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]

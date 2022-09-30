@@ -39,6 +39,7 @@ velocity_limit: 1
 orientation_degrees: 0
 axis_option: 1
 fix_sticking_ground: True
+rolling_state_reduction: True
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]

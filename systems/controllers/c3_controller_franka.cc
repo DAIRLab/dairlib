@@ -140,6 +140,8 @@ C3Controller_franka::C3Controller_franka(
 void C3Controller_franka::CalcControl(const Context<double>& context,
                                       TimestampedVector<double>* state_contact_desired) const {
 
+  auto t_start = std::chrono::high_resolution_clock::now();
+
   // get values
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
@@ -363,6 +365,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       num_friction_directions_, mu_, 0.1, time_horizon_);
 
   solvers::LCS lcs_system_full = system_scaling_pair.first;
+  solvers::LCS* lcs = &lcs_system_full;
   // double scaling = system_scaling_pair.second;
 
   std::set<int> active_lambda_inds;
@@ -376,8 +379,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   auto lcs_system_fixed = solvers::LCSFactory::FixSomeModes(lcs_system_full,
       active_lambda_inds, inactive_lambda_inds);
 
-  auto& lcs_system =
-      param_.fix_sticking_ground ? lcs_system_fixed : lcs_system_full;
+  if (param_.fix_sticking_ground) {
+    lcs = &lcs_system_fixed;
+  }
 
   // auto positions = multibody::makeNameToPositionsMap(plant_f_);
 
@@ -386,14 +390,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // }
 
   C3Options options;
-  int N = (lcs_system.A_).size();
-  int n = ((lcs_system.A_)[0].cols());
-  int m = ((lcs_system.D_)[0].cols());
-  int k = ((lcs_system.B_)[0].cols());
-
-  std::cout << m << std::endl;
-
-  if (false) {
+  int N = (lcs->A_).size();
+  int n = ((lcs->A_)[0].cols());
+  int m = ((lcs->D_)[0].cols());
+  int k = ((lcs->B_)[0].cols());
 
   ///****** START CHANGE OF VARIABLES *********
   // Change of variables x->y
@@ -408,7 +408,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // y = [finger_pos; sphere_pos_2d; finger_vel; sphere_vel_2d]
   int num_spheres = 1;
   int ny = n - num_spheres * 9; // remove quat/angvel/z/zdot=3+4+1+1=9
-  int ny_q = plant_f_.num_positions() - 5;
+  int ny_q = plant_f_.num_positions() - num_spheres * 5;
   MatrixXd S = MatrixXd::Zero(ny, n);
 
   // finger_pos
@@ -425,7 +425,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Offset
   VectorXd x0 = VectorXd::Zero(n);
   x0(3) = 1;
-  x0(9) = param_.ball_radius;
+  x0(9) = param_.ball_radius + param_.table_offset;
 
   // Angular velocity
   MatrixXd W = MatrixXd::Zero(n, ny);
@@ -433,9 +433,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   W(plant_f_.num_positions() + 3, ny_q + 4) = -param_.ball_radius;
   W(plant_f_.num_positions() + 4, ny_q + 3) = param_.ball_radius;
 
-  // TODO: actually need all contacts
-
-  // y' = S*'' = S*A*x + S*B*u + S*D*lambda + S*d
+  // y' = S*x' = S*A*x + S*B*u + S*D*lambda + S*d
   //           = S*A*(S^T + W)*y + S*B*u + S*D*lambda + S*d + S*A*x0
   // note that S*A*x0 = 0
   //
@@ -446,25 +444,29 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   // assumes original lcs_system is invariant LCS
 
-  auto A_red = S*lcs_system.A_[0]*(S.transpose()+W);
-  auto B_red = S*lcs_system.B_[0];
-  auto D_red = S*lcs_system.D_[0];
-  auto d_red = S*lcs_system.d_[0];
-  auto E_red = lcs_system.E_[0]*(S.transpose()+W);
-  auto F_red = lcs_system.F_[0];
-  auto H_red = lcs_system.H_[0];
-  auto c_red = lcs_system.c_[0];
+  auto A_red = S*lcs->A_[0]*(S.transpose()+W);
+  auto B_red = S*lcs->B_[0];
+  auto D_red = S*lcs->D_[0];
+  auto d_red = S*lcs->d_[0];
+  auto E_red = lcs->E_[0]*(S.transpose()+W);
+  auto F_red = lcs->F_[0];
+  auto H_red = lcs->H_[0];
+  auto c_red = lcs->c_[0];
   auto lcs_reduced = dairlib::solvers::LCS(A_red, B_red, D_red, d_red, E_red,
       F_red, H_red, c_red, N);
 
-  // change dimension definition
-  n = ny;
+  if (param_.rolling_state_reduction) {
+    lcs = &lcs_reduced;
+    // change dimension definition
+    n = ny;
+  }
+
 
   // std::cout << F_red << std::endl << std::endl;
-  // std::cout << lcs_system.E_[0]*x0 << std::endl << std::endl;
+  // std::cout << lcs->E_[0]*x0 << std::endl << std::endl;
 
   ///****** END CHANGE OF VARIABLES *********
-  }
+
 
 
   /// initialize ADMM variables (delta, w)
@@ -482,7 +484,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     for (int j = 0; j < N; j++) {
       //delta[j].head(n) = xdesired_[0]; //state
       // delta[j].head(n) << S * state; //state
-      delta[j].head(n) << state; //state
+      if (param_.rolling_state_reduction) {
+        delta[j].head(n) << S * state; //state
+      } else {
+        delta[j].head(n) << state; //state
+      }
     }
   } else {
     /// reset delta and w (default option)
@@ -491,8 +497,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
 
 
-  MatrixXd Qnew;
-  Qnew = Q_[0];
+  MatrixXd Qnew = Q_[0];
 
   if (ts > roll_phase){
     double Qnew_finger = param_.Qnew_finger;
@@ -503,23 +508,44 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     Qnew(8,8) = param_.Qnew_ball_y;
   }
 
+  if (param_.rolling_state_reduction) {
+    Qnew = (S.transpose() + W).transpose() * Qnew * (S.transpose() + W);
+    traj_desired = std::vector<VectorXd>(Q_.size() , S * traj_desired_vector);
+  }
+
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
   // TODO: fix other args to opt()
+  // G, U, traj_desired, warm starts;
   // auto Q_red = (S + W.transpose()) * Qha * (S.transpose() + W);
 
   std::vector<MatrixXd> G,U;
   for (int i = 0; i < G_.size(); i++) {
     G.push_back(G_[i].block(0, 0, n + m + k, n + m + k));
     U.push_back(U_[i].block(0, 0, n + m + k, n + m + k));
+    warm_start_delta_[i] = warm_start_delta_[i].head(n + m + k);
+    warm_start_binary_[i] = warm_start_binary_[i].head(m);
+    warm_start_lambda_[i] = warm_start_lambda_[i].head(m);
+    warm_start_x_[i] = warm_start_x_[i].head(n);
+    warm_start_u_[i] = warm_start_u_[i].head(k);
   }
-
-  solvers::C3MIQP opt(lcs_system, Qha, R_, G, U, traj_desired, options,
+  solvers::C3MIQP opt(*lcs, Qha, R_, G, U, traj_desired, options,
     warm_start_delta_, warm_start_binary_, warm_start_x_,
     warm_start_lambda_, warm_start_u_, true);
 
   /// calculate the input given x[i]
-  VectorXd input = opt.Solve(state, delta, w);
+
+  auto t_setup = std::chrono::high_resolution_clock::now();
+  
+  VectorXd input;
+  if (param_.rolling_state_reduction) {
+    VectorXd state_init = S * state;
+    input = opt.Solve(state_init, delta, w);
+  } else {
+    input = opt.Solve(state, delta, w);
+  }
+  auto t_solve = std::chrono::high_resolution_clock::now();
+
   warm_start_x_ = opt.GetWarmStartX();
   warm_start_lambda_ = opt.GetWarmStartLambda();
   warm_start_u_ = opt.GetWarmStartU();
@@ -605,6 +631,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //   past_velocities_.pop_front();
   //   past_velocities_.push_back(v_ball);
   // }
+
+  auto t_end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
+  auto duration_solve = std::chrono::duration_cast<std::chrono::milliseconds>(t_solve - t_setup);
+  auto duration_setup = std::chrono::duration_cast<std::chrono::milliseconds>(t_setup - t_start);
+  std::cout << duration.count() << " " << duration_setup.count() << " " << duration_solve.count() << std::endl;
+
 }
 
 void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,

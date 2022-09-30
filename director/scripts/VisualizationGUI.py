@@ -19,7 +19,7 @@ import pydrake.multibody.parsing
 from pydrake.common.eigen_geometry import Quaternion
 from pydrake.geometry import StartMeshcat, Rgba
 
-from pydairlib.multibody import MakeNameToPositionsMap, MakeNameToVelocitiesMap, MakeNameToActuatorsMap
+# from pydairlib.multibody import MakeNameToPositionsMap, MakeNameToVelocitiesMap, MakeNameToActuatorsMap
 # standard library imports
 import numpy as np
 import json
@@ -289,6 +289,14 @@ class VisualizationGui(QWidget):
                        rotation_matrix=rot_matrix)
 
       else:
+        pelvis_pos = self.plant.CalcPointsPositions(self.context,
+                                                    self.plant.GetFrameByName(
+                                                      "pelvis"),
+                                                    np.zeros(3),
+                                                    self.plant.world_frame())
+        # print(pelvis_pos.shape)
+        # print(np.array(attribute).shape)
+        attribute = np.array(attribute) + pelvis_pos[:, 0]
         next_loc = [attribute[x], attribute[x + 1], attribute[x + 2]]
         self.drawShape(self.shapes[name], next_loc, msg)
     else:
@@ -348,20 +356,20 @@ class VisualizationGui(QWidget):
     if (self.ready == True):
       # TODO (for Michael): bind our more robust decoding mechanisms to python
       self.msg = msg
-      positions = np.zeros(self.nq)
-      for i in range(self.nq):
-        j = self.position_idx_map[msg.position_names[i]]
-        positions[j] = msg.position[i]
-      velocities = np.zeros(self.nv)
-      for i in range(self.nv):
-        j = self.velocity_idx_map[msg.velocity_names[i]]
-        velocities[j] = msg.velocity[i]
-      efforts = np.zeros(self.nu)
-      for i in range(self.nu):
-        j = self.effort_idx_map[msg.effort_names[i]]
-        efforts[j] = msg.effort[i]
-      self.plant.SetPositions(self.context, positions)
-      self.plant.SetVelocities(self.context, velocities)
+      # positions = np.zeros(self.nq)
+      # for i in range(self.nq):
+      #   j = self.position_idx_map[msg.position_names[i]]
+      #   positions[j] = msg.position[i]
+      # velocities = np.zeros(self.nv)
+      # for i in range(self.nv):
+      #   j = self.velocity_idx_map[msg.velocity_names[i]]
+      #   velocities[j] = msg.velocity[i]
+      # efforts = np.zeros(self.nu)
+      # for i in range(self.nu):
+      #   j = self.effort_idx_map[msg.effort_names[i]]
+      #   efforts[j] = msg.effort[i]
+      self.plant.SetPositions(self.context, self.msg.position)
+      self.plant.SetVelocities(self.context, self.msg.velocity)
 
       # iterate through each shape to draw it
       for name in self.shapes:

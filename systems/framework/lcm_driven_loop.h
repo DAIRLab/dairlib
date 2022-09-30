@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <fstream>
 
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -259,6 +260,31 @@ class LcmDrivenLoop {
           simulator_->get_mutable_context().SetTime(time);
           simulator_->Initialize();
         }
+        context_timestamps_.push_back(simulator_->get_context().get_time());
+        msg_timestamps_.push_back(time);
+//        std::cout << diagram_name_ << " driven_loop start time: " << time << std::endl;
+        loop_start_timestamps_.push_back(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count());
+        loop_end_timestamps_.push_back(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count());
+
+        if (time > 10 && have_not_logged_) {
+          have_not_logged_ = false;
+          std::cout << "Outputting to file: " << diagram_name_ + ".txt"
+                    << std::endl;
+          std::ofstream myfile;
+          myfile.open("../" + diagram_name_ + ".txt");
+          for (int i = 0; i < context_timestamps_.size(); ++i) {
+            myfile << context_timestamps_[i] << "," << msg_timestamps_[i] << "," << loop_start_timestamps_[i]
+                   << "," << loop_end_timestamps_[i] << "\n";
+          }
+          myfile.close();
+        }
+
         simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram
@@ -323,6 +349,13 @@ class LcmDrivenLoop {
   bool is_forced_publish_;
   bool too_long_between_input_messages_ = false;
   double last_input_msg_time_;
+
+  bool have_not_logged_ = true;
+  std::vector<double> context_timestamps_;
+  std::vector<double> msg_timestamps_;
+  std::vector<long> loop_start_timestamps_;
+  std::vector<long> loop_end_timestamps_;
+
 };
 
 }  // namespace systems

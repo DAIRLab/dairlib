@@ -78,6 +78,7 @@ class MpcSolution:
 class MpcDebug:
     def __init__(self):
         self.t_mpc = []
+        self.solve_time = []
         self.fsm = {}
         self.x0 = {}
         self.p0 = {}
@@ -97,6 +98,7 @@ class MpcDebug:
     def append(self, msg):
         t = msg.utime / 1e6
         self.t_mpc.append(t)
+        self.solve_time.append(msg.solve_time_us / 1e6)
         self.x0[t] = msg.x0
         self.p0[t] = msg.p0
         self.fsm[t] = msg.fsm_state

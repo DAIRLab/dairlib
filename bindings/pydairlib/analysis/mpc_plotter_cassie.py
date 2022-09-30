@@ -67,13 +67,31 @@ def plot_com_traj_solution_overhead(xx, pp, fsm, x0, p0):
     plt.plot(-p0[1], p0[0], color='black', marker='X', markersize=20)
 
 
-def plot_pmc_loop_time(mpc_debug):
+def plot_mpc_loop_time(mpc_debug):
     plt.figure()
     looptimes = np.ediff1d(mpc_debug.t_mpc)
-    looptimes = looptimes[looptimes > 0.0001]
-    plt.plot(looptimes)
+    plt.plot( mpc_debug.t_mpc[:-1], looptimes)
     plt.title('Mpc loop times')
     plt.ylabel('Loop time (s)')
+
+
+def plot_mpc_solve_time(mpc_debug):
+    plt.figure()
+    plt.plot(mpc_debug.t_mpc, mpc_debug.solve_time)
+    plt.title('MPC solve time')
+    plt.ylabel('Solve time (s)')
+
+
+def plot_mpc_timing(mpc_debug):
+    plt.figure()
+    looptimes = np.ediff1d(mpc_debug.t_mpc)
+    solve_times = mpc_debug.solve_time[:-1]
+    plt.plot(mpc_debug.t_mpc[:-1], looptimes - solve_times)
+    plt.plot(mpc_debug.t_mpc[:-1], looptimes)
+    plt.plot(mpc_debug.t_mpc, mpc_debug.solve_time)
+    plt.title("MPC loop time vs solve time")
+    plt.ylabel('t(s)')
+    plt.legend(['Loop time - solve time', 'loop time', 'solve time'])
 
 
 def plot_foot_targets(mpc_debug, i):
@@ -134,7 +152,7 @@ def main():
         mpc_debug.p0[t]
     )
     plot_foot_targets(mpc_debug, 1)
-    plot_pmc_loop_time(mpc_debug)
+    plot_mpc_timing(mpc_debug)
     plt.show()
 
 

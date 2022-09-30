@@ -118,8 +118,6 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-  meshcat->AddButton("switch_to_running");
-  // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();
 

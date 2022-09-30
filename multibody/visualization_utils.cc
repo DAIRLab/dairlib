@@ -4,6 +4,8 @@
 #include "multibody/com_pose_system.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "drake/geometry/drake_visualizer.h"
+#include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/primitives/trajectory_source.h"
 
@@ -82,6 +84,7 @@ void ConnectTrajectoryVisualizerWithCoM(
   }
 
   DrakeVisualizer<double>::AddToBuilder(builder, *scene_graph);
+
 }
 
 }  // namespace multibody

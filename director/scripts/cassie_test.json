@@ -1,6 +1,6 @@
 {
   "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
-  "channelName": "CASSIE_STATE_SIMULATION",
+  "channelName": "CASSIE_STATE_DISPATCHER",
   "data": [
     {
       "name": "pelvis",
@@ -91,7 +91,7 @@
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.005,
-        "history": 5
+        "history": 1
       }
     },
     {
@@ -108,13 +108,13 @@
       "type_data": {
         "color": [
           1,
-          0,
+          1,
           1
         ],
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.005,
-        "history": 5
+        "history": 1
       }
     },
     {
@@ -125,7 +125,7 @@
         "abstract_type": "dairlib.lcmt_osc_output",
         "abstract_field": "tracking_data[%d].y",
         "index_field": "tracking_data_names",
-        "index_element": "left_ft_traj",
+        "index_element": "right_ft_traj",
         "x_index": 0
       },
       "type_data": {
@@ -137,7 +137,7 @@
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.005,
-        "history": 5
+        "history": 1
       }
     },
     {
@@ -148,7 +148,7 @@
         "abstract_type": "dairlib.lcmt_osc_output",
         "abstract_field": "tracking_data[%d].y_des",
         "index_field": "tracking_data_names",
-        "index_element": "left_ft_traj",
+        "index_element": "right_ft_traj",
         "x_index": 0
       },
       "type_data": {
@@ -160,7 +160,7 @@
         "alpha": 0.5,
         "type": "line",
         "thickness": 0.005,
-        "history": 5
+        "history": 1
       }
     }
   ]

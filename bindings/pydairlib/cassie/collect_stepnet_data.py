@@ -69,6 +69,8 @@ def flat_main(collection_params):
     if not os.path.isdir(collection_params.robot_path):
         os.makedirs(collection_params.robot_path)
 
+    collect_flat_ground_data(1, 1, collection_params)
+
     nsteps = collection_params.nsteps
     nthreads = collection_params.nthreads
     batch_size = collection_params.nmaps
@@ -104,6 +106,9 @@ def terrain_main(collection_params):
 
 def main(args):
     # Set dataset collection params
+    if args.terrain == 'flat':
+        args.dataset_parent_folder += 'flat'
+
     collection_params = DataCollectionParams(
         nmaps=args.nmaps,
         nsteps=args.nsteps,

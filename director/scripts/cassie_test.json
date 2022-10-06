@@ -1,6 +1,6 @@
 {
   "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
-  "channelName": "CASSIE_STATE_DISPATCHER",
+  "channelName": "CASSIE_STATE_SIMULATION",
   "data": [
     {
       "name": "pelvis",

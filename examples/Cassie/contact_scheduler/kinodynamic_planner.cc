@@ -67,36 +67,6 @@ KinodynamicPlanner::KinodynamicPlanner(
   x_des_ = VectorXd ::Zero(n_r_ + n_h_);
 }
 
-// void KinodynamicPlanner::print_constraint(
-//    const std::vector<drake::solvers::LinearConstraint*>& constraints) const {
-//  for (auto& x0_const : constraints) {
-//    std::cout << x0_const->get_description() << ":\n A:\n"
-//              << x0_const->A() << "\nub:\n"
-//              << x0_const->upper_bound() << "\nlb\n"
-//              << x0_const->lower_bound() << std::endl;
-//  }
-//}
-//
-// void KinodynamicPlanner::print_constraint(
-//    const std::vector<drake::solvers::LinearEqualityConstraint*>& constraints)
-//    const {
-//  for (auto& x0_const : constraints) {
-//    std::cout << x0_const->get_description() << ":\n A:\n"
-//              << x0_const->A() << "\nb:\n"
-//              << x0_const->upper_bound() << std::endl;
-//  }
-//}
-//
-// void KinodynamicPlanner::print_constraint(
-//    const std::vector<drake::solvers::Constraint*>& constraints) const {
-//  for (auto& constraint : constraints) {
-//    auto constr = dynamic_cast<drake::solvers::LinearConstraint*>(constraint);
-//    std::cout << constr->get_description() << ":\n A:\n"
-//              << constr->A() << "\nb:\n"
-//              << constr->upper_bound() << std::endl;
-//  }
-//}
-
 void KinodynamicPlanner::AddCoMDynamicsConstraint() {
   for (int i = 0; i < n_knot_points_; ++i) {
     prog_.AddLinearEqualityConstraint(
@@ -109,11 +79,6 @@ void KinodynamicPlanner::AddCentroidalMomentumConstraint() {
     centroidal_momentum_constraints_.push_back(
         std::make_shared<CentroidalMomentumConstraint>(&plant_ad_, std::nullopt,
                                                        &context_ad_, true));
-//    VectorXDecisionVariable x;
-    //    constraint.ComposeVariable(q_.at(i).eval(), v_.at(i).eval(),
-    //    h_.at(i).eval(), x); constraint.ComposeVariable(q_.at(i), v_.at(i),
-    //    h_.at(i), &x); constraint.ComposeVariable(q_.at(i), v_.at(i),
-    //    h_.at(i), &q_.at(i));
     prog_.AddConstraint(centroidal_momentum_constraints_[i],
                         {q_.at(i), v_.at(i), h_.at(i)});
   }
@@ -124,11 +89,7 @@ void KinodynamicPlanner::AddAngularMomentumDynamicsConstraint() {
     centroidal_momentum_constraints_.push_back(
         std::make_shared<CentroidalMomentumConstraint>(&plant_ad_, std::nullopt,
                                                        &context_ad_, true));
-//    VectorXDecisionVariable x;
-    //    constraint.ComposeVariable(q_.at(i).eval(), v_.at(i).eval(),
-    //    h_.at(i).eval(), x); constraint.ComposeVariable(q_.at(i), v_.at(i),
-    //    h_.at(i), &x); constraint.ComposeVariable(q_.at(i), v_.at(i),
-    //    h_.at(i), &q_.at(i));
+
 //    prog_.AddConstraint(dh_.at(i) == (c_[i][0] - r_[i][0]).cross(F_[i][0]),
 //                        {q_.at(i), v_.at(i), h_.at(i)});
   }
@@ -161,10 +122,5 @@ void KinodynamicPlanner::AddKinematicConstraints(){
 
 }
 
-void KinodynamicPlanner::CheckSquareMatrixDimensions(const MatrixXd& M,
-                                                     const int n) const {
-  DRAKE_DEMAND(M.rows() == n);
-  DRAKE_DEMAND(M.cols() == n);
-}
 
 }  // namespace dairlib

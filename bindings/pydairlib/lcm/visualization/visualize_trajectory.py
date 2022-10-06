@@ -25,12 +25,12 @@ def main():
                        False, False)
 
     plant_wo_spr.Finalize()
-    # plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
-    # AddCassieMultibody(plant_w_spr, scene_graph_w_spr,
-    #                    True, "examples/Cassie/urdf/cassie_v2_shells.urdf",
-    #                    False, False)
+    plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
+    AddCassieMultibody(plant_w_spr, scene_graph_w_spr,
+                       True, "examples/Cassie/urdf/cassie_v2_shells.urdf",
+                       False, False)
 
-    # plant_w_spr.Finalize()
+    plant_w_spr.Finalize()
 
     nq = plant_wo_spr.num_positions()
     nv = plant_wo_spr.num_velocities()
@@ -42,7 +42,6 @@ def main():
 
     optimal_traj = dircon_traj.ReconstructStateTrajectory()
     t_vec = optimal_traj.get_segment_times()
-    # meshcat.SetLine()
 
     if params.visualize_mode == 0 or params.visualize_mode == 1:
         ConnectTrajectoryVisualizer(plant_wo_spr, builder, scene_graph_wo_spr,

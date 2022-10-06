@@ -347,7 +347,7 @@ void AlipMINLP::UpdateTimingGradientStep() {
       VectorXd u = solution_.first.GetSolution(uu_.at(n).at(k));
       dLdt_n += (1.0 / (nknots_.at(n) - 1)) * nu.dot(A * Ad * x + Ad * B * u);
     }
-    double tnew = tt_(n) - 1e-8 * dLdt_n;
+    double tnew = tt_(n) - 1e-7 * dLdt_n;
     tt_(n) =  std::isnan(tnew) ? tt_(n)  : std::clamp(tnew, tmin_.at(n), tmax_.at(n));
   }
 }

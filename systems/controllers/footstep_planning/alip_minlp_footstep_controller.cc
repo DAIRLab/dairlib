@@ -258,7 +258,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   if (fsm_switch) {
     trajopt.UpdateModeTimingsOnTouchdown();
   }
-  trajopt.UpdateModeTiming(false);
+  trajopt.UpdateModeTiming((!(committed || fsm_switch)) && warmstart);
 
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));

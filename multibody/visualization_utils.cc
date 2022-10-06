@@ -4,6 +4,8 @@
 #include "multibody/com_pose_system.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "drake/geometry/drake_visualizer.h"
+#include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/primitives/trajectory_source.h"
 
@@ -37,11 +39,11 @@ void ConnectTrajectoryVisualizer(
     drake::geometry::SceneGraph<double>* scene_graph,
     const Trajectory<double>& trajectory) {
   auto empty_plant = std::make_unique<MultibodyPlant<double>>(0.0);
-  ConnectTrajectoryVisualizer(plant, builder, scene_graph, trajectory,
+  ConnectTrajectoryVisualizerWithCoM(plant, builder, scene_graph, trajectory,
                               *empty_plant);
 }
 
-void ConnectTrajectoryVisualizer(
+void ConnectTrajectoryVisualizerWithCoM(
     const MultibodyPlant<double>* plant,
     drake::systems::DiagramBuilder<double>* builder,
     drake::geometry::SceneGraph<double>* scene_graph,
@@ -82,6 +84,7 @@ void ConnectTrajectoryVisualizer(
   }
 
   DrakeVisualizer<double>::AddToBuilder(builder, *scene_graph);
+
 }
 
 }  // namespace multibody

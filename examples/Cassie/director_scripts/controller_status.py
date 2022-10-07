@@ -62,7 +62,6 @@ class InputSupervisorVisualizer(object):
         self.text_box.setProperty('Text', "\n".join(status_list))
 
 def init_visualizer():
-    print("fooo")
     viz = InputSupervisorVisualizer()
     # vis.addText('supervisor_text')
 

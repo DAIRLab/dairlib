@@ -16,7 +16,7 @@ DRAKE_COMMIT = "c65678ed512a3b631aeb5eac5a496454f99b6b3a"
 DRAKE_CHECKSUM = "5b2d53e2924fb6bdbcbfa36beb1dc251db3bb1039ace6a7de719e7f66208c8d7"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
-#DRAKE_CHECKSUM = "0" * 64
+# DRAKE_CHECKSUM = "0" * 64
 
 # Load an environment variable.
 load("//:environ.bzl", "environ_repository")

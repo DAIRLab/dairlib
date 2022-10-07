@@ -9,7 +9,7 @@ def main():
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
     logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
-    dair = f"{os.getenv('HOME')}/workspace/dairlib/"
+    dair = f"{os.getenv('HOME')}/Drake_ws/dairlib/"
     standing_gains = dair + "examples/Cassie/osc/osc_standing_gains.yaml"
     walking_gains = dair + "examples/Cassie/osc/osc_walking_gains.yaml"
     alip_walking_gains = dair + "examples/Cassie/osc/alip_osc_walking_gains.yaml"

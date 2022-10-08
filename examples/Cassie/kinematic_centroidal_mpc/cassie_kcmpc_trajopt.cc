@@ -120,6 +120,19 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
   double cost_com_orientation = 8;
   double cost_angular_vel = 2;
 
+  double stance_width = 0.25;
+  double stance_wiggle = 0.01;
+
+  Eigen::Vector3d left_lb(std::numeric_limits<double>::lowest(), -stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
+  Eigen::Vector3d left_ub(std::numeric_limits<double>::max(), -stance_width/2+stance_wiggle, std::numeric_limits<double>::max());
+
+  Eigen::Vector3d right_lb(std::numeric_limits<double>::lowest(), stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
+  Eigen::Vector3d right_ub(std::numeric_limits<double>::max(), stance_width/2+stance_wiggle, std::numeric_limits<double>::max());
+  mpc.AddContactPointPositionConstraint(0, left_lb, left_ub);
+  mpc.AddContactPointPositionConstraint(1, left_lb, left_ub);
+  mpc.AddContactPointPositionConstraint(2, right_lb, right_ub);
+  mpc.AddContactPointPositionConstraint(3, right_lb, right_ub);
+
   mpc.AddConstantForceTrackingReference(Eigen::VectorXd::Zero(12), cost_force * Eigen::MatrixXd::Identity(12,12));
 
   Eigen::VectorXd reference_state = GenerateNominalStand(plant);
@@ -203,5 +216,5 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(12, 0.5, 1.8,1e-4);
+  DoMain(12, 0.5, 1.4,1e-4);
 }

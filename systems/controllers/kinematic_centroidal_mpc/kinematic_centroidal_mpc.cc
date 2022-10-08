@@ -171,6 +171,7 @@ void KinematicCentroidalMPC::AddContactConstraints() {
     }
   }
 }
+
 void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     for (int contact = 0; contact < n_contact_points_; contact++) {
@@ -373,4 +374,10 @@ void KinematicCentroidalMPC::CreateVisualizationCallback(std::string model_file,
 
   prog_->AddVisualizationCallback(my_callback, vars);
 
+}
+void KinematicCentroidalMPC::AddContactPointPositionConstraint(int contact_index, const Eigen::Vector3d& lb, const Eigen::Vector3d& ub) {
+  //{TODO} eventually make in body frame
+  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
+    prog_->AddBoundingBoxConstraint(lb, ub, contact_pos_[knot_point][contact_index]);
+  }
 }

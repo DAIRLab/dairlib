@@ -61,6 +61,8 @@ class KinematicCentroidalMPC {
                                    double alpha,
                                    std::string weld_frame_to_world = "");
 
+  void AddContactPointPositionConstraint(int contact_index, const Eigen::Vector3d& lb, const Eigen::Vector3d& ub);
+
  private:
   /*!
    * @brief Adds dynamics for centroidal state

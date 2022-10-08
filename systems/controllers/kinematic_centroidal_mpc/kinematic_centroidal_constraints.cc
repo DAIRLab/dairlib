@@ -86,6 +86,11 @@ drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
   const auto d_omega = rotational_inertia.inverse()* (drake::math::RotationMatrix(Eigen::Quaternion<T>(quat)).transpose() * sum_moments - omega.cross(rotational_inertia * omega));
   const auto dd_r = sum_forces/mass - drake::Vector3<T>(0, 0, 9.81);
 
+//  std::cout<<"ddr"<<std::endl;
+//  std::cout<<dd_r<<std::endl;
+//  std::cout<<"d_omega"<<std::endl;
+//  std::cout<<d_omega<<std::endl;
+
   drake::Vector<T, 13> rv;
   rv.head(4) = d_quat;
   rv.segment(4,3) = d_r;

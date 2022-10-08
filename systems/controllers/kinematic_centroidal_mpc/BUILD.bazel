@@ -8,7 +8,6 @@ cc_library(
     hdrs = ["kinematic_centroidal_mpc.h",
             "kinematic_centroidal_constraints.h"],
     deps = [
-        "//geometry:convex_foothold",
         "//solvers:constraints",
         "//multibody/kinematic:kinematic",
         "//multibody/kinematic:constraints",

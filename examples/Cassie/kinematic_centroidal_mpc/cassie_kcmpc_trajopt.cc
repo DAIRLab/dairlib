@@ -107,12 +107,15 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
   std::cout<<"Setting initial guess"<<std::endl;
   mpc.SetZeroInitialGuess();
 
-  double cost_force = 0.01;
+  double cost_force = 0.001;
 
-  double cost_joint_pos = 0.1;
+  double cost_joint_pos = 0.001;
   double cost_joint_vel = 1;
 
-  double cost_com_pos = 2;
+  double cost_contact_pos = 0;
+  double cost_contact_vel = 1;
+
+  double cost_com_pos = 10;
   double cost_com_vel = 4;
   double cost_com_orientation = 8;
   double cost_angular_vel = 2;
@@ -121,7 +124,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
 
   Eigen::VectorXd reference_state = GenerateNominalStand(plant);
 
-  Eigen::VectorXd Q_state(plant.num_positions() + plant.num_velocities());
+  Eigen::VectorXd Q_state = Eigen::VectorXd::Zero(plant.num_positions() + plant.num_velocities());
   Q_state.segment(7, plant.num_positions()-7) = cost_joint_pos * Eigen::VectorXd::Ones(plant.num_positions()-7);
   Q_state.tail(plant.num_velocities() - 6) = cost_joint_vel * Eigen::VectorXd::Ones(plant.num_velocities() - 6);
   mpc.AddConstantStateReference(reference_state,Q_state.asDiagonal());
@@ -136,6 +139,10 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
   Q_cent.segment(7,3) = cost_angular_vel * Eigen::VectorXd::Ones(3);
   Q_cent.segment(10,3) = cost_com_vel * Eigen::VectorXd::Ones(3);
   mpc.AddConstantCentroidalReference(reference_cent_state,Q_cent.asDiagonal());
+
+  Eigen::VectorXd Q_contact = cost_contact_pos * Eigen::VectorXd::Ones(4 * 6);
+  Q_contact.tail(4 * 3) = cost_contact_vel * Eigen::VectorXd::Ones(4 * 3);
+  mpc.AddContactPosTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(Eigen::VectorXd::Zero(4 * 6)), Q_contact.asDiagonal());
 
   std::cout<<"Adding solver options"<<std::endl;
   {

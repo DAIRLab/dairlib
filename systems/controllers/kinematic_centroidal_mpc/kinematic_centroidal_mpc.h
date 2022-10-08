@@ -131,6 +131,8 @@ class KinematicCentroidalMPC {
   std::vector<drake::solvers::VectorXDecisionVariable>  x_cent_vars_;
   // Contact position index by time, then by contact
   std::vector<std::vector<drake::solvers::VectorXDecisionVariable>>  contact_pos_;
+  // Contact velocity index by time, then by contact
+  std::vector<std::vector<drake::solvers::VectorXDecisionVariable>>  contact_vel_;
   // Contact force index by time, then by contact
   std::vector<std::vector<drake::solvers::VectorXDecisionVariable>>  contact_force_;
 

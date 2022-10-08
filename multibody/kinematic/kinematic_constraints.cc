@@ -73,7 +73,7 @@ KinematicVelocityConstraint<T>::KinematicVelocityConstraint(
     Context<T>* context, const std::string& description)
     : KinematicVelocityConstraint<T>(plant, evaluators,
           VectorXd::Zero(evaluators.count_active()),
-          VectorXd::Zero(evaluators.count_active()),
+          VectorXd::Zero(evaluators.count_active()), {},
           context, description) {}
 
 template <typename T>
@@ -81,12 +81,14 @@ KinematicVelocityConstraint<T>::KinematicVelocityConstraint(
     const MultibodyPlant<T>& plant,
     const KinematicEvaluatorSet<T>& evaluators,
     const VectorXd& lb, const VectorXd& ub,
+    const std::set<int>& full_constraint_relative,
     Context<T>* context, const std::string& description)
     : NonlinearConstraint<T>(evaluators.count_active(),
-          plant.num_positions() + plant.num_velocities(),
+          plant.num_positions() + plant.num_velocities() + full_constraint_relative.size(),
           lb, ub, description),
       plant_(plant), 
-      evaluators_(evaluators) {
+      evaluators_(evaluators),
+      full_constraint_relative_(full_constraint_relative){
   // Create a new context if one was not provided
   if (context == nullptr) {
     owned_context_ = plant_.CreateDefaultContext();
@@ -99,9 +101,18 @@ KinematicVelocityConstraint<T>::KinematicVelocityConstraint(
 template <typename T>
 void KinematicVelocityConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
-  SetPositionsAndVelocitiesIfNew<T>(plant_, x, context_);
+  const auto& state_vars = x.head(plant_.num_positions() + plant_.num_velocities());
+  const auto& alpha = x.tail(full_constraint_relative_.size());
+
+  SetPositionsAndVelocitiesIfNew<T>(plant_, state_vars, context_);
 
   *y = evaluators_.EvalActiveTimeDerivative(*context_);
+  // Add relative offsets, looping through the list of relative constraints
+  auto it = full_constraint_relative_.begin();
+  for (uint i = 0; i < full_constraint_relative_.size(); i++) {
+    (*y)(*it) += alpha(i);
+    it++;
+  }
 }
 
 ///

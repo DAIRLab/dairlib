@@ -136,15 +136,15 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
   double cost_force = 0.01;
 
   double cost_joint_pos = 0.0005;
-  double cost_joint_vel = 1;
+  double cost_joint_vel = 0.0001;
 
   double cost_contact_pos = 0;
   double cost_contact_vel = 2;
 
   double cost_com_pos = 10;
-  double cost_com_vel = 4;
+  double cost_com_vel = 0.01;
   double cost_com_orientation = 8;
-  double cost_angular_vel = 2;
+  double cost_angular_vel = 0.01;
 
   double stance_width = 0.25;
   double stance_wiggle = 0.01;
@@ -172,12 +172,20 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
   reference_cent_state[0] = 1;
   reference_cent_state[6] = com_height;
 
+  Eigen::VectorXd reference_cent_state_bottom = Eigen::VectorXd::Zero(13);
+  reference_cent_state_bottom[0] = 1;
+  reference_cent_state_bottom[6] = com_height-0.5;
+  std::vector<double> time_points = {0, duration};
+  auto centroidal_reference = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points,
+                                                                                               {reference_cent_state,
+                                                                                                reference_cent_state_bottom});
+
   Eigen::VectorXd Q_cent(13);
   Q_cent.head(4) = cost_com_orientation * Eigen::VectorXd::Ones(4);
   Q_cent.segment(4,3) = cost_com_pos * Eigen::VectorXd::Ones(3);
   Q_cent.segment(7,3) = cost_angular_vel * Eigen::VectorXd::Ones(3);
   Q_cent.segment(10,3) = cost_com_vel * Eigen::VectorXd::Ones(3);
-  mpc.AddConstantCentroidalReference(reference_cent_state,Q_cent.asDiagonal());
+  mpc.AddCentroidalReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(centroidal_reference),Q_cent.asDiagonal());
 
   Eigen::VectorXd Q_contact = cost_contact_pos * Eigen::VectorXd::Ones(4 * 6);
   Q_contact.tail(4 * 3) = cost_contact_vel * Eigen::VectorXd::Ones(4 * 3);
@@ -234,7 +242,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(.1);
+    simulator.set_target_realtime_rate(.4);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }
@@ -242,5 +250,5 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(12, 0.5, 1.4,1e-4);
+  DoMain(12, 0.5, 1.9,1e-4);
 }

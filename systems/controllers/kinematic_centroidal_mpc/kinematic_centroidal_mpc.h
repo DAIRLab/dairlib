@@ -63,6 +63,8 @@ class KinematicCentroidalMPC {
 
   void AddContactPointPositionConstraint(int contact_index, const Eigen::Vector3d& lb, const Eigen::Vector3d& ub);
 
+  void AddPlantJointLimits(std::vector<std::string> joints_to_limit);
+
  private:
   /*!
    * @brief Adds dynamics for centroidal state

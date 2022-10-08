@@ -104,16 +104,42 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
   KinematicCentroidalMPC mpc (plant, n_knot_points, duration/(n_knot_points-1),
                               {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval});
 
+  // create joint/motor names
+  std::vector<std::pair<std::string, std::string>> l_r_pairs{
+      std::pair<std::string, std::string>("_left", "_right"),
+      std::pair<std::string, std::string>("_right", "_left"),
+  };
+  std::vector<std::string> asy_joint_names{
+      "hip_roll",
+      "hip_yaw",
+  };
+  std::vector<std::string> sym_joint_names{"hip_pitch", "knee", "ankle_joint", "toe"};
+  std::vector<std::string> joint_names{};
+  std::vector<std::string> motor_names{};
+  for (auto &l_r_pair : l_r_pairs) {
+    for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
+      joint_names.push_back(asy_joint_names[i] + l_r_pair.first);
+      motor_names.push_back(asy_joint_names[i] + l_r_pair.first + "_motor");
+    }
+    for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
+      joint_names.push_back(sym_joint_names[i] + l_r_pair.first);
+      if (sym_joint_names[i].compare("ankle_joint") != 0) {
+        motor_names.push_back(sym_joint_names[i] + l_r_pair.first + "_motor");
+      }
+    }
+  }
+  mpc.AddPlantJointLimits(joint_names);
+
   std::cout<<"Setting initial guess"<<std::endl;
   mpc.SetZeroInitialGuess();
 
-  double cost_force = 0.001;
+  double cost_force = 0.01;
 
-  double cost_joint_pos = 0.001;
+  double cost_joint_pos = 0.0005;
   double cost_joint_vel = 1;
 
   double cost_contact_pos = 0;
-  double cost_contact_vel = 1;
+  double cost_contact_vel = 2;
 
   double cost_com_pos = 10;
   double cost_com_vel = 4;

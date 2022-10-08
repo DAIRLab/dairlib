@@ -54,6 +54,11 @@ void CentroidalDynamicsConstraint<T>::EvaluateConstraint(
   const auto x1Predict = xCent0 + xdot0Cent * dt_;
 
   *y = xCent1 - x1Predict;
+//  std::cout<<"xCent0"<<std::endl;
+//  std::cout<<xCent0<<std::endl;
+//  std::cout<<"xCent1"<<std::endl;
+//  std::cout<<xCent1<<std::endl;
+//  std::cout<<"-----------------"<<std::endl;
 }
 template<typename T>
 drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(drake::systems::Context<T> *context,
@@ -96,6 +101,8 @@ drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
   rv.segment(4,3) = d_r;
   rv.segment(7,3) = d_omega;
   rv.segment(10,3) = dd_r;
+//  std::cout<<"rv"<<std::endl;
+//  std::cout<<rv<<std::endl;
   return rv;
 }
 

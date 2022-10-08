@@ -3,6 +3,7 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_constraints.h"
 #include "multibody/kinematic/kinematic_constraints.h"
+#include "multibody/multibody_utils.h"
 
 KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::MultibodyPlant<double> &plant,
                                                int n_knot_points,
@@ -380,4 +381,15 @@ void KinematicCentroidalMPC::AddContactPointPositionConstraint(int contact_index
   for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
     prog_->AddBoundingBoxConstraint(lb, ub, contact_pos_[knot_point][contact_index]);
   }
+}
+void KinematicCentroidalMPC::AddPlantJointLimits(std::vector<std::string> joint_to_constrain) {
+  std::map<std::string, int> positions_map = dairlib::multibody::MakeNameToPositionsMap(plant_);
+  for (const auto& member : joint_to_constrain) {
+    for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++) {
+      prog_->AddBoundingBoxConstraint(plant_.GetJointByName(member).position_lower_limits()(0),
+                                      plant_.GetJointByName(member).position_upper_limits()(0),
+                                      state_vars(knot_point)[positions_map.at(member)]);
+    }
+  }
+
 }

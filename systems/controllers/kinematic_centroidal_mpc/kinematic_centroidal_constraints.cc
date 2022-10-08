@@ -1,7 +1,3 @@
-//
-// Created by shane on 10/5/22.
-//
-
 #include <drake/math/quaternion.h>
 #include <iostream>
 #include "kinematic_centroidal_constraints.h"
@@ -45,21 +41,15 @@ void CentroidalDynamicsConstraint<T>::EvaluateConstraint(
   const auto& cj0 = x.segment(2 * n_cent_ + n_x_, 3 * n_contact_);
   const auto& Fj0 = x.segment(2 * n_cent_ + n_x_ + 3 * n_contact_, 3 * n_contact_);
 
-  // Evaluate dynamics at k and k+1
+  // Evaluate dynamics at k
   dairlib::multibody::SetContext<T>(plant_, x0, zero_control_, context_);
-
   const auto& xdot0Cent = CalcTimeDerivativesWithForce(context_, xCent0,cj0, Fj0);
 
-  // Cubic interpolation to get xcol and xdotcol.
+  // Predict state and return error
   const auto x1Predict = xCent0 + xdot0Cent * dt_;
-
   *y = xCent1 - x1Predict;
-//  std::cout<<"xCent0"<<std::endl;
-//  std::cout<<xCent0<<std::endl;
-//  std::cout<<"xCent1"<<std::endl;
-//  std::cout<<xCent1<<std::endl;
-//  std::cout<<"-----------------"<<std::endl;
 }
+
 template<typename T>
 drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(drake::systems::Context<T> *context,
                                                                                 const drake::VectorX<T>& xCent,
@@ -91,18 +81,11 @@ drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
   const auto d_omega = rotational_inertia.inverse()* (drake::math::RotationMatrix(Eigen::Quaternion<T>(quat)).transpose() * sum_moments - omega.cross(rotational_inertia * omega));
   const auto dd_r = sum_forces/mass - drake::Vector3<T>(0, 0, 9.81);
 
-//  std::cout<<"ddr"<<std::endl;
-//  std::cout<<dd_r<<std::endl;
-//  std::cout<<"d_omega"<<std::endl;
-//  std::cout<<d_omega<<std::endl;
-
   drake::Vector<T, 13> rv;
   rv.head(4) = d_quat;
   rv.segment(4,3) = d_r;
   rv.segment(7,3) = d_omega;
   rv.segment(10,3) = dd_r;
-//  std::cout<<"rv"<<std::endl;
-//  std::cout<<rv<<std::endl;
   return rv;
 }
 

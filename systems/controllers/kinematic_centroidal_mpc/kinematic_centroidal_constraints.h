@@ -8,10 +8,20 @@
 #include "solvers/nonlinear_constraint.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 
+/*!
+ * @brief Nonlinear constraint for enforcing the centroidal dynamics using euler integration
+ */
 template <typename T>
 class CentroidalDynamicsConstraint : public dairlib::solvers::NonlinearConstraint<T> {
 
  public:
+  /*!
+   * @param plant used for calculating inertia tensor and mass
+   * @param context
+   * @param n_contact number of contact points
+   * @param dt timestep for integration
+   * @param knot_index
+   */
   CentroidalDynamicsConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                               drake::systems::Context<T>* context,
                               int n_contact, double dt, int knot_index);
@@ -21,6 +31,14 @@ class CentroidalDynamicsConstraint : public dairlib::solvers::NonlinearConstrain
                           drake::VectorX<T>* y) const override;
 
  private:
+  /*!
+   * @brief Calculates the time derivative of the centroidal state
+   * @param context context used to calcualte inertia tensor and mass
+   * @param xCent centroidal state = [quat, r, omega, dr]
+   * @param contact_locations vector of the contact locations in world frame = [contact1x, contact1y, contact1z, ...]
+   * @param contact_forces vector of the contact forces in world frame = [force1x, force1y, force1z, ...]
+   * @return time derivate of centroidal state
+   */
   drake::VectorX<T> CalcTimeDerivativesWithForce(
       drake::systems::Context<T>* context,
       const drake::VectorX<T>& xCent,
@@ -38,6 +56,9 @@ class CentroidalDynamicsConstraint : public dairlib::solvers::NonlinearConstrain
   const drake::VectorX<T> zero_control_;
 };
 
+/*!
+ * @brief Nonlinear constraint on center of mass position matching centroidal state
+ */
 template <typename T>
 class CenterofMassPositionConstraint : public dairlib::solvers::NonlinearConstraint<T> {
 
@@ -59,6 +80,9 @@ class CenterofMassPositionConstraint : public dairlib::solvers::NonlinearConstra
   const drake::VectorX<T> zero_control_;
 };
 
+/*!
+ * @brief Nonlinear constraint on center of mass velocity matching centroidal velocity
+ */
 template <typename T>
 class CenterofMassVelocityConstraint : public dairlib::solvers::NonlinearConstraint<T> {
 

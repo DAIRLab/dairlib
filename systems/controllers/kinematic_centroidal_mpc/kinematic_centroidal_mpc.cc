@@ -129,8 +129,8 @@ void KinematicCentroidalMPC::AddKinematicDynamics() {
       prog_->AddLinearConstraint(A,
                                  Eigen::VectorXd::Zero(n_kinematic_q_),
                                  Eigen::VectorXd::Zero(n_kinematic_q_),
-                                 {kinematic_pos_vars(knot_point), kinematic_pos_vars(knot_point + 1),
-                                  kinematic_vel_vars(knot_point)});
+                                 {joint_pos_vars(knot_point), joint_pos_vars(knot_point + 1),
+                                  joint_vel_vars(knot_point)});
     }
     // Integrate foot states
     {
@@ -163,11 +163,11 @@ void KinematicCentroidalMPC::AddContactConstraints() {
     for (int contact = 0; contact < n_contact_points_; contact++) {
       //Make sure feet in stance are not moving and on the ground
       if(true){
-        prog_->AddBoundingBoxConstraint(Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3), contact_vel_[knot_point][contact]);
-        prog_->AddBoundingBoxConstraint(0, 0, contact_pos_[knot_point][contact][2]);
+        prog_->AddBoundingBoxConstraint(Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3), contact_vel_vars(knot_point,contact));
+        prog_->AddBoundingBoxConstraint(0, 0, contact_pos_vars(knot_point,contact)[2]);
       } else {
         // Feet are above the ground
-        prog_->AddBoundingBoxConstraint(0, 10, contact_pos_[knot_point][contact][2]);
+        prog_->AddBoundingBoxConstraint(0, 10, contact_pos_vars(knot_point,contact)[2]);
       }
     }
   }
@@ -186,7 +186,7 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
               Eigen::Vector3d::Zero(),
               full_constraint_relative);
       prog_->AddConstraint(foot_position_constraint,
-                           {state_vars(knot_point).head(n_q_), contact_pos_[knot_point][contact]});
+                           {state_vars(knot_point).head(n_q_), contact_pos_vars(knot_point,contact)});
 
       //SRL I don't actually think we need this constraint
 //      auto foot_velocity_constraint =
@@ -198,13 +198,13 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
     auto com_position =
         std::make_shared<CenterofMassPositionConstraint<double>>(
             plant_, contexts_[knot_point].get(), knot_point);
-    prog_->AddConstraint(com_position, {centroidal_pos_vars(knot_point).tail(3), state_vars(knot_point)});
+    prog_->AddConstraint(com_position, {com_pos_vars(knot_point), state_vars(knot_point)});
 
     // Constrain com velocity
     auto com_velocity =
         std::make_shared<CenterofMassVelocityConstraint<double>>(
             plant_, contexts_[knot_point].get(), knot_point);
-    prog_->AddConstraint(com_velocity, {centroidal_vel_vars(knot_point).tail(3), state_vars(knot_point)});
+    prog_->AddConstraint(com_velocity, {com_vel_vars(knot_point), state_vars(knot_point)});
 
     // Constrain orientation and angular velocity to be equal
     Eigen::MatrixXd A(7, 2 * 7);
@@ -213,7 +213,7 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
     prog_->AddLinearConstraint(A,
                                Eigen::VectorXd::Zero(7),
                                Eigen::VectorXd::Zero(7),
-                               {centroidal_pos_vars(knot_point).head(4), centroidal_vel_vars(knot_point).head(3),
+                               {cent_quat_vars(knot_point), cent_omega_vars(knot_point),
                                 state_vars(knot_point).head(4), state_vars(knot_point).segment(n_q_,3)});
   }
 
@@ -222,7 +222,7 @@ void KinematicCentroidalMPC::AddFrictionConeConstraints() {
   //{TODO} make this actual friction cone constraint
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     for (int contact = 0; contact < n_contact_points_; contact++) {
-      prog_->AddBoundingBoxConstraint(0, 10000, contact_force_[knot_point][contact][2]);
+      prog_->AddBoundingBoxConstraint(0, std::numeric_limits<double>::max(), contact_force_vars(knot_point,contact)[2]);
     }
   }
 }
@@ -233,18 +233,18 @@ drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::state_vars(int k
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::centroidal_pos_vars(int knotpoint_index) const {
   return x_cent_vars_[knotpoint_index].segment(0,n_centroidal_pos_);
 }
-
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::centroidal_vel_vars(int knotpoint_index) const {
   return x_cent_vars_[knotpoint_index].segment(n_centroidal_pos_,n_centroidal_vel_);
 }
-drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::kinematic_pos_vars(int knotpoint_index) const {
+drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::joint_pos_vars(int knotpoint_index) const {
   return x_vars_[knotpoint_index].segment(n_centroidal_pos_,n_kinematic_q_);
 }
-drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::kinematic_vel_vars(int knotpoint_index) const {
+drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::joint_vel_vars(int knotpoint_index) const {
   return x_vars_[knotpoint_index].segment(n_q_ + n_centroidal_vel_,n_kinematic_v_);
 }
-void KinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &solver_options) {
 
+
+void KinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &solver_options) {
   AddCentroidalDynamics();
   AddKinematicDynamics();
   AddContactConstraints();
@@ -338,9 +338,6 @@ drake::trajectories::PiecewisePolynomial<double> KinematicCentroidalMPC::Solve()
     time_points.emplace_back(dt_*knot_point);
     states.emplace_back(result.GetSolution(state_vars(knot_point)));
   }
-//  for(const auto& binding: centroidal_dynamics_binding){
-//    std::cout<<prog_->EvalBinding(binding, result.GetSolution())<<std::endl;
-//  }
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points, states);
 }
 
@@ -379,10 +376,10 @@ void KinematicCentroidalMPC::CreateVisualizationCallback(std::string model_file,
 void KinematicCentroidalMPC::AddContactPointPositionConstraint(int contact_index, const Eigen::Vector3d& lb, const Eigen::Vector3d& ub) {
   //{TODO} eventually make in body frame
   for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
-    prog_->AddBoundingBoxConstraint(lb, ub, contact_pos_[knot_point][contact_index]);
+    prog_->AddBoundingBoxConstraint(lb, ub, contact_pos_vars(knot_point,contact_index));
   }
 }
-void KinematicCentroidalMPC::AddPlantJointLimits(std::vector<std::string> joint_to_constrain) {
+void KinematicCentroidalMPC::AddPlantJointLimits(const std::vector<std::string>& joint_to_constrain) {
   std::map<std::string, int> positions_map = dairlib::multibody::MakeNameToPositionsMap(plant_);
   for (const auto& member : joint_to_constrain) {
     for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++) {
@@ -392,4 +389,28 @@ void KinematicCentroidalMPC::AddPlantJointLimits(std::vector<std::string> joint_
     }
   }
 
+}
+drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::com_pos_vars(int knotpoint_index) const {
+  return centroidal_pos_vars(knotpoint_index).tail(3);
+}
+drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::com_vel_vars(int knotpoint_index) const {
+  return centroidal_vel_vars(knotpoint_index).tail(3);
+}
+drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::cent_quat_vars(int knotpoint_index) const {
+  return centroidal_pos_vars(knotpoint_index).head(4);
+}
+drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::cent_omega_vars(int knotpoint_index) const {
+  return centroidal_vel_vars(knotpoint_index).head(3);
+}
+drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::contact_pos_vars(int knotpoint_index,
+                                                                                 int contact) const {
+  return contact_pos_[knotpoint_index][contact];
+}
+drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::contact_vel_vars(int knotpoint_index,
+                                                                                 int contact) const {
+  return contact_vel_[knotpoint_index][contact];
+}
+drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::contact_force_vars(int knotpoint_index,
+                                                                                   int contact) const {
+  return contact_force_[knotpoint_index][contact];
 }

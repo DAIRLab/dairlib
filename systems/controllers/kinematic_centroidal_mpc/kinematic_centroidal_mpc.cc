@@ -56,8 +56,8 @@ void KinematicCentroidalMPC::AddStateReference(std::unique_ptr<drake::trajectori
   Q_ = Q;
 }
 
-void KinematicCentroidalMPC::AddContactPosTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj,
-                                                            const Eigen::MatrixXd &Q_contact) {
+void KinematicCentroidalMPC::AddContactTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj,
+                                                         const Eigen::MatrixXd &Q_contact) {
   DRAKE_DEMAND(Q_contact.rows() == 2 * 3 * n_contact_points_);
   DRAKE_DEMAND(Q_contact.cols() == 2 * 3 * n_contact_points_);
 
@@ -100,8 +100,8 @@ void KinematicCentroidalMPC::AddCentroidalDynamics() {
       constraint_vars.emplace_back(contact_force);
     }
     // TODO make not hard coded
-    centroidal_dynamics_binding.push_back(prog_->AddConstraint(constraint,
-                                                               {centroidal_pos_vars(knot_point),
+    centroidal_dynamics_binding_.push_back(prog_->AddConstraint(constraint,
+                                                                {centroidal_pos_vars(knot_point),
                                                                 centroidal_vel_vars(knot_point),
                                                                 centroidal_pos_vars(knot_point + 1),
                                                                 centroidal_vel_vars(knot_point + 1),
@@ -187,12 +187,6 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
               full_constraint_relative);
       prog_->AddConstraint(foot_position_constraint,
                            {state_vars(knot_point).head(n_q_), contact_pos_vars(knot_point,contact)});
-
-      //SRL I don't actually think we need this constraint
-//      auto foot_velocity_constraint =
-//          std::make_shared<dairlib::multibody::KinematicVelocityConstraint<double>>(
-//              plant_, contact_sets_[contact], Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(), full_constraint_relative);
-//      prog_->AddConstraint(foot_velocity_constraint, {state_vars(knot_point), contact_vel_[knot_point][contact]});
     }
     // Constrain com position
     auto com_position =
@@ -207,6 +201,8 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
     prog_->AddConstraint(com_velocity, {com_vel_vars(knot_point), state_vars(knot_point)});
 
     // Constrain orientation and angular velocity to be equal
+    // TODO make sure angular velocity are both in the same frame
+    // SRL I suspect that centroidal angular velocity is in body frame, what is drake angular velocity in?
     Eigen::MatrixXd A(7, 2 * 7);
     A << Eigen::MatrixXd::Identity(7, 7),
         -Eigen::MatrixXd::Identity(7, 7);

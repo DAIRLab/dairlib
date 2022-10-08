@@ -39,7 +39,7 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
   pos_value_map["hip_roll_left"] = 0.00927845;
   pos_value_map["hip_roll_right"] = 0.00927845;
   pos_value_map["hip_yaw_left"] = -0.000895805;
-  pos_value_map["hip_yaw_right"] = -0.000895805;
+  pos_value_map["hip_yaw_right"] = 0.000895805;
   pos_value_map["hip_pitch_left"] = 0.610808;
   pos_value_map["hip_pitch_right"] = 0.610808;
   pos_value_map["knee_left"] = -1.35926;
@@ -138,11 +138,11 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
   double cost_joint_pos = 0.0005;
   double cost_joint_vel = 0.0001;
 
-  double cost_contact_pos = 0;
+  double cost_contact_pos = 1;
   double cost_contact_vel = 2;
 
   double cost_com_pos = 10;
-  double cost_com_vel = 0.01;
+  double cost_com_vel = 0.001;
   double cost_com_orientation = 8;
   double cost_angular_vel = 0.01;
 
@@ -189,7 +189,8 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
 
   Eigen::VectorXd Q_contact = cost_contact_pos * Eigen::VectorXd::Ones(4 * 6);
   Q_contact.tail(4 * 3) = cost_contact_vel * Eigen::VectorXd::Ones(4 * 3);
-  mpc.AddContactPosTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(Eigen::VectorXd::Zero(4 * 6)), Q_contact.asDiagonal());
+  mpc.AddContactTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(Eigen::VectorXd::Zero(
+      4 * 6)), Q_contact.asDiagonal());
 
   std::cout<<"Adding solver options"<<std::endl;
   {

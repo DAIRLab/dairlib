@@ -97,7 +97,6 @@ class KinematicVelocityConstraint : public solvers::NonlinearConstraint<T> {
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-      const std::set<int>& full_constraint_relative = {},
       drake::systems::Context<T>* context = nullptr,
       const std::string& description = "kinematic_velocity");
 
@@ -109,7 +108,6 @@ class KinematicVelocityConstraint : public solvers::NonlinearConstraint<T> {
   const KinematicEvaluatorSet<T>& evaluators_;
   drake::systems::Context<T>* context_;
   std::unique_ptr<drake::systems::Context<T>> owned_context_;
-  std::set<int> full_constraint_relative_;
 };
 
 /// A constraint class to wrap the acceleration component of a

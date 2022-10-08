@@ -75,10 +75,9 @@ drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
     sum_moments = sum_forces + (location - r).cross(force);
     sum_forces = sum_forces + force;
   }
-
+  // Working in body frame angular velocity
   const auto d_quat = drake::math::CalculateQuaternionDtFromAngularVelocityExpressedInB(Eigen::Quaternion<T>(quat), omega);
-  // Check to make sure the rotation is correct
-  const auto d_omega = rotational_inertia.inverse()* (drake::math::RotationMatrix(Eigen::Quaternion<T>(quat)).transpose() * sum_moments - omega.cross(rotational_inertia * omega));
+  const auto d_omega = rotational_inertia.transpose()* (drake::math::RotationMatrix(Eigen::Quaternion<T>(quat)).transpose() * sum_moments - omega.cross(rotational_inertia * omega));
   const auto dd_r = sum_forces/mass - drake::Vector3<T>(0, 0, 9.81);
 
   drake::Vector<T, 13> rv;

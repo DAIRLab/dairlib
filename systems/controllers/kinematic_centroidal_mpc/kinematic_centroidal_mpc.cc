@@ -19,8 +19,8 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
                                                n_contact_points_(contact_points.size()),
                                                contexts_(n_knot_points){
 
-  n_joint_q_ = n_q_ - n_centroidal_pos_;
-  n_joint_v_ = n_v_ - n_centroidal_vel_;
+  n_joint_q_ = n_q_ - kCentroidalPosDim;
+  n_joint_v_ = n_v_ - kCentroidalVelDim;
   prog_ = std::make_unique<drake::solvers::MathematicalProgram>();
   solver_ = std::make_unique<drake::solvers::IpoptSolver>();
   for(int contact_index = 0; contact_index < n_contact_points_; contact_index ++){
@@ -31,7 +31,7 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
   for(int knot = 0; knot < n_knot_points; knot ++){
     contexts_[knot] = plant_.CreateDefaultContext();
     x_vars_.push_back(prog_->NewContinuousVariables(n_q_ + n_v_, "x_vars_" + std::to_string(knot)));
-    x_cent_vars_.push_back(prog_->NewContinuousVariables(n_centroidal_pos_ + n_centroidal_vel_, "x_cent_vars_" + std::to_string(knot)));
+    x_cent_vars_.push_back(prog_->NewContinuousVariables(kCentroidalPosDim + kCentroidalVelDim, "x_cent_vars_" + std::to_string(knot)));
     std::vector<drake::solvers::VectorXDecisionVariable> knot_point_forces(n_contact_points_);
     std::vector<drake::solvers::VectorXDecisionVariable> knot_point_contact_pos(n_contact_points_);
     std::vector<drake::solvers::VectorXDecisionVariable> knot_point_contact_vel(n_contact_points_);
@@ -77,8 +77,8 @@ void KinematicCentroidalMPC::AddForceTrackingReferenceCost(std::unique_ptr<drake
 
 void KinematicCentroidalMPC::AddCentroidalReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
                                                         const Eigen::MatrixXd &Q) {
-  DRAKE_DEMAND(Q.rows() == n_centroidal_pos_ + n_centroidal_vel_);
-  DRAKE_DEMAND(Q.cols() == n_centroidal_pos_ + n_centroidal_vel_);
+  DRAKE_DEMAND(Q.rows() == kCentroidalPosDim + kCentroidalVelDim);
+  DRAKE_DEMAND(Q.cols() == kCentroidalPosDim + kCentroidalVelDim);
 
   centroidal_ref_traj_ = std::move(ref_traj);
   Q_cent_ = Q;
@@ -101,6 +101,7 @@ void KinematicCentroidalMPC::AddCentroidalDynamics() {
       constraint_vars.emplace_back(contact_force);
     }
     // TODO make not hard coded
+//    centroidal_dynamics_binding_.push_back(prog_->AddConstraint(constraint, constraint_vars));
     centroidal_dynamics_binding_.push_back(prog_->AddConstraint(constraint,
                                                                 {centroidal_pos_vars(knot_point),
                                                                 centroidal_vel_vars(knot_point),
@@ -118,44 +119,17 @@ void KinematicCentroidalMPC::AddCentroidalDynamics() {
   }
 }
 
-void KinematicCentroidalMPC::AddKinematicDynamics() {
+void KinematicCentroidalMPC::AddKinematicsIntegrator() {
   for (int knot_point = 0; knot_point < n_knot_points_ - 1; knot_point++) {
     // Integrate joint states
-    // joint_pos_vars(knot_point + 1) == joint_pos_vars(knot_point) + dt * joint_vel_vars
-    {
-      Eigen::MatrixXd A(n_joint_q_, 3 * n_joint_q_);
-      A << Eigen::MatrixXd::Identity(n_joint_q_, n_joint_q_),
-          -Eigen::MatrixXd::Identity(n_joint_q_, n_joint_q_),
-          dt_ * Eigen::MatrixXd::Identity(n_joint_q_, n_joint_q_);
+    prog_->AddConstraint(
+        joint_pos_vars(knot_point + 1) == joint_pos_vars(knot_point) + dt_ * joint_vel_vars(knot_point));
 
-      prog_->AddLinearConstraint(A,
-                                 Eigen::VectorXd::Zero(n_joint_q_),
-                                 Eigen::VectorXd::Zero(n_joint_q_),
-                                 {joint_pos_vars(knot_point), joint_pos_vars(knot_point + 1),
-                                  joint_vel_vars(knot_point)});
-    }
     // Integrate foot states
-    {
-      Eigen::MatrixXd A(3 * n_contact_points_, 3 * 3 * n_contact_points_);
-      A << Eigen::MatrixXd::Identity(3 * n_contact_points_, 3 * n_contact_points_),
-          -Eigen::MatrixXd::Identity(3 * n_contact_points_, 3 * n_contact_points_),
-          dt_ * Eigen::MatrixXd::Identity(3 * n_contact_points_, 3 * n_contact_points_);
-
-      drake::solvers::VariableRefList contact_vars;
-      for(const auto& contact_pos : contact_pos_[knot_point]){
-        contact_vars.emplace_back(contact_pos);
-      }
-      for(const auto& contact_pos : contact_pos_[knot_point+1]){
-        contact_vars.emplace_back(contact_pos);
-      }
-      for(const auto& contact_vel : contact_vel_[knot_point]){
-        contact_vars.emplace_back(contact_vel);
-      }
-
-      prog_->AddLinearConstraint(A,
-                                 Eigen::VectorXd::Zero(3 * n_contact_points_),
-                                 Eigen::VectorXd::Zero(3 * n_contact_points_),
-                                 contact_vars);
+    for (int contact_index = 0; contact_index < n_contact_points_; contact_index++) {
+      prog_->AddConstraint(contact_pos_vars(knot_point + 1, contact_index)
+                               == contact_pos_vars(knot_point, contact_index)
+                                   + dt_ * contact_vel_vars(knot_point, contact_index));
     }
   }
 }
@@ -180,14 +154,13 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     for (int contact_index = 0; contact_index < n_contact_points_; contact_index++) {
       // Ensure foot position line up with kinematics
-      std::set<int> full_constraint_relative = {0, 1, 2};
       auto foot_position_constraint =
           std::make_shared<dairlib::multibody::KinematicPositionConstraint<double>>(
               plant_,
               contact_sets_[contact_index],
               Eigen::Vector3d::Zero(),
               Eigen::Vector3d::Zero(),
-              full_constraint_relative);
+              full_constraint_relative_);
       prog_->AddConstraint(foot_position_constraint,
                            {state_vars(knot_point).head(n_q_), contact_pos_vars(knot_point,contact_index)});
     }
@@ -213,8 +186,8 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
                                             cent_omega_vars(knot_point),
                                             state_vars(knot_point).segment(n_q_,3)});
   }
-
 }
+
 void KinematicCentroidalMPC::AddFrictionConeConstraints() {
   //{TODO} make this actual friction cone constraint
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
@@ -228,22 +201,22 @@ drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::state_vars(int k
 }
 
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::centroidal_pos_vars(int knotpoint_index) const {
-  return x_cent_vars_[knotpoint_index].segment(0,n_centroidal_pos_);
+  return x_cent_vars_[knotpoint_index].segment(0, kCentroidalPosDim);
 }
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::centroidal_vel_vars(int knotpoint_index) const {
-  return x_cent_vars_[knotpoint_index].segment(n_centroidal_pos_,n_centroidal_vel_);
+  return x_cent_vars_[knotpoint_index].segment(kCentroidalPosDim, kCentroidalVelDim);
 }
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::joint_pos_vars(int knotpoint_index) const {
-  return x_vars_[knotpoint_index].segment(n_centroidal_pos_, n_joint_q_);
+  return x_vars_[knotpoint_index].segment(kCentroidalPosDim, n_joint_q_);
 }
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::joint_vel_vars(int knotpoint_index) const {
-  return x_vars_[knotpoint_index].segment(n_q_ + n_centroidal_vel_, n_joint_v_);
+  return x_vars_[knotpoint_index].segment(n_q_ + kCentroidalVelDim, n_joint_v_);
 }
 
 
 void KinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &solver_options) {
   AddCentroidalDynamics();
-  AddKinematicDynamics();
+  AddKinematicsIntegrator();
   AddContactConstraints();
   AddCentroidalKinematicConsistency();
   AddFrictionConeConstraints();
@@ -299,7 +272,7 @@ void KinematicCentroidalMPC::AddCosts() {
 }
 
 void KinematicCentroidalMPC::SetZeroInitialGuess() {
-  Eigen::VectorXd initialGuess= Eigen::VectorXd::Zero(n_q_+n_v_+n_contact_points_*9 + n_centroidal_pos_ + n_centroidal_vel_);
+  Eigen::VectorXd initialGuess= Eigen::VectorXd::Zero(n_q_+n_v_+n_contact_points_*9 + kCentroidalPosDim + kCentroidalVelDim);
   prog_->SetInitialGuessForAllVariables(initialGuess.replicate(n_knot_points_, 1));
   // Make sure unit quaternions
   for (int i = 0; i < n_knot_points_; i++) {

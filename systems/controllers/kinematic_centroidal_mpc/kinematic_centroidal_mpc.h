@@ -150,7 +150,7 @@ class KinematicCentroidalMPC {
       int knotpoint_index) const;
 
   /*!
-   * @brief accessor for com angular velocity decision variables
+   * @brief accessor for com angular velocity decision variables (body frame)
    * @param knotpoint_index
    * @return
    */
@@ -235,7 +235,7 @@ class KinematicCentroidalMPC {
   /*!
    * @brief Enforce dynamics for kinematics and location of the contacts
    */
-  void AddKinematicDynamics();
+  void AddKinematicsIntegrator();
 
   /*!
    * @brief Feet that in stance are not moving and on the ground, feet in the air are above the ground
@@ -269,8 +269,8 @@ class KinematicCentroidalMPC {
   std::vector<std::shared_ptr<dairlib::multibody::WorldPointEvaluator<double>>> contact_points_;
   std::vector<dairlib::multibody::KinematicEvaluatorSet<double>> contact_sets_;
 
-  const int n_centroidal_pos_ = 7;
-  const int n_centroidal_vel_ = 6;
+  static const int kCentroidalPosDim = 7;
+  static const int kCentroidalVelDim = 6;
   int n_q_;
   int n_v_;
   int n_joint_q_;
@@ -311,5 +311,6 @@ class KinematicCentroidalMPC {
 
   std::unique_ptr<dairlib::multibody::MultiposeVisualizer> callback_visualizer_;
 
+  const std::set<int> full_constraint_relative_ = {0, 1, 2};
 };
 

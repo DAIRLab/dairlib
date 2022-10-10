@@ -54,6 +54,7 @@ drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
                                                                                 const drake::VectorX<T>& xCent,
                                                                                 const drake::VectorX<T>& contact_locations,
                                                                                 const drake::VectorX<T>& contact_forces) const {
+  // We use this constructor since passing in a vector has the order [x,y,z,w], while xCent is [w,x,y,z]
   const Eigen::Quaternion<T> w_Q_b(xCent[0], xCent[1], xCent[2], xCent[3]);
   const auto b_Q_w = w_Q_b.inverse();
   const auto& r = xCent.segment(4, 3);
@@ -162,6 +163,7 @@ AngularVelocityConstraint<T>::AngularVelocityConstraint(int knot_index): dairlib
 template<typename T>
 void AngularVelocityConstraint<T>::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>> &x,
                                                       drake::VectorX<T> *y) const {
+  // We use this constructor since passing in a vector has the order [x,y,z,w], while x is [w,x,y,z]
   const Eigen::Quaternion<T> w_Q_b(x[0], x[1], x[2], x[3]);
   const auto& omega_ewrt_b = x.segment(4, 3);
   const auto& omega_ewrt_w = x.segment(7, 3);

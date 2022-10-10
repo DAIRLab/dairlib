@@ -1,4 +1,4 @@
-filename: examples/Cassie/saved_trajectories/jumping_0.0h_0.75d_2
+filename: examples/Cassie/saved_trajectories/jumping_0.0h_0.4d_3
 spring_urdf: examples/Cassie/urdf/cassie_v2_shells.urdf
 fixed_spring_urdf: examples/Cassie/urdf/cassie_fixed_springs.urdf
 visualize_mode: 1

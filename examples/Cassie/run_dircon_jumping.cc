@@ -324,7 +324,7 @@ void DoMain() {
     solver_options.SetOption(id, "acceptable_obj_change_tol", 1e-3);  // NOLINT
     solver_options.SetOption(id, "acceptable_tol", 1e2);              // NOLINT
     solver_options.SetOption(id, "acceptable_iter", 5);               // NOLINT
-    solver_options.SetOption(id, "max_iter", 10000);                  // NOLINT
+    solver_options.SetOption(id, "max_iter", 50);                  // NOLINT
 
   } else {
     // Snopt settings

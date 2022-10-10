@@ -101,7 +101,6 @@ void KinematicCentroidalMPC::AddCentroidalDynamics() {
       constraint_vars.emplace_back(contact_force);
     }
     // TODO make not hard coded
-//    centroidal_dynamics_binding_.push_back(prog_->AddConstraint(constraint, constraint_vars));
     centroidal_dynamics_binding_.push_back(prog_->AddConstraint(constraint,
                                                                 {centroidal_pos_vars(knot_point),
                                                                 centroidal_vel_vars(knot_point),

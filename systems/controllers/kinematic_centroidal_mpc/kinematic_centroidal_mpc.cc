@@ -387,3 +387,10 @@ void KinematicCentroidalMPC::AddKinematicConstraint(std::shared_ptr<dairlib::mul
     double>> con, const Eigen::Ref<const drake::solvers::VectorXDecisionVariable> &vars) {
   prog_->AddConstraint(std::move(con), vars);
 }
+void KinematicCentroidalMPC::SetRobotStateGuess(const drake::VectorX<double> &state) {
+  DRAKE_DEMAND(state.size() == n_q_ + n_v_);
+
+  for(const auto& state_vars : x_vars_){
+   prog_->SetInitialGuess(state_vars, state);
+  }
+}

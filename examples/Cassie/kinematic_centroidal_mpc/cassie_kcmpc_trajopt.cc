@@ -150,7 +150,7 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
 }
 
 
-void DoMain(int n_knot_points, double duration, double com_height, double tol){
+void DoMain(int n_knot_points, double duration, double com_height, double stance_width, double squat_distance, double tol){
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -242,6 +242,8 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
 
   std::cout<<"Setting initial guess"<<std::endl;
   mpc.SetZeroInitialGuess();
+  Eigen::VectorXd reference_state = GenerateNominalStand(plant, com_height, stance_width);
+  mpc.SetRobotStateGuess(reference_state);
 
   double cost_force = 0.01;
 
@@ -256,7 +258,6 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
   double cost_com_orientation = 8;
   double cost_angular_vel = 0.01;
 
-  double stance_width = 0.25;
   double stance_wiggle = 0.01;
 
   Eigen::Vector3d left_lb(std::numeric_limits<double>::lowest(), -stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
@@ -271,7 +272,6 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
 
   mpc.AddConstantForceTrackingReferenceCost(Eigen::VectorXd::Zero(12), cost_force * Eigen::MatrixXd::Identity(12, 12));
 
-  Eigen::VectorXd reference_state = GenerateNominalStand(plant, com_height, stance_width);
 
   Eigen::VectorXd Q_state = Eigen::VectorXd::Zero(plant.num_positions() + plant.num_velocities());
   Q_state.segment(7, plant.num_positions()-7) = cost_joint_pos * Eigen::VectorXd::Ones(plant.num_positions()-7);
@@ -284,7 +284,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
 
   Eigen::VectorXd reference_cent_state_bottom = Eigen::VectorXd::Zero(13);
   reference_cent_state_bottom[0] = 1;
-  reference_cent_state_bottom[6] = com_height-0.5;
+  reference_cent_state_bottom[6] = com_height-squat_distance;
   std::vector<double> time_points = {0, duration};
   auto centroidal_reference = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points,
                                                                                                {reference_cent_state,
@@ -358,9 +358,8 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }
-
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(12, 0.5, 1.9,1e-4);
+  DoMain(10, 0.5, 1.9, 0.2, 0.5, 1e-3);
 }

@@ -201,6 +201,8 @@ class KinematicCentroidalMPC {
    */
   void SetZeroInitialGuess();
 
+  void SetRobotStateGuess(const drake::VectorX<double>& state);
+
   void CreateVisualizationCallback(std::string model_file,
                                    double alpha,
                                    std::string weld_frame_to_world = "");

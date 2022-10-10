@@ -18,7 +18,6 @@ CentroidalDynamicsConstraint<T>::CentroidalDynamicsConstraint(const drake::multi
                                                                                context_(context),
                                                                                n_x_(plant.num_positions()
                                                                                         + plant.num_velocities()),
-                                                                               n_q_(plant.num_positions()),
                                                                                n_u_(plant.num_actuators()),
                                                                                n_contact_(n_contact),
                                                                                dt_(dt),
@@ -55,9 +54,10 @@ drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
                                                                                 const drake::VectorX<T>& xCent,
                                                                                 const drake::VectorX<T>& contact_locations,
                                                                                 const drake::VectorX<T>& contact_forces) const {
-  const drake::Vector4<T>& quat = xCent.segment(0, 4);
+  const Eigen::Quaternion<T> w_Q_b(xCent[0], xCent[1], xCent[2], xCent[3]);
+  const auto b_Q_w = w_Q_b.inverse();
   const auto& r = xCent.segment(4, 3);
-  const drake::Vector3<T>& omega = xCent.segment(7, 3);
+  const drake::Vector3<T>& omega_ewrt_b = xCent.segment(7, 3);
   const auto& d_r = xCent.segment(10, 3);
 
   const auto& body_frame = plant_.get_body(*(plant_.GetFloatingBaseBodies().begin())).body_frame();
@@ -75,15 +75,16 @@ drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
     sum_moments = sum_forces + (location - r).cross(force);
     sum_forces = sum_forces + force;
   }
+
   // Working in body frame angular velocity
-  const auto d_quat = drake::math::CalculateQuaternionDtFromAngularVelocityExpressedInB(Eigen::Quaternion<T>(quat), omega);
-  const auto d_omega = rotational_inertia.transpose()* (drake::math::RotationMatrix(Eigen::Quaternion<T>(quat)).transpose() * sum_moments - omega.cross(rotational_inertia * omega));
+  const auto d_quat = drake::math::CalculateQuaternionDtFromAngularVelocityExpressedInB(w_Q_b, omega_ewrt_b);
+  const auto d_omega_ewrt_b = rotational_inertia.transpose()* (b_Q_w * sum_moments - omega_ewrt_b.cross(rotational_inertia * omega_ewrt_b));
   const auto dd_r = sum_forces/mass - drake::Vector3<T>(0, 0, 9.81);
 
   drake::Vector<T, 13> rv;
   rv.head(4) = d_quat;
   rv.segment(4,3) = d_r;
-  rv.segment(7,3) = d_omega;
+  rv.segment(7,3) = d_omega_ewrt_b;
   rv.segment(10,3) = dd_r;
   return rv;
 }
@@ -101,7 +102,6 @@ CenterofMassPositionConstraint<T>::CenterofMassPositionConstraint(const drake::m
                                                                                    context_(context),
                                                                                    n_x_(plant.num_positions()
                                                                                             + plant.num_velocities()),
-                                                                                   n_q_(plant.num_positions()),
                                                                                    n_u_(plant.num_actuators()),
                                                                                    zero_control_(Eigen::VectorXd::Zero(n_u_)) {}
 
@@ -131,7 +131,6 @@ CenterofMassVelocityConstraint<T>::CenterofMassVelocityConstraint(const drake::m
                                                                                    context_(context),
                                                                                    n_x_(plant.num_positions()
                                                                                             + plant.num_velocities()),
-                                                                                   n_q_(plant.num_positions()),
                                                                                    n_u_(plant.num_actuators()),
                                                                                    zero_control_(Eigen::VectorXd::Zero(n_u_)) {}
 
@@ -148,6 +147,28 @@ void CenterofMassVelocityConstraint<T>::EvaluateConstraint(const Eigen::Ref<cons
   *y = drCom - plant_.CalcCenterOfMassTranslationalVelocityInWorld(*context_);
 }
 
+template<typename T>
+AngularVelocityConstraint<T>::AngularVelocityConstraint(int knot_index): dairlib::solvers::NonlinearConstraint<T>(
+    3, 4 + 3 + 3,
+    Eigen::VectorXd::Zero(3),
+    Eigen::VectorXd::Zero(3),
+    "angular_velocity_constraint[" +
+        std::to_string(knot_index) + "]") {}
+
+/// The format of the input to the eval() function is in the order
+///   - w_Q_b, quaternion describing transform from body to world
+///   - omega_ewrt_b, body frame angular velocity
+///   - omega_ewrt_w, world frame angular velocity
+template<typename T>
+void AngularVelocityConstraint<T>::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>> &x,
+                                                      drake::VectorX<T> *y) const {
+  const Eigen::Quaternion<T> w_Q_b(x[0], x[1], x[2], x[3]);
+  const auto& omega_ewrt_b = x.segment(4, 3);
+  const auto& omega_ewrt_w = x.segment(7, 3);
+  *y = omega_ewrt_w - w_Q_b * omega_ewrt_b;
+}
+
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class CentroidalDynamicsConstraint);
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class CenterofMassPositionConstraint);
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class CenterofMassVelocityConstraint);
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class AngularVelocityConstraint);

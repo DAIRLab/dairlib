@@ -203,17 +203,15 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
             plant_, contexts_[knot_point].get(), knot_point);
     prog_->AddConstraint(com_velocity, {com_vel_vars(knot_point), state_vars(knot_point)});
 
-    // Constrain orientation and angular velocity to be equal
-    // TODO make sure angular velocity are both in the same frame
-    // SRL I suspect that centroidal angular velocity is in body frame, what is drake angular velocity in?
-    Eigen::MatrixXd A(7, 2 * 7);
-    A << Eigen::MatrixXd::Identity(7, 7),
-        -Eigen::MatrixXd::Identity(7, 7);
-    prog_->AddLinearConstraint(A,
-                               Eigen::VectorXd::Zero(7),
-                               Eigen::VectorXd::Zero(7),
-                               {cent_quat_vars(knot_point), cent_omega_vars(knot_point),
-                                state_vars(knot_point).head(4), state_vars(knot_point).segment(n_q_,3)});
+    // Make sure centroidal and state quaternion match
+    prog_->AddConstraint( cent_quat_vars(knot_point) == state_vars(knot_point).head(4));
+
+    //Angular velocity constraint. Centroidal angular velocity is in body frame, state is in world frame
+    auto omega_constraint =
+        std::make_shared<AngularVelocityConstraint<double>>(knot_point);
+    prog_->AddConstraint(omega_constraint, {cent_quat_vars(knot_point),
+                                            cent_omega_vars(knot_point),
+                                            state_vars(knot_point).segment(n_q_,3)});
   }
 
 }

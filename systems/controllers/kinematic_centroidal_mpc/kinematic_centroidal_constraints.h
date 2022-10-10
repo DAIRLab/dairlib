@@ -48,7 +48,6 @@ class CentroidalDynamicsConstraint : public dairlib::solvers::NonlinearConstrain
   const drake::multibody::MultibodyPlant<T>& plant_;
   drake::systems::Context<T>* context_;
   int n_x_;
-  int n_q_;
   int n_u_;
   int n_contact_;
   int n_cent_ = 13;
@@ -74,9 +73,7 @@ class CenterofMassPositionConstraint : public dairlib::solvers::NonlinearConstra
   const drake::multibody::MultibodyPlant<T>& plant_;
   drake::systems::Context<T>* context_;
   int n_x_;
-  int n_q_;
   int n_u_;
-  int n_cent_ = 13;
   const drake::VectorX<T> zero_control_;
 };
 
@@ -98,8 +95,20 @@ class CenterofMassVelocityConstraint : public dairlib::solvers::NonlinearConstra
   const drake::multibody::MultibodyPlant<T>& plant_;
   drake::systems::Context<T>* context_;
   int n_x_;
-  int n_q_;
   int n_u_;
-  int n_cent_ = 13;
   const drake::VectorX<T> zero_control_;
+};
+
+/*!
+ * @brief Nonlinear constraint on world frame angular velocity matching body frame angular velocity
+ */
+template <typename T>
+class AngularVelocityConstraint : public dairlib::solvers::NonlinearConstraint<T> {
+
+ public:
+  AngularVelocityConstraint(int knot_index);
+
+ public:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
 };

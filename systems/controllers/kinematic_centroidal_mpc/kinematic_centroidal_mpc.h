@@ -38,7 +38,8 @@ class KinematicCentroidalMPC {
    * @param plant robot model
    * @param n_knot_points number of knot points
    * @param dt time step
-   * @param contact_points vector of world point evaluators which describes the contact points
+   * @param contact_points vector of world point evaluators which describes the points on the robot which might make contact with
+   *                        the world. This is not the mode sequence
    */
   KinematicCentroidalMPC(const drake::multibody::MultibodyPlant<double>& plant,
                          int n_knot_points,
@@ -47,42 +48,42 @@ class KinematicCentroidalMPC {
 
 
   /*!
-   * @brief Adds a cost reference for the state of the robot
+   * @brief Adds a cost reference for the state of the robot of the form (x - x_ref)^T Q (x - x_ref)
    * @param ref_traj trajectory in time
    * @param Q cost on error from the reference
    */
-  void AddStateReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                                      const Eigen::MatrixXd& Q);
+  void AddStateReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
+                             const Eigen::MatrixXd& Q);
 
   /*!
-   * @brief Adds a cost and reference for the centroidal state of the robot
+   * @brief Adds a cost and reference for the centroidal state of the robot (x - x_ref)^T Q (x - x_ref)
    * @param ref_traj trajectory in time
    * @param Q cost on error from reference
    */
-  void AddCentroidalReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                         const Eigen::MatrixXd& Q);
+  void AddCentroidalReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
+                                  const Eigen::MatrixXd& Q);
 
   /*!
-   * @brief Adds a cost and reference for the contact position and velocity
+   * @brief Adds a cost and reference for the contact position and velocity (x - x_ref)^T Q (x - x_ref)
    * @param contact_ref_traj trajectory in time
    * @param Q_contact cost on error from the reference
    */
-  void AddContactTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj,
-                                   const Eigen::MatrixXd& Q_contact);
+  void AddContactTrackingReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj,
+                                       const Eigen::MatrixXd& Q_contact);
 
   /*!
-   * @brief Add a cost and reference for the contact forces
+   * @brief Add a cost and reference for the contact forces (x - x_ref)^T Q (x - x_ref)
    * @param force_ref_traj trajectory in time
    * @param Q_force cost on error from the reference
    */
-  void AddForceTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj,
-                                      const Eigen::MatrixXd& Q_force);
+  void AddForceTrackingReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj,
+                                     const Eigen::MatrixXd& Q_force);
 
-  void AddConstantStateReference(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
+  void AddConstantStateReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
 
-  void AddConstantForceTrackingReference(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q_force);
+  void AddConstantForceTrackingReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q_force);
 
-  void AddConstantCentroidalReference(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
+  void AddConstantCentroidalReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
 
   /*!
    * @brief accessor for robot state decision vars
@@ -159,29 +160,29 @@ class KinematicCentroidalMPC {
   /*!
    * @brief accessor for contact position decision variables
    * @param knotpoint_index
-   * @param contact integer corresponding to the contact point
-   * @return
+   * @param contact integer corresponding to the contact point based on order of contact points in constructor
+   * @return [x,y,z] vector of decision variables for contact 'contact''s position at knotpoint `knotpoint_index`
    */
   drake::solvers::VectorXDecisionVariable contact_pos_vars(
-      int knotpoint_index, int contact) const;
+      int knotpoint_index, int contact_index) const;
 
   /*!
    * @brief accessor for contact velocity decision variables
    * @param knotpoint_index
-   * @param contact integer corresponding to the contact point
-   * @return
+   * @param contact_index integer corresponding to the contact point based on order of contact points in constructor
+   * @return [x,y,z] vector of decision variables for contact 'contact''s velocity at knotpoint `knotpoint_index`
    */
   drake::solvers::VectorXDecisionVariable contact_vel_vars(
-      int knotpoint_index, int contact) const;
+      int knotpoint_index, int contact_index) const;
 
   /*!
    * @brief accessor for contact force decision variables
    * @param knotpoint_index
-   * @param contact integer corresponding to the contact point
-   * @return
+   * @param contact_index integer corresponding to the contact point based on order of contact points in constructor
+   * @return [x,y,z] vector of decision variables for contact 'contact''s force at knotpoint `knotpoint_index`
    */
   drake::solvers::VectorXDecisionVariable contact_force_vars(
-      int knotpoint_index, int contact) const;
+      int knotpoint_index, int contact_index) const;
 
   /*!
    * @brief Adds standard constraints to optimization problem and sets options
@@ -205,8 +206,8 @@ class KinematicCentroidalMPC {
                                    std::string weld_frame_to_world = "");
 
   /*!
-   * @brief Add a bounding box constraint to a contact position
-   * @param contact_index integer corresponding to the contact
+   * @brief Add a bounding box constraint to a contact position for all knot points
+   * @param contact_index integer corresponding to the contact point based on order of contact points in constructor
    * @param lb lower bound
    * @param ub upper bound
    */
@@ -272,8 +273,8 @@ class KinematicCentroidalMPC {
   const int n_centroidal_vel_ = 6;
   int n_q_;
   int n_v_;
-  int n_kinematic_q_;
-  int n_kinematic_v_;
+  int n_joint_q_;
+  int n_joint_v_;
   int n_contact_points_;
 
   /// References and cost matrixes

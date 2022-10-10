@@ -136,7 +136,6 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex initial_conditions_state_idx_;
 
   // abstract states
-  drake::systems::AbstractStateIndex alip_minlp_idx_;
   drake::systems::AbstractStateIndex alip_filter_idx_;
 
   // Multibody Plant Parameters
@@ -146,6 +145,9 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   int nq_;
   int nv_;
   int nu_;
+
+  // mpc object
+  mutable AlipMINLP trajopt_;
 
   // finite state machine management
   std::vector<int> left_right_stance_fsm_states_;

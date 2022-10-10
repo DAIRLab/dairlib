@@ -37,6 +37,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
     const drake::solvers::SolverOptions& trajopt_solver_options) :
     plant_(plant),
     context_(plant_context),
+    trajopt_(AlipMINLP(plant.CalcTotalMass(*plant_context), gains.hdes)),
     left_right_stance_fsm_states_(left_right_stance_fsm_states),
     post_left_right_fsm_states_(post_left_right_fsm_states),
     double_stance_duration_(double_stance_duration),
@@ -66,25 +67,24 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   initial_conditions_state_idx_ = DeclareDiscreteState(4+3);
 
   // Build the optimization problem
-  auto trajopt = AlipMINLP(plant_.CalcTotalMass(*context_), gains_.hdes);
+  trajopt_ = AlipMINLP(plant_.CalcTotalMass(*context_), gains_.hdes);
   for (int n = 0; n < gains_.nmodes; n++) {
-    trajopt.AddMode(gains_.knots_per_mode);
+    trajopt_.AddMode(gains_.knots_per_mode);
   }
-  auto xd = trajopt.MakeXdesTrajForVdes(
+  auto xd = trajopt_.MakeXdesTrajForVdes(
       Vector2d::Zero(), gains_.stance_width, single_stance_duration_,
       gains_.knots_per_mode, -1);
-  trajopt.AddTrackingCost(xd, gains_.Q, gains_.Qf);
-  trajopt.AddInputCost(gains_.R(0,0));
-  trajopt.UpdateNominalStanceTime(single_stance_duration_,
+  trajopt_.AddTrackingCost(xd, gains_.Q, gains_.Qf);
+  trajopt_.AddInputCost(gains_.R(0,0));
+  trajopt_.UpdateNominalStanceTime(single_stance_duration_,
                                   single_stance_duration_);
-  trajopt.SetMinimumStanceTime(gains_.t_min);
-  trajopt.SetMaximumStanceTime(gains_.t_max);
-  trajopt.SetInputLimit(gains_.u_max);
-  trajopt.Build(trajopt_solver_options);
-  trajopt.CalcOptimalFootstepPlan(
+  trajopt_.SetMinimumStanceTime(gains_.t_min);
+  trajopt_.SetMaximumStanceTime(gains_.t_max);
+  trajopt_.SetInputLimit(gains_.u_max);
+  trajopt_.Build(trajopt_solver_options);
+  trajopt_.CalcOptimalFootstepPlan(
       -0.5 * gains_.stance_width * Vector4d::UnitY(),
       0.5 * gains_.stance_width * Vector3d::UnitY());
-  alip_minlp_idx_ = DeclareAbstractState(*AbstractValue::Make<AlipMINLP>(trajopt));
 
   if (gains_.filter_alip_state) {
     auto filter = S2SKalmanFilter(gains_.filter_data);
@@ -155,7 +155,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   }
 
   // initialize local variables
-  auto& trajopt = state->get_mutable_abstract_state<AlipMINLP>(alip_minlp_idx_);
   int fsm_idx =
       static_cast<int>(state->get_discrete_state(fsm_state_idx_).get_value()(0));
   bool warmstart = true;
@@ -235,30 +234,30 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   ic.tail<3>() = p_b;
 
   // Update desired trajectory
-  auto xd  = trajopt.MakeXdesTrajForVdes(
+  auto xd  = trajopt_.MakeXdesTrajForVdes(
       vdes, gains_.stance_width, single_stance_duration_,
       gains_.knots_per_mode, stance);
 
-  xd.at(0) = trajopt.MakeXdesTrajForCurrentStep(
+  xd.at(0) = trajopt_.MakeXdesTrajForCurrentStep(
       vdes, t - t_prev_impact, t_next_impact - t,
       single_stance_duration_, gains_.stance_width, stance,
       gains_.knots_per_mode);
 
-  // Update the trajopt problem data and solve
-  trajopt.set_H(h);
-  trajopt.UpdateTrackingCost(xd);
-  trajopt.UpdateFootholds(footholds);
-  trajopt.UpdateNominalStanceTime(t_next_impact - t, single_stance_duration_);
+  // Update the trajopt_ problem data and solve
+  trajopt_.set_H(h);
+  trajopt_.UpdateTrackingCost(xd);
+  trajopt_.UpdateFootholds(footholds);
+  trajopt_.UpdateNominalStanceTime(t_next_impact - t, single_stance_duration_);
 
   if (committed) {
-    trajopt.ActivateInitialTimeEqualityConstraint(t_next_impact - t);
+    trajopt_.ActivateInitialTimeEqualityConstraint(t_next_impact - t);
   } else {
-    trajopt.UpdateMaximumCurrentStanceTime(gains_.t_max - (t - t_prev_impact));
+    trajopt_.UpdateMaximumCurrentStanceTime(gains_.t_max - (t - t_prev_impact));
   }
   if (fsm_switch) {
-    trajopt.UpdateModeTimingsOnTouchdown();
+    trajopt_.UpdateModeTimingsOnTouchdown();
   }
-  trajopt.UpdateModeTiming((!(committed || fsm_switch)) && warmstart);
+  trajopt_.UpdateModeTiming((!(committed || fsm_switch)) && warmstart);
 
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
@@ -270,12 +269,12 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   workspace.AddFace(Vector3d::UnitX(), com_xy +   0.7 * Vector3d::UnitX());
   workspace.AddFace(-Vector3d::UnitX(), com_xy - 0.7 * Vector3d::UnitX());
 
-  trajopt.UpdateNextFootstepReachabilityConstraint(workspace);
+  trajopt_.UpdateNextFootstepReachabilityConstraint(workspace);
 
-  trajopt.CalcOptimalFootstepPlan(x, p_b, warmstart);
+  trajopt_.CalcOptimalFootstepPlan(x, p_b, warmstart);
 
   // Update discrete states
-  double t0 = trajopt.GetTimingSolution()(0);
+  double t0 = trajopt_.GetTimingSolution()(0);
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
       fsm_idx*VectorXd::Ones(1));
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
@@ -289,9 +288,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
 void AlipMINLPFootstepController::CopyNextFootstepOutput(
     const Context<double> &context, BasicVector<double> *p_B_FC) const {
-  const auto& trajopt = context.get_abstract_state<AlipMINLP>(alip_minlp_idx_);
-  const auto& pp = trajopt.GetFootstepSolution();
-  const auto& xx = trajopt.GetStateSolution();
+  const auto& pp = trajopt_.GetFootstepSolution();
+  const auto& xx = trajopt_.GetStateSolution();
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
   footstep_in_com_yaw_frame.head(2) = (pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
   footstep_in_com_yaw_frame(2) = -gains_.hdes;
@@ -302,8 +300,6 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
     const Context<double> &context, lcmt_saved_traj *traj_msg) const {
   DRAKE_ASSERT(traj_msg != nullptr);
 
-  const auto& trajopt =
-      context.get_abstract_state<AlipMINLP>(alip_minlp_idx_);
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
   double t_prev_switch =
@@ -325,9 +321,9 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   double ground_height = stance_pos(2);
 
   double t0 = robot_output->get_timestamp();
-  const auto& xx = trajopt.GetStateSolution();
-  const auto& pp = trajopt.GetFootstepSolution();
-  const auto& tt = trajopt.GetTimingSolution();
+  const auto& xx = trajopt_.GetStateSolution();
+  const auto& pp = trajopt_.GetFootstepSolution();
+  const auto& tt = trajopt_.GetTimingSolution();
 
   LcmTrajectory::Trajectory com_traj;
 
@@ -377,9 +373,7 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
 
 void AlipMINLPFootstepController::CopyMpcDebugToLcm(
     const Context<double> &context, lcmt_mpc_debug *mpc_debug) const {
-  // Get the debug info from the context
-  const auto& trajopt =
-      context.get_abstract_state<AlipMINLP>(alip_minlp_idx_);
+
   const auto& ic =
       context.get_discrete_state(initial_conditions_state_idx_).get_value();
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
@@ -389,27 +383,27 @@ void AlipMINLPFootstepController::CopyMpcDebugToLcm(
   double fsmd = context.get_discrete_state(fsm_state_idx_).get_value()(0);
   int fsm = curr_fsm(static_cast<int>(fsmd));
 
-  CopyMpcSolutionToLcm(trajopt.GetFootstepSolution(),
-                       trajopt.GetStateSolution(),
-                       trajopt.GetInputSolution(),
-                       trajopt.GetTimingSolution(),
+  CopyMpcSolutionToLcm(trajopt_.GetFootstepSolution(),
+                       trajopt_.GetStateSolution(),
+                       trajopt_.GetInputSolution(),
+                       trajopt_.GetTimingSolution(),
                        &mpc_debug->solution);
 
-  CopyMpcSolutionToLcm(trajopt.GetDesiredFootsteps(),
-                       trajopt.GetDesiredState(),
-                       trajopt.GetDesiredInputs(),
-                       trajopt.GetDesiredTiming(),
+  CopyMpcSolutionToLcm(trajopt_.GetDesiredFootsteps(),
+                       trajopt_.GetDesiredState(),
+                       trajopt_.GetDesiredInputs(),
+                       trajopt_.GetDesiredTiming(),
                        &mpc_debug->desired);
 
-  CopyMpcSolutionToLcm(trajopt.GetFootstepGuess(),
-                       trajopt.GetStateGuess(),
-                       trajopt.GetInputGuess(),
-                       trajopt.GetTimingGuess(),
+  CopyMpcSolutionToLcm(trajopt_.GetFootstepGuess(),
+                       trajopt_.GetStateGuess(),
+                       trajopt_.GetInputGuess(),
+                       trajopt_.GetTimingGuess(),
                        &mpc_debug->guess);
 
   mpc_debug->utime = utime;
   mpc_debug->fsm_state = fsm;
-  mpc_debug->solve_time_us = static_cast<int64_t>(1e6 * trajopt.solve_time());
+  mpc_debug->solve_time_us = static_cast<int64_t>(1e6 * trajopt_.solve_time());
 
   Vector4d::Map(mpc_debug->x0) = ic.head<4>();
   Vector3d::Map(mpc_debug->p0) = ic.tail<3>();

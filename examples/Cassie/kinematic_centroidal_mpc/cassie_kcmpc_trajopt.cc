@@ -111,20 +111,6 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
           (ik.q())(positions_map.at("ankle_joint_right")) ==
           M_PI * 13 / 180.0);
 
-  auto l_loop_evaluator = dairlib::LeftLoopClosureEvaluator(plant);
-  auto r_loop_evaluator = dairlib::RightLoopClosureEvaluator(plant);
-  dairlib::multibody::KinematicEvaluatorSet<double> evaluators(plant);
-  evaluators.add_evaluator(&l_loop_evaluator);
-  evaluators.add_evaluator(&r_loop_evaluator);
-
-  auto loop_closure =
-      std::make_shared<dairlib::multibody::KinematicPositionConstraint<double>>(
-          plant,
-          evaluators,
-          Eigen::VectorXd::Zero(2),
-          Eigen::VectorXd::Zero(2));
-  ik.get_mutable_prog()->AddConstraint(loop_closure, ik.q());
-
   ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
   const auto result = drake::solvers::Solve(ik.prog());
   const auto q_sol = result.GetSolution(ik.q());
@@ -237,6 +223,22 @@ void DoMain(int n_knot_points, double duration, double com_height, double tol){
     }
   }
   mpc.AddPlantJointLimits(joint_names);
+
+  auto l_loop_evaluator = dairlib::LeftLoopClosureEvaluator(plant);
+  auto r_loop_evaluator = dairlib::RightLoopClosureEvaluator(plant);
+  dairlib::multibody::KinematicEvaluatorSet<double> evaluators(plant);
+  evaluators.add_evaluator(&l_loop_evaluator);
+  evaluators.add_evaluator(&r_loop_evaluator);
+
+  auto loop_closure =
+      std::make_shared<dairlib::multibody::KinematicPositionConstraint<double>>(
+          plant,
+          evaluators,
+          Eigen::VectorXd::Zero(2),
+          Eigen::VectorXd::Zero(2));
+  for(int knot_point = 0; knot_point < n_knot_points; knot_point ++){
+    mpc.AddKinematicConstraint(loop_closure, mpc.state_vars(knot_point).head(plant.num_positions()));
+  }
 
   std::cout<<"Setting initial guess"<<std::endl;
   mpc.SetZeroInitialGuess();

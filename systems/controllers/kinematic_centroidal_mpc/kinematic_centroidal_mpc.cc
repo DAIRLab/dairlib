@@ -1,4 +1,5 @@
 #include <iostream>
+#include <utility>
 #include "kinematic_centroidal_mpc.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_constraints.h"
@@ -409,4 +410,8 @@ drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::contact_vel_vars
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::contact_force_vars(int knotpoint_index,
                                                                                    int contact) const {
   return contact_force_[knotpoint_index][contact];
+}
+void KinematicCentroidalMPC::AddKinematicConstraint(std::shared_ptr<dairlib::multibody::KinematicPositionConstraint<
+    double>> con, const Eigen::Ref<const drake::solvers::VectorXDecisionVariable> &vars) {
+  prog_->AddConstraint(std::move(con), vars);
 }

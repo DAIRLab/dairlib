@@ -9,6 +9,7 @@
 #include "multibody/multipose_visualizer.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_constraints.h"
+#include "multibody/kinematic/kinematic_constraints.h"
 
 /*!
  * @brief Class for solving nonlinear kinematic centroidal mpc. Implementation is based on
@@ -217,6 +218,8 @@ class KinematicCentroidalMPC {
    */
   void AddPlantJointLimits(const std::vector<std::string>& joints_to_limit);
 
+  void AddKinematicConstraint(std::shared_ptr<dairlib::multibody::KinematicPositionConstraint<double>> con,
+                              const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& vars);
  private:
   /*!
    * @brief Adds dynamics for centroidal state

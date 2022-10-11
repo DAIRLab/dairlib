@@ -1,1 +1,10 @@
 # -*- python -*-
+
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+
+package(default_visibility = ["//visibility:public"])
+
+cmake(
+    name = "proxsuite",
+    lib_source = "@proxsuite"
+)

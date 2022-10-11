@@ -149,3 +149,21 @@ local_repository(
     name = _local_inekf_repo_name,
     path = DAIRLIB_LOCAL_INEKF_PATH,
 )
+
+
+# Use rules_foreign_cc cmake to build proxsuite
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "rules_foreign_cc",
+    sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
+    strip_prefix = "rules_foreign_cc-0.9.0",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.9.0.tar.gz",
+)
+
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+rules_foreign_cc_dependencies()
+
+load("@drake//tools/workspace:mirrors.bzl", "DEFAULT_MIRRORS")
+load("@dairlib//tools/workspace/proxsuite:repository.bzl", "proxsuite_repository")
+
+proxsuite_repository(name = "proxsuite", mirrors=DEFAULT_MIRRORS)

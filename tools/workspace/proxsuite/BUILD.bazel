@@ -6,5 +6,11 @@ package(default_visibility = ["//visibility:public"])
 
 cmake(
     name = "proxsuite",
-    lib_source = "@proxsuite"
+    lib_source = ":proxsuite_srcs"
+)
+
+filegroup(
+    name = "proxsuite_srcs",
+    srcs = glob(["**"]),
+    visibility = ["//cmake_defines:__subpackages__"],
 )

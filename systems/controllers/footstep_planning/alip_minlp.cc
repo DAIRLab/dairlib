@@ -370,15 +370,13 @@ void AlipMINLP::UpdateDynamicsConstraints() {
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {
-  auto solver = drake::solvers::OsqpSolver();
+  mode_sequnces_ = GetPossibleModeSequences();
   std::vector<std::pair<drake::solvers::MathematicalProgramResult,
                         std::vector<std::vector<Eigen::Vector4d>>>> solutions;
 
-  mode_sequnces_ = GetPossibleModeSequences();
-
   if (mode_sequnces_.empty()) {
     vector<vector<Vector4d>> dual_solutions;
-    const auto sol = solver.Solve(*prog_);
+    const auto sol = solver_.Solve(*prog_);
     for (int n = 0; n < nmodes_; n++) {
       vector<Vector4d> duals(nknots_.at(n) - 1, Vector4d::Zero());
       if (sol.is_success()) {
@@ -397,7 +395,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
       MakeFootstepConstraints(seq);
 
       vector<vector<Vector4d>> dual_solutions;
-      const auto sol = solver.Solve(*prog_);
+      const auto sol = solver_.Solve(*prog_);
       for (int n = 0; n < nmodes_; n++) {
         vector<Vector4d> duals(nknots_.at(n) - 1, Vector4d::Zero());
         if (sol.is_success()) {

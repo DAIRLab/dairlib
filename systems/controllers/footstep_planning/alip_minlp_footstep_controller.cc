@@ -66,8 +66,6 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   prev_impact_time_state_idx_ = DeclareDiscreteState(1);
   initial_conditions_state_idx_ = DeclareDiscreteState(4+3);
 
-  // Build the optimization problem
-  trajopt_ = AlipMINLP(plant_.CalcTotalMass(*context_), gains_.hdes);
   for (int n = 0; n < gains_.nmodes; n++) {
     trajopt_.AddMode(gains_.knots_per_mode);
   }
@@ -134,7 +132,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   // evaluate input ports
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
-  const Vector2d vdes =
+  const Vector2d& vdes =
       this->EvalVectorInput(context, vdes_input_port_)->get_value();
   double t_next_impact =
       state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);

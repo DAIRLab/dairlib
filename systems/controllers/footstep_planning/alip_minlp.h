@@ -82,8 +82,6 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
 class AlipMINLP {
  public:
   AlipMINLP(double m, double H) : m_(m), H_(H) {};
-  AlipMINLP(const AlipMINLP& rhs)=default;
-  AlipMINLP& operator=(const AlipMINLP& rhs)=default;
 
   // Problem setup
   void AddMode(int nk);
@@ -247,7 +245,7 @@ class AlipMINLP {
   std::pair<drake::solvers::MathematicalProgramResult,
               std::vector<std::vector<Eigen::Vector4d>>> solution_;
 
-
+  drake::solvers::OsqpSolver solver_;
 
 };
 }

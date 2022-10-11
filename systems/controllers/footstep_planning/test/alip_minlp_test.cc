@@ -64,26 +64,6 @@ int do_main(int argc, char* argv[]) {
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
   std::cout << "solve time: " << elapsed.count() << std::endl;
-
-
-
-
-  // Check Copy Constuctor
-  AlipMINLP trajopt2(trajopt);
-
-  // Check Copy Assignemnt
-  AlipMINLP trajopt3(0, 0);
-  trajopt3 = trajopt;
-  std::cout << "check accessing the solution: " << trajopt3.GetStateSolution().at(0).at(0).transpose() << "\n";
-  trajopt2.CalcOptimalFootstepPlan(xd.front().front(), p0);
-  trajopt3.CalcOptimalFootstepPlan(xd.front().front(), p0);
-
-  int i = 1; int j = 3;
-  std::cout << "random x check: \n" <<
-      trajopt.GetStateSolution().at(i).at(j).transpose() << "\n" <<
-      trajopt2.GetStateSolution().at(i).at(j).transpose() << "\n" <<
-      trajopt3.GetStateSolution().at(i).at(j).transpose() << std::endl;
-
   return 0;
 }
 

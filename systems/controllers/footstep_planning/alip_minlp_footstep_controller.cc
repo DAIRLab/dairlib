@@ -219,7 +219,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     filter_data.A =
         alip_utils::CalcA(h, plant_.CalcTotalMass(*context_));
 
-    // split this assignment into 2 lines to avoid Eigen compiler error
+    // split this assignment into 2 lines to avoid Eigen compiler error :(
     Vector2d u = (p_b - p_next).head<2>();
     u = fsm_switch ? u : Vector2d::Zero();
 
@@ -264,8 +264,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
                     com_xy - 0.025 * stance * Vector3d::UnitY());
   workspace.AddFace(stance * Vector3d::UnitY(),
                     com_xy + 0.6 * stance * Vector3d::UnitY());
-  workspace.AddFace(Vector3d::UnitX(), com_xy +   0.7 * Vector3d::UnitX());
-  workspace.AddFace(-Vector3d::UnitX(), com_xy - 0.7 * Vector3d::UnitX());
+  workspace.AddFace(Vector3d::UnitX(), com_xy + Vector3d::UnitX());
+  workspace.AddFace(-Vector3d::UnitX(), com_xy - Vector3d::UnitX());
 
   trajopt_.UpdateNextFootstepReachabilityConstraint(workspace);
 
@@ -307,17 +307,6 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
   int fsm_idx = static_cast<int>(
       context.get_discrete_state(fsm_state_idx_).get_value()(0));
 
-  multibody::SetPositionsAndVelocitiesIfNew<double>(
-      plant_, robot_output->GetState(), context_);
-
-  Vector3d stance_pos;
-  plant_.CalcPointsPositions(*context_,
-                             stance_foot_map_.at(curr_fsm(fsm_idx)).second,
-                             stance_foot_map_.at(curr_fsm(fsm_idx)).first,
-                             plant_.world_frame(),
-                             &stance_pos);
-  double ground_height = stance_pos(2);
-
   double t0 = robot_output->get_timestamp();
   const auto& xx = trajopt_.GetStateSolution();
   const auto& pp = trajopt_.GetFootstepSolution();
@@ -346,21 +335,21 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
       double lerp = (tk - t_prev_switch) / (t_next_switch - t_prev_switch);
       t(idx) = tk;
       com_knots.col(idx).head(2) = pcurr.head(2) + xx.at(n).at(k).head(2);
-      com_knots(2, idx) = ground_height +  gains_.hdes + lerp * (pnext - pcurr)(2);
+      com_knots(2, idx) = gains_.hdes + lerp * pnext(2) + (1 - lerp) * pcurr(2);
     }
     t0 += tt(n);
   }
   t(N-1) = 2 * t(N-2) - t(N-3);
   com_knots.topRightCorner(2, 1) = xx.back().back().head(2) + pp.back().head(2);
-  com_knots.bottomRightCorner(1, 1)(0,0) = ground_height +  gains_.hdes;
+  com_knots(2, N-1) = com_knots(2,N-2);
 
   // If we've basically already finished this mode,
   // let's move to the next so we don't get weird trajectory stuff
-  if (t(nk-2) - t(0) < .0001) {
-    com_knots = com_knots.rightCols((nm-1) * (nk-1));
-    t = t.tail((nm-1)*(nk-1) + 1);
-    t(0) = robot_output->get_timestamp();
-  }
+  //  if (t(nk-2) - t(0) < .0001) {
+  //    com_knots = com_knots.rightCols((nm-1) * (nk-1));
+  //    t = t.tail((nm-1)*(nk-1) + 1);
+  //    t(0) = robot_output->get_timestamp();
+  //  }
 
   com_traj.datapoints = com_knots;
   com_traj.time_vector = t;

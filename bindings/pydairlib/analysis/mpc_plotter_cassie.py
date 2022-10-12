@@ -20,12 +20,14 @@ mpc_channels = {
 
 def plot_com_traj_solutions(lcm_traj_list, dims, slc=None):
     plt.figure()
+
     if slc is None:
         slc = slice(len(lcm_traj_list))
 
     for traj in lcm_traj_list[slc]:
-        t, y = traj.trajectories["com_traj"].get_traj_as_cubic_shape_preserving(200)
-        plt.plot(t, y[:, dims])
+        t = traj.trajectories["com_traj"].lcm_trajectory_block.time_vec
+        y = np.array(traj.trajectories["com_traj"].lcm_trajectory_block.datapoints).T
+        plt.plot(t, y[:, dims], marker='.', markersize=10)
 
 
 def plot_state_traj_over_time(xx):
@@ -108,6 +110,7 @@ def plot_foot_targets(mpc_debug, i):
     plt.xlabel('t (s)')
     plt.ylabel('Position P (m)')
 
+
 def mpc_processing_callback(data, mpc_channel, com_traj_channel):
     dbg = MpcDebug()
     for msg in data[mpc_channel]:
@@ -138,7 +141,7 @@ def main():
         mpc_debug.mpc_trajs["desired"].xxs[mpc_debug.t_mpc[5]]
     )
 
-    plot_com_traj_solutions(com_trajs, [0, 1, 2], slc=slice(5, 6))
+    plot_com_traj_solutions(com_trajs, [2])
 
     idx = 50
     t = mpc_debug.t_mpc[idx]

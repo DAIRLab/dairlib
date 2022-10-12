@@ -1,10 +1,10 @@
 rho: 0.0001
 sigma: 1e-6
-max_iter: 2000
-eps_abs: 1e-6
-eps_rel: 1e-6
-eps_prim_inf: 1e-5
-eps_dual_inf: 1e-5
+max_iter: 5000
+eps_abs: 1e-5
+eps_rel: 1e-5
+eps_prim_inf: 1e-4
+eps_dual_inf: 1e-4
 alpha: 1.6
 linsys_solver: 0
 delta: 1e-6
@@ -14,7 +14,7 @@ verbose: 0
 scaled_termination: 1
 check_termination: 25
 warm_start: 1
-scaling: 10
+scaling: 1
 adaptive_rho: 1
 adaptive_rho_interval: 0
 adaptive_rho_tolerance: 5

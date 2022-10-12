@@ -37,8 +37,8 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
-mid_foot_height: 0.13
-final_foot_height: 0.025
+mid_foot_height: 0.16
+final_foot_height: 0.04
 final_foot_velocity_z: -0.25
 
 # LIPM trajectory

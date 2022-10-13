@@ -73,7 +73,7 @@ DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "kcmpc_solution",
               "File to load saved trajectories from");
-DEFINE_string(gains_filename, "examples/Cassie/osc_jump/osc_jumping_gains.yaml",
+DEFINE_string(gains_filename, "examples/Cassie/kinematic_centroidal_mpc/osc_centroidal_gains.yaml",
               "Filepath containing gains");
 
 int DoMain(int argc, char* argv[]) {
@@ -108,6 +108,9 @@ int DoMain(int argc, char* argv[]) {
 
   int n_v = plant_w_spr.num_velocities();
   int n_u = plant_w_spr.num_actuators();
+
+  map<string, int> pos_map_wo_spr = multibody::MakeNameToPositionsMap(plant_wo_spr);
+
 
   // Create maps for joints
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
@@ -169,7 +172,7 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
+          "OSC_DEBUG_CENTROIDAL", &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(FLAGS_channel_u,
                                                               1);
@@ -315,10 +318,10 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_toe_angle_traj_gen =
       builder.AddSystem<systems::TrajectoryPassthrough>(
-          "left_toe_traj", 0, 1);
+          "left_toe_traj", pos_map_wo_spr["toe_left"], 1);
   auto right_toe_angle_traj_gen =
       builder.AddSystem<systems::TrajectoryPassthrough>(
-          "right_toe_traj", 0, 1);
+          "right_toe_traj", pos_map_wo_spr["toe_right"], 1);
 
   left_toe_angle_tracking_data.AddStateAndJointToTrack(
       FLIGHT, "toe_left", "toe_leftdot");

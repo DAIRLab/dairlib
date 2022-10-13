@@ -27,7 +27,7 @@ void ConnectTrajectoryVisualizer(
     drake::systems::DiagramBuilder<double>* builder,
     drake::geometry::SceneGraph<double>* scene_graph,
     const drake::trajectories::Trajectory<double>& trajectory);
-void ConnectTrajectoryVisualizer(
+void ConnectTrajectoryVisualizerWithCoM(
     const drake::multibody::MultibodyPlant<double>* plant,
     drake::systems::DiagramBuilder<double>* builder,
     drake::geometry::SceneGraph<double>* scene_graph,

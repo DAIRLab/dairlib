@@ -1,4 +1,3 @@
-
 #pragma once
 #include <drake/solvers/mathematical_program.h>
 #include <drake/solvers/ipopt_solver.h>
@@ -197,6 +196,27 @@ class KinematicCentroidalMPC {
   drake::trajectories::PiecewisePolynomial<double> Solve();
 
   /*!
+   *
+   * @brief Saves the solution at filepath
+   * @param filepath relative filepath for where to save the solution
+   * @return whether saving was successful
+   * @throws exception Solve() has not been called.
+   */
+  bool SaveSolutionToFile(const std::string& filepath);
+
+  /*!
+   *@brief Populate the state and time vector with the solution from result
+   */
+  void SetFromSolution(
+      const drake::solvers::MathematicalProgramResult& result,
+      Eigen::MatrixXd* state_samples,
+      Eigen::MatrixXd* centroidal_samples,
+      Eigen::MatrixXd* contact_pos_samples,
+      Eigen::MatrixXd* contact_vel_samples,
+      Eigen::MatrixXd* contact_force_samples,
+      std::vector<double>* time_samples) const;
+
+  /*!
    *@brief Sets initial guess corresponding to zero for everything except quaternions
    */
   void SetZeroInitialGuess();
@@ -223,6 +243,11 @@ class KinematicCentroidalMPC {
 
   void AddKinematicConstraint(std::shared_ptr<dairlib::multibody::KinematicPositionConstraint<double>> con,
                               const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& vars);
+
+  int num_knot_points() const{
+    return n_knot_points_;
+  }
+
  private:
   /*!
    * @brief Adds dynamics for centroidal state
@@ -294,6 +319,7 @@ class KinematicCentroidalMPC {
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
   std::unique_ptr<drake::solvers::IpoptSolver> solver_;
+  std::unique_ptr<drake::solvers::MathematicalProgramResult> result_;
 
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> centroidal_dynamics_binding_;
 

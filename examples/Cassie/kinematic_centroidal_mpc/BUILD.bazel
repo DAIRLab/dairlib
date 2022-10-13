@@ -1,3 +1,15 @@
+package(default_visibility = ["//visibility:public"])
+
+
+cc_library(
+    name = "centroidal_mpc",
+    srcs = [],
+    deps = [":contact_scheduler",
+            ":kinematic_trajectory_generator",
+            ":trajectory_passthrough"
+    ],
+)
+
 cc_binary(
     name = "cassie_kcmpc_trajopt",
     srcs = ["cassie_kcmpc_trajopt.cc"],
@@ -12,5 +24,45 @@ cc_binary(
         "//systems/controllers/kinematic_centroidal_mpc",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+cc_library(
+    name = "contact_scheduler",
+    srcs = ["contact_scheduler.cc"],
+    hdrs = ["contact_scheduler.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//common",
+        "//multibody:utils",
+        "//examples/Cassie:cassie_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kinematic_trajectory_generator",
+    srcs = ["kinematic_trajectory_generator.cc"],
+    hdrs = ["kinematic_trajectory_generator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//common",
+        "//multibody:utils",
+        "//examples/Cassie:cassie_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "trajectory_passthrough",
+    srcs = ["trajectory_passthrough.cc"],
+    hdrs = ["trajectory_passthrough.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
     ],
 )

@@ -238,11 +238,10 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
 
     prev_fsm_state = fsm_state
 
-  print("best start time = ", start_time_list[np.argmin(max_diff_list).item()])
-
   # start_end_time_list would be non-empty when there is a steady state window
   is_steady_state = len(start_end_time_list) > 0
   if is_steady_state:
+    print("best start time = ", start_time_list[np.argmin(max_diff_list).item()])
     if pick_single_best_window:
       # We pick the window that has the smallest steady state error
       idx = np.argmin(max_diff_list).item()

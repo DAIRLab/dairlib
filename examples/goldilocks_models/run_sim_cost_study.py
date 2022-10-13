@@ -1023,6 +1023,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     Generate2dCostLandscape(cmt, model_slice_value)
 
   ### 2D plot; cost landscape comparison (task1 vs task2; cost visualized in contours)
+  print("\nPlotting 2D cost landscape comparison (task1 vs task2)...")
   for model_slice_value in model_slices_cost_landsacpe:
     if model_slice_value == 1:
       continue
@@ -1035,6 +1036,13 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
 
   ct1 = Generate2dCostLandscape(cmt, iter1, True)
   ct2 = Generate2dCostLandscape(cmt, iter2, True)
+
+  if len(ct1) == 0:
+    print("iter 1 has no samples, we don't plot the landscape comparison for iter %d" % model_slice_value)
+    return
+  if len(ct2) == 0:
+    print("iter %d has no samples, we don't plot the landscape comparison for iter %d" % (model_slice_value, model_slice_value))
+    return
 
   # Grid of the whole task space
   nx, ny = (500, 500)
@@ -1184,6 +1192,10 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
     if no_plotting:
       # Return [task1, task2, cost] with shape (N, 3)
       return copy.deepcopy(np.vstack([z, data[:, 2], data[:, 3]]).T)
+
+    if len(z) == 0:
+      print("Size of z is 0 at iter %d, so we don't plot the 2D landsacpe" % model_slice_value)
+      return
 
     # get levels for contour plots
     n_levels = 50
@@ -1484,7 +1496,7 @@ if __name__ == "__main__":
   FOM_model_dir = ""
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
-  eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
+  # eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
   # eval_dir = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
@@ -1496,6 +1508,7 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
   # eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0511/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Downloads/temp_folder_for_paper/20220506_sim_eval/9_/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1577,11 +1590,12 @@ if __name__ == "__main__":
 
   # 2D landscape (task1 vs task2)
   # model_slices_cost_landsacpe = []
-  model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
-  model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
-  model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
-  model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
-  #model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
+  # model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
+  # model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
+  # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
+  # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
+  model_slices_cost_landsacpe = [1, 50, 100, 150, 200, 250, 300, 320, 350, 400]
+  # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [5, 50, 95]
   # model_slices_cost_landsacpe = [5, 95]
   # model_slices_cost_landsacpe = [1, 50, 100]
@@ -1689,7 +1703,7 @@ if __name__ == "__main__":
   RunCommand("rm " + eval_dir + "costs_info.txt", True)
 
   # Parameters for visualization
-  max_cost_to_ignore = 100  # 2
+  max_cost_to_ignore = 2  # 1.15  # 2
   # mean_sl = 0.2
   # delta_sl = 0.1  # 0.1 #0.005
   # min_sl = mean_sl - delta_sl
@@ -1704,6 +1718,7 @@ if __name__ == "__main__":
   task_boundary_outer_box = {}
   task_boundary_outer_box['stride_length'] = (-0.8, 0.8)
   task_boundary_outer_box['pelvis_height'] = (0.3, 1.3)
+  # task_boundary_outer_box['pelvis_height'] = (0.9, 1.)
   task_boundary_outer_box['ground_incline'] = (-2, 2)
   task_boundary_outer_box['turning_rate'] = (-5, 5)
 

@@ -152,6 +152,10 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   y_guess_ = 1e-4 * MatrixXd::Random(n_y_, param_.knots_per_mode);
   dy_guess_ = 1e-4 * MatrixXd::Random(n_y_, param_.knots_per_mode);
   tau_guess_ = 1e-4 * MatrixXd::Random(n_tau_, param_.knots_per_mode);
+  cout << "dir_and_prefix_FOM.empty()?" << param_.dir_and_prefix_FOM.empty()
+       << endl;
+  cout << model_dir_n_pref + "y_samples0.csv exist?"
+       << file_exist(model_dir_n_pref + "y_samples0.csv") << endl;
   if (param_.dir_and_prefix_FOM.empty() &&
       file_exist(model_dir_n_pref + "y_samples0.csv")) {
     cout << "Construct rom regularization from ROM traj: " + model_dir_n_pref +
@@ -230,9 +234,18 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
             readCSV(model_dir_n_pref + string("x_samples0.csv")),
             readCSV(model_dir_n_pref + string("xdot_samples0.csv")));
     double duration = x_traj.end_time();
-    DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
     DRAKE_DEMAND(x_traj.cols() == 1);
     DRAKE_DEMAND(x_traj.rows() == nx_);
+    //    DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
+    if (std::abs(duration - stride_period) > 1e-15) {
+      cout << "WARNING: trajectory duration is different from stride length!\n";
+      cout << "  duration = " << duration << endl;
+      cout << "  stride_period = " << stride_period << endl;
+      bool close_sim_gap = (double_support_duration_ == 0);
+      if (close_sim_gap) {
+        DRAKE_DEMAND(std::abs(duration - stride_period) < 1e-15);
+      }
+    }
 
     auto context = plant_control.CreateDefaultContext();
     for (int i = 0; i < param_.knots_per_mode; i++) {

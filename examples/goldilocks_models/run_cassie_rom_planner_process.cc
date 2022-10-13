@@ -200,6 +200,8 @@ int DoMain(int argc, char* argv[]) {
   }
 
   if (FLAGS_close_sim_gap) {
+    DRAKE_DEMAND(!gains.use_radio);
+    DRAKE_DEMAND(!gains.use_virtual_radio);
     if (gains.right_limit_wrt_pelvis > 0.02) {
       cout << "set right_limit_wrt_pelvis to 0.02 because we want to close sim gap\n";
       gains.right_limit_wrt_pelvis = 0.02;

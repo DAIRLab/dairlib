@@ -418,7 +418,7 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc_jumping_controller"));
+  owned_diagram->set_name(("centroidal_mpc_tracking_controller"));
 
 
   // Run lcm-driven simulation

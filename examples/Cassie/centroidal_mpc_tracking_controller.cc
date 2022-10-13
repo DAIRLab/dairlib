@@ -64,7 +64,7 @@ DEFINE_string(
     channel_x, "CASSIE_STATE_SIMULATION",
     "The name of the channel where state estimation is published. Set to "
     "CASSIE_STATE_DISPATCHER for use on hardware with the state estimator");
-DEFINE_string(channel_u, "OSC_KCMPC",
+DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel where control efforts are published");
 DEFINE_string(channel_reference,
               "KCMPC_REF",

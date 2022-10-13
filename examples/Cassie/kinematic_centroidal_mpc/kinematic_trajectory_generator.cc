@@ -99,9 +99,11 @@ void KinematicTrajectoryGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  auto generated_trajectory = PiecewisePolynomial<double>::CubicHermite(segment_times,
-                                                                        samples,
-                                                                        samples_dot);
+//  auto generated_trajectory = PiecewisePolynomial<double>::CubicHermite(segment_times,
+//                                                                        samples,
+//                                                                        samples_dot);
+  auto generated_trajectory = PiecewisePolynomial<double>::FirstOrderHold(segment_times,
+                                                                        samples);
   *casted_traj = generated_trajectory;
 
 

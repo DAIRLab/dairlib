@@ -1,0 +1,16 @@
+cc_binary(
+    name = "cassie_kcmpc_trajopt",
+    srcs = ["cassie_kcmpc_trajopt.cc"],
+    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//common",
+        "//multibody:visualization_utils",
+        "//multibody/kinematic",
+        "//solvers:optimization_utils",
+        "//systems/primitives",
+        "//systems/controllers/kinematic_centroidal_mpc",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

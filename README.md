@@ -27,27 +27,32 @@ There is no need to extract the tar.
 
 ### Build Drake
 The library is meant to be built with Drake (see http://drake.mit.edu/ for more details). There are two ways to use Drake within dairlib:
+
 #### Option 1: use pegged revision
-The only specific action needed here is to install all of Drake's prerequisites. There are two choices
-1. (Experimental) In `dairlib/install`, run the appropriate `install_prereqs_xxx.sh`. This is untested on mac, and has not been tested to get every dependency for a fresh install.
-2. Download a source copy of drake, and install pre-requisites as described here: http://drake.mit.edu/from_source.html
+The only specific action needed here is to install all of Drake's prerequisites. There are two choices for completing this step:
+
+a) In `dairlib/install`, run the appropriate `install_prereqs_xxx.sh`. This is untested on mac, and has not been tested to get every dependency for a fresh install.
+
+b) Download a source copy of drake, and install pre-requisites as described here: http://drake.mit.edu/from_source.html. There is no need to build Drake itself. Proceed only until you have run the Drake setup script. 
 
 bazel will automatically download the pegged revision, specified in the WORKSPACE file. dairlib developers hope to keep this pegged revision current, and ensure that the pegged version will always work with a specific version of dairlib.
 
 This option is recommended for users who are not currently editing any source code in Drake itself. 
-#### Option 2: source install of Drake
-Install Drake from source into `"my-workspace"/drake` http://drake.mit.edu/from_source.html. You do not need to build it, but prerequisites should also be installed. You will need `git` to start.
 
-To tell dairlib to use your local install, set the environment variable `DAIRLIB_LOCAL_DRAKE_PATH`, e.g.
+#### Option 2: source install of Drake
+Complete both steps (a) and (b) above. Next, to tell dairlib to use your local install, set the environment variable `DAIRLIB_LOCAL_DRAKE_PATH`, e.g.
 ```
 export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/my-workspace/drake
 ```
+
+### IDE setup
+JetBrains IDEs have worked well for us and are available for free to students. For C++ development using the CLion Bazel plugin, see https://drake.mit.edu/clion.html and replace `drake` with `dairlib` in the "Setting up Drake in CLion" section. 
 
 ### Other dependencies
 These dependencies are necessary for some advanced visualization and process management. Many examples will work without a full installation of Director or libbot, but (for lab members), these are ultimately recommended. 
 
 #### LCM and libbot
-Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation from Drake should add the proper repo for these. (This likely require's Drake's prerequisites to be installed from a source copy).
+Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation (option 1.a) should add the proper apt repo for these.
 
 #### ROS
 To integrate with ROS (tested on ROS Noetic with 20.04), the following steps are required.

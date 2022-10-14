@@ -1,4 +1,4 @@
-#include "trajectory_passthrough.h"
+#include "systems/primitives/trajectory_passthrough.h"
 
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
@@ -11,7 +11,7 @@ TrajectoryPassthrough::TrajectoryPassthrough(
 
   trajectory_port_ =
       this->DeclareAbstractInputPort(
-              "lambda_reference",
+              "trajectory",
               drake::Value<PiecewisePolynomial<double>>(PiecewisePolynomial<double>()))
           .get_index();
 

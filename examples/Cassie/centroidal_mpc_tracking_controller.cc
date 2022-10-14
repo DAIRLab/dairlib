@@ -11,7 +11,7 @@
 #include "examples/Cassie/osc_jump/osc_jumping_gains.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/contact_scheduler.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/kinematic_trajectory_generator.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/trajectory_passthrough.h"
+#include "systems/primitives/trajectory_passthrough.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
@@ -73,7 +73,8 @@ DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
               "Folder path for where the trajectory names are stored");
 DEFINE_string(traj_name, "kcmpc_solution",
               "File to load saved trajectories from");
-DEFINE_string(gains_filename, "examples/Cassie/kinematic_centroidal_mpc/osc_centroidal_gains.yaml",
+DEFINE_string(gains_filename,
+              "examples/Cassie/kinematic_centroidal_mpc/osc_centroidal_gains.yaml",
               "Filepath containing gains");
 
 int DoMain(int argc, char* argv[]) {
@@ -90,7 +91,6 @@ int DoMain(int argc, char* argv[]) {
   plant_w_spr.Finalize();
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
-
 
   drake::multibody::MultibodyPlant<double> plant_wo_spr(0.0);
   AddCassieMultibody(&plant_wo_spr, nullptr, true,
@@ -109,7 +109,8 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant_w_spr.num_velocities();
   int n_u = plant_w_spr.num_actuators();
 
-  map<string, int> pos_map_wo_spr = multibody::MakeNameToPositionsMap(plant_wo_spr);
+  map<string, int>
+      pos_map_wo_spr = multibody::MakeNameToPositionsMap(plant_wo_spr);
 
 
   // Create maps for joints
@@ -130,10 +131,10 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   std::unordered_map<int, int> contact_state_to_fsm_map;
-  int FLIGHT = 0;
-  int LEFT_STANCE = 1;
-  int RIGHT_STANCE = 2;
-  int DOUBLE_STANCE = 3;
+  const int FLIGHT = 0;
+  const int LEFT_STANCE = 1;
+  const int RIGHT_STANCE = 2;
+  const int DOUBLE_STANCE = 3;
   contact_state_to_fsm_map[0] = 0;
   contact_state_to_fsm_map[12] = 1; // left stance
   contact_state_to_fsm_map[3] = 2; // right stance
@@ -144,6 +145,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_reference, &lcm));
   auto state_reference_receiver =
       builder.AddSystem<LcmTrajectoryReceiver>("state_traj");
+  // (TODO):yangwill add functionality to OSC to track force trajectory
   auto contact_force_reference_receiver =
       builder.AddSystem<LcmTrajectoryReceiver>("contact_force_traj");
 
@@ -151,6 +153,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
   // This actually outputs the target position of the pelvis not the true
   // center of mass
+
+
+  // (TODO):yangwill consider or at least verify why we want to track the pelvis over the CoM
   auto pelvis_trans_traj_generator =
       builder.AddSystem<KinematicTrajectoryGenerator>(
           plant_wo_spr, context_wo_spr.get(), "pelvis", VectorXd::Zero(3));
@@ -172,7 +177,9 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG_CENTROIDAL", &lcm, TriggerTypeSet({TriggerType::kForced})));
+          "OSC_DEBUG_CENTROIDAL",
+          &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(FLAGS_channel_u,
                                                               1);

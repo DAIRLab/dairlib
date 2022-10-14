@@ -29,7 +29,7 @@ ContactScheduler::ContactScheduler(
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
   contact_force_trajectory_input_port_ =
       this->DeclareAbstractInputPort(
-              "lambda_reference",
+              "lambda",
               drake::Value<PiecewisePolynomial<double>>(pp))
           .get_index();
   fsm_output_port_ = this->DeclareVectorOutputPort(
@@ -51,10 +51,10 @@ void ContactScheduler::CalcFiniteState(
   VectorXd desired_contact = contact_force_trajectory->value(current_sim_time);
 
   /// shift the active contacts to form contact state
-  int contact_state = ((desired_contact[2] > 0) * 1 << 0)
-      + ((desired_contact[5] > 0) * 1 << 1)
-      + ((desired_contact[8] > 0) * 1 << 2)
-      + ((desired_contact[11] > 0) * 1 << 3);
+  const int contact_state = ((desired_contact[2] > kEpislonForce) * 1 << 0)
+      + ((desired_contact[5] > kEpislonForce) * 1 << 1)
+      + ((desired_contact[8] > kEpislonForce) * 1 << 2)
+      + ((desired_contact[11] > kEpislonForce) * 1 << 3);
 
   // Assign fsm_state
   fsm_state->get_mutable_value()[0] =

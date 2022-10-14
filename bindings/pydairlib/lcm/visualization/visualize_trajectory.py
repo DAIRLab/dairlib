@@ -59,9 +59,9 @@ def main():
     lcm_contact_force_traj = lcm_traj.GetTrajectory('contact_force_traj')
     state_traj = PiecewisePolynomial.FirstOrderHold(lcm_state_traj.time_vector, lcm_state_traj.datapoints[:37, :])
     contact_force_traj = PiecewisePolynomial.FirstOrderHold(lcm_contact_force_traj.time_vector, lcm_contact_force_traj.datapoints[:12, :])
-    plot_trajectory(state_traj, 'state', 37)
-    plot_trajectory(contact_force_traj, 'contact_force', 12)
-    plt.show()
+    # plot_trajectory(state_traj, 'state', 37)
+    # plot_trajectory(contact_force_traj, 'contact_force', 12)
+    # plt.show()
     t_vec = state_traj.get_segment_times()
 
     if params.visualize_mode == 0 or params.visualize_mode == 1:

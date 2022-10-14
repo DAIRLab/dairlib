@@ -8,8 +8,18 @@
 
 namespace dairlib {
 
+/*!
+ * @brief LeafSystem that takes in a robot state trajectory and outputs a
+ * kinematic task-space trajectory
+ */
 class KinematicTrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
+  /*!
+   * @param plant robot model (state dim should match with the reference trajectory input)
+   * @param context corresponding Context for the plant
+   * @param body_name name of body
+   * @param point_on_body point on the body expressed in the body frame
+   */
   KinematicTrajectoryGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
@@ -42,7 +52,6 @@ class KinematicTrajectoryGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
 
-
   std::string body_name_;
   Eigen::Vector3d point_on_body_;
 
@@ -51,7 +60,6 @@ class KinematicTrajectoryGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex state_trajectory_port_;
   drake::systems::OutputPortIndex target_trajectory_port_;
 
-
 };
 
-}  // namespace dairlib::examples::osc_jump
+}  // namespace dairlib

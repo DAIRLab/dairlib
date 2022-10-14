@@ -12,6 +12,8 @@
 namespace dairlib {
 namespace systems {
 
+static const double kEpislonForce = 1e-6;
+
 /// ContactScheduler
 /// Given a contact schedule, passthrough the current contact mode
 /// @param contact_state_to_fsm_state_map: map from binary encoded contact state to corresponding finite state

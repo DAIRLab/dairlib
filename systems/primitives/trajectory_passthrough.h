@@ -24,4 +24,4 @@ class TrajectoryPassthrough : public drake::systems::LeafSystem<double> {
 
 };
 
-}  // namespace dairlib::examples::osc_jump
+}  // namespace dairlib::systems

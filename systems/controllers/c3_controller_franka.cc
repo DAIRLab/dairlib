@@ -88,26 +88,6 @@ C3Controller_franka::C3Controller_franka(
       num_balls_(num_balls){
 
 
-  /// initialize warm start for the MIQP
-  int nx = plant_.num_positions() + plant_.num_velocities();
-  int nlambda = 12;
-  int nu = plant_.num_actuators();
-
-  for (int i = 0; i < time_horizon_; i++){
-    warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
-  }
-  for (int i = 0; i < time_horizon_; i++){
-    warm_start_binary_.push_back(VectorXd::Zero(nlambda));
-  }
-  for (int i = 0; i < time_horizon_+1; i++){
-    warm_start_x_.push_back(VectorXd::Zero(nx));
-  }
-  for (int i = 0; i < time_horizon_; i++){
-    warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
-  }
-  for (int i = 0; i < time_horizon_; i++){
-    warm_start_u_.push_back(VectorXd::Zero(nu));
-  }
 
   /// number of balls in simulation
   int num_ee_xyz_pos = 3;
@@ -262,6 +242,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   q << end_effector, ball;
   VectorXd v(9);
   v << end_effector_dot, ball_dot;
+
   VectorXd u = VectorXd::Zero(3);
 
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
@@ -299,7 +280,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   if (shifted_time < 0) shifted_time += period;
   double ts = shifted_time - period * floor((shifted_time / period));
   double back_dist = param_.gait_parameters(0);
-  
+
   /// rolling phase
   if ( ts < roll_phase ) {
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
@@ -473,7 +454,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   if (param_.rolling_state_reduction) {
     lcs = &lcs_reduced;
     // change dimension definition
-    n = ny;
+
+    //n = ny;
+
+    n = A_red.cols();
+    m = D_red.cols();
+    k = B_red.cols();
+
   }
 
 
@@ -482,8 +469,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   ///****** END CHANGE OF VARIABLES *********
 
-
-
+//
+//
   /// initialize ADMM variables (delta, w)
   std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
@@ -530,9 +517,37 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
-  // TODO: fix other args to opt()
-  // G, U, traj_desired, warm starts;
-  // auto Q_red = (S + W.transpose()) * Qha * (S.transpose() + W);
+  /// initialize warm start for the MIQP
+//  int nx = plant_.num_positions() + plant_.num_velocities();
+//  int nlambda = 12;
+//  int nu = plant_.num_actuators();
+
+
+  int nx = n;
+  int nlambda = m;
+  int nu = k;
+
+  for (int i = 0; i < time_horizon_; i++){
+    warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
+  }
+  for (int i = 0; i < time_horizon_; i++){
+    warm_start_binary_.push_back(VectorXd::Zero(nlambda));
+  }
+  for (int i = 0; i < time_horizon_+1; i++){
+    warm_start_x_.push_back(VectorXd::Zero(nx));
+  }
+  for (int i = 0; i < time_horizon_; i++){
+    warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
+  }
+  for (int i = 0; i < time_horizon_; i++){
+    warm_start_u_.push_back(VectorXd::Zero(nu));
+  }
+
+
+
+   //TODO: fix other args to opt()
+   //G, U, traj_desired, warm starts;
+   //auto Q_red = (S + W.transpose()) * Qha * (S.transpose() + W);
 
   std::vector<MatrixXd> G,U;
   for (int i = 0; i < G_.size(); i++) {
@@ -551,7 +566,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   /// calculate the input given x[i]
 
   auto t_setup = std::chrono::high_resolution_clock::now();
-  
+
   VectorXd input;
   if (param_.rolling_state_reduction) {
     VectorXd state_init = S * state;
@@ -560,7 +575,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     input = opt.Solve(state, delta, w);
   }
   auto t_solve = std::chrono::high_resolution_clock::now();
-
+//
   warm_start_x_ = opt.GetWarmStartX();
   warm_start_lambda_ = opt.GetWarmStartLambda();
   warm_start_u_ = opt.GetWarmStartU();
@@ -597,12 +612,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 
   // check if the desired end effector position is unreasonably far from the current location
-  Vector3d vd = state_next.segment(10, 3);
+  Vector3d vd = state_next.segment(10, 3); ///needs to change for n balls
   if (vd.norm() > max_desired_velocity_){
     /// update new desired position accordingly
     Vector3d dx = state_next.head(3) - state.head(3);
     state_next.head(3) << max_desired_velocity_ * dt * dx / dx.norm() + state.head(3);
-    
+
     /// update new desired velocity accordingly
     Vector3d clamped_velocity = max_desired_velocity_ * vd / vd.norm();
     state_next(10) = clamped_velocity(0);
@@ -615,16 +630,16 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
     // std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;
   }
-
-  VectorXd force_des = VectorXd::Zero(6);
+//
+  VectorXd force_des = VectorXd::Zero(5);
   force_des << force(2), force(4), force(5), force(6), force(7);
-
-//  VectorXd st_desired(10 + 5*num_balls_ + 1);
-  VectorXd st_desired(10 + 5*num_balls_ + 1);
-
-   //st_desired for debug purposes: (state_next.head(3), orientation_d(4), ball_position(7), finger_velocity(3), ball_velocity(6), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz)
-  //st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des, VectorXd::Zero(9);
-
+//
+//  //VectorXd st_desired(10 + 5*num_balls_ + 1);
+  VectorXd st_desired = VectorXd::Zero(num_output_);
+//
+//   //st_desired for debug purposes: (state_next.head(3), orientation_d(4), ball_position(7), finger_velocity(3), ball_velocity(6), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz)
+//  //st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des, VectorXd::Zero(9);
+//
   // change format to des_ee_xyz_pos, des_ee_orientation, des_ee_vel, des_force
   VectorXd des_ee_xyz_pos = state_next.head(3);
   VectorXd des_ee_orientation = orientation_d;
@@ -633,7 +648,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd misc = VectorXd::Zero(1);
 
   st_desired << des_ee_xyz_pos, des_ee_orientation, des_ee_vel, des_ee_force, misc;
-  
+
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 
@@ -664,7 +679,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 //  auto duration_solve = std::chrono::duration_cast<std::chrono::milliseconds>(t_solve - t_setup);
 //  auto duration_setup = std::chrono::duration_cast<std::chrono::milliseconds>(t_setup - t_start);
 //  std::cout << duration.count() << " " << duration_setup.count() << " " << duration_solve.count() << std::endl;
-
+  //std::cout << state_contact_desired->size() << std::endl;
 }
 
 void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,

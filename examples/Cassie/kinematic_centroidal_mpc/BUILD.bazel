@@ -4,9 +4,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "centroidal_mpc",
     srcs = [],
-    deps = [":contact_scheduler",
-            ":kinematic_trajectory_generator",
-            ":trajectory_passthrough"
+    deps = [
+        ":contact_scheduler",
+        ":kinematic_trajectory_generator",
     ],
 )
 
@@ -50,18 +50,6 @@ cc_library(
         "//common",
         "//multibody:utils",
         "//examples/Cassie:cassie_utils",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "trajectory_passthrough",
-    srcs = ["trajectory_passthrough.cc"],
-    hdrs = ["trajectory_passthrough.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],

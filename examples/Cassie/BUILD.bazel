@@ -361,6 +361,7 @@ cc_binary(
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
+        "//systems/primitives:trajectory_passthrough",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

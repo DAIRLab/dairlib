@@ -78,3 +78,16 @@ cc_test(
         "@drake//systems/framework/test_utilities",
     ],
 )
+
+
+cc_library(
+    name = "trajectory_passthrough",
+    srcs = ["trajectory_passthrough.cc"],
+    hdrs = ["trajectory_passthrough.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)

@@ -7,7 +7,6 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
 #include "examples/Cassie/osc_jump/osc_jumping_gains.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/contact_scheduler.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/kinematic_trajectory_generator.h"
@@ -50,7 +49,6 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
 using multibody::FixedJointEvaluator;
-using examples::osc_jump::BasicTrajectoryPassthrough;
 using systems::TrajectoryPassthrough;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;

@@ -247,14 +247,14 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
   double cost_force = 0.01;
 
-  double cost_joint_pos = 0.0005;
-  double cost_joint_vel = 0.0001;
+  double cost_joint_pos = 0.5;
+  double cost_joint_vel = 0.01;
 
   double cost_contact_pos = 1;
   double cost_contact_vel = 2;
 
   double cost_com_pos = 10;
-  double cost_com_vel = 0.001;
+  double cost_com_vel = 2;
   double cost_com_orientation = 8;
   double cost_angular_vel = 0.01;
 
@@ -274,34 +274,38 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
 
   Eigen::VectorXd Q_state = Eigen::VectorXd::Zero(plant.num_positions() + plant.num_velocities());
+
+  Q_state.head(4) = cost_com_orientation * Eigen::VectorXd::Ones(4);
+  Q_state.segment(4,3) = cost_com_pos * Eigen::VectorXd::Ones(3);
   Q_state.segment(7, plant.num_positions()-7) = cost_joint_pos * Eigen::VectorXd::Ones(plant.num_positions()-7);
+  Q_state.segment(plant.num_positions(), 3) = cost_angular_vel * Eigen::VectorXd::Ones(3);
+  Q_state.segment(plant.num_positions() + 3, 3) = cost_com_vel * Eigen::VectorXd::Ones(3);
   Q_state.tail(plant.num_velocities() - 6) = cost_joint_vel * Eigen::VectorXd::Ones(plant.num_velocities() - 6);
   mpc.AddConstantStateReferenceCost(reference_state, Q_state.asDiagonal());
 
-  Eigen::VectorXd reference_cent_state = Eigen::VectorXd::Zero(13);
-  reference_cent_state[0] = 1;
-  reference_cent_state[6] = com_height;
+//  Eigen::VectorXd reference_cent_state = Eigen::VectorXd::Zero(13);
+//  reference_cent_state[0] = 1;
+//  reference_cent_state[6] = com_height;
+//  Eigen::VectorXd reference_cent_state_bottom = Eigen::VectorXd::Zero(13);
+//  reference_cent_state_bottom[0] = 1;
+//  reference_cent_state_bottom[6] = com_height-squat_distance;
+//  std::vector<double> time_points = {0, duration};
+//  auto centroidal_reference = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points,
+//                                                                                               {reference_cent_state,
+//                                                                                                reference_cent_state_bottom});
+//
+//  Eigen::VectorXd Q_cent(13);
+//  Q_cent.head(4) = cost_com_orientation * Eigen::VectorXd::Ones(4);
+//  Q_cent.segment(4,3) = cost_com_pos * Eigen::VectorXd::Ones(3);
+//  Q_cent.segment(7,3) = cost_angular_vel * Eigen::VectorXd::Ones(3);
+//  Q_cent.segment(10,3) = cost_com_vel * Eigen::VectorXd::Ones(3);
+//  mpc.AddCentroidalReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(centroidal_reference),
+//                                 Q_cent.asDiagonal());
 
-  Eigen::VectorXd reference_cent_state_bottom = Eigen::VectorXd::Zero(13);
-  reference_cent_state_bottom[0] = 1;
-  reference_cent_state_bottom[6] = com_height-squat_distance;
-  std::vector<double> time_points = {0, duration};
-  auto centroidal_reference = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points,
-                                                                                               {reference_cent_state,
-                                                                                                reference_cent_state_bottom});
-
-  Eigen::VectorXd Q_cent(13);
-  Q_cent.head(4) = cost_com_orientation * Eigen::VectorXd::Ones(4);
-  Q_cent.segment(4,3) = cost_com_pos * Eigen::VectorXd::Ones(3);
-  Q_cent.segment(7,3) = cost_angular_vel * Eigen::VectorXd::Ones(3);
-  Q_cent.segment(10,3) = cost_com_vel * Eigen::VectorXd::Ones(3);
-  mpc.AddCentroidalReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(centroidal_reference),
-                                 Q_cent.asDiagonal());
-
-  Eigen::VectorXd Q_contact = cost_contact_pos * Eigen::VectorXd::Ones(4 * 6);
-  Q_contact.tail(4 * 3) = cost_contact_vel * Eigen::VectorXd::Ones(4 * 3);
-  mpc.AddContactTrackingReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(Eigen::VectorXd::Zero(
-      4 * 6)), Q_contact.asDiagonal());
+//  Eigen::VectorXd Q_contact = cost_contact_pos * Eigen::VectorXd::Ones(4 * 6);
+//  Q_contact.tail(4 * 3) = cost_contact_vel * Eigen::VectorXd::Ones(4 * 3);
+//  mpc.AddContactTrackingReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(Eigen::VectorXd::Zero(
+//      4 * 6)), Q_contact.asDiagonal());
 
   std::cout<<"Adding solver options"<<std::endl;
   {

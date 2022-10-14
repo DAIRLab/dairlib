@@ -93,22 +93,6 @@ class KinematicCentroidalMPC {
   drake::solvers::VectorXDecisionVariable state_vars(
       int knotpoint_index) const;
 
-  /*!
-   * @brief accessor for centroidal position decision vars
-   * @param knotpoint_index
-   * @return
-   */
-   drake::solvers::VectorXDecisionVariable centroidal_pos_vars(
-      int knotpoint_index) const;
-
-   /*!
-    * @brief accessor for centroidal velocity decision vars
-    * @param knotpoint_index
-    * @return
-    */
-   drake::solvers::VectorXDecisionVariable centroidal_vel_vars(
-      int knotpoint_index) const;
-
    /*!
     * @brief accessor for joint position decision vars
     * @param knotpoint_index
@@ -134,27 +118,11 @@ class KinematicCentroidalMPC {
       int knotpoint_index) const;
 
   /*!
-   * @brief accessor for center of mass velocity decision vars
+   * @brief accessor for center of momentum decision variables
    * @param knotpoint_index
    * @return
    */
-  drake::solvers::VectorXDecisionVariable com_vel_vars(
-      int knotpoint_index) const;
-
-  /*!
-   * @brief accessor for centroidal quaternion decision vars
-   * @param knotpoint_index
-   * @return
-   */
-  drake::solvers::VectorXDecisionVariable cent_quat_vars(
-      int knotpoint_index) const;
-
-  /*!
-   * @brief accessor for com angular velocity decision variables (body frame)
-   * @param knotpoint_index
-   * @return
-   */
-  drake::solvers::VectorXDecisionVariable cent_omega_vars(
+  drake::solvers::VectorXDecisionVariable momentum_vars(
       int knotpoint_index) const;
 
   /*!
@@ -300,8 +268,10 @@ class KinematicCentroidalMPC {
   //DecisionVariables
   // Full robot state
   std::vector<drake::solvers::VectorXDecisionVariable>  x_vars_;
-  // Centroidal position and orientation and velocity
-  std::vector<drake::solvers::VectorXDecisionVariable>  x_cent_vars_;
+  // angular and linear momentum variables (in that order)
+  std::vector<drake::solvers::VectorXDecisionVariable>  mom_vars_;
+  // center of mass position
+  std::vector<drake::solvers::VectorXDecisionVariable>  com_vars_;
 
   // Contact position, velocity, and force [n_knot_points, 3 * n_contact_points]
   std::vector<drake::solvers::VectorXDecisionVariable>  contact_pos_;

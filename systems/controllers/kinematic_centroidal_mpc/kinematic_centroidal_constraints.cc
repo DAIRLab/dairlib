@@ -9,85 +9,95 @@ CentroidalDynamicsConstraint<T>::CentroidalDynamicsConstraint(const drake::multi
                                                               int n_contact,
                                                               double dt,
                                                               int knot_index): dairlib::solvers::NonlinearConstraint<T>(
-    13,  2 * 13 + plant.num_positions() + plant.num_velocities() + 2 * 3 * n_contact,
-    Eigen::VectorXd::Zero(13),
-    Eigen::VectorXd::Zero(13),
-    "centroidal_collocation[" +
+    6,  2 * 6 + 3 + 2 * 3 * n_contact,
+    Eigen::VectorXd::Zero(6),
+    Eigen::VectorXd::Zero(6),
+    "momentum_collocation[" +
         std::to_string(knot_index) + "]"),
                                                                                plant_(plant),
                                                                                context_(context),
-                                                                               n_x_(plant.num_positions()
-                                                                                        + plant.num_velocities()),
-                                                                               n_u_(plant.num_actuators()),
                                                                                n_contact_(n_contact),
                                                                                dt_(dt),
-                                                                               zero_control_(Eigen::VectorXd::Zero(n_u_)) {}
+                                                                               m_(plant_.CalcTotalMass(*context)){}
 
 
 /// The format of the input to the eval() function is in the order
-///   - xCent0, centroidal state at time k
-///   - xCent1, centroidal state at time k+1
-///   - x0, state at time k
+///   - xMom0, momentum state at time k
+///   - xMom1, momentum state at time k+1
+///   - com0, location of com at time k
 ///   - cj0, contact locations time k
 ///   - Fj0, contact forces at time k
 template <typename T>
 void CentroidalDynamicsConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
   // Extract decision variables
-  const auto& xCent0 = x.segment(0, n_cent_);
-  const auto& xCent1 = x.segment(n_cent_, n_cent_);
-  const auto& x0 = x.segment(2 * n_cent_, n_x_);
-  const auto& cj0 = x.segment(2 * n_cent_ + n_x_, 3 * n_contact_);
-  const auto& Fj0 = x.segment(2 * n_cent_ + n_x_ + 3 * n_contact_, 3 * n_contact_);
+  const auto& xMom0 = x.segment(0, n_mom_);
+  const auto& xMom1 = x.segment(n_mom_, n_mom_);
+  const auto& com0 = x.segment(2 * n_mom_, 3);
+  const auto& cj0 = x.segment(2 * n_mom_ + 3, 3 * n_contact_);
+  const auto& Fj0 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_, 3 * n_contact_);
 
-  // Evaluate dynamics at k
-  dairlib::multibody::SetContext<T>(plant_, x0, zero_control_, context_);
-  const auto& xdot0Cent = CalcTimeDerivativesWithForce(context_, xCent0,cj0, Fj0);
+  drake::Vector<T, 6> xdot0Mom = CalcTimeDerivativesWithForce(com0, cj0, Fj0);
 
   // Predict state and return error
-  const auto x1Predict = xCent0 + xdot0Cent * dt_;
-  *y = xCent1 - x1Predict;
+  const auto x1Predict = xMom0 + xdot0Mom * dt_;
+  *y = xMom1 - x1Predict;
 }
 
 template<typename T>
-drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(drake::systems::Context<T> *context,
-                                                                                const drake::VectorX<T>& xCent,
+drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(const drake::VectorX<T>& com_position,
                                                                                 const drake::VectorX<T>& contact_locations,
                                                                                 const drake::VectorX<T>& contact_forces) const {
-  // We use this constructor since passing in a vector has the order [x,y,z,w], while xCent is [w,x,y,z]
-  const Eigen::Quaternion<T> w_Q_b(xCent[0], xCent[1], xCent[2], xCent[3]);
-  const auto b_Q_w = w_Q_b.inverse();
-  const auto& r = xCent.segment(4, 3);
-  const drake::Vector3<T>& omega_ewrt_b = xCent.segment(7, 3);
-  const auto& d_r = xCent.segment(10, 3);
-
-  const auto& body_frame = plant_.get_body(*(plant_.GetFloatingBaseBodies().begin())).body_frame();
-  const drake::multibody::SpatialInertia< T >& spatial_inertia =
-      plant_.CalcSpatialInertia(*context, body_frame, plant_.GetBodyIndices(drake::multibody::ModelInstanceIndex(2)));
-  const auto& rotational_inertia = spatial_inertia.CalcRotationalInertia().CopyToFullMatrix3();
-  const auto& mass = spatial_inertia.get_mass();
-
-  drake::Vector3<T> sum_moments;
-  drake::Vector3<T> sum_forces;
+  drake::Vector3<T> sum_moments(0,0,0);
+  drake::Vector3<T> sum_forces = - m_ * drake::Vector3<T>(0, 0, 9.81);
   for(int contact = 0; contact < n_contact_; contact ++){
     const drake::Vector3<T>& location = contact_locations.segment(contact * 3, 3);
     const drake::Vector3<T>& force = contact_forces.segment(contact * 3, 3);
 
-    sum_moments = sum_forces + (location - r).cross(force);
+    sum_moments = sum_moments + (location - com_position).cross(force);
     sum_forces = sum_forces + force;
   }
 
   // Working in body frame angular velocity
-  const auto d_quat = drake::math::CalculateQuaternionDtFromAngularVelocityExpressedInB(w_Q_b, omega_ewrt_b);
-  const auto d_omega_ewrt_b = rotational_inertia.transpose()* (b_Q_w * sum_moments - omega_ewrt_b.cross(rotational_inertia * omega_ewrt_b));
-  const auto dd_r = sum_forces/mass - drake::Vector3<T>(0, 0, 9.81);
-
-  drake::Vector<T, 13> rv;
-  rv.head(4) = d_quat;
-  rv.segment(4,3) = d_r;
-  rv.segment(7,3) = d_omega_ewrt_b;
-  rv.segment(10,3) = dd_r;
+  const auto d_ang_mom =  sum_moments;
+  const auto d_lin_mom = sum_forces;
+  drake::Vector<T, 6> rv;
+  rv.head(3) = d_ang_mom;
+  rv.tail(3) = d_lin_mom;
   return rv;
+}
+
+template<typename T>
+KinematicIntegratorConstraint<T>::KinematicIntegratorConstraint(const drake::multibody::MultibodyPlant<T> &plant,
+                                                                  drake::systems::Context<T> *context,
+                                                                  double dt,
+                                                                  int knot_index): dairlib::solvers::NonlinearConstraint<T>(
+    plant.num_positions(),  2 * plant.num_positions()+ plant.num_velocities(),
+    Eigen::VectorXd::Zero(plant.num_positions()),
+    Eigen::VectorXd::Zero(plant.num_positions()),
+    "generalized_velocity_integrator[" +
+        std::to_string(knot_index) + "]"),
+                                                                                   plant_(plant),
+                                                                                   context_(context),
+                                                                                   n_q_(plant_.num_positions()),
+                                                                                   n_v_(plant_.num_velocities()),
+                                                                                   dt_(dt) {}
+
+/// The format of the input to the eval() function is in the order
+///   - q0, generalized position at time k
+///   - q1, generalized position at time k + 1
+///   - v0, generalized velocity at time k
+template<typename T>
+void KinematicIntegratorConstraint<T>::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>> &x,
+                                                           drake::VectorX<T> *y) const {
+  const auto& q0 = x.head(n_q_);
+  const auto& q1 = x.segment(n_q_, n_q_);
+  const auto& v0 = x.tail(n_v_);
+
+  dairlib::multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, q0, context_);
+  drake::VectorX<T> qdot0(n_q_);
+  plant_.MapVelocityToQDot(*context_, v0, &qdot0);
+  *y = q0 + dt_ * qdot0 - q1;
 }
 
 template<typename T>
@@ -114,9 +124,40 @@ void CenterofMassPositionConstraint<T>::EvaluateConstraint(const Eigen::Ref<cons
                                                            drake::VectorX<T> *y) const {
   const auto& rCom = x.segment(0, 3);
   const auto& x0 = x.segment(3, n_x_);
-
   dairlib::multibody::SetContext<T>(plant_, x0, zero_control_, context_);
   *y = rCom - plant_.CalcCenterOfMassPositionInWorld(*context_);
+}
+
+template<typename T>
+CentroidalMomentumConstraint<T>::CentroidalMomentumConstraint(const drake::multibody::MultibodyPlant<T> &plant,
+                                                                  drake::systems::Context<T> *context,
+                                                                  int knot_index): dairlib::solvers::NonlinearConstraint<T>(
+    6,  plant.num_positions()+ plant.num_velocities()+6 + 3,
+    Eigen::VectorXd::Zero(6),
+    Eigen::VectorXd::Zero(6),
+    "centroidal_momentum[" +
+        std::to_string(knot_index) + "]"),
+                                                                                   plant_(plant),
+                                                                                   context_(context),
+                                                                                   n_x_(plant.num_positions()
+                                                                                            + plant.num_velocities()),
+                                                                                   n_u_(plant.num_actuators()),
+                                                                                   zero_control_(Eigen::VectorXd::Zero(n_u_)) {}
+
+/// The format of the input to the eval() function is in the order
+///   - q, generalized positions
+///   - v, generalized velocities
+///   - r, location of the com
+///   - h_WC, angular momentum, linear momentum in the wf about the com
+template<typename T>
+void CentroidalMomentumConstraint<T>::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>> &x,
+                                                           drake::VectorX<T> *y) const {
+  const auto& x0 = x.head(n_x_);
+  const auto& r = x.segment(n_x_, 3);
+  const auto& h_WC = x.segment(n_x_ + 3, 6);
+  dairlib::multibody::SetContext<T>(plant_, x0, zero_control_, context_);
+  const auto& spatial_momentum = plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, r);
+  *y = spatial_momentum.get_coeffs() - h_WC;
 }
 
 template<typename T>
@@ -131,9 +172,7 @@ CenterofMassVelocityConstraint<T>::CenterofMassVelocityConstraint(const drake::m
                                                                                    plant_(plant),
                                                                                    context_(context),
                                                                                    n_x_(plant.num_positions()
-                                                                                            + plant.num_velocities()),
-                                                                                   n_u_(plant.num_actuators()),
-                                                                                   zero_control_(Eigen::VectorXd::Zero(n_u_)) {}
+                                                                                            + plant.num_velocities()){}
 
 /// The format of the input to the eval() function is in the order
 ///   - drCOM, location of the center of mass
@@ -144,7 +183,7 @@ void CenterofMassVelocityConstraint<T>::EvaluateConstraint(const Eigen::Ref<cons
   const auto& drCom = x.segment(0, 3);
   const auto& x0 = x.segment(3, n_x_);
 
-  dairlib::multibody::SetContext<T>(plant_, x0, zero_control_, context_);
+  dairlib::multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, x0, context_);
   *y = drCom - plant_.CalcCenterOfMassTranslationalVelocityInWorld(*context_);
 }
 
@@ -171,6 +210,8 @@ void AngularVelocityConstraint<T>::EvaluateConstraint(const Eigen::Ref<const dra
 }
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class CentroidalDynamicsConstraint);
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class KinematicIntegratorConstraint);
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class CenterofMassPositionConstraint);
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class CentroidalMomentumConstraint);
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class CenterofMassVelocityConstraint);
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class AngularVelocityConstraint);

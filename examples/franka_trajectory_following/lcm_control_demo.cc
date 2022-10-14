@@ -248,6 +248,8 @@ int DoMain(int argc, char* argv[]){
   auto context_ad = plant_ad->CreateDefaultContext();
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
+
+  int num_balls = 1;
   
   auto controller = builder.AddSystem<systems::controllers::C3Controller_franka>(
                                   plant, plant_f, plant_franka, *context, 
@@ -255,8 +257,8 @@ int DoMain(int argc, char* argv[]){
                                   *plant_ad_f, *context_ad, *context_ad_f, 
                                   scene_graph, *diagram_f, contact_geoms, 
                                   num_friction_directions, mu, Q, R, G, U, 
-                                  xdesired, pp);
-  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
+                                  xdesired, pp, num_balls);
+  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(7, 3, 5*num_balls, 1);
 
   builder.Connect(state_receiver->get_output_port(0), controller->get_input_port(0));    
   builder.Connect(controller->get_output_port(), state_force_sender->get_input_port(0));

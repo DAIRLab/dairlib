@@ -10,6 +10,9 @@ struct C3Parameters {
   // must be serialized in same order as struct
   template <typename Archive>
   void Serialize(Archive* a) {
+    // n-ball stuff
+    a->Visit(DRAKE_NVP(num_balls));
+
     // impedance control parameters
     a->Visit(DRAKE_NVP(translational_stiffness));
     a->Visit(DRAKE_NVP(rotational_stiffness));
@@ -94,6 +97,9 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(alpha_p));
     a->Visit(DRAKE_NVP(alpha_v));
   }
+
+  // n-ball stuff
+  int num_balls;
 
   // impedance control parameters
   double translational_stiffness;

@@ -1,4 +1,5 @@
 # bouncy ball parameters
+num_balls: 1
 
 # impedance control parameters
 translational_stiffness: 400 # 400
@@ -54,7 +55,7 @@ realtime_rate: 1.0
 
 # trajectory parameters
 traj_radius: 0.1
-phase: 180
+phase: 0
 x_c: 0.55
 y_c: 0
 degree_increment: 20
@@ -62,7 +63,7 @@ time_increment: 4
 hold_order: 1 # 0 for zero order hold, 1 for first order hold
 
 # if enable_adaptive_path is set to 1, the trajectory above is not used
-lead_angle: -40 # angle in degrees
+lead_angle: 40 # angle in degrees
 enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
 
 # geometry parameters
@@ -75,7 +76,7 @@ model_table_offset: -0.0031 #-0.0245 # changes need to be consistent with model 
 # Misc
 contact_threshold: 0.01
 enable_heuristic: 0
-enable_contact: 1
+enable_contact: 0
 ball_stddev: 0.0000 # standard deviation of 0-mean noise on ball state estimation
 
 # gaiting parameters

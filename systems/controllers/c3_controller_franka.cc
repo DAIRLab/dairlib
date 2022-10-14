@@ -62,7 +62,7 @@ C3Controller_franka::C3Controller_franka(
     std::vector<drake::geometry::GeometryId> contact_geoms,
     int num_friction_directions, double mu, const vector<MatrixXd>& Q,
     const vector<MatrixXd>& R, const vector<MatrixXd>& G,
-    const vector<MatrixXd>& U, const vector<VectorXd>& xdesired, const drake::trajectories::PiecewisePolynomial<double>& pp)
+    const vector<MatrixXd>& U, const vector<VectorXd>& xdesired, const drake::trajectories::PiecewisePolynomial<double>& pp, const int num_balls)
     : plant_(plant),
       plant_f_(plant_f),
       plant_franka_(plant_franka),
@@ -84,14 +84,14 @@ C3Controller_franka::C3Controller_franka(
       U_(U),
       xdesired_(xdesired),
       pp_(pp),
-      time_horizon_(5) {
+      time_horizon_(5),
+      num_balls_(num_balls){
 
 
-  // initialize warm start
-  // TODO: extract these from the plant
-  int nx = 19;
+  /// initialize warm start for the MIQP
+  int nx = plant_.num_positions() + plant_.num_velocities();
   int nlambda = 12;
-  int nu = 3;
+  int nu = plant_.num_actuators();
 
   for (int i = 0; i < time_horizon_; i++){
     warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
@@ -109,16 +109,27 @@ C3Controller_franka::C3Controller_franka(
     warm_start_u_.push_back(VectorXd::Zero(nu));
   }
 
+  /// number of balls in simulation
+  int num_ee_xyz_pos = 3;
+  int num_ee_xyz_vel = 3;
+  int num_ee_orientation = 4;
+  int num_visualizer_states = 9;
+  //output [ (finger) end effector next state (x,y,z), (finger) end effector orientation (generated via heuristic), ball positions , finger + ball velocities, force_desired, num_visualizer_states  ]
+  num_output_ = num_ee_xyz_pos + num_ee_orientation + num_ee_xyz_vel + 5*num_balls_ + 1;
+
+
+  /// declare the input port ( franka + balls state, franka + balls velocities, franka + balls inputs = franka inputs )
   state_input_port_ =
       this->DeclareVectorInputPort(
               "x, u, t",
-              OutputVector<double>(14, 13, 7))
+              OutputVector<double>(plant_franka_.num_positions(), plant_franka_.num_velocities(), plant_franka_.num_actuators()))
           .get_index();
 
 
+  /// output [ (finger) end effector next state (x,y,z), (finger) end effector orientation (generated via heuristic), ball positions , finger + ball velocities, force_desired, num_visualizer_states  ]
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
-          TimestampedVector<double>(38), &C3Controller_franka::CalcControl)
+          TimestampedVector<double>(num_output_), &C3Controller_franka::CalcControl)
       .get_index();
 
   q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
@@ -140,19 +151,18 @@ C3Controller_franka::C3Controller_franka(
 void C3Controller_franka::CalcControl(const Context<double>& context,
                                       TimestampedVector<double>* state_contact_desired) const {
 
+  // for timing the code
   auto t_start = std::chrono::high_resolution_clock::now();
 
-  // get values
+  // get values ( franka + balls state, franka + balls velocities, franka + balls inputs = franka inputs )
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   double timestamp = robot_output->get_timestamp();
-
 
 
   if (!received_first_message_){
     received_first_message_ = true;
     first_message_time_ = timestamp;
   }
-
 
   // parse some useful values
   double roll_phase = param_.roll_phase;
@@ -186,15 +196,21 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     RotationMatrix<double> rot_y = RotationMatrix<double>::MakeYRotation((t / duration) * param_.orientation_degrees * 3.14 / 180);
     Eigen::Quaterniond orientation_d = (Rd * rot_y).ToQuaternion();
 
-    // fill st_desired
+    // fill st_desired for debug purposes: (state_next.head(3), orientation_d(4), ball_position(7), finger_velocity(3), ball_velocity(6), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz)
     VectorXd traj = pp_.value(timestamp);
-    VectorXd st_desired = VectorXd::Zero(38);
+    VectorXd st_desired = VectorXd::Zero(num_output_);
+    // desired finger (ee) x,y,z
     st_desired.head(3) << target[0];
+    // desired finger (ee) orientation
     st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
-    st_desired.segment(11, 3) << finish(0), finish(1), ball_radius + table_offset;
-    st_desired.segment(14, 3) << target[1];
-    st_desired.segment(32, 3) << finish(0), finish(1), ball_radius + table_offset;
-    st_desired.tail(3) << finish(0), finish(1), ball_radius + table_offset;
+    // ball position (x,y,z) NOT USED (COMMENTED OUT)
+    //st_desired.segment(11, 3) << finish(0), finish(1), ball_radius + table_offset;
+    // finger (ee) velocity
+    st_desired.segment(7, 3) << target[1];
+    // visualization
+//    st_desired.segment(32, 3) << finish(0), finish(1), ball_radius + table_offset;
+//    // visualization
+//    st_desired.tail(3) << finish(0), finish(1), ball_radius + table_offset;
 
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
@@ -231,7 +247,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   q_plant.tail(3) << ProjectStateEstimate(end_effector, q_plant.tail(3));
   // uncomment this line if using OLD simulation (without state estimator)
   // StateEstimation (q_plant, v_plant, end_effector, timestamp);
-
 
   /// update franka position again to include noise
   plant_franka_.SetPositions(&context_franka_, q_plant);
@@ -602,11 +617,22 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
 
   VectorXd force_des = VectorXd::Zero(6);
-  force_des << force(0), force(2), force(4), force(5), force(6), force(7);
+  force_des << force(2), force(4), force(5), force(6), force(7);
 
-  VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+//  VectorXd st_desired(10 + 5*num_balls_ + 1);
+  VectorXd st_desired(10 + 5*num_balls_ + 1);
 
-  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+   //st_desired for debug purposes: (state_next.head(3), orientation_d(4), ball_position(7), finger_velocity(3), ball_velocity(6), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz)
+  //st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des, VectorXd::Zero(9);
+
+  // change format to des_ee_xyz_pos, des_ee_orientation, des_ee_vel, des_force
+  VectorXd des_ee_xyz_pos = state_next.head(3);
+  VectorXd des_ee_orientation = orientation_d;
+  VectorXd des_ee_vel = state_next.segment(3+7*num_balls_,3);
+  VectorXd des_ee_force = force_des;
+  VectorXd misc = VectorXd::Zero(1);
+
+  st_desired << des_ee_xyz_pos, des_ee_orientation, des_ee_vel, des_ee_force, misc;
   
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
@@ -632,11 +658,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //   past_velocities_.push_back(v_ball);
   // }
 
-  auto t_end = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
-  auto duration_solve = std::chrono::duration_cast<std::chrono::milliseconds>(t_solve - t_setup);
-  auto duration_setup = std::chrono::duration_cast<std::chrono::milliseconds>(t_setup - t_start);
-  std::cout << duration.count() << " " << duration_setup.count() << " " << duration_solve.count() << std::endl;
+  /// timing the code
+//  auto t_end = std::chrono::high_resolution_clock::now();
+//  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
+//  auto duration_solve = std::chrono::duration_cast<std::chrono::milliseconds>(t_solve - t_setup);
+//  auto duration_setup = std::chrono::duration_cast<std::chrono::milliseconds>(t_setup - t_start);
+//  std::cout << duration.count() << " " << duration_setup.count() << " " << duration_solve.count() << std::endl;
 
 }
 

@@ -93,7 +93,8 @@ class ImpedanceController : public LeafSystem<double> {
       const std::vector<drake::geometry::GeometryId>& contact_geoms,
       int num_friction_directions,
       double moving_offset,
-      double pushing_offset);
+      double pushing_offset,
+      const int num_balls);
 
   const drake::systems::InputPort<double>& get_input_port_config() const {
     return this->get_input_port(franka_state_input_port_);
@@ -152,6 +153,7 @@ class ImpedanceController : public LeafSystem<double> {
   const int num_friction_directions_;
   const double moving_offset_;
   const double pushing_offset_;
+  const int num_balls_;
   C3Parameters param_;
   int enable_heuristic_;
   int enable_contact_;

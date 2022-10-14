@@ -136,10 +136,11 @@ int DoMain(int argc, char* argv[]){
   int num_friction_directions = 2;
   double moving_offset = param.moving_offset;
   double pushing_offset = param.pushing_offset;
+  int num_balls = param.num_balls;
 
   auto controller = builder.AddSystem<systems::controllers::ImpedanceController>(
       plant, plant_f, *context, context_f, K, B, K_null, B_null, qd,
-      contact_geoms, num_friction_directions, moving_offset, pushing_offset);
+      contact_geoms, num_friction_directions, moving_offset, pushing_offset, num_balls );
   auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
 
   /* -------------------------------------------------------------------------------------------*/
@@ -148,7 +149,7 @@ int DoMain(int argc, char* argv[]){
     LcmSubscriberSystem::Make<dairlib::lcmt_c3>(
       "CONTROLLER_INPUT", &drake_lcm));
   auto c3_receiver = 
-    builder.AddSystem<systems::RobotC3Receiver>(14, 9, 6, 9);
+    builder.AddSystem<systems::RobotC3Receiver>(7, 3, 5*num_balls,1);
   builder.Connect(c3_subscriber->get_output_port(0),
     c3_receiver->get_input_port(0));
   builder.Connect(c3_receiver->get_output_port(0),
@@ -211,7 +212,7 @@ int DoMain(int argc, char* argv[]){
       &drake_lcm, std::move(diagram), state_receiver, FLAGS_channel, true);
   
   /// initialize message
-  std::vector<double> msg_data(38, 0);
+  std::vector<double> msg_data(11 + num_balls*5, 0);
   msg_data[0] = param.initial_start(0);
   msg_data[1] = param.initial_start(1);
   msg_data[2] = param.initial_start(2);
@@ -219,23 +220,23 @@ int DoMain(int argc, char* argv[]){
   msg_data[4] = 1;
   msg_data[5] = 0;
   msg_data[6] = 0;
-  msg_data[7] = 1;
-  msg_data[8] = 0;
-  msg_data[9] = 0;
-  msg_data[10] = 0;
-  msg_data[11] = param.traj_radius * sin(M_PI * param.phase / 180.0) + param.x_c;
-  msg_data[12] = param.traj_radius * cos(M_PI * param.phase / 180.0) + param.y_c;
-  msg_data[13] = param.ball_radius + param.table_offset;
-  msg_data[32] = msg_data[7];
-  msg_data[33] = msg_data[8];
-  msg_data[34] = msg_data[9];
-  msg_data[35] = msg_data[7];
-  msg_data[36] = msg_data[8];
-  msg_data[37] = msg_data[9];
+//  msg_data[7] = 1;
+//  msg_data[8] = 0;
+//  msg_data[9] = 0;
+//  msg_data[10] = 0;
+//  msg_data[11] = param.traj_radius * sin(M_PI * param.phase / 180.0) + param.x_c;
+//  msg_data[12] = param.traj_radius * cos(M_PI * param.phase / 180.0) + param.y_c;
+//  msg_data[13] = param.ball_radius + param.table_offset;
+//  msg_data[32] = msg_data[7];
+//  msg_data[33] = msg_data[8];
+//  msg_data[34] = msg_data[9];
+//  msg_data[35] = msg_data[7];
+//  msg_data[36] = msg_data[8];
+//  msg_data[37] = msg_data[9];
 
   dairlib::lcmt_c3 init_msg;
   init_msg.data = msg_data;
-  init_msg.data_size = 38;
+  init_msg.data_size = 11 + num_balls*5;
   init_msg.utime = 0.0;
 
   /// assign initial message

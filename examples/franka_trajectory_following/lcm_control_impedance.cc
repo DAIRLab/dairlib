@@ -117,7 +117,7 @@ int DoMain(int argc, char* argv[]){
 
   auto controller = builder.AddSystem<systems::controllers::ImpedanceController>(
       plant, plant_f, *context, context_f, K, B, K_null, B_null, qd,
-      contact_geoms, num_friction_directions, moving_offset, pushing_offset);
+      contact_geoms, num_friction_directions, moving_offset, pushing_offset,1 );
   auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
 
   /* -------------------------------------------------------------------------------------------*/

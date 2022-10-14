@@ -47,7 +47,8 @@ ImpedanceController::ImpedanceController(
     const std::vector<drake::geometry::GeometryId>& contact_geoms,
     int num_friction_directions,
     double moving_offset,
-    double pushing_offset)
+    double pushing_offset,
+    const int num_balls)
     : plant_(plant),
       plant_f_(plant_f),
       context_(context),
@@ -60,7 +61,8 @@ ImpedanceController::ImpedanceController(
       contact_geoms_(contact_geoms),
       num_friction_directions_(num_friction_directions),
       moving_offset_(moving_offset),
-      pushing_offset_(pushing_offset){
+      pushing_offset_(pushing_offset),
+      num_balls_(num_balls){
   
   // plant parameters
   int num_positions = plant_.num_positions();
@@ -73,12 +75,17 @@ ImpedanceController::ImpedanceController(
               "x, u, t",
               OutputVector<double>(num_positions, num_velocities, num_inputs))
           .get_index();
-  
+
+  int num_ee_xyz_pos = 3;
+  int num_ee_xyz_vel = 3;
+  int num_ee_orientation = 4;
+  int num_input_c3 = num_ee_xyz_pos + num_ee_orientation + num_ee_xyz_vel + 5*num_balls_ + 1;
+
   // xee: 7D, xball: 7D, xee_dot: 3D, xball_dot: 6D, lambda: 6D (Total: 29D + visuals)
   c3_state_input_port_ =
       this->DeclareVectorInputPort(
               "xee, xball, xee_dot, xball_dot, lambda, visualization",
-              TimestampedVector<double>(38))
+              TimestampedVector<double>(num_input_c3))
           .get_index();
 
   control_output_port_ = this->DeclareVectorOutputPort(
@@ -157,14 +164,20 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);
   VectorXd lambda = VectorXd::Zero(5); // does not contain the slack variable
-  Vector3d ball_xyz_d(state(25), state(26), state(27));
-  Vector3d ball_xyz(state(28), state(29), state(30));
+//  Vector3d ball_xyz_d(state(25), state(26), state(27));
+//  Vector3d ball_xyz(state(28), state(29), state(30));
 
-
+  // desired finger (ee) xyz position
   xd.tail(3) << state.head(3);
+  // desired finger (ee) orientation
   Quaterniond orientation_d(state(3), state(4), state(5), state(6));
-  xd_dot.tail(3) << state.segment(14, 3);
-  lambda << state.segment(24, 5);
+  // desired finger (ee) xyz velocity
+  xd_dot.tail(3) << state.segment(7, 3);
+  // desired contact force (might not be 6*num_balls)
+  lambda << state.segment(10, 5*num_balls_);
+
+  //xd_dot.tail(3) << state.segment(14, 3);
+  //lambda << state.segment(24, 5);
   
   //update the context_
   plant_.SetPositions(&context_, q);
@@ -217,11 +230,11 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // Quaterniond w_desired = RotationMatrix<double>(w_d_aa).ToQuaternion();
 
   double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
-  if (enable_heuristic_ && timestamp > settling_time){
-    Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
-                                 ball_xyz, ball_xyz_d, settling_time, timestamp);
-    xd.tail(3) << xd_new;
-  }
+//  if (enable_heuristic_ && timestamp > settling_time){
+//    Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3),
+//                                 ball_xyz, ball_xyz_d, settling_time, timestamp);
+//    xd.tail(3) << xd_new;
+//  }
 
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R, orientation_d);

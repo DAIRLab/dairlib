@@ -74,35 +74,35 @@ pybind_py_library(
     py_imports = ["."],
 )
 
-pybind_py_library(
-    name = "controllers_franka_py",
-    cc_deps = [
-        "@drake//:drake_shared_library",
-        "//systems/controllers:c3_controller_franka",
-    ],
-    cc_so_name = "controllers_franka",
-    cc_srcs = ["controllers_franka_py.cc"],
-    py_deps = [
-        "@drake//bindings/pydrake",
-        ":module_py",
-    ],
-    py_imports = ["."],
-)
+#pybind_py_library(
+#    name = "controllers_franka_py",
+#    cc_deps = [
+#        "@drake//:drake_shared_library",
+#        "//systems/controllers:c3_controller_franka",
+#    ],
+#    cc_so_name = "controllers_franka",
+#    cc_srcs = ["controllers_franka_py.cc"],
+#    py_deps = [
+#        "@drake//bindings/pydrake",
+#        ":module_py",
+#    ],
+#    py_imports = ["."],
+#)
 
-pybind_py_library(
-    name = "impedance_controllers_py",
-    cc_deps = [
-        "@drake//:drake_shared_library",
-        "//systems/controllers:impedance_controller",
-    ],
-    cc_so_name = "impedance_controllers",
-    cc_srcs = ["impedance_controllers_py.cc"],
-    py_deps = [
-        "@drake//bindings/pydrake",
-        ":module_py",
-    ],
-    py_imports = ["."],
-)
+#pybind_py_library(
+#    name = "impedance_controllers_py",
+#    cc_deps = [
+#        "@drake//:drake_shared_library",
+#        "//systems/controllers:impedance_controller",
+#    ],
+#    cc_so_name = "impedance_controllers",
+#    cc_srcs = ["impedance_controllers_py.cc"],
+#    py_deps = [
+#        "@drake//bindings/pydrake",
+#        ":module_py",
+#    ],
+#    py_imports = ["."],
+#)
 
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
@@ -124,8 +124,8 @@ PY_LIBRARIES = [
     ":primitives_py",
     ":framework_py",
     ":controllers_py",
-    ":controllers_franka_py",
-    ":impedance_controllers_py",
+#    ":controllers_franka_py",
+#    ":impedance_controllers_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

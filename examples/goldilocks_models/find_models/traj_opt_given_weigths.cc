@@ -878,6 +878,7 @@ void postProcessing(const VectorXd& w_sol,
     int n_theta_yddot = theta_yddot.size();
     int n_theta = n_theta_y + n_theta_yddot;
     MatrixXd B = MatrixXd::Zero(A.rows(), n_theta);
+    VectorXd cost_grad_by_envelope_thm = VectorXd::Zero(n_theta);
     if (setting.cubic_spline_in_rom_constraint) {
       // Get the row index of B matrix where dynamics constraint starts
       VectorXd ind_head = solvers::GetConstraintRows(
@@ -945,6 +946,12 @@ void postProcessing(const VectorXd& w_sol,
               dyn_gradient;
           // cout << "row " << ind_start(0) + i * 2 * n_yddot << endl;
 
+          // Testing -- getting cost gradient by envelope thm
+          // Minus sign for gradient descent instead of ascent
+          VectorXd dual_sol = result.GetDualSolution(
+              trajopt.dynamics_constraint_at_knot_bindings[i_binding]);
+          cost_grad_by_envelope_thm -= dyn_gradient.transpose() * dual_sol;
+
           i_binding++;
         }
       }
@@ -975,6 +982,8 @@ void postProcessing(const VectorXd& w_sol,
     QPs.b_vec[sample_idx]->resizeLike(b);
     QPs.b_main_vec[sample_idx]->resizeLike(b_main);
     QPs.B_vec[sample_idx]->resizeLike(B);
+    QPs.cost_grad_by_envelope_thm_vec[sample_idx]->resizeLike(
+        cost_grad_by_envelope_thm);
     *(QPs.w_sol_vec[sample_idx]) = w_sol;
     *(QPs.A_vec[sample_idx]) = A;
     *(QPs.H_vec[sample_idx]) = H;
@@ -984,6 +993,8 @@ void postProcessing(const VectorXd& w_sol,
     *(QPs.b_vec[sample_idx]) = b;
     *(QPs.b_main_vec[sample_idx]) = b_main;
     *(QPs.B_vec[sample_idx]) = B;
+    *(QPs.cost_grad_by_envelope_thm_vec[sample_idx]) =
+        cost_grad_by_envelope_thm;
     /*auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
     cout << "time it takes to save matrices/vectors to RAM: " << elapsed.count()

@@ -321,6 +321,7 @@ def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, zer
 
 
 # Get trajopt sample idx with the most similar task
+# TODO: This function is currently not perfect yet. It cannot pick sample accurately if the sampling density is much high in one dimension than the other + we randomize tasks
 def GetTrajoptSampleIndexGivenTask(rom_iter, task, zero_stride_length=False):
   dir = model_dir if len(FOM_model_dir) == 0 else FOM_model_dir
 
@@ -1147,6 +1148,13 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
 
   surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
   # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
+  # ax.contour(x, y, z)
+
+  # Add contour values
+  # manual_locations = [(0,0.95)]
+  # manual_locations = [(-0.1,0.95), (0,0.95), (0.05,0.95), (0.1,0.95)]
+  # ax.clabel(surf, levels, inline=False, fontsize=10, colors='k', manual=manual_locations)  # manual=True
+  # ax.clabel(surf, levels, inline=False, fontsize=10, colors='k')
 
   # cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
   # cbar = fig.colorbar(surf, shrink=0.9, aspect=10)

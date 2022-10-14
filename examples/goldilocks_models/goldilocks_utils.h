@@ -86,6 +86,9 @@ class SubQpData {
   std::vector<std::shared_ptr<int>> nl_vec;  // # of active constraints
   std::vector<std::shared_ptr<Eigen::MatrixXd>> P_vec;  // w = P_i * theta + q_i
   std::vector<std::shared_ptr<Eigen::VectorXd>> q_vec;  // w = P_i * theta + q_i
+
+  // Testing
+  std::vector<std::shared_ptr<Eigen::VectorXd>> cost_grad_by_envelope_thm_vec;
 };
 
 // Create MultibodyPlant

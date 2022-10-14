@@ -218,6 +218,7 @@ DEFINE_bool(zero_ending_pelvis_angular_vel, false, "");
 DEFINE_bool(com_at_center_of_support_polygon, false, "");
 
 DEFINE_bool(only_update_wrt_main_cost, false, "");
+DEFINE_bool(use_envelope_theorem_to_get_gradient, true, "");
 
 void setCostWeight(double* Q, double* R, double* w_joint_accel,
                    double* all_cost_scale, int robot_option) {
@@ -1214,25 +1215,30 @@ void RecordSolutionQualityAndQueueList(
   }    // end if current sample has good solution
 }
 
-// Calculate the cost gradient and its norm
-void CalcCostGradientAndNorm(vector<int> successful_idx_list,
-                             const vector<std::shared_ptr<MatrixXd>>& P_vec,
-                             const vector<std::shared_ptr<VectorXd>>& q_vec,
-                             const vector<std::shared_ptr<VectorXd>>& b_vec,
-                             const string& dir, const string& prefix,
-                             VectorXd* gradient_cost, double* norm_grad_cost) {
+// Calculate the cost gradient
+void CalcCostGradientSqpMethod(vector<int> successful_idx_list,
+                               const vector<std::shared_ptr<MatrixXd>>& P_vec,
+                               const vector<std::shared_ptr<VectorXd>>& q_vec,
+                               const vector<std::shared_ptr<VectorXd>>& b_vec,
+                               const string& dir, const string& prefix,
+                               VectorXd* gradient_cost) {
   cout << "Calculating gradient\n";
   gradient_cost->setZero();
   for (auto idx : successful_idx_list) {
     (*gradient_cost) += P_vec[idx]->transpose() * (*(b_vec[idx]));
   }
   (*gradient_cost) /= successful_idx_list.size();
-
-  // Calculate gradient norm
-  (*norm_grad_cost) = gradient_cost->norm();
-  writeCSV(dir + prefix + string("norm_grad_cost.csv"),
-           (*norm_grad_cost) * VectorXd::Ones(1));
-  cout << "gradient_cost norm: " << (*norm_grad_cost) << endl << endl;
+}
+void CalcCostGradientEnvelopeThmMethod(
+    vector<int> successful_idx_list,
+    const vector<std::shared_ptr<VectorXd>>& cost_grad_by_envelope_thm_vec,
+    const string& dir, const string& prefix, VectorXd* gradient_cost) {
+  cout << "Calculating gradient\n";
+  gradient_cost->setZero();
+  for (auto idx : successful_idx_list) {
+    (*gradient_cost) += cost_grad_by_envelope_thm_vec[idx]->transpose();
+  }
+  (*gradient_cost) /= successful_idx_list.size();
 }
 
 // Newton's method (not exactly the same, cause Q_theta is not pd but psd)
@@ -1767,6 +1773,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << n_shrink_before_relaxing_tolerance << endl;
   cout << "only_update_wrt_main_cost = " << FLAGS_only_update_wrt_main_cost
        << endl;
+  cout << "use_envelope_theorem_to_get_gradient = "
+       << FLAGS_use_envelope_theorem_to_get_gradient << endl;
+  // Some checks for the outer loop setting
+  if (FLAGS_use_envelope_theorem_to_get_gradient) {
+    // wrt main cost is not implemented
+    DRAKE_DEMAND(!FLAGS_only_update_wrt_main_cost);
+    // it's not implemented for ROM cubic spline constraint method
+    DRAKE_DEMAND(!FLAGS_cubic_spline_in_rom_constraint);
+    // Doesn't work with newton method because I don't approx quad cost
+    DRAKE_DEMAND(!FLAGS_is_newton);
+  }
   // Outer loop setting - help from adjacent samples
   bool get_good_sol_from_adjacent_sample =
       FLAGS_get_good_sol_from_adjacent_sample;
@@ -1925,23 +1942,29 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Reduced order model setup
   if (iter_start != 0) {
-    VectorXd theta_y =
-        readCSV(dir + to_string(iter_start) + string("_theta_y.csv")).col(0);
-    VectorXd theta_yddot =
-        readCSV(dir + to_string(iter_start) + string("_theta_yddot.csv"))
-            .col(0);
-    if (rom->n_theta_y() != theta_y.size()) {
-      cout << "rom->n_theta_y() = " << rom->n_theta_y() << endl;
-      cout << "theta_y.size() = " << theta_y.size() << endl;
-      cout << dir + to_string(iter_start) + string("_theta_y.csv") << endl;
+    cout << dir + to_string(iter_start) + string("_theta_y.csv") << endl;
+    if (rom->n_theta_y() != 0) {
+      VectorXd theta_y =
+          readCSV(dir + to_string(iter_start) + string("_theta_y.csv")).col(0);
+      if (rom->n_theta_y() != theta_y.size()) {
+        cout << "rom->n_theta_y() = " << rom->n_theta_y() << endl;
+        cout << "theta_y.size() = " << theta_y.size() << endl;
+        cout << dir + to_string(iter_start) + string("_theta_y.csv") << endl;
+      }
+      rom->SetThetaY(theta_y);
     }
-    if (rom->n_theta_yddot() != theta_yddot.size()) {
-      cout << "rom->n_theta_yddot() = " << rom->n_theta_yddot() << endl;
-      cout << "theta_yddot.size() = " << theta_yddot.size() << endl;
-      cout << dir + to_string(iter_start) + string("_theta_yddot.csv") << endl;
+    if (rom->n_theta_yddot() != 0) {
+      VectorXd theta_yddot =
+          readCSV(dir + to_string(iter_start) + string("_theta_yddot.csv"))
+              .col(0);
+      if (rom->n_theta_yddot() != theta_yddot.size()) {
+        cout << "rom->n_theta_yddot() = " << rom->n_theta_yddot() << endl;
+        cout << "theta_yddot.size() = " << theta_yddot.size() << endl;
+        cout << dir + to_string(iter_start) + string("_theta_yddot.csv")
+             << endl;
+      }
+      rom->SetThetaYddot(theta_yddot);
     }
-    rom->SetThetaY(theta_y);
-    rom->SetThetaYddot(theta_yddot);
   }
 
   // Vectors/Matrices for the outer loop
@@ -2058,7 +2081,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
         readCSV(dir + to_string(iter_start - 1) + string("_theta_y.csv"));
     MatrixXd prev_theta_yddot_mat =
         readCSV(dir + to_string(iter_start - 1) + string("_theta_yddot.csv"));
-    prev_theta << prev_theta_y_mat.col(0), prev_theta_yddot_mat.col(0);
+
+    DRAKE_DEMAND(rom->n_theta_y() + rom->n_theta_yddot());
+    if (rom->n_theta_y() == 0) {
+      prev_theta << prev_theta_yddot_mat.col(0);
+    } else if (rom->n_theta_yddot() == 0) {
+      prev_theta << prev_theta_y_mat.col(0);
+    } else {
+      prev_theta << prev_theta_y_mat.col(0), prev_theta_yddot_mat.col(0);
+    }
   }
 
   bool start_iterations_with_shrinking_stepsize =
@@ -2719,132 +2750,148 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Update parameters below
 
-      // Extract active and independent constraints (multithreading)
-      auto start_time_extract = std::chrono::high_resolution_clock::now();
-      {
-        cout << "\nExtracting active (and independent rows) of A...\n";
-        vector<std::thread*> threads(std::min(CORES, n_succ_sample));
-        int temp_start_of_idx_list = 0;
-        while (temp_start_of_idx_list < n_succ_sample) {
-          int temp_end_of_idx_list =
-              (temp_start_of_idx_list + CORES >= n_succ_sample)
-                  ? n_succ_sample
-                  : temp_start_of_idx_list + CORES;
-          int thread_idx = 0;
-          for (int idx_of_idx_list = temp_start_of_idx_list;
-               idx_of_idx_list < temp_end_of_idx_list; idx_of_idx_list++) {
-            threads[thread_idx] = new std::thread(
-                extractActiveAndIndependentRows,
-                successful_idx_list[idx_of_idx_list],
-                FLAGS_major_feasibility_tol, indpt_row_tol, dir, std::ref(QPs),
-                method_to_solve_system_of_equations);
-            thread_idx++;
-          }
-          thread_idx = 0;
-          for (int idx_of_idx_list = temp_start_of_idx_list;
-               idx_of_idx_list < temp_end_of_idx_list; idx_of_idx_list++) {
-            threads[thread_idx]->join();
-            delete threads[thread_idx];
-            thread_idx++;
-          }
-          temp_start_of_idx_list = temp_end_of_idx_list;
-        }
-      }
-      /*// Read the matrices after extractions
-      readNonredundentMatrixFile(&nw_vec, &nl_vec,
-                                 &A_active_vec, &B_active_vec,
-                                 n_succ_sample, dir);*/
-      // Print out elapsed time
-      auto finish_time_extract = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed_extract =
-          finish_time_extract - start_time_extract;
-      cout << "Time spent on extracting active (and independent rows) of A: "
-           << to_string(int(elapsed_extract.count())) << " seconds\n";
-      cout << endl;
-
-      // Reference for solving a sparse linear system
-      // https://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
-      // https://eigen.tuxfamily.org/dox/group__LeastSquares.html
-      // Our calculation below is based on the fact that the H matrices are pd
-      // and symmetric, so we check them here.
-      // However, H turned out not to be psd, since we have timestep h as
-      // decision variable. (It came from running cost. ~h*u'*R*u, etc)
-      // Fixed it by adding cost manually (but the timestep is fixed now).
-      // Now H is always pd because we also added a regularization term.
-      /*cout << "Checking if H is pd and symmetric\n";
-      for (int sample = 0; sample < n_succ_sample; sample++) {
-        // Check if H is symmetric
-        VectorXd One_w = VectorXd::Ones(nw_vec[sample]);
-        double sum = One_w.transpose() *
-                     (H_vec[sample] - H_vec[sample].transpose()) * One_w;
-        if (sum != 0) cout << "H is not symmetric\n";
-
-        // Check if H is pd
-        VectorXd eivals_real = H_vec[sample].eigenvalues().real();
-        for (int i = 0; i < eivals_real.size(); i++) {
-          if (eivals_real(i) <= 0)
-            cout << "H is not positive definite (with e-value = "
-                 << eivals_real(i) << ")\n";
-        }
-      }
-      cout << "Finished checking\n\n";*/
-
-      // Get w in terms of theta (Get P_i and q_i where w = P_i * theta + q_i)
-      auto start_time_calc_w = std::chrono::high_resolution_clock::now();
-      {
-        // cout << "Getting P matrix and q vecotr\n";
-        vector<std::thread*> threads(std::min(CORES, n_succ_sample));
-        int temp_start_of_idx_list = 0;
-        while (temp_start_of_idx_list < n_succ_sample) {
-          int temp_end_of_idx_list =
-              (temp_start_of_idx_list + CORES >= n_succ_sample)
-                  ? n_succ_sample
-                  : temp_start_of_idx_list + CORES;
-          int thread_idx = 0;
-          for (int idx_of_idx_list = temp_start_of_idx_list;
-               idx_of_idx_list < temp_end_of_idx_list; idx_of_idx_list++) {
-            threads[thread_idx] = new std::thread(
-                calcWInTermsOfTheta, successful_idx_list[idx_of_idx_list], dir,
-                QPs, method_to_solve_system_of_equations);
-            thread_idx++;
-          }
-          thread_idx = 0;
-          for (int idx_of_idx_list = temp_start_of_idx_list;
-               idx_of_idx_list < temp_end_of_idx_list; idx_of_idx_list++) {
-            threads[thread_idx]->join();
-            delete threads[thread_idx];
-            thread_idx++;
-          }
-          temp_start_of_idx_list = temp_end_of_idx_list;
-        }
-      }
-      /*// Read P_i and q_i
-      readPiQiFile(&P_vec, &q_vec, n_succ_sample, dir);*/
-      // Print out elapsed time
-      auto finish_time_calc_w = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed_calc_w =
-          finish_time_calc_w - start_time_calc_w;
-      cout << "Time spent on getting w in terms of theta: "
-           << to_string(int(elapsed_calc_w.count())) << " seconds\n";
-      cout << endl;
-
       prefix = to_string(iter) + "_";
 
-      // Get gradient of the cost wrt theta and the norm of the gradient
+      // Preprocessing for SQP approach
+      if (!FLAGS_use_envelope_theorem_to_get_gradient) {
+        // Extract active and independent constraints (multithreading)
+        auto start_time_extract = std::chrono::high_resolution_clock::now();
+        {
+          cout << "\nExtracting active (and independent rows) of A...\n";
+          vector<std::thread*> threads(std::min(CORES, n_succ_sample));
+          int temp_start_of_idx_list = 0;
+          while (temp_start_of_idx_list < n_succ_sample) {
+            int temp_end_of_idx_list =
+                (temp_start_of_idx_list + CORES >= n_succ_sample)
+                    ? n_succ_sample
+                    : temp_start_of_idx_list + CORES;
+            int thread_idx = 0;
+            for (int idx_of_idx_list = temp_start_of_idx_list;
+                 idx_of_idx_list < temp_end_of_idx_list; idx_of_idx_list++) {
+              threads[thread_idx] = new std::thread(
+                  extractActiveAndIndependentRows,
+                  successful_idx_list[idx_of_idx_list],
+                  FLAGS_major_feasibility_tol, indpt_row_tol, dir,
+                  std::ref(QPs), method_to_solve_system_of_equations);
+              thread_idx++;
+            }
+            thread_idx = 0;
+            for (int idx_of_idx_list = temp_start_of_idx_list;
+                 idx_of_idx_list < temp_end_of_idx_list; idx_of_idx_list++) {
+              threads[thread_idx]->join();
+              delete threads[thread_idx];
+              thread_idx++;
+            }
+            temp_start_of_idx_list = temp_end_of_idx_list;
+          }
+        }
+        /*// Read the matrices after extractions
+        readNonredundentMatrixFile(&nw_vec, &nl_vec,
+                                   &A_active_vec, &B_active_vec,
+                                   n_succ_sample, dir);*/
+        // Print out elapsed time
+        auto finish_time_extract = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed_extract =
+            finish_time_extract - start_time_extract;
+        cout << "Time spent on extracting active (and independent rows) of A: "
+             << to_string(int(elapsed_extract.count())) << " seconds\n";
+        cout << endl;
+
+        // Reference for solving a sparse linear system
+        // https://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
+        // https://eigen.tuxfamily.org/dox/group__LeastSquares.html
+        // Our calculation below is based on the fact that the H matrices are pd
+        // and symmetric, so we check them here.
+        // However, H turned out not to be psd, since we have timestep h as
+        // decision variable. (It came from running cost. ~h*u'*R*u, etc)
+        // Fixed it by adding cost manually (but the timestep is fixed now).
+        // Now H is always pd because we also added a regularization term.
+        /*cout << "Checking if H is pd and symmetric\n";
+        for (int sample = 0; sample < n_succ_sample; sample++) {
+          // Check if H is symmetric
+          VectorXd One_w = VectorXd::Ones(nw_vec[sample]);
+          double sum = One_w.transpose() *
+                       (H_vec[sample] - H_vec[sample].transpose()) * One_w;
+          if (sum != 0) cout << "H is not symmetric\n";
+
+          // Check if H is pd
+          VectorXd eivals_real = H_vec[sample].eigenvalues().real();
+          for (int i = 0; i < eivals_real.size(); i++) {
+            if (eivals_real(i) <= 0)
+              cout << "H is not positive definite (with e-value = "
+                   << eivals_real(i) << ")\n";
+          }
+        }
+        cout << "Finished checking\n\n";*/
+
+        // Get w in terms of theta (Get P_i and q_i where w = P_i * theta + q_i)
+        auto start_time_calc_w = std::chrono::high_resolution_clock::now();
+        {
+          // cout << "Getting P matrix and q vecotr\n";
+          vector<std::thread*> threads(std::min(CORES, n_succ_sample));
+          int temp_start_of_idx_list = 0;
+          while (temp_start_of_idx_list < n_succ_sample) {
+            int temp_end_of_idx_list =
+                (temp_start_of_idx_list + CORES >= n_succ_sample)
+                    ? n_succ_sample
+                    : temp_start_of_idx_list + CORES;
+            int thread_idx = 0;
+            for (int idx_of_idx_list = temp_start_of_idx_list;
+                 idx_of_idx_list < temp_end_of_idx_list; idx_of_idx_list++) {
+              threads[thread_idx] = new std::thread(
+                  calcWInTermsOfTheta, successful_idx_list[idx_of_idx_list],
+                  dir, QPs, method_to_solve_system_of_equations);
+              thread_idx++;
+            }
+            thread_idx = 0;
+            for (int idx_of_idx_list = temp_start_of_idx_list;
+                 idx_of_idx_list < temp_end_of_idx_list; idx_of_idx_list++) {
+              threads[thread_idx]->join();
+              delete threads[thread_idx];
+              thread_idx++;
+            }
+            temp_start_of_idx_list = temp_end_of_idx_list;
+          }
+        }
+        /*// Read P_i and q_i
+        readPiQiFile(&P_vec, &q_vec, n_succ_sample, dir);*/
+        // Print out elapsed time
+        auto finish_time_calc_w = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed_calc_w =
+            finish_time_calc_w - start_time_calc_w;
+        cout << "Time spent on getting w in terms of theta: "
+             << to_string(int(elapsed_calc_w.count())) << " seconds\n";
+        cout << endl;
+      }
+
+      // Get gradient of the cost wrt theta
       // Assumption: H_vec[sample] are symmetric
       VectorXd gradient_cost(rom->n_theta());
-      double norm_grad_cost;
-      CalcCostGradientAndNorm(
-          successful_idx_list, QPs.P_vec, QPs.q_vec,
-          FLAGS_only_update_wrt_main_cost ? QPs.b_main_vec : QPs.b_vec, dir,
-          prefix, &gradient_cost, &norm_grad_cost);
+      if (FLAGS_use_envelope_theorem_to_get_gradient) {
+        CalcCostGradientEnvelopeThmMethod(successful_idx_list,
+                                          QPs.cost_grad_by_envelope_thm_vec,
+                                          dir, prefix, &gradient_cost);
+      } else {
+        CalcCostGradientSqpMethod(
+            successful_idx_list, QPs.P_vec, QPs.q_vec,
+            FLAGS_only_update_wrt_main_cost ? QPs.b_main_vec : QPs.b_vec, dir,
+            prefix, &gradient_cost);
+      }
+
+      // Get the norm of the gradient
+      double norm_grad_cost = gradient_cost.norm();
+      writeCSV(dir + prefix + string("norm_grad_cost.csv"),
+               norm_grad_cost * VectorXd::Ones(1));
+      cout << "gradient_cost norm: " << norm_grad_cost << endl << endl;
 
       // Calculate Newton step and the decrement
       VectorXd newton_step(rom->n_theta());
       double lambda_square;
-      CalcNewtonStepAndNewtonDecrement(rom->n_theta(), successful_idx_list,
-                                       QPs.P_vec, QPs.H_vec, gradient_cost, dir,
-                                       prefix, &newton_step, &lambda_square);
+      if (!FLAGS_use_envelope_theorem_to_get_gradient) {
+        CalcNewtonStepAndNewtonDecrement(
+            rom->n_theta(), successful_idx_list, QPs.P_vec, QPs.H_vec,
+            gradient_cost, dir, prefix, &newton_step, &lambda_square);
+      }
 
       // Check optimality
       if (HasAchievedOptimum(is_newton, stopping_threshold, lambda_square,

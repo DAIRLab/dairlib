@@ -48,6 +48,9 @@ SubQpData::SubQpData(int N_sample) {
     nl_vec.push_back(std::make_shared<int>());
     P_vec.push_back(std::make_shared<MatrixXd>());
     q_vec.push_back(std::make_shared<VectorXd>());
+
+    // Testing
+    cost_grad_by_envelope_thm_vec.push_back(std::make_shared<VectorXd>());
   }
 }
 

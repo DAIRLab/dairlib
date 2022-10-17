@@ -40,7 +40,7 @@ bazel will automatically download the pegged revision, specified in the WORKSPAC
 This option is recommended for users who are not currently editing any source code in Drake itself. 
 
 #### Option 2: source install of Drake
-Complete both steps (a) and (b) above by running the drake install script afterthe dairlib install script, you are capturing any dependency changes between the pegged revision and the current Drake master, while still getting any aditional dairlib dependencies we may add. Again, there is no need to build Drake. Next, to tell dairlib to use your local install, set the environment variable `DAIRLIB_LOCAL_DRAKE_PATH`, e.g.
+Complete both steps (a) and (b) above. By running the drake install script after the dairlib install script, you are capturing any dependency changes between the pegged revision and the current Drake master, while still getting any aditional dairlib dependencies we may add. There is no need to build Drake. Next, to tell dairlib to use your local install, set the environment variable `DAIRLIB_LOCAL_DRAKE_PATH`, e.g.
 ```
 export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/my-workspace/drake
 ```

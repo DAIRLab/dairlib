@@ -60,8 +60,8 @@ class KinematicCentroidalMPC {
    * @param ref_traj trajectory in time
    * @param Q cost on error from reference
    */
-  void AddCentroidalReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                                  const Eigen::MatrixXd& Q);
+  void AddComReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
+                           const Eigen::MatrixXd& Q);
 
   /*!
    * @brief Adds a cost and reference for the contact position and velocity (x - x_ref)^T Q (x - x_ref)
@@ -70,6 +70,9 @@ class KinematicCentroidalMPC {
    */
   void AddContactTrackingReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj,
                                        const Eigen::MatrixXd& Q_contact);
+
+  void AddMomentumReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
+                                       const Eigen::MatrixXd& Q);
 
   /*!
    * @brief Add a cost and reference for the contact forces (x - x_ref)^T Q (x - x_ref)
@@ -83,7 +86,9 @@ class KinematicCentroidalMPC {
 
   void AddConstantForceTrackingReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q_force);
 
-  void AddConstantCentroidalReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
+  void AddConstantComReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
+
+  void AddConstantMomentumReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
 
   /*!
    * @brief accessor for robot state decision vars
@@ -250,8 +255,10 @@ class KinematicCentroidalMPC {
   /// References and cost matrixes
   std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj_;
   Eigen::MatrixXd Q_;
-  std::unique_ptr<drake::trajectories::Trajectory<double>> centroidal_ref_traj_;
-  Eigen::MatrixXd Q_cent_;
+  std::unique_ptr<drake::trajectories::Trajectory<double>> com_ref_traj_;
+  Eigen::MatrixXd Q_com_;
+  std::unique_ptr<drake::trajectories::Trajectory<double>> mom_ref_traj_;
+  Eigen::MatrixXd Q_mom_;
   std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj_;
   Eigen::MatrixXd Q_contact_;
   std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj_;

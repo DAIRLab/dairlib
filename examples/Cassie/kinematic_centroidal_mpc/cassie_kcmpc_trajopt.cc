@@ -378,5 +378,6 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(10, 0.5, 0.95, 0.2, 0, 1e-3);
+  // Assuming 2 cycles per second
+  DoMain(20, 1, 0.95, 0.2, 0, 1e-3);
 }

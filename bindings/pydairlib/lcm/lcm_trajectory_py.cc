@@ -58,7 +58,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("AddTrajectory", &DirconTrajectory::AddTrajectory)
       .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
            py::arg("trajectory_name"))
-      .def("GetStateSamples", &DirconTrajectory::GetStateSamples)
+      .def("SetFromSolution", &DirconTrajectory::GetStateSamples)
       .def("GetStateDerivativeSamples",
            &DirconTrajectory::GetStateDerivativeSamples)
       .def("GetStateBreaks", &DirconTrajectory::GetStateBreaks)

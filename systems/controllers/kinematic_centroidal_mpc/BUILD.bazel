@@ -12,6 +12,7 @@ cc_library(
         "//multibody/kinematic:kinematic",
         "//multibody/kinematic:constraints",
         "//multibody:multipose_visualizer",
+        "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
     ],
 )

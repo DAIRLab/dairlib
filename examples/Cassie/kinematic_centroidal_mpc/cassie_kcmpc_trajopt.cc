@@ -332,8 +332,9 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   mpc.CreateVisualizationCallback(
       "examples/Cassie/urdf/cassie_fixed_springs.urdf", alpha);
 
-  std::cout << "Solving DIRCON\n\n";
+  std::cout << "Solving optimization\n\n";
   const auto pp_xtraj = mpc.Solve();
+  mpc.SaveSolutionToFile("examples/Cassie/saved_trajectories/kcmpc_solution");
 
   auto traj_source =
       builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);

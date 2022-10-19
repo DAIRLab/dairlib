@@ -176,6 +176,8 @@ class KinematicCentroidalMPC {
 
   void SetRobotStateGuess(const drake::VectorX<double>& state);
 
+  void SetComPositionGuess(const drake::Vector3<double>& state);
+
   void CreateVisualizationCallback(std::string model_file,
                                    double alpha,
                                    std::string weld_frame_to_world = "");
@@ -196,6 +198,9 @@ class KinematicCentroidalMPC {
 
   void AddKinematicConstraint(std::shared_ptr<dairlib::multibody::KinematicPositionConstraint<double>> con,
                               const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& vars);
+
+  void AddComHeightBoundingConstraint(double lb, double ub);
+
  private:
   /*!
    * @brief Adds dynamics for centroidal state

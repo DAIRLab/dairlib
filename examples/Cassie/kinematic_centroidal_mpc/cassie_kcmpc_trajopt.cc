@@ -242,25 +242,25 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
   std::cout<<"Setting initial guess"<<std::endl;
   mpc.SetZeroInitialGuess();
-  Eigen::VectorXd reference_state = GenerateNominalStand(plant, com_height, stance_width);
+  Eigen::VectorXd reference_state = GenerateNominalStand(plant, 1.9, stance_width);
   mpc.SetRobotStateGuess(reference_state);
 
   double cost_force = 0.001;
 
-  double cost_joint_pos = 0.01;
-  double cost_joint_vel = 0.02;
+  double cost_joint_pos = 0.001;
+  double cost_joint_vel = 0.002;
 
   double cost_contact_pos = 1;
   double cost_contact_vel = 2;
 
-  double cost_com_pos = 10;
+  double cost_com_pos = 40;
 
-  double cost_base_vel = 1;
+  double cost_base_vel = 0.001;
   double cost_orientation = 8;
   double cost_angular_vel = 0.01;
 
-  double cost_lin_mom = 0.1;
-  double cost_ang_mom = 0.1;
+  double cost_lin_mom = 0.0001;
+  double cost_ang_mom = 0.0001;
 
   double stance_wiggle = 0.01;
 
@@ -317,6 +317,8 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   Q_momentum.tail(3) = cost_lin_mom * Eigen::Vector3d::Ones();
   mpc.AddConstantMomentumReferenceCost(Eigen::VectorXd::Zero(6), Q_momentum.asDiagonal());
 
+//  mpc.AddComHeightBoundingConstraint(0.1,2);
+//  mpc.SetComPositionGuess({0, 0, com_height});
   std::cout<<"Adding solver options"<<std::endl;
   {
     drake::solvers::SolverOptions options;
@@ -325,7 +327,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
     options.SetOption(id, "dual_inf_tol", tol);
     options.SetOption(id, "constr_viol_tol", tol);
     options.SetOption(id, "compl_inf_tol", tol);
-    options.SetOption(id, "max_iter", 500);
+    options.SetOption(id, "max_iter", 2000);
     options.SetOption(id, "nlp_lower_bound_inf", -1e6);
     options.SetOption(id, "nlp_upper_bound_inf", 1e6);
     options.SetOption(id, "print_timing_statistics", "yes");
@@ -375,5 +377,5 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(10, 0.5, 1.9, 0.2, 0.5, 1e-3);
+  DoMain(10, 0.5, 0.9, 0.2, 0.5, 1e-3);
 }

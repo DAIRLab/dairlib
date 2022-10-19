@@ -220,7 +220,6 @@ void KinematicCentroidalMPC::AddCosts() {
     if(mom_ref_traj_){
       prog_->AddQuadraticErrorCost(Q_mom_, mom_ref_traj_->value(t), momentum_vars(knot_point));
     }
-
     if(contact_ref_traj_){
       prog_->AddQuadraticErrorCost(Q_contact_,  contact_ref_traj_->value(t) , {contact_pos_[knot_point],contact_vel_[knot_point]});
     }
@@ -340,4 +339,14 @@ void KinematicCentroidalMPC::SetRobotStateGuess(const drake::VectorX<double> &st
 }
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::momentum_vars(int knotpoint_index) const {
   return mom_vars_[knotpoint_index];
+}
+void KinematicCentroidalMPC::AddComHeightBoundingConstraint(double lb, double ub) {
+  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++) {
+    prog_->AddBoundingBoxConstraint(lb, ub, com_pos_vars(knot_point)[2]);
+  }
+}
+void KinematicCentroidalMPC::SetComPositionGuess(const drake::Vector3<double> &state) {
+  for(const auto& com_pos : com_vars_){
+    prog_->SetInitialGuess(com_pos, state);
+  }
 }

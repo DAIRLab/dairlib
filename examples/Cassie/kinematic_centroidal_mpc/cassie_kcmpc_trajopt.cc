@@ -317,8 +317,8 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   Q_momentum.tail(3) = cost_lin_mom * Eigen::Vector3d::Ones();
   mpc.AddConstantMomentumReferenceCost(Eigen::VectorXd::Zero(6), Q_momentum.asDiagonal());
 
-//  mpc.AddComHeightBoundingConstraint(0.1,2);
-//  mpc.SetComPositionGuess({0, 0, com_height});
+  mpc.AddComHeightBoundingConstraint(0.1,2);
+  mpc.SetComPositionGuess({0, 0, com_height});
   std::cout<<"Adding solver options"<<std::endl;
   {
     drake::solvers::SolverOptions options;
@@ -378,5 +378,5 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(10, 0.5, 0.9, 0.2, 0.5, 1e-3);
+  DoMain(10, 0.5, 0.95, 0.2, 0, 1e-3);
 }

@@ -59,8 +59,9 @@ class KinematicIntegratorConstraint : public dairlib::solvers::NonlinearConstrai
 
  public:
   KinematicIntegratorConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                                 drake::systems::Context<T>* context,
-                                 double dt,
+                                 drake::systems::Context<T>* context0,
+                                drake::systems::Context<T>* context1,
+                                double dt,
                                  int knot_index);
 
  public:
@@ -68,7 +69,8 @@ class KinematicIntegratorConstraint : public dairlib::solvers::NonlinearConstrai
                           drake::VectorX<T>* y) const override;
 
   const drake::multibody::MultibodyPlant<T>& plant_;
-  drake::systems::Context<T>* context_;
+  drake::systems::Context<T>* context0_;
+  drake::systems::Context<T>* context1_;
   int n_q_;
   int n_v_;
   double dt_;

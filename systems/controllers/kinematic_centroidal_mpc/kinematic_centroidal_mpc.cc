@@ -98,8 +98,11 @@ void KinematicCentroidalMPC::AddCentroidalDynamics() {
                                                                 {momentum_vars(knot_point),
                                                                  momentum_vars(knot_point + 1),
                                                                  com_pos_vars(knot_point),
-                                                                contact_pos_[knot_point],
-                                                                contact_force_[knot_point]}));
+                                                                 contact_pos_[knot_point],
+                                                                 contact_force_[knot_point],
+                                                                 com_pos_vars(knot_point+1),
+                                                                 contact_pos_[knot_point+1],
+                                                                 contact_force_[knot_point+1]}));
   }
 }
 
@@ -107,17 +110,19 @@ void KinematicCentroidalMPC::AddKinematicsIntegrator() {
   for (int knot_point = 0; knot_point < n_knot_points_ - 1; knot_point++) {
     // Integrate generalized velocities to get generalized positions
     auto constraint = std::make_shared<KinematicIntegratorConstraint<double>>(
-        plant_, contexts_[knot_point].get(), dt_,knot_point);
-    centroidal_dynamics_binding_.push_back(prog_->AddConstraint(constraint,
-                                                                {state_vars(knot_point).head(n_q_),
-                                                                 state_vars(knot_point+1).head(n_q_),
-                                                                 state_vars(knot_point).tail(n_v_)}));
+        plant_, contexts_[knot_point].get(), contexts_[knot_point + 1].get(), dt_, knot_point);
+    prog_->AddConstraint(constraint,
+                         {state_vars(knot_point).head(n_q_),
+                          state_vars(knot_point + 1).head(n_q_),
+                          state_vars(knot_point).tail(n_v_),
+                          state_vars(knot_point + 1).tail(n_v_)});
 
     // Integrate foot states
     for (int contact_index = 0; contact_index < n_contact_points_; contact_index++) {
       prog_->AddConstraint(contact_pos_vars(knot_point + 1, contact_index)
                                == contact_pos_vars(knot_point, contact_index)
-                                   + dt_ * contact_vel_vars(knot_point, contact_index));
+                                   + 0.5 * dt_ * (contact_vel_vars(knot_point, contact_index) +
+                                       contact_vel_vars(knot_point + 1, contact_index)));
     }
   }
 }

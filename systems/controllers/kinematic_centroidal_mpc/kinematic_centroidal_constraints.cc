@@ -9,7 +9,7 @@ CentroidalDynamicsConstraint<T>::CentroidalDynamicsConstraint(const drake::multi
                                                               int n_contact,
                                                               double dt,
                                                               int knot_index): dairlib::solvers::NonlinearConstraint<T>(
-    6,  2 * 6 + 3 + 2 * 3 * n_contact,
+    6,  2 * 6 + 2 * (3 + 2 * 3 * n_contact),
     Eigen::VectorXd::Zero(6),
     Eigen::VectorXd::Zero(6),
     "momentum_collocation[" +
@@ -27,6 +27,10 @@ CentroidalDynamicsConstraint<T>::CentroidalDynamicsConstraint(const drake::multi
 ///   - com0, location of com at time k
 ///   - cj0, contact locations time k
 ///   - Fj0, contact forces at time k
+///   - com1, location of com at time k+1
+///   - cj1, contact locations time k+1
+///   - Fj1, contact forces at time k+1
+
 template <typename T>
 void CentroidalDynamicsConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
@@ -36,11 +40,15 @@ void CentroidalDynamicsConstraint<T>::EvaluateConstraint(
   const auto& com0 = x.segment(2 * n_mom_, 3);
   const auto& cj0 = x.segment(2 * n_mom_ + 3, 3 * n_contact_);
   const auto& Fj0 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_, 3 * n_contact_);
+  const auto& com1 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_ + 3 * n_contact_, 3);
+  const auto& cj1 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_ + 3 * n_contact_+ 3, 3 * n_contact_);
+  const auto& Fj1 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_ + 3 * n_contact_+ 3 + 3 * n_contact_, 3 * n_contact_);
 
   drake::Vector<T, 6> xdot0Mom = CalcTimeDerivativesWithForce(com0, cj0, Fj0);
+  drake::Vector<T, 6> xdot1Mom = CalcTimeDerivativesWithForce(com1, cj1, Fj1);
 
   // Predict state and return error
-  const auto x1Predict = xMom0 + xdot0Mom * dt_;
+  const auto x1Predict = xMom0 + 0.5 * dt_ * (xdot0Mom + xdot1Mom);
   *y = xMom1 - x1Predict;
 }
 
@@ -69,16 +77,18 @@ drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
 
 template<typename T>
 KinematicIntegratorConstraint<T>::KinematicIntegratorConstraint(const drake::multibody::MultibodyPlant<T> &plant,
-                                                                  drake::systems::Context<T> *context,
+                                                                  drake::systems::Context<T> *context0,
+                                                                  drake::systems::Context<T>* context1,
                                                                   double dt,
                                                                   int knot_index): dairlib::solvers::NonlinearConstraint<T>(
-    plant.num_positions(),  2 * plant.num_positions()+ plant.num_velocities(),
+    plant.num_positions(),  2 * plant.num_positions() + 2 * plant.num_velocities(),
     Eigen::VectorXd::Zero(plant.num_positions()),
     Eigen::VectorXd::Zero(plant.num_positions()),
     "generalized_velocity_integrator[" +
         std::to_string(knot_index) + "]"),
                                                                                    plant_(plant),
-                                                                                   context_(context),
+                                                                                   context0_(context0),
+                                                                                   context1_(context1),
                                                                                    n_q_(plant_.num_positions()),
                                                                                    n_v_(plant_.num_velocities()),
                                                                                    dt_(dt) {}
@@ -87,17 +97,23 @@ KinematicIntegratorConstraint<T>::KinematicIntegratorConstraint(const drake::mul
 ///   - q0, generalized position at time k
 ///   - q1, generalized position at time k + 1
 ///   - v0, generalized velocity at time k
+///   - v1, generalized velocity at time k + 1
 template<typename T>
 void KinematicIntegratorConstraint<T>::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>> &x,
                                                            drake::VectorX<T> *y) const {
   const auto& q0 = x.head(n_q_);
   const auto& q1 = x.segment(n_q_, n_q_);
-  const auto& v0 = x.tail(n_v_);
+  const auto& v0 = x.segment(n_q_ + n_q_, n_v_);
+  const auto& v1 = x.segment(n_q_ + n_q_ + n_v_, n_v_);
 
-  dairlib::multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, q0, context_);
+  dairlib::multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, q0, context0_);
+  dairlib::multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, q0, context0_);
+
   drake::VectorX<T> qdot0(n_q_);
-  plant_.MapVelocityToQDot(*context_, v0, &qdot0);
-  *y = q0 + dt_ * qdot0 - q1;
+  drake::VectorX<T> qdot1(n_q_);
+  plant_.MapVelocityToQDot(*context0_, v0, &qdot0);
+  plant_.MapVelocityToQDot(*context1_, v1, &qdot1);
+  *y = 0.5 * dt_ * (qdot0 + qdot1) + q0 - q1;
 }
 
 template<typename T>

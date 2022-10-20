@@ -5,6 +5,11 @@
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_constraints.h"
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/multibody_utils.h"
+#include "lcm/lcm_trajectory.h"
+
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using dairlib::LcmTrajectory;
 
 KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::MultibodyPlant<double> &plant,
                                                int n_knot_points,
@@ -23,6 +28,7 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
   n_joint_v_ = n_v_ - kCentroidalVelDim;
   prog_ = std::make_unique<drake::solvers::MathematicalProgram>();
   solver_ = std::make_unique<drake::solvers::IpoptSolver>();
+  result_ = std::make_unique<drake::solvers::MathematicalProgramResult>();
   for(int contact_index = 0; contact_index < n_contact_points_; contact_index ++){
     contact_sets_.emplace_back(plant_);
     contact_sets_[contact_index].add_evaluator(contact_points_[contact_index].get());
@@ -243,24 +249,110 @@ void KinematicCentroidalMPC::SetZeroInitialGuess() {
 }
 
 drake::trajectories::PiecewisePolynomial<double> KinematicCentroidalMPC::Solve() {
-  drake::solvers::MathematicalProgramResult result;
   auto start = std::chrono::high_resolution_clock::now();
   solver_->Solve(*prog_, prog_->initial_guess(),
                 prog_->solver_options(),
-                &result);
+                result_.get());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Solve time:" << elapsed.count() << std::endl;
-  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
+  std::cout << "Cost:" << result_->get_optimal_cost() << std::endl;
 
   std::vector<double> time_points;
   std::vector<drake::MatrixX<double>> states;
   for(int knot_point = 0; knot_point < n_knot_points_; knot_point++ ){
     time_points.emplace_back(dt_*knot_point);
-    states.emplace_back(result.GetSolution(state_vars(knot_point)));
+    states.emplace_back(result_->GetSolution(state_vars(knot_point)));
   }
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points, states);
 }
+
+bool KinematicCentroidalMPC::SaveSolutionToFile(const std::string& filepath){
+  // check if there is a solution
+  DRAKE_DEMAND(result_ != nullptr);
+  Eigen::MatrixXd state_points;
+  Eigen::MatrixXd centroidal_state_points;
+  Eigen::MatrixXd contact_pos_points;
+  Eigen::MatrixXd contact_vel_points;
+  Eigen::MatrixXd contact_force_points;
+  std::vector<double> time_samples;
+  this->SetFromSolution(*result_,
+                       &state_points,
+                       &centroidal_state_points,
+                       &contact_pos_points,
+                       &contact_vel_points,
+                       &contact_force_points,
+                       &time_samples);
+
+  dairlib::LcmTrajectory::Trajectory state_traj;
+  dairlib::LcmTrajectory::Trajectory centroidal_state_traj;
+  dairlib::LcmTrajectory::Trajectory contact_force_traj;
+  state_traj.traj_name = "state_traj";
+  state_traj.datapoints = state_points;
+  state_traj.time_vector = Eigen::Map<VectorXd>(time_samples.data(), time_samples.size());
+  state_traj.datatypes = dairlib::multibody::CreateStateNameVectorFromMap(plant_);
+
+  centroidal_state_traj.traj_name = "centroidal_state_traj";
+  centroidal_state_traj.datapoints = centroidal_state_points;
+  centroidal_state_traj.time_vector = Eigen::Map<VectorXd>(time_samples.data(), time_samples.size());
+  centroidal_state_traj.datatypes = std::vector<std::string>(centroidal_state_traj.datapoints.rows());
+
+  contact_force_traj.traj_name = "contact_force_traj";
+  contact_force_traj.datapoints = contact_force_points;
+  contact_force_traj.time_vector = Eigen::Map<VectorXd>(time_samples.data(), time_samples.size());
+  contact_force_traj.datatypes = std::vector<std::string>(contact_force_traj.datapoints.rows());
+
+  std::vector<dairlib::LcmTrajectory::Trajectory> trajectories;
+  trajectories.push_back(state_traj);
+  trajectories.push_back(centroidal_state_traj);
+  trajectories.push_back(contact_force_traj);
+  std::vector<std::string> trajectory_names = {state_traj.traj_name,
+                                               centroidal_state_traj.traj_name,
+                                               contact_force_traj.traj_name};
+  LcmTrajectory lcm_trajectory = LcmTrajectory(trajectories,
+                trajectory_names,
+                "centroidal_mpc_solution",
+                "centroidal_mpc_solution");
+
+  lcm_trajectory.WriteToFile(filepath);
+  return true;
+}
+
+
+void KinematicCentroidalMPC::SetFromSolution(
+    const drake::solvers::MathematicalProgramResult& result,
+    Eigen::MatrixXd* state_samples,
+    Eigen::MatrixXd* centroidal_samples,
+    Eigen::MatrixXd* contact_pos_samples,
+    Eigen::MatrixXd* contact_vel_samples,
+    Eigen::MatrixXd* contact_force_samples,
+    std::vector<double>* time_samples) const {
+  DRAKE_ASSERT(state_samples != nullptr);
+  DRAKE_ASSERT(centroidal_samples != nullptr);
+  DRAKE_ASSERT(contact_pos_samples != nullptr);
+  DRAKE_ASSERT(contact_vel_samples != nullptr);
+  DRAKE_ASSERT(contact_vel_samples != nullptr);
+  DRAKE_ASSERT(time_samples->empty());
+
+  *state_samples = MatrixXd(n_q_ + n_v_, n_knot_points_);
+  *centroidal_samples = MatrixXd(kCentroidalPosDim + kCentroidalVelDim, n_knot_points_);
+  *contact_force_samples = MatrixXd(3 * n_contact_points_, n_knot_points_);
+  time_samples->resize(n_knot_points_);
+
+  for (int knot_point = 0; knot_point < num_knot_points(); knot_point++) {
+    time_samples->at(knot_point) = knot_point * dt_;
+
+    VectorXd x = result.GetSolution(state_vars(knot_point));
+    VectorXd x_cent = result.GetSolution(x_cent_vars_[knot_point]);
+//    VectorXd contact_pos = result.GetSolution(state_vars(knot_point));
+//    VectorXd contact_vel = result.GetSolution(input_vars(knot_point));
+    VectorXd contact_force = result.GetSolution(contact_force_.at(knot_point));
+    state_samples->col(knot_point) = x;
+    centroidal_samples->col(knot_point) = x_cent;
+    contact_force_samples->col(knot_point) = contact_force;
+  }
+}
+
 
 void KinematicCentroidalMPC::CreateVisualizationCallback(std::string model_file,
                                                          double alpha,
@@ -311,6 +403,7 @@ void KinematicCentroidalMPC::AddPlantJointLimits(const std::vector<std::string>&
   }
 
 }
+
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::com_pos_vars(int knotpoint_index) const {
   return com_vars_[knotpoint_index];
 }

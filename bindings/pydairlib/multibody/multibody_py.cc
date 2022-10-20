@@ -5,6 +5,7 @@
 
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
+#include "multibody/visualization_utils.h"
 
 namespace py = pybind11;
 
@@ -23,6 +24,10 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<std::string, int, double, std::string>())
       .def(py::init<std::string, int, Eigen::VectorXd, std::string>())
       .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"));
+
+  m.def("ConnectTrajectoryVisualizer",
+        &dairlib::multibody::ConnectTrajectoryVisualizer, py::arg("plant"),
+        py::arg("builder"), py::arg("scene_graph"), py::arg("trajectory"));
 
   m.def("MakeNameToPositionsMap",
         &dairlib::multibody::MakeNameToPositionsMap<double>, py::arg("plant"))

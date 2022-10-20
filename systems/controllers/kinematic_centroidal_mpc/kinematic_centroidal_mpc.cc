@@ -271,31 +271,19 @@ bool KinematicCentroidalMPC::SaveSolutionToFile(const std::string& filepath){
   // check if there is a solution
   DRAKE_DEMAND(result_ != nullptr);
   Eigen::MatrixXd state_points;
-  Eigen::MatrixXd centroidal_state_points;
-  Eigen::MatrixXd contact_pos_points;
-  Eigen::MatrixXd contact_vel_points;
   Eigen::MatrixXd contact_force_points;
   std::vector<double> time_samples;
   this->SetFromSolution(*result_,
                        &state_points,
-                       &centroidal_state_points,
-                       &contact_pos_points,
-                       &contact_vel_points,
                        &contact_force_points,
                        &time_samples);
 
   dairlib::LcmTrajectory::Trajectory state_traj;
-  dairlib::LcmTrajectory::Trajectory centroidal_state_traj;
   dairlib::LcmTrajectory::Trajectory contact_force_traj;
   state_traj.traj_name = "state_traj";
   state_traj.datapoints = state_points;
   state_traj.time_vector = Eigen::Map<VectorXd>(time_samples.data(), time_samples.size());
   state_traj.datatypes = dairlib::multibody::CreateStateNameVectorFromMap(plant_);
-
-  centroidal_state_traj.traj_name = "centroidal_state_traj";
-  centroidal_state_traj.datapoints = centroidal_state_points;
-  centroidal_state_traj.time_vector = Eigen::Map<VectorXd>(time_samples.data(), time_samples.size());
-  centroidal_state_traj.datatypes = std::vector<std::string>(centroidal_state_traj.datapoints.rows());
 
   contact_force_traj.traj_name = "contact_force_traj";
   contact_force_traj.datapoints = contact_force_points;
@@ -304,10 +292,8 @@ bool KinematicCentroidalMPC::SaveSolutionToFile(const std::string& filepath){
 
   std::vector<dairlib::LcmTrajectory::Trajectory> trajectories;
   trajectories.push_back(state_traj);
-  trajectories.push_back(centroidal_state_traj);
   trajectories.push_back(contact_force_traj);
   std::vector<std::string> trajectory_names = {state_traj.traj_name,
-                                               centroidal_state_traj.traj_name,
                                                contact_force_traj.traj_name};
   LcmTrajectory lcm_trajectory = LcmTrajectory(trajectories,
                 trajectory_names,
@@ -322,20 +308,13 @@ bool KinematicCentroidalMPC::SaveSolutionToFile(const std::string& filepath){
 void KinematicCentroidalMPC::SetFromSolution(
     const drake::solvers::MathematicalProgramResult& result,
     Eigen::MatrixXd* state_samples,
-    Eigen::MatrixXd* centroidal_samples,
-    Eigen::MatrixXd* contact_pos_samples,
-    Eigen::MatrixXd* contact_vel_samples,
     Eigen::MatrixXd* contact_force_samples,
     std::vector<double>* time_samples) const {
   DRAKE_ASSERT(state_samples != nullptr);
-  DRAKE_ASSERT(centroidal_samples != nullptr);
-  DRAKE_ASSERT(contact_pos_samples != nullptr);
-  DRAKE_ASSERT(contact_vel_samples != nullptr);
-  DRAKE_ASSERT(contact_vel_samples != nullptr);
+  DRAKE_ASSERT(contact_force_samples != nullptr);
   DRAKE_ASSERT(time_samples->empty());
 
   *state_samples = MatrixXd(n_q_ + n_v_, n_knot_points_);
-  *centroidal_samples = MatrixXd(kCentroidalPosDim + kCentroidalVelDim, n_knot_points_);
   *contact_force_samples = MatrixXd(3 * n_contact_points_, n_knot_points_);
   time_samples->resize(n_knot_points_);
 
@@ -343,12 +322,8 @@ void KinematicCentroidalMPC::SetFromSolution(
     time_samples->at(knot_point) = knot_point * dt_;
 
     VectorXd x = result.GetSolution(state_vars(knot_point));
-    VectorXd x_cent = result.GetSolution(x_cent_vars_[knot_point]);
-//    VectorXd contact_pos = result.GetSolution(state_vars(knot_point));
-//    VectorXd contact_vel = result.GetSolution(input_vars(knot_point));
     VectorXd contact_force = result.GetSolution(contact_force_.at(knot_point));
     state_samples->col(knot_point) = x;
-    centroidal_samples->col(knot_point) = x_cent;
     contact_force_samples->col(knot_point) = contact_force;
   }
 }

@@ -183,9 +183,6 @@ class KinematicCentroidalMPC {
   void SetFromSolution(
       const drake::solvers::MathematicalProgramResult& result,
       Eigen::MatrixXd* state_samples,
-      Eigen::MatrixXd* centroidal_samples,
-      Eigen::MatrixXd* contact_pos_samples,
-      Eigen::MatrixXd* contact_vel_samples,
       Eigen::MatrixXd* contact_force_samples,
       std::vector<double>* time_samples) const;
 

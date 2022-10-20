@@ -365,7 +365,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
   std::cout << "Solving optimization\n\n";
   const auto pp_xtraj = mpc.Solve();
-  mpc.SaveSolutionToFile("examples/Cassie/saved_trajectories/kcmpc_solution");
+  mpc.SaveSolutionToFile(std::string(getenv("HOME")) + "/workspace/dairlib/examples/Cassie/saved_trajectories/kcmpc_solution");
 
   auto traj_source =
       builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);

@@ -253,7 +253,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   double cost_contact_pos = 0.1;
   double cost_contact_vel = 0.2;
 
-  double cost_com_pos = 160;
+  double cost_com_pos = 20;
 
   double cost_base_vel = 0.1;
   double cost_orientation = 8;
@@ -394,5 +394,5 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
 int main(int argc, char* argv[]) {
   // Assuming 2 cycles per second
-  DoMain(40, 2, 0.95, 0.2, 0.0, 1e-3);
+  DoMain(20, 2, 0.95, 0.2, 0.0, 1e-3);
 }

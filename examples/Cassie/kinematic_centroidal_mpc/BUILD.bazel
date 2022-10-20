@@ -22,6 +22,7 @@ cc_binary(
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//systems/controllers/kinematic_centroidal_mpc",
+        "//examples/Cassie/kinematic_centroidal_mpc:kinematic_centroidal_reference_generator",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -51,6 +52,18 @@ cc_library(
         "//multibody:utils",
         "//examples/Cassie:cassie_utils",
         "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kinematic_centroidal_reference_generator",
+    srcs = ["reference_generator.cc"],
+    hdrs = ["reference_generator.h"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//common",
+        "//multibody:visualization_utils",
         "@drake//:drake_shared_library",
     ],
 )

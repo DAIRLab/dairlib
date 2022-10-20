@@ -178,19 +178,19 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   std::vector<int> toe_active_inds{0, 1, 2};
   std::vector<int> heel_active_inds{0, 1, 2};
 
-  auto left_toe_eval = std::make_shared<dairlib::multibody::WorldPointEvaluator<double>>(
+  auto left_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
       plant, left_toe_pair.first, left_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
 
-  auto left_heel_eval = std::make_shared<dairlib::multibody::WorldPointEvaluator<double>>(
+  auto left_heel_eval = dairlib::multibody::WorldPointEvaluator<double>(
       plant, left_heel_pair.first, left_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
 
-  auto right_toe_eval = std::make_shared<dairlib::multibody::WorldPointEvaluator<double>>(
+  auto right_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
       plant, right_toe_pair.first, right_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
 
-  auto right_heel_eval = std::make_shared<dairlib::multibody::WorldPointEvaluator<double>>(
+  auto right_heel_eval = dairlib::multibody::WorldPointEvaluator<double>(
       plant, right_heel_pair.first, right_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
 
@@ -245,17 +245,17 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   Eigen::VectorXd reference_state = GenerateNominalStand(plant, 1.9, stance_width);
   mpc.SetRobotStateGuess(reference_state);
 
-  double cost_force = 0.001;
+  double cost_force = 0.0001;
 
   double cost_joint_pos = 0.001;
   double cost_joint_vel = 0.002;
 
-  double cost_contact_pos = 1;
-  double cost_contact_vel = 2;
+  double cost_contact_pos = 0.1;
+  double cost_contact_vel = 0.2;
 
-  double cost_com_pos = 40;
+  double cost_com_pos = 160;
 
-  double cost_base_vel = 0.001;
+  double cost_base_vel = 0.1;
   double cost_orientation = 8;
   double cost_angular_vel = 0.01;
 
@@ -264,11 +264,11 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
   double stance_wiggle = 0.01;
 
-  Eigen::Vector3d left_lb(std::numeric_limits<double>::lowest(), -stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
-  Eigen::Vector3d left_ub(std::numeric_limits<double>::max(), -stance_width/2+stance_wiggle, std::numeric_limits<double>::max());
+  Eigen::Vector3d left_lb(std::numeric_limits<double>::lowest(), stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
+  Eigen::Vector3d left_ub(std::numeric_limits<double>::max(), stance_width/2+stance_wiggle, std::numeric_limits<double>::max());
 
-  Eigen::Vector3d right_lb(std::numeric_limits<double>::lowest(), stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
-  Eigen::Vector3d right_ub(std::numeric_limits<double>::max(), stance_width/2+stance_wiggle, std::numeric_limits<double>::max());
+  Eigen::Vector3d right_lb(std::numeric_limits<double>::lowest(), -stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
+  Eigen::Vector3d right_ub(std::numeric_limits<double>::max(), -stance_width/2+stance_wiggle, std::numeric_limits<double>::max());
   mpc.AddContactPointPositionConstraint(0, left_lb, left_ub);
   mpc.AddContactPointPositionConstraint(1, left_lb, left_ub);
   mpc.AddContactPointPositionConstraint(2, right_lb, right_ub);
@@ -281,12 +281,10 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   ref_force[5] = 33*9.81/4;
   ref_force[8] = 33*9.81/4;
   ref_force[11] = 33*9.81/4;
-
   mpc.AddConstantForceTrackingReferenceCost(ref_force, Q_force.asDiagonal());
 
 
   Eigen::VectorXd Q_state = Eigen::VectorXd::Zero(plant.num_positions() + plant.num_velocities());
-
   Q_state.head(4) = cost_orientation * Eigen::VectorXd::Ones(4);
   Q_state.segment(7, plant.num_positions()-7) = cost_joint_pos * Eigen::VectorXd::Ones(plant.num_positions()-7);
   Q_state.segment(plant.num_positions(), 3) = cost_angular_vel * Eigen::VectorXd::Ones(3);
@@ -319,6 +317,23 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
   mpc.AddComHeightBoundingConstraint(0.1,2);
   mpc.SetComPositionGuess({0, 0, com_height});
+
+  std::vector<std::vector<bool>> mode_sequence(n_knot_points);
+  for(int i = 0; i < n_knot_points/4; i++){
+    mode_sequence[i] = {true, true, true, true};
+  }
+  for(int i = n_knot_points/4; i < 2 * n_knot_points/4; i++){
+    mode_sequence[i] = {true, true, false, false};
+  }
+  for(int i = 2 * n_knot_points/4; i < 3 * n_knot_points/4; i++){
+    mode_sequence[i] = {false, false, true, true};
+  }
+  for(int i = 3 * n_knot_points/4; i < n_knot_points; i++){
+    mode_sequence[i] = {true, true, true, true};
+  }
+  mpc.SetModeSequence(mode_sequence);
+  mpc.AddInitialStateConstraint(reference_state);
+
   std::cout<<"Adding solver options"<<std::endl;
   {
     drake::solvers::SolverOptions options;
@@ -371,7 +386,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(.4);
+    simulator.set_target_realtime_rate(.5);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }
@@ -379,5 +394,5 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
 int main(int argc, char* argv[]) {
   // Assuming 2 cycles per second
-  DoMain(20, 1, 0.95, 0.2, 0, 1e-3);
+  DoMain(40, 2, 0.95, 0.2, 0.0, 1e-3);
 }

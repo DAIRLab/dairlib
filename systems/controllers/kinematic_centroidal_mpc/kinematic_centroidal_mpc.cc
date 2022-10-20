@@ -14,7 +14,7 @@ using dairlib::LcmTrajectory;
 KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::MultibodyPlant<double> &plant,
                                                int n_knot_points,
                                                double dt,
-                                               const std::vector<std::shared_ptr<dairlib::multibody::WorldPointEvaluator<double>>>& contact_points):
+                                               const std::vector<dairlib::multibody::WorldPointEvaluator<double>>& contact_points):
                                                plant_(plant),
                                                n_knot_points_(n_knot_points),
                                                dt_(dt),
@@ -22,7 +22,8 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
                                                n_q_(plant.num_positions()),
                                                n_v_(plant.num_velocities()),
                                                n_contact_points_(contact_points.size()),
-                                               contexts_(n_knot_points){
+                                               contexts_(n_knot_points),
+                                               contact_sequence_(n_knot_points){
 
   n_joint_q_ = n_q_ - kCentroidalPosDim;
   n_joint_v_ = n_v_ - kCentroidalVelDim;
@@ -31,7 +32,7 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
   result_ = std::make_unique<drake::solvers::MathematicalProgramResult>();
   for(int contact_index = 0; contact_index < n_contact_points_; contact_index ++){
     contact_sets_.emplace_back(plant_);
-    contact_sets_[contact_index].add_evaluator(contact_points_[contact_index].get());
+    contact_sets_[contact_index].add_evaluator(&contact_points_[contact_index]);
   }
 
   for(int knot = 0; knot < n_knot_points; knot ++){
@@ -43,6 +44,9 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
     contact_vel_.push_back(prog_->NewContinuousVariables(3 * n_contact_points_, "contact_vel_" + std::to_string(knot)));
     contact_force_.push_back(prog_->NewContinuousVariables(3 * n_contact_points_, "contact_force_" + std::to_string(knot)));
   }
+  std::vector<bool> stance_mode(n_contact_points_);
+  std::fill(stance_mode.begin(), stance_mode.end(), true);
+  std::fill(contact_sequence_.begin(), contact_sequence_.end(), stance_mode);
 }
 
 void KinematicCentroidalMPC::AddStateReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
@@ -131,13 +135,16 @@ void KinematicCentroidalMPC::AddContactConstraints() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     for (int contact_index = 0; contact_index < n_contact_points_; contact_index++) {
       //Make sure feet in stance are not moving and on the ground
-      //TODO replace with check to see if foot is in stance
-      if(true){
-        prog_->AddBoundingBoxConstraint(Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3), contact_vel_vars(knot_point,contact_index));
-        prog_->AddBoundingBoxConstraint(0, 0, contact_pos_vars(knot_point,contact_index)[2]);
+      if (contact_sequence_[knot_point][contact_index]) {
+        prog_->AddBoundingBoxConstraint(Eigen::VectorXd::Zero(3),
+                                        Eigen::VectorXd::Zero(3),
+                                        contact_vel_vars(knot_point, contact_index));
+        if (knot_point != 0){
+          prog_->AddBoundingBoxConstraint(0, 0, contact_pos_vars(knot_point, contact_index)[2]);
+        }
       } else {
         // Feet are above the ground
-        prog_->AddBoundingBoxConstraint(0, 10, contact_pos_vars(knot_point,contact_index)[2]);
+        prog_->AddBoundingBoxConstraint(0.05, 10, contact_pos_vars(knot_point, contact_index)[2]);
       }
     }
   }
@@ -179,6 +186,19 @@ void KinematicCentroidalMPC::AddFrictionConeConstraints() {
     }
   }
 }
+
+void KinematicCentroidalMPC::AddFlightContactForceConstraints() {
+  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
+    for (int contact_index = 0; contact_index < n_contact_points_; contact_index++) {
+      // Feet in flight produce no force
+      if(!contact_sequence_[knot_point][contact_index]){
+        prog_->AddBoundingBoxConstraint(Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3), contact_force_vars(knot_point,contact_index));
+      }
+    }
+  }
+
+}
+
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::state_vars(int knotpoint_index) const {
   return x_vars_[knotpoint_index];
 }
@@ -196,6 +216,7 @@ void KinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &solver_o
   AddContactConstraints();
   AddCentroidalKinematicConsistency();
   AddFrictionConeConstraints();
+  AddFlightContactForceConstraints();
   AddCosts();
   prog_->SetSolverOptions(solver_options);
 }
@@ -340,26 +361,25 @@ void KinematicCentroidalMPC::CreateVisualizationCallback(std::string model_file,
   DRAKE_DEMAND(!callback_visualizer_);  // Cannot be set twice
 
   // Assemble variable list
-  drake::solvers::VectorXDecisionVariable vars(n_knot_points_ *
+  drake::solvers::VectorXDecisionVariable vars(n_knot_points_/2 *
   plant_.num_positions());
-  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
-    vars.segment(knot_point * plant_.num_positions(), plant_.num_positions()) = state_vars(knot_point).head(plant_.num_positions());
+  for(int knot_point = 0; knot_point < n_knot_points_/2; knot_point ++){
+    vars.segment(knot_point * plant_.num_positions(), plant_.num_positions()) = state_vars(knot_point*2).head(plant_.num_positions());
   }
-
-  Eigen::VectorXd alpha_vec = Eigen::VectorXd::Constant(n_knot_points_, alpha);
+  Eigen::VectorXd alpha_vec = Eigen::VectorXd::Constant(n_knot_points_/2, alpha);
   alpha_vec(0) = 1;
-  alpha_vec(n_knot_points_ - 1) = 1;
+  alpha_vec(n_knot_points_/2 - 1) = 1;
 
   // Create visualizer
   callback_visualizer_ = std::make_unique<dairlib::multibody::MultiposeVisualizer>(
-      model_file, n_knot_points_, alpha_vec, weld_frame_to_world);
+      model_file, n_knot_points_/2, alpha_vec, weld_frame_to_world);
 
 
   // Callback lambda function
   auto my_callback = [this](const Eigen::Ref<const Eigen::VectorXd>& vars) {
     Eigen::VectorXd vars_copy = vars;
     Eigen::Map<Eigen::MatrixXd> states(vars_copy.data(), this->plant_.num_positions(),
-                                       this->n_knot_points_);
+                                       this->n_knot_points_/2);
     this->callback_visualizer_->DrawPoses(states);
   };
 
@@ -422,4 +442,12 @@ void KinematicCentroidalMPC::SetComPositionGuess(const drake::Vector3<double> &s
   for(const auto& com_pos : com_vars_){
     prog_->SetInitialGuess(com_pos, state);
   }
+}
+void KinematicCentroidalMPC::SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence) {
+  contact_sequence_ = contact_sequence;
+}
+void KinematicCentroidalMPC::AddInitialStateConstraint(const Eigen::VectorXd state) {
+  DRAKE_DEMAND(state.size() == state_vars(0).size());
+  prog_->AddBoundingBoxConstraint(state, state, state_vars((0)));
+
 }

@@ -43,7 +43,7 @@ class KinematicCentroidalMPC {
   KinematicCentroidalMPC(const drake::multibody::MultibodyPlant<double>& plant,
                          int n_knot_points,
                          double dt,
-                         const std::vector<std::shared_ptr<dairlib::multibody::WorldPointEvaluator<double>>>& contact_points);
+                         const std::vector<dairlib::multibody::WorldPointEvaluator<double>>& contact_points);
 
 
   /*!
@@ -221,6 +221,9 @@ class KinematicCentroidalMPC {
   int num_knot_points() const{
     return n_knot_points_;
   }
+  void SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence);
+
+  void AddInitialStateConstraint(const Eigen::VectorXd state);
 
  private:
   /*!
@@ -267,7 +270,7 @@ class KinematicCentroidalMPC {
   int n_knot_points_;
   double dt_;
 
-  std::vector<std::shared_ptr<dairlib::multibody::WorldPointEvaluator<double>>> contact_points_;
+  std::vector<dairlib::multibody::WorldPointEvaluator<double>> contact_points_;
   std::vector<dairlib::multibody::KinematicEvaluatorSet<double>> contact_sets_;
 
   static const int kCentroidalPosDim = 7;
@@ -291,7 +294,7 @@ class KinematicCentroidalMPC {
   Eigen::MatrixXd Q_force_;
 
 
-  std::vector<std::unordered_map<std::shared_ptr<dairlib::multibody::WorldPointEvaluator<double>>, bool>> contact_sequence_;
+  std::vector<std::vector<bool>> contact_sequence_;
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
   std::unique_ptr<drake::solvers::IpoptSolver> solver_;

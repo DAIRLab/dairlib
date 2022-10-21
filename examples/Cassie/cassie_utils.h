@@ -89,4 +89,5 @@ const systems::GearedMotor& AddMotorModel(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant);
 
+std::vector<std::string> JointNames();
 }  // namespace dairlib

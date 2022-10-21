@@ -10,11 +10,9 @@
 #include <drake/geometry/drake_visualizer.h>
 #include <drake/solvers/solve.h>
 #include "common/find_resource.h"
-#include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_mpc.h"
-#include "examples/Cassie/cassie_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
-#include "multibody/kinematic/kinematic_constraints.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/reference_generator.h"
+#include "examples/Cassie/kinematic_centroidal_mpc/cassie_kinematic_centroidal_mpc.h"
 
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
@@ -39,81 +37,13 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   parser_vis.AddModelFromFile(full_name);
   plant.Finalize();
   plant_vis.Finalize();
-  std::map<std::string, int> positions_map = dairlib::multibody::MakeNameToPositionsMap(plant);
-
-  auto left_toe_pair = dairlib::LeftToeFront(plant);
-  auto left_heel_pair = dairlib::LeftToeRear(plant);
-  auto right_toe_pair = dairlib::RightToeFront(plant);
-  auto right_heel_pair = dairlib::RightToeRear(plant);
-
-  std::vector<int> toe_active_inds{0, 1, 2};
-  std::vector<int> heel_active_inds{0, 1, 2};
-
-  auto left_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, left_toe_pair.first, left_toe_pair.second,
-      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
-
-  auto left_heel_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, left_heel_pair.first, left_heel_pair.second,
-      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
-
-  auto right_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, right_toe_pair.first, right_toe_pair.second,
-      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
-
-  auto right_heel_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, right_heel_pair.first, right_heel_pair.second,
-      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
 
   std::cout<<"Creating MPC"<<std::endl;
-  KinematicCentroidalMPC mpc (plant, n_knot_points, duration/(n_knot_points-1),
-                              {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval});
-
-  // create joint/motor names
-  std::vector<std::pair<std::string, std::string>> l_r_pairs{
-      std::pair<std::string, std::string>("_left", "_right"),
-      std::pair<std::string, std::string>("_right", "_left"),
-  };
-  std::vector<std::string> asy_joint_names{
-      "hip_roll",
-      "hip_yaw",
-  };
-  std::vector<std::string> sym_joint_names{"hip_pitch", "knee", "ankle_joint", "toe"};
-  std::vector<std::string> joint_names{};
-  std::vector<std::string> motor_names{};
-  for (auto &l_r_pair : l_r_pairs) {
-    for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
-      joint_names.push_back(asy_joint_names[i] + l_r_pair.first);
-      motor_names.push_back(asy_joint_names[i] + l_r_pair.first + "_motor");
-    }
-    for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
-      joint_names.push_back(sym_joint_names[i] + l_r_pair.first);
-      if (sym_joint_names[i].compare("ankle_joint") != 0) {
-        motor_names.push_back(sym_joint_names[i] + l_r_pair.first + "_motor");
-      }
-    }
-  }
-  mpc.AddPlantJointLimits(joint_names);
-
-  auto l_loop_evaluator = dairlib::LeftLoopClosureEvaluator(plant);
-  auto r_loop_evaluator = dairlib::RightLoopClosureEvaluator(plant);
-  dairlib::multibody::KinematicEvaluatorSet<double> evaluators(plant);
-  evaluators.add_evaluator(&l_loop_evaluator);
-  evaluators.add_evaluator(&r_loop_evaluator);
-
-  auto loop_closure =
-      std::make_shared<dairlib::multibody::KinematicPositionConstraint<double>>(
-          plant,
-          evaluators,
-          Eigen::VectorXd::Zero(2),
-          Eigen::VectorXd::Zero(2));
-  for(int knot_point = 0; knot_point < n_knot_points; knot_point ++){
-    mpc.AddKinematicConstraint(loop_closure, mpc.state_vars(knot_point).head(plant.num_positions()));
-  }
+  CassieKinematicCentroidalMPC mpc (plant, n_knot_points, duration/(n_knot_points-1));
 
   std::cout<<"Setting initial guess"<<std::endl;
   mpc.SetZeroInitialGuess();
-  Eigen::VectorXd reference_state = GenerateNominalStand(plant, 1.9, stance_width);
+  Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), 1.9, stance_width);
   mpc.SetRobotStateGuess(reference_state);
 
   double cost_force = 0.0001;
@@ -155,12 +85,12 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   mpc.AddConstantForceTrackingReferenceCost(ref_force, Q_force.asDiagonal());
 
 
-  Eigen::VectorXd Q_state = Eigen::VectorXd::Zero(plant.num_positions() + plant.num_velocities());
+  Eigen::VectorXd Q_state = Eigen::VectorXd::Zero(mpc.Plant().num_positions() + mpc.Plant().num_velocities());
   Q_state.head(4) = cost_orientation * Eigen::VectorXd::Ones(4);
-  Q_state.segment(7, plant.num_positions()-7) = cost_joint_pos * Eigen::VectorXd::Ones(plant.num_positions()-7);
-  Q_state.segment(plant.num_positions(), 3) = cost_angular_vel * Eigen::VectorXd::Ones(3);
-  Q_state.segment(plant.num_positions() + 3, 3) = cost_base_vel * Eigen::VectorXd::Ones(3);
-  Q_state.tail(plant.num_velocities() - 6) = cost_joint_vel * Eigen::VectorXd::Ones(plant.num_velocities() - 6);
+  Q_state.segment(7, mpc.Plant().num_positions()-7) = cost_joint_pos * Eigen::VectorXd::Ones(mpc.Plant().num_positions()-7);
+  Q_state.segment(mpc.Plant().num_positions(), 3) = cost_angular_vel * Eigen::VectorXd::Ones(3);
+  Q_state.segment(mpc.Plant().num_positions() + 3, 3) = cost_base_vel * Eigen::VectorXd::Ones(3);
+  Q_state.tail(mpc.Plant().num_velocities() - 6) = cost_joint_vel * Eigen::VectorXd::Ones(mpc.Plant().num_velocities() - 6);
   mpc.AddConstantStateReferenceCost(reference_state, Q_state.asDiagonal());
 
   Eigen::VectorXd reference_com = Eigen::VectorXd::Zero(3);
@@ -241,7 +171,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   auto traj_source =
       builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);
   auto passthrough = builder.AddSystem<dairlib::systems::SubvectorPassThrough>(
-      plant.num_positions() + plant.num_velocities(), 0, plant.num_positions());
+      mpc.Plant().num_positions() + mpc.Plant().num_velocities(), 0, mpc.Plant().num_positions());
   builder.Connect(traj_source->get_output_port(),
                   passthrough->get_input_port());
   auto to_pose =

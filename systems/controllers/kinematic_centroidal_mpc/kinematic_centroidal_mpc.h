@@ -225,6 +225,7 @@ class KinematicCentroidalMPC {
 
   void AddInitialStateConstraint(const Eigen::VectorXd state);
 
+  const drake::multibody::MultibodyPlant<double>& Plant(){return plant_;};
  private:
   /*!
    * @brief Adds dynamics for centroidal state

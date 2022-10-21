@@ -24,7 +24,6 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
                                                n_contact_points_(contact_points.size()),
                                                contexts_(n_knot_points),
                                                contact_sequence_(n_knot_points){
-
   n_joint_q_ = n_q_ - kCentroidalPosDim;
   n_joint_v_ = n_v_ - kCentroidalVelDim;
   prog_ = std::make_unique<drake::solvers::MathematicalProgram>();
@@ -361,10 +360,9 @@ void KinematicCentroidalMPC::CreateVisualizationCallback(std::string model_file,
   DRAKE_DEMAND(!callback_visualizer_);  // Cannot be set twice
 
   // Assemble variable list
-  drake::solvers::VectorXDecisionVariable vars(n_knot_points_/2 *
-  plant_.num_positions());
+  drake::solvers::VectorXDecisionVariable vars(n_knot_points_/2 * n_q_);
   for(int knot_point = 0; knot_point < n_knot_points_/2; knot_point ++){
-    vars.segment(knot_point * plant_.num_positions(), plant_.num_positions()) = state_vars(knot_point*2).head(plant_.num_positions());
+    vars.segment(knot_point * n_q_, n_q_) = state_vars(knot_point*2).head(n_q_);
   }
   Eigen::VectorXd alpha_vec = Eigen::VectorXd::Constant(n_knot_points_/2, alpha);
   alpha_vec(0) = 1;
@@ -378,7 +376,7 @@ void KinematicCentroidalMPC::CreateVisualizationCallback(std::string model_file,
   // Callback lambda function
   auto my_callback = [this](const Eigen::Ref<const Eigen::VectorXd>& vars) {
     Eigen::VectorXd vars_copy = vars;
-    Eigen::Map<Eigen::MatrixXd> states(vars_copy.data(), this->plant_.num_positions(),
+    Eigen::Map<Eigen::MatrixXd> states(vars_copy.data(), this->n_q_,
                                        this->n_knot_points_/2);
     this->callback_visualizer_->DrawPoses(states);
   };

@@ -1,5 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
+exports_files(["kinematic_centroidal_mpc_gains.yaml"])
 
 cc_library(
     name = "centroidal_mpc",
@@ -13,7 +14,7 @@ cc_library(
 cc_binary(
     name = "cassie_kcmpc_trajopt",
     srcs = ["cassie_kcmpc_trajopt.cc"],
-    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    data = ["//examples/Cassie/kinematic_centroidal_mpc:kinematic_centroidal_mpc_gains.yaml"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//common",

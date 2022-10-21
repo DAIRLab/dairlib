@@ -9,6 +9,7 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_constraints.h"
 #include "multibody/kinematic/kinematic_constraints.h"
+#include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_gains.h"
 
 /*!
  * @brief Class for solving nonlinear kinematic centroidal mpc. Implementation is based on
@@ -45,6 +46,8 @@ class KinematicCentroidalMPC {
                          double dt,
                          const std::vector<dairlib::multibody::WorldPointEvaluator<double>>& contact_points);
 
+
+  void SetGains(const KinematicCentroidalGains& gains);
 
   /*!
    * @brief Adds a cost reference for the state of the robot of the form (x - x_ref)^T Q (x - x_ref)

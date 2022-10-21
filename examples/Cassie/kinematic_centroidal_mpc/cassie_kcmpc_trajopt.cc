@@ -9,10 +9,12 @@
 #include <drake/systems/analysis/simulator.h>
 #include <drake/geometry/drake_visualizer.h>
 #include <drake/solvers/solve.h>
+#include <drake/common/yaml/yaml_io.h>
 #include "common/find_resource.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/reference_generator.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/cassie_kinematic_centroidal_mpc.h"
+#include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_gains.h"
 
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
@@ -20,6 +22,7 @@ using drake::multibody::Parser;
 using drake::geometry::DrakeVisualizer;
 
 void DoMain(int n_knot_points, double duration, double com_height, double stance_width, double squat_distance, double tol){
+  auto gains = drake::yaml::LoadYamlFile<KinematicCentroidalGains>("examples/Cassie/kinematic_centroidal_mpc/kinematic_centroidal_mpc_gains.yaml");
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -46,23 +49,6 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), 1.9, stance_width);
   mpc.SetRobotStateGuess(reference_state);
 
-  double cost_force = 0.0001;
-
-  double cost_joint_pos = 0.001;
-  double cost_joint_vel = 0.002;
-
-  double cost_contact_pos = 0.1;
-  double cost_contact_vel = 0.2;
-
-  double cost_com_pos = 20;
-
-  double cost_base_vel = 0.1;
-  double cost_orientation = 8;
-  double cost_angular_vel = 0.01;
-
-  double cost_lin_mom = 0.0001;
-  double cost_ang_mom = 0.0001;
-
   double stance_wiggle = 0.01;
 
   Eigen::Vector3d left_lb(std::numeric_limits<double>::lowest(), stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
@@ -76,7 +62,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   mpc.AddContactPointPositionConstraint(3, right_lb, right_ub);
 
 
-  Eigen::VectorXd Q_force = cost_force * Eigen::VectorXd::Ones(12);
+  Eigen::VectorXd Q_force = Eigen::VectorXd::Zero(12);
   Eigen::VectorXd ref_force = Eigen::VectorXd::Zero(12);
   ref_force[2] = 33*9.81/4;
   ref_force[5] = 33*9.81/4;
@@ -86,11 +72,6 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
 
   Eigen::VectorXd Q_state = Eigen::VectorXd::Zero(mpc.Plant().num_positions() + mpc.Plant().num_velocities());
-  Q_state.head(4) = cost_orientation * Eigen::VectorXd::Ones(4);
-  Q_state.segment(7, mpc.Plant().num_positions()-7) = cost_joint_pos * Eigen::VectorXd::Ones(mpc.Plant().num_positions()-7);
-  Q_state.segment(mpc.Plant().num_positions(), 3) = cost_angular_vel * Eigen::VectorXd::Ones(3);
-  Q_state.segment(mpc.Plant().num_positions() + 3, 3) = cost_base_vel * Eigen::VectorXd::Ones(3);
-  Q_state.tail(mpc.Plant().num_velocities() - 6) = cost_joint_vel * Eigen::VectorXd::Ones(mpc.Plant().num_velocities() - 6);
   mpc.AddConstantStateReferenceCost(reference_state, Q_state.asDiagonal());
 
   Eigen::VectorXd reference_com = Eigen::VectorXd::Zero(3);
@@ -101,19 +82,18 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   auto com_reference = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points,
                                                                                                {reference_com,
                                                                                                 reference_com_bottom});
-  Eigen::VectorXd Q_com = cost_com_pos * Eigen::VectorXd::Ones(3);
+  Eigen::VectorXd Q_com = Eigen::VectorXd::Zero(3);
   mpc.AddComReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(com_reference),
                           Q_com.asDiagonal());
 
-  Eigen::VectorXd Q_contact = cost_contact_pos * Eigen::VectorXd::Ones(4 * 6);
-  Q_contact.tail(4 * 3) = cost_contact_vel * Eigen::VectorXd::Ones(4 * 3);
+  Eigen::VectorXd Q_contact = Eigen::VectorXd::Zero(4 * 6);
   mpc.AddContactTrackingReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(Eigen::VectorXd::Zero(
       4 * 6)), Q_contact.asDiagonal());
 
 
   Eigen::VectorXd Q_momentum(6);
-  Q_momentum.head(3) = cost_ang_mom * Eigen::Vector3d::Ones();
-  Q_momentum.tail(3) = cost_lin_mom * Eigen::Vector3d::Ones();
+  Q_momentum.head(3) =  Eigen::Vector3d::Zero();
+  Q_momentum.tail(3) =  Eigen::Vector3d::Zero();
   mpc.AddConstantMomentumReferenceCost(Eigen::VectorXd::Zero(6), Q_momentum.asDiagonal());
 
   mpc.AddComHeightBoundingConstraint(0.1,2);
@@ -134,7 +114,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   }
   mpc.SetModeSequence(mode_sequence);
   mpc.AddInitialStateConstraint(reference_state);
-
+  mpc.SetGains(gains);
   std::cout<<"Adding solver options"<<std::endl;
   {
     drake::solvers::SolverOptions options;

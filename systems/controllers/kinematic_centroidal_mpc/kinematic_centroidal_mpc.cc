@@ -22,8 +22,13 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
                                                n_q_(plant.num_positions()),
                                                n_v_(plant.num_velocities()),
                                                n_contact_points_(contact_points.size()),
-                                               contexts_(n_knot_points),
-                                               contact_sequence_(n_knot_points){
+                                               Q_(Eigen::MatrixXd::Zero(n_q_ + n_v_, n_q_ + n_v_)),
+                                               Q_com_(Eigen::MatrixXd::Zero(3, 3)),
+                                               Q_mom_(Eigen::MatrixXd::Zero(6, 6)),
+                                               Q_contact_(Eigen::MatrixXd::Zero(6 * n_contact_points_, 6 * n_contact_points_)),
+                                               Q_force_(Eigen::MatrixXd::Zero(3 * n_contact_points_, 3 * n_contact_points_)),
+                                               contact_sequence_(n_knot_points),
+                                               contexts_(n_knot_points){
   n_joint_q_ = n_q_ - kCentroidalPosDim;
   n_joint_v_ = n_v_ - kCentroidalVelDim;
   prog_ = std::make_unique<drake::solvers::MathematicalProgram>();
@@ -448,4 +453,62 @@ void KinematicCentroidalMPC::AddInitialStateConstraint(const Eigen::VectorXd sta
   DRAKE_DEMAND(state.size() == state_vars(0).size());
   prog_->AddBoundingBoxConstraint(state, state, state_vars((0)));
 
+}
+void KinematicCentroidalMPC::SetGains(const KinematicCentroidalGains &gains) {
+  std::map<std::string, int> positions_map = dairlib::multibody::MakeNameToPositionsMap(plant_);
+  std::map<std::string, int> velocities_map = dairlib::multibody::MakeNameToVelocitiesMap(plant_);
+
+  // Generalize state
+  for(const auto&[name, index] : positions_map){
+    const auto it = gains.generalized_positions.find(name);
+    if(it != gains.generalized_positions.end()){
+      Q_(index, index) = it->second;
+    } else if(name.find("left") != std::string::npos) {
+      const auto it_left = gains.generalized_positions.find(name.substr(0, name.size()-4));
+      if(it_left != gains.generalized_positions.end()) {
+        Q_(index, index) = it_left->second;
+      }
+    } else if(name.find("right") != std::string::npos) {
+      const auto it_right = gains.generalized_positions.find(name.substr(0, name.size() - 5));
+      if (it_right != gains.generalized_positions.end()) {
+        Q_(index, index) = it_right->second;
+      }
+    }
+  }
+
+  for(const auto&[name, index] : velocities_map){
+    const auto it = gains.generalized_velocities.find(name);
+    if(it != gains.generalized_velocities.end()){
+      Q_(index+n_q_, index+n_q_) = it->second;
+    } else if(name.find("left") != std::string::npos) {
+      const auto it_left = gains.generalized_velocities.find(name.substr(0, name.size()-7));
+      if(it_left != gains.generalized_velocities.end()) {
+        Q_(index+n_q_, index+n_q_) = it_left->second;
+      }
+    }else if(name.find("right") != std::string::npos){
+      const auto it_right = gains.generalized_velocities.find(name.substr(0, name.size()-8));
+      if(it_right != gains.generalized_velocities.end()) {
+        Q_(index+n_q_, index+n_q_) = it_right->second;
+      }
+    }
+  }
+
+  //com
+  Q_com_ = gains.com_position.asDiagonal();
+
+  //momentum
+  Q_mom_.block<3,3>(0, 0, 3, 3) = gains.ang_momentum.asDiagonal();
+  Q_mom_.block<3,3>(3, 3, 3, 3) = gains.lin_momentum.asDiagonal();
+
+  //contact pos, contact vel
+  Q_contact_.block<Eigen::Dynamic, Eigen::Dynamic>(0, 0, 3 * n_contact_points_, 3 * n_contact_points_) =
+      gains.contact_pos.replicate(n_contact_points_, 1).asDiagonal();
+  Q_contact_.block<Eigen::Dynamic, Eigen::Dynamic>(3 * n_contact_points_,
+                                                   3 * n_contact_points_,
+                                                   3 * n_contact_points_,
+                                                   3 * n_contact_points_) =
+      gains.contact_vel.replicate(n_contact_points_, 1).asDiagonal();
+
+  //contact force
+  Q_force_ = gains.contact_force.replicate(n_contact_points_, 1).asDiagonal();
 }

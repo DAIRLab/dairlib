@@ -53,49 +53,24 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
   std::fill(contact_sequence_.begin(), contact_sequence_.end(), stance_mode);
 }
 
-void KinematicCentroidalMPC::AddStateReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                                                   const Eigen::MatrixXd &Q) {
-  // Ensure matrix is square and has correct number of rows and columns
-  DRAKE_DEMAND(Q.rows() == n_q_ + n_v_);
-  DRAKE_DEMAND(Q.cols() == n_q_ + n_v_);
-
+void KinematicCentroidalMPC::AddStateReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj) {
   ref_traj_ = std::move(ref_traj);
-  Q_ = Q;
 }
 
-void KinematicCentroidalMPC::AddContactTrackingReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj,
-                                                             const Eigen::MatrixXd &Q_contact) {
-  DRAKE_DEMAND(Q_contact.rows() == 2 * 3 * n_contact_points_);
-  DRAKE_DEMAND(Q_contact.cols() == 2 * 3 * n_contact_points_);
-
+void KinematicCentroidalMPC::AddContactTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj) {
   contact_ref_traj_ = std::move(contact_ref_traj);
-  Q_contact_ = Q_contact;
 }
 
-void KinematicCentroidalMPC::AddForceTrackingReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj,
-                                                           const Eigen::MatrixXd &Q_force) {
-  DRAKE_DEMAND(Q_force.rows() == 3 * n_contact_points_);
-  DRAKE_DEMAND(Q_force.cols() == 3 * n_contact_points_);
-
+void KinematicCentroidalMPC::AddForceTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj) {
   force_ref_traj_ = std::move(force_ref_traj);
-  Q_force_ = Q_force;
 }
 
-void KinematicCentroidalMPC::AddComReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                                                 const Eigen::MatrixXd &Q) {
-  DRAKE_DEMAND(Q.rows() == 3);
-  DRAKE_DEMAND(Q.cols() == 3);
-
+void KinematicCentroidalMPC::AddComReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj) {
   com_ref_traj_ = std::move(ref_traj);
-  Q_com_ = Q;
 }
 
-void KinematicCentroidalMPC::AddMomentumReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                                                      const Eigen::MatrixXd &Q) {
-  DRAKE_DEMAND(Q.rows() == 6);
-  DRAKE_DEMAND(Q.cols() == 6);
+void KinematicCentroidalMPC::AddMomentumReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj) {
   mom_ref_traj_ = std::move(ref_traj);
-  Q_mom_ = Q;
 }
 
 void KinematicCentroidalMPC::AddCentroidalDynamics() {
@@ -225,23 +200,20 @@ void KinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &solver_o
   prog_->SetSolverOptions(solver_options);
 }
 
-void KinematicCentroidalMPC::AddConstantStateReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd &Q) {
-  AddStateReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value), Q);
+void KinematicCentroidalMPC::AddConstantStateReference(const drake::VectorX<double>& value) {
+  AddStateReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value));
 }
 
-void KinematicCentroidalMPC::AddConstantForceTrackingReferenceCost(const drake::VectorX<double> &value,
-                                                                   const Eigen::MatrixXd &Q_force) {
-  AddForceTrackingReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value), Q_force);
+void KinematicCentroidalMPC::AddConstantForceTrackingReference(const drake::VectorX<double> &value) {
+  AddForceTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value));
 }
 
-void KinematicCentroidalMPC::AddConstantComReferenceCost(const drake::VectorX<double> &value,
-                                                         const Eigen::MatrixXd &Q) {
-  AddComReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value), Q);
+void KinematicCentroidalMPC::AddConstantComReference(const drake::VectorX<double> &value) {
+  AddComReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value));
 }
 
-void KinematicCentroidalMPC::AddConstantMomentumReferenceCost(const drake::VectorX<double> &value,
-                                                              const Eigen::MatrixXd &Q) {
-  AddMomentumReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value), Q);
+void KinematicCentroidalMPC::AddConstantMomentumReference(const drake::VectorX<double> &value) {
+  AddMomentumReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value));
 }
 
 void KinematicCentroidalMPC::AddCosts() {

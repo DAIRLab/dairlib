@@ -60,19 +60,14 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   mpc.AddContactPointPositionConstraint(1, left_lb, left_ub);
   mpc.AddContactPointPositionConstraint(2, right_lb, right_ub);
   mpc.AddContactPointPositionConstraint(3, right_lb, right_ub);
-
-
-  Eigen::VectorXd Q_force = Eigen::VectorXd::Zero(12);
+  
   Eigen::VectorXd ref_force = Eigen::VectorXd::Zero(12);
   ref_force[2] = 33*9.81/4;
   ref_force[5] = 33*9.81/4;
   ref_force[8] = 33*9.81/4;
   ref_force[11] = 33*9.81/4;
-  mpc.AddConstantForceTrackingReferenceCost(ref_force, Q_force.asDiagonal());
-
-
-  Eigen::VectorXd Q_state = Eigen::VectorXd::Zero(mpc.Plant().num_positions() + mpc.Plant().num_velocities());
-  mpc.AddConstantStateReferenceCost(reference_state, Q_state.asDiagonal());
+  mpc.AddConstantForceTrackingReference(ref_force);
+  mpc.AddConstantStateReference(reference_state);
 
   Eigen::VectorXd reference_com = Eigen::VectorXd::Zero(3);
   reference_com[2] = com_height;
@@ -82,19 +77,12 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   auto com_reference = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points,
                                                                                                {reference_com,
                                                                                                 reference_com_bottom});
-  Eigen::VectorXd Q_com = Eigen::VectorXd::Zero(3);
-  mpc.AddComReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(com_reference),
-                          Q_com.asDiagonal());
+  mpc.AddComReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(com_reference));
 
-  Eigen::VectorXd Q_contact = Eigen::VectorXd::Zero(4 * 6);
-  mpc.AddContactTrackingReferenceCost(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(Eigen::VectorXd::Zero(
-      4 * 6)), Q_contact.asDiagonal());
+  mpc.AddContactTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(Eigen::VectorXd::Zero(
+      4 * 6)));
+  mpc.AddConstantMomentumReference(Eigen::VectorXd::Zero(6));
 
-
-  Eigen::VectorXd Q_momentum(6);
-  Q_momentum.head(3) =  Eigen::Vector3d::Zero();
-  Q_momentum.tail(3) =  Eigen::Vector3d::Zero();
-  mpc.AddConstantMomentumReferenceCost(Eigen::VectorXd::Zero(6), Q_momentum.asDiagonal());
 
   mpc.AddComHeightBoundingConstraint(0.1,2);
   mpc.SetComPositionGuess({0, 0, com_height});

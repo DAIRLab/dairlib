@@ -52,45 +52,36 @@ class KinematicCentroidalMPC {
   /*!
    * @brief Adds a cost reference for the state of the robot of the form (x - x_ref)^T Q (x - x_ref)
    * @param ref_traj trajectory in time
-   * @param Q cost on error from the reference
    */
-  void AddStateReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                             const Eigen::MatrixXd& Q);
+  void AddStateReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
 
   /*!
    * @brief Adds a cost and reference for the centroidal state of the robot (x - x_ref)^T Q (x - x_ref)
    * @param ref_traj trajectory in time
-   * @param Q cost on error from reference
    */
-  void AddComReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                           const Eigen::MatrixXd& Q);
+  void AddComReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
 
   /*!
    * @brief Adds a cost and reference for the contact position and velocity (x - x_ref)^T Q (x - x_ref)
    * @param contact_ref_traj trajectory in time
-   * @param Q_contact cost on error from the reference
    */
-  void AddContactTrackingReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj,
-                                       const Eigen::MatrixXd& Q_contact);
+  void AddContactTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj);
 
-  void AddMomentumReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                                       const Eigen::MatrixXd& Q);
+  void AddMomentumReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
 
   /*!
    * @brief Add a cost and reference for the contact forces (x - x_ref)^T Q (x - x_ref)
    * @param force_ref_traj trajectory in time
-   * @param Q_force cost on error from the reference
    */
-  void AddForceTrackingReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj,
-                                     const Eigen::MatrixXd& Q_force);
+  void AddForceTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj);
 
-  void AddConstantStateReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
+  void AddConstantStateReference(const drake::VectorX<double>& value);
 
-  void AddConstantForceTrackingReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q_force);
+  void AddConstantForceTrackingReference(const drake::VectorX<double>& value);
 
-  void AddConstantComReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
+  void AddConstantComReference(const drake::VectorX<double>& value);
 
-  void AddConstantMomentumReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
+  void AddConstantMomentumReference(const drake::VectorX<double>& value);
 
   /*!
    * @brief accessor for robot state decision vars

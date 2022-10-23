@@ -60,7 +60,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   mpc.AddContactPointPositionConstraint(1, left_lb, left_ub);
   mpc.AddContactPointPositionConstraint(2, right_lb, right_ub);
   mpc.AddContactPointPositionConstraint(3, right_lb, right_ub);
-  
+
   Eigen::VectorXd ref_force = Eigen::VectorXd::Zero(12);
   ref_force[2] = 33*9.81/4;
   ref_force[5] = 33*9.81/4;
@@ -100,6 +100,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   for(int i = 3 * n_knot_points/4; i < n_knot_points; i++){
     mode_sequence[i] = {true, true, true, true};
   }
+
   mpc.SetModeSequence(mode_sequence);
   mpc.AddInitialStateConstraint(reference_state);
   mpc.SetGains(gains);

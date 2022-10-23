@@ -106,8 +106,8 @@ void KinematicIntegratorConstraint<T>::EvaluateConstraint(const Eigen::Ref<const
   const auto& v0 = x.segment(n_q_ + n_q_, n_v_);
   const auto& v1 = x.segment(n_q_ + n_q_ + n_v_, n_v_);
 
-  dairlib::multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, q0, context0_);
-  dairlib::multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, q0, context0_);
+  dairlib::multibody::SetPositionsIfNew<T>(plant_, q0, context0_);
+  dairlib::multibody::SetPositionsIfNew<T>(plant_, q0, context0_);
 
   drake::VectorX<T> qdot0(n_q_);
   drake::VectorX<T> qdot1(n_q_);

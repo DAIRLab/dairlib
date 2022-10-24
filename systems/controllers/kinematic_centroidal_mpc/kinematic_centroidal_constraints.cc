@@ -66,12 +66,9 @@ drake::VectorX<T> CentroidalDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
     sum_forces = sum_forces + force;
   }
 
-  // Working in body frame angular velocity
-  const auto d_ang_mom =  sum_moments;
-  const auto d_lin_mom = sum_forces;
   drake::Vector<T, 6> rv;
-  rv.head(3) = d_ang_mom;
-  rv.tail(3) = d_lin_mom;
+  rv.head(3) = sum_moments;
+  rv.tail(3) = sum_forces;
   return rv;
 }
 

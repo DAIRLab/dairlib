@@ -187,7 +187,15 @@ class KinematicCentroidalMPC {
 
   void SetRobotStateGuess(const drake::VectorX<double>& state);
 
+  void SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double>& state_trajectory);
+
   void SetComPositionGuess(const drake::Vector3<double>& state);
+
+  void SetComPositionGuess(const drake::trajectories::PiecewisePolynomial<double>& com_trajectory);
+
+  void SetContactGuess(const drake::trajectories::PiecewisePolynomial<double>& contact_trajectory);
+
+  void SetForceGuess(const drake::trajectories::PiecewisePolynomial<double>& force_trajectory);
 
   void CreateVisualizationCallback(std::string model_file,
                                    double alpha,
@@ -216,6 +224,8 @@ class KinematicCentroidalMPC {
     return n_knot_points_;
   }
   void SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence);
+
+  void SetModeSequence(const drake::trajectories::PiecewisePolynomial<double>& contact_sequence);
 
   void AddInitialStateConstraint(const Eigen::VectorXd state);
 

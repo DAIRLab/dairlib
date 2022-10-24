@@ -411,6 +411,14 @@ void KinematicCentroidalMPC::SetRobotStateGuess(const drake::VectorX<double> &st
    prog_->SetInitialGuess(state_vars, state);
   }
 }
+
+void KinematicCentroidalMPC::SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double>& state_trajectory) {
+  DRAKE_DEMAND(state_trajectory.rows() == n_q_ + n_v_);
+  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
+    prog_->SetInitialGuess(state_vars(knot_point), state_trajectory.value(dt_ * knot_point));
+  }
+}
+
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::momentum_vars(int knotpoint_index) const {
   return mom_vars_[knotpoint_index];
 }
@@ -424,9 +432,41 @@ void KinematicCentroidalMPC::SetComPositionGuess(const drake::Vector3<double> &s
     prog_->SetInitialGuess(com_pos, state);
   }
 }
+
+void KinematicCentroidalMPC::SetComPositionGuess(const drake::trajectories::PiecewisePolynomial<double>& com_trajectory) {
+  DRAKE_DEMAND(com_trajectory.rows() == 3);
+  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
+    prog_->SetInitialGuess(com_pos_vars(knot_point), com_trajectory.value(dt_ * knot_point));
+  }
+}
+
+void KinematicCentroidalMPC::SetContactGuess(const drake::trajectories::PiecewisePolynomial<double>& contact_trajectory){
+  DRAKE_DEMAND(contact_trajectory.rows() == 6 * n_contact_points_);
+  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
+    prog_->SetInitialGuess(contact_pos_[knot_point], drake::VectorX<double>(contact_trajectory.value(dt_ * knot_point)).head(3 * n_contact_points_));
+    prog_->SetInitialGuess(contact_vel_[knot_point], drake::VectorX<double>(contact_trajectory.value(dt_ * knot_point)).tail(3 * n_contact_points_));
+  }
+}
+void KinematicCentroidalMPC::SetForceGuess(const drake::trajectories::PiecewisePolynomial<double>& force_trajectory){
+  DRAKE_DEMAND(force_trajectory.rows() == 3 * n_contact_points_);
+  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
+    prog_->SetInitialGuess(contact_force_[knot_point], force_trajectory.value(dt_ * knot_point));
+  }
+
+}
+
+
 void KinematicCentroidalMPC::SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence) {
   contact_sequence_ = contact_sequence;
 }
+void KinematicCentroidalMPC::SetModeSequence(const drake::trajectories::PiecewisePolynomial<double>& contact_sequence){
+  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
+    for(int contact_index = 0; contact_index < 4; contact_index ++){
+      contact_sequence_[knot_point][contact_index] = contact_sequence.value(dt_ * knot_point).coeff(contact_index);
+    }
+  }
+}
+
 void KinematicCentroidalMPC::AddInitialStateConstraint(const Eigen::VectorXd state) {
   DRAKE_DEMAND(state.size() == state_vars(0).size());
   prog_->AddBoundingBoxConstraint(state, state, state_vars((0)));

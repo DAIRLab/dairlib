@@ -123,7 +123,11 @@ void KinematicCentroidalMPC::AddContactConstraints() {
         }
       } else {
         // Feet are above the ground
-        prog_->AddBoundingBoxConstraint(0.05, 10, contact_pos_vars(knot_point, contact_index)[2]);
+        double lb = 0;
+        if(knot_point > 0 and knot_point + 1 < n_knot_points_ and !contact_sequence_[knot_point-1][contact_index] and !contact_sequence_[knot_point+1][contact_index]){
+          lb = 0.05;
+        }
+        prog_->AddBoundingBoxConstraint(lb, 10, contact_pos_vars(knot_point, contact_index)[2]);
       }
     }
   }

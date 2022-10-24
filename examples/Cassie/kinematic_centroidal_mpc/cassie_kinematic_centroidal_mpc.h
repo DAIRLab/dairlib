@@ -17,8 +17,9 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
     AddPlantJointLimits(dairlib::JointNames());
     AddLoopClosure();
   }
- private:
+
   std::vector<dairlib::multibody::WorldPointEvaluator<double>> CreateContactPoints(const drake::multibody::MultibodyPlant<double>& plant);
+ private:
   void AddLoopClosure();
 
   dairlib::multibody::DistanceEvaluator<double> l_loop_evaluator_;

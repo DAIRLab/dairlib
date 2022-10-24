@@ -41,69 +41,62 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   plant.Finalize();
   plant_vis.Finalize();
 
-  std::cout<<"Creating MPC"<<std::endl;
   CassieKinematicCentroidalMPC mpc (plant, n_knot_points, duration/(n_knot_points-1));
 
-  std::cout<<"Setting initial guess"<<std::endl;
   mpc.SetZeroInitialGuess();
   Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), 1.9, stance_width);
+  auto context = plant.CreateDefaultContext();
+  dairlib::multibody::SetPositionsAndVelocitiesIfNew<double>(plant, reference_state, context.get());
+  const auto& com = plant.CalcCenterOfMassPositionInWorld(*context);
+  const auto& mass = plant.CalcTotalMass(*context);
+
   mpc.SetRobotStateGuess(reference_state);
-
-  double stance_wiggle = 0.01;
-
-  Eigen::Vector3d left_lb(std::numeric_limits<double>::lowest(), stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
-  Eigen::Vector3d left_ub(std::numeric_limits<double>::max(), stance_width/2+stance_wiggle, std::numeric_limits<double>::max());
-
-  Eigen::Vector3d right_lb(std::numeric_limits<double>::lowest(), -stance_width/2-stance_wiggle, std::numeric_limits<double>::lowest());
-  Eigen::Vector3d right_ub(std::numeric_limits<double>::max(), -stance_width/2+stance_wiggle, std::numeric_limits<double>::max());
-  mpc.AddContactPointPositionConstraint(0, left_lb, left_ub);
-  mpc.AddContactPointPositionConstraint(1, left_lb, left_ub);
-  mpc.AddContactPointPositionConstraint(2, right_lb, right_ub);
-  mpc.AddContactPointPositionConstraint(3, right_lb, right_ub);
-
-  Eigen::VectorXd ref_force = Eigen::VectorXd::Zero(12);
-  ref_force[2] = 33*9.81/4;
-  ref_force[5] = 33*9.81/4;
-  ref_force[8] = 33*9.81/4;
-  ref_force[11] = 33*9.81/4;
-  mpc.AddConstantForceTrackingReference(ref_force);
-  mpc.AddConstantStateReference(reference_state);
-
-  Eigen::VectorXd reference_com = Eigen::VectorXd::Zero(3);
-  reference_com[2] = com_height;
-  Eigen::VectorXd reference_com_bottom = Eigen::VectorXd::Zero(3);
-  reference_com_bottom[2] = com_height-squat_distance;
-  std::vector<double> time_points = {0, duration};
-  auto com_reference = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points,
-                                                                                               {reference_com,
-                                                                                                reference_com_bottom});
-  mpc.AddComReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(com_reference));
-
-  mpc.AddContactTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(Eigen::VectorXd::Zero(
-      4 * 6)));
-  mpc.AddConstantMomentumReference(Eigen::VectorXd::Zero(6));
-
-
+  mpc.AddInitialStateConstraint(reference_state);
   mpc.AddComHeightBoundingConstraint(0.1,2);
   mpc.SetComPositionGuess({0, 0, com_height});
+  mpc.SetGains(gains);
+
+  Gait stand;
+  stand.period = 1;
+  stand.gait_pattern = {{0, 1, drake::Vector<bool, 4>(true, true, true, true)}};
+
+  Gait walk;
+  walk.period = 0.8;
+  walk.gait_pattern = {{0, 0.4, drake::Vector<bool, 4>(true, true, false, false)},
+                        {0.4, 0.5, drake::Vector<bool, 4>(true, true, true, true)},
+                        {0.5, 0.9, drake::Vector<bool, 4>(false, false, true, true)},
+                        {0.9, 1.0, drake::Vector<bool, 4>(true, true, true, true)}};
+
+  auto com_trajectory = GenerateComTrajectory({0, 0, com_height},
+                                              {{0, 0, 0},
+                                               {0.5, 0, 0},
+                                               {0, 0, 0},
+                                               {0, 0, 0}},
+                                              {0, duration/4, 3 * duration/4, duration});
+  auto state_trajectory = GenerateGeneralizedStateTrajectory(reference_state,
+                                                             reference_state.segment(4, 3) - com,
+                                                             com_trajectory,
+                                                             4,
+                                                             4 + plant.num_positions());
+  auto contact_sequence = GenerateModeSequence({stand, walk, stand, stand}, {0, duration/4, 3 * duration/4, duration});
+  auto grf_traj = GenerateGrfReference(contact_sequence, mass);
+  auto contact_traj = GenerateContactPointReference(plant,mpc.CreateContactPoints(plant), state_trajectory);
+  mpc.AddForceTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(grf_traj));
+  mpc.AddStateReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(state_trajectory));
+  mpc.AddComReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(com_trajectory));
+  mpc.AddContactTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(contact_traj));
+  mpc.AddConstantMomentumReference(Eigen::VectorXd::Zero(6));
 
   std::vector<std::vector<bool>> mode_sequence(n_knot_points);
-  for(int i = 0; i < n_knot_points/4; i++){
-    mode_sequence[i] = {true, true, true, true};
-  }
-  for(int i = n_knot_points/4; i < 2 * n_knot_points/4; i++){
-    mode_sequence[i] = {true, true, false, false};
-  }
-  for(int i = 2 * n_knot_points/4; i < 3 * n_knot_points/4; i++){
-    mode_sequence[i] = {false, false, true, true};
-  }
-  for(int i = 3 * n_knot_points/4; i < n_knot_points; i++){
-    mode_sequence[i] = {true, true, true, true};
+  const double dt = duration/(n_knot_points-1);
+
+  for(int knot_point = 0; knot_point < n_knot_points; knot_point ++){
+    for(int contact_index = 0; contact_index < 4; contact_index ++){
+      mode_sequence[knot_point].emplace_back(contact_sequence.value(dt * knot_point).coeff(contact_index));
+    }
   }
 
   mpc.SetModeSequence(mode_sequence);
-  mpc.AddInitialStateConstraint(reference_state);
-  mpc.SetGains(gains);
   std::cout<<"Adding solver options"<<std::endl;
   {
     drake::solvers::SolverOptions options;
@@ -164,5 +157,5 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
 int main(int argc, char* argv[]) {
   // Assuming 2 cycles per second
-  DoMain(20, 2, 0.95, 0.2, 0.0, 1e-3);
+  DoMain(40, 4, 0.95, 0.2, 0.0, 1e-3);
 }

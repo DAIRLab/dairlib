@@ -41,10 +41,10 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   plant.Finalize();
   plant_vis.Finalize();
 
-  CassieKinematicCentroidalMPC mpc (plant, n_knot_points, duration/(n_knot_points-1));
+  CassieKinematicCentroidalMPC mpc (plant, n_knot_points, duration/(n_knot_points-1), 0.4);
 
   mpc.SetZeroInitialGuess();
-  Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), 1.9, stance_width);
+  Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), 1.85, stance_width);
   auto context = plant.CreateDefaultContext();
   dairlib::multibody::SetPositionsAndVelocitiesIfNew<double>(plant, reference_state, context.get());
   const auto& com = plant.CalcCenterOfMassPositionInWorld(*context);
@@ -61,7 +61,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   stand.gait_pattern = {{0, 1, drake::Vector<bool, 4>(true, true, true, true)}};
 
   Gait walk;
-  walk.period = 0.8;
+  walk.period = 0.6;
   walk.gait_pattern = {{0, 0.4, drake::Vector<bool, 4>(true, true, false, false)},
                         {0.4, 0.5, drake::Vector<bool, 4>(true, true, true, true)},
                         {0.5, 0.9, drake::Vector<bool, 4>(false, false, true, true)},
@@ -69,18 +69,18 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
   auto com_trajectory = GenerateComTrajectory({0, 0, com_height},
                                               {{0, 0, 0},
-                                               {0.5, 0, 0},
+                                               {1, 0, 0},
                                                {0, 0, 0},
                                                {0, 0, 0}},
-                                              {0, duration/4, 3 * duration/4, duration});
+                                              {0, 0.5, duration - 0.5, duration});
   auto state_trajectory = GenerateGeneralizedStateTrajectory(reference_state,
                                                              reference_state.segment(4, 3) - com,
                                                              com_trajectory,
                                                              4,
                                                              4 + plant.num_positions());
-  auto contact_sequence = GenerateModeSequence({stand, walk, stand, stand}, {0, duration/4, 3 * duration/4, duration});
+  auto contact_sequence = GenerateModeSequence({stand, walk, stand, stand}, {0, 0.5, duration - 0.5, duration});
   auto grf_traj = GenerateGrfReference(contact_sequence, mass);
-  auto contact_traj = GenerateContactPointReference(plant,mpc.CreateContactPoints(plant), state_trajectory);
+  auto contact_traj = GenerateContactPointReference(plant,mpc.CreateContactPoints(plant, 0), state_trajectory);
   mpc.AddForceTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(grf_traj));
   mpc.AddStateReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(state_trajectory));
   mpc.AddComReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(com_trajectory));
@@ -157,5 +157,5 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
 int main(int argc, char* argv[]) {
   // Assuming 2 cycles per second
-  DoMain(40, 4, 0.95, 0.2, 0.0, 1e-3);
+  DoMain(40, 3, 0.95, 0.2, 0.0, 1e-3);
 }

@@ -176,7 +176,7 @@ int FindCurrentMode(const Gait& active_gait, double time_now){
   double phase_now = fmod(time_now/active_gait.period, 1);
   for(int i = 0; i < active_gait.gait_pattern.size(); i++){
     const auto& mode = active_gait.gait_pattern[i];
-    if(mode.start_phase <= phase_now && mode.end_phase >= phase_now){
+    if(mode.start_phase <= phase_now && mode.end_phase > phase_now){
       return i;
     }
   }

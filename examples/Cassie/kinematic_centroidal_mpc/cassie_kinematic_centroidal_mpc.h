@@ -9,8 +9,8 @@
  */
 class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
  public:
-  CassieKinematicCentroidalMPC(const drake::multibody::MultibodyPlant<double>& plant, int n_knot_points, double dt) :
-      KinematicCentroidalMPC(plant, n_knot_points, dt, CreateContactPoints(plant)),
+  CassieKinematicCentroidalMPC(const drake::multibody::MultibodyPlant<double>& plant, int n_knot_points, double dt, double mu) :
+      KinematicCentroidalMPC(plant, n_knot_points, dt, CreateContactPoints(plant, mu)),
       l_loop_evaluator_(dairlib::LeftLoopClosureEvaluator(Plant())),
       r_loop_evaluator_(dairlib::RightLoopClosureEvaluator(Plant())),
       loop_closure_evaluators(Plant()){
@@ -18,7 +18,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
     AddLoopClosure();
   }
 
-  std::vector<dairlib::multibody::WorldPointEvaluator<double>> CreateContactPoints(const drake::multibody::MultibodyPlant<double>& plant);
+  std::vector<dairlib::multibody::WorldPointEvaluator<double>> CreateContactPoints(const drake::multibody::MultibodyPlant<double>& plant, double mu);
  private:
   void AddLoopClosure();
 

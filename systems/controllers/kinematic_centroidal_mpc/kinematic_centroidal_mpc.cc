@@ -124,7 +124,7 @@ void KinematicCentroidalMPC::AddContactConstraints() {
       } else {
         // Feet are above the ground
         double lb = 0;
-        if(knot_point > 0 and knot_point + 1 < n_knot_points_ and !contact_sequence_[knot_point-1][contact_index] and !contact_sequence_[knot_point+1][contact_index]){
+        if(knot_point > 0 and knot_point + 1 < n_knot_points_ and (!contact_sequence_[knot_point-1][contact_index] or !contact_sequence_[knot_point+1][contact_index])){
           lb = 0.05;
         }
         prog_->AddBoundingBoxConstraint(lb, 10, contact_pos_vars(knot_point, contact_index)[2]);
@@ -162,10 +162,14 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
 }
 
 void KinematicCentroidalMPC::AddFrictionConeConstraints() {
-  //{TODO} make this actual friction cone constraint
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     for (int contact_index = 0; contact_index < n_contact_points_; contact_index++) {
-      prog_->AddBoundingBoxConstraint(0, std::numeric_limits<double>::max(), contact_force_vars(knot_point,contact_index)[2]);
+      if(contact_sequence_[knot_point][contact_index]){
+        auto force_constraints_vec = contact_points_[contact_index].CreateLinearFrictionConstraints();
+        for(const auto& constraint : force_constraints_vec){
+          prog_->AddConstraint(constraint, contact_force_vars(knot_point, contact_index));
+        }
+      }
     }
   }
 }
@@ -222,21 +226,22 @@ void KinematicCentroidalMPC::AddConstantMomentumReference(const drake::VectorX<d
 
 void KinematicCentroidalMPC::AddCosts() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
+    double terminal_gain = knot_point == n_knot_points_-1 ? 10 : 1;
     double t = dt_ * knot_point;
     if(ref_traj_){
-      prog_->AddQuadraticErrorCost(Q_, ref_traj_->value(t), state_vars(knot_point));
+      prog_->AddQuadraticErrorCost(terminal_gain * Q_, ref_traj_->value(t), state_vars(knot_point));
     }
     if(com_ref_traj_){
-      prog_->AddQuadraticErrorCost(Q_com_,  com_ref_traj_->value(t) , com_pos_vars(knot_point));
+      prog_->AddQuadraticErrorCost(terminal_gain * Q_com_,  com_ref_traj_->value(t) , com_pos_vars(knot_point));
     }
     if(mom_ref_traj_){
-      prog_->AddQuadraticErrorCost(Q_mom_, mom_ref_traj_->value(t), momentum_vars(knot_point));
+      prog_->AddQuadraticErrorCost(terminal_gain * Q_mom_, mom_ref_traj_->value(t), momentum_vars(knot_point));
     }
     if(contact_ref_traj_){
-      prog_->AddQuadraticErrorCost(Q_contact_,  contact_ref_traj_->value(t) , {contact_pos_[knot_point],contact_vel_[knot_point]});
+      prog_->AddQuadraticErrorCost(terminal_gain * Q_contact_,  contact_ref_traj_->value(t) , {contact_pos_[knot_point],contact_vel_[knot_point]});
     }
     if(force_ref_traj_){
-      prog_->AddQuadraticErrorCost(Q_force_, force_ref_traj_->value(t), contact_force_[knot_point]);
+      prog_->AddQuadraticErrorCost(terminal_gain * Q_force_, force_ref_traj_->value(t), contact_force_[knot_point]);
     }
   }
 }

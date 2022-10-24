@@ -4,7 +4,8 @@
 #include "examples/Cassie/cassie_utils.h"
 
 std::vector<dairlib::multibody::WorldPointEvaluator<double>> CassieKinematicCentroidalMPC::CreateContactPoints(const drake::multibody::MultibodyPlant<
-    double> &plant) {
+    double> &plant,
+                                                                                                               double mu) {
   auto left_toe_pair = dairlib::LeftToeFront(plant);
   auto left_heel_pair = dairlib::LeftToeRear(plant);
   auto right_toe_pair = dairlib::RightToeFront(plant);
@@ -15,18 +16,26 @@ std::vector<dairlib::multibody::WorldPointEvaluator<double>> CassieKinematicCent
   auto left_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
       plant, left_toe_pair.first, left_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
+  left_toe_eval.set_frictional();
+  left_toe_eval.set_mu(mu);
 
   auto left_heel_eval = dairlib::multibody::WorldPointEvaluator<double>(
       plant, left_heel_pair.first, left_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
+  left_heel_eval.set_frictional();
+  left_heel_eval.set_mu(mu);
 
   auto right_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
       plant, right_toe_pair.first, right_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
+  right_toe_eval.set_frictional();
+  right_toe_eval.set_mu(mu);
 
   auto right_heel_eval = dairlib::multibody::WorldPointEvaluator<double>(
       plant, right_heel_pair.first, right_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
+  right_heel_eval.set_frictional();
+  right_heel_eval.set_mu(mu);
 
   return {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval};
 }

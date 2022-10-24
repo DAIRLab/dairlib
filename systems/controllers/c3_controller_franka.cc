@@ -364,6 +364,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   solvers::LCS* lcs = &lcs_system_full;
   // double scaling = system_scaling_pair.second;
 
+  int n_full = ((lcs->A_)[0].cols());
+  int m_full = ((lcs->D_)[0].cols());
+  int k_full = ((lcs->B_)[0].cols());
+
+//  std::cout << "n_full" << n_full << std::endl;
+//  std::cout << "m_full" << m_full << std::endl;
+//  std::cout << "k_full" << k_full << std::endl;
+
   std::set<int> active_lambda_inds;
   std::set<int> inactive_lambda_inds;
   active_lambda_inds.insert(3);
@@ -390,6 +398,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   int n = ((lcs->A_)[0].cols());
   int m = ((lcs->D_)[0].cols());
   int k = ((lcs->B_)[0].cols());
+
+
 
   ///****** START CHANGE OF VARIABLES *********
   // Change of variables x->y
@@ -460,6 +470,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     n = A_red.cols();
     m = D_red.cols();
     k = B_red.cols();
+
+//    std::cout << "n:" << n << std::endl;
+//    std::cout << "m:" << m << std::endl;
+//    std::cout << "k:" << k << std::endl;
 
   }
 
@@ -543,22 +557,46 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     warm_start_u_.push_back(VectorXd::Zero(nu));
   }
 
-
-
-   //TODO: fix other args to opt()
+   //TODO: fix other args to opt() --- fixed, double-check
    //G, U, traj_desired, warm starts;
    //auto Q_red = (S + W.transpose()) * Qha * (S.transpose() + W);
 
-  std::vector<MatrixXd> G,U;
-  for (int i = 0; i < G_.size(); i++) {
-    G.push_back(G_[i].block(0, 0, n + m + k, n + m + k));
-    U.push_back(U_[i].block(0, 0, n + m + k, n + m + k));
-    warm_start_delta_[i] = warm_start_delta_[i].head(n + m + k);
-    warm_start_binary_[i] = warm_start_binary_[i].head(m);
-    warm_start_lambda_[i] = warm_start_lambda_[i].head(m);
-    warm_start_x_[i] = warm_start_x_[i].head(n);
-    warm_start_u_[i] = warm_start_u_[i].head(k);
-  }
+  std::vector<MatrixXd> G, U;
+   if (param_.rolling_state_reduction) {
+     for (int i = 0; i < G_.size(); i++) {
+       MatrixXd G_holder = MatrixXd::Zero(n + m + k, n + m + k);
+       //G_holder.block(0,0,n,n) = (S + W.transpose()) *  G_[i].block(0, 0, n_full, n_full)  *  (S.transpose() + W);
+       G_holder.block(0,0,n,n) = G_[i].block(0, 0, n, n);
+       G_holder.block(n,n,m,m) = G_[i].block(n_full, n_full, m, m);
+       G_holder.block(n+m,n+m,k,k) = G_[i].block(n_full + m_full, n_full + m_full, k, k) ;
+       G.push_back( G_holder );
+
+       MatrixXd U_holder = MatrixXd::Zero(n + m + k, n + m + k);
+       //U_holder.block(0,0,n,n) = (S + W.transpose()) *  U_[i].block(0, 0, n_full, n_full)  *  (S.transpose() + W);
+       U_holder.block(0,0,n,n) = U_[i].block(0, 0, n, n);
+       U_holder.block(n,n,m,m) = U_[i].block(n_full, n_full, m, m);
+       U_holder.block(n+m,n+m,k,k) = U_[i].block(n_full + m_full, n_full + m_full, k, k) ;
+       U.push_back( U_holder );
+
+       warm_start_delta_[i] = warm_start_delta_[i].head(n + m + k);
+       warm_start_binary_[i] = warm_start_binary_[i].head(m);
+       warm_start_lambda_[i] = warm_start_lambda_[i].head(m);
+       warm_start_x_[i] = warm_start_x_[i].head(n);
+       warm_start_u_[i] = warm_start_u_[i].head(k);
+     }
+   }
+   else {
+     for (int i = 0; i < G_.size(); i++) {
+       G.push_back(G_[i].block(0, 0, n + m + k, n + m + k));
+       U.push_back(U_[i].block(0, 0, n + m + k, n + m + k));
+       warm_start_delta_[i] = warm_start_delta_[i].head(n + m + k);
+       warm_start_binary_[i] = warm_start_binary_[i].head(m);
+       warm_start_lambda_[i] = warm_start_lambda_[i].head(m);
+       warm_start_x_[i] = warm_start_x_[i].head(n);
+       warm_start_u_[i] = warm_start_u_[i].head(k);
+     }
+   }
+
   solvers::C3MIQP opt(*lcs, Qha, R_, G, U, traj_desired, options,
     warm_start_delta_, warm_start_binary_, warm_start_x_,
     warm_start_lambda_, warm_start_u_, true);

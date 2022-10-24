@@ -94,9 +94,7 @@ class CenterofMassPositionConstraint : public dairlib::solvers::NonlinearConstra
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   drake::systems::Context<T>* context_;
-  int n_x_;
-  int n_u_;
-  const drake::VectorX<T> zero_control_;
+  int n_q_;
 };
 
 /*!
@@ -117,8 +115,6 @@ class CentroidalMomentumConstraint : public dairlib::solvers::NonlinearConstrain
   const drake::multibody::MultibodyPlant<T>& plant_;
   drake::systems::Context<T>* context_;
   int n_x_;
-  int n_u_;
-  const drake::VectorX<T> zero_control_;
 };
 
 /*!

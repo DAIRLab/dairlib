@@ -164,11 +164,9 @@ void KinematicCentroidalMPC::AddCentroidalKinematicConsistency() {
 void KinematicCentroidalMPC::AddFrictionConeConstraints() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     for (int contact_index = 0; contact_index < n_contact_points_; contact_index++) {
-      if(contact_sequence_[knot_point][contact_index]){
-        auto force_constraints_vec = contact_points_[contact_index].CreateLinearFrictionConstraints();
-        for(const auto& constraint : force_constraints_vec){
-          prog_->AddConstraint(constraint, contact_force_vars(knot_point, contact_index));
-        }
+      auto force_constraints_vec = contact_points_[contact_index].CreateLinearFrictionConstraints();
+      for(const auto& constraint : force_constraints_vec){
+        prog_->AddConstraint(constraint, contact_force_vars(knot_point, contact_index));
       }
     }
   }
@@ -183,7 +181,6 @@ void KinematicCentroidalMPC::AddFlightContactForceConstraints() {
       }
     }
   }
-
 }
 
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::state_vars(int knotpoint_index) const {

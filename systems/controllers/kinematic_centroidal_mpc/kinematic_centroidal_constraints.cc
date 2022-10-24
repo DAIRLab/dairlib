@@ -127,10 +127,7 @@ CenterofMassPositionConstraint<T>::CenterofMassPositionConstraint(const drake::m
         std::to_string(knot_index) + "]"),
                                                                                    plant_(plant),
                                                                                    context_(context),
-                                                                                   n_x_(plant.num_positions()
-                                                                                            + plant.num_velocities()),
-                                                                                   n_u_(plant.num_actuators()),
-                                                                                   zero_control_(Eigen::VectorXd::Zero(n_u_)) {}
+                                                                                   n_q_(plant.num_positions()){}
 
 /// The format of the input to the eval() function is in the order
 ///   - rCOM, location of the center of mass
@@ -139,8 +136,8 @@ template<typename T>
 void CenterofMassPositionConstraint<T>::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>> &x,
                                                            drake::VectorX<T> *y) const {
   const auto& rCom = x.segment(0, 3);
-  const auto& x0 = x.segment(3, n_x_);
-  dairlib::multibody::SetContext<T>(plant_, x0, zero_control_, context_);
+  const auto& x0 = x.segment(3, n_q_);
+  dairlib::multibody::SetPositionsIfNew<T>(plant_, x0,  context_);
   *y = rCom - plant_.CalcCenterOfMassPositionInWorld(*context_);
 }
 
@@ -156,9 +153,7 @@ CentroidalMomentumConstraint<T>::CentroidalMomentumConstraint(const drake::multi
                                                                                    plant_(plant),
                                                                                    context_(context),
                                                                                    n_x_(plant.num_positions()
-                                                                                            + plant.num_velocities()),
-                                                                                   n_u_(plant.num_actuators()),
-                                                                                   zero_control_(Eigen::VectorXd::Zero(n_u_)) {}
+                                                                                            + plant.num_velocities()){}
 
 /// The format of the input to the eval() function is in the order
 ///   - q, generalized positions
@@ -171,7 +166,7 @@ void CentroidalMomentumConstraint<T>::EvaluateConstraint(const Eigen::Ref<const 
   const auto& x0 = x.head(n_x_);
   const auto& r = x.segment(n_x_, 3);
   const auto& h_WC = x.segment(n_x_ + 3, 6);
-  dairlib::multibody::SetContext<T>(plant_, x0, zero_control_, context_);
+  dairlib::multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, x0,  context_);
   const auto& spatial_momentum = plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, r);
   *y = spatial_momentum.get_coeffs() - h_WC;
 }

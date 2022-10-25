@@ -1,9 +1,9 @@
-com_position: [2, 2, 2]
+com_position: [1, 1, 1]
 generalized_positions:
-  base_qw: 8.0
-  base_qx: 8.0
-  base_qy: 8.0
-  base_qz: 8.0
+  base_qw: 1.0
+  base_qx: 1.0
+  base_qy: 1.0
+  base_qz: 1.0
   base_x: 0
   base_y: 0
   base_z: 0

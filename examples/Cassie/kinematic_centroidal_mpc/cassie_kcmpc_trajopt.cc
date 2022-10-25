@@ -66,23 +66,26 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
                                                {vel, 0, 0},
                                                {vel, 0, 0}},
                                               {0, 0.5, duration});
-  auto state_trajectory = GenerateGeneralizedStateTrajectory(reference_state,
-                                                             reference_state.segment(4, 3) - com,
-                                                             com_trajectory,
-                                                             4,
-                                                             4 + plant.num_positions());
+  auto q_trajectory = GenerateGeneralizedPosTrajectory(reference_state.head(plant.num_positions()),
+                                                           reference_state.segment(4, 3) - com,
+                                                           com_trajectory,
+                                                           4);
+  auto v_trajectory = GenerateGeneralizedVelTrajectory(com_trajectory,
+                                                       plant.num_velocities(),
+                                                       3);
   auto contact_sequence = GenerateModeSequence({stand, walk, walk}, {0, 0.5, duration});
   auto grf_traj = GenerateGrfReference(contact_sequence, mass);
-  auto contact_traj = GenerateContactPointReference(plant,mpc.CreateContactPoints(plant, 0), state_trajectory);
+  auto contact_traj = GenerateContactPointReference(plant,mpc.CreateContactPoints(plant, 0), q_trajectory, v_trajectory);
   mpc.AddForceTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(grf_traj));
-  mpc.AddStateReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(state_trajectory));
+  mpc.AddGenPosReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(q_trajectory));
+  mpc.AddGenVelReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(v_trajectory));
   mpc.AddComReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(com_trajectory));
   mpc.AddContactTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(contact_traj));
   mpc.AddConstantMomentumReference(Eigen::VectorXd::Zero(6));
   mpc.SetModeSequence(contact_sequence);
 
   mpc.AddInitialStateConstraint(reference_state);
-  mpc.SetRobotStateGuess(state_trajectory);
+  mpc.SetRobotStateGuess(q_trajectory, v_trajectory);
   mpc.SetComPositionGuess(com_trajectory);
   mpc.SetContactGuess(contact_traj);
   mpc.SetForceGuess(grf_traj);
@@ -145,5 +148,5 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(40, 3, 1.1, 0.2, 0.0, 1e-3);
+  DoMain(40, 3, 1.1, 0.2, 0.5, 1e-3);
 }

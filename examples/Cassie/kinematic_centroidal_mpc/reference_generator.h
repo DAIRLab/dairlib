@@ -37,19 +37,21 @@ drake::trajectories::PiecewisePolynomial<double> GenerateComTrajectory(const Eig
 
 
 /*!
- * @brief Creates a trajectory in generalized state given a nominal state and com trajectory
+ * @brief Creates a trajectory in generalized position given a nominal state and com trajectory
  * @param nominal_stand nominal generalized state of the robot
  * @param base_rt_com_ewrt_w offset from base to com
  * @param com_traj trajectory of center of mass
  * @param base_pos_start index in generalized state where base position starts
- * @param base_vel_start index in generalized state where base velocity starts
  * @return center of mass trajectory
  */
-drake::trajectories::PiecewisePolynomial<double> GenerateGeneralizedStateTrajectory(const Eigen::VectorXd& nominal_stand,
-                                                                                    const Eigen::Vector3d& base_rt_com_ewrt_w,
-                                                                                    const drake::trajectories::PiecewisePolynomial<double>& com_traj,
-                                                                                    int base_pos_start,
-                                                                                    int base_vel_start);
+drake::trajectories::PiecewisePolynomial<double> GenerateGeneralizedPosTrajectory(const Eigen::VectorXd& nominal_stand,
+                                                                                  const Eigen::Vector3d& base_rt_com_ewrt_w,
+                                                                                  const drake::trajectories::PiecewisePolynomial<double>& com_traj,
+                                                                                  int base_pos_start);
+
+drake::trajectories::PiecewisePolynomial<double> GenerateGeneralizedVelTrajectory(const drake::trajectories::PiecewisePolynomial<double>& com_traj,
+                                                                                  int n_v,
+                                                                                  int base_vel_start);
 
 int FindCurrentMode(const Gait& active_gait, double time_now);
 
@@ -79,4 +81,6 @@ drake::trajectories::PiecewisePolynomial<double> GenerateContactPointReference(c
                                                                                const std::vector<dairlib::multibody::WorldPointEvaluator<
                                                                                    double>> &contacts,
                                                                                const drake::trajectories::PiecewisePolynomial<
-                                                                                   double> &state_trajectory);
+                                                                                   double> &q_traj,
+                                                                               const drake::trajectories::PiecewisePolynomial<
+                                                                                   double> &v_traj);

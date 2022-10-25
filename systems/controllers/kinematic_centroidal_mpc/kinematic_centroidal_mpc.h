@@ -50,10 +50,16 @@ class KinematicCentroidalMPC {
   void SetGains(const KinematicCentroidalGains& gains);
 
   /*!
-   * @brief Adds a cost reference for the state of the robot of the form (x - x_ref)^T Q (x - x_ref)
+   * @brief Adds a cost reference for the generalized position of the robot of the form (x - x_ref)^T Q (x - x_ref)
    * @param ref_traj trajectory in time
    */
-  void AddStateReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
+  void AddGenPosReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
+
+  /*!
+   * @brief Adds a cost reference for the generalized velocity of the robot of the form (x - x_ref)^T Q (x - x_ref)
+   * @param ref_traj trajectory in time
+   */
+  void AddGenVelReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
 
   /*!
    * @brief Adds a cost and reference for the centroidal state of the robot (x - x_ref)^T Q (x - x_ref)
@@ -74,12 +80,6 @@ class KinematicCentroidalMPC {
    * @param force_ref_traj trajectory in time
    */
   void AddForceTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj);
-
-  void AddConstantStateReference(const drake::VectorX<double>& value);
-
-  void AddConstantForceTrackingReference(const drake::VectorX<double>& value);
-
-  void AddConstantComReference(const drake::VectorX<double>& value);
 
   void AddConstantMomentumReference(const drake::VectorX<double>& value);
 
@@ -189,6 +189,8 @@ class KinematicCentroidalMPC {
 
   void SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double>& state_trajectory);
 
+  void SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double>& q_traj, const drake::trajectories::PiecewisePolynomial<double>& v_traj);
+
   void SetComPositionGuess(const drake::Vector3<double>& state);
 
   void SetComPositionGuess(const drake::trajectories::PiecewisePolynomial<double>& com_trajectory);
@@ -227,7 +229,7 @@ class KinematicCentroidalMPC {
 
   void SetModeSequence(const drake::trajectories::PiecewisePolynomial<double>& contact_sequence);
 
-  void AddInitialStateConstraint(const Eigen::VectorXd state);
+  void AddInitialStateConstraint(const Eigen::VectorXd& state);
 
   const drake::multibody::MultibodyPlant<double>& Plant(){return plant_;};
  private:
@@ -287,8 +289,10 @@ class KinematicCentroidalMPC {
   int n_contact_points_;
 
   /// References and cost matrixes
-  std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj_;
-  Eigen::MatrixXd Q_;
+  std::unique_ptr<drake::trajectories::Trajectory<double>> q_ref_traj_;
+  Eigen::MatrixXd Q_q_;
+  std::unique_ptr<drake::trajectories::Trajectory<double>> v_ref_traj_;
+  Eigen::MatrixXd Q_v_;
   std::unique_ptr<drake::trajectories::Trajectory<double>> com_ref_traj_;
   Eigen::MatrixXd Q_com_;
   std::unique_ptr<drake::trajectories::Trajectory<double>> mom_ref_traj_;

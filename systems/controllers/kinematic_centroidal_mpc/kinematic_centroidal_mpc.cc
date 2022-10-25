@@ -22,7 +22,8 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
                                                n_q_(plant.num_positions()),
                                                n_v_(plant.num_velocities()),
                                                n_contact_points_(contact_points.size()),
-                                               Q_(Eigen::MatrixXd::Zero(n_q_ + n_v_, n_q_ + n_v_)),
+                                               Q_q_(Eigen::MatrixXd::Zero(n_q_, n_q_)),
+                                               Q_v_(Eigen::MatrixXd::Zero(n_v_, n_v_)),
                                                Q_com_(Eigen::MatrixXd::Zero(3, 3)),
                                                Q_mom_(Eigen::MatrixXd::Zero(6, 6)),
                                                Q_contact_(Eigen::MatrixXd::Zero(6 * n_contact_points_, 6 * n_contact_points_)),
@@ -53,8 +54,12 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(const drake::multibody::Multibody
   std::fill(contact_sequence_.begin(), contact_sequence_.end(), stance_mode);
 }
 
-void KinematicCentroidalMPC::AddStateReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj) {
-  ref_traj_ = std::move(ref_traj);
+void KinematicCentroidalMPC::AddGenPosReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj) {
+  q_ref_traj_ = std::move(ref_traj);
+}
+
+void KinematicCentroidalMPC::AddGenVelReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj){
+  v_ref_traj_ = std::move(ref_traj);
 }
 
 void KinematicCentroidalMPC::AddContactTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj) {
@@ -205,28 +210,19 @@ void KinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &solver_o
   prog_->SetSolverOptions(solver_options);
 }
 
-void KinematicCentroidalMPC::AddConstantStateReference(const drake::VectorX<double>& value) {
-  AddStateReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value));
-}
-
-void KinematicCentroidalMPC::AddConstantForceTrackingReference(const drake::VectorX<double> &value) {
-  AddForceTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value));
-}
-
-void KinematicCentroidalMPC::AddConstantComReference(const drake::VectorX<double> &value) {
-  AddComReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value));
-}
-
 void KinematicCentroidalMPC::AddConstantMomentumReference(const drake::VectorX<double> &value) {
   AddMomentumReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(value));
 }
 
 void KinematicCentroidalMPC::AddCosts() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    double terminal_gain = knot_point == n_knot_points_-1 ? 10 : 1;
+    double terminal_gain = knot_point == n_knot_points_-1 ? 100 : 1;
     double t = dt_ * knot_point;
-    if(ref_traj_){
-      prog_->AddQuadraticErrorCost(terminal_gain * Q_, ref_traj_->value(t), state_vars(knot_point));
+    if(q_ref_traj_){
+      prog_->AddQuadraticErrorCost(terminal_gain * Q_q_, q_ref_traj_->value(t), state_vars(knot_point).head(n_q_));
+    }
+    if(v_ref_traj_){
+      prog_->AddQuadraticErrorCost(terminal_gain * Q_v_, v_ref_traj_->value(t), state_vars(knot_point).tail(n_v_));
     }
     if(com_ref_traj_){
       prog_->AddQuadraticErrorCost(terminal_gain * Q_com_,  com_ref_traj_->value(t) , com_pos_vars(knot_point));
@@ -419,6 +415,17 @@ void KinematicCentroidalMPC::SetRobotStateGuess(const drake::trajectories::Piece
   }
 }
 
+void KinematicCentroidalMPC::SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double>& q_traj,
+                                                const drake::trajectories::PiecewisePolynomial<double>& v_traj){
+  DRAKE_DEMAND(q_traj.rows() == n_q_);
+  DRAKE_DEMAND(v_traj.rows() == n_v_);
+  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
+    prog_->SetInitialGuess(state_vars(knot_point).head(n_q_), q_traj.value(dt_ * knot_point));
+    prog_->SetInitialGuess(state_vars(knot_point).tail(n_v_), v_traj.value(dt_ * knot_point));
+  }
+}
+
+
 drake::solvers::VectorXDecisionVariable KinematicCentroidalMPC::momentum_vars(int knotpoint_index) const {
   return mom_vars_[knotpoint_index];
 }
@@ -467,7 +474,7 @@ void KinematicCentroidalMPC::SetModeSequence(const drake::trajectories::Piecewis
   }
 }
 
-void KinematicCentroidalMPC::AddInitialStateConstraint(const Eigen::VectorXd state) {
+void KinematicCentroidalMPC::AddInitialStateConstraint(const Eigen::VectorXd& state) {
   DRAKE_DEMAND(state.size() == state_vars(0).size());
   prog_->AddBoundingBoxConstraint(state, state, state_vars((0)));
 
@@ -480,16 +487,16 @@ void KinematicCentroidalMPC::SetGains(const KinematicCentroidalGains &gains) {
   for(const auto&[name, index] : positions_map){
     const auto it = gains.generalized_positions.find(name);
     if(it != gains.generalized_positions.end()){
-      Q_(index, index) = it->second;
+      Q_q_(index, index) = it->second;
     } else if(name.find("left") != std::string::npos) {
       const auto it_left = gains.generalized_positions.find(name.substr(0, name.size()-4));
       if(it_left != gains.generalized_positions.end()) {
-        Q_(index, index) = it_left->second;
+        Q_q_(index, index) = it_left->second;
       }
     } else if(name.find("right") != std::string::npos) {
       const auto it_right = gains.generalized_positions.find(name.substr(0, name.size() - 5));
       if (it_right != gains.generalized_positions.end()) {
-        Q_(index, index) = it_right->second;
+        Q_q_(index, index) = it_right->second;
       }
     }
   }
@@ -497,16 +504,16 @@ void KinematicCentroidalMPC::SetGains(const KinematicCentroidalGains &gains) {
   for(const auto&[name, index] : velocities_map){
     const auto it = gains.generalized_velocities.find(name);
     if(it != gains.generalized_velocities.end()){
-      Q_(index+n_q_, index+n_q_) = it->second;
+      Q_v_(index, index) = it->second;
     } else if(name.find("left") != std::string::npos) {
       const auto it_left = gains.generalized_velocities.find(name.substr(0, name.size()-7));
       if(it_left != gains.generalized_velocities.end()) {
-        Q_(index+n_q_, index+n_q_) = it_left->second;
+        Q_v_(index, index) = it_left->second;
       }
     }else if(name.find("right") != std::string::npos){
       const auto it_right = gains.generalized_velocities.find(name.substr(0, name.size()-8));
       if(it_right != gains.generalized_velocities.end()) {
-        Q_(index+n_q_, index+n_q_) = it_right->second;
+        Q_v_(index, index) = it_right->second;
       }
     }
   }

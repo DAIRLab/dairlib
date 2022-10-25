@@ -157,19 +157,29 @@ drake::trajectories::PiecewisePolynomial<double> GenerateComTrajectory(const Eig
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(time_points, samples);
 }
 
-drake::trajectories::PiecewisePolynomial<double> GenerateGeneralizedStateTrajectory(const Eigen::VectorXd& nominal_stand,
-                                                                                    const Eigen::Vector3d& base_rt_com_ewrt_w,
-                                                                                    const drake::trajectories::PiecewisePolynomial<double>& com_traj,
-                                                                                    int base_pos_start,
-                                                                                    int base_vel_start){
+drake::trajectories::PiecewisePolynomial<double> GenerateGeneralizedPosTrajectory(const Eigen::VectorXd& nominal_stand,
+                                                                                  const Eigen::Vector3d& base_rt_com_ewrt_w,
+                                                                                  const drake::trajectories::PiecewisePolynomial<double>& com_traj,
+                                                                                  int base_pos_start){
   auto n_points = com_traj.get_segment_times().size();
   std::vector<drake::MatrixX<double>> samples(n_points);
   for(int i = 0; i < n_points; i++){
     samples[i] = nominal_stand;
     samples[i].block<3,1>(base_pos_start,0, 3, 1) = com_traj.value(com_traj.get_segment_times()[i]);
-    samples[i].block<3,1>(base_vel_start,0, 3, 1) = com_traj.derivative().value(com_traj.get_segment_times()[i]);
   }
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(com_traj.get_segment_times(), samples);
+}
+
+drake::trajectories::PiecewisePolynomial<double> GenerateGeneralizedVelTrajectory(const drake::trajectories::PiecewisePolynomial<double>& com_traj,
+                                                                                  int n_v,
+                                                                                  int base_vel_start){
+  auto n_points = com_traj.get_segment_times().size();
+  std::vector<drake::MatrixX<double>> samples(n_points);
+  for(int i = 0; i < n_points; i++){
+    samples[i] = drake::VectorX<double>::Zero(n_v);
+    samples[i].block<3,1>(base_vel_start,0, 3, 1) = com_traj.derivative().value(com_traj.get_segment_times()[i]);
+  }
+  return drake::trajectories::PiecewisePolynomial<double>::ZeroOrderHold(com_traj.get_segment_times(), samples);
 }
 
 int FindCurrentMode(const Gait& active_gait, double time_now){
@@ -257,13 +267,16 @@ drake::trajectories::PiecewisePolynomial<double> GenerateContactPointReference(c
                                                                                const std::vector<dairlib::multibody::WorldPointEvaluator<
                                                                                    double>> &contacts,
                                                                                const drake::trajectories::PiecewisePolynomial<
-                                                                                   double> &state_trajectory){
+                                                                                   double> &q_traj,
+                                                                               const drake::trajectories::PiecewisePolynomial<
+                                                                                   double> &v_traj){
   auto context =  plant.CreateDefaultContext();
-  std::vector<double> break_points = state_trajectory.get_segment_times();
+  std::vector<double> break_points = q_traj.get_segment_times();
   std::vector<drake::MatrixX<double>> samples;
   int n_contact = contacts.size();
   for(const auto& time : break_points){
-    dairlib::multibody::SetPositionsAndVelocitiesIfNew<double>(plant, state_trajectory.value(time), context.get());
+    dairlib::multibody::SetPositionsIfNew<double>(plant, q_traj.value(time), context.get());
+    dairlib::multibody::SetVelocitiesIfNew<double>(plant, v_traj.value(time), context.get());
     auto& knot_point_value = samples.emplace_back(Eigen::VectorXd::Zero(6 * n_contact));
     for(int i = 0; i <n_contact; i++){
       knot_point_value.block(i * 3, 0,  3, 1) = contacts[i].EvalFull(*context);

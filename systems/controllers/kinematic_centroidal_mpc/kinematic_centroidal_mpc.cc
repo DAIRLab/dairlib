@@ -216,25 +216,26 @@ void KinematicCentroidalMPC::AddConstantMomentumReference(const drake::VectorX<d
 
 void KinematicCentroidalMPC::AddCosts() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    double terminal_gain = knot_point == n_knot_points_-1 ? 100 : 1;
+    const double terminal_gain = knot_point == n_knot_points_-1 ? 100 : 1;
+    const double collocation_gain = (knot_point == 0 or knot_point == n_knot_points_ -1) ? 0.5 : 1;
     double t = dt_ * knot_point;
     if(q_ref_traj_){
-      prog_->AddQuadraticErrorCost(terminal_gain * Q_q_, q_ref_traj_->value(t), state_vars(knot_point).head(n_q_));
+      prog_->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_q_, q_ref_traj_->value(t), state_vars(knot_point).head(n_q_));
     }
     if(v_ref_traj_){
-      prog_->AddQuadraticErrorCost(terminal_gain * Q_v_, v_ref_traj_->value(t), state_vars(knot_point).tail(n_v_));
+      prog_->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_v_, v_ref_traj_->value(t), state_vars(knot_point).tail(n_v_));
     }
     if(com_ref_traj_){
-      prog_->AddQuadraticErrorCost(terminal_gain * Q_com_,  com_ref_traj_->value(t) , com_pos_vars(knot_point));
+      prog_->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_com_,  com_ref_traj_->value(t) , com_pos_vars(knot_point));
     }
     if(mom_ref_traj_){
-      prog_->AddQuadraticErrorCost(terminal_gain * Q_mom_, mom_ref_traj_->value(t), momentum_vars(knot_point));
+      prog_->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_mom_, mom_ref_traj_->value(t), momentum_vars(knot_point));
     }
     if(contact_ref_traj_){
-      prog_->AddQuadraticErrorCost(terminal_gain * Q_contact_,  contact_ref_traj_->value(t) , {contact_pos_[knot_point],contact_vel_[knot_point]});
+      prog_->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_contact_,  contact_ref_traj_->value(t) , {contact_pos_[knot_point],contact_vel_[knot_point]});
     }
     if(force_ref_traj_){
-      prog_->AddQuadraticErrorCost(terminal_gain * Q_force_, force_ref_traj_->value(t), contact_force_[knot_point]);
+      prog_->AddQuadraticErrorCost(collocation_gain *terminal_gain * Q_force_, force_ref_traj_->value(t), contact_force_[knot_point]);
     }
   }
 }

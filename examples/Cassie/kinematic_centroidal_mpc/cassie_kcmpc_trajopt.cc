@@ -148,5 +148,5 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(40, 3, 1.1, 0.2, 0.5, 1e-3);
+  DoMain(36, 3, 1.2, 0.2, 0.5, 1e-2);
 }

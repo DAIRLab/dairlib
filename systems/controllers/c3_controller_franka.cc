@@ -561,6 +561,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
    //G, U, traj_desired, warm starts;
    //auto Q_red = (S + W.transpose()) * Qha * (S.transpose() + W);
 
+   /// assumes G and U have the form: [ constant_1*I 0 0; 0 constant_2*I 0; 0 0 constant_3*I ]
   std::vector<MatrixXd> G, U;
    if (param_.rolling_state_reduction) {
      for (int i = 0; i < G_.size(); i++) {

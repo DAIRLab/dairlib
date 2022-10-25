@@ -182,13 +182,13 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<T>& plant) {
   // TODO: once RBT fully deprecated, this block can likely be removed, using
   // default coordinate names from Drake.
   auto floating_bodies = plant.GetFloatingBaseBodies();
-  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
+  // DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
     DRAKE_ASSERT(body.has_quaternion_dofs());
     int start = body.floating_positions_start();
     // should be body.name() once RBT is deprecated
-    std::string name = "base";
+    std::string name = body.name();
     name_to_index_map[name + "_qw"] = start;
     name_to_index_map[name + "_qx"] = start + 1;
     name_to_index_map[name + "_qy"] = start + 2;
@@ -253,11 +253,11 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
 
   auto floating_bodies = plant.GetFloatingBaseBodies();
   // Remove throw once RBT deprecated
-  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
+  //DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
     int start = body.floating_velocities_start() - plant.num_positions();
-    std::string name = "base";  // should be body.name() once RBT is deprecated
+    std::string name = body.name();  // should be body.name() once RBT is deprecated
     name_to_index_map[name + "_wx"] = start;
     name_to_index_map[name + "_wy"] = start + 1;
     name_to_index_map[name + "_wz"] = start + 2;

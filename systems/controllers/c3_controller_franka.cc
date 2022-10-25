@@ -262,15 +262,15 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     double angle = atan2(x,y);
     double theta = angle + param_.lead_angle * PI / 180;
 
-    traj_desired_vector(q_map_.at("base_x")) = x_c + traj_radius * sin(theta);
-    traj_desired_vector(q_map_.at("base_y")) = y_c + traj_radius * cos(theta);
-    traj_desired_vector(q_map_.at("base_z")) = ball_radius + table_offset;
+    traj_desired_vector(q_map_.at("sphere_x")) = x_c + traj_radius * sin(theta);
+    traj_desired_vector(q_map_.at("sphere_y")) = y_c + traj_radius * cos(theta);
+    traj_desired_vector(q_map_.at("sphere_z")) = ball_radius + table_offset;
   }
 
   // compute sphere positional error
-  Vector3d ball_xyz_d(traj_desired_vector(q_map_.at("base_x")),
-                      traj_desired_vector(q_map_.at("base_y")),
-                      traj_desired_vector(q_map_.at("base_z")));
+  Vector3d ball_xyz_d(traj_desired_vector(q_map_.at("sphere_x")),
+                      traj_desired_vector(q_map_.at("sphere_y")),
+                      traj_desired_vector(q_map_.at("sphere_z")));
   Vector3d error_xy = ball_xyz_d - ball_xyz;
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();
@@ -646,7 +646,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
                                                  &force);
-  (void)flag; // suppress compiler unused variable warning
+  //(void)flag; // suppress compiler unused variable warning
+  //std::cout << flag << std::endl;
+
 
   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 
@@ -670,8 +672,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;
   }
 //
+
+  ///COMMENT UP
+
   VectorXd force_des = VectorXd::Zero(5);
-  force_des << force(2), force(4), force(5), force(6), force(7);
+  //force_des << force(2), force(4), force(5), force(6), force(7);
 //
 //  //VectorXd st_desired(10 + 5*num_balls_ + 1);
   VectorXd st_desired = VectorXd::Zero(num_output_);
@@ -742,12 +747,12 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
     } else if (dist_y < -noise_threshold) {
       dist_y = -noise_threshold;
     }
-    double x_obs = q_plant(q_map_franka_.at("base_x")) + dist_x;
-    double y_obs = q_plant(q_map_franka_.at("base_y")) + dist_y;
+    double x_obs = q_plant(q_map_franka_.at("sphere_x")) + dist_x;
+    double y_obs = q_plant(q_map_franka_.at("sphere_y")) + dist_y;
 
     double alpha_p = param_.alpha_p;
-    q_plant(q_map_franka_.at("base_x")) = alpha_p*x_obs + (1-alpha_p)*prev_position_(0);
-    q_plant(q_map_franka_.at("base_y")) = alpha_p*y_obs + (1-alpha_p)*prev_position_(1);
+    q_plant(q_map_franka_.at("sphere_x")) = alpha_p*x_obs + (1-alpha_p)*prev_position_(0);
+    q_plant(q_map_franka_.at("sphere_y")) = alpha_p*y_obs + (1-alpha_p)*prev_position_(1);
 
     ///project estimate
     q_plant.tail(7) << 1, 0, 0, 0, ProjectStateEstimate(end_effector, q_plant.tail(3));;

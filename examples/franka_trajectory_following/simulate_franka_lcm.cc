@@ -65,16 +65,20 @@ int DoMain(int argc, char* argv[]){
   Parser parser(&plant);
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf");
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
-  
+  //parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
+
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
+
+  //plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI);
+
   plant.Finalize();
   
   /* -------------------------------------------------------------------------------------------*/
 
   drake::lcm::DrakeLcm drake_lcm;
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
-  
+
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
     &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
     1/output_dt, true, 0.0);
@@ -96,6 +100,7 @@ int DoMain(int argc, char* argv[]){
   std::vector<int> input_sizes = {nq+nv, nu};
   auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
+
   builder.Connect(plant.get_state_output_port(), mux->get_input_port(0));
   builder.Connect(passthrough->get_output_port(), mux->get_input_port(1));
   builder.Connect(mux->get_output_port(0), logger->get_input_port(0));
@@ -114,7 +119,7 @@ int DoMain(int argc, char* argv[]){
   
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = makeNameToPositionsMap(plant);
-  
+
   // initialize EE close to {0.5, 0, 0.12}[m] in task space
   q[q_map["panda_joint1"]] = param.q_init_franka(0);
   q[q_map["panda_joint2"]] = param.q_init_franka(1);
@@ -124,15 +129,25 @@ int DoMain(int argc, char* argv[]){
   q[q_map["panda_joint6"]] = param.q_init_franka(5);
   q[q_map["panda_joint7"]] = param.q_init_franka(6);
 
+
   // initialize ball
   double traj_radius = param.traj_radius;
-  q[q_map["base_qw"]] = param.q_init_ball(0);
-  q[q_map["base_qx"]] = param.q_init_ball(1);
-  q[q_map["base_qy"]] = param.q_init_ball(2);
-  q[q_map["base_qz"]] = param.q_init_ball(3);
-  q[q_map["base_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0);
-  q[q_map["base_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0);
-  q[q_map["base_z"]] = param.ball_radius + param.table_offset;
+  q[q_map["sphere_qw"]] = param.q_init_ball(0);
+  q[q_map["sphere_qx"]] = param.q_init_ball(1);
+  q[q_map["sphere_qy"]] = param.q_init_ball(2);
+  q[q_map["sphere_qz"]] = param.q_init_ball(3);
+  q[q_map["sphere_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0);
+  q[q_map["sphere_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0);
+  q[q_map["sphere_z"]] = param.ball_radius + param.table_offset;
+
+//  // initialize ball 2f
+//  q[q_map["sphere2_qw"]] = param.q_init_ball(0);
+//  q[q_map["sphere2_qx"]] = param.q_init_ball(1);
+//  q[q_map["sphere2_qy"]] = param.q_init_ball(2);
+//  q[q_map["sphere2_qz"]] = param.q_init_ball(3);
+//  q[q_map["sphere2_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0) + 1;
+//  q[q_map["sphere2_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0) + 1;
+//  q[q_map["sphere2_z"]] = param.ball_radius + param.table_offset;
 
   plant.SetPositions(&plant_context, q);
 

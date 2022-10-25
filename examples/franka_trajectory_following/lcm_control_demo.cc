@@ -121,13 +121,13 @@ int DoMain(int argc, char* argv[]){
   q(1) = param.q_init_finger(1);
   q(2) = param.q_init_finger(2) + param.table_offset;
 
-  q[q_map["base_qw"]] = param.q_init_ball_c3(0);
-  q[q_map["base_qx"]] = param.q_init_ball_c3(1);
-  q[q_map["base_qy"]] = param.q_init_ball_c3(2);
-  q[q_map["base_qz"]] = param.q_init_ball_c3(3);
-  q[q_map["base_x"]] = param.q_init_ball_c3(4);
-  q[q_map["base_y"]] = param.q_init_ball_c3(5);
-  q[q_map["base_z"]] = param.q_init_ball_c3(6);
+  q[q_map["sphere_qw"]] = param.q_init_ball_c3(0);
+  q[q_map["sphere_qx"]] = param.q_init_ball_c3(1);
+  q[q_map["sphere_qy"]] = param.q_init_ball_c3(2);
+  q[q_map["sphere_qz"]] = param.q_init_ball_c3(3);
+  q[q_map["sphere_x"]] = param.q_init_ball_c3(4);
+  q[q_map["sphere_y"]] = param.q_init_ball_c3(5);
+  q[q_map["sphere_z"]] = param.q_init_ball_c3(6);
   double mu = param.mu;
 
   MatrixXd Qinit = param.Q_default * MatrixXd::Identity(nq+nv, nq+nv);
@@ -185,9 +185,9 @@ int DoMain(int argc, char* argv[]){
     double angle = theta(i);
     double x = r * sin(M_PI * (angle + param.phase) / 180.0);
     double y = r * cos(M_PI * (angle + param.phase) / 180.0);
-    q(q_map["base_x"]) = x + xc;
-    q(q_map["base_y"]) = y + yc;
-    q(q_map["base_z"]) = param.ball_radius + param.table_offset;
+    q(q_map["sphere_x"]) = x + xc;
+    q(q_map["sphere_y"]) = y + yc;
+    q(q_map["sphere_z"]) = param.ball_radius + param.table_offset;
     VectorXd xtraj_hold = VectorXd::Zero(nq+nv);
     xtraj_hold.head(nq) << q;
     xtraj.push_back(xtraj_hold); 
@@ -284,9 +284,12 @@ int DoMain(int argc, char* argv[]){
   // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_lcm_control_demo");
   auto context_d = diagram->CreateDefaultContext();
   // Run lcm-driven simulation
+  //// get true value for sim (adding balls)
+  //systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+      //&drake_lcm, std::move(diagram), state_receiver, "FRANKA_STATE_ESTIMATE", true);
+
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &drake_lcm, std::move(diagram), state_receiver, "FRANKA_STATE_ESTIMATE", true);
-  
+      &drake_lcm, std::move(diagram), state_receiver, "FRANKA_OUTPUT", true);
   loop.Simulate(std::numeric_limits<double>::infinity());
 
   return 0;

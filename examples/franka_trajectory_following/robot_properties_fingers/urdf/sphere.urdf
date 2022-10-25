@@ -1,6 +1,7 @@
 <?xml version="1.0" ?>
-<robot name="sphere_v2">
-    <link name="sphere">
+<robot name="sphere_v1">
+
+ <link name="sphere">
         <contact>
             <!-- TODO: not sure if these values make sense -->
             <!-- TODO: are these values even read by pybullet? -->
@@ -36,6 +37,8 @@
                 <!-- <drake:hydroelastic_modulus value="1e7"/> -->
                 <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
             </drake:proximity_properties>
-        </collision>        
+        </collision>
     </link>
+
+
 </robot>

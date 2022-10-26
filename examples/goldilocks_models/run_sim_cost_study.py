@@ -330,6 +330,8 @@ def GetTrajoptSampleIndexGivenTask(rom_iter, task, zero_stride_length=False):
   n_sample_trajopt = int(np.loadtxt(dir + "n_sample.csv"))
   dist_list = []
   path = ""
+  # iter_range = list(range(251, 265)) if zero_stride_length else range(n_sample_trajopt)
+  # for j in iter_range:
   for j in range(n_sample_trajopt):
     path = dir + "%d_%d_task.csv" % (rom_iter, j)
     # print("try " + path)
@@ -342,6 +344,7 @@ def GetTrajoptSampleIndexGivenTask(rom_iter, task, zero_stride_length=False):
   # print(dist_list)
   if len(dist_list) == 0:
     raise ValueError("ERROR: This path doesn't exist: " + path)
+  # trajopt_sample_idx = iter_range[int(np.argmin(np.array(dist_list)))]
   trajopt_sample_idx = np.argmin(np.array(dist_list))
 
   return trajopt_sample_idx
@@ -450,21 +453,27 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
     for j in range(len(task_list)):
       counter += 1
 
-      ## Testing
-      #if i == 1 and j == 45:  #42
-      #  skip_this_iter = False
-      #if skip_this_iter:
-      #  continue
-      #if i == 0:
-      #  continue
-      #if i == 1 and j <= 40:
-      #  continue
-
       rom_iter = model_indices[i]
       task = task_list[j]
       trajopt_sample_idx_for_sim = trajopt_sample_indices_for_sim[i][j]
       trajopt_sample_idx_for_planner = trajopt_sample_indices_for_planner[i][j]
       log_idx = log_indices[j]
+
+      ## Testing
+      # if not (-0.2 < task[0] <= -0.05 and 0.7 < task[4] <= 0.9):
+      #   continue
+      # if not (rom_iter == 1):
+      #   continue
+
+      # skip_this_iter = True
+      # if rom_iter == 201 and log_idx == 138:
+      #   skip_this_iter = False
+      # if rom_iter == 201 and log_idx == 139:
+      #   skip_this_iter = False
+      # if rom_iter == 201 and log_idx == 148:
+      #   skip_this_iter = False
+      # if skip_this_iter:
+      #  continue
 
       print("\n===========\n")
       print("progress %.1f%%" % (float(counter) / n_total_sim * 100))
@@ -1195,6 +1204,9 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
 
     if len(z) == 0:
       print("Size of z is 0 at iter %d, so we don't plot the 2D landsacpe" % model_slice_value)
+      return
+    if len(z) < 3:
+      print("Size of z is %d at iter %d, so we don't plot the 2D landsacpe" % (len(z), model_slice_value))
       return
 
     # get levels for contour plots

@@ -342,6 +342,18 @@ for i in range(len(directory_list)):
                 ax.plot(t[0:iteration_length], average_cost_accel, linewidth=3.0, label=ave_cost_label + "$\dot{v}$")
                 average_cost_main = [x / y for x, y in zip(sum_cost_main, n_successful_sample_each_iter)]
                 ax.plot(t[0:iteration_length], average_cost_main, linewidth=3.0, label=ave_cost_label + "main", color="k")
+
+                # print("first iter, print(average_cost_all)", average_cost_all[1])
+                # print("first iter, print(average_cost_u)", average_cost_u[1])
+                # print("first iter, print(average_cost_x)", average_cost_x[1])
+                # print("first iter, print(average_cost_accel)", average_cost_accel[1])
+                # print("first iter, print(average_cost_main)", average_cost_main[1])
+                # print("300 iter, print(average_cost_all)", average_cost_all[299])
+                # print("300 iter, print(average_cost_u)", average_cost_u[299])
+                # print("300 iter, print(average_cost_x)", average_cost_x[299])
+                # print("300 iter, print(average_cost_accel)", average_cost_accel[299])
+                # print("300 iter, print(average_cost_main)", average_cost_main[299])
+
                 plt.legend(loc='upper right')
                 plt.xlabel('Iteration')
                 if only_plot_average_cost & only_add_successful_samples_to_average_cost:

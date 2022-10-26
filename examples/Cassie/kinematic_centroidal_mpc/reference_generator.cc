@@ -257,7 +257,9 @@ drake::trajectories::PiecewisePolynomial<double> GenerateGrfReference(const drak
     double num_in_contact = mode.sum();
     auto& grf = samples.emplace_back(Eigen::VectorXd::Zero(3 * n_contact_points));
     for(int i = 0; i<n_contact_points; i++){
-      grf.coeffRef(2 + 3 * i) = m * 9.81 /num_in_contact;
+      if(mode.coeff(i)){
+        grf.coeffRef(2 + 3 * i) = m * 9.81 /num_in_contact;
+      }
     }
   }
   return drake::trajectories::PiecewisePolynomial<double>::ZeroOrderHold(mode_trajectory.get_segment_times(), samples);

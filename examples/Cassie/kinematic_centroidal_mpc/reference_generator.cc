@@ -165,7 +165,7 @@ drake::trajectories::PiecewisePolynomial<double> GenerateGeneralizedPosTrajector
   std::vector<drake::MatrixX<double>> samples(n_points);
   for(int i = 0; i < n_points; i++){
     samples[i] = nominal_stand;
-    samples[i].block<3,1>(base_pos_start,0, 3, 1) = com_traj.value(com_traj.get_segment_times()[i]);
+    samples[i].block<3,1>(base_pos_start,0, 3, 1) = com_traj.value(com_traj.get_segment_times()[i]) + base_rt_com_ewrt_w;
   }
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(com_traj.get_segment_times(), samples);
 }

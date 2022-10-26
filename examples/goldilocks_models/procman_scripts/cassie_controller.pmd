@@ -123,7 +123,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame (1 solve)" {
-        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=1366";
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=0";
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose); global frame (multiple solves)" {
@@ -206,8 +206,8 @@ script "run-original-walking" {
 
 script "run-rom-walking" {
     run_script "start-operator-simulation-floating-base";
-    start cmd "2.2.rom-planner (short time limit)";
-    start cmd "2.1.optimal-rom-walking-controller";
+    start cmd "3.1.rom-planner (short time limit)";
+    start cmd "2.1.rom-walking-controller";
     wait ms 200;
     start cmd "0.simulator";
 }

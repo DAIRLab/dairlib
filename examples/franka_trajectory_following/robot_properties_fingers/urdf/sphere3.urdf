@@ -1,0 +1,101 @@
+<?xml version="1.0" ?>
+<robot name="sphere_v2">
+
+
+
+
+<link name="base_link" />
+
+
+ <link name="sphere">
+        <contact>
+            <!-- TODO: not sure if these values make sense -->
+            <!-- TODO: are these values even read by pybullet? -->
+            <lateral_friction value="1.0"/>
+            <rolling_friction value="0.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="1.0"/>
+        </contact>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.132"/>
+            <inertia ixx="0.0000524" ixy="0" ixz="0" iyy="0.0000524" iyz="0" izz="0.0000524"/>
+        </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="sphere_with_texture.obj"/>
+            </geometry>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <sphere radius="0.0315"/>
+            </geometry>
+            <drake:proximity_properties>
+                <!-- POINT CONTACT -->
+                <drake:mu_static value="1"/>
+                <drake:mu_dynamic value="1"/>
+
+                <!-- HYDROELASTIC CONTACT -->
+                <!-- <drake:compliant_hydroelastic/> -->
+                <!-- <drake:mesh_resolution_hint value="0.02"/> -->
+                <!-- <drake:hydroelastic_modulus value="1e7"/> -->
+                <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
+            </drake:proximity_properties>
+        </collision>
+    </link>
+
+
+
+ <link name="tip_link_1_fake_x" />
+
+  <link name="tip_link_1_fake_y" />
+
+    <link name="tip_link_1_fake_z" />
+
+  <link name="tip_link_1_fake_rot_x" />
+
+   <link name="tip_link_1_fake_rot_y" />
+
+
+
+  <joint name="tip_link_1_to_base_rot_x" type="revolute">
+        <parent link="base_link"/>
+        <child link="tip_link_1_fake_rot_x"/>
+        <axis xyz="1 0 0"/>
+      </joint>
+      <joint name="tip_link_1_to_base_rot_y" type="revolute">
+        <parent link="tip_link_1_fake_rot_x"/>
+        <child link="tip_link_1_fake_rot_y"/>
+        <axis xyz="0 1 0"/>
+      </joint>
+        <joint name="tip_link_1_to_base_rot_z" type="revolute">
+        <parent link="tip_link_1_fake_rot_y"/>
+        <child link="tip_link_1_fake_x"/>
+        <axis xyz="0 0 1"/>
+  </joint>
+
+
+  <joint name="tip_link_1_to_base_x" type="prismatic">
+    <parent link="tip_link_1_fake_x"/>
+    <child link="tip_link_1_fake_y"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <joint name="tip_link_1_to_base_y" type="prismatic">
+    <parent link="tip_link_1_fake_y"/>
+    <child link="tip_link_1_fake_z"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+    <joint name="tip_link_1_to_base_z" type="prismatic">
+    <parent link="tip_link_1_fake_z"/>
+    <child link="sphere"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+
+
+
+
+
+</robot>

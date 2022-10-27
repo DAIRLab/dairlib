@@ -25,3 +25,14 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "kinematic_centroidal_reference_generator",
+    srcs = ["kcmpc_reference_generator.cc"],
+    hdrs = ["kcmpc_reference_generator.h"],
+    deps = [
+        "//common",
+        "//multibody/kinematic:kinematic",
+        "@drake//:drake_shared_library",
+    ],
+)

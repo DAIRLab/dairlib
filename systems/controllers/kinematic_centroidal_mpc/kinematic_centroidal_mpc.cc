@@ -254,7 +254,7 @@ void KinematicCentroidalMPC::SetZeroInitialGuess() {
 }
 
 drake::trajectories::PiecewisePolynomial<double> KinematicCentroidalMPC::Solve() {
-  for(int i = 0; i < 5; i ++){
+  for(int i = 0; i < 1; i ++){
     auto start = std::chrono::high_resolution_clock::now();
     solver_->Solve(*prog_, prog_->initial_guess(),
                    prog_->solver_options(),

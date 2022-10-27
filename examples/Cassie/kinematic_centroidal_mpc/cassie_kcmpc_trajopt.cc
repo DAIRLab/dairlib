@@ -12,9 +12,10 @@
 #include <drake/common/yaml/yaml_io.h>
 #include "common/find_resource.h"
 #include "systems/primitives/subvector_pass_through.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/reference_generator.h"
+#include "examples/Cassie/kinematic_centroidal_mpc/cassie_reference_utils.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/cassie_kinematic_centroidal_mpc.h"
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_gains.h"
+#include "systems/controllers/kinematic_centroidal_mpc/kcmpc_reference_generator.h"
 
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
@@ -45,11 +46,6 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
   mpc.SetGains(gains);
 
   Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), base_height, stance_width);
-  auto context = plant.CreateDefaultContext();
-  dairlib::multibody::SetPositionsAndVelocitiesIfNew<double>(plant, reference_state, context.get());
-  const auto& com = plant.CalcCenterOfMassPositionInWorld(*context);
-  const auto& mass = plant.CalcTotalMass(*context);
-
   Gait stand;
   stand.period = 1;
   stand.gait_pattern = {{0, 1, drake::Vector<bool, 4>(true, true, true, true)}};
@@ -61,34 +57,31 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
                         {0.5, 0.9, drake::Vector<bool, 4>(false, false, true, true)},
                         {0.9, 1.0, drake::Vector<bool, 4>(true, true, true, true)}};
 
-  auto com_trajectory = GenerateComTrajectory(com,
-                                              {{0, 0, 0},
-                                               {vel, 0, 0},
-                                               {vel, 0, 0}},
-                                              {0, 0.5, duration});
-  auto q_trajectory = GenerateGeneralizedPosTrajectory(reference_state.head(plant.num_positions()),
-                                                           reference_state.segment(4, 3) - com,
-                                                           com_trajectory,
-                                                           4);
-  auto v_trajectory = GenerateGeneralizedVelTrajectory(com_trajectory,
-                                                       plant.num_velocities(),
-                                                       3);
-  auto contact_sequence = GenerateModeSequence({stand, walk, walk}, {0, 0.5, duration});
-  auto grf_traj = GenerateGrfReference(contact_sequence, mass);
-  auto contact_traj = GenerateContactPointReference(plant,mpc.CreateContactPoints(plant, 0), q_trajectory, v_trajectory);
-  mpc.AddForceTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(grf_traj));
-  mpc.AddGenPosReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(q_trajectory));
-  mpc.AddGenVelReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(v_trajectory));
-  mpc.AddComReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(com_trajectory));
-  mpc.AddContactTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(contact_traj));
+  KcmpcReferenceGenerator generator(plant, reference_state.head(plant.num_positions()), mpc.CreateContactPoints(plant,0));
+  std::vector<double> time_points = {0, 0.5, duration};
+  std::vector<Eigen::Vector3d> com_vel = {{{0, 0, 0},
+                                           {vel, 0, 0},
+                                           {vel, 0, 0}}};
+
+  std::vector<Gait> gait_samples = {stand, walk, walk};
+
+  generator.SetComKnotPoints({time_points, com_vel});
+  generator.SetGaitSequence({time_points, gait_samples});
+  generator.Build();
+
+  mpc.AddForceTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(generator.grf_traj_));
+  mpc.AddGenPosReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(generator.q_trajectory_));
+  mpc.AddGenVelReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(generator.v_trajectory_));
+  mpc.AddComReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(generator.com_trajectory_));
+  mpc.AddContactTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(generator.contact_traj_));
   mpc.AddConstantMomentumReference(Eigen::VectorXd::Zero(6));
-  mpc.SetModeSequence(contact_sequence);
+  mpc.SetModeSequence(generator.contact_sequence_);
 
   mpc.AddInitialStateConstraint(reference_state);
-  mpc.SetRobotStateGuess(q_trajectory, v_trajectory);
-  mpc.SetComPositionGuess(com_trajectory);
-  mpc.SetContactGuess(contact_traj);
-  mpc.SetForceGuess(grf_traj);
+  mpc.SetRobotStateGuess(generator.q_trajectory_, generator.v_trajectory_);
+  mpc.SetComPositionGuess(generator.com_trajectory_);
+  mpc.SetContactGuess(generator.contact_traj_);
+  mpc.SetForceGuess(generator.grf_traj_);
 
   {
     drake::solvers::SolverOptions options;
@@ -97,7 +90,7 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
     options.SetOption(id, "dual_inf_tol", tol);
     options.SetOption(id, "constr_viol_tol", tol);
     options.SetOption(id, "compl_inf_tol", tol);
-    options.SetOption(id, "max_iter", 10);
+    options.SetOption(id, "max_iter", 200);
     options.SetOption(id, "nlp_lower_bound_inf", -1e6);
     options.SetOption(id, "nlp_upper_bound_inf", 1e6);
     options.SetOption(id, "print_timing_statistics", "yes");

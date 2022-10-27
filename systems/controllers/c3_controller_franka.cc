@@ -200,6 +200,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
 
   /// FK
+
   // update context once for FK
   plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
   plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
@@ -228,26 +229,35 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // uncomment this line if using OLD simulation (without state estimator)
   // StateEstimation (q_plant, v_plant, end_effector, timestamp);
 
+
+  /////recent changes for multi-ball
   /// update franka position again to include noise
   plant_franka_.SetPositions(&context_franka_, q_plant);
   plant_franka_.SetVelocities(&context_franka_, v_plant);
 
   // parse franka state info
-  VectorXd ball = q_plant.tail(7);
-  Vector3d ball_xyz = ball.tail(3);
-  VectorXd ball_dot = v_plant.tail(6);
-  Vector3d v_ball = ball_dot.tail(3);
+  ///for two balls, change for n-balls!!!!! (CHECK THIS PART)
+  VectorXd ball1 = q_plant.segment(7,7); //first 7 are Franka
+  VectorXd ball2 = q_plant.segment(14,7);
 
-  VectorXd q(10);
-  q << end_effector, ball;
-  VectorXd v(9);
-  v << end_effector_dot, ball_dot;
+  VectorXd ball1_dot = v_plant.segment(7,6);
+  VectorXd ball2_dot = v_plant.segment(13,6);
+
+  //VectorXd ball = q_plant.tail(7);
+  Vector3d ball_xyz = ball1.tail(3);  // xyz for ball1
+  //VectorXd ball_dot = v_plant.tail(6);   // velocity for ball 1
+  Vector3d v_ball = ball1_dot.tail(3);
+
+  VectorXd q(3 + 7 * num_balls_);
+  q << end_effector, ball1, ball2;
+  VectorXd v(3 + 6 * num_balls_);
+  v << end_effector_dot, ball1_dot, ball2_dot;
 
   VectorXd u = VectorXd::Zero(3);
 
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << end_effector, q_plant.tail(7), end_effector_dot, v_plant.tail(6);
-
+  state << end_effector, q_plant.tail(7 * num_balls_), end_effector_dot, v_plant.tail(6 * num_balls_);
+  /// CHANGES IN ALL THIS PART
 
   ///change this for adaptive path
   VectorXd traj_desired_vector = pp_.value(timestamp);
@@ -346,9 +356,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
 
   /// upddate context
+
+
   plant_f_.SetPositions(&context_f_, q);
   plant_f_.SetVelocities(&context_f_, v);
   multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
+
+  //std::cout << "here" << std::endl;
+
 
   /// figure out a nice way to do this as SortedPairs with pybind is not working
   /// (potentially pass a matrix 2xnum_pairs?)

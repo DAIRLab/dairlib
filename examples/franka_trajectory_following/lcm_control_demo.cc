@@ -63,6 +63,7 @@ int DoMain(int argc, char* argv[]){
                         "examples/franka_trajectory_following/robot_properties_fingers");
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
+  parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
 
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -81,6 +82,8 @@ int DoMain(int argc, char* argv[]){
                         "examples/franka_trajectory_following/robot_properties_fingers");
   parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
   parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
+  parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
+
   RigidTransform<double> X_WI_f = RigidTransform<double>::Identity();
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("base_link"), X_WI_f);
   plant_f.Finalize();
@@ -101,6 +104,8 @@ int DoMain(int argc, char* argv[]){
   Parser parser_franka(&plant_franka);
   parser_franka.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf");
   parser_franka.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
+  parser_franka.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
+
   RigidTransform<double> X_WI_franka = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(), plant_franka.GetFrameByName("panda_link0"), X_WI_franka);
   plant_franka.Finalize();
@@ -112,11 +117,12 @@ int DoMain(int argc, char* argv[]){
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
   int nc = 2;
+  int num_balls = param.num_balls;
 
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = makeNameToPositionsMap(plant);
   std::map<std::string, int> v_map = makeNameToVelocitiesMap(plant);
-  
+
   q(0) = param.q_init_finger(0);
   q(1) = param.q_init_finger(1);
   q(2) = param.q_init_finger(2) + param.table_offset;
@@ -128,14 +134,24 @@ int DoMain(int argc, char* argv[]){
   q[q_map["sphere_x"]] = param.q_init_ball_c3(4);
   q[q_map["sphere_y"]] = param.q_init_ball_c3(5);
   q[q_map["sphere_z"]] = param.q_init_ball_c3(6);
+
+  ///add for 2nd ball (subject to change)
+  q[q_map["sphere2_qw"]] = param.q_init_ball_c3(0);
+  q[q_map["sphere2_qx"]] = param.q_init_ball_c3(1);
+  q[q_map["sphere2_qy"]] = param.q_init_ball_c3(2);
+  q[q_map["sphere2_qz"]] = param.q_init_ball_c3(3);
+  q[q_map["sphere2_x"]] = param.q_init_ball_c3(4);
+  q[q_map["sphere2_y"]] = param.q_init_ball_c3(5);
+  q[q_map["sphere2_z"]] = param.q_init_ball_c3(6);
+
   double mu = param.mu;
 
   MatrixXd Qinit = param.Q_default * MatrixXd::Identity(nq+nv, nq+nv);
   Qinit.block(0,0,3,3) << param.Q_finger * MatrixXd::Identity(3,3);
   Qinit(7,7) = param.Q_ball_x;
   Qinit(8,8) = param.Q_ball_y;
-  Qinit.block(10,10,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv);
-  Qinit.block(10,10,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
+  Qinit.block(3+7*num_balls,3+7*num_balls,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv); ///all balls penalized same in terms of velocity
+  Qinit.block(3+7*num_balls,3+7*num_balls,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);
 
   MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
@@ -249,7 +265,7 @@ int DoMain(int argc, char* argv[]){
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
 
-  int num_balls = 1;
+  //int num_balls = 1; //debugging
   
   auto controller = builder.AddSystem<systems::controllers::C3Controller_franka>(
                                   plant, plant_f, plant_franka, *context, 

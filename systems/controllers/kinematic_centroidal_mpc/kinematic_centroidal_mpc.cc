@@ -254,14 +254,17 @@ void KinematicCentroidalMPC::SetZeroInitialGuess() {
 }
 
 drake::trajectories::PiecewisePolynomial<double> KinematicCentroidalMPC::Solve() {
-  auto start = std::chrono::high_resolution_clock::now();
-  solver_->Solve(*prog_, prog_->initial_guess(),
-                prog_->solver_options(),
-                result_.get());
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "Solve time:" << elapsed.count() << std::endl;
-  std::cout << "Cost:" << result_->get_optimal_cost() << std::endl;
+  for(int i = 0; i < 5; i ++){
+    auto start = std::chrono::high_resolution_clock::now();
+    solver_->Solve(*prog_, prog_->initial_guess(),
+                   prog_->solver_options(),
+                   result_.get());
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    std::cout << "Solve time:" << elapsed.count() << std::endl;
+    std::cout << "Cost:" << result_->get_optimal_cost() << std::endl;
+    prog_->SetInitialGuessForAllVariables(result_->GetSolution());
+  }
 
   std::vector<double> time_points;
   std::vector<drake::MatrixX<double>> states;

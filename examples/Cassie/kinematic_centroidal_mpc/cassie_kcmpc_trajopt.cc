@@ -97,7 +97,7 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
     options.SetOption(id, "dual_inf_tol", tol);
     options.SetOption(id, "constr_viol_tol", tol);
     options.SetOption(id, "compl_inf_tol", tol);
-    options.SetOption(id, "max_iter", 500);
+    options.SetOption(id, "max_iter", 10);
     options.SetOption(id, "nlp_lower_bound_inf", -1e6);
     options.SetOption(id, "nlp_upper_bound_inf", 1e6);
     options.SetOption(id, "print_timing_statistics", "yes");
@@ -109,7 +109,9 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
     options.SetOption(id, "acceptable_constr_viol_tol", tol);
     options.SetOption(id, "acceptable_obj_change_tol", 1e-3);
     options.SetOption(id, "acceptable_tol", 1e2);
-    options.SetOption(id, "acceptable_iter", 5);
+    options.SetOption(id, "acceptable_iter", 1);
+
+    options.SetOption(id, "warm_start_init_point", "no");
     mpc.Build(options);
   }
 

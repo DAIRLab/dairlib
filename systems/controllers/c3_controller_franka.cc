@@ -368,9 +368,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   /// figure out a nice way to do this as SortedPairs with pybind is not working
   /// (potentially pass a matrix 2xnum_pairs?)
 
+  ///change for more than 2 spheres!!! (0: finger, 1: sphere1, 2: ground, 3: sphere2)
+
   std::vector<SortedPair<GeometryId>> contact_pairs;
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[3]));
   auto system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1, time_horizon_);
@@ -389,12 +393,29 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   std::set<int> active_lambda_inds;
   std::set<int> inactive_lambda_inds;
-  active_lambda_inds.insert(3);
-  active_lambda_inds.insert(8);
-  active_lambda_inds.insert(9);
-  active_lambda_inds.insert(10);
-  active_lambda_inds.insert(11);
-  inactive_lambda_inds.insert(1);
+//  active_lambda_inds.insert(3);   ///\lambda_n for sphere1 - ground contact
+//  active_lambda_inds.insert(8);   ///\lambda_t for sphere1 - ground contact
+//  active_lambda_inds.insert(9);
+//  active_lambda_inds.insert(10);
+//  active_lambda_inds.insert(11);
+//  inactive_lambda_inds.insert(1);  ///gamma for sphere1 - ground contact
+
+  active_lambda_inds.insert(5);   ///\lambda_n for sphere1 - ground contact
+  active_lambda_inds.insert(7);   ///\lambda_n for sphere2 - ground contact
+
+  active_lambda_inds.insert(12);   ///\lambda_t for sphere1 - ground contact
+  active_lambda_inds.insert(13);
+  active_lambda_inds.insert(14);
+  active_lambda_inds.insert(15);
+
+  active_lambda_inds.insert(20);   ///\lambda_t for sphere2 - ground contact
+  active_lambda_inds.insert(21);
+  active_lambda_inds.insert(22);
+  active_lambda_inds.insert(23);
+
+  inactive_lambda_inds.insert(1);  ///gamma for sphere1 - ground contact
+  inactive_lambda_inds.insert(3);  ///gamma for sphere2 - ground contact
+
   auto lcs_system_fixed = solvers::LCSFactory::FixSomeModes(lcs_system_full,
       active_lambda_inds, inactive_lambda_inds);
 
@@ -427,7 +448,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // q = [finger_pos; sphere_quat; sphere_pos]
   // v = [finger_vel; sphere_ang_vel; sphere_vel]
   // y = [finger_pos; sphere_pos_2d; finger_vel; sphere_vel_2d]
-  int num_spheres = 1;
+  int num_spheres = num_balls_;
   int ny = n - num_spheres * 9; // remove quat/angvel/z/zdot=3+4+1+1=9
   int ny_q = plant_f_.num_positions() - num_spheres * 5;
   MatrixXd S = MatrixXd::Zero(ny, n);

@@ -154,11 +154,11 @@ int DoMain(int argc, char* argv[]){
   Qinit.block(3+7*num_balls,3+7*num_balls,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);
 
-  MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
-  MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
+  MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc*num_balls, nq+nv+nu+6*num_balls*nc);
+  MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*num_balls*nc, nq+nv+nu+6*num_balls*nc);
   Uinit.block(0,0,nq+nv,nq+nv) << 
     param.U_pos_vel * MatrixXd::Identity(nq+nv,nq+nv);
-  Uinit.block(nq+nv+6*nc, nq+nv+6*nc, nu, nu) << 
+  Uinit.block(nq+nv+6*num_balls*nc, nq+nv+6*num_balls*nc, nu, nu) <<
     param.U_u * MatrixXd::Identity(nu, nu);
 
   VectorXd xdesiredinit = VectorXd::Zero(nq+nv);
@@ -253,8 +253,10 @@ int DoMain(int argc, char* argv[]){
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere"))[0];
   drake::geometry::GeometryId ground_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("box"))[0];
+  drake::geometry::GeometryId sphere_geoms2 =
+      plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere2"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms =
-    {finger_geoms, sphere_geoms, ground_geoms};
+    {finger_geoms, sphere_geoms, ground_geoms, sphere_geoms2};
 
   /* -------------------------------------------------------------------------------------------*/
 

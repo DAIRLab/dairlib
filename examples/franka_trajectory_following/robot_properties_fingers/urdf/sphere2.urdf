@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<robot name="sphere_v2">
+<robot name="sphere_v3">
 
  <link name="sphere2">
         <contact>

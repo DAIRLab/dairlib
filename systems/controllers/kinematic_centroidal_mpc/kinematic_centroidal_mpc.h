@@ -252,7 +252,8 @@ class KinematicCentroidalMPC {
   void SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence);
 
   /*!
-   * @brief Set the mode sequence via 
+   * @brief Set the mode sequence via a trajectory. The value of the trajectory at each time, cast to a bool is if a contact
+   *            point is active or not
    * @param contact_sequence
    */
   void SetModeSequence(const drake::trajectories::PiecewisePolynomial<double>& contact_sequence);

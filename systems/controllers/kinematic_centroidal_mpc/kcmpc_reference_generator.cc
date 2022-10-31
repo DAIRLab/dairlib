@@ -89,6 +89,14 @@ drake::trajectories::PiecewisePolynomial<double> Gait::ToTrajectory(double curre
   samples.push_back(samples[samples.size()-1]);
   return drake::trajectories::PiecewisePolynomial<double>::ZeroOrderHold(break_points, samples);
 }
+void Gait::Is_Valid() const {
+  DRAKE_ASSERT(period > 0);
+  DRAKE_ASSERT(gait_pattern[0].start_phase == 0);
+  DRAKE_ASSERT(gait_pattern[gait_pattern.size()-1].end_phase == 1);
+  for(int i = 0; i < gait_pattern.size() - 1; i++){
+    DRAKE_ASSERT(gait_pattern[i].end_phase == gait_pattern[i+1].start_phase);
+  }
+}
 
 double TimeNextValue(const drake::trajectories::PiecewisePolynomial<double>& trajectory,
                      double current_time,
@@ -179,7 +187,6 @@ void KcmpcReferenceGenerator::Build(const Eigen::Vector3d& com) {
   contact_sequence_ = GenerateModeSequence(gait_knot_points_.samples, gait_knot_points_.times);
   grf_traj_ = GenerateGrfReference(contact_sequence_, m_);
   contact_traj_ = GenerateContactPointReference(plant_,contacts_, q_trajectory_, v_trajectory_);
-  built_ = true;
 }
 
 void KcmpcReferenceGenerator::SetComKnotPoints(const KnotPoints<Eigen::Vector3d> &com_knot_points) {
@@ -187,5 +194,8 @@ void KcmpcReferenceGenerator::SetComKnotPoints(const KnotPoints<Eigen::Vector3d>
 }
 
 void KcmpcReferenceGenerator::SetGaitSequence(const KnotPoints<Gait> &gait_knot_points) {
+  for(const auto& gait : gait_knot_points.samples){
+    gait.Is_Valid();
+  }
   gait_knot_points_ = gait_knot_points;
 }

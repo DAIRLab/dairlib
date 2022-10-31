@@ -42,10 +42,11 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
   plant.Finalize();
   plant_vis.Finalize();
 
+  // Create MPC and set gains
   CassieKinematicCentroidalMPC mpc (plant, n_knot_points, duration/(n_knot_points-1), 0.4);
   mpc.SetGains(gains);
 
-  Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), base_height, stance_width);
+  // Create gaits
   Gait stand;
   stand.period = 1;
   stand.gait_pattern = {{0, 1, drake::Vector<bool, 4>(true, true, true, true)}};
@@ -57,18 +58,22 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
                         {0.5, 0.9, drake::Vector<bool, 4>(false, false, true, true)},
                         {0.9, 1.0, drake::Vector<bool, 4>(true, true, true, true)}};
 
+  // Create reference
+  Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), base_height, stance_width);
   KcmpcReferenceGenerator generator(plant, reference_state.head(plant.num_positions()), mpc.CreateContactPoints(plant,0));
+
+
+  // Specify knot points
   std::vector<double> time_points = {0, 0.5, duration};
   std::vector<Eigen::Vector3d> com_vel = {{{0, 0, 0},
                                            {vel, 0, 0},
                                            {vel, 0, 0}}};
-
   std::vector<Gait> gait_samples = {stand, walk, walk};
-
   generator.SetComKnotPoints({time_points, com_vel});
   generator.SetGaitSequence({time_points, gait_samples});
   generator.Build();
 
+  // Add reference and mode sequence
   mpc.AddForceTrackingReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(generator.grf_traj_));
   mpc.AddGenPosReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(generator.q_trajectory_));
   mpc.AddGenVelReference(std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(generator.v_trajectory_));
@@ -77,6 +82,7 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
   mpc.AddConstantMomentumReference(Eigen::VectorXd::Zero(6));
   mpc.SetModeSequence(generator.contact_sequence_);
 
+  // Set initial guess
   mpc.AddInitialStateConstraint(reference_state);
   mpc.SetRobotStateGuess(generator.q_trajectory_, generator.v_trajectory_);
   mpc.SetComPositionGuess(generator.com_trajectory_);
@@ -108,7 +114,6 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
     mpc.Build(options);
   }
 
-  std::cout<<"Adding visualization callback"<<std::endl;
   double alpha = .2;
   mpc.CreateVisualizationCallback(
       "examples/Cassie/urdf/cassie_fixed_springs.urdf", alpha);

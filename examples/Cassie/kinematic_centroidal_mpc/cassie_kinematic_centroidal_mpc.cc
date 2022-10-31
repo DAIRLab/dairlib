@@ -39,6 +39,7 @@ std::vector<dairlib::multibody::WorldPointEvaluator<double>> CassieKinematicCent
 
   return {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval};
 }
+
 void CassieKinematicCentroidalMPC::AddLoopClosure() {
   loop_closure_evaluators.add_evaluator(&l_loop_evaluator_);
   loop_closure_evaluators.add_evaluator(&r_loop_evaluator_);

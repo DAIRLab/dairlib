@@ -5,7 +5,7 @@
 #include "examples/Cassie/cassie_utils.h"
 
 /*!
- * @brief Cassie specific child class for kinematic centroidal mpc.
+ * @brief Cassie specific child class for kinematic centroidal mpc. Adds loop closure, joint limits, and cassie contact points
  */
 class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
  public:
@@ -18,8 +18,18 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
     AddLoopClosure();
   }
 
+  /*!
+   * @brief creates vector of world point evaluators for cassie
+   * @param plant cassie plant
+   * @param mu coefficient of friction
+   * @return
+   */
   std::vector<dairlib::multibody::WorldPointEvaluator<double>> CreateContactPoints(const drake::multibody::MultibodyPlant<double>& plant, double mu);
  private:
+
+  /*!
+   * @brief Adds loop closure constraints to the mpc
+   */
   void AddLoopClosure();
 
   dairlib::multibody::DistanceEvaluator<double> l_loop_evaluator_;

@@ -24,7 +24,7 @@ plot_commanded_efforts: false
 plot_contact_forces: false
 special_positions_to_plot: [ ]
 special_velocities_to_plot: [ ]
-special_efforts_to_plot: [ ]
+special_efforts_to_plot: [ 'knee_left_motor', 'knee_right_motor']
 
 # FSM Names
 fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', ' ', 'Double Support Post Left (DSPL)', 'Double Support Post Right (DSPR)' ]

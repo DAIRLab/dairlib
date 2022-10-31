@@ -668,7 +668,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 
   // check if the desired end effector position is unreasonably far from the current location
-  Vector3d vd = state_next.segment(10, 3); ///needs to change for n balls
+  Vector3d vd = state_next.segment(3+7*num_balls_, 3); ///needs to change for n balls
   if (vd.norm() > max_desired_velocity_){
     /// update new desired position accordingly
     Vector3d dx = state_next.head(3) - state.head(3);
@@ -676,9 +676,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     /// update new desired velocity accordingly
     Vector3d clamped_velocity = max_desired_velocity_ * vd / vd.norm();
-    state_next(10) = clamped_velocity(0);
-    state_next(11) = clamped_velocity(1);
-    state_next(12) = clamped_velocity(2);
+    state_next(3+7*num_balls_) = clamped_velocity(0);
+    state_next(3+7*num_balls_+1) = clamped_velocity(1);
+    state_next(3+7*num_balls_+2) = clamped_velocity(2);
 
     std::cout << "velocity limit(c3)" << std::endl;
 
@@ -690,7 +690,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   ///COMMENT UP
 
-  VectorXd force_des = VectorXd::Zero(5);
+  VectorXd force_des = VectorXd::Zero(2*num_balls_);
   //force_des << force(2), force(4), force(5), force(6), force(7);
 //
 //  //VectorXd st_desired(10 + 5*num_balls_ + 1);

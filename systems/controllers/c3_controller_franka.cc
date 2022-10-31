@@ -455,25 +455,39 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   // finger_pos
   S.block(0, 0, 3, 3) = MatrixXd::Identity(3, 3);
-  // sphere_pos
+  // sphere_pos (1)
   S.block(3, 7, 2, 2) = MatrixXd::Identity(2, 2);
+  // sphere_pos (2)
+  S.block(5, 10, 2, 2) = MatrixXd::Identity(2, 2);
 
   // finger_vel
   S.block(ny_q, plant_f_.num_positions(), 3, 3) = MatrixXd::Identity(3, 3);
-
-  // sphere_vel
+  // sphere_vel(1)
   S.block(ny_q + 3, plant_f_.num_positions() + 6, 2, 2) = MatrixXd::Identity(2, 2);
+  // sphere_vel(2)
+  S.block(ny_q + 5, plant_f_.num_positions() + 12, 2, 2) = MatrixXd::Identity(2, 2);
 
   // Offset
   VectorXd x0 = VectorXd::Zero(n);
+  //quaternion for sphere(1)
   x0(3) = 1;
+  //height for sphere(1)
   x0(9) = param_.ball_radius + param_.table_offset;
+  //quaternion for sphere(2)
+  x0(10) = 1;
+  //height for sphere(2)
+  x0(16) = param_.ball_radius + param_.table_offset;
 
-  // Angular velocity
+  //Angular velocity
   MatrixXd W = MatrixXd::Zero(n, ny);
 
+  //sphere(1)
   W(plant_f_.num_positions() + 3, ny_q + 4) = -param_.ball_radius;
   W(plant_f_.num_positions() + 4, ny_q + 3) = param_.ball_radius;
+
+  //sphere(2)
+  W(plant_f_.num_positions() + 9, ny_q + 6) = -param_.ball_radius;
+  W(plant_f_.num_positions() + 10, ny_q + 5) = param_.ball_radius;
 
   // y' = S*x' = S*A*x + S*B*u + S*D*lambda + S*d
   //           = S*A*(S^T + W)*y + S*B*u + S*D*lambda + S*d + S*A*x0

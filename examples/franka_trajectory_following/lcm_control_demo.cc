@@ -125,7 +125,8 @@ int DoMain(int argc, char* argv[]){
 
   q(0) = param.q_init_finger(0);
   q(1) = param.q_init_finger(1);
-  q(2) = param.q_init_finger(2) + param.table_offset;
+  //q(2) = param.q_init_finger(2) + param.table_offset;
+  q(2) = param.finger_radius + 2*param.ball_radius + param.table_offset;
 
   q[q_map["sphere_qw"]] = param.q_init_ball_c3(0);
   q[q_map["sphere_qx"]] = param.q_init_ball_c3(1);
@@ -148,8 +149,13 @@ int DoMain(int argc, char* argv[]){
 
   MatrixXd Qinit = param.Q_default * MatrixXd::Identity(nq+nv, nq+nv);
   Qinit.block(0,0,3,3) << param.Q_finger * MatrixXd::Identity(3,3);
-  Qinit(7,7) = param.Q_ball_x;
-  Qinit(8,8) = param.Q_ball_y;
+
+  Qinit(7,7) = param.Q_ball_x;  /// for sphere(1): x
+  Qinit(8,8) = param.Q_ball_y;  /// for sphere(1): y
+
+  Qinit(14,14) = 0 * param.Q_ball_x;  /// for sphere(2): x
+  Qinit(15,15) = 0 * param.Q_ball_y;  /// for sphere(2): y
+
   Qinit.block(3+7*num_balls,3+7*num_balls,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv); ///all balls penalized same in terms of velocity
   Qinit.block(3+7*num_balls,3+7*num_balls,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);

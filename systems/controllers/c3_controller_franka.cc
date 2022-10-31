@@ -272,9 +272,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     double angle = atan2(x,y);
     double theta = angle + param_.lead_angle * PI / 180;
 
-    traj_desired_vector(q_map_.at("sphere_x")) = x_c + traj_radius * sin(theta);
-    traj_desired_vector(q_map_.at("sphere_y")) = y_c + traj_radius * cos(theta);
+    traj_desired_vector(q_map_.at("sphere_x")) = x_c; // + traj_radius * sin(theta);
+    traj_desired_vector(q_map_.at("sphere_y")) = y + 0.01; // + traj_radius * cos(theta);
     traj_desired_vector(q_map_.at("sphere_z")) = ball_radius + table_offset;
+
+    traj_desired_vector(q_map_.at("sphere2_x")) = x_c; // + traj_radius * sin(theta);
+    traj_desired_vector(q_map_.at("sphere2_y")) = y - 0.01; // + traj_radius * cos(theta);
+    traj_desired_vector(q_map_.at("sphere2_z")) = ball_radius + table_offset;
+
   }
 
   // compute sphere positional error
@@ -295,6 +300,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   if ( ts < roll_phase ) {
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.01;
   }
   /// upwards phase
   else if (ts < roll_phase + return_phase / 3){
@@ -572,6 +578,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     Qnew(2,2) = Qnew_finger;
     Qnew(7,7) = param_.Qnew_ball_x;
     Qnew(8,8) = param_.Qnew_ball_y;
+    Qnew(14,14) = param_.Qnew_ball_x;
+    Qnew(15,15) = param_.Qnew_ball_y;
   }
 
   if (param_.rolling_state_reduction) {

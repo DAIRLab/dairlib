@@ -146,5 +146,15 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     bool publish_efforts = true,
     double actuator_delay = 0);
 
+/// Convenience function to initialize an lcmt_robot_output subscriber with
+/// positions and velocities which are all zero except for the quaternion
+/// positions, which are all 1, 0, 0, 0
+/// @param context The context of a
+///                drake::LcmSubScriberSystem<lcmt_robot_output>
+/// @param plant The plant for which the lcmt_robot_output messages are defined
+void InitializeRobotOutputSubscriberQuaternionPositions(
+    drake::systems::Context<double>& context,
+    const drake::multibody::MultibodyPlant<double>& plant);
+
 }  // namespace systems
 }  // namespace dairlib

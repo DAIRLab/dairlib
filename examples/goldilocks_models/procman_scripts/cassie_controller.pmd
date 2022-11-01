@@ -36,7 +36,11 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "1.original-walking-controller; with radio" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio --cassie_out_channel=CASSIE_OUTPUT";
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio=true --cassie_out_channel=CASSIE_OUTPUT";
+        host = "localhost";
+    }
+    cmd "1.original-walking-controller; with virtual radio" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio=true --cassie_out_channel=CASSIE_OUTPUT_ONLY_RADIO";
         host = "localhost";
     }
 }
@@ -202,6 +206,16 @@ script "run-original-walking" {
     run_script "start-operator-simulation-floating-base";
     start cmd "1.original-walking-controller";
     start cmd "0.simulator";
+}
+
+script "run-original-walking-w-virtual-radio" {
+    stop cmd "1.original-walking-controller; with virtual radio";
+    stop cmd "0.simulator";
+    stop cmd "1.joystick";
+    run_script "start-operator-simulation-floating-base";
+    start cmd "1.original-walking-controller; with virtual radio";
+    start cmd "0.simulator";
+    start cmd "1.joystick";
 }
 
 script "run-rom-walking" {

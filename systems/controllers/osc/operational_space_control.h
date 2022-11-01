@@ -308,7 +308,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Cost and constraints
   drake::solvers::LinearEqualityConstraint* dynamics_constraint_;
   drake::solvers::LinearEqualityConstraint* holonomic_constraint_;
-  drake::solvers::LinearEqualityConstraint* contact_constraints_;
+  drake::solvers::LinearConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
   std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
   drake::solvers::QuadraticCost* input_cost_;

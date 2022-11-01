@@ -363,9 +363,11 @@ void OperationalSpaceControl::Build() {
       // Relaxed version:
       contact_constraints_ =
           prog_
-              ->AddLinearEqualityConstraint(
-                  MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_),
-                  VectorXd::Zero(n_c_active_), {dv_, epsilon_})
+              ->AddLinearConstraint(
+                  MatrixXd::Zero(2 * n_c_active_, n_v_ + n_c_active_),
+                  VectorXd::Zero(2 * n_c_active_),
+                  VectorXd::Zero(2 * n_c_active_),
+                  {dv_, epsilon_})
               .evaluator()
               .get();
     }
@@ -409,9 +411,8 @@ void OperationalSpaceControl::Build() {
   }
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
-    prog_->AddQuadraticCost(
-        w_soft_constraint_ * MatrixXd::Identity(n_c_active_, n_c_active_),
-        VectorXd::Zero(n_c_active_), epsilon_);
+    prog_->AddLinearCost(
+        w_soft_constraint_ * VectorXd::Ones(n_c_active_), epsilon_);
   }
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0) {
@@ -591,17 +592,28 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (w_soft_constraint_ <= 0) {
       ///    JdotV_c_active + J_c_active*dv == 0
       /// -> J_c_active*dv == -JdotV_c_active
-      contact_constraints_->UpdateCoefficients(J_c_active, -JdotV_c_active);
+      contact_constraints_->UpdateCoefficients(
+          J_c_active, -JdotV_c_active, -JdotV_c_active
+      );
     } else {
       // Relaxed version:
-      ///    JdotV_c_active + J_c_active*dv == -epsilon
+      ///    |JdotV_c_active + J_c_active*dv| <= epsilon
       /// -> J_c_active*dv + I*epsilon == -JdotV_c_active
       /// -> [J_c_active, I]* [dv, epsilon]^T == -JdotV_c_active
-      MatrixXd A_c = MatrixXd::Zero(n_c_active_, n_v_ + n_c_active_);
+      MatrixXd A_c = MatrixXd::Zero(2 * n_c_active_, n_v_ + n_c_active_);
+      VectorXd b_c = VectorXd::Zero(2 * n_c_active_);
       A_c.block(0, 0, n_c_active_, n_v_) = J_c_active;
       A_c.block(0, n_v_, n_c_active_, n_c_active_) =
-          MatrixXd::Identity(n_c_active_, n_c_active_);
-      contact_constraints_->UpdateCoefficients(A_c, -JdotV_c_active);
+          - MatrixXd::Identity(n_c_active_, n_c_active_);
+      A_c.block(n_c_active_, 0, n_c_active_, n_v_) = -J_c_active;
+      A_c.block(n_c_active_, n_v_, n_c_active_, n_c_active_) =
+          - MatrixXd::Identity(n_c_active_, n_c_active_);
+      b_c.head(n_c_active_) = -JdotV_c_active;
+      b_c.tail(n_c_active_) = JdotV_c_active;
+      contact_constraints_->UpdateCoefficients(
+          A_c,
+          -std::numeric_limits<double>::infinity() * VectorXd::Ones(2 * n_c_active_),
+          b_c);
     }
   }
   // 4. Friction constraint (approximated firction cone)
@@ -875,10 +887,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           ? (0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_))(0)
           : 0;
   double soft_constraint_cost =
-      (w_soft_constraint_ > 0)
-          ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
-             (*epsilon_sol_))(0)
-          : 0;
+      (w_soft_constraint_ > 0) ? w_soft_constraint_ * epsilon_sol_->sum() : 0;
   double input_smoothing_cost =
       (W_input_smoothing_.size() > 0)
           ? (0.5 * (*u_sol_).transpose() * W_input_smoothing_ * (*u_sol_))(0)

@@ -47,16 +47,14 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
   mpc.SetGains(gains);
 
   // Create gaits
-  Gait stand;
-  stand.period = 1;
-  stand.gait_pattern = {{0, 1, drake::Vector<bool, 4>(true, true, true, true)}};
+  Gait stand ({{0, 1, drake::Vector<bool, 4>(true, true, true, true)}});
+  stand.SetPeriod(1);
 
-  Gait walk;
-  walk.period = 1;
-  walk.gait_pattern = {{0, 0.4, drake::Vector<bool, 4>(true, true, false, false)},
-                        {0.4, 0.5, drake::Vector<bool, 4>(true, true, true, true)},
-                        {0.5, 0.9, drake::Vector<bool, 4>(false, false, true, true)},
-                        {0.9, 1.0, drake::Vector<bool, 4>(true, true, true, true)}};
+  Gait walk({{0, 0.4, drake::Vector<bool, 4>(true, true, false, false)},
+             {0.4, 0.5, drake::Vector<bool, 4>(true, true, true, true)},
+             {0.5, 0.9, drake::Vector<bool, 4>(false, false, true, true)},
+             {0.9, 1.0, drake::Vector<bool, 4>(true, true, true, true)}});
+  walk.SetPeriod(1);
 
   // Create reference
   Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), base_height, stance_width);
@@ -141,12 +139,12 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(1.0);
+    simulator.set_target_realtime_rate(0.5);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(36, 3, 1.2, 0.2, 0.5, 1e-2);
+  DoMain(36, 3, 1.0, 0.3, 0.5, 1e-2);
 }

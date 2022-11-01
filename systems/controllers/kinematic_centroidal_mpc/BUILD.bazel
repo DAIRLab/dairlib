@@ -28,8 +28,12 @@ cc_library(
 
 cc_library(
     name = "kinematic_centroidal_reference_generator",
-    srcs = ["kcmpc_reference_generator.cc"],
-    hdrs = ["kcmpc_reference_generator.h"],
+    srcs = ["kcmpc_reference_generator.cc",
+            "reference_generation_utils.cc",
+            "gait.cc"],
+    hdrs = ["kcmpc_reference_generator.h",
+            "reference_generation_utils.h",
+            "gait.h"],
     deps = [
         "//common",
         "//multibody/kinematic:kinematic",

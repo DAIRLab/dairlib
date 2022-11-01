@@ -116,7 +116,7 @@ void KinematicCentroidalMPC::AddKinematicsIntegrator() {
 }
 
 void KinematicCentroidalMPC::AddContactConstraints() {
-  for (int knot_point = 1; knot_point < n_knot_points_; knot_point++) {
+  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     for (int contact_index = 0; contact_index < n_contact_points_; contact_index++) {
       //Make sure feet in stance are not moving and on the ground
       if (contact_sequence_[knot_point][contact_index]) {
@@ -130,7 +130,7 @@ void KinematicCentroidalMPC::AddContactConstraints() {
         // Feet are above the ground
         double lb = 0;
         if(knot_point > 0 and knot_point + 1 < n_knot_points_ and (!contact_sequence_[knot_point-1][contact_index] or !contact_sequence_[knot_point+1][contact_index])){
-          lb = 0.05;
+          lb = 0.02;
         }
         prog_->AddBoundingBoxConstraint(lb, 10, contact_pos_vars(knot_point, contact_index)[2]);
       }

@@ -1,5 +1,3 @@
-
-
 #include "cassie_reference_utils.h"
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/geometry/scene_graph.h>

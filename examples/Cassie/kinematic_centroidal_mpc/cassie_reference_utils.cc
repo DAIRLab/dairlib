@@ -9,13 +9,14 @@
 #include <drake/solvers/solve.h>
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/visualization_utils.h"
+#include <drake/multibody/inverse_kinematics/com_position_constraint.h>
 
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 
 Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<double> &plant,
-                                     double pelvis_height,
+                                     double com_height,
                                      double stance_width,
                                      bool visualize) {
   using Eigen::VectorXd;
@@ -56,7 +57,7 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
 
   Eigen::Vector3d heel_rt_toe = {.122, 0, 0};
 
-  Eigen::Vector3d pelvis_pos = {0,0, pelvis_height};
+  Eigen::Vector3d pelvis_pos = {0, 0, com_height};
   Eigen::Vector3d l_toe_pos = {0.06, stance_width/2, 0};
   Eigen::Vector3d r_toe_pos = {0.06, -stance_width/2, 0};
 
@@ -69,12 +70,10 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
   const auto& toe_left_frame = plant.GetFrameByName("toe_left");
   const auto& toe_right_frame = plant.GetFrameByName("toe_right");
 
-  drake::multibody::InverseKinematics ik(plant);
+  auto context = plant.CreateDefaultContext();
+  drake::multibody::InverseKinematics ik(plant, context.get());
   double eps = 1e-3;
   Vector3d eps_vec = eps * VectorXd::Ones(3);
-  ik.AddPositionConstraint(pelvis_frame, Vector3d(0, 0, 0), world_frame,
-                           pelvis_pos - eps * VectorXd::Ones(3),
-                           pelvis_pos + eps * VectorXd::Ones(3));
   ik.AddOrientationConstraint(pelvis_frame, drake::math::RotationMatrix<double>(),
                               world_frame, drake::math::RotationMatrix<double>(), eps);
   ik.AddPositionConstraint(toe_left_frame, dairlib::LeftToeFront(plant).first, world_frame,
@@ -103,7 +102,15 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
           (ik.q())(positions_map.at("ankle_joint_right")) ==
           M_PI * 13 / 180.0);
 
+  auto constraint = std::make_shared<drake::multibody::ComPositionConstraint>(&plant, std::nullopt, plant.world_frame(), context.get());
+  auto r = ik.get_mutable_prog()->NewContinuousVariables(3);
+  ik.get_mutable_prog()->AddConstraint(constraint, {ik.q(),r});
+  Eigen::Vector3d rdes = {0, 0, com_height};
+  ik.get_mutable_prog()->AddBoundingBoxConstraint(rdes, rdes, r);
+
   ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
+  ik.get_mutable_prog()->SetInitialGuess(r, rdes);
+
   const auto result = drake::solvers::Solve(ik.prog());
   const auto q_sol = result.GetSolution(ik.q());
   VectorXd q_sol_normd(n_q);

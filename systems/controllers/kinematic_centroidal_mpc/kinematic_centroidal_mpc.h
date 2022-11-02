@@ -356,5 +356,7 @@ class KinematicCentroidalMPC {
   std::unique_ptr<dairlib::multibody::MultiposeVisualizer> callback_visualizer_;
 
   const std::set<int> full_constraint_relative_ = {0, 1, 2};
+
+  double swing_foot_minimum_height_;
 };
 

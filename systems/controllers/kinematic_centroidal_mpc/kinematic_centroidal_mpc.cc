@@ -130,7 +130,7 @@ void KinematicCentroidalMPC::AddContactConstraints() {
         // Feet are above the ground
         double lb = 0;
         if(knot_point > 0 and knot_point + 1 < n_knot_points_ and (!contact_sequence_[knot_point-1][contact_index] or !contact_sequence_[knot_point+1][contact_index])){
-          lb = 0.02;
+          lb = swing_foot_minimum_height_;
         }
         prog_->AddBoundingBoxConstraint(lb, 10, contact_pos_vars(knot_point, contact_index)[2]);
       }
@@ -540,4 +540,6 @@ void KinematicCentroidalMPC::SetGains(const KinematicCentroidalGains &gains) {
 
   //contact force
   Q_force_ = gains.contact_force.replicate(n_contact_points_, 1).asDiagonal();
+
+  swing_foot_minimum_height_ = gains.swing_foot_minimum_height;
 }

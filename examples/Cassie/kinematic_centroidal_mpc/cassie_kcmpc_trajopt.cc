@@ -22,7 +22,7 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::geometry::DrakeVisualizer;
 
-void DoMain(int n_knot_points, double duration, double base_height, double stance_width, double vel, double tol){
+void DoMain(int n_knot_points, double duration, double com_height, double stance_width, double vel, double tol){
   auto gains = drake::yaml::LoadYamlFile<KinematicCentroidalGains>("examples/Cassie/kinematic_centroidal_mpc/kinematic_centroidal_mpc_gains.yaml");
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
@@ -54,10 +54,10 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
              {0.4, 0.5, drake::Vector<bool, 4>(true, true, true, true)},
              {0.5, 0.9, drake::Vector<bool, 4>(false, false, true, true)},
              {0.9, 1.0, drake::Vector<bool, 4>(true, true, true, true)}});
-  walk.SetPeriod(1);
+  walk.SetPeriod(1.25);
 
   // Create reference
-  Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), base_height, stance_width);
+  Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), com_height, stance_width, true);
   KcmpcReferenceGenerator generator(plant, reference_state.head(plant.num_positions()), mpc.CreateContactPoints(plant,0));
 
 
@@ -139,12 +139,12 @@ void DoMain(int n_knot_points, double duration, double base_height, double stanc
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(0.5);
+    simulator.set_target_realtime_rate(1.0);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }
 }
 
 int main(int argc, char* argv[]) {
-  DoMain(36, 3, 1.0, 0.3, 0.5, 1e-2);
+  DoMain(45, 5, 0.8, 0.3, 0.5, 1e-2);
 }

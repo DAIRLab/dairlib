@@ -13,6 +13,7 @@ struct KinematicCentroidalGains{
   Eigen::Vector3d lin_momentum;
   Eigen::Vector3d ang_momentum;
 
+  double swing_foot_minimum_height;
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(com_position));
@@ -23,5 +24,6 @@ struct KinematicCentroidalGains{
     a->Visit(DRAKE_NVP(contact_force));
     a->Visit(DRAKE_NVP(lin_momentum));
     a->Visit(DRAKE_NVP(ang_momentum));
+    a->Visit(DRAKE_NVP(swing_foot_minimum_height));
   }
 };

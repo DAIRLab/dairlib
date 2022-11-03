@@ -3,7 +3,7 @@
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/planning/rom_traj_opt.h"
+#include "examples/goldilocks_models/planning/hybrid_rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/rom_walking_gains.h"
 #include "lcm/rom_planner_saved_trajectory.h"

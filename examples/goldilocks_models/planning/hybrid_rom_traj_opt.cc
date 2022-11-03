@@ -312,6 +312,8 @@ HybridRomTrajOpt::HybridRomTrajOpt(
     // TODO: I dont' have a constraint on the distance between the current swing
     //  foot location and the desired touchdown location (but this might not be
     //  necessary)
+    //  That is, we don't use `max_swing_distance`. I commented out the
+    //  calculation in `CassiePlannerWithOnlyRom`.
 
     left_stance = !left_stance;
   }

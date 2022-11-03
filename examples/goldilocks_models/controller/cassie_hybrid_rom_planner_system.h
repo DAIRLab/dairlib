@@ -206,6 +206,9 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd x_guess_right_in_front_pre_;
   Eigen::VectorXd x_guess_left_in_front_post_;
   Eigen::VectorXd x_guess_right_in_front_post_;
+  // Regularization term for the footstep variables
+  drake::VectorX<double> left_step_;
+  drake::VectorX<double> right_step_;
 
   // Index of state which we initialize to 1 in order to avoid singularity
   // (which messes with gradient)
@@ -268,10 +271,6 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
 
   // Swing foot distance
   mutable std::vector<double> max_swing_distance_;
-
-  const Eigen::MatrixXd Aeq_fourbar_ = MatrixXd::Ones(1, 2);
-  const Eigen::VectorXd angle_fourbar_ =
-      13.0 / 180.0 * M_PI * Eigen::VectorXd::Ones(1);
 
   // LIPM MPC and IK
   bool RunLipmMPC(bool start_with_left_stance, double init_phase,

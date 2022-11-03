@@ -325,6 +325,33 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   }
   cout << endl;
 
+  // Footstep regularization
+  drake::VectorX<double> left_foot_pos(3);
+  drake::VectorX<double> right_foot_pos(3);
+  plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
+                                           x_guess_left_in_front_pre_);
+  this->plant_control_.CalcPointsPositions(
+      *context_plant_control_, left_mid_.second, left_mid_.first,
+      plant_control_.world_frame(), &left_foot_pos);
+  this->plant_control_.CalcPointsPositions(
+      *context_plant_control_, right_mid_.second, right_mid_.first,
+      plant_control_.world_frame(), &right_foot_pos);
+  left_step_ = (left_foot_pos - right_foot_pos).head<2>();
+  plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
+                                           x_guess_right_in_front_pre_);
+  this->plant_control_.CalcPointsPositions(
+      *context_plant_control_, left_mid_.second, left_mid_.first,
+      plant_control_.world_frame(), &left_foot_pos);
+  this->plant_control_.CalcPointsPositions(
+      *context_plant_control_, right_mid_.second, right_mid_.first,
+      plant_control_.world_frame(), &right_foot_pos);
+  right_step_ = (right_foot_pos - left_foot_pos).head<2>();
+
+  cout << "left_step_ = " << left_step_ << endl;
+  cout << "right_step_ = " << right_step_ << endl;
+  DRAKE_UNREACHABLE(); // one-time test to see `left_step_` and `right_step_`
+
+
   //   cout << "initial guess duration ~ " << duration << endl;
   //   cout << "h_guess = " << h_guess_ << endl;
   //   cout << "y_guess = " << y_guess_ << endl;
@@ -666,36 +693,6 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
                          to_string(msg_time_difference) + " ms");
   }
 
-  // Get the init ROM state form the previous plan
-  std::set<int> set_init_state_from_prev_solution =
-      set_init_state_from_prev_solution_;
-  VectorXd init_rom_state_from_prev_sol(2 * n_y_);
-  if (!set_init_state_from_prev_solution.empty()) {
-    if (counter_ == 0) {
-      set_init_state_from_prev_solution.clear();
-    } else {
-      auto rom_traj = lightweight_saved_traj_.ConstructPositionTrajectory();
-      if (rom_traj.end_time() > current_time) {
-        init_rom_state_from_prev_sol << rom_traj.value(current_time),
-            rom_traj.EvalDerivative(current_time, 1);
-      }
-    }
-  }
-
-  // Set initial ROM state for the trajopt constraint
-  VectorXd init_rom_state(6);
-  for (int i = 0; i < 6; i++) {
-    // Get the init state value for the constraint
-    init_rom_state = (set_init_state_from_prev_solution.find(i) ==
-                      set_init_state_from_prev_solution.end())
-                         ? init_rom_state_from_current_feedback
-                         : init_rom_state_from_prev_sol;
-  }
-  // TODO: might want to fix the init height pos to a desired constant and vel
-  //  to 0?
-  init_rom_state(2) = desired_com_height;
-  init_rom_state(5) = 0;
-
   // Get phase in the first mode
   const BasicVector<double>* phase_port =
       this->EvalVectorInput(context, phase_port_);
@@ -736,6 +733,60 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   string prefix = single_eval_mode_ ? "debug_" : to_string(counter_) + "_";
 
   ///
+  /// Some setups
+  ///
+
+  // Get current ROM position
+  VectorXd init_rom_state_from_current_feedback(6);
+  plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
+                                           x_init);
+  init_rom_state_from_current_feedback.head<3>() =
+      rom_->EvalMappingFunc(x_init.head(nq_), *context_plant_control_);
+  init_rom_state_from_current_feedback.tail<3>() = rom_->EvalMappingFuncJV(
+      x_init.head(nq_), x_init.tail(nv_), *context_plant_control_);
+
+  // Get current stance foot position
+  drake::VectorX<double> current_stance_foot_pos(3);
+  const auto& stance_toe_mid = start_with_left_stance ? left_mid_ : right_mid_;
+  this->plant_control_.CalcPointsPositions(
+      *context_plant_control_, stance_toe_mid.second, stance_toe_mid.first,
+      plant_control_.world_frame(), &current_stance_foot_pos);
+
+  ///
+  /// Get initial ROM state
+  ///
+
+  // Get the init ROM state form the previous plan
+  std::set<int> set_init_state_from_prev_solution =
+      set_init_state_from_prev_solution_;
+  VectorXd init_rom_state_from_prev_sol(2 * n_y_);
+  if (!set_init_state_from_prev_solution.empty()) {
+    if (counter_ == 0) {
+      set_init_state_from_prev_solution.clear();
+    } else {
+      auto rom_traj = lightweight_saved_traj_.ConstructPositionTrajectory();
+      if (rom_traj.end_time() > current_time) {
+        init_rom_state_from_prev_sol << rom_traj.value(current_time),
+            rom_traj.EvalDerivative(current_time, 1);
+      }
+    }
+  }
+
+  // Set initial ROM state for the trajopt constraint
+  VectorXd init_rom_state(6);
+  for (int i = 0; i < 6; i++) {
+    // Get the init state value for the constraint
+    init_rom_state = (set_init_state_from_prev_solution.find(i) ==
+                      set_init_state_from_prev_solution.end())
+                         ? init_rom_state_from_current_feedback
+                         : init_rom_state_from_prev_sol;
+  }
+  // TODO: might want to fix the init height pos to a desired constant and vel
+  //  to 0?
+  init_rom_state(2) = desired_com_height;
+  init_rom_state(5) = 0;
+
+  ///
   ///
   ///
 
@@ -752,95 +803,33 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   auto break1 = std::chrono::high_resolution_clock::now();
 
   // Get adjusted_final_pos
-  // 1. if final_position is a constant
-  //  VectorXd final_position(2);
-  //  final_position << param_.final_position_x, 0;
-  //  final_position << x_lift_off(pos_map_.at("base_x")) +
-  //                        param_.final_position_x,
-  //      0;
-  //  VectorXd adjusted_final_pos = final_position * n_segment_total /
-  //      (param_.n_step * (param_.knots_per_mode - 1));
   // 2 final_position is transformed from global coordinates
-  vector<VectorXd> des_xy_pos;
-  vector<VectorXd> des_xy_vel;
-  CreateDesiredPelvisPosAndVel(param_.n_step + param_.n_step_lipm,
-                               start_with_left_stance, init_phase,
-                               final_position, &des_xy_pos, &des_xy_vel);
+  // TODO: I think we can delete `des_xy_pos`. We only need `des_xy_pos_com`.
+  // vector<VectorXd> des_xy_pos;
+  // vector<VectorXd> des_xy_vel;
+  // CreateDesiredPelvisPosAndVel(param_.n_step + param_.n_step_lipm,
+  //                              start_with_left_stance, init_phase,
+  //                              final_position, &des_xy_pos, &des_xy_vel);
   vector<VectorXd> des_xy_pos_com;
   vector<VectorXd> des_xy_vel_com;
   CreateDesiredComPosAndVel(param_.n_step + param_.n_step_lipm,
                             start_with_left_stance, init_phase, final_position,
                             &des_xy_pos_com, &des_xy_vel_com);
+  for (auto & pos : des_xy_pos_com) {
+    pos -= current_stance_foot_pos.head<2>();
+  }
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
   ///
-
-  bool lipm_ik_success = false;
-  MatrixXd local_regularization_state(nx_, param_.n_step);
-  MatrixXd local_preprocess_x_lipm;
-  MatrixXd local_preprocess_u_lipm;
-  if (use_lipm_mpc_and_ik_) {
-    // Run LIPM MPC
-    lipm_ik_success = RunLipmMPC(
-        start_with_left_stance, init_phase, first_mode_duration, final_position,
-        x_init, &local_preprocess_x_lipm, &local_preprocess_u_lipm);
-    // Saving data for debugging
-    global_preprocess_x_lipm_ = local_preprocess_x_lipm;
-    global_preprocess_u_lipm_ = local_preprocess_u_lipm;
-    RotatePosBetweenGlobalAndLocalFrame(false, false, quat_xyz_shift,
-                                        local_preprocess_x_lipm,
-                                        &global_preprocess_x_lipm_);
-    RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                        local_preprocess_u_lipm,
-                                        &global_preprocess_u_lipm_);
-    // Run IK to get desired full state
-    if (lipm_ik_success) {
-      lipm_ik_success = GetDesiredFullStateFromLipmMPCSol(
-          x_init, start_with_left_stance, local_preprocess_x_lipm,
-          local_preprocess_u_lipm, &local_regularization_state);
-    }
-  }
+  // I deleted the method RunLipmMPC and GetDesiredFullStateFromLipmMPCSol,
+  // becuase I'm not using it in `CassiePlannerWithOnlyRom`.
+  // The implementation is in `CassiePlannerWithMixedRomFom`.
 
   ///
   /// Construct regularization full-states
   ///
-  // reg_x_FOM contains
-  //    first_touchdown_preimpact_state, first_touchdown_postimpact_state,
-  //    second_touchdown_preimpact_state, second_touchdown_postimpact_state, ...
-  vector<VectorXd> reg_x_FOM(2 * param_.n_step, VectorXd(nx_));
-  if (use_lipm_mpc_and_ik_ && lipm_ik_success) {
-    for (int i = 0; i < param_.n_step; i++) {
-      reg_x_FOM.at(2 * i) = local_regularization_state.col(i);
-      reg_x_FOM.at(2 * i + 1) = local_regularization_state.col(i);
-    }
-  } else {
-    bool left_stance = start_with_left_stance;
-    for (int i = 0; i < param_.n_step; i++) {
-      if (left_stance) {
-        reg_x_FOM.at(2 * i) = x_guess_right_in_front_pre_;
-        reg_x_FOM.at(2 * i + 1) = x_guess_right_in_front_post_;
-      } else {
-        reg_x_FOM.at(2 * i) = x_guess_left_in_front_pre_;
-        reg_x_FOM.at(2 * i + 1) = x_guess_left_in_front_post_;
-      }
-      reg_x_FOM.at(2 * i).segment<2>(4) = des_xy_pos.at(i + 1);
-      reg_x_FOM.at(2 * i + 1).segment<2>(4) = des_xy_pos.at(i + 1);
-      reg_x_FOM.at(2 * i).segment<2>(nq_ + 3) = des_xy_vel.at(i);
-      reg_x_FOM.at(2 * i + 1).segment<2>(nq_ + 3) = des_xy_vel.at(i);
-
-      //      cout << "des_xy_pos.at(i) = " << des_xy_pos.at(i) << endl;
-      //      cout << "des_xy_vel.at(i) = " << des_xy_vel.at(i) << endl;
-
-      left_stance = !left_stance;
-    }
-  }
-  // Print outs
-  //  cout << "reg_x_FOM = \n";
-  //  for (auto& vec : reg_x_FOM) {
-  //    cout << vec.transpose() << endl;
-  //  }
-  //  cout << endl;
+  // TODO: I constructed `left_step_` and `right_step_`. Need to use them.
 
   ///
   /// Construct rom traj opt
@@ -855,6 +844,9 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   PrintEssentialStatus("init_phase  = " + to_string(init_phase));
   PrintEssentialStatus("first_mode_knot_idx  = " +
                        to_string(first_mode_knot_idx));
+
+  /*
+  // Currently not using max_swing_distance
 
   // Maximum swing foot travel distance
   // Update date the step length of the first mode
@@ -874,7 +866,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       std::max(slack_to_avoid_overconstraint,
                max_foot_speed_first_mode * remaining_single_support_duration);
   PrintEssentialStatus("remaining_time_til_touchdown  = " +
-                       to_string(remaining_single_support_duration));
+                       to_string(remaining_single_support_duration));*/
 
   // Construct
   PrintStatus("\nConstructing optimization problem...");
@@ -896,7 +888,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   if (param_.n_step_lipm > 1) {
     trajopt.AddCascadedLipmMPC(
         param_.gains.w_predict_lipm_p, param_.gains.w_predict_lipm_v,
-        des_xy_pos, des_xy_vel_com, param_.n_step_lipm, stride_period_,
+        des_xy_pos_com, des_xy_vel_com, param_.n_step_lipm, stride_period_,
         param_.gains.max_lipm_step_length / 2,
         param_.gains.right_limit_wrt_pelvis);
   } else {
@@ -907,18 +899,13 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
         "lipm_mpc_and_ik");
 
     Vector2d des_predicted_xy_vel;
-    if (use_lipm_mpc_and_ik_ && lipm_ik_success) {
-      des_predicted_xy_vel =
-          local_preprocess_x_lipm.col(param_.n_step).tail<2>();
-    } else {
-      DRAKE_DEMAND(param_.n_step > 1);
-      // des_xy_vel is of size n_step.
-      // The predicted step (step after n_step) corresponds to
-      // des_xy_vel.at(n_step), but des_xy_vel's size is not big enough to cover
-      // the predicted step, so we -2. Note that, we go back 2 steps instead of
-      // 1 step because velocity is asymmetric in y direction
-      des_predicted_xy_vel = des_xy_vel_com.at(param_.n_step - 2);
-    }
+    DRAKE_DEMAND(param_.n_step > 1);
+    // des_xy_vel is of size n_step.
+    // The predicted step (step after n_step) corresponds to
+    // des_xy_vel.at(n_step), but des_xy_vel's size is not big enough to cover
+    // the predicted step, so we -2. Note that, we go back 2 steps instead of
+    // 1 step because velocity is asymmetric in y direction
+    des_predicted_xy_vel = des_xy_vel_com.at(param_.n_step - 2);
 
     // Constraint and cost for the last foot step location
     trajopt.AddConstraintAndCostForLastFootStep(
@@ -935,8 +922,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // Add rom state in cost
   // TODO: modify this so that we penalize for the position/vel tracking
   trajopt.AddRomRegularizationCost(h_reg_, y_reg_, dy_reg_, tau_reg_,
-                                   first_mode_knot_idx,
-                                   param_.gains.w_rom_reg);
+                                   first_mode_knot_idx, param_.gains.w_rom_reg);
 
   // Default initial guess to avoid singularity (which messes with gradient)
   for (int i = 0; i < num_time_samples_.size(); i++) {
@@ -947,6 +933,8 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   }
 
   PrintStatus("Initial guesses ===============");
+
+  // TODO: continue editing from here.
 
   // Initial guess for all variables
   if (counter_ == 0 && !param_.init_file.empty()) {
@@ -1101,8 +1089,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // TODO: maybe I should not assign the new desired traj to controller thread
   //  when the solver didn't find optimal solution (unless it's going to run out
   //  of traj to use)? We should just use the old previous_output_msg_
-  if (!result.is_success() && (result.GetSolution(trajopt.xf_vars_by_mode(
-                                   param_.n_step - 1))(6) < 0.6)) {
+  if (!result.is_success()) {
     *traj_msg = previous_output_msg_;
     cout << "Bad solution. Skip this one.\n";
     // TODO: It's still good to do some bookkeeping, so that I can resolve it.
@@ -1322,359 +1309,6 @@ int CassiePlannerWithOnlyRom::DetermineNumberOfKnotPoints(
                        to_string(n_knots_first_mode));
 
   return first_mode_knot_idx;
-}
-
-bool CassiePlannerWithOnlyRom::RunLipmMPC(
-    bool start_with_left_stance, double init_phase, double first_mode_duration,
-    const VectorXd& final_position, const VectorXd& x_init,
-    MatrixXd* local_preprocess_x_lipm,
-    MatrixXd* local_preprocess_u_lipm) const {
-  cout << "=== start of LIPM MPC ===\n";
-  auto start_build = std::chrono::high_resolution_clock::now();
-
-  // Parameters
-  double target_height = 0.85;
-  // Long horizon
-  int minimum_n_step = 10;
-  double max_length_foot_to_body = 0.3;  // speed = 2 * foot_to_body / time
-  // The body cannot be too forward. Otherwise it hits the toe joint limit.
-  double max_length_foot_to_body_front = 0.3;  // 0.3
-
-  double first_mode_duration_lipm = first_mode_duration;
-  double stride_period_lipm = stride_period_;
-  // Heuristic
-  // Removing double support phase produces better foot step when the target
-  // position is far. However, in this case, ROM MPC's first foot step
-  // prediction would be different from LIPM MPC's.
-  bool remove_double_support_druation_in_first_mode = true;
-  if (remove_double_support_druation_in_first_mode) {
-    // Use remaining time until touchdown
-    first_mode_duration_lipm =
-        std::max(0.0, first_mode_duration_lipm - double_support_duration_);
-  }
-  bool remove_double_support_druation_after_first_mode = true;
-  if (remove_double_support_druation_after_first_mode) {
-    // Ignore double support duration
-    stride_period_lipm = single_support_duration_;
-  }
-  /*cout << "first_mode_duration_lipm = " << first_mode_duration_lipm << endl;
-  cout << "stride_period_lipm = " << stride_period_lipm << endl;*/
-  // TODO: With the above heuristic, it seems to underestimate the prediction.
-  //  However, after removing it, the stride druation is larger which cause
-  //  bigger stride length, and we need to relax the stride length constraint in
-  //  LIPM MPC to make the problem feasible.
-  //  We need to add soft constraint for the stride length (in the cost), so we
-  //  can at least get a solution.
-  //  Additionally, the big stride length caused instability.
-
-  // +1 because IK needs swing ft
-  int n_step = std::max(minimum_n_step, param_.n_step + 1);
-
-  // Get des_xy_pos, des_xy_vel
-  vector<VectorXd> des_xy_pos_com;
-  vector<VectorXd> des_xy_vel_com;
-  CreateDesiredComPosAndVel(n_step, start_with_left_stance, init_phase,
-                            final_position, &des_xy_pos_com, &des_xy_vel_com);
-
-  // Get initial COM position, velocity and stance foot position
-  plant_control_.SetPositions(context_plant_control_.get(), x_init.head(nq_));
-  // CoM position
-  Vector3d com_pos =
-      plant_control_.CalcCenterOfMassPositionInWorld(*context_plant_control_);
-  // CoM velocity
-  Eigen::MatrixXd J_com(3, plant_control_.num_velocities());
-  plant_control_.CalcJacobianCenterOfMassTranslationalVelocity(
-      *context_plant_control_, JacobianWrtVariable::kV,
-      plant_control_.world_frame(), plant_control_.world_frame(), &J_com);
-  Vector2d com_vel = J_com.topRows<2>() * x_init.tail(nv_);
-  // Stance foot position
-  auto stance_toe_mid = start_with_left_stance ? left_mid_ : right_mid_;
-  VectorXd stance_foot_pos(3);
-  plant_control_.CalcPointsPositions(
-      *context_plant_control_, stance_toe_mid.second, stance_toe_mid.first,
-      plant_control_.world_frame(), &stance_foot_pos);
-
-  // Height vector
-  vector<double> height_vec(n_step);
-  height_vec.at(0) = com_pos(2);
-  double delta = (target_height - com_pos(2)) / (n_step - 1);
-  for (int i = 1; i < n_step; i++) {
-    height_vec.at(i) = height_vec.at(i - 1) + delta;
-  }
-  // DRAKE_DEMAND(abs(height_vec.at(n_step - 1) - target_height) < 1e-14);
-
-  // Construct LIPM MPC (QP)
-  // TODO: need to add constraint for the swing foot travel distance in the
-  //  first mode
-  cout << "Reminder here.\n";
-  LipmMpc mpc_qp(
-      des_xy_pos_com, des_xy_vel_com, param_.gains.w_p_lipm_mpc,
-      param_.gains.w_v_lipm_mpc, com_pos.head<2>(), com_vel,
-      stance_foot_pos.head<2>(), n_step, first_mode_duration_lipm,
-      stride_period_lipm, height_vec,
-      std::min(max_length_foot_to_body, param_.gains.max_lipm_step_length / 2),
-      max_length_foot_to_body_front, param_.gains.right_limit_wrt_pelvis,
-      start_with_left_stance);
-
-  // Set initial guess (warm start after the first loop)
-  // TODO: use global_preprocess_x_lipm_ and global_preprocess_u_lipm_
-  //  Update -- Currently the speed is fast enough, so it's probably uncessary.
-
-  // Solve
-  auto start_solve = std::chrono::high_resolution_clock::now();
-  const auto result = qp_solver_.Solve(mpc_qp, mpc_qp.initial_guess());
-  auto finish = std::chrono::high_resolution_clock::now();
-
-  // Get solution
-  *local_preprocess_x_lipm = mpc_qp.GetStateSamples(result);
-  *local_preprocess_u_lipm = mpc_qp.GetInputSamples(result);
-
-  // Printing
-  // Normally the whole thing takes 1ms without a initial guess
-  std::chrono::duration<double> elapsed_build = start_solve - start_build;
-  std::chrono::duration<double> elapsed_solve = finish - start_solve;
-  SolutionResult solution_result = result.get_solution_result();
-  cout << "Solver:" << result.get_solver_id().name() << " | ";
-  cout << "Build time:" << elapsed_build.count() << " | ";
-  cout << "Solve time:" << elapsed_solve.count() << " | ";
-  cout << solution_result << " | ";
-  cout << "Cost:" << result.get_optimal_cost() << "\n";
-
-  double lipm_p_cost =
-      solvers::EvalCostGivenSolution(result, mpc_qp.lipm_p_bindings_);
-  if (lipm_p_cost > 0) {
-    cout << "lipm_p_cost = " << lipm_p_cost << endl;
-  }
-  double lipm_v_cost =
-      solvers::EvalCostGivenSolution(result, mpc_qp.lipm_v_bindings_);
-  if (lipm_v_cost > 0) {
-    cout << "lipm_v_cost = " << lipm_v_cost << endl;
-  }
-
-  cout << "==== end of LIPM MPC ====\n";
-  if (!result.is_success()) {
-    //    DRAKE_DEMAND(result.is_success());
-    cout << "\n!!!\n !!! WARNING: LIPM MPC failed!\n !!!\n\n";
-  }
-  return result.is_success();
-}
-
-bool CassiePlannerWithOnlyRom::GetDesiredFullStateFromLipmMPCSol(
-    const Eigen::VectorXd& x_init, bool start_with_left_stance,
-    const Eigen::MatrixXd& local_preprocess_x_lipm,
-    const Eigen::MatrixXd& local_preprocess_u_lipm,
-    MatrixXd* regularization_state) const {
-  cout << "=== start of IK ===\n";
-  bool success = true;
-
-  // Parameter
-  // TODO: desired_quat should point towards goal position. Same for ROM MPC.
-  Vector4d desired_quat(1, 0, 0, 0);
-  //  double desired_height = 1;
-  double desired_height = x_init(6);  // for testing
-  double time_limit = 0.2;            // 0.02;  // in seconds
-  bool include_velocity = false;
-
-  double scale = 1;
-  double w_q_reg = 0.0001 * scale;
-  double w_v_reg = 0.0001 * scale;
-  double w_pelvis_z = 1 * scale;
-  double w_hip_yaw = 1 * scale;
-
-  bool left_stance = start_with_left_stance;
-  for (int i = 0; i < regularization_state->cols(); i++) {
-    auto start_build = std::chrono::high_resolution_clock::now();
-
-    auto prog = multibody::MultibodyProgram(plant_control_);
-    auto q = prog.AddPositionVariables();
-    drake::solvers::VectorXDecisionVariable v;
-    if (include_velocity) {
-      v = prog.NewContinuousVariables(nv_, "v");
-    }
-
-    // Bounding box for quaternion
-    prog.AddBoundingBoxConstraint(0, 1, q(0));              // qw
-    prog.AddBoundingBoxConstraint(-1, 1, q.segment<3>(1));  // qx, qy, qz
-
-    // Quaternion unit norm constraint (it solves faster with this constraint)
-    //    auto quat_norm_constraint =
-    //        std::make_shared<drake::solvers::QuadraticConstraint>(
-    //            2 * MatrixXd::Identity(4, 4), VectorXd::Zero(4), 1, 1);
-    //    prog.AddConstraint(quat_norm_constraint, q.head(4));
-
-    // Joint limit constraint
-    prog.AddJointLimitConstraints(q);
-
-    // Four bar linkage constraint (without spring)
-    prog.AddLinearEqualityConstraint(
-        Aeq_fourbar_, angle_fourbar_,
-        {q.segment<1>(pos_map_.at("knee_left")),
-         q.segment<1>(pos_map_.at("ankle_joint_left"))});
-    prog.AddLinearEqualityConstraint(
-        Aeq_fourbar_, angle_fourbar_,
-        {q.segment<1>(pos_map_.at("knee_right")),
-         q.segment<1>(pos_map_.at("ankle_joint_right"))});
-
-    // Feet xy position
-    VectorXd left_ft_pos = left_stance ? local_preprocess_u_lipm.col(i)
-                                       : local_preprocess_u_lipm.col(i + 1);
-    VectorXd right_ft_pos = left_stance ? local_preprocess_u_lipm.col(i + 1)
-                                        : local_preprocess_u_lipm.col(i);
-    auto left_ft_pos_constraint =
-        std::make_shared<multibody::KinematicPositionConstraint<double>>(
-            plant_control_, *left_foot_evaluators_, left_ft_pos, left_ft_pos,
-            std::set<int>(), prog.get_context());
-    auto left_ft_pos_binding = prog.AddConstraint(left_ft_pos_constraint, q);
-    auto right_ft_pos_constraint =
-        std::make_shared<multibody::KinematicPositionConstraint<double>>(
-            plant_control_, *right_foot_evaluators_, right_ft_pos, right_ft_pos,
-            std::set<int>(), prog.get_context());
-    auto right_ft_pos_binding = prog.AddConstraint(right_ft_pos_constraint, q);
-
-    // Zero foot height
-    auto foot_height_binding =
-        prog.AddKinematicConstraint(*contact_z_evaluators_, q);
-
-    if (include_velocity) {
-      // Zero velocity on feet
-      // Interestingly the speed is much slower when getting rid of redundancy
-      auto foot_vel_constraint =
-          std::make_shared<multibody::KinematicVelocityConstraint<double>>(
-              plant_control_, *contact_evaluators_, prog.get_context());
-      auto velocity_binding = prog.AddConstraint(foot_vel_constraint, {q, v});
-
-      // Bounding box for vel
-      prog.AddBoundingBoxConstraint(-10, 10, v);
-
-      //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wx")));
-      //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wy")));
-      //    prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_wz")));
-
-      prog.AddBoundingBoxConstraint(
-          local_preprocess_x_lipm.col(i + 1).segment<2>(2),
-          local_preprocess_x_lipm.col(i + 1).segment<2>(2),
-          v.segment<2>(vel_map_.at("base_vx")));
-      prog.AddBoundingBoxConstraint(0, 0, v(vel_map_.at("base_vz")));
-    }
-
-    // Add costs
-    // Regularization term
-    auto q_cost_binding = prog.AddQuadraticErrorCost(
-        w_q_reg * MatrixXd::Identity(nq_ - 7, nq_ - 7),
-        x_standing_fixed_spring_.tail(nq_ - 7), q.tail(nq_ - 7));
-    std::unique_ptr<Binding<QuadraticCost>> v_cost_binding;
-    if (include_velocity) {
-      v_cost_binding =
-          std::make_unique<Binding<QuadraticCost>>(prog.AddQuadraticErrorCost(
-              w_v_reg * MatrixXd::Identity(nv_, nv_), VectorXd::Zero(nv_), v));
-    }
-
-    // Quaternion
-    prog.AddBoundingBoxConstraint(desired_quat, desired_quat, q.head<4>());
-    //    auto quat_cost_binding = prog.AddQuadraticErrorCost(
-    //        0.01 * MatrixXd::Identity(4, 4), desired_quat, q.tail<4>());
-
-    // pelvis xy
-    prog.AddBoundingBoxConstraint(local_preprocess_x_lipm.col(i + 1).head<2>(),
-                                  local_preprocess_x_lipm.col(i + 1).head<2>(),
-                                  q.segment<2>(4));
-    //    auto pelvis_xy_cost_binding = prog.AddQuadraticErrorCost(
-    //        1 * MatrixXd::Identity(2, 2),
-    //        local_preprocess_x_lipm.col(i + 1).head<2>(), q.segment<2>(4));
-
-    // pelvis z
-    //    prog.AddBoundingBoxConstraint(desired_height, desired_height,
-    //    q(pos_map_.at("base_z")));
-    auto height_cost_binding = prog.AddQuadraticErrorCost(
-        w_pelvis_z * MatrixXd::Identity(1, 1),
-        desired_height * VectorXd::Ones(1), q.segment<1>(6));
-
-    // Hip yaw
-    //    prog.AddBoundingBoxConstraint(Vector2d::Zero(), Vector2d::Zero(),
-    //                                  q.segment<2>(9));
-    auto left_hip_cost_binding =
-        prog.AddQuadraticErrorCost(w_hip_yaw * MatrixXd::Identity(1, 1),
-                                   VectorXd::Zero(1), q.segment<1>(9));
-    auto right_hip_cost_binding =
-        prog.AddQuadraticErrorCost(w_hip_yaw * MatrixXd::Identity(1, 1),
-                                   VectorXd::Zero(1), q.segment<1>(10));
-
-    // Initial guesses
-    cout << "REMINDER!! We should warm start IK with previous solution if mode "
-            "stay the same. Also, warm start only if previous solve is "
-            "successful \n";
-    prog.SetInitialGuessForAllVariables(
-        0.01 * Eigen::VectorXd::Random(prog.num_vars()));
-    prog.SetInitialGuess(q, x_standing_fixed_spring_.head(nq_));
-    //    prog.SetInitialGuess(v, v_desired);
-
-    // Snopt settings
-    /*prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                         "../snopt_test.out");*/
-    prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
-    prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                         "Major optimality tolerance", 1e-2);
-    prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                         "Major feasibility tolerance", 1e-2);
-    prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Time limit",
-                         time_limit);
-
-    auto start_solve = std::chrono::high_resolution_clock::now();
-    const auto result = snopt_solver_.Solve(prog, prog.initial_guess());
-    auto finish = std::chrono::high_resolution_clock::now();
-
-    // Assign
-    if (include_velocity) {
-      regularization_state->col(i) << result.GetSolution(q),
-          result.GetSolution(v);
-    } else {
-      regularization_state->col(i) << result.GetSolution(q), 0, 0, 0,
-          local_preprocess_x_lipm.col(i + 1).segment<2>(2),
-          VectorXd::Zero(nv_ - 5);
-    }
-    left_stance = !left_stance;
-
-    // Print
-    std::chrono::duration<double> elapsed_build = start_solve - start_build;
-    std::chrono::duration<double> elapsed_solve = finish - start_solve;
-    SolutionResult solution_result = result.get_solution_result();
-    cout << "Solver:" << result.get_solver_id().name() << " | ";
-    cout << "Build time:" << elapsed_build.count() << " | ";
-    cout << "Solve time:" << elapsed_solve.count() << " | ";
-    cout << solution_result << " | ";
-    cout << "Cost:" << result.get_optimal_cost() << "\n";
-
-    //    cout << "q = " << regularization_state->col(i).head(nq_) <<
-    //    endl; cout << "v = " <<
-    //    regularization_state->col(i).tail(nv_) << endl;
-    cout << "height  = " << regularization_state->col(i)(6) << endl;
-    cout << "height_cost_binding = "
-         << solvers::EvalCostGivenSolution(result, height_cost_binding) << endl;
-    cout << "left_hip_cost_binding = "
-         << solvers::EvalCostGivenSolution(result, left_hip_cost_binding)
-         << endl;
-    cout << "right_hip_cost_binding = "
-         << solvers::EvalCostGivenSolution(result, right_hip_cost_binding)
-         << endl;
-    /*cout << "quat_cost_binding = "
-         << solvers::EvalCostGivenSolution(result, quat_cost_binding) << endl;*/
-    cout << "q_cost_binding = "
-         << solvers::EvalCostGivenSolution(result, q_cost_binding) << endl;
-    if (include_velocity) {
-      cout << "v_cost_binding = "
-           << solvers::EvalCostGivenSolution(result, *v_cost_binding) << endl;
-    }
-
-    // Exiting
-    if (!result.is_success()) {
-      // DRAKE_DEMAND(result.is_success());
-      cout << "\n!!!\n !!! WARNING: IK failed!\n !!!\n\n";
-    }
-    success = success && result.is_success();
-  }
-  cout << "==== end of IK ====\n";
-
-  return success;
 }
 
 void CassiePlannerWithOnlyRom::CreateDesiredPelvisPosAndVel(

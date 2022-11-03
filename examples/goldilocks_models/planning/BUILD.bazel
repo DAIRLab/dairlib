@@ -12,6 +12,22 @@ cc_library(
 )
 
 cc_library(
+    name = "hybrid_rom_traj_opt",
+    srcs = ["hybrid_rom_traj_opt.cc"],
+    hdrs = ["hybrid_rom_traj_opt.h"],
+    deps = [
+        ":FoM_guard_and_feet_constraint",
+        ":FoM_reset_map_constraint",
+        ":FoM_stance_foot_constraint",
+        ":dynamics_constraint",
+        ":kinematics_constraint",
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:reduced_order_models",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "rom_traj_opt",
     srcs = ["rom_traj_opt.cc"],
     hdrs = ["rom_traj_opt.h"],

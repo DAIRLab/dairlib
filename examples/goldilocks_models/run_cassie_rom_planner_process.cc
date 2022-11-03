@@ -440,7 +440,7 @@ int DoMain(int argc, char* argv[]) {
   // Init state relaxation (relax the mapping function)
   std::set<int> relax_index = {5};  //{3, 4, 5};
   // Initialize the MPC initial state with previous ROM traj solution
-  vector<int> initialize_with_rom_state = {2, 5};  // for state, not only pos
+  vector<int> initialize_with_prev_rom_state = {2, 5};  // for state, not only pos
   // Constant vel index for double support phase
   // Note that this is the index in state
   std::set<int> idx_const_rom_vel_during_double_support = {3, 4};  // {3};  //{3, 4};  //{3, 4, 5};
@@ -453,7 +453,7 @@ int DoMain(int argc, char* argv[]) {
   // Create optimal rom trajectory generator
   auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(
       plant_control, stride_period, param, relax_index,
-      initialize_with_rom_state, idx_const_rom_vel_during_double_support,
+      initialize_with_prev_rom_state, idx_const_rom_vel_during_double_support,
       FLAGS_debug_mode, FLAGS_log_data, FLAGS_print_level);
   if (FLAGS_completely_use_trajs_from_model_opt_as_target)
     rom_planner->completely_use_trajs_from_model_opt_as_target();

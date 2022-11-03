@@ -3,6 +3,28 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "cassie_hybrid_rom_planner_system",
+    srcs = ["cassie_hybrid_rom_planner_system.cc"],
+    hdrs = ["cassie_hybrid_rom_planner_system.h"],
+    deps = [
+        "//common:eigen_utils",
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:reduced_order_models",
+        "//examples/goldilocks_models:rom_walking_gains",
+        "//examples/goldilocks_models/planning:lipm_mpc",
+        "//examples/goldilocks_models/planning:hybrid_rom_traj_opt",
+        "//lcm:rom_planner_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:multibody_solvers",
+        "//multibody:utils",
+        "//multibody/kinematic:constraints",
+        "//solvers:optimization_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "cassie_rom_planner_system",
     srcs = ["cassie_rom_planner_system.cc"],
     hdrs = ["cassie_rom_planner_system.h"],

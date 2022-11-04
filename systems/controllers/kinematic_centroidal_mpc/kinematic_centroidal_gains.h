@@ -1,7 +1,6 @@
 #pragma once
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "yaml-cpp/yaml.h"
-#include "include/_usr_include_eigen3/Eigen/Core"
 
 struct KinematicCentroidalGains{
   Eigen::Vector3d com_position;

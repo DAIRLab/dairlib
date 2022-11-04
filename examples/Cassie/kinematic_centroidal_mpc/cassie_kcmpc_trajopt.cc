@@ -47,14 +47,8 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   mpc.SetGains(gains);
 
   // Create gaits
-  Gait stand ({{0, 1, drake::Vector<bool, 4>(true, true, true, true)}});
-  stand.SetPeriod(1);
-
-  Gait walk({{0, 0.4, drake::Vector<bool, 4>(true, true, false, false)},
-             {0.4, 0.5, drake::Vector<bool, 4>(true, true, true, true)},
-             {0.5, 0.9, drake::Vector<bool, 4>(false, false, true, true)},
-             {0.9, 1.0, drake::Vector<bool, 4>(true, true, true, true)}});
-  walk.SetPeriod(1.25);
+  auto stand = drake::yaml::LoadYamlFile<Gait>("examples/Cassie/kinematic_centroidal_mpc/gaits/stand.yaml");
+  auto walk = drake::yaml::LoadYamlFile<Gait>("examples/Cassie/kinematic_centroidal_mpc/gaits/walk.yaml");
 
   // Create reference
   Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), com_height, stance_width, false);

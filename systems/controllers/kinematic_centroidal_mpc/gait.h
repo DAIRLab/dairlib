@@ -1,6 +1,8 @@
 #pragma once
 
 #include <drake/common/trajectories/piecewise_polynomial.h>
+#include "drake/common/yaml/yaml_read_archive.h"
+#include "yaml-cpp/yaml.h"
 
 /*!
  * @brief Struct for a given mode as part of a mode sequence
@@ -9,16 +11,19 @@ struct Mode{
   double start_phase;
   double end_phase;
   drake::VectorX<bool> contact_status; /// Vector describing which contacts are active
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(start_phase));
+    a->Visit(DRAKE_NVP(end_phase));
+    a->Visit(DRAKE_NVP(contact_status));
+  }
 };
 
 /*!
- * @brief Clss for defining a gait consisting of a vector of Modes, and a period for the whole gait.
+ * @brief Struct for defining a gait consisting of a vector of Modes, and a period for the whole gait.
  */
-class Gait{
- public:
-  Gait(const std::vector<Mode>& gait_pattern, double period = 0): gait_pattern_(gait_pattern),
-  period_(period){};
-
+struct Gait{
 /*!
  * @brief converts the gait into a trajectory from current time to end time
  * @param current_time
@@ -32,9 +37,11 @@ class Gait{
    */
   void check_valid() const;
 
-  void SetPeriod(double period){period_ = period;}
-
- private:
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(gait_pattern));
+    a->Visit(DRAKE_NVP(period));
+  }
   /*!
    * @brief find the index for the current mode that the gait is in
    * @param time_now
@@ -42,8 +49,8 @@ class Gait{
    */
   int GetCurrentMode(double time_now) const;
 
-  double period_;
-  std::vector<Mode> gait_pattern_; /// Vector of modes. Start phase of the first mode must be 0, end phase of the last mode
+  double period;
+  std::vector<Mode> gait_pattern; /// Vector of modes. Start phase of the first mode must be 0, end phase of the last mode
   /// must be 1, and no time gaps between start and end of sequential modes
 
 };

@@ -14,7 +14,9 @@ cc_library(
 cc_binary(
     name = "cassie_kcmpc_trajopt",
     srcs = ["cassie_kcmpc_trajopt.cc"],
-    data = ["//examples/Cassie/kinematic_centroidal_mpc:kinematic_centroidal_mpc_gains.yaml"],
+    data = ["//examples/Cassie/kinematic_centroidal_mpc:kinematic_centroidal_mpc_gains.yaml",
+            "//examples/Cassie/kinematic_centroidal_mpc/gaits:stand.yaml",
+            "//examples/Cassie/kinematic_centroidal_mpc/gaits:walk.yaml"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//common",

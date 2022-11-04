@@ -1,6 +1,6 @@
 #include "gait.h"
 
-int Gait::CurrentMode(double time_now) const{
+int Gait::GetCurrentMode(double time_now) const{
   double phase_now = fmod(time_now/period_, 1);
   for(int i = 0; i < gait_pattern_.size(); i++){
     const auto& mode = gait_pattern_[i];
@@ -17,7 +17,7 @@ drake::trajectories::PiecewisePolynomial<double> Gait::ToTrajectory(double curre
   std::vector<drake::MatrixX<double>> samples;
 
   // Calculate initial mode index, and phase
-  int current_mode = CurrentMode( current_time);
+  int current_mode = GetCurrentMode(current_time);
   double current_phase = fmod(current_time/period_, 1);
 
   // Loop until time is greater than end time
@@ -38,7 +38,7 @@ drake::trajectories::PiecewisePolynomial<double> Gait::ToTrajectory(double curre
   return drake::trajectories::PiecewisePolynomial<double>::ZeroOrderHold(break_points, samples);
 }
 
-void Gait::Is_Valid() const {
+void Gait::check_valid() const {
   DRAKE_ASSERT(period_ > 0);
   DRAKE_ASSERT(gait_pattern_[0].start_phase == 0);
   DRAKE_ASSERT(gait_pattern_[gait_pattern_.size()-1].end_phase == 1);

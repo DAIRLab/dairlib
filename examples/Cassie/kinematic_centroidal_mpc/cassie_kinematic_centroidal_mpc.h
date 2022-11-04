@@ -1,7 +1,7 @@
 #pragma once
 #include <iostream>
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_mpc.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "examples/Cassie/cassie_utils.h"
 
 /*!

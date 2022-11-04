@@ -30,7 +30,7 @@ class Gait{
   /*!
    * @brief Checks to make sure the gait is valid, Asserts if not valid
    */
-  void Is_Valid() const;
+  void check_valid() const;
 
   void SetPeriod(double period){period_ = period;}
 
@@ -40,7 +40,7 @@ class Gait{
    * @param time_now
    * @return
    */
-  int CurrentMode(double time_now) const;
+  int GetCurrentMode(double time_now) const;
 
   double period_;
   std::vector<Mode> gait_pattern_; /// Vector of modes. Start phase of the first mode must be 0, end phase of the last mode

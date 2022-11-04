@@ -57,7 +57,7 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
   walk.SetPeriod(1.25);
 
   // Create reference
-  Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), com_height, stance_width, true);
+  Eigen::VectorXd reference_state = GenerateNominalStand(mpc.Plant(), com_height, stance_width, false);
   KcmpcReferenceGenerator generator(plant, reference_state.head(plant.num_positions()), mpc.CreateContactPoints(plant,0));
 
 

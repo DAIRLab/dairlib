@@ -231,31 +231,15 @@ const systems::GearedMotor& AddMotorModel(
 }
 
 std::vector<std::string> JointNames(){
-  // create joint/motor names
-  std::vector<std::pair<std::string, std::string>> l_r_pairs{
-      std::pair<std::string, std::string>("_left", "_right"),
-      std::pair<std::string, std::string>("_right", "_left"),
-  };
-  std::vector<std::string> asy_joint_names{
-      "hip_roll",
-      "hip_yaw",
-  };
-  std::vector<std::string> sym_joint_names{"hip_pitch", "knee", "ankle_joint", "toe"};
-  std::vector<std::string> joint_names{};
-  std::vector<std::string> motor_names{};
-  for (auto &l_r_pair : l_r_pairs) {
-    for (auto & asy_joint_name : asy_joint_names) {
-      joint_names.push_back(asy_joint_name + l_r_pair.first);
-      motor_names.push_back(asy_joint_name + l_r_pair.first + "_motor");
-    }
-    for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
-      joint_names.push_back(sym_joint_names[i] + l_r_pair.first);
-      if (sym_joint_names[i].compare("ankle_joint") != 0) {
-        motor_names.push_back(sym_joint_names[i] + l_r_pair.first + "_motor");
-      }
+  std::vector<std::string> side_names{"_left", "_right"};
+  std::vector<std::string> joint_names{"hip_pitch", "knee", "ankle_joint", "toe", "hip_roll", "hip_yaw"};
+  std::vector<std::string> full_joint_names;
+  for(const auto& name : joint_names){
+    for(const auto& side:side_names){
+      full_joint_names.push_back(name+side);
     }
   }
-  return  joint_names;
+  return  full_joint_names;
 }
 
 template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(

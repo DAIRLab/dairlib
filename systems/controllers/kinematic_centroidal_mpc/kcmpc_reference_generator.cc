@@ -99,7 +99,7 @@ void KcmpcReferenceGenerator::SetComKnotPoints(const KnotPoints<Eigen::Vector3d>
 
 void KcmpcReferenceGenerator::SetGaitSequence(const KnotPoints<Gait> &gait_knot_points) {
   for(const auto& gait : gait_knot_points.samples){
-    gait.Is_Valid();
+    gait.check_valid();
   }
   gait_knot_points_ = gait_knot_points;
 }

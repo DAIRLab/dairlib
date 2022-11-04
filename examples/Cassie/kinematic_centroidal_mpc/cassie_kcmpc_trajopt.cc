@@ -112,8 +112,11 @@ void DoMain(int n_knot_points, double duration, double com_height, double stance
 
   std::cout << "Solving optimization\n\n";
   const auto pp_xtraj = mpc.Solve();
-  mpc.SaveSolutionToFile(std::string(getenv("HOME")) + "/workspace/dairlib/examples/Cassie/saved_trajectories/kcmpc_solution");
-
+  try{
+    mpc.SaveSolutionToFile("examples/Cassie/saved_trajectories/kcmpc_solution");
+  } catch(...){
+    std::cout<<"Unable to save trajectory, try running binary manually rather than using bazel run" << std::endl;
+  }
   auto traj_source =
       builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);
   auto passthrough = builder.AddSystem<dairlib::systems::SubvectorPassThrough>(

@@ -6,7 +6,7 @@
 #include "examples/goldilocks_models/planning/hybrid_rom_traj_opt.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/rom_walking_gains.h"
-#include "lcm/rom_planner_saved_trajectory.h"
+#include "lcm/hybrid_rom_planner_saved_trajectory.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
@@ -119,8 +119,9 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const drake::solvers::MathematicalProgramResult& result) const;
   void WarmStartGuess(
       const Eigen::VectorXd& quat_xyz_shift,
-      const std::vector<Eigen::VectorXd>& reg_x_FOM, const int global_fsm_idx,
-      int first_mode_knot_idx, double current_time,
+      const Eigen::VectorXd& current_stance_foot_pos,
+      const std::vector<Eigen::Vector2d>& reg_footstep,
+      const int global_fsm_idx, int first_mode_knot_idx, double current_time,
       dairlib::goldilocks_models::HybridRomTrajOptCassie* trajopt) const;
 
   // Flags
@@ -202,13 +203,15 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd dy_reg_;
   Eigen::MatrixXd tau_reg_;
   // Both initial guess and regularization
-  Eigen::VectorXd x_guess_left_in_front_pre_;
-  Eigen::VectorXd x_guess_right_in_front_pre_;
-  Eigen::VectorXd x_guess_left_in_front_post_;
-  Eigen::VectorXd x_guess_right_in_front_post_;
+  Eigen::VectorXd x_guess_steppingleft_pre_;
+  Eigen::VectorXd x_guess_steppingright_pre_;
+  Eigen::VectorXd x_guess_steppingleft_post_;
+  Eigen::VectorXd x_guess_steppingright_post_;
   // Regularization term for the footstep variables
   drake::VectorX<double> left_step_;
   drake::VectorX<double> right_step_;
+  // Desired height
+  double desired_com_height_;
 
   // Index of state which we initialize to 1 in order to avoid singularity
   // (which messes with gradient)
@@ -220,14 +223,12 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   mutable std::vector<int> prev_mode_start_;
   // Previous solutions
   mutable Eigen::VectorXd z_;
-  mutable RomPlannerTrajectory lightweight_saved_traj_;
+  mutable HybridRomPlannerTrajectory lightweight_saved_traj_;
   mutable Eigen::VectorXd h_solutions_;
   mutable Eigen::MatrixXd input_at_knots_;
-  // TODO: we will need to store global not local for better warm-start. Same
-  //  reason as x0_FOM_
-  mutable Eigen::MatrixXd local_Lambda_FOM_;
-  mutable Eigen::MatrixXd global_x0_FOM_;
-  mutable Eigen::MatrixXd global_xf_FOM_;
+  // TODO: apart from local, we also store global for better warm-start.
+  mutable Eigen::MatrixXd global_footstep_;
+  mutable Eigen::MatrixXd global_y_end_of_last_mode_;
   mutable Eigen::VectorXd touchdown_foot_pos_;
   mutable Eigen::VectorXd eps_rom_;
   mutable Eigen::VectorXd local_predicted_com_vel_;
@@ -329,16 +330,11 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   void PrintStatus(const std::string& msg) const {
     if (print_level_ > 1) std::cout << msg << std::endl;
   };
-  void SaveTrajIntoLcmBinary(
-      const HybridRomTrajOptCassie& trajopt,
-      const drake::solvers::MathematicalProgramResult& result,
-      const Eigen::MatrixXd& global_x0_FOM,
-      const Eigen::MatrixXd& global_xf_FOM, const std::string& dir_data,
-      const std::string& prefix, double current_time) const;
   void SaveDataIntoFiles(
       double current_time, int global_fsm_idx, const Eigen::VectorXd& x_init,
       double init_phase, bool is_right_stance,
       const Eigen::VectorXd& quat_xyz_shift,
+      const Eigen::VectorXd& current_stance_foot_pos,
       const Eigen::VectorXd& final_position,
       const Eigen::MatrixXd& global_regularization_x_FOM,
       const Eigen::MatrixXd& local_x0_FOM, const Eigen::MatrixXd& local_xf_FOM,
@@ -352,7 +348,8 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const HybridRomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& prefix, double current_time,
-      const Eigen::VectorXd& quat_xyz_shift) const;
+      const Eigen::VectorXd& quat_xyz_shift,
+      const Eigen::VectorXd& current_stance_foot_pos) const;
   void PrintTrajMsg(dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
 };
 

@@ -72,7 +72,8 @@ class HybridRomTrajOpt
                           const std::vector<Eigen::VectorXd>& des_xy_pos,
                           const std::vector<Eigen::VectorXd>& des_xy_vel,
                           int n_step_lipm, double stride_period,
-                          double max_step_length, double min_step_width);
+                          double max_step_length, double min_step_width,
+                          double desired_height);
 
   void AddTimeStepConstraint(std::vector<double> minimum_timestep,
                              std::vector<double> maximum_timestep,
@@ -121,6 +122,10 @@ class HybridRomTrajOpt
   discrete_swing_foot_pos_rt_stance_foot_x_vars(int mode) const;
   drake::solvers::VectorXDecisionVariable
   discrete_swing_foot_pos_rt_stance_foot_y_vars(int mode) const;
+  drake::solvers::VectorXDecisionVariable
+  discrete_swing_foot_pos_rt_stance_foot_x_vars() const;
+  drake::solvers::VectorXDecisionVariable
+  discrete_swing_foot_pos_rt_stance_foot_y_vars() const;
   drake::solvers::VectorXDecisionVariable
   y_end_of_last_mode_rt_init_stance_foot_var() const;
 
@@ -239,14 +244,12 @@ class HybridRomTrajOptCassie : public HybridRomTrajOpt {
                                 const Eigen::MatrixXd& tau_guess,
                                 int fisrt_mode_phase_index, double w_reg);
 
-  void SetHeuristicInitialGuess(const PlannerSetting& param,
-                                const Eigen::VectorXd& h_guess,
-                                const Eigen::MatrixXd& y_guess,
-                                const Eigen::MatrixXd& dy_guess,
-                                const Eigen::MatrixXd& tau_guess,
-                                const std::vector<Eigen::VectorXd>& reg_x_FOM,
-                                int fisrt_mode_phase_index,
-                                int starting_mode_index);
+  void SetHeuristicInitialGuess(
+      const PlannerSetting& param, const Eigen::VectorXd& h_guess,
+      const Eigen::MatrixXd& y_guess, const Eigen::MatrixXd& dy_guess,
+      const Eigen::MatrixXd& tau_guess,
+      const std::vector<Eigen::Vector2d>& reg_footstep,
+      int fisrt_mode_phase_index, int starting_mode_index);
   void SetHeuristicInitialGuessForCascadedLipm(
       const PlannerSetting& param,
       const std::vector<Eigen::VectorXd>& des_xy_pos,

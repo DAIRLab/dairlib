@@ -18,8 +18,8 @@ using goldilocks_models::HybridRomTrajOpt;
 // copied here.
 // The copy assignment is used in cassie_rom_planner_system.cc like
 //  lightweight_saved_traj_ =
-//      HybridRomPlannerTrajectory(trajopt, result, global_x0_FOM_, global_xf_FOM_,
-//                           prefix, "", true, current_time);
+//      HybridRomPlannerTrajectory(trajopt, result, global_x0_FOM_,
+//      global_xf_FOM_, prefix, "", true, current_time);
 HybridRomPlannerTrajectory& HybridRomPlannerTrajectory::operator=(
     const HybridRomPlannerTrajectory& old) {
   // Base class (LcmTrajectory)
@@ -37,10 +37,9 @@ HybridRomPlannerTrajectory& HybridRomPlannerTrajectory::operator=(
         &GetTrajectory("state_derivative_traj" + std::to_string(mode)));
   }
 
-  global_x0_FOM_ = &GetTrajectory("x0_FOM");
-  global_xf_FOM_ = &GetTrajectory("xf_FOM");
+  global_footstep_ = &GetTrajectory("global_footstep");
 
-  stance_foot_ = old.get_stance_foot();
+  //  stance_foot_ = old.get_stance_foot();
 
   // We do not copy the following data, because this copy assignment is only
   // used for the lightweight version
@@ -48,6 +47,8 @@ HybridRomPlannerTrajectory& HybridRomPlannerTrajectory::operator=(
   //   decision_vars_;
   //   lambda_;
   //   lambda_c_;
+  //  current_quat_xyz_shift_ = old.get_current_quat_xyz_shift();
+  //  current_stance_foot_pos_ = old.get_current_stance_foot_pos();
 
   return *this;
 }
@@ -57,9 +58,10 @@ HybridRomPlannerTrajectory& HybridRomPlannerTrajectory::operator=(
 HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
     const HybridRomTrajOpt& trajopt,
     const drake::solvers::MathematicalProgramResult& result,
-    const Eigen::MatrixXd& x0_global, const Eigen::MatrixXd& xf_global,
-    const std::string& name, const std::string& description, bool lightweight,
-    double current_time)
+    const Eigen::MatrixXd& global_footstep,
+    const Eigen::VectorXd& current_quat_xyz_shift,
+    const Eigen::VectorXd& current_stance_foot_pos, const std::string& name,
+    const std::string& description, bool lightweight, double current_time)
     : LcmTrajectory() {
   utime_ = int((current_time + 1e-8) * 1e6);
   num_modes_ = trajopt.num_modes();
@@ -156,27 +158,28 @@ HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
         drake::solvers::to_string(result.get_solution_result());
   }
 
-  // 2.a global com
+  // 2.a global footstep
   VectorXd time_vec_discrete_event(num_modes_ + 1);
   for (int i = 0; i < num_modes_; i++) {
     time_vec_discrete_event(i) = time_breaks[i].head<1>()(0);
   }
-  time_vec_discrete_event(num_modes_) = time_breaks[num_modes_ - 1].tail<1>()(0);
-  LcmTrajectory::Trajectory global_com_traj;
-  global_com_traj.traj_name = "global_com";
-  global_com_traj.datapoints = x0_global;
-  global_com_traj.time_vector = time_vec_discrete_event;
-  global_com_traj.datatypes = vector<string>(3, "");
-  AddTrajectory(global_com_traj.traj_name, global_com_traj);
-  global_com_ = &GetTrajectory(global_com_traj.traj_name);
-  // 2.b global footstep
+  time_vec_discrete_event(num_modes_) =
+      time_breaks[num_modes_ - 1].tail<1>()(0);
   LcmTrajectory::Trajectory global_footstep_traj;
   global_footstep_traj.traj_name = "global_footstep";
-  global_footstep_traj.datapoints = xf_global;
+  global_footstep_traj.datapoints = global_footstep;
   global_footstep_traj.time_vector = time_vec_discrete_event;
   global_footstep_traj.datatypes = vector<string>(2, "");
   AddTrajectory(global_footstep_traj.traj_name, global_footstep_traj);
   global_footstep_ = &GetTrajectory(global_footstep_traj.traj_name);
+  // 2.b global com
+  //  LcmTrajectory::Trajectory global_com_traj;
+  //  global_com_traj.traj_name = "global_com";
+  //  global_com_traj.datapoints = x0_global;
+  //  global_com_traj.time_vector = time_vec_discrete_event;
+  //  global_com_traj.datatypes = vector<string>(3, "");
+  //  AddTrajectory(global_com_traj.traj_name, global_com_traj);
+  //  global_com_ = &GetTrajectory(global_com_traj.traj_name);
 
   // 3. stance foot (left is 0, right is 1)
   MatrixXd stance_foot_mat = MatrixXd::Zero(1, num_modes_);
@@ -190,6 +193,24 @@ HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
   stance_foot_traj.time_vector = VectorXd::Zero(num_modes_);
   stance_foot_traj.datatypes = vector<string>(1, "");
   AddTrajectory(stance_foot_traj.traj_name, stance_foot_traj);
+
+  if (!lightweight) {
+    // 4. current_quat_xyz_shift_
+    LcmTrajectory::Trajectory quat_xyz_shift_traj;
+    quat_xyz_shift_traj.traj_name = "current_quat_xyz_shift";
+    quat_xyz_shift_traj.datapoints = current_quat_xyz_shift.transpose();
+    quat_xyz_shift_traj.time_vector = VectorXd::Zero(num_modes_);
+    quat_xyz_shift_traj.datatypes = vector<string>(1, "");
+    AddTrajectory(quat_xyz_shift_traj.traj_name, quat_xyz_shift_traj);
+
+    // 5. current_stance_foot_pos_
+    LcmTrajectory::Trajectory stance_foot_pos_traj;
+    stance_foot_pos_traj.traj_name = "current_stance_foot_pos";
+    stance_foot_pos_traj.datapoints = current_stance_foot_pos.transpose();
+    stance_foot_pos_traj.time_vector = VectorXd::Zero(num_modes_);
+    stance_foot_pos_traj.datatypes = vector<string>(1, "");
+    AddTrajectory(stance_foot_pos_traj.traj_name, stance_foot_pos_traj);
+  }
 }
 
 HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
@@ -210,15 +231,20 @@ HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
     x_.push_back(&GetTrajectory("state_traj" + std::to_string(mode)));
   }
 
-  // global_com_, global_footstep_
-  global_com_ = &GetTrajectory("global_com");
+  // global_footstep_
   global_footstep_ = &GetTrajectory("global_footstep");
 
   // stance_foot
-  stance_foot_ = GetTrajectory("stance_foot").datapoints.row(0).transpose();
+  //  stance_foot_ = GetTrajectory("stance_foot").datapoints.row(0).transpose();
+
+  //  current_quat_xyz_shift_ =
+  //  GetTrajectory("current_quat_xyz_shift").datapoints.row(0).transpose();
+  //  current_stance_foot_pos_ =
+  //  GetTrajectory("current_stance_foot_pos").datapoints.row(0).transpose();
 }
 
-lcmt_timestamped_saved_traj HybridRomPlannerTrajectory::GenerateLcmObject() const {
+lcmt_timestamped_saved_traj HybridRomPlannerTrajectory::GenerateLcmObject()
+    const {
   lcmt_timestamped_saved_traj traj;
   traj.utime = utime_;
   traj.saved_traj = LcmTrajectory::GenerateLcmObject();
@@ -227,7 +253,7 @@ lcmt_timestamped_saved_traj HybridRomPlannerTrajectory::GenerateLcmObject() cons
 }
 
 void HybridRomPlannerTrajectory::LoadFromFile(const std::string& filepath,
-                                        bool lightweight) {
+                                              bool lightweight) {
   LcmTrajectory::LoadFromFile(filepath);
 
   // Find all the state trajectories
@@ -252,12 +278,18 @@ void HybridRomPlannerTrajectory::LoadFromFile(const std::string& filepath,
     decision_vars_ = &GetTrajectory("decision_vars");
   }
 
-  // x0_FOM, xf_FOM
-  global_com_ = &GetTrajectory("global_com");
+  // global_footstep
   global_footstep_ = &GetTrajectory("global_footstep");
 
-  // stance_foot
-  stance_foot_ = GetTrajectory("stance_foot").datapoints.row(0).transpose();
+  //  // stance_foot
+  //  stance_foot_ = GetTrajectory("stance_foot").datapoints.row(0).transpose();
+  //
+  //  if (!lightweight) {
+  //    current_quat_xyz_shift_ =
+  //        GetTrajectory("current_quat_xyz_shift").datapoints.row(0).transpose();
+  //    current_stance_foot_pos_ =
+  //        GetTrajectory("current_stance_foot_pos").datapoints.row(0).transpose();
+  //  }
 }
 
 Eigen::VectorXd HybridRomPlannerTrajectory::GetCollocationPoints(
@@ -269,8 +301,8 @@ Eigen::VectorXd HybridRomPlannerTrajectory::GetCollocationPoints(
                 time_vector.head(num_knotpoints - 1));
 }
 
-PiecewisePolynomial<double> HybridRomPlannerTrajectory::ConstructPositionTrajectory()
-    const {
+PiecewisePolynomial<double>
+HybridRomPlannerTrajectory::ConstructPositionTrajectory() const {
   int n_y = x_[0]->datatypes.size() / 2;
 
   PiecewisePolynomial<double> pp;
@@ -283,8 +315,8 @@ PiecewisePolynomial<double> HybridRomPlannerTrajectory::ConstructPositionTraject
   return pp;
 }
 
-PiecewisePolynomial<double> HybridRomPlannerTrajectory::ReconstructStateTrajectory()
-    const {
+PiecewisePolynomial<double>
+HybridRomPlannerTrajectory::ReconstructStateTrajectory() const {
   PiecewisePolynomial<double> state_traj =
       PiecewisePolynomial<double>::CubicHermite(
           x_[0]->time_vector, x_[0]->datapoints, xdot_[0]->datapoints);
@@ -300,8 +332,8 @@ PiecewisePolynomial<double> HybridRomPlannerTrajectory::ReconstructStateTrajecto
   return state_traj;
 }
 
-PiecewisePolynomial<double> HybridRomPlannerTrajectory::ReconstructInputTrajectory()
-    const {
+PiecewisePolynomial<double>
+HybridRomPlannerTrajectory::ReconstructInputTrajectory() const {
   PiecewisePolynomial<double> input_traj =
       PiecewisePolynomial<double>::FirstOrderHold(u_->time_vector,
                                                   u_->datapoints);
@@ -310,8 +342,8 @@ PiecewisePolynomial<double> HybridRomPlannerTrajectory::ReconstructInputTrajecto
 }
 
 /// ReadHybridRomPlannerTrajectory
-PiecewisePolynomial<double> ReadHybridRomPlannerTrajectory(const std::string& path,
-                                                     bool offset_time_to_zero) {
+PiecewisePolynomial<double> ReadHybridRomPlannerTrajectory(
+    const std::string& path, bool offset_time_to_zero) {
   HybridRomPlannerTrajectory traj_obj(path);
   auto ret = traj_obj.ReconstructStateTrajectory();
 
@@ -319,7 +351,7 @@ PiecewisePolynomial<double> ReadHybridRomPlannerTrajectory(const std::string& pa
     //    ret.shiftRight(-ret.start_time());
 
     // Testing
-    ret.shiftRight(-traj_obj.get_global_com_time()(0));
+    ret.shiftRight(-traj_obj.get_global_footstep_time()(0));
     //    ret.shiftRight(-traj_obj.get_x0_time()(1));
   }
 

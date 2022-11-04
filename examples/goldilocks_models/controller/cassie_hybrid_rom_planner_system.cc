@@ -98,6 +98,9 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   this->set_name("planner_traj");
 
   DRAKE_DEMAND(param_.knots_per_mode > 0);
+  // This leafsystem hasn't taken care of active ROM case (e.g. no good warm
+  // starting)
+  DRAKE_DEMAND(rom_->n_tau() == 0);
 
   // print level
   if (single_eval_mode_) print_level_ = 2;
@@ -290,18 +293,18 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
        0.000343939, 7.9638e-05, -0.00224901, -0.00052079, -0.000889046,
        0.00115963, -7.96077e-05, 0.000149216, 6.91934e-05, -9.6974e-05,
        0.000948192, -0.00122315;*/
-    x_guess_left_in_front_pre_ = x_standing_fixed_spring_;
-    x_guess_right_in_front_pre_ = x_standing_fixed_spring_;
-    x_guess_left_in_front_post_ = x_standing_fixed_spring_;
-    x_guess_right_in_front_post_ = x_standing_fixed_spring_;
+    x_guess_steppingleft_pre_ = x_standing_fixed_spring_;
+    x_guess_steppingright_pre_ = x_standing_fixed_spring_;
+    x_guess_steppingleft_post_ = x_standing_fixed_spring_;
+    x_guess_steppingright_post_ = x_standing_fixed_spring_;
   } else {
     string dir_and_prefix_FOM = param_.dir_and_prefix_FOM.empty()
                                     ? model_dir_n_pref
                                     : param_.dir_and_prefix_FOM;
     cout << "dir_and_prefix_FOM = " << dir_and_prefix_FOM << endl;
-    VectorXd x_guess_right_in_front_pre =
+    VectorXd x_guess_steppingright_pre =
         readCSV(dir_and_prefix_FOM + string("x_samples0.csv")).rightCols(1);
-    VectorXd x_guess_right_in_front_post =
+    VectorXd x_guess_steppingright_post =
         readCSV(dir_and_prefix_FOM + string("x_samples1.csv")).col(0);
 
     //    x_guess_right_in_front_pre(pos_map_.at("hip_roll_left")) = 0;
@@ -309,27 +312,27 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     //    x_guess_right_in_front_post(pos_map_.at("hip_roll_left")) = 0;
     //    x_guess_right_in_front_post(pos_map_.at("hip_roll_right")) = 0;
 
-    VectorXd x_guess_left_in_front_pre(nx_);
-    x_guess_left_in_front_pre
-        << state_mirror_.MirrorPos(x_guess_right_in_front_pre.head(nq_)),
-        state_mirror_.MirrorVel(x_guess_right_in_front_pre.tail(nv_));
-    VectorXd x_guess_left_in_front_post(nx_);
-    x_guess_left_in_front_post
-        << state_mirror_.MirrorPos(x_guess_right_in_front_post.head(nq_)),
-        state_mirror_.MirrorVel(x_guess_right_in_front_post.tail(nv_));
+    VectorXd x_guess_steppingleft_pre(nx_);
+    x_guess_steppingleft_pre
+        << state_mirror_.MirrorPos(x_guess_steppingright_pre.head(nq_)),
+        state_mirror_.MirrorVel(x_guess_steppingright_pre.tail(nv_));
+    VectorXd x_guess_steppingleft_post(nx_);
+    x_guess_steppingleft_post
+        << state_mirror_.MirrorPos(x_guess_steppingright_post.head(nq_)),
+        state_mirror_.MirrorVel(x_guess_steppingright_post.tail(nv_));
 
-    x_guess_right_in_front_pre_ = x_guess_right_in_front_pre;
-    x_guess_right_in_front_post_ = x_guess_right_in_front_post;
-    x_guess_left_in_front_pre_ = x_guess_left_in_front_pre;
-    x_guess_left_in_front_post_ = x_guess_left_in_front_post;
+    x_guess_steppingright_pre_ = x_guess_steppingright_pre;
+    x_guess_steppingright_post_ = x_guess_steppingright_post;
+    x_guess_steppingleft_pre_ = x_guess_steppingleft_pre;
+    x_guess_steppingleft_post_ = x_guess_steppingleft_post;
   }
   cout << endl;
 
-  // Footstep regularization
+  // Footstep regularization (for initial guess and mild cost regularization)
   drake::VectorX<double> left_foot_pos(3);
   drake::VectorX<double> right_foot_pos(3);
   plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
-                                           x_guess_left_in_front_pre_);
+                                           x_guess_steppingleft_pre_);
   this->plant_control_.CalcPointsPositions(
       *context_plant_control_, left_mid_.second, left_mid_.first,
       plant_control_.world_frame(), &left_foot_pos);
@@ -338,7 +341,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
       plant_control_.world_frame(), &right_foot_pos);
   left_step_ = (left_foot_pos - right_foot_pos).head<2>();
   plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
-                                           x_guess_right_in_front_pre_);
+                                           x_guess_steppingright_pre_);
   this->plant_control_.CalcPointsPositions(
       *context_plant_control_, left_mid_.second, left_mid_.first,
       plant_control_.world_frame(), &left_foot_pos);
@@ -349,8 +352,10 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
 
   cout << "left_step_ = " << left_step_ << endl;
   cout << "right_step_ = " << right_step_ << endl;
-  DRAKE_UNREACHABLE(); // one-time test to see `left_step_` and `right_step_`
+  DRAKE_UNREACHABLE();  // one-time test to see `left_step_` and `right_step_`
 
+  // Desired height
+  desired_com_height_ = y_reg_.col(0)(2);
 
   //   cout << "initial guess duration ~ " << duration << endl;
   //   cout << "h_guess = " << h_guess_ << endl;
@@ -359,8 +364,8 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   //   cout << "tau_guess = " << tau_guess_ << endl;
   //    cout << "x_guess_right_in_front_pre_ = "
   //         << x_guess_right_in_front_pre_.transpose() << endl;
-  //    cout << "x_guess_right_in_front_post_ = "
-  //         << x_guess_right_in_front_post_.transpose() << endl;
+  //    cout << "x_guess_steppingright_post_ = "
+  //         << x_guess_steppingright_post_.transpose() << endl;
   //    cout << "x_guess_left_in_front_pre_ = "
   //         << x_guess_left_in_front_pre_.transpose() << endl;
   //    cout << "x_guess_left_in_front_post_ = "
@@ -576,14 +581,8 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
                                  param_.feas_tol /* * 0.01*/);
 
   // Allocate memory
-  if (param_.zero_touchdown_impact) {
-    local_Lambda_FOM_ = Eigen::MatrixXd::Zero(0, (param_.n_step));
-  } else {
-    local_Lambda_FOM_ =
-        Eigen::MatrixXd::Zero(3 * left_contacts_.size(), param_.n_step);
-  }
-  global_x0_FOM_ = MatrixXd(nx_, param_.n_step + 1);
-  global_xf_FOM_ = MatrixXd(nx_, param_.n_step);
+  global_footstep_ = MatrixXd(2, param_.n_step);
+  global_y_end_of_last_mode_ = MatrixXd(2, 1);
 
   // Initialization
   prev_mode_start_ = std::vector<int>(param_.n_step, -1);
@@ -783,7 +782,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   }
   // TODO: might want to fix the init height pos to a desired constant and vel
   //  to 0?
-  init_rom_state(2) = desired_com_height;
+  init_rom_state(2) = desired_com_height_;
   init_rom_state(5) = 0;
 
   ///
@@ -815,9 +814,24 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   CreateDesiredComPosAndVel(param_.n_step + param_.n_step_lipm,
                             start_with_left_stance, init_phase, final_position,
                             &des_xy_pos_com, &des_xy_vel_com);
-  for (auto & pos : des_xy_pos_com) {
+  for (auto& pos : des_xy_pos_com) {
     pos -= current_stance_foot_pos.head<2>();
   }
+  // TODO:
+  //  My ntoes: Only the goal position needs the above shift.
+  //    When translating the planned traj between each solve, I believe we don't
+  //    need to care about the above shift. Also when "translating" the planned
+  //    traj, we need to
+  //       1. rotate both foot steps and com
+  //       2. translate foot steps (no need to translate com, because com is wrt
+  //       foot steps in the current formulation)
+  //    After thinking a bit more, I think
+  //       1. we can just rotate and no need to translate, because all decision
+  //       variable are relative to the stance foot. And the goal position is
+  //       adjusted (above) already.
+  //       2. if the MPC runs fast enough, maybe we don't even need to rotate,
+  //       because the delta between each solve is small.
+  //       3. if you were to transform between frames, you only need to do 2D.
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
@@ -827,9 +841,23 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // The implementation is in `CassiePlannerWithMixedRomFom`.
 
   ///
-  /// Construct regularization full-states
+  /// Construct regularization for footsteps
   ///
-  // TODO: I constructed `left_step_` and `right_step_`. Need to use them.
+  Vector2d left_step;
+  Vector2d right_step;
+  if (completely_use_trajs_from_model_opt_as_target_) {
+    left_step = left_step_;
+    right_step = right_step_;
+  } else {
+    left_step << 2 * des_xy_vel_com.at(0)(0) * stride_period_, -0.15;
+    right_step << 2 * des_xy_vel_com.at(0)(0) * stride_period_, 0.15;
+  }
+  vector<Vector2d> reg_local_footstep(param_.n_step, Vector2d());
+  bool left_stance = start_with_left_stance;
+  for (int i = 0; i < param_.n_step; i++) {
+    reg_local_footstep.at(i) = left_stance ? right_step : left_step;
+    left_stance = !left_stance;
+  }
 
   ///
   /// Construct rom traj opt
@@ -890,7 +918,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
         param_.gains.w_predict_lipm_p, param_.gains.w_predict_lipm_v,
         des_xy_pos_com, des_xy_vel_com, param_.n_step_lipm, stride_period_,
         param_.gains.max_lipm_step_length / 2,
-        param_.gains.right_limit_wrt_pelvis);
+        param_.gains.right_limit_wrt_pelvis, desired_com_height_);
   } else {
     // TODO: check if adding predicted step is necessary after using
     //  lipm_mpc_and_ik
@@ -910,7 +938,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     // Constraint and cost for the last foot step location
     trajopt.AddConstraintAndCostForLastFootStep(
         param_.gains.w_predict_lipm_v, des_predicted_xy_vel, stride_period_,
-        desired_com_height);
+        desired_com_height_);
   }
 
   // Final goal position constraint
@@ -962,18 +990,19 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     } else if (warm_start_with_previous_solution_ &&
                (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
-      WarmStartGuess(quat_xyz_shift, reg_x_FOM, global_fsm_idx,
-                     first_mode_knot_idx, current_time, &trajopt);
+      WarmStartGuess(quat_xyz_shift, current_stance_foot_pos,
+                     reg_local_footstep, global_fsm_idx, first_mode_knot_idx,
+                     current_time, &trajopt);
     } else {
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(param_, h_guess_, y_guess_, dy_guess_,
-                                       tau_guess_, reg_x_FOM,
+                                       tau_guess_, reg_local_footstep,
                                        first_mode_knot_idx, 0);
     }
-    trajopt.SetHeuristicInitialGuessForCascadedLipm(param_, des_xy_pos,
+    trajopt.SetHeuristicInitialGuessForCascadedLipm(param_, des_xy_pos_com,
                                                     des_xy_vel_com);
-    trajopt.SetInitialGuess(trajopt.x0_vars_by_mode(0), x_init);
+    trajopt.SetInitialGuess(trajopt.state_vars_by_mode(0, 0), init_rom_state);
 
     // Avoid zero-value initial guess!
     // This sped up the solve and sometimes unstuck the solver!
@@ -1105,21 +1134,28 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // TODO(yminchen): Note that you will to rotate the coordinates back if the
   //  ROM is dependent on robot's x, y and yaw.
 
-  // Rotate the local state to global state
-  MatrixXd local_x0_FOM(nx_, trajopt.num_modes() + 1);
-  MatrixXd local_xf_FOM(nx_, trajopt.num_modes());
-  for (int i = 0; i < param_.n_step; ++i) {
-    local_x0_FOM.col(i) = result.GetSolution(trajopt.x0_vars_by_mode(i));
-    local_xf_FOM.col(i) = result.GetSolution(trajopt.xf_vars_by_mode(i));
+  // 1. Transform from the local foot step to global foot step
+  // We need to shift the footstep location back, because in the controller
+  // thread, we create cubic spline in the world frame.
+  MatrixXd local_footstep(2, param_.n_step);
+  local_footstep.row(0) = result.GetSolution(
+      trajopt.discrete_swing_foot_pos_rt_stance_foot_x_vars());
+  local_footstep.row(1) = result.GetSolution(
+      trajopt.discrete_swing_foot_pos_rt_stance_foot_y_vars());
+  // local_footstep.row(2).setZero();
+  // Shift back to the pelvis frame (from the stance foot frame)
+  for (int i = 0; i < param_.n_step; i++) {
+    local_footstep.col(i) += current_stance_foot_pos.head<2>();
   }
-  local_x0_FOM.col(param_.n_step) =
-      result.GetSolution(trajopt.x0_vars_by_mode(param_.n_step));
-  global_x0_FOM_ = local_x0_FOM;
-  global_xf_FOM_ = local_xf_FOM;
-  RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, local_x0_FOM,
-                                   &global_x0_FOM_);
-  RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, local_xf_FOM,
-                                   &global_xf_FOM_);
+  // Transform back to the world frame
+  RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
+                                      local_footstep, &global_footstep_);
+  // 2. Transform from the local com to global com
+  RotatePosBetweenGlobalAndLocalFrame(
+      false, true, quat_xyz_shift,
+      result.GetSolution(trajopt.y_end_of_last_mode_rt_init_stance_foot_var()) +
+          current_stance_foot_pos.head<2>(),
+      &global_y_end_of_last_mode_);
 
   // Unit Testing RotateBetweenGlobalAndLocalFrame
   /*MatrixXd local_x0_FOM2 = global_x0_FOM_;
@@ -1133,9 +1169,9 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
 
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
-  lightweight_saved_traj_ =
-      RomPlannerTrajectory(trajopt, result, global_x0_FOM_, global_xf_FOM_,
-                           prefix, "", true, current_time);
+  lightweight_saved_traj_ = HybridRomPlannerTrajectory(
+      trajopt, result, global_footstep_, quat_xyz_shift,
+      current_stance_foot_pos, prefix, "", true, current_time);
   *traj_msg = lightweight_saved_traj_.GenerateLcmObject();
   //  PrintTrajMsg(traj_msg);
 
@@ -1152,10 +1188,6 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
 
   h_solutions_ = trajopt.GetTimeStepSolution(result);
   input_at_knots_ = trajopt.GetInputSamples(result);
-
-  for (int i = 0; i < param_.n_step; i++) {
-    local_Lambda_FOM_.col(i) = result.GetSolution(trajopt.impulse_vars(i));
-  }
 
   eps_rom_ = result.GetSolution(trajopt.eps_rom_var_);
   if (param_.n_step_lipm > 1) {
@@ -1201,30 +1233,38 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
 
   if (log_data_and_check_solution_) {
     // Rotate from local to global
-    MatrixXd global_regularization_state(nx_, param_.n_step + 1);
-    MatrixXd local_regu_state_augmented(nx_, param_.n_step + 1);
-    local_regu_state_augmented.leftCols<1>() = x_init;
+    MatrixXd global_regularization_footstep(2, param_.n_step);
+    MatrixXd local_reguularization_footstep(2, param_.n_step);
     for (int i = 0; i < param_.n_step; i++) {
-      // We only save preimpact (since we assume 0 impact anyway)
-      local_regu_state_augmented.middleCols<1>(1 + i) = reg_x_FOM.at(2 * i);
+      local_reguularization_footstep.middleCols<1>(i) =
+          reg_local_footstep.at(i);
     }
-    global_regularization_state = local_regu_state_augmented;
-    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift,
-                                     local_regu_state_augmented,
-                                     &global_regularization_state);
-    //    cout << "global_regularization_state = \n"
-    //         << global_regularization_state << endl;
-    //    cout << "local_regu_state_augmented = \n"
-    //         << local_regu_state_augmented << endl;
+    global_regularization_footstep = local_reguularization_footstep;
+    RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
+                                        local_reguularization_footstep,
+                                        &global_regularization_footstep);
+    //    cout << "global_regularization_footstep = \n"
+    //         << global_regularization_footstep << endl;
+    //    cout << "local_reguularization_footstep = \n"
+    //         << local_reguularization_footstep << endl;
 
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(current_time, global_fsm_idx, x_init, init_phase,
-                      is_right_stance, quat_xyz_shift, final_position,
-                      global_regularization_state, local_x0_FOM, local_xf_FOM,
-                      trajopt, result, param_.dir_data, prefix);
-    // Save trajectory to lcm
-    SaveTrajIntoLcmBinary(trajopt, result, global_x0_FOM_, global_xf_FOM_,
-                          param_.dir_data, prefix, current_time);
+                      is_right_stance, quat_xyz_shift, current_stance_foot_pos,
+                      final_position, global_regularization_footstep,
+                      local_footstep, global_footstep_, trajopt, result,
+                      param_.dir_data, prefix);
+    // Save trajectory into lcm binary
+    {
+      string file_name = prefix + "rom_trajectory";
+      HybridRomPlannerTrajectory full_saved_traj(
+          trajopt, result, global_footstep_, quat_xyz_shift,
+          current_stance_foot_pos, file_name,
+          drake::solvers::to_string(result.get_solution_result()), false,
+          current_time);
+      full_saved_traj.WriteToFile(param_.dir_data + file_name);
+      cout << "Wrote to file: " << param_.dir_data + file_name << endl;
+    }
 
     // Check the cost
     PrintCost(trajopt, result);
@@ -1358,11 +1398,11 @@ void CassiePlannerWithOnlyRom::CreateDesiredBodyPosAndVel(
   if (completely_use_trajs_from_model_opt_as_target_) {
     if (pelvis_or_com) {
       *des_xy_vel = vector<VectorXd>(
-          n_total_step, Vector2d(x_guess_left_in_front_post_(nq_ + 3), 0));
-      y_vel_offset = x_guess_left_in_front_post_(nq_ + 4);
+          n_total_step, Vector2d(x_guess_steppingleft_post_(nq_ + 3), 0));
+      y_vel_offset = x_guess_steppingleft_post_(nq_ + 4);
     } else {
       plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
-                                               x_guess_left_in_front_post_);
+                                               x_guess_steppingleft_post_);
       Vector3d com_vel =
           plant_control_.CalcCenterOfMassTranslationalVelocityInWorld(
               *context_plant_control_);
@@ -1471,8 +1511,8 @@ void CassiePlannerWithOnlyRom::RotatePosBetweenGlobalAndLocalFrame(
     bool rotate_from_global_to_local, bool position_only,
     const Eigen::VectorXd& quat_xyz_shift, const Eigen::MatrixXd& original_x,
     Eigen::MatrixXd* rotated_x) const {
-  DRAKE_DEMAND(quat_xyz_shift(1) < 1e-14);  // rotate in z axis
-  DRAKE_DEMAND(quat_xyz_shift(2) < 1e-14);  // rotate in z axis
+  DRAKE_DEMAND(quat_xyz_shift(1) < 1e-14);  // rotate about z axis
+  DRAKE_DEMAND(quat_xyz_shift(2) < 1e-14);  // rotate about z axis
   Quaterniond relative_quat =
       rotate_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
@@ -1502,25 +1542,12 @@ void CassiePlannerWithOnlyRom::RotatePosBetweenGlobalAndLocalFrame(
   }
 }
 
-void CassiePlannerWithOnlyRom::SaveTrajIntoLcmBinary(
-    const HybridRomTrajOptCassie& trajopt,
-    const MathematicalProgramResult& result, const MatrixXd& global_x0_FOM,
-    const MatrixXd& global_xf_FOM, const string& dir_data, const string& prefix,
-    double current_time) const {
-  string file_name = prefix + "rom_trajectory";
-  RomPlannerTrajectory saved_traj(
-      trajopt, result, global_x0_FOM, global_xf_FOM, file_name,
-      drake::solvers::to_string(result.get_solution_result()), false,
-      current_time);
-  saved_traj.WriteToFile(dir_data + file_name);
-  cout << "Wrote to file: " << dir_data + file_name << endl;
-}
-
 void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
     double current_time, int global_fsm_idx, const VectorXd& x_init,
     double init_phase, bool is_right_stance, const VectorXd& quat_xyz_shift,
-    const VectorXd& final_position, const MatrixXd& global_regularization_x_FOM,
-    const MatrixXd& local_x0_FOM, const MatrixXd& local_xf_FOM,
+    const VectorXd& current_stance_foot_pos, const VectorXd& final_position,
+    const MatrixXd& global_regularization_footstep,
+    const MatrixXd& local_footstep, const MatrixXd& global_footstep,
     const HybridRomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result, const string& dir_data,
     const string& prefix) const {
@@ -1540,12 +1567,11 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
   }
   writeCSV(dir_pref + "input_at_knots.csv", trajopt.GetInputSamples(result));
 
-  writeCSV(dir_pref + "local_x0_FOM.csv", local_x0_FOM);
-  writeCSV(dir_pref + "local_xf_FOM.csv", local_xf_FOM);
-  writeCSV(dir_pref + "global_x0_FOM.csv", lightweight_saved_traj_.get_x0());
-  writeCSV(dir_pref + "global_xf_FOM.csv", lightweight_saved_traj_.get_xf());
-  writeCSV(dir_pref + "global_regularization_x_FOM.csv",
-           global_regularization_x_FOM);
+  writeCSV(dir_pref + "local_footstep.csv", local_footstep);
+  writeCSV(dir_pref + "global_footstep.csv", global_footstep);
+  writeCSV(dir_pref + "global_regularization_footstep.csv",
+           global_regularization_footstep);
+
   writeCSV(dir_pref + "global_x_lipm.csv", global_x_lipm_);
   writeCSV(dir_pref + "global_u_lipm.csv", global_u_lipm_);
   if (use_lipm_mpc_and_ik_) {
@@ -1562,8 +1588,9 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
            true);
   writeCSV(dir_pref + string("is_right_stance.csv"),
            is_right_stance * VectorXd::Ones(1), true);
-  writeCSV(dir_pref + string("quat_xyz_shift.csv"),
-           quat_xyz_shift * VectorXd::Ones(1), true);
+  writeCSV(dir_pref + string("quat_xyz_shift.csv"), quat_xyz_shift, true);
+  writeCSV(dir_pref + string("current_stance_foot_pos.csv"),
+           current_stance_foot_pos, true);
   writeCSV(dir_pref + string("final_position.csv"), final_position, true);
   writeCSV(dir_pref + string("init_file.csv"), trajopt.initial_guess(), true);
   writeCSV(dir_pref + string("current_time.csv"),
@@ -1746,8 +1773,9 @@ void CassiePlannerWithOnlyRom::PrintAllCostsAndConstraints(
 }
 
 void CassiePlannerWithOnlyRom::WarmStartGuess(
-    const VectorXd& quat_xyz_shift, const vector<VectorXd>& reg_x_FOM,
-    const int global_fsm_idx, int first_mode_knot_idx, double current_time,
+    const VectorXd& quat_xyz_shift, const VectorXd& current_stance_foot_pos,
+    const vector<Vector2d>& reg_local_footstep, const int global_fsm_idx,
+    int first_mode_knot_idx, double current_time,
     HybridRomTrajOptCassie* trajopt) const {
   int starting_mode_idx_for_heuristic =
       (param_.n_step - 1) - (global_fsm_idx - prev_global_fsm_idx_) + 1;
@@ -1756,24 +1784,25 @@ void CassiePlannerWithOnlyRom::WarmStartGuess(
     PrintStatus("Set heuristic initial guess for all variables");
     // Set heuristic initial guess for all variables
     trajopt->SetHeuristicInitialGuess(param_, h_guess_, y_guess_, dy_guess_,
-                                      tau_guess_, reg_x_FOM,
+                                      tau_guess_, reg_local_footstep,
                                       first_mode_knot_idx, 0);
   } else {
     trajopt->SetHeuristicInitialGuess(
-        param_, h_guess_, y_guess_, dy_guess_, tau_guess_, reg_x_FOM,
+        param_, h_guess_, y_guess_, dy_guess_, tau_guess_, reg_local_footstep,
         first_mode_knot_idx, starting_mode_idx_for_heuristic);
 
     /// Reuse the solution
-    // Rotate the previous global x floating base state according to the
+    // Rotate the previous solution in global frame according to the
     // current global-to-local-shift
-    // TODO: also need to do the same thing to local_Lambda_FOM_
     // TODO: also need to do the same thing to predicted_com_vel_
-    MatrixXd local_x0_FOM = global_x0_FOM_;
-    MatrixXd local_xf_FOM = global_xf_FOM_;
-    RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
-                                     &local_x0_FOM);
-    RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_xf_FOM_,
-                                     &local_xf_FOM);
+    // TODO: currently I am not transforming the ROM state between frames.
+    //  I believe transforming it is better theoretically.
+    MatrixXd local_footstep = global_footstep_;
+    RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
+                                        global_footstep_, &local_footstep);
+    for (int i = 0; i < param_.n_step; i++) {
+      local_footstep.col(i) -= current_stance_foot_pos.head<2>();
+    }
 
     // Get time breaks of current problem (not solved yet so read from guesses)
     VectorXd times =
@@ -1844,31 +1873,38 @@ void CassiePlannerWithOnlyRom::WarmStartGuess(
       }
       knot_idx = 0;
 
-      // 5. FOM init
-      if (local_fsm_idx == 0) {
-        // Use x_init as a guess (I set it outside this warm-start function)
-      }
-      // 6. FOM pre-impact
-      trajopt->SetInitialGuess(trajopt->xf_vars_by_mode(local_fsm_idx),
-                               local_xf_FOM.col(prev_local_fsm_idx));
-      // 7. FOM post-impact
-      trajopt->SetInitialGuess(trajopt->x0_vars_by_mode(local_fsm_idx + 1),
-                               local_x0_FOM.col(prev_local_fsm_idx + 1));
-      // 8. FOM impulse
-      trajopt->SetInitialGuess(trajopt->impulse_vars(local_fsm_idx),
-                               local_Lambda_FOM_.col(prev_local_fsm_idx));
+      // 4. FOM pre-impact
+      trajopt->SetInitialGuess(
+          trajopt->discrete_swing_foot_pos_rt_stance_foot_x_vars(local_fsm_idx),
+          local_footstep.col(prev_local_fsm_idx).head<1>());
+      trajopt->SetInitialGuess(
+          trajopt->discrete_swing_foot_pos_rt_stance_foot_y_vars(local_fsm_idx),
+          local_footstep.col(prev_local_fsm_idx).tail<1>());
     }
 
     // The robot fell when initializing eps_rom_ and local_predicted_com_vel_.
     // This makes sense, because eps_rom_ should be close to 0, and smaller
     // local_predicted_com_vel_ is more stable (walking slower).
-    // 9. slack variable for initial fom-rom mapping
-    //    trajopt->SetInitialGuess(trajopt->eps_rom_var_, eps_rom_);
-    // 10. predicted com vel at the end of the immediate future mode
-    //    trajopt->SetInitialGuess(trajopt->predicted_com_vel_var_,
-    //                             local_predicted_com_vel_);
+    if (global_fsm_idx == prev_global_fsm_idx_) {
+      // 5. slack variable for initial fom-rom mapping
+      //    trajopt->SetInitialGuess(trajopt->eps_rom_var_, eps_rom_);
+      // 6. predicted com vel at the end of the immediate future mode
+      //    trajopt->SetInitialGuess(trajopt->predicted_com_vel_var_,
+      //                             local_predicted_com_vel_);
+    }
 
-    // TODO: we can use LIPM state to warmstart the robot's poses (will nee IK)
+    // 7. y_end_of_last_mode_rt_init_stance_foot_var
+    if (global_fsm_idx == prev_global_fsm_idx_) {
+      MatrixXd local_y_end_of_last_mode = global_y_end_of_last_mode_;
+      RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
+                                          global_y_end_of_last_mode_,
+                                          &local_y_end_of_last_mode);
+      local_y_end_of_last_mode -= current_stance_foot_pos.head<2>();
+
+      trajopt->SetInitialGuess(
+          trajopt->y_end_of_last_mode_rt_init_stance_foot_var(),
+          local_y_end_of_last_mode);
+    }
 
     // For cascaded LIPM MPC
     if (param_.n_step_lipm > 1) {
@@ -1911,7 +1947,8 @@ void CassiePlannerWithOnlyRom::WarmStartGuess(
 void CassiePlannerWithOnlyRom::ResolveWithAnotherSolver(
     const HybridRomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result, const string& prefix,
-    double current_time, const VectorXd& quat_xyz_shift) const {
+    double current_time, const VectorXd& quat_xyz_shift,
+    const VectorXd& current_stance_foot_pos) const {
   // Testing -- solve with another solver
   if (false) {
     auto start = std::chrono::high_resolution_clock::now();
@@ -1931,26 +1968,22 @@ void CassiePlannerWithOnlyRom::ResolveWithAnotherSolver(
     cout << "Cost:" << result2.get_optimal_cost() << "\n";
 
     /// For visualization of the second solver
-    MatrixXd x0_each_mode(nx_, trajopt.num_modes() + 1);
-    MatrixXd xf_each_mode(nx_, trajopt.num_modes());
-    for (uint i = 0; i < trajopt.num_modes(); i++) {
-      x0_each_mode.col(i) = result2.GetSolution(trajopt.x0_vars_by_mode(i));
-      xf_each_mode.col(i) = result2.GetSolution(trajopt.xf_vars_by_mode(i));
+    MatrixXd local_footstep(2, trajopt.num_modes());
+    local_footstep.row(0) = result2.GetSolution(
+        trajopt.discrete_swing_foot_pos_rt_stance_foot_x_vars());
+    local_footstep.row(1) = result2.GetSolution(
+        trajopt.discrete_swing_foot_pos_rt_stance_foot_y_vars());
+    // Shift back to the pelvis frame (from the stance foot frame)
+    for (int i = 0; i < param_.n_step; i++) {
+      local_footstep.col(i) += current_stance_foot_pos.head<2>();
     }
-    x0_each_mode.col(trajopt.num_modes()) =
-        result.GetSolution(trajopt.x0_vars_by_mode(trajopt.num_modes()));
-    MatrixXd global_x0_FOM = x0_each_mode;
-    MatrixXd global_xf_FOM = xf_each_mode;
-    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, x0_each_mode,
-                                     &global_x0_FOM);
-    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, xf_each_mode,
-                                     &global_xf_FOM);
-    writeCSV(param_.dir_data + prefix + "local_x0_FOM_snopt.csv", x0_each_mode);
-    writeCSV(param_.dir_data + prefix + "local_xf_FOM_snopt.csv", xf_each_mode);
-    writeCSV(param_.dir_data + prefix + "global_x0_FOM_snopt.csv",
-             global_x0_FOM);
-    writeCSV(param_.dir_data + prefix + "global_xf_FOM_snopt.csv",
-             global_xf_FOM);
+    // Transform back to the world frame
+    MatrixXd global_footstep = local_footstep;
+    RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
+                                        local_footstep, &global_footstep);
+
+    writeCSV(param_.dir_data + prefix + "global_footstep_snopt.csv",
+             global_footstep);
   }
 
   // Testing -- solve with another solver and feed it with solution as init
@@ -1978,7 +2011,7 @@ void CassiePlannerWithOnlyRom::ResolveWithAnotherSolver(
 void CassiePlannerWithOnlyRom::PrintTrajMsg(
     dairlib::lcmt_timestamped_saved_traj* traj_msg) const {
   // I created this function to debug the memory leak. (I didn't copy utime in
-  // RomPlannerTrajectory's copy assignment)
+  // HybridRomPlannerTrajectory's copy assignment)
   cout << "Printing lcm objects\n";
   cout << "traj_msg->utime = " << traj_msg->utime << endl;
   auto saved_traj = traj_msg->saved_traj;

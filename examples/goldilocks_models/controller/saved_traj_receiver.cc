@@ -399,7 +399,9 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   bool left_stance = abs(stance_foot(0)) < 1e-12;
   for (int j = 0; j < n_mode; j++) {
     // When the current time is bigger than the end time of the mode (this could
-    // happen when the planner starts planning close the end of mode), we skip
+    // happen when the planner starts planning close the end of mode), we skip.
+    // That is, we don't construct trajectories in the past, since we are not
+    // going to use it.
     if (current_time < xf_time(j)) {
       if (xf_time(j) - double_support_duration_ > x0_time(j)) {
         // Set the time

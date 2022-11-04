@@ -66,7 +66,7 @@ cc_library(
     hdrs = ["hybrid_rom_planner_saved_trajectory.h"],
     deps = [
         ":lcm_trajectory_saver",
-        "//examples/goldilocks_models/planning:rom_traj_opt",
+        "//examples/goldilocks_models/planning:hybrid_rom_traj_opt",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "@drake//common/trajectories",

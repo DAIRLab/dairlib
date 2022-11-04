@@ -96,6 +96,12 @@ HybridRomTrajOpt::HybridRomTrajOpt(
   /// Some constant matrices
   Eigen::RowVectorXd A_discrete_map_3d(3);
   A_discrete_map_3d << 1, -1, -1;
+  Eigen::RowVectorXd A_discrete_map_3d_mirroed(3);
+  if (start_with_left_stance) {
+    A_discrete_map_3d_mirroed << 1, 1, -1;
+  } else {
+    A_discrete_map_3d_mirroed << -1, -1, -1;
+  }
   Eigen::RowVectorXd A_discrete_map_2d(2);
   A_discrete_map_2d << 1, -1;
 
@@ -246,12 +252,19 @@ HybridRomTrajOpt::HybridRomTrajOpt(
     // Therefore, the constraint is
     //   new_y = y - discrete_input
     // =>  y - new_y - discrete_input = 0
+    // Now considering the mirroring about sagittal plane.
+    // If the current mode is left support, then (only for y element)
+    //     y - (-1)*new_y - discrete_input = 0
+    // If the current mode is right support, then (only for y element)
+    //     (-1)*y - new_y - discrete_input = 0
     AddLinearEqualityConstraint(
         A_discrete_map_3d, 0,
         {z_f_pre.segment<1>(0), z_f_post.segment<1>(0), touchdown_foot_var_x});
     AddLinearEqualityConstraint(
-        A_discrete_map_3d, 0,
+        A_discrete_map_3d_mirroed, 0,
         {z_f_pre.segment<1>(1), z_f_post.segment<1>(1), touchdown_foot_var_y});
+    A_discrete_map_3d_mirroed(0) *= -1;
+    A_discrete_map_3d_mirroed(1) *= -1;
     AddLinearEqualityConstraint(
         A_discrete_map_2d, 0, {z_f_pre.segment<1>(2), z_f_post.segment<1>(2)});
 
@@ -380,9 +393,9 @@ void HybridRomTrajOpt::AddCascadedLipmMPC(
     double w_predict_lipm_p, double w_predict_lipm_v,
     const std::vector<Eigen::VectorXd>& des_xy_pos,
     const std::vector<Eigen::VectorXd>& des_xy_vel, int n_step_lipm,
-    double stride_period, double max_step_length, double min_step_width) {
+    double stride_period, double max_step_length, double min_step_width,
+    double desired_height) {
   DRAKE_DEMAND(n_step_lipm > 0);
-  double height = 0.85;  // approximation
 
   // stance foot for after the planner's horizon
   bool left_stance = ((num_modes_ % 2 == 0) && start_with_left_stance_) ||
@@ -396,8 +409,6 @@ void HybridRomTrajOpt::AddCascadedLipmMPC(
   PrintStatus("Adding constraint -- lipm mapping for the last pose");
   // Constraint:
   //   [CoM rt stance foot, CoM dot] = x_lipm_vars(0)
-  // TODO!!: the ROM system code set the current pelvis to origin, but we use
-  //  the stance foot in this trajopt code
   Eigen::RowVectorXd A_pos_map = Eigen::RowVectorXd::Ones(2);
   A_pos_map << 1, -1;
   AddLinearEqualityConstraint(
@@ -429,7 +440,7 @@ void HybridRomTrajOpt::AddCascadedLipmMPC(
                                discrete_swing_foot_pos_rt_stance_foot_y_vars_});
 
   // Add LIPM dynamics constraint
-  double omega = std::sqrt(9.81 / height);
+  double omega = std::sqrt(9.81 / desired_height);
   double cosh_wT = std::cosh(omega * stride_period);
   double sinh_wT = std::sinh(omega * stride_period);
   Eigen::Matrix<double, 2, 2> A;
@@ -713,6 +724,14 @@ HybridRomTrajOpt::discrete_swing_foot_pos_rt_stance_foot_y_vars(
   return discrete_swing_foot_pos_rt_stance_foot_y_vars_.segment<1>(mode);
 }
 drake::solvers::VectorXDecisionVariable
+HybridRomTrajOpt::discrete_swing_foot_pos_rt_stance_foot_x_vars() const {
+  return discrete_swing_foot_pos_rt_stance_foot_x_vars_;
+}
+drake::solvers::VectorXDecisionVariable
+HybridRomTrajOpt::discrete_swing_foot_pos_rt_stance_foot_y_vars() const {
+  return discrete_swing_foot_pos_rt_stance_foot_y_vars_;
+}
+drake::solvers::VectorXDecisionVariable
 HybridRomTrajOpt::y_end_of_last_mode_rt_init_stance_foot_var() const {
   return y_end_of_last_mode_rt_init_stance_foot_var_;
 }
@@ -924,8 +943,8 @@ void HybridRomTrajOptCassie::SetHeuristicInitialGuess(
     const PlannerSetting& param, const Eigen::VectorXd& h_guess,
     const Eigen::MatrixXd& y_guess, const Eigen::MatrixXd& dy_guess,
     const Eigen::MatrixXd& tau_guess,
-    const std::vector<Eigen::VectorXd>& reg_x_FOM, int fisrt_mode_phase_index,
-    int starting_mode_index) {
+    const std::vector<Eigen::Vector2d>& reg_footstep,
+    int fisrt_mode_phase_index, int starting_mode_index) {
   // PrintStatus("Adding initial guess ...");
 
   MatrixXd z_guess(y_guess.rows() + dy_guess.rows(), y_guess.cols());
@@ -947,19 +966,21 @@ void HybridRomTrajOptCassie::SetHeuristicInitialGuess(
                       tau_guess.col(j_guess));
     }
 
-    // Full state
-    //    auto x_preimpact = xf_vars_by_mode(i);
-    //    auto x_postimpact = x0_vars_by_mode(i + 1);
-    //    const VectorXd& x_guess_pre = reg_x_FOM.at(2 * i);
-    //    const VectorXd& x_guess_post = reg_x_FOM.at(2 * i + 1);
-    //    SetInitialGuess(x_preimpact, x_guess_pre);
-    //    SetInitialGuess(x_postimpact, x_guess_post);
-
-    // TODO: warm start the following variables
-    //    discrete_swing_foot_pos_rt_stance_foot_x_vars_
-    //    discrete_swing_foot_pos_rt_stance_foot_y_vars_
-    //    y_end_of_last_mode_rt_init_stance_foot_var_
+    // Discrete foot steps
+    SetInitialGuess(discrete_swing_foot_pos_rt_stance_foot_x_vars_(i),
+                    reg_footstep.at(i)(0));
+    SetInitialGuess(discrete_swing_foot_pos_rt_stance_foot_y_vars_(i),
+                    reg_footstep.at(i)(1));
   }
+
+  // Last post discrete event state
+  SetInitialGuess(state_vars_by_mode(num_modes_, 0), z_guess.col(0));
+
+  // Guess for y_end_of_last_mode_rt_init_stance_foot_var_
+  SetInitialGuess(y_end_of_last_mode_rt_init_stance_foot_var_(0),
+                  reg_footstep.at(0)(0) * num_modes_ + z_guess.col(0)(0));
+  SetInitialGuess(y_end_of_last_mode_rt_init_stance_foot_var_(1),
+                  reg_footstep.at(0)(1) / 2);
 }
 
 void HybridRomTrajOptCassie::SetHeuristicInitialGuessForCascadedLipm(

@@ -21,16 +21,18 @@ class HybridRomPlannerTrajectory : public LcmTrajectory {
   HybridRomPlannerTrajectory& operator=(const HybridRomPlannerTrajectory& old);
 
   // The lightweight flag is used for online lcm communication between processes
-  HybridRomPlannerTrajectory(const goldilocks_models::HybridRomTrajOpt& trajopt,
-                       const drake::solvers::MathematicalProgramResult& result,
-                       const Eigen::MatrixXd& global_com,
-                       const Eigen::MatrixXd& global_footstep,
-                       const std::string& name, const std::string& description,
-                       bool lightweight = false, double current_time = 0);
+  HybridRomPlannerTrajectory(
+      const goldilocks_models::HybridRomTrajOpt& trajopt,
+      const drake::solvers::MathematicalProgramResult& result,
+      const Eigen::MatrixXd& global_footstep,
+      const Eigen::VectorXd& current_quat_xyz_shift,
+      const Eigen::VectorXd& current_stance_foot_pos, const std::string& name,
+      const std::string& description, bool lightweight = false,
+      double current_time = 0);
 
   explicit HybridRomPlannerTrajectory(const lcmt_timestamped_saved_traj& traj);
   explicit HybridRomPlannerTrajectory(const std::string& filepath,
-                                bool lightweight = false) {
+                                      bool lightweight = false) {
     LoadFromFile(filepath, lightweight);
   }
 
@@ -72,15 +74,32 @@ class HybridRomPlannerTrajectory : public LcmTrajectory {
     return decision_vars_->datapoints;
   }
 
-  const Eigen::MatrixXd& get_global_com() const { return global_com_->datapoints; };
-  const Eigen::VectorXd& get_global_com_time() const {
-    return global_com_->time_vector;
+  const Eigen::MatrixXd& get_global_footstep() const {
+    return global_footstep_->datapoints;
   };
-  const Eigen::MatrixXd& get_global_footstep() const { return global_footstep_->datapoints; };
   const Eigen::VectorXd& get_global_footstep_time() const {
     return global_footstep_->time_vector;
   };
-  const Eigen::VectorXd& get_stance_foot() const { return stance_foot_; };
+  /*const Eigen::VectorXd& get_stance_foot() const { return stance_foot_; };
+  const Eigen::VectorXd& get_current_quat_xyz_shift() const {
+    return current_quat_xyz_shift_;
+  };
+  const Eigen::VectorXd& get_current_stance_foot_pos() const {
+    return current_stance_foot_pos_;
+  };*/
+  Eigen::VectorXd get_stance_foot() const {
+    return GetTrajectory("stance_foot").datapoints.row(0).transpose();
+  };
+  Eigen::VectorXd get_current_quat_xyz_shift() const {
+    return GetTrajectory("current_quat_xyz_shift")
+        .datapoints.row(0)
+        .transpose();
+  };
+  Eigen::VectorXd get_current_stance_foot_pos() const {
+    return GetTrajectory("current_stance_foot_pos")
+        .datapoints.row(0)
+        .transpose();
+  };
 
   drake::trajectories::PiecewisePolynomial<double> ConstructPositionTrajectory()
       const;
@@ -96,10 +115,12 @@ class HybridRomPlannerTrajectory : public LcmTrajectory {
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 
-  const Trajectory* global_com_;
   const Trajectory* global_footstep_;
-  Eigen::VectorXd stance_foot_;
-  //  const Eigen::MatrixXd* stance_foot_;
+  //  const Trajectory* global_com_;
+  //  Eigen::VectorXd stance_foot_;
+  //  //  const Eigen::MatrixXd* stance_foot_;
+  //  Eigen::VectorXd current_quat_xyz_shift_;
+  //  Eigen::VectorXd current_stance_foot_pos_;
 };
 
 /// ReadHybridRomPlannerTrajectory

@@ -38,7 +38,7 @@ void ParseQuadraticCosts(const MathematicalProgram& prog,
     // this quadratic cost) in the program decision variables.
     const std::vector<int> x_indices = prog.FindDecisionVariableIndices(x);
 
-    // Add quadratic_cost.Q to the Hessian P.
+    // Add quadratic_cost.Q to the Hessian H.
     // Since OSQP 0.6.0 the P matrix is required to be upper triangular, so
     // we only add upper triangular entries to P_triplets.
     const Eigen::MatrixXd& Q = quadratic_cost.evaluator()->Q();

@@ -48,6 +48,21 @@ cc_library(
 )
 
 cc_library(
+    name = "fast_proxqp_solver",
+    srcs = [
+        "fast_proxqp_solver.cc",
+        "fast_proxqp_solver_common.cc",
+    ],
+    hdrs = [
+        "fast_proxqp_solver.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@proxsuite",
+    ],
+)
+
+cc_library(
     name = "nonlinear_constraint",
     srcs = [
         "nonlinear_constraint.cc",

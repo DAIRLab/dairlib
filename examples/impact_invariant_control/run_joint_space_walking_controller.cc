@@ -60,6 +60,9 @@ DEFINE_string(
     gains_filename,
     "examples/impact_invariant_control/joint_space_walking_gains.yaml",
     "Filepath containing gains");
+DEFINE_string(osqp_settings,
+              "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
+              "Filepath containing qp settings");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -151,7 +154,7 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> pos_map_wo_spr = multibody::MakeNameToPositionsMap(plant);
 
   std::vector<BasicTrajectoryPassthrough*> joint_trajs;
-  std::vector<std::shared_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;
+  std::vector<std::unique_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;
 
   std::vector<std::string> actuated_joint_names = {
       "left_hip_pin", "right_hip_pin", "left_knee_pin", "right_knee_pin"};
@@ -162,7 +165,7 @@ int DoMain(int argc, char* argv[]) {
     MatrixXd W = gains.JointW[joint_idx] * MatrixXd::Identity(1, 1);
     MatrixXd K_p = gains.JointKp[joint_idx] * MatrixXd::Identity(1, 1);
     MatrixXd K_d = gains.JointKd[joint_idx] * MatrixXd::Identity(1, 1);
-    joint_tracking_data_vec.push_back(std::make_shared<JointSpaceTrackingData>(
+    joint_tracking_data_vec.push_back(std::make_unique<JointSpaceTrackingData>(
         joint_name + "_traj", K_p, K_d, W, plant, plant));
     joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
                                                         joint_name + "dot");
@@ -171,12 +174,13 @@ int DoMain(int argc, char* argv[]) {
     auto joint_traj_generator = builder.AddSystem<BasicTrajectoryPassthrough>(
         joint_traj, joint_name + "_traj");
     joint_trajs.push_back(joint_traj_generator);
-    osc->AddTrackingData(joint_tracking_data_vec[joint_idx].get());
+    osc->AddTrackingData(std::move(joint_tracking_data_vec[joint_idx]));
 
     builder.Connect(joint_trajs[joint_idx]->get_output_port(),
-                    osc->get_tracking_data_input_port(joint_name + "_traj"));
+                    osc->get_input_port_tracking_data(joint_name + "_traj"));
   }
-
+  osc->SetOsqpSolverOptionsFromYaml(
+      FLAGS_osqp_settings);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
@@ -184,9 +188,9 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_output_port_fsm(), osc->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port_impact(),
-                  osc->get_near_impact_input_port());
+  builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_impact_info(),
+                  osc->get_input_port_impact_info());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   // FSM connections

@@ -12,6 +12,7 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_datas",
+        ":osc_gains",
         "//common:eigen_utils",
         "//common:find_resource",
         "//lcmtypes:lcmt_robot",
@@ -122,3 +123,12 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "osc_gains",
+    hdrs = ["osc_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+

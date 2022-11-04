@@ -19,7 +19,7 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
       feet_contact_points,
-      double time_offset = 0.0, FSM_STATE init_fsm_state = BALANCE);
+      double time_offset = 0.0, JUMPING_FSM_STATE init_fsm_state = BALANCE);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -66,11 +66,10 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;
 
-  static constexpr double kTransitionSpeed = 200.0;  // 20 s/m
   // The trajectory optimization solution sets the final CoM very close to
   // rear toe contacts - this is an offset to move it closer to the center of
   // the support polygon
-  static constexpr double kLandingOffset = 0.01;  // 0.04 m (4cm)
+  static constexpr double kLandingOffset = 0.00;  // 0.04 m (4cm)
 //  static constexpr double kLandingOffset = 0.04;  // 0.04 m (4cm)
 };
 

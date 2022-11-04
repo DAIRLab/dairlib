@@ -1,14 +1,12 @@
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "systems/controllers/osc/osc_gains.h"
+
 #include "yaml-cpp/yaml.h"
 
 using Eigen::MatrixXd;
 
-struct OSCJumpingGains {
+struct OSCJumpingGains : OSCGains {
   // costs
-  double w_input;
-  double w_input_reg;
-  double w_accel;
-  double w_soft_constraint;
   double x_offset;
   // center of mass tracking
   std::vector<double> CoMW;
@@ -30,9 +28,7 @@ struct OSCJumpingGains {
   double w_hip_yaw;
   double hip_yaw_kp;
   double hip_yaw_kd;
-  double impact_threshold;
   double landing_delay;
-  double mu;
   bool relative_feet;
 
   MatrixXd W_com;
@@ -48,13 +44,9 @@ struct OSCJumpingGains {
   MatrixXd K_p_hip_yaw;
   MatrixXd K_d_hip_yaw;
 
-
   template <typename Archive>
   void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(w_input));
-    a->Visit(DRAKE_NVP(w_input_reg));
-    a->Visit(DRAKE_NVP(w_accel));
-    a->Visit(DRAKE_NVP(w_soft_constraint));
+    OSCGains::Serialize(a);
     a->Visit(DRAKE_NVP(x_offset));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(CoMKp));
@@ -71,9 +63,7 @@ struct OSCJumpingGains {
     a->Visit(DRAKE_NVP(w_hip_yaw));
     a->Visit(DRAKE_NVP(hip_yaw_kp));
     a->Visit(DRAKE_NVP(hip_yaw_kd));
-    a->Visit(DRAKE_NVP(impact_threshold));
     a->Visit(DRAKE_NVP(landing_delay));
-    a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(relative_feet));
 
     W_com = Eigen::Map<
@@ -106,6 +96,5 @@ struct OSCJumpingGains {
     W_hip_yaw = w_hip_yaw * MatrixXd::Identity(1, 1);
     K_p_hip_yaw = hip_yaw_kp * MatrixXd::Identity(1, 1);
     K_d_hip_yaw = hip_yaw_kd * MatrixXd::Identity(1, 1);
-
   }
 };

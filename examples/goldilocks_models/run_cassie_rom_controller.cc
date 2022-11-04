@@ -261,6 +261,11 @@ int DoMain(int argc, char* argv[]) {
       DRAKE_DEMAND(gains.constant_rom_vel_during_double_support);
     }
   }
+  // More checks
+  if (gains.use_hybrid_rom_mpc) {
+    DRAKE_DEMAND(!FLAGS_get_stance_hip_angles_from_planner);
+    DRAKE_DEMAND(!FLAGS_get_swing_hip_angle_from_planner);
+  }
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model
@@ -543,7 +548,7 @@ int DoMain(int argc, char* argv[]) {
         left_right_foot, left_right_support_fsm_states, left_support_duration,
         double_support_duration, gains.mid_foot_height, gains.final_foot_height,
         gains, state_mirror, view_frame_w_spring, view_frame,
-        wrt_com_in_local_frame);
+        wrt_com_in_local_frame, gains.use_hybrid_rom_mpc);
     builder.Connect(planner_output_subscriber->get_output_port(),
                     planner_traj_receiver->get_input_port_lcm_traj());
     builder.Connect(fsm->get_output_port(0),

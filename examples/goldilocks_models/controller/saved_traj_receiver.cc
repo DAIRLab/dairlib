@@ -4,6 +4,7 @@
 
 #include "common/file_utils.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
+#include "lcm/hybrid_rom_planner_saved_trajectory.h"
 #include "lcm/rom_planner_saved_trajectory.h"
 #include "multibody/multipose_visualizer.h"
 #include "systems/framework/output_vector.h"
@@ -42,7 +43,7 @@ SavedTrajReceiver::SavedTrajReceiver(
     const StateMirror& state_mirror /*Only use for sim gap testing*/,
     const multibody::WorldYawViewFrame<double>& view_frame_feedback,
     const multibody::WorldYawViewFrame<double>& view_frame_control,
-    bool wrt_com_in_local_frame)
+    bool wrt_com_in_local_frame, bool use_hybrid_rom_mpc)
     : ny_(rom.n_y()),
       plant_feedback_(plant_feedback),
       plant_control_(plant_control),
@@ -59,7 +60,13 @@ SavedTrajReceiver::SavedTrajReceiver(
       desired_final_foot_height_(desired_final_foot_height),
       view_frame_feedback_(view_frame_feedback),
       view_frame_control_(view_frame_control),
-      wrt_com_in_local_frame_(wrt_com_in_local_frame) {
+      wrt_com_in_local_frame_(wrt_com_in_local_frame),
+      use_hybrid_rom_mpc_(use_hybrid_rom_mpc) {
+  if (use_hybrid_rom_mpc_ && wrt_com_in_local_frame_) {
+    cout << "Warning: the pelvis frame is just an approximation\n";
+    DRAKE_UNREACHABLE();  // Need to send global com pos for relative swing foot
+  }
+
   saved_traj_lcm_port_ =
       this->DeclareAbstractInputPort(
               "saved_traj_lcm",
@@ -247,10 +254,14 @@ void SavedTrajReceiver::CalcRomTraj(
 
   // Construct rom planner data from lcm message
   // Benchmark: The unpacking time is about 10-20 us.
-  RomPlannerTrajectory traj_data(*lcm_traj);
+  // RomPlannerTrajectory traj_data(*lcm_traj);
 
   // Construct cubic splines
-  PiecewisePolynomial<double> pp = traj_data.ConstructPositionTrajectory();
+  PiecewisePolynomial<double> pp =
+      use_hybrid_rom_mpc_
+          ? HybridRomPlannerTrajectory(*lcm_traj).ConstructPositionTrajectory()
+          : RomPlannerTrajectory(*lcm_traj).ConstructPositionTrajectory();
+  //  PiecewisePolynomial<double> pp = traj_data.ConstructPositionTrajectory();
   // // [Test sim gap] -- use trajopt's traj directly in OSC
   //  PiecewisePolynomial<double> pp = rom_pp_;
 
@@ -366,142 +377,257 @@ void SavedTrajReceiver::CalcSwingFootTraj(
   }
 
   // Construct rom planner data from lcm message
-  RomPlannerTrajectory traj_data(*lcm_traj);
-  int n_mode = traj_data.GetNumModes();
-
-  // Get states (in global frame) and stance_foot
-  const MatrixXd& x0 = traj_data.get_x0();
-  const VectorXd& x0_time = traj_data.get_x0_time();
-  const MatrixXd& xf = traj_data.get_xf();
-  const VectorXd& xf_time = traj_data.get_xf_time();
-  const VectorXd& stance_foot = traj_data.get_stance_foot();
-  DRAKE_DEMAND(xf_time(0) == x0_time(1));
-
-  // // [Test sim gap] -- use trajopt's traj directly in OSC
-  //  int n_mode = 2;
-  //  const MatrixXd& x0 = x0_;
-  //  const VectorXd& x0_time = x0_time_;
-  //  const MatrixXd& xf = xf_;
-  //  const VectorXd& xf_time = xf_time_;
-  //  const VectorXd& stance_foot = stance_foot_;
-
-  // Construct PP (concatenate the PP of each mode)
-  // WARNING: we assume each mode in the planner is "single support" + "double
-  // support"
+  PiecewisePolynomial<double> pp;
   double current_time = context.get_time();
 
-  PiecewisePolynomial<double> pp;
-  std::vector<double> T_waypoint = std::vector<double>(3, 0);
-  std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
-  Vector3d start_foot_pos;
-  Vector3d end_foot_pos;
-  bool init_step = true;
-  bool left_stance = abs(stance_foot(0)) < 1e-12;
-  for (int j = 0; j < n_mode; j++) {
-    // When the current time is bigger than the end time of the mode (this could
-    // happen when the planner starts planning close the end of mode), we skip.
-    // That is, we don't construct trajectories in the past, since we are not
-    // going to use it.
-    if (current_time < xf_time(j)) {
-      if (xf_time(j) - double_support_duration_ > x0_time(j)) {
-        // Set the time
-        // T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
-        T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
-                                          double_support_duration_
-                                    : x0_time(j) - eps_hack_;
-        T_waypoint.at(2) = xf_time(j) - double_support_duration_;
-        T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
+  if (use_hybrid_rom_mpc_) {
+    HybridRomPlannerTrajectory traj_data(*lcm_traj);
+    int n_mode = traj_data.GetNumModes();
 
-        // Start pos
-        plant_control_.SetPositionsAndVelocities(context_control_.get(),
-                                                 x0.col(j));
-        if (init_step) {
-          start_foot_pos =
-              context.get_discrete_state(liftoff_swing_foot_pos_idx_)
-                  .get_value();
-        } else {
+    // Get foot steps (in global frame) and stance_foot
+    const MatrixXd& global_footstep = traj_data.get_global_footstep();
+    VectorXd x0_time(n_mode);
+    x0_time << traj_data.GetStateBreaks(0)(0),
+        traj_data.get_global_footstep_time().head(n_mode - 1);
+    VectorXd xf_time = traj_data.get_global_footstep_time();
+
+    const VectorXd& stance_foot = traj_data.get_stance_foot();
+
+    // const MatrixXd& global_com_end = ...;
+
+    // TODO: stack global_footstep to get the real global_footstep
+    //    DRAKE_UNREACHABLE();
+    // TODO: be aware the left right difference
+    // TOOD: you also need to send the stance foot position? Acutally, just use
+    // the current stance foot?
+
+    // Set feedback context
+    const OutputVector<double>* robot_output =
+        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+    multibody::SetPositionsIfNew<double>(
+        plant_feedback_, robot_output->GetPositions(), context_feedback_);
+
+    // Construct PP (concatenate the PP of each mode)
+    // WARNING: we assume each mode in the planner is "single support" + "double
+    // support"
+    std::vector<double> T_waypoint = std::vector<double>(3, 0);
+    std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
+    Vector3d start_foot_pos;
+    Vector3d end_foot_pos;
+    bool init_step = true;
+    bool left_stance = abs(stance_foot(0)) < 1e-12;
+    for (int j = 0; j < n_mode; j++) {
+      // When the current time is bigger than the end time of the mode (this
+      // could happen when the planner starts planning close the end of mode),
+      // we skip. That is, we don't construct trajectories in the past, since we
+      // are not going to use it.
+      if (current_time < xf_time(j)) {
+        if (xf_time(j) - double_support_duration_ > x0_time(j)) {
+          // Set the time
+          // T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
+          T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
+                                            double_support_duration_
+                                      : x0_time(j) - eps_hack_;
+          T_waypoint.at(2) = xf_time(j) - double_support_duration_;
+          T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
+
+          // Start pos
+          if (init_step) {
+            start_foot_pos =
+                context.get_discrete_state(liftoff_swing_foot_pos_idx_)
+                    .get_value();
+          } else {
+            start_foot_pos = global_footstep.col(j - 1);
+            if (wrt_com_in_local_frame_) {
+              start_foot_pos = view_frame_feedback_.CalcWorldToFrameRotation(
+                                   plant_feedback_, *context_feedback_) *
+                               (start_foot_pos - global_com_end.col(j - 1));
+            }
+          }
+          Y.at(0) = start_foot_pos;
+          // End pos
+          end_foot_pos = global_footstep.col(j);
+          if (wrt_com_in_local_frame_) {
+            end_foot_pos = view_frame_feedback_.CalcWorldToFrameRotation(
+                               plant_feedback_, *context_feedback_) *
+                           (end_foot_pos - global_com_end.col(j - 1));
+
+            // Heuristics for spring model
+            end_foot_pos(0) += swing_foot_target_offset_x_;
+          }
+          Y.at(2) = end_foot_pos;
+          // Mid pos
+          Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
+
+          // Foot height
+          if (init_step) {
+            Y.at(1)(2) = start_foot_pos(2) + desired_mid_foot_height_;
+            Y.at(2)(2) = start_foot_pos(2) + desired_final_foot_height_;
+          } else {
+            Y.at(1)(2) += desired_mid_foot_height_;
+            Y.at(2)(2) += desired_final_foot_height_;
+          }
+
+          // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
+          // make the traj smooth at the mid point
+          pp.ConcatenateInTime(
+              PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+                  T_waypoint, Y, VectorXd::Zero(3), VectorXd::Zero(3)));
+        }
+
+        // Fill in the double support phase with a constant zero traj
+        if (double_support_duration_ > 0) {
+          VectorXd T_double_support(2);
+          T_double_support << T_waypoint.at(2), xf_time(j) - eps_hack_;
+          /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
+          cout << "xf_time(j) = " << xf_time(j) << endl;*/
+          MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
+          pp.ConcatenateInTime(PiecewisePolynomial<double>::ZeroOrderHold(
+              T_double_support, Y_double_support));
+        }
+
+        init_step = false;
+      }
+
+      left_stance = !left_stance;
+    }
+
+  } else {
+    RomPlannerTrajectory traj_data(*lcm_traj);
+    int n_mode = traj_data.GetNumModes();
+
+    // Get states (in global frame) and stance_foot
+    const MatrixXd& x0 = traj_data.get_x0();
+    const VectorXd& x0_time = traj_data.get_x0_time();
+    const MatrixXd& xf = traj_data.get_xf();
+    const VectorXd& xf_time = traj_data.get_xf_time();
+    const VectorXd& stance_foot = traj_data.get_stance_foot();
+    DRAKE_DEMAND(xf_time(0) == x0_time(1));
+
+    // // [Test sim gap] -- use trajopt's traj directly in OSC
+    //  int n_mode = 2;
+    //  const MatrixXd& x0 = x0_;
+    //  const VectorXd& x0_time = x0_time_;
+    //  const MatrixXd& xf = xf_;
+    //  const VectorXd& xf_time = xf_time_;
+    //  const VectorXd& stance_foot = stance_foot_;
+
+    // Construct PP (concatenate the PP of each mode)
+    // WARNING: we assume each mode in the planner is "single support" + "double
+    // support"
+    std::vector<double> T_waypoint = std::vector<double>(3, 0);
+    std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
+    Vector3d start_foot_pos;
+    Vector3d end_foot_pos;
+    bool init_step = true;
+    bool left_stance = abs(stance_foot(0)) < 1e-12;
+    for (int j = 0; j < n_mode; j++) {
+      // When the current time is bigger than the end time of the mode (this
+      // could happen when the planner starts planning close the end of mode),
+      // we skip. That is, we don't construct trajectories in the past, since we
+      // are not going to use it.
+      if (current_time < xf_time(j)) {
+        if (xf_time(j) - double_support_duration_ > x0_time(j)) {
+          // Set the time
+          // T_waypoint.at(0) = (j == 0) ? lift_off_time_ : x0_time(j);
+          T_waypoint.at(0) = (j == 0) ? xf_time(j) - single_support_duration_ -
+                                            double_support_duration_
+                                      : x0_time(j) - eps_hack_;
+          T_waypoint.at(2) = xf_time(j) - double_support_duration_;
+          T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
+
+          // Start pos
+          plant_control_.SetPositionsAndVelocities(context_control_.get(),
+                                                   x0.col(j));
+          if (init_step) {
+            start_foot_pos =
+                context.get_discrete_state(liftoff_swing_foot_pos_idx_)
+                    .get_value();
+          } else {
+            plant_control_.CalcPointsPositions(
+                *context_control_,
+                left_right_foot_.at(left_stance ? 1 : 0).second,
+                left_right_foot_.at(left_stance ? 1 : 0).first,
+                plant_control_.world_frame(), &start_foot_pos);
+            if (wrt_com_in_local_frame_) {
+              start_foot_pos = view_frame_control_.CalcWorldToFrameRotation(
+                                   plant_control_, *context_control_) *
+                               (start_foot_pos -
+                                plant_control_.CalcCenterOfMassPositionInWorld(
+                                    *context_control_));
+            }
+          }
+          Y.at(0) = start_foot_pos;
+          // End pos
+          plant_control_.SetPositionsAndVelocities(context_control_.get(),
+                                                   xf.col(j));
           plant_control_.CalcPointsPositions(
               *context_control_,
               left_right_foot_.at(left_stance ? 1 : 0).second,
               left_right_foot_.at(left_stance ? 1 : 0).first,
-              plant_control_.world_frame(), &start_foot_pos);
+              plant_control_.world_frame(), &end_foot_pos);
           if (wrt_com_in_local_frame_) {
-            start_foot_pos = view_frame_control_.CalcWorldToFrameRotation(
-                                 plant_control_, *context_control_) *
-                             (start_foot_pos -
-                              plant_control_.CalcCenterOfMassPositionInWorld(
-                                  *context_control_));
+            end_foot_pos =
+                view_frame_control_.CalcWorldToFrameRotation(
+                    plant_control_, *context_control_) *
+                (end_foot_pos - plant_control_.CalcCenterOfMassPositionInWorld(
+                                    *context_control_));
+
+            // Heuristics for spring model
+            end_foot_pos(0) += swing_foot_target_offset_x_;
           }
-        }
-        Y.at(0) = start_foot_pos;
-        // End pos
-        plant_control_.SetPositionsAndVelocities(context_control_.get(),
-                                                 xf.col(j));
-        plant_control_.CalcPointsPositions(
-            *context_control_, left_right_foot_.at(left_stance ? 1 : 0).second,
-            left_right_foot_.at(left_stance ? 1 : 0).first,
-            plant_control_.world_frame(), &end_foot_pos);
-        if (wrt_com_in_local_frame_) {
-          end_foot_pos =
-              view_frame_control_.CalcWorldToFrameRotation(plant_control_,
-                                                           *context_control_) *
-              (end_foot_pos - plant_control_.CalcCenterOfMassPositionInWorld(
-                                  *context_control_));
+          Y.at(2) = end_foot_pos;
+          // Mid pos
+          Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
 
-          // Heuristics for spring model
-          end_foot_pos(0) += swing_foot_target_offset_x_;
-        }
-        Y.at(2) = end_foot_pos;
-        // Mid pos
-        Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
+          // Foot height
+          if (init_step) {
+            Y.at(1)(2) = start_foot_pos(2) + desired_mid_foot_height_;
+            Y.at(2)(2) = start_foot_pos(2) + desired_final_foot_height_;
+          } else {
+            Y.at(1)(2) += desired_mid_foot_height_;
+            Y.at(2)(2) += desired_final_foot_height_;
+          }
 
-        // Foot height
-        if (init_step) {
-          Y.at(1)(2) = start_foot_pos(2) + desired_mid_foot_height_;
-          Y.at(2)(2) = start_foot_pos(2) + desired_final_foot_height_;
-        } else {
-          Y.at(1)(2) += desired_mid_foot_height_;
-          Y.at(2)(2) += desired_final_foot_height_;
+          // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
+          // make the traj smooth at the mid point
+          pp.ConcatenateInTime(
+              PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+                  T_waypoint, Y, VectorXd::Zero(3), VectorXd::Zero(3)));
         }
 
-        // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
-        // make the traj smooth at the mid point
-        pp.ConcatenateInTime(
-            PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-                T_waypoint, Y, VectorXd::Zero(3), VectorXd::Zero(3)));
+        // Fill in the double support phase with a constant zero traj
+        if (double_support_duration_ > 0) {
+          VectorXd T_double_support(2);
+          T_double_support << T_waypoint.at(2), xf_time(j) - eps_hack_;
+          /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
+          cout << "xf_time(j) = " << xf_time(j) << endl;*/
+          MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
+          pp.ConcatenateInTime(PiecewisePolynomial<double>::ZeroOrderHold(
+              T_double_support, Y_double_support));
+        }
+
+        init_step = false;
       }
 
-      // Fill in the double support phase with a constant zero traj
-      if (double_support_duration_ > 0) {
-        VectorXd T_double_support(2);
-        T_double_support << T_waypoint.at(2), xf_time(j) - eps_hack_;
-        /*cout << "T_waypoint.at(2) = " << T_waypoint.at(2) << endl;
-        cout << "xf_time(j) = " << xf_time(j) << endl;*/
-        MatrixXd Y_double_support = MatrixXd::Zero(3, 2);
-        pp.ConcatenateInTime(PiecewisePolynomial<double>::ZeroOrderHold(
-            T_double_support, Y_double_support));
-      }
-
-      init_step = false;
+      left_stance = !left_stance;
     }
 
-    left_stance = !left_stance;
+    // Testing -- trying to find the bug that the desired swing foot position
+    // traj was evaluated 0 at start of mode sometimes in the OSC
+    //  cout << "x0_time = " << x0_time.transpose() << endl;
+    //  cout << "xf_time = " << xf_time.transpose() << endl;
+    //  cout << "pp start = ";
+    //  for (int i = 0; i < x0_time.size(); i++) {
+    //    cout << pp.value(x0_time(i)).transpose() << endl;
+    //  }
+    //  cout << "pp end = ";
+    //  for (int i = 0; i < xf_time.size(); i++) {
+    //    cout << pp.value(xf_time(i)).transpose() << endl;
+    //  }
+    //  DRAKE_DEMAND(pp.value(x0_time(1)).norm() != 0);
+    //  DRAKE_DEMAND(pp.value(xf_time(0)).norm() != 0);
   }
-
-  // Testing -- trying to find the bug that the desired swing foot position traj
-  // was evaluated 0 at start of mode sometimes in the OSC
-  //  cout << "x0_time = " << x0_time.transpose() << endl;
-  //  cout << "xf_time = " << xf_time.transpose() << endl;
-  //  cout << "pp start = ";
-  //  for (int i = 0; i < x0_time.size(); i++) {
-  //    cout << pp.value(x0_time(i)).transpose() << endl;
-  //  }
-  //  cout << "pp end = ";
-  //  for (int i = 0; i < xf_time.size(); i++) {
-  //    cout << pp.value(xf_time(i)).transpose() << endl;
-  //  }
-  //  DRAKE_DEMAND(pp.value(x0_time(1)).norm() != 0);
-  //  DRAKE_DEMAND(pp.value(xf_time(0)).norm() != 0);
 
   // Assign traj
   *traj_casted = pp;

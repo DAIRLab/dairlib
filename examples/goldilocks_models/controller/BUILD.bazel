@@ -68,6 +68,7 @@ cc_library(
     deps = [
         ":control_parameters",
         "//examples/goldilocks_models:reduced_order_models",
+        "//lcm:hybrid_rom_planner_trajectory_saver",
         "//lcm:lcm_trajectory_saver",
         "//lcm:rom_planner_trajectory_saver",
         "//lcmtypes:lcmt_robot",

@@ -69,7 +69,7 @@ class HybridRomPlannerTrajectory : public LcmTrajectory {
     return x_[mode]->time_vector;
   }
   Eigen::MatrixXd GetInputSamples() const { return u_->datapoints; }
-  Eigen::MatrixXd GetBreaks() const { return u_->time_vector; }
+  Eigen::VectorXd GetBreaks() const { return u_->time_vector; }
   Eigen::VectorXd GetDecisionVariables() const {
     return decision_vars_->datapoints;
   }

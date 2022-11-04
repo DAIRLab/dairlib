@@ -12,6 +12,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/goldilocks_models/controller/cassie_hybrid_rom_planner_system.h"
 #include "examples/goldilocks_models/controller/cassie_rom_planner_system.h"
 #include "examples/goldilocks_models/controller/control_parameters.h"
 #include "examples/goldilocks_models/controller/planner_preprocessing.h"
@@ -203,11 +204,13 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(!gains.use_radio);
     DRAKE_DEMAND(!gains.use_virtual_radio);
     if (gains.right_limit_wrt_pelvis > 0.02) {
-      cout << "set right_limit_wrt_pelvis to 0.02 because we want to close sim gap\n";
+      cout << "set right_limit_wrt_pelvis to 0.02 because we want to close sim "
+              "gap\n";
       gains.right_limit_wrt_pelvis = 0.02;
     }
     if (gains.right_limit_wrt_stance_ft > 0.02) {
-      cout << "set right_limit_wrt_stance_ft to 0.02 because we want to close sim gap\n";
+      cout << "set right_limit_wrt_stance_ft to 0.02 because we want to close "
+              "sim gap\n";
       gains.right_limit_wrt_stance_ft = 0.02;
     }
   }
@@ -440,10 +443,12 @@ int DoMain(int argc, char* argv[]) {
   // Init state relaxation (relax the mapping function)
   std::set<int> relax_index = {5};  //{3, 4, 5};
   // Initialize the MPC initial state with previous ROM traj solution
-  vector<int> initialize_with_prev_rom_state = {2, 5};  // for state, not only pos
+  vector<int> initialize_with_prev_rom_state = {2,
+                                                5};  // for state, not only pos
   // Constant vel index for double support phase
   // Note that this is the index in state
-  std::set<int> idx_const_rom_vel_during_double_support = {3, 4};  // {3};  //{3, 4};  //{3, 4, 5};
+  std::set<int> idx_const_rom_vel_during_double_support = {
+      3, 4};  // {3};  //{3, 4};  //{3, 4, 5};
   if (gains.double_support_duration == 0) {
     cout << "Clearing idx_const_rom_vel_during_double_support, because "
             "double_support_duration = 0\n";
@@ -455,22 +460,47 @@ int DoMain(int argc, char* argv[]) {
       plant_control, stride_period, param, relax_index,
       initialize_with_prev_rom_state, idx_const_rom_vel_during_double_support,
       FLAGS_debug_mode, FLAGS_log_data, FLAGS_print_level);
-  if (FLAGS_completely_use_trajs_from_model_opt_as_target)
-    rom_planner->completely_use_trajs_from_model_opt_as_target();
-  builder.Connect(stance_foot_getter->get_output_port(0),
-                  rom_planner->get_input_port_stance_foot());
-  builder.Connect(init_phase_calculator->get_output_port(0),
-                  rom_planner->get_input_port_init_phase());
-  builder.Connect(x_init_calculator->get_output_port_adjusted_state(),
-                  rom_planner->get_input_port_state());
-  builder.Connect(x_init_calculator->get_output_port_adjustment(),
-                  rom_planner->get_input_port_quat_xyz_shift());
-  builder.Connect(planner_final_pos->get_output_port(0),
-                  rom_planner->get_input_port_planner_final_pos());
-  builder.Connect(controller_signal_receiver->get_output_port(0),
-                  rom_planner->get_input_port_fsm_and_lo_time());
-  builder.Connect(rom_planner->get_output_port(0),
-                  traj_publisher->get_input_port());
+  auto hybrid_rom_planner = builder.AddSystem<CassiePlannerWithOnlyRom>(
+      plant_control, stride_period, param, relax_index,
+      std::set<int>(initialize_with_prev_rom_state.begin(),
+                    initialize_with_prev_rom_state.end()),
+      idx_const_rom_vel_during_double_support, FLAGS_debug_mode, FLAGS_log_data,
+      FLAGS_print_level);
+  if (gains.use_hybrid_rom_mpc) {
+    if (FLAGS_completely_use_trajs_from_model_opt_as_target)
+      hybrid_rom_planner->completely_use_trajs_from_model_opt_as_target();
+    builder.Connect(stance_foot_getter->get_output_port(0),
+                    hybrid_rom_planner->get_input_port_stance_foot());
+    builder.Connect(init_phase_calculator->get_output_port(0),
+                    hybrid_rom_planner->get_input_port_init_phase());
+    builder.Connect(x_init_calculator->get_output_port_adjusted_state(),
+                    hybrid_rom_planner->get_input_port_state());
+    builder.Connect(x_init_calculator->get_output_port_adjustment(),
+                    hybrid_rom_planner->get_input_port_quat_xyz_shift());
+    builder.Connect(planner_final_pos->get_output_port(0),
+                    hybrid_rom_planner->get_input_port_planner_final_pos());
+    builder.Connect(controller_signal_receiver->get_output_port(0),
+                    hybrid_rom_planner->get_input_port_fsm_and_lo_time());
+    builder.Connect(hybrid_rom_planner->get_output_port(0),
+                    traj_publisher->get_input_port());
+  } else {
+    if (FLAGS_completely_use_trajs_from_model_opt_as_target)
+      rom_planner->completely_use_trajs_from_model_opt_as_target();
+    builder.Connect(stance_foot_getter->get_output_port(0),
+                    rom_planner->get_input_port_stance_foot());
+    builder.Connect(init_phase_calculator->get_output_port(0),
+                    rom_planner->get_input_port_init_phase());
+    builder.Connect(x_init_calculator->get_output_port_adjusted_state(),
+                    rom_planner->get_input_port_state());
+    builder.Connect(x_init_calculator->get_output_port_adjustment(),
+                    rom_planner->get_input_port_quat_xyz_shift());
+    builder.Connect(planner_final_pos->get_output_port(0),
+                    rom_planner->get_input_port_planner_final_pos());
+    builder.Connect(controller_signal_receiver->get_output_port(0),
+                    rom_planner->get_input_port_fsm_and_lo_time());
+    builder.Connect(rom_planner->get_output_port(0),
+                    traj_publisher->get_input_port());
+  }
 
   // Create the diagram
   auto owned_diagram = builder.Build();
@@ -630,32 +660,62 @@ int DoMain(int argc, char* argv[]) {
     auto diagram_ptr = loop.get_diagram();
     auto& diagram_context = loop.get_diagram_mutable_context();
     diagram_context.SetTime(current_time);
-    auto& planner_context =
-        diagram_ptr->GetMutableSubsystemContext(*rom_planner, &diagram_context);
 
-    // Set input port value
-    rom_planner->get_input_port_stance_foot().FixValue(&planner_context,
-                                                       is_right_stance);
-    rom_planner->get_input_port_init_phase().FixValue(&planner_context,
-                                                      init_phase);
-    rom_planner->get_input_port_state().FixValue(&planner_context,
-                                                 robot_output);
-    rom_planner->get_input_port_quat_xyz_shift().FixValue(&planner_context,
-                                                          quat_xyz_shift);
-    rom_planner->get_input_port_planner_final_pos().FixValue(&planner_context,
-                                                             final_position);
-    rom_planner->get_input_port_fsm_and_lo_time().FixValue(
-        &planner_context,
-        drake::systems::BasicVector({fsm_state, prev_lift_off_time,
-                                     global_fsm_idx, 0.0, 0.0, current_time}));
+    if (gains.use_hybrid_rom_mpc) {
+      auto& planner_context = diagram_ptr->GetMutableSubsystemContext(
+          *hybrid_rom_planner, &diagram_context);
 
-    ///
-    /// Eval output port and store data
-    ///
+      // Set input port value
+      hybrid_rom_planner->get_input_port_stance_foot().FixValue(
+          &planner_context, is_right_stance);
+      hybrid_rom_planner->get_input_port_init_phase().FixValue(&planner_context,
+                                                               init_phase);
+      hybrid_rom_planner->get_input_port_state().FixValue(&planner_context,
+                                                          robot_output);
+      hybrid_rom_planner->get_input_port_quat_xyz_shift().FixValue(
+          &planner_context, quat_xyz_shift);
+      hybrid_rom_planner->get_input_port_planner_final_pos().FixValue(
+          &planner_context, final_position);
+      hybrid_rom_planner->get_input_port_fsm_and_lo_time().FixValue(
+          &planner_context, drake::systems::BasicVector(
+                                {fsm_state, prev_lift_off_time, global_fsm_idx,
+                                 0.0, 0.0, current_time}));
 
-    // Calc output
-    auto output = rom_planner->AllocateOutput();
-    rom_planner->CalcOutput(planner_context, output.get());
+      ///
+      /// Eval output port and store data
+      ///
+
+      // Calc output
+      auto output = hybrid_rom_planner->AllocateOutput();
+      hybrid_rom_planner->CalcOutput(planner_context, output.get());
+    } else {
+      auto& planner_context = diagram_ptr->GetMutableSubsystemContext(
+          *rom_planner, &diagram_context);
+
+      // Set input port value
+      rom_planner->get_input_port_stance_foot().FixValue(&planner_context,
+                                                         is_right_stance);
+      rom_planner->get_input_port_init_phase().FixValue(&planner_context,
+                                                        init_phase);
+      rom_planner->get_input_port_state().FixValue(&planner_context,
+                                                   robot_output);
+      rom_planner->get_input_port_quat_xyz_shift().FixValue(&planner_context,
+                                                            quat_xyz_shift);
+      rom_planner->get_input_port_planner_final_pos().FixValue(&planner_context,
+                                                               final_position);
+      rom_planner->get_input_port_fsm_and_lo_time().FixValue(
+          &planner_context, drake::systems::BasicVector(
+                                {fsm_state, prev_lift_off_time, global_fsm_idx,
+                                 0.0, 0.0, current_time}));
+
+      ///
+      /// Eval output port and store data
+      ///
+
+      // Calc output
+      auto output = rom_planner->AllocateOutput();
+      rom_planner->CalcOutput(planner_context, output.get());
+    }
   }
 
   return 0;

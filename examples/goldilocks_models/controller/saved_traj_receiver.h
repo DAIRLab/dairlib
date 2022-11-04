@@ -35,7 +35,8 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
       const StateMirror& state_mirror /*Only use for sim gap testing*/,
       const multibody::WorldYawViewFrame<double>& view_frame_feedback,
       const multibody::WorldYawViewFrame<double>& view_frame_control,
-      bool wrt_com_in_local_frame);
+      bool wrt_com_in_local_frame,
+      bool use_hybrid_rom_mpc);
 
   const drake::systems::InputPort<double>& get_input_port_lcm_traj() const {
     return this->get_input_port(saved_traj_lcm_port_);
@@ -150,6 +151,7 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   const multibody::WorldYawViewFrame<double>& view_frame_feedback_;
   const multibody::WorldYawViewFrame<double>& view_frame_control_;
   bool wrt_com_in_local_frame_;
+  bool use_hybrid_rom_mpc_;
 
   // Heuristic
   double swing_foot_target_offset_x_;

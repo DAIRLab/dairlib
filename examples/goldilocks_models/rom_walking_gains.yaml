@@ -61,6 +61,10 @@ model_iter: 1 #150  #1 #30
 sample_idx: 40 #19 #58 #40
 
 
+###
+use_hybrid_rom_mpc: true
+
+
 ### High-level command (for both planner and controller)
 global_target_position_x: 10000
 global_target_position_y: 0

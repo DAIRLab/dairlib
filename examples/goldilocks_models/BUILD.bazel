@@ -162,6 +162,7 @@ cc_binary(
         "//examples/Cassie:simulator_drift",
         "//examples/Cassie/osc",
         "//examples/goldilocks_models:rom_walking_gains",
+        "//examples/goldilocks_models/controller:cassie_hybrid_rom_planner_system",
         "//examples/goldilocks_models/controller:cassie_rom_planner_system",
         "//examples/goldilocks_models/controller:control_parameters",
         "//examples/goldilocks_models/controller:planner_preprocessing",

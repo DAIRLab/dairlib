@@ -261,6 +261,8 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
+  int n_u = plant_wo_springs.num_actuators();
+  osc->SetInputSmoothingWeights(.001 * MatrixXd::Identity(n_u, n_u));
   // Center of mass tracking
   // Weighting x-y higher than z, as they are more important to balancing
   //  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
@@ -300,6 +302,10 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
   right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
   osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
+
+  // set solver options
+  osc->SetOsqpSolverOptionsFromYaml(
+      "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
 
   // Build OSC problem
   osc->Build();

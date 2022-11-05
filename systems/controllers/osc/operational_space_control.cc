@@ -462,6 +462,7 @@ void OperationalSpaceControl::Build() {
   }
 
   solver_ = std::make_unique<solvers::FastProxQPSolver>();
+  prog_->SetSolverOptions(solver_options_);
 //  solver_->InitializeSolver(*prog_, solver_options_);
 }
 
@@ -753,7 +754,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 //  osqp_solver->S
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
-  solve_time_ = result.get_solver_details<solvers::FastProxQPSolver>().run_time;
+  solve_time_ = result.get_solver_details<solvers::FastProxQPSolver>().run_time * 1e-6;
 
   if (!result.is_success()) {
     std::cout << "reverting to old sol" << std::endl;

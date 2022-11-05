@@ -352,6 +352,7 @@ void FastProxQPSolver::DoSolve(
   Eigen::VectorXd uvect = Eigen::VectorXd::Map(u.data(), u.size());
 
   QP<c_float, isize> qp(n, n_eq, n_ineq);
+  SetSolverOptionsFromOsqpOptions(prog.solver_options(), &qp.settings);
   qp.init(H_sparse,
           gvect,
           A_sparse,

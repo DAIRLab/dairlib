@@ -1,13 +1,9 @@
-//
-// Created by brian on 11/1/22.
-//
-
 #include "fast_proxqp_solver.h"
 
 // Need to include iostream BEFORE including proxsuite to avoid eigen
 // compilation error - some header proxsuite is calling is missing that include
 #include <iostream>
-#include "proxsuite/proxqp/sparse/solver.hpp"
+#include "proxsuite/proxqp/sparse/sparse.hpp"
 
 #include <optional>
 #include <unordered_map>
@@ -29,6 +25,9 @@ using drake::solvers::SolutionResult;
 using drake::solvers::SolverOptions;
 using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::internal::BindingDynamicCast;
+
+using proxsuite::proxqp::sparse::QP;
+using proxsuite::proxqp::sparse::isize;
 
 using c_int = long long;
 using c_float = double;
@@ -311,6 +310,23 @@ void FastProxQPSolver::DoSolve(
   ParseLinearEqualityConstraints(
       prog, &A_sparse, &b, &eq_constraint_start_row);
 
+  isize n = prog.num_vars();
+  isize n_eq = A_sparse.rows();
+  isize n_ineq = C_sparse.rows();
+  Eigen::VectorXd gvect = Eigen::VectorXd::Map(g.data(), g.size());
+  Eigen::VectorXd bvect = Eigen::VectorXd::Map(b.data(), b.size());
+  Eigen::VectorXd lvect = Eigen::VectorXd::Map(l.data(), l.size());
+  Eigen::VectorXd uvect = Eigen::VectorXd::Map(u.data(), u.size());
+
+  QP<c_float, isize> qp(n, n_eq, n_ineq);
+  qp.init(H_sparse,
+          gvect,
+          A_sparse,
+          bvect,
+          C_sparse,
+          lvect,
+          uvect);
+  qp.solve();
 
 }
 

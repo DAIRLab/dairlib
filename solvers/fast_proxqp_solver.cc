@@ -257,6 +257,9 @@ void ParseLinearEqualityConstraints(
     }
     num_A_rows += num_Ai_rows;
   }
+
+  A->resize(num_A_rows, prog.num_vars());
+  A->setFromTriplets(A_triplets.begin(), A_triplets.end());
 }
 
 template <typename C>
@@ -365,7 +368,6 @@ void FastProxQPSolver::DoSolve(
       solution_result = SolutionResult::kSolutionFound;
       result->set_optimal_cost(qp.results.info.objValue);
       result->set_x_val(qp.results.x);
-
       break;
     case proxsuite::proxqp::QPSolverOutput::PROXQP_PRIMAL_INFEASIBLE:
       solution_result = SolutionResult::kInfeasibleConstraints;
@@ -381,7 +383,15 @@ void FastProxQPSolver::DoSolve(
   }
 
   result->set_solution_result(solution_result.value());
+  if (solution_result.value() != drake::solvers::kInvalidInput) {
+    solver_details.setup_time = qp.results.info.setup_time;
+    solver_details.solve_time = qp.results.info.solve_time;
+    solver_details.run_time = qp.results.info.run_time;
+    solver_details.iter = qp.results.info.iter;
+    solver_details.primal_res = qp.results.info.pri_res;
+    solver_details.dual_res = qp.results.info.dua_res;
 
+  }
 }
 
 } //solvers

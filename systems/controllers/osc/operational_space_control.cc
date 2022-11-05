@@ -749,11 +749,11 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
 //  const MathematicalProgramResult result = solver_->Solve(*prog_);
-  auto osqp_solver = drake::solvers::OsqpSolver();
+//  auto osqp_solver = drake::solvers::OsqpSolver();
 //  osqp_solver->S
-  const MathematicalProgramResult result = osqp_solver.Solve(*prog_);
+  const MathematicalProgramResult result = solver_->Solve(*prog_);
 
-  solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+  solve_time_ = result.get_solver_details<solvers::FastProxQPSolver>().run_time;
 
   if (!result.is_success()) {
     std::cout << "reverting to old sol" << std::endl;

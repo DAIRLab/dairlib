@@ -14,7 +14,7 @@
 #include "dairlib/lcmt_osc_qp_output.hpp"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
-#include "solvers/fast_osqp_solver.h"
+#include "solvers/fast_proxqp_solver.h"
 #include "solvers/osqp_solver_options.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -291,7 +291,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool is_quaternion_;
 
   // Solver
-  std::unique_ptr<solvers::FastOsqpSolver> solver_;
+  std::unique_ptr<solvers::FastProxQPSolver> solver_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))

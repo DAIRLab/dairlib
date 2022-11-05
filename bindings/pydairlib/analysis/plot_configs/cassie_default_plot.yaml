@@ -2,12 +2,12 @@
 channel_x: "CASSIE_STATE_DISPATCHER"
 channel_u: "OSC_WALKING"
 channel_osc: "OSC_DEBUG_WALKING"
-use_archived_lcmtypes: true
+use_archived_lcmtypes: false
 
 # Approximate log time to start at relative to the first timestamp in the log
 start_time: 0
 # Duration of time to plot (seconds, -1 for whole log)
-duration: 2
+duration: 5
 
 # Plant properties
 use_springs: true
@@ -30,7 +30,7 @@ special_efforts_to_plot: [ ]
 fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', ' ', 'Double Support Post Left (DSPL)', 'Double Support Post Right (DSPR)' ]
 
 # Foot position plots
-foot_positions_to_plot: [ 'right', 'left' ]
+foot_positions_to_plot: []
 foot_xyz_to_plot: { 'right': [ 0, 1, 2 ], 'left': [ 0, 1, 2 ] }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 

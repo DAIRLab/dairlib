@@ -461,8 +461,8 @@ void OperationalSpaceControl::Build() {
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
 
-  solver_ = std::make_unique<solvers::FastOsqpSolver>();
-  solver_->InitializeSolver(*prog_, solver_options_);
+  solver_ = std::make_unique<solvers::FastProxQPSolver>();
+//  solver_->InitializeSolver(*prog_, solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -1021,7 +1021,7 @@ void OperationalSpaceControl::CheckTracking(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
-  if (soft_constraint_cost_ > 1e2 || isnan(soft_constraint_cost_)) {
+  if (soft_constraint_cost_ > 1e2 || std::isnan(soft_constraint_cost_)) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

@@ -307,6 +307,8 @@ void SetSolverOptionsFromOsqpOptions(
 
 } // namespace
 
+bool FastProxQPSolver::is_available() { return true; }
+
 void FastProxQPSolver::DoSolve(
     const drake::solvers::MathematicalProgram& prog,
     const Eigen::VectorXd& initial_guess,
@@ -356,9 +358,31 @@ void FastProxQPSolver::DoSolve(
           uvect);
   qp.solve();
 
+  std::optional<SolutionResult> solution_result;
+
+  switch (qp.results.info.status) {
+    case proxsuite::proxqp::QPSolverOutput::PROXQP_SOLVED:
+      solution_result = SolutionResult::kSolutionFound;
+      result->set_optimal_cost(qp.results.info.objValue);
+      result->set_x_val(qp.results.x);
+
+      break;
+    case proxsuite::proxqp::QPSolverOutput::PROXQP_PRIMAL_INFEASIBLE:
+      solution_result = SolutionResult::kInfeasibleConstraints;
+      break;
+    case proxsuite::proxqp::QPSolverOutput::PROXQP_DUAL_INFEASIBLE:
+      solution_result = SolutionResult::kDualInfeasible;
+      break;
+    case proxsuite::proxqp::QPSolverOutput::PROXQP_MAX_ITER_REACHED:
+      solution_result = SolutionResult::kIterationLimit;
+      break;
+    default:
+      solution_result = SolutionResult::kInvalidInput;
+  }
+
+  result->set_solution_result(solution_result.value());
+
 }
-
-
 
 } //solvers
 } //dairlib

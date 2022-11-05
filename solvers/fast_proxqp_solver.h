@@ -5,11 +5,17 @@
 #include "drake/common/drake_copyable.h"
 #include "drake/solvers/solver_base.h"
 
+using drake::solvers::MathematicalProgramResult;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::SolverOptions;
+using drake::solvers::SolverBase;
+using drake::solvers::SolverId;
+
 namespace dairlib {
 namespace solvers {
 /**
- * The OSQP solver details after calling Solve() function. The user can call
- * MathematicalProgramResult::get_solver_details<OsqpSolver>() to obtain the
+ * The ProxQP solver details after calling Solve() function. The user can call
+ * MathematicalProgramResult::get_solver_details<dairlib::solvers::ProxQPSolverDetails>() to obtain the
  * details.
  */
 struct ProxQPSolverDetails {

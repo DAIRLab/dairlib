@@ -12,7 +12,9 @@
 using drake::solvers::MathematicalProgram;
 using drake::solvers::ProgramAttribute;
 using drake::solvers::ProgramAttributes;
+using drake::solvers::QuadraticCost;
 using drake::solvers::SolverId;
+using drake::solvers::Binding;
 using drake::never_destroyed;
 
 namespace dairlib {

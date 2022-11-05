@@ -301,12 +301,15 @@ void FastProxQPSolver::DoSolve(
   // Parse the linear constraints Cx <= u
   SparseMat<c_float> C_sparse;
   std::vector<c_float> l, u;
-  ParseAllLinearConstraints(prog, &C_sparse, &l, &u, &ineq_constraint_start_row);
+  ParseAllLinearConstraints(
+      prog, &C_sparse, &l, &u, &ineq_constraint_start_row);
 
   // Parse the linear equality constraints Ax = b
   std::unordered_map<Binding<Constraint>, int> eq_constraint_start_row;
   SparseMat<c_float> A_sparse;
   std::vector<c_float> b;
+  ParseLinearEqualityConstraints(
+      prog, &A_sparse, &b, &eq_constraint_start_row);
 
 
 }

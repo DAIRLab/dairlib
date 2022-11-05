@@ -15,26 +15,28 @@
 #include "drake/math/eigen_sparse_triplet.h"
 
 using drake::math::SparseMatrixToTriplets;
-using drake::solvers::Binding;
-using drake::solvers::Constraint;
-using drake::solvers::MathematicalProgram;
+using drake::solvers::internal::BindingDynamicCast;
 using drake::solvers::MathematicalProgramResult;
-using drake::solvers::OsqpSolver;
+using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::MathematicalProgram;
 using drake::solvers::OsqpSolverDetails;
 using drake::solvers::SolutionResult;
 using drake::solvers::SolverOptions;
-using drake::solvers::VectorXDecisionVariable;
-using drake::solvers::internal::BindingDynamicCast;
+using drake::solvers::OsqpSolver;
+using drake::solvers::Constraint;
+using drake::solvers::Binding;
 
-using proxsuite::proxqp::sparse::QP;
 using proxsuite::proxqp::sparse::isize;
+using proxsuite::proxqp::sparse::QP;
+
+
 
 using c_int = long long;
 using c_float = double;
 
 template<typename T>
 using SparseMat = Eigen::SparseMatrix<T, Eigen::ColMajor, c_int>;
-
+using ProxQPSettings = proxsuite::proxqp::Settings<c_float>;
 
 namespace dairlib {
 namespace solvers{
@@ -276,6 +278,32 @@ void SetDualSolutionInequality(
   }
 }
 
+template <typename T1, typename T2>
+void SetProxQPSolverSetting(
+    const std::unordered_map<std::string, T1>& options,
+    const std::string& option_name,
+    T2* field) {
+
+  const auto it = options.find(option_name);
+  if (it != options.end()) {
+    *field = it->second;
+  }
+
+}
+
+
+void SetSolverOptionsFromOsqpOptions(
+    const SolverOptions& solver_options, ProxQPSettings* settings) {
+  const auto& options_double =
+      solver_options.GetOptionsDouble(OsqpSolver::id());
+  const auto& options_int =
+      solver_options.GetOptionsInt(OsqpSolver::id());
+
+  SetProxQPSolverSetting(options_double, "eps_abs", &(settings->eps_abs));
+  SetProxQPSolverSetting(options_double, "eps_rel", &(settings->eps_rel));
+  SetProxQPSolverSetting(options_double, "eps_prim_inf", &(settings->eps_primal_inf));
+  SetProxQPSolverSetting(options_double, "eps_dual_inf", &(settings->eps_dual_inf));
+}
 
 } // namespace
 

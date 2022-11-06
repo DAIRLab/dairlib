@@ -1010,8 +1010,6 @@ int DoMain(int argc, char* argv[]) {
         true);
 
     // Get init traj from ROM planner result
-    DRAKE_UNREACHABLE();  // need to modify the initial lcm message for
-                          // HybridRomPlannerTrajectory
     dairlib::lcmt_timestamped_saved_traj traj_msg;
     if (!FLAGS_init_traj_file_path.empty()) {
       RomPlannerTrajectory saved_traj(FLAGS_init_traj_file_path, true);
@@ -1078,6 +1076,9 @@ int DoMain(int argc, char* argv[]) {
     ///
     /// IK conroller
     ///
+
+    DRAKE_UNREACHABLE();  // This part of code is very out-dated. E.g. it
+                          // doesn't handle the hybrid ROM MPC case.
 
     // TODO: think about how I want to construct the spline from IK.
     //  Currently, I'm using CubicWithContinuousSecondDerivatives with 0 vel at

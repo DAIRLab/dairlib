@@ -200,17 +200,17 @@ HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
     // 4. current_quat_xyz_shift_
     LcmTrajectory::Trajectory quat_xyz_shift_traj;
     quat_xyz_shift_traj.traj_name = "current_quat_xyz_shift";
-    quat_xyz_shift_traj.datapoints = current_quat_xyz_shift.transpose();
-    quat_xyz_shift_traj.time_vector = VectorXd::Zero(num_modes_);
-    quat_xyz_shift_traj.datatypes = vector<string>(1, "");
+    quat_xyz_shift_traj.datapoints = current_quat_xyz_shift;
+    quat_xyz_shift_traj.time_vector = VectorXd::Zero(1);
+    quat_xyz_shift_traj.datatypes = vector<string>(7, "");
     AddTrajectory(quat_xyz_shift_traj.traj_name, quat_xyz_shift_traj);
 
     // 5. current_stance_foot_pos_
     LcmTrajectory::Trajectory stance_foot_pos_traj;
     stance_foot_pos_traj.traj_name = "current_stance_foot_pos";
-    stance_foot_pos_traj.datapoints = current_stance_foot_pos.transpose();
-    stance_foot_pos_traj.time_vector = VectorXd::Zero(num_modes_);
-    stance_foot_pos_traj.datatypes = vector<string>(1, "");
+    stance_foot_pos_traj.datapoints = current_stance_foot_pos;
+    stance_foot_pos_traj.time_vector = VectorXd::Zero(1);
+    stance_foot_pos_traj.datatypes = vector<string>(3, "");
     AddTrajectory(stance_foot_pos_traj.traj_name, stance_foot_pos_traj);
   }
 }

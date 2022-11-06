@@ -91,7 +91,7 @@ HybridRomTrajOpt::HybridRomTrajOpt(
   Eigen::VectorXd z_lb(6);
   z_lb << -2, -2, 0.5, -10, -10, -10;
   Eigen::VectorXd z_ub(6);
-  z_ub << 2, 2, 0.5, 10, 10, 10;
+  z_ub << 2, 2, 1.1, 10, 10, 10;
 
   /// Some constant matrices
   Eigen::RowVectorXd A_discrete_map_3d(3);

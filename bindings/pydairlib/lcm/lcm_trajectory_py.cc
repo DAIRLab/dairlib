@@ -6,6 +6,7 @@
 #include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "lcm/rom_planner_saved_trajectory.h"
+#include "lcm/hybrid_rom_planner_saved_trajectory.h"
 
 namespace py = pybind11;
 
@@ -110,6 +111,34 @@ PYBIND11_MODULE(lcm_trajectory, m) {
            &RomPlannerTrajectory::get_xf_time)
       .def("get_stance_foot",
            &RomPlannerTrajectory::get_stance_foot);
+  py::class_<HybridRomPlannerTrajectory>(m, "HybridRomPlannerTrajectory")
+      .def(py::init<const std::string&>())
+      .def("GetMetadata", &LcmTrajectory::GetMetadata)
+      .def("GetTrajectoryNames", &LcmTrajectory::GetTrajectoryNames)
+      .def("GetTrajectory", &LcmTrajectory::GetTrajectory,
+           py::arg("trajectory_name"))
+      .def("GetStateSamples", &HybridRomPlannerTrajectory::GetStateSamples)
+      .def("GetStateDerivativeSamples",
+           &HybridRomPlannerTrajectory::GetStateDerivativeSamples)
+      .def("GetStateBreaks", &HybridRomPlannerTrajectory::GetStateBreaks)
+      .def("GetInputSamples", &HybridRomPlannerTrajectory::GetInputSamples)
+      .def("GetBreaks", &HybridRomPlannerTrajectory::GetBreaks)
+      .def("GetDecisionVariables", &HybridRomPlannerTrajectory::GetDecisionVariables)
+      .def("GetNumModes", &HybridRomPlannerTrajectory::GetNumModes)
+      .def("ReconstructStateTrajectory",
+           &HybridRomPlannerTrajectory::ReconstructStateTrajectory)
+      .def("ReconstructInputTrajectory",
+           &HybridRomPlannerTrajectory::ReconstructInputTrajectory)
+      .def("get_global_feet_pos",
+           &HybridRomPlannerTrajectory::get_global_feet_pos)
+      .def("get_global_feet_pos_time",
+           &HybridRomPlannerTrajectory::get_global_feet_pos_time)
+      .def("get_global_com_pos",
+           &HybridRomPlannerTrajectory::get_global_com_pos)
+      .def("get_global_com_pos_time",
+           &HybridRomPlannerTrajectory::get_global_com_pos_time)
+      .def("get_stance_foot",
+           &HybridRomPlannerTrajectory::get_stance_foot);
 }
 
 }  // namespace pydairlib

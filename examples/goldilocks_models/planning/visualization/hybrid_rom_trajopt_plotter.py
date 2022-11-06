@@ -16,6 +16,10 @@ from pydairlib.multibody.kinematic import DistanceEvaluator
 from pydairlib.cassie.cassie_utils import *
 
 
+"""
+This script is modified from `rom_trajopt_plotter.py` 
+"""
+
 def main():
   filename = ""
   # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/planning/robot_1/data/rom_trajectory')
@@ -33,7 +37,7 @@ def main():
       '../dairlib_data/goldilocks_models/planning/robot_1/data/debug_rom_trajectory')
 
   print("log file name = " + filename)
-  rom_traj = pydairlib.lcm.lcm_trajectory.RomPlannerTrajectory(filename)
+  rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
 
   # For saving figures
   global savefig, figsize, save_path
@@ -105,13 +109,13 @@ def main():
   """
   Testing
   """
-  com_vec, comdot_vec, comdot_end = PlotCOM(rom_traj)
-  # PlotFeet(rom_traj, True)
-  feet_pos_vec, feet_vel_vec, feet_vel_end = PlotFeet(rom_traj)
-  PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end, feet_pos_vec,
-    feet_vel_vec, feet_vel_end, True)
-  PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end, feet_pos_vec,
-    feet_vel_vec, feet_vel_end, False)
+  # com_vec, comdot_vec, comdot_end = PlotCOM(rom_traj)
+  # # PlotFeet(rom_traj, True)
+  # feet_pos_vec, feet_vel_vec, feet_vel_end = PlotFeet(rom_traj)
+  # PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end, feet_pos_vec,
+  #   feet_vel_vec, feet_vel_end, True)
+  # PlotCOMWrtStanceFoot(rom_traj, com_vec, comdot_vec, comdot_end, feet_pos_vec,
+  #   feet_vel_vec, feet_vel_end, False)
 
   # import pdb; pdb.set_trace()
 

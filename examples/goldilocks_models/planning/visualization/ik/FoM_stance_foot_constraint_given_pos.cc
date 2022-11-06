@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/planning/visualization/FoM_stance_foot_constraint_given_pos.h"
+#include "examples/goldilocks_models/planning/visualization/ik/FoM_stance_foot_constraint_given_pos.h"
 
 
 namespace dairlib {

@@ -1,4 +1,4 @@
-#include "examples/goldilocks_models/planning/visualization/kinematics_constraint_cost.h"
+#include "examples/goldilocks_models/planning/visualization/ik/kinematics_constraint_cost.h"
 
 using std::isinf;
 using std::isnan;

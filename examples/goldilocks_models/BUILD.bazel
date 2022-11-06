@@ -5,7 +5,8 @@ py_library(
     deps = [
         "//bindings/pydairlib:log_plotter_cassie",
         "//examples/goldilocks_models/find_models:dircon_traj_plotter",
-        "//examples/goldilocks_models/planning:rom_trajopt_plotter",
+        "//examples/goldilocks_models/planning/visualization:rom_trajopt_plotter",
+        "//examples/goldilocks_models/planning/visualization:hybrid_rom_trajopt_plotter",
     ],
 )
 

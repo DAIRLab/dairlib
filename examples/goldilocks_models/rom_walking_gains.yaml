@@ -62,7 +62,7 @@ sample_idx: 40 #19 #58 #40
 
 
 ###
-use_hybrid_rom_mpc: true
+use_hybrid_rom_mpc: false
 
 
 ### High-level command (for both planner and controller)

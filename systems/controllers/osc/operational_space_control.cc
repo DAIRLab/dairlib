@@ -321,6 +321,7 @@ void OperationalSpaceControl::Build() {
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
+
   dv_sol_->setZero();
   u_sol_->setZero();
   lambda_c_sol_->setZero();
@@ -461,7 +462,9 @@ void OperationalSpaceControl::Build() {
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
 
+  prev_sol_ = std::make_unique<Eigen::VectorXd>(prog_->num_vars());
   solver_ = std::make_unique<solvers::FastProxQPSolver>();
+  prog_->SetSolverOptions(solver_options_);
 //  solver_->InitializeSolver(*prog_, solver_options_);
 }
 
@@ -751,9 +754,9 @@ VectorXd OperationalSpaceControl::SolveQp(
 //  const MathematicalProgramResult result = solver_->Solve(*prog_);
 //  auto osqp_solver = drake::solvers::OsqpSolver();
 //  osqp_solver->S
-  const MathematicalProgramResult result = solver_->Solve(*prog_);
+  const MathematicalProgramResult result = solver_->Solve(*prog_, *prev_sol_);
 
-  solve_time_ = result.get_solver_details<solvers::FastProxQPSolver>().run_time;
+  solve_time_ = result.get_solver_details<solvers::FastProxQPSolver>().run_time * 1e-6;
 
   if (!result.is_success()) {
     std::cout << "reverting to old sol" << std::endl;
@@ -766,6 +769,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   *lambda_c_sol_ = result.GetSolution(lambda_c_);
   *lambda_h_sol_ = result.GetSolution(lambda_h_);
   *epsilon_sol_ = result.GetSolution(epsilon_);
+  *prev_sol_ = result.GetSolution();
 
   for (auto tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {

@@ -1,10 +1,10 @@
 rho: 0.0001
 sigma: 1e-6
 max_iter: 500
-eps_abs: 1e-7
-eps_rel: 1e-7
-eps_prim_inf: 1e-5
-eps_dual_inf: 1e-5
+eps_abs: 1e-5
+eps_rel: 1e-5
+eps_prim_inf: 1e-4
+eps_dual_inf: 1e-4
 alpha: 1.6
 linsys_solver: 0
 delta: 1e-6

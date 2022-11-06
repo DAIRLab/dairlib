@@ -49,7 +49,7 @@ mu: 0.6
 
 w_accel: 0.00000001
 w_soft_constraint: 80
-w_input_reg: 0.0000003
+w_input_reg: 0.000000003
 
 w_swing_toe: 1
 swing_toe_kp: 1500

@@ -320,6 +320,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
+  std::unique_ptr<Eigen::VectorXd> prev_sol_;
   mutable double solve_time_;
 
   mutable Eigen::VectorXd ii_lambda_sol_;

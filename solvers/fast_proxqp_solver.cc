@@ -3,7 +3,7 @@
 // Need to include iostream BEFORE including proxsuite to avoid eigen
 // compilation error - some header proxsuite is calling is missing that include
 #include <iostream>
-#include "proxsuite/proxqp/dense/dense.hpp"
+#include "proxsuite/proxqp/sparse/sparse.hpp"
 
 #include <optional>
 #include <unordered_map>
@@ -26,8 +26,8 @@ using drake::solvers::OsqpSolver;
 using drake::solvers::Constraint;
 using drake::solvers::Binding;
 
-using proxsuite::proxqp::dense::isize;
-using proxsuite::proxqp::dense::QP;
+using proxsuite::proxqp::sparse::isize;
+using proxsuite::proxqp::sparse::QP;
 
 
 
@@ -306,6 +306,7 @@ void SetSolverOptionsFromOsqpOptions(
   SetProxQPSolverSetting(options_double, "eps_rel", &(settings->eps_rel));
   SetProxQPSolverSetting(options_double, "eps_prim_inf", &(settings->eps_primal_inf));
   SetProxQPSolverSetting(options_double, "eps_dual_inf", &(settings->eps_dual_inf));
+//  settings->initial_guess = proxsuite::proxqp::InitialGuessStatus::NO_INITIAL_GUESS;
 }
 
 } // namespace
@@ -322,47 +323,45 @@ void FastProxQPSolver::DoSolve(
 
   // Get the cost for the QP.
   SparseMat<c_float> H_sparse;
-  std::vector<c_float> gvect(prog.num_vars(), 0);
+  std::vector<c_float> g(prog.num_vars(), 0);
   double constant_cost_term{0};
 
-  ParseQuadraticCosts(prog, &H_sparse, &gvect, &constant_cost_term);
-  ParseLinearCosts(prog, &gvect, &constant_cost_term);
+  ParseQuadraticCosts(prog, &H_sparse, &g, &constant_cost_term);
+  ParseLinearCosts(prog, &g, &constant_cost_term);
 
   std::unordered_map<Binding<Constraint>, int> ineq_constraint_start_row;
 
   // Parse the linear constraints Cx <= u
   SparseMat<c_float> C_sparse;
-  std::vector<c_float> lvect, uvect;
+  std::vector<c_float> l, u;
   ParseAllLinearConstraints(
-      prog, &C_sparse, &lvect, &uvect, &ineq_constraint_start_row);
+      prog, &C_sparse, &l, &u, &ineq_constraint_start_row);
 
   // Parse the linear equality constraints Ax = b
   std::unordered_map<Binding<Constraint>, int> eq_constraint_start_row;
   SparseMat<c_float> A_sparse;
-  std::vector<c_float> bvect;
+  std::vector<c_float> b;
   ParseLinearEqualityConstraints(
-      prog, &A_sparse, &bvect, &eq_constraint_start_row);
-
-
-  Eigen::VectorXd g = Eigen::VectorXd::Map(gvect.data(), gvect.size());
-  Eigen::VectorXd b = Eigen::VectorXd::Map(bvect.data(), bvect.size());
-  Eigen::VectorXd l = Eigen::VectorXd::Map(lvect.data(), lvect.size());
-  Eigen::VectorXd u = Eigen::VectorXd::Map(uvect.data(), uvect.size());
-
-  Eigen::MatrixXd H(H_sparse);
-  Eigen::MatrixXd A(A_sparse);
-  Eigen::MatrixXd C(C_sparse);
-
-  std::cout << "C sparse rows: " << C_sparse.rows() << "\n C rows: " << C.rows();
-  std::cout << "l: " << l.rows()  << std::endl;
+      prog, &A_sparse, &b, &eq_constraint_start_row);
 
   isize n = prog.num_vars();
-  isize n_eq = A.rows();
-  isize n_ineq = C.rows();
+  isize n_eq = A_sparse.rows();
+  isize n_ineq = C_sparse.rows();
+  Eigen::VectorXd gvect = Eigen::VectorXd::Map(g.data(), g.size());
+  Eigen::VectorXd bvect = Eigen::VectorXd::Map(b.data(), b.size());
+  Eigen::VectorXd lvect = Eigen::VectorXd::Map(l.data(), l.size());
+  Eigen::VectorXd uvect = Eigen::VectorXd::Map(u.data(), u.size());
 
-  QP<c_float> qp(n, n_eq, n_ineq);
-  qp.init(H, g, A, b, C, l, u);
+  QP<c_float, isize> qp(n, n_eq, n_ineq);
+  qp.init(H_sparse,
+          gvect,
+          A_sparse,
+          bvect,
+          C_sparse,
+          lvect,
+          uvect);
   qp.solve();
+//  qp.solve(initial_guess, std::nullopt, std::nullopt);
 
   std::optional<SolutionResult> solution_result;
 

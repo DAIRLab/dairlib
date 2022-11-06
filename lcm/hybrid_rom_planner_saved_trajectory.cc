@@ -37,7 +37,8 @@ HybridRomPlannerTrajectory& HybridRomPlannerTrajectory::operator=(
         &GetTrajectory("state_derivative_traj" + std::to_string(mode)));
   }
 
-  global_footstep_ = &GetTrajectory("global_footstep");
+  global_feet_pos_ = &GetTrajectory("global_feet_pos");
+  global_com_pos_ = &GetTrajectory("global_com_pos");
 
   //  stance_foot_ = old.get_stance_foot();
 
@@ -58,7 +59,8 @@ HybridRomPlannerTrajectory& HybridRomPlannerTrajectory::operator=(
 HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
     const HybridRomTrajOpt& trajopt,
     const drake::solvers::MathematicalProgramResult& result,
-    const Eigen::MatrixXd& global_footstep,
+    const Eigen::MatrixXd& global_feet_pos,
+    const Eigen::MatrixXd& global_com_pos,
     const Eigen::VectorXd& current_quat_xyz_shift,
     const Eigen::VectorXd& current_stance_foot_pos, const std::string& name,
     const std::string& description, bool lightweight, double current_time)
@@ -158,28 +160,28 @@ HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
         drake::solvers::to_string(result.get_solution_result());
   }
 
-  // 2.a global footstep
+  // 2.a global feet pos
   VectorXd time_vec_discrete_event(num_modes_ + 1);
   for (int i = 0; i < num_modes_; i++) {
     time_vec_discrete_event(i) = time_breaks[i].head<1>()(0);
   }
   time_vec_discrete_event(num_modes_) =
       time_breaks[num_modes_ - 1].tail<1>()(0);
-  LcmTrajectory::Trajectory global_footstep_traj;
-  global_footstep_traj.traj_name = "global_footstep";
-  global_footstep_traj.datapoints = global_footstep;
-  global_footstep_traj.time_vector = time_vec_discrete_event;
-  global_footstep_traj.datatypes = vector<string>(2, "");
-  AddTrajectory(global_footstep_traj.traj_name, global_footstep_traj);
-  global_footstep_ = &GetTrajectory(global_footstep_traj.traj_name);
+  LcmTrajectory::Trajectory global_feet_pos_traj;
+  global_feet_pos_traj.traj_name = "global_feet_pos";
+  global_feet_pos_traj.datapoints = global_feet_pos;
+  global_feet_pos_traj.time_vector = time_vec_discrete_event;
+  global_feet_pos_traj.datatypes = vector<string>(2, "");
+  AddTrajectory(global_feet_pos_traj.traj_name, global_feet_pos_traj);
+  global_feet_pos_ = &GetTrajectory(global_feet_pos_traj.traj_name);
   // 2.b global com
-  //  LcmTrajectory::Trajectory global_com_traj;
-  //  global_com_traj.traj_name = "global_com";
-  //  global_com_traj.datapoints = x0_global;
-  //  global_com_traj.time_vector = time_vec_discrete_event;
-  //  global_com_traj.datatypes = vector<string>(3, "");
-  //  AddTrajectory(global_com_traj.traj_name, global_com_traj);
-  //  global_com_ = &GetTrajectory(global_com_traj.traj_name);
+  LcmTrajectory::Trajectory global_com_pos_traj;
+  global_com_pos_traj.traj_name = "global_com_pos";
+  global_com_pos_traj.datapoints = global_com_pos;
+  global_com_pos_traj.time_vector = time_vec_discrete_event;
+  global_com_pos_traj.datatypes = vector<string>(2, "");
+  AddTrajectory(global_com_pos_traj.traj_name, global_com_pos_traj);
+  global_com_pos_ = &GetTrajectory(global_com_pos_traj.traj_name);
 
   // 3. stance foot (left is 0, right is 1)
   MatrixXd stance_foot_mat = MatrixXd::Zero(1, num_modes_);
@@ -231,8 +233,9 @@ HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
     x_.push_back(&GetTrajectory("state_traj" + std::to_string(mode)));
   }
 
-  // global_footstep_
-  global_footstep_ = &GetTrajectory("global_footstep");
+  // global_feet_pos_
+  global_feet_pos_ = &GetTrajectory("global_feet_pos");
+  global_com_pos_ = &GetTrajectory("global_com_pos");
 
   // stance_foot
   //  stance_foot_ = GetTrajectory("stance_foot").datapoints.row(0).transpose();
@@ -278,8 +281,9 @@ void HybridRomPlannerTrajectory::LoadFromFile(const std::string& filepath,
     decision_vars_ = &GetTrajectory("decision_vars");
   }
 
-  // global_footstep
-  global_footstep_ = &GetTrajectory("global_footstep");
+  // global_feet_pos
+  global_feet_pos_ = &GetTrajectory("global_feet_pos");
+  global_com_pos_ = &GetTrajectory("global_com_pos");
 
   //  // stance_foot
   //  stance_foot_ = GetTrajectory("stance_foot").datapoints.row(0).transpose();
@@ -351,7 +355,7 @@ PiecewisePolynomial<double> ReadHybridRomPlannerTrajectory(
     //    ret.shiftRight(-ret.start_time());
 
     // Testing
-    ret.shiftRight(-traj_obj.get_global_footstep_time()(0));
+    ret.shiftRight(-traj_obj.get_global_feet_pos_time()(0));
     //    ret.shiftRight(-traj_obj.get_x0_time()(1));
   }
 

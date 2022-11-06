@@ -63,8 +63,8 @@ SavedTrajReceiver::SavedTrajReceiver(
       wrt_com_in_local_frame_(wrt_com_in_local_frame),
       use_hybrid_rom_mpc_(use_hybrid_rom_mpc) {
   if (use_hybrid_rom_mpc_ && wrt_com_in_local_frame_) {
-    cout << "Warning: the pelvis frame is just an approximation\n";
-    DRAKE_UNREACHABLE();  // Need to send global com pos for relative swing foot
+    cout << "Warning: swing foot position relative to the COM is expressed in "
+            "the current pelvis frame instead of the touchdown event's \n";
   }
 
   saved_traj_lcm_port_ =
@@ -385,21 +385,15 @@ void SavedTrajReceiver::CalcSwingFootTraj(
     int n_mode = traj_data.GetNumModes();
 
     // Get foot steps (in global frame) and stance_foot
-    const MatrixXd& global_footstep = traj_data.get_global_footstep();
-    VectorXd x0_time(n_mode);
-    x0_time << traj_data.GetStateBreaks(0)(0),
-        traj_data.get_global_footstep_time().head(n_mode - 1);
-    VectorXd xf_time = traj_data.get_global_footstep_time();
-
+    VectorXd x0_time = traj_data.get_global_feet_pos_time().head(n_mode);
+    VectorXd xf_time = traj_data.get_global_feet_pos_time().tail(n_mode);
+    const MatrixXd& global_feet_pos = traj_data.get_global_feet_pos();
+    const MatrixXd& global_com_pos = traj_data.get_global_com_pos();
     const VectorXd& stance_foot = traj_data.get_stance_foot();
 
-    // const MatrixXd& global_com_end = ...;
-
-    // TODO: stack global_footstep to get the real global_footstep
-    //    DRAKE_UNREACHABLE();
     // TODO: be aware the left right difference
-    // TOOD: you also need to send the stance foot position? Acutally, just use
-    // the current stance foot?
+    // TODO: you also need to send the stance foot position? Acutally, just use
+    //  the current stance foot?
 
     // Set feedback context
     const OutputVector<double>* robot_output =
@@ -437,20 +431,20 @@ void SavedTrajReceiver::CalcSwingFootTraj(
                 context.get_discrete_state(liftoff_swing_foot_pos_idx_)
                     .get_value();
           } else {
-            start_foot_pos = global_footstep.col(j - 1);
+            start_foot_pos = global_feet_pos.col(j - 1);
             if (wrt_com_in_local_frame_) {
               start_foot_pos = view_frame_feedback_.CalcWorldToFrameRotation(
                                    plant_feedback_, *context_feedback_) *
-                               (start_foot_pos - global_com_end.col(j - 1));
+                               (start_foot_pos - global_com_pos.col(j));
             }
           }
           Y.at(0) = start_foot_pos;
           // End pos
-          end_foot_pos = global_footstep.col(j);
+          end_foot_pos = global_feet_pos.col(j + 1);
           if (wrt_com_in_local_frame_) {
             end_foot_pos = view_frame_feedback_.CalcWorldToFrameRotation(
                                plant_feedback_, *context_feedback_) *
-                           (end_foot_pos - global_com_end.col(j - 1));
+                           (end_foot_pos - global_com_pos.col(j + 1));
 
             // Heuristics for spring model
             end_foot_pos(0) += swing_foot_target_offset_x_;

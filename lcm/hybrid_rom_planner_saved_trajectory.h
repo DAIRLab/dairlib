@@ -24,7 +24,8 @@ class HybridRomPlannerTrajectory : public LcmTrajectory {
   HybridRomPlannerTrajectory(
       const goldilocks_models::HybridRomTrajOpt& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
-      const Eigen::MatrixXd& global_footstep,
+      const Eigen::MatrixXd& global_feet_pos,
+      const Eigen::MatrixXd& global_com_pos,
       const Eigen::VectorXd& current_quat_xyz_shift,
       const Eigen::VectorXd& current_stance_foot_pos, const std::string& name,
       const std::string& description, bool lightweight = false,
@@ -74,11 +75,17 @@ class HybridRomPlannerTrajectory : public LcmTrajectory {
     return decision_vars_->datapoints;
   }
 
-  const Eigen::MatrixXd& get_global_footstep() const {
-    return global_footstep_->datapoints;
+  const Eigen::MatrixXd& get_global_feet_pos() const {
+    return global_feet_pos_->datapoints;
   };
-  const Eigen::VectorXd& get_global_footstep_time() const {
-    return global_footstep_->time_vector;
+  const Eigen::VectorXd& get_global_feet_pos_time() const {
+    return global_feet_pos_->time_vector;
+  };
+  const Eigen::MatrixXd& get_global_com_pos() const {
+    return global_com_pos_->datapoints;
+  };
+  const Eigen::VectorXd& get_global_com_pos_time() const {
+    return global_com_pos_->time_vector;
   };
   /*const Eigen::VectorXd& get_stance_foot() const { return stance_foot_; };
   const Eigen::VectorXd& get_current_quat_xyz_shift() const {
@@ -115,8 +122,8 @@ class HybridRomPlannerTrajectory : public LcmTrajectory {
   std::vector<const Trajectory*> x_;
   std::vector<const Trajectory*> xdot_;
 
-  const Trajectory* global_footstep_;
-  //  const Trajectory* global_com_;
+  const Trajectory* global_feet_pos_;
+  const Trajectory* global_com_pos_;
   //  Eigen::VectorXd stance_foot_;
   //  //  const Eigen::MatrixXd* stance_foot_;
   //  Eigen::VectorXd current_quat_xyz_shift_;

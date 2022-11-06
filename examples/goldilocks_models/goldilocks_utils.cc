@@ -349,10 +349,13 @@ void ReadModelParameters(ReducedOrderModel* rom, const std::string& dir,
        << dir + to_string(model_iter) + "_theta_y.csv\n\n";
 
   // Update the ROM parameters from file
-  VectorXd theta_y =
-      readCSV(dir + to_string(model_iter) + string("_theta_y.csv")).col(0);
+  MatrixXd theta_y_mat =
+      readCSV(dir + to_string(model_iter) + string("_theta_y.csv"));
+  MatrixXd theta_yddot_mat =
+      readCSV(dir + to_string(model_iter) + string("_theta_yddot.csv"));
+  VectorXd theta_y = theta_y_mat.size() > 0 ? theta_y_mat.col(0) : VectorXd(0);
   VectorXd theta_yddot =
-      readCSV(dir + to_string(model_iter) + string("_theta_yddot.csv")).col(0);
+      theta_yddot_mat.size() > 0 ? theta_yddot_mat.col(0) : VectorXd(0);
   rom->SetThetaY(theta_y);
   rom->SetThetaYddot(theta_yddot);
 }

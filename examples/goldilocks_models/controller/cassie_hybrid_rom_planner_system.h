@@ -119,7 +119,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const drake::solvers::MathematicalProgramResult& result) const;
   void WarmStartGuess(
       const Eigen::VectorXd& quat_xyz_shift,
-      const Eigen::VectorXd& current_stance_foot_pos,
+      const Eigen::VectorXd& current_local_stance_foot_pos,
       const std::vector<Eigen::Vector2d>& reg_footstep,
       const int global_fsm_idx, int first_mode_knot_idx, double current_time,
       dairlib::goldilocks_models::HybridRomTrajOptCassie* trajopt) const;
@@ -208,8 +208,8 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd x_guess_steppingleft_post_;
   Eigen::VectorXd x_guess_steppingright_post_;
   // Regularization term for the footstep variables
-  drake::VectorX<double> left_step_;
-  drake::VectorX<double> right_step_;
+  Eigen::Vector2d left_step_;
+  Eigen::Vector2d right_step_;
   // Desired height
   double desired_com_height_;
 
@@ -334,7 +334,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       double current_time, int global_fsm_idx, const Eigen::VectorXd& x_init,
       double init_phase, bool is_right_stance,
       const Eigen::VectorXd& quat_xyz_shift,
-      const Eigen::VectorXd& current_stance_foot_pos,
+      const Eigen::VectorXd& current_local_stance_foot_pos,
       const Eigen::VectorXd& final_position,
       const Eigen::MatrixXd& global_regularization_x_FOM,
       const Eigen::MatrixXd& local_x0_FOM, const Eigen::MatrixXd& local_xf_FOM,
@@ -349,7 +349,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& prefix, double current_time,
       const Eigen::VectorXd& quat_xyz_shift,
-      const Eigen::VectorXd& current_stance_foot_pos) const;
+      const Eigen::VectorXd& current_local_stance_foot_pos) const;
   void PrintTrajMsg(dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
 };
 

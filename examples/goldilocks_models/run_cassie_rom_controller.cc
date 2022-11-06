@@ -30,6 +30,7 @@
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/rom_walking_gains.h"
+#include "lcm/hybrid_rom_planner_saved_trajectory.h"
 #include "lcm/rom_planner_saved_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -1012,13 +1013,21 @@ int DoMain(int argc, char* argv[]) {
     // Get init traj from ROM planner result
     dairlib::lcmt_timestamped_saved_traj traj_msg;
     if (!FLAGS_init_traj_file_path.empty()) {
-      RomPlannerTrajectory saved_traj(FLAGS_init_traj_file_path, true);
-      traj_msg = saved_traj.GenerateLcmObject();
+      traj_msg =
+          gains.use_hybrid_rom_mpc
+              ? HybridRomPlannerTrajectory(FLAGS_init_traj_file_path, true)
+                    .GenerateLcmObject()
+              : RomPlannerTrajectory(FLAGS_init_traj_file_path, true)
+                    .GenerateLcmObject();
       DRAKE_DEMAND(FLAGS_init_traj_file_name.empty());
     } else if (!FLAGS_init_traj_file_name.empty()) {
-      RomPlannerTrajectory saved_traj(
-          gains.dir_data + FLAGS_init_traj_file_name, true);
-      traj_msg = saved_traj.GenerateLcmObject();
+      traj_msg = gains.use_hybrid_rom_mpc
+                     ? HybridRomPlannerTrajectory(
+                           gains.dir_data + FLAGS_init_traj_file_name, true)
+                           .GenerateLcmObject()
+                     : RomPlannerTrajectory(
+                           gains.dir_data + FLAGS_init_traj_file_name, true)
+                           .GenerateLcmObject();
     } else {
       traj_msg.saved_traj.metadata.name = "";
       traj_msg.saved_traj.num_trajectories = 0;

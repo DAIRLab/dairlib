@@ -140,13 +140,13 @@ int DoMain(int argc, char* argv[]){
   q[q_map["sphere_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0);
   q[q_map["sphere_z"]] = param.ball_radius + param.table_offset;
 
-  // initialize ball 2f
+  // initialize ball 2
   q[q_map["sphere2_qw"]] = param.q_init_ball(0);
   q[q_map["sphere2_qx"]] = param.q_init_ball(1);
   q[q_map["sphere2_qy"]] = param.q_init_ball(2);
   q[q_map["sphere2_qz"]] = param.q_init_ball(3);
   q[q_map["sphere2_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0);
-  q[q_map["sphere2_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0)-0.1;
+  q[q_map["sphere2_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0)-2*param.ball_radius - 0.01;
   q[q_map["sphere2_z"]] = param.ball_radius + param.table_offset;
 
   plant.SetPositions(&plant_context, q);

@@ -153,18 +153,18 @@ int DoMain(int argc, char* argv[]){
   Qinit(7,7) = param.Q_ball_x;  /// for sphere(1): x
   Qinit(8,8) = param.Q_ball_y;  /// for sphere(1): y
 
-  Qinit(14,14) = 0 * param.Q_ball_x;  /// for sphere(2): x
-  Qinit(15,15) = 0 * param.Q_ball_y;  /// for sphere(2): y
+  Qinit(14,14) = param.Q_ball_x2;  /// for sphere(2): x
+  Qinit(15,15) = param.Q_ball_y2;  /// for sphere(2): y
 
   Qinit.block(3+7*num_balls,3+7*num_balls,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv); ///all balls penalized same in terms of velocity
   Qinit.block(3+7*num_balls,3+7*num_balls,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);
 
-  MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc*num_balls, nq+nv+nu+6*num_balls*nc);
-  MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*num_balls*nc, nq+nv+nu+6*num_balls*nc);
+  MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc*num_balls+6, nq+nv+nu+6*num_balls*nc+6);
+  MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*num_balls*nc+6, nq+nv+nu+6*num_balls*nc+6);
   Uinit.block(0,0,nq+nv,nq+nv) << 
     param.U_pos_vel * MatrixXd::Identity(nq+nv,nq+nv);
-  Uinit.block(nq+nv+6*num_balls*nc, nq+nv+6*num_balls*nc, nu, nu) <<
+  Uinit.block(nq+nv+6*num_balls*nc+6, nq+nv+6*num_balls*nc+6, nu, nu) <<
     param.U_u * MatrixXd::Identity(nu, nu);
 
   VectorXd xdesiredinit = VectorXd::Zero(nq+nv);

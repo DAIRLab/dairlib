@@ -20,27 +20,31 @@ pushing_offset: 0 #-0.001
 # c3 parameters
 mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
-Q_finger: 1000           # finger xyz cost
-Q_ball_x: 10000 #10000
-Q_ball_y: 10000  #10000
+Q_finger: 1      # finger xyz cost
+
+Q_ball_x: 1000000 #10000 #1000000
+Q_ball_y: 1000000 #10000 #1000000
+Q_ball_x2: 100000 #100000
+Q_ball_y2: 100000 #100000
+
 Q_finger_vel: 10        # translational velocity cost
-Q_ball_vel: 0.1         # angular & translational velocity cost
+Q_ball_vel: 0.1       #0.1  # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
 Qnew_ball_x: 1
 Qnew_ball_y: 1
 R: 0.01                 # torque cost in xyz
 G: 0.01
 U_default: 1
-U_pos_vel: 10           # first 19 diag elements of U
-U_u: 1                  # last 3 diag elements of U
+U_pos_vel: 100          # first 19 diag elements of U   #10
+U_u: 1              #1   # last 3 diag elements of U
 q_init_finger: [0, 0, 0.0775]
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
-velocity_limit: 1
+velocity_limit: 10   #1
 orientation_degrees: 0
 axis_option: 1
-fix_sticking_ground: False
-rolling_state_reduction: False
+fix_sticking_ground: True
+rolling_state_reduction: True
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
@@ -80,7 +84,7 @@ enable_contact: 0
 ball_stddev: 0.0000 # standard deviation of 0-mean noise on ball state estimation
 
 # gaiting parameters
-roll_phase: 1  #2.5
+roll_phase: 1  #2.5  #1
 return_phase: 0.5 #0.75
 gait_parameters: [0.03, 0.0951, 0.0911, 0.0691] # try playing with first param here
 # gait parameters represent height above the table

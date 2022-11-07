@@ -248,6 +248,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //VectorXd ball_dot = v_plant.tail(6);   // velocity for ball 1
   Vector3d v_ball = ball1_dot.tail(3);
 
+  //for 2nd ball
+  Vector3d ball_xyz2 = ball2.tail(3);
+
   VectorXd q(3 + 7 * num_balls_);
   q << end_effector, ball1, ball2;
   VectorXd v(3 + 6 * num_balls_);
@@ -267,17 +270,20 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     double x = ball_xyz(0) - x_c;
     double y = ball_xyz(1) - y_c;
 
+    double x2 = ball_xyz2(0) - x_c;
+    double y2 = ball_xyz2(1) - y_c;
+
     // note that the x and y arguments are intentionally flipped
     // since we want to get the angle from the y-axis, not the x-axis
     double angle = atan2(x,y);
     double theta = angle + param_.lead_angle * PI / 180;
 
     traj_desired_vector(q_map_.at("sphere_x")) = x_c; // + traj_radius * sin(theta);
-    traj_desired_vector(q_map_.at("sphere_y")) = y + 0.01; // + traj_radius * cos(theta);
+    traj_desired_vector(q_map_.at("sphere_y")) = y - 0.01; // + traj_radius * cos(theta);
     traj_desired_vector(q_map_.at("sphere_z")) = ball_radius + table_offset;
 
     traj_desired_vector(q_map_.at("sphere2_x")) = x_c; // + traj_radius * sin(theta);
-    traj_desired_vector(q_map_.at("sphere2_y")) = y - 0.01; // + traj_radius * cos(theta);
+    traj_desired_vector(q_map_.at("sphere2_y")) = y2 - 0.01; //  y - 0.01 - 2*ball_radius; // + traj_radius * cos(theta);
     traj_desired_vector(q_map_.at("sphere2_z")) = ball_radius + table_offset;
 
   }
@@ -296,31 +302,72 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   double ts = shifted_time - period * floor((shifted_time / period));
   double back_dist = param_.gait_parameters(0);
 
-  /// rolling phase
-  if ( ts < roll_phase ) {
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.01;
-  }
-  /// upwards phase
-  else if (ts < roll_phase + return_phase / 3){
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
+  if (state[8] > state[15]) {
+
+    /// rolling phase
+    if (ts < roll_phase) {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7]; //- 0.2* back_dist*error_hat(0);  //14
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8]; //- 0.2* back_dist*error_hat(1);  //15
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] =
+          traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+    }
+      /// upwards phase
+    else if (ts < roll_phase + return_phase / 3) {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
+
+    }
+      /// side ways phase
+    else if (ts < roll_phase + 2 * return_phase / 3) {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist * error_hat(0);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist * error_hat(1);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
+    }
+      /// position finger phase
+    else {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - 1 * back_dist * error_hat(0);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - 1 * back_dist * error_hat(1);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
+    }
 
   }
-  /// side ways phase
-  else if( ts < roll_phase + 2 * return_phase / 3 ) {
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
+
+  else {
+
+    /// rolling phase
+    if (ts < roll_phase) {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[14]; //- 0.2* back_dist*error_hat(0);  //14
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[15]; //- 0.2* back_dist*error_hat(1);  //15
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] =
+          traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+    }
+      /// upwards phase
+    else if (ts < roll_phase + return_phase / 3) {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[14]; //0.55;
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[15]; //0.1;
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
+
+    }
+      /// side ways phase
+    else if (ts < roll_phase + 2 * return_phase / 3) {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[14] - back_dist * error_hat(0);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[15] - back_dist * error_hat(1);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
+    }
+      /// position finger phase
+    else {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[14] - 1 * back_dist * error_hat(0);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[15] - 1 * back_dist * error_hat(1);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
+    }
+
+
+
+
   }
-  /// position finger phase
-  else{
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
-  }
+
+
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
   /// compute desired orientation
@@ -381,6 +428,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
   contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[3]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[3]));
   auto system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1, time_horizon_);
@@ -406,18 +454,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 //  active_lambda_inds.insert(11);
 //  inactive_lambda_inds.insert(1);  ///gamma for sphere1 - ground contact
 
-  active_lambda_inds.insert(5);   ///\lambda_n for sphere1 - ground contact
-  active_lambda_inds.insert(7);   ///\lambda_n for sphere2 - ground contact
+  active_lambda_inds.insert(6);   ///\lambda_n for sphere1 - ground contact
+  active_lambda_inds.insert(8);   ///\lambda_n for sphere2 - ground contact
 
-  active_lambda_inds.insert(12);   ///\lambda_t for sphere1 - ground contact
-  active_lambda_inds.insert(13);
-  active_lambda_inds.insert(14);
+  active_lambda_inds.insert(14);   ///\lambda_t for sphere1 - ground contact
   active_lambda_inds.insert(15);
+  active_lambda_inds.insert(16);
+  active_lambda_inds.insert(17);
 
-  active_lambda_inds.insert(20);   ///\lambda_t for sphere2 - ground contact
-  active_lambda_inds.insert(21);
-  active_lambda_inds.insert(22);
+  active_lambda_inds.insert(22);   ///\lambda_t for sphere2 - ground contact
   active_lambda_inds.insert(23);
+  active_lambda_inds.insert(24);
+  active_lambda_inds.insert(25);
 
   inactive_lambda_inds.insert(1);  ///gamma for sphere1 - ground contact
   inactive_lambda_inds.insert(3);  ///gamma for sphere2 - ground contact
@@ -464,7 +512,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // sphere_pos (1)
   S.block(3, 7, 2, 2) = MatrixXd::Identity(2, 2);
   // sphere_pos (2)
-  S.block(5, 10, 2, 2) = MatrixXd::Identity(2, 2);
+  S.block(5, 14, 2, 2) = MatrixXd::Identity(2, 2);
 
   // finger_vel
   S.block(ny_q, plant_f_.num_positions(), 3, 3) = MatrixXd::Identity(3, 3);
@@ -586,6 +634,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     Qnew = (S.transpose() + W).transpose() * Qnew * (S.transpose() + W);
     traj_desired = std::vector<VectorXd>(Q_.size() , S * traj_desired_vector);
   }
+
+//  std::cout << "here" << std::endl;
+//  std::cout << Qnew << std::endl;
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 

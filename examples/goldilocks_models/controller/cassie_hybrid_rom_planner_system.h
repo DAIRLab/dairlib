@@ -120,7 +120,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   void WarmStartGuess(
       const Eigen::VectorXd& quat_xyz_shift,
       const Eigen::VectorXd& current_local_stance_foot_pos,
-      const std::vector<Eigen::Vector2d>& reg_footstep,
+      const std::vector<Eigen::Vector2d>& reg_delta_footstep,
       const int global_fsm_idx, int first_mode_knot_idx, double current_time,
       dairlib::goldilocks_models::HybridRomTrajOptCassie* trajopt) const;
 
@@ -227,7 +227,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd h_solutions_;
   mutable Eigen::MatrixXd input_at_knots_;
   // TODO: apart from local, we also store global for better warm-start.
-  mutable Eigen::MatrixXd global_footstep_;
+  mutable Eigen::MatrixXd global_delta_footstep_;
   mutable Eigen::MatrixXd global_y_end_of_last_mode_;
   mutable Eigen::VectorXd touchdown_foot_pos_;
   mutable Eigen::VectorXd eps_rom_;

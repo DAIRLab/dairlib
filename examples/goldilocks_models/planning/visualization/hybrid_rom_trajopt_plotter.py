@@ -128,9 +128,12 @@ def main():
 
     PlotGlobalFeetAndCoMPosition(rom_traj)
 
-    plt.draw()
-    plt.pause(0.05)
-    plt.clf()
+    if (animation_end_idx - animation_start_idx) == 1:
+      plt.show()
+    else:
+      plt.draw()
+      plt.pause(0.05)
+      plt.clf()
 
 
   # import pdb; pdb.set_trace()

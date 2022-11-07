@@ -580,7 +580,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
                                  param_.feas_tol /* * 0.01*/);
 
   // Allocate memory
-  global_footstep_ = MatrixXd(2, param_.n_step);
+  global_delta_footstep_ = MatrixXd(2, param_.n_step);
   global_y_end_of_last_mode_ = MatrixXd(2, 1);
 
   // Initialization
@@ -866,10 +866,10 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     left_step << 2 * des_xy_pos_com.at(0)(0) * stride_period_, -0.15;
     right_step << 2 * des_xy_pos_com.at(0)(0) * stride_period_, 0.15;
   }
-  vector<Vector2d> reg_local_footstep(param_.n_step, Vector2d());
+  vector<Vector2d> reg_local_delta_footstep(param_.n_step, Vector2d());
   bool left_stance = start_with_left_stance;
   for (int i = 0; i < param_.n_step; i++) {
-    reg_local_footstep.at(i) = left_stance ? right_step : left_step;
+    reg_local_delta_footstep.at(i) = left_stance ? right_step : left_step;
     left_stance = !left_stance;
   }
 
@@ -1010,13 +1010,13 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
                (prev_global_fsm_idx_ >= 0)) {
       PrintStatus("Warm start initial guess with previous solution...");
       WarmStartGuess(quat_xyz_shift, current_local_stance_foot_pos,
-                     reg_local_footstep, global_fsm_idx, first_mode_knot_idx,
-                     current_time, &trajopt);
+                     reg_local_delta_footstep, global_fsm_idx,
+                     first_mode_knot_idx, current_time, &trajopt);
     } else {
       // Set heuristic initial guess for all variables
       PrintStatus("Set heuristic initial guess...");
       trajopt.SetHeuristicInitialGuess(param_, h_guess_, y_guess_, dy_guess_,
-                                       tau_guess_, reg_local_footstep,
+                                       tau_guess_, reg_local_delta_footstep,
                                        first_mode_knot_idx, 0);
     }
     trajopt.SetHeuristicInitialGuessForCascadedLipm(param_, des_xy_pos_com,
@@ -1154,22 +1154,16 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // TODO(yminchen): Note that you will to rotate the coordinates back if the
   //  ROM is dependent on robot's x, y and yaw.
 
-  // 1. Transform from the local foot step to global foot step
-  // We need to shift the footstep location back, because in the controller
-  // thread, we create cubic spline in the world frame.
-  MatrixXd local_footstep(2, param_.n_step);
-  local_footstep.row(0) = result.GetSolution(
+  // 1. Transform relative foot step from local to global
+  // Note that since it's relative, we only need to rotate the vector
+  MatrixXd local_delta_footstep(2, param_.n_step);
+  local_delta_footstep.row(0) = result.GetSolution(
       trajopt.discrete_swing_foot_pos_rt_stance_foot_x_vars());
-  local_footstep.row(1) = result.GetSolution(
+  local_delta_footstep.row(1) = result.GetSolution(
       trajopt.discrete_swing_foot_pos_rt_stance_foot_y_vars());
-  // local_footstep.row(2).setZero();
-  // Shift back to the pelvis frame (from the stance foot frame)
-  for (int i = 0; i < param_.n_step; i++) {
-    local_footstep.col(i) += current_local_stance_foot_pos.head<2>();
-  }
-  // Transform back to the world frame
   RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                      local_footstep, &global_footstep_);
+                                      local_delta_footstep,
+                                      &global_delta_footstep_);
   // 2. Transform from the local com to global com
   RotatePosBetweenGlobalAndLocalFrame(
       false, true, quat_xyz_shift,
@@ -1178,13 +1172,20 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       &global_y_end_of_last_mode_);
 
   // Get global feet position (for both start and end of each mode)
+  // This is used to generate swing foot pos in the controller thread
   MatrixXd global_feet_pos(2, param_.n_step + 1);
   MatrixXd current_global_stance_foot_pos(2, 1);
   RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
                                       current_local_stance_foot_pos,
                                       &current_global_stance_foot_pos);
-  global_feet_pos << current_global_stance_foot_pos, global_footstep_;
+  global_feet_pos.col(0) = current_global_stance_foot_pos;
+  for (int i = 1; i < param_.n_step + 1; i++) {
+    global_feet_pos.col(i) =
+        global_feet_pos.col(i - 1) + global_delta_footstep_.col(i);
+  }
   // Get global com position (for both start and end of each mode)
+  // This is used to generate *relative* swing foot pos in the controller thread
+  // (i.e. swing foot pos relative to the COM)
   MatrixXd local_com_pos(2, param_.n_step + 1);
   left_stance = start_with_left_stance;
   for (int i = 0; i < param_.n_step + 1; i++) {
@@ -1277,26 +1278,26 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   if (log_data_and_check_solution_) {
     // Rotate from local to global
     MatrixXd global_regularization_footstep(2, param_.n_step);
-    MatrixXd local_reguularization_footstep(2, param_.n_step);
+    MatrixXd local_regularization_footstep(2, param_.n_step);
     for (int i = 0; i < param_.n_step; i++) {
-      local_reguularization_footstep.middleCols<1>(i) =
-          reg_local_footstep.at(i);
+      local_regularization_footstep.middleCols<1>(i) =
+          reg_local_delta_footstep.at(i);
     }
-    global_regularization_footstep = local_reguularization_footstep;
+    global_regularization_footstep = local_regularization_footstep;
     RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                        local_reguularization_footstep,
+                                        local_regularization_footstep,
                                         &global_regularization_footstep);
     //    cout << "global_regularization_footstep = \n"
     //         << global_regularization_footstep << endl;
-    //    cout << "local_reguularization_footstep = \n"
-    //         << local_reguularization_footstep << endl;
+    //    cout << "local_regularization_footstep = \n"
+    //         << local_regularization_footstep << endl;
 
     // Extract and save solution into files (for debugging)
     SaveDataIntoFiles(
         current_time, global_fsm_idx, x_init, init_phase, is_right_stance,
         quat_xyz_shift, current_local_stance_foot_pos, final_position,
-        global_regularization_footstep, local_footstep, global_footstep_,
-        trajopt, result, param_.dir_data, prefix);
+        global_regularization_footstep, local_delta_footstep,
+        global_delta_footstep_, trajopt, result, param_.dir_data, prefix);
     // Save trajectory into lcm binary
     {
       string file_name = prefix + "rom_trajectory";
@@ -1591,7 +1592,7 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
     const VectorXd& current_local_stance_foot_pos,
     const VectorXd& final_position,
     const MatrixXd& global_regularization_footstep,
-    const MatrixXd& local_footstep, const MatrixXd& global_footstep,
+    const MatrixXd& local_delta_footstep, const MatrixXd& global_delta_footstep,
     const HybridRomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result, const string& dir_data,
     const string& prefix) const {
@@ -1611,8 +1612,8 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
   }
   writeCSV(dir_pref + "input_at_knots.csv", trajopt.GetInputSamples(result));
 
-  writeCSV(dir_pref + "local_footstep.csv", local_footstep);
-  writeCSV(dir_pref + "global_footstep.csv", global_footstep);
+  writeCSV(dir_pref + "local_delta_footstep.csv", local_delta_footstep);
+  writeCSV(dir_pref + "global_delta_footstep.csv", global_delta_footstep);
   writeCSV(dir_pref + "global_regularization_footstep.csv",
            global_regularization_footstep);
 
@@ -1824,7 +1825,7 @@ void CassiePlannerWithOnlyRom::PrintAllCostsAndConstraints(
 void CassiePlannerWithOnlyRom::WarmStartGuess(
     const VectorXd& quat_xyz_shift,
     const VectorXd& current_local_stance_foot_pos,
-    const vector<Vector2d>& reg_local_footstep, const int global_fsm_idx,
+    const vector<Vector2d>& reg_local_delta_footstep, const int global_fsm_idx,
     int first_mode_knot_idx, double current_time,
     HybridRomTrajOptCassie* trajopt) const {
   int starting_mode_idx_for_heuristic =
@@ -1834,25 +1835,26 @@ void CassiePlannerWithOnlyRom::WarmStartGuess(
     PrintStatus("Set heuristic initial guess for all variables");
     // Set heuristic initial guess for all variables
     trajopt->SetHeuristicInitialGuess(param_, h_guess_, y_guess_, dy_guess_,
-                                      tau_guess_, reg_local_footstep,
+                                      tau_guess_, reg_local_delta_footstep,
                                       first_mode_knot_idx, 0);
   } else {
-    trajopt->SetHeuristicInitialGuess(
-        param_, h_guess_, y_guess_, dy_guess_, tau_guess_, reg_local_footstep,
-        first_mode_knot_idx, starting_mode_idx_for_heuristic);
+    trajopt->SetHeuristicInitialGuess(param_, h_guess_, y_guess_, dy_guess_,
+                                      tau_guess_, reg_local_delta_footstep,
+                                      first_mode_knot_idx,
+                                      starting_mode_idx_for_heuristic);
 
     /// Reuse the solution
     // Rotate the previous solution in global frame according to the
     // current global-to-local-shift
     // TODO: also need to do the same thing to predicted_com_vel_
-    // TODO: currently I am not transforming the ROM state between frames.
+    // TODO: currently I am NOT transforming the ROM state between frames.
     //  I believe transforming it is better theoretically.
-    MatrixXd local_footstep = global_footstep_;
+    // We only rotate frames for footstep, because it's always relative to the
+    // previous foot.
+    MatrixXd local_delta_footstep = global_delta_footstep_;
     RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
-                                        global_footstep_, &local_footstep);
-    for (int i = 0; i < param_.n_step; i++) {
-      local_footstep.col(i) -= current_local_stance_foot_pos.head<2>();
-    }
+                                        global_delta_footstep_,
+                                        &local_delta_footstep);
 
     // Get time breaks of current problem (not solved yet so read from guesses)
     VectorXd times =
@@ -1926,10 +1928,10 @@ void CassiePlannerWithOnlyRom::WarmStartGuess(
       // 4. FOM pre-impact
       trajopt->SetInitialGuess(
           trajopt->discrete_swing_foot_pos_rt_stance_foot_x_vars(local_fsm_idx),
-          local_footstep.col(prev_local_fsm_idx).head<1>());
+          local_delta_footstep.col(prev_local_fsm_idx).head<1>());
       trajopt->SetInitialGuess(
           trajopt->discrete_swing_foot_pos_rt_stance_foot_y_vars(local_fsm_idx),
-          local_footstep.col(prev_local_fsm_idx).tail<1>());
+          local_delta_footstep.col(prev_local_fsm_idx).tail<1>());
     }
 
     // The robot fell when initializing eps_rom_ and local_predicted_com_vel_.
@@ -2018,22 +2020,19 @@ void CassiePlannerWithOnlyRom::ResolveWithAnotherSolver(
     cout << "Cost:" << result2.get_optimal_cost() << "\n";
 
     /// For visualization of the second solver
-    MatrixXd local_footstep(2, trajopt.num_modes());
-    local_footstep.row(0) = result2.GetSolution(
+    MatrixXd local_delta_footstep(2, trajopt.num_modes());
+    local_delta_footstep.row(0) = result2.GetSolution(
         trajopt.discrete_swing_foot_pos_rt_stance_foot_x_vars());
-    local_footstep.row(1) = result2.GetSolution(
+    local_delta_footstep.row(1) = result2.GetSolution(
         trajopt.discrete_swing_foot_pos_rt_stance_foot_y_vars());
-    // Shift back to the pelvis frame (from the stance foot frame)
-    for (int i = 0; i < param_.n_step; i++) {
-      local_footstep.col(i) += current_local_stance_foot_pos.head<2>();
-    }
     // Transform back to the world frame
-    MatrixXd global_footstep = local_footstep;
+    MatrixXd global_delta_footstep = local_delta_footstep;
     RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                        local_footstep, &global_footstep);
+                                        local_delta_footstep,
+                                        &global_delta_footstep);
 
-    writeCSV(param_.dir_data + prefix + "global_footstep_snopt.csv",
-             global_footstep);
+    writeCSV(param_.dir_data + prefix + "global_delta_footstep_snopt.csv",
+             global_delta_footstep);
   }
 
   // Testing -- solve with another solver and feed it with solution as init

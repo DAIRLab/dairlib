@@ -171,6 +171,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   double double_support_duration_;
 
   std::unique_ptr<ReducedOrderModel> rom_;
+  std::unique_ptr<ReducedOrderModel> rom_mirrored_;
   StateMirror state_mirror_;
   std::vector<BodyPoint> left_contacts_;
   std::vector<BodyPoint> right_contacts_;

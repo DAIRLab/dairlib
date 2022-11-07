@@ -144,6 +144,9 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
                               MirrorPosSignChangeSet(plant_control, ROBOT),
                               MirrorVelIndexMap(plant_control, ROBOT),
                               MirrorVelSignChangeSet(plant_control, ROBOT));
+  // Create mirrored ROM
+  rom_mirrored_ = std::make_unique<MirroredReducedOrderModel>(
+      plant_control, *rom_, state_mirror_);
 
   /// Provide initial guess
   n_y_ = rom_->n_y();
@@ -738,14 +741,18 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   VectorXd init_rom_state_from_current_feedback(6);
   plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
                                            x_init);
-  init_rom_state_from_current_feedback.head<3>() =
-      rom_->EvalMappingFunc(x_init.head(nq_), *context_plant_control_);
-  init_rom_state_from_current_feedback.tail<3>() = rom_->EvalMappingFuncJV(
-      x_init.head(nq_), x_init.tail(nv_), *context_plant_control_);
-  // Mirror the current feedback values
-  if (!start_with_left_stance) {
-    init_rom_state_from_current_feedback(1) *= -1;
-    init_rom_state_from_current_feedback(4) *= -1;
+  if (start_with_left_stance) {
+    init_rom_state_from_current_feedback.head<3>() =
+        rom_->EvalMappingFunc(x_init.head(nq_), *context_plant_control_);
+    init_rom_state_from_current_feedback.tail<3>() = rom_->EvalMappingFuncJV(
+        x_init.head(nq_), x_init.tail(nv_), *context_plant_control_);
+  } else {
+    init_rom_state_from_current_feedback.head<3>() =
+        rom_mirrored_->EvalMappingFunc(x_init.head(nq_),
+                                       *context_plant_control_);
+    init_rom_state_from_current_feedback.tail<3>() =
+        rom_mirrored_->EvalMappingFuncJV(x_init.head(nq_), x_init.tail(nv_),
+                                         *context_plant_control_);
   }
 
   // Get current stance foot position
@@ -1141,9 +1148,11 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   //  of traj to use)? We should just use the old previous_output_msg_
   if (!result.is_success()) {
     *traj_msg = previous_output_msg_;
-    cout << "Bad solution. Skip this one.\n";
     // TODO: It's still good to do some bookkeeping, so that I can resolve it.
-    return;
+
+    // TODO: after the hybrid MPC works, turn out the code below
+    //    cout << "Bad solution. Skip this one.\n";
+    //    return;
   }
 
   ///
@@ -1151,9 +1160,6 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   ///
   // Note that the trajectory is discontinuous between mode (even the position
   // jumps because left vs right stance leg).
-
-  // TODO(yminchen): Note that you will to rotate the coordinates back if the
-  //  ROM is dependent on robot's x, y and yaw.
 
   // 1. Transform relative foot step from local to global
   // Note that since it's relative, we only need to rotate the vector

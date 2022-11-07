@@ -92,7 +92,7 @@ def main():
   Parameters
   """
   animation_start_idx = 0
-  animation_end_idx = 57
+  animation_end_idx = 71
   # animation_end_idx = animation_start_idx + 1
 
   """

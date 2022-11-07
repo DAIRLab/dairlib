@@ -96,11 +96,11 @@ HybridRomTrajOpt::HybridRomTrajOpt(
   /// Some constant matrices
   Eigen::RowVectorXd A_discrete_map_3d(3);
   A_discrete_map_3d << 1, -1, -1;
-  Eigen::RowVectorXd A_discrete_map_3d_mirroed(3);
+  Eigen::RowVectorXd A_discrete_map_3d_mirrored(3);
   if (start_with_left_stance) {
-    A_discrete_map_3d_mirroed << 1, 1, -1;
+    A_discrete_map_3d_mirrored << 1, 1, -1;
   } else {
-    A_discrete_map_3d_mirroed << -1, -1, -1;
+    A_discrete_map_3d_mirrored << -1, -1, -1;
   }
   Eigen::RowVectorXd A_discrete_map_2d(2);
   A_discrete_map_2d << 1, -1;
@@ -271,10 +271,10 @@ HybridRomTrajOpt::HybridRomTrajOpt(
         {z_f_pre.segment<1>(0), z_f_post.segment<1>(0), touchdown_foot_var_x});
     // 1b. y component
     AddLinearEqualityConstraint(
-        A_discrete_map_3d_mirroed, 0,
+        A_discrete_map_3d_mirrored, 0,
         {z_f_pre.segment<1>(1), z_f_post.segment<1>(1), touchdown_foot_var_y});
-    A_discrete_map_3d_mirroed(0) *= -1;
-    A_discrete_map_3d_mirroed(1) *= -1;
+    A_discrete_map_3d_mirrored(0) *= -1;
+    A_discrete_map_3d_mirrored(1) *= -1;
     // 1c. z component
     AddLinearEqualityConstraint(
         A_discrete_map_2d, 0, {z_f_pre.segment<1>(2), z_f_post.segment<1>(2)});
@@ -412,20 +412,23 @@ void HybridRomTrajOpt::AddConstraintAndCostForLastFootStep(
   // Initial guess for the new variable
   this->SetInitialGuess(predicted_com_vel_var_, des_predicted_xy_vel);
 
+  // TODO: play with both constraint and cost version after hybrid ROM MPC is
+  //  working
+
   // Desired value for predicted velocity
   // 20211109: It looks like the constraint version is solved much faster
   // 20220420: Cannot use the constraint version because it sometimes caused
   // overconstraining (see 20220420 folder of mpc improvement). Also, the speed
   // doesn't seem to be affected in some solves, so maybe it's not too bad.
   // 1. via cost
-  /*PrintStatus("Adding cost -- predicted com vel one step after horizon");
+  PrintStatus("Adding cost -- predicted com vel one step after horizon");
   predict_lipm_v_bindings_.push_back(
       AddQuadraticErrorCost(w_predict_lipm_v * MatrixXd::Identity(2, 2),
-                            des_predicted_xy_vel, predicted_com_vel_var_));*/
+                            des_predicted_xy_vel, predicted_com_vel_var_));
   // 2. via constraint
-  PrintStatus("Adding constraint - predicted com vel one step after horizon");
+  /*PrintStatus("Adding constraint - predicted com vel one step after horizon");
   AddBoundingBoxConstraint(des_predicted_xy_vel, des_predicted_xy_vel,
-                           predicted_com_vel_var_);
+                           predicted_com_vel_var_);*/
 
   // 3. half half
   /*PrintStatus("Adding cost -- predicted com vel one step after horizon");

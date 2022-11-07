@@ -816,6 +816,12 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   for (auto& pos : des_xy_pos_com) {
     pos -= current_local_stance_foot_pos.head<2>();
   }
+  for (auto& pos : des_xy_pos_com) {
+    cout << "pos = " << pos.transpose() << endl;
+  }
+  for (auto& vel : des_xy_vel_com) {
+    cout << "vel = " << vel.transpose() << endl;
+  }
   // TODO:
   //  My ntoes: Only the goal position needs the above shift.
   //    When translating the planned traj between each solve, I believe we don't

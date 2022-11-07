@@ -104,9 +104,10 @@ HybridRomTrajOpt::HybridRomTrajOpt(
   }
   Eigen::RowVectorXd A_discrete_map_2d(2);
   A_discrete_map_2d << 1, -1;
+  Eigen::RowVectorXd A_discrete_map_2d_mirrored(2);
+  A_discrete_map_2d_mirrored << 1, 1;
 
   /// Add more decision variables
-  // TODO: haven't finished foot variable; need to warm start it
   discrete_swing_foot_pos_rt_stance_foot_x_vars_ =
       NewContinuousVariables(num_time_samples.size(), "touchdown_foot_pos_x");
   discrete_swing_foot_pos_rt_stance_foot_y_vars_ =
@@ -245,6 +246,7 @@ HybridRomTrajOpt::HybridRomTrajOpt(
 
     // Add discrete map constraint
     PrintStatus("Adding constraint -- ROM reset map");
+    // 1. Position
     // Variables:
     //   y = COM pos rt stance foot
     //   discrete_input = swing foot touchdown pos rt stance foot
@@ -257,16 +259,30 @@ HybridRomTrajOpt::HybridRomTrajOpt(
     //     y - (-1)*new_y - discrete_input = 0
     // If the current mode is right support, then (only for y element)
     //     (-1)*y - new_y - discrete_input = 0
+    // 1a. x component
     AddLinearEqualityConstraint(
         A_discrete_map_3d, 0,
         {z_f_pre.segment<1>(0), z_f_post.segment<1>(0), touchdown_foot_var_x});
+    // 1b. y component
     AddLinearEqualityConstraint(
         A_discrete_map_3d_mirroed, 0,
         {z_f_pre.segment<1>(1), z_f_post.segment<1>(1), touchdown_foot_var_y});
     A_discrete_map_3d_mirroed(0) *= -1;
     A_discrete_map_3d_mirroed(1) *= -1;
+    // 1c. z component
     AddLinearEqualityConstraint(
         A_discrete_map_2d, 0, {z_f_pre.segment<1>(2), z_f_post.segment<1>(2)});
+    // 2. Velocity (identity with mirroring)
+    // 2a. x component
+    AddLinearEqualityConstraint(
+        A_discrete_map_2d, 0, {z_f_pre.segment<1>(3), z_f_post.segment<1>(3)});
+    // 2b. y component
+    AddLinearEqualityConstraint(
+        A_discrete_map_2d_mirrored, 0,
+        {z_f_pre.segment<1>(4), z_f_post.segment<1>(4)});
+    // 2c. z component
+    AddLinearEqualityConstraint(
+        A_discrete_map_2d, 0, {z_f_pre.segment<1>(5), z_f_post.segment<1>(5)});
 
     /// Constraints on foot steps
     // Step region (rt CoM) constraint
@@ -286,10 +302,13 @@ HybridRomTrajOpt::HybridRomTrajOpt(
 
     double lb_swing_x = back_limit_wrt_pelvis;
     double ub_swing_x = front_limit_wrt_pelvis;
-    double lb_swing_y =
-        left_stance ? -left_limit_wrt_pelvis : right_limit_wrt_pelvis;
-    double ub_swing_y =
-        left_stance ? -right_limit_wrt_pelvis : left_limit_wrt_pelvis;
+    //    double lb_swing_y =
+    //        left_stance ? right_limit_wrt_pelvis : -left_limit_wrt_pelvis;
+    //    double ub_swing_y =
+    //        left_stance ? left_limit_wrt_pelvis : -right_limit_wrt_pelvis;
+    double lb_swing_y = right_limit_wrt_pelvis;
+    double ub_swing_y = left_limit_wrt_pelvis;
+    //    cout << "left_stance = " << left_stance << endl;
     // 1. pre discrete event
     if (mode != 0) {
       // do nothing for the very fist mode (mode == 0), because the model is
@@ -298,10 +317,16 @@ HybridRomTrajOpt::HybridRomTrajOpt(
       //      AddBoundingBoxConstraint(lb_swing_y, ub_swing_y, -z_f_pre(1));
       AddBoundingBoxConstraint(-ub_swing_x, -lb_swing_x, z_f_pre(0));
       AddBoundingBoxConstraint(-ub_swing_y, -lb_swing_y, z_f_pre(1));
+      //      cout << z_f_pre(1) << ": " << -ub_swing_y << ", " << -lb_swing_y
+      //      << endl;
     }
     // 2. post discrete event
-    AddBoundingBoxConstraint(lb_swing_x, ub_swing_x, z_f_post(0));
-    AddBoundingBoxConstraint(lb_swing_y, ub_swing_y, z_f_post(1));
+    //    AddBoundingBoxConstraint(lb_swing_x, ub_swing_x, z_f_post(0));
+    //    AddBoundingBoxConstraint(lb_swing_y, ub_swing_y, z_f_post(1));
+    AddBoundingBoxConstraint(-ub_swing_x, -lb_swing_x, z_f_post(0));
+    AddBoundingBoxConstraint(-ub_swing_y, -lb_swing_y, z_f_post(1));
+    //    cout << z_f_post(1) << ": " << lb_swing_y << ", " << ub_swing_y <<
+    //    endl;
 
     // Foot collision avoidance and step length
     PrintStatus("Adding constraint -- swing collision avoidance");
@@ -374,19 +399,19 @@ void HybridRomTrajOpt::AddConstraintAndCostForLastFootStep(
       AddQuadraticErrorCost(w_predict_lipm_v * MatrixXd::Identity(2, 2),
                             des_predicted_xy_vel, predicted_com_vel_var_));*/
   // 2. via constraint
-  /*PrintStatus("Adding constraint -- predicted com vel one step after
-  horizon"); AddBoundingBoxConstraint(des_predicted_xy_vel,
-  des_predicted_xy_vel, predicted_com_vel_var_);*/
+  PrintStatus("Adding constraint - predicted com vel one step after horizon");
+  AddBoundingBoxConstraint(des_predicted_xy_vel, des_predicted_xy_vel,
+                           predicted_com_vel_var_);
 
   // 3. half half
-  PrintStatus("Adding cost -- predicted com vel one step after horizon");
+  /*PrintStatus("Adding cost -- predicted com vel one step after horizon");
   predict_lipm_v_bindings_.push_back(AddQuadraticErrorCost(
       w_predict_lipm_v * MatrixXd::Identity(1, 1),
       des_predicted_xy_vel.tail<1>(), predicted_com_vel_var_.tail<1>()));
   PrintStatus("Adding constraint -- predicted com vel one step after horizon");
   AddBoundingBoxConstraint(des_predicted_xy_vel.head<1>(),
                            des_predicted_xy_vel.head<1>(),
-                           predicted_com_vel_var_.head<1>());
+                           predicted_com_vel_var_.head<1>());*/
 }
 
 void HybridRomTrajOpt::AddCascadedLipmMPC(
@@ -406,6 +431,8 @@ void HybridRomTrajOpt::AddCascadedLipmMPC(
   u_lipm_vars_ = NewContinuousVariables(2 * n_step_lipm, "u_lipm_vars");
 
   // Last step lipm mapping function
+  DRAKE_UNREACHABLE();  // TODO: need to consider mirroring in y axis for right
+                        //  stance
   PrintStatus("Adding constraint -- lipm mapping for the last pose");
   // Constraint:
   //   [CoM rt stance foot, CoM dot] = x_lipm_vars(0)

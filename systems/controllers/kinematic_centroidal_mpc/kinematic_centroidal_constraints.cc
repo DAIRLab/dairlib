@@ -9,7 +9,7 @@ CentroidalDynamicsConstraint<T>::CentroidalDynamicsConstraint(const drake::multi
                                                               int n_contact,
                                                               double dt,
                                                               int knot_index): dairlib::solvers::NonlinearConstraint<T>(
-    6,  2 * 6 + 2 * (3 + 2 * 3 * n_contact),
+    6,  2 * (6  + 3 + 2 * 3 * n_contact), // Number of inputs = 2 * (momentum + com + contact_pos + contact_vel)
     Eigen::VectorXd::Zero(6),
     Eigen::VectorXd::Zero(6),
     "momentum_collocation[" +
@@ -22,34 +22,34 @@ CentroidalDynamicsConstraint<T>::CentroidalDynamicsConstraint(const drake::multi
 
 
 /// The format of the input to the eval() function is in the order
-///   - xMom0, momentum state at time k
-///   - xMom1, momentum state at time k+1
+///   - momentum0, momentum state at time k
+///   - momentum1, momentum state at time k+1
 ///   - com0, location of com at time k
-///   - cj0, contact locations time k
-///   - Fj0, contact forces at time k
+///   - x_contact0, contact locations time k
+///   - f0, contact forces at time k
 ///   - com1, location of com at time k+1
-///   - cj1, contact locations time k+1
-///   - Fj1, contact forces at time k+1
+///   - x_contact1, contact locations time k+1
+///   - f1, contact forces at time k+1
 
 template <typename T>
 void CentroidalDynamicsConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
   // Extract decision variables
-  const auto& xMom0 = x.segment(0, n_mom_);
-  const auto& xMom1 = x.segment(n_mom_, n_mom_);
+  const auto& momentum0 = x.segment(0, n_mom_);
+  const auto& momentum1 = x.segment(n_mom_, n_mom_);
   const auto& com0 = x.segment(2 * n_mom_, 3);
-  const auto& cj0 = x.segment(2 * n_mom_ + 3, 3 * n_contact_);
-  const auto& Fj0 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_, 3 * n_contact_);
+  const auto& x_contact0 = x.segment(2 * n_mom_ + 3, 3 * n_contact_);
+  const auto& f0 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_, 3 * n_contact_);
   const auto& com1 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_ + 3 * n_contact_, 3);
-  const auto& cj1 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_ + 3 * n_contact_+ 3, 3 * n_contact_);
-  const auto& Fj1 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_ + 3 * n_contact_+ 3 + 3 * n_contact_, 3 * n_contact_);
+  const auto& x_contact1 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_ + 3 * n_contact_+ 3, 3 * n_contact_);
+  const auto& f1 = x.segment(2 * n_mom_ + 3 + 3 * n_contact_ + 3 * n_contact_+ 3 + 3 * n_contact_, 3 * n_contact_);
 
-  drake::Vector<T, 6> xdot0Mom = CalcTimeDerivativesWithForce(com0, cj0, Fj0);
-  drake::Vector<T, 6> xdot1Mom = CalcTimeDerivativesWithForce(com1, cj1, Fj1);
+  drake::Vector<T, 6> xdot0Mom = CalcTimeDerivativesWithForce(com0, x_contact0, f0);
+  drake::Vector<T, 6> xdot1Mom = CalcTimeDerivativesWithForce(com1, x_contact1, f1);
 
   // Predict state and return error
-  const auto x1Predict = xMom0 + 0.5 * dt_ * (xdot0Mom + xdot1Mom);
-  *y = xMom1 - x1Predict;
+  const auto x1Predict = momentum0 + 0.5 * dt_ * (xdot0Mom + xdot1Mom);
+  *y = momentum1 - x1Predict;
 }
 
 template<typename T>
@@ -155,16 +155,16 @@ CentroidalMomentumConstraint<T>::CentroidalMomentumConstraint(const drake::multi
 /// The format of the input to the eval() function is in the order
 ///   - q, generalized positions
 ///   - v, generalized velocities
-///   - r, location of the com
+///   - com, location of the com
 ///   - h_WC, angular momentum, linear momentum in the wf about the com
 template<typename T>
 void CentroidalMomentumConstraint<T>::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>> &x,
                                                            drake::VectorX<T> *y) const {
   const auto& x0 = x.head(n_x_);
-  const auto& r = x.segment(n_x_, 3);
+  const auto& com = x.segment(n_x_, 3);
   const auto& h_WC = x.segment(n_x_ + 3, 6);
   dairlib::multibody::SetPositionsAndVelocitiesIfNew<T>(plant_, x0,  context_);
-  const auto& spatial_momentum = plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, r);
+  const auto& spatial_momentum = plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, com);
   *y = spatial_momentum.get_coeffs() - h_WC;
 }
 

@@ -197,6 +197,7 @@ class KinematicCentroidalMPC {
 
   void SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double>& state_trajectory);
 
+  //TODO remove once drake has trajectory stacking
   void SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double>& q_traj, const drake::trajectories::PiecewisePolynomial<double>& v_traj);
 
   void SetComPositionGuess(const drake::Vector3<double>& state);
@@ -298,6 +299,9 @@ class KinematicCentroidalMPC {
    * @brief Add costs from internally stored variables
    */
   void AddCosts();
+
+  bool is_first_knot(int knot_point_index){return knot_point_index == 0;};
+  bool is_last_knot(int knot_point_index){return knot_point_index == n_knot_points_ - 1;};
 
   const drake::multibody::MultibodyPlant<double>& plant_;
 

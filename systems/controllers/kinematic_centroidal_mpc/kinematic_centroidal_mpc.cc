@@ -129,7 +129,9 @@ void KinematicCentroidalMPC::AddContactConstraints() {
       } else {
         // Feet are above the ground
         double lb = 0;
-        if(knot_point > 0 and knot_point + 1 < n_knot_points_ and (!contact_sequence_[knot_point-1][contact_index] or !contact_sequence_[knot_point+1][contact_index])){
+        // Check if at least one of the time points before or after is also in flight before restricting the foot to be in the air
+        // to limit over constraining the optimization problem
+        if(!is_first_knot(knot_point) and !is_last_knot(knot_point) and (!contact_sequence_[knot_point-1][contact_index] or !contact_sequence_[knot_point+1][contact_index])){
           lb = swing_foot_minimum_height_;
         }
         prog_->AddBoundingBoxConstraint(lb, 10, contact_pos_vars(knot_point, contact_index)[2]);
@@ -216,8 +218,8 @@ void KinematicCentroidalMPC::AddConstantMomentumReference(const drake::VectorX<d
 
 void KinematicCentroidalMPC::AddCosts() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    const double terminal_gain = knot_point == n_knot_points_-1 ? 100 : 1;
-    const double collocation_gain = (knot_point == 0 or knot_point == n_knot_points_ -1) ? 0.5 : 1;
+    const double terminal_gain = is_last_knot(knot_point) ? 100 : 1;
+    const double collocation_gain = (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
     double t = dt_ * knot_point;
     if(q_ref_traj_){
       prog_->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_q_, q_ref_traj_->value(t), state_vars(knot_point).head(n_q_));

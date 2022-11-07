@@ -742,6 +742,11 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       rom_->EvalMappingFunc(x_init.head(nq_), *context_plant_control_);
   init_rom_state_from_current_feedback.tail<3>() = rom_->EvalMappingFuncJV(
       x_init.head(nq_), x_init.tail(nv_), *context_plant_control_);
+  // Mirror the current feedback values
+  if (!start_with_left_stance) {
+    init_rom_state_from_current_feedback(1) *= -1;
+    init_rom_state_from_current_feedback(4) *= -1;
+  }
 
   // Get current stance foot position
   drake::VectorX<double> current_local_stance_foot_pos(3);
@@ -773,25 +778,21 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // Set initial ROM state for the trajopt constraint
   VectorXd init_rom_state_mirrored(6);
   for (int i = 0; i < 6; i++) {
-    // Mirror the current feedback values
-    init_rom_state_from_current_feedback(1) *= -1;
-    init_rom_state_from_current_feedback(4) *= -1;
-
     // Get the init state value for the constraint
-    init_rom_state_mirrored = (set_init_state_from_prev_solution.find(i) ==
-                               set_init_state_from_prev_solution.end())
-                                  ? init_rom_state_from_current_feedback
-                                  : init_rom_state_from_prev_sol;
+    init_rom_state_mirrored(i) = (set_init_state_from_prev_solution.find(i) ==
+                                  set_init_state_from_prev_solution.end())
+                                     ? init_rom_state_from_current_feedback(i)
+                                     : init_rom_state_from_prev_sol(i);
   }
   // TODO: might want to fix the init height pos to a desired constant and vel
   //  to 0?
   init_rom_state_mirrored(2) = desired_com_height_;
   init_rom_state_mirrored(5) = 0;
-  cout << "init_rom_state_from_current_feedback = "
-       << init_rom_state_from_current_feedback.transpose() << endl;
-  cout << "init_rom_state_from_prev_sol = "
-       << init_rom_state_from_prev_sol.transpose() << endl;
-  cout << "init_rom_state = " << init_rom_state_mirrored.transpose() << endl;
+//  cout << "init_rom_state_from_current_feedback = "
+//       << init_rom_state_from_current_feedback.transpose() << endl;
+//  cout << "init_rom_state_from_prev_sol = "
+//       << init_rom_state_from_prev_sol.transpose() << endl;
+//  cout << "init_rom_state = " << init_rom_state_mirrored.transpose() << endl;
 
   ///
   ///
@@ -825,12 +826,12 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   for (auto& pos : des_xy_pos_com) {
     pos -= current_local_stance_foot_pos.head<2>();
   }
-  for (auto& pos : des_xy_pos_com) {
-    cout << "pos = " << pos.transpose() << endl;
-  }
-  for (auto& vel : des_xy_vel_com) {
-    cout << "vel = " << vel.transpose() << endl;
-  }
+//  for (auto& pos : des_xy_pos_com) {
+//    cout << "pos = " << pos.transpose() << endl;
+//  }
+//  for (auto& vel : des_xy_vel_com) {
+//    cout << "vel = " << vel.transpose() << endl;
+//  }
   // TODO:
   //  My ntoes: Only the goal position needs the above shift.
   //    When translating the planned traj between each solve, I believe we don't

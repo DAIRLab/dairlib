@@ -1,4 +1,5 @@
 import sys
+import time
 import matplotlib.pyplot as plt
 import pydairlib.lcm.lcm_trajectory
 from pydairlib.common import FindResourceOrThrow
@@ -22,22 +23,22 @@ This script is modified from `rom_trajopt_plotter.py`
 
 def main():
   filename = ""
-  # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/planning/robot_1/data/rom_trajectory')
-  # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
-  # filename = abs_path + "/rom_trajectory"
-  # filename = "../rom_trajectory"
-  if len(sys.argv) >= 2 and sys.argv[1] != "save":
-    if sys.argv[1][0] == "/":
-      filename = sys.argv[1]
-    else:
-      filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-                 sys.argv[1] + "_rom_trajectory"
-  else:
-    filename = FindResourceOrThrow(
-      '../dairlib_data/goldilocks_models/planning/robot_1/data/debug_rom_trajectory')
+  # # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/planning/robot_1/data/rom_trajectory')
+  # # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
+  # # filename = abs_path + "/rom_trajectory"
+  # # filename = "../rom_trajectory"
+  # if len(sys.argv) >= 2 and sys.argv[1] != "save":
+  #   if sys.argv[1][0] == "/":
+  #     filename = sys.argv[1]
+  #   else:
+  #     filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+  #                sys.argv[1] + "_rom_trajectory"
+  # else:
+  #   filename = FindResourceOrThrow(
+  #     '../dairlib_data/goldilocks_models/planning/robot_1/data/debug_rom_trajectory')
 
-  print("log file name = " + filename)
-  rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
+  # print("log file name = " + filename)
+  # rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
 
   # For saving figures
   global savefig, figsize, save_path
@@ -86,11 +87,20 @@ def main():
   nx_FOM = plant_FOM.num_positions() + plant_FOM.num_velocities()
   nu_FOM = plant_FOM.num_actuators()
 
-  # import pdb; pdb.set_trace()
+
+  """
+  Parameters
+  """
+  animation_start_idx = 0
+  animation_end_idx = 57
+  # animation_end_idx = animation_start_idx + 1
 
   """
   States, inputs trajectories
   """
+  filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+             str(animation_start_idx) + "_rom_trajectory"
+  rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
   PlotState(rom_traj, 0, rom_traj.GetStateSamples(0).shape[0])
 
   if (rom_traj.GetInputSamples().shape[0] > 0):
@@ -119,21 +129,53 @@ def main():
 
   """
   """
-  animation_start_idx = 0
-  animation_end_idx = 1
+  if (animation_end_idx - animation_start_idx) > 1:
+    x_axis_is_clock = False
+
+    time_vec = np.zeros(animation_end_idx - animation_start_idx)
+    for j in range(animation_start_idx, animation_end_idx):
+      filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+                 str(j) + "_rom_trajectory"
+      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
+      time_vec[j] = rom_traj.get_global_com_pos_time()[0]
+    loop_time = np.diff(time_vec)
+    # import pdb; pdb.set_trace()
+
+    plt.figure("Time elapsed", figsize=figsize)
+    plt.title("Time elapsed in each MPC loop")
+    if x_axis_is_clock:
+      plt.plot(time_vec[:-1],loop_time, 'o')
+      plt.xlabel('Clock (s)')
+    else:
+      plt.plot(loop_time, 'o')
+      plt.xlabel('MPC loop idx')
+    plt.ylabel('Time elapse (s)')
+    # plt.show()  
+
+
+  # real_time_rate = 0.1
+  # prev_wall_time = -1 
+  # prev_sim_time = -1
   for j in range(animation_start_idx, animation_end_idx):
     filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                str(j) + "_rom_trajectory"
     rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
 
+    # if prev_wall_time > 0:
+    #   while(real_time_rate * (time.time() - prev_wall_time) < (rom_traj.get_global_com_pos_time()[0] - prev_sim_time)):
+    #     plt.pause(0.01)
+    # plt.clf()
+    # prev_wall_time = time.time()
+    # prev_sim_time = rom_traj.get_global_com_pos_time()[0]
+
     PlotGlobalFeetAndCoMPosition(rom_traj)
+    plt.draw()
+    plt.pause(0.01)
+    plt.clf()
 
     if (animation_end_idx - animation_start_idx) == 1:
       plt.show()
-    else:
-      plt.draw()
-      plt.pause(0.05)
-      plt.clf()
+
 
 
   # import pdb; pdb.set_trace()
@@ -146,8 +188,8 @@ def PlotGlobalFeetAndCoMPosition(rom_traj):
   global_feet_pos_time = rom_traj.get_global_feet_pos_time()
   global_com_pos = rom_traj.get_global_com_pos()
   global_com_pos_time = rom_traj.get_global_com_pos_time()
-  print("global_feet_pos = \n", global_feet_pos)
-  print("global_com_pos = \n", global_com_pos)
+  # print("global_feet_pos = \n", global_feet_pos)
+  # print("global_com_pos = \n", global_com_pos)
 
 
   plt.figure("Feet and CoM positions", figsize=figsize)
@@ -161,10 +203,12 @@ def PlotGlobalFeetAndCoMPosition(rom_traj):
   plt.xlabel('x (m)')
   plt.ylabel('y (m)')
   plt.axis('scaled')
-  lb = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
-  ub = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
-  plt.xlim([lb[0] - 1, lb[1] + 1])
-  plt.ylim([ub[0] - 1, ub[1] + 1])
+  # lb = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
+  # ub = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
+  # plt.xlim([lb[0] - 1, lb[1] + 1])
+  # plt.ylim([ub[0] - 1, ub[1] + 1])
+  plt.xlim([- 1, + 1])
+  plt.ylim([- 1, + 1])
 
 
 

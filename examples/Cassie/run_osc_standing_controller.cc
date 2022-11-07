@@ -300,6 +300,9 @@ int DoMain(int argc, char* argv[]) {
   right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
   osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
 
+  int n_u = plant_wo_springs.num_actuators();
+  osc->SetInputSmoothingWeights(gains.w_accel * MatrixXd::Identity(n_u, n_u));
+
   // Build OSC problem
   osc->Build();
   // Connect ports

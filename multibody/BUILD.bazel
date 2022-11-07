@@ -26,12 +26,15 @@ cc_library(
     srcs = [
         "com_pose_system.cc",
         "multibody_utils.cc",
+        "stepping_stone_utils.cc",
     ],
     hdrs = [
         "com_pose_system.h",
         "multibody_utils.h",
+        "stepping_stone_utils.h",
     ],
     deps = [
+        "//geometry:convex_foothold",
         "@drake//:drake_shared_library",
     ],
 )

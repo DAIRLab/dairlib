@@ -209,6 +209,25 @@ cc_binary(
 )
 
 cc_binary(
+    name = "multibody_sim_hiking",
+    srcs = ["multibody_sim_hiking.cc"],
+    deps = [
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/systems:cassie_encoder",
+        "//multibody:utils",
+        "//solvers:optimization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "multibody_sim_w_cam",
     srcs = ["multibody_sim_w_cam.cc"],
     deps = [
@@ -329,8 +348,8 @@ cc_binary(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
-        "@lcm",
         "@gflags",
+        "@lcm",
     ],
 )
 
@@ -340,8 +359,8 @@ cc_binary(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
-        "@lcm",
         "@gflags",
+        "@lcm",
     ],
 )
 

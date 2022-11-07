@@ -32,6 +32,7 @@ void ConvexFoothold::AddHalfspace(Vector3d a, VectorXd b) {
   }
 }
 
+// Add a face with the (outward facing) normal and a point on the face
 void ConvexFoothold::AddFace(Eigen::Vector3d normal, Eigen::Vector3d pt) {
   AddHalfspace(normal, normal.dot(pt) * VectorXd::Ones(1));
 }

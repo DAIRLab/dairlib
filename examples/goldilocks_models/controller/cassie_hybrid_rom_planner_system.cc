@@ -1181,7 +1181,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   global_feet_pos.col(0) = current_global_stance_foot_pos;
   for (int i = 1; i < param_.n_step + 1; i++) {
     global_feet_pos.col(i) =
-        global_feet_pos.col(i - 1) + global_delta_footstep_.col(i);
+        global_feet_pos.col(i - 1) + global_delta_footstep_.col(i - 1);
   }
   // Get global com position (for both start and end of each mode)
   // This is used to generate *relative* swing foot pos in the controller thread
@@ -1194,12 +1194,13 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     if (!left_stance) local_com_pos.col(i)(1) *= -1;
     left_stance = !left_stance;
   }
-  for (int i = 0; i < param_.n_step + 1; i++) {
-    local_com_pos.col(i) += current_local_stance_foot_pos.head<2>();
-  }
   MatrixXd global_com_pos(2, param_.n_step + 1);
+  // We only need to rotate because the ROM start is rt stance foot.
   RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
                                       local_com_pos, &global_com_pos);
+  for (int i = 0; i < param_.n_step + 1; i++) {
+    global_com_pos.col(i) += global_feet_pos.col(i);
+  }
 
   // Unit Testing RotateBetweenGlobalAndLocalFrame
   /*MatrixXd local_x0_FOM2 = global_x0_FOM_;

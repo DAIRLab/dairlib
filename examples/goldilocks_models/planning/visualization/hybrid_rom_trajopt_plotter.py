@@ -146,21 +146,25 @@ def PlotGlobalFeetAndCoMPosition(rom_traj):
   global_feet_pos_time = rom_traj.get_global_feet_pos_time()
   global_com_pos = rom_traj.get_global_com_pos()
   global_com_pos_time = rom_traj.get_global_com_pos_time()
+  print("global_feet_pos = \n", global_feet_pos)
+  print("global_com_pos = \n", global_com_pos)
+
 
   plt.figure("Feet and CoM positions", figsize=figsize)
-
   plt.title("current time = %.3f" % global_com_pos_time[0])
 
   palette = ['r', 'g', 'b']
   for i in range(global_feet_pos.shape[1]):
-    plt.plot(global_feet_pos[0,i],global_feet_pos[1,i], palette[i] + 'x')
+    plt.plot(global_feet_pos[0,i],global_feet_pos[1,i], palette[i] + 'x', markersize=12)
     plt.plot(global_com_pos[0,i],global_com_pos[1,i], palette[i] + 'o')
 
   plt.xlabel('x (m)')
   plt.ylabel('y (m)')
   plt.axis('scaled')
-  plt.xlim([-1, 1])
-  plt.ylim([-1, 1])
+  lb = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
+  ub = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
+  plt.xlim([lb[0] - 1, lb[1] + 1])
+  plt.ylim([ub[0] - 1, ub[1] + 1])
 
 
 

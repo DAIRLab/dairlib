@@ -771,18 +771,27 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   }
 
   // Set initial ROM state for the trajopt constraint
-  VectorXd init_rom_state(6);
+  VectorXd init_rom_state_mirrored(6);
   for (int i = 0; i < 6; i++) {
+    // Mirror the current feedback values
+    init_rom_state_from_current_feedback(1) *= -1;
+    init_rom_state_from_current_feedback(4) *= -1;
+
     // Get the init state value for the constraint
-    init_rom_state = (set_init_state_from_prev_solution.find(i) ==
-                      set_init_state_from_prev_solution.end())
-                         ? init_rom_state_from_current_feedback
-                         : init_rom_state_from_prev_sol;
+    init_rom_state_mirrored = (set_init_state_from_prev_solution.find(i) ==
+                               set_init_state_from_prev_solution.end())
+                                  ? init_rom_state_from_current_feedback
+                                  : init_rom_state_from_prev_sol;
   }
   // TODO: might want to fix the init height pos to a desired constant and vel
   //  to 0?
-  init_rom_state(2) = desired_com_height_;
-  init_rom_state(5) = 0;
+  init_rom_state_mirrored(2) = desired_com_height_;
+  init_rom_state_mirrored(5) = 0;
+  cout << "init_rom_state_from_current_feedback = "
+       << init_rom_state_from_current_feedback.transpose() << endl;
+  cout << "init_rom_state_from_prev_sol = "
+       << init_rom_state_from_prev_sol.transpose() << endl;
+  cout << "init_rom_state = " << init_rom_state_mirrored.transpose() << endl;
 
   ///
   ///
@@ -854,8 +863,8 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     left_step = left_step_;
     right_step = right_step_;
   } else {
-    left_step << 2 * des_xy_vel_com.at(0)(0) * stride_period_, -0.15;
-    right_step << 2 * des_xy_vel_com.at(0)(0) * stride_period_, 0.15;
+    left_step << 2 * des_xy_pos_com.at(0)(0) * stride_period_, -0.15;
+    right_step << 2 * des_xy_pos_com.at(0)(0) * stride_period_, 0.15;
   }
   vector<Vector2d> reg_local_footstep(param_.n_step, Vector2d());
   bool left_stance = start_with_left_stance;
@@ -904,9 +913,9 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // Construct
   PrintStatus("\nConstructing optimization problem...");
   HybridRomTrajOptCassie trajopt(
-      num_time_samples_, Q_, R_, *rom_, init_rom_state, max_swing_distance_,
-      start_with_left_stance, param_.zero_touchdown_impact, relax_index_,
-      param_, num_time_samples_ds_,
+      num_time_samples_, Q_, R_, *rom_, init_rom_state_mirrored,
+      max_swing_distance_, start_with_left_stance, param_.zero_touchdown_impact,
+      relax_index_, param_, num_time_samples_ds_,
       first_mode_duration <= double_support_duration_,
       idx_const_rom_vel_during_double_support_,
       print_level_ > 1 /*print_status*/);
@@ -925,11 +934,13 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
         param_.gains.max_lipm_step_length / 2,
         param_.gains.right_limit_wrt_pelvis, desired_com_height_);
   } else {
-    // TODO: check if adding predicted step is necessary after using
-    //  lipm_mpc_and_ik
-    PrintEssentialStatus(
-        "REMINDER!! check if adding predicted step is necessary after using "
-        "lipm_mpc_and_ik");
+    if (use_lipm_mpc_and_ik_) {
+      // TODO: check if adding predicted step is necessary after using
+      //  lipm_mpc_and_ik
+      PrintEssentialStatus(
+          "REMINDER!! check if adding predicted step is necessary after using "
+          "lipm_mpc_and_ik");
+    }
 
     Vector2d des_predicted_xy_vel;
     DRAKE_DEMAND(param_.n_step > 1);
@@ -952,22 +963,25 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       adjusted_final_position, adjusted_final_position,
       trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));*/
 
-  // Add rom state in cost
-  // TODO: modify this so that we penalize for the position/vel tracking
+  // Add target position cost for final rom position
+  //  trajopt.AddFinalGoalPositionCost(param_.gains.w_reg_xy,
+  //                                   des_xy_pos_com.at(param_.n_step - 1));
+  // Testing
+  trajopt.AddFinalGoalPositionCost(param_.gains.w_reg_xy, Vector2d::Zero());
+  // Add small regularization cost on rom state
   trajopt.AddRomRegularizationCost(h_reg_, y_reg_, dy_reg_, tau_reg_,
                                    first_mode_knot_idx, param_.gains.w_rom_reg);
 
+  PrintStatus("Initial guesses ===============");
+
   // Default initial guess to avoid singularity (which messes with gradient)
+  // These guesses are just default values, and will be overwritten afterward.
   for (int i = 0; i < num_time_samples_.size(); i++) {
     for (int j = 0; j < num_time_samples_.at(i); j++) {
       trajopt.SetInitialGuess(
           (trajopt.state_vars_by_mode(i, j))(idx_state_init_to_1_), 1);
     }
   }
-
-  PrintStatus("Initial guesses ===============");
-
-  // TODO: continue editing from here.
 
   // Initial guess for all variables
   if (counter_ == 0 && !param_.init_file.empty()) {
@@ -1007,7 +1021,8 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     }
     trajopt.SetHeuristicInitialGuessForCascadedLipm(param_, des_xy_pos_com,
                                                     des_xy_vel_com);
-    trajopt.SetInitialGuess(trajopt.state_vars_by_mode(0, 0), init_rom_state);
+    trajopt.SetInitialGuess(trajopt.state_vars_by_mode(0, 0),
+                            init_rom_state_mirrored);
 
     // Avoid zero-value initial guess!
     // This sped up the solve and sometimes unstuck the solver!
@@ -1171,9 +1186,15 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   global_feet_pos << current_global_stance_foot_pos, global_footstep_;
   // Get global com position (for both start and end of each mode)
   MatrixXd local_com_pos(2, param_.n_step + 1);
+  left_stance = start_with_left_stance;
   for (int i = 0; i < param_.n_step + 1; i++) {
     local_com_pos.col(i) =
         result.GetSolution(trajopt.state_vars_by_mode(i, 0).head<2>());
+    if (!left_stance) local_com_pos.col(i)(1) *= -1;
+    left_stance = !left_stance;
+  }
+  for (int i = 0; i < param_.n_step + 1; i++) {
+    local_com_pos.col(i) += current_local_stance_foot_pos.head<2>();
   }
   MatrixXd global_com_pos(2, param_.n_step + 1);
   RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
@@ -1634,6 +1655,11 @@ void CassiePlannerWithOnlyRom::PrintCost(
       solvers::EvalCostGivenSolution(result, trajopt.rom_input_cost_bindings_);
   if (cost_u > 0) {
     cout << "cost_u = " << cost_u << endl;
+  }
+  double rom_goal_pos_cost = solvers::EvalCostGivenSolution(
+      result, trajopt.rom_goal_pos_cost_bindings_);
+  if (rom_goal_pos_cost > 0) {
+    cout << "rom_goal_pos_cost = " << rom_goal_pos_cost << endl;
   }
   double rom_regularization_cost = solvers::EvalCostGivenSolution(
       result, trajopt.rom_regularization_cost_bindings_);

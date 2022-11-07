@@ -54,7 +54,7 @@ class HybridRomTrajOpt
   HybridRomTrajOpt(
       const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
       const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
-      const Eigen::VectorXd& init_rom_state,
+      const Eigen::VectorXd& init_rom_state_mirrored,
       const std::vector<double>& max_swing_distance,
       bool start_with_left_stance, bool zero_touchdown_impact,
       const std::set<int>& relax_index, const PlannerSetting& param,
@@ -64,6 +64,8 @@ class HybridRomTrajOpt
       bool print_status = true);
   ~HybridRomTrajOpt() override {}
 
+  void AddFinalGoalPositionCost(double w_goal_pos,
+                                const Eigen::VectorXd& des_xy_pos_global);
   void AddConstraintAndCostForLastFootStep(
       double w_predict_lipm_v, const Eigen::VectorXd& des_predicted_xy_vel,
       double stride_period, double com_height);
@@ -164,6 +166,7 @@ class HybridRomTrajOpt
   // Cost bindings
   std::vector<Binding<Cost>> rom_state_cost_bindings_;
   std::vector<Binding<Cost>> rom_input_cost_bindings_;
+  std::vector<Binding<Cost>> rom_goal_pos_cost_bindings_;
   std::vector<Binding<Cost>> rom_regularization_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_quat_cost_bindings_;
   std::vector<Binding<Cost>> fom_reg_xy_pos_cost_bindings_;
@@ -227,7 +230,7 @@ class HybridRomTrajOptCassie : public HybridRomTrajOpt {
   HybridRomTrajOptCassie(
       const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
       const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
-      const Eigen::VectorXd& init_rom_state,
+      const Eigen::VectorXd& init_rom_state_mirrored,
       const std::vector<double>& max_swing_distance,
       bool start_with_left_stance, bool zero_touchdown_impact,
       const std::set<int>& relax_index, const PlannerSetting& param,

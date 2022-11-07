@@ -47,7 +47,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 HybridRomTrajOpt::HybridRomTrajOpt(
     const vector<int>& num_time_samples, const MatrixXd& Q, const MatrixXd& R,
-    const ReducedOrderModel& rom, const VectorXd& init_rom_state,
+    const ReducedOrderModel& rom, const VectorXd& init_rom_state_mirrored,
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
     const PlannerSetting& param, const vector<int>& num_time_samples_ds,
@@ -162,11 +162,13 @@ HybridRomTrajOpt::HybridRomTrajOpt(
   for (int i = 0; i < 6; i++) {
     // Impose constraint (either relaxed ot not)
     if (relax_index.find(i) == relax_index.end()) {
-      AddBoundingBoxConstraint(init_rom_state(i), init_rom_state(i), z_00(i));
+      AddBoundingBoxConstraint(init_rom_state_mirrored(i),
+                               init_rom_state_mirrored(i), z_00(i));
     } else {
-      // Constraint: init_rom_state(i) == z_00(i) + eps_rom_var_(idx_eps)
+      // Constraint: init_rom_state_mirrored(i) == z_00(i) +
+      // eps_rom_var_(idx_eps)
       AddLinearConstraint(
-          A, init_rom_state(i), init_rom_state(i),
+          A, init_rom_state_mirrored(i), init_rom_state_mirrored(i),
           {z_00.segment<1>(i), eps_rom_var_.segment<1>(idx_eps)});
       idx_eps++;
     }
@@ -187,13 +189,17 @@ HybridRomTrajOpt::HybridRomTrajOpt(
   VectorXDecisionVariable z_ff_post = state_vars_by_mode(num_modes_, 0);
   Eigen::RowVectorXd A_last_pos = Eigen::RowVectorXd::Ones(num_modes_ + 2);
   A_last_pos(0) = -1;
+  Eigen::RowVectorXd A_last_pos_mirrored = A_last_pos;
+  A_last_pos_mirrored(1) = -1;
+  // x
   AddLinearEqualityConstraint(
       A_last_pos, 0,
       {y_end_of_last_mode_rt_init_stance_foot_var_.segment<1>(0),
        z_ff_post.segment<1>(0),
        discrete_swing_foot_pos_rt_stance_foot_x_vars_});
+  // y
   AddLinearEqualityConstraint(
-      A_last_pos, 0,
+      A_last_pos_mirrored, 0,
       {y_end_of_last_mode_rt_init_stance_foot_var_.segment<1>(1),
        z_ff_post.segment<1>(1),
        discrete_swing_foot_pos_rt_stance_foot_y_vars_});
@@ -357,10 +363,22 @@ HybridRomTrajOpt::HybridRomTrajOpt(
   }
 }
 
+void HybridRomTrajOpt::AddFinalGoalPositionCost(
+    double w_goal_pos, const Eigen::VectorXd& des_xy_pos_global) {
+  rom_goal_pos_cost_bindings_.push_back(AddQuadraticErrorCost(
+      w_goal_pos * MatrixXd::Identity(2, 2), des_xy_pos_global,
+      y_end_of_last_mode_rt_init_stance_foot_var_));
+}
+
 void HybridRomTrajOpt::AddConstraintAndCostForLastFootStep(
     double w_predict_lipm_v, const Eigen::VectorXd& des_predicted_xy_vel,
     double stride_period, double com_height) {
   predicted_com_vel_var_ = NewContinuousVariables(2, "predicted_com_vel");
+  VectorXDecisionVariable z_f_post = state_vars_by_mode(num_modes_, 0);
+
+  // stance foot for after the planner's horizon
+  bool left_stance = ((num_modes_ % 2 == 0) && start_with_left_stance_) ||
+                     ((num_modes_ % 2 == 1) && !start_with_left_stance_);
 
   // Constraint for LIP dynamics to get `predicted_com_vel_var_`
   // Velocity at the end of mode after horizon. (Given the initial position and
@@ -377,11 +395,17 @@ void HybridRomTrajOpt::AddConstraintAndCostForLastFootStep(
   Eigen::RowVectorXd A(3);
   A << omega * std::sinh(omega * stride_period),
       std::cosh(omega * stride_period), -1;
-  VectorXDecisionVariable z_f_post = state_vars_by_mode(num_modes_, 0);
+  Eigen::RowVectorXd A_mirrored = A;
+  if (!left_stance) {
+    A_mirrored(0) *= -1;
+    A_mirrored(1) *= -1;
+  }
+  // x
   AddLinearEqualityConstraint(A, 0,
                               {z_f_post.segment<1>(0), z_f_post.segment<1>(3),
                                predicted_com_vel_var_.segment<1>(0)});
-  AddLinearEqualityConstraint(A, 0,
+  // y
+  AddLinearEqualityConstraint(A_mirrored, 0,
                               {z_f_post.segment<1>(1), z_f_post.segment<1>(4),
                                predicted_com_vel_var_.segment<1>(1)});
 
@@ -420,6 +444,7 @@ void HybridRomTrajOpt::AddCascadedLipmMPC(
     const std::vector<Eigen::VectorXd>& des_xy_vel, int n_step_lipm,
     double stride_period, double max_step_length, double min_step_width,
     double desired_height) {
+  cout << "WARNING: this function has not been tested yet\n";
   DRAKE_DEMAND(n_step_lipm > 0);
 
   // stance foot for after the planner's horizon
@@ -431,38 +456,44 @@ void HybridRomTrajOpt::AddCascadedLipmMPC(
   u_lipm_vars_ = NewContinuousVariables(2 * n_step_lipm, "u_lipm_vars");
 
   // Last step lipm mapping function
-  DRAKE_UNREACHABLE();  // TODO: need to consider mirroring in y axis for right
-                        //  stance
-  PrintStatus("Adding constraint -- lipm mapping for the last pose");
+  VectorXDecisionVariable z_ff_post = state_vars_by_mode(num_modes_, 0);
+  PrintStatus("Adding constraint -- lipm mapping for the last pose (x)");
   // Constraint:
   //   [CoM rt stance foot, CoM dot] = x_lipm_vars(0)
-  Eigen::RowVectorXd A_pos_map = Eigen::RowVectorXd::Ones(2);
-  A_pos_map << 1, -1;
+  Eigen::RowVectorXd A_state_map = Eigen::RowVectorXd::Ones(2);
+  A_state_map << 1, -1;
+  // 1a. pos x
   AddLinearEqualityConstraint(
-      A_pos_map, 0,
+      A_state_map, 0,
       {y_end_of_last_mode_rt_init_stance_foot_var_.segment<1>(0),
        x_lipm_vars_.segment<1>(0)});
+  // 1b. pos y
   AddLinearEqualityConstraint(
-      A_pos_map, 0,
+      A_state_map, 0,
       {y_end_of_last_mode_rt_init_stance_foot_var_.segment<1>(1),
        x_lipm_vars_.segment<1>(1)});
-  VectorXDecisionVariable z_ff_post = state_vars_by_mode(num_modes_, 0);
+  // 2a. vel x
   AddLinearEqualityConstraint(
-      A_pos_map, 0, {z_ff_post.segment<1>(3), x_lipm_vars_.segment<1>(2)});
+      A_state_map, 0, {z_ff_post.segment<1>(3), x_lipm_vars_.segment<1>(2)});
+  // 2b. vel y
+  if (!left_stance) {
+    A_state_map(0) = -1;
+  }
   AddLinearEqualityConstraint(
-      A_pos_map, 0, {z_ff_post.segment<1>(4), x_lipm_vars_.segment<1>(3)});
+      A_state_map, 0, {z_ff_post.segment<1>(4), x_lipm_vars_.segment<1>(3)});
+  PrintStatus("Adding constraint -- lipm mapping for the last pose (u)");
   // Add constraint for the last ROM position rt init stance foot
   // Constraint:
   //    u_lipm_vars(0) = last foot pose (originally the full state =
   //      step_1 + ... + step_n
   // => u_lipm_var(0) = sum(discrete_swing_foot_pos_rt_stance_foot_vars_)
   // => 0 = -u_lipm_var(0) + sum(discrete_swing_foot_pos_rt_stance_foot_vars_)
-  Eigen::RowVectorXd A_last_pos = Eigen::RowVectorXd::Ones(num_modes_ + 1);
-  A_last_pos(0) = -1;
-  AddLinearEqualityConstraint(A_last_pos, 0,
+  Eigen::RowVectorXd A_input_map = Eigen::RowVectorXd::Ones(num_modes_ + 1);
+  A_input_map(0) = -1;
+  AddLinearEqualityConstraint(A_input_map, 0,
                               {u_lipm_vars_.segment<1>(0),
                                discrete_swing_foot_pos_rt_stance_foot_x_vars_});
-  AddLinearEqualityConstraint(A_last_pos, 0,
+  AddLinearEqualityConstraint(A_input_map, 0,
                               {u_lipm_vars_.segment<1>(1),
                                discrete_swing_foot_pos_rt_stance_foot_y_vars_});
 
@@ -916,18 +947,19 @@ PiecewisePolynomial<double> HybridRomTrajOpt::ReconstructStateTrajectory(
 HybridRomTrajOptCassie::HybridRomTrajOptCassie(
     const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
     const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
-    const VectorXd& init_rom_state,
+    const VectorXd& init_rom_state_mirrored,
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
     const PlannerSetting& param, const std::vector<int>& num_time_samples_ds,
     bool start_in_double_support_phase,
     const std::set<int>& idx_constant_rom_vel_during_double_support,
     bool print_status)
-    : HybridRomTrajOpt(
-          num_time_samples, Q, R, rom, init_rom_state, max_swing_distance,
-          start_with_left_stance, zero_touchdown_impact, relax_index, param,
-          num_time_samples_ds, start_in_double_support_phase,
-          idx_constant_rom_vel_during_double_support, print_status) {}
+    : HybridRomTrajOpt(num_time_samples, Q, R, rom, init_rom_state_mirrored,
+                       max_swing_distance, start_with_left_stance,
+                       zero_touchdown_impact, relax_index, param,
+                       num_time_samples_ds, start_in_double_support_phase,
+                       idx_constant_rom_vel_during_double_support,
+                       print_status) {}
 
 void HybridRomTrajOptCassie::AddRomRegularizationCost(
     const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& y_guess,

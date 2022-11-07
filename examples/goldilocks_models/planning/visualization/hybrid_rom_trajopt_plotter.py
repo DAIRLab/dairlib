@@ -120,7 +120,7 @@ def main():
   """
   """
   animation_start_idx = 0
-  animation_end_idx = 80
+  animation_end_idx = 1
   for j in range(animation_start_idx, animation_end_idx):
     filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                str(j) + "_rom_trajectory"
@@ -145,6 +145,8 @@ def PlotGlobalFeetAndCoMPosition(rom_traj):
   global_com_pos_time = rom_traj.get_global_com_pos_time()
 
   plt.figure("Feet and CoM positions", figsize=figsize)
+
+  plt.title("current time = %.3f" % global_com_pos_time[0])
 
   palette = ['r', 'g', 'b']
   for i in range(global_feet_pos.shape[1]):

@@ -317,9 +317,15 @@ HybridRomTrajOpt::HybridRomTrajOpt(
     double ub_swing_y = left_limit_wrt_pelvis;
     //    cout << "left_stance = " << left_stance << endl;
     // 1. pre discrete event
-    if (mode != 0) {
-      // do nothing for the very fist mode (mode == 0), because the model is
+    if (!((mode == 0) || (mode == 1 && start_in_double_support_phase_))) {
+      // Do nothing for the very fist mode (mode == 0), because the model is
       // passive in continuous time and cannot change stance leg length
+      // Also do nothing if (mode == 1 and start_in_double_support_phase_).
+      // Because we don't have input to control it anyway. This would've
+      // overconstrained the case where the robot's COM is currently (close to)
+      // outside the support polygon during double support (often happens when
+      // desired footspread is too small)
+
       //      AddBoundingBoxConstraint(lb_swing_x, ub_swing_x, -z_f_pre(0));
       //      AddBoundingBoxConstraint(lb_swing_y, ub_swing_y, -z_f_pre(1));
       AddBoundingBoxConstraint(-ub_swing_x, -lb_swing_x, z_f_pre(0));
@@ -328,12 +334,20 @@ HybridRomTrajOpt::HybridRomTrajOpt(
       //      << endl;
     }
     // 2. post discrete event
-    //    AddBoundingBoxConstraint(lb_swing_x, ub_swing_x, z_f_post(0));
-    //    AddBoundingBoxConstraint(lb_swing_y, ub_swing_y, z_f_post(1));
-    AddBoundingBoxConstraint(-ub_swing_x, -lb_swing_x, z_f_post(0));
-    AddBoundingBoxConstraint(-ub_swing_y, -lb_swing_y, z_f_post(1));
-    //    cout << z_f_post(1) << ": " << lb_swing_y << ", " << ub_swing_y <<
-    //    endl;
+    if (!(mode == 0 && start_in_double_support_phase_)) {
+      // Do nothing if start_in_double_support_phase_. Because we don't have
+      // input to control it anyway. This would've
+      // overconstrained the case where the robot's COM is currently (close to)
+      // outside the support polygon during double support (often happens when
+      // desired footspread is too small)
+
+      //    AddBoundingBoxConstraint(lb_swing_x, ub_swing_x, z_f_post(0));
+      //    AddBoundingBoxConstraint(lb_swing_y, ub_swing_y, z_f_post(1));
+      AddBoundingBoxConstraint(-ub_swing_x, -lb_swing_x, z_f_post(0));
+      AddBoundingBoxConstraint(-ub_swing_y, -lb_swing_y, z_f_post(1));
+      //    cout << z_f_post(1) << ": " << lb_swing_y << ", " << ub_swing_y <<
+      //    endl;
+    }
 
     // Foot collision avoidance and step length
     PrintStatus("Adding constraint -- swing collision avoidance");

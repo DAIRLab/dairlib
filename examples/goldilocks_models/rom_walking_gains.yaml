@@ -130,19 +130,19 @@ right_limit_wrt_stance_ft: 0.02  #0.02 # 0.06  # This cannot be too big if we wa
 use_lipm_mpc_and_ik: false
 
 # Hybrid ROM MPC
-w_Q: 0           # I removed this because we have state regularization
-w_R: 2e-6
+w_Q: 0
+w_R: 0
 w_rom_reg: 1e-6  # reminder: should have at least a little bit of reg cost
-w_reg_xy: 0.1  #0.1 for not using IK; maybe 10 for using IK?
+w_reg_xy: 0.0  # setting to 0 seems to provide better tracking of desired vel (doesn't diverge)
 w_reg_xy_vel: 0.1
 w_predict_lipm_p: .1
 w_predict_lipm_v: 0.1
 # Below is not used for hybrid ROM MPC
-w_reg_quat: 1
-w_reg_z: 50  # 10
-w_reg_joints: 0.02
-w_reg_hip_yaw: 1  # should use 1? 5?
-w_reg_vel: 1e-6
+w_reg_quat: 0
+w_reg_z: 0
+w_reg_joints: 0
+w_reg_hip_yaw: 0
+w_reg_vel: 0
 
 # Without LIPM MPC and IK
 #w_Q: 0           # I removed this because we have state regularization

@@ -889,6 +889,8 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     des_com_vel_rt_stance_foot_at_start_of_mode << des_xy_vel_com.at(0)(0),
         param_.gains.y_vel_offset;
   }
+  cout << "des_com_pos = " << des_com_pos_rt_stance_foot_at_start_of_mode.transpose() << endl;
+  cout << "des_com_vel = " << des_com_vel_rt_stance_foot_at_start_of_mode.transpose() << endl;
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC

@@ -793,12 +793,12 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
     // Saving data for debugging
     global_preprocess_x_lipm_ = local_preprocess_x_lipm;
     global_preprocess_u_lipm_ = local_preprocess_u_lipm;
-    RotatePosBetweenGlobalAndLocalFrame(false, false, quat_xyz_shift,
-                                        local_preprocess_x_lipm,
-                                        &global_preprocess_x_lipm_);
-    RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                        local_preprocess_u_lipm,
-                                        &global_preprocess_u_lipm_);
+    TransformBetweenGlobalAndLocalFrame2D(false, false, quat_xyz_shift,
+                                          local_preprocess_x_lipm,
+                                          &global_preprocess_x_lipm_);
+    TransformBetweenGlobalAndLocalFrame2D(false, true, quat_xyz_shift,
+                                          local_preprocess_u_lipm,
+                                          &global_preprocess_u_lipm_);
     // Run IK to get desired full state
     if (lipm_ik_success) {
       lipm_ik_success = GetDesiredFullStateFromLipmMPCSol(
@@ -1175,17 +1175,17 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       result.GetSolution(trajopt.x0_vars_by_mode(param_.n_step));
   global_x0_FOM_ = local_x0_FOM;
   global_xf_FOM_ = local_xf_FOM;
-  RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, local_x0_FOM,
-                                   &global_x0_FOM_);
-  RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, local_xf_FOM,
-                                   &global_xf_FOM_);
+  TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift, local_x0_FOM,
+                                        &global_x0_FOM_);
+  TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift, local_xf_FOM,
+                                        &global_xf_FOM_);
 
-  // Unit Testing RotateBetweenGlobalAndLocalFrame
+  // Unit Testing TransformBetweenGlobalAndLocalFrame3D
   /*MatrixXd local_x0_FOM2 = global_x0_FOM_;
   MatrixXd local_xf_FOM2 = global_xf_FOM_;
-  RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
+  TransformBetweenGlobalAndLocalFrame3D(true, quat_xyz_shift, global_x0_FOM_,
                                    &local_x0_FOM2);
-  RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_xf_FOM_,
+  TransformBetweenGlobalAndLocalFrame3D(true, quat_xyz_shift, global_xf_FOM_,
                                    &local_xf_FOM2);
   DRAKE_DEMAND((local_x0_FOM2 - local_x0_FOM).norm() < 1e-14);
   DRAKE_DEMAND((local_xf_FOM2 - local_xf_FOM).norm() < 1e-14);*/
@@ -1241,10 +1241,10 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
   if (param_.n_step_lipm > 1) {
     global_x_lipm_ = local_x_lipm_;
     global_u_lipm_ = local_u_lipm_;
-    RotatePosBetweenGlobalAndLocalFrame(false, false, quat_xyz_shift,
-                                        local_x_lipm_, &global_x_lipm_);
-    RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                        local_u_lipm_, &global_u_lipm_);
+    TransformBetweenGlobalAndLocalFrame2D(false, false, quat_xyz_shift,
+                                          local_x_lipm_, &global_x_lipm_);
+    TransformBetweenGlobalAndLocalFrame2D(false, true, quat_xyz_shift,
+                                          local_u_lipm_, &global_u_lipm_);
   }
 
   ///
@@ -1268,9 +1268,9 @@ void CassiePlannerWithMixedRomFom::SolveTrajOpt(
       local_regu_state_augmented.middleCols<1>(1 + i) = reg_x_FOM.at(2 * i);
     }
     global_regularization_state = local_regu_state_augmented;
-    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift,
-                                     local_regu_state_augmented,
-                                     &global_regularization_state);
+    TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift,
+                                          local_regu_state_augmented,
+                                          &global_regularization_state);
     //    cout << "global_regularization_state = \n"
     //         << global_regularization_state << endl;
     //    cout << "local_regu_state_augmented = \n"
@@ -1810,18 +1810,18 @@ void CassiePlannerWithMixedRomFom::CreateDesiredBodyPosAndVel(
   }*/
 }
 
-void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
-    bool rotate_from_global_to_local, const VectorXd& quat_xyz_shift,
+void CassiePlannerWithMixedRomFom::TransformBetweenGlobalAndLocalFrame3D(
+    bool transform_from_global_to_local, const VectorXd& quat_xyz_shift,
     const MatrixXd& original_x_FOM, MatrixXd* rotated_x_FOM) const {
   Quaterniond relative_quat =
-      rotate_from_global_to_local
+      transform_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
                         quat_xyz_shift(3))
           : Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
                         quat_xyz_shift(3))
                 .conjugate();
   Matrix3d relative_rot_mat = relative_quat.toRotationMatrix();
-  double sign = rotate_from_global_to_local ? 1 : -1;
+  double sign = transform_from_global_to_local ? 1 : -1;
   for (int j = 0; j < original_x_FOM.cols(); j++) {
     Quaterniond rotated_x_quat =
         relative_quat *
@@ -1829,7 +1829,7 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
                     original_x_FOM.col(j)(2), original_x_FOM.col(j)(3));
     rotated_x_FOM->col(j).segment<4>(0) << rotated_x_quat.w(),
         rotated_x_quat.vec();
-    if (rotate_from_global_to_local) {
+    if (transform_from_global_to_local) {
       rotated_x_FOM->col(j).segment<3>(4)
           << relative_rot_mat * (original_x_FOM.col(j).segment<3>(4) +
                                  sign * quat_xyz_shift.segment<3>(4));
@@ -1879,14 +1879,14 @@ void CassiePlannerWithMixedRomFom::RotateBetweenGlobalAndLocalFrame(
   }*/
 }
 
-void CassiePlannerWithMixedRomFom::RotatePosBetweenGlobalAndLocalFrame(
-    bool rotate_from_global_to_local, bool position_only,
+void CassiePlannerWithMixedRomFom::TransformBetweenGlobalAndLocalFrame2D(
+    bool transform_from_global_to_local, bool position_only,
     const Eigen::VectorXd& quat_xyz_shift, const Eigen::MatrixXd& original_x,
     Eigen::MatrixXd* rotated_x) const {
   DRAKE_DEMAND(quat_xyz_shift(1) < 1e-14);  // rotate in z axis
   DRAKE_DEMAND(quat_xyz_shift(2) < 1e-14);  // rotate in z axis
   Quaterniond relative_quat =
-      rotate_from_global_to_local
+      transform_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
                         quat_xyz_shift(3))
           : Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
@@ -1894,10 +1894,10 @@ void CassiePlannerWithMixedRomFom::RotatePosBetweenGlobalAndLocalFrame(
                 .conjugate();
   Matrix2d relative_rot_mat =
       relative_quat.toRotationMatrix().topLeftCorner<2, 2>();
-  double sign = rotate_from_global_to_local ? 1 : -1;
+  double sign = transform_from_global_to_local ? 1 : -1;
   for (int j = 0; j < original_x.cols(); j++) {
     // position
-    if (rotate_from_global_to_local) {
+    if (transform_from_global_to_local) {
       rotated_x->col(j).head<2>()
           << relative_rot_mat * (original_x.col(j).head<2>() +
                                  sign * quat_xyz_shift.segment<2>(4));
@@ -2180,10 +2180,10 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     // TODO: also need to do the same thing to predicted_com_vel_
     MatrixXd local_x0_FOM = global_x0_FOM_;
     MatrixXd local_xf_FOM = global_xf_FOM_;
-    RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
-                                     &local_x0_FOM);
-    RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_xf_FOM_,
-                                     &local_xf_FOM);
+    TransformBetweenGlobalAndLocalFrame3D(true, quat_xyz_shift, global_x0_FOM_,
+                                          &local_x0_FOM);
+    TransformBetweenGlobalAndLocalFrame3D(true, quat_xyz_shift, global_xf_FOM_,
+                                          &local_xf_FOM);
 
     // Get time breaks of current problem (not solved yet so read from guesses)
     VectorXd times =
@@ -2284,10 +2284,10 @@ void CassiePlannerWithMixedRomFom::WarmStartGuess(
     if (param_.n_step_lipm > 1) {
       MatrixXd local_x_lipm = global_x_lipm_;
       MatrixXd local_u_lipm = global_u_lipm_;
-      RotatePosBetweenGlobalAndLocalFrame(true, false, quat_xyz_shift,
-                                          global_x_lipm_, &local_x_lipm);
-      RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
-                                          global_u_lipm_, &local_u_lipm);
+      TransformBetweenGlobalAndLocalFrame2D(true, false, quat_xyz_shift,
+                                            global_x_lipm_, &local_x_lipm);
+      TransformBetweenGlobalAndLocalFrame2D(true, true, quat_xyz_shift,
+                                            global_u_lipm_, &local_u_lipm);
 
       // The global_fsm_idx actually start from
       //    `global_fsm_idx + n_step`
@@ -2351,10 +2351,10 @@ void CassiePlannerWithMixedRomFom::ResolveWithAnotherSolver(
         result.GetSolution(trajopt.x0_vars_by_mode(trajopt.num_modes()));
     MatrixXd global_x0_FOM = x0_each_mode;
     MatrixXd global_xf_FOM = xf_each_mode;
-    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, x0_each_mode,
-                                     &global_x0_FOM);
-    RotateBetweenGlobalAndLocalFrame(false, quat_xyz_shift, xf_each_mode,
-                                     &global_xf_FOM);
+    TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift, x0_each_mode,
+                                          &global_x0_FOM);
+    TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift, xf_each_mode,
+                                          &global_xf_FOM);
     writeCSV(param_.dir_data + prefix + "local_x0_FOM_snopt.csv", x0_each_mode);
     writeCSV(param_.dir_data + prefix + "local_xf_FOM_snopt.csv", xf_each_mode);
     writeCSV(param_.dir_data + prefix + "global_x0_FOM_snopt.csv",

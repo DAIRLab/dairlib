@@ -17,6 +17,7 @@ import pydairlib.multibody
 from pydairlib.multibody.kinematic import DistanceEvaluator
 from pydairlib.cassie.cassie_utils import *
 
+import argparse
 
 """
 This script is modified from `rom_trajopt_plotter.py` 
@@ -56,28 +57,28 @@ def main():
 
 
   """
-  Inputs
+  File argumnets
   """
+  ### argument parser
+  parser = argparse.ArgumentParser()
 
-  filename = ""
-  # # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/planning/robot_1/data/rom_trajectory')
-  # # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
-  # # filename = abs_path + "/rom_trajectory"
-  # # filename = "../rom_trajectory"
-  # if len(sys.argv) >= 2 and sys.argv[1] != "save":
-  #   if sys.argv[1][0] == "/":
-  #     filename = sys.argv[1]
-  #   else:
-  #     filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-  #                sys.argv[1] + "_rom_trajectory"
-  # else:
-  #   filename = FindResourceOrThrow(
-  #     '../dairlib_data/goldilocks_models/planning/robot_1/data/debug_rom_trajectory')
+  parser.add_argument('--debug', action='store_true')
+  parser.add_argument('--no-debug', dest='debug', action='store_false')
+  parser.set_defaults(debug=False)
 
-  # print("log file name = " + filename)
-  # rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename, lightweight_log)
+  parser.add_argument("--start_idx", help="", default=0, type=int)
+  parser.add_argument("--end_idx", help="", default=-1, type=int)
+  # parser.add_argument("--robot_option", help="0 is five-link robot. 1 is cassie_fixed_spring", default=1, type=int, choices=[0, 1])
+  parser.add_argument("--path", help="", default="", type=str)
+  args = parser.parse_args()
 
-  # For saving figures
+  debug = args.debug
+  start_idx = args.start_idx
+  end_idx = args.end_idx if args.end_idx > 0 else start_idx + 1
+
+  """
+  Setup for saving figures
+  """
   global savefig, figsize, save_path
   savefig = False
   figsize = (6.4, 4.8)
@@ -89,9 +90,27 @@ def main():
   username = getpass.getuser()
   save_path = "/home/" + username + "/"
 
-  print("filename = " + filename)
   print("savefig = " + str(savefig))
   print("save_path = " + save_path)
+
+  """
+  Setup file path
+  """
+  filepath = ""
+  if len(args.path) > 0:
+    filepath = args.path
+  else: 
+    if debug:
+      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + "debug" + "_rom_trajectory"
+    else:
+      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + str(start_idx) + "_rom_trajectory"
+
+  print("filepath = " + filepath)
+
+  """
+  Some other setups
+  """
+  animate = (end_idx - start_idx) > 1
 
 
   """
@@ -99,18 +118,20 @@ def main():
   """
   lightweight_log = False
 
-  animation_start_idx = 0
-  animation_end_idx = 40
-  # animation_end_idx = animation_start_idx + 1
+  # Manual overwrite
+  # start_idx = 270
+  # end_idx = 40
+  # end_idx = start_idx + 1
+
+  # filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+  #            str(start_idx) + "_rom_trajectory"
+  # filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+  #            "debug" + "_rom_trajectory"
 
   """
   States, inputs trajectories
   """
-  filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-             str(animation_start_idx) + "_rom_trajectory"
-  # filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-  #            "debug" + "_rom_trajectory"
-  rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename, lightweight_log)
+  rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
   PlotState(rom_traj, 0, rom_traj.GetStateSamples(0).shape[0])
 
   if not lightweight_log:
@@ -141,14 +162,14 @@ def main():
 
   """
   """
-  if (animation_end_idx - animation_start_idx) > 1:
+  if animate:
     x_axis_is_clock = False
 
-    time_vec = np.zeros(animation_end_idx - animation_start_idx)
-    for j in range(animation_start_idx, animation_end_idx):
-      filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+    time_vec = np.zeros(end_idx - start_idx)
+    for j in range(start_idx, end_idx):
+      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                  str(j) + "_rom_trajectory"
-      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename, lightweight_log)
+      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
       time_vec[j] = rom_traj.get_global_com_pos_time()[0]
     loop_time = np.diff(time_vec)
     # import pdb; pdb.set_trace()
@@ -165,14 +186,14 @@ def main():
     # plt.show()  
 
 
-  if (animation_end_idx - animation_start_idx) > 1:
+  if animate:
     # real_time_rate = 0.1
     # prev_wall_time = -1 
     # prev_sim_time = -1
-    for j in range(animation_start_idx, animation_end_idx):
-      filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+    for j in range(start_idx, end_idx):
+      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                  str(j) + "_rom_trajectory"
-      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename, lightweight_log)
+      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
 
       # if prev_wall_time > 0:
       #   while(real_time_rate * (time.time() - prev_wall_time) < (rom_traj.get_global_com_pos_time()[0] - prev_sim_time)):

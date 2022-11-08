@@ -99,12 +99,12 @@ class HybridRomPlannerTrajectory : public LcmTrajectory {
   };
   Eigen::VectorXd get_current_quat_xyz_shift() const {
     return GetTrajectory("current_quat_xyz_shift")
-        .datapoints.row(0)
+        .datapoints.col(0)
         .transpose();
   };
   Eigen::VectorXd get_current_stance_foot_pos() const {
     return GetTrajectory("current_stance_foot_pos")
-        .datapoints.row(0)
+        .datapoints.col(0)
         .transpose();
   };
 

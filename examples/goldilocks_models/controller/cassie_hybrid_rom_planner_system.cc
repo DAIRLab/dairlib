@@ -761,6 +761,11 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   this->plant_control_.CalcPointsPositions(
       *context_plant_control_, stance_toe_mid.second, stance_toe_mid.first,
       plant_control_.world_frame(), &current_local_stance_foot_pos);
+  drake::VectorX<double> current_local_swing_foot_pos(3);
+  const auto& swing_toe_mid = start_with_left_stance ? right_mid_ : left_mid_;
+  this->plant_control_.CalcPointsPositions(
+      *context_plant_control_, swing_toe_mid.second, swing_toe_mid.first,
+      plant_control_.world_frame(), &current_local_swing_foot_pos);
 
   ///
   /// Get initial ROM state
@@ -795,11 +800,16 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   //  to 0?
   init_rom_state_mirrored(2) = desired_com_height_;
   init_rom_state_mirrored(5) = 0;
-//  cout << "init_rom_state_from_current_feedback = "
-//       << init_rom_state_from_current_feedback.transpose() << endl;
-//  cout << "init_rom_state_from_prev_sol = "
-//       << init_rom_state_from_prev_sol.transpose() << endl;
-//  cout << "init_rom_state = " << init_rom_state_mirrored.transpose() << endl;
+  //  cout << "init_rom_state_from_current_feedback = "
+  //       << init_rom_state_from_current_feedback.transpose() << endl;
+  //  cout << "init_rom_state_from_prev_sol = "
+  //       << init_rom_state_from_prev_sol.transpose() << endl;
+  //  cout << "init_rom_state = " << init_rom_state_mirrored.transpose() <<
+  //  endl;
+
+  // Init footstep
+  Vector2d init_footstep =
+      (current_local_swing_foot_pos - current_local_stance_foot_pos).head<2>();
 
   ///
   ///
@@ -895,9 +905,6 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   PrintEssentialStatus("first_mode_knot_idx  = " +
                        to_string(first_mode_knot_idx));
 
-  /*
-  // Currently not using max_swing_distance
-
   // Maximum swing foot travel distance
   // Update date the step length of the first mode
   // Take into account the double stance duration
@@ -911,17 +918,21 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // imposed on the two contact points.
   // Ideally we should impose the travel distance constraint through the two
   // contact points, so that we don't need this artificial slack
+  // TODO: we don't need slack now because we don't use full model.
+  // TODO: we probably don't even need distance cosntraint during swing phase
+  //  (so that it doesn't affect the swing foot tracking towards the end of
+  //  swing phase)
   double slack_to_avoid_overconstraint = 0.01;  // 0.01;
   max_swing_distance_[0] =
       std::max(slack_to_avoid_overconstraint,
                max_foot_speed_first_mode * remaining_single_support_duration);
   PrintEssentialStatus("remaining_time_til_touchdown  = " +
-                       to_string(remaining_single_support_duration));*/
+                       to_string(remaining_single_support_duration));
 
   // Construct
   PrintStatus("\nConstructing optimization problem...");
   HybridRomTrajOptCassie trajopt(
-      num_time_samples_, Q_, R_, *rom_, init_rom_state_mirrored,
+      num_time_samples_, Q_, R_, *rom_, init_rom_state_mirrored, init_footstep,
       max_swing_distance_, start_with_left_stance, param_.zero_touchdown_impact,
       relax_index_, param_, num_time_samples_ds_,
       first_mode_duration <= double_support_duration_,

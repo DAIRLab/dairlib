@@ -54,7 +54,7 @@ class HybridRomTrajOpt
   HybridRomTrajOpt(
       const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
       const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
-      const Eigen::VectorXd& init_rom_state_mirrored,
+      const Eigen::VectorXd& init_rom_state_mirrored, const Eigen::VectorXd& init_relative_footstep,
       const std::vector<double>& max_swing_distance,
       bool start_with_left_stance, bool zero_touchdown_impact,
       const std::set<int>& relax_index, const PlannerSetting& param,
@@ -230,7 +230,7 @@ class HybridRomTrajOptCassie : public HybridRomTrajOpt {
   HybridRomTrajOptCassie(
       const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
       const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
-      const Eigen::VectorXd& init_rom_state_mirrored,
+      const Eigen::VectorXd& init_rom_state_mirrored,const Eigen::VectorXd& init_relative_footstep,
       const std::vector<double>& max_swing_distance,
       bool start_with_left_stance, bool zero_touchdown_impact,
       const std::set<int>& relax_index, const PlannerSetting& param,

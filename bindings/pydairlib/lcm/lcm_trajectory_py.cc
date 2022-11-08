@@ -137,6 +137,8 @@ PYBIND11_MODULE(lcm_trajectory, m) {
            &HybridRomPlannerTrajectory::get_global_com_pos)
       .def("get_global_com_pos_time",
            &HybridRomPlannerTrajectory::get_global_com_pos_time)
+      .def("get_current_quat_xyz_shift",
+           &HybridRomPlannerTrajectory::get_current_quat_xyz_shift)
       .def("get_stance_foot",
            &HybridRomPlannerTrajectory::get_stance_foot);
 }

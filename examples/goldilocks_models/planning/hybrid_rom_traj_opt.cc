@@ -48,6 +48,7 @@ using drake::trajectories::PiecewisePolynomial;
 HybridRomTrajOpt::HybridRomTrajOpt(
     const vector<int>& num_time_samples, const MatrixXd& Q, const MatrixXd& R,
     const ReducedOrderModel& rom, const VectorXd& init_rom_state_mirrored,
+    const VectorXd& init_relative_footstep,
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
     const PlannerSetting& param, const vector<int>& num_time_samples_ds,
@@ -353,11 +354,37 @@ HybridRomTrajOpt::HybridRomTrajOpt(
     AddBoundingBoxConstraint(lb_swing_rt_stance_y, ub_swing_rt_stance_y,
                              touchdown_foot_var_y);
 
-    // TODO: I dont' have a constraint on the distance between the current swing
-    //  foot location and the desired touchdown location (but this might not be
-    //  necessary)
-    //  That is, we don't use `max_swing_distance`. I commented out the
-    //  calculation in `CassiePlannerWithOnlyRom`.
+    // We need distance constraint on the swing foot for the first mode, because
+    // we have double support phase where the "swing foot" cannot move.
+    if (mode == 0) {
+      PrintStatus("Adding constraint -- swing distance");
+      // Linear version
+      // Variables:
+      //   init_footstep
+      //   touchdown_footstep (decision variable)
+      //   max_distance
+      // Constraints:
+      //   -max_distance < touchdown_footstep - init_footstep < max_distance
+      // => init_footstep - max_distance <
+      //              touchdown_footstep < init_footstep + max_distance
+      AddBoundingBoxConstraint(
+          init_relative_footstep(0) - max_swing_distance.at(mode),
+          init_relative_footstep(0) + max_swing_distance.at(mode),
+          touchdown_foot_var_x);
+      AddBoundingBoxConstraint(
+          init_relative_footstep(1) - max_swing_distance.at(mode),
+          init_relative_footstep(1) + max_swing_distance.at(mode),
+          touchdown_foot_var_y);
+      // Quadratic version
+      /*auto sw_ft_dist_constraint =
+          std::make_shared<drake::solvers::QuadraticConstraint>(
+              2 * MatrixXd::Identity(3, 3), -2 * init_relative_footstep,
+              -init_relative_footstep.squaredNorm(),
+              std::pow(max_swing_distance.at(mode), 2) -
+                  init_relative_footstep.squaredNorm());
+      AddConstraint(sw_ft_dist_constraint,
+                    {touchdown_foot_var_x, touchdown_foot_var_y});*/
+    }
 
     left_stance = !left_stance;
   }
@@ -951,18 +978,19 @@ HybridRomTrajOptCassie::HybridRomTrajOptCassie(
     const std::vector<int>& num_time_samples, const Eigen::MatrixXd& Q,
     const Eigen::MatrixXd& R, const ReducedOrderModel& rom,
     const VectorXd& init_rom_state_mirrored,
+    const VectorXd& init_relative_footstep,
     const std::vector<double>& max_swing_distance, bool start_with_left_stance,
     bool zero_touchdown_impact, const std::set<int>& relax_index,
     const PlannerSetting& param, const std::vector<int>& num_time_samples_ds,
     bool start_in_double_support_phase,
     const std::set<int>& idx_constant_rom_vel_during_double_support,
     bool print_status)
-    : HybridRomTrajOpt(num_time_samples, Q, R, rom, init_rom_state_mirrored,
-                       max_swing_distance, start_with_left_stance,
-                       zero_touchdown_impact, relax_index, param,
-                       num_time_samples_ds, start_in_double_support_phase,
-                       idx_constant_rom_vel_during_double_support,
-                       print_status) {}
+    : HybridRomTrajOpt(
+          num_time_samples, Q, R, rom, init_rom_state_mirrored,
+          init_relative_footstep, max_swing_distance, start_with_left_stance,
+          zero_touchdown_impact, relax_index, param, num_time_samples_ds,
+          start_in_double_support_phase,
+          idx_constant_rom_vel_during_double_support, print_status) {}
 
 void HybridRomTrajOptCassie::AddRomRegularizationCost(
     const Eigen::VectorXd& h_guess, const Eigen::MatrixXd& y_guess,

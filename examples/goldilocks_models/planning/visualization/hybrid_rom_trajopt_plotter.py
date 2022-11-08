@@ -6,6 +6,7 @@ from pydairlib.common import FindResourceOrThrow
 from pydrake.trajectories import PiecewisePolynomial
 import numpy as np
 from scipy.interpolate import CubicSpline
+from scipy.spatial.transform import Rotation
 
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
@@ -92,7 +93,7 @@ def main():
   Parameters
   """
   animation_start_idx = 0
-  animation_end_idx = 71
+  animation_end_idx = 80
   # animation_end_idx = animation_start_idx + 1
 
   """
@@ -153,29 +154,31 @@ def main():
     # plt.show()  
 
 
-  # real_time_rate = 0.1
-  # prev_wall_time = -1 
-  # prev_sim_time = -1
-  for j in range(animation_start_idx, animation_end_idx):
-    filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-               str(j) + "_rom_trajectory"
-    rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
+  if (animation_end_idx - animation_start_idx) > 1:
+    # real_time_rate = 0.1
+    # prev_wall_time = -1 
+    # prev_sim_time = -1
+    for j in range(animation_start_idx, animation_end_idx):
+      filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+                 str(j) + "_rom_trajectory"
+      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
 
-    # if prev_wall_time > 0:
-    #   while(real_time_rate * (time.time() - prev_wall_time) < (rom_traj.get_global_com_pos_time()[0] - prev_sim_time)):
-    #     plt.pause(0.01)
-    # plt.clf()
-    # prev_wall_time = time.time()
-    # prev_sim_time = rom_traj.get_global_com_pos_time()[0]
+      # if prev_wall_time > 0:
+      #   while(real_time_rate * (time.time() - prev_wall_time) < (rom_traj.get_global_com_pos_time()[0] - prev_sim_time)):
+      #     plt.pause(0.01)
+      # plt.clf()
+      # prev_wall_time = time.time()
+      # prev_sim_time = rom_traj.get_global_com_pos_time()[0]
 
+      PlotGlobalFeetAndCoMPosition(rom_traj)
+      plt.draw()
+      # plt.pause(0.01)
+      plt.pause(0.1)
+      plt.clf()
+
+  else:    
     PlotGlobalFeetAndCoMPosition(rom_traj)
-    plt.draw()
-    plt.pause(0.01)
-    plt.clf()
-
-    if (animation_end_idx - animation_start_idx) == 1:
-      plt.show()
-
+    plt.show()
 
 
   # import pdb; pdb.set_trace()
@@ -191,7 +194,6 @@ def PlotGlobalFeetAndCoMPosition(rom_traj):
   # print("global_feet_pos = \n", global_feet_pos)
   # print("global_com_pos = \n", global_com_pos)
 
-
   plt.figure("Feet and CoM positions", figsize=figsize)
   plt.title("current time = %.3f" % global_com_pos_time[0])
 
@@ -200,6 +202,15 @@ def PlotGlobalFeetAndCoMPosition(rom_traj):
     plt.plot(global_feet_pos[0,i],global_feet_pos[1,i], palette[i] + 'x', markersize=12)
     plt.plot(global_com_pos[0,i],global_com_pos[1,i], palette[i] + 'o')
 
+  # Draw pelvis orientation
+  current_quat = rom_traj.get_current_quat_xyz_shift()
+  rot = Rotation.from_quat([current_quat[1], current_quat[2], current_quat[3], current_quat[0]]).as_matrix().T  # (x, y, z, w) format
+  pelvis_x_axis = rot[0:2,0]
+  pelvis_y_axis = rot[0:2,1]
+  plt.arrow(x=global_feet_pos[0,0], y=global_feet_pos[1,0], dx=pelvis_x_axis[0]/5, dy=pelvis_x_axis[1]/5, width=.01) 
+  plt.arrow(x=global_feet_pos[0,0], y=global_feet_pos[1,0], dx=pelvis_y_axis[0]/5, dy=pelvis_y_axis[1]/5, width=.01) 
+
+  # Labels and stuffs
   plt.xlabel('x (m)')
   plt.ylabel('y (m)')
   plt.axis('scaled')

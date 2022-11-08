@@ -101,6 +101,8 @@ def main():
   """
   filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
              str(animation_start_idx) + "_rom_trajectory"
+  # filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+  #            "debug" + "_rom_trajectory"
   rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
   PlotState(rom_traj, 0, rom_traj.GetStateSamples(0).shape[0])
 

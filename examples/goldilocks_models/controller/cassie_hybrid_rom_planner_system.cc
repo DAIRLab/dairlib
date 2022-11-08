@@ -800,16 +800,24 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   //  to 0?
   init_rom_state_mirrored(2) = desired_com_height_;
   init_rom_state_mirrored(5) = 0;
-  //  cout << "init_rom_state_from_current_feedback = "
-  //       << init_rom_state_from_current_feedback.transpose() << endl;
-  //  cout << "init_rom_state_from_prev_sol = "
-  //       << init_rom_state_from_prev_sol.transpose() << endl;
-  //  cout << "init_rom_state = " << init_rom_state_mirrored.transpose() <<
-  //  endl;
+  if (single_eval_mode_) {
+    cout << "init_rom_state_from_current_feedback = "
+         << init_rom_state_from_current_feedback.transpose() << endl;
+    cout << "init_rom_state_from_prev_sol = "
+         << init_rom_state_from_prev_sol.transpose() << endl;
+    cout << "init_rom_state = " << init_rom_state_mirrored.transpose() << endl;
+  }
 
   // Init footstep
   Vector2d init_footstep =
       (current_local_swing_foot_pos - current_local_stance_foot_pos).head<2>();
+  if (single_eval_mode_) {
+    cout << "current_local_swing_foot_pos = "
+         << current_local_swing_foot_pos.transpose() << endl;
+    cout << "current_local_stance_foot_pos = "
+         << current_local_stance_foot_pos.transpose() << endl;
+    cout << "init_footstep = " << init_footstep.transpose() << endl;
+  }
 
   ///
   ///
@@ -843,12 +851,14 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   for (auto& pos : des_xy_pos_com) {
     pos -= current_local_stance_foot_pos.head<2>();
   }
-//  for (auto& pos : des_xy_pos_com) {
-//    cout << "pos = " << pos.transpose() << endl;
-//  }
-//  for (auto& vel : des_xy_vel_com) {
-//    cout << "vel = " << vel.transpose() << endl;
-//  }
+  if (single_eval_mode_) {
+    for (auto& pos : des_xy_pos_com) {
+      cout << "pos = " << pos.transpose() << endl;
+    }
+    for (auto& vel : des_xy_vel_com) {
+      cout << "vel = " << vel.transpose() << endl;
+    }
+  }
   // TODO:
   //  My ntoes: Only the goal position needs the above shift.
   //    When translating the planned traj between each solve, I believe we don't

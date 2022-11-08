@@ -103,7 +103,7 @@ double_support_duration: 0.1 #0.02
 constant_rom_vel_during_double_support: true
 
 # Parameters that affect the foot spread
-y_vel_offset: 0  # 0.1  # during normal walking, y_vel is about 0.1 to 0.2 m/s
+y_vel_offset: 0.1  # 0.1  # during normal walking, y_vel is about 0.1 to 0.2 m/s
 # `constant_rom_vel_during_double_support` also affects
 # the "nominal FOM hip roll position" and cost weight also affect
 

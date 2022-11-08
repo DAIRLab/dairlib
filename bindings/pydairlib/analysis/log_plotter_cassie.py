@@ -10,12 +10,8 @@ from cassie_plot_config import CassiePlotConfig
 import cassie_plotting_utils as cassie_plots
 import mbp_plotting_utils as mbp_plots
 
-
 def main():
-    config_folder = 'bindings/pydairlib/analysis/plot_configs/'
-    config_file = config_folder + 'cassie_kcmpc_plot.yaml'
-    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_kcmpc_plot.yaml'
-    # config_file = config_folder + 'cassie_running_plot.yaml'
+    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_kcmpc_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
     use_floating_base = plot_config.use_floating_base
@@ -35,6 +31,8 @@ def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
     default_channels = cassie_plots.cassie_default_channels
+    if plot_config.use_archived_lcmtypes:
+        default_channels = cassie_plots.cassie_default_channels_archive
     robot_output, robot_input, osc_debug = \
         get_log_data(log,  # log
                      default_channels,  # lcm channels
@@ -55,7 +53,20 @@ def main():
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
-    print('Log start time: ', robot_output['t_x'][0])
+
+    print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
+    # import time
+    # time_start = time.time()
+    # time.sleep(1)
+    # print(time.time() - time_start)
+    # spring_compensation = SpringCompensation()
+    # samples, t_samples = spring_compensation.sample_simulate_forward(robot_output['q'][0], robot_output['v'][0], robot_output['u'][0], 10)
+    # print(time.time() - time_start)
+    # plt.plot(t_samples, samples[:, :23])
+    # plt.plot(t_samples, samples[:, -22:])
+    # print(t_samples)
+    # plt.show()
+    # import pdb; pdb.set_trace()
 
     ''' Plot Positions '''
     # Plot floating base positions if applicable
@@ -65,32 +76,40 @@ def main():
 
     # Plot joint positions
     if plot_config.plot_joint_positions:
-        mbp_plots.plot_joint_positions(robot_output, pos_names,
-                                       7 if use_floating_base else 0, t_x_slice)
+        plot = mbp_plots.plot_joint_positions(robot_output, pos_names,
+                                              7 if use_floating_base else 0, t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
     # Plot specific positions
     if plot_config.pos_names:
-        mbp_plots.plot_positions_by_name(robot_output, plot_config.pos_names,
-                                         t_x_slice, pos_map)
+        plot = mbp_plots.plot_positions_by_name(robot_output, plot_config.pos_names,
+                                                t_x_slice, pos_map)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
 
     ''' Plot Velocities '''
     # Plot floating base velocities if applicable
     if use_floating_base and plot_config.plot_floating_base_velocities:
-        mbp_plots.plot_floating_base_velocities(
+        plot = mbp_plots.plot_floating_base_velocities(
             robot_output, vel_names, 6, t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_floating_base_velocity_body_frame:
         mbp_plots.plot_floating_base_body_frame_velocities(
             robot_output, t_x_slice, plant, context, "pelvis")
 
     # Plot all joint velocities
-    if plot_config.plot_joint_positions:
-        mbp_plots.plot_joint_velocities(robot_output, vel_names,
-                                        6 if use_floating_base else 0,
-                                        t_x_slice)
+    if plot_config.plot_joint_velocities:
+        plot = mbp_plots.plot_joint_velocities(robot_output, vel_names,
+                                               6 if use_floating_base else 0,
+                                               t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
     # Plot specific velocities
     if plot_config.vel_names:
-        mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
-                                          t_x_slice, vel_map)
+        plot = mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
+                                                 t_x_slice, vel_map)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
@@ -105,12 +124,23 @@ def main():
         mbp_plots.plot_measured_efforts_by_name(robot_output,
                                                 plot_config.act_names,
                                                 t_x_slice, act_map)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
 
     ''' Plot OSC '''
-    if plot_config.plot_qp_costs:
-        mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
     if plot_config.plot_tracking_costs:
-        mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
+        plot = mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plt.ylim([0, 400])
+    if plot_config.plot_qp_costs:
+        plot = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    # if plot_config.plot_qp_solutions:
+    #     plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 12))
+    #     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    #     plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0, 6))
+    #     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
 
     if plot_config.tracking_datas_to_plot:
         for traj_name, config in plot_config.tracking_datas_to_plot.items():
@@ -119,6 +149,7 @@ def main():
                     plot = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
                                                             deriv, t_osc_slice)
                     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+                    plot.save_fig(traj_name + '_' + deriv + '_' + str(dim)  + '.png')
 
     ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:
@@ -131,12 +162,17 @@ def main():
             dims['toe_' + pos] = plot_config.foot_xyz_to_plot[pos]
             pts['toe_' + pos] = pts_map[plot_config.pt_on_foot_to_plot]
 
-        mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
-                                        foot_frames, pts, dims)
+        plot = mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
+                                               foot_frames, pts, dims)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_qp_solve_time:
-        mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+        plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
+    # if plot_config.plot_active_tracking_datas:
+    #     plot = mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    #     plot.save_fig('active_tracking_datas.png')
     plt.show()
 
 

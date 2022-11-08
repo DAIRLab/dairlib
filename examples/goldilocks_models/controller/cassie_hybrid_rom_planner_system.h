@@ -103,14 +103,15 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       std::vector<Eigen::VectorXd>* des_xy_pos,
       std::vector<Eigen::VectorXd>* des_xy_vel) const;
 
-  void RotateBetweenGlobalAndLocalFrame(bool rotate_from_global_to_local,
-                                        const Eigen::VectorXd& quat_xyz_shift,
-                                        const Eigen::MatrixXd& original_x_FOM,
-                                        Eigen::MatrixXd* rotated_x_FOM) const;
-  void RotatePosBetweenGlobalAndLocalFrame(
-      bool rotate_from_global_to_local, bool position_only,
-      const Eigen::VectorXd& quat_xyz_shift, const Eigen::MatrixXd& original_x,
-      Eigen::MatrixXd* rotated_x) const;
+  void TransformBetweenGlobalAndLocalFrame3D(
+      bool transform_from_global_to_local,
+      const Eigen::VectorXd& quat_xyz_shift,
+      const Eigen::MatrixXd& original_x_FOM,
+      Eigen::MatrixXd* rotated_x_FOM) const;
+  void TransformBetweenGlobalAndLocalFrame2D(
+      bool transform_from_global_to_local, bool rotation_transformation_only,
+      bool position_only, const Eigen::VectorXd& quat_xyz_shift,
+      const Eigen::MatrixXd& original_x, Eigen::MatrixXd* rotated_x) const;
 
   void BookKeeping(
       bool start_with_left_stance,

@@ -634,6 +634,14 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     }
   }
 
+  /// For single evaluation mode (debug mode)
+  if (param.solve_idx_for_read_from_file > 0) {
+    lightweight_saved_traj_ = HybridRomPlannerTrajectory(
+        param.dir_data + to_string(param.solve_idx_for_read_from_file) +
+            "_rom_trajectory",
+        true);
+  }
+
   /// Save data for (offline) debug mode
   writeCSV(param.dir_data + "rom_option.csv",
            param.rom_option * VectorXd::Ones(1));
@@ -728,6 +736,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     cout << "  current_time  = " << current_time << endl;
     cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
     cout << "  init_phase  = " << init_phase << endl;
+    cout << "  quat_xyz_shift  = " << quat_xyz_shift.transpose() << endl;
   }
 
   // For data logging
@@ -1189,28 +1198,28 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       trajopt.discrete_swing_foot_pos_rt_stance_foot_x_vars());
   local_delta_footstep.row(1) = result.GetSolution(
       trajopt.discrete_swing_foot_pos_rt_stance_foot_y_vars());
-  RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                      local_delta_footstep,
-                                      &global_delta_footstep_);
+  TransformBetweenGlobalAndLocalFrame2D(false, true, true, quat_xyz_shift,
+                                        local_delta_footstep,
+                                        &global_delta_footstep_);
+
   // 2. Transform from the local com to global com
-  RotatePosBetweenGlobalAndLocalFrame(
-      false, true, quat_xyz_shift,
+  TransformBetweenGlobalAndLocalFrame2D(
+      false, false, true, quat_xyz_shift,
       result.GetSolution(trajopt.y_end_of_last_mode_rt_init_stance_foot_var()) +
           current_local_stance_foot_pos.head<2>(),
       &global_y_end_of_last_mode_);
 
   // Get global feet position (for both start and end of each mode)
   // This is used to generate swing foot pos in the controller thread
-  MatrixXd global_feet_pos(2, param_.n_step + 1);
-  MatrixXd current_global_stance_foot_pos(2, 1);
-  RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                      current_local_stance_foot_pos,
-                                      &current_global_stance_foot_pos);
-  global_feet_pos.col(0) = current_global_stance_foot_pos;
+  MatrixXd local_feet_pos(2, param_.n_step + 1);
+  local_feet_pos.col(0) = current_local_stance_foot_pos;
   for (int i = 1; i < param_.n_step + 1; i++) {
-    global_feet_pos.col(i) =
-        global_feet_pos.col(i - 1) + global_delta_footstep_.col(i - 1);
+    local_feet_pos.col(i) =
+        local_feet_pos.col(i - 1) + local_delta_footstep.col(i - 1);
   }
+  MatrixXd global_feet_pos(2, param_.n_step + 1);
+  TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
+                                        local_feet_pos, &global_feet_pos);
   // Get global com position (for both start and end of each mode)
   // This is used to generate *relative* swing foot pos in the controller thread
   // (i.e. swing foot pos relative to the COM)
@@ -1220,22 +1229,27 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     local_com_pos.col(i) =
         result.GetSolution(trajopt.state_vars_by_mode(i, 0).head<2>());
     if (!left_stance) local_com_pos.col(i)(1) *= -1;
+    local_com_pos.col(i) += local_feet_pos.col(i);
     left_stance = !left_stance;
   }
   MatrixXd global_com_pos(2, param_.n_step + 1);
-  // We only need to rotate because the ROM start is rt stance foot.
-  RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                      local_com_pos, &global_com_pos);
-  for (int i = 0; i < param_.n_step + 1; i++) {
-    global_com_pos.col(i) += global_feet_pos.col(i);
+  TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
+                                        local_com_pos, &global_com_pos);
+  if (single_eval_mode_) {
+    cout << "local_com_pos.col(0) = " << local_com_pos.col(0).transpose()
+         << endl;
+    cout << "global_com_pos.col(0) = " << global_com_pos.col(0).transpose()
+         << endl;
+    cout << "global_feet_pos.col(0) = " << global_feet_pos.col(0).transpose()
+         << endl;
   }
 
-  // Unit Testing RotateBetweenGlobalAndLocalFrame
+  // Unit Testing TransformBetweenGlobalAndLocalFrame3D
   /*MatrixXd local_x0_FOM2 = global_x0_FOM_;
   MatrixXd local_xf_FOM2 = global_xf_FOM_;
-  RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_x0_FOM_,
+  TransformBetweenGlobalAndLocalFrame3D(true, quat_xyz_shift, global_x0_FOM_,
                                    &local_x0_FOM2);
-  RotateBetweenGlobalAndLocalFrame(true, quat_xyz_shift, global_xf_FOM_,
+  TransformBetweenGlobalAndLocalFrame3D(true, quat_xyz_shift, global_xf_FOM_,
                                    &local_xf_FOM2);
   DRAKE_DEMAND((local_x0_FOM2 - local_x0_FOM).norm() < 1e-14);
   DRAKE_DEMAND((local_xf_FOM2 - local_xf_FOM).norm() < 1e-14);*/
@@ -1287,10 +1301,10 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   if (param_.n_step_lipm > 1) {
     global_x_lipm_ = local_x_lipm_;
     global_u_lipm_ = local_u_lipm_;
-    RotatePosBetweenGlobalAndLocalFrame(false, false, quat_xyz_shift,
-                                        local_x_lipm_, &global_x_lipm_);
-    RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                        local_u_lipm_, &global_u_lipm_);
+    TransformBetweenGlobalAndLocalFrame2D(false, false, false, quat_xyz_shift,
+                                          local_x_lipm_, &global_x_lipm_);
+    TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
+                                          local_u_lipm_, &global_u_lipm_);
   }
 
   ///
@@ -1313,9 +1327,9 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
           reg_local_delta_footstep.at(i);
     }
     global_regularization_footstep = local_regularization_footstep;
-    RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                        local_regularization_footstep,
-                                        &global_regularization_footstep);
+    TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
+                                          local_regularization_footstep,
+                                          &global_regularization_footstep);
     //    cout << "global_regularization_footstep = \n"
     //         << global_regularization_footstep << endl;
     //    cout << "local_regularization_footstep = \n"
@@ -1511,18 +1525,18 @@ void CassiePlannerWithOnlyRom::CreateDesiredBodyPosAndVel(
   }*/
 }
 
-void CassiePlannerWithOnlyRom::RotateBetweenGlobalAndLocalFrame(
-    bool rotate_from_global_to_local, const VectorXd& quat_xyz_shift,
+void CassiePlannerWithOnlyRom::TransformBetweenGlobalAndLocalFrame3D(
+    bool transform_from_global_to_local, const VectorXd& quat_xyz_shift,
     const MatrixXd& original_x_FOM, MatrixXd* rotated_x_FOM) const {
   Quaterniond relative_quat =
-      rotate_from_global_to_local
+      transform_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
                         quat_xyz_shift(3))
           : Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
                         quat_xyz_shift(3))
                 .conjugate();
   Matrix3d relative_rot_mat = relative_quat.toRotationMatrix();
-  double sign = rotate_from_global_to_local ? 1 : -1;
+  double sign = transform_from_global_to_local ? 1 : -1;
   for (int j = 0; j < original_x_FOM.cols(); j++) {
     Quaterniond rotated_x_quat =
         relative_quat *
@@ -1530,7 +1544,7 @@ void CassiePlannerWithOnlyRom::RotateBetweenGlobalAndLocalFrame(
                     original_x_FOM.col(j)(2), original_x_FOM.col(j)(3));
     rotated_x_FOM->col(j).segment<4>(0) << rotated_x_quat.w(),
         rotated_x_quat.vec();
-    if (rotate_from_global_to_local) {
+    if (transform_from_global_to_local) {
       rotated_x_FOM->col(j).segment<3>(4)
           << relative_rot_mat * (original_x_FOM.col(j).segment<3>(4) +
                                  sign * quat_xyz_shift.segment<3>(4));
@@ -1580,14 +1594,14 @@ void CassiePlannerWithOnlyRom::RotateBetweenGlobalAndLocalFrame(
   }*/
 }
 
-void CassiePlannerWithOnlyRom::RotatePosBetweenGlobalAndLocalFrame(
-    bool rotate_from_global_to_local, bool position_only,
-    const Eigen::VectorXd& quat_xyz_shift, const Eigen::MatrixXd& original_x,
-    Eigen::MatrixXd* rotated_x) const {
+void CassiePlannerWithOnlyRom::TransformBetweenGlobalAndLocalFrame2D(
+    bool transform_from_global_to_local, bool rotation_transformation_only,
+    bool position_only, const Eigen::VectorXd& quat_xyz_shift,
+    const Eigen::MatrixXd& original_x, Eigen::MatrixXd* rotated_x) const {
   DRAKE_DEMAND(quat_xyz_shift(1) < 1e-14);  // rotate about z axis
   DRAKE_DEMAND(quat_xyz_shift(2) < 1e-14);  // rotate about z axis
   Quaterniond relative_quat =
-      rotate_from_global_to_local
+      transform_from_global_to_local
           ? Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
                         quat_xyz_shift(3))
           : Quaterniond(quat_xyz_shift(0), quat_xyz_shift(1), quat_xyz_shift(2),
@@ -1595,10 +1609,11 @@ void CassiePlannerWithOnlyRom::RotatePosBetweenGlobalAndLocalFrame(
                 .conjugate();
   Matrix2d relative_rot_mat =
       relative_quat.toRotationMatrix().topLeftCorner<2, 2>();
-  double sign = rotate_from_global_to_local ? 1 : -1;
+  double sign = transform_from_global_to_local ? 1 : -1;
+  if (rotation_transformation_only) sign = 0;
   for (int j = 0; j < original_x.cols(); j++) {
     // position
-    if (rotate_from_global_to_local) {
+    if (transform_from_global_to_local) {
       rotated_x->col(j).head<2>()
           << relative_rot_mat * (original_x.col(j).head<2>() +
                                  sign * quat_xyz_shift.segment<2>(4));
@@ -1627,33 +1642,41 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
     const string& prefix) const {
   string dir_pref = dir_data + prefix;
 
+  /// Rotate some local vectors to global
+  MatrixXd global_x_init(nx_, 1);
+  global_x_init = x_init;
+  TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift, x_init,
+                                        &global_x_init);
+
   /// Save the solution vector
   writeCSV(dir_pref + "z.csv",
            result.GetSolution(trajopt.decision_variables()));
   // cout << trajopt.decision_variables() << endl;
 
   /// Save traj to csv
-  for (int i = 0; i < param_.n_step; i++) {
+  /*for (int i = 0; i < param_.n_step; i++) {
     writeCSV(dir_pref + "time_at_knots" + to_string(i) + ".csv",
              lightweight_saved_traj_.GetStateBreaks(i));
     writeCSV(dir_pref + "state_at_knots" + to_string(i) + ".csv",
              lightweight_saved_traj_.GetStateSamples(i));
   }
-  writeCSV(dir_pref + "input_at_knots.csv", trajopt.GetInputSamples(result));
+  writeCSV(dir_pref + "input_at_knots.csv", trajopt.GetInputSamples(result));*/
 
   writeCSV(dir_pref + "local_delta_footstep.csv", local_delta_footstep);
   writeCSV(dir_pref + "global_delta_footstep.csv", global_delta_footstep);
   writeCSV(dir_pref + "global_regularization_footstep.csv",
            global_regularization_footstep);
 
-  writeCSV(dir_pref + "global_x_lipm.csv", global_x_lipm_);
+  /*writeCSV(dir_pref + "global_x_lipm.csv", global_x_lipm_);
   writeCSV(dir_pref + "global_u_lipm.csv", global_u_lipm_);
   if (use_lipm_mpc_and_ik_) {
     writeCSV(dir_pref + "global_preprocess_x_lipm.csv",
              global_preprocess_x_lipm_);
     writeCSV(dir_pref + "global_preprocess_u_lipm.csv",
              global_preprocess_u_lipm_);
-  }
+  }*/
+
+  writeCSV(dir_pref + string("global_x_init.csv"), global_x_init);
 
   /// Save files for reproducing the same result
   // cout << "x_init = " << x_init << endl;
@@ -1881,9 +1904,9 @@ void CassiePlannerWithOnlyRom::WarmStartGuess(
     // We only rotate frames for footstep, because it's always relative to the
     // previous foot.
     MatrixXd local_delta_footstep = global_delta_footstep_;
-    RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
-                                        global_delta_footstep_,
-                                        &local_delta_footstep);
+    TransformBetweenGlobalAndLocalFrame2D(true, true, true, quat_xyz_shift,
+                                          global_delta_footstep_,
+                                          &local_delta_footstep);
 
     // Get time breaks of current problem (not solved yet so read from guesses)
     VectorXd times =
@@ -1977,9 +2000,9 @@ void CassiePlannerWithOnlyRom::WarmStartGuess(
     // 7. y_end_of_last_mode_rt_init_stance_foot_var
     if (global_fsm_idx == prev_global_fsm_idx_) {
       MatrixXd local_y_end_of_last_mode = global_y_end_of_last_mode_;
-      RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
-                                          global_y_end_of_last_mode_,
-                                          &local_y_end_of_last_mode);
+      TransformBetweenGlobalAndLocalFrame2D(true, false, true, quat_xyz_shift,
+                                            global_y_end_of_last_mode_,
+                                            &local_y_end_of_last_mode);
       local_y_end_of_last_mode -= current_local_stance_foot_pos.head<2>();
 
       trajopt->SetInitialGuess(
@@ -1991,10 +2014,10 @@ void CassiePlannerWithOnlyRom::WarmStartGuess(
     if (param_.n_step_lipm > 1) {
       MatrixXd local_x_lipm = global_x_lipm_;
       MatrixXd local_u_lipm = global_u_lipm_;
-      RotatePosBetweenGlobalAndLocalFrame(true, false, quat_xyz_shift,
-                                          global_x_lipm_, &local_x_lipm);
-      RotatePosBetweenGlobalAndLocalFrame(true, true, quat_xyz_shift,
-                                          global_u_lipm_, &local_u_lipm);
+      TransformBetweenGlobalAndLocalFrame2D(true, false, false, quat_xyz_shift,
+                                            global_x_lipm_, &local_x_lipm);
+      TransformBetweenGlobalAndLocalFrame2D(true, false, true, quat_xyz_shift,
+                                            global_u_lipm_, &local_u_lipm);
 
       // The global_fsm_idx actually start from
       //    `global_fsm_idx + n_step`
@@ -2056,9 +2079,9 @@ void CassiePlannerWithOnlyRom::ResolveWithAnotherSolver(
         trajopt.discrete_swing_foot_pos_rt_stance_foot_y_vars());
     // Transform back to the world frame
     MatrixXd global_delta_footstep = local_delta_footstep;
-    RotatePosBetweenGlobalAndLocalFrame(false, true, quat_xyz_shift,
-                                        local_delta_footstep,
-                                        &global_delta_footstep);
+    TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
+                                          local_delta_footstep,
+                                          &global_delta_footstep);
 
     writeCSV(param_.dir_data + prefix + "global_delta_footstep_snopt.csv",
              global_delta_footstep);

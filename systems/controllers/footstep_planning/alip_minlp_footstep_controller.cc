@@ -263,7 +263,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   workspace.AddFace(-stance * Vector3d::UnitY(),
                     com_xy - 0.025 * stance * Vector3d::UnitY());
   workspace.AddFace(stance * Vector3d::UnitY(),
-                    com_xy + 0.6 * stance * Vector3d::UnitY());
+                    com_xy + 0.7 * stance * Vector3d::UnitY());
   workspace.AddFace(Vector3d::UnitX(), com_xy + Vector3d::UnitX());
   workspace.AddFace(-Vector3d::UnitX(), com_xy - Vector3d::UnitX());
 

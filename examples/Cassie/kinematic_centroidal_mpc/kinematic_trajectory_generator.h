@@ -24,7 +24,23 @@ class KinematicTrajectoryGenerator : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
       const std::string& body_name,
-      Eigen::Vector3d point_on_body);
+      const Eigen::Vector3d& point_on_body);
+
+  /*!
+   * @param plant robot model (state dim should match with the reference trajectory input)
+   * @param context corresponding Context for the plant
+   * @param body_one_name name of body that the kinematic trajectory is relative to
+   * @param point_on_body_one point on the body expressed in the body frame
+   * @param body_two_name name of body that the kinematic trajectory should be computed
+   * @param point_on_body_two point on the body expressed in the body frame
+   */
+  KinematicTrajectoryGenerator(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context,
+      std::string  body_one_name,
+      Eigen::Vector3d point_on_body_one,
+      const std::string& body_two_name,
+      Eigen::Vector3d point_on_body_two);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -52,8 +68,12 @@ class KinematicTrajectoryGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
 
-  std::string body_name_;
-  Eigen::Vector3d point_on_body_;
+  bool is_relative_ = true;
+
+  std::string body_one_name_;
+  Eigen::Vector3d point_on_body_one_;
+  std::string body_two_name_;
+  Eigen::Vector3d point_on_body_two_;
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;

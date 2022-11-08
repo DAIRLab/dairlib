@@ -13,7 +13,8 @@ import mbp_plotting_utils as mbp_plots
 
 def main():
     config_folder = 'bindings/pydairlib/analysis/plot_configs/'
-    config_file = config_folder + 'cassie_default_plot.yaml'
+    config_file = config_folder + 'cassie_kcmpc_plot.yaml'
+    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_kcmpc_plot.yaml'
     # config_file = config_folder + 'cassie_running_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
@@ -34,8 +35,6 @@ def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
     default_channels = cassie_plots.cassie_default_channels
-    if plot_config.use_archived_lcmtypes:
-        default_channels = cassie_plots.cassie_default_channels_archive
     robot_output, robot_input, osc_debug = \
         get_log_data(log,  # log
                      default_channels,  # lcm channels

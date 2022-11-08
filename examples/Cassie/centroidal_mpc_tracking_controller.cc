@@ -17,7 +17,6 @@
 #include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
-#include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
@@ -134,8 +133,10 @@ int DoMain(int argc, char* argv[]) {
   const int RIGHT_STANCE = 2;
   const int DOUBLE_STANCE = 3;
   contact_state_to_fsm_map[0] = 0;
-  contact_state_to_fsm_map[12] = 1; // left stance
-  contact_state_to_fsm_map[3] = 2; // right stance
+//  contact_state_to_fsm_map[12] = 1; // left stance
+//  contact_state_to_fsm_map[3] = 2; // right stance
+  contact_state_to_fsm_map[12] = 2; // left stance
+  contact_state_to_fsm_map[3] = 1; // right stance
   contact_state_to_fsm_map[15] = 3; // double stance
 
   auto trajectory_subscriber =
@@ -157,10 +158,30 @@ int DoMain(int argc, char* argv[]) {
   auto pelvis_trans_traj_generator =
       builder.AddSystem<KinematicTrajectoryGenerator>(
           plant_wo_spr, context_wo_spr.get(), "pelvis", VectorXd::Zero(3));
-  auto l_foot_traj_generator = builder.AddSystem<KinematicTrajectoryGenerator>(
-      plant_wo_spr, context_wo_spr.get(), "toe_left", VectorXd::Zero(3));
-  auto r_foot_traj_generator = builder.AddSystem<KinematicTrajectoryGenerator>(
-      plant_wo_spr, context_wo_spr.get(), "toe_right", VectorXd::Zero(3));
+  KinematicTrajectoryGenerator* l_foot_traj_generator;
+  KinematicTrajectoryGenerator* r_foot_traj_generator;
+  if (gains.relative_feet) {
+    l_foot_traj_generator = builder.AddSystem<KinematicTrajectoryGenerator>(
+        plant_wo_spr,
+        context_wo_spr.get(),
+        "pelvis",
+        VectorXd::Zero(3),
+        "toe_left",
+        VectorXd::Zero(3));
+    r_foot_traj_generator = builder.AddSystem<KinematicTrajectoryGenerator>(
+        plant_wo_spr,
+        context_wo_spr.get(),
+        "pelvis",
+        VectorXd::Zero(3),
+        "toe_right",
+        VectorXd::Zero(3));
+  } else {
+    l_foot_traj_generator = builder.AddSystem<KinematicTrajectoryGenerator>(
+        plant_wo_spr, context_wo_spr.get(), "toe_left", VectorXd::Zero(3));
+    r_foot_traj_generator = builder.AddSystem<KinematicTrajectoryGenerator>(
+        plant_wo_spr, context_wo_spr.get(), "toe_right", VectorXd::Zero(3));
+
+  }
   auto pelvis_rot_traj_generator =
       builder.AddSystem<TrajectoryPassthrough>(
           "pelvis_rot_traj", 0, 4);
@@ -256,11 +277,15 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_trans_traj", gains.K_p_com, gains.K_d_com, gains.W_com,
       plant_w_spr, plant_w_spr);
   pelvis_tracking_data.AddStateAndPointToTrack(DOUBLE_STANCE, "pelvis");
+  pelvis_tracking_data.AddStateAndPointToTrack(LEFT_STANCE, "pelvis");
+  pelvis_tracking_data.AddStateAndPointToTrack(RIGHT_STANCE, "pelvis");
 
   RotTaskSpaceTrackingData pelvis_rot_tracking_data(
       "pelvis_rot_tracking_data", gains.K_p_pelvis, gains.K_d_pelvis,
       gains.W_pelvis, plant_w_spr, plant_w_spr);
   pelvis_rot_tracking_data.AddStateAndFrameToTrack(DOUBLE_STANCE, "pelvis");
+  pelvis_rot_tracking_data.AddStateAndFrameToTrack(LEFT_STANCE, "pelvis");
+  pelvis_rot_tracking_data.AddStateAndFrameToTrack(RIGHT_STANCE, "pelvis");
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
       "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
@@ -271,6 +296,9 @@ int DoMain(int argc, char* argv[]) {
   left_foot_tracking_data.AddStateAndPointToTrack(FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(FLIGHT,
                                                    "toe_right");
+  left_foot_tracking_data.AddStateAndPointToTrack(RIGHT_STANCE, "toe_left");
+  right_foot_tracking_data.AddStateAndPointToTrack(LEFT_STANCE,
+                                                   "toe_right");
 
   TransTaskSpaceTrackingData left_hip_tracking_data(
       "left_hip_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
@@ -278,9 +306,19 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData right_hip_tracking_data(
       "right_hip_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
       gains.W_flight_foot, plant_w_spr, plant_w_spr);
-  left_hip_tracking_data.AddStateAndPointToTrack(FLIGHT, "hip_left");
+  left_hip_tracking_data.AddStateAndPointToTrack(FLIGHT, "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(FLIGHT,
-                                                  "hip_right");
+                                                  "pelvis");
+  left_hip_tracking_data.AddStateAndPointToTrack(RIGHT_STANCE, "pelvis");
+  right_hip_tracking_data.AddStateAndPointToTrack(LEFT_STANCE,
+                                                  "pelvis");
+//  auto stance_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
+//      "stance_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
+//      gains.W_flight_foot, plant_w_spr, plant_w_spr);
+//  stance_foot_tracking_data->AddStateAndPointToTrack(
+//      LEFT_STANCE, "toe_left");
+//  stance_foot_tracking_data->AddStateAndPointToTrack(
+//      RIGHT_STANCE, "toe_right");
 
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
       "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
@@ -290,6 +328,11 @@ int DoMain(int argc, char* argv[]) {
       "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
       gains.W_flight_foot, plant_w_spr, plant_w_spr, &right_foot_tracking_data,
       &right_hip_tracking_data);
+//  auto pelvis_trans_rel_tracking_data =
+//      std::make_unique<RelativeTranslationTrackingData>(
+//          "pelvis_trans_traj", gains.K_p_pelvis, gains.K_d_pelvis,
+//          gains.W_pelvis, plant_w_spr, plant_w_spr, &pelvis_tracking_data,
+//          stance_foot_tracking_data.get());
 
   // Flight phase hip yaw tracking
   JointSpaceTrackingData left_hip_yaw_tracking_data(
@@ -302,6 +345,10 @@ int DoMain(int argc, char* argv[]) {
       FLIGHT, "hip_yaw_left", "hip_yaw_leftdot");
   right_hip_yaw_tracking_data.AddStateAndJointToTrack(
       FLIGHT, "hip_yaw_right", "hip_yaw_rightdot");
+  left_hip_yaw_tracking_data.AddStateAndJointToTrack(
+      RIGHT_STANCE, "hip_yaw_left", "hip_yaw_leftdot");
+  right_hip_yaw_tracking_data.AddStateAndJointToTrack(
+      LEFT_STANCE, "hip_yaw_right", "hip_yaw_rightdot");
   osc->AddConstTrackingData(&left_hip_yaw_tracking_data, VectorXd::Zero(1));
   osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
 
@@ -332,14 +379,20 @@ int DoMain(int argc, char* argv[]) {
       FLIGHT, "toe_left", "toe_leftdot");
   right_toe_angle_tracking_data.AddStateAndJointToTrack(
       FLIGHT, "toe_right", "toe_rightdot");
+  left_toe_angle_tracking_data.AddStateAndJointToTrack(
+      RIGHT_STANCE, "toe_left", "toe_leftdot");
+  right_toe_angle_tracking_data.AddStateAndJointToTrack(
+      LEFT_STANCE, "toe_right", "toe_rightdot");
 
   osc->AddTrackingData(&pelvis_tracking_data);
   osc->AddTrackingData(&pelvis_rot_tracking_data);
   if (gains.relative_feet) {
     left_foot_rel_tracking_data.SetImpactInvariantProjection(true);
     right_foot_rel_tracking_data.SetImpactInvariantProjection(true);
+//    pelvis_trans_rel_tracking_data->SetImpactInvariantProjection(true);
     osc->AddTrackingData(&left_foot_rel_tracking_data);
     osc->AddTrackingData(&right_foot_rel_tracking_data);
+//    osc->AddTrackingData(pelvis_trans_rel_tracking_data.get());
   } else {
     left_foot_tracking_data.SetImpactInvariantProjection(true);
     right_foot_tracking_data.SetImpactInvariantProjection(true);
@@ -387,7 +440,6 @@ int DoMain(int argc, char* argv[]) {
                   l_foot_traj_generator->get_state_trajectory_input_port());
   builder.Connect(state_reference_receiver->get_output_port(),
                   r_foot_traj_generator->get_state_trajectory_input_port());
-
 
 
   // OSC connections

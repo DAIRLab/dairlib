@@ -1,7 +1,7 @@
 # LCM channels to read data from
-channel_x: "CASSIE_STATE_DISPATCHER"
-channel_u: "OSC_RUNNING"
-channel_osc: "OSC_DEBUG_RUNNING"
+channel_x: "CASSIE_STATE_SIMULATION"
+channel_u: "CASSIE_INPUT"
+channel_osc: "OSC_DEBUG_CENTROIDAL"
 use_archived_lcmtypes: false
 
 # Log time to stop at (seconds, -1 for whole log)
@@ -26,7 +26,7 @@ special_velocities_to_plot: []
 special_efforts_to_plot: [ ]
 
 # Finite State Machine Names
-fsm_state_names: ['Left Stance (LS)', 'Left Flight (LF)', 'Right Stance (RS)', 'Right Flight (RF)']
+fsm_state_names: ['FLIGHT (FL)', 'LEFT_STANCE (LS)', 'RIGHT_STANCE (RS)', 'DOUBLE_STANCE (DS)']
 
 # Foot position plots
 foot_positions_to_plot: [ 'right', 'left' ]

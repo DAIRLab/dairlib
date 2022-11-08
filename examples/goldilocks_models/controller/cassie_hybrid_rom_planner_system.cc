@@ -1142,12 +1142,12 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     solver_snopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_snopt_,
                          &result);
   }
-  auto finish = std::chrono::high_resolution_clock::now();
+  auto break4 = std::chrono::high_resolution_clock::now();
 
   std::chrono::duration<double> elapsed_input_reading = break1 - start;
   std::chrono::duration<double> elapsed_lipm_mpc_and_ik = break2 - break1;
   std::chrono::duration<double> elapsed_trajopt_construct = break3 - break2;
-  std::chrono::duration<double> elapsed_solve = finish - break3;
+  std::chrono::duration<double> elapsed_solve = break4 - break3;
   if (print_level_ > 0) {
     cout << "Time for reading input ports:" << elapsed_input_reading.count()
          << "\n";
@@ -1307,6 +1307,12 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
                                           local_u_lipm_, &global_u_lipm_);
   }
 
+  auto break5 = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed_pack_lcm = break5 - break4;
+  PrintEssentialStatus(
+      "Runtime for packing lcm and setting variable for warmstarts:" +
+      to_string(elapsed_pack_lcm.count()));
+
   ///
   /// For debugging
   ///
@@ -1341,14 +1347,15 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
         quat_xyz_shift, current_local_stance_foot_pos, final_position,
         global_regularization_footstep, local_delta_footstep,
         global_delta_footstep_, trajopt, result, param_.dir_data, prefix);
+    break5 = std::chrono::high_resolution_clock::now();
     // Save trajectory into lcm binary
     {
       string file_name = prefix + "rom_trajectory";
       HybridRomPlannerTrajectory full_saved_traj(
           trajopt, result, global_feet_pos, global_com_pos, quat_xyz_shift,
           current_local_stance_foot_pos, file_name,
-          drake::solvers::to_string(result.get_solution_result()), false,
-          current_time);
+          drake::solvers::to_string(result.get_solution_result()),
+          param_.gains.lightweight_lcm_log, current_time);
       full_saved_traj.WriteToFile(param_.dir_data + file_name);
       cout << "Wrote to file: " << param_.dir_data + file_name << endl;
     }
@@ -1377,9 +1384,12 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     }
   }
 
-  finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  PrintEssentialStatus("Runtime for data saving (for debugging):" +
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = break5 - start;
+  PrintEssentialStatus("Runtime for data saving (for debugging) -- csv: " +
+                       to_string(elapsed.count()));
+  elapsed = finish - break5;
+  PrintEssentialStatus("Runtime for data saving (for debugging) -- lcm: " +
                        to_string(elapsed.count()));
 
   /// Some checks

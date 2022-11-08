@@ -113,6 +113,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
            &RomPlannerTrajectory::get_stance_foot);
   py::class_<HybridRomPlannerTrajectory>(m, "HybridRomPlannerTrajectory")
       .def(py::init<const std::string&>())
+      .def(py::init<const std::string&, bool>())
       .def("GetMetadata", &LcmTrajectory::GetMetadata)
       .def("GetTrajectoryNames", &LcmTrajectory::GetTrajectoryNames)
       .def("GetTrajectory", &LcmTrajectory::GetTrajectory,

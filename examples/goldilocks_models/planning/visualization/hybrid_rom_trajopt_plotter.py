@@ -23,40 +23,6 @@ This script is modified from `rom_trajopt_plotter.py`
 """
 
 def main():
-  filename = ""
-  # # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/planning/robot_1/data/rom_trajectory')
-  # # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
-  # # filename = abs_path + "/rom_trajectory"
-  # # filename = "../rom_trajectory"
-  # if len(sys.argv) >= 2 and sys.argv[1] != "save":
-  #   if sys.argv[1][0] == "/":
-  #     filename = sys.argv[1]
-  #   else:
-  #     filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-  #                sys.argv[1] + "_rom_trajectory"
-  # else:
-  #   filename = FindResourceOrThrow(
-  #     '../dairlib_data/goldilocks_models/planning/robot_1/data/debug_rom_trajectory')
-
-  # print("log file name = " + filename)
-  # rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
-
-  # For saving figures
-  global savefig, figsize, save_path
-  savefig = False
-  figsize = (6.4, 4.8)
-  for i in range(len(sys.argv)):
-    if sys.argv[i] == "save":
-      savefig = True
-      figsize = (16, 9)
-  import getpass
-  username = getpass.getuser()
-  save_path = "/home/" + username + "/"
-
-  print("filename = " + filename)
-  print("savefig = " + str(savefig))
-  print("save_path = " + save_path)
-
   """
   Construct full order model and related variables 
   """
@@ -90,10 +56,51 @@ def main():
 
 
   """
+  Inputs
+  """
+
+  filename = ""
+  # # filename = FindResourceOrThrow('../dairlib_data/goldilocks_models/planning/robot_1/data/rom_trajectory')
+  # # abs_path = "/home/yuming/Desktop/20200926 try to impose lipm constraint/4 penalize swing toe vel x100/robot_1"
+  # # filename = abs_path + "/rom_trajectory"
+  # # filename = "../rom_trajectory"
+  # if len(sys.argv) >= 2 and sys.argv[1] != "save":
+  #   if sys.argv[1][0] == "/":
+  #     filename = sys.argv[1]
+  #   else:
+  #     filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+  #                sys.argv[1] + "_rom_trajectory"
+  # else:
+  #   filename = FindResourceOrThrow(
+  #     '../dairlib_data/goldilocks_models/planning/robot_1/data/debug_rom_trajectory')
+
+  # print("log file name = " + filename)
+  # rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename, lightweight_log)
+
+  # For saving figures
+  global savefig, figsize, save_path
+  savefig = False
+  figsize = (6.4, 4.8)
+  for i in range(len(sys.argv)):
+    if sys.argv[i] == "save":
+      savefig = True
+      figsize = (16, 9)
+  import getpass
+  username = getpass.getuser()
+  save_path = "/home/" + username + "/"
+
+  print("filename = " + filename)
+  print("savefig = " + str(savefig))
+  print("save_path = " + save_path)
+
+
+  """
   Parameters
   """
+  lightweight_log = False
+
   animation_start_idx = 0
-  animation_end_idx = 80
+  animation_end_idx = 40
   # animation_end_idx = animation_start_idx + 1
 
   """
@@ -103,11 +110,12 @@ def main():
              str(animation_start_idx) + "_rom_trajectory"
   # filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
   #            "debug" + "_rom_trajectory"
-  rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
+  rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename, lightweight_log)
   PlotState(rom_traj, 0, rom_traj.GetStateSamples(0).shape[0])
 
-  if (rom_traj.GetInputSamples().shape[0] > 0):
-    PlotInput(rom_traj)
+  if not lightweight_log:
+    if (rom_traj.GetInputSamples().shape[0] > 0):
+      PlotInput(rom_traj)
 
   """
   Dynamic error
@@ -117,7 +125,8 @@ def main():
   """
   Print the value of the solutions
   """
-  PrintAllDecisionVar(rom_traj)
+  if not lightweight_log:
+    PrintAllDecisionVar(rom_traj)
 
   """
   Testing
@@ -139,7 +148,7 @@ def main():
     for j in range(animation_start_idx, animation_end_idx):
       filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                  str(j) + "_rom_trajectory"
-      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
+      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename, lightweight_log)
       time_vec[j] = rom_traj.get_global_com_pos_time()[0]
     loop_time = np.diff(time_vec)
     # import pdb; pdb.set_trace()
@@ -163,7 +172,7 @@ def main():
     for j in range(animation_start_idx, animation_end_idx):
       filename = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                  str(j) + "_rom_trajectory"
-      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename)
+      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filename, lightweight_log)
 
       # if prev_wall_time > 0:
       #   while(real_time_rate * (time.time() - prev_wall_time) < (rom_traj.get_global_com_pos_time()[0] - prev_sim_time)):
@@ -174,8 +183,9 @@ def main():
 
       PlotGlobalFeetAndCoMPosition(rom_traj)
       plt.draw()
-      # plt.pause(0.01)
+      # plt.pause(0.05)
       plt.pause(0.1)
+      # plt.pause(0.3)
       plt.clf()
 
   else:    

@@ -196,15 +196,15 @@ HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
   stance_foot_traj.datatypes = vector<string>(1, "");
   AddTrajectory(stance_foot_traj.traj_name, stance_foot_traj);
 
-  if (!lightweight) {
-    // 4. current_quat_xyz_shift_
-    LcmTrajectory::Trajectory quat_xyz_shift_traj;
-    quat_xyz_shift_traj.traj_name = "current_quat_xyz_shift";
-    quat_xyz_shift_traj.datapoints = current_quat_xyz_shift;
-    quat_xyz_shift_traj.time_vector = VectorXd::Zero(1);
-    quat_xyz_shift_traj.datatypes = vector<string>(7, "");
-    AddTrajectory(quat_xyz_shift_traj.traj_name, quat_xyz_shift_traj);
+  // 4. current_quat_xyz_shift_
+  LcmTrajectory::Trajectory quat_xyz_shift_traj;
+  quat_xyz_shift_traj.traj_name = "current_quat_xyz_shift";
+  quat_xyz_shift_traj.datapoints = current_quat_xyz_shift;
+  quat_xyz_shift_traj.time_vector = VectorXd::Zero(1);
+  quat_xyz_shift_traj.datatypes = vector<string>(7, "");
+  AddTrajectory(quat_xyz_shift_traj.traj_name, quat_xyz_shift_traj);
 
+  if (!lightweight) {
     // 5. current_stance_foot_pos_
     LcmTrajectory::Trajectory stance_foot_pos_traj;
     stance_foot_pos_traj.traj_name = "current_stance_foot_pos";

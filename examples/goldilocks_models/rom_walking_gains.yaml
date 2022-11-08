@@ -63,6 +63,7 @@ sample_idx: 40 #19 #58 #40
 
 ###
 use_hybrid_rom_mpc: true
+lightweight_lcm_log: false
 
 
 ### High-level command (for both planner and controller)

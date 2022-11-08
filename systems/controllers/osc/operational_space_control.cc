@@ -519,7 +519,6 @@ void OperationalSpaceControl::Build() {
             .get();
   }
 
-
   if (is_rom_modification_) {
     solver_options_.SetOption(OsqpSolver::id(), "verbose", 0);
     solver_options_.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
@@ -535,7 +534,8 @@ void OperationalSpaceControl::Build() {
     solver_options_.SetOption(OsqpSolver::id(), "scaled_termination", 1);
     //    solver_options_.SetOption(OsqpSolver::id(), "scaling", 500);
     solver_options_.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
-    //  solver_options_.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+    //  solver_options_.SetOption(OsqpSolver::id(), "time_limit",
+    //  qp_time_limit_);
     std::cout << solver_options_ << std::endl;
 
     solver_ = std::make_unique<solvers::FastOsqpSolver>();
@@ -552,10 +552,10 @@ void OperationalSpaceControl::Build() {
                            2);  // snopt doc said try 2 if seeing snopta exit
        40*/
   } else {
-
     drake::solvers::SolverOptions solver_options;
     solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-    //  solver_options.SetOption(OsqpSolver::id(), "time_limit", qp_time_limit_);
+    //  solver_options.SetOption(OsqpSolver::id(), "time_limit",
+    //  qp_time_limit_);
     solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
     solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
     solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
@@ -760,7 +760,11 @@ VectorXd OperationalSpaceControl::SolveQp(
       // Check whether or not it is a constant trajectory, and update
       // TrackingData
       if (fixed_position_vec_.at(i).size() != 0) {
-        // Create constant trajectory and update
+        // TODO: modify OSC such that we use full model (with springs) for every
+        //  tracking data except ROM tracking. And also we translate the spring
+        //  pos and vel into the joints for ROM Create constant trajectory and
+        //  update.
+        //  My guess is that the swing foot oscillation came from this.
         tracking_data->Update(
             x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
@@ -854,7 +858,6 @@ VectorXd OperationalSpaceControl::SolveQp(
       reg_cost_->UpdateCoefficients(2 * W_reg_, -2 * W_reg_ * prev_sol_);
     }
 
-
     // Testing -- set scaling (For OSQP, make sure that you are using the Drake
     // where you implement the scaling)
     if (counter_ == 0) {
@@ -898,11 +901,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     counter_++;
     //  cout << "prev_sol_= \n " << prev_sol_ << endl;
   } else {
-
     result = solver_->Solve(*prog_);
     solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
   }
-
 
   if (!result.is_success()) {
     std::cout << "reverting to old sol" << std::endl;

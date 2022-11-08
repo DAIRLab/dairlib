@@ -356,8 +356,8 @@ HybridRomTrajOpt::HybridRomTrajOpt(
 
     // We need distance constraint on the swing foot for the first mode, because
     // we have double support phase where the "swing foot" cannot move.
-    if (mode == 0) {
-      PrintStatus("Adding constraint -- swing distance");
+    if (mode == 0 && start_in_double_support_phase) {
+      // PrintStatus("Adding constraint -- swing distance");
       // Linear version
       // Variables:
       //   init_footstep
@@ -367,14 +367,14 @@ HybridRomTrajOpt::HybridRomTrajOpt(
       //   -max_distance < touchdown_footstep - init_footstep < max_distance
       // => init_footstep - max_distance <
       //              touchdown_footstep < init_footstep + max_distance
-      AddBoundingBoxConstraint(
+      /*AddBoundingBoxConstraint(
           init_relative_footstep(0) - max_swing_distance.at(mode),
           init_relative_footstep(0) + max_swing_distance.at(mode),
           touchdown_foot_var_x);
       AddBoundingBoxConstraint(
           init_relative_footstep(1) - max_swing_distance.at(mode),
           init_relative_footstep(1) + max_swing_distance.at(mode),
-          touchdown_foot_var_y);
+          touchdown_foot_var_y);*/
       // Quadratic version
       /*auto sw_ft_dist_constraint =
           std::make_shared<drake::solvers::QuadraticConstraint>(
@@ -384,15 +384,38 @@ HybridRomTrajOpt::HybridRomTrajOpt(
                   init_relative_footstep.squaredNorm());
       AddConstraint(sw_ft_dist_constraint,
                     {touchdown_foot_var_x, touchdown_foot_var_y});*/
+
+      PrintStatus("Adding constraint -- swing distance");
+      AddBoundingBoxConstraint(init_relative_footstep(0),
+                               init_relative_footstep(0), touchdown_foot_var_x);
+      AddBoundingBoxConstraint(init_relative_footstep(1),
+                               init_relative_footstep(1), touchdown_foot_var_y);
     }
 
     left_stance = !left_stance;
   }
 }
 
+void HybridRomTrajOpt::AddDesiredCoMPosVelCost(
+    double w_reg_xy, double w_reg_xy_vel,
+    const Eigen::Vector2d& des_com_pos_rt_stance_foot_at_start_of_mode,
+    const Eigen::Vector2d& des_com_vel_rt_stance_foot_at_start_of_mode) {
+  // We don't add desired cost for the end of the first mode, because the ROM
+  // doesn't have input in the continuous time phase.
+  for (int i = 1; i < num_modes_ + 1; i++) {
+    VectorXDecisionVariable z_0_post = state_vars_by_mode(i, 0);
+    rom_des_pos_cost_bindings_.push_back(AddQuadraticErrorCost(
+        w_reg_xy * MatrixXd::Identity(2, 2),
+        des_com_pos_rt_stance_foot_at_start_of_mode, z_0_post.head<2>()));
+    rom_des_vel_cost_bindings_.push_back(AddQuadraticErrorCost(
+        w_reg_xy_vel * MatrixXd::Identity(2, 2),
+        des_com_vel_rt_stance_foot_at_start_of_mode, z_0_post.segment<2>(3)));
+  }
+}
+
 void HybridRomTrajOpt::AddFinalGoalPositionCost(
     double w_goal_pos, const Eigen::VectorXd& des_xy_pos_global) {
-  rom_goal_pos_cost_bindings_.push_back(AddQuadraticErrorCost(
+  rom_end_goal_pos_cost_bindings_.push_back(AddQuadraticErrorCost(
       w_goal_pos * MatrixXd::Identity(2, 2), des_xy_pos_global,
       y_end_of_last_mode_rt_init_stance_foot_var_));
 }

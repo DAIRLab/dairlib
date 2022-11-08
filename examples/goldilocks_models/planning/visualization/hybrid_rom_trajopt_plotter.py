@@ -170,7 +170,7 @@ def main():
       filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                  str(j) + "_rom_trajectory"
       rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
-      time_vec[j] = rom_traj.get_global_com_pos_time()[0]
+      time_vec[j-start_idx] = rom_traj.get_global_com_pos_time()[0]
     loop_time = np.diff(time_vec)
     # import pdb; pdb.set_trace()
 
@@ -220,6 +220,7 @@ def main():
     plt.show()
 
 def PlotGlobalFeetAndCoMPosition(rom_traj):
+  start_with_left_stance = rom_traj.get_stance_foot()[0] < 0.5
   global_feet_pos = rom_traj.get_global_feet_pos()
   global_feet_pos_time = rom_traj.get_global_feet_pos_time()
   global_com_pos = rom_traj.get_global_com_pos()
@@ -231,9 +232,12 @@ def PlotGlobalFeetAndCoMPosition(rom_traj):
   plt.title("current time = %.3f" % global_com_pos_time[0])
 
   palette = ['r', 'g', 'b']
+  left_stance = start_with_left_stance
   for i in range(global_feet_pos.shape[1]):
-    plt.plot(global_feet_pos[0,i],global_feet_pos[1,i], palette[i] + 'x', markersize=12)
+    footmark = 'x' if left_stance else '+'
+    plt.plot(global_feet_pos[0,i],global_feet_pos[1,i], palette[i] + footmark, markersize=12)
     plt.plot(global_com_pos[0,i],global_com_pos[1,i], palette[i] + 'o')
+    left_stance = not left_stance
 
   # Draw pelvis orientation
   current_quat = rom_traj.get_current_quat_xyz_shift()
@@ -246,13 +250,14 @@ def PlotGlobalFeetAndCoMPosition(rom_traj):
   # Labels and stuffs
   plt.xlabel('x (m)')
   plt.ylabel('y (m)')
-  plt.axis('scaled')
   # lb = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
   # ub = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
   # plt.xlim([lb[0] - 1, lb[1] + 1])
   # plt.ylim([ub[0] - 1, ub[1] + 1])
-  plt.xlim([- 1, + 1])
-  plt.ylim([- 1, + 1])
+  plt.xlim([-0.2, 3])
+  plt.ylim([-1, 1])
+  ax = plt.gca()
+  ax.set_aspect('equal', adjustable='box')
 
 
 

@@ -845,13 +845,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   auto break1 = std::chrono::high_resolution_clock::now();
 
   // Get adjusted_final_pos
-  // 2 final_position is transformed from global coordinates
-  // TODO: I think we can delete `des_xy_pos`. We only need `des_xy_pos_com`.
-  // vector<VectorXd> des_xy_pos;
-  // vector<VectorXd> des_xy_vel;
-  // CreateDesiredPelvisPosAndVel(param_.n_step + param_.n_step_lipm,
-  //                              start_with_left_stance, init_phase,
-  //                              final_position, &des_xy_pos, &des_xy_vel);
+  // I think we can delete `des_xy_pos`. We only need `des_xy_pos_com`.
   vector<VectorXd> des_xy_pos_com;
   vector<VectorXd> des_xy_vel_com;
   CreateDesiredComPosAndVel(param_.n_step + param_.n_step_lipm,
@@ -868,8 +862,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       cout << "vel = " << vel.transpose() << endl;
     }
   }
-  // TODO:
-  //  My ntoes: Only the goal position needs the above shift.
+  // My ntoes: Only the goal position needs the above shift.
   //    When translating the planned traj between each solve, I believe we don't
   //    need to care about the above shift. Also when "translating" the planned
   //    traj, we need to
@@ -883,6 +876,19 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   //       2. if the MPC runs fast enough, maybe we don't even need to rotate,
   //       because the delta between each solve is small.
   //       3. if you were to transform between frames, you only need to do 2D.
+
+  // Get desired pos and vel values
+  Vector2d des_com_pos_rt_stance_foot_at_start_of_mode;
+  Vector2d des_com_vel_rt_stance_foot_at_start_of_mode;
+  if (completely_use_trajs_from_model_opt_as_target_) {
+    des_com_pos_rt_stance_foot_at_start_of_mode = y_guess_.col(0).head<2>();
+    des_com_vel_rt_stance_foot_at_start_of_mode = y_guess_.col(0).segment<2>(3);
+  } else {
+    des_com_pos_rt_stance_foot_at_start_of_mode << -des_xy_pos_com.at(0)(0),
+        -0.08;
+    des_com_vel_rt_stance_foot_at_start_of_mode << des_xy_vel_com.at(0)(0),
+        param_.gains.y_vel_offset;
+  }
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
@@ -924,6 +930,8 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   PrintEssentialStatus("first_mode_knot_idx  = " +
                        to_string(first_mode_knot_idx));
 
+  /*// We don't use swing foot travel distance constriant now.
+
   // Maximum swing foot travel distance
   // Update date the step length of the first mode
   // Take into account the double stance duration
@@ -932,21 +940,15 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       param_.gains.max_foot_speed *
       std::min(1.0, 2 * remaining_single_support_duration /
                         single_support_duration_);
-  // We need a bit of slack because the swing foot travel distance constraint is
-  // imposed on toe origin, while stance foot position stitching constraint is
-  // imposed on the two contact points.
-  // Ideally we should impose the travel distance constraint through the two
-  // contact points, so that we don't need this artificial slack
-  // TODO: we don't need slack now because we don't use full model.
-  // TODO: we probably don't even need distance cosntraint during swing phase
+
+  // * We don't need slack now because we don't use full model.
+  // * Currently I only impose distance cosntraint during swing phase
   //  (so that it doesn't affect the swing foot tracking towards the end of
   //  swing phase)
-  double slack_to_avoid_overconstraint = 0.01;  // 0.01;
   max_swing_distance_[0] =
-      std::max(slack_to_avoid_overconstraint,
-               max_foot_speed_first_mode * remaining_single_support_duration);
+      max_foot_speed_first_mode * remaining_single_support_duration;
   PrintEssentialStatus("remaining_time_til_touchdown  = " +
-                       to_string(remaining_single_support_duration));
+                       to_string(remaining_single_support_duration));*/
 
   // Construct
   PrintStatus("\nConstructing optimization problem...");
@@ -963,6 +965,26 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   trajopt.AddTimeStepConstraint(min_dt_, max_dt_, param_.fix_duration,
                                 param_.equalize_timestep_size,
                                 first_mode_duration, stride_period_);
+
+  // Add small regularization cost on rom state
+  trajopt.AddRomRegularizationCost(h_reg_, y_reg_, dy_reg_, tau_reg_,
+                                   first_mode_knot_idx, param_.gains.w_rom_reg);
+
+  // Desired CoM position and center of mass (via cost)
+  trajopt.AddDesiredCoMPosVelCost(param_.gains.w_reg_xy,
+                                  param_.gains.w_reg_xy_vel,
+                                  des_com_pos_rt_stance_foot_at_start_of_mode,
+                                  des_com_vel_rt_stance_foot_at_start_of_mode);
+
+  // Final goal position constraint
+  /*PrintStatus("Adding constraint -- FoM final position");
+  trajopt.AddBoundingBoxConstraint(
+      adjusted_final_position, adjusted_final_position,
+      trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));*/
+
+  // Add target position cost for final rom position
+  //  trajopt.AddFinalGoalPositionCost(param_.gains.w_reg_xy,
+  //                                   des_xy_pos_com.at(param_.n_step - 1));
 
   // Future steps
   if (param_.n_step_lipm > 1) {
@@ -994,21 +1016,6 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
         param_.gains.w_predict_lipm_v, des_predicted_xy_vel, stride_period_,
         desired_com_height_);
   }
-
-  // Final goal position constraint
-  /*PrintStatus("Adding constraint -- FoM final position");
-  trajopt.AddBoundingBoxConstraint(
-      adjusted_final_position, adjusted_final_position,
-      trajopt.xf_vars_by_mode(num_time_samples.size() - 1).segment(4, 2));*/
-
-  // Add target position cost for final rom position
-  //  trajopt.AddFinalGoalPositionCost(param_.gains.w_reg_xy,
-  //                                   des_xy_pos_com.at(param_.n_step - 1));
-  // Testing
-  trajopt.AddFinalGoalPositionCost(param_.gains.w_reg_xy, Vector2d::Zero());
-  // Add small regularization cost on rom state
-  trajopt.AddRomRegularizationCost(h_reg_, y_reg_, dy_reg_, tau_reg_,
-                                   first_mode_knot_idx, param_.gains.w_rom_reg);
 
   PrintStatus("Initial guesses ===============");
 
@@ -1719,10 +1726,20 @@ void CassiePlannerWithOnlyRom::PrintCost(
   if (cost_u > 0) {
     cout << "cost_u = " << cost_u << endl;
   }
-  double rom_goal_pos_cost = solvers::EvalCostGivenSolution(
-      result, trajopt.rom_goal_pos_cost_bindings_);
-  if (rom_goal_pos_cost > 0) {
-    cout << "rom_goal_pos_cost = " << rom_goal_pos_cost << endl;
+  double rom_des_pos_cost = solvers::EvalCostGivenSolution(
+      result, trajopt.rom_des_pos_cost_bindings_);
+  if (rom_des_pos_cost > 0) {
+    cout << "rom_des_pos_cost = " << rom_des_pos_cost << endl;
+  }
+  double rom_des_vel_cost = solvers::EvalCostGivenSolution(
+      result, trajopt.rom_des_vel_cost_bindings_);
+  if (rom_des_vel_cost > 0) {
+    cout << "rom_des_vel_cost = " << rom_des_vel_cost << endl;
+  }
+  double rom_end_goal_pos_cost = solvers::EvalCostGivenSolution(
+      result, trajopt.rom_end_goal_pos_cost_bindings_);
+  if (rom_end_goal_pos_cost > 0) {
+    cout << "rom_end_goal_pos_cost = " << rom_end_goal_pos_cost << endl;
   }
   double rom_regularization_cost = solvers::EvalCostGivenSolution(
       result, trajopt.rom_regularization_cost_bindings_);

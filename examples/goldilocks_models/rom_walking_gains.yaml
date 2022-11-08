@@ -81,7 +81,7 @@ constant_turning_rate: 0
 use_radio: false
 use_virtual_radio: true  # use xbox controller in the simulation
 vel_scale_rot: -0.5
-vel_scale_trans_sagital: 1
+vel_scale_trans_sagital: 0.6  # 1
 vel_scale_trans_lateral: -0.2
 
 
@@ -104,7 +104,7 @@ double_support_duration: 0.1 #0.02
 constant_rom_vel_during_double_support: true
 
 # Parameters that affect the foot spread
-y_vel_offset: 0.1  # 0.1  # during normal walking, y_vel is about 0.1 to 0.2 m/s
+y_vel_offset: 0.2  # 0.1  # during normal walking, y_vel is about 0.1 to 0.2 m/s
 # `constant_rom_vel_during_double_support` also affects
 # the "nominal FOM hip roll position" and cost weight also affect
 
@@ -129,19 +129,34 @@ right_limit_wrt_stance_ft: 0.02  #0.02 # 0.06  # This cannot be too big if we wa
 ### Planner cost weight
 use_lipm_mpc_and_ik: false
 
-# Without LIPM MPC and IK
+# Hybrid ROM MPC
 w_Q: 0           # I removed this because we have state regularization
 w_R: 2e-6
 w_rom_reg: 1e-6  # reminder: should have at least a little bit of reg cost
-w_reg_quat: 1
 w_reg_xy: 0.1  #0.1 for not using IK; maybe 10 for using IK?
+w_reg_xy_vel: 0.1
+w_predict_lipm_p: .1
+w_predict_lipm_v: 0.1
+# Below is not used for hybrid ROM MPC
+w_reg_quat: 1
 w_reg_z: 50  # 10
 w_reg_joints: 0.02
 w_reg_hip_yaw: 1  # should use 1? 5?
-w_reg_xy_vel: 0.1
 w_reg_vel: 1e-6
-w_predict_lipm_p: .1
-w_predict_lipm_v: 0.01
+
+# Without LIPM MPC and IK
+#w_Q: 0           # I removed this because we have state regularization
+#w_R: 2e-6
+#w_rom_reg: 1e-6  # reminder: should have at least a little bit of reg cost
+#w_reg_quat: 1
+#w_reg_xy: 0.1  #0.1 for not using IK; maybe 10 for using IK?
+#w_reg_z: 50  # 10
+#w_reg_joints: 0.02
+#w_reg_hip_yaw: 1  # should use 1? 5?
+#w_reg_xy_vel: 0.1
+#w_reg_vel: 1e-6
+#w_predict_lipm_p: .1
+#w_predict_lipm_v: 0.01
 
 # With LIPM MPC and IK
 #w_Q: 0.01

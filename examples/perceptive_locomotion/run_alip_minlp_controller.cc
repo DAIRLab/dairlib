@@ -6,17 +6,19 @@
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_footstep_target.hpp"
 #include "dairlib/lcmt_fsm_info.hpp"
+
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/stepping_stone_utils.h"
 
 #include "solvers/osqp_solver_options.h"
 #include "systems/controllers/footstep_planning/alip_minlp_footstep_controller.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
-#include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/fsm_lcm_systems.h"
+#include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
@@ -75,6 +77,8 @@ DEFINE_string(minlp_gains_filename,
               "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
               "Filepath to alip minlp gains");
 
+DEFINE_string(foothold_yaml, "", "yaml file with footholds from simulation");
+
 DEFINE_bool(spring_model, true, "");
 
 int DoMain(int argc, char* argv[]) {
@@ -93,6 +97,15 @@ int DoMain(int argc, char* argv[]) {
 
   gains_mpc.SetFilterData(
       plant_w_spr.CalcTotalMass(*context_w_spr), gains_mpc.h_des);
+
+  std::vector<ConvexFoothold> footholds;
+  if ( !FLAGS_foothold_yaml.empty() ) {
+    footholds =
+        multibody::LoadSteppingStonesFramYaml(FLAGS_foothold_yaml).footholds;
+  }
+  auto foothold_source =
+      std::make_unique<ConstantValueSource<double>>(
+      drake::Value<std::vector<ConvexFoothold>>(footholds));
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -138,10 +151,6 @@ int DoMain(int argc, char* argv[]) {
           post_left_right_fsm_states, state_durations, double_support_duration,
           left_right_toe, gains_mpc.gains, planner_solver_options.osqp_options);
 
-  auto foothold_oracle =
-      builder.AddSystem<FlatTerrainFootholdSource>(
-          plant_w_spr, context_w_spr.get(), left_right_toe);
-
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
 
@@ -170,7 +179,25 @@ int DoMain(int argc, char* argv[]) {
       "ALIP_MINLP_DEBUG", &lcm_local, 0);
   auto mpc_debug_pub = builder.AddSystem(std::move(mpc_debug_pub_ptr));
 
-  // --- Connect the diagram --- //
+
+  // --- Add and connect the source of the foothold information --- //
+  if ( !FLAGS_foothold_yaml.empty() ) {
+    DRAKE_ASSERT(FLAGS_channel_x == "CASSIE_STATE_SIMULATION");
+    auto foothold_oracle = builder.AddSystem(std::move(foothold_source));
+    builder.Connect(foothold_oracle->get_output_port(),
+                    foot_placement_controller->get_input_port_footholds());
+  } else {
+    auto foothold_oracle =
+        builder.AddSystem<FlatTerrainFootholdSource>(
+            plant_w_spr, context_w_spr.get(), left_right_toe);
+    builder.Connect(*state_receiver, *foothold_oracle);
+    builder.Connect(foothold_oracle->get_output_port(),
+                    foot_placement_controller->get_input_port_footholds());
+  }
+
+
+
+  // --- Connect the rest of the diagram --- //
   // State Reciever connections
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());
@@ -178,13 +205,10 @@ int DoMain(int argc, char* argv[]) {
                   foot_placement_controller->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm_sender->get_input_port_state());
-  builder.Connect(*state_receiver, *foothold_oracle);
 
   // planner ports
   builder.Connect(high_level_command->get_xy_output_port(),
                   foot_placement_controller->get_input_port_vdes());
-  builder.Connect(foothold_oracle->get_output_port(),
-                  foot_placement_controller->get_input_port_footholds());
 
   // planner out ports
   builder.Connect(foot_placement_controller->get_output_port_fsm(),

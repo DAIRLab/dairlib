@@ -83,6 +83,25 @@ cc_binary(
 )
 
 cc_binary(
+    name = "multibody_sim_hiking",
+    srcs = ["multibody_sim_hiking.cc"],
+    deps = [
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/systems:cassie_encoder",
+        "//multibody:utils",
+        "//solvers:optimization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_controller_switch",
     srcs = ["run_controller_switch.cc"],
     deps = [

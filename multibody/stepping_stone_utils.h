@@ -1,10 +1,10 @@
 #pragma once
 
 #include "geometry/convex_foothold.h"
+#include "multibody_utils.h"
 
 #include "drake/math/rigid_transform.h"
-#include "drake/common/yaml/yaml_read_archive.h"
-#include "yaml-cpp/yaml.h"
+#include "drake/multibody/plant/multibody_plant.h"
 
 using dairlib::geometry::ConvexFoothold;
 using drake::math::RigidTransformd;
@@ -15,7 +15,7 @@ using Eigen::Vector3d;
 
 namespace dairlib::multibody {
 
-struct SquareSteppingStone {
+struct SquareSteppingStoneList {
 
   std::vector<std::vector<std::vector<double>>> stones;
   std::vector<std::pair<RigidTransformd, Eigen::Vector3d>> cubes;
@@ -23,7 +23,7 @@ struct SquareSteppingStone {
 
   template<typename Archive>
   void Serialize(Archive *a) {
-    a->Visit(stones);
+    a->Visit(DRAKE_NVP(stones));
 
     for (auto &stone : stones) {
       auto center = Vector3d::Map(stone.at(0).data());
@@ -47,12 +47,35 @@ struct SquareSteppingStone {
 
       ConvexFoothold foothold;
       foothold.SetContactPlane(normal, center);
-      foothold.AddFace(normal, center + 0.5 * dims(0) * R_WB.matrix() * Vector3d::UnitX());
-      foothold.AddFace(normal, center - 0.5 * dims(0) * R_WB.matrix() * Vector3d::UnitX());
-      foothold.AddFace(normal, center + 0.5 * dims(1) * R_WB.matrix() * Vector3d::UnitY());
-      foothold.AddFace(normal, center - 0.5 * dims(1) * R_WB.matrix() * Vector3d::UnitY());
+
+      double e = 0.1; // Add a 5 cm margin of error to
+                       // stepping stone boundaries
+      foothold.AddFace(
+          R_WB.matrix() * Vector3d::UnitX(),
+          center + 0.5 * (dims(0) - 2*e) * R_WB.matrix() * Vector3d::UnitX());
+      foothold.AddFace(
+          -R_WB.matrix() * Vector3d::UnitX(),
+          center - 0.5 * (dims(0) - 2*e) * R_WB.matrix() * Vector3d::UnitX());
+      foothold.AddFace(
+          R_WB.matrix() * Vector3d::UnitY(),
+          center + 0.5 * (dims(1) - e) * R_WB.matrix() * Vector3d::UnitY());
+      foothold.AddFace(
+          -R_WB.matrix() * Vector3d::UnitY(),
+          center - 0.5 * (dims(1) - e) * R_WB.matrix() * Vector3d::UnitY());
+      footholds.push_back(foothold);
     }
   }
-
 };
+
+SquareSteppingStoneList LoadSteppingStonesFramYaml(const std::string& filename);
+
+void AddSteppingStonesToSim(drake::multibody::MultibodyPlant<double>* plant,
+                            drake::geometry::SceneGraph<double>* scene_graph,
+                            SquareSteppingStoneList stones,
+                            double mu);
+
+void AddSteppingStonesToSimFromYaml(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph,
+    const std::string& filename, double mu);
 }

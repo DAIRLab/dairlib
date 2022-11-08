@@ -4,6 +4,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/stepping_stone_utils.h"
 #include "multibody/visualization_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
@@ -29,6 +30,8 @@ DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 // Terrain
 DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
+DEFINE_string(stepping_stone_yaml, "",
+              "yaml file with boxy stepping stones to visualize");
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
@@ -54,6 +57,13 @@ int do_main(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double> plant(0.0);
+  if (!FLAGS_stepping_stone_yaml.empty()) {
+    multibody::AddSteppingStonesToSimFromYaml(
+        &plant,
+        &scene_graph,
+        FLAGS_stepping_stone_yaml,
+        1.0);
+  }
 
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
   plant.Finalize();

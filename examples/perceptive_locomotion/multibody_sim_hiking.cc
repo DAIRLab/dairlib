@@ -1,7 +1,3 @@
-//
-// Created by brian on 11/7/22.
-//
-
 #include <memory>
 
 #include <drake/systems/primitives/multiplexer.h>
@@ -47,6 +43,10 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 // Simulation parameters.
+DEFINE_string(stepping_stone_filename,
+              "examples/perceptive_locomotion/terrains/stones.yaml",
+              "YAML file defining stepping stones");
+
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 DEFINE_double(target_realtime_rate, 1.0,
@@ -65,7 +65,7 @@ DEFINE_double(penetration_allowance, 1e-5,
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
-DEFINE_double(init_height, .7,
+DEFINE_double(init_height, .95,
               "Initial starting height of the pelvis above "
               "ground");
 DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
@@ -92,9 +92,8 @@ int do_main(int argc, char* argv[]) {
 
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
-  if (FLAGS_floating_base) {
-    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
-  }
+  multibody::AddSteppingStonesToSimFromYaml(
+      &plant, &scene_graph, FLAGS_stepping_stone_filename, 0.8);
 
   std::string urdf;
   if (FLAGS_spring_model) {

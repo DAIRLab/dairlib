@@ -16,14 +16,14 @@ drake::trajectories::PiecewisePolynomial<double> GenerateComTrajectory(const Eig
 }
 
 drake::trajectories::PiecewisePolynomial<double> GenerateGeneralizedPosTrajectory(const Eigen::VectorXd& nominal_stand,
-                                                                                  const Eigen::Vector3d& base_rt_com_ewrt_w,
+                                                                                  const Eigen::Vector3d& p_ScmBase_W,
                                                                                   const drake::trajectories::PiecewisePolynomial<double>& com_traj,
                                                                                   int base_pos_start){
   auto n_points = com_traj.get_segment_times().size();
   std::vector<drake::MatrixX<double>> samples(n_points);
   for(int i = 0; i < n_points; i++){
     samples[i] = nominal_stand;
-    samples[i].block<3,1>(base_pos_start,0, 3, 1) = com_traj.value(com_traj.get_segment_times()[i]) + base_rt_com_ewrt_w;
+    samples[i].block<3,1>(base_pos_start,0, 3, 1) = com_traj.value(com_traj.get_segment_times()[i]) + p_ScmBase_W;
   }
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(com_traj.get_segment_times(), samples);
 }

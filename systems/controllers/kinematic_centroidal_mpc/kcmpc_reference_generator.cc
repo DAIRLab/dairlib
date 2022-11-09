@@ -10,13 +10,13 @@ KcmpcReferenceGenerator::KcmpcReferenceGenerator(const drake::multibody::Multibo
                                                  nominal_stand_(nominal_stand),
                                                  context_(plant.CreateDefaultContext()){
   dairlib::multibody::SetPositionsIfNew<double>(plant_, nominal_stand_, context_.get());
-  base_rt_com_ewrt_w = nominal_stand_.segment(4, 3) - plant_.CalcCenterOfMassPositionInWorld(*context_);
+  p_ScmBase_W_ = nominal_stand_.segment(4, 3) - plant_.CalcCenterOfMassPositionInWorld(*context_);
   m_ = plant_.CalcTotalMass(*context_);
 }
 
 
 void KcmpcReferenceGenerator::Build() {
-  Build(nominal_stand_.segment(4, 3) - base_rt_com_ewrt_w);
+  Build(nominal_stand_.segment(4, 3) - p_ScmBase_W_);
 }
 
 void KcmpcReferenceGenerator::Build(const Eigen::Vector3d& com) {
@@ -24,9 +24,9 @@ void KcmpcReferenceGenerator::Build(const Eigen::Vector3d& com) {
                                               com_vel_knot_points_.samples,
                                               com_vel_knot_points_.times);
   q_trajectory_ = GenerateGeneralizedPosTrajectory(nominal_stand_,
-                                                       base_rt_com_ewrt_w,
-                                                       com_trajectory_,
-                                                       4);
+                                                   p_ScmBase_W_,
+                                                   com_trajectory_,
+                                                   4);
   v_trajectory_ = GenerateGeneralizedVelTrajectory(com_trajectory_,
                                                        plant_.num_velocities(),
                                                        3);

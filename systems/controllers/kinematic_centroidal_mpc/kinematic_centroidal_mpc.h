@@ -9,6 +9,7 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_constraints.h"
 #include "multibody/kinematic/kinematic_constraints.h"
+#include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_gains.h"
 
 /*!
  * @brief Class for solving nonlinear kinematic centroidal mpc. Implementation is based on
@@ -17,15 +18,15 @@
  * Humanoid Robots (November 2014).
  *
  * The optimization contains two coupled problems. The centroidal problem optimizes over:
- *      Body orientation
+ *      Angular momentum
+ *      Linear momentum
  *      Center of mass position
- *      Body angular velocity
- *      Center of mass velocity
  *      Contact position
  *      Contact velocity
  *      Contact force
  *  While the kinematics problem optimzes over:
- *      Robot state (positions and velocity, including floating base)
+ *      Generalized positions (including floating base)
+ *      Generalized velocities (including floating boase)
  *
  * A series of constraints couple the kinematic state to the centroidal state ensuring the contact point's, com position,
  * com velocity, body orientation, body angular velocity all align up
@@ -43,46 +44,52 @@ class KinematicCentroidalMPC {
   KinematicCentroidalMPC(const drake::multibody::MultibodyPlant<double>& plant,
                          int n_knot_points,
                          double dt,
-                         const std::vector<std::shared_ptr<dairlib::multibody::WorldPointEvaluator<double>>>& contact_points);
+                         const std::vector<dairlib::multibody::WorldPointEvaluator<double>>& contact_points);
 
 
   /*!
-   * @brief Adds a cost reference for the state of the robot of the form (x - x_ref)^T Q (x - x_ref)
-   * @param ref_traj trajectory in time
-   * @param Q cost on error from the reference
+   * @brief Sets the cost for the mpc problem using a gains struct
+   * @param gains
    */
-  void AddStateReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                             const Eigen::MatrixXd& Q);
+  void SetGains(const KinematicCentroidalGains& gains);
 
   /*!
-   * @brief Adds a cost and reference for the centroidal state of the robot (x - x_ref)^T Q (x - x_ref)
+   * @brief Adds a cost reference for the generalized position of the robot of the form (x - x_ref)^T Q (x - x_ref)
    * @param ref_traj trajectory in time
-   * @param Q cost on error from reference
    */
-  void AddCentroidalReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj,
-                                  const Eigen::MatrixXd& Q);
+  void AddGenPosReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
+
+  /*!
+   * @brief Adds a cost reference for the generalized velocity of the robot of the form (x - x_ref)^T Q (x - x_ref)
+   * @param ref_traj trajectory in time
+   */
+  void AddGenVelReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
+
+  /*!
+   * @brief Adds a cost and reference for the center of mass position of the robot (x - x_ref)^T Q (x - x_ref)
+   * @param ref_traj trajectory in time
+   */
+  void AddComReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
 
   /*!
    * @brief Adds a cost and reference for the contact position and velocity (x - x_ref)^T Q (x - x_ref)
-   * @param contact_ref_traj trajectory in time
-   * @param Q_contact cost on error from the reference
+   * @param contact_ref_traj trajectory in time, order is all contact pos, all contact vel
    */
-  void AddContactTrackingReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj,
-                                       const Eigen::MatrixXd& Q_contact);
+  void AddContactTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj);
+
+  /*!
+   * @brief Adds a cost and reference for the angular and linear momentum of the robot (x - x_ref)^T Q (x - x_ref)
+   * @param ref_traj
+   */
+  void AddMomentumReference(std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj);
 
   /*!
    * @brief Add a cost and reference for the contact forces (x - x_ref)^T Q (x - x_ref)
    * @param force_ref_traj trajectory in time
-   * @param Q_force cost on error from the reference
    */
-  void AddForceTrackingReferenceCost(std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj,
-                                     const Eigen::MatrixXd& Q_force);
+  void AddForceTrackingReference(std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj);
 
-  void AddConstantStateReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
-
-  void AddConstantForceTrackingReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q_force);
-
-  void AddConstantCentroidalReferenceCost(const drake::VectorX<double>& value, const Eigen::MatrixXd& Q);
+  void AddConstantMomentumReference(const drake::VectorX<double>& value);
 
   /*!
    * @brief accessor for robot state decision vars
@@ -90,22 +97,6 @@ class KinematicCentroidalMPC {
    * @return
    */
   drake::solvers::VectorXDecisionVariable state_vars(
-      int knotpoint_index) const;
-
-  /*!
-   * @brief accessor for centroidal position decision vars
-   * @param knotpoint_index
-   * @return
-   */
-   drake::solvers::VectorXDecisionVariable centroidal_pos_vars(
-      int knotpoint_index) const;
-
-   /*!
-    * @brief accessor for centroidal velocity decision vars
-    * @param knotpoint_index
-    * @return
-    */
-   drake::solvers::VectorXDecisionVariable centroidal_vel_vars(
       int knotpoint_index) const;
 
    /*!
@@ -133,27 +124,11 @@ class KinematicCentroidalMPC {
       int knotpoint_index) const;
 
   /*!
-   * @brief accessor for center of mass velocity decision vars
+   * @brief accessor for center of momentum decision variables
    * @param knotpoint_index
    * @return
    */
-  drake::solvers::VectorXDecisionVariable com_vel_vars(
-      int knotpoint_index) const;
-
-  /*!
-   * @brief accessor for centroidal quaternion decision vars
-   * @param knotpoint_index
-   * @return
-   */
-  drake::solvers::VectorXDecisionVariable cent_quat_vars(
-      int knotpoint_index) const;
-
-  /*!
-   * @brief accessor for com angular velocity decision variables (body frame)
-   * @param knotpoint_index
-   * @return
-   */
-  drake::solvers::VectorXDecisionVariable cent_omega_vars(
+  drake::solvers::VectorXDecisionVariable momentum_vars(
       int knotpoint_index) const;
 
   /*!
@@ -210,9 +185,6 @@ class KinematicCentroidalMPC {
   void SetFromSolution(
       const drake::solvers::MathematicalProgramResult& result,
       Eigen::MatrixXd* state_samples,
-      Eigen::MatrixXd* centroidal_samples,
-      Eigen::MatrixXd* contact_pos_samples,
-      Eigen::MatrixXd* contact_vel_samples,
       Eigen::MatrixXd* contact_force_samples,
       std::vector<double>* time_samples) const;
 
@@ -222,6 +194,19 @@ class KinematicCentroidalMPC {
   void SetZeroInitialGuess();
 
   void SetRobotStateGuess(const drake::VectorX<double>& state);
+
+  void SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double>& state_trajectory);
+
+  //TODO remove once drake has trajectory stacking
+  void SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double>& q_traj, const drake::trajectories::PiecewisePolynomial<double>& v_traj);
+
+  void SetComPositionGuess(const drake::Vector3<double>& state);
+
+  void SetComPositionGuess(const drake::trajectories::PiecewisePolynomial<double>& com_trajectory);
+
+  void SetContactGuess(const drake::trajectories::PiecewisePolynomial<double>& contact_trajectory);
+
+  void SetForceGuess(const drake::trajectories::PiecewisePolynomial<double>& force_trajectory);
 
   void CreateVisualizationCallback(std::string model_file,
                                    double alpha,
@@ -241,13 +226,42 @@ class KinematicCentroidalMPC {
    */
   void AddPlantJointLimits(const std::vector<std::string>& joints_to_limit);
 
+  /*!
+   * @brief Adds a kinematic position constraint to the optimization
+   * @param con a shared pointer to the constraint
+   * @param vars the decision variables for the constraint
+   */
   void AddKinematicConstraint(std::shared_ptr<dairlib::multibody::KinematicPositionConstraint<double>> con,
                               const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& vars);
+
+  /*!
+   * @brief Adds a constraint on com height to all knot points
+   * @param lb
+   * @param ub
+   */
+  void AddComHeightBoundingConstraint(double lb, double ub);
 
   int num_knot_points() const{
     return n_knot_points_;
   }
 
+  /*!
+   * @brief Set the mode sequence
+   * @param contact_sequence vector where `contact_sequence[knot_point][contact_index]` tells you if at `knot_point` is
+   *                            `contact_index` active
+   */
+  void SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence);
+
+  /*!
+   * @brief Set the mode sequence via a trajectory. The value of the trajectory at each time, cast to a bool is if a contact
+   *            point is active or not
+   * @param contact_sequence
+   */
+  void SetModeSequence(const drake::trajectories::PiecewisePolynomial<double>& contact_sequence);
+
+  void AddInitialStateConstraint(const Eigen::VectorXd& state);
+
+  const drake::multibody::MultibodyPlant<double>& Plant(){return plant_;};
  private:
   /*!
    * @brief Adds dynamics for centroidal state
@@ -280,20 +294,21 @@ class KinematicCentroidalMPC {
   void AddFrictionConeConstraints();
 
 //  void AddTorqueLimits();
-//
-//  void AddStateLimits();
 
   /*!
    * @brief Add costs from internally stored variables
    */
   void AddCosts();
 
+  bool is_first_knot(int knot_point_index){return knot_point_index == 0;};
+  bool is_last_knot(int knot_point_index){return knot_point_index == n_knot_points_ - 1;};
+
   const drake::multibody::MultibodyPlant<double>& plant_;
 
   int n_knot_points_;
   double dt_;
 
-  std::vector<std::shared_ptr<dairlib::multibody::WorldPointEvaluator<double>>> contact_points_;
+  std::vector<dairlib::multibody::WorldPointEvaluator<double>> contact_points_;
   std::vector<dairlib::multibody::KinematicEvaluatorSet<double>> contact_sets_;
 
   static const int kCentroidalPosDim = 7;
@@ -305,17 +320,21 @@ class KinematicCentroidalMPC {
   int n_contact_points_;
 
   /// References and cost matrixes
-  std::unique_ptr<drake::trajectories::Trajectory<double>> ref_traj_;
-  Eigen::MatrixXd Q_;
-  std::unique_ptr<drake::trajectories::Trajectory<double>> centroidal_ref_traj_;
-  Eigen::MatrixXd Q_cent_;
+  std::unique_ptr<drake::trajectories::Trajectory<double>> q_ref_traj_;
+  Eigen::MatrixXd Q_q_;
+  std::unique_ptr<drake::trajectories::Trajectory<double>> v_ref_traj_;
+  Eigen::MatrixXd Q_v_;
+  std::unique_ptr<drake::trajectories::Trajectory<double>> com_ref_traj_;
+  Eigen::MatrixXd Q_com_;
+  std::unique_ptr<drake::trajectories::Trajectory<double>> mom_ref_traj_;
+  Eigen::MatrixXd Q_mom_;
   std::unique_ptr<drake::trajectories::Trajectory<double>> contact_ref_traj_;
   Eigen::MatrixXd Q_contact_;
   std::unique_ptr<drake::trajectories::Trajectory<double>> force_ref_traj_;
   Eigen::MatrixXd Q_force_;
 
 
-  std::vector<std::unordered_map<std::shared_ptr<dairlib::multibody::WorldPointEvaluator<double>>, bool>> contact_sequence_;
+  std::vector<std::vector<bool>> contact_sequence_;
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
   std::unique_ptr<drake::solvers::IpoptSolver> solver_;
@@ -326,8 +345,10 @@ class KinematicCentroidalMPC {
   //DecisionVariables
   // Full robot state
   std::vector<drake::solvers::VectorXDecisionVariable>  x_vars_;
-  // Centroidal position and orientation and velocity
-  std::vector<drake::solvers::VectorXDecisionVariable>  x_cent_vars_;
+  // angular and linear momentum variables (in that order)
+  std::vector<drake::solvers::VectorXDecisionVariable>  mom_vars_;
+  // center of mass position
+  std::vector<drake::solvers::VectorXDecisionVariable>  com_vars_;
 
   // Contact position, velocity, and force [n_knot_points, 3 * n_contact_points]
   std::vector<drake::solvers::VectorXDecisionVariable>  contact_pos_;
@@ -339,5 +360,7 @@ class KinematicCentroidalMPC {
   std::unique_ptr<dairlib::multibody::MultiposeVisualizer> callback_visualizer_;
 
   const std::set<int> full_constraint_relative_ = {0, 1, 2};
+
+  double swing_foot_minimum_height_;
 };
 

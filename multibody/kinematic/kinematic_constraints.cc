@@ -58,7 +58,7 @@ void KinematicPositionConstraint<T>::EvaluateConstraint(
   // Add relative offsets, looping through the list of relative constraints
   auto it = full_constraint_relative_.begin();
   for (uint i = 0; i < full_constraint_relative_.size(); i++) {
-    (*y)(*it) += alpha(i);
+    (*y)(*it) -= alpha(i);
     it++;
   }
 }

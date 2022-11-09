@@ -12,7 +12,31 @@ cc_library(
         "//multibody/kinematic:kinematic",
         "//multibody/kinematic:constraints",
         "//multibody:multipose_visualizer",
+        "//systems/controllers/kinematic_centroidal_mpc:kcmpc_gains",
         "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kcmpc_gains",
+    hdrs = ["kinematic_centroidal_gains.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kinematic_centroidal_reference_generator",
+    srcs = ["kcmpc_reference_generator.cc",
+            "reference_generation_utils.cc",
+            "gait.cc"],
+    hdrs = ["kcmpc_reference_generator.h",
+            "reference_generation_utils.h",
+            "gait.h"],
+    deps = [
+        "//common",
+        "//multibody/kinematic:kinematic",
         "@drake//:drake_shared_library",
     ],
 )

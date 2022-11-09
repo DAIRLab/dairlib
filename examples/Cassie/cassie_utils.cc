@@ -230,6 +230,18 @@ const systems::GearedMotor& AddMotorModel(
   return *cassie_motor;
 }
 
+std::vector<std::string> JointNames(){
+  std::vector<std::string> side_names{"_left", "_right"};
+  std::vector<std::string> joint_names{"hip_pitch", "knee", "ankle_joint", "toe", "hip_roll", "hip_yaw"};
+  std::vector<std::string> full_joint_names;
+  for(const auto& name : joint_names){
+    for(const auto& side:side_names){
+      full_joint_names.push_back(name+side);
+    }
+  }
+  return  full_joint_names;
+}
+
 template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(
     const MultibodyPlant<double>& plant);  // NOLINT
 template std::pair<const Vector3d, const Frame<double>&> RightToeFront(

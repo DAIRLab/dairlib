@@ -1,5 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
+exports_files(["kinematic_centroidal_mpc_gains.yaml"])
 
 cc_library(
     name = "centroidal_mpc",
@@ -13,7 +14,9 @@ cc_library(
 cc_binary(
     name = "cassie_kcmpc_trajopt",
     srcs = ["cassie_kcmpc_trajopt.cc"],
-    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    data = ["//examples/Cassie/kinematic_centroidal_mpc:kinematic_centroidal_mpc_gains.yaml",
+            "//examples/Cassie/kinematic_centroidal_mpc/gaits:stand.yaml",
+            "//examples/Cassie/kinematic_centroidal_mpc/gaits:walk.yaml"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//common",
@@ -21,7 +24,8 @@ cc_binary(
         "//multibody/kinematic",
         "//solvers:optimization_utils",
         "//systems/primitives",
-        "//systems/controllers/kinematic_centroidal_mpc",
+        "//examples/Cassie/kinematic_centroidal_mpc:cassie_kinematic_centroidal_mpc",
+        "//examples/Cassie/kinematic_centroidal_mpc:kinematic_centroidal_reference_generator",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -51,6 +55,32 @@ cc_library(
         "//multibody:utils",
         "//examples/Cassie:cassie_utils",
         "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kinematic_centroidal_reference_generator",
+    srcs = ["cassie_reference_utils.cc"],
+    hdrs = ["cassie_reference_utils.h"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//common",
+        "//systems/controllers/kinematic_centroidal_mpc:kinematic_centroidal_reference_generator",
+        "//multibody:visualization_utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "cassie_kinematic_centroidal_mpc",
+    srcs = ["cassie_kinematic_centroidal_mpc.cc"],
+    hdrs = ["cassie_kinematic_centroidal_mpc.h"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//common",
+        "//systems/controllers/kinematic_centroidal_mpc",
+        "//multibody:visualization_utils",
         "@drake//:drake_shared_library",
     ],
 )

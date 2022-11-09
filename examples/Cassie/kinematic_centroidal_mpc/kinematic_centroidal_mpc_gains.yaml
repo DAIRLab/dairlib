@@ -1,0 +1,36 @@
+com_position: [1, 1, 10]
+generalized_positions:
+  base_qw: 1.0
+  base_qx: 1.0
+  base_qy: 1.0
+  base_qz: 1.0
+  base_x: 0
+  base_y: 0
+  base_z: 0
+  hip_roll_: 0.01
+  hip_yaw_: 0.01
+  hip_pitch_: 0.001
+  knee_: 0.001
+  ankle_joint_: 0.001
+  toe_: 0.0000
+generalized_velocities:
+  base_wx: 0.5
+  base_wy: 0.5
+  base_wz: 0.5
+  base_vx: 0.1
+  base_vy: 0.1
+  base_vz: 0.1
+  hip_roll_: 0.02
+  hip_yaw_: 0.02
+  hip_pitch_: 0.002
+  knee_: 0.002
+  ankle_joint_: 0.002
+  toe_: 0.004
+
+contact_pos: [0.1, 16, 0.001]
+contact_vel: [0.02, 0.02, 0.02]
+contact_force: [0.0001, 0.0001, 0.0001]
+lin_momentum: [0.00001, 0.00001, 0.00001]
+ang_momentum: [0.0000001, 0.0000001, 0.0000001]
+
+swing_foot_minimum_height: 0.015

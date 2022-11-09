@@ -1122,16 +1122,19 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Testing -- translating the knee spring to knee joint
   //  if (is_rom_modification_) {
   if (two_models_) {
+    // Position (only do knees)
     x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[0]) +=
         x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]);
     x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[1]) +=
         x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[1]);
 
-    // Testing -- also do this for velocity
+    // Velocity (only do knees)
     x_wo_spr.segment<1>(n_q_ + knee_ankle_vel_idx_list_wo_spr_[0]) +=
-        x_w_spr.segment<1>(n_q_ + spring_vel_idx_list_w_spr_[0]);
+        x_w_spr.segment<1>(plant_w_spr_.num_positions() +
+                           spring_vel_idx_list_w_spr_[0]);
     x_wo_spr.segment<1>(n_q_ + knee_ankle_vel_idx_list_wo_spr_[1]) +=
-        x_w_spr.segment<1>(n_q_ + spring_vel_idx_list_w_spr_[1]);
+        x_w_spr.segment<1>(plant_w_spr_.num_positions() +
+                           spring_vel_idx_list_w_spr_[1]);
 
     //    cout << "x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]) = "
     //         << x_w_spr.segment<1>(spring_pos_idx_list_w_spr_[0]) << endl;

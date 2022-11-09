@@ -133,7 +133,7 @@ use_lipm_mpc_and_ik: false
 w_Q: 0
 w_R: 0
 w_rom_reg: 1e-6  # reminder: should have at least a little bit of reg cost
-w_reg_xy: 0.0  # setting to 0 seems to provide better tracking of desired vel (doesn't diverge)
+w_reg_xy: 0.1  # setting to 0 seems to provide better tracking of desired vel (doesn't diverge)
 w_reg_xy_vel: 0.1
 w_predict_lipm_p: .1
 w_predict_lipm_v: 0.1
@@ -233,7 +233,7 @@ ds_time: 0.
 max_CoM_to_footstep_dist: 0.5
 footstep_offset: 0.0
 center_line_offset: 0.03
-mid_foot_height: 0.10  #0.03   # The robot sometimes cannot catch itself when this foot height is small (e.g. 5cm)
+mid_foot_height: 0.05  #0.03   # The robot sometimes cannot catch itself when this foot height is small (e.g. 5cm)
 final_foot_height: -0.0
 final_foot_velocity_z: 0.0
 

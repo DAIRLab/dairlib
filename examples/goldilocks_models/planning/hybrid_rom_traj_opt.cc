@@ -349,28 +349,17 @@ HybridRomTrajOpt::HybridRomTrajOpt(
       //    endl;
     }
 
-    // Foot collision avoidance and step length
-    PrintStatus("Adding constraint -- swing collision avoidance");
-    // Variables:
-    //   discrete_input = swing foot touchdown pos rt stance foot
-    // Constraints:
-    //     lb <= foot step rt stance foot <= ub
-    // =>  lb <= discrete_input <= ub
-
-    double lb_swing_rt_stance_x = -max_step_length;
-    double ub_swing_rt_stance_x = max_step_length;
-    double lb_swing_rt_stance_y =
-        left_stance ? -left_limit_wrt_stance_ft : right_limit_wrt_stance_ft;
-    double ub_swing_rt_stance_y =
-        left_stance ? -right_limit_wrt_stance_ft : left_limit_wrt_stance_ft;
-    AddBoundingBoxConstraint(lb_swing_rt_stance_x, ub_swing_rt_stance_x,
-                             touchdown_foot_var_x);
-    AddBoundingBoxConstraint(lb_swing_rt_stance_y, ub_swing_rt_stance_y,
-                             touchdown_foot_var_y);
-
-    // We need distance constraint on the swing foot for the first mode, because
-    // we have double support phase where the "swing foot" cannot move.
+    // Footstep constraints
     if (mode == 0 && start_in_double_support_phase) {
+      // We need distance constraint on the swing foot for the first mode,
+      // because we have double support phase where the "swing foot" cannot
+      // move.
+      PrintStatus("Adding constraint -- swing distance");
+      AddBoundingBoxConstraint(init_relative_footstep(0),
+                               init_relative_footstep(0), touchdown_foot_var_x);
+      AddBoundingBoxConstraint(init_relative_footstep(1),
+                               init_relative_footstep(1), touchdown_foot_var_y);
+
       // PrintStatus("Adding constraint -- swing distance");
       // Linear version
       // Variables:
@@ -398,12 +387,25 @@ HybridRomTrajOpt::HybridRomTrajOpt(
                   init_relative_footstep.squaredNorm());
       AddConstraint(sw_ft_dist_constraint,
                     {touchdown_foot_var_x, touchdown_foot_var_y});*/
+    } else {
+      // Foot collision avoidance and step length
+      PrintStatus("Adding constraint -- swing collision avoidance");
+      // Variables:
+      //   discrete_input = swing foot touchdown pos rt stance foot
+      // Constraints:
+      //     lb <= foot step rt stance foot <= ub
+      // =>  lb <= discrete_input <= ub
 
-      PrintStatus("Adding constraint -- swing distance");
-      AddBoundingBoxConstraint(init_relative_footstep(0),
-                               init_relative_footstep(0), touchdown_foot_var_x);
-      AddBoundingBoxConstraint(init_relative_footstep(1),
-                               init_relative_footstep(1), touchdown_foot_var_y);
+      double lb_swing_rt_stance_x = -max_step_length;
+      double ub_swing_rt_stance_x = max_step_length;
+      double lb_swing_rt_stance_y =
+          left_stance ? -left_limit_wrt_stance_ft : right_limit_wrt_stance_ft;
+      double ub_swing_rt_stance_y =
+          left_stance ? -right_limit_wrt_stance_ft : left_limit_wrt_stance_ft;
+      AddBoundingBoxConstraint(lb_swing_rt_stance_x, ub_swing_rt_stance_x,
+                               touchdown_foot_var_x);
+      AddBoundingBoxConstraint(lb_swing_rt_stance_y, ub_swing_rt_stance_y,
+                               touchdown_foot_var_y);
     }
 
     left_stance = !left_stance;

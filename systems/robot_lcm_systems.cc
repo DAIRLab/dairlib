@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "robot_lcm_systems.h"
 
 #include "multibody/multibody_utils.h"

@@ -19,7 +19,7 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
     print('Processing LCM log (this may take a while)...')
     lcm_log.seek(0)
     first_timestamp = lcm_log.read_next_event().timestamp
-    start_timestamp = first_timestamp + start_time * 1e6
+    start_timestamp = int(first_timestamp + start_time * 1e6)
     print('Start time: ' + str(start_time))
     print('Duration: ' + str(duration))
     lcm_log.seek_to_timestamp(start_timestamp)

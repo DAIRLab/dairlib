@@ -205,7 +205,7 @@ def main():
 
       PlotGlobalFeetAndCoMPosition(rom_traj, not is_first_frame)
       plt.draw()
-      plt.pause(0.01)
+      plt.pause(0.05)
       # plt.pause(0.1)
       # plt.pause(0.3)
       plt.clf()

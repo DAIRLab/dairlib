@@ -89,19 +89,19 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
 
   void CreateDesiredPelvisPosAndVel(
       int n_total_step, bool start_with_left_stance, double init_phase,
-      const Eigen::VectorXd& final_position,
-      std::vector<Eigen::VectorXd>* des_xy_pos,
-      std::vector<Eigen::VectorXd>* des_xy_vel) const;
+      const Eigen::Vector2d& final_position,
+      std::vector<Eigen::Vector2d>* des_xy_pos,
+      std::vector<Eigen::Vector2d>* des_xy_vel) const;
   void CreateDesiredComPosAndVel(
       int n_total_step, bool start_with_left_stance, double init_phase,
-      const Eigen::VectorXd& final_position,
-      std::vector<Eigen::VectorXd>* des_xy_pos,
-      std::vector<Eigen::VectorXd>* des_xy_vel) const;
+      const Eigen::Vector2d& final_position,
+      std::vector<Eigen::Vector2d>* des_xy_pos,
+      std::vector<Eigen::Vector2d>* des_xy_vel) const;
   void CreateDesiredBodyPosAndVel(
       bool pelvis_or_com, int n_total_step, bool start_with_left_stance,
-      double init_phase, const Eigen::VectorXd& final_position,
-      std::vector<Eigen::VectorXd>* des_xy_pos,
-      std::vector<Eigen::VectorXd>* des_xy_vel) const;
+      double init_phase, const Eigen::Vector2d& final_position,
+      std::vector<Eigen::Vector2d>* des_xy_pos,
+      std::vector<Eigen::Vector2d>* des_xy_vel) const;
 
   void TransformBetweenGlobalAndLocalFrame3D(
       bool transform_from_global_to_local,
@@ -210,8 +210,8 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd x_guess_steppingleft_post_;
   Eigen::VectorXd x_guess_steppingright_post_;
   // Regularization term for the footstep variables
-  Eigen::Vector2d left_step_;
-  Eigen::Vector2d right_step_;
+  Eigen::Vector2d footstep_during_right_support_;
+  Eigen::Vector2d footstep_during_left_support_;
   // Desired height
   double desired_com_height_;
 

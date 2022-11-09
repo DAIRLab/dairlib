@@ -342,7 +342,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   this->plant_control_.CalcPointsPositions(
       *context_plant_control_, right_mid_.second, right_mid_.first,
       plant_control_.world_frame(), &right_foot_pos);
-  left_step_ = (left_foot_pos - right_foot_pos).head<2>();
+  footstep_during_right_support_ = (left_foot_pos - right_foot_pos).head<2>();
   plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
                                            x_guess_steppingright_pre_);
   this->plant_control_.CalcPointsPositions(
@@ -351,10 +351,12 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   this->plant_control_.CalcPointsPositions(
       *context_plant_control_, right_mid_.second, right_mid_.first,
       plant_control_.world_frame(), &right_foot_pos);
-  right_step_ = (right_foot_pos - left_foot_pos).head<2>();
+  footstep_during_left_support_ = (right_foot_pos - left_foot_pos).head<2>();
 
-  cout << "left_step_ = " << left_step_ << endl;
-  cout << "right_step_ = " << right_step_ << endl;
+  cout << "footstep_during_right_support_ = " << footstep_during_right_support_
+       << endl;
+  cout << "footstep_during_left_support_ = " << footstep_during_left_support_
+       << endl;
 
   // Desired height
   desired_com_height_ = y_reg_.col(0)(2);
@@ -726,17 +728,16 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // Get final position of
   VectorXd final_position =
       this->EvalVectorInput(context, planner_final_pos_port_)->get_value();
-  /*cout << "in planner system: final_position = " << final_position.transpose()
-       << endl;*/
 
   if (single_eval_mode_) {
     cout.precision(dbl::max_digits10);
     cout << "Used for the planner: \n";
     cout << "  x_init  = " << x_init.transpose() << endl;
+    cout << "  quat_xyz_shift  = " << quat_xyz_shift.transpose() << endl;
     cout << "  current_time  = " << current_time << endl;
     cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
     cout << "  init_phase  = " << init_phase << endl;
-    cout << "  quat_xyz_shift  = " << quat_xyz_shift.transpose() << endl;
+    cout << "  final_position = " << final_position.transpose() << endl;
   }
 
   // For data logging
@@ -840,25 +841,27 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       std::max(0.0, first_mode_duration - double_support_duration_);
 
   ///
-  /// Get desired xy position and velocity
+  /// Get desired xy position and velocity relative to INITIAL stance foot
   ///
   auto break1 = std::chrono::high_resolution_clock::now();
 
   // Get adjusted_final_pos
-  // I think we can delete `des_xy_pos`. We only need `des_xy_pos_com`.
-  vector<VectorXd> des_xy_pos_com;
-  vector<VectorXd> des_xy_vel_com;
+  vector<Vector2d> des_xy_pos_com_rt_init_stance_foot;
+  vector<Vector2d> des_xy_vel_com_rt_init_stance_foot;
   CreateDesiredComPosAndVel(param_.n_step + param_.n_step_lipm,
                             start_with_left_stance, init_phase, final_position,
-                            &des_xy_pos_com, &des_xy_vel_com);
-  for (auto& pos : des_xy_pos_com) {
+                            &des_xy_pos_com_rt_init_stance_foot,
+                            &des_xy_vel_com_rt_init_stance_foot);
+  for (auto& pos : des_xy_pos_com_rt_init_stance_foot) {
     pos -= current_local_stance_foot_pos.head<2>();
   }
+  Vector2d des_com_pos_rt_stance_foot_at_end_of_mode =
+      des_xy_pos_com_rt_init_stance_foot.at(0);
   if (single_eval_mode_) {
-    for (auto& pos : des_xy_pos_com) {
+    for (auto& pos : des_xy_pos_com_rt_init_stance_foot) {
       cout << "pos = " << pos.transpose() << endl;
     }
-    for (auto& vel : des_xy_vel_com) {
+    for (auto& vel : des_xy_vel_com_rt_init_stance_foot) {
       cout << "vel = " << vel.transpose() << endl;
     }
   }
@@ -877,20 +880,33 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   //       because the delta between each solve is small.
   //       3. if you were to transform between frames, you only need to do 2D.
 
-  // Get desired pos and vel values
-  Vector2d des_com_pos_rt_stance_foot_at_start_of_mode;
-  Vector2d des_com_vel_rt_stance_foot_at_start_of_mode;
+  // Get desired pos and vel values relative to its stance foot
+  // TODO: the horizontal vel (and maybe pos) needs different value for right
+  //  and left support.
+  //  Try velocity first, and also implement position if it's necessary.
+  Vector2d des_com_pos_rt_stance_foot_at_start_of_mode__during_left_stance;
+  Vector2d des_com_vel_rt_stance_foot_at_start_of_mode__during_left_stance;
   if (completely_use_trajs_from_model_opt_as_target_) {
-    des_com_pos_rt_stance_foot_at_start_of_mode = y_guess_.col(0).head<2>();
-    des_com_vel_rt_stance_foot_at_start_of_mode = y_guess_.col(0).segment<2>(3);
+    des_com_pos_rt_stance_foot_at_start_of_mode__during_left_stance =
+        y_guess_.col(0).head<2>();
+    des_com_vel_rt_stance_foot_at_start_of_mode__during_left_stance =
+        y_guess_.col(0).segment<2>(3);
   } else {
-    des_com_pos_rt_stance_foot_at_start_of_mode << -des_xy_pos_com.at(0)(0),
-        -0.08;
-    des_com_vel_rt_stance_foot_at_start_of_mode << des_xy_vel_com.at(0)(0),
-        param_.gains.y_vel_offset;
+    des_com_pos_rt_stance_foot_at_start_of_mode__during_left_stance
+        << -des_com_pos_rt_stance_foot_at_end_of_mode(0),
+        -abs(des_com_pos_rt_stance_foot_at_end_of_mode(1));
+    des_com_vel_rt_stance_foot_at_start_of_mode__during_left_stance
+        << des_xy_vel_com_rt_init_stance_foot.at(0)(0),
+        abs(des_xy_vel_com_rt_init_stance_foot.at(0)(1));
   }
-  cout << "des_com_pos = " << des_com_pos_rt_stance_foot_at_start_of_mode.transpose() << endl;
-  cout << "des_com_vel = " << des_com_vel_rt_stance_foot_at_start_of_mode.transpose() << endl;
+  cout << "des_com_pos = "
+       << des_com_pos_rt_stance_foot_at_start_of_mode__during_left_stance
+              .transpose()
+       << endl;
+  cout << "des_com_vel = "
+       << des_com_vel_rt_stance_foot_at_start_of_mode__during_left_stance
+              .transpose()
+       << endl;
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
@@ -902,19 +918,25 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   ///
   /// Construct regularization for footsteps
   ///
-  Vector2d left_step;
-  Vector2d right_step;
+  Vector2d footstep_during_right_support;
+  Vector2d footstep_during_left_support;
   if (completely_use_trajs_from_model_opt_as_target_) {
-    left_step = left_step_;
-    right_step = right_step_;
+    footstep_during_right_support = footstep_during_right_support_;
+    footstep_during_left_support = footstep_during_left_support_;
   } else {
-    left_step << 2 * des_xy_pos_com.at(0)(0) * stride_period_, -0.15;
-    right_step << 2 * des_xy_pos_com.at(0)(0) * stride_period_, 0.15;
+    footstep_during_right_support
+        << 2 * des_com_pos_rt_stance_foot_at_end_of_mode(0),
+        2 * abs(des_com_pos_rt_stance_foot_at_end_of_mode(1));
+    footstep_during_left_support
+        << 2 * des_com_pos_rt_stance_foot_at_end_of_mode(0),
+        -2 * abs(des_com_pos_rt_stance_foot_at_end_of_mode(1));
   }
   vector<Vector2d> reg_local_delta_footstep(param_.n_step, Vector2d());
   bool left_stance = start_with_left_stance;
   for (int i = 0; i < param_.n_step; i++) {
-    reg_local_delta_footstep.at(i) = left_stance ? right_step : left_step;
+    reg_local_delta_footstep.at(i) = left_stance
+                                         ? footstep_during_left_support
+                                         : footstep_during_right_support;
     left_stance = !left_stance;
   }
 
@@ -973,10 +995,10 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
                                    first_mode_knot_idx, param_.gains.w_rom_reg);
 
   // Desired CoM position and center of mass (via cost)
-  trajopt.AddDesiredCoMPosVelCost(param_.gains.w_reg_xy,
-                                  param_.gains.w_reg_xy_vel,
-                                  des_com_pos_rt_stance_foot_at_start_of_mode,
-                                  des_com_vel_rt_stance_foot_at_start_of_mode);
+  trajopt.AddDesiredCoMPosVelCost(
+      param_.gains.w_reg_xy, param_.gains.w_reg_xy_vel,
+      des_com_pos_rt_stance_foot_at_start_of_mode__during_left_stance,
+      des_com_vel_rt_stance_foot_at_start_of_mode__during_left_stance);
 
   // Final goal position constraint
   /*PrintStatus("Adding constraint -- FoM final position");
@@ -986,13 +1008,15 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
 
   // Add target position cost for final rom position
   //  trajopt.AddFinalGoalPositionCost(param_.gains.w_reg_xy,
-  //                                   des_xy_pos_com.at(param_.n_step - 1));
+  //                                   des_xy_pos_com_rt_init_stance_foot.at(param_.n_step
+  //                                   - 1));
 
   // Future steps
   if (param_.n_step_lipm > 1) {
     trajopt.AddCascadedLipmMPC(
         param_.gains.w_predict_lipm_p, param_.gains.w_predict_lipm_v,
-        des_xy_pos_com, des_xy_vel_com, param_.n_step_lipm, stride_period_,
+        des_xy_pos_com_rt_init_stance_foot, des_xy_vel_com_rt_init_stance_foot,
+        param_.n_step_lipm, stride_period_,
         param_.gains.max_lipm_step_length / 2,
         param_.gains.right_limit_wrt_pelvis, desired_com_height_);
   } else {
@@ -1011,7 +1035,10 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     // des_xy_vel.at(n_step), but des_xy_vel's size is not big enough to cover
     // the predicted step, so we -2. Note that, we go back 2 steps instead of
     // 1 step because velocity is asymmetric in y direction
-    des_predicted_xy_vel = des_xy_vel_com.at(param_.n_step - 2);
+    des_predicted_xy_vel =
+        des_xy_vel_com_rt_init_stance_foot.at(param_.n_step - 2);
+    if (single_eval_mode_)
+      cout << "des_predicted_xy_vel = " << des_predicted_xy_vel << endl;
 
     // Constraint and cost for the last foot step location
     trajopt.AddConstraintAndCostForLastFootStep(
@@ -1066,8 +1093,9 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
                                        tau_guess_, reg_local_delta_footstep,
                                        first_mode_knot_idx, 0);
     }
-    trajopt.SetHeuristicInitialGuessForCascadedLipm(param_, des_xy_pos_com,
-                                                    des_xy_vel_com);
+    trajopt.SetHeuristicInitialGuessForCascadedLipm(
+        param_, des_xy_pos_com_rt_init_stance_foot,
+        des_xy_vel_com_rt_init_stance_foot);
     trajopt.SetInitialGuess(trajopt.state_vars_by_mode(0, 0),
                             init_rom_state_mirrored);
 
@@ -1459,30 +1487,34 @@ int CassiePlannerWithOnlyRom::DetermineNumberOfKnotPoints(
 
 void CassiePlannerWithOnlyRom::CreateDesiredPelvisPosAndVel(
     int n_total_step, bool start_with_left_stance, double init_phase,
-    const VectorXd& final_position, vector<VectorXd>* des_xy_pos,
-    vector<VectorXd>* des_xy_vel) const {
+    const Vector2d& final_position, vector<Vector2d>* des_xy_pos,
+    vector<Vector2d>* des_xy_vel) const {
   CreateDesiredBodyPosAndVel(true, n_total_step, start_with_left_stance,
                              init_phase, final_position, des_xy_pos,
                              des_xy_vel);
 }
 void CassiePlannerWithOnlyRom::CreateDesiredComPosAndVel(
     int n_total_step, bool start_with_left_stance, double init_phase,
-    const VectorXd& final_position, vector<VectorXd>* des_xy_pos,
-    vector<VectorXd>* des_xy_vel) const {
+    const Vector2d& final_position, vector<Vector2d>* des_xy_pos,
+    vector<Vector2d>* des_xy_vel) const {
   CreateDesiredBodyPosAndVel(false, n_total_step, start_with_left_stance,
                              init_phase, final_position, des_xy_pos,
                              des_xy_vel);
 }
 void CassiePlannerWithOnlyRom::CreateDesiredBodyPosAndVel(
     bool pelvis_or_com, int n_total_step, bool start_with_left_stance,
-    double init_phase, const VectorXd& final_position,
-    vector<VectorXd>* des_xy_pos, vector<VectorXd>* des_xy_vel) const {
+    double init_phase, const Vector2d& final_position,
+    vector<Vector2d>* des_xy_pos, vector<Vector2d>* des_xy_vel) const {
   // Parameters
-  double y_vel_offset = param_.gains.y_vel_offset;
+  double y_vel_offset;
+  y_vel_offset = param_.gains.y_vel_offset;
+  DRAKE_DEMAND(y_vel_offset >= 0);
+  // TODO: we can derive y_pos_offset from y_vel_offset and maybe add it to the
+  //  COM rt stance foot.
 
-  double total_phase_length = n_total_step - init_phase;
-
+  // Limit the desired position by the max desired step length
   Vector2d adjusted_final_pos = final_position;
+  double total_phase_length = n_total_step - init_phase;
   double pos_diff_norm = adjusted_final_pos.norm();
   double max_pos_diff_norm =
       std::abs(param_.gains.max_desired_step_length * total_phase_length);
@@ -1490,8 +1522,8 @@ void CassiePlannerWithOnlyRom::CreateDesiredBodyPosAndVel(
     adjusted_final_pos *= max_pos_diff_norm / pos_diff_norm;
   }
 
-  // Get the desired xy positions for the FOM states
-  *des_xy_pos = vector<VectorXd>(n_total_step + 1, VectorXd::Zero(2));
+  // 1. Get the desired xy positions
+  *des_xy_pos = vector<Vector2d>(n_total_step + 1, Vector2d::Zero());
   des_xy_pos->at(1) = des_xy_pos->at(0) + adjusted_final_pos *
                                               (1 - init_phase) /
                                               total_phase_length;
@@ -1499,37 +1531,65 @@ void CassiePlannerWithOnlyRom::CreateDesiredBodyPosAndVel(
     des_xy_pos->at(i) =
         des_xy_pos->at(i - 1) + adjusted_final_pos / total_phase_length;
   }
+  //  if (!completely_use_trajs_from_model_opt_as_target_) {
+  // Heuristically shift the desired velocity in y direction
+  // Actually, I think we don't need to shift. Think about the case of walking
+  // forward.
+  //  }
 
-  // Get the desired xy velocities for the FOM states
+  // 2. Get the desired xy velocities
   if (completely_use_trajs_from_model_opt_as_target_) {
+    *des_xy_vel = vector<Vector2d>(n_total_step, Vector2d());
+    Vector2d body_vel_at_the_end_of_left_support;
+    Vector2d body_vel_at_the_end_of_right_support;
     if (pelvis_or_com) {
-      *des_xy_vel = vector<VectorXd>(
-          n_total_step, Vector2d(x_guess_steppingleft_post_(nq_ + 3), 0));
-      y_vel_offset = x_guess_steppingleft_post_(nq_ + 4);
+      body_vel_at_the_end_of_left_support =
+          x_guess_steppingright_post_.segment<2>(nq_ + 3);
+      body_vel_at_the_end_of_right_support =
+          x_guess_steppingleft_post_.segment<2>(nq_ + 3);
     } else {
       plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
                                                x_guess_steppingleft_post_);
-      Vector3d com_vel =
-          plant_control_.CalcCenterOfMassTranslationalVelocityInWorld(
-              *context_plant_control_);
-      *des_xy_vel = vector<VectorXd>(n_total_step, Vector2d(com_vel(0), 0));
-      y_vel_offset = com_vel(1);
+      body_vel_at_the_end_of_right_support =
+          plant_control_
+              .CalcCenterOfMassTranslationalVelocityInWorld(
+                  *context_plant_control_)
+              .head<2>();
+      plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
+                                               x_guess_steppingright_post_);
+      body_vel_at_the_end_of_left_support =
+          plant_control_
+              .CalcCenterOfMassTranslationalVelocityInWorld(
+                  *context_plant_control_)
+              .head<2>();
     }
+
+    bool left_stance = start_with_left_stance;
+    for (int i = 0; i < n_total_step; i++) {
+      if (left_stance) {
+        des_xy_vel->at(i) = body_vel_at_the_end_of_left_support;
+      } else {
+        des_xy_vel->at(i) = body_vel_at_the_end_of_right_support;
+      }
+      left_stance = !left_stance;
+    }
+
   } else {
     // Use the average vel for the vel at hybrid event (which underestimates)
-    *des_xy_vel = vector<VectorXd>(
+    *des_xy_vel = vector<Vector2d>(
         n_total_step,
         adjusted_final_pos / (stride_period_ * total_phase_length));
-  }
-  // Heuristically shift the desired velocity in y direction
-  bool dummy_bool = start_with_left_stance;
-  for (int i = 0; i < n_total_step; i++) {
-    if (dummy_bool) {
-      des_xy_vel->at(i)(1) -= y_vel_offset;
-    } else {
-      des_xy_vel->at(i)(1) += y_vel_offset;
+
+    // Heuristically shift the desired velocity in y direction
+    bool left_stance = start_with_left_stance;
+    for (int i = 0; i < n_total_step; i++) {
+      if (left_stance) {
+        des_xy_vel->at(i)(1) -= y_vel_offset;
+      } else {
+        des_xy_vel->at(i)(1) += y_vel_offset;
+      }
+      left_stance = !left_stance;
     }
-    dummy_bool = !dummy_bool;
   }
 
   // Check and print

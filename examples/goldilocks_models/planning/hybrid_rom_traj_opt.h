@@ -76,8 +76,8 @@ class HybridRomTrajOpt
       double stride_period, double com_height);
 
   void AddCascadedLipmMPC(double w_predict_lipm_p, double w_predict_lipm_v,
-                          const std::vector<Eigen::VectorXd>& des_xy_pos,
-                          const std::vector<Eigen::VectorXd>& des_xy_vel,
+                          const std::vector<Eigen::Vector2d>& des_xy_pos,
+                          const std::vector<Eigen::Vector2d>& des_xy_vel,
                           int n_step_lipm, double stride_period,
                           double max_step_length, double min_step_width,
                           double desired_height);
@@ -263,8 +263,8 @@ class HybridRomTrajOptCassie : public HybridRomTrajOpt {
       int fisrt_mode_phase_index, int starting_mode_index);
   void SetHeuristicInitialGuessForCascadedLipm(
       const PlannerSetting& param,
-      const std::vector<Eigen::VectorXd>& des_xy_pos,
-      const std::vector<Eigen::VectorXd>& des_xy_vel);
+      const std::vector<Eigen::Vector2d>& des_xy_pos,
+      const std::vector<Eigen::Vector2d>& des_xy_vel);
 };
 
 }  // namespace goldilocks_models

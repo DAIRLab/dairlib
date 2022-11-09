@@ -509,8 +509,8 @@ void HybridRomTrajOpt::AddConstraintAndCostForLastFootStep(
 
 void HybridRomTrajOpt::AddCascadedLipmMPC(
     double w_predict_lipm_p, double w_predict_lipm_v,
-    const std::vector<Eigen::VectorXd>& des_xy_pos,
-    const std::vector<Eigen::VectorXd>& des_xy_vel, int n_step_lipm,
+    const std::vector<Eigen::Vector2d>& des_xy_pos,
+    const std::vector<Eigen::Vector2d>& des_xy_vel, int n_step_lipm,
     double stride_period, double max_step_length, double min_step_width,
     double desired_height) {
   cout << "WARNING: this function has not been tested yet\n";
@@ -1113,8 +1113,8 @@ void HybridRomTrajOptCassie::SetHeuristicInitialGuess(
 }
 
 void HybridRomTrajOptCassie::SetHeuristicInitialGuessForCascadedLipm(
-    const PlannerSetting& param, const std::vector<Eigen::VectorXd>& des_xy_pos,
-    const std::vector<Eigen::VectorXd>& des_xy_vel) {
+    const PlannerSetting& param, const std::vector<Eigen::Vector2d>& des_xy_pos,
+    const std::vector<Eigen::Vector2d>& des_xy_vel) {
   // LIPM state
   // TODO: Currently we initialize all vars, but we only need for those that's
   //  not warm-started by the previous solution

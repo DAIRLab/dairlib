@@ -199,6 +199,7 @@ relative_swing_ft: true
 
 # Swing foot tracking heurisitcs for spring model
 swing_foot_target_offset_x: -0.01  # note that we only use this when relative_swing_ft is true because it's in local frame
+                                   # Also, this is probably necessary for hybrid rom MPC
 
 
 #High level command gains(without radio)

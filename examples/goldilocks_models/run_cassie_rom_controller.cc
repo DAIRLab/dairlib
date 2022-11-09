@@ -786,6 +786,8 @@ int DoMain(int argc, char* argv[]) {
     TransTaskSpaceTrackingData swing_ft_traj_global(
         "swing_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
         osc_gains.W_swing_foot, plant_w_spr, plant_wo_springs);
+    // TODO: Should probably use mid contact point for hybrid ROM MPC?
+    //  Actually, `swing_foot_target_offset_x` heuristic can fix this.
     swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state,
                                                  "toe_right");
     swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state,

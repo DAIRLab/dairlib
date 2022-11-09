@@ -198,7 +198,8 @@ SavedTrajReceiver::SavedTrajReceiver(
   eps_hack_ = std::min(0.01, double_support_duration_);
 
   // Heuristic for spring model
-  if (plant_feedback.num_velocities() == plant_control.num_velocities()) {
+  if ((plant_feedback.num_velocities() == plant_control.num_velocities()) &&
+      !gains.use_hybrid_rom_mpc) {
     swing_foot_target_offset_x_ = 0;
   } else {
     swing_foot_target_offset_x_ = gains.swing_foot_target_offset_x;
@@ -391,10 +392,6 @@ void SavedTrajReceiver::CalcSwingFootTraj(
     const MatrixXd& global_com_pos = traj_data.get_global_com_pos();
     const VectorXd& stance_foot = traj_data.get_stance_foot();
 
-    // TODO: be aware the left right difference
-    // TODO: you also need to send the stance foot position? Acutally, just use
-    //  the current stance foot?
-
     // Set feedback context
     const OutputVector<double>* robot_output =
         (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -431,20 +428,27 @@ void SavedTrajReceiver::CalcSwingFootTraj(
                 context.get_discrete_state(liftoff_swing_foot_pos_idx_)
                     .get_value();
           } else {
-            start_foot_pos = global_feet_pos.col(j - 1);
+            start_foot_pos.head<2>() = global_feet_pos.col(j - 1);
             if (wrt_com_in_local_frame_) {
-              start_foot_pos = view_frame_feedback_.CalcWorldToFrameRotation(
-                                   plant_feedback_, *context_feedback_) *
-                               (start_foot_pos - global_com_pos.col(j));
+              start_foot_pos.head<2>() =
+                  view_frame_feedback_
+                      .CalcWorldToFrameRotation(plant_feedback_,
+                                                *context_feedback_)
+                      .topLeftCorner<2, 2>() *
+                  (start_foot_pos.head<2>() - global_com_pos.col(j));
             }
           }
           Y.at(0) = start_foot_pos;
           // End pos
-          end_foot_pos = global_feet_pos.col(j + 1);
+          end_foot_pos.head<2>() = global_feet_pos.col(j + 1);
+          end_foot_pos(2) = start_foot_pos(2);
           if (wrt_com_in_local_frame_) {
-            end_foot_pos = view_frame_feedback_.CalcWorldToFrameRotation(
-                               plant_feedback_, *context_feedback_) *
-                           (end_foot_pos - global_com_pos.col(j + 1));
+            end_foot_pos.head<2>() =
+                view_frame_feedback_
+                    .CalcWorldToFrameRotation(plant_feedback_,
+                                              *context_feedback_)
+                    .topLeftCorner<2, 2>() *
+                (end_foot_pos.head<2>() - global_com_pos.col(j + 1));
 
             // Heuristics for spring model
             end_foot_pos(0) += swing_foot_target_offset_x_;

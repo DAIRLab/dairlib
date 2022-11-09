@@ -190,6 +190,7 @@ def main():
     # real_time_rate = 0.1
     # prev_wall_time = -1 
     # prev_sim_time = -1
+    is_first_frame = True
     for j in range(start_idx, end_idx):
       filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                  str(j) + "_rom_trajectory"
@@ -202,12 +203,14 @@ def main():
       # prev_wall_time = time.time()
       # prev_sim_time = rom_traj.get_global_com_pos_time()[0]
 
-      PlotGlobalFeetAndCoMPosition(rom_traj)
+      PlotGlobalFeetAndCoMPosition(rom_traj, not is_first_frame)
       plt.draw()
-      # plt.pause(0.05)
-      plt.pause(0.1)
+      plt.pause(0.01)
+      # plt.pause(0.1)
       # plt.pause(0.3)
       plt.clf()
+
+      is_first_frame = False
 
   else:    
     PlotGlobalFeetAndCoMPosition(rom_traj)
@@ -219,7 +222,7 @@ def main():
   if not savefig:
     plt.show()
 
-def PlotGlobalFeetAndCoMPosition(rom_traj):
+def PlotGlobalFeetAndCoMPosition(rom_traj, redraw=False):
   start_with_left_stance = rom_traj.get_stance_foot()[0] < 0.5
   global_feet_pos = rom_traj.get_global_feet_pos()
   global_feet_pos_time = rom_traj.get_global_feet_pos_time()
@@ -227,8 +230,9 @@ def PlotGlobalFeetAndCoMPosition(rom_traj):
   global_com_pos_time = rom_traj.get_global_com_pos_time()
   # print("global_feet_pos = \n", global_feet_pos)
   # print("global_com_pos = \n", global_com_pos)
-
-  plt.figure("Feet and CoM positions", figsize=figsize)
+  
+  if not redraw:
+    plt.figure("Feet and CoM positions", figsize=figsize)
   plt.title("current time = %.3f" % global_com_pos_time[0])
 
   palette = ['r', 'g', 'b']

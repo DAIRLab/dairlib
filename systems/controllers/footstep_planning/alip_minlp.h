@@ -92,6 +92,7 @@ class AlipMINLP {
   void SetMaximumStanceTime(double tmax) {
     tmax_ = std::vector<double>(nmodes_, tmax);
   };
+  void SetDoubleSupportTime(double Tds) { Tds_ =  Tds; }
   void SetInputLimit(double umax) {umax_ = umax;};
   void AddTrackingCost(const std::vector<std::vector<Eigen::Vector4d>> &xd,
   const Eigen::Matrix4d &Q, const Eigen::MatrixXd& Qf);
@@ -183,6 +184,7 @@ class AlipMINLP {
   int nx_ = 4;
   int nu_ = 1;
   int nmodes_ = 0;
+  double Tds_ = 0;
   double R_ = 0;
   double umax_ = -1;
   std::vector<double> tmin_{};

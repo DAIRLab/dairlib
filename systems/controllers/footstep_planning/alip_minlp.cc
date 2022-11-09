@@ -201,7 +201,17 @@ void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
 
 void AlipMINLP::MakeResetConstraints() {
   Matrix<double, 4, 12> A_eq = Matrix<double, 4, 12>::Zero();
-  A_eq.topLeftCorner<4, 4>() = Matrix4d::Identity();
+  MatrixXd A = alip_utils::CalcA(H_, m_);
+  Matrix4d Ad = (Tds_ * A).exp();
+  Matrix4d Ainv = A.inverse();
+  Matrix4d I = Matrix4d::Identity();
+  Matrix<double, 4, 2> B = Matrix<double, 4, 2>::Zero();
+  B(2,1) = m_ * 9.81;
+  B(3,0) = -m_ * 9.81;
+  Matrix<double, 4, 2> Bd =
+      Ad * (Ainv * (Ad - I) + (1.0 / Tds_) * Ainv * Ainv * (I - Ad)) * B;
+  
+  A_eq.topLeftCorner<4, 4>() = Ad;
   A_eq.block<4, 4>(0, 4) = -Matrix4d::Identity();
   A_eq.block<2, 2>(0, 8) = Eigen::Matrix2d::Identity();
   A_eq.block<2, 2>(0, 10) = -Eigen::Matrix2d::Identity();

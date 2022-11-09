@@ -62,6 +62,7 @@ def main():
     # plot_trajectory(state_traj, 'state', 37)
     # plot_trajectory(contact_force_traj, 'contact_force', 12)
     # plt.show()
+    print(state_traj.end_time())
     t_vec = state_traj.get_segment_times()
 
     if params.visualize_mode == 0 or params.visualize_mode == 1:

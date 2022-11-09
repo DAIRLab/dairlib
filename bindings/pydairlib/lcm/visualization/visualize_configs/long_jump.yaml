@@ -1,7 +1,7 @@
 filename: examples/Cassie/saved_trajectories/kcmpc_solution
 spring_urdf: examples/Cassie/urdf/cassie_v2_shells.urdf
 fixed_spring_urdf: examples/Cassie/urdf/cassie_fixed_springs.urdf
-visualize_mode: 2
+visualize_mode: 1
 realtime_rate: 1.0
 num_poses: 10
 use_transparency: 1

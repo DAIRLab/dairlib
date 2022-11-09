@@ -115,10 +115,13 @@ def main():
     if plot_config.plot_measured_efforts:
         plot = mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plot.save_fig('measured_efforts.png')
+
 
     if plot_config.plot_commanded_efforts:
         plot = mbp_plots.plot_commanded_efforts(robot_input, act_names, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plot.save_fig('commanded_efforts.png')
 
     if plot_config.act_names:
         mbp_plots.plot_measured_efforts_by_name(robot_output,

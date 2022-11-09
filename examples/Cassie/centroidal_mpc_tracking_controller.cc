@@ -73,6 +73,8 @@ DEFINE_string(traj_name, "kcmpc_solution",
 DEFINE_string(gains_filename,
               "examples/Cassie/kinematic_centroidal_mpc/osc_centroidal_gains.yaml",
               "Filepath containing gains");
+DEFINE_string(osqp_settings, "examples/Cassie/kinematic_centroidal_mpc/osc_tracking_qp_settings.yaml",
+              "Filepath containing qp settings");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -336,10 +338,10 @@ int DoMain(int argc, char* argv[]) {
 
   // Flight phase hip yaw tracking
   JointSpaceTrackingData left_hip_yaw_tracking_data(
-      "swing_hip_yaw_left_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
+      "hip_yaw_left_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
       gains.W_hip_yaw, plant_w_spr, plant_w_spr);
   JointSpaceTrackingData right_hip_yaw_tracking_data(
-      "swing_hip_yaw_right_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
+      "hip_yaw_right_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
       gains.W_hip_yaw, plant_w_spr, plant_w_spr);
   left_hip_yaw_tracking_data.AddStateAndJointToTrack(
       FLIGHT, "hip_yaw_left", "hip_yaw_leftdot");
@@ -349,8 +351,11 @@ int DoMain(int argc, char* argv[]) {
       RIGHT_STANCE, "hip_yaw_left", "hip_yaw_leftdot");
   right_hip_yaw_tracking_data.AddStateAndJointToTrack(
       LEFT_STANCE, "hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&left_hip_yaw_tracking_data, VectorXd::Zero(1));
-  osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
+
+//  osc->AddConstTrackingData(&left_hip_yaw_tracking_data, VectorXd::Zero(1));
+//  osc->AddConstTrackingData(&right_hip_yaw_tracking_data, VectorXd::Zero(1));
+  osc->AddTrackingData(&left_hip_yaw_tracking_data);
+  osc->AddTrackingData(&right_hip_yaw_tracking_data);
 
   // Flight phase toe pitch tracking
   MatrixXd W_swing_toe = gains.w_swing_toe * MatrixXd::Identity(1, 1);
@@ -374,6 +379,12 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe_angle_traj_gen =
       builder.AddSystem<systems::TrajectoryPassthrough>(
           "right_toe_traj", pos_map_wo_spr["toe_right"], 1);
+  auto hip_yaw_left_traj_gen =
+      builder.AddSystem<systems::TrajectoryPassthrough>(
+          "hip_yaw_left_traj", pos_map_wo_spr["hip_yaw_left"], 1);
+  auto hip_yaw_right_traj_gen =
+      builder.AddSystem<systems::TrajectoryPassthrough>(
+          "hip_yaw_right_traj", pos_map_wo_spr["hip_yaw_right"], 1);
 
   left_toe_angle_tracking_data.AddStateAndJointToTrack(
       FLIGHT, "toe_left", "toe_leftdot");
@@ -409,6 +420,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_tracking_data.SetImpactInvariantProjection(true);
   pelvis_tracking_data.SetImpactInvariantProjection(true);
 
+  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
@@ -432,6 +444,10 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_trajectory_input_port());
   builder.Connect(state_reference_receiver->get_output_port(),
                   left_toe_angle_traj_gen->get_trajectory_input_port());
+  builder.Connect(state_reference_receiver->get_output_port(),
+                  hip_yaw_left_traj_gen->get_trajectory_input_port());
+  builder.Connect(state_reference_receiver->get_output_port(),
+                  hip_yaw_right_traj_gen->get_trajectory_input_port());
   builder.Connect(state_reference_receiver->get_output_port(),
                   pelvis_rot_traj_generator->get_trajectory_input_port());
   builder.Connect(state_reference_receiver->get_output_port(),
@@ -457,6 +473,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("right_toe_angle_traj"));
+  builder.Connect(hip_yaw_left_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("hip_yaw_left_traj"));
+  builder.Connect(hip_yaw_right_traj_gen->get_output_port(0),
+                  osc->get_tracking_data_input_port("hip_yaw_right_traj"));
   builder.Connect(
       pelvis_rot_traj_generator->get_output_port(0),
       osc->get_tracking_data_input_port("pelvis_rot_tracking_data"));

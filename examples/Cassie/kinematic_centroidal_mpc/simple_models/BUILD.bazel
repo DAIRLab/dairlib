@@ -1,0 +1,14 @@
+package(default_visibility = ["//visibility:public"])
+
+
+cc_library(
+    name = "planar_slip",
+    srcs = ["planar_slip.cc",],
+    hdrs = ["planar_slip.h",],
+    deps = [
+        "//solvers:constraints",
+        "//multibody/kinematic:kinematic",
+        "//multibody/kinematic:constraints",
+        "@drake//:drake_shared_library",
+    ],
+)

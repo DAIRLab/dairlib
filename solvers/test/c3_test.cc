@@ -41,7 +41,7 @@ namespace dairlib {
 namespace solvers {
 
 int DoMain(int argc, char* argv[]) {
-  int example = 2;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
+  int example = 1;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
 
   /// dimensions (n: state dimension, m: complementarity variable dimension, k:
   /// input dimension, N: MPC horizon)
@@ -133,7 +133,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
 
-  int timesteps = 10;  // number of timesteps for the simulation
+  int timesteps = 50;  // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
@@ -173,7 +173,7 @@ int DoMain(int argc, char* argv[]) {
 
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
-    std::cout << "Solve time:" << elapsed.count() << std::endl;
+    //std::cout << "Solve time:" << elapsed.count() << std::endl;
     total_time = total_time + elapsed.count();
 
     /// simulate the LCS

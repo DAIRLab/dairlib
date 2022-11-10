@@ -183,7 +183,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     committed = true;
   }
 
-  std::cout << t_next_impact - t << std::endl;
   // shorthands for the current stance foot
   const int fsm_state = curr_fsm(fsm_idx);
   int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
@@ -216,6 +215,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   double h = CoM_b(2) - p_b(2);
 
   if (gains_.filter_alip_state) {
+    // TODO: Incorporate double stance reset map into filtering and re-enable
     auto& [filter, filter_data] = state->get_mutable_abstract_state<
         std::pair<S2SKalmanFilter,S2SKalmanFilterData>>(alip_filter_idx_);
     filter_data.A =
@@ -229,9 +229,9 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     x = filter.x();
   }
 
-  VectorXd ic = VectorXd::Zero(7);
-  ic.head<4>() = x;
-  ic.tail<3>() = p_b;
+  VectorXd init_alip_state_and_stance_pos = VectorXd::Zero(7);
+  init_alip_state_and_stance_pos.head<4>() = x;
+  init_alip_state_and_stance_pos.tail<3>() = p_b;
 
   // Update desired trajectory
   auto xd  = trajopt_.MakeXdesTrajForVdes(
@@ -279,7 +279,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       (t + t0) * VectorXd::Ones(1));
   state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(
       t_prev_impact * VectorXd::Ones(1));
-  state->get_mutable_discrete_state(initial_conditions_state_idx_).set_value(ic);
+  state->get_mutable_discrete_state(initial_conditions_state_idx_).set_value(
+      init_alip_state_and_stance_pos);
 
   return drake::systems::EventStatus::Succeeded();
 }

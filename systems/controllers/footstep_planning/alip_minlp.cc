@@ -221,10 +221,6 @@ void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
 
 void AlipMINLP::MakeResetConstraints() {
   Matrix<double, 4, 12> A_eq = Matrix<double, 4, 12>::Zero();
-//  A_eq.topLeftCorner<4, 4>() = Matrix4d::Identity();
-//  A_eq.block<4, 4>(0, 4) = -Matrix4d::Identity();
-//  A_eq.block<2, 2>(0, 8) = Eigen::Matrix2d::Identity();
-//  A_eq.block<2, 2>(0, 10) = -Eigen::Matrix2d::Identity();
   CalcResetMap(&A_eq);
   for (int i = 0; i < (nmodes_ - 1); i++) {
     reset_map_c_.push_back(

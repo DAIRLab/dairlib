@@ -371,7 +371,6 @@ void KinematicCentroidalMPC::SerializeSolution(int n_knot_points) {
   lcm_trajectory_ =
       LcmTrajectory(trajectories, trajectory_names, "centroidal_mpc_solution",
                     "centroidal_mpc_solution");
-  std::cout << lcm_trajectory_.GetTrajectoryNames().size() << std::endl;
 }
 
 void KinematicCentroidalMPC::PublishSolution(const std::string& lcm_channel,
@@ -380,7 +379,6 @@ void KinematicCentroidalMPC::PublishSolution(const std::string& lcm_channel,
   if (!lcm_) {
     lcm_ = std::make_unique<drake::lcm::DrakeLcm>();
   }
-  //  std::cout << lcm_trajectory_.GetTrajectoryNames().size() << std::endl;
   auto lcm_msg = lcm_trajectory_.GenerateLcmObject();
   drake::lcm::Publish(lcm_.get(), lcm_channel, lcm_msg);
 }

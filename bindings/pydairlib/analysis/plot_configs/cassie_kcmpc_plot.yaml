@@ -42,7 +42,7 @@ plot_qp_solutions: true
 plot_tracking_costs: false
 plot_active_tracking_datas: true
 tracking_datas_to_plot:
-  pelvis_trans_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos' ] }
+  pelvis_trans_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] }
 #  pelvis_trans_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
 #  pelvis_rot_traj: {'dims': [0, 1], 'derivs': ['vel']}
 #  hip_yaw_left_traj: {'dims': [0], 'derivs': ['vel']}

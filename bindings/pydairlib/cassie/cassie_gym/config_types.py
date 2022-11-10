@@ -71,23 +71,23 @@ class CassieGymParams(StepnetDataClass):
                 low=-domain.camera_pitch,
                 high=domain.camera_pitch
             )
-        terrain_type = VisionSimTerrainType.kCubic
-        terr_draw = np.random.uniform(low=0.0, high=1.0)
-        if terr_draw > domain.terrain_cumulative_likelihoods[0]:
-            terrain_type = VisionSimTerrainType.kCubicWithVoids
-            if terr_draw > domain.terrain_cumulative_likelihoods[1]:
-                terrain_type = VisionSimTerrainType.kStairs
-                if terr_draw > domain.terrain_cumulative_likelihoods[2]:
-                    terrain_type = VisionSimTerrainType.kBoxy
-                    if terr_draw > domain.terrain_cumulative_likelihoods[3]:
-                        terrain_type = VisionSimTerrainType.kFlat
+        terrain_type = VisionSimTerrainType.kFlat
+        # terr_draw = np.random.uniform(low=0.0, high=1.0)
+        # if terr_draw > domain.terrain_cumulative_likelihoods[0]:
+        #     terrain_type = VisionSimTerrainType.kCubicWithVoids
+        #     if terr_draw > domain.terrain_cumulative_likelihoods[1]:
+        #         terrain_type = VisionSimTerrainType.kStairs
+        #         if terr_draw > domain.terrain_cumulative_likelihoods[2]:
+        #             terrain_type = VisionSimTerrainType.kBoxy
+        #             if terr_draw > domain.terrain_cumulative_likelihoods[3]:
+        #                 terrain_type = VisionSimTerrainType.kFlat
 
         return CassieGymParams(
             terrain_normal=normal,
             x_init=x,
             map_yaw=map_yaw,
             mu=mu,
-            terrain_type= terrain_type,
+            terrain_type=terrain_type,
             camera_position=camera_position,
             camera_pitch=camera_pitch
         )

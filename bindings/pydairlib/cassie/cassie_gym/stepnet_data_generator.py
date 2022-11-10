@@ -40,7 +40,7 @@ URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
-INITIAL_CONDITIONS_FILE = '.learning_data/augmented_hardware_ics.npy'
+INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics_v2.npy'
 MAX_ERROR = 1.0
 
 
@@ -393,13 +393,17 @@ class StepnetDataGenerator(DrakeCassieGym):
             )
         '''
         # TODO: Fix the above?
-        alip_target_b = np.zeros((3,))
+        alip_target_b = np.random.uniform(
+            low=self.data_gen_params.target_lb,
+            high=self.data_gen_params.target_ub
+        )
 
         # Apply a random offset to the target XY position
-        target = alip_target_b + np.random.uniform(
-            low=-self.data_gen_params.target_xyz_noise_bound,
-            high=self.data_gen_params.target_xyz_noise_bound
-        )
+        target = alip_target_b
+        #     np.random.uniform(
+        #     low=-self.data_gen_params.target_xyz_noise_bound,
+        #     high=self.data_gen_params.target_xyz_noise_bound
+        # )
         target_b = np.clip(
             target,
             self.data_gen_params.target_lb,
@@ -434,7 +438,7 @@ class StepnetDataGenerator(DrakeCassieGym):
             self.get_noisy_height_from_current_depth_image(
                 self.data_gen_params.depth_var_z, target_w
             )
-        target_w[-1] = target_z
+        # target_w[-1] = target_z
 
         # Get the current swing leg
         swing = self.swing_states[

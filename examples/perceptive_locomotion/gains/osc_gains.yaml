@@ -37,7 +37,7 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
-mid_foot_height: 0.18
+mid_foot_height: 0.2
 final_foot_height: 0.03
 final_foot_velocity_z: -0.5
 
@@ -49,7 +49,7 @@ mu: 0.8
 
 w_accel: 0.0000001
 w_soft_constraint: 8000
-w_input_reg: 0.000001
+w_input_reg: 0.0000001
 
 w_swing_toe: 1
 swing_toe_kp: 2000
@@ -60,7 +60,7 @@ hip_yaw_kp: 100
 hip_yaw_kd: 2
 
 CoMW:
-  [   0,    0,     0,
+  [   2,    0,     0,
       0,    0,     0,
       0,    0,    10]
 CoMKp:
@@ -103,8 +103,8 @@ SwingFootW:
     0,    4,     0,
     0,    0,     2]
 SwingFootKp:
-  [ 125,  0,     0,
-    0,  125,     0,
+  [ 200,  0,     0,
+    0,  200,     0,
     0,    0,   100]
 SwingFootKd:
   [1,    0,     0,

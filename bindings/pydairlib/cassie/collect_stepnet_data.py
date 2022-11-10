@@ -16,7 +16,7 @@ from pydairlib.cassie.cassie_gym.stepnet_data_generator import \
 
 
 HOME = os.getenv("HOME")
-DATASET_DIR = HOME + '/workspace/stepnet_learning_data/large_dataset/'
+DATASET_DIR = HOME + '/workspace/stepnet_learning_data/step_3d_no_terrain/'
 FLAT_GROUND_DATASET_DIR = HOME + '/workspace/stepnet_learning_data/flat_ground/'
 DEPTH_DIR = DATASET_DIR + 'depth/'
 ROBO_DIR = DATASET_DIR + 'robot/'
@@ -30,7 +30,8 @@ def collect_data_from_random_map(size, seed, params):
     np.random.seed(seed)
     env = StepnetDataGenerator.make_randomized_env(
         params.generator_params,
-        params.randomization_bounds
+        params.randomization_bounds,
+        visualize=False
     )
     data = []
     for i in range(size):

@@ -53,7 +53,7 @@ GenerateGeneralizedVelTrajectory(
 drake::trajectories::PiecewisePolynomial<double> GenerateModeSequence(
     const std::vector<Gait>& gait_sequence,
     const std::vector<double>& time_points) {
-  DRAKE_DEMAND(gait_sequence.size() == time_points.size());
+  DRAKE_DEMAND(gait_sequence.size() == time_points.size()-1);
 
   auto traj = gait_sequence[0].ToTrajectory(time_points[0], time_points[1]);
   for (int i = 1; i < gait_sequence.size(); i++) {

@@ -66,13 +66,13 @@ int DoMain(int argc, char* argv[]) {
   // Create gaits
   auto stand = drake::yaml::LoadYamlFile<Gait>(
       "examples/Cassie/kinematic_centroidal_mpc/gaits/stand.yaml");
-  auto walk = drake::yaml::LoadYamlFile<Gait>(
-      "examples/Cassie/kinematic_centroidal_mpc/gaits/walk.yaml");
+  auto step = drake::yaml::LoadYamlFile<Gait>(
+      "examples/Cassie/kinematic_centroidal_mpc/gaits/step.yaml");
 
   // Create reference
   // TODO(yangwill): move this into the reference generator
   // Specify knot points
-  std::vector<Gait> gait_samples = {stand, walk, stand};
+  std::vector<Gait> gait_samples = {stand, step, stand};
   DRAKE_DEMAND(gait_samples.size() == traj_params.duration_scaling.size());
   std::vector<double> durations = std::vector<double>(gait_samples.size());
   for (int i = 0; i < gait_samples.size(); ++i) {

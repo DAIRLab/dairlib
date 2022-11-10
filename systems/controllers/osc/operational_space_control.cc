@@ -552,6 +552,8 @@ void OperationalSpaceControl::Build() {
                            2);  // snopt doc said try 2 if seeing snopta exit
        40*/
   } else {
+    // Dairlib's fast osqp solver which save the workspace (however, it seems to
+    // have a memory leak)
     drake::solvers::SolverOptions solver_options;
     solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
     //  solver_options.SetOption(OsqpSolver::id(), "time_limit",
@@ -566,6 +568,21 @@ void OperationalSpaceControl::Build() {
     std::cout << solver_options << std::endl;
     solver_ = std::make_unique<solvers::FastOsqpSolver>();
     solver_->InitializeSolver(*prog_, solver_options);
+
+    // Drake's OSQP
+    /*solver_options_.SetOption(OsqpSolver::id(), "verbose", 0);
+    //  solver_options_.SetOption(OsqpSolver::id(), "time_limit",
+    //  qp_time_limit_);
+    solver_options_.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+    solver_options_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+    solver_options_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+    solver_options_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+    solver_options_.SetOption(OsqpSolver::id(), "polish", 1);
+    solver_options_.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+    solver_options_.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
+    std::cout << solver_options_ << std::endl;
+    osqp_solver_ = std::make_unique<drake::solvers::OsqpSolver>();
+    prog_->SetSolverOptions(solver_options_);*/
   }
 }
 
@@ -794,10 +811,13 @@ VectorXd OperationalSpaceControl::SolveQp(
       // 0.5 * (JdotV - y_command)^T * W * (JdotV - y_command),
       // since it doesn't change the result of QP.
       tracking_cost_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t));
+          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t), 0,
+          true);
     } else {
+      // Drake uses Eigen to check convexity but does not accept psd,
+      // so we just tell Drake that we know this cost is convex
       tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
-                                               VectorXd::Zero(n_v_));
+                                               VectorXd::Zero(n_v_), 0, true);
     }
   }
 
@@ -901,7 +921,11 @@ VectorXd OperationalSpaceControl::SolveQp(
     counter_++;
     //  cout << "prev_sol_= \n " << prev_sol_ << endl;
   } else {
+    // 1. Original Drake's osqp
+    //    result = osqp_solver_->Solve(*prog_);  // no warm start
+    // 2. Our own fast osqp
     result = solver_->Solve(*prog_);
+
     solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
   }
 
@@ -1174,6 +1198,7 @@ void OperationalSpaceControl::CalcOptimalInput(
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time,
                     0, -1);
   }
+  //cout << "u_sol = " << u_sol.transpose() << endl;
 
   // Assign the control input
   control->SetDataVector(u_sol);

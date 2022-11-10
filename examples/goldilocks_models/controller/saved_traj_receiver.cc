@@ -408,6 +408,8 @@ void SavedTrajReceiver::CalcSwingFootTraj(
     bool init_step = true;
     bool left_stance = abs(stance_foot(0)) < 1e-12;
     for (int j = 0; j < n_mode; j++) {
+      //      cout << "j = " << j << endl;
+
       // When the current time is bigger than the end time of the mode (this
       // could happen when the planner starts planning close the end of mode),
       // we skip. That is, we don't construct trajectories in the past, since we
@@ -422,11 +424,14 @@ void SavedTrajReceiver::CalcSwingFootTraj(
           T_waypoint.at(2) = xf_time(j) - double_support_duration_;
           T_waypoint.at(1) = (T_waypoint.at(0) + T_waypoint.at(2)) / 2;
 
+          /// Foot x and y ///
           // Start pos
           if (init_step) {
             start_foot_pos =
                 context.get_discrete_state(liftoff_swing_foot_pos_idx_)
                     .get_value();
+            // We don't need `view_frame_feedback_` here, because it has been
+            // done in the discreteUpdate
           } else {
             start_foot_pos.head<2>() = global_feet_pos.col(j - 1);
             if (wrt_com_in_local_frame_) {
@@ -437,11 +442,20 @@ void SavedTrajReceiver::CalcSwingFootTraj(
                       .topLeftCorner<2, 2>() *
                   (start_foot_pos.head<2>() - global_com_pos.col(j));
             }
+            start_foot_pos(2) =
+                context.get_discrete_state(liftoff_swing_foot_pos_idx_)
+                    .get_value()(2);
           }
+          // We don't need to shift `start_foot_pos` by
+          // `swing_foot_target_offset_x_`, because we actually use the origin
+          // for feedback value (same point as TrackingData's).
           Y.at(0) = start_foot_pos;
+
           // End pos
           end_foot_pos.head<2>() = global_feet_pos.col(j + 1);
-          end_foot_pos(2) = start_foot_pos(2);
+          end_foot_pos(2) =
+              context.get_discrete_state(liftoff_swing_foot_pos_idx_)
+                  .get_value()(2);
           if (wrt_com_in_local_frame_) {
             end_foot_pos.head<2>() =
                 view_frame_feedback_
@@ -454,10 +468,11 @@ void SavedTrajReceiver::CalcSwingFootTraj(
             end_foot_pos(0) += swing_foot_target_offset_x_;
           }
           Y.at(2) = end_foot_pos;
+
           // Mid pos
           Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
 
-          // Foot height
+          /// Foot height ///
           if (init_step) {
             Y.at(1)(2) = start_foot_pos(2) + desired_mid_foot_height_;
             Y.at(2)(2) = start_foot_pos(2) + desired_final_foot_height_;
@@ -465,6 +480,19 @@ void SavedTrajReceiver::CalcSwingFootTraj(
             Y.at(1)(2) += desired_mid_foot_height_;
             Y.at(2)(2) += desired_final_foot_height_;
           }
+
+          // Testing
+          /*if (Y.at(0)(2) >= 0 || Y.at(2)(2) >= 0) {
+            cout << "j = " << j << endl;
+            cout << "start_foot_pos of init step = "
+                 << context.get_discrete_state(liftoff_swing_foot_pos_idx_)
+                        .get_value()
+                        .transpose()
+                 << endl;
+            cout << "start_foot_pos = " << start_foot_pos.transpose() << endl;
+            cout << "Y.at(0) = " << Y.at(0).transpose() << endl;
+            cout << "Y.at(2) = " << Y.at(2).transpose() << endl;
+          }*/
 
           // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
           // make the traj smooth at the mid point

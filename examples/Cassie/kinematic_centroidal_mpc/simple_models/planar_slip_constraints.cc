@@ -200,12 +200,15 @@ void QuadraticLiftedCost::EvaluateCost(const Eigen::Ref<const drake::VectorX<dou
   const auto& grf = lifted_state.segment(3 + 6 + contact_cost_.ref.size(), grf_cost_.ref.size());
   const auto& q = lifted_state.segment(3 + 6 + contact_cost_.ref.size() + grf_cost_.ref.size(), q_cost_.ref.size());
   const auto& v = lifted_state.segment(3 + 6 + contact_cost_.ref.size() + grf_cost_.ref.size() + q_cost_.ref.size(), v_cost_.ref.size());
+
+  *y = CalcCost(com_cost_, com) + CalcCost(momentum_cost_, momentum) + CalcCost(contact_cost_, contact_info)
+      + CalcCost(grf_cost_, grf) + CalcCost(q_cost_, q) + CalcCost(v_cost_, v);
 }
 
-double QuadraticLiftedCost::CalcCost(const QuadraticLiftedCost::cost_element &cost,
-                                     const Eigen::Ref<const drake::VectorX<double>> &x) {
+Eigen::Matrix<double, -1, 1, 0> QuadraticLiftedCost::CalcCost(const QuadraticLiftedCost::cost_element &cost,
+                                                                    const Eigen::Ref<const drake::VectorX<double>> &x)const {
   auto error = x-cost.ref;
-  return error.transpose() * cost.Q * error;
+  return terminal_gain_ * error.transpose() * cost.Q * error;
 }
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS (class PlanarSlipReductionConstraint);

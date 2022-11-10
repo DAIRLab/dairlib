@@ -102,7 +102,7 @@ class QuadraticLiftedCost : public dairlib::solvers::NonlinearCost<double> {
   void EvaluateCost(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override;
 
-  double CalcCost(const cost_element& cost, const Eigen::Ref<const drake::VectorX<double>>& x);
+  Eigen::Matrix<double, -1, 1, 0> CalcCost(const cost_element& cost, const Eigen::Ref<const drake::VectorX<double>>& x) const;
 
 
   std::shared_ptr<PlanarSlipLifter> lifting_function_;

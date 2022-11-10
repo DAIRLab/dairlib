@@ -104,7 +104,7 @@ def plot_foot_targets(mpc_debug, i):
             for t in mpc_debug.t_mpc
         ]
     )
-    plt.plot(mpc_debug.t_mpc, foot_targets.T)
+    plt.plot(mpc_debug.t_mpc, foot_targets.T, '.')
     plt.legend(['px', 'py', 'pz'])
     plt.title('MPC Next foot position solution')
     plt.xlabel('t (s)')

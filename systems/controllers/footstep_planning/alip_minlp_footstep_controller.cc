@@ -79,6 +79,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt_.SetMinimumStanceTime(gains_.t_min);
   trajopt_.SetMaximumStanceTime(gains_.t_max);
   trajopt_.SetInputLimit(gains_.u_max);
+  trajopt_.SetDoubleSupportTime(double_stance_duration);
   trajopt_.Build(trajopt_solver_options);
   trajopt_.CalcOptimalFootstepPlan(
       -0.5 * gains_.stance_width * Vector4d::UnitY(),
@@ -177,11 +178,12 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     fsm_idx ++;
     fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
     t_prev_impact = t;
-    t_next_impact = t + single_stance_duration_;
+    t_next_impact = t + double_stance_duration_ + single_stance_duration_;
   } else if ((t_next_impact - t) < gains_.t_commit) {
     committed = true;
   }
 
+  std::cout << t_next_impact - t << std::endl;
   // shorthands for the current stance foot
   const int fsm_state = curr_fsm(fsm_idx);
   int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
@@ -242,7 +244,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       gains_.knots_per_mode);
 
   // Update the trajopt_ problem data and solve
-  trajopt_.set_H(h);
+  //  trajopt_.set_H(h);
   trajopt_.UpdateTrackingCost(xd);
   trajopt_.UpdateFootholds(footholds);
   trajopt_.UpdateNominalStanceTime(t_next_impact - t, single_stance_duration_);
@@ -260,12 +262,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
 
-  workspace.AddFace(-stance * Vector3d::UnitY(),
-                    com_xy - 0.025 * stance * Vector3d::UnitY());
-  workspace.AddFace(stance * Vector3d::UnitY(),
-                    com_xy + 0.7 * stance * Vector3d::UnitY());
-  workspace.AddFace(Vector3d::UnitX(), com_xy + Vector3d::UnitX());
-  workspace.AddFace(-Vector3d::UnitX(), com_xy - Vector3d::UnitX());
+  workspace.AddFace( Vector3d::UnitY(),10 * Vector3d::UnitY());
+  workspace.AddFace(-Vector3d::UnitY(),-10 * Vector3d::UnitY());
+  workspace.AddFace(Vector3d::UnitX(), 10 * Vector3d::UnitX());
+  workspace.AddFace(-Vector3d::UnitX(), -10 * Vector3d::UnitX());
 
   trajopt_.UpdateNextFootstepReachabilityConstraint(workspace);
 
@@ -345,11 +345,11 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
 
   // If we've basically already finished this mode,
   // let's move to the next so we don't get weird trajectory stuff
-  //  if (t(nk-2) - t(0) < .0001) {
-  //    com_knots = com_knots.rightCols((nm-1) * (nk-1));
-  //    t = t.tail((nm-1)*(nk-1) + 1);
-  //    t(0) = robot_output->get_timestamp();
-  //  }
+    if (t(nk-2) - t(0) < .0001) {
+      com_knots = com_knots.rightCols((nm-1) * (nk-1));
+      t = t.tail((nm-1)*(nk-1) + 1);
+      t(0) = robot_output->get_timestamp();
+    }
 
   com_traj.datapoints = com_knots;
   com_traj.time_vector = t;

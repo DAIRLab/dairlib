@@ -199,22 +199,33 @@ void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
   }
 }
 
-void AlipMINLP::MakeResetConstraints() {
-  Matrix<double, 4, 12> A_eq = Matrix<double, 4, 12>::Zero();
+void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
   MatrixXd A = alip_utils::CalcA(H_, m_);
   Matrix4d Ad = (Tds_ * A).exp();
+  Matrix4d Adinv = Ad.inverse();
   Matrix4d Ainv = A.inverse();
   Matrix4d I = Matrix4d::Identity();
   Matrix<double, 4, 2> B = Matrix<double, 4, 2>::Zero();
   B(2,1) = m_ * 9.81;
   B(3,0) = -m_ * 9.81;
   Matrix<double, 4, 2> Bd =
-      Ad * (Ainv * (Ad - I) + (1.0 / Tds_) * Ainv * Ainv * (I - Ad)) * B;
-  
-  A_eq.topLeftCorner<4, 4>() = Ad;
-  A_eq.block<4, 4>(0, 4) = -Matrix4d::Identity();
-  A_eq.block<2, 2>(0, 8) = Eigen::Matrix2d::Identity();
-  A_eq.block<2, 2>(0, 10) = -Eigen::Matrix2d::Identity();
+      Ad * (-Ainv * Adinv + (1.0 / Tds_) * Ainv * Ainv * (I - Adinv)) * B;
+  Matrix<double, 4, 2> Bs = Matrix<double, 4, 2>::Zero();
+  Bs.topRows(2) = -Eigen::Matrix2d::Identity();
+
+  Aeq->topLeftCorner<4, 4>() = Ad;
+  Aeq->block<4, 4>(0, 4) = -I;
+  Aeq->block<4, 2>(0, 8) = -Bd - Bs;
+  Aeq->block<4, 2>(0, 10) = Bd + Bs;
+}
+
+void AlipMINLP::MakeResetConstraints() {
+  Matrix<double, 4, 12> A_eq = Matrix<double, 4, 12>::Zero();
+//  A_eq.topLeftCorner<4, 4>() = Matrix4d::Identity();
+//  A_eq.block<4, 4>(0, 4) = -Matrix4d::Identity();
+//  A_eq.block<2, 2>(0, 8) = Eigen::Matrix2d::Identity();
+//  A_eq.block<2, 2>(0, 10) = -Eigen::Matrix2d::Identity();
+  CalcResetMap(&A_eq);
   for (int i = 0; i < (nmodes_ - 1); i++) {
     reset_map_c_.push_back(
         prog_->AddLinearEqualityConstraint(
@@ -383,7 +394,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
   mode_sequnces_ = GetPossibleModeSequences();
   std::vector<std::pair<drake::solvers::MathematicalProgramResult,
                         std::vector<std::vector<Eigen::Vector4d>>>> solutions;
-
+  solutions.clear();
   if (mode_sequnces_.empty()) {
     vector<vector<Vector4d>> dual_solutions;
     const auto sol = solver_.Solve(*prog_);
@@ -406,6 +417,12 @@ void AlipMINLP::SolveOCProblemAsIs() {
 
       vector<vector<Vector4d>> dual_solutions;
       const auto sol = solver_.Solve(*prog_);
+
+      if (sol.get_solution_result() == drake::solvers::kInfeasibleConstraints) {
+        solvers::print_constraint(sol.GetInfeasibleConstraints(*prog_));
+        DRAKE_DEMAND(sol.is_success());
+      }
+
       for (int n = 0; n < nmodes_; n++) {
         vector<Vector4d> duals(nknots_.at(n) - 1, Vector4d::Zero());
         if (sol.is_success()) {

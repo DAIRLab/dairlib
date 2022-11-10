@@ -552,8 +552,7 @@ void OperationalSpaceControl::Build() {
                            2);  // snopt doc said try 2 if seeing snopta exit
        40*/
   } else {
-    // Dairlib's fast osqp solver which save the workspace (however, it seems to
-    // have a memory leak)
+    // Dairlib's fast osqp which save the workspace and warmstart the solver
     drake::solvers::SolverOptions solver_options;
     solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
     //  solver_options.SetOption(OsqpSolver::id(), "time_limit",
@@ -1198,7 +1197,6 @@ void OperationalSpaceControl::CalcOptimalInput(
     u_sol = SolveQp(x_w_spr, x_wo_spr, context, current_time, -1, current_time,
                     0, -1);
   }
-  //cout << "u_sol = " << u_sol.transpose() << endl;
 
   // Assign the control input
   control->SetDataVector(u_sol);

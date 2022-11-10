@@ -54,7 +54,7 @@ RomKd:
 #RomKd:
 #  [   0.01,    0,     0,
 #      0,    0,     0,
-#      0,    0,     0.2]
+#      0,    0,     1]
 # Add back x components  # This somehow caused stance hip yaw to rotate for simulation with springs
 #RomW:
 #  [0.1,    0,     0,

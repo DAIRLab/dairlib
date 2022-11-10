@@ -481,19 +481,6 @@ void SavedTrajReceiver::CalcSwingFootTraj(
             Y.at(2)(2) += desired_final_foot_height_;
           }
 
-          // Testing
-          /*if (Y.at(0)(2) >= 0 || Y.at(2)(2) >= 0) {
-            cout << "j = " << j << endl;
-            cout << "start_foot_pos of init step = "
-                 << context.get_discrete_state(liftoff_swing_foot_pos_idx_)
-                        .get_value()
-                        .transpose()
-                 << endl;
-            cout << "start_foot_pos = " << start_foot_pos.transpose() << endl;
-            cout << "Y.at(0) = " << Y.at(0).transpose() << endl;
-            cout << "Y.at(2) = " << Y.at(2).transpose() << endl;
-          }*/
-
           // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to
           // make the traj smooth at the mid point
           pp.ConcatenateInTime(

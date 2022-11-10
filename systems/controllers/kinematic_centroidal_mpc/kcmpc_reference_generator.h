@@ -65,7 +65,7 @@ class KcmpcReferenceGenerator{
   KnotPoints<Eigen::Vector3d> com_vel_knot_points_;
   KnotPoints<Gait> gait_knot_points_;
   double m_;
-  Eigen::Vector3d base_rt_com_ewrt_w;
+  Eigen::Vector3d p_ScmBase_W_;
   std::unique_ptr<drake::systems::Context<double>> context_;
 
 };

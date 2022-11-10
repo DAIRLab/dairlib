@@ -97,7 +97,7 @@ def process_effort_channel(data, plant):
 
 
 def make_point_positions_from_q(
-    q, plant, context, frame, pt_on_frame, frame_to_calc_position_in=None):
+        q, plant, context, frame, pt_on_frame, frame_to_calc_position_in=None):
     if frame_to_calc_position_in is None:
         frame_to_calc_position_in = plant.world_frame()
 
@@ -111,7 +111,7 @@ def make_point_positions_from_q(
 
 
 def get_floating_base_velocity_in_body_frame(
-    robot_output, plant, context, fb_frame):
+        robot_output, plant, context, fb_frame):
     vel = np.zeros((robot_output['q'].shape[0], 3))
     for i, (q, v) in enumerate(zip(robot_output['q'], robot_output['v'])):
         plant.SetPositions(context, q)
@@ -263,8 +263,9 @@ def load_force_channels(data, contact_force_channel):
     contact_info = process_contact_channel(data[contact_force_channel])
     return contact_info
 
-
-def plot_q_or_v_or_u(robot_output, key, x_names, x_slice, time_slice, ylabel=None, title=None):
+def plot_q_or_v_or_u(
+        robot_output, key, x_names, x_slice, time_slice,
+        ylabel=None, title=None):
     ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key
@@ -274,6 +275,28 @@ def plot_q_or_v_or_u(robot_output, key, x_names, x_slice, time_slice, ylabel=Non
     plotting_utils.make_plot(
         robot_output,  # data dict
         't_x',  # time channel
+        time_slice,
+        [key],  # key to plot
+        {key: x_slice},  # slice of key to plot
+        {key: x_names},  # legend entries
+        {'xlabel': 'Time',
+         'ylabel': ylabel,
+         'title': title}, ps)
+    return ps
+
+
+def plot_u_cmd(
+        robot_input, key, x_names, x_slice, time_slice,
+        ylabel=None, title=None):
+    ps = plot_styler.PlotStyler()
+    if ylabel is None:
+        ylabel = key
+    if title is None:
+        title = key
+
+    plotting_utils.make_plot(
+        robot_input,  # data dict
+        't_u',  # time channel
         time_slice,
         [key],  # key to plot
         {key: x_slice},  # slice of key to plot
@@ -348,16 +371,16 @@ def plot_measured_efforts(robot_output, u_names, time_slice):
                             title='Measured Joint Efforts')
 
 
-def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
-    u_slice = [u_map[name] for name in u_names]
-    return plot_q_or_v_or_u(robot_output, 'u', u_names, u_slice, time_slice,
-                            ylabel='Efforts (Nm)', title='Select Joint Efforts')
-
-
 def plot_commanded_efforts(robot_input, u_names, time_slice):
     return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
                       time_slice, ylabel='Efforts (Nm)',
                       title='Commanded Joint Efforts')
+
+
+def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
+    u_slice = [u_map[name] for name in u_names]
+    return plot_q_or_v_or_u(robot_output, 'u', u_names, u_slice, time_slice,
+                            ylabel='Efforts (Nm)', title='Select Joint Efforts')
 
 
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
@@ -371,6 +394,7 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         data_dict[name] = make_point_positions_from_q(robot_output['q'],
                                                       plant, context, frame, pt)
         legend_entries[name] = [name + dim_map[dim] for dim in dims[name]]
+
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
         data_dict,
@@ -413,7 +437,6 @@ def plot_tracking_costs(osc_debug, time_slice):
     data_dict = \
         {key: val for key, val in osc_debug['tracking_cost'].items()}
     data_dict['t_osc'] = osc_debug['t_osc']
-
     plotting_utils.make_plot(
         data_dict,
         't_osc',
@@ -453,7 +476,8 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
     elif deriv == 'vel':
         data['ydot_des'] = tracking_data.ydot_des[:, dim]
         data['ydot'] = tracking_data.ydot[:, dim]
-        data['error_ydot'] = tracking_data.error_ydot[:, dim]
+        data['error_ydot'] = tracking_data.ydot_des[:, dim] - tracking_data.ydot[:, dim]
+        data['projected_error_ydot'] = tracking_data.error_ydot[:, dim]
     elif deriv == 'accel':
         data['yddot_des'] = tracking_data.yddot_des[:, dim]
         data['yddot_command'] = tracking_data.yddot_command[:, dim]
@@ -464,6 +488,7 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
 
 
 def plot_qp_costs(osc_debug, time_slice):
+    ps = plot_styler.PlotStyler()
     regularization_cost = osc_debug['regularization_costs'].regularization_costs
     data_dict = \
         {key: val for key, val in regularization_cost.items()}
@@ -478,7 +503,22 @@ def plot_qp_costs(osc_debug, time_slice):
         {key: [key] for key in regularization_cost.keys()},
         {'xlabel': 'Time',
          'ylabel': 'Cost',
-         'title': 'Regularization Costs'}, ps)
+         'title': 'regularization_costs'}, ps)
+    return ps
+
+
+def plot_qp_solutions(osc_debug, time_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['lambda_c_sol'],
+        {},
+        {},
+        {'xlabel': 'Timestamp',
+         'ylabel': 'Solve Time ',
+         'title': 'OSC Lambda Solutions'}, ps)
     return ps
 
 
@@ -513,6 +553,22 @@ def plot_lambda_c_sol(osc_debug, time_slice, lambda_slice):
     return ps
 
 
+def plot_lambda_h_sol(osc_debug, time_slice, lambda_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['lambda_h_sol'],
+        {'lambda_h_sol': lambda_slice},
+        {'lambda_h_sol': ['lambda_h_' + i for i in
+                          plotting_utils.slice_to_string_list(lambda_slice)]},
+        {'xlabel': 'time',
+         'ylabel': 'lambda',
+         'title': 'OSC constraint force solution'}, ps)
+    return ps
+
+
 def plot_epsilon_sol(osc_debug, time_slice, epsilon_slice):
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
@@ -544,3 +600,41 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
         legend = ax.legend(handles=legend_elements, loc=4)
         # ax.add_artist(legend)
         ax.relim()
+
+def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal, fsm_state_names):
+    ps = plot_styler.PlotStyler()
+
+    ax = ps.fig.axes[0]
+    # ymin, ymax = ax.get_ylim()
+    ymin, ymax = 0, 1
+    tracking_data_names = osc_debug['osc_debug_tracking_datas'].keys()
+    # import pdb; pdb.set_trace()
+    n_tracking_datas = len(tracking_data_names)
+    tracking_data_legend_elements = []
+
+    for i, tracking_data_name in enumerate(tracking_data_names):
+        # tracking_data_name = tracking_data_names[i]
+        tracking_data = osc_debug['osc_debug_tracking_datas'][
+            tracking_data_name]
+        ax.fill_between(fsm_time, ymax - (i+0.25)/n_tracking_datas, ymax -
+                        (i+0.75)/n_tracking_datas,
+                        where=tracking_data.is_active.astype(bool)[
+                              :fsm_time.shape[0]],
+                        color=ps.cmap(2 * i), alpha=0.5)
+        tracking_data_legend_elements.append(Patch(facecolor=ps.cmap(2 * i),
+                                                   alpha=0.3, label=tracking_data_name))
+
+    # uses default color map
+    legend_elements = []
+    for i in np.unique(fsm_signal):
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
+        if fsm_state_names:
+            legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
+
+    if len(legend_elements) > 0:
+        legend = ax.legend(handles=legend_elements, loc=4)
+        legend = ax.legend(handles=tracking_data_legend_elements, loc=1)
+        # ax.add_artist(legend)
+        ax.relim()
+
+    return ps

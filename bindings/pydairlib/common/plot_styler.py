@@ -17,8 +17,12 @@ class PlotStyler():
     self.yellow = '#F2C100'
     self.grey = '#909090'
     self.orange = '#FE7F0E'
-    self.directory = None
-    self.fig = plt.figure() if figure is None else figure
+    # self.directory = None
+    self.dpi = 200
+    self.directory = '/home/yangwill/Pictures/plot_styler/'
+    self.fig = plt.figure(dpi=self.dpi) if figure is None else figure
+    matplotlib.rcParams['figure.figsize'] = 8, 4
+    self.fig.add_axes([0.1, 0.15, 0.85, 0.75])  # List is [left, bottom, width, height]
     self.fig_id = self.fig.number
 
     return
@@ -30,10 +34,10 @@ class PlotStyler():
     plt.figure(self.fig_id)
     self.directory = directory
     matplotlib.rcParams["savefig.directory"] = directory
-    matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
-    matplotlib.rcParams['figure.figsize'] = 20, 12
+    matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
+    # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    # matplotlib.rcParams['figure.figsize'] = 8, 5
+    matplotlib.rcParams['figure.figsize'] = 8, 16
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 20}
     matplotlib.rc('font', **font)
@@ -82,7 +86,7 @@ class PlotStyler():
 
   def save_fig(self, filename):
     plt.figure(self.fig_id)
-    plt.savefig(self.directory + filename, dpi=200)
+    plt.savefig(self.directory + filename, dpi=self.dpi)
     return
 
   def add_legend(self, labels, loc=0):

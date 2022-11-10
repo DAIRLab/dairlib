@@ -19,13 +19,13 @@ drake::trajectories::PiecewisePolynomial<double> GenerateComTrajectory(const Eig
 /*!
  * @brief Constructs a trajectory for the generalized positions of a constant joint state and floating base position from com trajectory
  * @param nominal_stand [nq] generalized state
- * @param base_rt_com_ewrt_w vector from com to floating base in world frame
+ * @param p_ScmBase_W vector from com to floating base in world frame
  * @param com_traj trajectory for the center of mass
  * @param base_pos_start index where the floating base position starts in generalized state
  * @return trajectory of generalized position
  */
 drake::trajectories::PiecewisePolynomial<double> GenerateGeneralizedPosTrajectory(const Eigen::VectorXd& nominal_stand,
-                                                                                  const Eigen::Vector3d& base_rt_com_ewrt_w,
+                                                                                  const Eigen::Vector3d& p_ScmBase_W,
                                                                                   const drake::trajectories::PiecewisePolynomial<double>& com_traj,
                                                                                   int base_pos_start);
 

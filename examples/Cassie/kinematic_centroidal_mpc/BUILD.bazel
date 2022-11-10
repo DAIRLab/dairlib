@@ -8,6 +8,15 @@ cc_library(
     deps = [
         ":contact_scheduler",
         ":kinematic_trajectory_generator",
+        ":trajectory_parameters",
+    ],
+)
+
+cc_library(
+    name = "trajectory_parameters",
+    hdrs = ["trajectory_parameters.h"],
+    deps = [
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -18,6 +27,7 @@ cc_binary(
             "//examples/Cassie/kinematic_centroidal_mpc/gaits:stand.yaml",
             "//examples/Cassie/kinematic_centroidal_mpc/gaits:walk.yaml"],
     deps = [
+        ":centroidal_mpc",
         "//examples/Cassie:cassie_utils",
         "//common",
         "//multibody:visualization_utils",

@@ -217,12 +217,14 @@ void PlanarSlipLifter::Lift(const Eigen::Ref<const drake::VectorX<double>> &slip
   const auto& slip_contact_vel = slip_state.segment(kSLIP_DIM + kSLIP_DIM + kSLIP_DIM * slip_contact_points_.size(), kSLIP_DIM * slip_contact_points_.size());
 
   const drake::Vector3<double> com = {slip_com[0], 0, slip_com[1]};
+  const drake::Vector3<double> lin_mom = {m_ * slip_vel[0], 0, m_ * slip_vel[1]};
   const auto& generalized_pos = LiftGeneralizedPosition(com, slip_contact_pos);
-  const auto& generalized_vel = LiftGeneralizedVelocity(generalized_pos, slip_vel * m_, com, slip_contact_vel);
+  const auto& generalized_vel = LiftGeneralizedVelocity(generalized_pos, lin_mom, com, slip_contact_vel);
 
   dairlib::multibody::SetPositionsIfNew<double>(plant_, generalized_pos, context_);
   dairlib::multibody::SetVelocitiesIfNew<double>(plant_, generalized_vel, context_);
   const auto& complex_contact_pos = LiftContactPos(generalized_pos);
+
   (*complex_state) << com, plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, com)
       .get_coeffs(), complex_contact_pos, LiftContactVel(generalized_pos, generalized_vel), LiftGrf(com,
                                                                                                     slip_contact_pos,

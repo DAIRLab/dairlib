@@ -86,15 +86,25 @@ int main(int argc, char* argv[]) {
                           {0.1, -0.1});
 
   Eigen::Vector2d slip_com = {0.2,0.7};
-  Eigen::Vector2d slip_vel = {0.0,0.0};
-  Eigen::Vector4d slip_feet = {0.2,0,0,0};
-  Eigen::Vector4d slip_foot_vel = {0.0,0,0.0,0};
+  Eigen::Vector2d slip_vel = {0.1,0.3};
+  Eigen::Vector4d slip_feet = {0.2,0.1,0.2,0.14};
+  Eigen::Vector4d slip_foot_vel = {0.11,0.12,0.15,0.18};
 
   Eigen::VectorXd slip_state(2+2+4+4);
   slip_state << slip_com,slip_vel,slip_feet,slip_foot_vel;
   Eigen::VectorXd complex_state(6 + 3 + 3 * 3 * 4 + plant.num_positions() + plant.num_velocities());
 
+  auto start = std::chrono::high_resolution_clock::now();
   lifter.Lift(slip_state, &complex_state);
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "Solve time:" << elapsed.count() << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
+  lifter.Lift(slip_state, &complex_state);
+  finish = std::chrono::high_resolution_clock::now();
+  elapsed = finish - start;
+  std::cout << "Solve time 2:" << elapsed.count() << std::endl;
 
   auto context_2 = plant.CreateDefaultContext();
   auto constraint = PlanarSlipReductionConstraint<double>(plant, context_2.get(), {left_slip_eval, right_slip_eval}, complex_state.size(), 0);
@@ -103,7 +113,7 @@ int main(int argc, char* argv[]) {
   drake::VectorX<double> input(slip_state.size() + complex_state.size());
   input << slip_state,complex_state;
   constraint.DoEval(input, &error);
-  std::cout<<error<<std::endl;
+  std::cout<<"Max Error in inverse test: "<< error.cwiseAbs().maxCoeff() << std::endl;
 
   if(true){
     // Build temporary diagram for visualization

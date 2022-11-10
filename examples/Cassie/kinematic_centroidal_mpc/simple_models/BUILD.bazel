@@ -3,12 +3,30 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "planar_slip",
-    srcs = ["planar_slip.cc",],
-    hdrs = ["planar_slip.h",],
+    srcs = ["planar_slip.cc",
+            "planar_slip_lifter.cc"],
+    hdrs = ["planar_slip.h",
+            "planar_slip_lifter.h"],
     deps = [
         "//solvers:constraints",
         "//multibody/kinematic:kinematic",
         "//multibody/kinematic:constraints",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "cassie_planar_slip_lifting_test",
+    srcs = ["planar_slip_lifting_test.cc"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/kinematic_centroidal_mpc/simple_models:planar_slip",
+        "//common",
+        "//multibody:visualization_utils",
+        "//multibody/kinematic",
+        "//systems/primitives",
+        "//examples/Cassie/kinematic_centroidal_mpc:kinematic_centroidal_reference_generator",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

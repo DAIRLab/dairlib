@@ -68,7 +68,7 @@ PlanarSlipLifter::PlanarSlipLifter(const drake::multibody::MultibodyPlant<double
 }
 
 drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedPosition(const drake::Vector3<double> &com_position,
-                                                               const drake::VectorX<double> &slip_feet_positions) {
+                                                               const drake::VectorX<double> &slip_feet_positions) const {
   DRAKE_DEMAND(slip_feet_positions.size() == 2*slip_contact_points_.size());
   //Add com position constraint
   const auto com_constraint = ik_.get_mutable_prog()->AddBoundingBoxConstraint(com_position, com_position, com_vars_);
@@ -102,7 +102,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedPosition(const drake::Ve
 drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedVelocity(const drake::VectorX<double>& generalized_pos,
                                                                const drake::Vector3<double>& linear_momentum,
                                                                const drake::Vector3<double>& com_pos,
-                                                               const drake::VectorX<double>& slip_feet_velocities) {
+                                                               const drake::VectorX<double>& slip_feet_velocities)const {
   DRAKE_DEMAND(slip_feet_velocities.size() == 2*slip_contact_points_.size());
   // Preallocate linear constraint
   drake::MatrixX<double> A(3 + 3 * slip_contact_points_.size() ,n_v_); // 3 rows for linear momentum, 3 rows for each slip foot
@@ -145,7 +145,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedVelocity(const drake::Ve
   return rv;
 }
 
-drake::VectorX<double> PlanarSlipLifter::LiftContactPos(const drake::VectorX<double> &generalized_position) {
+drake::VectorX<double> PlanarSlipLifter::LiftContactPos(const drake::VectorX<double> &generalized_position)const {
   dairlib::multibody::SetPositionsIfNew<double>(plant_, generalized_position, context_);
   drake::VectorX<double> rv(complex_contact_points_.size() * 3);
   for(int i = 0; i < complex_contact_points_.size(); i++){
@@ -155,7 +155,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftContactPos(const drake::VectorX<dou
 }
 
 drake::VectorX<double> PlanarSlipLifter::LiftContactVel(const drake::VectorX<double> &generalized_pos,
-                                                        const drake::VectorX<double> &generalized_vel) {
+                                                        const drake::VectorX<double> &generalized_vel)const {
   dairlib::multibody::SetPositionsIfNew<double>(plant_, generalized_pos, context_);
   dairlib::multibody::SetVelocitiesIfNew<double>(plant_, generalized_vel, context_);
   drake::VectorX<double> rv(complex_contact_points_.size() * 3);
@@ -167,7 +167,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftContactVel(const drake::VectorX<dou
 
 drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &com_pos,
                                                const drake::VectorX<double> &slip_feet_pos,
-                                               const drake::VectorX<double> &complex_contact_point_pos) {
+                                               const drake::VectorX<double> &complex_contact_point_pos)const {
   drake::VectorX<double> rv(complex_contact_points_.size() * 3);
   // Loop through the slip feet
   for(int simple_index = 0; simple_index < slip_contact_points_.size(); simple_index ++){
@@ -210,7 +210,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &c
 ///     complex_gen_pos
 ///     complex_gen_vel
 void PlanarSlipLifter::Lift(const Eigen::Ref<const drake::VectorX<double>> &slip_state,
-                               drake::VectorX<double> *complex_state) {
+                               drake::VectorX<double> *complex_state)const {
   const auto& slip_com = slip_state.head(kSLIP_DIM);
   const auto& slip_vel = slip_state.segment(kSLIP_DIM, kSLIP_DIM);
   const auto& slip_contact_pos = slip_state.segment(kSLIP_DIM + kSLIP_DIM, kSLIP_DIM * slip_contact_points_.size());

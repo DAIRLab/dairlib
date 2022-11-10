@@ -23,7 +23,7 @@ class PlanarSlipLifter {
                    const std::vector<double>& stance_widths);
 
   void Lift(const Eigen::Ref<const drake::VectorX<double>> &slip_state,
-            drake::VectorX<double> *complex_state);
+            drake::VectorX<double> *complex_state) const;
 
  private:
   /*!
@@ -34,7 +34,7 @@ class PlanarSlipLifter {
    * @param slip_feet_positions [2*n_slip_feet] locations of the planar slip feet
    * @return the generalized positions
    */
-  drake::VectorX<double> LiftGeneralizedPosition(const drake::Vector3<double>& com_position, const drake::VectorX<double>& slip_feet_positions);
+  drake::VectorX<double> LiftGeneralizedPosition(const drake::Vector3<double>& com_position, const drake::VectorX<double>& slip_feet_positions) const;
 
   /*!
    * @brief Given a generalized position calculate the generalized velocity that is the least squares solution to tracking the
@@ -49,20 +49,20 @@ class PlanarSlipLifter {
   drake::VectorX<double> LiftGeneralizedVelocity(const drake::VectorX<double>& generalized_pos,
                                             const drake::Vector3<double>& linear_momentum,
                                             const drake::Vector3<double>& com_pos,
-                                            const drake::VectorX<double>& slip_feet_velocities);
+                                            const drake::VectorX<double>& slip_feet_velocities) const;
 
-  drake::VectorX<double> LiftContactPos(const drake::VectorX<double>& generalized_position);
+  drake::VectorX<double> LiftContactPos(const drake::VectorX<double>& generalized_position) const;
 
-  drake::VectorX<double> LiftContactVel(const drake::VectorX<double>& generalized_pos, const drake::VectorX<double>& generalized_vel);
+  drake::VectorX<double> LiftContactVel(const drake::VectorX<double>& generalized_pos, const drake::VectorX<double>& generalized_vel) const;
 
   drake::VectorX<double> LiftGrf(const drake::VectorX<double>& com_pos,
                             const drake::VectorX<double>& slip_feet_pos,
-                            const drake::VectorX<double>& complex_contact_point_pos);
+                            const drake::VectorX<double>& complex_contact_point_pos) const;
 
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>* context_;
-  drake::multibody::InverseKinematics ik_;
+  mutable drake::systems::Context<double>* context_;
+  mutable drake::multibody::InverseKinematics ik_;
   const double m_;
   const double k_;
   const double r0_;

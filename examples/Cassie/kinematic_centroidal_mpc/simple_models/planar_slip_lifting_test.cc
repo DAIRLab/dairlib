@@ -15,7 +15,7 @@
 #include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_lifter.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/visualization_utils.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip.h"
+#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_constraints.h"
 
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;

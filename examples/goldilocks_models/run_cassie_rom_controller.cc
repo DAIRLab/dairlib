@@ -105,6 +105,11 @@ DEFINE_bool(use_hardware_osc_gains, false, "");
 DEFINE_bool(close_sim_gap, true,
             "Modify to close the gap between open loop and closed loop sim");
 
+DEFINE_bool(
+    track_mid_contact_pt, false,
+    "if true, we have the mid contact point to track the swing foot traj. "
+    " Doesn't seem to work well when turning this flag on for some reason.");
+
 //
 
 DEFINE_int32(iter, -1, "The iteration # of the model that you use");
@@ -266,6 +271,10 @@ int DoMain(int argc, char* argv[]) {
   if (gains.use_hybrid_rom_mpc) {
     DRAKE_DEMAND(!FLAGS_get_stance_hip_angles_from_planner);
     DRAKE_DEMAND(!FLAGS_get_swing_hip_angle_from_planner);
+  }
+
+  if (FLAGS_track_mid_contact_pt) {
+    gains.swing_foot_target_offset_x = 0;
   }
 
   // Build Cassie MBP
@@ -541,7 +550,8 @@ int DoMain(int argc, char* argv[]) {
 
     // Create a system that translate MPC lcm into trajectory
     vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
-        left_toe_origin, right_toe_origin};
+        FLAGS_track_mid_contact_pt ? left_toe_mid : left_toe_origin,
+        FLAGS_track_mid_contact_pt ? right_toe_mid : right_toe_origin};
     vector<int> left_right_support_fsm_states = {left_stance_state,
                                                  right_stance_state};
     auto planner_traj_receiver = builder.AddSystem<SavedTrajReceiver>(
@@ -767,11 +777,15 @@ int DoMain(int argc, char* argv[]) {
             swing_ft_accel_gain_multiplier_samples);
 
     // Swing foot tracking
+    Vector3d toe_point_to_track =
+        FLAGS_track_mid_contact_pt ? mid_contact_point : Vector3d::Zero();
     TransTaskSpaceTrackingData swing_foot_data(
         "swing_ft_data", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
         osc_gains.W_swing_foot, plant_w_spr, plant_wo_springs);
-    swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right");
-    swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left");
+    swing_foot_data.AddStateAndPointToTrack(left_stance_state, "toe_right",
+                                            toe_point_to_track);
+    swing_foot_data.AddStateAndPointToTrack(right_stance_state, "toe_left",
+                                            toe_point_to_track);
     ComTrackingData com_data("com_data", osc_gains.K_p_swing_foot,
                              osc_gains.K_d_swing_foot, osc_gains.W_swing_foot,
                              plant_w_spr, plant_wo_springs);
@@ -788,10 +802,10 @@ int DoMain(int argc, char* argv[]) {
         osc_gains.W_swing_foot, plant_w_spr, plant_wo_springs);
     // TODO: Should probably use mid contact point for hybrid ROM MPC?
     //  Actually, `swing_foot_target_offset_x` heuristic can fix this.
-    swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state,
-                                                 "toe_right");
-    swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state,
-                                                 "toe_left");
+    swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right",
+                                                 toe_point_to_track);
+    swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left",
+                                                 toe_point_to_track);
 
     if (wrt_com_in_local_frame) {
       swing_ft_traj_local.SetTimeVaryingGains(swing_ft_gain_multiplier);

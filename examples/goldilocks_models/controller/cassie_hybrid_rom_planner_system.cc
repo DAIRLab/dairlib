@@ -437,27 +437,6 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   contact_evaluators_->add_evaluator(right_toe_evaluator_.get());
   contact_evaluators_->add_evaluator(right_heel_evaluator_.get());
 
-  /// Get foot contacts
-  Vector3d front_contact_point = left_toe.first;
-  Vector3d rear_contact_point = left_heel.first;
-  if (param_.use_double_contact_points) {
-    auto left_toe_front = BodyPoint(front_contact_point,
-                                    plant_control.GetFrameByName("toe_left"));
-    auto left_toe_rear =
-        BodyPoint(rear_contact_point, plant_control.GetFrameByName("toe_left"));
-    auto right_toe_front = BodyPoint(front_contact_point,
-                                     plant_control.GetFrameByName("toe_right"));
-    auto right_toe_rear = BodyPoint(rear_contact_point,
-                                    plant_control.GetFrameByName("toe_right"));
-    left_contacts_.push_back(left_toe_rear);
-    left_contacts_.push_back(left_toe_front);
-    right_contacts_.push_back(right_toe_rear);
-    right_contacts_.push_back(right_toe_front);
-  } else {
-    left_contacts_.push_back(left_mid_);
-    right_contacts_.push_back(right_mid_);
-  }
-
   // Get joint limits of the robot
   std::vector<string> l_r_pair = {"_left", "_right"};
   std::vector<std::string> joint_names = {

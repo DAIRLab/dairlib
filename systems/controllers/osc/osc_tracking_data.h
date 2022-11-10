@@ -114,6 +114,9 @@ class OscTrackingData {
       const drake::systems::Context<double>& context_w_spr,
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr, double t);
+  virtual void UpdateDesired(
+      const drake::trajectories::Trajectory<double>& traj, double t,
+      double t_since_state_switch);
 
   // Output dimension
   int n_y_;
@@ -165,9 +168,6 @@ class OscTrackingData {
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
  private:
-
-  void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
-                     double t, double t_since_state_switch);
   // Update actual output methods
   virtual void UpdateY(
       const Eigen::VectorXd& x_w_spr,

@@ -63,6 +63,21 @@ void OptionsTrackingData::UpdateFilters(double t) {
   }
 }
 
+void OptionsTrackingData::UpdateDesired(
+    const drake::trajectories::Trajectory<double>& traj, double t,
+    double t_since_state_switch) {
+  OscTrackingData::UpdateDesired(traj, t, t_since_state_switch);
+
+  if (with_view_frame_) {
+    // We assume UpdateActual() is called before UpdateDesired() because
+    // `view_frame_rot_T_` is updated in UpdateActual()
+    y_des_ = view_frame_rot_T_ * y_des_;
+    ydot_des_ = view_frame_rot_T_ * ydot_des_;
+    yddot_des_ = view_frame_rot_T_ * yddot_des_;
+    yddot_des_converted_ = view_frame_rot_T_ * yddot_des_converted_;
+  }
+}
+
 void OptionsTrackingData::UpdateYError() { error_y_ = y_des_ - y_; }
 
 void OptionsTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
@@ -110,6 +125,17 @@ void OptionsTrackingData::SetLowPassFilter(double tau,
     }
   } else {
     low_pass_filter_element_idx_ = element_idx;
+  }
+}
+
+void OptionsTrackingData::AddJointAndStateToIgnoreInJacobian(int joint_vel_idx,
+                                                             int fsm_state) {
+  DRAKE_DEMAND(std::find(active_fsm_states_.begin(), active_fsm_states_.end(),
+                         fsm_state) != active_fsm_states_.end());
+  if (joint_idx_to_ignore_.count(fsm_state)) {
+    joint_idx_to_ignore_[fsm_state].push_back(joint_vel_idx);
+  } else {
+    joint_idx_to_ignore_[fsm_state] = {joint_vel_idx};
   }
 }
 

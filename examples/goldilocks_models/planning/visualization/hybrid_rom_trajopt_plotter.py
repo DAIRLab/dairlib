@@ -187,11 +187,23 @@ def main():
 
 
   if animate:
+    # Run through some logs to get the bounds for visualization
+    com_pos_max = np.zeros([2,1])
+    com_pos_min = np.zeros([2,1])
+    for j in range(start_idx, end_idx):
+      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
+                 str(j) + "_rom_trajectory"
+      rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
+      com_pos_max = np.max(np.hstack([rom_traj.get_global_com_pos(),com_pos_max]), 1).reshape(2,1)
+      com_pos_min = np.min(np.hstack([rom_traj.get_global_com_pos(),com_pos_min]), 1).reshape(2,1)
+    x_limit = [com_pos_min[0] - 1, com_pos_max[0]+1]
+    y_limit = [com_pos_min[1] - 1, com_pos_max[1]+1]
+
     # real_time_rate = 0.1
     # prev_wall_time = -1 
     # prev_sim_time = -1
     is_first_frame = True
-    for j in range(start_idx, end_idx):
+    for j in range(start_idx, end_idx, 10):
       filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                  str(j) + "_rom_trajectory"
       rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
@@ -203,7 +215,8 @@ def main():
       # prev_wall_time = time.time()
       # prev_sim_time = rom_traj.get_global_com_pos_time()[0]
 
-      PlotGlobalFeetAndCoMPosition(rom_traj, not is_first_frame)
+      PlotGlobalFeetAndCoMPosition(rom_traj, not is_first_frame, x_limit, y_limit)
+ 
       plt.draw()
       plt.pause(0.05)
       # plt.pause(0.1)
@@ -222,7 +235,7 @@ def main():
   if not savefig:
     plt.show()
 
-def PlotGlobalFeetAndCoMPosition(rom_traj, redraw=False):
+def PlotGlobalFeetAndCoMPosition(rom_traj, redraw=False, x_limit=[], y_limit=[]):
   start_with_left_stance = rom_traj.get_stance_foot()[0] < 0.5
   global_feet_pos = rom_traj.get_global_feet_pos()
   global_feet_pos_time = rom_traj.get_global_feet_pos_time()
@@ -254,14 +267,21 @@ def PlotGlobalFeetAndCoMPosition(rom_traj, redraw=False):
   # Labels and stuffs
   plt.xlabel('x (m)')
   plt.ylabel('y (m)')
-  # lb = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
-  # ub = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
-  # plt.xlim([lb[0] - 1, lb[1] + 1])
-  # plt.ylim([ub[0] - 1, ub[1] + 1])
-  plt.xlim([-0.2, 3])
-  plt.ylim([-1, 1])
+  if len(x_limit) > 0:
+    plt.xlim(x_limit)
+    plt.ylim(y_limit)
+  else:
+    lb = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
+    ub = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
+    plt.xlim([lb[0] - 1, lb[1] + 1])
+    plt.ylim([ub[0] - 1, ub[1] + 1])
+  # Manually overwrite
+  # plt.xlim([-0.2, 3])
+  # plt.ylim([-1, 1])
+  
   ax = plt.gca()
   ax.set_aspect('equal', adjustable='box')
+
 
 
 

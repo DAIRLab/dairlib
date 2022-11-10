@@ -54,3 +54,25 @@ void CassieKinematicCentroidalMPC::AddLoopClosure() {
   }
 
 }
+
+void CassieKinematicCentroidalMPC::AddPlanarSlipConstraints(int knot_point) {
+  // TODO add planar slip constraints
+}
+void CassieKinematicCentroidalMPC::AddPlanarSlipCost(double t, double terminal_gain) {
+  // TODO add planar slip costs
+}
+
+void CassieKinematicCentroidalMPC::SetModeSequence(const std::vector<std::vector<bool>> &contact_sequence) {
+  KinematicCentroidalMPC::SetModeSequence(contact_sequence);
+  MapModeSequence();
+}
+void CassieKinematicCentroidalMPC::SetModeSequence(const drake::trajectories::PiecewisePolynomial<double> &contact_sequence) {
+  KinematicCentroidalMPC::SetModeSequence(contact_sequence);
+  MapModeSequence();
+}
+
+void CassieKinematicCentroidalMPC::MapModeSequence() {
+  for(int knot_point = 0; knot_point < num_knot_points(); knot_point ++){
+    slip_contact_sequence_[knot_point] = complex_mode_to_slip_mode_.at(contact_sequence_[knot_point]);
+  }
+}

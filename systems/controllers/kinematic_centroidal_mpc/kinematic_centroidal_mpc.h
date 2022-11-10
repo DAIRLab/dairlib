@@ -15,6 +15,11 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
 
+enum Complexity{
+  KINEMATIC_CENTROIDAL,
+  PLANAR_SLIP
+};
+
 /*!
  * @brief Class for solving nonlinear kinematic centroidal mpc. Implementation
  * is based on Dai, Hongkai, Andres Valenzuela, and Russ Tedrake. “Whole-Body
@@ -302,55 +307,59 @@ class KinematicCentroidalMPC {
    * `contact_sequence[knot_point][contact_index]` tells you if at `knot_point`
    * is `contact_index` active
    */
-  void SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence);
+  virtual void SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence);
 
   /*!
    * @brief Set the mode sequence via a trajectory. The value of the trajectory
    * at each time, cast to a bool is if a contact point is active or not
    * @param contact_sequence
    */
-  void SetModeSequence(
+  virtual void SetModeSequence(
       const drake::trajectories::PiecewisePolynomial<double>& contact_sequence);
 
   void AddInitialStateConstraint(const Eigen::VectorXd& state);
 
   const drake::multibody::MultibodyPlant<double>& Plant() { return plant_; };
 
- private:
+  void SetComplexitySchedule(const std::vector<Complexity>& complexity_schedule){complexity_schedule_ = complexity_schedule;};
+ protected:
   /*!
    * @brief Adds dynamics for centroidal state
    */
-  void AddCentroidalDynamics();
+  void AddCentroidalDynamics(int knot_point);
 
   /*!
    * @brief Enforces zero force for feet in flight
    */
-  void AddFlightContactForceConstraints();
+  void AddFlightContactForceConstraints(int knot_point);
 
   /*!
    * @brief Enforce dynamics for kinematics and location of the contacts
    */
-  void AddKinematicsIntegrator();
+  void AddKinematicsIntegrator(int knot_point);
 
   /*!
    * @brief Feet that in stance are not moving and on the ground, feet in the
    * air are above the ground
    */
-  void AddContactConstraints();
+  void AddContactConstraints(int knot_point);
 
   /*!
    * @brief Ensures that contact point for feet line up with kinematics, and
    * centroidal state lines up with kinematic state
    */
-  void AddCentroidalKinematicConsistency();
+  void AddCentroidalKinematicConsistency(int knot_point);
 
   /*!
    * @brief Ensures feet are not pulling on the ground
    */
-  void AddFrictionConeConstraints();
+  void AddFrictionConeConstraints(int knot_point);
 
   //  void AddTorqueLimits();
 
+  virtual void AddPlanarSlipConstraints(int knot_point){ DRAKE_DEMAND(false);};
+
+  virtual void AddPlanarSlipCost(double t, double terminal_gain){ DRAKE_DEMAND(false);};
   /*!
    * @brief Add costs from internally stored variables
    */
@@ -424,4 +433,6 @@ class KinematicCentroidalMPC {
   // saving and publishing solutions
   std::unique_ptr<drake::lcm::DrakeLcm> lcm_;
   dairlib::LcmTrajectory lcm_trajectory_;
+
+  std::vector<Complexity> complexity_schedule_;
 };

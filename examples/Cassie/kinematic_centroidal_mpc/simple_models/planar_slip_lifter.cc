@@ -231,3 +231,8 @@ void PlanarSlipLifter::Lift(const Eigen::Ref<const drake::VectorX<double>> &slip
                                                                                                     complex_contact_pos),
       generalized_pos, generalized_vel;
 }
+drake::VectorX<double> PlanarSlipLifter::Lift(const Eigen::Ref<const drake::VectorX<double>> &slip_state) const {
+  drake::VectorX<double> complex_state(6 + 3 + 3 * 3 * complex_contact_points_.size() + n_q_ + n_v_);
+  Lift(slip_state, &complex_state);
+  return complex_state;
+}

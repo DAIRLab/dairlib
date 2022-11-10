@@ -25,6 +25,8 @@ class PlanarSlipLifter {
   void Lift(const Eigen::Ref<const drake::VectorX<double>> &slip_state,
             drake::VectorX<double> *complex_state) const;
 
+  drake::VectorX<double> Lift(const Eigen::Ref<const drake::VectorX<double>> &slip_state) const;
+
  private:
   /*!
    * @brief given the center of mass position and slip feet position solve for the generalized position of the full robot

@@ -8,7 +8,7 @@ int Gait::GetCurrentMode(double time_now) const{
       return i;
     }
   }
-  DRAKE_ASSERT(false);
+  DRAKE_DEMAND(false);
   return 0;
 }
 
@@ -39,10 +39,10 @@ drake::trajectories::PiecewisePolynomial<double> Gait::ToTrajectory(double curre
 }
 
 void Gait::check_valid() const {
-  DRAKE_ASSERT(period > 0);
-  DRAKE_ASSERT(gait_pattern[0].start_phase == 0);
-  DRAKE_ASSERT(gait_pattern[gait_pattern.size()-1].end_phase == 1);
+  DRAKE_DEMAND(period > 0);
+  DRAKE_DEMAND(gait_pattern[0].start_phase == 0);
+  DRAKE_DEMAND(gait_pattern[gait_pattern.size()-1].end_phase == 1);
   for(int i = 0; i < gait_pattern.size() - 1; i++){
-    DRAKE_ASSERT(gait_pattern[i].end_phase == gait_pattern[i+1].start_phase);
+    DRAKE_DEMAND(gait_pattern[i].end_phase == gait_pattern[i+1].start_phase);
   }
 }

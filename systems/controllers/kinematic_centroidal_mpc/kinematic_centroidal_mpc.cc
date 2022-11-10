@@ -320,9 +320,9 @@ void KinematicCentroidalMPC::SetFromSolution(
     Eigen::MatrixXd* state_samples,
     Eigen::MatrixXd* contact_force_samples,
     std::vector<double>* time_samples) const {
-  DRAKE_ASSERT(state_samples != nullptr);
-  DRAKE_ASSERT(contact_force_samples != nullptr);
-  DRAKE_ASSERT(time_samples->empty());
+  DRAKE_DEMAND(state_samples != nullptr);
+  DRAKE_DEMAND(contact_force_samples != nullptr);
+  DRAKE_DEMAND(time_samples->empty());
 
   *state_samples = MatrixXd(n_q_ + n_v_, n_knot_points_);
   *contact_force_samples = MatrixXd(3 * n_contact_points_, n_knot_points_);

@@ -4,12 +4,10 @@
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic.h"
 #include "drake/solvers/constraint.h"
-#include "drake/systems/trajectory_optimization/multiple_shooting.h"
 #include "solvers/nonlinear_constraint.h"
+#include "solvers/nonlinear_cost.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
-#include <drake/multibody/inverse_kinematics/com_position_constraint.h>
-#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
 #include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_lifter.h"
 
 template <typename T>
@@ -35,23 +33,86 @@ class PlanarSlipReductionConstraint : public dairlib::solvers::NonlinearConstrai
 };
 
 class PlanarSlipLiftingConstraint : public dairlib::solvers::NonlinearConstraint<double> {
-
  public:
   PlanarSlipLiftingConstraint(const drake::multibody::MultibodyPlant<double>& plant,
-                              drake::systems::Context<double>* context,
-                              const std::vector<dairlib::multibody::WorldPointEvaluator<double>>& slip_contact_points,
-                              const std::vector<dairlib::multibody::WorldPointEvaluator<double>>& complex_contact_points,
-                              const std::map<int, std::vector<int>>& simple_foot_index_to_complex_foot_index,
-                              const drake::VectorX<double>& nominal_stand,
-                              double k,
-                              double r0,
-                              const std::vector<double>& stance_widths, int knot_index);
+                              std::shared_ptr<PlanarSlipLifter> lifting_function,
+                              int n_slip_feet, int n_complex_feet,
+                              int knot_index);
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override;
 
-  PlanarSlipLifter lifting_function_;
+  std::shared_ptr<PlanarSlipLifter> lifting_function_;
   const int slip_dim_;
   const int complex_dim_;
 };
+
+template <typename T>
+class PlanarSlipDynamicsConstraint : public dairlib::solvers::NonlinearConstraint<T> {
+
+ public:
+  PlanarSlipDynamicsConstraint(double r0, double k, T m, int n_feet, std::vector<bool>  contact_mask, double dt, int knot_index);
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
+
+  drake::VectorX<T> CalcTimeDerivativesWithForce(
+      const drake::VectorX<T>& com_position,
+      const drake::VectorX<T>& com_vel,
+      const drake::VectorX<T>& contact_loc) const;
+
+  const double r0_;
+  const double k_;
+  const T m_;
+  const int n_feet_;
+  const std::vector<bool> contact_mask_;
+  const double dt_;
+};
+
+///     complex_com
+///     complex_ang_momentum
+///     complex_lin_momentum
+///     complex_contact_pos
+///     complex_contact_vel
+///     complex_contact_force
+///     complex_gen_pos
+///     complex_gen_vel
+class QuadraticLiftedCost : public dairlib::solvers::NonlinearCost<double> {
+
+  struct cost_element{
+    const Eigen::MatrixXd& Q;
+    Eigen::MatrixXd ref;
+  };
+
+ public:
+  QuadraticLiftedCost(std::shared_ptr<PlanarSlipLifter> lifting_function,
+                      cost_element  com_cost,
+                      cost_element  momentum_cost,
+                      cost_element  contact_cost,
+                      cost_element  grf_cost,
+                      cost_element  q_cost,
+                      cost_element  v_cost,
+                      double terminal_gain,
+                      int n_slip_feet,
+                      int knot_point);
+
+ private:
+  void EvaluateCost(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override;
+
+  double CalcCost(const cost_element& cost, const Eigen::Ref<const drake::VectorX<double>>& x);
+
+
+  std::shared_ptr<PlanarSlipLifter> lifting_function_;
+  const cost_element com_cost_;
+  const cost_element momentum_cost_;
+  const cost_element contact_cost_;
+  const cost_element grf_cost_;
+  const cost_element q_cost_;
+  const cost_element v_cost_;
+  const double terminal_gain_;
+};
+
+

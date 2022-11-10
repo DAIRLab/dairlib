@@ -257,6 +257,9 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(!gains.constant_rom_vel_during_double_support);
     DRAKE_DEMAND(FLAGS_get_swing_foot_from_planner);
     DRAKE_DEMAND(!gains.relative_swing_ft);  // I guess this doesn't matter
+    // TODO (20221110): relative_swing_ft should be true if we are using
+    //  `swing_foot_target_offset_x`.
+
     // TODO: you can add more checks here if you find important factors in the
     //  future
     // TODO: we probably have to check swing_foot_target_offset_x

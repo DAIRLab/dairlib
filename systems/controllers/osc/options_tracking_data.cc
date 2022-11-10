@@ -128,17 +128,6 @@ void OptionsTrackingData::SetLowPassFilter(double tau,
   }
 }
 
-void OptionsTrackingData::AddJointAndStateToIgnoreInJacobian(int joint_vel_idx,
-                                                             int fsm_state) {
-  DRAKE_DEMAND(std::find(active_fsm_states_.begin(), active_fsm_states_.end(),
-                         fsm_state) != active_fsm_states_.end());
-  if (joint_idx_to_ignore_.count(fsm_state)) {
-    joint_idx_to_ignore_[fsm_state].push_back(joint_vel_idx);
-  } else {
-    joint_idx_to_ignore_[fsm_state] = {joint_vel_idx};
-  }
-}
-
 void OptionsTrackingData::SetTimeVaryingGains(
     const drake::trajectories::Trajectory<double>& gain_multiplier) {
   DRAKE_DEMAND(gain_multiplier.cols() == n_ydot_);

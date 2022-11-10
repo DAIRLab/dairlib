@@ -10,6 +10,7 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/mathematical_program_result.h"
 #include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/mosek_solver.h"
 
 namespace dairlib::systems::controllers {
@@ -40,6 +41,7 @@ inline std::vector<std::vector<int>> cartesian_product(unsigned long range,
 using drake::solvers::Binding;
 using solvers::NonlinearConstraint;
 using drake::solvers::OsqpSolver;
+using drake::solvers::SnoptSolver;
 using drake::solvers::MosekSolver;
 using drake::solvers::QuadraticCost;
 using drake::solvers::DecisionVariable;
@@ -94,12 +96,8 @@ class AlipMINLP {
   // Problem setup - these must be called before Build()
   void AddMode(int nk);
   void AddInputCost(double R);
-  void SetMinimumStanceTime(double tmin) {
-    tmin_ = std::vector<double>(nmodes_, tmin);
-  };
-  void SetMaximumStanceTime(double tmax) {
-    tmax_ = std::vector<double>(nmodes_, tmax);
-  };
+  void SetMinimumStanceTime(double tmin) {tmin_ = tmin;};
+  void SetMaximumStanceTime(double tmax) {tmax_ = tmax;};
   void SetDoubleSupportTime(double Tds) { Tds_ = Tds; }
   void SetInputLimit(double umax) { umax_ = umax; };
   void AddTrackingCost(
@@ -119,8 +117,8 @@ class AlipMINLP {
       double Ts, double step_width, int stance, double nk) const;
 
   // per solve updates
-  void UpdateMaximumCurrentStanceTime(double tmax);
-  void ActivateInitialTimeEqualityConstraint(double t);
+  void UpdateInitialTimeConstraint(double tmax);
+  void ActivateInitialTimeConstraint(double t);
   void UpdateNextFootstepReachabilityConstraint(
       const geometry::ConvexFoothold &workspace);
 
@@ -178,7 +176,7 @@ class AlipMINLP {
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
   double solve_time() const {
-    return solution_.first.get_solver_details<OsqpSolver>().solve_time;
+    return solution_.first.get_solver_details<SnoptSolver>().solve_time;
   };
   int nmodes() const { return nmodes_; }
   std::vector<int> nknots() const { return nknots_; }
@@ -199,8 +197,8 @@ class AlipMINLP {
   double Tds_ = 0;
   double R_ = 0;
   double umax_ = -1;
-  std::vector<double> tmin_{};
-  std::vector<double> tmax_{};
+  double tmin_ = 0;
+  double tmax_ = 0;
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd Qf_;
   std::vector<double> td_;
@@ -215,6 +213,8 @@ class AlipMINLP {
   void MakeDynamicsConstraints();
   void ClearFootholdConstraints();
   void MakeInputBoundConstaints();
+  void MakeInitialTimeConstraint();
+  void MakeTimingBoundsConstraint();
   void MakeInitialStateConstraint();
   void MakeInitialFootstepConstraint();
   void MakeNextFootstepReachabilityConstraint();
@@ -225,27 +225,26 @@ class AlipMINLP {
 
   // per solve updates and solve steps
   void SolveOCProblemAsIs();
-  void UpdateTimingGradientStep();
-  void UpdateDynamicsConstraints();
-  void ClearFootholds() { footholds_.clear(); }
+  void ClearFootholds() {footholds_.clear();}
 
   // program and decision variables
   drake::copyable_unique_ptr<MathematicalProgram>
       prog_{std::make_unique<MathematicalProgram>()};
   std::vector<VectorXDecisionVariable> pp_{};
+  std::vector<VectorXDecisionVariable> tt_{};
   std::vector<std::vector<VectorXDecisionVariable>> xx_{};
   std::vector<std::vector<VectorXDecisionVariable>> uu_{};
 
-  // store the mode timing as doubles and take gradient steps external to the QP
-  Eigen::VectorXd tt_;
-
   // constraints
+  std::vector<Binding<BoundingBoxConstraint>> ts_bounds_c_{};
   std::vector<Binding<BoundingBoxConstraint>> input_bounds_c_{};
   std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
+  std::shared_ptr<LinearEqualityConstraint> initial_time_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<LinearConstraint> next_step_reach_c_fixed_ = nullptr;
-  std::vector<std::vector<Binding<LinearEqualityConstraint>>> dynamics_c_{};
+  std::shared_ptr<AlipDynamicsConstraint> dynamics_evaluator_ = nullptr;
+  std::vector<std::vector<Binding<drake::solvers::Constraint>>> dynamics_c_{};
   std::vector<std::pair<Binding<LinearConstraint>,
                         Binding<LinearEqualityConstraint>>> footstep_c_{};
 
@@ -256,10 +255,7 @@ class AlipMINLP {
 
   // Bookkeeping
   bool built_ = false;
-  std::pair<drake::solvers::MathematicalProgramResult,
-            std::vector<std::vector<Eigen::Vector4d>>> solution_;
-
-  drake::solvers::OsqpSolver solver_;
+  std::vector<drake::solvers::MathematicalProgramResult> solutions_;
 
 };
 }

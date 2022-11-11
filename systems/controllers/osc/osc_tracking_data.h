@@ -174,6 +174,7 @@ class OscTrackingData {
   virtual void UpdateJdotV(
       const Eigen::VectorXd& x_wo_spr,
       const drake::systems::Context<double>& context_wo_spr) = 0;
+
   // Update error methods
   virtual void UpdateYError() = 0;
   virtual void UpdateYdotError(const Eigen::VectorXd& v_proj) = 0;

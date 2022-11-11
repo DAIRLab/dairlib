@@ -38,13 +38,15 @@ void RelativeTranslationTrackingData::Update(
     const drake::trajectories::Trajectory<double>& traj, double t,
     double t_gait_cycle, const int fsm_state, const VectorXd& v_proj) {
   // Currently there are redundant calculation here. For both to_frame_data_,
-  // and from_frame_data_, we don't nee to run UpdateDesired, UpdateYError, 
+  // and from_frame_data_, we don't nee to run UpdateDesired, UpdateYError,
   // UpdateYdotError and UpdateYddotCmd inside Update().
   // TODO: improve this to make it slightly more efficient.
-  to_frame_data_->Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, traj,
-                         t, t_gait_cycle, fsm_state, v_proj);
-  from_frame_data_->Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr,
-                           traj, t, t_gait_cycle, fsm_state, v_proj);
+  to_frame_data_->OscTrackingData::Update(x_w_spr, context_w_spr, x_wo_spr,
+                                          context_wo_spr, traj, t, t_gait_cycle,
+                                          fsm_state, v_proj);
+  from_frame_data_->OscTrackingData::Update(x_w_spr, context_w_spr, x_wo_spr,
+                                            context_wo_spr, traj, t,
+                                            t_gait_cycle, fsm_state, v_proj);
   OptionsTrackingData::Update(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr,
                               traj, t, t_gait_cycle, fsm_state, v_proj);
 }

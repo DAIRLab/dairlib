@@ -20,6 +20,26 @@ OptionsTrackingData::OptionsTrackingData(
     : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant_w_spr,
                       plant_wo_spr) {}
 
+void OptionsTrackingData::Update(
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
+    const drake::trajectories::Trajectory<double>& traj, double t,
+    double t_since_state_switch, const int fsm_state, const VectorXd& v_proj) {
+  fsm_state_ = fsm_state;
+  // If the set of active states contains -1, the tracking data is always active
+  if (active_fsm_states_.count(-1)) {
+    fsm_state_ = -1;
+  }
+  DRAKE_ASSERT(IsActive(fsm_state));
+  UpdateActual(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, t);
+  OscTrackingData::UpdateDesired(traj, t, t_since_state_switch);
+  // 3. Update error
+  // Careful: must update y and y_des before calling UpdateYError()
+  UpdateYError();
+  UpdateYdotError(v_proj);
+  UpdateYddotCmd(t, t_since_state_switch);
+}
+
 void OptionsTrackingData::UpdateActual(
     const Eigen::VectorXd& x_w_spr,
     const drake::systems::Context<double>& context_w_spr,
@@ -60,21 +80,6 @@ void OptionsTrackingData::UpdateFilters(double t) {
     }
     // Update timestamp
     last_timestamp_ = t;
-  }
-}
-
-void OptionsTrackingData::UpdateDesired(
-    const drake::trajectories::Trajectory<double>& traj, double t,
-    double t_since_state_switch) {
-  OscTrackingData::UpdateDesired(traj, t, t_since_state_switch);
-
-  if (with_view_frame_) {
-    // We assume UpdateActual() is called before UpdateDesired() because
-    // `view_frame_rot_T_` is updated in UpdateActual()
-    y_des_ = view_frame_rot_T_ * y_des_;
-    ydot_des_ = view_frame_rot_T_ * ydot_des_;
-    yddot_des_ = view_frame_rot_T_ * yddot_des_;
-    yddot_des_converted_ = view_frame_rot_T_ * yddot_des_converted_;
   }
 }
 

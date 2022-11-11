@@ -56,9 +56,7 @@ void OscTrackingData::Update(
     fsm_state_ = -1;
   }
   DRAKE_ASSERT(IsActive(fsm_state));
-  // Careful: must call UpdateActual() before calling UpdateDesired() because
-  // `view_frame_rot_T_` inside OptionsTrackingData::UpdateDesired() is updated
-  // in OptionsTrackingData::UpdateActual()
+
   UpdateActual(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, t);
   UpdateDesired(traj, t, t_since_state_switch);
   // 3. Update error

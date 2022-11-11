@@ -92,6 +92,8 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
 DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
+DEFINE_double(init_yaw, 0,
+              "Initial starting yaw angle of the pelvis (in degrees)");
 DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");
 DEFINE_double(pelvis_y_vel, 0.3, "for stability");
 DEFINE_double(toe_spread, 0.15, "");
@@ -347,7 +349,7 @@ int do_main(int argc, char* argv[]) {
       v_init = VectorXd::Zero(plant.num_velocities());
     }
 
-    double theta = 0.0 / 180.0 * M_PI;
+    double theta = FLAGS_init_yaw / 180.0 * M_PI;
     q_init.head<4>() << cos(theta / 2), 0, 0, sin(theta / 2);
 
     x_init << q_init, v_init;

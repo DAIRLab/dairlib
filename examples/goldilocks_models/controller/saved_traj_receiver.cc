@@ -431,7 +431,7 @@ void SavedTrajReceiver::CalcSwingFootTraj(
                 context.get_discrete_state(liftoff_swing_foot_pos_idx_)
                     .get_value();
             // We don't need `view_frame_feedback_` here, because it has been
-            // done in the discreteUpdate
+            // done in the discreteUpdate above
           } else {
             start_foot_pos.head<2>() = global_feet_pos.col(j - 1);
             if (wrt_com_in_local_frame_) {

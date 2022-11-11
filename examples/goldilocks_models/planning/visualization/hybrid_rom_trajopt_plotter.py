@@ -241,8 +241,8 @@ def PlotGlobalFeetAndCoMPosition(rom_traj, redraw=False, x_limit=[], y_limit=[])
   global_feet_pos_time = rom_traj.get_global_feet_pos_time()
   global_com_pos = rom_traj.get_global_com_pos()
   global_com_pos_time = rom_traj.get_global_com_pos_time()
-  # print("global_feet_pos = \n", global_feet_pos)
-  # print("global_com_pos = \n", global_com_pos)
+  print("global_feet_pos = \n", global_feet_pos)
+  print("global_com_pos = \n", global_com_pos)
   
   if not redraw:
     plt.figure("Feet and CoM positions", figsize=figsize)
@@ -258,6 +258,7 @@ def PlotGlobalFeetAndCoMPosition(rom_traj, redraw=False, x_limit=[], y_limit=[])
 
   # Draw pelvis orientation
   current_quat = rom_traj.get_current_quat_xyz_shift()
+  print("current_quat = \n", current_quat)
   rot = Rotation.from_quat([current_quat[1], current_quat[2], current_quat[3], current_quat[0]]).as_matrix().T  # (x, y, z, w) format
   pelvis_x_axis = rot[0:2,0]
   pelvis_y_axis = rot[0:2,1]

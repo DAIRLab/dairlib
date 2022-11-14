@@ -9,6 +9,8 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/geometry/drake_visualizer.h"
+#include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -54,7 +56,7 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double> plant(0.0);
 
-  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, "examples/Cassie/urdf/cassie_v2_shells.urdf");
   if (FLAGS_floating_base) {
     // Ground direction
     Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
@@ -114,6 +116,11 @@ int do_main(int argc, char* argv[]) {
 
   DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph, lcm);
 
+  drake::geometry::MeshcatVisualizerParams params;
+  params.publish_period = 1.0/60.0;
+  auto meshcat = std::make_shared<drake::geometry::Meshcat>();
+  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+      &builder, scene_graph, meshcat, std::move(params));
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();

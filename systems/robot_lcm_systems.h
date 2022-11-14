@@ -44,9 +44,9 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
   int num_positions_;
   int num_velocities_;
   int num_efforts_;
-  std::map<std::string, int> positionIndexMap_;
-  std::map<std::string, int> velocityIndexMap_;
-  std::map<std::string, int> effortIndexMap_;
+  std::map<std::string, int> position_index_map_;
+  std::map<std::string, int> velocity_index_map_;
+  std::map<std::string, int> effort_index_map_;
 };
 
 /// Converts a OutputVector object to LCM type lcmt_robot_output
@@ -79,9 +79,9 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   std::vector<std::string> ordered_position_names_;
   std::vector<std::string> ordered_velocity_names_;
   std::vector<std::string> ordered_effort_names_;
-  std::map<std::string, int> positionIndexMap_;
-  std::map<std::string, int> velocityIndexMap_;
-  std::map<std::string, int> effortIndexMap_;
+  std::map<std::string, int> position_index_map_;
+  std::map<std::string, int> velocity_index_map_;
+  std::map<std::string, int> effort_index_map_;
   int state_input_port_ = -1;
   int effort_input_port_ = -1;
   int imu_input_port_ = -1;
@@ -102,7 +102,7 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
                     TimestampedVector<double>* output) const;
 
   int num_actuators_;
-  std::map<std::string, int> actuatorIndexMap_;
+  std::map<std::string, int> actuator_index_map_;
 };
 
 /// Receives the output of a controller, and outputs it as an LCM
@@ -119,13 +119,13 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 
   int num_actuators_;
   std::vector<std::string> ordered_actuator_names_;
-  std::map<std::string, int> actuatorIndexMap_;
+  std::map<std::string, int> actuator_index_map_;
 };
 
 
 ///
 /// Convenience method to add and connect leaf systems for controlling
-/// a MultibodyPlant via LCM. Makes two prmary connections:
+/// a MultibodyPlant via LCM. Makes two primary connections:
 ///  (1) connects the state output from the plant to a RobotOutputSender and
 ///      LCM publisher, publishing lcmt_robot_output
 ///  (2) connects the actuation input port of the plant to a RobotInputReceiver

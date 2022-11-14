@@ -37,9 +37,9 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
   int num_positions_;
   int num_velocities_;
   int num_efforts_;
-  std::map<std::string, int> positionIndexMap_;
-  std::map<std::string, int> velocityIndexMap_;
-  std::map<std::string, int> effortIndexMap_;
+  std::map<std::string, int> position_index_map_;
+  std::map<std::string, int> velocity_index_map_;
+  std::map<std::string, int> effort_index_map_;
 };
 
 
@@ -73,9 +73,9 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   std::vector<std::string> ordered_position_names_;
   std::vector<std::string> ordered_velocity_names_;
   std::vector<std::string> ordered_effort_names_;
-  std::map<std::string, int> positionIndexMap_;
-  std::map<std::string, int> velocityIndexMap_;
-  std::map<std::string, int> effortIndexMap_;
+  std::map<std::string, int> position_index_map_;
+  std::map<std::string, int> velocity_index_map_;
+  std::map<std::string, int> effort_index_map_;
   int state_input_port_;
   int effort_input_port_;
   bool publish_efforts_;
@@ -97,7 +97,7 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
                     TimestampedVector<double>* output) const;
 
   int num_actuators_;
-  std::map<std::string, int> actuatorIndexMap_;
+  std::map<std::string, int> actuator_index_map_;
 };
 
 
@@ -117,7 +117,7 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 
   int num_actuators_;
   std::vector<std::string> ordered_actuator_names_;
-  std::map<std::string, int> actuatorIndexMap_;
+  std::map<std::string, int> actuator_index_map_;
 };
 
 }  // namespace systems

@@ -359,7 +359,14 @@ class KinematicCentroidalMPC {
 
   virtual void AddPlanarSlipConstraints(int knot_point){ DRAKE_DEMAND(false);};
 
-  virtual void AddPlanarSlipCost(double t, double terminal_gain){ DRAKE_DEMAND(false);};
+  virtual void AddPlanarSlipCost(int knot_point, double terminal_gain){ DRAKE_DEMAND(false);};
+
+  virtual void AddSlipReductionConstraint(int knot_point){ DRAKE_DEMAND(false);};
+
+  virtual void AddSlipLiftingConstraint(int knot_point){ DRAKE_DEMAND(false);};
+
+  virtual void AddSlipDynamics(int knot_point){ DRAKE_DEMAND(false);};
+
   /*!
    * @brief Add costs from internally stored variables
    */

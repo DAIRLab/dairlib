@@ -94,6 +94,7 @@ cc_library(
         "//common",
         "//systems/controllers/kinematic_centroidal_mpc",
         "//multibody:visualization_utils",
+        "//examples/Cassie/kinematic_centroidal_mpc/simple_models:planar_slip",
         "@drake//:drake_shared_library",
     ],
 )

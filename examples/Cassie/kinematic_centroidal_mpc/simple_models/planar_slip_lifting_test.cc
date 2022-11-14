@@ -75,19 +75,21 @@ int main(int argc, char* argv[]) {
       plant, {0,0,0}, right_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
 
+  dairlib::multibody::SetPositionsAndVelocitiesIfNew<double>(plant, reference_state, context.get());
+  std::cout<<left_slip_eval.EvalFull(*context)<<std::endl;
   PlanarSlipLifter lifter(plant,
                           context.get(),
                           {left_slip_eval, right_slip_eval},
                           {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval},
                           {{0, {0, 1}}, {1, {2, 3}}},
-                          reference_state.tail(plant.num_positions()),
+                          reference_state.head(plant.num_positions()),
                           2000,
                           0.5,
                           {0.1, -0.1});
 
   Eigen::Vector2d slip_com = {0.2,0.7};
   Eigen::Vector2d slip_vel = {0.1,0.3};
-  Eigen::Vector4d slip_feet = {0.2,0.1,0.2,0.14};
+  Eigen::Vector4d slip_feet = {0.2,0.0,0.2,0.05};
   Eigen::Vector4d slip_foot_vel = {0.11,0.12,0.15,0.18};
 
   Eigen::VectorXd slip_state(2+2+4+4);

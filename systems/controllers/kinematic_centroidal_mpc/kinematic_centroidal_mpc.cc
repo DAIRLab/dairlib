@@ -235,15 +235,32 @@ void KinematicCentroidalMPC::Build(
   for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
     switch (complexity_schedule_[knot_point]) {
       case KINEMATIC_CENTROIDAL:
-        AddCentroidalDynamics(knot_point);
-        AddKinematicsIntegrator(knot_point);
+        //Add complex constraints
         AddContactConstraints(knot_point);
         AddCentroidalKinematicConsistency(knot_point);
         AddFrictionConeConstraints(knot_point);
         AddFlightContactForceConstraints(knot_point);
+        //Add complex dynamics
+        AddCentroidalDynamics(knot_point);
+        AddKinematicsIntegrator(knot_point);
+        if(!is_last_knot(knot_point) and complexity_schedule_[knot_point+1] == PLANAR_SLIP){
+          AddSlipReductionConstraint(knot_point + 1);
+        }
         break;
       case PLANAR_SLIP:
         AddPlanarSlipConstraints(knot_point);
+        if(!is_last_knot(knot_point)){
+          switch (complexity_schedule_[knot_point+1]) {
+            case KINEMATIC_CENTROIDAL:
+              AddCentroidalDynamics(knot_point);
+              AddKinematicsIntegrator(knot_point);
+              AddSlipLiftingConstraint(knot_point);
+              break;
+            case PLANAR_SLIP:
+              AddSlipDynamics(knot_point);
+              break;
+          }
+        }
         break;
     }
   }

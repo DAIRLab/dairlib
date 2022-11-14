@@ -87,14 +87,15 @@ int DoMain(int argc, char* argv[]) {
     time_points.push_back(time_points.back() + duration);
   }
 
+  Eigen::VectorXd reference_state = GenerateNominalStand(
+      plant, traj_params.com_height, traj_params.stance_width, false);
+
   // Create MPC and set gains
   CassieKinematicCentroidalMPC mpc(
       plant, traj_params.n_knot_points,
-      time_points.back() / (traj_params.n_knot_points - 1), 0.4);
+      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 2000, 0.6, traj_params.stance_width);
   mpc.SetGains(gains);
 
-  Eigen::VectorXd reference_state = GenerateNominalStand(
-      plant, traj_params.com_height, traj_params.stance_width, false);
   KcmpcReferenceGenerator generator(plant,
                                     reference_state.head(plant.num_positions()),
                                     mpc.CreateContactPoints(plant, 0));

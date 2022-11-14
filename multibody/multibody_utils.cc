@@ -343,7 +343,6 @@ template <typename T>
 vector<string> CreateActuatorNameVectorFromMap(
     const MultibodyPlant<T>& plant) {
   map<string, int> act_map = MakeNameToActuatorsMap(plant);
-  vector<string> actuator_names(act_map.size());
   return ExtractOrderedNamesFromMap(act_map);
 }
 

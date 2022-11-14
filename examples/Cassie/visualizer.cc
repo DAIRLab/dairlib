@@ -64,7 +64,10 @@ int do_main(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  /// Set visualizer lcm url to ttl=0 to avoid sending DrakeViewerDraw
+  /// messages to Cassie
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:7667?ttl=0");
 
   // Create state receiver.
   auto state_sub =
@@ -123,8 +126,7 @@ int do_main(int argc, char* argv[]) {
   /// internal calculations)
   auto& state_sub_context = diagram->GetMutableSubsystemContext(
       *state_sub, context.get());
-  systems::InitializeRobotOutputSubscriberQuaternionPositions(
-      state_sub_context, plant);
+  state_receiver->InitializeSubscriberPositions(plant, state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

@@ -82,6 +82,47 @@ void RobotOutputReceiver::CopyOutput(const Context<double>& context,
   output->set_timestamp(state_msg.utime * 1.0e-6);
 }
 
+void RobotOutputReceiver::InitializeSubscriberPositions(
+    const MultibodyPlant<double>& plant,
+    drake::systems::Context<double> &context) const {
+  auto& state_msg = context.get_mutable_abstract_state<lcmt_robot_output>(0);
+
+  // using the time from the context
+  state_msg.utime = context.get_time() * 1e6;
+
+  std::vector<std::string> ordered_position_names =
+      multibody::ExtractOrderedNamesFromMap(positionIndexMap_);
+  std::vector<std::string> ordered_velocity_names =
+      multibody::ExtractOrderedNamesFromMap(velocityIndexMap_);
+  std::vector<std::string> ordered_effort_names =
+      multibody::ExtractOrderedNamesFromMap(effortIndexMap_);
+
+  state_msg.num_positions = num_positions_;
+  state_msg.num_velocities = num_velocities_;
+  state_msg.position_names.resize(num_positions_);
+  state_msg.velocity_names.resize(num_velocities_);
+  state_msg.position.resize(num_positions_);
+  state_msg.velocity.resize(num_positions_);
+
+  for (int i = 0; i < num_positions_; i++) {
+    state_msg.position_names[i] = ordered_position_names[i];
+    state_msg.position[i] = 0;
+  }
+
+  // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
+  for (const auto& body_idx : plant.GetFloatingBaseBodies()) {
+    const auto& body = plant.get_body(body_idx);
+    if (body.has_quaternion_dofs()) {
+      state_msg.position[body.floating_positions_start()] = 1;
+    }
+  }
+
+  for (int i = 0; i < num_velocities_; i++) {
+    state_msg.velocity[i] = 0;
+    state_msg.velocity_names[i] = ordered_velocity_names[i];
+  }
+}
+
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputSender.
 
@@ -97,33 +138,12 @@ RobotOutputSender::RobotOutputSender(
   velocityIndexMap_ = multibody::MakeNameToVelocitiesMap(plant);
   effortIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
 
-  // Loop through the maps to extract ordered names
-  for (int i = 0; i < num_positions_; ++i) {
-    for (auto& x : positionIndexMap_) {
-      if (x.second == i) {
-        ordered_position_names_.push_back(x.first);
-        break;
-      }
-    }
-  }
-
-  for (int i = 0; i < num_velocities_; ++i) {
-    for (auto& x : velocityIndexMap_) {
-      if (x.second == i) {
-        ordered_velocity_names_.push_back(x.first);
-        break;
-      }
-    }
-  }
-
-  for (int i = 0; i < num_efforts_; i++) {
-    for (auto& x : effortIndexMap_) {
-      if (x.second == i) {
-        ordered_effort_names_.push_back(x.first);
-        break;
-      }
-    }
-  }
+  ordered_position_names_ =
+      multibody::ExtractOrderedNamesFromMap(positionIndexMap_);
+  ordered_velocity_names_ =
+      multibody::ExtractOrderedNamesFromMap(velocityIndexMap_);
+  ordered_effort_names_ =
+      multibody::ExtractOrderedNamesFromMap(effortIndexMap_);
 
   state_input_port_ =
       this->DeclareVectorInputPort(
@@ -317,82 +337,6 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
   builder->Connect(*state_sender, *state_pub);
 
   return passthrough;
-}
-
-void InitializeRobotOutputSubscriberQuaternionPositions(
-    Context<double>& context, const MultibodyPlant<double>& plant) {
-
-  auto& state_msg = context.get_mutable_abstract_state<lcmt_robot_output>(0);
-
-  // using the time from the context
-  state_msg.utime = context.get_time() * 1e6;
-
-  const int nq = plant.num_positions();
-  const int nv = plant.num_velocities();
-  const int nu = plant.num_actuators();
-
-
-  const auto& positionIndexMap = multibody::MakeNameToPositionsMap(plant);
-  const auto& velocityIndexMap = multibody::MakeNameToVelocitiesMap(plant);
-  const auto& effortIndexMap = multibody::MakeNameToActuatorsMap(plant);
-
-  std::vector<std::string> ordered_position_names;
-  std::vector<std::string> ordered_velocity_names;
-  std::vector<std::string> ordered_effort_names;
-
-
-  // Loop through the maps to extract ordered names
-  for (int i = 0; i < nq; ++i) {
-    for (auto& x : positionIndexMap) {
-      if (x.second == i) {
-        ordered_position_names.push_back(x.first);
-        break;
-      }
-    }
-  }
-
-  for (int i = 0; i < nv; ++i) {
-    for (auto& x : velocityIndexMap) {
-      if (x.second == i) {
-        ordered_velocity_names.push_back(x.first);
-        break;
-      }
-    }
-  }
-
-  for (int i = 0; i < nu; i++) {
-    for (auto& x : effortIndexMap) {
-      if (x.second == i) {
-        ordered_effort_names.push_back(x.first);
-        break;
-      }
-    }
-  }
-
-  state_msg.num_positions = nq;
-  state_msg.num_velocities = nv;
-  state_msg.position_names.resize(nq);
-  state_msg.velocity_names.resize(nv);
-  state_msg.position.resize(nq);
-  state_msg.velocity.resize(nv);
-
-  for (int i = 0; i < nq; i++) {
-    state_msg.position_names[i] = ordered_position_names[i];
-    state_msg.position[i] = 0;
-  }
-
-  // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  for (const auto& body_idx : plant.GetFloatingBaseBodies()) {
-    const auto& body = plant.get_body(body_idx);
-    if (body.has_quaternion_dofs()) {
-      state_msg.position[body.floating_positions_start()] = 1;
-    }
-  }
-
-  for (int i = 0; i < nv; i++) {
-    state_msg.velocity[i] = 0;
-    state_msg.velocity_names[i] = ordered_velocity_names[i];
-  }
 }
 
 }  // namespace systems

@@ -175,14 +175,15 @@ class AlipMINLP {
   // misc getters and setters
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
-  double solve_time() const {
-    return solution_.first.get_solver_details<SnoptSolver>().solve_time;
-  };
+
+  // TODO: Try to get the solve time from snopt
+  double solve_time() const {return 0.0;};
+
   int nmodes() const { return nmodes_; }
   std::vector<int> nknots() const { return nknots_; }
 
   drake::solvers::MathematicalProgram *get_prog() { return prog_.get_mutable(); }
-  drake::solvers::MathematicalProgramResult &get_solution() { return solution_.first; }
+  drake::solvers::MathematicalProgramResult &get_solution() { return solutions_.front(); }
 
  private:
 

@@ -381,6 +381,7 @@ class StepnetDataGenerator(DrakeCassieGym):
     def get_footstep_target_with_random_offset(self):
         # Apply a random velocity command
         radio = np.zeros((18,))
+        '''
         radio[2:4] = np.random.uniform(
             low=self.data_gen_params.radio_lb,
             high=self.data_gen_params.radio_ub
@@ -390,8 +391,9 @@ class StepnetDataGenerator(DrakeCassieGym):
                 low=-self.data_gen_params.target_yaw_noise_bound,
                 high=self.data_gen_params.target_yaw_noise_bound
             )
-
-        alip_target_b = self.get_alip_footstep_target(radio)
+        '''
+        # TODO: Fix the above?
+        alip_target_b = np.zeros((3,))
 
         # Apply a random offset to the target XY position
         target = alip_target_b + np.random.uniform(

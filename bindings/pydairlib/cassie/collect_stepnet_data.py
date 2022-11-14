@@ -16,7 +16,7 @@ from pydairlib.cassie.cassie_gym.stepnet_data_generator import \
 
 
 HOME = os.getenv("HOME")
-DATASET_DIR = HOME + '/workspace/stepnet_learning_data/dataset/'
+DATASET_DIR = HOME + '/workspace/stepnet_learning_data/large_dataset/'
 FLAT_GROUND_DATASET_DIR = HOME + '/workspace/stepnet_learning_data/flat_ground/'
 DEPTH_DIR = DATASET_DIR + 'depth/'
 ROBO_DIR = DATASET_DIR + 'robot/'
@@ -41,7 +41,7 @@ def collect_data_from_random_map(size, seed, params):
 
 def collect_and_save_data_from_random_map(i, size, params: DataCollectionParams):
     data = collect_data_from_random_map(size, i*params.nsteps, params)
-    print(i)
+    print(f'map {i}, t = {data[0]["time"]}')
     ni = ndigits(params.nmaps)
     nj = ndigits(params.nsteps)
     for j, step in enumerate(data):
@@ -68,8 +68,6 @@ def collect_flat_ground_data(size, seed, params):
 def flat_main(collection_params):
     if not os.path.isdir(collection_params.robot_path):
         os.makedirs(collection_params.robot_path)
-
-    collect_flat_ground_data(1, 1, collection_params)
 
     nsteps = collection_params.nsteps
     nthreads = collection_params.nthreads
@@ -120,6 +118,9 @@ def main(args):
     if collection_params.has_terrain:
         collection_params.target_to_map_tf = \
             DepthCameraInfo().get_pelvis_to_image_tf()
+
+    if not os.path.isdir(args.dataset_parent_folder):
+        os.makedirs(args.dataset_parent_folder)
 
     # Save collection params
     save_config(

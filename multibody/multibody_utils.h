@@ -70,6 +70,10 @@ void AddFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1),
                     bool show_ground = true);
 
+/// Get the ordered names from a NameTo___Map
+std::vector<std::string> ExtractOrderedNamesFromMap(
+    const std::map<std::string, int>& map);
+
 /// Given a MultibodyPlant, builds a map from position name to position index
 template <typename T>
 std::map<std::string, int> MakeNameToPositionsMap(

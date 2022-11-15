@@ -108,6 +108,8 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
 
   void AddSlipDynamics(int knot_point)override;
 
+  drake::VectorX<double> LiftSlipSolution(int knot_point)override;
+
   /*!
    * @brief Adds loop closure constraints to the mpc
    */
@@ -122,7 +124,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
   double r0_;
   double m_;
 
-  const double slip_ground_offset_ = 0.0562;
+  const double slip_ground_offset_ = 0;
 
   std::vector<drake::solvers::VectorXDecisionVariable> slip_com_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> slip_vel_vars_;

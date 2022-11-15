@@ -93,13 +93,13 @@ int DoMain(int argc, char* argv[]) {
   // Create MPC and set gains
   CassieKinematicCentroidalMPC mpc(
       plant, traj_params.n_knot_points,
-      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 2000, 0.6, traj_params.stance_width);
+      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 8000, 0.8, traj_params.stance_width);
   mpc.SetGains(gains);
 
   std::vector<Complexity> complexity_schedule(traj_params.n_knot_points);
   std::fill(complexity_schedule.begin(), complexity_schedule.end(),Complexity::PLANAR_SLIP);
   for(int i = 0; i < 25; i++){
-    complexity_schedule.push_back(Complexity::KINEMATIC_CENTROIDAL);
+    complexity_schedule[i] = Complexity::KINEMATIC_CENTROIDAL;
   }
   mpc.SetComplexitySchedule(complexity_schedule);
 
@@ -167,9 +167,9 @@ int DoMain(int argc, char* argv[]) {
     mpc.Build(options);
   }
 
-  //  double alpha = .2;
-  //  mpc.CreateVisualizationCallback(
-  //      "examples/Cassie/urdf/cassie_fixed_springs.urdf", alpha);
+    double alpha = .2;
+    mpc.CreateVisualizationCallback(
+        "examples/Cassie/urdf/cassie_fixed_springs.urdf", alpha);
 
   std::cout << "Solving optimization\n\n";
   const auto pp_xtraj = mpc.Solve();
@@ -204,7 +204,7 @@ int DoMain(int argc, char* argv[]) {
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(1.0);
+    simulator.set_target_realtime_rate(0.2);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
   }

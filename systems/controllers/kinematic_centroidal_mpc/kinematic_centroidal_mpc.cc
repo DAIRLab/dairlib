@@ -355,7 +355,14 @@ KinematicCentroidalMPC::Solve() {
   std::vector<drake::MatrixX<double>> states;
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     time_points.emplace_back(dt_ * knot_point);
-    states.emplace_back(result_->GetSolution(state_vars(knot_point)));
+    switch (complexity_schedule_[knot_point]) {
+      case KINEMATIC_CENTROIDAL:
+        states.emplace_back(result_->GetSolution(state_vars(knot_point)));
+        break;
+      case PLANAR_SLIP:
+        states.emplace_back(LiftSlipSolution(knot_point));
+        break;
+    }
   }
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
       time_points, states);

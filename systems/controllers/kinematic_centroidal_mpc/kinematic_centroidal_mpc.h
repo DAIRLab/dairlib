@@ -370,6 +370,8 @@ class KinematicCentroidalMPC {
 
   virtual void AddSlipDynamics(int knot_point){ DRAKE_DEMAND(false);};
 
+  virtual drake::VectorX<double> LiftSlipSolution(int knot_point){ DRAKE_DEMAND(false);};
+
   /*!
    * @brief Add costs from internally stored variables
    */

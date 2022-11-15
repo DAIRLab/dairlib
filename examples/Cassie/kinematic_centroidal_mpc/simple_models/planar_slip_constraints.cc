@@ -147,7 +147,7 @@ void PlanarSlipDynamicsConstraint<T>::EvaluateConstraint(const Eigen::Ref<const 
   drake::Vector<T, 4> xdot1 = CalcTimeDerivativesWithForce(com1, vel1,contact_pos1);
 
   // Predict state and return error
-  const auto x1Predict = x0 + 0.5 * dt_ * (x0 + x1);
+  const auto x1Predict = x0 + 0.5 * dt_ * (xdot0 + xdot1);
   *y = x1 - x1Predict;
 }
 

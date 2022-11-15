@@ -98,7 +98,7 @@ void CassieKinematicCentroidalMPC::AddPlanarSlipConstraints(int knot_point) {
       if (!is_first_knot(knot_point) and !is_last_knot(knot_point) and
           (!slip_contact_sequence_[knot_point - 1][contact_index] or
               !slip_contact_sequence_[knot_point + 1][contact_index])) {
-        lb = swing_foot_minimum_height_;
+        lb = swing_foot_minimum_height_+.1; //TODO figure out why this needs to be higher
       }
       lb +=slip_ground_offset_;
       prog_->AddBoundingBoxConstraint(
@@ -213,4 +213,14 @@ void CassieKinematicCentroidalMPC::SetMomentumGuess(const drake::trajectories::P
                            slip_index_.unaryExpr(momentum_trajectory.value(dt_ * knot_point))/m_);
   }
   KinematicCentroidalMPC::SetMomentumGuess(momentum_trajectory);
+}
+drake::VectorX<double> CassieKinematicCentroidalMPC::LiftSlipSolution(int knot_point) {
+  std::cout<<result_->GetSolution(slip_contact_pos_vars(knot_point, 0)[1])<<" "<< result_->GetSolution(slip_contact_pos_vars(knot_point, 1)[1])<<std::endl;
+  drake::VectorX<double> slip_state(2 + 2 + 4 * slip_contact_points_.size());
+  slip_state<<result_->GetSolution(slip_com_vars_[knot_point]),
+      result_->GetSolution(slip_vel_vars_[knot_point]),
+      result_->GetSolution(slip_contact_pos_vars_[knot_point]),
+      result_->GetSolution(slip_contact_vel_vars_[knot_point]);
+
+ return lifters_[knot_point]->Lift(slip_state).tail(n_q_+n_v_);
 }

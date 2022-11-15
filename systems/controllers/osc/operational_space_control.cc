@@ -492,6 +492,17 @@ void OperationalSpaceControl::Build() {
     /// hard constraint version
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
+  // Testing -- penalize the front contact for optimal model as a regularization
+  // term, in order to help the solver to find good solution.
+  if (w_rom_force_reg_ > 0) {
+    contact_force_reg_cost_ =
+        prog_
+            ->AddQuadraticCost(
+                1e-8 * MatrixXd::Identity(2, 2), VectorXd::Zero(2),
+                {lambda_c_.segment<1>(2), lambda_c_.segment<1>(8)})
+            .evaluator()
+            .get();
+  }
 
   // (Testing) 7. Cost for staying close to the previous input
   if (w_input_reg_ > 0) {

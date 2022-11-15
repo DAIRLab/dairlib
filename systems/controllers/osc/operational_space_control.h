@@ -172,6 +172,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                        int right_support_state,
                                        std::vector<int> ds_states);
   void SetInputRegularizationWeight(double w) { w_input_reg_ = w; }
+  void AddContactForceRegularizationCostForOptimalROM(double w) {
+    w_rom_force_reg_ = w;
+  }
 
   // OSC LeafSystem builder
   void Build();
@@ -387,6 +390,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* input_reg_cost_;
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
+
+  // Optimal feature -- contact force regularization for optimal ROM
+  double w_rom_force_reg_ = -1;
+  drake::solvers::QuadraticCost* contact_force_reg_cost_;
 };
 
 }  // namespace dairlib::systems::controllers

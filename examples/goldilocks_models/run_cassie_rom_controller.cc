@@ -309,10 +309,10 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel = RightToeRear(plant_wo_springs);
 
   // Reduced order model
+  int model_iter = FLAGS_iter > 0 ? FLAGS_iter : gains.model_iter;
   std::unique_ptr<ReducedOrderModel> rom =
       CreateRom(gains.rom_option, 1 /*robot_option*/, plant_wo_springs, true);
-  ReadModelParameters(rom.get(), gains.dir_model,
-                      FLAGS_iter > 0 ? FLAGS_iter : gains.model_iter);
+  ReadModelParameters(rom.get(), gains.dir_model, model_iter);
 
   // Mirrored reduced order model
   int robot_option = 1;
@@ -832,6 +832,10 @@ int DoMain(int argc, char* argv[]) {
     optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);
     optimal_rom_traj.AddStateAndRom(post_right_double_support_state,
                                     mirrored_rom);
+    // Note: we should not track x and y component during double support phase,
+    // because we have a CoP constraint.
+    // Actually x is probably fine, but not y, because we only blend in the y
+    // direction)
     std::vector<double> rom_ratio_breaks{0, left_support_duration / 2,
                                          left_support_duration};
     std::vector<MatrixX<double>> rom_ratio_samples(
@@ -1180,6 +1184,10 @@ int DoMain(int argc, char* argv[]) {
     }
     if (osc_gains.w_input_reg > 0) {
       osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
+    }
+    // Heuristics
+    if (gains.w_rom_contact_force_reg > 0 && model_iter > 1) {
+      osc->SetInputRegularizationWeight(gains.w_rom_contact_force_reg);
     }
 
     // Constraints in OSC

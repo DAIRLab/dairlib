@@ -71,26 +71,28 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedPosition(const drake::Ve
                                                                const drake::VectorX<double> &slip_feet_positions) const {
   DRAKE_DEMAND(slip_feet_positions.size() == 2*slip_contact_points_.size());
   //Add com position constraint
-  const auto com_constraint = ik_.get_mutable_prog()->AddBoundingBoxConstraint(com_position, com_position, com_vars_);
+  const auto com_constraint = ik_.get_mutable_prog()->AddBoundingBoxConstraint(Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3), com_vars_);
   //Add feet position constraint
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> foot_constraints;
   for(int i = 0; i < slip_contact_points_.size(); i++){
     const drake::Vector3<double> slip_spatial_foot_pos =  {slip_feet_positions[2*i], stance_widths_[i], slip_feet_positions[2*i+1]};
     foot_constraints.push_back(ik_.AddPositionConstraint(slip_contact_points_[i].get_frame(), drake::VectorX<double>::Zero(3), plant_.world_frame(),
                                                          std::nullopt,
-                                                         slip_spatial_foot_pos,
-                                                         slip_spatial_foot_pos));
+                                                         slip_spatial_foot_pos - com_position,
+                                                         slip_spatial_foot_pos - com_position));
   }
   //Set initial guess for com
-  ik_.get_mutable_prog()->SetInitialGuess(com_vars_,com_position);
+  ik_.get_mutable_prog()->SetInitialGuess(com_vars_,Eigen::VectorXd::Zero(3));
   //Solve
   const auto result = drake::solvers::Solve(ik_.prog());
   const auto q_sol = result.GetSolution(ik_.q());
   //Normalize quaternion
   drake::VectorX<double> q_sol_normd(n_q_);
   q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(n_q_ - 4);
+
+  q_sol_normd.segment(4,3) = q_sol_normd.segment(4,3) + com_position;
   //Set initial guess for next time
-  ik_.get_mutable_prog()->SetInitialGuess(ik_.q(), q_sol_normd);
+//  ik_.get_mutable_prog()->SetInitialGuess(ik_.q(), q_sol_normd);
   //Remove added constraints
   ik_.get_mutable_prog()->RemoveConstraint(com_constraint);
   for(const auto& constraint : foot_constraints){
@@ -189,7 +191,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &c
     const auto dir = (com_pos - average_pos).normalized();
     // Distribute grf magnitude across all of the complex contact points
     for(const auto& complex_index : complex_feet_list){
-      rv.segment(3 * complex_index, complex_index) = dir * slip_grf_mag/complex_feet_list.size();
+      rv.segment(3 * complex_index, 3) = dir * slip_grf_mag/complex_feet_list.size();
     }
   }
   return rv;

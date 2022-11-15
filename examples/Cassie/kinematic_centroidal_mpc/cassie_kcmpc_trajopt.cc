@@ -101,7 +101,7 @@ int DoMain(int argc, char* argv[]) {
   for(int i = 0; i < 25; i++){
     complexity_schedule.push_back(Complexity::KINEMATIC_CENTROIDAL);
   }
-//  mpc.SetComplexitySchedule(complexity_schedule);
+  mpc.SetComplexitySchedule(complexity_schedule);
 
   KcmpcReferenceGenerator generator(plant,
                                     reference_state.head(plant.num_positions()),

@@ -184,3 +184,33 @@ drake::solvers::VectorXDecisionVariable CassieKinematicCentroidalMPC::slip_conta
                                                                                             int slip_foot_index) {
   return slip_contact_vel_vars_[knot_point_index].segment(2 * slip_foot_index, 2);
 }
+
+void CassieKinematicCentroidalMPC::SetComPositionGuess(const drake::trajectories::PiecewisePolynomial<double> &com_trajectory) {
+  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
+    prog_->SetInitialGuess(slip_com_vars_[knot_point],
+                           slip_index_.unaryExpr(com_trajectory.value(dt_ * knot_point)));
+  }
+  KinematicCentroidalMPC::SetComPositionGuess(com_trajectory);
+}
+
+void CassieKinematicCentroidalMPC::SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double> &q_traj,
+                                                      const drake::trajectories::PiecewisePolynomial<double> &v_traj) {
+  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
+    dairlib::multibody::SetPositionsIfNew<double>(plant_, q_traj.value(dt_*knot_point),contexts_[knot_point].get());
+    dairlib::multibody::SetVelocitiesIfNew<double>(plant_, v_traj.value(dt_*knot_point),contexts_[knot_point].get());
+    for(int contact = 0; contact < slip_contact_points_.size(); contact++){
+      prog_->SetInitialGuess(slip_contact_pos_vars(knot_point, contact),
+                             slip_index_.unaryExpr(slip_contact_points_[contact].EvalFull(*contexts_[knot_point])));
+      prog_->SetInitialGuess(slip_contact_vel_vars(knot_point, contact),
+                             slip_index_.unaryExpr(slip_contact_points_[contact].EvalFullTimeDerivative(*contexts_[knot_point])));
+    }
+  }
+  KinematicCentroidalMPC::SetRobotStateGuess(q_traj, v_traj);
+}
+void CassieKinematicCentroidalMPC::SetMomentumGuess(const drake::trajectories::PiecewisePolynomial<double> &momentum_trajectory) {
+  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
+    prog_->SetInitialGuess(slip_vel_vars_[knot_point],
+                           slip_index_.unaryExpr(momentum_trajectory.value(dt_ * knot_point))/m_);
+  }
+  KinematicCentroidalMPC::SetMomentumGuess(momentum_trajectory);
+}

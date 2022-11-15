@@ -245,22 +245,22 @@ class KinematicCentroidalMPC {
       const drake::trajectories::PiecewisePolynomial<double>& state_trajectory);
 
   // TODO remove once drake has trajectory stacking
-  void SetRobotStateGuess(
+  virtual void SetRobotStateGuess(
       const drake::trajectories::PiecewisePolynomial<double>& q_traj,
       const drake::trajectories::PiecewisePolynomial<double>& v_traj);
 
   void SetComPositionGuess(const drake::Vector3<double>& state);
 
-  void SetComPositionGuess(
+  virtual void SetComPositionGuess(
       const drake::trajectories::PiecewisePolynomial<double>& com_trajectory);
 
-  void SetContactGuess(const drake::trajectories::PiecewisePolynomial<double>&
+  virtual void SetContactGuess(const drake::trajectories::PiecewisePolynomial<double>&
                            contact_trajectory);
 
-  void SetForceGuess(
+  virtual void SetForceGuess(
       const drake::trajectories::PiecewisePolynomial<double>& force_trajectory);
 
-  void SetMomentumGuess(
+  virtual void SetMomentumGuess(
       const drake::trajectories::PiecewisePolynomial<double>& momentum_trajectory);
 
     void CreateVisualizationCallback(std::string model_file, double alpha,

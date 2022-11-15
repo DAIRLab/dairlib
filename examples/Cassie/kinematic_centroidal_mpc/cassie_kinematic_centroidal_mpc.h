@@ -85,6 +85,16 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
 
   drake::solvers::VectorXDecisionVariable slip_contact_vel_vars(int knot_point_index, int slip_foot_index);
 
+  void SetComPositionGuess(
+      const drake::trajectories::PiecewisePolynomial<double>& com_trajectory) override;
+
+  void SetRobotStateGuess(
+      const drake::trajectories::PiecewisePolynomial<double>& q_traj,
+      const drake::trajectories::PiecewisePolynomial<double>& v_traj) override;
+
+  void SetMomentumGuess(
+      const drake::trajectories::PiecewisePolynomial<double>& momentum_trajectory) override;
+
  private:
   void MapModeSequence();
 
@@ -127,5 +137,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
                                                                             {{true, true, false, false},{true, false}},
                                                                             {{false, false, true, true},{false, true}},
                                                                             {{false, false, false, false},{false, false}}};
+
+  const Eigen::Vector2i slip_index_{0,2};
 };
 

@@ -241,7 +241,7 @@ final_foot_height: -0.0
 final_foot_velocity_z: 0.0
 
 #LIPM trajectory
-lipm_height: 0.9
+lipm_height: 0.9  # only used for the default footstep planner
 
 
 ### For IK controller (testing)

@@ -352,6 +352,8 @@ int do_main(int argc, char* argv[]) {
     double theta = FLAGS_init_yaw / 180.0 * M_PI;
     q_init.head<4>() << cos(theta / 2), 0, 0, sin(theta / 2);
 
+    // q_init(4) += 1;
+
     x_init << q_init, v_init;
   }
 

@@ -88,8 +88,7 @@ void CassieKinematicCentroidalMPC::AddPlanarSlipConstraints(int knot_point) {
       prog_->AddBoundingBoxConstraint(
           slip_ground_offset_, slip_ground_offset_, slip_contact_pos_vars(knot_point, contact_index)[1]);
 
-      const auto com_to_foot = slip_com_vars_[knot_point]-slip_contact_pos_vars(knot_point,contact_index);
-      prog_->AddConstraint(com_to_foot.norm() < r0_);
+      prog_->AddConstraint((slip_com_vars_[knot_point]-slip_contact_pos_vars(knot_point,contact_index)).norm() <= r0_);
     }else{
       // Feet are above the ground
       double lb = 0;
@@ -179,9 +178,9 @@ void CassieKinematicCentroidalMPC::AddSlipDynamics(int knot_point) {
 
 drake::solvers::VectorXDecisionVariable CassieKinematicCentroidalMPC::slip_contact_pos_vars(int knot_point_index,
                                                                                             int slip_foot_index) {
-  return slip_contact_pos_vars_[knot_point_index].segment(2 * slip_foot_index, slip_foot_index);
+  return slip_contact_pos_vars_[knot_point_index].segment(2 * slip_foot_index, 2);
 }
 drake::solvers::VectorXDecisionVariable CassieKinematicCentroidalMPC::slip_contact_vel_vars(int knot_point_index,
                                                                                             int slip_foot_index) {
-  return slip_contact_vel_vars_[knot_point_index].segment(2 * slip_foot_index, slip_foot_index);
+  return slip_contact_vel_vars_[knot_point_index].segment(2 * slip_foot_index, 2);
 }

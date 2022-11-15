@@ -317,7 +317,7 @@ void KinematicCentroidalMPC::AddCosts() {
         }
         break;
       case PLANAR_SLIP:
-        AddPlanarSlipCost(t, terminal_gain * collocation_gain);
+        AddPlanarSlipCost(knot_point, terminal_gain * collocation_gain);
         break;
     }
   }

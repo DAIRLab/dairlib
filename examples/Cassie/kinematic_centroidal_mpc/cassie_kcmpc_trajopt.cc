@@ -96,6 +96,13 @@ int DoMain(int argc, char* argv[]) {
       time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 2000, 0.6, traj_params.stance_width);
   mpc.SetGains(gains);
 
+  std::vector<Complexity> complexity_schedule(traj_params.n_knot_points);
+  std::fill(complexity_schedule.begin(), complexity_schedule.end(),Complexity::PLANAR_SLIP);
+  for(int i = 0; i < 25; i++){
+    complexity_schedule.push_back(Complexity::KINEMATIC_CENTROIDAL);
+  }
+  mpc.SetComplexitySchedule(complexity_schedule);
+
   KcmpcReferenceGenerator generator(plant,
                                     reference_state.head(plant.num_positions()),
                                     mpc.CreateContactPoints(plant, 0));

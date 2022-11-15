@@ -597,6 +597,15 @@ void KinematicCentroidalMPC::SetForceGuess(
   }
 }
 
+void KinematicCentroidalMPC::SetMomentumGuess(
+    const drake::trajectories::PiecewisePolynomial<double>& momentum_trajectory) {
+  DRAKE_DEMAND(momentum_trajectory.rows() == 6);
+  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
+    prog_->SetInitialGuess(mom_vars_[knot_point],
+                           momentum_trajectory.value(dt_ * knot_point));
+  }
+}
+
 void KinematicCentroidalMPC::SetModeSequence(
     const std::vector<std::vector<bool>>& contact_sequence) {
   contact_sequence_ = contact_sequence;

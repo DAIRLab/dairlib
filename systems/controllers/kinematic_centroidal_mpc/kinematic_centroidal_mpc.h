@@ -260,7 +260,10 @@ class KinematicCentroidalMPC {
   void SetForceGuess(
       const drake::trajectories::PiecewisePolynomial<double>& force_trajectory);
 
-  void CreateVisualizationCallback(std::string model_file, double alpha,
+  void SetMomentumGuess(
+      const drake::trajectories::PiecewisePolynomial<double>& momentum_trajectory);
+
+    void CreateVisualizationCallback(std::string model_file, double alpha,
                                    std::string weld_frame_to_world = "");
 
   /*!

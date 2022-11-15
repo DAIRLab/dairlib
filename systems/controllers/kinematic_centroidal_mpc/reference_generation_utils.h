@@ -16,6 +16,10 @@ drake::trajectories::PiecewisePolynomial<double> GenerateComTrajectory(const Eig
                                                                        const std::vector<Eigen::Vector3d>& vel_ewrt_w,
                                                                        const std::vector<double>& time_points);
 
+drake::trajectories::PiecewisePolynomial<double> GenerateMomentumTrajectory(const std::vector<Eigen::Vector3d> &vel_ewrt_w,
+                                                                            const std::vector<double> &time_points,
+                                                                            double m);
+
 /*!
  * @brief Constructs a trajectory for the generalized positions of a constant joint state and floating base position from com trajectory
  * @param nominal_stand [nq] generalized state

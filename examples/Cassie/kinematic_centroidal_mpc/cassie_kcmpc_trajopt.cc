@@ -101,7 +101,7 @@ int DoMain(int argc, char* argv[]) {
   for(int i = 0; i < 25; i++){
     complexity_schedule.push_back(Complexity::KINEMATIC_CENTROIDAL);
   }
-  mpc.SetComplexitySchedule(complexity_schedule);
+//  mpc.SetComplexitySchedule(complexity_schedule);
 
   KcmpcReferenceGenerator generator(plant,
                                     reference_state.head(plant.num_positions()),
@@ -129,7 +129,9 @@ int DoMain(int argc, char* argv[]) {
   mpc.AddContactTrackingReference(
       std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(
           generator.contact_traj_));
-  mpc.AddConstantMomentumReference(Eigen::VectorXd::Zero(6));
+  mpc.AddMomentumReference(
+      std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(
+          generator.momentum_trajectory_));
   mpc.SetModeSequence(generator.contact_sequence_);
 
   // Set initial guess
@@ -138,6 +140,7 @@ int DoMain(int argc, char* argv[]) {
   mpc.SetComPositionGuess(generator.com_trajectory_);
   mpc.SetContactGuess(generator.contact_traj_);
   mpc.SetForceGuess(generator.grf_traj_);
+  mpc.SetMomentumGuess(generator.momentum_trajectory_);
 
   {
     drake::solvers::SolverOptions options;

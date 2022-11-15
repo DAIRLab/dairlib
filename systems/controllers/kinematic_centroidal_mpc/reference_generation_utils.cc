@@ -1,3 +1,4 @@
+#include <iostream>
 #include "reference_generation_utils.h"
 
 #include "multibody/multibody_utils.h"
@@ -18,6 +19,21 @@ drake::trajectories::PiecewisePolynomial<double> GenerateComTrajectory(
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
       time_points, samples);
 }
+
+drake::trajectories::PiecewisePolynomial<double> GenerateMomentumTrajectory(const std::vector<Eigen::Vector3d> &vel_ewrt_w,
+                                                                            const std::vector<double> &time_points,
+                                                                            double m) {
+  DRAKE_DEMAND(vel_ewrt_w.size() == (time_points.size() - 1));
+  auto n_points = time_points.size();
+  std::vector<drake::MatrixX<double>> samples(n_points);
+  for (int i = 0; i < n_points; i++) {
+    samples[i] = drake::Vector6d();
+    samples[i] << drake::Vector3<double>::Zero(3), vel_ewrt_w[i] * m;
+  }
+  return drake::trajectories::PiecewisePolynomial<double>::ZeroOrderHold(
+      time_points, samples);
+}
+
 
 drake::trajectories::PiecewisePolynomial<double>
 GenerateGeneralizedPosTrajectory(

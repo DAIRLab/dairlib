@@ -236,6 +236,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_w_spr_;
   drake::systems::Context<double>* context_wo_spr_;
 
+  // MBP context's
+  std::unique_ptr<drake::systems::Context<double>> context_w_spr_local_frame_;
+  std::unique_ptr<drake::systems::Context<double>> context_wo_spr_local_frame_;
+
   // World frames
   const drake::multibody::BodyFrame<double>& world_w_spr_;
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
@@ -391,9 +395,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
 
+  /// Optimal ROM specific ///
   // Optimal feature -- contact force regularization for optimal ROM
   double w_rom_force_reg_ = -1;
   drake::solvers::QuadraticCost* contact_force_reg_cost_;
+
+  // For expressing state vectors wrt the local frame (only rotate wrt world z)
+  Eigen::Vector3d world_x_ = Eigen::Vector3d(1, 0, 0);
 };
 
 }  // namespace dairlib::systems::controllers

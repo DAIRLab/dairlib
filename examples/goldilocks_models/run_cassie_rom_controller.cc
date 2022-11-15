@@ -845,6 +845,9 @@ int DoMain(int argc, char* argv[]) {
         PiecewisePolynomial<double>::FirstOrderHold(rom_ratio_breaks,
                                                     rom_ratio_samples);
     optimal_rom_traj.SetTimeVaryingGains(rom_gain_ratio);
+    // Actually view frame only works for ROM but not for the mirrored ROM, here
+    // we rotate the state before we evaluate.
+    optimal_rom_traj.use_state_expressed_in_local_frame_ = true;
     if (is_two_phase) {
       // With high gains, the initial error could throw Cassie into the air
       // If the new stance foot in the beginning of stance phase is not on the

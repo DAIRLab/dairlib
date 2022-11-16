@@ -568,6 +568,8 @@ void OperationalSpaceControl::Build() {
     solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
     //  solver_options.SetOption(OsqpSolver::id(), "time_limit",
     //  qp_time_limit_);
+    /*
+    // Old settings
     solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
     solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
     solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
@@ -575,7 +577,32 @@ void OperationalSpaceControl::Build() {
     solver_options.SetOption(OsqpSolver::id(), "polish", 1);
     solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
     solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 1);
-    std::cout << solver_options << std::endl;
+    std::cout << solver_options << std::endl;*/
+
+    // Play with the settings
+    solver_options.SetOption(OsqpSolver::id(), "rho", 1e-5);
+    solver_options.SetOption(OsqpSolver::id(), "sigma", 1e-6);
+    solver_options.SetOption(OsqpSolver::id(), "max_iter", 250);
+    solver_options.SetOption(OsqpSolver::id(), "eps_abs", 1e-7);
+    solver_options.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
+    solver_options.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
+    solver_options.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
+    solver_options.SetOption(OsqpSolver::id(), "alpha", 1.6);
+    solver_options.SetOption(OsqpSolver::id(), "linsys_solver", 0);
+    solver_options.SetOption(OsqpSolver::id(), "delta", 1e-6);
+    solver_options.SetOption(OsqpSolver::id(), "polish", 1);
+    solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 3);
+    solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
+    solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
+    solver_options.SetOption(OsqpSolver::id(), "check_termination", 25);
+    solver_options.SetOption(OsqpSolver::id(), "warm_start", 1);
+    solver_options.SetOption(OsqpSolver::id(), "scaling", 1);
+    solver_options.SetOption(OsqpSolver::id(), "adaptive_rho", 1);
+    solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_interval", 0);
+    solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_tolerance", 5);
+    solver_options.SetOption(OsqpSolver::id(), "adaptive_rho_fraction", 0.4);
+    solver_options.SetOption(OsqpSolver::id(), "time_limit", 0);
+
     solver_ = std::make_unique<solvers::FastOsqpSolver>();
     solver_->InitializeSolver(*prog_, solver_options);
 

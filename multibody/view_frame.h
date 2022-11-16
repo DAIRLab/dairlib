@@ -39,6 +39,20 @@ class WorldYawViewFrame : public ViewFrame<T> {
 };
 
 template <typename T>
+class MirroredWorldYawViewFrame : public ViewFrame<T> {
+ public:
+  explicit MirroredWorldYawViewFrame(const drake::multibody::Body<T>& body)
+      : ViewFrame<T>(), body_(body) {}
+
+  drake::Matrix3X<T> CalcWorldToFrameRotation(
+      const drake::multibody::MultibodyPlant<T>& plant_w_spr,
+      const drake::systems::Context<T>& context_w_spr) const override;
+
+ protected:
+  const drake::multibody::Body<T>& body_;
+};
+
+template <typename T>
 class IdentityViewFrame : public ViewFrame<T> {
  public:
   explicit IdentityViewFrame() : ViewFrame<T>() {}

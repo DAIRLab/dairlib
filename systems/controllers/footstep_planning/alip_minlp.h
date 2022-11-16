@@ -214,12 +214,14 @@ class AlipMINLP {
   void MakeTerminalCost();
   void MakeResetConstraints();
   void MakeDynamicsConstraints();
+  void MakeWorkspaceConstraints();
   void ClearFootholdConstraints();
   void MakeInputBoundConstaints();
   void MakeNoCrossoverConstraint();
   void MakeInitialStateConstraint();
   void MakeInitialFootstepConstraint();
   void MakeNextFootstepReachabilityConstraint();
+  void MakeCapturePointConstraint(int foothold_idx);
   std::vector<std::vector<int>> GetPossibleModeSequences();
   void MakeFootstepConstraints(std::vector<int> foothold_idxs);
   void MakeIndividualFootholdConstraint(int idx_mode, int idx_foothold);
@@ -248,6 +250,7 @@ class AlipMINLP {
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<LinearConstraint> next_step_reach_c_fixed_ = nullptr;
+  std::shared_ptr<Binding<LinearConstraint>> capture_point_contstraint_ = nullptr;
   std::vector<std::vector<Binding<LinearEqualityConstraint>>> dynamics_c_{};
   std::vector<std::pair<Binding<LinearConstraint>,
                         Binding<LinearEqualityConstraint>>> footstep_c_{};

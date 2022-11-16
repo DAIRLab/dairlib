@@ -141,6 +141,7 @@ void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
   MakeNoCrossoverConstraint();
   MakeResetConstraints();
   MakeDynamicsConstraints();
+  MakeWorkspaceConstraints();
   MakeInputBoundConstaints();
   MakeNextFootstepReachabilityConstraint();
   MakeInitialStateConstraint();
@@ -193,11 +194,29 @@ void AlipMINLP::MakeIndividualFootholdConstraint(int idx_mode,
       );
 }
 
+void AlipMINLP::MakeCapturePointConstraint(int foothold_idx) {
+  const auto& [A, b] = footholds_.at(foothold_idx).GetConstraintMatrices();
+  Matrix<double, 2, 4> Acp = Matrix<double, 2, 4>::Zero();
+  Acp.leftCols(2) = Eigen::Matrix2d::Identity();
+  Acp(0,3) = -1.0 / (m_ * sqrt(9.81 * H_));
+  Acp(1,2) = -Acp(0,3);
+  MatrixXd A_constraint = A.leftCols<2>() * Acp;
+
+  capture_point_contstraint_ =
+      std::make_shared<Binding<LinearConstraint>>(
+      prog_->AddLinearConstraint(
+          A_constraint,
+          -numeric_limits<double>::infinity() * VectorXd::Ones(A_constraint.rows()),
+          b, {pp_.back().head(2), xx_.back().back().tail(2)}
+      ));
+}
+
 void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
   DRAKE_ASSERT(foothold_idxs.size() == nmodes_);
   for (int i = 0; i < foothold_idxs.size(); i++) {
     MakeIndividualFootholdConstraint(i+1, foothold_idxs.at(i));
   }
+  MakeCapturePointConstraint(foothold_idxs.back());
 }
 
 void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
@@ -278,6 +297,18 @@ void AlipMINLP::MakeInputBoundConstaints() {
   }
 }
 
+void AlipMINLP::MakeWorkspaceConstraints() {
+  for (int n = 0; n < nmodes_; n++) {
+    for (const auto& xx : xx_.at(n)) {
+      prog_->AddLinearConstraint(
+          MatrixXd::Identity(2, 2),
+          Vector2d(-0.9, -0.75),
+          Vector2d(0.9, 0.75),
+          xx.head(2));
+    }
+  }
+}
+
 void AlipMINLP::MakeNextFootstepReachabilityConstraint() {
   next_step_reach_c_fixed_ = prog_->AddLinearConstraint(
       MatrixXd::Zero(1,3),
@@ -292,7 +323,7 @@ void AlipMINLP::MakeNoCrossoverConstraint() {
     Eigen::RowVector2d A = {stance, -stance};
     no_crossover_constraint_.push_back(
         prog_->AddLinearConstraint(
-            A, -numeric_limits<double>::infinity(), 0,
+            A, -numeric_limits<double>::infinity(), -0.04,
             {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)})
     );
   }
@@ -304,6 +335,10 @@ void AlipMINLP::ClearFootholdConstraints() {
     prog_->RemoveConstraint(i.second);
   }
   footstep_c_.clear();
+  if (capture_point_contstraint_) {
+    prog_->RemoveConstraint(*capture_point_contstraint_);
+  }
+
 }
 
 void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,

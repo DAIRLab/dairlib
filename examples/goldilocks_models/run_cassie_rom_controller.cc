@@ -526,6 +526,8 @@ int DoMain(int argc, char* argv[]) {
       plant_wo_springs.GetBodyByName("pelvis"));
   multibody::WorldYawViewFrame view_frame_w_spring(
       plant_w_spr.GetBodyByName("pelvis"));
+  multibody::MirroredWorldYawViewFrame mirrored_view_frame_w_spring(
+      plant_w_spr.GetBodyByName("pelvis"));
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_toe.first, left_toe.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
@@ -824,18 +826,10 @@ int DoMain(int argc, char* argv[]) {
 
     // "Center of mass" tracking (Using RomTrackingData with initial ROM being
     // COM)
-    OptimalRomTrackingData optimal_rom_traj(
-        "optimal_rom_traj", rom->n_y(), osc_gains.K_p_rom, osc_gains.K_d_rom,
-        weight_scale * osc_gains.W_rom, plant_w_spr, plant_wo_springs);
-    optimal_rom_traj.AddStateAndRom(left_stance_state, *rom);
-    optimal_rom_traj.AddStateAndRom(post_left_double_support_state, *rom);
-    optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);
-    optimal_rom_traj.AddStateAndRom(post_right_double_support_state,
-                                    mirrored_rom);
-    // Note: we should not track x and y component during double support phase,
-    // because we have a CoP constraint.
-    // Actually x is probably fine, but not y, because we only blend in the y
-    // direction)
+    // TODO: Currently I have two OptimalRomTrackingData because the ROM and
+    //  mirrored_ROM use different ViewFrame. When you clean up the code, you
+    //  can update OptionTrackingData to hold view_frame per state.
+    //  Another todo is to also make this gain ratios one per state.
     std::vector<double> rom_ratio_breaks{0, left_support_duration / 2,
                                          left_support_duration};
     std::vector<MatrixX<double>> rom_ratio_samples(
@@ -844,22 +838,48 @@ int DoMain(int argc, char* argv[]) {
     PiecewisePolynomial<double> rom_gain_ratio =
         PiecewisePolynomial<double>::FirstOrderHold(rom_ratio_breaks,
                                                     rom_ratio_samples);
+    // ROM
+    OptimalRomTrackingData optimal_rom_traj(
+        "optimal_rom_traj", rom->n_y(), osc_gains.K_p_rom, osc_gains.K_d_rom,
+        weight_scale * osc_gains.W_rom, plant_w_spr, plant_wo_springs);
+    optimal_rom_traj.AddStateAndRom(left_stance_state, *rom);
+    optimal_rom_traj.AddStateAndRom(post_left_double_support_state, *rom);
     optimal_rom_traj.SetTimeVaryingGains(rom_gain_ratio);
-    if (is_two_phase) {
-      // With high gains, the initial error could throw Cassie into the air
-      // If the new stance foot in the beginning of stance phase is not on the
-      // ground, the error combining with high gains can throw Cassie into air
-      // with optimaized ROM.
-      // One solution is to soften the ROM tracking gains in the beginning of
-      // stance, and the other solution is to make sure the swing foot is on the
-      // ground before switch. (Update: The later solution doesn't fix the issue
-      // for the optimaized models, because it's not physically interpreted as
-      // height anymore)
-      //      osc->AddTrackingData(&optimal_rom_traj, 0.02);
-      osc->AddTrackingData(&optimal_rom_traj);
-    } else {
-      osc->AddTrackingData(&optimal_rom_traj);
-    }
+    // Need to set view frame, because the desired ROM traj is wrt local frame
+    optimal_rom_traj.SetViewFrame(view_frame_w_spring);
+    // Actually view frame only works for ROM but not for the mirrored ROM, here
+    // we rotate the state before we evaluate.
+    //    optimal_rom_traj.use_state_expressed_in_local_frame_ = true;
+    osc->AddTrackingData(&optimal_rom_traj);
+    // Mirrored ROM
+    OptimalRomTrackingData mirrored_optimal_rom_traj(
+        "mirrored_optimal_rom_traj", rom->n_y(), osc_gains.K_p_rom,
+        osc_gains.K_d_rom, weight_scale * osc_gains.W_rom, plant_w_spr,
+        plant_wo_springs);
+    mirrored_optimal_rom_traj.AddStateAndRom(right_stance_state, mirrored_rom);
+    mirrored_optimal_rom_traj.AddStateAndRom(post_right_double_support_state,
+                                             mirrored_rom);
+    mirrored_optimal_rom_traj.SetTimeVaryingGains(rom_gain_ratio);
+    // Need to set view frame, because the desired ROM traj is wrt local frame
+    mirrored_optimal_rom_traj.SetViewFrame(mirrored_view_frame_w_spring);
+    osc->AddTrackingData(&mirrored_optimal_rom_traj);
+
+    /// Soften gains (commented out now, since it does not fix everything)
+    // With high gains, the initial error could throw Cassie into the air
+    // If the new stance foot in the beginning of stance phase is not on the
+    // ground, the error combining with high gains can throw Cassie into air
+    // with optimaized ROM.
+    // One solution is to soften the ROM tracking gains in the beginning of
+    // stance, and the other solution is to make sure the swing foot is on the
+    // ground before switch. (Update: The later solution doesn't fix the issue
+    // for the optimaized models, because it's not physically interpreted as
+    // height anymore)
+    //    if (is_two_phase) {
+    //      osc->AddTrackingData(&optimal_rom_traj, 0.02);
+    //    } else {
+    //      osc->AddTrackingData(&optimal_rom_traj);
+    //    }
+    ///
 
     // Stance hip roll, pitch and yaw
     MatrixXd W_stance_hip_rpy = MatrixXd::Identity(3, 3);
@@ -984,6 +1004,9 @@ int DoMain(int argc, char* argv[]) {
 
     builder.Connect(planner_traj_receiver->get_output_port_rom(),
                     osc->get_tracking_data_input_port("optimal_rom_traj"));
+    builder.Connect(
+        planner_traj_receiver->get_output_port_rom(),
+        osc->get_tracking_data_input_port("mirrored_optimal_rom_traj"));
     if (FLAGS_get_swing_foot_from_planner) {
       builder.Connect(planner_traj_receiver->get_output_port_swing_foot(),
                       osc->get_tracking_data_input_port("swing_ft_traj"));

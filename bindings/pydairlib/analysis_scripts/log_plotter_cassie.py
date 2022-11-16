@@ -691,6 +691,7 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_
   # osc_traj00 = "stance_hip_rpy_traj"
   # osc_traj0 = "swing_ft_traj"
   osc_traj0 = "optimal_rom_traj"
+  # osc_traj0 = "mirrored_optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller
   # osc_traj0 = "lipm_traj"
   osc_traj1 = "lipm_traj"

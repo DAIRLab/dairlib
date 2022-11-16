@@ -437,7 +437,8 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
 
     switch (workspace_->info->status_val) {
       case OSQP_SOLVED:
-      case OSQP_SOLVED_INACCURATE: {
+      case OSQP_SOLVED_INACCURATE:
+      case OSQP_MAX_ITER_REACHED: {
         const Eigen::Map<Eigen::Matrix<c_float, Eigen::Dynamic, 1>> osqp_sol(
             workspace_->solution->x, prog.num_vars());
 
@@ -452,7 +453,9 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
                                  constant_cost_term);
         solver_details.y = Eigen::Map<Eigen::VectorXd>(workspace_->solution->y,
                                                        workspace_->data->m);
-        solution_result = SolutionResult::kSolutionFound;
+        solution_result = workspace_->info->status_val == OSQP_MAX_ITER_REACHED
+                              ? SolutionResult::kIterationLimit
+                              : SolutionResult::kSolutionFound;
         SetDualSolution(prog.linear_constraints(), solver_details.y,
                         constraint_start_row, result);
         SetDualSolution(prog.linear_equality_constraints(), solver_details.y,
@@ -473,10 +476,10 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
         solution_result = SolutionResult::kDualInfeasible;
         break;
       }
-      case OSQP_MAX_ITER_REACHED: {
+      /*case OSQP_MAX_ITER_REACHED: {
         solution_result = SolutionResult::kIterationLimit;
         break;
-      }
+      }*/
       default: {
         solution_result = SolutionResult::kUnknownError;
         break;

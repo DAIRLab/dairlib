@@ -966,7 +966,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
   }
 
-  if (!result.is_success()) {
+  if (!result.is_success() &&
+      !(result.get_solution_result() == SolutionResult::kIterationLimit)) {
     std::cout << "reverting to old sol" << std::endl;
   } else {
     // Extract solutions

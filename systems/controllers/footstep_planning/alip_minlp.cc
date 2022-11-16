@@ -138,6 +138,7 @@ void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
   for (int i = 0; i < nmodes_; i++) {
     tt_(i) = td_.at(i);
   }
+  MakeNoCrossoverConstraint();
   MakeResetConstraints();
   MakeDynamicsConstraints();
   MakeInputBoundConstaints();
@@ -285,6 +286,18 @@ void AlipMINLP::MakeNextFootstepReachabilityConstraint() {
   .evaluator();
 }
 
+void AlipMINLP::MakeNoCrossoverConstraint() {
+  for (int i = 0; i < nmodes_ - 1 ; i++) {
+    int stance = i % 2 == 0 ? -1 : 1;
+    Eigen::RowVector2d A = {stance, -stance};
+    no_crossover_constraint_.push_back(
+        prog_->AddLinearConstraint(
+            A, -numeric_limits<double>::infinity(), 0,
+            {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)})
+    );
+  }
+}
+
 void AlipMINLP::ClearFootholdConstraints() {
   for (auto & i : footstep_c_) {
     prog_->RemoveConstraint(i.first);
@@ -335,6 +348,17 @@ void AlipMINLP::UpdateNextFootstepReachabilityConstraint(const geometry::ConvexF
   double neg_inf  = -numeric_limits<double>::infinity();
   next_step_reach_c_fixed_->UpdateCoefficients(
       Af, neg_inf * VectorXd::Ones(bf.rows()), bf);
+}
+
+void AlipMINLP::UpdateNoCrossoverConstraint() {
+  for (auto& constraint: no_crossover_constraint_) {
+    auto A = constraint.evaluator()->GetDenseA();
+    A *= -1;
+    constraint.evaluator()->UpdateCoefficients(
+        A,
+        -numeric_limits<double>::infinity()*VectorXd::Ones(1),
+        VectorXd::Zero(1));
+  }
 }
 
 void AlipMINLP::UpdateModeTiming(bool take_sqp_step) {

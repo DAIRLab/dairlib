@@ -52,10 +52,10 @@ struct SquareSteppingStoneList {
                        // stepping stone boundaries
       foothold.AddFace(
           R_WB.matrix() * Vector3d::UnitX(),
-          center + 0.5 * (dims(0) - e) * R_WB.matrix() * Vector3d::UnitX());
+          center + 0.5 * (dims(0) - 2*e) * R_WB.matrix() * Vector3d::UnitX());
       foothold.AddFace(
           -R_WB.matrix() * Vector3d::UnitX(),
-          center - 0.5 * (dims(0) - e) * R_WB.matrix() * Vector3d::UnitX());
+          center - 0.5 * (dims(0) - 2*e) * R_WB.matrix() * Vector3d::UnitX());
       foothold.AddFace(
           R_WB.matrix() * Vector3d::UnitY(),
           center + 0.5 * (dims(1) - e) * R_WB.matrix() * Vector3d::UnitY());

@@ -140,6 +140,7 @@ class AlipMINLP {
   // Update the dynamics constraint to reflect the current mode timings
   // after maybe updating the mode timing by one gradient step
   void UpdateModeTiming(bool take_sqp_step);
+  void UpdateNoCrossoverConstraint();
   void UpdateModeTimingsOnTouchdown();
 
   // Solving the problem
@@ -215,6 +216,7 @@ class AlipMINLP {
   void MakeDynamicsConstraints();
   void ClearFootholdConstraints();
   void MakeInputBoundConstaints();
+  void MakeNoCrossoverConstraint();
   void MakeInitialStateConstraint();
   void MakeInitialFootstepConstraint();
   void MakeNextFootstepReachabilityConstraint();
@@ -242,6 +244,7 @@ class AlipMINLP {
   // constraints
   std::vector<Binding<BoundingBoxConstraint>> input_bounds_c_{};
   std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
+  std::vector<Binding<LinearConstraint>> no_crossover_constraint_{};
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<LinearConstraint> next_step_reach_c_fixed_ = nullptr;

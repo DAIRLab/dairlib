@@ -255,6 +255,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     trajopt_.UpdateMaximumCurrentStanceTime(gains_.t_max - (t - t_prev_impact));
   }
   if (fsm_switch) {
+    trajopt_.UpdateNoCrossoverConstraint();
     trajopt_.UpdateModeTimingsOnTouchdown();
   }
   trajopt_.UpdateModeTiming((!(committed || fsm_switch)) && warmstart);
@@ -262,7 +263,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
 
-  workspace.AddFace( Vector3d::UnitY(),10 * Vector3d::UnitY());
+  workspace.AddFace( Vector3d::UnitY(),  10 * Vector3d::UnitY());
   workspace.AddFace(-Vector3d::UnitY(),-10 * Vector3d::UnitY());
   workspace.AddFace(Vector3d::UnitX(), 10 * Vector3d::UnitX());
   workspace.AddFace(-Vector3d::UnitX(), -10 * Vector3d::UnitX());

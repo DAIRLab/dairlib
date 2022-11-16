@@ -26,7 +26,7 @@ cc_library(
     hdrs = ["lcm_trajectory.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
-        "@drake//systems/lcm",
+        "@drake//:drake_shared_library",
         "@lcm",
     ],
 )
@@ -41,7 +41,7 @@ cc_library(
         "//multibody:utils",
         "//systems/trajectory_optimization:dircon",
         "//systems/trajectory_optimization/dircon",
-        "@drake//common/trajectories",
+        "@drake//:drake_shared_library",
         "@lcm",
     ],
 )

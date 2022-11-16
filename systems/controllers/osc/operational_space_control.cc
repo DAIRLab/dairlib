@@ -205,10 +205,6 @@ OperationalSpaceControl::OperationalSpaceControl(
         vel_map_w_spr.at("ankle_spring_joint_leftdot"),
         vel_map_w_spr.at("ankle_spring_joint_rightdot")};
   }
-
-  /// for optimal ROM
-  context_w_spr_local_frame_ = plant_w_spr.CreateDefaultContext();
-  context_wo_spr_local_frame_ = plant_wo_spr.CreateDefaultContext();
 }
 
 // Optional features
@@ -660,49 +656,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   SetVelocitiesIfNew<double>(plant_wo_spr_,
                              x_wo_spr.tail(plant_wo_spr_.num_velocities()),
                              context_wo_spr_);
-  /// Rotate the state vector for the optimal ROM ///
-  // Note:
-  // * We cannot simply use view frame, because we also mirror the state about
-  // the local frame in the planner thread
-  // * The shift here is supposed to be the shift used inside the MPC (each MPC
-  // output trajectory is associated with a `quat_xyz_shift`), since desired
-  // value and the feedback value should share the same frame. However, here we
-  // just use the current feedback state's frame, which should be close enough
-  // to the MPC `quat_xyz_shift`.
-  VectorXd x_w_spr_local_frame = x_w_spr;
-  VectorXd x_wo_spr_local_frame = x_wo_spr;
-  // Rotate Cassie about the world’s z axis such that the x axis of the pelvis
-  // frame is in the world’s x-z plane and toward world’s x axis.
-  Eigen::Quaterniond quat(x_w_spr(0), x_w_spr(1), x_w_spr(2), x_w_spr(3));
-  Eigen::Vector3d pelvis_x = quat.toRotationMatrix().col(0);
-  pelvis_x(2) = 0;
-  Eigen::Quaterniond relative_qaut =
-      Eigen::Quaterniond::FromTwoVectors(pelvis_x, world_x_);
-  Eigen::Quaterniond rotated_quat = relative_qaut * quat;
-  // Quaternion part
-  x_w_spr_local_frame.head<4>() << rotated_quat.w(), rotated_quat.vec();
-  x_wo_spr_local_frame.head<4>() << rotated_quat.w(), rotated_quat.vec();
-  // Also need to rotate floating base velocities (only angular velocity and not
-  // linear velocity), because it affects the COM vel rt stance foot.
-  x_w_spr_local_frame.segment<3>(plant_w_spr_.num_positions()) =
-      relative_qaut.toRotationMatrix() *
-      x_w_spr_local_frame.segment<3>(plant_w_spr_.num_positions());
-  x_wo_spr_local_frame.segment<3>(plant_wo_spr_.num_positions()) =
-      relative_qaut.toRotationMatrix() *
-      x_wo_spr_local_frame.segment<3>(plant_wo_spr_.num_positions());
-  // Setting context
-  SetPositionsIfNew<double>(
-      plant_w_spr_, x_w_spr_local_frame.head(plant_w_spr_.num_positions()),
-      context_w_spr_local_frame_.get());
-  SetVelocitiesIfNew<double>(
-      plant_w_spr_, x_w_spr_local_frame.tail(plant_w_spr_.num_velocities()),
-      context_w_spr_local_frame_.get());
-  SetPositionsIfNew<double>(
-      plant_wo_spr_, x_wo_spr_local_frame.head(plant_wo_spr_.num_positions()),
-      context_wo_spr_local_frame_.get());
-  SetVelocitiesIfNew<double>(
-      plant_wo_spr_, x_wo_spr_local_frame.tail(plant_wo_spr_.num_velocities()),
-      context_wo_spr_local_frame_.get());
 
   // Get M, f_cg, B matrices of the manipulator equation
   MatrixXd B = plant_wo_spr_.MakeActuationMatrix();
@@ -834,6 +787,11 @@ VectorXd OperationalSpaceControl::SolveQp(
       // Check whether or not it is a constant trajectory, and update
       // TrackingData
       if (fixed_position_vec_.at(i).size() != 0) {
+        // TODO: modify OSC such that we use full model (with springs) for every
+        //  tracking data except ROM tracking. And also we translate the spring
+        //  pos and vel into the joints for ROM Create constant trajectory and
+        //  update.
+        //  My guess is that the swing foot oscillation came from this.
         tracking_data->Update(
             x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
@@ -848,16 +806,9 @@ VectorXd OperationalSpaceControl::SolveQp(
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         // Update
-        if (tracking_data->use_state_expressed_in_local_frame_) {
-          tracking_data->Update(
-              x_w_spr_local_frame, *context_w_spr_local_frame_,
-              x_wo_spr_local_frame, *context_wo_spr_local_frame_, traj, t,
-              time_since_last_state_switch, fsm_state, v_proj);
-        } else {
-          tracking_data->Update(
-              x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_, traj, t,
-              time_since_last_state_switch, fsm_state, v_proj);
-        }
+        tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                              *context_wo_spr_, traj, t,
+                              time_since_last_state_switch, fsm_state, v_proj);
       }
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();

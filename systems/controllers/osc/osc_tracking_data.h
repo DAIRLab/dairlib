@@ -101,17 +101,12 @@ class OscTrackingData {
 
   void StoreYddotCommandSol(const Eigen::VectorXd& dv);
 
-  /// Modification for optimal ROM ///
-  // Express state in local frame
-  bool use_state_expressed_in_local_frame_ = false;
-
   // For optimal ROM tracking data
   bool use_only_plant_wo_spr_in_evaluation_;
   // For unit test
   void UpdateJAndJdotVForUnitTest(
       const Eigen::VectorXd& x_wo_spr,
       drake::systems::Context<double>& context_wo_spr);
-  /// end of modification for optimal ROM ///
 
  protected:
   virtual void UpdateActual(
@@ -170,6 +165,7 @@ class OscTrackingData {
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
  private:
+
   void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
                      double t, double t_since_state_switch);
   // Update actual output methods

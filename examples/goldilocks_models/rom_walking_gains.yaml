@@ -84,7 +84,7 @@ constant_turning_rate: 0
 use_radio: false
 use_virtual_radio: true  # use xbox controller in the simulation
 vel_scale_rot: -0.5
-vel_scale_trans_sagital: 0.6  # 1
+vel_scale_trans_sagital: 0.6  # For some reason, Cassie in mujoco walks much faster than desired vel
 vel_scale_trans_lateral: -0.2
 
 

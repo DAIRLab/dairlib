@@ -203,7 +203,7 @@ def main():
     # prev_wall_time = -1 
     # prev_sim_time = -1
     is_first_frame = True
-    for j in range(start_idx, end_idx, 10):
+    for j in range(start_idx, end_idx, 1):
       filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
                  str(j) + "_rom_trajectory"
       rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)

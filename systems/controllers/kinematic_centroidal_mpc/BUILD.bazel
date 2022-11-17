@@ -1,42 +1,31 @@
 package(default_visibility = ["//visibility:public"])
 
-
 cc_library(
     name = "kinematic_centroidal_mpc",
     srcs = ["kinematic_centroidal_mpc.cc",
-            "kinematic_centroidal_constraints.cc"],
+            ],
     hdrs = ["kinematic_centroidal_mpc.h",
-            "kinematic_centroidal_constraints.h"],
+            ],
     deps = [
-        "//solvers:constraints",
-        "//multibody/kinematic:kinematic",
-        "//multibody/kinematic:constraints",
+        "//systems/trajectory_optimization/kinematic_centroidal_planner:kinematic_centroidal_planner",
+        "//examples/Cassie/kinematic_centroidal_planner:cassie_kinematic_centroidal_mpc",
+        "//examples/Cassie/kinematic_centroidal_planner:cassie_reference_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kinematic_centroidal_visualizer",
+    srcs = ["kinematic_centroidal_visualizer.cc",
+            ],
+    hdrs = ["kinematic_centroidal_visualizer.h",
+            ],
+    deps = [
+        "//systems/framework:vector",
         "//multibody:multipose_visualizer",
-        "//systems/controllers/kinematic_centroidal_mpc:kcmpc_gains",
+        "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "kcmpc_gains",
-    hdrs = ["kinematic_centroidal_gains.h"],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "kinematic_centroidal_reference_generator",
-    srcs = ["kcmpc_reference_generator.cc",
-            "reference_generation_utils.cc",
-            "gait.cc"],
-    hdrs = ["kcmpc_reference_generator.h",
-            "reference_generation_utils.h",
-            "gait.h"],
-    deps = [
-        "//common",
-        "//multibody/kinematic:kinematic",
         "@drake//:drake_shared_library",
     ],
 )

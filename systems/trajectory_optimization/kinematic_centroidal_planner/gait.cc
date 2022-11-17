@@ -1,4 +1,4 @@
-#include "gait.h"
+#include "systems/trajectory_optimization/kinematic_centroidal_planner/gait.h"
 
 #include <iostream>
 

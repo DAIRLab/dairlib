@@ -183,7 +183,7 @@ int DoMain(int argc, char* argv[]) {
             FLAGS_cassie_out_channel, &lcm_local));
     builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
     builder.Connect(cassie_out_to_radio->get_output_port(),
-                    high_level_command->get_radio_port());
+                    high_level_command->get_input_port_radio());
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,

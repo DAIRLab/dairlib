@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "drake/geometry/scene_graph.h"
+#include "drake/geometry/meshcat_visualizer.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram.h"
@@ -53,10 +54,20 @@ class MultiposeVisualizer {
   /// ignored.
   void DrawPoses(Eigen::MatrixXd poses);
 
+  int num_poses() const{
+    return num_poses_;
+  }
+
+  int num_positions(){
+    return plant_->num_positions();
+  }
+
  private:
   int num_poses_;
   drake::multibody::MultibodyPlant<double>* plant_;
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
+  std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+  drake::geometry::MeshcatVisualizer<double>* meshcat_visualizer_;
   std::unique_ptr<drake::systems::Context<double>> diagram_context_;
   std::vector<drake::multibody::ModelInstanceIndex> model_indices_;
 };

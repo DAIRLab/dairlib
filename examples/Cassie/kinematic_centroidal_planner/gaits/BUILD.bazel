@@ -1,0 +1,12 @@
+package(default_visibility = ["//visibility:public"])
+
+
+filegroup(
+    name = "gaits",
+    data = ["stand.yaml",
+           "walk.yaml",
+           "jump.yaml",
+           "left_step.yaml",
+           "right_step.yaml"],
+    visibility = ["//visibility:public"],
+)

@@ -1,7 +1,0 @@
-n_knot_points: 15
-duration_scaling:
-  [1.0, 1.0, 1.0]
-com_height: 0.8
-stance_width: 0.25
-vel: 0.0
-tol: 1e-2

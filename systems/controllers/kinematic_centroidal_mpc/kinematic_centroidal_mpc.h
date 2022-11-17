@@ -4,6 +4,7 @@
 
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/Cassie/kinematic_centroidal_planner/cassie_kinematic_centroidal_solver.h"
+#include "examples/Cassie/kinematic_centroidal_planner/trajectory_parameters.h"
 #include "systems/framework/output_vector.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kcmpc_reference_generator.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kinematic_centroidal_gains.h"
@@ -18,7 +19,8 @@ class KinematicCentroidalMPC : public drake::systems::LeafSystem<double> {
   KinematicCentroidalMPC(
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      drake::systems::Context<double>* context, KinematicCentroidalGains gains);
+      drake::systems::Context<double>* context, TrajectoryParameters motion,
+      KinematicCentroidalGains gains);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -64,10 +66,8 @@ class KinematicCentroidalMPC : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd reference_state_;
   const int n_q_;
   const int n_v_;
-  Gait stand_;
-  Gait left_step_;
-  Gait right_step_;
-  Gait jump_;
+  std::unordered_map<std::string, Gait> gait_library_;
+  std::vector<Gait> gait_samples_;
   Eigen::VectorXd time_points_;
   int n_knot_points_ = 10;
   double ipopt_tol_ = 1e-2;

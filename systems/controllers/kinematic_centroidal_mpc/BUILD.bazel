@@ -9,6 +9,7 @@ cc_library(
     deps = [
         "//systems/trajectory_optimization/kinematic_centroidal_planner:kinematic_centroidal_planner",
         "//examples/Cassie/kinematic_centroidal_planner:cassie_kinematic_centroidal_mpc",
+        "//examples/Cassie/kinematic_centroidal_planner:trajectory_parameters",
         "//examples/Cassie/kinematic_centroidal_planner:cassie_reference_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

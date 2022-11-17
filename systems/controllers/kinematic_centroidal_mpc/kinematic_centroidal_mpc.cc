@@ -27,7 +27,8 @@ namespace dairlib {
 KinematicCentroidalMPC::KinematicCentroidalMPC(
     const drake::multibody::MultibodyPlant<double>& plant_w_spr,
     const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-    drake::systems::Context<double>* context, KinematicCentroidalGains gains)
+    drake::systems::Context<double>* context, TrajectoryParameters motion,
+    KinematicCentroidalGains gains)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_wo_spr_(context),
@@ -37,41 +38,49 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(
   this->set_name("kinematic_centroidal_planner");
 
   // Create gaits
-  stand_ = drake::yaml::LoadYamlFile<Gait>(
+  auto stand = drake::yaml::LoadYamlFile<Gait>(
       "examples/Cassie/kinematic_centroidal_planner/gaits/stand.yaml");
-  left_step_ = drake::yaml::LoadYamlFile<Gait>(
-      "examples/Cassie/kinematic_centroidal_planner/gaits/left_step.yaml");
-  right_step_ = drake::yaml::LoadYamlFile<Gait>(
+  auto walk = drake::yaml::LoadYamlFile<Gait>(
+      "examples/Cassie/kinematic_centroidal_planner/gaits/walk.yaml");
+  auto right_step = drake::yaml::LoadYamlFile<Gait>(
       "examples/Cassie/kinematic_centroidal_planner/gaits/right_step.yaml");
-  jump_ = drake::yaml::LoadYamlFile<Gait>(
+  auto left_step = drake::yaml::LoadYamlFile<Gait>(
+      "examples/Cassie/kinematic_centroidal_planner/gaits/left_step.yaml");
+  auto jump = drake::yaml::LoadYamlFile<Gait>(
       "examples/Cassie/kinematic_centroidal_planner/gaits/jump.yaml");
 
-  std::vector<Gait> gait_samples = {stand_, left_step_, stand_};
-  std::vector<double> duration_scaling = {1.0, 1.0, 1.0};
-  DRAKE_DEMAND(gait_samples.size() == duration_scaling.size());
+  gait_library_["stand"] = stand;
+  gait_library_["walk"] = walk;
+  gait_library_["right_step"] = right_step;
+  gait_library_["left_step"] = left_step;
+  gait_library_["jump"] = jump;
+
+  for (auto gait : motion.gait_sequence) {
+    gait_samples_.push_back(gait_library_.at(gait));
+  }
+  DRAKE_DEMAND(gait_samples_.size() == motion.duration_scaling.size());
 
   auto time_vector = KcmpcReferenceGenerator::GenerateTimePoints(
-      duration_scaling, gait_samples);
-  for (auto t : time_vector) {
-    std::cout << "t: " << t << std::endl;
-  }
+      motion.duration_scaling, gait_samples_);
+
   time_points_ = Eigen::Vector4d(time_vector.data());
 
+  n_knot_points_ = motion.n_knot_points;
   // Create MPC and set gains
   solver_ = std::make_unique<CassieKinematicCentroidalSolver>(
       plant_wo_spr_, n_knot_points_, time_vector.back() / (n_knot_points_ - 1),
       0.4);
   solver_->SetGains(gains);
-
-  std::vector<Eigen::Vector3d> com_vel = {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}};
+  solver_->SetMinimumFootClearance(motion.swing_foot_minimum_height);
 
   reference_generator_ = std::make_unique<KcmpcReferenceGenerator>(
       plant_wo_spr_, context_wo_spr_, CreateContactPoints(plant_wo_spr_, 0));
-  reference_state_ = GenerateNominalStand(plant_wo_spr_, 0.8, 0.25, false);
+  reference_state_ = GenerateNominalStand(
+      plant_wo_spr_, motion.target_com_height, motion.stance_width, false);
   reference_generator_->SetNominalReferenceConfiguration(
       reference_state_.head(plant_wo_spr_.num_positions()));
-  reference_generator_->SetComKnotPoints({time_vector, com_vel});
-  reference_generator_->SetGaitSequence({time_vector, gait_samples});
+  reference_generator_->SetComKnotPoints({time_vector, motion.com_vel_vector});
+  reference_generator_->SetGaitSequence({time_vector, gait_samples_});
   reference_generator_->Generate();
 
   solver_->SetForceTrackingReference(
@@ -98,7 +107,6 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(
   solver_->SetComPositionGuess(reference_generator_->com_trajectory_);
   solver_->SetContactGuess(reference_generator_->contact_traj_);
   solver_->SetForceGuess(reference_generator_->grf_traj_);
-  solver_->SetMinimumFootClearance(0.015);
 
   {
     drake::solvers::SolverOptions options;
@@ -171,13 +179,10 @@ void KinematicCentroidalMPC::CalcTraj(
        {desired_pelvis_vel_xy[0], -desired_pelvis_vel_xy[1], 0},
        {0, 0, 0}}};
 
-  // Add reference and mode sequence
-  std::vector<Gait> gait_samples = {stand_, left_step_, stand_};
-
   reference_generator_->SetNominalReferenceConfiguration(
       reference_state_.head(plant_wo_spr_.num_positions()));
   reference_generator_->SetGaitSequence(
-      {CopyVectorXdToStdVector(time_points_), gait_samples});
+      {CopyVectorXdToStdVector(time_points_), gait_samples_});
   reference_generator_->SetComKnotPoints(
       {CopyVectorXdToStdVector(time_points_), com_vel});
   reference_generator_->Generate();

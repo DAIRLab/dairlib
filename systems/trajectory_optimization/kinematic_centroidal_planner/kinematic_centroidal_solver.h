@@ -427,12 +427,12 @@ class KinematicCentroidalSolver {
       centroidal_dynamics_binding_;
 
   // Cost bindings
-  std::shared_ptr<drake::solvers::QuadraticCost> q_ref_cost_;
-  std::shared_ptr<drake::solvers::QuadraticCost> v_ref_cost_;
-  std::shared_ptr<drake::solvers::QuadraticCost> com_ref_cost_;
-  std::shared_ptr<drake::solvers::QuadraticCost> mom_ref_cost_;
-  std::shared_ptr<drake::solvers::QuadraticCost> contact_ref_cost_;
-  std::shared_ptr<drake::solvers::QuadraticCost> force_ref_cost_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> q_ref_cost_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> v_ref_cost_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> com_ref_cost_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> mom_ref_cost_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> contact_ref_cost_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> force_ref_cost_;
 
   // DecisionVariables
   // Full robot state

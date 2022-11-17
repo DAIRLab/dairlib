@@ -262,52 +262,53 @@ void KinematicCentroidalSolver::AddCosts() {
         (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
     double t = dt_ * knot_point;
     if (q_ref_traj_) {
-      q_ref_cost_ =
+      q_ref_cost_.push_back(
           prog_
               ->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_q_,
                                       q_ref_traj_->value(t),
                                       state_vars(knot_point).head(n_q_))
-              .evaluator();
+              .evaluator());
     }
     if (v_ref_traj_) {
-      v_ref_cost_ =
+      v_ref_cost_.push_back(
           prog_
               ->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_v_,
                                       v_ref_traj_->value(t),
                                       state_vars(knot_point).tail(n_v_))
-              .evaluator();
+              .evaluator());
     }
     if (com_ref_traj_) {
-      com_ref_cost_ = prog_
-                          ->AddQuadraticErrorCost(
-                              collocation_gain * terminal_gain * Q_com_,
-                              com_ref_traj_->value(t), com_pos_vars(knot_point))
-                          .evaluator();
+      com_ref_cost_.push_back(
+          prog_
+              ->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_com_,
+                                      com_ref_traj_->value(t),
+                                      com_pos_vars(knot_point))
+              .evaluator());
     }
     if (mom_ref_traj_) {
-      mom_ref_cost_ =
+      mom_ref_cost_.push_back(
           prog_
               ->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_mom_,
                                       mom_ref_traj_->value(t),
                                       momentum_vars(knot_point))
-              .evaluator();
+              .evaluator());
     }
     if (contact_ref_traj_) {
-      contact_ref_cost_ =
+      contact_ref_cost_.push_back(
           prog_
               ->AddQuadraticErrorCost(
                   collocation_gain * terminal_gain * Q_contact_,
                   contact_ref_traj_->value(t),
                   {contact_pos_[knot_point], contact_vel_[knot_point]})
-              .evaluator();
+              .evaluator());
     }
     if (force_ref_traj_) {
-      force_ref_cost_ =
+      force_ref_cost_.push_back(
           prog_
               ->AddQuadraticErrorCost(
                   collocation_gain * terminal_gain * Q_force_,
                   force_ref_traj_->value(t), contact_force_[knot_point])
-              .evaluator();
+              .evaluator());
     }
   }
 }
@@ -318,36 +319,36 @@ void KinematicCentroidalSolver::UpdateCosts() {
     const double collocation_gain =
         (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
     double t = dt_ * knot_point;
-    if (q_ref_cost_) {
-      q_ref_cost_->UpdateCoefficients(
+    if (q_ref_cost_[knot_point]) {
+      q_ref_cost_[knot_point]->UpdateCoefficients(
           collocation_gain * terminal_gain * 2 * Q_q_,
           -collocation_gain * terminal_gain * 2 * Q_q_ * q_ref_traj_->value(t));
     }
-    if (v_ref_cost_) {
-      v_ref_cost_->UpdateCoefficients(
+    if (v_ref_cost_[knot_point]) {
+      v_ref_cost_[knot_point]->UpdateCoefficients(
           collocation_gain * terminal_gain * 2 * Q_v_,
           -collocation_gain * terminal_gain * 2 * Q_v_ * v_ref_traj_->value(t));
     }
-    if (com_ref_cost_) {
-      com_ref_cost_->UpdateCoefficients(
+    if (com_ref_cost_[knot_point]) {
+      com_ref_cost_[knot_point]->UpdateCoefficients(
           collocation_gain * terminal_gain * 2 * Q_com_,
           -collocation_gain * terminal_gain * 2 * Q_com_ *
               com_ref_traj_->value(t));
     }
-    if (mom_ref_cost_) {
-      mom_ref_cost_->UpdateCoefficients(
+    if (mom_ref_cost_[knot_point]) {
+      mom_ref_cost_[knot_point]->UpdateCoefficients(
           collocation_gain * terminal_gain * 2 * Q_mom_,
           -collocation_gain * terminal_gain * 2 * Q_mom_ *
               mom_ref_traj_->value(t));
     }
-    if (contact_ref_cost_) {
-      contact_ref_cost_->UpdateCoefficients(
+    if (contact_ref_cost_[knot_point]) {
+      contact_ref_cost_[knot_point]->UpdateCoefficients(
           collocation_gain * terminal_gain * 2 * Q_contact_,
           -collocation_gain * terminal_gain * 2 * Q_contact_ *
               contact_ref_traj_->value(t));
     }
-    if (force_ref_cost_) {
-      force_ref_cost_->UpdateCoefficients(
+    if (force_ref_cost_[knot_point]) {
+      force_ref_cost_[knot_point]->UpdateCoefficients(
           collocation_gain * terminal_gain * 2 * Q_force_,
           -collocation_gain * terminal_gain * 2 * Q_force_ *
               force_ref_traj_->value(t));

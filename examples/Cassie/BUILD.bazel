@@ -374,7 +374,8 @@ cc_binary(
     name = "centroidal_mpc_reference",
     srcs = ["centroidal_mpc_reference.cc"],
     data = ["//examples/Cassie/kinematic_centroidal_planner:kinematic_centroidal_mpc_gains.yaml",
-            "//examples/Cassie/kinematic_centroidal_planner/gaits:gaits"],
+            "//examples/Cassie/kinematic_centroidal_planner/gaits:gaits",
+            "//examples/Cassie/kinematic_centroidal_planner/motions:motions"],
     deps = [
         ":cassie_urdf",
         ":cassie_utils",

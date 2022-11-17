@@ -8,6 +8,8 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/contact_scheduler.h"
 #include "examples/Cassie/kinematic_centroidal_planner/kinematic_trajectory_generator.h"
+#include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_mpc.h"
@@ -17,8 +19,6 @@
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kinematic_centroidal_gains.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
-#include "examples/Cassie/osc/high_level_command.h"
-#include "examples/Cassie/systems/cassie_out_to_radio.h"
 
 namespace dairlib {
 
@@ -62,8 +62,15 @@ DEFINE_string(planner_parameters,
 DEFINE_string(channel_reference, "KCMPC_REF",
               "The name of the channel where the reference trajectories from "
               "MPC are published");
-DEFINE_string(channel_cassie_out, "CASSIE_OUTPUT_ECHO",
-              "The name of the channel where cassie_out_t messages are published");
+DEFINE_string(
+    channel_cassie_out, "CASSIE_OUTPUT_ECHO",
+    "The name of the channel where cassie_out_t messages are published");
+DEFINE_string(
+    motion,
+    "examples/Cassie/kinematic_centroidal_planner/motions/motion_test.yaml",
+    "YAML file that contains trajectory parameters such as speed, gait "
+    "sequence "
+    "target_com_height");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -94,32 +101,31 @@ int DoMain(int argc, char* argv[]) {
   auto map_velocity_from_spring_to_no_spring =
       CreateWithSpringsToWithoutSpringsMapVel(plant_w_spr, plant_wo_spr);
 
-  auto gains = drake::yaml::LoadYamlFile<KinematicCentroidalGains>(
+  auto mpc_gains = drake::yaml::LoadYamlFile<KinematicCentroidalGains>(
       FLAGS_planner_parameters);
+  auto motion = drake::yaml::LoadYamlFile<TrajectoryParameters>(FLAGS_motion);
 
   /****** Leaf Systems ******/
   auto kcmpc = builder.AddSystem<KinematicCentroidalMPC>(
-      plant_w_spr, plant_wo_spr, context_wo_spr.get(), gains);
+      plant_w_spr, plant_wo_spr, context_wo_spr.get(), motion, mpc_gains);
   kcmpc->SetSpringMaps(map_position_from_spring_to_no_spring,
                        map_velocity_from_spring_to_no_spring);
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
-  auto reference_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          FLAGS_channel_reference, &lcm, TriggerTypeSet({TriggerType::kForced})));
+  auto reference_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          FLAGS_channel_reference, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_channel_cassie_out, &lcm));
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), 1.0,
-      1.0, 1.0);
+      plant_w_spr, context_w_spr.get(), 1.0, 1.0, 1.0);
   auto cassie_out_to_radio = builder.AddSystem<systems::CassieOutToRadio>();
-
 
   builder.Connect(state_receiver->get_output_port(),
                   kcmpc->get_state_input_port());
-  builder.Connect(kcmpc->get_output_port(),
-                  reference_pub->get_input_port());
+  builder.Connect(kcmpc->get_output_port(), reference_pub->get_input_port());
   builder.Connect(high_level_command->get_xy_output_port(),
                   kcmpc->get_input_port_target_vel());
   builder.Connect(cassie_out_receiver->get_output_port(),

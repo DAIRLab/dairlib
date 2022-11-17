@@ -592,7 +592,7 @@ void OperationalSpaceControl::Build() {
     solver_options.SetOption(OsqpSolver::id(), "delta", 1e-6);
     solver_options.SetOption(OsqpSolver::id(), "polish", 1);
     solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 3);
-    solver_options.SetOption(OsqpSolver::id(), "verbose", 1);
+    solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
     solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
     solver_options.SetOption(OsqpSolver::id(), "check_termination", 25);
     solver_options.SetOption(OsqpSolver::id(), "warm_start", 1);

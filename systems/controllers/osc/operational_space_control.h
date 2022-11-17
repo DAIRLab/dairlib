@@ -383,7 +383,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool is_quaternion_;
 
   // Solver
-  std::unordered_map<int, std::unique_ptr<drake::solvers::OsqpSolver>> solvers_;
+  std::unique_ptr<drake::solvers::OsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))

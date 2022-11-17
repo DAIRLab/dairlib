@@ -481,9 +481,7 @@ void OperationalSpaceControl::Build() {
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
 
-  for (int i = -1; i < 5; ++i) {
-    solvers_[i] = std::make_unique<drake::solvers::OsqpSolver>();
-  }
+  solver_ = std::make_unique<drake::solvers::OsqpSolver>();
   prog_->SetSolverOptions(solver_options_);
 }
 
@@ -782,7 +780,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   MathematicalProgramResult result;
-  result = solvers_.at(0)->Solve(*prog_);
+  result = solver_->Solve(*prog_);
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   if (result.is_success()) {

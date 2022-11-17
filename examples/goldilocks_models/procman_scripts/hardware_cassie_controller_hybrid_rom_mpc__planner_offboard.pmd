@@ -1,4 +1,4 @@
-group "1.rom-space-controller (from cassie dispatcher)" {
+group "1.rom-space-controller (planner offboard; wired ethernet)" {
     cmd "1.dispatcher-robot-out" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=2 --broadcast_robot_state=true";
         host = "dair-cassie";
@@ -7,20 +7,32 @@ group "1.rom-space-controller (from cassie dispatcher)" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true";
         host = "dair-cassie";
     }
-    cmd "2.1.rom-planner (to generate init file)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --broadcast=true --channel_x=CASSIE_STATE_DISPATCHER --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=4 --n_step=2 --log_solver_info=false --log_data=true --use_ipopt=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
-        host = "localhost";
-    }
     cmd "3.0.optimal-rom-walking-controller (w init)" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --use_IK=false --channel_u=ROM_WALKING --channel_x=CASSIE_STATE_DISPATCHER --broadcast=true --hardware=true --get_swing_foot_from_planner=true --init_traj_file_name=0_rom_trajectory";
         host = "dair-cassie";
     }
+    cmd "2.2 create folder for init file for controller" {
+        exec = "mkdir -p /home/dair/workspace/yuming/dairlib_data/goldilocks_models/planning/robot_1/data";
+        host = "dair-cassie";
+    }
+    cmd "2.1.rom-planner (to generate init file)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --broadcast=true --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=4 --n_step=2 --log_solver_info=false --log_data=true --use_ipopt=true &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt  ";
+        host = "localhost";
+    }
+    cmd "2.3 scp init file for controller" {
+        exec = "scp ../dairlib_data/goldilocks_models/planning/robot_1/data/0_rom_trajectory dair@192.168.0.235:/home/dair/workspace/yuming/dairlib_data/goldilocks_models/planning/robot_1/data/.";
+        host = "localhost";
+    }
     cmd "3.1.rom-planner (w init)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --broadcast=true --channel_x=CASSIE_STATE_DISPATCHER --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=4 --n_step=2 --log_solver_info=false --log_data=true --use_ipopt=true --switch_to_snopt_after_first_loop=false --init_file=0_z.csv --time_limit=0.1 &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt ";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --broadcast=true --channel_x=NETWORK_CASSIE_STATE_DISPATCHER --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=4 --n_step=2 --log_solver_info=false --log_data=true --use_ipopt=true --switch_to_snopt_after_first_loop=false --init_file=0_z.csv --time_limit=0.1 &> ../dairlib_data/goldilocks_models/planning/robot_1/data/planner_output.txt ";
         host = "localhost";
     }
     cmd "4.0 rename data to data_x" {
         exec = "python3.8 examples/goldilocks_models/misc/rename_data_folder.py";
+        host = "localhost";
+    }
+    cmd "4.1 scp yaml file" {
+        exec = "scp examples/goldilocks_models/rom_walking_gains.yaml dair@192.168.0.235:/home/dair/workspace/yuming/dairlib/examples/goldilocks_models/rom_walking_gains.yaml";
         host = "localhost";
     }
     cmd "5.0.rom-planner (debug a given solve_idx)" {
@@ -68,7 +80,7 @@ group "2.setup" {
 }
 
 group "0.operator-gui" {
-    cmd "1.state-visualizer-floating (from cassie dispatcher)" {
+    cmd "1.state-visualizer-floating (planner offboard; wired ethernet)" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=NETWORK_CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
@@ -111,7 +123,7 @@ group "4.lcm-monitor" {
 
 
 script "1.initialize_standing" {
-    stop group "1.rom-space-controller (from cassie dispatcher)";
+    stop group "1.rom-space-controller (planner offboard; wired ethernet)";
     stop group "2.setup";
     stop group "5.logging-recording";
     wait ms 1000;
@@ -138,6 +150,7 @@ script "4.0. prepare mpc init file" {
     wait ms 500;
     stop cmd "2.0.optimal-rom-walking-controller (to generate init file)";
     stop cmd "2.1.rom-planner (to generate init file)";
+    start cmd "2.3 scp init file for controller";
 }
 
 script "4.1. set up mpc planner (need to do it in terminal)" {
@@ -149,7 +162,7 @@ script "4.2. switch to mpc walking; start logging" {
     wait ms 1000;
     start cmd "0.cassie-lcm-logger";
     start cmd "1.record-video";
-    wait ms 100;
+    wait ms 1000;
     start cmd "4.2.switch-to-rom-mpc";
     wait ms 1000;
     stop cmd "3.standing-controller-real-robot";
@@ -157,7 +170,7 @@ script "4.2. switch to mpc walking; start logging" {
 
 script "5. stop logging" {
     stop group "5.logging-recording";
-    stop group "1.rom-space-controller (from cassie dispatcher)";
+    stop group "1.rom-space-controller (planner offboard; wired ethernet)";
     stop group "2.setup";
 }
 

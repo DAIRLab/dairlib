@@ -12,8 +12,7 @@ def main():
     year = date.today().strftime("%Y")
 
     logdir = \
-        f"{os.getenv('HOME')}/workspace/logs/cassie_simulation/{year}/{curr_date}" \
-            if sim else f"{os.getenv('HOME')}/logs/{year}/{curr_date}/yuming_rom_walking"
+        f"{os.getenv('HOME')}/logs/{year}/{curr_date}/yuming_rom_walking"
 
     current_dair_dir = f"{os.getcwd()}/"
     standing_gains = current_dair_dir + "examples/Cassie/osc/osc_standing_gains.yaml"

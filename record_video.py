@@ -7,7 +7,8 @@ from pathlib import Path
 def main():
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
-    logdir = f"{os.getenv('HOME')}/Videos/cassie_experiments/{year}/{curr_date}/yuming_rom_walking/"
+    # logdir = f"{os.getenv('HOME')}/Videos/cassie_experiments/{year}/{curr_date}/yuming_rom_walking/"
+    logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}/yuming_rom_walking/"
 
     if not os.path.isdir(logdir):
         Path(logdir).mkdir(parents=True, exist_ok=True)

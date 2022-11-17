@@ -163,7 +163,7 @@ def main():
   """
   """
   if animate:
-    x_axis_is_clock = False
+    x_axis_is_clock = True
 
     time_vec = np.zeros(end_idx - start_idx)
     for j in range(start_idx, end_idx):
@@ -183,7 +183,7 @@ def main():
       plt.plot(loop_time, 'o')
       plt.xlabel('MPC loop idx')
     plt.ylabel('Time elapse (s)')
-    # plt.show()  
+    # plt.show()
 
 
   if animate:

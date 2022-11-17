@@ -146,6 +146,9 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   osc_debug_channel_name = get_osc_debug_channel_name(log)
   print("osc_debug_channel_name = " + osc_debug_channel_name)
 
+  t_dispatcher_end = -1   # stop reading lcm messages after this time
+  # t_dispatcher_end = 256.5
+
   for event in log:
     if event.channel not in full_log and event.channel not in unknown_types:
       for lcmtype in known_lcm_types:
@@ -179,6 +182,8 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
       u_meas.append(u_temp)
       imu_aceel.append(imu_accel_temp)
       t_x.append(msg.utime / 1e6)
+      if 0 < t_dispatcher_end < (msg.utime / 1e6):
+        break
     # if event.channel == "CASSIE_INPUT" or event.channel == "PD_CONTROL":
     if event.channel == controller_channel_name:
       msg = dairlib.lcmt_robot_input.decode(event.data)
@@ -230,10 +235,10 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
       msg = dairlib.lcmt_contact.decode(event.data)
       contact_switch.append(msg.contact)
       t_contact_switch.append(msg.utime / 1e6)
-    if event.channel == "INPUT_SUPERVISOR_STATUS":
-      msg = dairlib.lcmt_input_supervisor_status.decode(event.data)
-      input_supervisor_status.append(msg.status)
-      t_input_supervisor.append(msg.utime / 1e6)
+    # if event.channel == "INPUT_SUPERVISOR_STATUS":
+    #   msg = dairlib.lcmt_input_supervisor_status.decode(event.data)
+    #   input_supervisor_status.append(msg.status)
+    #   t_input_supervisor.append(msg.utime / 1e6)
     if event.channel == "CASSIE_CONTACT_DRAKE" or event.channel == "CASSIE_CONTACT_MUJOCO":
       # Need to distinguish between front and rear contact forces
       # Best way is to track the contact location and group by proximity

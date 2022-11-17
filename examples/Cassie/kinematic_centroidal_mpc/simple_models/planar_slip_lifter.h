@@ -78,6 +78,6 @@ class PlanarSlipLifter {
   drake::solvers::VectorXDecisionVariable com_vars_;
 
   const int kSLIP_DIM = 2;
-  const Eigen::Vector2i slip_index_ = {0,2};
+  const Eigen::Vector2i slip_index_{0,2};
 };
 

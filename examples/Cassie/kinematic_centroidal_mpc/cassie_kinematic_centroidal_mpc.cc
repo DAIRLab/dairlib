@@ -47,19 +47,19 @@ std::vector<dairlib::multibody::WorldPointEvaluator<double>> CassieKinematicCent
   auto right_toe_pair = dairlib::RightToeFront(plant);
   std::vector<int> active_inds{0, 1, 2};
 
-  auto left_slip_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, {0,0,0}, left_toe_pair.second,
+  auto left_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
+      plant, left_toe_pair.first, left_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
-  left_slip_eval.set_frictional();
-  left_slip_eval.set_mu(mu);
+  left_toe_eval.set_frictional();
+  left_toe_eval.set_mu(mu);
 
-  auto right_slip_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, {0,0,0}, right_toe_pair.second,
+  auto right_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
+      plant, right_toe_pair.first, right_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
-  right_slip_eval.set_frictional();
-  right_slip_eval.set_mu(mu);
+  right_toe_eval.set_frictional();
+  right_toe_eval.set_mu(mu);
 
-  return {left_slip_eval, right_slip_eval};
+  return {left_toe_eval, right_toe_eval};
 }
 
 void CassieKinematicCentroidalMPC::AddLoopClosure() {
@@ -98,7 +98,7 @@ void CassieKinematicCentroidalMPC::AddPlanarSlipConstraints(int knot_point) {
       if (!is_first_knot(knot_point) and !is_last_knot(knot_point) and
           (!slip_contact_sequence_[knot_point - 1][contact_index] or
               !slip_contact_sequence_[knot_point + 1][contact_index])) {
-        lb = swing_foot_minimum_height_+.1; //TODO figure out why this needs to be higher
+        lb = swing_foot_minimum_height_;
       }
       lb +=slip_ground_offset_;
       prog_->AddBoundingBoxConstraint(
@@ -215,7 +215,6 @@ void CassieKinematicCentroidalMPC::SetMomentumGuess(const drake::trajectories::P
   KinematicCentroidalMPC::SetMomentumGuess(momentum_trajectory);
 }
 drake::VectorX<double> CassieKinematicCentroidalMPC::LiftSlipSolution(int knot_point) {
-  std::cout<<result_->GetSolution(slip_contact_pos_vars(knot_point, 0)[1])<<" "<< result_->GetSolution(slip_contact_pos_vars(knot_point, 1)[1])<<std::endl;
   drake::VectorX<double> slip_state(2 + 2 + 4 * slip_contact_points_.size());
   slip_state<<result_->GetSolution(slip_com_vars_[knot_point]),
       result_->GetSolution(slip_vel_vars_[knot_point]),

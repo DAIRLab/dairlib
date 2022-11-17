@@ -98,7 +98,7 @@ void PlanarSlipLiftingConstraint::EvaluateConstraint(const Eigen::Ref<const drak
                                                      drake::VectorX<double> *y) const {
   const auto& slip_state = x.head(slip_dim_);
   const auto& complex_state = x.tail(complex_dim_);
-  lifting_function_->Lift(slip_state, y);
+  *y = lifting_function_->Lift(slip_state);
   *y = *y - complex_state;
 }
 

@@ -64,7 +64,6 @@ PlanarSlipLifter::PlanarSlipLifter(const drake::multibody::MultibodyPlant<double
           (ik_.q())(positions_map.at("ankle_joint_left"))+
           (ik_.q())(positions_map.at("toe_left")) ==
           -0.862002);
-
 }
 
 drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedPosition(const drake::Vector3<double> &com_position,
@@ -76,7 +75,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedPosition(const drake::Ve
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> foot_constraints;
   for(int i = 0; i < slip_contact_points_.size(); i++){
     const drake::Vector3<double> slip_spatial_foot_pos =  {slip_feet_positions[2*i], stance_widths_[i], slip_feet_positions[2*i+1]};
-    foot_constraints.push_back(ik_.AddPositionConstraint(slip_contact_points_[i].get_frame(), drake::VectorX<double>::Zero(3), plant_.world_frame(),
+    foot_constraints.push_back(ik_.AddPositionConstraint(slip_contact_points_[i].get_frame(), slip_contact_points_[i].get_pt_A(), plant_.world_frame(),
                                                          std::nullopt,
                                                          slip_spatial_foot_pos - com_position,
                                                          slip_spatial_foot_pos - com_position));
@@ -174,7 +173,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &c
   // Loop through the slip feet
   for(int simple_index = 0; simple_index < slip_contact_points_.size(); simple_index ++){
     // Calculate the slip grf
-    double r = (slip_feet_pos - slip_index_.unaryExpr(com_pos)).norm();
+    double r = (slip_feet_pos.segment(simple_index * 2, 2) - slip_index_.unaryExpr(com_pos)).norm();
     double slip_grf_mag = k_ * (r - r0_);
 
     // Find the average location for all of the complex contact points that make up the SLIP foot
@@ -182,7 +181,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &c
 
     const auto& complex_feet_list = simple_foot_index_to_complex_foot_index_.at(simple_index);
     for(const auto& complex_index : complex_feet_list){
-      average_pos = average_pos + complex_contact_point_pos.segment(3 * complex_index, complex_index);
+      average_pos = average_pos + complex_contact_point_pos.segment(3 * complex_index, 3);
     }
     average_pos = average_pos/complex_feet_list.size();
 

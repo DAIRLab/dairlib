@@ -245,6 +245,11 @@ void KinematicCentroidalMPC::Build(
         AddKinematicsIntegrator(knot_point);
         if(!is_last_knot(knot_point) and complexity_schedule_[knot_point+1] == PLANAR_SLIP){
           AddSlipReductionConstraint(knot_point + 1);
+          //TODO why do I need these constraints here
+          AddContactConstraints(knot_point + 1);
+          AddCentroidalKinematicConsistency(knot_point + 1);
+          AddFrictionConeConstraints(knot_point + 1);
+          AddFlightContactForceConstraints(knot_point + 1);
         }
         break;
       case PLANAR_SLIP:

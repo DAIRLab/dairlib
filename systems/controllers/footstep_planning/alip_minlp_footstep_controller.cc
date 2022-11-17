@@ -269,7 +269,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   workspace.AddFace(-Vector3d::UnitX(), -10 * Vector3d::UnitX());
 
   trajopt_.UpdateNextFootstepReachabilityConstraint(workspace);
-
   trajopt_.CalcOptimalFootstepPlan(x, p_b, warmstart);
 
   // Update discrete states
@@ -333,7 +332,7 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
     const Vector3d& pnext = pp.at(std::min(n+1, nm-1));
     for (int k = 0; k < nk - 1; k++) {
       int idx = n * (nk-1) + k;
-      double tk = t0 + tt(n) * k * s;
+      double tk = t0 + (double_stance_duration_ * n) + tt(n) * k * s;
       double lerp = (tk - t_prev_switch) / (t_next_switch - t_prev_switch);
       t(idx) = tk;
       com_knots.col(idx).head(2) = pcurr.head(2) + xx.at(n).at(k).head(2);
@@ -347,9 +346,9 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
 
   // If we've basically already finished this mode,
   // let's move to the next so we don't get weird trajectory stuff
-    if (t(nk-2) - t(0) < .0001) {
-      com_knots = com_knots.rightCols((nm-1) * (nk-1));
-      t = t.tail((nm-1)*(nk-1) + 1);
+    if (t(nk-2) - t(0) < .001) {
+      com_knots = com_knots.rightCols(N - (nk - 1));
+      t = t.tail(com_knots.cols());
       t(0) = robot_output->get_timestamp();
     }
 

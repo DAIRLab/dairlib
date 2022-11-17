@@ -90,7 +90,7 @@ Matrix4d AlipDynamicsConstraint::Ad(double t) {
 void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
                                 const Matrix4d &Q, const Eigen::MatrixXd& Qf) {
   DRAKE_DEMAND(xd.size() == nmodes_);
-  for (int i = 0; i < nmodes_; i++){
+  for (int i = 1; i < nmodes_; i++){
     DRAKE_DEMAND(xd.at(i).size() == nknots_.at(i));
     vector<Binding<QuadraticCost>> QQ;
     for (int k = 0; k < nknots_.at(i); k++){
@@ -170,10 +170,10 @@ void AlipMINLP::AddMode(int nk) {
 }
 
 void AlipMINLP::UpdateTrackingCost(const vector<vector<Vector4d>> &xd) {
-  for(int n = 0; n < nmodes_; n++) {
+  for(int n = 0; n < nmodes_ - 1 ; n++) {
     for (int k = 0; k < nknots_.at(n); k++) {
       tracking_costs_.at(n).at(k).evaluator()->
-          UpdateCoefficients(2.0*Q_, -2.0*Q_ * xd.at(n).at(k));
+          UpdateCoefficients(2.0*Q_, -2.0*Q_ * xd.at(n+1).at(k));
     }
   }
   terminal_cost_->UpdateCoefficients(2.0 * Qf_, -2.0 * Qf_ * xd.back().back());
@@ -216,7 +216,7 @@ void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
   for (int i = 0; i < foothold_idxs.size(); i++) {
     MakeIndividualFootholdConstraint(i+1, foothold_idxs.at(i));
   }
-  MakeCapturePointConstraint(foothold_idxs.back());
+//  MakeCapturePointConstraint(foothold_idxs.back());
 }
 
 void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
@@ -298,12 +298,12 @@ void AlipMINLP::MakeInputBoundConstaints() {
 }
 
 void AlipMINLP::MakeWorkspaceConstraints() {
-  for (int n = 0; n < nmodes_; n++) {
+  for (int n = 1; n < nmodes_; n++) {
     for (const auto& xx : xx_.at(n)) {
       prog_->AddLinearConstraint(
           MatrixXd::Identity(2, 2),
-          Vector2d(-0.9, -0.75),
-          Vector2d(0.9, 0.75),
+          Vector2d(-0.8, -0.75),
+          Vector2d(0.8, 0.75),
           xx.head(2));
     }
   }

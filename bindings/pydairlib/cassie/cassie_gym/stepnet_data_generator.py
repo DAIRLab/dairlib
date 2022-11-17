@@ -40,7 +40,7 @@ URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
-INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics_v2.npy'
+INITIAL_CONDITIONS_FILE = '.learning_data/initial_conditions.npy'
 MAX_ERROR = 1.0
 
 
@@ -125,7 +125,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                 osqp_settings_filename=OSQP_SETTINGS
             )
 
-        self.simulate_until = self.ss_time + 0.25
+        self.simulate_until = self.ss_time + 0.01
 
     def make(self, controller, urdf=SIM_URDF):
         super().make(controller, urdf=urdf)

@@ -16,7 +16,7 @@ from pydairlib.cassie.cassie_gym.stepnet_data_generator import \
 
 
 HOME = os.getenv("HOME")
-DATASET_DIR = HOME + '/workspace/stepnet_learning_data/step_3d_no_terrain/'
+DATASET_DIR = HOME + '/workspace/stepnet_learning_data/step_3d_no_terrain_v2/'
 FLAT_GROUND_DATASET_DIR = HOME + '/workspace/stepnet_learning_data/flat_ground/'
 DEPTH_DIR = DATASET_DIR + 'depth/'
 ROBO_DIR = DATASET_DIR + 'robot/'

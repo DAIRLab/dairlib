@@ -93,7 +93,7 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   multibody::AddSteppingStonesToSimFromYaml(
-      &plant, &scene_graph, FLAGS_stepping_stone_filename, 0.8);
+      &plant, &scene_graph, FLAGS_stepping_stone_filename, 1.0);
 
   std::string urdf;
   if (FLAGS_spring_model) {

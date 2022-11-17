@@ -127,7 +127,7 @@ class DataGeneratorParams(StepnetDataClass):
     depth_camera_info: DepthCameraInfo = DepthCameraInfo()
 
     """ How much noise to add to target footsteps """
-    target_xyz_noise_bound: np.ndarray = default_array([0.25, 0.25, 0.0])
+    target_xyz_noise_bound: np.ndarray = default_array([0.5, 0.5, 0.0])
     target_yaw_noise_bound: float = 1.0
     target_time_bounds: np.ndarray = default_array([0.1, 0.5])
     randomize_time: bool = True
@@ -138,8 +138,8 @@ class DataGeneratorParams(StepnetDataClass):
     target_ub: np.ndarray = default_array([2.0, 2.0, 0.3])
 
     """ Bounds on radio commands """
-    radio_lb: np.ndarray = default_array([-0.5, -1.0])
-    radio_ub: np.ndarray = default_array([0.5, 1.0])
+    radio_lb: np.ndarray = default_array([-1.0, -1.0])
+    radio_ub: np.ndarray = default_array([1.0, 1.0])
 
     """ simulation params """
     depth_var_z: float = 0.0

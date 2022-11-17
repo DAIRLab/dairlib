@@ -41,6 +41,8 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(
       "examples/Cassie/kinematic_centroidal_planner/gaits/stand.yaml");
   left_step_ = drake::yaml::LoadYamlFile<Gait>(
       "examples/Cassie/kinematic_centroidal_planner/gaits/left_step.yaml");
+  right_step_ = drake::yaml::LoadYamlFile<Gait>(
+      "examples/Cassie/kinematic_centroidal_planner/gaits/right_step.yaml");
   jump_ = drake::yaml::LoadYamlFile<Gait>(
       "examples/Cassie/kinematic_centroidal_planner/gaits/jump.yaml");
 
@@ -91,12 +93,12 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(
   solver_->SetModeSequence(reference_generator_->contact_sequence_);
 
   solver_->AddInitialStateConstraint(reference_state_);
-
   solver_->SetRobotStateGuess(reference_generator_->q_trajectory_,
                               reference_generator_->v_trajectory_);
   solver_->SetComPositionGuess(reference_generator_->com_trajectory_);
   solver_->SetContactGuess(reference_generator_->contact_traj_);
   solver_->SetForceGuess(reference_generator_->grf_traj_);
+  solver_->SetMinimumFootClearance(0.015);
 
   {
     drake::solvers::SolverOptions options;
@@ -170,7 +172,7 @@ void KinematicCentroidalMPC::CalcTraj(
        {0, 0, 0}}};
 
   // Add reference and mode sequence
-  std::vector<Gait> gait_samples = {stand_, jump_, stand_};
+  std::vector<Gait> gait_samples = {stand_, left_step_, stand_};
 
   reference_generator_->SetNominalReferenceConfiguration(
       reference_state_.head(plant_wo_spr_.num_positions()));

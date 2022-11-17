@@ -66,6 +66,7 @@ class KinematicCentroidalMPC : public drake::systems::LeafSystem<double> {
   const int n_v_;
   Gait stand_;
   Gait left_step_;
+  Gait right_step_;
   Gait jump_;
   Eigen::VectorXd time_points_;
   int n_knot_points_ = 10;

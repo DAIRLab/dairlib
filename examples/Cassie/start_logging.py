@@ -3,6 +3,7 @@ import os
 import glob
 import codecs
 from datetime import date
+from pathlib import Path
 
 
 def main():
@@ -22,7 +23,7 @@ def main():
     rom_walking_gains2 = current_dair_dir + "examples/goldilocks_models/controller/osc_rom_walking_gains_hardware.yaml"
 
     if not os.path.isdir(logdir):
-        os.mkdir(logdir)
+        Path(logdir).mkdir(parents=True, exist_ok=True)
 
     git_diff = subprocess.check_output(['git', 'diff'], cwd=current_dair_dir)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=current_dair_dir)

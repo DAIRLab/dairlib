@@ -3,13 +3,14 @@ import sys
 import os
 import glob
 from datetime import date
+from pathlib import Path
 def main():
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
     logdir = f"{os.getenv('HOME')}/Videos/cassie_experiments/{year}/{curr_date}/yuming_rom_walking/"
 
-    if not os.path.exists(logdir):
-        os.makedirs(logdir)
+    if not os.path.isdir(logdir):
+        Path(logdir).mkdir(parents=True, exist_ok=True)
 
     current_logs = sorted(glob.glob(logdir + 'log_*'))
     if current_logs:

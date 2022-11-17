@@ -29,6 +29,44 @@ group "1.rom-space-controller (planner onboard)" {
     }
 }
 
+group "5.logging-recording" {
+    cmd "0.cassie-lcm-logger" {
+        exec = "python3 examples/Cassie/start_logging.py";
+        host = "dair-cassie";
+    }
+    cmd "1.record-video" {
+        exec = "python3 record_video.py";
+        host = "localhost";
+    }
+}
+
+group "2.setup" {
+    cmd "1.dispatcher-robot-in-real-robot" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --control_channel_name_3=ROM_WALKING --port 25000 --address 10.10.10.3 --floating_base=true --max_joint_velocity=15";
+        host = "dair-cassie";
+    }
+    cmd "2.pd-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller --channel_u=PD_CONTROL";
+        host = "dair-cassie";
+    }
+    cmd "3.standing-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_u=OSC_STANDING --channel_x=CASSIE_STATE_DISPATCHER --cost_weight_multiplier=1";
+        host = "dair-cassie";
+    }
+    cmd "4.2.switch-to-rom-mpc" {
+        exec = "bazel-bin/examples/goldilocks_models/run_rom_controller_switch --blend_duration=0.15";
+        host = "dair-cassie";
+    }
+    cmd "4.0.controller-switch-to-standing" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=1.0";
+        host = "dair-cassie";
+    }
+    cmd "4.1.switch-to-default-walking" {
+        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=ROM_WALKING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01 --fsm_period=0.4 --fsm_offset=0.35 --n_period_delay=2";
+        host = "dair-cassie";
+    }
+}
+
 group "0.operator-gui" {
     cmd "1.state-visualizer-floating (from cassie dispatcher)" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=NETWORK_CASSIE_STATE_DISPATCHER";
@@ -63,23 +101,12 @@ group "0.operator-gui" {
         host = "localhost";
     }
     cmd "4.0 scp all logs" {
-        exec = "";
+        exec = "rsync -rzvP --ignore-existing dair@192.168.0.235:/home/dair/logs/2022/11* /home/cassie-laptop/logs/2022";
         host = "localhost";
     }
     cmd "4.1 log_plotter_cassie" {
-        exec = "";
+        exec = "bazel build bindings/pydairlib:log_plotter_cassie && bazel-bin/bindings/pydairlib/log_plotter_cassie ~/logs/2022/11_17_22/yuming_rom_walking/lcmlog-00";
         host = "localhost";
-    }
-}
-
-group "5.logging-recording" {
-    cmd "1.record-video" {
-        exec = "python3 record_video.py";
-        host = "localhost";
-    }
-    cmd "0.cassie-lcm-logger" {
-        exec = "python3 examples/Cassie/start_logging.py";
-        host = "dair-cassie";
     }
 }
 
@@ -94,32 +121,6 @@ group "4.lcm-monitor" {
     }
 }
 
-group "2.setup" {
-    cmd "1.dispatcher-robot-in-real-robot" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --control_channel_name_3=ROM_WALKING --port 25000 --address 10.10.10.3 --floating_base=true --max_joint_velocity=15";
-        host = "dair-cassie";
-    }
-    cmd "2.pd-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller --channel_u=PD_CONTROL";
-        host = "dair-cassie";
-    }
-    cmd "3.standing-controller-real-robot" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel_u=OSC_STANDING --channel_x=CASSIE_STATE_DISPATCHER --cost_weight_multiplier=1";
-        host = "dair-cassie";
-    }
-    cmd "4.2.switch-to-rom-mpc" {
-        exec = "bazel-bin/examples/goldilocks_models/run_rom_controller_switch --blend_duration=0.15";
-        host = "dair-cassie";
-    }
-    cmd "4.0.controller-switch-to-standing" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=OSC_STANDING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=1.0";
-        host = "dair-cassie";
-    }
-    cmd "4.1.switch-to-default-walking" {
-        exec = "bazel-bin/examples/Cassie/run_controller_switch --new_channel=ROM_WALKING  --channel_x=CASSIE_STATE_DISPATCHER --blend_duration=0.01 --fsm_period=0.4 --fsm_offset=0.35 --n_period_delay=2";
-        host = "dair-cassie";
-    }
-}
 
 script "1.initialize_standing" {
     stop group "1.rom-space-controller (planner onboard)";
@@ -136,19 +137,28 @@ script "2.set_up_from_pd_to_osc_standing" {
     start cmd "3.standing-controller-real-robot";
 }
 
-script "switch to default walking (test)" {
-    start cmd "3.1.switch-to-default-walking";
-    wait ms 2000;
-    stop cmd "3.standing-controller-real-robot";
-}
-
 script "3.switch to standing" {
-    start cmd "3.0.controller-switch-to-standing";
+    start cmd "4.0.controller-switch-to-standing";
     wait ms 1000;
     stop cmd "2.pd-controller-real-robot";
 }
 
-script "4. switch to walking; start logging" {
+script "4.0. prepare mpc init file" {
+    start cmd "2.1.rom-planner (to generate init file)";
+    wait ms 500;
+    start cmd "2.0.optimal-rom-walking-controller (to generate init file)";
+    wait ms 500;
+    stop cmd "2.0.optimal-rom-walking-controller (to generate init file)";
+    stop cmd "2.1.rom-planner (to generate init file)";
+}
+
+script "4.1. set up mpc planner (need to do it in terminal)" {
+    wait ms 100;
+}
+
+script "4.2. switch to mpc walking; start logging" {
+    start cmd "3.0.optimal-rom-walking-controller (w init)";
+    wait ms 1000;
     start cmd "0.cassie-lcm-logger";
     start cmd "1.record-video";
     wait ms 100;
@@ -160,8 +170,15 @@ script "4. switch to walking; start logging" {
 script "5. stop logging" {
     stop group "5.logging-recording";
     stop group "1.rom-space-controller (planner onboard)";
+    stop group "2.setup";
 }
 
 script "6. post walking script" {
     start cmd "4.0 rename data to data_x";
+}
+
+script "switch to default walking (test)" {
+    start cmd "3.1.switch-to-default-walking";
+    wait ms 2000;
+    stop cmd "3.standing-controller-real-robot";
 }

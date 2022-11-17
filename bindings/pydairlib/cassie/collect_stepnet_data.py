@@ -116,6 +116,8 @@ def main(args):
         depth_path=os.path.join(args.dataset_parent_folder, 'depth'),
         has_terrain=(args.terrain == 'varied')
     )
+    collection_params.randomization_bounds.normal = np.zeros((3,))
+
     if collection_params.has_terrain:
         collection_params.target_to_map_tf = \
             DepthCameraInfo().get_pelvis_to_image_tf()

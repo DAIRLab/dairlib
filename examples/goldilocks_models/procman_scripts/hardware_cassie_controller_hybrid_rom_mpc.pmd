@@ -62,6 +62,14 @@ group "0.operator-gui" {
         exec = "bazel-bin/examples/goldilocks_models/planning/visualization/hybrid_rom_trajopt_plotter 0";
         host = "localhost";
     }
+    cmd "4.0 scp all logs" {
+        exec = "";
+        host = "localhost";
+    }
+    cmd "4.1 log_plotter_cassie" {
+        exec = "";
+        host = "localhost";
+    }
 }
 
 group "5.logging-recording" {

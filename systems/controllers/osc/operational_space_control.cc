@@ -79,7 +79,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     fsm_port_ =
         this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
     clock_port_ = this->DeclareVectorInputPort("clock", BasicVector<double>(1))
-        .get_index();
+                      .get_index();
     impact_info_port_ =
         this->DeclareVectorInputPort("next_fsm, t_to_impact",
                                      ImpactInfoVector<double>(0, 0, kSpaceDim))
@@ -93,18 +93,18 @@ OperationalSpaceControl::OperationalSpaceControl(
   }
 
   osc_output_port_ = this->DeclareVectorOutputPort(
-          "u, t", TimestampedVector<double>(n_u_w_spr),
-          &OperationalSpaceControl::CalcOptimalInput)
-      .get_index();
+                             "u, t", TimestampedVector<double>(n_u_w_spr),
+                             &OperationalSpaceControl::CalcOptimalInput)
+                         .get_index();
   osc_debug_port_ =
       this->DeclareAbstractOutputPort(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
           .get_index();
 
   failure_port_ = this->DeclareVectorOutputPort(
-          "failure_signal", TimestampedVector<double>(1),
-          &OperationalSpaceControl::CheckTracking)
-      .get_index();
+                          "failure_signal", TimestampedVector<double>(1),
+                          &OperationalSpaceControl::CheckTracking)
+                      .get_index();
 
   const std::map<string, int>& vel_map_wo_spr =
       multibody::MakeNameToVelocitiesMap(plant_wo_spr);
@@ -145,9 +145,9 @@ OperationalSpaceControl::OperationalSpaceControl(
     }
     if (joint.type_name() == "prismatic" &&
         (joint.position_lower_limits()[0] !=
-            -std::numeric_limits<double>::infinity() ||
-            (joint.position_upper_limits()[0] !=
-                std::numeric_limits<double>::infinity()))) {
+             -std::numeric_limits<double>::infinity() ||
+         (joint.position_upper_limits()[0] !=
+          std::numeric_limits<double>::infinity()))) {
       std::cerr << "Warning: joint limits have not been implemented for "
                    "prismatic joints: "
                 << std::endl;
@@ -256,11 +256,11 @@ void OperationalSpaceControl::CheckCostSettings() {
   }
   if (W_input_smoothing_.size() != 0) {
     DRAKE_DEMAND((W_input_smoothing_.rows() == n_u_) &&
-        (W_input_smoothing_.cols() == n_u_));
+                 (W_input_smoothing_.cols() == n_u_));
   }
   if (W_joint_accel_.size() != 0) {
     DRAKE_DEMAND((W_joint_accel_.rows() == n_v_) &&
-        (W_joint_accel_.cols() == n_v_));
+                 (W_joint_accel_.cols() == n_v_));
   }
 }
 void OperationalSpaceControl::CheckConstraintSettings() {
@@ -287,8 +287,8 @@ void OperationalSpaceControl::Build() {
 
   // Size of decision variable
   n_h_ = (kinematic_evaluators_ == nullptr)
-         ? 0
-         : kinematic_evaluators_->count_full();
+             ? 0
+             : kinematic_evaluators_->count_full();
   n_c_ = kSpaceDim * all_contacts_.size();
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
@@ -391,8 +391,8 @@ void OperationalSpaceControl::Build() {
   // 1. input cost
   if (W_input_.size() > 0) {
     input_cost_ = prog_->AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u_)
-        .evaluator()
-        .get();
+                      .evaluator()
+                      .get();
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
@@ -449,12 +449,12 @@ void OperationalSpaceControl::Build() {
   // 5. Joint Limit cost
   if (w_joint_limit_ > 0) {
     K_joint_pos_ = w_joint_limit_ * W_joint_accel_.bottomRightCorner(
-        n_revolute_joints_, n_revolute_joints_);
+                                        n_revolute_joints_, n_revolute_joints_);
     joint_limit_cost_ = prog_
-        ->AddLinearCost(VectorXd::Zero(n_revolute_joints_),
-                        0, dv_.tail(n_revolute_joints_))
-        .evaluator()
-        .get();
+                            ->AddLinearCost(VectorXd::Zero(n_revolute_joints_),
+                                            0, dv_.tail(n_revolute_joints_))
+                            .evaluator()
+                            .get();
   }
 
   // (Testing) 6. contact force blending
@@ -498,7 +498,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   double timestamp = robot_output->get_timestamp();
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-      .get_mutable_value();
+                            .get_mutable_value();
   if (fsm_state(0) != prev_fsm_state(0)) {
     prev_distinct_fsm_state_ = prev_fsm_state(0);
     prev_fsm_state(0) = fsm_state(0);
@@ -523,9 +523,9 @@ VectorXd OperationalSpaceControl::SolveQp(
       active_contact_set = map_iterator->second;
     } else {
       static const drake::logging::Warn log_once(const_cast<char*>(
-                                                     (std::to_string(fsm_state) +
-                                                         " is not a valid finite state machine state in OSC.")
-                                                         .c_str()));
+          (std::to_string(fsm_state) +
+           " is not a valid finite state machine state in OSC.")
+              .c_str()));
     }
   }
 
@@ -712,13 +712,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   if (w_joint_limit_ > 0) {
     VectorXd w_joint_limit =
         K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
-            .tail(n_revolute_joints_) -
-            q_max_)
-            .cwiseMax(0) +
-            K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
-                .tail(n_revolute_joints_) -
-                q_min_)
-                .cwiseMin(0);
+                            .tail(n_revolute_joints_) -
+                        q_max_)
+                           .cwiseMax(0) +
+        K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
+                            .tail(n_revolute_joints_) -
+                        q_min_)
+                           .cwiseMin(0);
     joint_limit_cost_->UpdateCoefficients(w_joint_limit, 0);
   }
 
@@ -733,11 +733,11 @@ VectorXd OperationalSpaceControl::SolveQp(
         // We want left foot force to gradually increase
         alpha_left = -1;
         alpha_right = t_since_last_state_switch /
-            (ds_duration_ - t_since_last_state_switch);
+                      (ds_duration_ - t_since_last_state_switch);
 
       } else if (prev_distinct_fsm_state_ == left_support_state_) {
         alpha_left = t_since_last_state_switch /
-            (ds_duration_ - t_since_last_state_switch);
+                     (ds_duration_ - t_since_last_state_switch);
         alpha_right = -1;
       }
       A(0, 0) = alpha_left / 2;
@@ -897,8 +897,8 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   b_constrained << Ab, d;
 
   ii_lambda_sol_ = A_constrained.completeOrthogonalDecomposition()
-      .solve(b_constrained)
-      .head(active_constraint_dim);
+                       .solve(b_constrained)
+                       .head(active_constraint_dim);
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
@@ -915,9 +915,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   double time_since_last_state_switch =
       used_with_finite_state_machine_
-      ? state->get_timestamp() -
-          context.get_discrete_state(prev_event_time_idx_).get_value()(0)
-      : state->get_timestamp();
+          ? state->get_timestamp() -
+                context.get_discrete_state(prev_event_time_idx_).get_value()(0)
+          : state->get_timestamp();
 
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_state;
@@ -961,7 +961,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   //      (joint_limit_cost_ != nullptr) ? y_joint_limit_cost[0] : 0;
 
   total_cost += input_cost + acceleration_cost + soft_constraint_cost +
-      input_smoothing_cost + lambda_h_cost + lambda_c_cost;
+                input_smoothing_cost + lambda_h_cost + lambda_c_cost;
   output->regularization_costs.clear();
   output->regularization_cost_names.clear();
 
@@ -997,11 +997,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;
 
-  output->tracking_data =
-      std::vector<lcmt_osc_tracking_data>();
+  output->tracking_data = std::vector<lcmt_osc_tracking_data>();
   output->tracking_costs = std::vector<double>();
-  output->tracking_data_names =
-      std::vector<std::string>();
+  output->tracking_data_names = std::vector<std::string>();
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i).get();
@@ -1063,7 +1061,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd q_w_spr = robot_output->GetPositions();
   VectorXd v_w_spr = robot_output->GetVelocities();
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
-      plant_w_spr_.num_velocities());
+                   plant_w_spr_.num_velocities());
   x_w_spr << q_w_spr, v_w_spr;
 
   double timestamp = robot_output->get_timestamp();

@@ -586,7 +586,7 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
-                  osc->get_robot_output_input_port());
+                  osc->get_input_port_robot_output());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   if (use_pelvis_for_lipm_tracking) {
     builder.Connect(
@@ -613,7 +613,7 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             "OSC_DEBUG_WALKING", &lcm_local,
             TriggerTypeSet({TriggerType::kForced})));
-    builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+    builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
   }
 
   // Create the diagram

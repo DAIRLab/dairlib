@@ -12,6 +12,16 @@ using drake::VectorX;
 using std::string;
 using std::vector;
 
+/*!
+ * @brief
+ * TimestampedVector consumed by the OSC that contains relevant information
+ * about the anticipated impact event.
+ * This includes:
+ * contact_mode: contact mode as defined by the OSC
+ * alpha: blending coefficient for the impact-invariant projection
+ * impulse: anticipated contact impulse (unused currently)
+ *
+ */
 template <typename T>
 class ImpactInfoVector : public TimestampedVector<T> {
  public:
@@ -24,7 +34,7 @@ class ImpactInfoVector : public TimestampedVector<T> {
         has_impulse_info_(num_contact != 0),
         num_contact_impulses_(num_contact),
         num_holonomic_impulses_(num_holonomic),
-        space_dim_(space_dim){}
+        space_dim_(space_dim) {}
 
   void SetCurrentContactMode(int contact_mode) {
     this->get_mutable_data()(contact_mode_index_) = contact_mode;
@@ -40,9 +50,7 @@ class ImpactInfoVector : public TimestampedVector<T> {
         impulse;
   }
 
-  const T GetAlpha() const {
-    return this->GetAtIndex(alpha_index_);
-  }
+  const T GetAlpha() const { return this->GetAtIndex(alpha_index_); }
 
   const T GetCurrentContactMode() const {
     return this->GetAtIndex(contact_mode_index_);
@@ -55,7 +63,8 @@ class ImpactInfoVector : public TimestampedVector<T> {
   }
 
   const VectorX<T> GetContactImpulseAtContactIndex(int contact_index) const {
-    return this->get_data().segment(impulse_start_ + contact_index * space_dim_, space_dim_);
+    return this->get_data().segment(impulse_start_ + contact_index * space_dim_,
+                                    space_dim_);
   }
 
   const T GetContactImpulseAtIndex(int index) const {
@@ -68,7 +77,8 @@ class ImpactInfoVector : public TimestampedVector<T> {
 
  protected:
   virtual ImpactInfoVector<T>* DoClone() const {
-    return new ImpactInfoVector<T>(num_contact_impulses_, num_holonomic_impulses_, space_dim_);
+    return new ImpactInfoVector<T>(num_contact_impulses_,
+                                   num_holonomic_impulses_, space_dim_);
   }
 
  private:

@@ -491,7 +491,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_impact_output_port(),
                   osc->get_input_port_impact_info());
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
+                  osc->get_input_port_robot_output());
   builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_trans_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
@@ -535,12 +535,12 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_fsm_input_port());
 
   // Publisher connections
-  builder.Connect(osc->get_osc_output_port(),
+  builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
-  builder.Connect(osc->get_failure_output_port(),
+  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_failure(),
                   failure_aggregator->get_input_port(0));
   builder.Connect(failure_aggregator->get_status_output_port(),
                   controller_failure_pub->get_input_port());

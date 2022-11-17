@@ -192,17 +192,17 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_output_port_impact_info(),
                   osc->get_input_port_impact_info());
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
+                  osc->get_input_port_robot_output());
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_input_port_state());
 
   // Publisher connections
-  builder.Connect(osc->get_osc_output_port(),
+  builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
 
   // Run lcm-driven simulation
   // Create the diagram

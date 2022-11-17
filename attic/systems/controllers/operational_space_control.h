@@ -87,7 +87,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           bool print_tracking_info = false);
 
   // Input/output ports
-  const drake::systems::InputPort<double>& get_robot_output_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_robot_output() const {
     return this->get_input_port(state_port_);
   }
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
@@ -97,10 +97,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       std::string name) const {
     return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }
-  const drake::systems::OutputPort<double>& get_osc_output_port() const {
+  const drake::systems::OutputPort<double>& get_output_port_osc_command() const {
     return this->get_output_port(osc_output_port_);
   }
-  const drake::systems::OutputPort<double>& get_osc_debug_port() const {
+  const drake::systems::OutputPort<double>& get_output_port_osc_debug() const {
     return this->get_output_port(osc_debug_port_);
   }
 

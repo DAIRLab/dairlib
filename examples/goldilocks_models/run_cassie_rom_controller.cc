@@ -98,20 +98,16 @@ using multibody::JwrtqdotToJwrtv;
 //
 DEFINE_bool(broadcast, false,
             "broadcast between controller thread and planner thread");
-DEFINE_bool(hardware, false, "");
+DEFINE_bool(hardware, false,
+            "Some parameter checks; use hardware gains file; FSM starts on "
+            "trigger");
 DEFINE_bool(use_hardware_osc_gains, false, "");
 
 //
 DEFINE_bool(close_sim_gap, true,
             "Modify to close the gap between open loop and closed loop sim");
 
-DEFINE_bool(
-    track_mid_contact_pt, false,
-    "if true, we have the mid contact point to track the swing foot traj. "
-    " Doesn't seem to work well when turning this flag on for some reason.");
-
 //
-
 DEFINE_int32(iter, -1, "The iteration # of the model that you use");
 
 DEFINE_double(stride_length, -10000, "set constant walking stride length");
@@ -128,6 +124,14 @@ DEFINE_string(init_traj_file_path, "",
               "slower speed than realtime. ");
 
 //
+DEFINE_bool(is_two_phase, false,
+            "true: only right/left single support"
+            "false: both double and single support");
+DEFINE_bool(get_swing_foot_from_planner, false, "");
+DEFINE_bool(get_stance_hip_angles_from_planner, false, "");
+DEFINE_bool(get_swing_hip_angle_from_planner, false, "");
+
+// Channel names
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
@@ -144,29 +148,29 @@ DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie out structure "
               "from. (to get radio message)");
 
+// Logging
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 
-DEFINE_bool(is_two_phase, false,
-            "true: only right/left single support"
-            "false: both double and single support");
-
+//
 DEFINE_bool(use_IK, false, "use the IK approach or not");
-
-DEFINE_bool(get_swing_foot_from_planner, false, "");
-DEFINE_bool(get_stance_hip_angles_from_planner, false, "");
-DEFINE_bool(get_swing_hip_angle_from_planner, false, "");
 
 // Simulated robot
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
-// For testing
+// For testing the controller
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
-// Testing
+// For multithreading (for sim eval)
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
 DEFINE_string(path_wait_identifier, "", "");
+
+// Testing
+DEFINE_bool(
+    track_mid_contact_pt, false,
+    "if true, we have the mid contact point to track the swing foot traj. "
+    " Doesn't seem to work well when turning this flag on for some reason.");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

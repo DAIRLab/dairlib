@@ -96,19 +96,6 @@ DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
 DEFINE_bool(switch_to_snopt_after_first_loop, true,
             "use snopt after the first loop");
 
-// Logging
-DEFINE_bool(log_solver_info, true,
-            "Log snopt output to a file or ipopt to terminal");
-DEFINE_bool(log_data, true, "Save the planner data into files");
-DEFINE_int32(print_level, 1, "");
-
-// Flag for debugging
-DEFINE_bool(run_one_loop_to_get_init_file, false, "");
-DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
-DEFINE_int32(solve_idx_for_read_from_file, -1,
-             "Files index for input port values");
-DEFINE_string(dir_data, "", "data directory; for convenience when testing");
-
 // LCM channels (non debug mode)
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -123,7 +110,20 @@ DEFINE_string(channel_y, "MPC_OUTPUT",
 // Simulated robot
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
-// (for non debug mode)
+// Logging
+DEFINE_int32(print_level, 1, "");
+DEFINE_bool(log_solver_info, true,
+            "Log snopt output to a file or ipopt to terminal");
+DEFINE_bool(log_data, true, "Save the planner data into files");
+DEFINE_string(dir_data, "", "data directory; for convenience when testing");
+
+// Flag for debugging
+DEFINE_bool(run_one_loop_to_get_init_file, false, "");
+DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
+DEFINE_int32(solve_idx_for_read_from_file, -1,
+             "Files index for input port values");
+
+// For non debug mode (I think I don't use some of these anymore)
 DEFINE_string(dir_and_prefix_FOM, "",
               "file location and prefix for FOM poses (used in planner's "
               "regularization cost)");
@@ -139,12 +139,10 @@ DEFINE_double(xy_disturbance, 0,
 DEFINE_double(yaw_disturbance, 0,
               "Disturbance to FoM initial state. Range from 0 to 1");
 
-// Testing
+// Testing -- for sim eval and multithreading
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
 DEFINE_string(path_wait_identifier, "", "");
-
 DEFINE_bool(completely_use_trajs_from_model_opt_as_target, false, "");
-
 DEFINE_bool(close_sim_gap, false,
             "Modify to close the gap between open loop and closed loop sim");
 

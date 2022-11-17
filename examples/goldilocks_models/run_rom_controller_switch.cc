@@ -12,6 +12,13 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/serializer.h"
 
+/// This switch send two messages simultaneously. One to dispatcher_in for which
+/// controller channel to listen to, and the other to the controller thread to
+/// trigger the FSM.
+/// The diagram contains only two leafsystems (two LcmPublisherSystem's).
+/// The whole diagram is a lcm driven loop which triggered by dispatcher_out
+/// messages.
+
 namespace dairlib {
 
 using drake::systems::TriggerType;

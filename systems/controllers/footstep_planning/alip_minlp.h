@@ -178,8 +178,10 @@ class AlipMINLP {
   // misc getters and setters
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
+  double H() {return H_;}
+  double m() {return m_;}
   double solve_time() const {
-    return solution_.first.get_solver_details<OsqpSolver>().solve_time;
+    return solution_.first.get_solver_details<OsqpSolver>().run_time;
   };
   int nmodes() const { return nmodes_; }
   std::vector<int> nknots() const { return nknots_; }

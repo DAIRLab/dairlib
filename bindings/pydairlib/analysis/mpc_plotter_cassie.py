@@ -129,7 +129,7 @@ def main():
 
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
-    # plotter_main(plot_config.cassie_plot_config, log)
+    plotter_main(plot_config.cassie_plot_config, log)
     mpc_debug, com_trajs = get_log_data(
         log, mpc_channels,
         plot_config.start_time, plot_config.end_time,

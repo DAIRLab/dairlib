@@ -161,7 +161,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   bool fsm_switch = false;
   Vector3d CoM_w;
   Vector3d p_w;
-  Vector3d p_next;
+  Vector3d p_next_in_ds;
   Vector3d L;
 
   // On the first iteration, we don't want to switch immediately or warmstart
@@ -187,20 +187,27 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   const int fsm_state = curr_fsm(fsm_idx);
   int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
 
+  double ds_fraction = std::clamp(
+      (t - t_prev_impact) / double_stance_duration_, 0.0, 1.0);
+  std::vector<double> cop_fractions = {ds_fraction, 1.0 - ds_fraction};
+
   // get the alip state
   alip_utils::CalcAlipState(plant_,
                             context_,
                             robot_state,
-                            {stance_foot_map_.at(fsm_state)},
-                            &CoM_w, &L, &p_w);
-  plant_.CalcPointsPositions(*context_,
-                             stance_foot_map_.at(next_fsm(fsm_idx)).second,
-                             stance_foot_map_.at(next_fsm(fsm_idx)).first,
-                             plant_.world_frame(),
-                             &p_next);
+                            {stance_foot_map_.at(fsm_state),
+                             stance_foot_map_.at(next_fsm(fsm_idx))},
+                             cop_fractions,
+                             &CoM_w, &L, &p_w);
 
-  p_next = ReExpressWorldVector3InBodyYawFrame<double>(
-      plant_, *context_, "pelvis", p_next);
+  plant_.CalcPointsPositions(*context_,
+                             stance_foot_map_.at(fsm_state).second,
+                             stance_foot_map_.at(fsm_state).first,
+                             plant_.world_frame(),
+                             &p_next_in_ds);
+
+  p_next_in_ds = ReExpressWorldVector3InBodyYawFrame<double>(
+      plant_, *context_, "pelvis", p_next_in_ds);
   Vector3d CoM_b = ReExpressWorldVector3InBodyYawFrame<double>(
       plant_, *context_, "pelvis", CoM_w);
   Vector3d p_b = ReExpressWorldVector3InBodyYawFrame<double>(
@@ -222,13 +229,19 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
         alip_utils::CalcA(h, plant_.CalcTotalMass(*context_));
 
     // split this assignment into 2 lines to avoid Eigen compiler error :(
-    Vector2d u = (p_b - p_next).head<2>();
+    Vector2d u = (p_b - p_next_in_ds).head<2>();
     u = fsm_switch ? u : Vector2d::Zero();
 
     filter.Update(filter_data, u, x, t);
     x = filter.x();
   }
 
+  if (t - t_prev_impact < double_stance_duration_) {
+    double tds = double_stance_duration_ - (t - t_prev_impact);
+    x = alip_utils::CalcReset(
+        trajopt_.H(), trajopt_.m(), tds, x, p_b, p_next_in_ds);
+    p_b = p_next_in_ds;
+  }
   VectorXd init_alip_state_and_stance_pos = VectorXd::Zero(7);
   init_alip_state_and_stance_pos.head<4>() = x;
   init_alip_state_and_stance_pos.tail<3>() = p_b;
@@ -346,7 +359,7 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
 
   // If we've basically already finished this mode,
   // let's move to the next so we don't get weird trajectory stuff
-    if (t(nk-2) - t(0) < .001) {
+    if (t(nk-2) - t(0) < .00001) {
       com_knots = com_knots.rightCols(N - (nk - 1));
       t = t.tail(com_knots.cols());
       t(0) = robot_output->get_timestamp();

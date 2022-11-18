@@ -2,7 +2,7 @@ t_commit: 0.29
 t_min: 0.25
 t_max: 0.45
 u_max: 1
-h_des: 0.8
+h_des: 0.83
 stance_width: 0.2
 ss_time: 0.3
 ds_time: 0.1

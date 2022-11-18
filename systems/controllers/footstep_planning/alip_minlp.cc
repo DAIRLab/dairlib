@@ -71,7 +71,7 @@ void AlipDynamicsConstraint::EvaluateConstraint(
   Vector4d x1 = xd.segment(5, 4);
   double t = xd(xd.size() -1) / n_;
 
-  Matrix4d Ad = (t * A_).exp();
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
   Vector4d Bd = A_inv_ * (Ad - Matrix4d::Identity()) * B_;
 
   VectorXd y0 = Ad * x0 + Bd * u0 - x1;
@@ -221,7 +221,7 @@ void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
 
 void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
   MatrixXd A = alip_utils::CalcA(H_, m_);
-  Matrix4d Ad = (Tds_ * A).exp();
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, Tds_);
   Matrix4d Adinv = Ad.inverse();
   Matrix4d Ainv = A.inverse();
   Matrix4d I = Matrix4d::Identity();
@@ -256,7 +256,7 @@ void AlipMINLP::MakeDynamicsConstraints() {
   for (int i = 0; i < nmodes_; i++) {
     vector<Binding<LinearEqualityConstraint>> dyn_c_this_mode;
     double t = tt_(i) / (nknots_.at(i) - 1);
-    Matrix4d Ad = (t * alip_utils::CalcA(H_, m_)).exp();
+    Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
     Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
 
     Matrix<double, 4, 9> Adyn = Matrix<double, 4, 9>::Zero();
@@ -279,20 +279,25 @@ void AlipMINLP::MakeDynamicsConstraints() {
 void AlipMINLP::MakeInitialFootstepConstraint() {
   initial_foot_c_ = prog_->AddLinearEqualityConstraint(
       Matrix3d::Identity(), Vector3d::Zero(), pp_.at(0)).evaluator();
+  initial_foot_c_->set_description("initial_footstep");
 }
 
 void AlipMINLP::MakeInitialStateConstraint() {
   initial_state_c_ = prog_->AddLinearEqualityConstraint(
       Matrix4d::Identity(), Vector4d::Zero(), xx_.at(0).at(0)).evaluator();
+  initial_state_c_->set_description("initial_state");
 }
 
 void AlipMINLP::MakeInputBoundConstaints() {
   DRAKE_DEMAND(umax_ >= 0 && !uu_.empty());
+  int i = 0;
   for (const auto& vec : uu_) {
     for (const auto& u : vec) {
       input_bounds_c_.push_back(
           prog_->AddBoundingBoxConstraint(-umax_, umax_, u)
       );
+      i++;
+      input_bounds_c_.back().evaluator()->set_description("input bounds" + std::to_string(i));
     }
   }
 }
@@ -315,6 +320,7 @@ void AlipMINLP::MakeNextFootstepReachabilityConstraint() {
       -numeric_limits<double>::infinity()*VectorXd::Ones(1),
       VectorXd::Zero(1), pp_.at(1))
   .evaluator();
+  next_step_reach_c_fixed_->set_description("next footstep workspace constraint");
 }
 
 void AlipMINLP::MakeNoCrossoverConstraint() {
@@ -326,6 +332,8 @@ void AlipMINLP::MakeNoCrossoverConstraint() {
             A, -numeric_limits<double>::infinity(), -0.04,
             {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)})
     );
+    no_crossover_constraint_.back().evaluator()->set_description(
+        "no crossover constraint" + std::to_string(i));
   }
 }
 
@@ -349,7 +357,7 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   // Set the initial guess for the current mode based on limited time
   vector<Vector4d> xx;
   xx.push_back(x0);
-  Matrix4d Ad = (tt_(0) / (nknots_.front() - 1) * alip_utils::CalcA(H_, m_)).exp();
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(0) / (nknots_.front() - 1));
   for (int i = 1; i < nknots_.front(); i++) {
     xx.push_back(Ad * xx.at(i-1));
   }
@@ -412,12 +420,12 @@ void AlipMINLP::UpdateModeTimingsOnTouchdown() {
 }
 
 void AlipMINLP::UpdateTimingGradientStep() {
+  Vector4d B = Vector4d::UnitW();
   for (int n = 0; n < nmodes_; n++) {
     double dLdt_n = 0;
+    Matrix4d A = alip_utils::CalcA(H_, m_);
+    Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(n) / (nknots_.at(n) - 1));
     for (int k = 0; k < nknots_.at(n) - 1; k++) {
-      Matrix4d A = alip_utils::CalcA(H_, m_);
-      Vector4d B = Vector4d::UnitW();
-      Matrix4d Ad = (A * tt_(n) / (nknots_.at(n) - 1)).exp();
       Vector4d nu = solution_.second.at(n).at(k);
       VectorXd x = solution_.first.GetSolution(xx_.at(n).at(k));
       VectorXd u = solution_.first.GetSolution(uu_.at(n).at(k));
@@ -431,18 +439,18 @@ void AlipMINLP::UpdateTimingGradientStep() {
 void AlipMINLP::UpdateDynamicsConstraints() {
   for (int n = 0; n < nmodes_; n++) {
     int nk =  nknots_.at(n) - 1;
+    double t = tt_(n) / nk;
+    Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
+    Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
+    Matrix<double, 4, 9> Adyn = Matrix<double, 4, 9>::Zero();
+    Adyn.leftCols<4>() = Ad;
+    Adyn.col(4) = Bd;
+    Adyn.rightCols<4>() = -Matrix4d::Identity();
+    Vector4d bdyn = Vector4d::Zero();
     for (int k = 0; k < nk; k++) {
-      double t = tt_(n) / nk;
-      Matrix4d Ad = (t * alip_utils::CalcA(H_, m_)).exp();
-      Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
-      Matrix<double, 4, 9> Adyn = Matrix<double, 4, 9>::Zero();
-      Adyn.leftCols<4>() = Ad;
-      Adyn.col(4) = Bd;
-      Adyn.rightCols<4>() = -Matrix4d::Identity();
-      dynamics_c_.at(n).at(k).evaluator()->UpdateCoefficients(Adyn, Vector4d::Zero());
+      dynamics_c_.at(n).at(k).evaluator()->UpdateCoefficients(Adyn, bdyn);
     }
   }
-
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {
@@ -533,7 +541,7 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
   double Ly = H_ * m_ * vdes(0);
   double Lx = H_ * m_ * omega * step_width * tanh(omega * Ts / 2);
   double dLx = - H_ * m_ * vdes(1);
-  Matrix4d Ad = ((Ts / (nk-1)) * alip_utils::CalcA(H_, m_)).exp();
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, (Ts / (nk-1)));
   vector<vector<Vector4d>> xx;
 
   Eigen::MatrixPower<Matrix4d> APow(Ad);
@@ -563,8 +571,8 @@ vector<Vector4d> AlipMINLP::MakeXdesTrajForCurrentStep(
   double Lx = H_ * m_ * omega * step_width * tanh(omega * Ts / 2);
   double dLx = -H_ * m_ * vdes(1);
 
-  MatrixXd Ad0 = (t_current * alip_utils::CalcA(H_, m_)).exp();
-  Matrix4d Ad = ((t_remain / (nk-1)) * alip_utils::CalcA(H_, m_)).exp();
+  Matrix4d Ad0 = alip_utils::CalcAd(H_, m_, t_current);
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, t_remain / (nk-1));
   Eigen::MatrixPower<Matrix4d> APow(Ad);
 
   Vector4d x0(

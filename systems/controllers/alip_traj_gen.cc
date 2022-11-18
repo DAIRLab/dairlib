@@ -223,8 +223,10 @@ void ALIPTrajGenerator::CalcAlipState(
     const drake::EigenPtr<Eigen::Vector3d>& L_p,
     const drake::EigenPtr<Eigen::Vector3d>& stance_pos_p) const {
 
+  int npoints = contact_points_in_each_state_[mode_index].size();
   controllers::alip_utils::CalcAlipState(plant_, context_, x,
-      contact_points_in_each_state_[mode_index], CoM_p, L_p, stance_pos_p);
+      contact_points_in_each_state_[mode_index],
+      std::vector<double>(npoints, 1.0 / npoints), CoM_p, L_p, stance_pos_p);
 }
 
 void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<

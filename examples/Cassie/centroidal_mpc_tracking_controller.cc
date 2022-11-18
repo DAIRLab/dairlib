@@ -11,7 +11,6 @@
 #include "examples/Cassie/kinematic_centroidal_planner/contact_scheduler.h"
 #include "examples/Cassie/kinematic_centroidal_planner/kinematic_trajectory_generator.h"
 #include "examples/Cassie/osc_jump/osc_jumping_gains.h"
-#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "systems/controllers/controller_failure_aggregator.h"
@@ -64,7 +63,7 @@ DEFINE_string(
     "CASSIE_STATE_DISPATCHER for use on hardware with the state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel where control efforts are published");
-DEFINE_string(channel_reference, "KCMPC_REF",
+DEFINE_string(channel_reference, "KCMPC_OUTPUT",
               "The name of the channel where the reference trajectories from "
               "MPC are published");
 DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
@@ -487,25 +486,6 @@ int DoMain(int argc, char* argv[]) {
       &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
-  /// Fixing the reference trajectories for now.
-  /// TODO(yangwill): set up the subscriber and publisher for the reference
-  /// trajectories
-  const LcmTrajectory& lcm_traj =
-      LcmTrajectory(FindResourceOrThrow(output_traj_path));
-  auto& state_reference_receiver_context =
-      loop.get_diagram()->GetMutableSubsystemContext(
-          *state_reference_receiver, &loop.get_diagram_mutable_context());
-  auto& contact_force_reference_receiver_context =
-      loop.get_diagram()->GetMutableSubsystemContext(
-          *contact_force_reference_receiver,
-          &loop.get_diagram_mutable_context());
-  dairlib::lcmt_timestamped_saved_traj timestamped_msg;
-  timestamped_msg.saved_traj = lcm_traj.GenerateLcmObject();
-  timestamped_msg.utime = 1.0;
-  state_reference_receiver->get_input_port().FixValue(
-      &state_reference_receiver_context, timestamped_msg);
-  contact_force_reference_receiver->get_input_port().FixValue(
-      &contact_force_reference_receiver_context, timestamped_msg);
   loop.Simulate();
 
   return 0;

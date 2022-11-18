@@ -3,6 +3,7 @@ package(default_visibility = ["//visibility:public"])
 filegroup(
     name = "motions",
     data = ["motion_test.yaml",
+            "motion_left_step.yaml",
            "motion_jump.yaml"],
     visibility = ["//visibility:public"],
 )

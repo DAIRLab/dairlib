@@ -209,7 +209,7 @@ class KinematicCentroidalSolver {
    * @param n_knot_points lcm_channel for where to publish
    * @throws exception Solve() has not been called.
    */
-  void SerializeSolution(int n_knot_points);
+  void SerializeSolution(int n_knot_points, double time_offset = 0);
 
   /*!
    *
@@ -217,7 +217,8 @@ class KinematicCentroidalSolver {
    * @param lcm_channel lcm_channel for where to publish
    * @throws exception Solve() has not been called.
    */
-  dairlib::lcmt_saved_traj GenerateLcmTraj(int n_knot_points);
+  dairlib::lcmt_saved_traj GenerateLcmTraj(int n_knot_points,
+                                           double time_offset = 0);
 
   /*!
    *
@@ -271,8 +272,8 @@ class KinematicCentroidalSolver {
   void SetForceGuess(
       const drake::trajectories::PiecewisePolynomial<double>& force_trajectory);
 
-  void CreateVisualizationCallback(std::string model_file, double alpha,
-                                   std::string weld_frame_to_world = "");
+  void CreateVisualizationCallback(const std::string& model_file, double alpha,
+                                   const std::string& weld_frame_to_world = "");
 
   /*!
    * @brief Add a bounding box constraint to a contact position for all knot
@@ -374,14 +375,20 @@ class KinematicCentroidalSolver {
   void AddFrictionConeConstraints();
 
   //  void AddTorqueLimits();
+  /*!
+   * @brief Get corresponding weight for a knot_point
+   */
+  double GetKnotpointGain(int knot_point) const;
 
   /*!
    * @brief Add costs from internally stored variables
    */
   void AddCosts();
 
-  bool is_first_knot(int knot_point_index) { return knot_point_index == 0; };
-  bool is_last_knot(int knot_point_index) {
+  bool is_first_knot(int knot_point_index) const {
+    return knot_point_index == 0;
+  };
+  bool is_last_knot(int knot_point_index) const {
     return knot_point_index == n_knot_points_ - 1;
   };
 
@@ -442,7 +449,8 @@ class KinematicCentroidalSolver {
   // center of mass position
   std::vector<drake::solvers::VectorXDecisionVariable> com_vars_;
 
-  // Contact position, velocity, and force [n_knot_points, 3 * n_contact_points]
+  // Contact position, velocity, and force [n_knot_points, 3 *
+  // n_contact_points]
   std::vector<drake::solvers::VectorXDecisionVariable> contact_pos_;
   std::vector<drake::solvers::VectorXDecisionVariable> contact_vel_;
   std::vector<drake::solvers::VectorXDecisionVariable> contact_force_;

@@ -1,4 +1,4 @@
-n_knot_points: 15
+n_knot_points: 25
 target_com_height: 0.8
 stance_width: 0.25
 swing_foot_minimum_height: 0.03
@@ -7,5 +7,5 @@ duration_scaling:
 gait_sequence: [ 'stand', 'left_step', 'stand' ]
 com_vel_values:
   [ 0, 0, 0,
-    0.25, 0, 0,
+    0.5, 0, 0,
     0, 0, 0 ]

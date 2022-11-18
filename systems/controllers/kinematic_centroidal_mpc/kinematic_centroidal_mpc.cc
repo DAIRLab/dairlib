@@ -27,8 +27,8 @@ namespace dairlib {
 KinematicCentroidalMPC::KinematicCentroidalMPC(
     const drake::multibody::MultibodyPlant<double>& plant_w_spr,
     const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-    drake::systems::Context<double>* context, TrajectoryParameters motion,
-    KinematicCentroidalGains gains)
+    drake::systems::Context<double>* context, const TrajectoryParameters& motion,
+    const KinematicCentroidalGains& gains)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_wo_spr_(context),
@@ -55,7 +55,7 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(
   gait_library_["left_step"] = left_step;
   gait_library_["jump"] = jump;
 
-  for (auto gait : motion.gait_sequence) {
+  for (const auto& gait : motion.gait_sequence) {
     gait_samples_.push_back(gait_library_.at(gait));
   }
   DRAKE_DEMAND(gait_samples_.size() == motion.duration_scaling.size());
@@ -215,7 +215,7 @@ void KinematicCentroidalMPC::CalcTraj(
 
   std::cout << "Solving optimization\n\n";
   solver_->Solve();
-  traj->saved_traj = solver_->GenerateLcmTraj(n_knot_points_);
+  traj->saved_traj = solver_->GenerateLcmTraj(n_knot_points_, robot_output->get_timestamp() + 1.0);
   traj->utime = robot_output->get_timestamp() * 1e6;
 }
 

@@ -17,7 +17,7 @@ using Eigen::VectorXd;
 
 namespace examples {
 
-DEFINE_string(channel_reference, "KCMPC_REF",
+DEFINE_string(channel_reference, "KCMPC_OUTPUT",
               "The name of the channel where the reference trajectories from "
               "MPC are published");
 DEFINE_int32(num_poses, 10, "Number of poses per mode to draw");

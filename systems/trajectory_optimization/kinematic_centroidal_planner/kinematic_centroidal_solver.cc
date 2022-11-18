@@ -255,16 +255,21 @@ void KinematicCentroidalSolver::SetConstantMomentumReference(
           value));
 }
 
+double KinematicCentroidalSolver::GetKnotpointGain(int knot_point) const {
+  const double terminal_gain = is_last_knot(knot_point) ? 100 : 1;
+  const double collocation_gain =
+      (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
+  return terminal_gain * collocation_gain;
+}
+
 void KinematicCentroidalSolver::AddCosts() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    const double terminal_gain = is_last_knot(knot_point) ? 100 : 1;
-    const double collocation_gain =
-        (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
+    double knot_point_gain = GetKnotpointGain(knot_point);
     double t = dt_ * knot_point;
     if (q_ref_traj_) {
       q_ref_cost_.push_back(
           prog_
-              ->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_q_,
+              ->AddQuadraticErrorCost(knot_point_gain * Q_q_,
                                       q_ref_traj_->value(t),
                                       state_vars(knot_point).head(n_q_))
               .evaluator());
@@ -272,7 +277,7 @@ void KinematicCentroidalSolver::AddCosts() {
     if (v_ref_traj_) {
       v_ref_cost_.push_back(
           prog_
-              ->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_v_,
+              ->AddQuadraticErrorCost(knot_point_gain * Q_v_,
                                       v_ref_traj_->value(t),
                                       state_vars(knot_point).tail(n_v_))
               .evaluator());
@@ -280,7 +285,7 @@ void KinematicCentroidalSolver::AddCosts() {
     if (com_ref_traj_) {
       com_ref_cost_.push_back(
           prog_
-              ->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_com_,
+              ->AddQuadraticErrorCost(knot_point_gain * Q_com_,
                                       com_ref_traj_->value(t),
                                       com_pos_vars(knot_point))
               .evaluator());
@@ -288,7 +293,7 @@ void KinematicCentroidalSolver::AddCosts() {
     if (mom_ref_traj_) {
       mom_ref_cost_.push_back(
           prog_
-              ->AddQuadraticErrorCost(collocation_gain * terminal_gain * Q_mom_,
+              ->AddQuadraticErrorCost(knot_point_gain * Q_mom_,
                                       mom_ref_traj_->value(t),
                                       momentum_vars(knot_point))
               .evaluator());
@@ -297,17 +302,16 @@ void KinematicCentroidalSolver::AddCosts() {
       contact_ref_cost_.push_back(
           prog_
               ->AddQuadraticErrorCost(
-                  collocation_gain * terminal_gain * Q_contact_,
-                  contact_ref_traj_->value(t),
+                  knot_point_gain * Q_contact_, contact_ref_traj_->value(t),
                   {contact_pos_[knot_point], contact_vel_[knot_point]})
               .evaluator());
     }
     if (force_ref_traj_) {
       force_ref_cost_.push_back(
           prog_
-              ->AddQuadraticErrorCost(
-                  collocation_gain * terminal_gain * Q_force_,
-                  force_ref_traj_->value(t), contact_force_[knot_point])
+              ->AddQuadraticErrorCost(knot_point_gain * Q_force_,
+                                      force_ref_traj_->value(t),
+                                      contact_force_[knot_point])
               .evaluator());
     }
   }
@@ -315,43 +319,37 @@ void KinematicCentroidalSolver::AddCosts() {
 
 void KinematicCentroidalSolver::UpdateCosts() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    const double terminal_gain = is_last_knot(knot_point) ? 100 : 1;
-    const double collocation_gain =
-        (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
+    const double knot_point_gain = GetKnotpointGain(knot_point);
     double t = dt_ * knot_point;
     if (q_ref_cost_[knot_point]) {
       q_ref_cost_[knot_point]->UpdateCoefficients(
-          collocation_gain * terminal_gain * 2 * Q_q_,
-          -collocation_gain * terminal_gain * 2 * Q_q_ * q_ref_traj_->value(t));
+          knot_point_gain * 2 * Q_q_,
+          -knot_point_gain * 2 * Q_q_ * q_ref_traj_->value(t));
     }
     if (v_ref_cost_[knot_point]) {
       v_ref_cost_[knot_point]->UpdateCoefficients(
-          collocation_gain * terminal_gain * 2 * Q_v_,
-          -collocation_gain * terminal_gain * 2 * Q_v_ * v_ref_traj_->value(t));
+          knot_point_gain * 2 * Q_v_,
+          -knot_point_gain * 2 * Q_v_ * v_ref_traj_->value(t));
     }
     if (com_ref_cost_[knot_point]) {
       com_ref_cost_[knot_point]->UpdateCoefficients(
-          collocation_gain * terminal_gain * 2 * Q_com_,
-          -collocation_gain * terminal_gain * 2 * Q_com_ *
-              com_ref_traj_->value(t));
+          knot_point_gain * 2 * Q_com_,
+          -knot_point_gain * 2 * Q_com_ * com_ref_traj_->value(t));
     }
     if (mom_ref_cost_[knot_point]) {
       mom_ref_cost_[knot_point]->UpdateCoefficients(
-          collocation_gain * terminal_gain * 2 * Q_mom_,
-          -collocation_gain * terminal_gain * 2 * Q_mom_ *
-              mom_ref_traj_->value(t));
+          knot_point_gain * 2 * Q_mom_,
+          -knot_point_gain * 2 * Q_mom_ * mom_ref_traj_->value(t));
     }
     if (contact_ref_cost_[knot_point]) {
       contact_ref_cost_[knot_point]->UpdateCoefficients(
-          collocation_gain * terminal_gain * 2 * Q_contact_,
-          -collocation_gain * terminal_gain * 2 * Q_contact_ *
-              contact_ref_traj_->value(t));
+          knot_point_gain * 2 * Q_contact_,
+          -knot_point_gain * 2 * Q_contact_ * contact_ref_traj_->value(t));
     }
     if (force_ref_cost_[knot_point]) {
       force_ref_cost_[knot_point]->UpdateCoefficients(
-          collocation_gain * terminal_gain * 2 * Q_force_,
-          -collocation_gain * terminal_gain * 2 * Q_force_ *
-              force_ref_traj_->value(t));
+          knot_point_gain * 2 * Q_force_,
+          -knot_point_gain * 2 * Q_force_ * force_ref_traj_->value(t));
     }
   }
 }
@@ -373,12 +371,14 @@ void KinematicCentroidalSolver::SetZeroInitialGuess() {
 
 drake::trajectories::PiecewisePolynomial<double>
 KinematicCentroidalSolver::Solve() {
+  double solve_time;
   for (int i = 0; i < 1; i++) {
     auto start = std::chrono::high_resolution_clock::now();
     solver_->Solve(*prog_, prog_->initial_guess(), prog_->solver_options(),
                    result_.get());
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
+    solve_time = elapsed.count();
     std::cout << "Solve time:" << elapsed.count() << std::endl;
     std::cout << "Cost:" << result_->get_optimal_cost() << std::endl;
     prog_->SetInitialGuessForAllVariables(result_->GetSolution());
@@ -394,7 +394,8 @@ KinematicCentroidalSolver::Solve() {
       time_points, states);
 }
 
-void KinematicCentroidalSolver::SerializeSolution(int n_knot_points) {
+void KinematicCentroidalSolver::SerializeSolution(int n_knot_points,
+                                                  double time_offset) {
   DRAKE_DEMAND(result_->is_success());
 
   Eigen::MatrixXd state_points;
@@ -402,6 +403,9 @@ void KinematicCentroidalSolver::SerializeSolution(int n_knot_points) {
   std::vector<double> time_samples;
   this->SetFromSolution(*result_, &state_points, &contact_force_points,
                         &time_samples);
+  for (auto& t : time_samples) {
+    t += time_offset;
+  }
 
   int knot_points_to_serialize =
       n_knot_points == -1 ? time_samples.size() : n_knot_points;
@@ -435,8 +439,8 @@ void KinematicCentroidalSolver::SerializeSolution(int n_knot_points) {
 }
 
 dairlib::lcmt_saved_traj KinematicCentroidalSolver::GenerateLcmTraj(
-    int n_knot_points) {
-  SerializeSolution(n_knot_points);
+    int n_knot_points, double time_offset) {
+  SerializeSolution(n_knot_points, time_offset);
   return lcm_trajectory_.GenerateLcmObject();
 }
 
@@ -480,7 +484,8 @@ void KinematicCentroidalSolver::SetFromSolution(
 }
 
 void KinematicCentroidalSolver::CreateVisualizationCallback(
-    std::string model_file, double alpha, std::string weld_frame_to_world) {
+    const std::string& model_file, double alpha,
+    const std::string& weld_frame_to_world) {
   DRAKE_DEMAND(!callback_visualizer_);  // Cannot be set twice
 
   // Assemble variable list

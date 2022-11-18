@@ -89,7 +89,6 @@ int DoMain(int argc, char* argv[]) {
   gait_library["left_step"] = left_step;
   gait_library["jump"] = jump;
   // Create reference
-  // TODO(yangwill): move this into the reference generator
   std::vector<Gait> gait_samples;
   for (auto gait : traj_params.gait_sequence){
     gait_samples.push_back(gait_library.at(gait));

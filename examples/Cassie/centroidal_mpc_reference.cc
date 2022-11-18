@@ -59,7 +59,7 @@ DEFINE_string(planner_parameters,
               "kinematic_centroidal_mpc_gains.yaml",
               "planner parameters containing initial states and other "
               "regularization parameters");
-DEFINE_string(channel_reference, "KCMPC_REF",
+DEFINE_string(channel_reference, "KCMPC_OUTPUT",
               "The name of the channel where the reference trajectories from "
               "MPC are published");
 DEFINE_string(

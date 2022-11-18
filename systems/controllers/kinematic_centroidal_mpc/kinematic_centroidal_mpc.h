@@ -19,8 +19,8 @@ class KinematicCentroidalMPC : public drake::systems::LeafSystem<double> {
   KinematicCentroidalMPC(
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      drake::systems::Context<double>* context, TrajectoryParameters motion,
-      KinematicCentroidalGains gains);
+      drake::systems::Context<double>* context, const TrajectoryParameters& motion,
+      const KinematicCentroidalGains& gains);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);

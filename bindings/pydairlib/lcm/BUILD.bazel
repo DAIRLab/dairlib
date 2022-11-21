@@ -44,28 +44,6 @@ pybind_py_library(
     py_imports = ["."],
 )
 
-py_binary(
-    name = "lcm_trajectory_plotter",
-    srcs = [":lcm_trajectory_plotter.py"],
-    deps = [
-        ":lcm_trajectory_py",
-        ":module_py",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-py_binary(
-    name = "dircon_trajectory_plotter",
-    srcs = [":dircon_trajectory_plotter.py"],
-    deps = [
-        ":lcm_trajectory_py",
-        ":module_py",
-        "//bindings/pydairlib/common",
-        "//bindings/pydairlib/multibody:multibody_py",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

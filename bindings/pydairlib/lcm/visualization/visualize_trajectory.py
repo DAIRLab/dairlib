@@ -25,12 +25,6 @@ def main():
                        False, False)
 
     plant_wo_spr.Finalize()
-    # plant_w_spr, scene_graph_w_spr = AddMultibodyPlantSceneGraph(builder, 0.0)
-    # AddCassieMultibody(plant_w_spr, scene_graph_w_spr,
-    #                    True, "examples/Cassie/urdf/cassie_v2_shells.urdf",
-    #                    False, False)
-    #
-    # plant_w_spr.Finalize()
 
     nq = plant_wo_spr.num_positions()
     nv = plant_wo_spr.num_velocities()

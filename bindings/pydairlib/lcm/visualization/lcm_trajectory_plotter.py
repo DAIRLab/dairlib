@@ -6,10 +6,6 @@ from pydrake.trajectories import PiecewisePolynomial
 
 def main():
     loadedTrajs = lcm_trajectory.LcmTrajectory()
-    # loadedTrajs.LoadFromFile(
-    #     "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/jumping_0.15h_0.3d_processed")
-    # loadedTrajs.LoadFromFile(
-    #     "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/walking_0.16.0_processed")
     loadedTrajs.LoadFromFile(
         "/home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/running_0.00_processed_rel")
 
@@ -59,29 +55,7 @@ def main():
             PiecewisePolynomial.CubicHermite(lcm_pelvis_traj.time_vector, lcm_pelvis_traj.datapoints[x_slice],
                                              lcm_pelvis_traj.datapoints[xdot_slice]))
 
-    # plt.figure('accel')
-    # plt.plot(lcm_left_foot_traj.time_vector, lcm_left_foot_traj.datapoints.T[:,2:3])
-    # plt.plot(lcm_left_foot_traj.time_vector, lcm_left_foot_traj.datapoints.T[:,5:6])
-    # plt.plot(times, accel[:, -1])
-    # plt.figure("left_foot pos")
-    # plt.plot(lcm_left_foot_traj.time_vector, lcm_left_foot_traj.datapoints.T[:,0:3])
-    # plt.legend(['x','y','z'])
-    # plt.figure("left_foot vel")
-    # plt.plot(lcm_left_foot_traj.time_vector, lcm_left_foot_traj.datapoints.T[:,3:6])
-    # plt.legend(['x','y','z'])
-    # plt.figure("right_foot pos")
-    # plt.plot(lcm_right_foot_traj.time_vector, lcm_right_foot_traj.datapoints.T[:,0:3])
-    # plt.legend(['x','y','z'])
-    # plt.figure("right_foot vel")
-    # plt.plot(lcm_right_foot_traj.time_vector, lcm_right_foot_traj.datapoints.T[:,3:6])
-    # plt.legend(['x','y','z'])
-
-    # reconstruct_trajectory(left_foot_traj)
     reconstruct_trajectory_left_ft(left_foot_traj)
-
-    # plot_trajectory(pelvis_traj, 'pelvis')
-    # plot_trajectory(left_foot_traj - left_hip_traj, 'left_foot')
-    # plot_trajectory(right_foot_traj, 'right_foot')
     plt.show()
 
 
@@ -112,7 +86,6 @@ def plot_trajectory(traj_of_interest, traj_name):
     plt.figure(traj_name + "_acc")
     plt.plot(times, accel)
     plt.legend(['xdot', 'ydot', 'zdot', 'xddot', 'yddot', 'zddot'])
-    # plt.legend(['pos','vel','accel'])
 
 
 def reconstruct_trajectory(trajectory):
@@ -130,8 +103,6 @@ def reconstruct_trajectory(trajectory):
     Ydot_start = np.zeros(3)
     Ydot_end = np.zeros(3)
 
-    # traj = PiecewisePolynomial.CubicShapePreserving(T_waypoints, Y, True)
-    # traj = PiecewisePolynomial.CubicWithContinuousSecondDerivatives(T_waypoints, Y, Ydot_start, Ydot_end)
     traj = PiecewisePolynomial.CubicWithContinuousSecondDerivatives(T_waypoints, Y, Ydot_start, Ydot_end)
 
     plot_trajectory(traj, "reconstructed_trajectory")
@@ -171,7 +142,6 @@ def reconstruct_trajectory_left_ft(trajectory):
     Ydot_end = np.zeros(3)
 
     print(np.array([end_pos, segment_1_start]))
-    # traj = PiecewisePolynomial.CubicShapePreserving(T_waypoints, Y, True)
     traj_0 = PiecewisePolynomial.CubicHermite(T_waypoints_0,
                                               np.array([segment_0_start, segment_0_midpoint, segment_0_end]).T,
                                               np.array([d_segment_0_start, d_segment_0_midpoint, d_segment_0_end]).T)

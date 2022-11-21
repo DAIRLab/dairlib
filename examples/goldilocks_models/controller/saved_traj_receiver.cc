@@ -204,6 +204,8 @@ SavedTrajReceiver::SavedTrajReceiver(
   } else {
     swing_foot_target_offset_x_ = gains.swing_foot_target_offset_x;
   }
+  final_foot_height_offset_for_right_leg_ =
+      gains.final_foot_height_offset_for_right_leg;
 
   // // [Test sim gap] -- use trajopt's traj directly in OSC
   //  std::string dir = gains.dir_model + std::to_string(gains.model_iter) + "_"
@@ -456,6 +458,9 @@ void SavedTrajReceiver::CalcSwingFootTraj(
           end_foot_pos(2) =
               context.get_discrete_state(liftoff_swing_foot_pos_idx_)
                   .get_value()(2);
+          if (!left_stance) {
+            end_foot_pos(2) += final_foot_height_offset_for_right_leg_;
+          }
           if (wrt_com_in_local_frame_) {
             end_foot_pos.head<2>() =
                 view_frame_feedback_

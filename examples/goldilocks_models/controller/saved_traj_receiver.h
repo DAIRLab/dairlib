@@ -155,6 +155,7 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
 
   // Heuristic
   double swing_foot_target_offset_x_;
+  double final_foot_height_offset_for_right_leg_;
 };
 
 // We have IKTrajReceiver beside SavedTrajReceiver, because it also extracts the

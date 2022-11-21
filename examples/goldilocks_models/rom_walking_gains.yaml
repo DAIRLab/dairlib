@@ -207,6 +207,8 @@ swing_foot_target_offset_x: -0.0197 #-0.01
                                    # Note that we only use this when relative_swing_ft is true because it's in local frame
                                    # Also, this is probably necessary for hybrid rom MPC
 
+# Swing foot heuristics for the hardware (there is asymmetry in the legs; the right foot sometimes hovers above the ground and then stomps)
+final_foot_height_offset_for_right_leg: -0.02
 
 #High level command gains(without radio)
 yaw_deadband_blur: 5

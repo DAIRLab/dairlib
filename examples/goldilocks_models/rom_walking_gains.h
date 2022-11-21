@@ -64,6 +64,7 @@ struct RomWalkingGains {
 
   bool relative_swing_ft;
   double swing_foot_target_offset_x;
+  double final_foot_height_offset_for_right_leg;
   double max_CoM_to_footstep_dist;
   double center_line_offset;
   double footstep_offset;
@@ -179,6 +180,7 @@ struct RomWalkingGains {
 
     a->Visit(DRAKE_NVP(relative_swing_ft));
     a->Visit(DRAKE_NVP(swing_foot_target_offset_x));
+    a->Visit(DRAKE_NVP(final_foot_height_offset_for_right_leg));
     // swing foot heuristics
     a->Visit(DRAKE_NVP(max_CoM_to_footstep_dist));
     a->Visit(DRAKE_NVP(center_line_offset));

@@ -283,6 +283,9 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_track_mid_contact_pt) {
     gains.swing_foot_target_offset_x = 0;
   }
+  if (!FLAGS_hardware) {
+    gains.final_foot_height_offset_for_right_leg = 0;
+  }
 
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model

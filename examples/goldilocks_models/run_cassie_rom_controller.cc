@@ -457,6 +457,12 @@ int DoMain(int argc, char* argv[]) {
             &lcm_local));
     builder.Connect(cassie_out_receiver->get_output_port(),
                     high_level_command->get_cassie_output_port());
+
+    // hack: help rom_iter=300 walk in place at start
+    if (!FLAGS_close_sim_gap) {
+      high_level_command->vel_command_offset_x_ =
+          0.1 * (gains.model_iter / 300);
+    }
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,

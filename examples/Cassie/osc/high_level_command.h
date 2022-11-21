@@ -82,6 +82,10 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
     return this->get_output_port(xy_port_);
   }
 
+  /// For optimal ROM
+  double vel_command_offset_x_ = 0;
+  /// ///
+
  private:
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context);

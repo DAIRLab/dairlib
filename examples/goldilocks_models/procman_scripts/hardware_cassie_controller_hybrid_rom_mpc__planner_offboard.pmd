@@ -153,6 +153,8 @@ script "4.0. prepare mpc init file" {
     wait ms 500;
     stop cmd "2.1.0.optimal-rom-walking-controller (to generate init file)";
     stop cmd "2.1.1.rom-planner (to generate init file)";
+    start cmd "2.2 create folder for init file for controller";
+    wait ms 100;
     start cmd "2.3 scp init file for controller";
 }
 
@@ -178,7 +180,7 @@ script "5. stop logging" {
 }
 
 script "6. post walking script" {
-    start cmd "4.0 rename data to data_x";
+    start cmd "2.0.0 rename data to data_x";
 }
 
 script "switch to default walking (test)" {

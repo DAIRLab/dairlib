@@ -67,7 +67,7 @@ lightweight_lcm_log: false
 
 # Heuristics
 w_rom_contact_force_reg: 1e-8  #1e-6   # penalize the front contact point for optimal model to help OSC-QP find the optimal sol (small regularization term)
-
+vel_command_offset_x: 0.1   # hack: help rom_iter=300 walk in place at start
 
 ### High-level command (for both planner and controller)
 global_target_position_x: 10000

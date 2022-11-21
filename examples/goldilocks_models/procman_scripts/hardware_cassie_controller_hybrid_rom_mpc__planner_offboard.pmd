@@ -66,7 +66,7 @@ group "2.setup" {
         host = "dair-cassie";
     }
     cmd "4.2.switch-to-rom-mpc" {
-        exec = "bazel-bin/examples/goldilocks_models/run_rom_controller_switch --blend_duration=0.15";
+        exec = "bazel-bin/examples/goldilocks_models/run_rom_controller_switch --blend_duration=0.05";
         host = "dair-cassie";
     }
     cmd "4.0.controller-switch-to-standing" {

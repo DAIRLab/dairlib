@@ -15,6 +15,7 @@ struct RomWalkingGains {
   bool use_hybrid_rom_mpc;
   bool lightweight_lcm_log;
   double w_rom_contact_force_reg;
+  double vel_command_offset_x;
   bool use_radio;
   bool use_virtual_radio;
   bool set_constant_walking_speed;
@@ -130,6 +131,7 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(use_hybrid_rom_mpc));
     a->Visit(DRAKE_NVP(lightweight_lcm_log));
     a->Visit(DRAKE_NVP(w_rom_contact_force_reg));
+    a->Visit(DRAKE_NVP(vel_command_offset_x));
     a->Visit(DRAKE_NVP(use_radio));
     a->Visit(DRAKE_NVP(use_virtual_radio));
     a->Visit(DRAKE_NVP(set_constant_walking_speed));

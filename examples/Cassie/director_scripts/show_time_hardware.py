@@ -26,6 +26,7 @@ class TimeVisualizer(object):
             channel = pd_panel_state_channel
         else:
             channel = "NETWORK_CASSIE_STATE_DISPATCHER"
+            # channel = "CASSIE_STATE_DISPATCHER"
             # channel = "CASSIE_STATE_SIMULATION"
 
         self._subscriber = lcmUtils.addSubscriber(

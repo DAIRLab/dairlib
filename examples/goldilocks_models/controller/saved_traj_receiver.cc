@@ -458,9 +458,6 @@ void SavedTrajReceiver::CalcSwingFootTraj(
           end_foot_pos(2) =
               context.get_discrete_state(liftoff_swing_foot_pos_idx_)
                   .get_value()(2);
-          if (!left_stance) {
-            end_foot_pos(2) += final_foot_height_offset_for_right_leg_;
-          }
           if (wrt_com_in_local_frame_) {
             end_foot_pos.head<2>() =
                 view_frame_feedback_
@@ -484,6 +481,9 @@ void SavedTrajReceiver::CalcSwingFootTraj(
           } else {
             Y.at(1)(2) += desired_mid_foot_height_;
             Y.at(2)(2) += desired_final_foot_height_;
+          }
+          if (left_stance) {
+            Y.at(2)(2) += final_foot_height_offset_for_right_leg_;
           }
 
           // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to

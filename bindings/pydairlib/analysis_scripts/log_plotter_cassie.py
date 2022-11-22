@@ -100,7 +100,7 @@ def main():
 
   # Load the main log file
   x, u_meas, imu_aceel, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
-  osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+  osc_debug, osc_debug_reg_cost, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   u_dispatcher, t_u_dispatcher, \
   osc_output, input_supervisor_status, t_input_supervisor, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
@@ -198,7 +198,7 @@ def main():
   if filename2 != "":
     log2 = lcm.EventLog(filename2, "r")
     x2, u_meas, imu_aceel, t_x2, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
-    osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+    osc_debug, osc_debug_reg_cost, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
     u_dispatcher, t_u_dispatcher, \
     osc_output, input_supervisor_status, t_input_supervisor, full_log = process_lcm_log.process_log(log2, pos_map, vel_map, act_map, controller_channel)
 
@@ -665,36 +665,76 @@ def plot_contact_est(log, t_osc_debug, fsm, t_u, u, t_x, x, u_meas):
   # plt.legend(["l_contact", "r_contact", "fsm", "pelvis y (%dx)" % y_scale, "pelvis ydot (%dx)" % ydot_scale])
 
 
-def plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output):
-  input_cost = np.zeros(t_osc_debug.shape[0])
-  acceleration_cost = np.zeros(t_osc_debug.shape[0])
-  soft_constraint_cost = np.zeros(t_osc_debug.shape[0])
-  tracking_cost = np.zeros((t_osc_debug.shape[0], len(osc_debug)))
+def plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out, estop_signal, osc_output):
+  """
+  1. Plot trajectories
+  """
+  # input_cost = np.zeros(t_osc_debug.shape[0])
+  # acceleration_cost = np.zeros(t_osc_debug.shape[0])
+  # soft_constraint_cost = np.zeros(t_osc_debug.shape[0])
+  tracking_costs = np.zeros((t_osc_debug.shape[0], len(osc_debug)))
   tracking_cost_map = dict()
   num_tracking_cost = 0
+  reg_costs = np.zeros((t_osc_debug.shape[0], len(osc_debug_reg_cost)))
+  reg_cost_map = dict()
+  num_reg_cost = 0
 
+  reg_cost_names = list(osc_debug_reg_cost.keys())
+
+  # i is the time index
   for i in range(t_osc_debug.shape[0]):
-    input_cost[i] = osc_output[i].input_cost
-    acceleration_cost[i] = osc_output[i].acceleration_cost
-    soft_constraint_cost[i] = osc_output[i].soft_constraint_cost
+    # input_cost[i] = osc_output[i].input_cost
+    # acceleration_cost[i] = osc_output[i].acceleration_cost
+    # soft_constraint_cost[i] = osc_output[i].soft_constraint_cost
     for j in range(len(osc_output[i].tracking_data_names)):
       name = osc_output[i].tracking_data_names[j]
-      if osc_output[i].tracking_data_names[j] not in tracking_cost_map:
+      if name not in tracking_cost_map:
         tracking_cost_map[name] = num_tracking_cost
         num_tracking_cost += 1
-      tracking_cost[i, tracking_cost_map[name]] = osc_output[i].tracking_cost[j]
+      tracking_costs[i, tracking_cost_map[name]] = osc_output[i].tracking_costs[j]
+
+    for j in range(len(reg_cost_names)):
+      name = reg_cost_names[j]
+      if name not in reg_cost_map:
+        reg_cost_map[name] = num_reg_cost
+        num_reg_cost += 1
+      reg_costs[i, reg_cost_map[name]] = osc_debug_reg_cost[name][i]
 
   for name in tracking_cost_map.keys():
     print(name)
     print(tracking_cost_map[name])
+  print("")
+  for name in reg_cost_map.keys():
+    print(name)
+    print(reg_cost_map[name])
+
+  # sanity check cost >= 0
+  tracking_cost_nonnegative = np.all(tracking_costs >= 0, axis=0)
+  for i in range(len(tracking_cost_nonnegative)):
+    if not tracking_cost_nonnegative[i]:
+      print(list(tracking_cost_map.keys())[i], " has negative cost!!!")
+  reg_cost_nonnegative = np.all(reg_costs >= 0, axis=0)
+  for i in range(len(reg_cost_nonnegative)):
+    if not reg_cost_nonnegative[i]:
+      print(reg_cost_names[i], " has negative cost!!!")
+  if not np.all(tracking_cost_nonnegative) or not np.all(reg_cost_nonnegative):
+    raise ValueError("There is a negative cost")
+
+  import pdb;pdb.set_trace()
 
   plt.figure("costs")
-  plt.plot(t_osc_debug[t_osc_debug_slice], input_cost[t_osc_debug_slice])
-  plt.plot(t_osc_debug[t_osc_debug_slice], acceleration_cost[t_osc_debug_slice])
-  plt.plot(t_osc_debug[t_osc_debug_slice], soft_constraint_cost[t_osc_debug_slice])
-  plt.plot(t_osc_debug[t_osc_debug_slice], tracking_cost[t_osc_debug_slice])
-  plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
-             list(tracking_cost_map))
+  # plt.plot(t_osc_debug[t_osc_debug_slice], input_cost[t_osc_debug_slice])
+  # plt.plot(t_osc_debug[t_osc_debug_slice], acceleration_cost[t_osc_debug_slice])
+  # plt.plot(t_osc_debug[t_osc_debug_slice], soft_constraint_cost[t_osc_debug_slice])
+  plt.plot(t_osc_debug[t_osc_debug_slice], tracking_costs[t_osc_debug_slice])
+  plt.plot(t_osc_debug[t_osc_debug_slice], reg_costs[t_osc_debug_slice], "--")
+  # plt.legend(['input_cost', 'acceleration_cost', 'soft_constraint_cost'] +
+  #            list(tracking_cost_map))
+  plt.legend(list(tracking_cost_map) + list(reg_cost_map))
+
+  """
+  2. Plot trajectories
+  """
   osc_traj00 = "swing_ft_traj"
   # osc_traj00 = "stance_hip_rpy_traj"
   # osc_traj0 = "swing_ft_traj"

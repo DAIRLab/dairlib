@@ -119,6 +119,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   estop_signal = []
   switch_signal = []
   osc_debug = dict()
+  osc_debug_reg_cost = dict()
   contact_forces = [[], [], [], []]  # Allocate space for all 4 point contacts
   contact_info_locs = [[], [], [], []]
   cassie_out = []  # Cassie out types
@@ -147,7 +148,7 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   print("osc_debug_channel_name = " + osc_debug_channel_name)
 
   t_dispatcher_end = -1   # stop reading lcm messages after this time
-  # t_dispatcher_end = 256.5
+  # t_dispatcher_end = 74.6
 
   for event in log:
     if event.channel not in full_log and event.channel not in unknown_types:
@@ -220,13 +221,19 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
       # and then rebuild the plotting script.
       msg = dairlib.lcmt_osc_output.decode(event.data)
       osc_output.append(msg)
+      t_osc_debug.append(msg.utime / 1e6)
+      fsm.append(msg.fsm_state)
       num_osc_tracking_data = len(msg.tracking_data)
       for i in range(num_osc_tracking_data):
         if msg.tracking_data[i].name not in osc_debug:
           osc_debug[msg.tracking_data[i].name] = lcmt_osc_tracking_data_t()
         osc_debug[msg.tracking_data[i].name].append(msg.tracking_data[i], msg.utime / 1e6)
-      t_osc_debug.append(msg.utime / 1e6)
-      fsm.append(msg.fsm_state)
+      num_osc_reg_cost = len(msg.regularization_costs)
+      for i in range(num_osc_reg_cost):
+        if msg.regularization_cost_names[i] not in osc_debug_reg_cost:
+          osc_debug_reg_cost[msg.regularization_cost_names[i]] = [msg.regularization_costs[i]]
+        osc_debug_reg_cost[msg.regularization_cost_names[i]].append(msg.regularization_costs[i])
+      # import pdb;pdb.set_trace()
     if event.channel == "CASSIE_ACCELERATION":
       msg = dairlib.lcmt_timestamped_vector.decode(event.data)
       vdot.append(msg.data)
@@ -315,10 +322,12 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
 
   for key in osc_debug:
     osc_debug[key].convertToNP()
+  for key in osc_debug_reg_cost:
+    osc_debug_reg_cost[key] = np.array(osc_debug_reg_cost[key])
 
   x = np.hstack((q, v))  # combine into state vector
 
   return x, u_meas, imu_aceel, t_x, u, t_u, contact_switch, t_contact_switch, contact_forces, contact_info_locs, \
-         t_contact_info, osc_debug, t_osc_debug, fsm, estop_signal, \
+         t_contact_info, osc_debug, osc_debug_reg_cost, t_osc_debug, fsm, estop_signal, \
          switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, \
          t_u_pd, u_dispatcher, t_u_dispatcher, osc_output, input_supervisor_status, t_input_supervisor, full_log

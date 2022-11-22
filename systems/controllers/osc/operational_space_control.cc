@@ -492,10 +492,11 @@ void OperationalSpaceControl::Build() {
     /// hard constraint version
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
+
   // Testing -- penalize the front contact for optimal model as a regularization
   // term, in order to help the solver to find good solution.
   if (w_rom_force_reg_ > 0) {
-    contact_force_reg_cost_ =
+    front_contact_force_reg_cost_ =
         prog_
             ->AddQuadraticCost(
                 w_rom_force_reg_ * MatrixXd::Identity(2, 2), VectorXd::Zero(2),
@@ -928,25 +929,36 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // (Testing) 7. Cost for staying close to the previous input
-  if (w_input_reg_ > 0) {
-    input_reg_cost_->UpdateCoefficients(W_input_reg_,
-                                        -W_input_reg_ * (*u_sol_));
+  if (W_input_reg_.size() > 0) {
+    //    input_reg_cost_->UpdateCoefficients(W_input_reg_,
+    //                                        -W_input_reg_ * (*u_sol_));
+    input_reg_cost_->UpdateCoefficients(
+        W_input_reg_, -W_input_reg_ * (*u_sol_),
+        0.5 * u_sol_->transpose() * W_input_reg_ * (*u_sol_));
   }
   // (Testing) Cost for staying close to the previous solution
   if (W_lambda_c_reg_.size() > 0) {
     //    lambda_c_cost_->UpdateCoefficients(W_lambda_c_reg_,
-    //    VectorXd::Zero(n_c_));
-    lambda_c_cost_->UpdateCoefficients(W_lambda_c_reg_,
-                                       -W_lambda_c_reg_ * (*lambda_c_sol_));
+    //                                       -W_lambda_c_reg_ *
+    //                                       (*lambda_c_sol_));
+    lambda_c_cost_->UpdateCoefficients(
+        W_lambda_c_reg_, -W_lambda_c_reg_ * (*lambda_c_sol_),
+        0.5 * lambda_c_sol_->transpose() * W_lambda_c_reg_ * (*lambda_c_sol_));
   }
   if (W_lambda_h_reg_.size() > 0) {
     //    lambda_h_cost_->UpdateCoefficients(W_lambda_h_reg_,
-    //    VectorXd::Zero(n_h_));
-    lambda_h_cost_->UpdateCoefficients(W_lambda_h_reg_,
-                                       -W_lambda_h_reg_ * (*lambda_h_sol_));
+    //                                       -W_lambda_h_reg_ *
+    //                                       (*lambda_h_sol_));
+    lambda_h_cost_->UpdateCoefficients(
+        W_lambda_h_reg_, -W_lambda_h_reg_ * (*lambda_h_sol_),
+        0.5 * lambda_h_sol_->transpose() * W_lambda_h_reg_ * (*lambda_h_sol_));
   }
   if (W_vdot_reg_.size() > 0) {
-    vdot_reg_cost_->UpdateCoefficients(W_vdot_reg_, -W_vdot_reg_ * (*dv_sol_));
+    //    vdot_reg_cost_->UpdateCoefficients(W_vdot_reg_, -W_vdot_reg_ *
+    //    (*dv_sol_));
+    vdot_reg_cost_->UpdateCoefficients(
+        W_vdot_reg_, -W_vdot_reg_ * (*dv_sol_),
+        0.5 * dv_sol_->transpose() * W_vdot_reg_ * (*dv_sol_));
   }
 
   if (is_rom_modification_) {
@@ -1120,23 +1132,65 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_state;
-  output->input_cost =
+  double input_cost =
       (W_input_.size() > 0)
           ? (0.5 * (*u_sol_).transpose() * W_input_ * (*u_sol_))(0)
           : 0;
-  output->acceleration_cost =
+  double acceleration_cost =
       (W_joint_accel_.size() > 0)
           ? (0.5 * (*dv_sol_).transpose() * W_joint_accel_ * (*dv_sol_))(0)
           : 0;
-  output->soft_constraint_cost =
+  double soft_constraint_cost =
       (w_soft_constraint_ > 0)
           ? (0.5 * w_soft_constraint_ * (*epsilon_sol_).transpose() *
              (*epsilon_sol_))(0)
           : 0;
+  VectorXd y_input_reg_cost = VectorXd::Zero(1);
+  VectorXd y_lambda_c_cost = VectorXd::Zero(1);
+  VectorXd y_lambda_h_cost = VectorXd::Zero(1);
+  VectorXd y_vdot_reg_cost = VectorXd::Zero(1);
+  VectorXd y_front_contact_force_reg_cost = VectorXd::Zero(1);
+  if (input_reg_cost_) {
+    input_reg_cost_->Eval(*u_sol_, &y_input_reg_cost);
+  }
+  if (lambda_c_cost_) {
+    lambda_c_cost_->Eval(*lambda_c_sol_, &y_lambda_c_cost);
+  }
+  if (lambda_h_cost_) {
+    lambda_h_cost_->Eval(*lambda_h_sol_, &y_lambda_h_cost);
+  }
+  if (vdot_reg_cost_) {
+    vdot_reg_cost_->Eval(*dv_sol_, &y_vdot_reg_cost);
+  }
+  if (front_contact_force_reg_cost_) {
+    VectorXd input(2);
+    input << lambda_c_sol_->segment<1>(2), lambda_c_sol_->segment<1>(8);
+    front_contact_force_reg_cost_->Eval(input, &y_front_contact_force_reg_cost);
+  }
+
+  output->regularization_costs.clear();
+  output->regularization_cost_names.clear();
+
+  output->regularization_costs.push_back(input_cost);
+  output->regularization_cost_names.push_back("input_cost");
+  output->regularization_costs.push_back(acceleration_cost);
+  output->regularization_cost_names.push_back("acceleration_cost");
+  output->regularization_costs.push_back(soft_constraint_cost);
+  output->regularization_cost_names.push_back("soft_constraint_cost");
+  output->regularization_costs.push_back(y_input_reg_cost[0]);
+  output->regularization_cost_names.push_back("input_reg_cost");
+  output->regularization_costs.push_back(y_lambda_c_cost[0]);
+  output->regularization_cost_names.push_back("lambda_c_cost");
+  output->regularization_costs.push_back(y_lambda_h_cost[0]);
+  output->regularization_cost_names.push_back("lambda_h_cost");
+  output->regularization_costs.push_back(y_vdot_reg_cost[0]);
+  output->regularization_cost_names.push_back("vdot_reg_cost");
+  output->regularization_costs.push_back(y_front_contact_force_reg_cost[0]);
+  output->regularization_cost_names.push_back("front_contact_force_reg_cost");
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
-  output->tracking_cost.clear();
+  output->tracking_costs.clear();
 
   lcmt_osc_qp_output qp_output;
   qp_output.solve_time = solve_time_;
@@ -1153,7 +1207,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->qp_output = qp_output;
 
   output->tracking_data.reserve(tracking_data_vec_->size());
-  output->tracking_cost.reserve(tracking_data_vec_->size());
+  output->tracking_costs.reserve(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -1188,13 +1242,14 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       const MatrixXd& W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-      output->tracking_cost.push_back(
+      output->tracking_costs.push_back(
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
            (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0));
     }
   }
 
   output->num_tracking_data = output->tracking_data_names.size();
+  output->num_regularization_costs = output->regularization_cost_names.size();
 }
 
 void OperationalSpaceControl::CalcOptimalInput(

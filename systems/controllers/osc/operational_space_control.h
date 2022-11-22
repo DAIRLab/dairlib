@@ -399,7 +399,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
 
   // Optional feature -- regularizing input
-  drake::solvers::QuadraticCost* input_reg_cost_;
+  drake::solvers::QuadraticCost* input_reg_cost_ = nullptr;
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
 
@@ -415,7 +415,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // (penalize the front contact for optimal model as a regularization term, in
   //  order to help the solver to find good solution.)
   double w_rom_force_reg_ = -1;
-  drake::solvers::QuadraticCost* contact_force_reg_cost_;
+  drake::solvers::QuadraticCost* front_contact_force_reg_cost_ = nullptr;
 };
 
 }  // namespace dairlib::systems::controllers

@@ -172,8 +172,20 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                        int right_support_state,
                                        std::vector<int> ds_states);
   void SetInputRegularizationWeight(double w) { w_input_reg_ = w; }
+  void SetInputRegularizationWeights(const Eigen::MatrixXd& W) {
+    W_input_reg_ = W;
+  }
   void AddContactForceRegularizationCostForOptimalROM(double w) {
     w_rom_force_reg_ = w;
+  }
+  void SetLambdaContactRegularizationWeight(const Eigen::MatrixXd& W) {
+    W_lambda_c_reg_ = W;
+  }
+  void SetLambdaHolonomicRegularizationWeight(const Eigen::MatrixXd& W) {
+    W_lambda_h_reg_ = W;
+  }
+  void SetVdotRegularizationWeight(const Eigen::MatrixXd& W) {
+    W_vdot_reg_ = W;
   }
 
   // OSC LeafSystem builder
@@ -391,7 +403,17 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   double w_input_reg_ = -1;
   Eigen::MatrixXd W_input_reg_;
 
+  // Optional feature -- regularzing forces
+  drake::solvers::QuadraticCost* lambda_c_cost_ = nullptr;
+  drake::solvers::QuadraticCost* lambda_h_cost_ = nullptr;
+  drake::solvers::QuadraticCost* vdot_reg_cost_ = nullptr;
+  Eigen::MatrixXd W_lambda_c_reg_;
+  Eigen::MatrixXd W_lambda_h_reg_;
+  Eigen::MatrixXd W_vdot_reg_;
+
   // Optimal feature -- contact force regularization for optimal ROM
+  // (penalize the front contact for optimal model as a regularization term, in
+  //  order to help the solver to find good solution.)
   double w_rom_force_reg_ = -1;
   drake::solvers::QuadraticCost* contact_force_reg_cost_;
 };

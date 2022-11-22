@@ -498,20 +498,47 @@ void OperationalSpaceControl::Build() {
     contact_force_reg_cost_ =
         prog_
             ->AddQuadraticCost(
-                1e-8 * MatrixXd::Identity(2, 2), VectorXd::Zero(2),
+                w_rom_force_reg_ * MatrixXd::Identity(2, 2), VectorXd::Zero(2),
                 {lambda_c_.segment<1>(2), lambda_c_.segment<1>(8)})
             .evaluator()
             .get();
   }
 
   // (Testing) 7. Cost for staying close to the previous input
-  if (w_input_reg_ > 0) {
-    W_input_reg_ = w_input_reg_ * MatrixXd::Identity(n_u_, n_u_);
+  if (w_input_reg_ > 0 || W_input_reg_.size() > 0) {
+    if (w_input_reg_ > 0)
+      W_input_reg_ = w_input_reg_ * MatrixXd::Identity(n_u_, n_u_);
     input_reg_cost_ =
         prog_->AddQuadraticCost(W_input_reg_, VectorXd::Zero(n_u_), u_)
             .evaluator()
             .get();
     input_reg_cost_->set_description("input_reg_cost");
+  }
+  // Testing -- regularizing contact force cost
+  if (W_lambda_c_reg_.size() > 0) {
+    DRAKE_DEMAND(W_lambda_c_reg_.rows() == n_c_);
+    lambda_c_cost_ =
+        prog_
+            ->AddQuadraticCost(W_lambda_c_reg_, VectorXd::Zero(n_c_), lambda_c_)
+            .evaluator()
+            .get();
+  }
+  // Testing -- regularizing constraint force cost
+  if (W_lambda_h_reg_.size() > 0) {
+    DRAKE_DEMAND(W_lambda_h_reg_.rows() == n_h_);
+    lambda_h_cost_ =
+        prog_
+            ->AddQuadraticCost(W_lambda_h_reg_, VectorXd::Zero(n_h_), lambda_h_)
+            .evaluator()
+            .get();
+  }
+  // Testing -- regularizing vdot
+  if (W_vdot_reg_.size() > 0) {
+    DRAKE_DEMAND(W_vdot_reg_.rows() == n_v_);
+    vdot_reg_cost_ =
+        prog_->AddQuadraticCost(W_vdot_reg_, VectorXd::Zero(n_v_), dv_)
+            .evaluator()
+            .get();
   }
 
   // Testing 8. Regularization for all variable
@@ -905,6 +932,22 @@ VectorXd OperationalSpaceControl::SolveQp(
     input_reg_cost_->UpdateCoefficients(W_input_reg_,
                                         -W_input_reg_ * (*u_sol_));
   }
+  // (Testing) Cost for staying close to the previous solution
+  if (W_lambda_c_reg_.size() > 0) {
+    //    lambda_c_cost_->UpdateCoefficients(W_lambda_c_reg_,
+    //    VectorXd::Zero(n_c_));
+    lambda_c_cost_->UpdateCoefficients(W_lambda_c_reg_,
+                                       -W_lambda_c_reg_ * (*lambda_c_sol_));
+  }
+  if (W_lambda_h_reg_.size() > 0) {
+    //    lambda_h_cost_->UpdateCoefficients(W_lambda_h_reg_,
+    //    VectorXd::Zero(n_h_));
+    lambda_h_cost_->UpdateCoefficients(W_lambda_h_reg_,
+                                       -W_lambda_h_reg_ * (*lambda_h_sol_));
+  }
+  if (W_vdot_reg_.size() > 0) {
+    vdot_reg_cost_->UpdateCoefficients(W_vdot_reg_, -W_vdot_reg_ * (*dv_sol_));
+  }
 
   if (is_rom_modification_) {
     // 8. Regularization cost
@@ -1110,7 +1153,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->qp_output = qp_output;
 
   output->tracking_data.reserve(tracking_data_vec_->size());
-  output->tracking_cost = std::vector<double>(tracking_data_vec_->size());
+  output->tracking_cost.reserve(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -1145,9 +1188,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       const MatrixXd& W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-      output->tracking_cost[i] =
+      output->tracking_cost.push_back(
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
-           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
+           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0));
     }
   }
 

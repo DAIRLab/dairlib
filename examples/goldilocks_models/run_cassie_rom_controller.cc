@@ -719,10 +719,11 @@ int DoMain(int argc, char* argv[]) {
                     optimal_traj_planner_guard->get_input_port_lipm_traj());*/
 
     // Create Operational space control
+    bool is_rom_modification = close_sim_gap;
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
         context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
-        false, close_sim_gap);
+        false, is_rom_modification);
 
     // Scaling weight for testing
     // Didn't help. Might need to use the new osqp solver to see improvement
@@ -734,7 +735,51 @@ int DoMain(int argc, char* argv[]) {
         weight_scale * osc_gains.w_accel * MatrixXd::Identity(n_v, n_v);
     osc->SetAccelerationCostForAllJoints(Q_accel);
     if (!close_sim_gap) {
-      osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
+      // Regularization costs
+      Eigen::MatrixXd W_input_reg = MatrixXd::Zero(
+          plant_wo_springs.num_actuators(), plant_wo_springs.num_actuators());
+      W_input_reg.diagonal() << 1, 1, 0.9, 0.9, 0.5, 0.5, 0.1, 0.1, 5, 5;
+      Eigen::MatrixXd W_lambda_c_reg = MatrixXd::Zero(12, 12);
+      W_lambda_c_reg.diagonal() << 0.001, 0.001, 0.01, 0.001, 0.001, 0.01,
+          0.001, 0.001, 0.01, 0.001, 0.001, 0.01;
+      Eigen::MatrixXd W_lambda_h_reg = MatrixXd::Zero(2, 2);
+      W_lambda_h_reg.diagonal() << 0.001, 0.001;
+      Eigen::MatrixXd W_vdot_reg = MatrixXd::Zero(
+          plant_wo_springs.num_velocities(), plant_wo_springs.num_velocities());
+      W_vdot_reg.diagonal() << 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 1, 1, 1, 1,
+          1, 1, 1, 1, 0.01, 0.01, 0.0001, 0.0001;
+      W_input_reg *= 1e-6;     // 1e-8;
+      W_lambda_c_reg *= 1e-3;  // 1e-3;
+      W_lambda_h_reg *= 1e-3;  // 1e-3;
+      W_vdot_reg *= 0;      // 1e-6;
+      /*cout << "W_input_reg = \n" << W_input_reg << endl;
+      cout << "W_lambda_c_reg = \n" << W_lambda_c_reg << endl;
+      cout << "W_lambda_h_reg = \n" << W_lambda_h_reg << endl;
+      cout << "W_vdot_reg = \n" << W_vdot_reg << endl;*/
+      // A few checks since we hard-coded the size and index above
+      auto act_idx_map = multibody::makeNameToActuatorsMap(plant_wo_springs);
+      DRAKE_DEMAND(act_idx_map.at("toe_left_motor") == 8);
+      DRAKE_DEMAND(act_idx_map.at("toe_right_motor") == 9);
+      auto vel_idx_map = multibody::makeNameToVelocitiesMap(plant_wo_springs);
+      DRAKE_DEMAND(vel_idx_map.at("toe_leftdot") == 16);
+      DRAKE_DEMAND(vel_idx_map.at("toe_rightdot") == 17);
+      DRAKE_DEMAND(evaluators.count_full() == 2);
+
+      // 1. input
+      //      osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
+      osc->SetInputRegularizationWeights(W_input_reg);
+      // 2. contact force
+      osc->SetLambdaContactRegularizationWeight(W_lambda_c_reg);
+      // 3. fourbar force
+      osc->SetLambdaHolonomicRegularizationWeight(W_lambda_h_reg);
+      //      // 4. vdot
+      //      osc->SetVdotRegularizationWeight(W_vdot_reg);
+
+      // Heuristics -- penalize front contact force for optimal ROM
+      if (gains.w_rom_contact_force_reg > 0 && model_iter > 1) {
+        osc->AddContactForceRegularizationCostForOptimalROM(
+            gains.w_rom_contact_force_reg * model_iter / 300);
+      }
     }
 
     // Constraints in OSC
@@ -1220,10 +1265,6 @@ int DoMain(int argc, char* argv[]) {
     }
     if (osc_gains.w_input_reg > 0) {
       osc->SetInputRegularizationWeight(osc_gains.w_input_reg);
-    }
-    // Heuristics
-    if (gains.w_rom_contact_force_reg > 0 && model_iter > 1) {
-      osc->SetInputRegularizationWeight(gains.w_rom_contact_force_reg);
     }
 
     // Constraints in OSC

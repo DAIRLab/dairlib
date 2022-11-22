@@ -138,7 +138,7 @@ def main():
   # start_time_idx = np.argwhere(np.abs(t_u_dispatcher - t_start) < 2e-2)[0][0]
   # end_time_idx = np.argwhere(np.abs(t_u_dispatcher - t_end) < 2e-2)[0][0]
   # t_u_dispatcher_slice = slice(start_time_idx, end_time_idx)
-  start_time_idx = np.argwhere(np.abs(t_osc_debug - t_start) < 2e-3)[0][0]
+  start_time_idx = np.argwhere(np.abs(t_osc_debug - t_start) < 5e-3)[0][0]
   end_time_idx = np.argwhere(np.abs(t_osc_debug - t_end) < 1e-3)[0][0]
   t_osc_debug_slice = slice(start_time_idx, end_time_idx)
   # t_osc_debug_slice = slice(0, len(t_osc_debug))
@@ -155,9 +155,9 @@ def main():
 
   # plot_dispatcher_torque(t_u, u, t_u_dispatcher, u_dispatcher, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
-  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
+  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  # plot_osc_debug(t_osc_debug, fsm, osc_debug, t_cassie_out, estop_signal, osc_output)
+  plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, t_osc_debug, fsm, "left foot", True)
@@ -173,7 +173,7 @@ def main():
   # PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
   # PlotVdot(x, t_x, x_datatypes, True)
 
-  # PlotOscQpSol(t_osc_debug, osc_output, fsm)
+  PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
   # PlotSwingFootData(t_osc_debug, fsm)
   # PlotCentroidalAngularMomentum(t_osc_debug, fsm)
@@ -301,42 +301,43 @@ def PlotOscQpSol(t_osc_debug, osc_output, fsm):
   plt.plot(t_osc_debug[:], fourbar_forces[:, :], linestyle)
   plt.legend([str(i) for i in range(2)])
 
-  # plt.figure("Qp sol -- epsilons " + filename)
-  # plt.plot(t_osc_debug[:], epsilons, linestyle)
-  # plt.legend([str(i) for i in range(epsilon_dim)])
-  #
-  # plt.figure("Qp sol -- vdot " + filename)
-  # plt.plot(t_osc_debug[:], vdot[:, 0:6], linestyle)
-  # plt.legend([str(i) for i in range(6)])
+  plt.figure("Qp sol -- epsilons " + filename)
+  plt.plot(t_osc_debug[:], epsilons, linestyle)
+  plt.legend([str(i) for i in range(epsilon_dim)])
+
+  plt.figure("Qp sol -- vdot " + filename)
+  plt.plot(t_osc_debug[:], vdot[:, 0:6], linestyle)
+  plt.legend([str(i) for i in range(6)])
 
   plt.figure("Qp solve time " + filename)
   plt.plot(t_osc_debug[:], solve_time, linestyle)
   plt.plot(t_osc_debug[t_u_slice], 0.0005 * fsm[t_u_slice], linestyle)
 
   ### Check friction cone ratio
-  # friction_cone = np.zeros((len(osc_output), 4))
-  # j = 0
-  # for i in [0, 3]:
-  #   for i_row in range(len(osc_output)):
-  #     force_z = contact_forces[i_row, 2+i]
-  #     friction_cone[i_row, 0+j] = 0 if force_z == 0 else contact_forces[i_row, 0+i] / force_z
-  #     friction_cone[i_row, 1+j] = 0 if force_z == 0 else contact_forces[i_row, 1+i] / force_z
-  #   j += 2
-  # plt.figure("Qp sol -- friction cone (idx 0 to 5) " + filename)
-  # plt.plot(t_osc_debug[:], friction_cone, linestyle)
-  # plt.legend(["pt1 x", "pt1 y", "pt2 x", "pt2 y"])
-  #
-  # friction_cone = np.zeros((len(osc_output), 4))
-  # j = 0
-  # for i in [6, 9]:
-  #   for i_row in range(len(osc_output)):
-  #     force_z = contact_forces[i_row, 2+i]
-  #     friction_cone[i_row, 0+j] = 0 if force_z == 0 else contact_forces[i_row, 0+i] / force_z
-  #     friction_cone[i_row, 1+j] = 0 if force_z == 0 else contact_forces[i_row, 1+i] / force_z
-  #   j += 2
-  # plt.figure("Qp sol -- friction cone (idx 6 to 11) " + filename)
-  # plt.plot(t_osc_debug[:], friction_cone, linestyle)
-  # plt.legend(["pt1 x", "pt1 y", "pt2 x", "pt2 y"])
+  tol = 1e-6
+  friction_cone = np.zeros((len(osc_output), 4))
+  j = 0
+  for i in [0, 3]:
+    for i_row in range(len(osc_output)):
+      force_z = contact_forces[i_row, 2+i]
+      friction_cone[i_row, 0+j] = 0 if force_z <= tol else contact_forces[i_row, 0+i] / force_z
+      friction_cone[i_row, 1+j] = 0 if force_z <= tol else contact_forces[i_row, 1+i] / force_z
+    j += 2
+  plt.figure("Qp sol -- friction cone (idx 0 to 5) " + filename)
+  plt.plot(t_osc_debug[:], friction_cone, linestyle)
+  plt.legend(["pt1 x", "pt1 y", "pt2 x", "pt2 y"])
+
+  friction_cone = np.zeros((len(osc_output), 4))
+  j = 0
+  for i in [6, 9]:
+    for i_row in range(len(osc_output)):
+      force_z = contact_forces[i_row, 2+i]
+      friction_cone[i_row, 0+j] = 0 if force_z <= tol else contact_forces[i_row, 0+i] / force_z
+      friction_cone[i_row, 1+j] = 0 if force_z <= tol else contact_forces[i_row, 1+i] / force_z
+    j += 2
+  plt.figure("Qp sol -- friction cone (idx 6 to 11) " + filename)
+  plt.plot(t_osc_debug[:], friction_cone, linestyle)
+  plt.legend(["pt1 x", "pt1 y", "pt2 x", "pt2 y"])
 
 
 
@@ -720,8 +721,6 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out
   if not np.all(tracking_cost_nonnegative) or not np.all(reg_cost_nonnegative):
     raise ValueError("There is a negative cost")
 
-  import pdb;pdb.set_trace()
-
   plt.figure("costs")
   # plt.plot(t_osc_debug[t_osc_debug_slice], input_cost[t_osc_debug_slice])
   # plt.plot(t_osc_debug[t_osc_debug_slice], acceleration_cost[t_osc_debug_slice])
@@ -738,7 +737,7 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out
   osc_traj00 = "swing_ft_traj"
   # osc_traj00 = "stance_hip_rpy_traj"
   # osc_traj0 = "swing_ft_traj"
-  osc_traj0 = "optimal_rom_traj"
+  # osc_traj0 = "optimal_rom_traj"
   # osc_traj0 = "mirrored_optimal_rom_traj"
   # osc_traj0 = "com_traj"  # for standing controller
   # osc_traj0 = "lipm_traj"
@@ -779,12 +778,12 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out
   # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   #
   # ###
-  plot_osc(osc_debug, osc_traj0, 0, "pos")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 0, "vel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
-  plot_osc(osc_debug, osc_traj0, 0, "accel")
-  plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 0, "pos")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 0, "vel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
+  # plot_osc(osc_debug, osc_traj0, 0, "accel")
+  # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])
   #
   # # plot_osc(osc_debug, osc_traj0, 1, "pos")
   # # plt.plot(t_osc_debug[t_osc_debug_slice], 0.1 * fsm[t_osc_debug_slice])

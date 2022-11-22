@@ -4,9 +4,9 @@ cols: 3
 ### OSC gains (Simulation)
 mu: 0.8
 
-w_accel: 0.00000001  # 0.00001  trying to add back x component
-w_soft_constraint: 80
-w_input_reg: 0.0000003
+w_accel: 0.000001  # 0.00001  trying to add back x component
+w_soft_constraint: 1000
+w_input_reg: 0.0000003  #0.0000003  # stay close to previous input solution
 
 w_swing_toe: 1
 swing_toe_kp: 1500
@@ -44,15 +44,15 @@ hip_yaw_kd: 0.5
 #      0,    0,     5]
 ## Trying to add back x components
 RomW:
-  [0.1,    0,     0,
+  [0.01,    0,     0,
    0, 0,     0,
-   0,    0,    10]
+   0,    0,    1]
 RomKp:
   [  1,    0,     0,
      0,    0,     0,
      0,    0,    50]
 RomKd:
-  [   1,    0,     0,
+  [   0.02,    0,     0,
       0,    0,     0,
       0,    0,     1]
 # Add back x components  # This somehow caused stance hip yaw to rotate for simulation with springs

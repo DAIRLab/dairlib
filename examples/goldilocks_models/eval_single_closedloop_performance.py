@@ -657,7 +657,7 @@ def main():
 
   # Read the log file
   x, u_meas, imu_aceel, t_x, u, t_u, contact_switch, t_contact_switch, contact_info, contact_info_locs, t_contact_info, \
-  osc_debug, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
+  osc_debug, osc_debug_reg_cost, t_osc_debug, fsm, estop_signal, switch_signal, t_controller_switch, t_pd, kp, kd, cassie_out, u_pd, t_u_pd, \
   u_dispatcher, t_u_dispatcher, \
   osc_output, input_supervisor_status, t_input_supervisor, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 

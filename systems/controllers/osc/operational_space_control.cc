@@ -1,12 +1,12 @@
 #include "systems/controllers/osc/operational_space_control.h"
 
-#include <drake/multibody/plant/multibody_plant.h>
 #include <iostream>
 
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/text_logging.h"
+#include "drake/multibody/plant/multibody_plant.h"
 
 using std::cout;
 using std::endl;
@@ -51,8 +51,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_wo_spr,
     drake::systems::Context<double>* context_w_spr,
     drake::systems::Context<double>* context_wo_spr,
-    bool used_with_finite_state_machine,
-    double qp_time_limit)
+    bool used_with_finite_state_machine, double qp_time_limit)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_w_spr_(context_w_spr),
@@ -681,7 +680,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       // 0.5 * (JdotV - y_command)^T * W * (JdotV - y_command),
       // since it doesn't change the result of QP.
       tracking_cost_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t), 0, true);
+          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t), 0,
+          true);
     } else {
       tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                                VectorXd::Zero(n_v_));
@@ -748,9 +748,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Solve the QP
-//  const MathematicalProgramResult result = solver_->Solve(*prog_);
+  //  const MathematicalProgramResult result = solver_->Solve(*prog_);
   auto osqp_solver = drake::solvers::OsqpSolver();
-//  osqp_solver->S
   const MathematicalProgramResult result = osqp_solver.Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
@@ -916,7 +915,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->qp_output = qp_output;
 
   output->tracking_data.reserve(tracking_data_vec_->size());
-  output->tracking_costs = std::vector<double>(tracking_data_vec_->size());
+  output->tracking_costs.reserve(tracking_data_vec_->size());
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i);
@@ -951,9 +950,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       const MatrixXd& W = tracking_data->GetWeight();
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
-      output->tracking_costs[i] =
+      output->tracking_costs.push_back(
           (0.5 * (J_t * (*dv_sol_) + JdotV_t - ddy_t).transpose() * W *
-           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0);
+           (J_t * (*dv_sol_) + JdotV_t - ddy_t))(0));
     }
   }
 

@@ -60,8 +60,6 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":dircon_trajectory_plotter",
-    ":lcm_trajectory_plotter",
     ":lcm_trajectory_py",
     ":lcm_py",
 ]

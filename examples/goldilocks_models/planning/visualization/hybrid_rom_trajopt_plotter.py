@@ -70,6 +70,7 @@ def main():
   parser.add_argument("--end_idx", help="", default=-1, type=int)
   # parser.add_argument("--robot_option", help="0 is five-link robot. 1 is cassie_fixed_spring", default=1, type=int, choices=[0, 1])
   parser.add_argument("--path", help="", default="", type=str)
+  parser.add_argument("--folder_path", help="../dairlib_data/goldilocks_models/planning/robot_1/data/", default="", type=str)
   args = parser.parse_args()
 
   debug = args.debug
@@ -101,9 +102,9 @@ def main():
     filepath = args.path
   else: 
     if debug:
-      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + "debug" + "_rom_trajectory"
+      filepath = args.folder_path + "debug" + "_rom_trajectory"
     else:
-      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + str(start_idx) + "_rom_trajectory"
+      filepath = args.folder_path + str(start_idx) + "_rom_trajectory"
 
   print("filepath = " + filepath)
 
@@ -123,10 +124,8 @@ def main():
   # end_idx = 40
   # end_idx = start_idx + 1
 
-  # filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-  #            str(start_idx) + "_rom_trajectory"
-  # filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-  #            "debug" + "_rom_trajectory"
+  # filepath = args.folder_path + str(start_idx) + "_rom_trajectory"
+  # filepath = args.folder_path + "debug" + "_rom_trajectory"
 
   """
   States, inputs trajectories
@@ -167,8 +166,7 @@ def main():
 
     time_vec = np.zeros(end_idx - start_idx)
     for j in range(start_idx, end_idx):
-      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-                 str(j) + "_rom_trajectory"
+      filepath = args.folder_path + str(j) + "_rom_trajectory"
       rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
       time_vec[j-start_idx] = rom_traj.get_global_com_pos_time()[0]
     loop_time = np.diff(time_vec)
@@ -191,8 +189,7 @@ def main():
     com_pos_max = np.zeros([2,1])
     com_pos_min = np.zeros([2,1])
     for j in range(start_idx, end_idx):
-      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-                 str(j) + "_rom_trajectory"
+      filepath = args.folder_path + str(j) + "_rom_trajectory"
       rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
       com_pos_max = np.max(np.hstack([rom_traj.get_global_com_pos(),com_pos_max]), 1).reshape(2,1)
       com_pos_min = np.min(np.hstack([rom_traj.get_global_com_pos(),com_pos_min]), 1).reshape(2,1)
@@ -204,8 +201,7 @@ def main():
     # prev_sim_time = -1
     is_first_frame = True
     for j in range(start_idx, end_idx, 1):
-      filepath = "../dairlib_data/goldilocks_models/planning/robot_1/data/" + \
-                 str(j) + "_rom_trajectory"
+      filepath = args.folder_path + str(j) + "_rom_trajectory"
       rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
 
       # if prev_wall_time > 0:

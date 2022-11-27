@@ -166,7 +166,10 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<
           systems::RosPublisherSystem<geometry_msgs::PoseWithCovarianceStamped>>
           ("/geometry_msgs/PoseWithCovarianceStamped",
-              &node_handle, {drake::systems::TriggerType::kPerStep});
+              &node_handle,
+              drake::systems::TriggerTypeSet(
+                  {drake::systems::TriggerType::kPerStep}));
+
 #endif
 
   // connect leaf systems

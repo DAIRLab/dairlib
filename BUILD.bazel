@@ -32,3 +32,17 @@
 
 # This is an empty BUILD file, to ensure that the project's root directory is a
 # bazel package.
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+string_flag(name = "ros",
+            values = ["on", "off"],
+            build_setting_default = "on")
+
+config_setting(
+    name = "dair_ros_on",
+    values = {"ros": "on"}
+)
+
+config_setting(
+    name = "dair_ros_off",
+    values = {"ros": "off"}
+)

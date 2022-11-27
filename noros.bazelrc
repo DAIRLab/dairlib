@@ -1,2 +1,0 @@
-# build without ros
-build --build_tag_filters="-ros"

@@ -6,8 +6,7 @@ cd $(dirname "$BASH_SOURCE")
 
 set -e
 
-PACKAGES="roscpp rospy geometry_msgs sensor_msgs tf grid_map_core \
-          grid_map_msgs grid_map_cv  realsense2_camera realsense2_description"
+PACKAGES="roscpp rospy std_msgs geometry_msgs sensor_msgs tf"
 # You can add any local ROS packages you need, as long as you source
 # <YourCatkinWorkspace>/install/setup.bash before running this script
 rm -rf bundle_ws

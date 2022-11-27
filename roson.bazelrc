@@ -1,0 +1,2 @@
+# build without ros
+build --//:ros=on

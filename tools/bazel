@@ -8,7 +8,7 @@ done
 readonly WORKSPACE_DIR
 
 if [ "${DAIRLIB_WITH_ROS}" == "ON" ] ; then
-  exec -a "$0" "${BAZEL_REAL}" "$@"
+  exec -a "$0" "${BAZEL_REAL}" "--bazelrc=${WORKSPACE_DIR}/roson.bazelrc" "$@"
 else
-  exec -a "$0" "${BAZEL_REAL}" "--bazelrc=${WORKSPACE_DIR}/noros.bazelrc" "$@"
+  exec -a "$0" "${BAZEL_REAL}" "--bazelrc=${WORKSPACE_DIR}/rosoff.bazelrc" "$@"
 fi

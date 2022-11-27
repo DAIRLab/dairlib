@@ -96,18 +96,22 @@ cc_binary(
         "//systems:system_utils",
         "//systems/framework:vector",
         "//systems/primitives",
-        "//systems/ros:dairlib_ros",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
+    ] + select(
+        {
+            "//tools/workspace/ros:dair_ros_on": ["//systems/ros:dairlib_ros"],
+            "//tools/workspace/ros:dair_ros_off": [],
+        },
+    ),
 )
 
 cc_binary(
     name = "run_controller_switch",
     srcs = ["run_controller_switch.cc"],
     deps = [
-        "@drake//:drake_shared_library",
         "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
         "@gflags",
     ],
 )

@@ -1,30 +1,54 @@
 # -*- python -*-
 
+package(default_visibility = ["//visibility:public"])
+
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+
+# BUILD FLAGSs
+
+string_flag(
+    name = "dair_ros",
+    build_setting_default = "off",
+    values = [
+        "on",
+        "off",
+    ],
+)
+
+config_setting(
+    name = "dair_ros_on",
+    flag_values = {":dair_ros": "on"},
+)
+
+config_setting(
+    name = "dair_ros_off",
+    flag_values = {":dair_ros": "off"},
+)
+
 # Demo programs
-
 cc_binary(
-    name='main',
-    srcs=['test/main.cpp'],
-    deps=[
-        '@ros',
+    name = "main",
+    srcs = ["test/main.cpp"],
+    tags = ["ros"],
+    deps = [
+        "@ros",
     ],
-    tags=["ros"],
 )
 
 py_binary(
-    name='main_python',
-    srcs=['test/main_python.py'],
-    deps=[
-        '@ros//:ros_python',
+    name = "main_python",
+    srcs = ["test/main_python.py"],
+    tags = ["ros"],
+    deps = [
+        "@ros//:ros_python",
     ],
-    tags=["ros"],
 )
 
 py_binary(
-    name='genmsg_test',
-    srcs=['test/genmsg_test.py'],
-    deps=[
-        '@genpy_repo//:genpy',
+    name = "genmsg_test",
+    srcs = ["test/genmsg_test.py"],
+    tags = ["ros"],
+    deps = [
+        "@genpy_repo//:genpy",
     ],
-    tags=["ros"],
 )

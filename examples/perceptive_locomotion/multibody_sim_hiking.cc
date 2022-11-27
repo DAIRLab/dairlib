@@ -14,8 +14,11 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+
+#ifdef DAIR_ROS_ON
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/robot_output_to_ros_pose.h"
+#endif
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
@@ -156,7 +159,7 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
 
   // ROS interfaces
-#ifdef DAIR_ROS
+#ifdef DAIR_ROS_ON
   ros::init(argc, argv, "cassie_hiking_simulaton");
   ros::NodeHandle node_handle;
   const auto& pose_sender =

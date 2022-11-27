@@ -27,7 +27,7 @@ def plot_com_traj_solutions(lcm_traj_list, dims, slc=None):
     for traj in lcm_traj_list[slc]:
         t = traj.trajectories["com_traj"].lcm_trajectory_block.time_vec
         y = np.array(traj.trajectories["com_traj"].lcm_trajectory_block.datapoints).T
-        plt.plot(t, y[:, dims], marker='.', markersize=10)
+        plt.plot(t[0], y[0, dims], marker='.', markersize=10)
 
 
 def plot_state_traj_over_time(xx):
@@ -141,6 +141,8 @@ def main():
         mpc_debug.mpc_trajs["desired"].xxs[mpc_debug.t_mpc[5]]
     )
 
+    plot_com_traj_solutions(com_trajs, [0])
+    plot_com_traj_solutions(com_trajs, [1])
     plot_com_traj_solutions(com_trajs, [2])
 
     idx = 50

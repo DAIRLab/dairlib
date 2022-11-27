@@ -140,6 +140,7 @@ class AlipMINLP {
   // Update the dynamics constraint to reflect the current mode timings
   // after maybe updating the mode timing by one gradient step
   void UpdateModeTiming(bool take_sqp_step);
+  void UpdateNoCrossoverConstraint();
   void UpdateModeTimingsOnTouchdown();
 
   // Solving the problem
@@ -177,8 +178,10 @@ class AlipMINLP {
   // misc getters and setters
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
+  double H() {return H_;}
+  double m() {return m_;}
   double solve_time() const {
-    return solution_.first.get_solver_details<OsqpSolver>().solve_time;
+    return solution_.first.get_solver_details<OsqpSolver>().run_time;
   };
   int nmodes() const { return nmodes_; }
   std::vector<int> nknots() const { return nknots_; }
@@ -213,11 +216,14 @@ class AlipMINLP {
   void MakeTerminalCost();
   void MakeResetConstraints();
   void MakeDynamicsConstraints();
+  void MakeWorkspaceConstraints();
   void ClearFootholdConstraints();
   void MakeInputBoundConstaints();
+  void MakeNoCrossoverConstraint();
   void MakeInitialStateConstraint();
   void MakeInitialFootstepConstraint();
   void MakeNextFootstepReachabilityConstraint();
+  void MakeCapturePointConstraint(int foothold_idx);
   std::vector<std::vector<int>> GetPossibleModeSequences();
   void MakeFootstepConstraints(std::vector<int> foothold_idxs);
   void MakeIndividualFootholdConstraint(int idx_mode, int idx_foothold);
@@ -242,9 +248,11 @@ class AlipMINLP {
   // constraints
   std::vector<Binding<BoundingBoxConstraint>> input_bounds_c_{};
   std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
+  std::vector<Binding<LinearConstraint>> no_crossover_constraint_{};
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<LinearConstraint> next_step_reach_c_fixed_ = nullptr;
+  std::shared_ptr<Binding<LinearConstraint>> capture_point_contstraint_ = nullptr;
   std::vector<std::vector<Binding<LinearEqualityConstraint>>> dynamics_c_{};
   std::vector<std::pair<Binding<LinearConstraint>,
                         Binding<LinearEqualityConstraint>>> footstep_c_{};

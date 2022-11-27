@@ -1,4 +1,4 @@
-rho: 0.0001
+rho: 0.1
 sigma: 1e-6
 max_iter: 5000
 eps_abs: 1e-5
@@ -9,7 +9,7 @@ alpha: 1.6
 linsys_solver: 0
 delta: 1e-6
 polish: 1
-polish_refine_iter: 3
+polish_refine_iter: 1
 verbose: 0
 scaled_termination: 1
 check_termination: 25

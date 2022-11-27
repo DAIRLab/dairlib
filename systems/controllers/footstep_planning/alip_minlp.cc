@@ -71,7 +71,7 @@ void AlipDynamicsConstraint::EvaluateConstraint(
   Vector4d x1 = xd.segment(5, 4);
   double t = xd(xd.size() -1) / n_;
 
-  Matrix4d Ad = (t * A_).exp();
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
   Vector4d Bd = A_inv_ * (Ad - Matrix4d::Identity()) * B_;
 
   VectorXd y0 = Ad * x0 + Bd * u0 - x1;
@@ -90,7 +90,7 @@ Matrix4d AlipDynamicsConstraint::Ad(double t) {
 void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
                                 const Matrix4d &Q, const Eigen::MatrixXd& Qf) {
   DRAKE_DEMAND(xd.size() == nmodes_);
-  for (int i = 0; i < nmodes_; i++){
+  for (int i = 1; i < nmodes_; i++){
     DRAKE_DEMAND(xd.at(i).size() == nknots_.at(i));
     vector<Binding<QuadraticCost>> QQ;
     for (int k = 0; k < nknots_.at(i); k++){
@@ -138,8 +138,10 @@ void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
   for (int i = 0; i < nmodes_; i++) {
     tt_(i) = td_.at(i);
   }
+  MakeNoCrossoverConstraint();
   MakeResetConstraints();
   MakeDynamicsConstraints();
+  MakeWorkspaceConstraints();
   MakeInputBoundConstaints();
   MakeNextFootstepReachabilityConstraint();
   MakeInitialStateConstraint();
@@ -168,10 +170,10 @@ void AlipMINLP::AddMode(int nk) {
 }
 
 void AlipMINLP::UpdateTrackingCost(const vector<vector<Vector4d>> &xd) {
-  for(int n = 0; n < nmodes_; n++) {
+  for(int n = 0; n < nmodes_ - 1 ; n++) {
     for (int k = 0; k < nknots_.at(n); k++) {
       tracking_costs_.at(n).at(k).evaluator()->
-          UpdateCoefficients(2.0*Q_, -2.0*Q_ * xd.at(n).at(k));
+          UpdateCoefficients(2.0*Q_, -2.0*Q_ * xd.at(n+1).at(k));
     }
   }
   terminal_cost_->UpdateCoefficients(2.0 * Qf_, -2.0 * Qf_ * xd.back().back());
@@ -192,16 +194,34 @@ void AlipMINLP::MakeIndividualFootholdConstraint(int idx_mode,
       );
 }
 
+void AlipMINLP::MakeCapturePointConstraint(int foothold_idx) {
+  const auto& [A, b] = footholds_.at(foothold_idx).GetConstraintMatrices();
+  Matrix<double, 2, 4> Acp = Matrix<double, 2, 4>::Zero();
+  Acp.leftCols(2) = Eigen::Matrix2d::Identity();
+  Acp(0,3) = -1.0 / (m_ * sqrt(9.81 * H_));
+  Acp(1,2) = -Acp(0,3);
+  MatrixXd A_constraint = A.leftCols<2>() * Acp;
+
+  capture_point_contstraint_ =
+      std::make_shared<Binding<LinearConstraint>>(
+      prog_->AddLinearConstraint(
+          A_constraint,
+          -numeric_limits<double>::infinity() * VectorXd::Ones(A_constraint.rows()),
+          b, {pp_.back().head(2), xx_.back().back().tail(2)}
+      ));
+}
+
 void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
   DRAKE_ASSERT(foothold_idxs.size() == nmodes_);
   for (int i = 0; i < foothold_idxs.size(); i++) {
     MakeIndividualFootholdConstraint(i+1, foothold_idxs.at(i));
   }
+//  MakeCapturePointConstraint(foothold_idxs.back());
 }
 
 void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
   MatrixXd A = alip_utils::CalcA(H_, m_);
-  Matrix4d Ad = (Tds_ * A).exp();
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, Tds_);
   Matrix4d Adinv = Ad.inverse();
   Matrix4d Ainv = A.inverse();
   Matrix4d I = Matrix4d::Identity();
@@ -221,10 +241,6 @@ void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
 
 void AlipMINLP::MakeResetConstraints() {
   Matrix<double, 4, 12> A_eq = Matrix<double, 4, 12>::Zero();
-//  A_eq.topLeftCorner<4, 4>() = Matrix4d::Identity();
-//  A_eq.block<4, 4>(0, 4) = -Matrix4d::Identity();
-//  A_eq.block<2, 2>(0, 8) = Eigen::Matrix2d::Identity();
-//  A_eq.block<2, 2>(0, 10) = -Eigen::Matrix2d::Identity();
   CalcResetMap(&A_eq);
   for (int i = 0; i < (nmodes_ - 1); i++) {
     reset_map_c_.push_back(
@@ -240,7 +256,7 @@ void AlipMINLP::MakeDynamicsConstraints() {
   for (int i = 0; i < nmodes_; i++) {
     vector<Binding<LinearEqualityConstraint>> dyn_c_this_mode;
     double t = tt_(i) / (nknots_.at(i) - 1);
-    Matrix4d Ad = (t * alip_utils::CalcA(H_, m_)).exp();
+    Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
     Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
 
     Matrix<double, 4, 9> Adyn = Matrix<double, 4, 9>::Zero();
@@ -263,20 +279,37 @@ void AlipMINLP::MakeDynamicsConstraints() {
 void AlipMINLP::MakeInitialFootstepConstraint() {
   initial_foot_c_ = prog_->AddLinearEqualityConstraint(
       Matrix3d::Identity(), Vector3d::Zero(), pp_.at(0)).evaluator();
+  initial_foot_c_->set_description("initial_footstep");
 }
 
 void AlipMINLP::MakeInitialStateConstraint() {
   initial_state_c_ = prog_->AddLinearEqualityConstraint(
       Matrix4d::Identity(), Vector4d::Zero(), xx_.at(0).at(0)).evaluator();
+  initial_state_c_->set_description("initial_state");
 }
 
 void AlipMINLP::MakeInputBoundConstaints() {
   DRAKE_DEMAND(umax_ >= 0 && !uu_.empty());
+  int i = 0;
   for (const auto& vec : uu_) {
     for (const auto& u : vec) {
       input_bounds_c_.push_back(
           prog_->AddBoundingBoxConstraint(-umax_, umax_, u)
       );
+      i++;
+      input_bounds_c_.back().evaluator()->set_description("input bounds" + std::to_string(i));
+    }
+  }
+}
+
+void AlipMINLP::MakeWorkspaceConstraints() {
+  for (int n = 1; n < nmodes_; n++) {
+    for (const auto& xx : xx_.at(n)) {
+      prog_->AddLinearConstraint(
+          MatrixXd::Identity(2, 2),
+          Vector2d(-0.8, -0.75),
+          Vector2d(0.8, 0.75),
+          xx.head(2));
     }
   }
 }
@@ -287,6 +320,21 @@ void AlipMINLP::MakeNextFootstepReachabilityConstraint() {
       -numeric_limits<double>::infinity()*VectorXd::Ones(1),
       VectorXd::Zero(1), pp_.at(1))
   .evaluator();
+  next_step_reach_c_fixed_->set_description("next footstep workspace constraint");
+}
+
+void AlipMINLP::MakeNoCrossoverConstraint() {
+  for (int i = 0; i < nmodes_ - 1 ; i++) {
+    int stance = i % 2 == 0 ? -1 : 1;
+    Eigen::RowVector2d A = {stance, -stance};
+    no_crossover_constraint_.push_back(
+        prog_->AddLinearConstraint(
+            A, -numeric_limits<double>::infinity(), -0.04,
+            {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)})
+    );
+    no_crossover_constraint_.back().evaluator()->set_description(
+        "no crossover constraint" + std::to_string(i));
+  }
 }
 
 void AlipMINLP::ClearFootholdConstraints() {
@@ -295,6 +343,10 @@ void AlipMINLP::ClearFootholdConstraints() {
     prog_->RemoveConstraint(i.second);
   }
   footstep_c_.clear();
+  if (capture_point_contstraint_) {
+    prog_->RemoveConstraint(*capture_point_contstraint_);
+  }
+
 }
 
 void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
@@ -305,7 +357,7 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   // Set the initial guess for the current mode based on limited time
   vector<Vector4d> xx;
   xx.push_back(x0);
-  Matrix4d Ad = (tt_(0) / (nknots_.front() - 1) * alip_utils::CalcA(H_, m_)).exp();
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(0) / (nknots_.front() - 1));
   for (int i = 1; i < nknots_.front(); i++) {
     xx.push_back(Ad * xx.at(i-1));
   }
@@ -341,6 +393,17 @@ void AlipMINLP::UpdateNextFootstepReachabilityConstraint(const geometry::ConvexF
       Af, neg_inf * VectorXd::Ones(bf.rows()), bf);
 }
 
+void AlipMINLP::UpdateNoCrossoverConstraint() {
+  for (auto& constraint: no_crossover_constraint_) {
+    auto A = constraint.evaluator()->GetDenseA();
+    A *= -1;
+    constraint.evaluator()->UpdateCoefficients(
+        A,
+        -numeric_limits<double>::infinity()*VectorXd::Ones(1),
+        VectorXd::Zero(1));
+  }
+}
+
 void AlipMINLP::UpdateModeTiming(bool take_sqp_step) {
   tt_(0) = td_.front();
   if (take_sqp_step) {
@@ -357,12 +420,12 @@ void AlipMINLP::UpdateModeTimingsOnTouchdown() {
 }
 
 void AlipMINLP::UpdateTimingGradientStep() {
+  Vector4d B = Vector4d::UnitW();
   for (int n = 0; n < nmodes_; n++) {
     double dLdt_n = 0;
+    Matrix4d A = alip_utils::CalcA(H_, m_);
+    Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(n) / (nknots_.at(n) - 1));
     for (int k = 0; k < nknots_.at(n) - 1; k++) {
-      Matrix4d A = alip_utils::CalcA(H_, m_);
-      Vector4d B = Vector4d::UnitW();
-      Matrix4d Ad = (A * tt_(n) / (nknots_.at(n) - 1)).exp();
       Vector4d nu = solution_.second.at(n).at(k);
       VectorXd x = solution_.first.GetSolution(xx_.at(n).at(k));
       VectorXd u = solution_.first.GetSolution(uu_.at(n).at(k));
@@ -376,18 +439,18 @@ void AlipMINLP::UpdateTimingGradientStep() {
 void AlipMINLP::UpdateDynamicsConstraints() {
   for (int n = 0; n < nmodes_; n++) {
     int nk =  nknots_.at(n) - 1;
+    double t = tt_(n) / nk;
+    Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
+    Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
+    Matrix<double, 4, 9> Adyn = Matrix<double, 4, 9>::Zero();
+    Adyn.leftCols<4>() = Ad;
+    Adyn.col(4) = Bd;
+    Adyn.rightCols<4>() = -Matrix4d::Identity();
+    Vector4d bdyn = Vector4d::Zero();
     for (int k = 0; k < nk; k++) {
-      double t = tt_(n) / nk;
-      Matrix4d Ad = (t * alip_utils::CalcA(H_, m_)).exp();
-      Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
-      Matrix<double, 4, 9> Adyn;
-      Adyn.leftCols<4>() = Ad;
-      Adyn.col(4) = Bd;
-      Adyn.rightCols<4>() = -Matrix4d::Identity();
-      dynamics_c_.at(n).at(k).evaluator()->UpdateCoefficients(Adyn, Vector4d::Zero());
+      dynamics_c_.at(n).at(k).evaluator()->UpdateCoefficients(Adyn, bdyn);
     }
   }
-
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {
@@ -418,11 +481,6 @@ void AlipMINLP::SolveOCProblemAsIs() {
       vector<vector<Vector4d>> dual_solutions;
       const auto sol = solver_.Solve(*prog_);
 
-      if (sol.get_solution_result() == drake::solvers::kInfeasibleConstraints) {
-        solvers::print_constraint(sol.GetInfeasibleConstraints(*prog_));
-        DRAKE_DEMAND(sol.is_success());
-      }
-
       for (int n = 0; n < nmodes_; n++) {
         vector<Vector4d> duals(nknots_.at(n) - 1, Vector4d::Zero());
         if (sol.is_success()) {
@@ -443,7 +501,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
       [](
     const std::pair<MathematicalProgramResult, vector<vector<Vector4d>>>& lhs,
     const std::pair<MathematicalProgramResult, vector<vector<Vector4d>>>& rhs){
-    return lhs.first.get_optimal_cost() < rhs.first.get_optimal_cost();
+    return lhs.first.get_optimal_cost() < rhs.first.get_optimal_cost() && lhs.first.is_success();
   });
   if (solutions.front().first.is_success()) {
     solution_ = solutions.front();
@@ -483,7 +541,7 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
   double Ly = H_ * m_ * vdes(0);
   double Lx = H_ * m_ * omega * step_width * tanh(omega * Ts / 2);
   double dLx = - H_ * m_ * vdes(1);
-  Matrix4d Ad = ((Ts / (nk-1)) * alip_utils::CalcA(H_, m_)).exp();
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, (Ts / (nk-1)));
   vector<vector<Vector4d>> xx;
 
   Eigen::MatrixPower<Matrix4d> APow(Ad);
@@ -511,10 +569,10 @@ vector<Vector4d> AlipMINLP::MakeXdesTrajForCurrentStep(
   double frac = 1 / (m_ * H_ * omega);
   double Ly = H_ * m_ * vdes(0);
   double Lx = H_ * m_ * omega * step_width * tanh(omega * Ts / 2);
-  double dLx = - H_ * m_ * vdes(1);
+  double dLx = -H_ * m_ * vdes(1);
 
-  MatrixXd Ad0 = (t_current * alip_utils::CalcA(H_, m_)).exp();
-  Matrix4d Ad = ((t_remain / (nk-1)) * alip_utils::CalcA(H_, m_)).exp();
+  Matrix4d Ad0 = alip_utils::CalcAd(H_, m_, t_current);
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, t_remain / (nk-1));
   Eigen::MatrixPower<Matrix4d> APow(Ad);
 
   Vector4d x0(

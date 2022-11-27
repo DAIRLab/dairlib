@@ -38,8 +38,8 @@ max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
 mid_foot_height: 0.18
-final_foot_height: 0.03
-final_foot_velocity_z: -0.5
+final_foot_height: 0.05
+final_foot_velocity_z: 0.0
 
 # LIPM trajectory
 lipm_height: 0.83
@@ -47,9 +47,9 @@ lipm_height: 0.83
 # OSC gains
 mu: 0.8
 
-w_accel: 0.0000001
+w_accel: 0.0
 w_soft_constraint: 8000
-w_input_reg: 0.000001
+w_input_reg: 0.0000001
 
 w_swing_toe: 1
 swing_toe_kp: 2000
@@ -95,7 +95,7 @@ PelvisHeadingKp:
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    2.5]
+      0,     0,    4]
 period_of_no_heading_control: 0.0
 
 SwingFootW:
@@ -103,8 +103,8 @@ SwingFootW:
     0,    4,     0,
     0,    0,     2]
 SwingFootKp:
-  [ 125,  0,     0,
-    0,  125,     0,
+  [ 200,  0,     0,
+    0,  200,     0,
     0,    0,   100]
 SwingFootKd:
   [1,    0,     0,

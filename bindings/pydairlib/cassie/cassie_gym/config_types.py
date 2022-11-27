@@ -71,23 +71,23 @@ class CassieGymParams(StepnetDataClass):
                 low=-domain.camera_pitch,
                 high=domain.camera_pitch
             )
-        terrain_type = VisionSimTerrainType.kCubic
-        terr_draw = np.random.uniform(low=0.0, high=1.0)
-        if terr_draw > domain.terrain_cumulative_likelihoods[0]:
-            terrain_type = VisionSimTerrainType.kCubicWithVoids
-            if terr_draw > domain.terrain_cumulative_likelihoods[1]:
-                terrain_type = VisionSimTerrainType.kStairs
-                if terr_draw > domain.terrain_cumulative_likelihoods[2]:
-                    terrain_type = VisionSimTerrainType.kBoxy
-                    if terr_draw > domain.terrain_cumulative_likelihoods[3]:
-                        terrain_type = VisionSimTerrainType.kFlat
+        terrain_type = VisionSimTerrainType.kFlat
+        # terr_draw = np.random.uniform(low=0.0, high=1.0)
+        # if terr_draw > domain.terrain_cumulative_likelihoods[0]:
+        #     terrain_type = VisionSimTerrainType.kCubicWithVoids
+        #     if terr_draw > domain.terrain_cumulative_likelihoods[1]:
+        #         terrain_type = VisionSimTerrainType.kStairs
+        #         if terr_draw > domain.terrain_cumulative_likelihoods[2]:
+        #             terrain_type = VisionSimTerrainType.kBoxy
+        #             if terr_draw > domain.terrain_cumulative_likelihoods[3]:
+        #                 terrain_type = VisionSimTerrainType.kFlat
 
         return CassieGymParams(
             terrain_normal=normal,
             x_init=x,
             map_yaw=map_yaw,
             mu=mu,
-            terrain_type= terrain_type,
+            terrain_type=terrain_type,
             camera_position=camera_position,
             camera_pitch=camera_pitch
         )
@@ -127,19 +127,19 @@ class DataGeneratorParams(StepnetDataClass):
     depth_camera_info: DepthCameraInfo = DepthCameraInfo()
 
     """ How much noise to add to target footsteps """
-    target_xyz_noise_bound: np.ndarray = default_array([0.25, 0.25, 0.0])
+    target_xyz_noise_bound: np.ndarray = default_array([0.5, 0.5, 0.0])
     target_yaw_noise_bound: float = 1.0
     target_time_bounds: np.ndarray = default_array([0.1, 0.5])
     randomize_time: bool = True
     randomize_yaw: bool = True
 
     """ Bounds on footstep coordinates"""
-    target_lb: np.ndarray = default_array([-2.0, -1.5, -0.5])
-    target_ub: np.ndarray = default_array([2.0, 1.5, 0.5])
+    target_lb: np.ndarray = default_array([-2.0, -2.0, 0.0])
+    target_ub: np.ndarray = default_array([2.0, 2.0, 0.3])
 
     """ Bounds on radio commands """
-    radio_lb: np.ndarray = default_array([-0.5, -1.0])
-    radio_ub: np.ndarray = default_array([0.5, 1.0])
+    radio_lb: np.ndarray = default_array([-1.0, -1.0])
+    radio_ub: np.ndarray = default_array([1.0, 1.0])
 
     """ simulation params """
     depth_var_z: float = 0.0

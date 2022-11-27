@@ -162,7 +162,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::CassieOutToRadio>();
 
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), 0.5, 1.0, 0.5);
+      plant_w_spr, context_w_spr.get(), 1.5, 0.8, -0.4);
 
   auto footstep_sender = builder.AddSystem<FootstepSender>();
   auto footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);

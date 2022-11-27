@@ -96,6 +96,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/framework:vector",
         "//systems/primitives",
+        "//systems/ros:dairlib_ros",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

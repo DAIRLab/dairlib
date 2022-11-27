@@ -14,6 +14,8 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/ros/ros_publisher_system.h"
+#include "systems/ros/robot_output_to_ros_pose.h"
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
@@ -106,6 +108,8 @@ int do_main(int argc, char* argv[]) {
                      FLAGS_spring_model, true);
   plant.Finalize();
 
+  auto context = plant.CreateDefaultContext();
+
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   plant.set_stiction_tolerance(FLAGS_v_stiction);
 
@@ -150,6 +154,20 @@ int do_main(int argc, char* argv[]) {
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
+
+  // ROS interfaces
+#ifdef DAIR_ROS
+  ros::init(argc, argv, "cassie_hiking_simulaton");
+  ros::NodeHandle node_handle;
+  const auto& pose_sender =
+      builder.AddSystem<systems::RobotOutputToRosPose>(
+          plant, context.get(), "pelvis");
+  const auto& pose_publisher =
+      builder.AddSystem<
+          systems::RosPublisherSystem<geometry_msgs::PoseWithCovarianceStamped>>
+          ("/geometry_msgs/PoseWithCovarianceStamped",
+              &node_handle, {drake::systems::TriggerType::kPerStep});
+#endif
 
   // connect leaf systems
   builder.Connect(*input_sub, *input_receiver);

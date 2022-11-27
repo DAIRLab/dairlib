@@ -1,4 +1,15 @@
 # -*- python -*-
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "dairlib_ros",
+    tags = ["ros"],
+    defines = ["DAIR_ROS"],
+    deps = [
+        ":ros_pubsub_systems",
+        ":robot_output_to_ros_pose"
+    ],
+)
 
 cc_library(
     name = "ros_pubsub_systems",
@@ -19,6 +30,7 @@ cc_library(
     hdrs = ["robot_output_to_ros_pose.h"],
     tags = ["ros"],
     deps = [
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@ros",

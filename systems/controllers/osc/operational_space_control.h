@@ -317,6 +317,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;
   std::unique_ptr<Eigen::VectorXd> u_sol_;
+  std::unique_ptr<Eigen::VectorXd> u_prev_;
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;

@@ -318,11 +318,13 @@ void OperationalSpaceControl::Build() {
   // Initialize solution
   dv_sol_ = std::make_unique<Eigen::VectorXd>(n_v_);
   u_sol_ = std::make_unique<Eigen::VectorXd>(n_u_);
+  u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
   dv_sol_->setZero();
   u_sol_->setZero();
+  u_prev_->setZero();
   lambda_c_sol_->setZero();
   lambda_h_sol_->setZero();
   epsilon_sol_->setZero();
@@ -744,26 +746,26 @@ VectorXd OperationalSpaceControl::SolveQp(
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0) {
     input_reg_cost_->UpdateCoefficients(W_input_smoothing_,
-                                        -W_input_smoothing_ * (*u_sol_));
+                                        -W_input_smoothing_ * (*u_prev_));
   }
 
   const MathematicalProgramResult result = solver_->Solve(*prog_);
 
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
-  if (!result.is_success()) {
-    // std::cout << "reverting to old sol" << std::endl;
-    return *u_sol_;
+  if (result.is_success() && !isnan(result.GetSolution(u_)(0))) {
+    // Extract solutions
+    *dv_sol_ = result.GetSolution(dv_);
+    *u_sol_ = result.GetSolution(u_);
+    *u_prev_ = *u_sol_;
+    *lambda_c_sol_ = result.GetSolution(lambda_c_);
+    *lambda_h_sol_ = result.GetSolution(lambda_h_);
+    *epsilon_sol_ = result.GetSolution(epsilon_);
+  } else {
+    u_prev_->setZero();
   }
 
-  // Extract solutions
-  *dv_sol_ = result.GetSolution(dv_);
-  *u_sol_ = result.GetSolution(u_);
-  *lambda_c_sol_ = result.GetSolution(lambda_c_);
-  *lambda_h_sol_ = result.GetSolution(lambda_h_);
-  *epsilon_sol_ = result.GetSolution(epsilon_);
-
-  for (auto tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {
       tracking_data->StoreYddotCommandSol(*dv_sol_);
     }

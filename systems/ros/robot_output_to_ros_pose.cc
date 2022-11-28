@@ -2,7 +2,6 @@
 
 #include "multibody/multibody_utils.h"
 
-using dairlib::systems::OutputVector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using geometry_msgs::PoseWithCovarianceStamped;
@@ -12,26 +11,23 @@ using Eigen::MatrixXd;
 namespace dairlib {
 namespace systems {
 
-RobotOutputToRosPose::RobotOutputToRosPose(const MultibodyPlant<double>& plant,
-                                           Context<double>* context,
-                                           const std::string& body_name)
+RobotStateToRosPose::RobotStateToRosPose(const MultibodyPlant<double>& plant,
+                                         Context<double>* context,
+                                         const std::string& body_name)
   : plant_(plant), context_(context), body_name_(body_name) {
 
-  this->DeclareVectorInputPort("x, u, t",
-      OutputVector<double>(plant_.num_positions(),
-          plant.num_velocities(), plant.num_actuators()));
+  this->DeclareVectorInputPort("x",
+                               plant_.num_positions() + plant.num_velocities());
 
   PoseWithCovarianceStamped pose;
   this->DeclareAbstractOutputPort("ros_pose", pose,
-      &RobotOutputToRosPose::CopyPose);
+      &RobotStateToRosPose::CopyPose);
 }
 
-void RobotOutputToRosPose::CopyPose(
+void RobotStateToRosPose::CopyPose(
     const Context<double> &context, PoseWithCovarianceStamped *pose) const {
 
-  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
-      this->EvalVectorInput(context, 0));
-  const VectorXd state = robot_output->GetState();
+  const VectorXd& state = this->EvalVectorInput(context, 0)->get_value();
   multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, state, context_);
 
   const MatrixXd cov = MatrixXd::Zero(6,6);

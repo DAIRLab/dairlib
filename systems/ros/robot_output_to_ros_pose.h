@@ -16,11 +16,11 @@ namespace systems {
 
 /// Class to convert a robot state, as given by Drake, to the pose of
 /// a given Link of the robot
-class RobotOutputToRosPose : public drake::systems::LeafSystem<double> {
+class RobotStateToRosPose : public drake::systems::LeafSystem<double> {
  public:
-  RobotOutputToRosPose(const drake::multibody::MultibodyPlant<double> &plant,
-                       drake::systems::Context<double>* context,
-                       const std::string& body);
+  RobotStateToRosPose(const drake::multibody::MultibodyPlant<double> &plant,
+                      drake::systems::Context<double>* context,
+                      const std::string& body);
  private:
   void CopyPose(const drake::systems::Context<double> &context,
                 geometry_msgs::PoseWithCovarianceStamped *pose) const;

@@ -163,7 +163,7 @@ int do_main(int argc, char* argv[]) {
   ros::init(argc, argv, "cassie_hiking_simulaton");
   ros::NodeHandle node_handle;
   const auto& pose_sender =
-      builder.AddSystem<systems::RobotOutputToRosPose>(
+      builder.AddSystem<systems::RobotStateToRosPose>(
           plant, context.get(), "pelvis");
   const auto& pose_publisher =
       builder.AddSystem<
@@ -172,7 +172,8 @@ int do_main(int argc, char* argv[]) {
               &node_handle,
               drake::systems::TriggerTypeSet(
                   {drake::systems::TriggerType::kPerStep}));
-  builder.Connect(*state_sender, *pose_sender);
+  builder.Connect(plant.get_state_output_port(),
+                  pose_sender->get_input_port());
   builder.Connect(*pose_sender, *pose_publisher);
 #endif
 

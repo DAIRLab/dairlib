@@ -172,7 +172,8 @@ int do_main(int argc, char* argv[]) {
               &node_handle,
               drake::systems::TriggerTypeSet(
                   {drake::systems::TriggerType::kPerStep}));
-
+  builder.Connect(*state_sender, *pose_sender);
+  builder.Connect(*pose_sender, *pose_publisher);
 #endif
 
   // connect leaf systems

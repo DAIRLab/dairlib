@@ -106,9 +106,9 @@ http_archive(
 #  export DAIRLIB_LOCAL_INEKF_PATH=/home/user/workspace/invariant-ekf
 
 # Choose a revision of InEKF to use.
-INEKF_COMMIT = "7fde9f84dbe536ba9439a3b8c319efb51ff760dd"
+INEKF_COMMIT = "bazel-opt"
 
-INEKF_CHECKSUM = "f87e3262b0c9c9237881fcd539acd1c60000f97dfdfa47b0ae53cb7a0f3256e4"
+INEKF_CHECKSUM = "bd2629368f48f920cd155263365374ee47c96f5a402ee48cccf05b6729663398"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.

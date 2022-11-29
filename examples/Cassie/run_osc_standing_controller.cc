@@ -53,6 +53,7 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
+DEFINE_double(max_qp_hz, 800.0, "Maximum control frequency");
 DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
@@ -68,7 +69,7 @@ DEFINE_bool(publish_osc, false,
 
 DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
-// Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
+// Currently the controller runs at the rate between 500 Hz and 200 Hz,so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
 // Maybe we need to update the lcm driven loop to clear the queue of lcm message
@@ -191,10 +192,11 @@ int DoMain(int argc, char* argv[]) {
 
   // Create command sender.
   auto u_zoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-      0.001, drake::Value<dairlib::lcmt_robot_input>());
+      1.0 / FLAGS_max_qp_hz, drake::Value<dairlib::lcmt_robot_input>());
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+          FLAGS_channel_u, &lcm_local,
+          TriggerTypeSet({TriggerType::kPeriodic}), 1.1 / FLAGS_max_qp_hz));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
 

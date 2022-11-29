@@ -21,6 +21,7 @@
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/primitives/zero_order_hold.h"
 
 namespace dairlib {
 
@@ -189,14 +190,16 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
 
   // Create command sender.
+  auto u_zoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
+      0.001, drake::Value<dairlib::lcmt_robot_input>());
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
 
-  builder.Connect(command_sender->get_output_port(0),
-                  command_pub->get_input_port());
+  builder.Connect(*command_sender, *u_zoh);
+  builder.Connect(*u_zoh, *command_pub);
 
 
   // Create desired center of mass traj

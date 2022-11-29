@@ -700,23 +700,26 @@ EventStatus CassieStateEstimator::Update(
   }
 
   // Estimated floating base state (pelvis)
+  const auto& ekf_state = ekf.getState();
+  const auto& R_WB = ekf_state.getRotation();
+
   VectorXd estimated_fb_state(13);
-  Vector3d r_imu_to_pelvis_global = ekf.getState().getRotation() * (-imu_pos_);
+  Vector3d r_imu_to_pelvis_global = R_WB * (-imu_pos_);
   // Rotational position
-  Quaterniond q(ekf.getState().getRotation());
+  Quaterniond q(R_WB);
   q.normalize();
   estimated_fb_state[0] = q.w();
   estimated_fb_state.segment<3>(1) = q.vec();
   // Translational position
   estimated_fb_state.segment<3>(4) =
-      ekf.getState().getPosition() + r_imu_to_pelvis_global;
+     ekf_state.getPosition() + r_imu_to_pelvis_global;
   // Rotational velocity
   Vector3d omega_global =
-      ekf.getState().getRotation() * imu_measurement.head(3);
+     R_WB * imu_measurement.head(3);
   estimated_fb_state.segment<3>(7) = omega_global;
   // Translational velocity
   estimated_fb_state.tail(3) =
-      ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
+      ekf_state.getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
 
   // Estimated robot output
   OutputVector<double> filtered_output(n_q_, n_v_, n_u_);

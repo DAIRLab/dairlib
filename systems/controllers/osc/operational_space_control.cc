@@ -481,8 +481,9 @@ void OperationalSpaceControl::Build() {
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
 
-  solver_ = std::make_unique<drake::solvers::OsqpSolver>();
+  solver_ = std::make_unique<dairlib::solvers::FastOsqpSolver>();
   prog_->SetSolverOptions(solver_options_);
+  solver_->InitializeSolver(*prog_, solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(

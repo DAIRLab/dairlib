@@ -1,5 +1,6 @@
 #include "fast_osqp_solver.h"
 
+#include <iostream>
 #include <vector>
 
 #include <osqp.h>
@@ -45,9 +46,9 @@ void ParseQuadraticCosts(const MathematicalProgram& prog,
     for (int col = 0; col < Q.cols(); ++col) {
       for (int row = 0; (row <= col) && (row < Q.rows()); ++row) {
         const double value = Q(row, col);
-        if (value == 0.0) {
-          continue;
-        }
+        //        if (value == 0.0) {
+        //          continue;
+        //        }
         const int x_row = x_indices[row];
         const int x_col = x_indices[col];
         P_triplets.emplace_back(x_row, x_col, static_cast<c_float>(value));
@@ -140,8 +141,7 @@ void ParseLinearConstraints(
     const std::vector<int> x_indices =
         prog.FindDecisionVariableIndices(constraint.variables());
     const std::vector<Eigen::Triplet<double>> Ai_triplets =
-        drake::math::SparseMatrixToTriplets(
-            constraint.evaluator()->get_sparse_A());
+        SparseMatrixToTriplets(constraint.evaluator()->get_sparse_A());
     const Binding<Constraint> constraint_cast =
         BindingDynamicCast<Constraint>(constraint);
     constraint_start_row->emplace(constraint_cast, *num_A_rows);

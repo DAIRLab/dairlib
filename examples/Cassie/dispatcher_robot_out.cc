@@ -27,6 +27,11 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 
+#ifdef DAIR_ROS_ON
+#include "systems/ros/ros_publisher_system.h"
+#include "systems/ros/robot_state_to_ros_pose.h"
+#endif
+
 namespace dairlib {
 
 using drake::systems::Context;

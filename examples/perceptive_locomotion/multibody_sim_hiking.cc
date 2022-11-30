@@ -17,7 +17,8 @@
 
 #ifdef DAIR_ROS_ON
 #include "systems/ros/ros_publisher_system.h"
-#include "systems/ros/robot_output_to_ros_pose.h"
+#include "systems/ros/robot_state_to_ros_pose.h"
+#include "systems/ros/robot_base_tf_broadcaster_system.h"
 #endif
 
 #include "drake/lcm/drake_lcm.h"
@@ -30,6 +31,7 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
@@ -162,6 +164,8 @@ int do_main(int argc, char* argv[]) {
 #ifdef DAIR_ROS_ON
   ros::init(argc, argv, "cassie_hiking_simulaton");
   ros::NodeHandle node_handle;
+  const auto& cov_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource>(VectorXd::Zero(36));
   const auto& pose_sender =
       builder.AddSystem<systems::RobotStateToRosPose>(
           plant, context.get(), "pelvis");
@@ -172,8 +176,26 @@ int do_main(int argc, char* argv[]) {
               &node_handle,
               drake::systems::TriggerTypeSet(
                   {drake::systems::TriggerType::kPerStep}));
+
+  std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
+  bff.clear();
+
+  const auto& tf_broadcaster =
+      builder.AddSystem<systems::RobotBaseTfBroadcasterSystem>(
+          plant,
+          context.get(),
+          "pelvis",
+          "map",
+          bff,
+          drake::systems::TriggerTypeSet(
+              {drake::systems::TriggerType::kPerStep}));
+
   builder.Connect(plant.get_state_output_port(),
-                  pose_sender->get_input_port());
+                  pose_sender->get_input_port_state());
+  builder.Connect(plant.get_state_output_port(),
+                  tf_broadcaster->get_input_port());
+  builder.Connect(cov_source->get_output_port(),
+                  pose_sender->get_input_port_covariance());
   builder.Connect(*pose_sender, *pose_publisher);
 #endif
 

@@ -74,6 +74,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_gm_contact_output_port() const {
     return this->get_output_port(contact_forces_output_port_);
   }
+  const drake::systems::OutputPort<double>& get_covariance_output_port() const {
+    return this->get_output_port(pose_covariance_output_port_);
+  }
 
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
@@ -143,6 +146,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::lcmt_contact_results_for_viz* contact_msg) const;
 
+  void CopyPoseCovarianceOut(const drake::systems::Context<double>& context,
+                             drake::systems::BasicVector<double>* cov) const;
+
   int n_q_;
   int n_v_;
   int n_u_;
@@ -166,11 +172,13 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   std::vector<Eigen::MatrixXd> joint_selection_matrices;
 
   // Input/output port indices
-  int cassie_out_input_port_;
-  int state_input_port_;
-  int estimated_state_output_port_;
-  int contact_output_port_;
-  int contact_forces_output_port_;
+  drake::systems::InputPortIndex cassie_out_input_port_;
+  drake::systems::InputPortIndex state_input_port_;
+  drake::systems::OutputPortIndex estimated_state_output_port_;
+  drake::systems::OutputPortIndex contact_output_port_;
+  drake::systems::OutputPortIndex contact_forces_output_port_;
+  drake::systems::OutputPortIndex pose_covariance_output_port_;
+
 
   // Below are indices of system states:
   // A state which stores previous timestamp

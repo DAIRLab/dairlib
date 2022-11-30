@@ -113,6 +113,10 @@ CassieStateEstimator::CassieStateEstimator(
               .get_index();
     }
 
+    pose_covariance_output_port_ = this->DeclareVectorOutputPort(
+            "cov", &CassieStateEstimator::CopyPoseCovarianceOut)
+        .get_index();
+
     // a state which stores previous timestamp
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
 
@@ -978,6 +982,19 @@ void CassieStateEstimator::CopyEstimatedContactForces(
            SPACE_DIM * sizeof(double));
     contact_msg->point_pair_contact_info.push_back(contact_info);
   }
+}
+
+void CassieStateEstimator::CopyPoseCovarianceOut(
+    const Context<double> &context, BasicVector<double> *cov) const {
+  const auto& ekf = context.get_abstract_state<inekf::InEKF>(ekf_idx_);
+  Eigen::Matrix<double, 6, 6> pos_rot_cov = Eigen::Matrix<double, 6, 6>::Zero();
+  const auto& P = ekf.getState().getP();
+  pos_rot_cov.bottomRightCorner<3,3>() = P.topRightCorner<3,3>();
+  pos_rot_cov.topRightCorner<3,3>() = P.block<3,3>(0, 6).transpose();
+  pos_rot_cov.topLeftCorner<3,3>() = P.block<3,3>(6,6);
+  pos_rot_cov.bottomLeftCorner<3,3>() = P.block<3,3>(0, 6);
+  cov->get_mutable_value() =
+      Eigen::Map<VectorXd>(pos_rot_cov.data(), pos_rot_cov.size());
 }
 
 void CassieStateEstimator::setPreviousTime(Context<double>* context,

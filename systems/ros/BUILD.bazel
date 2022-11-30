@@ -5,7 +5,8 @@ cc_library(
     name = "dairlib_ros",
     tags = ["ros"],
     deps = [
-        ":robot_output_to_ros_pose",
+        ":robot_base_tf_broadcaster_system",
+        ":robot_state_to_ros_pose",
         ":ros_pubsub_systems",
     ],
 )
@@ -24,9 +25,21 @@ cc_library(
 )
 
 cc_library(
-    name = "robot_output_to_ros_pose",
-    srcs = ["robot_output_to_ros_pose.cc"],
-    hdrs = ["robot_output_to_ros_pose.h"],
+    name = "robot_base_tf_broadcaster_system",
+    hdrs = ["robot_base_tf_broadcaster_system.h"],
+    tags = ["ros"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@ros",
+    ],
+)
+
+cc_library(
+    name = "robot_state_to_ros_pose",
+    srcs = ["robot_state_to_ros_pose.cc"],
+    hdrs = ["robot_state_to_ros_pose.h"],
     tags = ["ros"],
     deps = [
         "//multibody:utils",

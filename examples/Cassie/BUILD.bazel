@@ -287,6 +287,12 @@ cc_binary(
 cc_binary(
     name = "dispatcher_robot_out",
     srcs = ["dispatcher_robot_out.cc"],
+    local_defines = select(
+        {
+            "//tools/workspace/ros:dair_ros_off": [],
+            "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
+        },
+    ),
     deps = [
         ":cassie_state_estimator",
         ":cassie_urdf",
@@ -299,7 +305,12 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
+    ] + select(
+        {
+            "//tools/workspace/ros:dair_ros_off": [],
+            "//tools/workspace/ros:dair_ros_on": ["//systems/ros:dairlib_ros"],
+        },
+    ),
 )
 
 cc_binary(

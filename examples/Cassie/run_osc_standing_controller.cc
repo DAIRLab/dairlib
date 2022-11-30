@@ -195,8 +195,7 @@ int DoMain(int argc, char* argv[]) {
       1.0 / FLAGS_max_qp_hz, drake::Value<dairlib::lcmt_robot_input>());
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm_local,
-          TriggerTypeSet({TriggerType::kPeriodic}), 1.1 / FLAGS_max_qp_hz));
+          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
 

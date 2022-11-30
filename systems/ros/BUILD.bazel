@@ -3,7 +3,6 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "dairlib_ros",
-    defines = ["DAIR_ROS_ON"],
     tags = ["ros"],
     deps = [
         ":robot_output_to_ros_pose",

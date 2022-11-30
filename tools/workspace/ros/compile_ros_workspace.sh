@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# In addition to your base ROS install,
+# you must sudo apt-get install python3-vcstool
+
 # Only tested on Ubuntu 18.04
 BASE_DIR="$PWD"
 

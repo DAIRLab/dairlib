@@ -7,16 +7,13 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/solve.h"
-#include "drake/solvers/ipopt_solver.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/nlopt_solver.h"
 #include "drake/solvers/osqp_solver.h"
-#include "drake/solvers/mosek_solver.h"
 
 namespace dairlib::systems::controllers{
 
-using std::to_string;
+using std::pair;
 using std::vector;
+using std::to_string;
 using std::numeric_limits;
 
 using Eigen::Matrix;
@@ -35,9 +32,6 @@ using drake::math::InitializeAutoDiff;
 using drake::solvers::Solve;
 using drake::solvers::Binding;
 using drake::solvers::OsqpSolver;
-using drake::solvers::IpoptSolver;
-using drake::solvers::NloptSolver;
-using drake::solvers::SnoptSolver;
 using drake::solvers::QuadraticCost;
 using drake::solvers::DecisionVariable;
 using drake::solvers::LinearConstraint;
@@ -53,7 +47,7 @@ using drake::Vector4;
 AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
     NonlinearConstraint<AutoDiffXd>(
         4, 10, Vector4d::Zero(), Vector4d::Zero(), "dynamics"),
-    m_(m), H_(H), n_(n) {
+    m_(m), H_(H), n_(n-1) {
 
   A_ = alip_utils::CalcA(H_, m_);
   A_inv_ = A_.inverse();
@@ -142,7 +136,7 @@ void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
   MakeResetConstraints();
   MakeDynamicsConstraints();
   MakeWorkspaceConstraints();
-  MakeInputBoundConstaints();
+//  MakeInputBoundConstaints();
   MakeNextFootstepReachabilityConstraint();
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
@@ -151,20 +145,20 @@ void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
   built_ = true;
 }
 
-void AlipMINLP::AddMode(int nk) {
+void AlipMINLP::AddMode(int n_knots) {
   pp_.push_back(prog_->NewContinuousVariables(np_, "pp_" + to_string(nmodes_)));
   vector<VectorXDecisionVariable> xknots;
   vector<VectorXDecisionVariable> uknots;
-  for (int i = 0; i < nk; i++) {
+  for (int i = 0; i < n_knots; i++) {
     xknots.push_back(prog_->NewContinuousVariables(
         nx_, "xx_" + to_string(nmodes_) + "_" + to_string(i) ));
   }
-  for (int i = 0; i < (nk -1) ; i++) {
+  for (int i = 0; i < (n_knots -1) ; i++) {
     uknots.push_back(prog_->NewContinuousVariables(
         nu_, "uu_" + to_string(nmodes_) + "_" + to_string(i)));
   }
   nmodes_ += 1;
-  nknots_.push_back(nk);
+  nknots_.push_back(n_knots);
   xx_.push_back(xknots);
   uu_.push_back(uknots);
 }
@@ -455,9 +449,8 @@ void AlipMINLP::UpdateDynamicsConstraints() {
 
 void AlipMINLP::SolveOCProblemAsIs() {
   mode_sequnces_ = GetPossibleModeSequences();
-  std::vector<std::pair<drake::solvers::MathematicalProgramResult,
-                        std::vector<std::vector<Eigen::Vector4d>>>> solutions;
-  solutions.clear();
+  vector<pair<MathematicalProgramResult, vector<vector<Vector4d>>>> solutions;
+
   if (mode_sequnces_.empty()) {
     vector<vector<Vector4d>> dual_solutions;
     const auto sol = solver_.Solve(*prog_);
@@ -472,7 +465,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
       }
       dual_solutions.push_back(duals);
     }
-    solutions.push_back({sol, dual_solutions});
+    solutions.emplace_back(sol, dual_solutions);
   } else {
     for (auto& seq: mode_sequnces_) {
       ClearFootholdConstraints();
@@ -492,17 +485,18 @@ void AlipMINLP::SolveOCProblemAsIs() {
         }
         dual_solutions.push_back(duals);
       }
-      solutions.push_back({sol, dual_solutions});
+      solutions.push_back({sol, dual_solutions}); // NOLINT
     }
   }
 
   std::sort(
       solutions.begin(), solutions.end(),
       [](
-    const std::pair<MathematicalProgramResult, vector<vector<Vector4d>>>& lhs,
-    const std::pair<MathematicalProgramResult, vector<vector<Vector4d>>>& rhs){
+    const pair<MathematicalProgramResult, vector<vector<Vector4d>>>& lhs,
+    const pair<MathematicalProgramResult, vector<vector<Vector4d>>>& rhs){
     return lhs.first.get_optimal_cost() < rhs.first.get_optimal_cost() && lhs.first.is_success();
   });
+
   if (solutions.front().first.is_success()) {
     solution_ = solutions.front();
   } else {
@@ -510,8 +504,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
               solutions.front().first.get_solution_result() << std::endl;
   }
   if (std::isnan(solution_.first.get_optimal_cost())) {
-    std::cout << "NaNs slipped through unnoticed."
-                 "Dumping out all the constraints to see what's up\n";
+    std::cout << "NaNs slipped through unnoticed. Dumping all constraints\n";
     const auto& constraints = prog_->GetAllConstraints();
     solvers::print_constraint(constraints);
   }
@@ -589,8 +582,12 @@ vector<Vector4d> AlipMINLP::MakeXdesTrajForCurrentStep(
 }
 
 vector<vector<int>> AlipMINLP::GetPossibleModeSequences() {
-  return cartesian_product(footholds_.size(), nmodes_ - 1);
+  return alip_utils::cartesian_product(footholds_.size(), nmodes_ - 1);
 }
+
+double AlipMINLP::solve_time() const {
+  return solution_.first.get_solver_details<OsqpSolver>().run_time;
+};
 
 vector<Vector3d> AlipMINLP::GetFootstepSolution() const {
   vector<Vector3d> pp;
@@ -655,7 +652,6 @@ vector<vector<VectorXd>> AlipMINLP::GetInputGuess() const {
   }
   return uu;
 }
-
 
 VectorXd AlipMINLP::GetTimingSolution() const {
   VectorXd tt = VectorXd::Zero(nmodes_);

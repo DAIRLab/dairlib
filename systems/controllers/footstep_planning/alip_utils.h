@@ -5,6 +5,28 @@
 
 namespace dairlib::systems::controllers::alip_utils {
 
+inline std::vector<std::vector<int>> cartesian_product(unsigned long range,
+                                                       int sets) {
+  auto products = std::vector<std::vector<int>>();
+  for (int i = 0; i < pow(range, sets); i++) {
+    products.emplace_back(std::vector<int>(sets, 0));
+  }
+  auto counter = std::vector<int>(sets, 0); // array of zeroes
+  for (auto &product : products) {
+    product = counter;
+
+    // counter increment and wrapping/carry over
+    counter.back()++;
+    for (size_t i = counter.size() - 1; i != 0; i--) {
+      if (counter[i] == range) {
+        counter[i] = 0;
+        counter[i - 1]++;
+      } else break;
+    }
+  }
+  return products;
+}
+
 typedef std::pair<const Eigen::Vector3d,
                   const drake::multibody::Frame<double>&> PointOnFramed;
 

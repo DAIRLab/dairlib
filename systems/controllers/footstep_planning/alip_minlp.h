@@ -14,31 +14,9 @@
 
 namespace dairlib::systems::controllers {
 
-inline std::vector<std::vector<int>> cartesian_product(unsigned long range,
-                                                       int sets) {
-
-  auto products = std::vector<std::vector<int>>();
-  for (int i = 0; i < pow(range, sets); i++) {
-    products.emplace_back(std::vector<int>(sets, 0));
-  }
-  auto counter = std::vector<int>(sets, 0); // array of zeroes
-  for (auto &product : products) {
-    product = counter;
-
-    // counter increment and wrapping/carry over
-    counter.back()++;
-    for (size_t i = counter.size() - 1; i != 0; i--) {
-      if (counter[i] == range) {
-        counter[i] = 0;
-        counter[i - 1]++;
-      } else break;
-    }
-  }
-  return products;
-}
+using solvers::NonlinearConstraint;
 
 using drake::solvers::Binding;
-using solvers::NonlinearConstraint;
 using drake::solvers::OsqpSolver;
 using drake::solvers::MosekSolver;
 using drake::solvers::QuadraticCost;
@@ -49,9 +27,12 @@ using drake::solvers::BoundingBoxConstraint;
 using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::LinearEqualityConstraint;
 
+using std::vector;
+
 /*
  * Nonlinear constraint representing the linear ALIP dynamics with ankle torque,
- * discretized with mode timing t as a decision variable.
+ * discretized with stance duration t as a decision variable,
+ * with n evenly-spaced knot points
  */
 class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
  public:
@@ -71,9 +52,7 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
     A_ = alip_utils::CalcA(H_, m_);
     A_inv_ = A_.inverse();
   }
-  static Eigen::Matrix4d Ad(double t, double m, double h, int n) {
-    return ((t / (n - 1)) * alip_utils::CalcA(h, m)).exp();
-  }
+
  private:
   double m_;
   double H_;
@@ -85,36 +64,34 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
 
 class AlipMINLP {
  public:
-
-  /*
-   * Constructor takes a nominal mass anfd height defining the ALIP model.
-   */
+  /// Constructor takes a nominal robot mass and walking height
   AlipMINLP(double m, double H) : m_(m), H_(H) {};
 
-  // Problem setup - these must be called before Build()
-  void AddMode(int nk);
+  /* -- Problem setup - these must be called before Build() -- */
+
+  void AddMode(int n_knots);
   void AddInputCost(double R);
   void SetMinimumStanceTime(double tmin) {
-    tmin_ = std::vector<double>(nmodes_, tmin);
+    tmin_ = vector<double>(nmodes_, tmin);
   };
   void SetMaximumStanceTime(double tmax) {
-    tmax_ = std::vector<double>(nmodes_, tmax);
+    tmax_ = vector<double>(nmodes_, tmax);
   };
-  void SetDoubleSupportTime(double Tds) { Tds_ = Tds; }
+  void SetDoubleSupportTime(double t_ds) { Tds_ = t_ds; }
   void SetInputLimit(double umax) { umax_ = umax; };
   void AddTrackingCost(
-      const std::vector<std::vector<Eigen::Vector4d>> &xd,
+      const vector<vector<Eigen::Vector4d>> &xd,
       const Eigen::Matrix4d &Q, const Eigen::MatrixXd &Qf
   );
-  void AddFootholds(const std::vector<geometry::ConvexFoothold> &footholds) {
+  void AddFootholds(const vector<geometry::ConvexFoothold> &footholds) {
     footholds_.insert(footholds_.end(), footholds.begin(), footholds.end());
   }
 
   void Build(const drake::solvers::SolverOptions &solver_options);
-  std::vector<std::vector<Eigen::Vector4d>> MakeXdesTrajForVdes(
+  vector<vector<Eigen::Vector4d>> MakeXdesTrajForVdes(
       const Eigen::Vector2d &vdes, double step_width, double Ts, double nk,
       int stance = 1) const;
-  std::vector<Eigen::Vector4d> MakeXdesTrajForCurrentStep(
+  vector<Eigen::Vector4d> MakeXdesTrajForCurrentStep(
       const Eigen::Vector2d &vdes, double t_current, double t_remain,
       double Ts, double step_width, int stance, double nk) const;
 
@@ -123,16 +100,13 @@ class AlipMINLP {
   void ActivateInitialTimeEqualityConstraint(double t);
   void UpdateNextFootstepReachabilityConstraint(
       const geometry::ConvexFoothold &workspace);
-
-  void UpdateInitialGuess();
-  void UpdateInitialGuess(const Eigen::Vector3d &p0, const Eigen::Vector4d &x0);
-  void UpdateTrackingCost(const std::vector<std::vector<Eigen::Vector4d>> &xd);
-  void UpdateFootholds(const std::vector<geometry::ConvexFoothold> &footholds) {
+  void UpdateTrackingCost(const vector<vector<Eigen::Vector4d>> &xd);
+  void UpdateFootholds(const vector<geometry::ConvexFoothold> &footholds) {
     ClearFootholds();
     AddFootholds(footholds);
   }
   void UpdateNominalStanceTime(double t0, double Ts) {
-    std::vector<double> T(nmodes_, Ts);
+    vector<double> T(nmodes_, Ts);
     T.front() = t0;
     td_ = T;
   }
@@ -151,40 +125,38 @@ class AlipMINLP {
 
   // Getting the solution
   Eigen::VectorXd GetTimingSolution() const;
-  std::vector<Eigen::Vector3d> GetFootstepSolution() const;
-  std::vector<std::vector<Eigen::Vector4d>> GetStateSolution() const;
-  std::vector<std::vector<Eigen::VectorXd>> GetInputSolution() const;
+  vector<Eigen::Vector3d> GetFootstepSolution() const;
+  vector<vector<Eigen::Vector4d>> GetStateSolution() const;
+  vector<vector<Eigen::VectorXd>> GetInputSolution() const;
 
   // getting the initial guess
   Eigen::VectorXd GetTimingGuess() const;
-  std::vector<Eigen::Vector3d> GetFootstepGuess() const;
-  std::vector<std::vector<Eigen::Vector4d>> GetStateGuess() const;
-  std::vector<std::vector<Eigen::VectorXd>> GetInputGuess() const;
+  vector<Eigen::Vector3d> GetFootstepGuess() const;
+  vector<vector<Eigen::Vector4d>> GetStateGuess() const;
+  vector<vector<Eigen::VectorXd>> GetInputGuess() const;
 
   // getting the desired solution
   Eigen::VectorXd GetDesiredTiming() const;
-  std::vector<std::vector<Eigen::Vector4d>> GetDesiredState() const {
+  vector<vector<Eigen::Vector4d>> GetDesiredState() const {
     return xd_;
   }
-  std::vector<Eigen::Vector3d> GetDesiredFootsteps() const {
-    return std::vector<Eigen::Vector3d>(nmodes_, Eigen::Vector3d::Zero());
+  vector<Eigen::Vector3d> GetDesiredFootsteps() const {
+    return vector<Eigen::Vector3d>(nmodes_, Eigen::Vector3d::Zero()); // NOLINT(modernize-return-braced-init-list)
   };
-  std::vector<std::vector<Eigen::VectorXd>> GetDesiredInputs() const {
-    return std::vector<std::vector<Eigen::VectorXd>>(
-        nmodes_, std::vector<Eigen::VectorXd>(
+  vector<vector<Eigen::VectorXd>> GetDesiredInputs() const {
+    return vector<vector<Eigen::VectorXd>>( // NOLINT(modernize-return-braced-init-list)
+        nmodes_, vector<Eigen::VectorXd>(
             nknots_.front() - 1, Eigen::VectorXd::Zero(1)));
   };
 
   // misc getters and setters
+  double solve_time() const;
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
-  double H() {return H_;}
-  double m() {return m_;}
-  double solve_time() const {
-    return solution_.first.get_solver_details<OsqpSolver>().run_time;
-  };
+  double H() const {return H_;}
+  double m() const {return m_;}
   int nmodes() const { return nmodes_; }
-  std::vector<int> nknots() const { return nknots_; }
+  vector<int> nknots() const { return nknots_; }
 
   drake::solvers::MathematicalProgram *get_prog() { return prog_.get_mutable(); }
   drake::solvers::MathematicalProgramResult &get_solution() { return solution_.first; }
@@ -195,22 +167,22 @@ class AlipMINLP {
   // TODO(@Brian-Acosta): Make these gains/parameters as appropriate
   double m_;
   double H_;
-  int np_ = 3;
-  int nx_ = 4;
-  int nu_ = 1;
+  const int np_ = 3;
+  const int nx_ = 4;
+  const int nu_ = 1;
   int nmodes_ = 0;
   double Tds_ = 0;
   double R_ = 0;
   double umax_ = -1;
-  std::vector<double> tmin_{};
-  std::vector<double> tmax_{};
+  vector<double> tmin_{};
+  vector<double> tmax_{};
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd Qf_;
-  std::vector<double> td_;
-  std::vector<int> nknots_{};
-  std::vector<std::vector<Eigen::Vector4d>> xd_;
-  std::vector<std::vector<int>> mode_sequnces_{};
-  std::vector<geometry::ConvexFoothold> footholds_;
+  vector<double> td_;
+  vector<int> nknots_{};
+  vector<vector<Eigen::Vector4d>> xd_;
+  vector<vector<int>> mode_sequnces_{};
+  vector<geometry::ConvexFoothold> footholds_;
 
   // problem setup methods
   void MakeTerminalCost();
@@ -224,13 +196,15 @@ class AlipMINLP {
   void MakeInitialFootstepConstraint();
   void MakeNextFootstepReachabilityConstraint();
   void MakeCapturePointConstraint(int foothold_idx);
-  std::vector<std::vector<int>> GetPossibleModeSequences();
-  void MakeFootstepConstraints(std::vector<int> foothold_idxs);
+  void MakeFootstepConstraints(vector<int> foothold_idxs);
   void MakeIndividualFootholdConstraint(int idx_mode, int idx_foothold);
   void CalcResetMap(Eigen::Matrix<double,4,12>* Aeq) const;
+  vector<vector<int>> GetPossibleModeSequences();
 
   // per solve updates and solve steps
   void SolveOCProblemAsIs();
+  void UpdateInitialGuess();
+  void UpdateInitialGuess(const Eigen::Vector3d &p0, const Eigen::Vector4d &x0);
   void UpdateTimingGradientStep();
   void UpdateDynamicsConstraints();
   void ClearFootholds() { footholds_.clear(); }
@@ -238,34 +212,34 @@ class AlipMINLP {
   // program and decision variables
   drake::copyable_unique_ptr<MathematicalProgram>
       prog_{std::make_unique<MathematicalProgram>()};
-  std::vector<VectorXDecisionVariable> pp_{};
-  std::vector<std::vector<VectorXDecisionVariable>> xx_{};
-  std::vector<std::vector<VectorXDecisionVariable>> uu_{};
+  vector<VectorXDecisionVariable> pp_{};
+  vector<vector<VectorXDecisionVariable>> xx_{};
+  vector<vector<VectorXDecisionVariable>> uu_{};
 
   // store the mode timing as doubles and take gradient steps external to the QP
   Eigen::VectorXd tt_;
 
   // constraints
-  std::vector<Binding<BoundingBoxConstraint>> input_bounds_c_{};
-  std::vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
-  std::vector<Binding<LinearConstraint>> no_crossover_constraint_{};
+  vector<Binding<BoundingBoxConstraint>> input_bounds_c_{};
+  vector<Binding<LinearEqualityConstraint>> reset_map_c_{};
+  vector<Binding<LinearConstraint>> no_crossover_constraint_{};
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<LinearConstraint> next_step_reach_c_fixed_ = nullptr;
   std::shared_ptr<Binding<LinearConstraint>> capture_point_contstraint_ = nullptr;
-  std::vector<std::vector<Binding<LinearEqualityConstraint>>> dynamics_c_{};
-  std::vector<std::pair<Binding<LinearConstraint>,
+  vector<vector<Binding<LinearEqualityConstraint>>> dynamics_c_{};
+  vector<std::pair<Binding<LinearConstraint>,
                         Binding<LinearEqualityConstraint>>> footstep_c_{};
 
   // costs
   std::shared_ptr<QuadraticCost> terminal_cost_;
-  std::vector<std::vector<Binding<QuadraticCost>>> input_costs_{};
-  std::vector<std::vector<Binding<QuadraticCost>>> tracking_costs_{};
+  vector<vector<Binding<QuadraticCost>>> input_costs_{};
+  vector<vector<Binding<QuadraticCost>>> tracking_costs_{};
 
   // Bookkeeping
   bool built_ = false;
   std::pair<drake::solvers::MathematicalProgramResult,
-            std::vector<std::vector<Eigen::Vector4d>>> solution_;
+            vector<vector<Eigen::Vector4d>>> solution_;
 
   drake::solvers::OsqpSolver solver_;
 

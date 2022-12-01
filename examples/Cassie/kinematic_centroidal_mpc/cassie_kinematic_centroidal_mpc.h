@@ -4,6 +4,7 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_lifter.h"
+#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_reducer.h"
 
 /*!
  * @brief Cassie specific child class for kinematic centroidal mpc. Adds loop closure, joint limits, and cassie contact points
@@ -31,13 +32,15 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
     slip_contact_points_ = CreateSlipContactPoints(plant,mu);
     for (int knot = 0; knot < n_knot_points; knot++) {
       slip_com_vars_.push_back(prog_->NewContinuousVariables(
-          2, "slip_com_" + std::to_string(knot)));
+          3, "slip_com_" + std::to_string(knot)));
       slip_vel_vars_.push_back(prog_->NewContinuousVariables(
-          2, "slip_vel_" + std::to_string(knot)));
+          3, "slip_vel_" + std::to_string(knot)));
       slip_contact_pos_vars_.push_back(prog_->NewContinuousVariables(
-          2*2, "slip_contact_pos_" + std::to_string(knot)));
+          2*3, "slip_contact_pos_" + std::to_string(knot)));
       slip_contact_vel_vars_.push_back(prog_->NewContinuousVariables(
-          2*2, "slip_contact_vel_" + std::to_string(knot)));
+          2*3, "slip_contact_vel_" + std::to_string(knot)));
+      slip_force_vars_.push_back(prog_->NewContinuousVariables(
+          2, "slip_force_" + std::to_string(knot)));
       lifters_.emplace_back(new PlanarSlipLifter(plant,
                                                  contexts_[knot].get(),
                                                  slip_contact_points_,
@@ -45,8 +48,15 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
                                                  {{0, {0, 1}}, {1, {2, 3}}},
                                                  nominal_stand,
                                                  k,
-                                                 r0,
-                                                 {stance_width / 2, -stance_width / 2}));
+                                                 r0));
+      reducers.emplace_back(new PlanarSlipReducer(plant,
+                                                 contexts_[knot].get(),
+                                                 slip_contact_points_,
+                                                 CreateContactPoints(plant, mu),
+                                                 {{0, {0, 1}}, {1, {2, 3}}},
+                                                 k,
+                                                 r0));
+
     }
     std::vector<bool> stance_mode(2);
     std::fill(stance_mode.begin(), stance_mode.end(), true);
@@ -95,6 +105,9 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
   void SetMomentumGuess(
       const drake::trajectories::PiecewisePolynomial<double>& momentum_trajectory) override;
 
+  void SetForceGuess(
+      const drake::trajectories::PiecewisePolynomial<double>& force_trajectory) override;
+
  private:
   void MapModeSequence();
 
@@ -130,8 +143,10 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
   std::vector<drake::solvers::VectorXDecisionVariable> slip_vel_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> slip_contact_pos_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> slip_contact_vel_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> slip_force_vars_;
 
   std::vector<std::shared_ptr<PlanarSlipLifter>> lifters_;
+  std::vector<std::shared_ptr<PlanarSlipReducer>> reducers;
 
   std::vector<dairlib::multibody::WorldPointEvaluator<double>> slip_contact_points_;
 
@@ -139,7 +154,5 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
                                                                             {{true, true, false, false},{true, false}},
                                                                             {{false, false, true, true},{false, true}},
                                                                             {{false, false, false, false},{false, false}}};
-
-  const Eigen::Vector2i slip_index_{0,2};
 };
 

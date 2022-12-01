@@ -19,8 +19,7 @@ class PlanarSlipLifter {
                    const std::map<int, std::vector<int>>& simple_foot_index_to_complex_foot_index,
                    const drake::VectorX<double>& nominal_stand,
                    double k,
-                   double r0,
-                   const std::vector<double>& stance_widths);
+                   double r0);
 
   void Lift(const Eigen::Ref<const drake::VectorX<double>> &slip_state,
             drake::VectorX<double> *complex_state) const;
@@ -59,7 +58,8 @@ class PlanarSlipLifter {
 
   drake::VectorX<double> LiftGrf(const drake::VectorX<double>& com_pos,
                             const drake::VectorX<double>& slip_feet_pos,
-                            const drake::VectorX<double>& complex_contact_point_pos) const;
+                                 const drake::VectorX<double> &slip_force,
+                                 const drake::VectorX<double>& complex_contact_point_pos) const;
 
 
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -77,7 +77,6 @@ class PlanarSlipLifter {
 
   drake::solvers::VectorXDecisionVariable com_vars_;
 
-  const int kSLIP_DIM = 2;
-  const Eigen::Vector2i slip_index_{0,2};
+  const int kSLIP_DIM = 3;
 };
 

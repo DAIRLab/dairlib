@@ -9,27 +9,40 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_lifter.h"
+#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_reducer.h"
 
-template <typename T>
-class PlanarSlipReductionConstraint : public dairlib::solvers::NonlinearConstraint<T> {
-
+class PlanarSlipReductionConstraint : public dairlib::solvers::NonlinearConstraint<double> {
  public:
-  PlanarSlipReductionConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                                drake::systems::Context<T>* context,
-                                const std::vector<dairlib::multibody::WorldPointEvaluator<T>>& slip_feet,
-                                int complex_state_size, int knot_index);
+  PlanarSlipReductionConstraint(const drake::multibody::MultibodyPlant<double> &plant,
+                                std::shared_ptr<PlanarSlipReducer> reducing_function,
+                                int n_slip_feet,
+                                int n_complex_feet,
+                                int knot_index);
 
  private:
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-                          drake::VectorX<T>* y) const override;
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override;
 
-  const T m_;
-  drake::systems::Context<T>* context_;
-  const drake::multibody::MultibodyPlant<T>& plant_;
-  int nx_;
-  const std::vector<dairlib::multibody::WorldPointEvaluator<T>> slip_feet_;
-  const int kSLIP_DIM = 2;
-  const Eigen::Vector2i slip_index_{0,2};
+  std::shared_ptr<PlanarSlipReducer> reducing_function_;
+  const int slip_dim_;
+  const int complex_dim_;
+};
+
+class SlipGrfReductionConstrain : public dairlib::solvers::NonlinearConstraint<double> {
+ public:
+  SlipGrfReductionConstrain(const drake::multibody::MultibodyPlant<double> &plant,
+                                std::shared_ptr<PlanarSlipReducer> reducing_function,
+                                int n_slip_feet,
+                                int n_complex_feet,
+                                int knot_index);
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override;
+
+  std::shared_ptr<PlanarSlipReducer> reducing_function_;
+  const int n_slip_feet_;
+  const int n_complex_feet_;
 };
 
 class PlanarSlipLiftingConstraint : public dairlib::solvers::NonlinearConstraint<double> {
@@ -61,7 +74,8 @@ class PlanarSlipDynamicsConstraint : public dairlib::solvers::NonlinearConstrain
   drake::VectorX<T> CalcTimeDerivativesWithForce(
       const drake::VectorX<T>& com_position,
       const drake::VectorX<T>& com_vel,
-      const drake::VectorX<T>& contact_loc) const;
+      const drake::VectorX<T>& contact_loc,
+      const drake::VectorX<T> &slip_force) const;
 
   const double r0_;
   const double k_;

@@ -16,6 +16,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/visualization_utils.h"
 #include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_constraints.h"
+#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_reducer.h"
 
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
@@ -84,16 +85,23 @@ int main(int argc, char* argv[]) {
                           {{0, {0, 1}}, {1, {2, 3}}},
                           reference_state.head(plant.num_positions()),
                           2000,
-                          0.5,
-                          {0.1, -0.1});
+                          0.5);
+  PlanarSlipReducer reducer(plant,
+                          context.get(),
+                          {left_toe_eval, right_toe_eval},
+                          {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval},
+                          {{0, {0, 1}}, {1, {2, 3}}},
+                          2000,
+                          0.5);
 
-  Eigen::Vector2d slip_com = {0.2,0.7};
-  Eigen::Vector2d slip_vel = {0.1,0.3};
-  Eigen::Vector4d slip_feet = {0.0,0.0,0.0,0.00};
-  Eigen::Vector4d slip_foot_vel = {0.11,0.12,0.15,0.18};
+  Eigen::Vector3d slip_com = {0.2,0,0.7};
+  Eigen::Vector3d slip_vel = {0.1,0,0.1};
+  Eigen::VectorXd slip_feet(6); slip_feet  << 0.0, 0.2, 0.0,0.0,-0.2, 0.0;
+  Eigen::VectorXd slip_foot_vel(6); slip_foot_vel  << 0.11,0.12,0.0,0.15,0.18,0.0;
+  Eigen::Vector2d slip_force = {0.5,0.5};
 
-  Eigen::VectorXd slip_state(2+2+4+4);
-  slip_state << slip_com,slip_vel,slip_feet,slip_foot_vel;
+  Eigen::VectorXd slip_state(3+3+6+6+2);
+  slip_state << slip_com,slip_vel,slip_feet,slip_foot_vel,slip_force;
   Eigen::VectorXd complex_state(6 + 3 + 3 * 3 * 4 + plant.num_positions() + plant.num_velocities());
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -107,9 +115,7 @@ int main(int argc, char* argv[]) {
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
   std::cout << "Solve time 2:" << elapsed.count() << std::endl;
-
-  auto context_2 = plant.CreateDefaultContext();
-  auto constraint = PlanarSlipReductionConstraint<double>(plant, context_2.get(), {left_toe_eval, right_toe_eval}, complex_state.size(), 0);
+  auto constraint = PlanarSlipReductionConstraint(plant, std::make_shared<PlanarSlipReducer>(reducer), 2, 4, 0);
 
   drake::VectorX<double> error(slip_state.size());
   drake::VectorX<double> input(slip_state.size() + complex_state.size());

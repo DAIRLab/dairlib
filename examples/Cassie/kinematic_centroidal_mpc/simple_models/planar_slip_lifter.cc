@@ -10,15 +10,13 @@ PlanarSlipLifter::PlanarSlipLifter(const drake::multibody::MultibodyPlant<double
                                       const std::map<int, std::vector<int>>& simple_foot_index_to_complex_foot_index,
                                       const drake::VectorX<double> &nominal_stand,
                                       double k,
-                                      double r0,
-                                      const std::vector<double> &stance_widths):
+                                      double r0):
     plant_(plant),
     context_(context),
     ik_(plant, context),
     m_(plant.CalcTotalMass(*context)),
     k_(k),
     r0_(r0),
-    stance_widths_(stance_widths),
     slip_contact_points_(slip_contact_points),
     complex_contact_points_(complex_contact_points),
     simple_foot_index_to_complex_foot_index_(simple_foot_index_to_complex_foot_index),
@@ -51,34 +49,30 @@ PlanarSlipLifter::PlanarSlipLifter(const drake::multibody::MultibodyPlant<double
           (ik_.q())(positions_map.at("ankle_joint_right")) ==
           M_PI * 13 / 180.0);
 
-  // Keep the foot flat (breaks if orientation changes)
-  ik_.get_mutable_prog()->AddLinearConstraint(
-      (ik_.q())(positions_map.at("hip_pitch_right")) +
-          (ik_.q())(positions_map.at("knee_right")) +
-          (ik_.q())(positions_map.at("ankle_joint_right"))+
-          (ik_.q())(positions_map.at("toe_right")) ==
-          -0.862002);
-  ik_.get_mutable_prog()->AddLinearConstraint(
-      (ik_.q())(positions_map.at("hip_pitch_left")) +
-          (ik_.q())(positions_map.at("knee_left")) +
-          (ik_.q())(positions_map.at("ankle_joint_left"))+
-          (ik_.q())(positions_map.at("toe_left")) ==
-          -0.862002);
 }
 
 drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedPosition(const drake::Vector3<double> &com_position,
                                                                const drake::VectorX<double> &slip_feet_positions) const {
-  DRAKE_DEMAND(slip_feet_positions.size() == 2*slip_contact_points_.size());
+  DRAKE_DEMAND(slip_feet_positions.size() == 3*slip_contact_points_.size());
   //Add com position constraint
   const auto com_constraint = ik_.get_mutable_prog()->AddBoundingBoxConstraint(Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3), com_vars_);
   //Add feet position constraint
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> foot_constraints;
   for(int i = 0; i < slip_contact_points_.size(); i++){
-    const drake::Vector3<double> slip_spatial_foot_pos =  {slip_feet_positions[2*i], stance_widths_[i], slip_feet_positions[2*i+1]};
+    const auto& slip_spatial_foot_pos = slip_feet_positions.segment(3 * i, 3);
+    const drake::Vector3<double> slip_foot_rt_com = slip_spatial_foot_pos - com_position;
     foot_constraints.push_back(ik_.AddPositionConstraint(slip_contact_points_[i].get_frame(), slip_contact_points_[i].get_pt_A(), plant_.world_frame(),
                                                          std::nullopt,
-                                                         slip_spatial_foot_pos - com_position,
-                                                         slip_spatial_foot_pos - com_position));
+                                                         slip_foot_rt_com,
+                                                         slip_foot_rt_com));
+    for(const auto complex_index : simple_foot_index_to_complex_foot_index_.at(i)){
+      const drake::Vector3<double> lb{-100, -100, slip_foot_rt_com[2]};
+      const drake::Vector3<double> ub{100, 100, slip_foot_rt_com[2]};
+      foot_constraints.push_back(ik_.AddPositionConstraint(complex_contact_points_[complex_index].get_frame(), complex_contact_points_[complex_index].get_pt_A(), plant_.world_frame(),
+                                                           std::nullopt,
+                                                           lb,
+                                                           ub));
+    }
   }
   //Set initial guess for com
   ik_.get_mutable_prog()->SetInitialGuess(com_vars_,Eigen::VectorXd::Zero(3));
@@ -97,14 +91,13 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedPosition(const drake::Ve
   for(const auto& constraint : foot_constraints){
     ik_.get_mutable_prog()->RemoveConstraint(constraint);
   }
-  // TODO figure out what to do about toe
   return q_sol_normd;
 }
 drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedVelocity(const drake::VectorX<double>& generalized_pos,
                                                                const drake::Vector3<double>& linear_momentum,
                                                                const drake::Vector3<double>& com_pos,
                                                                const drake::VectorX<double>& slip_feet_velocities)const {
-  DRAKE_DEMAND(slip_feet_velocities.size() == 2*slip_contact_points_.size());
+  DRAKE_DEMAND(slip_feet_velocities.size() == 3*slip_contact_points_.size());
   // Preallocate linear constraint
   drake::MatrixX<double> A(3 + 3 * slip_contact_points_.size() ,n_v_); // 3 rows for linear momentum, 3 rows for each slip foot
   drake::VectorX<double> b(3 + 3 * slip_contact_points_.size());
@@ -117,7 +110,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedVelocity(const drake::Ve
   slip_contact_points_[0].EvalFull(*context_ );
 
   for(int i = 0; i < slip_contact_points_.size(); i++){
-    b.segment(3 * i, 3) = Eigen::Vector3d({slip_feet_velocities[2 * i] , 0 , slip_feet_velocities[2 * i + 1]});
+    b.segment(3 * i, 3) =slip_feet_velocities.segment(3 * i, 3);
     slip_contact_points_[i].EvalFullJacobian(*context_ );
     A.middleRows(3 * i, 3) = slip_contact_points_[i].EvalFullJacobian(*context_ );
   }
@@ -168,13 +161,14 @@ drake::VectorX<double> PlanarSlipLifter::LiftContactVel(const drake::VectorX<dou
 
 drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &com_pos,
                                                const drake::VectorX<double> &slip_feet_pos,
+                                               const drake::VectorX<double> &slip_force,
                                                const drake::VectorX<double> &complex_contact_point_pos)const {
   drake::VectorX<double> rv(complex_contact_points_.size() * 3);
   // Loop through the slip feet
   for(int simple_index = 0; simple_index < slip_contact_points_.size(); simple_index ++){
     // Calculate the slip grf
-    double r = (slip_feet_pos.segment(simple_index * 2, 2) - slip_index_.unaryExpr(com_pos)).norm();
-    double slip_grf_mag = k_ * (r - r0_);
+    double r = (slip_feet_pos.segment(simple_index * 3, 3) - com_pos).norm();
+    double slip_grf_mag = slip_force[simple_index] + k_ * (r0_ - r);
 
     // Find the average location for all of the complex contact points that make up the SLIP foot
     drake::Vector3<double> average_pos = drake::VectorX<double>::Zero(3);
@@ -201,6 +195,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &c
 ///     slip_velocity
 ///     slip_contact_pos
 ///     slip_contact_vel
+///     slip_force
 /// Output is of the form:
 ///     complex_com
 ///     complex_ang_momentum
@@ -216,19 +211,20 @@ void PlanarSlipLifter::Lift(const Eigen::Ref<const drake::VectorX<double>> &slip
   const auto& slip_vel = slip_state.segment(kSLIP_DIM, kSLIP_DIM);
   const auto& slip_contact_pos = slip_state.segment(kSLIP_DIM + kSLIP_DIM, kSLIP_DIM * slip_contact_points_.size());
   const auto& slip_contact_vel = slip_state.segment(kSLIP_DIM + kSLIP_DIM + kSLIP_DIM * slip_contact_points_.size(), kSLIP_DIM * slip_contact_points_.size());
+  const auto& slip_force = slip_state.segment(kSLIP_DIM + kSLIP_DIM + kSLIP_DIM * slip_contact_points_.size() + kSLIP_DIM * slip_contact_points_.size(), slip_contact_points_.size());
 
-  const drake::Vector3<double> com = {slip_com[0], 0, slip_com[1]};
-  const drake::Vector3<double> lin_mom = {m_ * slip_vel[0], 0, m_ * slip_vel[1]};
-  const auto& generalized_pos = LiftGeneralizedPosition(com, slip_contact_pos);
-  const auto& generalized_vel = LiftGeneralizedVelocity(generalized_pos, lin_mom, com, slip_contact_vel);
+  const drake::Vector3<double> lin_mom = slip_vel * m_;
+  const auto& generalized_pos = LiftGeneralizedPosition(slip_com, slip_contact_pos);
+  const auto& generalized_vel = LiftGeneralizedVelocity(generalized_pos, lin_mom, slip_com, slip_contact_vel);
 
   dairlib::multibody::SetPositionsIfNew<double>(plant_, generalized_pos, context_);
   dairlib::multibody::SetVelocitiesIfNew<double>(plant_, generalized_vel, context_);
   const auto& complex_contact_pos = LiftContactPos(generalized_pos);
 
-  (*complex_state) << com, plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, com)
-      .get_coeffs(), complex_contact_pos, LiftContactVel(generalized_pos, generalized_vel), LiftGrf(com,
+  (*complex_state) << slip_com, plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, slip_com)
+      .get_coeffs(), complex_contact_pos, LiftContactVel(generalized_pos, generalized_vel), LiftGrf(slip_com,
                                                                                                     slip_contact_pos,
+                                                                                                    slip_force,
                                                                                                     complex_contact_pos),
       generalized_pos, generalized_vel;
 }

@@ -4,9 +4,11 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "planar_slip",
     srcs = ["planar_slip_constraints.cc",
-            "planar_slip_lifter.cc"],
+            "planar_slip_lifter.cc",
+            "planar_slip_reducer.cc"],
     hdrs = ["planar_slip_constraints.h",
-            "planar_slip_lifter.h"],
+            "planar_slip_lifter.h",
+            "planar_slip_reducer.h"],
     deps = [
         "//solvers:constraints",
         "//multibody/kinematic:kinematic",

@@ -142,12 +142,12 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   auto footholds = this->EvalAbstractInput(context, foothold_input_port_)->
       get_value<std::vector<ConvexFoothold>>();
 
-  // get variables from robot_output
+  // get state and time from robot_output, set plant context
   const VectorXd robot_state = robot_output->GetState();
   double t = robot_output->get_timestamp();
-
-  // re-express footholds in robot yaw frame
   SetPositionsAndVelocitiesIfNew<double>(plant_, robot_state, context_);
+
+  // re-express footholds in robot yaw frame from world frame
   for (auto& foothold : footholds) {
     foothold.ReExpressInNewFrame(
         GetBodyYawRotation_R_WB<double>(plant_, *context_, "pelvis"));
@@ -159,10 +159,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   bool warmstart = true;
   bool committed = false;
   bool fsm_switch = false;
-  Vector3d CoM_w;
-  Vector3d p_w;
-  Vector3d p_next_in_ds;
-  Vector3d L;
+  Vector3d CoM_w = Vector3d::Zero();
+  Vector3d p_w = Vector3d::Zero();
+  Vector3d p_next_in_ds = Vector3d::Zero();
+  Vector3d L = Vector3d::Zero();
 
   // On the first iteration, we don't want to switch immediately or warmstart
   if (t_next_impact == 0.0) {
@@ -183,28 +183,25 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     committed = true;
   }
 
-  // shorthands for the current stance foot
+  // shorthands for the current stance foot, stance == -1 implies left stance
   const int fsm_state = curr_fsm(fsm_idx);
   int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
 
   double ds_fraction = std::clamp(
       (t - t_prev_impact) / double_stance_duration_, 0.0, 1.0);
-  std::vector<double> cop_fractions = {ds_fraction, 1.0 - ds_fraction};
+  std::vector<double> CoP_fractions = {ds_fraction, 1.0 - ds_fraction};
 
   // get the alip state
-  alip_utils::CalcAlipState(plant_,
-                            context_,
-                            robot_state,
-                            {stance_foot_map_.at(fsm_state),
-                             stance_foot_map_.at(next_fsm(fsm_idx))},
-                             cop_fractions,
-                             &CoM_w, &L, &p_w);
+  alip_utils::CalcAlipState(
+      plant_, context_, robot_state,
+      {stance_foot_map_.at(fsm_state), stance_foot_map_.at(next_fsm(fsm_idx))},
+      CoP_fractions, &CoM_w, &L, &p_w);
 
-  plant_.CalcPointsPositions(*context_,
-                             stance_foot_map_.at(fsm_state).second,
-                             stance_foot_map_.at(fsm_state).first,
-                             plant_.world_frame(),
-                             &p_next_in_ds);
+  plant_.CalcPointsPositions(
+      *context_,
+      stance_foot_map_.at(fsm_state).second,
+      stance_foot_map_.at(fsm_state).first, plant_.world_frame(),
+      &p_next_in_ds);
 
   p_next_in_ds = ReExpressWorldVector3InBodyYawFrame<double>(
       plant_, *context_, "pelvis", p_next_in_ds);
@@ -216,17 +213,16 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       plant_, *context_, "pelvis", L);
 
 
-  Vector4d x;
+  Vector4d x = Vector4d::Zero();
   x.head<2>() = CoM_b.head<2>() - p_b.head<2>();
   x.tail<2>() = L_b.head<2>();
-  double h = CoM_b(2) - p_b(2);
 
   if (gains_.filter_alip_state) {
     // TODO: Incorporate double stance reset map into filtering and re-enable
     auto& [filter, filter_data] = state->get_mutable_abstract_state<
         std::pair<S2SKalmanFilter,S2SKalmanFilterData>>(alip_filter_idx_);
     filter_data.A =
-        alip_utils::CalcA(h, plant_.CalcTotalMass(*context_));
+        alip_utils::CalcA(CoM_b(2) - p_b(2), plant_.CalcTotalMass(*context_));
 
     // split this assignment into 2 lines to avoid Eigen compiler error :(
     Vector2d u = (p_b - p_next_in_ds).head<2>();
@@ -303,7 +299,8 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
   const auto& pp = trajopt_.GetFootstepSolution();
   const auto& xx = trajopt_.GetStateSolution();
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
-  footstep_in_com_yaw_frame.head(2) = (pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
+  footstep_in_com_yaw_frame.head(2) =
+      (pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
   footstep_in_com_yaw_frame(2) = -gains_.hdes;
   p_B_FC->set_value(footstep_in_com_yaw_frame);
 }

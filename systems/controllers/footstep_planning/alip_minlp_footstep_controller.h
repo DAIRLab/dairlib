@@ -33,6 +33,8 @@ struct AlipMINLPGains {
 
 class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
  public:
+
+  // TODO (@Brian-Acosta) : Move stance durations to gains struct
   AlipMINLPFootstepController(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* plant_context,
@@ -154,6 +156,7 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   std::vector<int> post_left_right_fsm_states_;
   double double_stance_duration_;
   double single_stance_duration_;
+
   // gains
   AlipMINLPGains gains_;
 };

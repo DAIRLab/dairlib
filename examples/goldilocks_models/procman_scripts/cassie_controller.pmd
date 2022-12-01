@@ -1,8 +1,27 @@
-group "1.rom-space-controller" {
+group "2.0.default-controller" {
     cmd "1.original-walking-controller" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true";
         host = "localhost";
     }
+    cmd "1.original-walking-controller(with dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true --gains_filename=\"examples/Cassie/osc/osc_walking_gains_mujoco.yaml\"";
+        host = "localhost";
+    }
+    cmd "1.original-walking-controller; with radio" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio=true --cassie_out_channel=CASSIE_OUTPUT";
+        host = "localhost";
+    }
+    cmd "1.original-walking-controller; with virtual radio" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio=true --cassie_out_channel=CASSIE_OUTPUT_ONLY_RADIO";
+        host = "localhost";
+    }
+    cmd "1.original-walking-controller; with virtual radio (with dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true --gains_filename=\"examples/Cassie/osc/osc_walking_gains_mujoco.yaml\"  --use_radio=true --cassie_out_channel=CASSIE_OUTPUT_ONLY_RADIO";
+        host = "localhost";
+    }
+}
+
+group "1.rom-space-controller" {
     cmd "2.1.rom-walking-controller" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=false --close_sim_gap=false";
         host = "localhost";
@@ -23,28 +42,12 @@ group "1.rom-space-controller" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER  --close_sim_gap=false";
         host = "localhost";
     }
-    cmd "1.original-walking-controller(with dispatcher)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true --gains_filename=\"examples/Cassie/osc/osc_walking_gains_mujoco.yaml\"";
-        host = "localhost";
-    }
     cmd "3.1.rom-planner (short time limit)(with dispatcher)" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER --knots_per_mode=5";
         host = "localhost";
     }
     cmd "3.2.rom-planner (with dispatcher)" {
         exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --n_step=2 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=true --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER  --knots_per_mode=10";
-        host = "localhost";
-    }
-    cmd "1.original-walking-controller; with radio" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio=true --cassie_out_channel=CASSIE_OUTPUT";
-        host = "localhost";
-    }
-    cmd "1.original-walking-controller; with virtual radio" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio=true --cassie_out_channel=CASSIE_OUTPUT_ONLY_RADIO";
-        host = "localhost";
-    }
-    cmd "1.original-walking-controller; with virtual radio (with dispatcher)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true --gains_filename=\"examples/Cassie/osc/osc_walking_gains_mujoco.yaml\"  --use_radio=true --cassie_out_channel=CASSIE_OUTPUT_ONLY_RADIO";
         host = "localhost";
     }
 }
@@ -64,7 +67,7 @@ group "1.0.dispatchers" {
     }
 }
 
-group "2.ik-controller" {
+group "2.1.ik-controller" {
     cmd "1.1.optimal-rom-walking-controller" {
         exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=true";
         host = "localhost";
@@ -230,12 +233,37 @@ script "run-original-walking-w-virtual-radio" {
     start cmd "1.joystick";
 }
 
-script "run-rom-walking" {
+script "run-rom-walking-drake" {
     run_script "start-operator-simulation-floating-base";
     start cmd "3.1.rom-planner (short time limit)";
     start cmd "2.1.rom-walking-controller";
     wait ms 200;
     start cmd "0.simulator";
+}
+
+script "run-rom-walking-mujoco" {
+    stop group "0.operator";
+    stop group "1.0.dispatchers";
+    stop group "1.rom-space-controller";
+    stop group "1.rom-space-controller-with-init-traj";
+    stop group "4.mujoco-simulator";
+    run_script "start-operator-simulation-floating-base";
+    start cmd "3.2.rom-planner";
+    start cmd "2.1.rom-walking-controller";
+    wait ms 200;
+    start cmd "0.simulator";
+    wait ms 500;
+    stop cmd "3.2.rom-planner";
+    stop cmd "2.1.rom-walking-controller";
+    stop cmd "0.simulator";
+    stop group "0.operator";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "2.dispatcher-robot-out (lcm, floating-base)";
+    start cmd "2.1.rom-walking-controller (w init) (with dispatcher)";
+    start cmd "2.2.rom-planner (w init) (with dispatcher)";
+    start cmd "1.joystick";
+    wait ms 500;
+    start cmd "0. cassie-mujoco";
 }
 
 script "run-rom-walking-test" {

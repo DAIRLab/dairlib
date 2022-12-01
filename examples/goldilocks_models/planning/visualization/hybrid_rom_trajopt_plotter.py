@@ -165,10 +165,12 @@ def main():
     x_axis_is_clock = True
 
     time_vec = np.zeros(end_idx - start_idx)
+    stance_foot_vec = np.zeros(end_idx - start_idx)
     for j in range(start_idx, end_idx):
       filepath = args.folder_path + str(j) + "_rom_trajectory"
       rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
       time_vec[j-start_idx] = rom_traj.get_global_com_pos_time()[0]
+      stance_foot_vec[j-start_idx] = rom_traj.get_stance_foot()[0]
     loop_time = np.diff(time_vec)
     # import pdb; pdb.set_trace()
 
@@ -177,9 +179,11 @@ def main():
     if x_axis_is_clock:
       plt.plot(time_vec[:-1],loop_time, 'o')
       plt.xlabel('Clock (s)')
+      plt.plot(time_vec, 0.1 * stance_foot_vec)
     else:
       plt.plot(loop_time, 'o')
       plt.xlabel('MPC loop idx')
+      plt.plot(0.1 * stance_foot_vec)
     plt.ylabel('Time elapse (s)')
     # plt.show()
 

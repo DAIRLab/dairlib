@@ -27,8 +27,8 @@ namespace dairlib {
 KinematicCentroidalMPC::KinematicCentroidalMPC(
     const drake::multibody::MultibodyPlant<double>& plant_w_spr,
     const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-    drake::systems::Context<double>* context, const TrajectoryParameters& motion,
-    const KinematicCentroidalGains& gains)
+    drake::systems::Context<double>* context,
+    const TrajectoryParameters& motion, const KinematicCentroidalGains& gains)
     : plant_w_spr_(plant_w_spr),
       plant_wo_spr_(plant_wo_spr),
       context_wo_spr_(context),
@@ -215,7 +215,10 @@ void KinematicCentroidalMPC::CalcTraj(
 
   std::cout << "Solving optimization\n\n";
   solver_->Solve();
-  traj->saved_traj = solver_->GenerateLcmTraj(n_knot_points_, robot_output->get_timestamp() + 1.0);
+  // (TODO) yangwill: think carefully about this time offset. This is just a
+  // placeholder for now
+  traj->saved_traj =
+      solver_->GenerateLcmTraj(n_knot_points_, robot_output->get_timestamp());
   traj->utime = robot_output->get_timestamp() * 1e6;
 }
 

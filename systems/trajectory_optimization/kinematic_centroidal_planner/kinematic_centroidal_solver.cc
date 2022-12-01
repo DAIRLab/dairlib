@@ -371,14 +371,13 @@ void KinematicCentroidalSolver::SetZeroInitialGuess() {
 
 drake::trajectories::PiecewisePolynomial<double>
 KinematicCentroidalSolver::Solve() {
-  double solve_time;
   for (int i = 0; i < 1; i++) {
     auto start = std::chrono::high_resolution_clock::now();
     solver_->Solve(*prog_, prog_->initial_guess(), prog_->solver_options(),
                    result_.get());
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
-    solve_time = elapsed.count();
+    solve_time_ = elapsed.count();
     std::cout << "Solve time:" << elapsed.count() << std::endl;
     std::cout << "Cost:" << result_->get_optimal_cost() << std::endl;
     prog_->SetInitialGuessForAllVariables(result_->GetSolution());
@@ -404,7 +403,7 @@ void KinematicCentroidalSolver::SerializeSolution(int n_knot_points,
   this->SetFromSolution(*result_, &state_points, &contact_force_points,
                         &time_samples);
   for (auto& t : time_samples) {
-    t += time_offset;
+    t += time_offset + solve_time_;
   }
 
   int knot_points_to_serialize =
@@ -446,7 +445,6 @@ dairlib::lcmt_saved_traj KinematicCentroidalSolver::GenerateLcmTraj(
 
 void KinematicCentroidalSolver::PublishSolution(const std::string& lcm_channel,
                                                 int n_knot_points) {
-  SerializeSolution(n_knot_points);
   if (!lcm_) {
     lcm_ = std::make_unique<drake::lcm::DrakeLcm>();
   }

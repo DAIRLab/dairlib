@@ -427,6 +427,7 @@ class KinematicCentroidalSolver {
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
   std::unique_ptr<drake::solvers::IpoptSolver> solver_;
   std::unique_ptr<drake::solvers::MathematicalProgramResult> result_;
+  double solve_time_;
 
   // Constraint bindings
   drake::solvers::BoundingBoxConstraint* init_state_constraint_;

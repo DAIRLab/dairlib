@@ -34,7 +34,7 @@ class LcmTrajectoryReceiver : public drake::systems::LeafSystem<double> {
   const std::string trajectory_name_;
 
   mutable LcmTrajectory lcm_traj_;
-  std::string nominal_stand_path_ = "examples/Cassie/saved_trajectories/kcmpc_solution";
+  std::string nominal_stand_path_ = "examples/Cassie/saved_trajectories/kcmpc_stand";
 };
 
 }  // namespace systems

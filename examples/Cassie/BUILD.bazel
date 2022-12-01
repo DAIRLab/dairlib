@@ -64,12 +64,6 @@ cc_library(
     name = "cassie_state_estimator",
     srcs = ["cassie_state_estimator.cc"],
     hdrs = ["cassie_state_estimator.h"],
-    local_defines = select(
-        {
-            "//tools/workspace/ros:dair_ros_off": [],
-            "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
-        },
-    ),
     deps = [
         ":cassie_utils",
         "//examples/Cassie/datatypes:cassie_names",
@@ -79,12 +73,7 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@inekf//src:InEKF",
-    ] + select(
-        {
-            "//tools/workspace/ros:dair_ros_off": [],
-            "//tools/workspace/ros:dair_ros_on": ["@ros"],
-        },
-    ),
+    ],
 )
 
 cc_binary(

@@ -114,7 +114,7 @@ CassieStateEstimator::CassieStateEstimator(
     }
 
     pose_covariance_output_port_ = this->DeclareVectorOutputPort(
-            "cov", &CassieStateEstimator::CopyPoseCovarianceOut)
+            "cov", 36, &CassieStateEstimator::CopyPoseCovarianceOut)
         .get_index();
 
     // a state which stores previous timestamp

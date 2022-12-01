@@ -28,8 +28,10 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 
 #ifdef DAIR_ROS_ON
+#include "ros/ros.h"
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/robot_state_to_ros_pose.h"
+#include "systems/ros/robot_base_tf_broadcaster_system.h"
 #endif
 
 namespace dairlib {
@@ -173,6 +175,7 @@ int do_main(int argc, char* argv[]) {
                      "examples/Cassie/urdf/cassie_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();
+  auto plant_context = plant.CreateDefaultContext();
 
   // Evaluators for fourbar linkages
   multibody::KinematicEvaluatorSet<double> fourbar_evaluator(plant);
@@ -295,6 +298,42 @@ int do_main(int argc, char* argv[]) {
                   imu_passthrough->get_input_port());
   builder.Connect(imu_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_imu());
+
+#ifdef DAIR_ROS_ON
+  ros::init(argc, argv, "dispatcher_robot_out");
+  ros::NodeHandle node_handle;
+
+  const auto& pose_sender = builder.AddSystem<systems::RobotStateToRosPose>(
+          plant, plant_context.get(), "pelvis");
+  const auto& pose_publisher = builder.AddSystem<
+          systems::RosPublisherSystem<geometry_msgs::PoseWithCovarianceStamped>>
+          ("/geometry_msgs/PoseWithCovarianceStamped",
+           &node_handle,
+           drake::systems::TriggerTypeSet(
+               {drake::systems::TriggerType::kPerStep}));
+
+  std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
+  bff.clear();
+
+  const auto& tf_broadcaster =
+      builder.AddSystem<systems::RobotBaseTfBroadcasterSystem>(
+          plant,
+          plant_context.get(),
+          "pelvis",
+          "map",
+          bff,
+          drake::systems::TriggerTypeSet(
+              {drake::systems::TriggerType::kPerStep}));
+
+  builder.Connect(state_passthrough->get_output_port(),
+                  pose_sender->get_input_port_state());
+  builder.Connect(state_passthrough->get_output_port(),
+                  tf_broadcaster->get_input_port());
+  builder.Connect(state_estimator->get_covariance_output_port(),
+                  pose_sender->get_input_port_covariance());
+  builder.Connect(*pose_sender, *pose_publisher);
+#endif
+  
   if (FLAGS_broadcast_robot_state) {
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(

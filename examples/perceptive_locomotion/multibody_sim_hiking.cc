@@ -50,44 +50,44 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 // Simulation parameters.
-DEFINE_string(stepping_stone_filename,
-              "examples/perceptive_locomotion/terrains/stones.yaml",
-              "YAML file defining stepping stones");
-
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
-
-DEFINE_double(target_realtime_rate, 1.0,
-              "Desired rate relative to real time.  See documentation for "
-              "Simulator::set_target_realtime_rate() for details.");
+DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
+DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
+DEFINE_bool(publish_ros_pose, false, "if true, publishes the pelvis tf");
 DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
             "If 'false', the plant is modeled as a continuous system.");
+
+DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
+DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
+DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
 DEFINE_double(dt, 8e-5,
               "The step size to use for time_stepping, ignored for continuous");
-DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
 DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model. Nearly equivalent"
               " to (m)");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
-DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
 DEFINE_double(init_height, .95,
               "Initial starting height of the pelvis above "
               "ground");
-DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
-DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
-
+DEFINE_double(actuator_delay, 0.0,
+              "Duration of actuator delay. Set to 0.0 by default.");
+DEFINE_double(start_time, 0.0,
+              "Starting time of the simulator, useful for initializing the "
+              "state at a particular configuration");
+DEFINE_double(target_realtime_rate, 1.0,
+              "Desired rate relative to real time.  See documentation for "
+              "Simulator::set_target_realtime_rate() for details.");
 DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO",
               "LCM channel for virtual radio command");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "LCM channel to receive controller inputs on");
-DEFINE_double(actuator_delay, 0.0,
-              "Duration of actuator delay. Set to 0.0 by default.");
-DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
-DEFINE_double(start_time, 0.0,
-              "Starting time of the simulator, useful for initializing the "
-              "state at a particular configuration");
+DEFINE_string(stepping_stone_filename,
+              "examples/perceptive_locomotion/terrains/stones.yaml",
+              "YAML file defining stepping stones");
+
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -162,41 +162,43 @@ int do_main(int argc, char* argv[]) {
 
   // ROS interfaces
 #ifdef DAIR_ROS_ON
-  ros::init(argc, argv, "cassie_hiking_simulaton");
-  ros::NodeHandle node_handle;
-  const auto& cov_source =
-      builder.AddSystem<drake::systems::ConstantVectorSource>(VectorXd::Zero(36));
-  const auto& pose_sender =
-      builder.AddSystem<systems::RobotStateToRosPose>(
-          plant, context.get(), "pelvis");
-  const auto& pose_publisher =
-      builder.AddSystem<
-          systems::RosPublisherSystem<geometry_msgs::PoseWithCovarianceStamped>>
-          ("/geometry_msgs/PoseWithCovarianceStamped",
-              &node_handle,
-              drake::systems::TriggerTypeSet(
-                  {drake::systems::TriggerType::kPerStep}));
+  if (FLAGS_publish_ros_pose) {
+    ros::init(argc, argv, "cassie_hiking_simulaton");
+    ros::NodeHandle node_handle;
+    const auto& cov_source =
+        builder.AddSystem<drake::systems::ConstantVectorSource>(VectorXd::Zero(36));
+    const auto& pose_sender =
+        builder.AddSystem<systems::RobotStateToRosPose>(
+            plant, context.get(), "pelvis");
+    const auto& pose_publisher =
+        builder.AddSystem<
+            systems::RosPublisherSystem<geometry_msgs::PoseWithCovarianceStamped>>
+            ("/geometry_msgs/PoseWithCovarianceStamped",
+                &node_handle,
+                drake::systems::TriggerTypeSet(
+                    {drake::systems::TriggerType::kPerStep}));
 
-  std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
-  bff.clear();
+    std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
+    bff.clear();
 
-  const auto& tf_broadcaster =
-      builder.AddSystem<systems::RobotBaseTfBroadcasterSystem>(
-          plant,
-          context.get(),
-          "pelvis",
-          "map",
-          bff,
-          drake::systems::TriggerTypeSet(
-              {drake::systems::TriggerType::kPerStep}));
+    const auto& tf_broadcaster =
+        builder.AddSystem<systems::RobotBaseTfBroadcasterSystem>(
+            plant,
+            context.get(),
+            "pelvis",
+            "map",
+            bff,
+            drake::systems::TriggerTypeSet(
+                {drake::systems::TriggerType::kPerStep}));
 
-  builder.Connect(plant.get_state_output_port(),
-                  pose_sender->get_input_port_state());
-  builder.Connect(plant.get_state_output_port(),
-                  tf_broadcaster->get_input_port());
-  builder.Connect(cov_source->get_output_port(),
-                  pose_sender->get_input_port_covariance());
-  builder.Connect(*pose_sender, *pose_publisher);
+    builder.Connect(plant.get_state_output_port(),
+                    pose_sender->get_input_port_state());
+    builder.Connect(plant.get_state_output_port(),
+                    tf_broadcaster->get_input_port());
+    builder.Connect(cov_source->get_output_port(),
+                    pose_sender->get_input_port_covariance());
+    builder.Connect(*pose_sender, *pose_publisher);
+  }
 #endif
 
   // connect leaf systems

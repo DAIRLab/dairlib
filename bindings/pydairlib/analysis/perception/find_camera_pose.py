@@ -1,8 +1,13 @@
 import pcl
-import rosbag
+try:
+    import rosbag
+except ImportError as e:
+    print("\nCan't find rosbag - did you source?\n")
+    print("-----")
+    raise e
+
 import numpy as np
 import sensor_msgs.point_cloud2 as pc2
-from sklearn.linear_model import RANSACRegressor
 
 
 def ros_to_pcl(ros_cloud):

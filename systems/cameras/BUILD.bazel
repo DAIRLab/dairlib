@@ -9,3 +9,16 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "drake_to_ros_pointcloud",
+    srcs = ["drake_to_ros_pointcloud.cc"],
+    hdrs = ["drake_to_ros_pointcloud.h"],
+    tags = ["ros"],
+    deps = [
+        "@pcl//:pcl",
+        "@drake//:drake_shared_library",
+        "@ros",
+    ],
+)
+

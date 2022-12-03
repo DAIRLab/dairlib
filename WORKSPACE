@@ -98,6 +98,13 @@ http_archive(
     urls = ["https://github.com/ros/genpy/archive/0.6.5.tar.gz"],
 )
 
+new_local_repository(
+    name = "pcl",
+    path = "/usr/include/pcl-1.10/",
+    build_file = "tools/workspace/pcl/BUILD.bazel",
+)
+
+
 # dairlib can use either a local version of invariant-ekf or a pegged revision
 # If the environment variable DAIRLIB_LOCAL_INEKF_PATH is set, it will use
 # a local version, ad the specified path. Otherwise, it will get a pegged

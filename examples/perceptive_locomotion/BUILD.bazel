@@ -106,7 +106,10 @@ cc_binary(
         "@gflags",
     ] + select(
         {
-            "//tools/workspace/ros:dair_ros_on": ["//systems/ros:dairlib_ros"],
+            "//tools/workspace/ros:dair_ros_on": [
+                "//systems/cameras:drake_to_ros_pointcloud",
+                "//systems/ros:dairlib_ros"
+            ],
             "//tools/workspace/ros:dair_ros_off": [],
         },
     ),

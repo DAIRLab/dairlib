@@ -4,7 +4,7 @@
 #include "drake/common/yaml/yaml_io.h"
 
 // Original code by Hersh Sanghvi, Extended by Brian Acosta
-
+using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using drake::geometry::SceneGraph;
@@ -12,6 +12,7 @@ using drake::math::RigidTransform;
 using drake::math::RigidTransformd;
 using drake::math::RollPitchYaw;
 using drake::math::RotationMatrix;
+using drake::math::RigidTransformd;
 using drake::systems::sensors::CameraInfo;
 
 namespace dairlib {
@@ -39,6 +40,20 @@ LoadRealsenseCalibrationsAsCameraInfo(const std::string& yaml_filename) {
   return camera_infos;
 }
 
+RigidTransformd ReadCameraPoseFromYaml(const std::string& fname) {
+  auto R_p =
+      drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
+          fname);
+  DRAKE_ASSERT(R_p.count("translation") == 1);
+  DRAKE_ASSERT(R_p.count("rotation") == 1);
+  DRAKE_ASSERT(R_p.at("translation").size() == 3);
+  DRAKE_ASSERT(R_p.at("rotation").size() == 9);
+
+  Matrix3d R = Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor>>(
+      R_p.at("rotation").data());
+  Vector3d t = Eigen::Map<Vector3d>(R_p.at("translation").data());
+  return {RotationMatrix<double>(R), t};
+}
 
 //  https://github.com/RobotLocomotion/drake/blob/master/examples/manipulation_station/manipulation_station.cc
 std::pair <drake::geometry::render::ColorRenderCamera,

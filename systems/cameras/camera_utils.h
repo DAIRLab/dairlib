@@ -39,6 +39,10 @@ drake::math::RotationMatrix<double> inline MakeXZAlignedCameraRotation(double pi
       );
 }
 
+// Returns a rigid transform from a rotation matrix and translation vector
+// defined in a Yaml file
+drake::math::RigidTransformd ReadCameraPoseFromYaml(const std::string& fname);
+
 std::map<int, drake::systems::sensors::CameraInfo>
     LoadRealsenseCalibrationsAsCameraInfo(const std::string& yaml_filename);
 

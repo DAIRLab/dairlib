@@ -290,6 +290,7 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
         "//multibody:multibody_solvers",
         "//systems:robot_lcm_systems",
+        "//systems/cameras:camera_utils",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

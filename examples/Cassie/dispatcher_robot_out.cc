@@ -13,6 +13,7 @@
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_solvers.h"
 #include "multibody/multibody_utils.h"
+#include "systems/cameras/camera_utils.h"
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
@@ -80,6 +81,16 @@ DEFINE_int64(test_mode, -1,
 // Initial condition (used for simulation)
 DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");
 DEFINE_double(pelvis_y_vel, 0, "for stability");
+
+
+// ROS publishing flags
+DEFINE_string(
+    camera_pose_calib,
+    "examples/perceptive_locomotion/camera_calib/depth_simulation.yaml",
+    "For use with vision sensing - path to yaml file containing the pose of the"
+    " realsense base_link in the pelvis frame");
+DEFINE_bool(publish_ros, false, "whether to publish state to ROS");
+DEFINE_double(ros_pub_period, 0.01, "period to publish to ROS at");
 
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.
@@ -300,38 +311,46 @@ int do_main(int argc, char* argv[]) {
                   robot_output_sender->get_input_port_imu());
 
 #ifdef DAIR_ROS_ON
-  ros::init(argc, argv, "dispatcher_robot_out");
-  ros::NodeHandle node_handle;
+  if (FLAGS_publish_ros){
+    DRAKE_ASSERT(FLAGS_ros_pub_period > 0);
+    ros::init(argc, argv, "dispatcher_robot_out");
+    ros::NodeHandle node_handle;
 
-  const auto& pose_sender = builder.AddSystem<systems::RobotStateToRosPose>(
-          plant, plant_context.get(), "pelvis");
-  const auto& pose_publisher = builder.AddSystem<
-          systems::RosPublisherSystem<geometry_msgs::PoseWithCovarianceStamped>>
-          ("/geometry_msgs/PoseWithCovarianceStamped",
-           &node_handle,
-           drake::systems::TriggerTypeSet(
-               {drake::systems::TriggerType::kPerStep}));
+    const auto& pose_sender = builder.AddSystem<systems::RobotStateToRosPose>(
+            plant, plant_context.get(), "pelvis");
+    const auto& pose_publisher = builder.AddSystem<
+            systems::RosPublisherSystem<geometry_msgs::PoseWithCovarianceStamped>>
+            ("/geometry_msgs/PoseWithCovarianceStamped",
+             &node_handle,
+             drake::systems::TriggerTypeSet(
+                 {drake::systems::TriggerType::kPeriodic}),
+             FLAGS_ros_pub_period);
 
-  std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
-  bff.clear();
+    std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
+    bff.push_back({
+      "base_link",
+      camera::ReadCameraPoseFromYaml(FLAGS_camera_pose_calib)
+    });
 
-  const auto& tf_broadcaster =
-      builder.AddSystem<systems::RobotBaseTfBroadcasterSystem>(
-          plant,
-          plant_context.get(),
-          "pelvis",
-          "map",
-          bff,
-          drake::systems::TriggerTypeSet(
-              {drake::systems::TriggerType::kPerStep}));
+    const auto& tf_broadcaster =
+        builder.AddSystem<systems::RobotBaseTfBroadcasterSystem>(
+            plant,
+            plant_context.get(),
+            "pelvis",
+            "map",
+            bff,
+            drake::systems::TriggerTypeSet(
+                {drake::systems::TriggerType::kPeriodic}),
+            FLAGS_ros_pub_period);
 
-  builder.Connect(state_passthrough->get_output_port(),
-                  pose_sender->get_input_port_state());
-  builder.Connect(state_passthrough->get_output_port(),
-                  tf_broadcaster->get_input_port());
-  builder.Connect(state_estimator->get_covariance_output_port(),
-                  pose_sender->get_input_port_covariance());
-  builder.Connect(*pose_sender, *pose_publisher);
+    builder.Connect(state_passthrough->get_output_port(),
+                    pose_sender->get_input_port_state());
+    builder.Connect(state_passthrough->get_output_port(),
+                    tf_broadcaster->get_input_port());
+    builder.Connect(state_estimator->get_covariance_output_port(),
+                    pose_sender->get_input_port_covariance());
+    builder.Connect(*pose_sender, *pose_publisher);
+  }
 #endif
   
   if (FLAGS_broadcast_robot_state) {

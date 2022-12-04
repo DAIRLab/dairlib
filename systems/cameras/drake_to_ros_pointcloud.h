@@ -1,7 +1,7 @@
 #pragma once
 
 #include "drake/systems/framework/leaf_system.h"
-#include "pcl_ros/point_cloud.h"
+#include "sensor_msgs/PointCloud2.h"
 
 namespace dairlib {
 namespace camera {
@@ -13,7 +13,7 @@ class DrakeToRosPointCloud : public drake::systems::LeafSystem<double> {
 
  private:
   void CopyInputToPCL(const drake::systems::Context<double>& context,
-                      pcl::PointCloud<pcl::PointXYZRGB>* cloud) const;
+                      sensor_msgs::PointCloud2* cloud) const;
   const std::string frame_id_;
 };
 

@@ -16,7 +16,6 @@ cc_library(
     hdrs = ["drake_to_ros_pointcloud.h"],
     tags = ["ros"],
     deps = [
-        "@pcl//:pcl",
         "@drake//:drake_shared_library",
         "@ros",
     ],

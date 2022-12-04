@@ -1,5 +1,0 @@
-cc_library(
-    name = "pcl",
-    hdrs = glob(["**/*.h"]),
-    visibility=["//visibility:public"],
-)

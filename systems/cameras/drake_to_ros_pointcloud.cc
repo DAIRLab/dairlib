@@ -4,8 +4,8 @@
 
 #include "drake_to_ros_pointcloud.h"
 #include "drake/perception/point_cloud.h"
-
 #include "ros/ros.h"
+#include "sensor_msgs/point_cloud2_iterator.h"
 
 namespace dairlib {
 namespace camera {
@@ -26,24 +26,36 @@ DrakeToRosPointCloud::DrakeToRosPointCloud(std::string frame_id)
 
 void DrakeToRosPointCloud::CopyInputToPCL(
     const drake::systems::Context<double> &context,
-    pcl::PointCloud<pcl::PointXYZRGB>* cloud) const {
+   sensor_msgs::PointCloud2* cloud) const {
+
+  sensor_msgs::PointCloud2Modifier modifier(*cloud);
 
   const auto& input_cloud =
       this->EvalAbstractInput(
           context, 0)->get_value<drake::perception::PointCloud>();
 
+  modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
+  modifier.resize(input_cloud.size());
+
   const auto& rgbs = input_cloud.rgbs();
   const auto& xyzs = input_cloud.xyzs();
 
-  for (int i = 0; i < input_cloud.size(); i++) {
-    pcl::PointXYZRGB point;
-    point.x = xyzs(i,0);
-    point.y = xyzs(i,1);
-    point.z = xyzs(i,2);
-    point.r = rgbs(i,0);
-    point.g = rgbs(i, 1);
-    point.b = rgbs(i, 2);
-    cloud->points.push_back(point);
+  sensor_msgs::PointCloud2Iterator<float> iter_x(*cloud, "x");
+  sensor_msgs::PointCloud2Iterator<float> iter_y(*cloud, "y");
+  sensor_msgs::PointCloud2Iterator<float> iter_z(*cloud, "z");
+
+  sensor_msgs::PointCloud2Iterator<uint8_t> iter_r(*cloud, "r");
+  sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(*cloud, "g");
+  sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(*cloud, "b");
+
+  for (int i = 0; i < input_cloud.size(); i++,
+      ++iter_x, ++iter_y, ++iter_z, ++iter_r, ++iter_g, ++iter_b) {
+    *iter_x = xyzs(i,0);
+    *iter_y = xyzs(i,1);
+    *iter_z = xyzs(i,2);
+    *iter_r = rgbs(i,0);
+    *iter_g = rgbs(i,1);
+    *iter_b = rgbs(i,2);
   }
   cloud->header.frame_id = frame_id_;
   cloud->header.stamp = ros::Time::now();

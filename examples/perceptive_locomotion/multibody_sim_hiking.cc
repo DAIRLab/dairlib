@@ -213,7 +213,7 @@ int do_main(int argc, char* argv[]) {
                     FLAGS_ros_state_pub_period);
 
     std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
-    bff.clear();
+    bff.push_back({ "camera_depth_optical_frame", cam_transform});
 
     const auto& tf_broadcaster =
         builder.AddSystem<systems::RobotBaseTfBroadcasterSystem>(

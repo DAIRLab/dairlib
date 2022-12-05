@@ -1,7 +1,6 @@
 //
 // Created by brian on 12/3/22.
 //
-
 #include "drake_to_ros_pointcloud.h"
 #include "drake/perception/point_cloud.h"
 #include "ros/ros.h"
@@ -16,7 +15,7 @@ using drake::perception::pc_flags::kXYZs;
 DrakeToRosPointCloud::DrakeToRosPointCloud(std::string frame_id)
   : frame_id_(std::move(frame_id)){
 
-  const auto model_value = drake::perception::PointCloud(0, kRGBs & kXYZs);
+  const auto model_value = drake::perception::PointCloud(0, kRGBs | kXYZs);
   DeclareAbstractInputPort(
       "drake_point_cloud",
       drake::Value<drake::perception::PointCloud>(model_value));
@@ -50,12 +49,12 @@ void DrakeToRosPointCloud::CopyInputToPCL(
 
   for (int i = 0; i < input_cloud.size(); i++,
       ++iter_x, ++iter_y, ++iter_z, ++iter_r, ++iter_g, ++iter_b) {
-    *iter_x = xyzs(i,0);
-    *iter_y = xyzs(i,1);
-    *iter_z = xyzs(i,2);
-    *iter_r = rgbs(i,0);
-    *iter_g = rgbs(i,1);
-    *iter_b = rgbs(i,2);
+    *iter_x = xyzs(0, i);
+    *iter_y = xyzs(1, i);
+    *iter_z = xyzs(2, i);
+    *iter_r = rgbs(0, i);
+    *iter_g = rgbs(1, i);
+    *iter_b = rgbs(2, i);
   }
   cloud->header.frame_id = frame_id_;
   cloud->header.stamp = ros::Time::now();

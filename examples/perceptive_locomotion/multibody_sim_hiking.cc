@@ -10,15 +10,17 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/stepping_stone_utils.h"
+#include "systems/system_utils.h"
+#include "systems/robot_lcm_systems.h"
+#include "systems/cameras/camera_utils.h"
 #include "systems/framework/geared_motor.h"
 #include "systems/primitives/subvector_pass_through.h"
-#include "systems/robot_lcm_systems.h"
-#include "systems/system_utils.h"
 
 #ifdef DAIR_ROS_ON
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/robot_state_to_ros_pose.h"
 #include "systems/ros/robot_base_tf_broadcaster_system.h"
+#include "systems/cameras/drake_to_ros_pointcloud.h"
 #endif
 
 #include "drake/lcm/drake_lcm.h"
@@ -32,19 +34,35 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
 #include "drake/systems/primitives/constant_vector_source.h"
+#include "drake/systems/sensors/rgbd_sensor.h"
+#include "drake/perception/depth_image_to_point_cloud.h"
+#include "drake/geometry/render_vtk/render_engine_vtk_params.h"
+#include "drake/geometry/render_vtk/factory.h"
 
 namespace dairlib {
-using dairlib::systems::SubvectorPassThrough;
+
+#ifdef DAIR_ROS_ON
+using camera::DrakeToRosPointCloud;
+#endif
+
+using systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
+using drake::systems::sensors::PixelType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::TriggerTypeSet;
+using drake::systems::TriggerType;
+using drake::perception::pc_flags::BaseField::kXYZs;
+using drake::perception::pc_flags::BaseField::kRGBs;
+using drake::perception::DepthImageToPointCloud;
 
 using drake::math::RotationMatrix;
+using drake::math::RigidTransformd;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -54,6 +72,7 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_bool(publish_ros_pose, false, "if true, publishes the pelvis tf");
+DEFINE_bool(publish_points, true, "publish ros pointcloud messages");
 DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
@@ -62,6 +81,8 @@ DEFINE_bool(time_stepping, true,
 DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
 DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
+DEFINE_double(ros_state_pub_period, 0.01, "tf and pose publish period");
+DEFINE_double(ros_points_pub_period, 1.0/30.0, "pointcloud publish period");
 DEFINE_double(dt, 8e-5,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(penetration_allowance, 1e-5,
@@ -97,6 +118,12 @@ int do_main(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
+  std::string renderer_name = "hiking_sim_renderer";
+  scene_graph.AddRenderer(renderer_name,
+                          drake::geometry::MakeRenderEngineVtk(
+                              drake::geometry::RenderEngineVtkParams()));
+
+
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   multibody::AddSteppingStonesToSimFromYaml(
@@ -111,6 +138,12 @@ int do_main(int argc, char* argv[]) {
 
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
+
+  double camera_pitch = - 74 * M_PI / 180.0;
+  const auto camera_position = Vector3d(0.175, 0, 0.15);
+  const auto cam_transform = RigidTransformd(
+      camera::MakeXZAlignedCameraRotation(camera_pitch), camera_position);
+
   plant.Finalize();
 
   auto context = plant.CreateDefaultContext();
@@ -162,9 +195,9 @@ int do_main(int argc, char* argv[]) {
 
   // ROS interfaces
 #ifdef DAIR_ROS_ON
+  ros::init(argc, argv, "cassie_hiking_simulaton");
+  ros::NodeHandle node_handle;
   if (FLAGS_publish_ros_pose) {
-    ros::init(argc, argv, "cassie_hiking_simulaton");
-    ros::NodeHandle node_handle;
     const auto& cov_source =
         builder.AddSystem<drake::systems::ConstantVectorSource>(VectorXd::Zero(36));
     const auto& pose_sender =
@@ -172,11 +205,12 @@ int do_main(int argc, char* argv[]) {
             plant, context.get(), "pelvis");
     const auto& pose_publisher =
         builder.AddSystem<
-            systems::RosPublisherSystem<geometry_msgs::PoseWithCovarianceStamped>>
-            ("/geometry_msgs/PoseWithCovarianceStamped",
-                &node_handle,
-                drake::systems::TriggerTypeSet(
-                    {drake::systems::TriggerType::kPerStep}));
+            systems::RosPublisherSystem<
+                geometry_msgs::PoseWithCovarianceStamped>>(
+                    "/geometry_msgs/PoseWithCovarianceStamped",
+                    &node_handle,
+                    TriggerTypeSet({TriggerType::kPeriodic}),
+                    FLAGS_ros_state_pub_period);
 
     std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
     bff.clear();
@@ -188,8 +222,8 @@ int do_main(int argc, char* argv[]) {
             "pelvis",
             "map",
             bff,
-            drake::systems::TriggerTypeSet(
-                {drake::systems::TriggerType::kPerStep}));
+            TriggerTypeSet({TriggerType::kPeriodic}),
+            FLAGS_ros_state_pub_period);
 
     builder.Connect(plant.get_state_output_port(),
                     pose_sender->get_input_port_state());
@@ -199,6 +233,43 @@ int do_main(int argc, char* argv[]) {
                     pose_sender->get_input_port_covariance());
     builder.Connect(*pose_sender, *pose_publisher);
   }
+
+  if (FLAGS_publish_points) {
+    const auto& [color_camera, depth_camera] =
+    camera::MakeDairD455CameraModel(renderer_name,
+                                    camera::D455ImageSize::k640x480);
+    const auto parent_body_id = plant.GetBodyFrameIdIfExists(
+            plant.GetFrameByName("pelvis").body().index());
+
+    const auto camera =
+        builder.AddSystem<drake::systems::sensors::RgbdSensor>(
+        parent_body_id.value(), cam_transform, color_camera, depth_camera);
+
+    const auto intrinsics = depth_camera.core().intrinsics();
+    const auto depth_to_points = builder.AddSystem<DepthImageToPointCloud>(
+        depth_camera.core().intrinsics(),
+        PixelType::kDepth32F,
+        1.0,
+        kXYZs | kRGBs);
+
+    const auto points_bridge = builder.AddSystem<DrakeToRosPointCloud>("camera_depth_optical_frame");
+    const auto points_pub = builder.AddSystem<
+        systems::RosPublisherSystem<sensor_msgs::PointCloud2>>(
+            "/camera/depth/color/points",
+            &node_handle,
+            TriggerTypeSet({TriggerType::kPeriodic}),
+            FLAGS_ros_points_pub_period);
+
+    builder.Connect(scene_graph.get_query_output_port(),
+                    camera->query_object_input_port());
+    builder.Connect(camera->depth_image_32F_output_port(),
+                    depth_to_points->depth_image_input_port());
+    builder.Connect(camera->color_image_output_port(),
+                    depth_to_points->color_image_input_port());
+    builder.Connect(*depth_to_points, *points_bridge);
+    builder.Connect(*points_bridge, *points_pub);
+  }
+
 #endif
 
   // connect leaf systems

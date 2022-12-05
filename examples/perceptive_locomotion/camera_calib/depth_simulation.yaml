@@ -3,4 +3,4 @@ rotation: # Rotation of the camera base_link frame in the pelvis frame
      0.0, 1.0,  0.0,
    -0.95, 0.0, 0.31]
 translation: # Translation of the camera base_link in the pelvis frame
-  [0.1, 0.0, 0.05]
+  [0.175, -0.05, 0.15]

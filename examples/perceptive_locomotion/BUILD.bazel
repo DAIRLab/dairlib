@@ -102,6 +102,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/framework:vector",
         "//systems/primitives",
+        "//systems/cameras:camera_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ] + select(

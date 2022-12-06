@@ -9,6 +9,7 @@
 #include "solvers/optimization_utils.h"
 
 #include "drake/common/text_logging.h"
+#include "drake/math/saturate.h"
 
 using std::cout;
 using std::endl;
@@ -413,11 +414,13 @@ void OperationalSpaceControl::Build() {
     MatrixXd A = MatrixXd(5, kSpaceDim);
     A << -1, 0, mu_, 0, -1, mu_, 1, 0, mu_, 0, 1, mu_, 0, 0, 1;
 
+    friction_constraint_lb_ = VectorXd::Zero(5);
+    friction_constraint_lb_(4) = normal_force_lb_;
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
       friction_constraints_.push_back(
           prog_
               ->AddLinearConstraint(
-                  A, VectorXd::Zero(5),
+                  A, friction_constraint_lb_,
                   Eigen::VectorXd::Constant(
                       5, std::numeric_limits<double>::infinity()),
                   lambda_c_.segment(kSpaceDim * j, 3))
@@ -542,6 +545,24 @@ void OperationalSpaceControl::Build() {
             .get();
   }
 
+  // Testing -- directly track desired stance toe effort
+  if (W_stance_toe_effort_left_.size() > 0) {
+    stance_toe_effort_cost_ =
+        prog_
+            ->AddQuadraticCost(W_stance_toe_effort_left_, VectorXd::Zero(2),
+                               {u_.segment<1>(8), u_.segment<1>(9)})
+            .evaluator()
+            .get();
+    auto temp_context = plant_w_spr_.CreateDefaultContext();
+    total_mass_ = plant_w_spr_.CalcTotalMass(*temp_context);
+    DRAKE_DEMAND(total_mass_ > 30);
+
+    const std::map<string, int>& act_map_wo_spr =
+        multibody::makeNameToActuatorsMap(plant_w_spr_);
+    DRAKE_DEMAND(act_map_wo_spr.at("toe_left_motor") == 8);
+    DRAKE_DEMAND(act_map_wo_spr.at("toe_right_motor") == 9);
+  }
+
   // Testing 8. Regularization for all variable
   if (is_rom_modification_) {
     // // Target 0
@@ -556,6 +577,11 @@ void OperationalSpaceControl::Build() {
         prog_->AddQuadraticErrorCost(W_reg_0_, VectorXd::Zero(w.size()), w)
             .evaluator()
             .get();
+  }
+
+  // Build tracking data name map
+  for (auto& tracking_data : *tracking_data_vec_) {
+    tracking_data_map_[tracking_data->GetName()] = tracking_data;
   }
 
   if (is_rom_modification_) {
@@ -811,7 +837,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   if (!all_contacts_.empty()) {
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
-        friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
+        friction_constraints_.at(i)->UpdateLowerBound(friction_constraint_lb_);
       } else {
         friction_constraints_.at(i)->UpdateLowerBound(
             VectorXd::Constant(5, -std::numeric_limits<double>::infinity()));
@@ -959,6 +985,49 @@ VectorXd OperationalSpaceControl::SolveQp(
     vdot_reg_cost_->UpdateCoefficients(
         W_vdot_reg_, -W_vdot_reg_ * (*dv_sol_),
         0.5 * dv_sol_->transpose() * W_vdot_reg_ * (*dv_sol_));
+  }
+
+  // Testing -- directly set the desired toe torque (convert CoM traj to toe
+  // torque)
+  if (W_stance_toe_effort_left_.size() > 0) {
+    OscTrackingData* rom_traj_tracking_data = nullptr;
+    Eigen::MatrixXd W_stance_toe_effort = (fsm_state == 0 || fsm_state == 3)
+                                              ? W_stance_toe_effort_left_
+                                              : W_stance_toe_effort_right_;
+    if (fsm_state == 0 || fsm_state == 3) {
+      rom_traj_tracking_data = tracking_data_map_.at("optimal_rom_traj");
+    } else if (fsm_state == 1 || fsm_state == 4) {
+      rom_traj_tracking_data =
+          tracking_data_map_.at("mirrored_optimal_rom_traj");
+    } else {
+      DRAKE_UNREACHABLE();
+    }
+    const VectorXd& y_rom = rom_traj_tracking_data->GetY();
+    double delta_p =
+        (y_rom(0) -
+         y_rom(2) / 9.81 * rom_traj_tracking_data->GetYddotCommand()(0));
+    if (isnan(delta_p)) {
+      delta_p = 0;
+      cout << "warning: delta_p is nan\n";
+    }
+    delta_p = drake::math::saturate(delta_p, -0.087, 0.087);
+    delta_p += 0.0197;  // 0.0197 is the position of mid toe rt toe origin
+    double desired_grf =
+        total_mass_ * (9.81 + rom_traj_tracking_data->GetYddotCommand()(2));
+    desired_grf = std::max(desired_grf, 0.0);
+    double u_desired = -delta_p * desired_grf;
+    if (abs(u_desired) > 300) {
+      u_desired =
+          (fsm_state == 0 || fsm_state == 3) ? (*u_sol_)(8) : (*u_sol_)(9);
+    }
+    cout << "del_p, grf, u = " << t << ": " << delta_p << ", " << desired_grf
+         << ", " << u_desired << endl;
+    cout << "W_stance_toe_effort = " << W_stance_toe_effort << endl;
+    VectorXd u_desired_vectorXd = u_desired * VectorXd::Ones(2);
+    stance_toe_effort_cost_->UpdateCoefficients(
+        W_stance_toe_effort, -W_stance_toe_effort * u_desired_vectorXd,
+        0.5 * u_desired_vectorXd.transpose() * W_stance_toe_effort *
+            u_desired_vectorXd);
   }
 
   if (is_rom_modification_) {
@@ -1149,6 +1218,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   VectorXd y_lambda_c_cost = VectorXd::Zero(1);
   VectorXd y_lambda_h_cost = VectorXd::Zero(1);
   VectorXd y_vdot_reg_cost = VectorXd::Zero(1);
+  VectorXd y_stance_toe_effort_cost = VectorXd::Zero(1);
   VectorXd y_front_contact_force_reg_cost = VectorXd::Zero(1);
   if (input_reg_cost_) {
     input_reg_cost_->Eval(*u_sol_, &y_input_reg_cost);
@@ -1161,6 +1231,11 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   }
   if (vdot_reg_cost_) {
     vdot_reg_cost_->Eval(*dv_sol_, &y_vdot_reg_cost);
+  }
+  if (stance_toe_effort_cost_) {
+    VectorXd input(2);
+    input << u_sol_->segment<1>(8), u_sol_->segment<1>(9);
+    stance_toe_effort_cost_->Eval(input, &y_stance_toe_effort_cost);
   }
   if (front_contact_force_reg_cost_) {
     VectorXd input(2);
@@ -1185,6 +1260,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->regularization_cost_names.push_back("lambda_h_cost");
   output->regularization_costs.push_back(y_vdot_reg_cost[0]);
   output->regularization_cost_names.push_back("vdot_reg_cost");
+  output->regularization_costs.push_back(y_stance_toe_effort_cost[0]);
+  output->regularization_cost_names.push_back("stance_toe_effort_cost");
   output->regularization_costs.push_back(y_front_contact_force_reg_cost[0]);
   output->regularization_cost_names.push_back("front_contact_force_reg_cost");
 

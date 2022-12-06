@@ -188,6 +188,15 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     W_vdot_reg_ = W;
   }
 
+  /// My RoM specific hacks ///
+  void SetStanceToeEffortWeightForCoMTracking(double w) {
+    W_stance_toe_effort_left_ = Eigen::MatrixXd::Zero(2, 2);
+    W_stance_toe_effort_left_(0, 0) = w;
+    W_stance_toe_effort_right_ = Eigen::MatrixXd::Zero(2, 2);
+    W_stance_toe_effort_right_(1, 1) = w;
+  }
+  /////////////////////////////
+
   // OSC LeafSystem builder
   void Build();
 
@@ -313,12 +322,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<int> knee_ankle_pos_idx_list_;
   std::vector<int> knee_ankle_vel_idx_list_;
 
-  // Testing -- translating knee spring deflection to knee joint
+  // Testing -- translating knee spring deflection to knee joint (seems to work)
   bool two_models_;
   std::vector<int> knee_ankle_pos_idx_list_wo_spr_;
   std::vector<int> spring_pos_idx_list_w_spr_;
   std::vector<int> knee_ankle_vel_idx_list_wo_spr_;
   std::vector<int> spring_vel_idx_list_w_spr_;
+
   //////////////////////////////////////////////////////////////////////////////
 
   // MathematicalProgram
@@ -411,11 +421,26 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd W_lambda_h_reg_;
   Eigen::MatrixXd W_vdot_reg_;
 
+  ///////////////////// My own ROM branch's modification ///////////////////////
   // Optimal feature -- contact force regularization for optimal ROM
   // (penalize the front contact for optimal model as a regularization term, in
   //  order to help the solver to find good solution.)
   double w_rom_force_reg_ = -1;
   drake::solvers::QuadraticCost* front_contact_force_reg_cost_ = nullptr;
+
+  // Testing -- directly assign desired toe torque (convert CoM x traj to toe
+  // torque)
+  drake::solvers::QuadraticCost* stance_toe_effort_cost_ = nullptr;
+  Eigen::MatrixXd W_stance_toe_effort_left_;
+  Eigen::MatrixXd W_stance_toe_effort_right_;
+
+  double total_mass_;
+  std::map<std::string, OscTrackingData*> tracking_data_map_;
+
+  // Testing -- normal force low bound
+  double normal_force_lb_ = 0;
+  Eigen::VectorXd friction_constraint_lb_;
+  //////////////////////////////////////////////////////////////////////////////
 };
 
 }  // namespace dairlib::systems::controllers

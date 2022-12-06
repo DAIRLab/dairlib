@@ -301,7 +301,7 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
   const auto& xx = trajopt_.GetStateSolution();
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
   footstep_in_com_yaw_frame.head(2) =
-      (pp.at(1) - pp.at(0)).head(2) - xx.front().back().head(2);
+      (pp.at(1) - pp.at(0)).head(2) - xx.front().tail<4>().head(2);
   footstep_in_com_yaw_frame(2) = -gains_.hdes;
   p_B_FC->set_value(footstep_in_com_yaw_frame);
 }
@@ -346,13 +346,13 @@ void AlipMINLPFootstepController::CopyCoMTrajOutput(
       double tk = t0 + (double_stance_duration_ * n) + tt(n) * k * s;
       double lerp = (tk - t_prev_switch) / (t_next_switch - t_prev_switch);
       t(idx) = tk;
-      com_knots.col(idx).head(2) = pcurr.head(2) + xx.at(n).at(k).head(2);
+      com_knots.col(idx).head(2) = pcurr.head(2) + AlipMINLP::GetStateAtKnot(xx.at(n), k).head(2);
       com_knots(2, idx) = gains_.hdes + lerp * pnext(2) + (1 - lerp) * pcurr(2);
     }
     t0 += tt(n);
   }
   t(N-1) = 2 * t(N-2) - t(N-3);
-  com_knots.topRightCorner(2, 1) = xx.back().back().head(2) + pp.back().head(2);
+  com_knots.topRightCorner(2, 1) = xx.back().tail<4>().head(2) + pp.back().head(2);
   com_knots(2, N-1) = com_knots(2,N-2);
 
   // If we've basically already finished this mode,
@@ -411,8 +411,8 @@ void AlipMINLPFootstepController::CopyMpcDebugToLcm(
 
 void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
     const std::vector<Vector3d> &pp,
-    const std::vector<std::vector<Vector4d>> &xx,
-    const std::vector<std::vector<VectorXd>> &uu,
+    const std::vector<VectorXd> &xx,
+    const std::vector<VectorXd> &uu,
     const Eigen::VectorXd &tt,
     lcmt_mpc_solution *solution) const {
 
@@ -429,24 +429,28 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
   solution->nk_minus_one = solution->nk - 1;
 
   solution->pp.clear();
+  solution->pp.reserve(gains_.nmodes);
   solution->xx.clear();
+  solution->xx.reserve(gains_.nmodes);
   solution->uu.clear();
+  solution->uu.reserve(gains_.nmodes);
 
   for (int n = 0; n < gains_.nmodes; n++) {
     solution->pp.push_back(CopyVectorXdToStdVector(pp.at(n)));
-    std::vector<std::vector<double>> xx_temp;
-    std::vector<std::vector<double>> uu_temp;
+    solution->xx.push_back(vector<vector<double>>{});
+    solution->uu.push_back(vector<vector<double>>{});
     for (int k = 0; k < gains_.knots_per_mode; k++) {
-      xx_temp.push_back(CopyVectorXdToStdVector(xx.at(n).at(k)));
+      solution->xx.back().push_back(CopyVectorXdToStdVector(
+          AlipMINLP::GetStateAtKnot(xx.at(n), k)
+      ));
     }
     for(int k = 0; k < gains_.knots_per_mode - 1; k++) {
-      uu_temp.push_back(CopyVectorXdToStdVector(uu.at(n).at(k)));
+      solution->uu.back().push_back(CopyVectorXdToStdVector(
+          AlipMINLP::GetInputAtKnot(uu.at(n), k)
+      ));
     }
-    solution->xx.push_back(xx_temp);
-    solution->uu.push_back(uu_temp);
   }
   solution->tt = CopyVectorXdToStdVector(tt);
-
 }
 
 void AlipMINLPFootstepController::CopyFsmOutput(

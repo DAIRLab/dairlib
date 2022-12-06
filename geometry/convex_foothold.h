@@ -2,6 +2,7 @@
 #include "Eigen/Dense"
 
 namespace dairlib::geometry {
+  constexpr int kMaxFootholdFaces = 10;
 
  class ConvexFoothold {
   public:

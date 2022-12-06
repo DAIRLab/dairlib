@@ -25,6 +25,8 @@ using Eigen::MatrixXd;
 using Eigen::Matrix4d;
 using Eigen::Matrix3d;
 
+using drake::VectorX;
+using drake::Vector4;
 using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
 using drake::math::InitializeAutoDiff;
@@ -41,8 +43,7 @@ using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::LinearEqualityConstraint;
 
-using drake::VectorX;
-using drake::Vector4;
+using geometry::kMaxFootholdFaces;
 
 AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
     NonlinearConstraint<AutoDiffXd>(
@@ -87,7 +88,9 @@ void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
     DRAKE_DEMAND(xd.at(i).size() == nknots_.at(i));
     vector<Binding<QuadraticCost>> QQ;
     for (int k = 0; k < nknots_.at(i); k++){
-      QQ.push_back(prog_->AddQuadraticErrorCost(Q, xd.at(i).at(k), xx_.at(i).at(k)));
+      QQ.push_back(
+          prog_->AddQuadraticErrorCost(
+              Q, xd.at(i).at(k), GetStateAtKnot(xx_.at(i), k)));
     }
     tracking_costs_.push_back(QQ);
   }
@@ -99,19 +102,18 @@ void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
 
 void AlipMINLP::MakeTerminalCost(){
   terminal_cost_ = prog_->AddQuadraticCost(
-      2.0 * Qf_, -2.0 * Qf_ *xd_.back().back(), xx_.back().back()).evaluator();
+      2 * Qf_, -2 * Qf_ * xd_.back().back(), xx_.back().tail<4>()).evaluator();
 }
 
 void AlipMINLP::AddInputCost(double R) {
   for (int i = 0; i < nmodes_; i++){
-    vector<Binding<QuadraticCost>> RR;
-    for (int k = 0; k < nknots_.at(i) -1; k++){
-      RR.push_back(
-          prog_->AddQuadraticCost(
-              R*MatrixXd::Identity(nu_, nu_),
-              VectorXd::Zero(nu_), uu_.at(i).at(k)));
-    }
-    input_costs_.push_back(RR);
+    int nk = nknots_.at(i);
+    input_costs_.push_back(
+        prog_->AddQuadraticCost(
+            R * MatrixXd::Identity(nk, nk),
+            VectorXd::Zero(nk),
+            uu_.at(i))
+        );
   }
   R_ = R;
 }
@@ -131,11 +133,12 @@ void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
   for (int i = 0; i < nmodes_; i++) {
     tt_(i) = td_.at(i);
   }
+  MakeFootholdConstraints();
   MakeNoCrossoverConstraint();
   MakeResetConstraints();
   MakeDynamicsConstraints();
   MakeWorkspaceConstraints();
-//  MakeInputBoundConstaints();
+  MakeInputBoundConstaints();
   MakeNextFootstepReachabilityConstraint();
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
@@ -145,21 +148,12 @@ void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
 }
 
 void AlipMINLP::AddMode(int n_knots) {
-  pp_.push_back(prog_->NewContinuousVariables(np_, "pp_" + to_string(nmodes_)));
-  vector<VectorXDecisionVariable> xknots;
-  vector<VectorXDecisionVariable> uknots;
-  for (int i = 0; i < n_knots; i++) {
-    xknots.push_back(prog_->NewContinuousVariables(
-        nx_, "xx_" + to_string(nmodes_) + "_" + to_string(i) ));
-  }
-  for (int i = 0; i < (n_knots -1) ; i++) {
-    uknots.push_back(prog_->NewContinuousVariables(
-        nu_, "uu_" + to_string(nmodes_) + "_" + to_string(i)));
-  }
+  std::string nm = to_string(nmodes_);
+  pp_.push_back(prog_->NewContinuousVariables(np_, "pp_" + nm));
+  xx_.push_back(prog_->NewContinuousVariables(nx_ * n_knots, "xx_" + nm));
+  uu_.push_back(prog_->NewContinuousVariables(nu_ * (n_knots - 1), "uu_" + nm));
   nmodes_ += 1;
   nknots_.push_back(n_knots);
-  xx_.push_back(xknots);
-  uu_.push_back(uknots);
 }
 
 void AlipMINLP::UpdateTrackingCost(const vector<vector<Vector4d>> &xd) {
@@ -173,18 +167,23 @@ void AlipMINLP::UpdateTrackingCost(const vector<vector<Vector4d>> &xd) {
   xd_ = xd;
 }
 
-void AlipMINLP::MakeIndividualFootholdConstraint(int idx_mode,
-                                                 int idx_foothold) {
+void AlipMINLP::UpdateIndividualFootholdConstraint(
+    int idx_mode, int idx_foothold) {
   const auto& [A, b] = footholds_.at(idx_foothold).GetConstraintMatrices();
   const auto& [A_eq, b_eq] = footholds_.at(idx_foothold).GetEqualityConstraintMatrices();
-  footstep_c_.push_back( // NOLINT(modernize-use-emplace)
-      {prog_->AddLinearConstraint(
-          A, -numeric_limits<double>::infinity()*VectorXd::Ones(b.rows()),
-          b, pp_.at(idx_mode)),
-       prog_->AddLinearEqualityConstraint(
-           A_eq, b_eq, pp_.at(idx_mode)
-           )}
-      );
+
+  Matrix<double, kMaxFootholdFaces, 3> bigA =
+      Matrix<double, kMaxFootholdFaces, 3>::Zero();
+  bigA.topRows(A.rows()) = A;
+  VectorXd bigb = VectorXd::Zero(kMaxFootholdFaces);
+  bigb.head(b.rows()) = b;
+
+  footstep_c_.at(idx_mode).first.evaluator()->UpdateCoefficients(
+      bigA,
+      -numeric_limits<double>::infinity()*VectorXd::Ones(bigb.rows()),
+      bigb
+  );
+  footstep_c_.at(idx_mode).second.evaluator()->UpdateCoefficients(A_eq, b_eq);
 }
 
 void AlipMINLP::MakeCapturePointConstraint(int foothold_idx) {
@@ -200,16 +199,15 @@ void AlipMINLP::MakeCapturePointConstraint(int foothold_idx) {
       prog_->AddLinearConstraint(
           A_constraint,
           -numeric_limits<double>::infinity() * VectorXd::Ones(A_constraint.rows()),
-          b, {pp_.back().head(2), xx_.back().back().tail(2)}
+          b, {pp_.back().head(2), xx_.back().tail(2)}
       ));
 }
 
-void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
+void AlipMINLP::UpdateFootholdConstraints(vector<int> foothold_idxs) {
   DRAKE_ASSERT(foothold_idxs.size() == nmodes_);
   for (int i = 0; i < foothold_idxs.size(); i++) {
-    MakeIndividualFootholdConstraint(i+1, foothold_idxs.at(i));
+    UpdateIndividualFootholdConstraint(i+1, foothold_idxs.at(i));
   }
-//  MakeCapturePointConstraint(foothold_idxs.back());
 }
 
 void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
@@ -226,9 +224,27 @@ void AlipMINLP::MakeResetConstraints() {
     reset_map_c_.push_back(
         prog_->AddLinearEqualityConstraint(
             A_eq, Vector4d::Zero(),
-            {xx_.at(i).back(), xx_.at(i+1).front(),
+            {xx_.at(i).tail<4>(), xx_.at(i+1).head<4>(),
              pp_.at(i).head<2>(), pp_.at(i+1).head<2>()}));
     reset_map_c_.back().evaluator()->set_description("reset map constraint");
+  }
+}
+
+void AlipMINLP::MakeFootholdConstraints() {
+  for (int n = 0; n < nmodes_; n++) {
+    footstep_c_.push_back(
+        {
+          prog_->AddLinearConstraint(
+            Matrix<double, kMaxFootholdFaces, 3>::Zero(),
+            VectorXd::Zero(kMaxFootholdFaces),
+            VectorXd::Zero(kMaxFootholdFaces),
+            pp_.at(n)),
+         prog_->AddLinearEqualityConstraint(
+             Eigen::RowVector3d::Zero(),
+             Eigen::VectorXd::Zero(1),
+             pp_.at(n))
+        }
+    );
   }
 }
 
@@ -248,7 +264,9 @@ void AlipMINLP::MakeDynamicsConstraints() {
       dyn_c_this_mode.push_back(
           prog_->AddLinearEqualityConstraint(
               Adyn, Vector4d::Zero(),
-              {xx_.at(i).at(k), uu_.at(i).at(k), xx_.at(i).at(k+1)}));
+              {GetStateAtKnot(xx_.at(i), k),
+               GetInputAtKnot(uu_.at(i), k),
+               GetStateAtKnot(xx_.at(i), k+1)}));
       dyn_c_this_mode.back().evaluator()->
       set_description("dynamics" + std::to_string(i) + "_" + std::to_string(k));
     }
@@ -264,7 +282,11 @@ void AlipMINLP::MakeInitialFootstepConstraint() {
 
 void AlipMINLP::MakeInitialStateConstraint() {
   initial_state_c_ = prog_->AddLinearEqualityConstraint(
-      Matrix4d::Identity(), Vector4d::Zero(), xx_.at(0).at(0)).evaluator();
+      Matrix4d::Identity(),
+      Vector4d::Zero(),
+      xx_.front().head<4>()
+  ).evaluator();
+
   initial_state_c_->set_description("initial_state");
 }
 
@@ -272,24 +294,23 @@ void AlipMINLP::MakeInputBoundConstaints() {
   DRAKE_DEMAND(umax_ >= 0 && !uu_.empty());
   int i = 0;
   for (const auto& vec : uu_) {
-    for (const auto& u : vec) {
       input_bounds_c_.push_back(
-          prog_->AddBoundingBoxConstraint(-umax_, umax_, u)
+          prog_->AddBoundingBoxConstraint(-umax_, umax_, vec)
       );
       i++;
-      input_bounds_c_.back().evaluator()->set_description("input bounds" + std::to_string(i));
-    }
+      input_bounds_c_.back().evaluator()->set_description(
+          "input bounds" + std::to_string(i));
   }
 }
 
 void AlipMINLP::MakeWorkspaceConstraints() {
   for (int n = 1; n < nmodes_; n++) {
-    for (const auto& xx : xx_.at(n)) {
+    for (int k = 0; k < nknots_.at(n); k++) {
       prog_->AddLinearConstraint(
           MatrixXd::Identity(2, 2),
           Vector2d(-0.8, -0.75),
           Vector2d(0.8, 0.75),
-          xx.head(2));
+          GetStateAtKnot(xx_.at(n), k).head<2>());
     }
   }
 }
@@ -317,17 +338,6 @@ void AlipMINLP::MakeNoCrossoverConstraint() {
   }
 }
 
-void AlipMINLP::ClearFootholdConstraints() {
-  for (auto & i : footstep_c_) {
-    prog_->RemoveConstraint(i.first);
-    prog_->RemoveConstraint(i.second);
-  }
-  footstep_c_.clear();
-  if (capture_point_contstraint_) {
-    prog_->RemoveConstraint(*capture_point_contstraint_);
-  }
-}
-
 void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
                                    const Eigen::Vector4d &x0) {
   // Update state initial guess
@@ -344,7 +354,7 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
 
   for (int n = 0; n < nmodes_; n++) {
     for (int k = 0; k < nknots_.at(n); k++) {
-      prog_->SetInitialGuess(xx_.at(n).at(k), xg.at(n).at(k));
+      prog_->SetInitialGuess(GetStateAtKnot(xx_.at(n), k), xg.at(n).at(k));
     }
   }
   Vector3d ptemp = p0;
@@ -405,9 +415,9 @@ void AlipMINLP::UpdateTimingGradientStep() {
     Matrix4d A = alip_utils::CalcA(H_, m_);
     Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(n) / (nknots_.at(n) - 1));
     for (int k = 0; k < nknots_.at(n) - 1; k++) {
-      Vector4d nu = solution_.second.at(n).at(k);
-      VectorXd x = solution_.first.GetSolution(xx_.at(n).at(k));
-      VectorXd u = solution_.first.GetSolution(uu_.at(n).at(k));
+      Vector4d nu = GetStateAtKnot(solution_.second.at(n), k);
+      Vector4d x = solution_.first.GetSolution(GetStateAtKnot(xx_.at(n), k));
+      VectorXd u = solution_.first.GetSolution(GetInputAtKnot(uu_.at(n), k));
       dLdt_n += (1.0 / (nknots_.at(n) - 1)) * nu.dot(A * Ad * x + Ad * B * u);
     }
     double tnew = tt_(n) - 1e-7 * dLdt_n;
@@ -434,41 +444,38 @@ void AlipMINLP::UpdateDynamicsConstraints() {
 
 void AlipMINLP::SolveOCProblemAsIs() {
   mode_sequnces_ = GetPossibleModeSequences();
-  vector<pair<MathematicalProgramResult, vector<vector<Vector4d>>>> solutions;
+  vector<pair<MathematicalProgramResult, vector<VectorXd>>> solutions;
 
   if (mode_sequnces_.empty()) {
-    vector<vector<Vector4d>> dual_solutions;
+    vector<VectorXd> dual_solutions;
     const auto sol = solver_.Solve(*prog_);
     for (int n = 0; n < nmodes_; n++) {
-      vector<Vector4d> duals(nknots_.at(n) - 1, Vector4d::Zero());
+      VectorXd duals = VectorXd::Zero((nknots_.at(n) - 1) * nx_);
       if (sol.is_success()) {
         for (int k = 0; k < nknots_.at(n) - 1; k++) {
-          duals.at(k) =
-              sol.GetDualSolution<LinearEqualityConstraint>(dynamics_c_.at(n).at(
-                  k));
+          GetStateAtKnot(duals, k) =
+              sol.GetDualSolution<LinearEqualityConstraint>(
+                  dynamics_c_.at(n).at(k));
         }
       }
-      dual_solutions.push_back(duals);
     }
-    solutions.emplace_back(sol, dual_solutions);
+    solutions.push_back({sol, dual_solutions}); // NOLINT
   } else {
     for (auto& seq: mode_sequnces_) {
-      ClearFootholdConstraints();
-      MakeFootstepConstraints(seq);
+      UpdateFootholdConstraints(seq);
 
-      vector<vector<Vector4d>> dual_solutions;
+      vector<VectorXd> dual_solutions;
       const auto sol = solver_.Solve(*prog_);
 
       for (int n = 0; n < nmodes_; n++) {
-        vector<Vector4d> duals(nknots_.at(n) - 1, Vector4d::Zero());
+       VectorXd duals = VectorXd::Zero((nknots_.at(n) - 1) * nx_);
         if (sol.is_success()) {
           for (int k = 0; k < nknots_.at(n) - 1; k++) {
-            duals.at(k) =
-                sol.GetDualSolution<LinearEqualityConstraint>(dynamics_c_.at(n).at(
-                    k));
+            GetStateAtKnot(duals, k) =
+                sol.GetDualSolution<LinearEqualityConstraint>(
+                    dynamics_c_.at(n).at(k));
           }
         }
-        dual_solutions.push_back(duals);
       }
       solutions.push_back({sol, dual_solutions}); // NOLINT
     }
@@ -593,50 +600,34 @@ vector<Vector3d> AlipMINLP::GetFootstepGuess() const {
   return pp;
 }
 
-vector<vector<Vector4d>> AlipMINLP::GetStateSolution() const {
-  vector<vector<Vector4d>> xx;
+vector<VectorXd> AlipMINLP::GetStateSolution() const {
+  vector<VectorXd> xx;
   for(auto& x : xx_) {
-    vector<Vector4d> xknots;
-    for (auto& knot : x) {
-      xknots.emplace_back(solution_.first.GetSolution(knot));
-    }
-    xx.push_back(xknots);
+    xx.push_back(solution_.first.GetSolution(x));
   }
   return xx;
 }
 
-vector<vector<Vector4d>> AlipMINLP::GetStateGuess() const {
-  vector<vector<Vector4d>> xx;
+vector<VectorXd> AlipMINLP::GetStateGuess() const {
+  vector<VectorXd> xx;
   for(auto& x : xx_) {
-    vector<Vector4d> xknots;
-    for (auto& knot : x) {
-      xknots.emplace_back(prog_->GetInitialGuess(knot));
-    }
-    xx.push_back(xknots);
+    xx.push_back(prog_->GetInitialGuess(x));
   }
   return xx;
 }
 
-vector<vector<VectorXd>> AlipMINLP::GetInputSolution() const {
-  vector<vector<VectorXd>> uu;
+vector<VectorXd> AlipMINLP::GetInputSolution() const {
+  vector<VectorXd> uu;
   for(auto& u : uu_) {
-    vector<VectorXd> uknots;
-    for (auto& knot : u) {
-      uknots.push_back(solution_.first.GetSolution(knot));
-    }
-    uu.push_back(uknots);
+    uu.push_back(solution_.first.GetSolution(u));
   }
   return uu;
 }
 
-vector<vector<VectorXd>> AlipMINLP::GetInputGuess() const {
-  vector<vector<VectorXd>> uu;
+vector<VectorXd> AlipMINLP::GetInputGuess() const {
+  vector<VectorXd> uu;
   for(auto& u : uu_) {
-    vector<VectorXd> uknots;
-    for (auto& knot : u) {
-      uknots.push_back(prog_->GetInitialGuess(knot));
-    }
-    uu.push_back(uknots);
+    uu.push_back(prog_->GetInitialGuess(u));
   }
   return uu;
 }

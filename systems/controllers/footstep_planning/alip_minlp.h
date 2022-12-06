@@ -64,6 +64,16 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
 
 class AlipMINLP {
  public:
+
+  template<typename T>
+  static Eigen::Ref<drake::VectorX<T>> GetStateAtKnot(VectorX<T> xx, int knot) {
+    return xx.segment<4>(4 * knot);
+  }
+  template<typename T>
+  static Eigen::Ref<drake::VectorX<T>> GetInputAtKnot(VectorX<T> uu, int knot) {
+    return uu.segment<1>(knot);
+  }
+
   /// Constructor takes a nominal robot mass and walking height
   AlipMINLP(double m, double H) : m_(m), H_(H) {};
 
@@ -126,27 +136,26 @@ class AlipMINLP {
   // Getting the solution
   Eigen::VectorXd GetTimingSolution() const;
   vector<Eigen::Vector3d> GetFootstepSolution() const;
-  vector<vector<Eigen::Vector4d>> GetStateSolution() const;
-  vector<vector<Eigen::VectorXd>> GetInputSolution() const;
+  vector<Eigen::VectorXd> GetStateSolution() const;
+  vector<Eigen::VectorXd> GetInputSolution() const;
 
   // getting the initial guess
   Eigen::VectorXd GetTimingGuess() const;
   vector<Eigen::Vector3d> GetFootstepGuess() const;
-  vector<vector<Eigen::Vector4d>> GetStateGuess() const;
-  vector<vector<Eigen::VectorXd>> GetInputGuess() const;
+  vector<Eigen::VectorXd> GetStateGuess() const;
+  vector<Eigen::VectorXd> GetInputGuess() const;
 
   // getting the desired solution
   Eigen::VectorXd GetDesiredTiming() const;
-  vector<vector<Eigen::Vector4d>> GetDesiredState() const {
+  vector<Eigen::VectorXd> GetDesiredState() const {
     return xd_;
   }
   vector<Eigen::Vector3d> GetDesiredFootsteps() const {
     return vector<Eigen::Vector3d>(nmodes_, Eigen::Vector3d::Zero()); // NOLINT(modernize-return-braced-init-list)
   };
-  vector<vector<Eigen::VectorXd>> GetDesiredInputs() const {
-    return vector<vector<Eigen::VectorXd>>( // NOLINT(modernize-return-braced-init-list)
-        nmodes_, vector<Eigen::VectorXd>(
-            nknots_.front() - 1, Eigen::VectorXd::Zero(1)));
+  vector<Eigen::VectorXd> GetDesiredInputs() const {
+    return vector<Eigen::VectorXd>( // NOLINT(modernize-return-braced-init-list)
+        nmodes_, Eigen::VectorXd::Zero(nu_ * (nknots_.front() - 1)));
   };
 
   // misc getters and setters
@@ -180,7 +189,7 @@ class AlipMINLP {
   Eigen::MatrixXd Qf_;
   vector<double> td_;
   vector<int> nknots_{};
-  vector<vector<Eigen::Vector4d>> xd_;
+  vector<Eigen::VectorXd> xd_;
   vector<vector<int>> mode_sequnces_{};
   vector<geometry::ConvexFoothold> footholds_;
 
@@ -188,16 +197,15 @@ class AlipMINLP {
   void MakeTerminalCost();
   void MakeResetConstraints();
   void MakeDynamicsConstraints();
+  void MakeFootholdConstraints();
   void MakeWorkspaceConstraints();
-  void ClearFootholdConstraints();
   void MakeInputBoundConstaints();
   void MakeNoCrossoverConstraint();
   void MakeInitialStateConstraint();
   void MakeInitialFootstepConstraint();
   void MakeNextFootstepReachabilityConstraint();
   void MakeCapturePointConstraint(int foothold_idx);
-  void MakeFootstepConstraints(vector<int> foothold_idxs);
-  void MakeIndividualFootholdConstraint(int idx_mode, int idx_foothold);
+
   void CalcResetMap(Eigen::Matrix<double,4,12>* Aeq) const;
   vector<vector<int>> GetPossibleModeSequences();
 
@@ -209,12 +217,16 @@ class AlipMINLP {
   void UpdateDynamicsConstraints();
   void ClearFootholds() { footholds_.clear(); }
 
+  // Per QP updates
+  void UpdateFootholdConstraints(vector<int> foothold_idxs);
+  void UpdateIndividualFootholdConstraint(int idx_mode, int idx_foothold);
+
   // program and decision variables
   drake::copyable_unique_ptr<MathematicalProgram>
       prog_{std::make_unique<MathematicalProgram>()};
   vector<VectorXDecisionVariable> pp_{};
-  vector<vector<VectorXDecisionVariable>> xx_{};
-  vector<vector<VectorXDecisionVariable>> uu_{};
+  vector<VectorXDecisionVariable> xx_{};
+  vector<VectorXDecisionVariable> uu_{};
 
   // store the mode timing as doubles and take gradient steps external to the QP
   Eigen::VectorXd tt_;
@@ -229,17 +241,16 @@ class AlipMINLP {
   std::shared_ptr<Binding<LinearConstraint>> capture_point_contstraint_ = nullptr;
   vector<vector<Binding<LinearEqualityConstraint>>> dynamics_c_{};
   vector<std::pair<Binding<LinearConstraint>,
-                        Binding<LinearEqualityConstraint>>> footstep_c_{};
+                   Binding<LinearEqualityConstraint>>> footstep_c_{};
 
   // costs
   std::shared_ptr<QuadraticCost> terminal_cost_;
-  vector<vector<Binding<QuadraticCost>>> input_costs_{};
+  vector<Binding<QuadraticCost>> input_costs_{};
   vector<vector<Binding<QuadraticCost>>> tracking_costs_{};
 
   // Bookkeeping
   bool built_ = false;
-  std::pair<drake::solvers::MathematicalProgramResult,
-            vector<vector<Eigen::Vector4d>>> solution_;
+  std::pair<drake::solvers::MathematicalProgramResult, vector<Eigen::VectorXd>> solution_;
 
   drake::solvers::OsqpSolver solver_;
 

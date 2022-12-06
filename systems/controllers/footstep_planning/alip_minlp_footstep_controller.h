@@ -101,8 +101,8 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
 
   // Lcm helper functions
   void CopyMpcSolutionToLcm(const std::vector<Eigen::Vector3d>& pp,
-                            const std::vector<std::vector<Eigen::Vector4d>>& xx,
-                            const std::vector<std::vector<Eigen::VectorXd>>& uu,
+                            const std::vector<Eigen::VectorXd>& xx,
+                            const std::vector<Eigen::VectorXd>& uu,
                             const Eigen::VectorXd& tt,
                             lcmt_mpc_solution* solution) const;
 

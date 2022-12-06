@@ -77,6 +77,22 @@ def IsSimLogGood(x, t_x, desried_sim_end_time):
 
   return True
 
+#
+def GetWalkingControllerSwitchTime(fsm, t_osc_debug):
+  t_walking_controller_start = 0
+  prev_fsm_state = -2
+  if is_hardware:
+    for i in range(len(fsm)):
+      fsm_state = fsm[i]
+      if prev_fsm_state == -1 and fsm_state != -1:
+        t_walking_controller_start = t_osc_debug[i]
+        break
+      prev_fsm_state = fsm_state
+    if t_walking_controller_start == 0:
+      # raise ValueError("Did not find a start time for the walking controller in hardware log (i.e. when fsm switch from -1 to other values")
+      print("WARNING: there is no fsm = -1")
+  return t_walking_controller_start
+
 
 ### Check if it's close to steady state
 def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
@@ -217,9 +233,23 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
         (((prev_fsm_state == left_support) and (fsm_state != left_support)) or
          ((prev_fsm_state == right_support) and (fsm_state != right_support))):
       start_with_left_stance = (prev_fsm_state == left_support)
-      t_fsm_start = t_osc_debug[i+1]
 
-      if t_fsm_start + n_step * stride_period <= t_x[-1]:
+      t_fsm_start = t_osc_debug[i]
+      t_fsm_end = t_fsm_start + n_step * stride_period
+
+      # Pass if the window we are going to examine is outside valid windows
+      inside_a_no_disturbance_window = False
+      if len(windows_without_disturbances) > 0:
+        for t_no_disturbance_start, t_no_disturbance_end in windows_without_disturbances:
+          if (t_no_disturbance_start < t_fsm_start - t_walking_controller_switch_time) and (t_fsm_end - t_walking_controller_switch_time < t_no_disturbance_end):
+            inside_a_no_disturbance_window = True
+            break
+      else:
+        inside_a_no_disturbance_window = True
+      if not inside_a_no_disturbance_window:
+        continue
+
+      if t_fsm_end <= t_x[-1]:
         # Create a list of times at touchdown
         td_times = [t_fsm_start]
         for _ in range(n_step):
@@ -562,9 +592,24 @@ def main():
 
   # Steady state parameters
   global step_length_variation_tol, side_stepping_tol, pelvis_height_variation_tol
-  step_length_variation_tol = 0.05 if is_hardware else 0.02
-  side_stepping_tol = 0.05 if is_hardware else 0.02  # not tuned
-  pelvis_height_variation_tol = 0.05 if is_hardware else 0.05
+  if is_hardware:
+    tighter_tolerance = True
+    tol = 0.03 if tighter_tolerance else 0.05
+    step_length_variation_tol = tol
+    side_stepping_tol = tol
+    pelvis_height_variation_tol = tol
+  else:
+    step_length_variation_tol = 0.02
+    side_stepping_tol = 0.02
+    pelvis_height_variation_tol = 0.05
+
+  # Valid windows for hardware logs where the hoist did not pull on pelvis
+  # The time is relative to when the walking controller starts walking (fsm >= 0)
+  global windows_without_disturbances
+  windows_without_disturbances = []
+  # windows_without_disturbances.append([24, 47])
+  # windows_without_disturbances.append([70, 109])
+  # windows_without_disturbances.append([111, 115])
 
   # Some parameters
   low_pass_filter = True
@@ -684,6 +729,9 @@ def main():
         t_shutoff = t_cassie_out[i]
     print("t_shutoff = ", t_shutoff)
 
+  global t_walking_controller_switch_time
+  t_walking_controller_switch_time = GetWalkingControllerSwitchTime(fsm, t_osc_debug)
+
   # Check if the log data is ok for simulation
   if not is_hardware:
     if not IsSimLogGood(x, t_x, desried_sim_end_time):
@@ -723,7 +771,7 @@ def main():
       file_prefix_this_loop += "_%d" % starting_log_idx
       starting_log_idx += 1
 
-    SaveData(cost_dict, file_prefix_this_loop, ave_tasks, start_time)
+    SaveData(cost_dict, file_prefix_this_loop, ave_tasks, start_time, start_time - t_walking_controller_switch_time)
 
 
 def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware, spring_model,
@@ -838,7 +886,7 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware
   return cost_dict
 
 
-def SaveData(cost_dict, file_prefix, ave_tasks, start_time):
+def SaveData(cost_dict, file_prefix, ave_tasks, start_time, start_time_rt_walking_controller_switch_time):
   # Store into files
   names = ['cost_x',
            'cost_u',
@@ -885,6 +933,12 @@ def SaveData(cost_dict, file_prefix, ave_tasks, start_time):
   # print("writing to " + path)
   f = open(path, "w")
   f.write(str(start_time))
+  f.close()
+
+  path = eval_dir + "%s_start_time_rt_walking_controller_switch_time.csv" % file_prefix
+  # print("writing to " + path)
+  f = open(path, "w")
+  f.write(str(start_time_rt_walking_controller_switch_time))
   f.close()
 
   path = eval_dir + "%s_success.csv" % file_prefix

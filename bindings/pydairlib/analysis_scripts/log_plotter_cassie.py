@@ -21,10 +21,11 @@ from scipy import interpolate
 from pydrake.multibody.math import SpatialMomentum
 
 # cmd should be a list if shell=False. Otherwise, a string.
-def RunCommand(cmd, use_shell=False):
+def RunCommand(cmd, use_shell=False, wait=False):
   process = subprocess.Popen(cmd, shell=use_shell)
-  while process.poll() is None:  # while subprocess is alive
-    time.sleep(0.1)
+  if wait:
+    while process.poll() is None:  # while subprocess is alive
+      time.sleep(0.1)
 
 def main():
   global t_start
@@ -217,6 +218,7 @@ def main():
   ### Do a quick cost evaluation on the log
   print("Do a quick cost evaluation on the log...\n")
   cmd = "python3 examples/goldilocks_models/quick_eval_sim_cost.py --dir_path=%s --file_name=%s" % (path, filename)
+  print("shell command = ", cmd)
   RunCommand(cmd, True)
 
   plt.show()

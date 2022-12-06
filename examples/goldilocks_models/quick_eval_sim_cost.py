@@ -34,22 +34,33 @@ RunCommand(cmd, True)
 cmd = "bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance %s%s ROM_WALKING true %s %d" % (temp_log_path, log_name, temp_output_dir, rom_idx)
 RunCommand(cmd, True)
 
-print("\n(stride_length, pelvis_height, cost):")
+print("\n(t, t_rt_walking_switch): (stride_length, pelvis_height, torque_cost, cost)")
 ave_cost = []
+ave_torque_cost = []
 for valid_data_idx in range(1000):
   path = temp_output_dir + '%d_%d_cost_values.csv' % (rom_idx, valid_data_idx)
-  if os.path.exists(path): 
+  if os.path.exists(path):
     cost = np.loadtxt(path, delimiter=',')[-2]  # -2 is the main cost; while -1 is the cost including regularization cost
+    torque_cost = np.loadtxt(path, delimiter=',')[1]
 
     path2 = temp_output_dir + '%d_%d_ave_stride_length.csv' % (rom_idx, valid_data_idx)
     path3 = temp_output_dir + '%d_%d_ave_pelvis_height.csv' % (rom_idx, valid_data_idx)
+    path4 = temp_output_dir + '%d_%d_start_time_rt_walking_controller_switch_time.csv' % (rom_idx, valid_data_idx)
+    path5 = temp_output_dir + '%d_%d_start_time.csv' % (rom_idx, valid_data_idx)
     ave_stride_length = np.loadtxt(path2, delimiter=',').item()  # 0-dim scalar
     ave_pelvis_height = np.loadtxt(path3, delimiter=',').item()  # 0-dim scalar
+    start_time_rt_walking_controller_switch_time = np.loadtxt(path4, delimiter=',').item()  # 0-dim scalar
+    start_time = np.loadtxt(path5, delimiter=',').item()  # 0-dim scalar
 
-    print("%.3f, %.3f, %.3f" % (ave_stride_length, ave_pelvis_height, cost))
+    print("(%.3f, %.3f): (%.3f, %.3f, %.3f, %.3f)" % (start_time, start_time_rt_walking_controller_switch_time, ave_stride_length, ave_pelvis_height, torque_cost, cost))
 
     ave_cost.append(cost)
+    ave_torque_cost.append(torque_cost)
 
-ave_cost = [float(i) for i in ave_cost]
-print("average cost = %.3f" % (sum(ave_cost) / len(ave_cost)))
+# Print average cost
+if len(ave_cost) > 0:
+  ave_cost = [float(i) for i in ave_cost]
+  ave_torque_cost = [float(i) for i in ave_torque_cost]
+  print("average cost = %.3f" % (sum(ave_cost) / len(ave_cost)))
+  print("average torque cost = %.3f" % (sum(ave_torque_cost) / len(ave_torque_cost)))
 

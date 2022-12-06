@@ -151,9 +151,29 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   print("osc_debug_channel_name = " + osc_debug_channel_name)
 
   t_dispatcher_end = -1   # stop reading lcm messages after this time
-  # t_dispatcher_end = 74.6
+  # t_dispatcher_end = 100
 
+  t_event_rt_log_start = -1
+  t_event_rt_log_end = -1
+  # t_event_rt_log_start = 34
+  # t_event_rt_log_end = 37
+
+  ### preprocess
+  t_event_rt_log_start = t_event_rt_log_start * 1e6
+  t_event_rt_log_end = t_event_rt_log_end * 1e6
+
+  first_lcm_event_time = -1
   for event in log:
+    # skip event if the event time is not within the specified range
+    if first_lcm_event_time < 0:
+      first_lcm_event_time = event.timestamp
+    else:
+      if (0 < t_event_rt_log_start) and (event.timestamp < t_event_rt_log_start + first_lcm_event_time):
+        continue
+      elif (0 < t_event_rt_log_end) and (0 < t_event_rt_log_end + first_lcm_event_time < event.timestamp):
+        break
+
+    # read event
     if event.channel not in full_log and event.channel not in unknown_types:
       for lcmtype in known_lcm_types:
         try:
@@ -167,6 +187,8 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
         unknown_types.add(event.channel)
     if event.channel in full_log:
       full_log[event.channel].append(channel_to_type_map[event.channel].decode(event.data))
+
+    # use elif doesn't speed up log parsing
     if event.channel == cassie_state_channel_name:
       msg = dairlib.lcmt_robot_output.decode(event.data)
       q_temp = [[] for i in range(len(msg.position))]

@@ -638,6 +638,7 @@ void KinematicCentroidalMPC::AddInitialStateConstraint(
   prog_->AddBoundingBoxConstraint(state, state, state_vars((0)));
 }
 void KinematicCentroidalMPC::SetGains(const KinematicCentroidalGains& gains) {
+  gains_ = gains;
   std::map<std::string, int> positions_map =
       dairlib::multibody::MakeNameToPositionsMap(plant_);
   std::map<std::string, int> velocities_map =

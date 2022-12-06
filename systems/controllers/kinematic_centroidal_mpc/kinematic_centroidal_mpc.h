@@ -447,4 +447,5 @@ class KinematicCentroidalMPC {
   dairlib::LcmTrajectory lcm_trajectory_;
 
   std::vector<Complexity> complexity_schedule_;
+  KinematicCentroidalGains gains_;
 };

@@ -74,7 +74,7 @@ int DoMain(int argc, char* argv[]) {
   // Create reference
   // TODO(yangwill): move this into the reference generator
   // Specify knot points
-  std::vector<Gait> gait_samples = {stand, walk, stand};
+  std::vector<Gait> gait_samples = {stand, stand, stand};
   DRAKE_DEMAND(gait_samples.size() == traj_params.duration_scaling.size());
   std::vector<double> durations = std::vector<double>(gait_samples.size());
   for (int i = 0; i < gait_samples.size(); ++i) {
@@ -98,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
 
   std::vector<Complexity> complexity_schedule(traj_params.n_knot_points);
   std::fill(complexity_schedule.begin(), complexity_schedule.end(),Complexity::KINEMATIC_CENTROIDAL);
-  for(int i = 15; i <35 ; i++){
+  for(int i = 1; i <traj_params.n_knot_points ; i++){
     complexity_schedule[i] = Complexity::PLANAR_SLIP;
   }
   mpc.SetComplexitySchedule(complexity_schedule);
@@ -149,7 +149,7 @@ int DoMain(int argc, char* argv[]) {
     options.SetOption(id, "dual_inf_tol", traj_params.tol);
     options.SetOption(id, "constr_viol_tol", traj_params.tol);
     options.SetOption(id, "compl_inf_tol", traj_params.tol);
-    options.SetOption(id, "max_iter", 200);
+    options.SetOption(id, "max_iter", 1000);
     options.SetOption(id, "nlp_lower_bound_inf", -1e6);
     options.SetOption(id, "nlp_upper_bound_inf", 1e6);
     options.SetOption(id, "print_timing_statistics", "yes");

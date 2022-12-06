@@ -81,7 +81,7 @@ Matrix4d AlipDynamicsConstraint::Ad(double t) {
   return (A_ * t / n_).exp();
 }
 
-void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
+void AlipMINLP::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
                                 const Matrix4d &Q, const Eigen::MatrixXd& Qf) {
   DRAKE_DEMAND(xd.size() == nmodes_);
   for (int i = 1; i < nmodes_; i++){
@@ -90,7 +90,9 @@ void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
     for (int k = 0; k < nknots_.at(i); k++){
       QQ.push_back(
           prog_->AddQuadraticErrorCost(
-              Q, xd.at(i).at(k), GetStateAtKnot(xx_.at(i), k)));
+              Q,
+              GetStateAtKnot(xd.at(i), k),
+              GetStateAtKnot(xx_.at(i), k)));
     }
     tracking_costs_.push_back(QQ);
   }
@@ -102,7 +104,8 @@ void AlipMINLP::AddTrackingCost(const vector<vector<Eigen::Vector4d>> &xd,
 
 void AlipMINLP::MakeTerminalCost(){
   terminal_cost_ = prog_->AddQuadraticCost(
-      2 * Qf_, -2 * Qf_ * xd_.back().back(), xx_.back().tail<4>()).evaluator();
+      2 * Qf_, -2 * Qf_ * xd_.back().tail<4>(),
+          xx_.back().tail<4>()).evaluator();
 }
 
 void AlipMINLP::AddInputCost(double R) {
@@ -156,14 +159,16 @@ void AlipMINLP::AddMode(int n_knots) {
   nknots_.push_back(n_knots);
 }
 
-void AlipMINLP::UpdateTrackingCost(const vector<vector<Vector4d>> &xd) {
+void AlipMINLP::UpdateTrackingCost(const vector<VectorXd>& xd) {
   for(int n = 0; n < nmodes_ - 1 ; n++) {
     for (int k = 0; k < nknots_.at(n); k++) {
       tracking_costs_.at(n).at(k).evaluator()->
-          UpdateCoefficients(2.0*Q_, -2.0*Q_ * xd.at(n+1).at(k));
+          UpdateCoefficients( 2.0*Q_,
+                             -2.0*Q_ * GetStateAtKnot(xd.at(n+1), k));
     }
   }
-  terminal_cost_->UpdateCoefficients(2.0 * Qf_, -2.0 * Qf_ * xd.back().back());
+  terminal_cost_->UpdateCoefficients(2.0 * Qf_,
+                                     -2.0 * Qf_ * xd.back().tail<4>());
   xd_ = xd;
 }
 
@@ -341,26 +346,27 @@ void AlipMINLP::MakeNoCrossoverConstraint() {
 void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
                                    const Eigen::Vector4d &x0) {
   // Update state initial guess
-  vector<vector<Vector4d>> xg = xd_;
+  vector<VectorXd> xg = xd_;
 
   // Set the initial guess for the current mode based on limited time
-  vector<Vector4d> xx;
-  xx.push_back(x0);
+  VectorXd xx = VectorXd (nx_ * nknots_.front());
   Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(0) / (nknots_.front() - 1));
   for (int i = 1; i < nknots_.front(); i++) {
-    xx.push_back(Ad * xx.at(i-1));
+    GetStateAtKnot(xx, i) = Ad * GetStateAtKnot(xx, i-1);
   }
   xg.front() = xx;
 
   for (int n = 0; n < nmodes_; n++) {
     for (int k = 0; k < nknots_.at(n); k++) {
-      prog_->SetInitialGuess(GetStateAtKnot(xx_.at(n), k), xg.at(n).at(k));
+      prog_->SetInitialGuess(
+          GetStateAtKnot(xx_.at(n), k),
+          GetStateAtKnot(xg.at(n), k));
     }
   }
   Vector3d ptemp = p0;
   prog_->SetInitialGuess(pp_.front(), p0);
   for(int n = 1; n < nmodes_; n++) {
-    Vector2d p1 = (xd_.at(n-1).back() - xd_.at(n).front()).head<2>() + ptemp.head<2>();
+    Vector2d p1 = (xd_.at(n-1).tail<4>() - xd_.at(n).head<4>()).head<2>() + ptemp.head<2>();
     prog_->SetInitialGuess(pp_.at(n).head<2>(), p1);
     ptemp.head<2>() = p1;
   }
@@ -484,8 +490,8 @@ void AlipMINLP::SolveOCProblemAsIs() {
   std::sort(
       solutions.begin(), solutions.end(),
       [](
-    const pair<MathematicalProgramResult, vector<vector<Vector4d>>>& lhs,
-    const pair<MathematicalProgramResult, vector<vector<Vector4d>>>& rhs){
+    const pair<MathematicalProgramResult, vector<VectorXd>>& lhs,
+    const pair<MathematicalProgramResult, vector<VectorXd>>& rhs){
     return lhs.first.get_optimal_cost() < rhs.first.get_optimal_cost() && lhs.first.is_success();
   });
 

@@ -66,12 +66,12 @@ class AlipMINLP {
  public:
 
   template<typename T>
-  static Eigen::Ref<drake::VectorX<T>> GetStateAtKnot(VectorX<T> xx, int knot) {
-    return xx.segment<4>(4 * knot);
+  static Eigen::Ref<drake::VectorX<T>> GetStateAtKnot(drake::VectorX<T> xx, int knot) {
+    return xx.template segment<4>(4 * knot);
   }
   template<typename T>
-  static Eigen::Ref<drake::VectorX<T>> GetInputAtKnot(VectorX<T> uu, int knot) {
-    return uu.segment<1>(knot);
+  static Eigen::Ref<drake::VectorX<T>> GetInputAtKnot(drake::VectorX<T> uu, int knot) {
+    return uu.template segment<1>(knot);
   }
 
   /// Constructor takes a nominal robot mass and walking height
@@ -90,7 +90,7 @@ class AlipMINLP {
   void SetDoubleSupportTime(double t_ds) { Tds_ = t_ds; }
   void SetInputLimit(double umax) { umax_ = umax; };
   void AddTrackingCost(
-      const vector<vector<Eigen::Vector4d>> &xd,
+      const vector<Eigen::VectorXd> &xd,
       const Eigen::Matrix4d &Q, const Eigen::MatrixXd &Qf
   );
   void AddFootholds(const vector<geometry::ConvexFoothold> &footholds) {
@@ -110,7 +110,7 @@ class AlipMINLP {
   void ActivateInitialTimeEqualityConstraint(double t);
   void UpdateNextFootstepReachabilityConstraint(
       const geometry::ConvexFoothold &workspace);
-  void UpdateTrackingCost(const vector<vector<Eigen::Vector4d>> &xd);
+  void UpdateTrackingCost(const vector<Eigen::VectorXd>& xd);
   void UpdateFootholds(const vector<geometry::ConvexFoothold> &footholds) {
     ClearFootholds();
     AddFootholds(footholds);

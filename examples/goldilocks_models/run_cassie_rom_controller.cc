@@ -748,9 +748,9 @@ int DoMain(int argc, char* argv[]) {
           plant_wo_springs.num_velocities(), plant_wo_springs.num_velocities());
       W_vdot_reg.diagonal() << 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 1, 1, 1, 1,
           1, 1, 1, 1, 0.01, 0.01, 0.0001, 0.0001;
-      W_input_reg *= 1e-6;     // 1e-8;
-      W_lambda_c_reg *= 1e-3;  // 1e-3;
-      W_lambda_h_reg *= 1e-3;  // 1e-3;
+      W_input_reg *= 0;     // 1e-6; 1e-8;
+      W_lambda_c_reg *= 0;  // 1e-3;
+      W_lambda_h_reg *= 0;  // 1e-3;
       W_vdot_reg *= 0;      // 1e-6;
       /*cout << "W_input_reg = \n" << W_input_reg << endl;
       cout << "W_lambda_c_reg = \n" << W_lambda_c_reg << endl;
@@ -779,6 +779,13 @@ int DoMain(int argc, char* argv[]) {
       if (gains.w_rom_contact_force_reg > 0 && model_iter > 1) {
         osc->AddContactForceRegularizationCostForOptimalROM(
             gains.w_rom_contact_force_reg * model_iter / 300);
+      }
+
+      // Testing to use toe effort tracking
+      if (osc_gains.w_stance_toe_effort > 0) {
+        DRAKE_DEMAND(osc_gains.W_rom(0, 0) == 0);
+        osc->SetStanceToeEffortWeightForCoMTracking(
+            osc_gains.w_stance_toe_effort);
       }
     }
 
@@ -1189,10 +1196,9 @@ int DoMain(int argc, char* argv[]) {
     ///
     /// IK conroller
     ///
-
+    /*
     DRAKE_UNREACHABLE();  // This part of code is very out-dated. E.g. it
                           // doesn't handle the hybrid ROM MPC case.
-
     // TODO: think about how I want to construct the spline from IK.
     //  Currently, I'm using CubicWithContinuousSecondDerivatives with 0 vel at
     //  the end points.
@@ -1253,8 +1259,7 @@ int DoMain(int argc, char* argv[]) {
     // Create Operational space control
     auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
         plant_w_spr, plant_wo_springs, context_w_spr.get(),
-        context_wo_spr.get(), true, FLAGS_print_osc /*print_tracking_info*/, 0,
-        false, close_sim_gap);
+        context_wo_spr.get(), true, FLAGS_print_osc, 0, false, close_sim_gap);
 
     // Cost
     int n_v = plant_wo_springs.num_velocities();
@@ -1397,7 +1402,7 @@ int DoMain(int argc, char* argv[]) {
             .get_mutable_abstract_state<dairlib::lcmt_saved_traj>(0);
     mutable_state = traj_msg;
 
-    loop.Simulate();
+    loop.Simulate();*/
   }
 
   return 0;

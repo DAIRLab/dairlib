@@ -136,9 +136,12 @@ def process_log(log, pos_map, vel_map, act_map, controller_channel = ""):
   full_log = dict()
   channel_to_type_map = dict()
   unknown_types = set()
+  # known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
+  #                    dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
+  #                    drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_input_supervisor_status]
   known_lcm_types = [dairlib.lcmt_robot_output, dairlib.lcmt_cassie_out, dairlib.lcmt_controller_switch,
                      dairlib.lcmt_osc_output, dairlib.lcmt_pd_config, dairlib.lcmt_robot_input,
-                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact, dairlib.lcmt_input_supervisor_status]
+                     drake.lcmt_contact_results_for_viz, dairlib.lcmt_contact]
 
   cassie_state_channel_name = get_state_channel_name(log)
   print("cassie_state_channel_name = " + cassie_state_channel_name)

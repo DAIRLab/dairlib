@@ -721,7 +721,7 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out
   if not np.all(tracking_cost_nonnegative) or not np.all(reg_cost_nonnegative):
     raise ValueError("There is a negative cost")
 
-  plt.figure("costs")
+  plt.figure("costs --" + filename)
   # plt.plot(t_osc_debug[t_osc_debug_slice], input_cost[t_osc_debug_slice])
   # plt.plot(t_osc_debug[t_osc_debug_slice], acceleration_cost[t_osc_debug_slice])
   # plt.plot(t_osc_debug[t_osc_debug_slice], soft_constraint_cost[t_osc_debug_slice])

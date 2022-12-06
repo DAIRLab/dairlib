@@ -51,8 +51,7 @@ AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
 
   A_ = alip_utils::CalcA(H_, m_);
   A_inv_ = A_.inverse();
-  B_ = Vector4d(0, 0, 0, 1);
-  B_ = Vector4d(0, 0, 0, 1);
+  B_ = Vector4d::UnitW();
 
 }
 
@@ -214,23 +213,10 @@ void AlipMINLP::MakeFootstepConstraints(vector<int> foothold_idxs) {
 }
 
 void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
-  MatrixXd A = alip_utils::CalcA(H_, m_);
-  Matrix4d Ad = alip_utils::CalcAd(H_, m_, Tds_);
-  Matrix4d Adinv = Ad.inverse();
-  Matrix4d Ainv = A.inverse();
-  Matrix4d I = Matrix4d::Identity();
-  Matrix<double, 4, 2> B = Matrix<double, 4, 2>::Zero();
-  B(2,1) = m_ * 9.81;
-  B(3,0) = -m_ * 9.81;
-  Matrix<double, 4, 2> Bd =
-      Ad * (-Ainv * Adinv + (1.0 / Tds_) * Ainv * Ainv * (I - Adinv)) * B;
-  Matrix<double, 4, 2> Bs = Matrix<double, 4, 2>::Zero();
-  Bs.topRows(2) = -Eigen::Matrix2d::Identity();
-
-  Aeq->topLeftCorner<4, 4>() = Ad;
-  Aeq->block<4, 4>(0, 4) = -I;
-  Aeq->block<4, 2>(0, 8) = -Bd - Bs;
-  Aeq->block<4, 2>(0, 10) = Bd + Bs;
+  Matrix<double, 4, 8> A = alip_utils::CalcResetMap(H_, m_, Tds_);
+  Aeq->topLeftCorner<4, 4>() = A.topLeftCorner<4, 4>();
+  Aeq->topRightCorner<4, 4>() = A.topRightCorner<4, 4>();
+  Aeq->block<4, 4>(0, 4) = -Matrix4d::Identity();
 }
 
 void AlipMINLP::MakeResetConstraints() {
@@ -340,7 +326,6 @@ void AlipMINLP::ClearFootholdConstraints() {
   if (capture_point_contstraint_) {
     prog_->RemoveConstraint(*capture_point_contstraint_);
   }
-
 }
 
 void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
@@ -435,7 +420,7 @@ void AlipMINLP::UpdateDynamicsConstraints() {
     int nk =  nknots_.at(n) - 1;
     double t = tt_(n) / nk;
     Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
-    Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
+    Vector4d Bd = alip_utils::CalcBd(H_, m_, t);
     Matrix<double, 4, 9> Adyn = Matrix<double, 4, 9>::Zero();
     Adyn.leftCols<4>() = Ad;
     Adyn.col(4) = Bd;
@@ -528,7 +513,7 @@ void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
 
 vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
     const Vector2d& vdes, double step_width, double Ts, double nk,
-    int stance) const {
+    alip_utils::Stance stance) const {
   double omega = sqrt(9.81 / H_);
   double frac = 1 / (m_ * H_ * omega);
   double Ly = H_ * m_ * vdes(0);
@@ -537,9 +522,10 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
   Matrix4d Ad = alip_utils::CalcAd(H_, m_, (Ts / (nk-1)));
   vector<vector<Vector4d>> xx;
 
+  double stance_sign = stance == alip_utils::Stance::kLeft ? -1.0 : 1.0;
   Eigen::MatrixPower<Matrix4d> APow(Ad);
   for (int i = 0; i < nmodes_; i++) {
-    double s = stance * ((i % 2 == 0) ? 1.0 : -1.0);
+    double s = stance_sign * ((i % 2 == 0) ? 1.0 : -1.0);
     Vector4d x0(
         -frac * tanh(omega * Ts /2) * Ly,
         s / 2 * step_width,
@@ -556,7 +542,7 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
 
 vector<Vector4d> AlipMINLP::MakeXdesTrajForCurrentStep(
     const Vector2d &vdes, double t_current, double t_remain,
-    double Ts, double step_width, int stance, double nk) const {
+    double Ts, double step_width, alip_utils::Stance stance, double nk) const {
 
   double omega = sqrt(9.81 / H_);
   double frac = 1 / (m_ * H_ * omega);
@@ -568,10 +554,12 @@ vector<Vector4d> AlipMINLP::MakeXdesTrajForCurrentStep(
   Matrix4d Ad = alip_utils::CalcAd(H_, m_, t_remain / (nk-1));
   Eigen::MatrixPower<Matrix4d> APow(Ad);
 
+  double stance_sign = stance == alip_utils::Stance::kLeft ? -1.0 : 1.0;
+
   Vector4d x0(
       -frac * tanh(omega * Ts /2) * Ly,
-      static_cast<double>(stance) / 2 * step_width,
-      static_cast<double>(stance) / 2 * Lx + dLx,
+      stance_sign / 2 * step_width,
+      stance_sign / 2 * Lx + dLx,
       Ly);
   x0 = Ad0 * x0;
   vector<Vector4d> x;

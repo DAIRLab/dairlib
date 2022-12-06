@@ -12,6 +12,7 @@ using multibody::ReExpressWorldVector3InBodyYawFrame;
 using multibody::GetBodyYawRotation_R_WB;
 using multibody::SetPositionsAndVelocitiesIfNew;
 using geometry::ConvexFoothold;
+using alip_utils::Stance;
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
@@ -71,7 +72,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   }
   auto xd = trajopt_.MakeXdesTrajForVdes(
       Vector2d::Zero(), gains_.stance_width, single_stance_duration_,
-      gains_.knots_per_mode, -1);
+      gains_.knots_per_mode, alip_utils::Stance::kLeft);
   trajopt_.AddTrackingCost(xd, gains_.Q, gains_.Qf);
   trajopt_.AddInputCost(gains_.R(0,0));
   trajopt_.UpdateNominalStanceTime(single_stance_duration_,
@@ -185,7 +186,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   // shorthands for the current stance foot, stance == -1 implies left stance
   const int fsm_state = curr_fsm(fsm_idx);
-  int stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? -1 : 1;
+  Stance stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? Stance::kLeft : Stance::kRight;
 
   double ds_fraction = std::clamp(
       (t - t_prev_impact) / double_stance_duration_, 0.0, 1.0);

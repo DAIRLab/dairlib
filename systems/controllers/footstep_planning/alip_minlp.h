@@ -90,10 +90,10 @@ class AlipMINLP {
   void Build(const drake::solvers::SolverOptions &solver_options);
   vector<vector<Eigen::Vector4d>> MakeXdesTrajForVdes(
       const Eigen::Vector2d &vdes, double step_width, double Ts, double nk,
-      int stance = 1) const;
+      alip_utils::Stance stance = alip_utils::Stance::kRight) const;
   vector<Eigen::Vector4d> MakeXdesTrajForCurrentStep(
       const Eigen::Vector2d &vdes, double t_current, double t_remain,
-      double Ts, double step_width, int stance, double nk) const;
+      double Ts, double step_width, alip_utils::Stance stance, double nk) const;
 
   // per solve updates
   void UpdateMaximumCurrentStanceTime(double tmax);

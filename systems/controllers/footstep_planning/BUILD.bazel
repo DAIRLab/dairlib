@@ -35,18 +35,6 @@ cc_library(
 )
 
 cc_library(
-    name = "alip_nlp",
-    srcs = ["alip_nlp.cc"],
-    hdrs = ["alip_nlp.h"],
-    deps = [
-        ":alip_utils",
-        "//geometry:convex_foothold",
-        "//solvers:constraints",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "alip_minlp",
     srcs = ["alip_minlp.cc"],
     hdrs = ["alip_minlp.h"],

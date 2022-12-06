@@ -5,20 +5,24 @@
 
 namespace dairlib::systems::controllers::alip_utils {
 
+using std::vector;
+
 using drake::EigenPtr;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
+
 using Eigen::MatrixXd;
 using Eigen::Matrix4d;
 using Eigen::VectorXd;
+using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::Matrix;
 
 void CalcAlipState(const MultibodyPlant<double>& plant, Context<double>* context,
                    const VectorXd &x,
-                   const std::vector<PointOnFramed>& stance_feet,
-                   const std::vector<double>& cop_weights,
+                   const vector<PointOnFramed>& stance_feet,
+                   const vector<double>& cop_weights,
                    const EigenPtr<Vector3d> &CoM_p,
                    const EigenPtr<Vector3d> &L_p,
                    const EigenPtr<Vector3d> &stance_pos_p) {
@@ -91,8 +95,8 @@ Matrix4d CalcA(double com_z, double m) {
 
 // Calculate analytical discretization of Alip Dynamics
 Matrix4d CalcAd(double com_z, double m, double t) {
-  double g = 9.81;
-  double omega = sqrt(g/com_z);
+  constexpr double g = 9.81;
+  double omega = sqrt(g / com_z);
   double d = 1.0 / (m * g);
   double a = sinh(t * omega);
   Matrix4d Ad = cosh(omega * t) * Vector4d::Ones().asDiagonal();
@@ -101,6 +105,32 @@ Matrix4d CalcAd(double com_z, double m, double t) {
   Ad(2,1) = -a / (omega * d);
   Ad(3,0) = a / (omega * d);
   return Ad;
+}
+
+Vector4d CalcBd(double com_z, double m, double t) {
+  return CalcA(com_z, m).inverse() *
+            (CalcAd(com_z, m, t) - Matrix4d::Identity()) * Vector4d::UnitW();
+}
+
+std::pair<Vector4d, Vector2d> MakePeriodicAlipGait(
+    const Vector2d& vdes, double com_z, double m, double stance_width,
+    double T_ss, double T_ds, Stance stance) {
+
+  double s = stance == Stance::kLeft ? -1 : 1;
+
+  const Vector2d p = Vector2d(vdes(0) * T_ss, s * stance_width);
+  const Matrix4d Ad = CalcAd(com_z, m, T_ss);
+  const Matrix<double, 4, 8> Ar = CalcResetMap(com_z, m, T_ds);
+
+  Matrix4d Rx = Matrix4d::Identity();
+  Rx(1,1) = -1;
+  Rx(3,3) = -1;
+
+  const Vector4d offset = 2 * vdes(1) * com_z * m * Vector4d::UnitZ();
+  const Matrix4d A = Ar.leftCols<4>() * Ad - Rx;
+  const Vector4d b = -Ar.rightCols<2>() * p + offset;
+  const Vector4d x0 = A.inverse() * (b);
+  return {x0, p};
 }
 
 double XImpactTime(double t_start, double H, double x, double Ly,

@@ -5,6 +5,11 @@
 
 namespace dairlib::systems::controllers::alip_utils {
 
+// Enum value also represents the sign of the y component of
+// a nominal footstep during that stance period
+// (So during left stance, the next footstep will be in the -y direction)
+enum class Stance { kLeft = -1, kRight = 1 };
+
 inline std::vector<std::vector<int>> cartesian_product(unsigned long range,
                                                        int sets) {
   auto products = std::vector<std::vector<int>>();
@@ -47,11 +52,16 @@ Eigen::Vector4d CalcReset(
 
 Eigen::Matrix4d CalcA(double com_z, double m);
 Eigen::Matrix4d CalcAd(double com_z, double m, double t);
+Eigen::Vector4d CalcBd(double com_z, double m, double t);
 
 double XImpactTime(double t_start, double H, double m, double x, double Ly,
                    double x_impact);
 
 double YImpactTime(double t_start, double H, double m, double y, double Lx,
                    double y_impact);
+
+std::pair<Eigen::Vector4d, Eigen::Vector2d> MakePeriodicAlipGait(
+    const Eigen::Vector2d& vdes,double com_z, double m, double stance_width,
+    double T_ss, double T_ds, Stance stance);
 
 }

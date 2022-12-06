@@ -27,16 +27,29 @@ if temp_log_path[-1] != "/":
   temp_log_path = temp_log_path + "/"
 print("log file path =", temp_log_path + log_name)
 
-temp_output_dir=temp_log_path + "temp_cost_eval/"
+temp_output_dir=temp_log_path + "temp_cost_eval__can_be_deleted/"
 cmd = "rm -rf " + temp_output_dir
 RunCommand(cmd, True)
 
 cmd = "bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance %s%s ROM_WALKING true %s %d" % (temp_log_path, log_name, temp_output_dir, rom_idx)
 RunCommand(cmd, True)
 
-print("\nCosts:")
+print("\n(stride_length, pelvis_height, cost):")
+ave_cost = []
 for valid_data_idx in range(1000):
   path = temp_output_dir + '%d_%d_cost_values.csv' % (rom_idx, valid_data_idx)
   if os.path.exists(path): 
     cost = np.loadtxt(path, delimiter=',')[-2]  # -2 is the main cost; while -1 is the cost including regularization cost
-    print(cost)
+
+    path2 = temp_output_dir + '%d_%d_ave_stride_length.csv' % (rom_idx, valid_data_idx)
+    path3 = temp_output_dir + '%d_%d_ave_pelvis_height.csv' % (rom_idx, valid_data_idx)
+    ave_stride_length = np.loadtxt(path2, delimiter=',').item()  # 0-dim scalar
+    ave_pelvis_height = np.loadtxt(path3, delimiter=',').item()  # 0-dim scalar
+
+    print("%.3f, %.3f, %.3f" % (ave_stride_length, ave_pelvis_height, cost))
+
+    ave_cost.append(cost)
+
+ave_cost = [float(i) for i in ave_cost]
+print("average cost = %.3f" % (sum(ave_cost) / len(ave_cost)))
+

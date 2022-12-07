@@ -88,7 +88,7 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1}, 1e4, 1e2);
+    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1});
   }
 
   std::string urdf;
@@ -98,12 +98,12 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
+  plant.set_discrete_contact_solver(drake::multibody::DiscreteContactSolver::kSap);
+//  plant.set_penetration_allowance(FLAGS_penetration_allowance);
+//  plant.set_stiction_tolerance(FLAGS_v_stiction);
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
   plant.Finalize();
-
-  plant.set_penetration_allowance(FLAGS_penetration_allowance);
-  plant.set_stiction_tolerance(FLAGS_v_stiction);
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -199,10 +199,10 @@ int do_main(int argc, char* argv[]) {
   // Note that we cannot use the plant from the above diagram, because after the
   // diagram is built, plant.get_input_port_actuation().HasValue(*context)
   // throws a segfault error
-  drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
+  drake::multibody::MultibodyPlant<double> plant_for_solver(FLAGS_dt);
   AddCassieMultibody(&plant_for_solver, nullptr,
                      FLAGS_floating_base /*floating base*/, urdf,
-                     FLAGS_spring_model, true);
+                     FLAGS_spring_model, false);
   plant_for_solver.Finalize();
   if (FLAGS_floating_base) {
     CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,

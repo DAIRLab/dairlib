@@ -3,6 +3,7 @@
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
+#include <drake/systems/primitives/zero_order_hold.h>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -155,9 +156,9 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.stance_duration, osc_gains.flight_duration, 0.0};
   vector<double> accumulated_state_durations;
   accumulated_state_durations.push_back(0);
-  for (double state_duration : state_durations) {
+  for (double state_duration: state_durations) {
     accumulated_state_durations.push_back(accumulated_state_durations.back() +
-                                          state_duration);
+        state_duration);
   }
   accumulated_state_durations.pop_back();
 
@@ -203,10 +204,10 @@ int DoMain(int argc, char* argv[]) {
   /// REGULARIZATION COSTS
   osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
   osc->SetInputSmoothingCostWeights(osc_gains.w_input_reg *
-                                    osc_gains.W_input_regularization);
+      osc_gains.W_input_regularization);
   osc->SetInputSmoothingConstraintWeights(osc_gains.w_input_accel);
   osc->SetInputCostWeights(osc_gains.w_input *
-                           osc_gains.W_input_regularization);
+      osc_gains.W_input_regularization);
   osc->SetLambdaContactRegularizationWeight(
       osc_gains.w_lambda * osc_gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(
@@ -483,7 +484,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
 
-  if (osc_gains.rot_filter_tau > 0) {
+  if (osc_gains.rot_filter_tau>0) {
     pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
                                                {0, 1, 2});
   }
@@ -543,6 +544,9 @@ int DoMain(int argc, char* argv[]) {
                             VectorXd::Zero(1));
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
+  auto controller_frequency_regulator =
+      builder.AddSystem<drake::systems::ZeroOrderHold<double>>(osc_gains.controller_frequency,
+                                                               osc->get_osc_output_port().size());
 
   osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem
@@ -643,6 +647,10 @@ int DoMain(int argc, char* argv[]) {
                   high_level_command->get_radio_input_port());
   builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));
+//  builder.Connect(osc->get_osc_output_port(),
+//                  controller_frequency_regulator->get_input_port());
+//  builder.Connect(controller_frequency_regulator->get_output_port(),
+//                  command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
@@ -657,11 +665,21 @@ int DoMain(int argc, char* argv[]) {
   // Create the diagram
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("osc_running_controller"));
-
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
+
+//  std::cout << "waiting for messages" << std::endl;
+//  LcmHandleSubscriptionsUntil(&lcm, [&]() {
+//    return cassie_out_receiver->GetInternalMessageCount()>2;
+//  });
+//  controller_frequency_regulator->LatchInputPortToState(&loop.get_diagram()->GetMutableSubsystemContext(
+//      *controller_frequency_regulator,
+//      &loop.get_diagram_mutable_context()));
+//
+//  std::cout << "got message, starting simulator" << std::endl;
+//
   loop.Simulate();
 
   return 0;

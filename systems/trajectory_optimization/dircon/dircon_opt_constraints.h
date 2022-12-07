@@ -7,7 +7,7 @@
 #include "systems/trajectory_optimization/dircon/dircon_mode.h"
 #include "systems/trajectory_optimization/dircon/dynamics_cache.h"
 #include "drake/common/drake_copyable.h"
-#include "drake/common/symbolic.h"
+#include "drake/common/symbolic/expression.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 

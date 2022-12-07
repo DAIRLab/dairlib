@@ -1,3 +1,6 @@
+# target_frequency Hz
+controller_frequency: 500
+
 w_input: 0.000001
 w_input_reg: 0.01
 w_accel: 0.0001
@@ -30,8 +33,8 @@ ekf_filter_tau: [ 0.05, 0.01, 0.001 ]
 
 # High level command gains (with radio)
 vel_scale_rot: -2
-vel_scale_trans_sagital: 1.0
-vel_scale_trans_lateral: -0.1
+vel_scale_trans_sagital: 2.0
+vel_scale_trans_lateral: -0.5
 target_vel_filter_alpha: 0.001
 
 # SLIP parameters
@@ -40,8 +43,8 @@ rest_length_offset: 0.025
 stance_duration: 0.3
 flight_duration: 0.09
 # max percent variance
-stance_variance: 0.3
-flight_variance: 0.3
+stance_variance: 0.0
+flight_variance: 0.0
 
 w_swing_toe: 0.01
 swing_toe_kp: 1500

@@ -6,9 +6,10 @@ import sys
 import matplotlib.pyplot as plt
 
 import osqp
+import proxsuite
 from scipy.sparse import csc_matrix
 
-saved_sols_folder = '/home/yangwill/Documents/research/projects/cassie/hardware/gain_tuning/qp_settings/cost_tuning/qp_formulation/'
+saved_sols_folder = '/media/yangwill/backups/home/yangwill/Documents/research/projects/cassie/hardware/gain_tuning/qp_settings/cost_tuning/qp_formulation/'
 
 
 def ParseQP(data):
@@ -30,6 +31,19 @@ def ParseQP(data):
         qp_list.append(qp)
 
     return qp_list
+
+
+def ConvertIneq(A_ineq, ineq_lb, ineq_ub):
+    is_equality = ineq_ub - ineq_lb < 1e-6
+
+    # Parse out equality constraints
+    b_eq = ineq_ub[is_equality]
+    A_eq = A_ineq[is_equality, :]
+    A_ineq = A_ineq[is_equality == False, :]
+    ineq_lb = ineq_lb[is_equality == False]
+    ineq_ub = ineq_ub[is_equality == False]
+
+    return (A_ineq, ineq_lb, ineq_ub, A_eq, b_eq)
 
 
 def solve_osqp(qp, settings):
@@ -68,11 +82,70 @@ def solve_osqp(qp, settings):
             'sol': qp_result.x}
 
 
+def solve_proxsuite(qp_list, settings):
+    run_times = np.zeros((len(qp_list),))
+    obj_vals = np.zeros((len(qp_list),))
+    iter = np.zeros((len(qp_list),))
+    prim_res = np.zeros((len(qp_list),))
+    dual_res = np.zeros((len(qp_list),))
+    sol = np.zeros((len(qp_list),))
+    # import pdb; pdb.set_trace()
+
+def solve_proxsuite(qp_list, settings):
+    run_times = np.zeros((len(qp_list),))
+    obj_vals = np.zeros((len(qp_list),))
+    iter = np.zeros((len(qp_list),))
+    prim_res = np.zeros((len(qp_list),))
+    dual_res = np.zeros((len(qp_list),))
+    sol = np.zeros((len(qp_list),60))
+
+    for i, qp in enumerate(qp_list):
+        # Q = qp["Q"] + qp["Q"].T - np.diag(np.diag(qp["Q"]))
+        # Q = Q + 1e-7*np.eye(Q.shape[0])
+        Q = qp["Q"]
+        C, l, u, A, b = ConvertIneq(qp["A_ineq"], qp["ineq_lb"], qp["ineq_ub"])
+        H = Q
+        g = qp["w"]
+        n = H.shape[0]
+        n_eq = A.shape[0]
+        n_in = C.shape[0]
+        qp = proxsuite.proxqp.sparse.QP(n, n_eq, n_in)
+        # qp.init(csc_matrix(H), g, csc_matrix(A), b, csc_matrix(C), l, u, rho=settings['rho'])
+        qp.init(H, g, A, b, C, l, u, rho=settings['rho'])
+
+        qp.settings.eps_abs = settings["eps_abs"]
+        qp.settings.eps_rel = settings["eps_rel"]
+        qp.settings.eps_primal_inf = settings["eps_prim_inf"]
+        qp.settings.eps_dual_inf = settings["eps_dual_inf"]
+        qp.settings.verbose = settings["verbose"]
+        qp.settings.max_iter = settings["max_iter"]
+        # qp.settings.default_rho = settings['rho'],
+        # check_termination=settings['check_termination']
+        qp.settings.initial_guess = proxsuite.proxqp.InitialGuess.NO_INITIAL_GUESS
+
+        qp.solve()
+        run_times[i] = qp.results.info.run_time * 1e-6
+        obj_vals[i] = qp.results.info.objValue
+        iter[i] = qp.results.info.iter
+        prim_res[i] = qp.results.info.pri_res
+        dual_res[i] = qp.results.info.dua_res
+        sol[i] = qp.results.x
+
+    return {
+        'iter': iter,
+        'run_time': run_times,
+        'obj_val': obj_vals,
+        'prim_res': prim_res,
+        'dual_res': dual_res,
+        'sol': sol,
+    }
+
 def main():
     # filename = "/home/brian/workspace/logs/qp_logging/lcmlog00"
     filename = sys.argv[1]
+
     log = lcm.EventLog(filename, "r")
-    qp_list = get_log_data(log, {"QP_LOG": lcmt_qp}, ParseQP)
+    qp_list = get_log_data(log, {"QP_LOG": lcmt_qp}, 0, 5000, ParseQP)
 
     # qp_list = qp_list[:2000][::10]
     # qp_list = qp_list[:5000][::10]
@@ -80,17 +153,17 @@ def main():
     obj_vals = np.zeros((len(qp_list),))
     pri_eps_vals = np.zeros((len(qp_list, )))
     # sols = np.zeros((len(qp_list,), 60))
-    sols = np.zeros((len(qp_list, ), 52))
+    sols = np.zeros((len(qp_list, ), 60))
     iters = np.zeros((len(qp_list, ),))
 
     osqp_settings = \
         {'rho': 1e-4,
          'sigma': 1e-6,
-         'max_iter': 100,
+         'max_iter': 500,
          'eps_abs': 1e-5,
          'eps_rel': 1e-5,
-         'eps_prim_inf': 1e-5,
-         'eps_dual_inf': 1e-5,
+         'eps_prim_inf': 1e-6,
+         'eps_dual_inf': 1e-6,
          'alpha': 1.6,
          'linsys_solver': 0,
          'delta': 1e-6,
@@ -110,15 +183,38 @@ def main():
         run_times[i] = osqp_result['run_time']
         obj_vals[i] = osqp_result['obj_val']
         pri_eps_vals[i] = osqp_result['pri_res']
-        pri_eps_vals[i] = osqp_result['pri_res']
         sols[i] = osqp_result['sol']
         iters[i] = osqp_result['iter']
 
-        # import pdb; pdb.set_trace()
+    osqp_result = solve_proxsuite(qp_list, osqp_settings)
+    fig, axs = plt.subplots(4, 1, sharex='all')
+    axs[0].plot(osqp_result['sol'][:, 32:42])
+    axs[0].legend(['0', '1', '2', '3', '4'])
+    axs[0].set_title('Objective values per QP')
+    axs[1].plot(osqp_result['run_time'])
+    axs[1].set_title('Solve times per QP')
+    axs[2].plot(osqp_result['sol'][:, 22:24])
+    axs[2].plot(osqp_result['sol'][:, 28:30])
+    axs[3].plot(osqp_result['sol'][:, 24:28])
+    axs[3].plot(osqp_result['sol'][:, 30:32])
+    axs[3].set_title('QP solutions')
+
+    # for key in osqp_result.keys():
+    #     plt.figure()
+    #     # plt.plot(osqp_result[key], label='osqp')
+    #     plt.plot(osqp_result[key], label='proxqp')
+    #     plt.title(key)
+    #     plt.legend()
+    # plt.show()
+
+    # import pdb; pdb.set_trace()
     log_name = filename.split('/')[-1]
     np.save(saved_sols_folder + log_name + '_' + str(osqp_settings['max_iter']), sols)
 
     print(f'OSQP mean runtime: {np.mean(run_times)}')
+    # print(f'PROXQP mean runtime: {np.mean(osqp_result['run_time'])})
+    proxqp_runtime = osqp_result['run_time']
+    print(f'PROXQP mean runtime: {np.mean(proxqp_runtime)}')
     print(f'OSQP mean objective: {np.mean(obj_vals)}')
     print(f'OSQP mean primal residuals: {np.mean(pri_eps_vals)}')
 

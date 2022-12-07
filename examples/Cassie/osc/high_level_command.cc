@@ -85,16 +85,16 @@ HighLevelCommand::HighLevelCommand(
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
+                    .get_index();
 
-  yaw_port_ = this->DeclareVectorOutputPort("pelvis_yaw", BasicVector<double>(1),
-                                            &HighLevelCommand::CopyHeadingAngle)
-                  .get_index();
+  yaw_port_ =
+      this->DeclareVectorOutputPort("pelvis_yaw", BasicVector<double>(1),
+                                    &HighLevelCommand::CopyHeadingAngle)
+          .get_index();
   xy_port_ =
       this->DeclareVectorOutputPort("pelvis_xy", BasicVector<double>(2),
                                     &HighLevelCommand::CopyDesiredHorizontalVel)
@@ -110,8 +110,8 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   if (use_radio_command_) {
-    const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
-        context, radio_out_port_);
+    const auto& radio_out =
+        this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_out_port_);
     // TODO(yangwill) make sure there is a message available
     // des_vel indices: 0: yaw_vel (right joystick left/right)
     //                  1: saggital_vel (left joystick up/down)
@@ -119,13 +119,16 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
 
     double vel_scale_trans_sagital =
         (radio_out->channel[6] + 1.0) * vel_scale_trans_sagital_;
-    double a = .001 / (stick_filter_dt_ + .001); // approximately 1KHz sampling rate - no need to be too precise
+    double a =
+        .001 /
+        (stick_filter_dt_ +
+         .001);  // approximately 1KHz sampling rate - no need to be too precise
     Vector3d des_vel_prev = discrete_state->get_value(des_vel_idx_);
     Vector3d des_vel;
-//    des_vel << vel_scale_rot_ * radio_out->channel[3],
-//        vel_scale_trans_sagital_ * radio_out->channel[0],
-//        vel_scale_trans_lateral_ * radio_out->channel[1];
-//    discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
+    //    des_vel << vel_scale_rot_ * radio_out->channel[3],
+    //        vel_scale_trans_sagital_ * radio_out->channel[0],
+    //        vel_scale_trans_lateral_ * radio_out->channel[1];
+    //    discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
     des_vel << vel_scale_rot_ * radio_out->channel[3],
         vel_scale_trans_sagital * radio_out->channel[0],
         vel_scale_trans_lateral_ * radio_out->channel[1];
@@ -180,7 +183,9 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
   // PD position control
   double des_yaw_vel = kp_yaw_ * heading_error + kd_yaw_ * (-yaw_vel);
-  des_yaw_vel = drake::math::saturate(des_yaw_vel, -vel_max_yaw_, vel_max_yaw_);
+  //  des_yaw_vel = drake::math::saturate(des_yaw_vel, -vel_max_yaw_,
+  //  vel_max_yaw_);
+  des_yaw_vel = std::clamp(des_yaw_vel, -vel_max_yaw_, vel_max_yaw_);
 
   // Convex combination of 0 and desired yaw velocity
   double weight = 1 / (1 + exp(-params_of_no_turning_(0) *
@@ -217,14 +222,17 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
     des_sagital_vel = kp_pos_sagital_ * (local_com_pos_to_target_pos(0) +
                                          target_pos_offset_) +
                       kd_pos_sagital_ * (-com_vel_sagital);
-    des_sagital_vel = drake::math::saturate(des_sagital_vel, -vel_max_sagital_,
-                                            vel_max_sagital_);
+    //    des_sagital_vel = drake::math::saturate(des_sagital_vel,
+    //    -vel_max_sagital_,
+    //                                            vel_max_sagital_);
+    des_sagital_vel =
+        std::clamp(des_sagital_vel, -vel_max_sagital_, vel_max_sagital_);
 
     // Frontal plane position PD control.  TODO(yminchen): tune this
     double com_vel_lateral = local_com_vel(1);
     des_lateral_vel = kp_pos_lateral_ * (local_com_pos_to_target_pos(1)) +
                       kd_pos_lateral_ * (-com_vel_lateral);
-    des_lateral_vel = drake::math::saturate(des_lateral_vel, -vel_max_lateral_,
+    des_lateral_vel = std::clamp(des_lateral_vel, -vel_max_lateral_,
                                             vel_max_lateral_);
   }
   Vector3d des_vel;

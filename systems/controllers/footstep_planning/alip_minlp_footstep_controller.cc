@@ -267,7 +267,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     trajopt_.UpdateNoCrossoverConstraint();
     trajopt_.UpdateModeTimingsOnTouchdown();
   }
-  trajopt_.UpdateModeTiming((!(committed || fsm_switch)) && warmstart);
 
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
@@ -279,6 +278,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   trajopt_.UpdateNextFootstepReachabilityConstraint(workspace);
   trajopt_.CalcOptimalFootstepPlan(x, p_b, warmstart);
+  trajopt_.UpdateModeTiming(!committed);
 
   // Update discrete states
   double t0 = trajopt_.GetTimingSolution()(0);

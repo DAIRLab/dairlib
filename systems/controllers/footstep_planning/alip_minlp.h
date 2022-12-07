@@ -181,7 +181,7 @@ class AlipMINLP {
   vector<int> nknots() const { return nknots_; }
 
   drake::solvers::MathematicalProgram *get_prog() { return prog_.get_mutable(); }
-  drake::solvers::MathematicalProgramResult &get_solution() { return solution_.first; }
+  drake::solvers::MathematicalProgramResult &get_solution() { return solution_; }
 
  private:
 
@@ -261,11 +261,10 @@ class AlipMINLP {
   vector<Binding<QuadraticCost>> input_costs_{};
   vector<vector<Binding<QuadraticCost>>> tracking_costs_{};
 
-  // Bookkeeping
+  // Book-keeping
   bool built_ = false;
-  std::pair<drake::solvers::MathematicalProgramResult,
-            vector<Eigen::VectorXd>> solution_;
-
+  bool solved_ = false;
+  drake::solvers::MathematicalProgramResult solution_;
   drake::solvers::OsqpSolver solver_;
 
 };

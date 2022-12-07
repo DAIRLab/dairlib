@@ -3,13 +3,13 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/systems/simulator_drift.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
+#include "examples/Cassie/systems/simulator_drift.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
@@ -48,9 +48,9 @@ using Eigen::VectorXd;
 using drake::multibody::Frame;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::TriggerTypeSet;
 
 using multibody::WorldYawViewFrame;
 using systems::controllers::ComTrackingData;
@@ -92,7 +92,6 @@ int DoMain(int argc, char* argv[]) {
 
   // Read-in the parameters
   auto gains = drake::yaml::LoadYamlFile<OSCWalkingGains>(FLAGS_gains_filename);
-
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -170,8 +169,7 @@ int DoMain(int argc, char* argv[]) {
                                        gains.yaw_deadband_radius);
   cassie::osc::HighLevelCommand* high_level_command;
 
-  auto cassie_out_to_radio =
-      builder.AddSystem<systems::CassieOutToRadio>();
+  auto cassie_out_to_radio = builder.AddSystem<systems::CassieOutToRadio>();
 
   if (FLAGS_use_radio) {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
@@ -371,14 +369,15 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
-       FLAGS_qp_time_limit);
+      FLAGS_qp_time_limit);
 
   // Cost
   int n_v = plant_w_spr.num_velocities();
   int n_u = plant_w_spr.num_actuators();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
-  osc->SetInputSmoothingWeights(gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
+  osc->SetInputSmoothingWeights(gains.w_input_reg *
+                                MatrixXd::Identity(n_u, n_u));
 
   // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
@@ -423,6 +422,8 @@ int DoMain(int argc, char* argv[]) {
   // Friction coefficient
   osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
+  // Note: it's important to express the contact point acceleration in the local
+  // frame to avoid bad numerics in the OSC
   const auto& pelvis = plant_w_spr.GetBodyByName("pelvis");
   multibody::WorldYawViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(

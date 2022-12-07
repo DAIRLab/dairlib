@@ -776,9 +776,9 @@ int DoMain(int argc, char* argv[]) {
       //      osc->SetVdotRegularizationWeight(W_vdot_reg);
 
       // Heuristics -- penalize front contact force for optimal ROM
-      if (gains.w_rom_contact_force_reg > 0 && model_iter > 1) {
+      if (osc_gains.w_rom_contact_force_reg > 0 && model_iter > 1) {
         osc->AddContactForceRegularizationCostForOptimalROM(
-            gains.w_rom_contact_force_reg * model_iter / 300);
+            osc_gains.w_rom_contact_force_reg * model_iter / 300);
       }
 
       // Testing to use toe effort tracking

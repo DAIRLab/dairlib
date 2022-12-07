@@ -9,6 +9,7 @@ w_soft_constraint: 80
 w_input_reg: 0.000000
 
 w_stance_toe_effort: 0  # Testing
+w_rom_contact_force_reg: 0 # 1e-6  #1e-8  #1e-6   # penalize the front contact point for optimal model to help OSC-QP find the optimal sol (small regularization term)
 
 w_swing_toe: 2
 swing_toe_kp: 1500

@@ -13,6 +13,7 @@ struct OSCRomWalkingGains {
   double w_soft_constraint;
   double w_input_reg;
   double w_stance_toe_effort;
+  double w_rom_contact_force_reg;
   std::vector<double> RomW;
   std::vector<double> RomKp;
   std::vector<double> RomKd;
@@ -61,6 +62,7 @@ struct OSCRomWalkingGains {
     a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(w_input_reg));
     a->Visit(DRAKE_NVP(w_stance_toe_effort));
+    a->Visit(DRAKE_NVP(w_rom_contact_force_reg));
     a->Visit(DRAKE_NVP(RomW));
     a->Visit(DRAKE_NVP(RomKp));
     a->Visit(DRAKE_NVP(RomKd));

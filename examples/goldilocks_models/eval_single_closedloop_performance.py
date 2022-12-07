@@ -112,7 +112,7 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
   if n_poses != n_step + 1:
     raise ValueError("there is a bug somewhere")
 
-  # 1. stride length
+  # 1. stride length (expressed wrt pelvis frame)
   pelvis_xy_at_td = np.zeros((n_poses, 2))
   for i in range(n_poses):
     pelvis_xy_at_td[i] = x[t_x_touchdown_indices[i], 4:6]
@@ -706,12 +706,12 @@ def main():
   u_dispatcher, t_u_dispatcher, \
   osc_output, input_supervisor_status, t_input_supervisor, full_log = process_lcm_log.process_log(log, pos_map, vel_map, act_map, controller_channel)
 
-  n_msgs = len(cassie_out)
-  knee_pos = np.zeros(n_msgs)
-  t_cassie_out = np.zeros(n_msgs)
-  estop_signal = np.zeros(n_msgs)
-  motor_torques = np.zeros(n_msgs)
-  for i in range(n_msgs):
+  n_cassie_out_msgs = len(cassie_out)
+  knee_pos = np.zeros(n_cassie_out_msgs)
+  t_cassie_out = np.zeros(n_cassie_out_msgs)
+  estop_signal = np.zeros(n_cassie_out_msgs)
+  motor_torques = np.zeros(n_cassie_out_msgs)
+  for i in range(n_cassie_out_msgs):
     knee_pos[i] = cassie_out[i].leftLeg.kneeDrive.velocity
     t_cassie_out[i] = cassie_out[i].utime / 1e6
     motor_torques[i] = cassie_out[i].rightLeg.kneeDrive.torque
@@ -720,7 +720,7 @@ def main():
   print("Finished parsing the log")
 
   global t_shutoff
-  if is_hardware:
+  if is_hardware and (n_cassie_out_msgs > 0):
     t_shutoff = t_cassie_out[-1]
     for i in reversed(range(len(cassie_out))):
       if cassie_out[i].pelvis.radio.channel[-1] < 0:  # soft e-stop triggered
@@ -728,6 +728,8 @@ def main():
       if cassie_out[i].pelvis.radio.channel[8] < 0:  # hard e-stop triggered
         t_shutoff = t_cassie_out[i]
     print("t_shutoff = ", t_shutoff)
+  else:
+    t_shutoff = t_x[-1]
 
   global t_walking_controller_switch_time
   t_walking_controller_switch_time = GetWalkingControllerSwitchTime(fsm, t_osc_debug)

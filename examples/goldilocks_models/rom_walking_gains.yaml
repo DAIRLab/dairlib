@@ -48,9 +48,10 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220406_rom28_big_range_big_vel_weight/robot_1/"                             # rom_option 28
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220406_rom29_big_range_big_vel_weight/robot_1/"                             # rom_option 29
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220323_rom27_big_range_bigger_step_size_5e-3/robot_1/"                      # rom_option 27
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/"                      # rom_option 27
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/robot_1/"                      # rom_option 27
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/"                      # rom_option 27
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/robot_1/"        # rom_option 27
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220510_rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/robot_1/"    # rom_option 30
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
@@ -66,8 +67,7 @@ use_hybrid_rom_mpc: true
 lightweight_lcm_log: false
 
 # Heuristics
-w_rom_contact_force_reg: 1e-6  #1e-8  #1e-6   # penalize the front contact point for optimal model to help OSC-QP find the optimal sol (small regularization term)
-vel_command_offset_x: 0.1   # hack: help rom_iter=300 walk in place at start
+vel_command_offset_x: 0.  #0.1  # hack: help rom_iter=300 walk in place at start
 
 ### High-level command (for both planner and controller)
 global_target_position_x: 10000

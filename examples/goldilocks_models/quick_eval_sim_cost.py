@@ -4,6 +4,7 @@ import time
 import os
 import numpy as np
 import argparse
+import matplotlib.pyplot as plt
 
 # cmd should be a list if shell=False. Otherwise, a string.
 def RunCommand(cmd, use_shell=False):
@@ -37,6 +38,7 @@ RunCommand(cmd, True)
 print("\n(t, t_rt_walking_switch): (stride_length, pelvis_height, torque_cost, cost)")
 ave_cost = []
 ave_torque_cost = []
+stride_lengths = []
 for valid_data_idx in range(1000):
   path = temp_output_dir + '%d_%d_cost_values.csv' % (rom_idx, valid_data_idx)
   if os.path.exists(path):
@@ -56,6 +58,7 @@ for valid_data_idx in range(1000):
 
     ave_cost.append(cost)
     ave_torque_cost.append(torque_cost)
+    stride_lengths.append(ave_stride_length)
 
 # Print average cost
 if len(ave_cost) > 0:
@@ -63,4 +66,20 @@ if len(ave_cost) > 0:
   ave_torque_cost = [float(i) for i in ave_torque_cost]
   print("average cost = %.3f" % (sum(ave_cost) / len(ave_cost)))
   print("average torque cost = %.3f" % (sum(ave_torque_cost) / len(ave_torque_cost)))
+
+# plot stride length vs cost (beware that foot spread and pelvis height can affect the cost)
+if len(ave_cost) > 0:
+  delta_x = 0.05  # sets minimal x range of the plot
+  delta_y = 0.1  # sets minimal y range of the plot
+  x_max = max(stride_lengths) + delta_x
+  x_min = min(stride_lengths) - delta_x
+  y_max = max((sum(ave_torque_cost) / len(ave_torque_cost)) + delta_y, max(ave_torque_cost))
+  y_min = min((sum(ave_torque_cost) / len(ave_torque_cost)) - delta_y, min(ave_torque_cost))
+  plt.figure("1D torque cost landscape -- " + log_name)
+  plt.plot(stride_lengths, ave_torque_cost, ".")
+  plt.xlim([x_min, x_max])
+  plt.ylim([y_min, y_max])
+  plt.xlabel("stride length (m)")
+  plt.ylabel("torque cost")
+  plt.show()
 

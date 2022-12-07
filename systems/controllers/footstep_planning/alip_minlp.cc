@@ -85,7 +85,7 @@ void AlipMINLP::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
                                 const Matrix4d &Q, const Eigen::MatrixXd& Qf) {
   DRAKE_DEMAND(xd.size() == nmodes_);
   for (int i = 1; i < nmodes_; i++){
-    DRAKE_DEMAND(xd.at(i).size() == nknots_.at(i));
+    DRAKE_DEMAND(xd.at(i).size() == nx_ * nknots_.at(i));
     vector<Binding<QuadraticCost>> QQ;
     for (int k = 0; k < nknots_.at(i); k++){
       QQ.push_back(
@@ -110,11 +110,11 @@ void AlipMINLP::MakeTerminalCost(){
 
 void AlipMINLP::AddInputCost(double R) {
   for (int i = 0; i < nmodes_; i++){
-    int nk = nknots_.at(i);
+    int n = nknots_.at(i) - 1;
     input_costs_.push_back(
         prog_->AddQuadraticCost(
-            R * MatrixXd::Identity(nk, nk),
-            VectorXd::Zero(nk),
+            R * MatrixXd::Identity(n, n),
+            VectorXd::Zero(n),
             uu_.at(i))
         );
   }
@@ -415,10 +415,11 @@ void AlipMINLP::UpdateModeTimingsOnTouchdown() {
 }
 
 void AlipMINLP::UpdateTimingGradientStep() {
+  Matrix4d A = alip_utils::CalcA(H_, m_);
   Vector4d B = Vector4d::UnitW();
+
   for (int n = 0; n < nmodes_; n++) {
     double dLdt_n = 0;
-    Matrix4d A = alip_utils::CalcA(H_, m_);
     Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(n) / (nknots_.at(n) - 1));
     for (int k = 0; k < nknots_.at(n) - 1; k++) {
       Vector4d nu = GetStateAtKnot(solution_.second.at(n), k);
@@ -451,7 +452,6 @@ void AlipMINLP::UpdateDynamicsConstraints() {
 void AlipMINLP::SolveOCProblemAsIs() {
   mode_sequnces_ = GetPossibleModeSequences();
   vector<pair<MathematicalProgramResult, vector<VectorXd>>> solutions;
-
   if (mode_sequnces_.empty()) {
     vector<VectorXd> dual_solutions;
     const auto sol = solver_.Solve(*prog_);
@@ -464,12 +464,12 @@ void AlipMINLP::SolveOCProblemAsIs() {
                   dynamics_c_.at(n).at(k));
         }
       }
+      dual_solutions.push_back(duals);
     }
     solutions.push_back({sol, dual_solutions}); // NOLINT
   } else {
     for (auto& seq: mode_sequnces_) {
       UpdateFootholdConstraints(seq);
-
       vector<VectorXd> dual_solutions;
       const auto sol = solver_.Solve(*prog_);
 
@@ -482,6 +482,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
                     dynamics_c_.at(n).at(k));
           }
         }
+        dual_solutions.push_back(duals);
       }
       solutions.push_back({sol, dual_solutions}); // NOLINT
     }
@@ -524,7 +525,7 @@ void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
   SolveOCProblemAsIs();
 }
 
-vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
+vector<VectorXd> AlipMINLP::MakeXdesTrajForVdes(
     const Vector2d& vdes, double step_width, double Ts, double nk,
     alip_utils::Stance stance) const {
   double omega = sqrt(9.81 / H_);
@@ -533,7 +534,7 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
   double Lx = H_ * m_ * omega * step_width * tanh(omega * Ts / 2);
   double dLx = - H_ * m_ * vdes(1);
   Matrix4d Ad = alip_utils::CalcAd(H_, m_, (Ts / (nk-1)));
-  vector<vector<Vector4d>> xx;
+  vector<VectorXd> xx;
 
   double stance_sign = stance == alip_utils::Stance::kLeft ? -1.0 : 1.0;
   Eigen::MatrixPower<Matrix4d> APow(Ad);
@@ -544,16 +545,16 @@ vector<vector<Vector4d>> AlipMINLP::MakeXdesTrajForVdes(
         s / 2 * step_width,
         s / 2 * Lx + dLx,
         Ly);
-    vector<Vector4d> x;
+    VectorXd x = VectorXd::Zero(nx_ * nknots_.at(i));
     for (int k = 0; k < nk; k++) {
-      x.emplace_back(APow(k) * x0);
+      GetStateAtKnot(x, k) = APow(k) * x0;
     }
     xx.push_back(x);
   }
   return xx;
 }
 
-vector<Vector4d> AlipMINLP::MakeXdesTrajForCurrentStep(
+VectorXd AlipMINLP::MakeXdesTrajForCurrentStep(
     const Vector2d &vdes, double t_current, double t_remain,
     double Ts, double step_width, alip_utils::Stance stance, double nk) const {
 
@@ -575,9 +576,9 @@ vector<Vector4d> AlipMINLP::MakeXdesTrajForCurrentStep(
       stance_sign / 2 * Lx + dLx,
       Ly);
   x0 = Ad0 * x0;
-  vector<Vector4d> x;
+  VectorXd x = VectorXd::Zero(nx_ * nknots_.front());
   for (int k = 0; k < nk; k++) {
-    x.emplace_back(APow(k) * x0);
+    GetStateAtKnot(x, k) = APow(k) * x0;
   }
   return x;
 }

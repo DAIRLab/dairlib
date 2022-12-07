@@ -141,9 +141,9 @@ def main():
         mpc_debug.mpc_trajs["desired"].xxs[mpc_debug.t_mpc[5]]
     )
 
-    plot_com_traj_solutions(com_trajs, [0])
-    plot_com_traj_solutions(com_trajs, [1])
-    plot_com_traj_solutions(com_trajs, [2])
+    # plot_com_traj_solutions(com_trajs, [0])
+    # plot_com_traj_solutions(com_trajs, [1])
+    # plot_com_traj_solutions(com_trajs, [2])
 
     idx = 50
     t = mpc_debug.t_mpc[idx]

@@ -417,7 +417,7 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
     lcmt_mpc_solution *solution) const {
 
   DRAKE_DEMAND(pp.size() == gains_.nmodes);
-  DRAKE_DEMAND(xx.size() == gains_.nmodes && xx.front().size() == gains_.knots_per_mode);
+  DRAKE_DEMAND(xx.size() == gains_.nmodes && xx.front().size() == 4 * gains_.knots_per_mode);
   DRAKE_DEMAND(uu.size() == gains_.nmodes && uu.front().size() == gains_.knots_per_mode - 1);
   DRAKE_DEMAND(tt.rows() == gains_.nmodes);
 

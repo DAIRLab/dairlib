@@ -54,13 +54,13 @@ int do_main(int argc, char* argv[]) {
   trajopt.Build(planner_solver_options.osqp_options);
 
   auto start = std::chrono::high_resolution_clock::now();
-  trajopt.CalcOptimalFootstepPlan(xd.front().front(), p0);
+  trajopt.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "solve time: " << elapsed.count() << std::endl;
 
   start = std::chrono::high_resolution_clock::now();
-  trajopt.CalcOptimalFootstepPlan(xd.front().front(), p0, true);
+  trajopt.CalcOptimalFootstepPlan(xd.front().head<4>(), p0, true);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
   std::cout << "solve time: " << elapsed.count() << std::endl;

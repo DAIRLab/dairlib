@@ -65,13 +65,25 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
 class AlipMINLP {
  public:
 
-  template<typename T>
-  static Eigen::Ref<drake::VectorX<T>> GetStateAtKnot(drake::VectorX<T> xx, int knot) {
-    return xx.template segment<4>(4 * knot);
+  template<typename Derived>
+  static Eigen::VectorBlock<Derived, 4>
+      GetStateAtKnot(Eigen::MatrixBase<Derived>& xx, int knot) {
+    return Eigen::VectorBlock<Derived, 4>(xx.derived(), 4 * knot);
   }
-  template<typename T>
-  static Eigen::Ref<drake::VectorX<T>> GetInputAtKnot(drake::VectorX<T> uu, int knot) {
-    return uu.template segment<1>(knot);
+  template<typename Derived>
+  static const Eigen::VectorBlock<const Derived, 4>
+  GetStateAtKnot(const Eigen::MatrixBase<Derived>& xx, int knot) {
+    return Eigen::VectorBlock<const Derived, 4>(xx.derived(), 4 * knot);
+  }
+  template<typename Derived>
+  static Eigen::VectorBlock<Derived, 1>
+      GetInputAtKnot(Eigen::MatrixBase<Derived>& uu, int knot) {
+    return Eigen::VectorBlock<Derived, 1>(uu.derived(), knot);
+  }
+  template<typename Derived>
+  static const Eigen::VectorBlock<const Derived, 1>
+  GetInputAtKnot(const Eigen::MatrixBase<Derived>& uu, int knot) {
+    return Eigen::VectorBlock<const Derived, 1>(uu.derived(), knot);
   }
 
   /// Constructor takes a nominal robot mass and walking height
@@ -251,7 +263,8 @@ class AlipMINLP {
 
   // Bookkeeping
   bool built_ = false;
-  std::pair<drake::solvers::MathematicalProgramResult, vector<Eigen::VectorXd>> solution_;
+  std::pair<drake::solvers::MathematicalProgramResult,
+            vector<Eigen::VectorXd>> solution_;
 
   drake::solvers::OsqpSolver solver_;
 

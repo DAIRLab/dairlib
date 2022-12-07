@@ -184,7 +184,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     committed = true;
   }
 
-  // shorthands for the current stance foot, stance == -1 implies left stance
   const int fsm_state = curr_fsm(fsm_idx);
   Stance stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? Stance::kLeft : Stance::kRight;
 

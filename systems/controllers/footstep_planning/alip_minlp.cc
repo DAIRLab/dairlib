@@ -350,6 +350,7 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
 
   // Set the initial guess for the current mode based on limited time
   VectorXd xx = VectorXd (nx_ * nknots_.front());
+  xx.head<4>() = x0;
   Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(0) / (nknots_.front() - 1));
   for (int i = 1; i < nknots_.front(); i++) {
     GetStateAtKnot(xx, i) = Ad * GetStateAtKnot(xx, i-1);

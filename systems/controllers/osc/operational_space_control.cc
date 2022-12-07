@@ -481,9 +481,13 @@ void OperationalSpaceControl::Build() {
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
 
-  solver_ = std::make_unique<dairlib::solvers::FastOsqpSolver>();
+//  solver_ = std::make_unique<dairlib::solvers::FastOsqpSolver>();
+//  solver_ = std::make_unique<drake::solvers::OsqpSolver>();
+  for (int i = -1; i < 5; ++i) {
+    solvers_[i] = std::make_unique<dairlib::solvers::FastOsqpSolver>();
+  }
   prog_->SetSolverOptions(solver_options_);
-  solver_->InitializeSolver(*prog_, solver_options_);
+//  solver_->InitializeSolver(*prog_, solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -779,9 +783,17 @@ VectorXd OperationalSpaceControl::SolveQp(
                                        VectorXd::Zero(n_h_));
   }
 
+  if (!solvers_.at(fsm_state)->IsInitialized()) {
+    solvers_.at(fsm_state)->InitializeSolver(*prog_, solver_options_);
+  }
+//  if (initial_guess_x_.count(0) > 0) {
+//    solver_->WarmStart(initial_guess_x_.at(0), initial_guess_y_.at(0));
+//  }
+
   // Solve the QP
   MathematicalProgramResult result;
-  result = solver_->Solve(*prog_);
+  std::cout << "Solving QP: " << std::endl;
+  result = solvers_.at(fsm_state)->Solve(*prog_);
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   if (result.is_success()) {

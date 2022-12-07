@@ -46,9 +46,9 @@ void ParseQuadraticCosts(const MathematicalProgram& prog,
     for (int col = 0; col < Q.cols(); ++col) {
       for (int row = 0; (row <= col) && (row < Q.rows()); ++row) {
         const double value = Q(row, col);
-        //        if (value == 0.0) {
-        //          continue;
-        //        }
+//        if (value == 0.0) {
+//          continue;
+//        }
         const int x_row = x_indices[row];
         const int x_col = x_indices[col];
         P_triplets.emplace_back(x_row, x_col, static_cast<c_float>(value));
@@ -97,11 +97,11 @@ void ParseLinearCosts(const MathematicalProgram& prog, std::vector<c_float>* q,
   for (const auto& linear_cost : prog.linear_costs()) {
     for (int i = 0; i < static_cast<int>(linear_cost.GetNumElements()); ++i) {
       // Append the linear cost term to q.
-      if (linear_cost.evaluator()->a()(i) != 0) {
-        const int x_index =
-            prog.FindDecisionVariableIndex(linear_cost.variables()(i));
-        q->at(x_index) += linear_cost.evaluator()->a()(i);
-      }
+//      if (linear_cost.evaluator()->a()(i) != 0) {
+      const int x_index =
+          prog.FindDecisionVariableIndex(linear_cost.variables()(i));
+      q->at(x_index) += linear_cost.evaluator()->a()(i);
+//      }
     }
     // Add the constant cost term to constant_cost_term.
     *constant_cost_term += linear_cost.evaluator()->b();
@@ -337,6 +337,8 @@ bool FastOsqpSolver::is_available() { return true; }
 
 void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
                                       const SolverOptions& solver_options) {
+
+  std::cout << "Intializing fast osqp solver" << std::endl;
   // Get the cost for the QP.
   Eigen::SparseMatrix<c_float> P_sparse;
   std::vector<c_float> q(prog.num_vars(), 0);
@@ -377,7 +379,10 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   const c_int osqp_setup_err =
       osqp_setup(&workspace_, osqp_data_, osqp_settings_);
   DRAKE_DEMAND(osqp_setup_err == 0);
+  const c_int osqp_solve_err = osqp_solve(workspace_);
 
+//  c_free(osqp_data_);
+//  c_free(osqp_settings_);
   is_init_ = true;
 }
 
@@ -424,24 +429,28 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   std::vector<c_float> l, u;
   ParseAllLinearConstraints(prog, &A_sparse, &l, &u, &constraint_start_row);
 
-  osqp_data_->n = prog.num_vars();
-  osqp_data_->m = A_sparse.rows();
-  osqp_data_->P = EigenSparseToCSC(P_sparse);
-  osqp_data_->q = q.data();
-  osqp_data_->A = EigenSparseToCSC(A_sparse);
-  osqp_data_->l = l.data();
-  osqp_data_->u = u.data();
+  csc* P_csc = EigenSparseToCSC(P_sparse);
+  csc* A_csc = EigenSparseToCSC(A_sparse);
+
+  osqp_update_lin_cost(workspace_, q.data());
+  osqp_update_bounds(workspace_, l.data(), u.data());
+//  osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
+//                  OSQP_NULL, A_csc->nzmax);
+  c_int res = osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
+                  OSQP_NULL, A_csc->nzmax);
+  std::cout <<  "osqp update PA result: " << res << std::endl;
+
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
 
   // Solve problem.
   if (!solution_result) {
     DRAKE_THROW_UNLESS(workspace_ != nullptr);
-    const c_int osqp_setup_err =
-        osqp_setup(&workspace_, osqp_data_, osqp_settings_);
-    if (osqp_setup_err != 0) {
-      solution_result = SolutionResult::kInvalidInput;
-    }
+//    const c_int osqp_setup_err =
+//        osqp_setup(&workspace_, osqp_data_, osqp_settings_);
+//    if (osqp_setup_err != 0) {
+//      solution_result = SolutionResult::kInvalidInput;
+//    }
     const c_int osqp_solve_err = osqp_solve(workspace_);
     if (osqp_solve_err != 0) {
       solution_result = SolutionResult::kInvalidInput;
@@ -505,17 +514,14 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   }
   result->set_solution_result(solution_result.value());
 
-  //  osqp_cleanup(workspace_);
-  if (warm_start_) {
-    c_free(osqp_data_->P->x);
-    c_free(osqp_data_->P->i);
-    c_free(osqp_data_->P->p);
-    c_free(osqp_data_->P);
-    c_free(osqp_data_->A->x);
-    c_free(osqp_data_->A->i);
-    c_free(osqp_data_->A->p);
-    c_free(osqp_data_->A);
-  }
+  c_free(P_csc->x);
+  c_free(P_csc->i);
+  c_free(P_csc->p);
+  c_free(P_csc);
+  c_free(A_csc->x);
+  c_free(A_csc->i);
+  c_free(A_csc->p);
+  c_free(A_csc);
 }
 
 }  // namespace solvers

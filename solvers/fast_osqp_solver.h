@@ -65,6 +65,10 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
                drake::solvers::MathematicalProgramResult*) const final;
 
   OSQPData* osqp_data_;
+
+  mutable Eigen::SparseMatrix<c_float> P_prev_;
+  mutable Eigen::SparseMatrix<c_float> A_prev_;
+
   mutable OSQPSettings* osqp_settings_;
   mutable OSQPWorkspace* workspace_;
   mutable bool warm_start_ = true;

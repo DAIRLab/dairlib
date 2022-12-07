@@ -97,11 +97,11 @@ void ParseLinearCosts(const MathematicalProgram& prog, std::vector<c_float>* q,
   for (const auto& linear_cost : prog.linear_costs()) {
     for (int i = 0; i < static_cast<int>(linear_cost.GetNumElements()); ++i) {
       // Append the linear cost term to q.
-//      if (linear_cost.evaluator()->a()(i) != 0) {
-      const int x_index =
-          prog.FindDecisionVariableIndex(linear_cost.variables()(i));
-      q->at(x_index) += linear_cost.evaluator()->a()(i);
-//      }
+      if (linear_cost.evaluator()->a()(i) != 0) {
+        const int x_index =
+            prog.FindDecisionVariableIndex(linear_cost.variables()(i));
+        q->at(x_index) += linear_cost.evaluator()->a()(i);
+      }
     }
     // Add the constant cost term to constant_cost_term.
     *constant_cost_term += linear_cost.evaluator()->b();
@@ -356,6 +356,9 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   std::vector<c_float> l, u;
   ParseAllLinearConstraints(prog, &A_sparse, &l, &u, &constraint_start_row);
 
+  P_prev_ = P_sparse;
+  A_prev_ = A_sparse;
+
   // Now pass the constraint and cost to osqp data.
   osqp_data_ = nullptr;
 
@@ -404,7 +407,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
                              const Eigen::VectorXd& initial_guess,
                              const SolverOptions& merged_options,
                              MathematicalProgramResult* result) const {
-  OsqpSolverDetails& solver_details =
+  auto& solver_details =
       result->SetSolverDetailsType<OsqpSolverDetails>();
 
   // OSQP solves a convex quadratic programming problem
@@ -428,6 +431,12 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   Eigen::SparseMatrix<c_float> A_sparse;
   std::vector<c_float> l, u;
   ParseAllLinearConstraints(prog, &A_sparse, &l, &u, &constraint_start_row);
+
+  DRAKE_DEMAND(P_sparse.nonZeros() == P_prev_.nonZeros());
+  DRAKE_DEMAND(A_sparse.nonZeros() == A_prev_.nonZeros());
+
+  P_prev_ = P_sparse;
+  A_prev_ = A_sparse;
 
   csc* P_csc = EigenSparseToCSC(P_sparse);
   csc* A_csc = EigenSparseToCSC(A_sparse);
@@ -476,7 +485,19 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
       case OSQP_SOLVED_INACCURATE: {
         const Eigen::Map<Eigen::Matrix<c_float, Eigen::Dynamic, 1>> osqp_sol(
             workspace_->solution->x, prog.num_vars());
-        result->set_x_val(osqp_sol.cast<double>());
+
+        // Scale solution back if `scale_map` is not empty.
+        const auto& scale_map = prog.GetVariableScaling();
+        if (!scale_map.empty()) {
+          drake::VectorX<double> scaled_sol = osqp_sol.cast<double>();
+          for (const auto& [index, scale] : scale_map) {
+            scaled_sol(index) *= scale;
+          }
+          result->set_x_val(scaled_sol);
+        } else {
+          result->set_x_val(osqp_sol.cast<double>());
+        }
+
         result->set_optimal_cost(workspace_->info->obj_val +
                                  constant_cost_term);
         solver_details.y = Eigen::Map<Eigen::VectorXd>(workspace_->solution->y,

@@ -32,7 +32,7 @@
 #include "systems/primitives/timestamped_subvector_pass_through.h"
 
 
-#define ROS
+//#define ROS
 
 #ifdef ROS
 

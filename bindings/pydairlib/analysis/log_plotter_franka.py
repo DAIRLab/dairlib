@@ -15,8 +15,13 @@ from pydrake.all import *
 import pydairlib.common
 import yaml
 from examples.franka_trajectory_following.scripts.franka_logging_utils import get_most_recent_logs
+from matplotlib.patches import Rectangle
 
-DAIR_PATH = "/home/dair-manipulation/adam_ws/dairlib"
+import scipy.io
+
+
+#DAIR_PATH = "/home/dair-manipulation/adam_ws/dairlib"
+DAIR_PATH = "/home/alpaydinoglu/workspace/dairlib"
 plot_dpi = 1000
 
 def check_flag_and_save(ps, filename, format='svg', save_flag=False):
@@ -192,6 +197,53 @@ def main():
 
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
+
+    # ''' Plot Circle '''
+    # if config['plot_ball_position']:
+    #     ball_pos_names = ['base_x', 'base_y']
+    #     qs = [pos_map[name] for name in ball_pos_names]
+    #     qhold = robot_output['q']
+    #
+    #
+    #     tsize = robot_output['t_x'].size
+    #     circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
+    #
+    #     xxx = qhold[:,qs[0]]
+    #     yyy = qhold[:,qs[1]]
+    #     plt.plot(xxx,yyy)
+    #     plt.xlim([0.4, 0.7])
+    #     plt.ylim([-0.15, 0.15])
+    #     plt.gca().add_patch(circle2)
+    #
+    #     plt.show()
+
+    ''' Plot Rectangle '''
+    if config['plot_ball_position']:
+        ball_pos_names = ['base_x', 'base_y']
+        qs = [pos_map[name] for name in ball_pos_names]
+        qhold = robot_output['q']
+
+
+        tsize = robot_output['t_x'].size
+        circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
+        plt.gca().add_patch(circle2)
+
+        xxx = qhold[:,qs[0]]
+        yyy = qhold[:,qs[1]]
+        plt.plot(xxx,yyy)
+
+        #plt.xlim([0.3, 0.9])
+        #plt.ylim([-0.12, 0.12])
+        #rect = Rectangle((0.55,-0.1),0.1,0.2,0.0,  color='b', fill = False)
+        #plt.gca().add_patch(rect)
+
+        plt.show()
+
+    print("creating mat file")
+    mdic = {"x": xxx, "y": yyy}
+    scipy.io.savemat('xy_ball.mat', mdic)
+    print("finished creating mat file")
+
 
     ''' Plot Joint Positions '''
     if config['plot_joint_positions']:

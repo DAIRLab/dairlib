@@ -119,7 +119,8 @@ int DoMain(int argc, char* argv[]){
   
   q(0) = param.q_init_finger(0);
   q(1) = param.q_init_finger(1);
-  q(2) = param.q_init_finger(2) + param.table_offset;
+  //q(2) = param.q_init_finger(2) + param.table_offset;
+  q(2) = param.finger_radius + 2*param.ball_radius + param.table_offset;
 
   q[q_map["base_qw"]] = param.q_init_ball_c3(0);
   q[q_map["base_qx"]] = param.q_init_ball_c3(1);
@@ -159,7 +160,7 @@ int DoMain(int argc, char* argv[]){
 
   if (param.hold_order == 0){
     lower = 0;
-    upper = 400;
+    upper = 40000;
   }
   else if (param.hold_order == 1){
     lower = degree_increment;
@@ -182,15 +183,64 @@ int DoMain(int argc, char* argv[]){
   ///change this part for different shapes
   std::vector<VectorXd> xtraj;
   for (int i = 0; i < (int) values.size(); i++){
-    double angle = theta(i);
-    double x = r * sin(M_PI * (angle + param.phase) / 180.0);
-    double y = r * cos(M_PI * (angle + param.phase) / 180.0);
-    q(q_map["base_x"]) = x + xc;
-    q(q_map["base_y"]) = y + yc;
-    q(q_map["base_z"]) = param.ball_radius + param.table_offset;
-    VectorXd xtraj_hold = VectorXd::Zero(nq+nv);
-    xtraj_hold.head(nq) << q;
-    xtraj.push_back(xtraj_hold); 
+
+      ///line
+      int line_step_size = 10;
+      double pattern_line_y[line_step_size*2];
+      for(int j=0; j<line_step_size; j++)
+        pattern_line_y[j] = -0.1 + j * (0.2) / line_step_size;
+      for(int j=line_step_size; j<2*line_step_size; j++)
+        pattern_line_y[j] = 0.1 - (j-line_step_size) * (0.2) / line_step_size;
+      double x = 0.55;
+      double y = pattern_line_y[i%(2*line_step_size)];
+      q(q_map["base_x"]) = x;
+      q(q_map["base_y"]) = y;
+      q(q_map["base_z"]) = param.ball_radius + param.table_offset;
+      VectorXd xtraj_hold = VectorXd::Zero(nq + nv);
+      xtraj_hold.head(nq) << q;
+      xtraj.push_back(xtraj_hold);
+
+//      ///square
+//      int line_step_size = 5;
+//      double pattern_line_x[line_step_size*4];
+//      double pattern_line_y[line_step_size*4];
+//      for(int j=0; j<line_step_size; j++)
+//          pattern_line_x[j] = 0.55;
+//      for(int j=line_step_size; j<2*line_step_size; j++)
+//          pattern_line_x[j] = 0.55 + (j-line_step_size) * (0.1) / line_step_size;
+//      for(int j=2*line_step_size; j<3*line_step_size; j++)
+//          pattern_line_x[j] = 0.65;
+//      for(int j=3*line_step_size; j<4*line_step_size; j++)
+//          pattern_line_x[j] = 0.65 - (j-3*line_step_size) * (0.1) / line_step_size;
+//
+//      for(int j=0; j<line_step_size; j++)
+//          pattern_line_y[j] = -0.1 + j * (0.2) / line_step_size;
+//      for(int j=line_step_size; j<2*line_step_size; j++)
+//          pattern_line_y[j] = 0.1;
+//      for(int j=2*line_step_size; j<3*line_step_size; j++)
+//          pattern_line_y[j] = 0.1 - (j-2*line_step_size) * (0.2) / line_step_size;
+//      for(int j=3*line_step_size; j<4*line_step_size; j++)
+//          pattern_line_y[j] = -0.1;
+//
+//      double x = pattern_line_x[i%(4*line_step_size)];;
+//      double y = pattern_line_y[i%(4*line_step_size)];
+//      q(q_map["base_x"]) = x;
+//      q(q_map["base_y"]) = y;
+//      q(q_map["base_z"]) = param.ball_radius + param.table_offset;
+//      VectorXd xtraj_hold = VectorXd::Zero(nq + nv);
+//      xtraj_hold.head(nq) << q;
+//      xtraj.push_back(xtraj_hold);
+
+//    ///circle (reverse)
+//    double angle = theta(i);
+//    double x = -r * sin(M_PI * (angle + param.phase) / 180.0);
+//    double y = r * cos(M_PI * (angle + param.phase) / 180.0);
+//    q(q_map["base_x"]) = x + xc;
+//    q(q_map["base_y"]) = y + yc;
+//    q(q_map["base_z"]) = param.ball_radius + param.table_offset;
+//    VectorXd xtraj_hold = VectorXd::Zero(nq+nv);
+//    xtraj_hold.head(nq) << q;
+//    xtraj.push_back(xtraj_hold);
   }
 
   // convert xtraj into MatrixXd

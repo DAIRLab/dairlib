@@ -254,8 +254,25 @@ EventStatus FrankaBallToBallPosition::UpdateBallPosition(
     std::mt19937 gen{rd()};
     std::normal_distribution<> d{0, param_.ball_stddev};
 
-    position(0) += d(gen);
-    position(1) += d(gen);
+    ///changes
+
+    double x_noise = d(gen);
+    double y_noise = d(gen);
+
+    double noise_threshold = 0.01;
+    if (x_noise > noise_threshold) {
+      x_noise = noise_threshold;
+    } else if (x_noise < -noise_threshold) {
+      x_noise = -noise_threshold;
+    }
+    if (y_noise > noise_threshold) {
+      y_noise = noise_threshold;
+    } else if (y_noise < -noise_threshold) {
+      y_noise = -noise_threshold;
+    }
+
+    position(0) += x_noise;
+    position(1) += y_noise;
   }
 
   discrete_state->get_mutable_vector(p_idx_).get_mutable_value() << position;

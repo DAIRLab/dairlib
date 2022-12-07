@@ -286,6 +286,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   if ( ts < roll_phase ) {
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
   }
   /// upwards phase
   else if (ts < roll_phase + return_phase / 3){
@@ -322,14 +323,26 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
 //  Eigen::AngleAxis<double> angle_axis(PI * param_.orientation_degrees / 180.0, axis);
 //  RotationMatrix<double> rot(angle_axis);
-  RotationMatrix<double> rot = RotationMatrix<double>::MakeYRotation(-param_.orientation_degrees * 3.14 / 180);
-  RotationMatrix<double> default_orientation(Quaterniond(0, 1, 0, 0));
-  RotationMatrix<double> R_desired = rot * default_orientation;  /// compute interpolated orientation
-  Eigen::AngleAxis<double> R_cd = (R_current.inverse() * R_desired).ToAngleAxis();
-  double max_delta_angle = 0.5 * 3.14 / 180.0;
-  R_cd.angle() = (R_cd.angle() > max_delta_angle) ? max_delta_angle : R_cd.angle();
-  R_cd.angle() = (R_cd.angle() < -max_delta_angle) ? -max_delta_angle : R_cd.angle();
-  VectorXd orientation_d = (R_current * RotationMatrix<double>(R_cd)).ToQuaternionAsVector4();
+
+
+//eski olan
+//  RotationMatrix<double> rot = RotationMatrix<double>::MakeYRotation(-param_.orientation_degrees * 3.14 / 180);
+//  RotationMatrix<double> default_orientation(Quaterniond(0, 1, 0, 0));
+//  RotationMatrix<double> R_desired = rot * default_orientation;  /// compute interpolated orientation
+//  Eigen::AngleAxis<double> R_cd = (R_current.inverse() * R_desired).ToAngleAxis();
+//  double max_delta_angle = 0.5 * 3.14 / 180.0;
+//  R_cd.angle() = (R_cd.angle() > max_delta_angle) ? max_delta_angle : R_cd.angle();
+//  R_cd.angle() = (R_cd.angle() < -max_delta_angle) ? -max_delta_angle : R_cd.angle();
+//  VectorXd orientation_d = (R_current * RotationMatrix<double>(R_cd)).ToQuaternionAsVector4();
+
+
+Eigen::AngleAxis<double> angle_axis(PI * param_.orientation_degrees / 180.0, axis);
+RotationMatrix<double> rot(angle_axis);
+Quaterniond temp(0, 1, 0, 0);
+RotationMatrix<double> default_orientation(temp);
+VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
+
+
 
   // VectorXd orientation_d = (R_desired).ToQuaternionAsVector4();
 
@@ -504,14 +517,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
                                           const Eigen::Vector3d end_effector, double timestamp) const {
   /// estimate q_plant
+  std::cout << "here" << std::endl;
   if (abs(param_.ball_stddev) > 1e-9) {
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::normal_distribution<> d{0, param_.ball_stddev};
 
+
     double dist_x = d(gen);
     double dist_y = d(gen);
-    double noise_threshold = 1000000;
+
+
+    double noise_threshold = 0.01;
     if (dist_x > noise_threshold) {
       dist_x = noise_threshold;
     } else if (dist_x < -noise_threshold) {

@@ -11,7 +11,7 @@
 #include "systems/trajectory_optimization/dircon_options.h"
 
 #include "drake/common/drake_copyable.h"
-#include "drake/common/symbolic.h"
+#include "drake/common/symbolic/expression.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"

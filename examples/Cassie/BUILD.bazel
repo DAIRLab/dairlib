@@ -48,7 +48,6 @@ cc_library(
         "//examples/Cassie:run_controller_switch",
         "//examples/Cassie:run_osc_jumping_controller",
         "//examples/Cassie:run_osc_standing_controller",
-        "//examples/Cassie:run_osc_walking_controller",
         "//examples/Cassie:run_osc_walking_controller_alip",
         "//examples/Cassie:run_pd_controller",
         "//examples/Cassie/osc",
@@ -408,6 +407,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
 )
 
 cc_binary(

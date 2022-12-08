@@ -1,5 +1,7 @@
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 
+#include <iostream>
+
 namespace dairlib {
 namespace systems {
 

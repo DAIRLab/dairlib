@@ -33,9 +33,9 @@ RobotOutputReceiver::RobotOutputReceiver(
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
   num_efforts_ = plant.num_actuators();
-  positionIndexMap_ = multibody::MakeNameToPositionsMap(plant);
-  velocityIndexMap_ = multibody::MakeNameToVelocitiesMap(plant);
-  effortIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
+  position_index_map_ = multibody::MakeNameToPositionsMap(plant);
+  velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
+  effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(
@@ -53,17 +53,17 @@ void RobotOutputReceiver::CopyOutput(const Context<double>& context,
 
   VectorXd positions = VectorXd::Zero(num_positions_);
   for (int i = 0; i < state_msg.num_positions; i++) {
-    int j = positionIndexMap_.at(state_msg.position_names[i]);
+    int j = position_index_map_.at(state_msg.position_names[i]);
     positions(j) = state_msg.position[i];
   }
   VectorXd velocities = VectorXd::Zero(num_velocities_);
   for (int i = 0; i < state_msg.num_velocities; i++) {
-    int j = velocityIndexMap_.at(state_msg.velocity_names[i]);
+    int j = velocity_index_map_.at(state_msg.velocity_names[i]);
     velocities(j) = state_msg.velocity[i];
   }
   VectorXd efforts = VectorXd::Zero(num_efforts_);
   for (int i = 0; i < state_msg.num_efforts; i++) {
-    int j = effortIndexMap_.at(state_msg.effort_names[i]);
+    int j = effort_index_map_.at(state_msg.effort_names[i]);
     efforts(j) = state_msg.effort[j];
   }
 
@@ -81,6 +81,47 @@ void RobotOutputReceiver::CopyOutput(const Context<double>& context,
   output->set_timestamp(state_msg.utime * 1.0e-6);
 }
 
+void RobotOutputReceiver::InitializeSubscriberPositions(
+    const MultibodyPlant<double>& plant,
+    drake::systems::Context<double> &context) const {
+  auto& state_msg = context.get_mutable_abstract_state<lcmt_robot_output>(0);
+
+  // using the time from the context
+  state_msg.utime = context.get_time() * 1e6;
+
+  std::vector<std::string> ordered_position_names =
+      multibody::ExtractOrderedNamesFromMap(position_index_map_);
+  std::vector<std::string> ordered_velocity_names =
+      multibody::ExtractOrderedNamesFromMap(velocity_index_map_);
+  std::vector<std::string> ordered_effort_names =
+      multibody::ExtractOrderedNamesFromMap(effort_index_map_);
+
+  state_msg.num_positions = num_positions_;
+  state_msg.num_velocities = num_velocities_;
+  state_msg.position_names.resize(num_positions_);
+  state_msg.velocity_names.resize(num_velocities_);
+  state_msg.position.resize(num_positions_);
+  state_msg.velocity.resize(num_positions_);
+
+  for (int i = 0; i < num_positions_; i++) {
+    state_msg.position_names[i] = ordered_position_names[i];
+    state_msg.position[i] = 0;
+  }
+
+  // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
+  for (const auto& body_idx : plant.GetFloatingBaseBodies()) {
+    const auto& body = plant.get_body(body_idx);
+    if (body.has_quaternion_dofs()) {
+      state_msg.position[body.floating_positions_start()] = 1;
+    }
+  }
+
+  for (int i = 0; i < num_velocities_; i++) {
+    state_msg.velocity[i] = 0;
+    state_msg.velocity_names[i] = ordered_velocity_names[i];
+  }
+}
+
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputSender.
 
@@ -92,37 +133,16 @@ RobotOutputSender::RobotOutputSender(
   num_velocities_ = plant.num_velocities();
   num_efforts_ = plant.num_actuators();
 
-  positionIndexMap_ = multibody::MakeNameToPositionsMap(plant);
-  velocityIndexMap_ = multibody::MakeNameToVelocitiesMap(plant);
-  effortIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
+  position_index_map_ = multibody::MakeNameToPositionsMap(plant);
+  velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
+  effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
 
-  // Loop through the maps to extract ordered names
-  for (int i = 0; i < num_positions_; ++i) {
-    for (auto& x : positionIndexMap_) {
-      if (x.second == i) {
-        ordered_position_names_.push_back(x.first);
-        break;
-      }
-    }
-  }
-
-  for (int i = 0; i < num_velocities_; ++i) {
-    for (auto& x : velocityIndexMap_) {
-      if (x.second == i) {
-        ordered_velocity_names_.push_back(x.first);
-        break;
-      }
-    }
-  }
-
-  for (int i = 0; i < num_efforts_; i++) {
-    for (auto& x : effortIndexMap_) {
-      if (x.second == i) {
-        ordered_effort_names_.push_back(x.first);
-        break;
-      }
-    }
-  }
+  ordered_position_names_ =
+      multibody::ExtractOrderedNamesFromMap(position_index_map_);
+  ordered_velocity_names_ =
+      multibody::ExtractOrderedNamesFromMap(velocity_index_map_);
+  ordered_effort_names_ =
+      multibody::ExtractOrderedNamesFromMap(effort_index_map_);
 
   state_input_port_ =
       this->DeclareVectorInputPort(
@@ -198,7 +218,7 @@ void RobotOutputSender::Output(const Context<double>& context,
 RobotInputReceiver::RobotInputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant) {
   num_actuators_ = plant.num_actuators();
-  actuatorIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
+  actuator_index_map_ = multibody::MakeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_input",
                                  drake::Value<dairlib::lcmt_robot_input>{});
   this->DeclareVectorOutputPort("u, t",
@@ -215,7 +235,7 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
   VectorXd input_vector = VectorXd::Zero(num_actuators_);
 
   for (int i = 0; i < input_msg.num_efforts; i++) {
-    int j = actuatorIndexMap_.at(input_msg.effort_names[i]);
+    int j = actuator_index_map_.at(input_msg.effort_names[i]);
     input_vector(j) = input_msg.efforts[i];
   }
   output->SetDataVector(input_vector);
@@ -228,7 +248,7 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
 RobotCommandSender::RobotCommandSender(
     const drake::multibody::MultibodyPlant<double>& plant) {
   num_actuators_ = plant.num_actuators();
-  actuatorIndexMap_ = multibody::MakeNameToActuatorsMap(plant);
+  actuator_index_map_ = multibody::MakeNameToActuatorsMap(plant);
 
   for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
     ordered_actuator_names_.push_back(plant.get_joint_actuator(i).name());

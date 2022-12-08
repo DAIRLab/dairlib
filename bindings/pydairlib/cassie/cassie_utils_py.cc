@@ -17,14 +17,14 @@ PYBIND11_MODULE(cassie_utils, m) {
 
   using drake::multibody::MultibodyPlant;
 
-  m.def("LeftToeFront", &dairlib::LeftToeFront<double>)
-      .def("RightToeFront", &dairlib::RightToeFront<double>)
-      .def("LeftToeRear", &dairlib::LeftToeRear<double>)
-      .def("RightToeRear", &dairlib::RightToeRear<double>)
-      .def("LeftRodOnThigh", &dairlib::LeftRodOnThigh<double>)
-      .def("RightRodOnThigh", &dairlib::RightRodOnThigh<double>)
-      .def("LeftRodOnHeel", &dairlib::LeftRodOnHeel<double>)
-      .def("RightRodOnHeel", &dairlib::RightRodOnHeel<double>)
+  m.def("LeftToeFront", &dairlib::LeftToeFront<double>, py::return_value_policy::reference)
+      .def("RightToeFront", &dairlib::RightToeFront<double>, py::return_value_policy::reference)
+      .def("LeftToeRear", &dairlib::LeftToeRear<double>, py::return_value_policy::reference)
+      .def("RightToeRear", &dairlib::RightToeRear<double>, py::return_value_policy::reference)
+      .def("LeftRodOnThigh", &dairlib::LeftRodOnThigh<double>, py::return_value_policy::reference)
+      .def("RightRodOnThigh", &dairlib::RightRodOnThigh<double>, py::return_value_policy::reference)
+      .def("LeftRodOnHeel", &dairlib::LeftRodOnHeel<double>, py::return_value_policy::reference)
+      .def("RightRodOnHeel", &dairlib::RightRodOnHeel<double>, py::return_value_policy::reference)
       .def("LeftLoopClosureEvaluator",
            &dairlib::LeftLoopClosureEvaluator<double>, py::arg("plant"))
       .def("RightLoopClosureEvaluator",
@@ -32,7 +32,7 @@ PYBIND11_MODULE(cassie_utils, m) {
       .def("AddCassieMultibody", &dairlib::AddCassieMultibody, py::arg("plant"),
            py::arg("scene_graph"), py::arg("floating_base"),
            py::arg("filename"), py::arg("add_leaf_springs"),
-           py::arg("add_loop_closure"));
+           py::arg("add_loop_closure"), py::arg("add_reflected_inertia"));
 }
 
 }  // namespace pydairlib

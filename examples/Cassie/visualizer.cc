@@ -35,7 +35,6 @@ DEFINE_string(stepping_stone_yaml, "",
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
-using dairlib::systems::InitializeRobotOutputSubscriberWithValidQuaternionPositions;
 using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
@@ -65,10 +64,22 @@ int do_main(int argc, char* argv[]) {
         1.0);
   }
 
-  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base,
+                     "examples/Cassie/urdf/cassie_v2_shells.urdf");
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, "examples/Cassie/urdf/cassie_v2_shells.urdf");
+  if (FLAGS_floating_base) {
+    // Ground direction
+    Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
+                                  cos(FLAGS_ground_incline));
+    multibody::AddFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal, false);
+  }
+
   plant.Finalize();
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  /// Set visualizer lcm url to ttl=0 to avoid sending DrakeViewerDraw
+  /// messages to Cassie
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:7667?ttl=0");
 
   // Create state receiver.
   auto state_sub =
@@ -120,10 +131,13 @@ int do_main(int argc, char* argv[]) {
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 
+  /// Initialize the lcm subscriber to avoid triggering runtime errors
+  /// during initialization due to internal checks
+  /// (unit quaternion check in MultibodyPositionToGeometryPose
+  /// internal calculations)
   auto& state_sub_context = diagram->GetMutableSubsystemContext(
       *state_sub, context.get());
-  InitializeRobotOutputSubscriberWithValidQuaternionPositions(
-      state_sub_context, plant);
+  state_receiver->InitializeSubscriberPositions(plant, state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

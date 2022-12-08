@@ -70,7 +70,6 @@ void AddFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1),
                     bool show_ground = true);
 
-
 /// Add a box and return a vector of GeometryIds representing the visual and
 /// collision geometries
 template <typename T>
@@ -87,6 +86,10 @@ std::vector<drake::geometry::GeometryId>
 AddRandomBoxes(drake::multibody::MultibodyPlant<T>* plant,
                drake::geometry::SceneGraph<T>* scene_graph,
                const Eigen::Vector3d& normal=Eigen::Vector3d::UnitZ());
+
+/// Get the ordered names from a NameTo___Map
+std::vector<std::string> ExtractOrderedNamesFromMap(
+    const std::map<std::string, int>& map);
 
 /// Given a MultibodyPlant, builds a map from position name to position index
 template <typename T>

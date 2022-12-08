@@ -226,7 +226,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_springs, plant_wo_springs, context_w_spr.get(),
-      context_wo_spr.get(), false, FLAGS_qp_time_limit);
+      context_wo_spr.get(), false);
 
   // Distance constraint
   multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
@@ -269,21 +269,20 @@ int DoMain(int argc, char* argv[]) {
   //  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
   //                                      W_com * FLAGS_cost_weight_multiplier,
   //                                      plant_w_springs, plant_wo_springs);
-  TransTaskSpaceTrackingData center_of_mass_traj(
+  auto center_of_mass_traj = std::make_unique<TransTaskSpaceTrackingData>(
       "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
       plant_w_springs, plant_wo_springs);
-  center_of_mass_traj.AddPointToTrack("pelvis");
+  center_of_mass_traj->AddPointToTrack("pelvis");
   double cutoff_freq = 5; // in Hz
   double tau = 1 / (2 * M_PI * cutoff_freq);
-  center_of_mass_traj.SetLowPassFilter(tau, {1});
-  osc->AddTrackingData(&center_of_mass_traj);
-  // Pelvis rotation tracking
-  RotTaskSpaceTrackingData pelvis_rot_traj(
+  center_of_mass_traj->SetLowPassFilter(tau, {1});
+  osc->AddTrackingData(std::move(center_of_mass_traj));
+  auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
       W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_wo_springs);
-  pelvis_rot_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_rot_traj);
+  pelvis_rot_tracking_data->AddFrameToTrack("pelvis");
+  osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 
   // Hip yaw joint tracking
   // We use hip yaw joint tracking instead of pelvis yaw tracking because the
@@ -291,18 +290,18 @@ int DoMain(int argc, char* argv[]) {
   double w_hip_yaw = 0.5;
   double hip_yaw_kp = 40;
   double hip_yaw_kd = 0.5;
-  JointSpaceTrackingData left_hip_yaw_traj(
+  auto left_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
       plant_w_springs, plant_wo_springs);
-  JointSpaceTrackingData right_hip_yaw_traj(
+  auto right_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "right_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
       plant_w_springs, plant_wo_springs);
-  left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
-  right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
+  left_hip_yaw_traj->AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+  osc->AddConstTrackingData(std::move(left_hip_yaw_traj), VectorXd::Zero(1));
+  right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  osc->AddConstTrackingData(std::move(right_hip_yaw_traj), VectorXd::Zero(1));
 
   int n_u = plant_wo_springs.num_actuators();
   osc->SetInputSmoothingWeights(gains.w_accel * MatrixXd::Identity(n_u, n_u));
@@ -311,13 +310,14 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
-  builder.Connect(osc->get_osc_output_port(),
+                  osc->get_input_port_robot_output());
+  builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
+  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("com_traj"));
+                  osc->get_input_port_tracking_data("com_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_rot_traj"));
+                  osc->get_input_port_tracking_data("pelvis_rot_traj"));
 
   // Create osc debug sender and add to diagram if desired
   auto osc_debug_pub_ptr = LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(

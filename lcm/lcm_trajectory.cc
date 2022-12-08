@@ -7,6 +7,7 @@
 #include <fstream>
 #include <memory>
 #include <utility>
+#include <iostream>
 
 #include "drake/common/value.h"
 

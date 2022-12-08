@@ -55,7 +55,7 @@ class TimeVisualizer(object):
         msg_time = msg.utime * 1e-6  # convert from microseconds
         # Drake Sim
         pelvis_height = (msg.position)[6]  # convert from microseconds
-        pelvis_velocity = np.linalg.norm((msg.velocity)[3:4])  # convert from microseconds
+        pelvis_velocity = np.linalg.norm((msg.velocity)[3:5])  # convert from microseconds
         # pelvis_height = (msg.position)[2]  # convert from microseconds
         # pelvis_velocity = np.linalg.norm((msg.velocity)[0:2])  # convert from microseconds
         self._real_time.append(time.time())

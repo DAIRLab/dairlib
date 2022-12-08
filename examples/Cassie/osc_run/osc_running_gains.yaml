@@ -32,10 +32,10 @@ rot_filter_tau: 0.005
 ekf_filter_tau: [ 0.05, 0.01, 0.001 ]
 
 # High level command gains (with radio)
-vel_scale_rot: -2
-vel_scale_trans_sagital: 2.0
+vel_scale_rot: -4
+vel_scale_trans_sagital: 6
 vel_scale_trans_lateral: -0.5
-target_vel_filter_alpha: 0.001
+target_vel_filter_alpha: 0.01
 
 # SLIP parameters
 rest_length: 0.85
@@ -57,7 +57,7 @@ hip_yaw_kd: 5
 #footstep_offset: -0.05
 footstep_sagital_offset: -0.03
 footstep_lateral_offset: 0.06 # drake
-mid_foot_height: 0.15
+mid_foot_height: 0.2
 FootstepKd:
   [ 0.01,     0,  0,
     0,     0.3, 0,

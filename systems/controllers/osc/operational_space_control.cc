@@ -792,7 +792,6 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   MathematicalProgramResult result;
-  std::cout << "Solving QP: " << std::endl;
   result = solvers_.at(fsm_state)->Solve(*prog_);
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 

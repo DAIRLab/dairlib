@@ -10,7 +10,6 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
 
-using drake::math::SparseMatrixToTriplets;
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
 using drake::solvers::MathematicalProgram;
@@ -141,7 +140,7 @@ void ParseLinearConstraints(
     const std::vector<int> x_indices =
         prog.FindDecisionVariableIndices(constraint.variables());
     const std::vector<Eigen::Triplet<double>> Ai_triplets =
-        SparseMatrixToTriplets(constraint.evaluator()->get_sparse_A());
+        SparseOrDenseMatrixToTriplets(constraint.evaluator()->GetDenseA());
     const Binding<Constraint> constraint_cast =
         BindingDynamicCast<Constraint>(constraint);
     constraint_start_row->emplace(constraint_cast, *num_A_rows);
@@ -432,6 +431,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   std::vector<c_float> l, u;
   ParseAllLinearConstraints(prog, &A_sparse, &l, &u, &constraint_start_row);
 
+  DRAKE_DEMAND(A_prev_.rows() == A_sparse.rows());
   DRAKE_DEMAND(P_sparse.nonZeros() == P_prev_.nonZeros());
   DRAKE_DEMAND(A_sparse.nonZeros() == A_prev_.nonZeros());
 
@@ -443,11 +443,8 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
 
   osqp_update_lin_cost(workspace_, q.data());
   osqp_update_bounds(workspace_, l.data(), u.data());
-//  osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
-//                  OSQP_NULL, A_csc->nzmax);
-  c_int res = osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
+  osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
                   OSQP_NULL, A_csc->nzmax);
-  std::cout <<  "osqp update PA result: " << res << std::endl;
 
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
@@ -455,11 +452,6 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   // Solve problem.
   if (!solution_result) {
     DRAKE_THROW_UNLESS(workspace_ != nullptr);
-//    const c_int osqp_setup_err =
-//        osqp_setup(&workspace_, osqp_data_, osqp_settings_);
-//    if (osqp_setup_err != 0) {
-//      solution_result = SolutionResult::kInvalidInput;
-//    }
     const c_int osqp_solve_err = osqp_solve(workspace_);
     if (osqp_solve_err != 0) {
       solution_result = SolutionResult::kInvalidInput;

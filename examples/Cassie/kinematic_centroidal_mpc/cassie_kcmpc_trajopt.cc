@@ -1,5 +1,5 @@
 #include <iostream>
-
+#include<unistd.h>               // for linux 
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
 #include <drake/geometry/meshcat_visualizer.h>
@@ -74,7 +74,7 @@ int DoMain(int argc, char* argv[]) {
   // Create reference
   // TODO(yangwill): move this into the reference generator
   // Specify knot points
-  std::vector<Gait> gait_samples = {stand, stand, stand};
+  std::vector<Gait> gait_samples = {stand, walk, stand};
   DRAKE_DEMAND(gait_samples.size() == traj_params.duration_scaling.size());
   std::vector<double> durations = std::vector<double>(gait_samples.size());
   for (int i = 0; i < gait_samples.size(); ++i) {
@@ -207,6 +207,7 @@ int DoMain(int argc, char* argv[]) {
     simulator.set_target_realtime_rate(0.2);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
+    sleep(2);
   }
 }
 

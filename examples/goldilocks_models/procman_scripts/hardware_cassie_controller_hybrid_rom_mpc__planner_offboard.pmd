@@ -31,8 +31,12 @@ group "1.rom-space-controller (planner offboard; wired ethernet)" {
         exec = "python3.8 examples/goldilocks_models/misc/rename_data_folder.py";
         host = "localhost";
     }
-    cmd "2.0.1 scp yaml file" {
+    cmd "2.0.1 scp yaml file -- rom high level setting" {
         exec = "scp examples/goldilocks_models/rom_walking_gains.yaml dair@192.168.0.235:/home/dair/workspace/yuming/dairlib/examples/goldilocks_models/rom_walking_gains.yaml";
+        host = "localhost";
+    }
+    cmd "2.0.2 scp yaml file -- osc gain" {
+        exec = "scp examples/goldilocks_models/controller/osc_rom_walking_gains_hardware.yaml dair@192.168.0.235:/home/dair/workspace/yuming/dairlib/examples/goldilocks_models/controller/osc_rom_walking_gains_hardware.yaml";
         host = "localhost";
     }
     cmd "5.0.rom-planner (debug a given solve_idx)" {
@@ -145,7 +149,8 @@ script "3.switch to standing" {
 
 script "4.0. prepare mpc init file" {
     start cmd "2.0.0 rename data to data_x";
-    start cmd "2.0.1 scp yaml file";
+    start cmd "2.0.1 scp yaml file -- rom high level setting";
+    start cmd "2.0.2 scp yaml file -- osc gain";
     wait ms 100;
     start cmd "2.1.1.rom-planner (to generate init file)";
     wait ms 500;
@@ -158,7 +163,7 @@ script "4.0. prepare mpc init file" {
     start cmd "2.3 scp init file for controller";
 }
 
-script "4.1. set up mpc planner (need to do it in terminal)" {
+script "4.1. run planner thread (need to do it in terminal)" {
     wait ms 100;
 }
 
@@ -176,10 +181,8 @@ script "4.2. switch to mpc walking; start logging" {
 script "5. stop logging" {
     stop group "5.logging-recording";
     stop group "1.rom-space-controller (planner offboard; wired ethernet)";
+    wait ms 500;
     stop group "2.setup";
-}
-
-script "6. post walking script" {
     start cmd "2.0.0 rename data to data_x";
 }
 

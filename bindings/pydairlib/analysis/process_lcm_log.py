@@ -76,13 +76,25 @@ def main():
     import lcm
     import sys
     import matplotlib.pyplot as plt
+    import numpy as np
+    import scipy.io
 
     logfile = "/home/alpaydinoglu/Desktop/log_test/example_log"
     log = lcm.EventLog(logfile, "r")
     # print_log_summary(logfile, log)
     x, y = get_log_data(log, channels, -1, processing_callback, "FRANKA_OUTPUT")
     plt.plot(x, y)
+
+    circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
+    plt.gca().add_patch(circle2)
+
     plt.show()
+
+
+    print("creating mat file")
+    mdic = {"x": x, "y": y}
+    scipy.io.savemat('xy_ball.mat', mdic)
+    print("finished creating mat file")
 
 
 if __name__ == "__main__":

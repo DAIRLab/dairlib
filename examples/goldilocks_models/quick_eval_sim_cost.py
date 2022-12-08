@@ -5,6 +5,7 @@ import os
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
+import pathlib
 
 # cmd should be a list if shell=False. Otherwise, a string.
 def RunCommand(cmd, use_shell=False):
@@ -14,12 +15,16 @@ def RunCommand(cmd, use_shell=False):
 
 ### argument parser
 parser = argparse.ArgumentParser()
+parser.add_argument("--file_path", help="", default="", type=str)
 parser.add_argument("--dir_path", help="", default="/home/yuming/Desktop/temp/1205", type=str)
 parser.add_argument("--file_name", help="", default="lcmlog-2022-12-05.10", type=str)
 args = parser.parse_args()
 
-temp_log_path=args.dir_path
-log_name=args.file_name
+temp_log_path = args.dir_path
+log_name = args.file_name
+if len(args.file_path) > 0:
+  temp_log_path = str(pathlib.Path(args.file_path).parent)
+  log_name = args.file_path.split("/")[-1]
 
 rom_idx = 1  # this is just a dummy variable in this script. doesn't do anything.
 
@@ -28,7 +33,7 @@ if temp_log_path[-1] != "/":
   temp_log_path = temp_log_path + "/"
 print("log file path =", temp_log_path + log_name)
 
-temp_output_dir=temp_log_path + "temp_cost_eval__can_be_deleted/"
+temp_output_dir=temp_log_path + "temp_cost_eval__can_be_deleted/" + log_name + "/"
 cmd = "rm -rf " + temp_output_dir
 RunCommand(cmd, True)
 

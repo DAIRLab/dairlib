@@ -117,6 +117,7 @@ void PlanarSlipLiftingConstraint::EvaluateConstraint(const Eigen::Ref<const drak
 template<typename T>
 PlanarSlipDynamicsConstraint<T>::PlanarSlipDynamicsConstraint(double r0,
                                                               double k,
+                                                              double b,
                                                               T m,
                                                               int n_feet,
                                                               std::vector<bool> contact_mask,
@@ -129,6 +130,7 @@ PlanarSlipDynamicsConstraint<T>::PlanarSlipDynamicsConstraint(double r0,
         std::to_string(knot_index) + "]"),
                                                                               r0_(r0),
                                                                               k_(k),
+                                                                              b_(b),
                                                                               m_(m),
                                                                               n_feet_(n_feet),
                                                                               contact_mask_(std::move(contact_mask)),
@@ -178,7 +180,11 @@ drake::VectorX<T> PlanarSlipDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
       drake::Vector3<T> com_rt_foot = com_position - contact_loc.segment(3 * foot, 3);
       const auto r = com_rt_foot.norm();
       const auto unit_vec = com_rt_foot/r;
-      const auto F = k_ * (r0_ - r) + slip_force[foot];
+      const auto dr = com_vel.dot(unit_vec);
+      auto F = k_ * (r0_ - r) + slip_force[foot] - b_ * dr;
+      if(F < 0){
+        F = 0;
+      }
       ddcom = ddcom + F * unit_vec / m_;
     }
   }

@@ -17,6 +17,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
                                double mu,
                                const drake::VectorX<double>& nominal_stand,
                                double k = 1000,
+                               double b = 20,
                                double r0 = 0.5,
                                double stance_width = 0.2) :
       KinematicCentroidalMPC(plant, n_knot_points, dt, CreateContactPoints(plant, mu)),
@@ -25,6 +26,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
       loop_closure_evaluators(Plant()),
       slip_contact_sequence_(n_knot_points),
       k_(k),
+      b_(b),
       r0_(r0){
     AddPlantJointLimits(dairlib::JointNames());
     AddLoopClosure();
@@ -135,6 +137,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
   std::vector<std::vector<bool>> slip_contact_sequence_;
   double k_;
   double r0_;
+  double b_;
   double m_;
 
   const double slip_ground_offset_ = 0;

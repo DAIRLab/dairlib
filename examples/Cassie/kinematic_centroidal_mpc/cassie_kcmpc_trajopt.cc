@@ -70,11 +70,13 @@ int DoMain(int argc, char* argv[]) {
       "examples/Cassie/kinematic_centroidal_mpc/gaits/walk.yaml");
   auto step = drake::yaml::LoadYamlFile<Gait>(
       "examples/Cassie/kinematic_centroidal_mpc/gaits/step.yaml");
-
+  auto run = drake::yaml::LoadYamlFile<Gait>(
+      "examples/Cassie/kinematic_centroidal_mpc/gaits/run.yaml");
+  walk.period = 1.6;
   // Create reference
   // TODO(yangwill): move this into the reference generator
   // Specify knot points
-  std::vector<Gait> gait_samples = {stand, walk, stand};
+  std::vector<Gait> gait_samples = {stand, walk, walk};
   DRAKE_DEMAND(gait_samples.size() == traj_params.duration_scaling.size());
   std::vector<double> durations = std::vector<double>(gait_samples.size());
   for (int i = 0; i < gait_samples.size(); ++i) {
@@ -93,12 +95,12 @@ int DoMain(int argc, char* argv[]) {
   // Create MPC and set gains
   CassieKinematicCentroidalMPC mpc(
       plant, traj_params.n_knot_points,
-      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 6000, traj_params.com_height, traj_params.stance_width);
+      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 5000, 10,0.9, traj_params.stance_width);
   mpc.SetGains(gains);
 
   std::vector<Complexity> complexity_schedule(traj_params.n_knot_points);
   std::fill(complexity_schedule.begin(), complexity_schedule.end(),Complexity::KINEMATIC_CENTROIDAL);
-  for(int i = 1; i <traj_params.n_knot_points ; i++){
+  for(int i = 5; i <traj_params.n_knot_points ; i++){
     complexity_schedule[i] = Complexity::PLANAR_SLIP;
   }
   mpc.SetComplexitySchedule(complexity_schedule);
@@ -204,7 +206,7 @@ int DoMain(int argc, char* argv[]) {
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(0.2);
+    simulator.set_target_realtime_rate(1);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
     sleep(2);

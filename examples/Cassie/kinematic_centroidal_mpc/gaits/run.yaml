@@ -1,0 +1,14 @@
+gait_pattern:
+  - start_phase: 0.0
+    end_phase: 0.45
+    contact_status: [true, true, false, false]
+  - start_phase: 0.45
+    end_phase: 0.5
+    contact_status: [false, false, false, false]
+  - start_phase: 0.5
+    end_phase: 0.95
+    contact_status: [false, false, true, true]
+  - start_phase: 0.95
+    end_phase: 1.0
+    contact_status: [false, false, false, false]
+period: 1.0

@@ -28,6 +28,7 @@ cc_binary(
             "//examples/Cassie/kinematic_centroidal_mpc/gaits:stand.yaml",
             "//examples/Cassie/kinematic_centroidal_mpc/gaits:walk.yaml",
             "//examples/Cassie/kinematic_centroidal_mpc/gaits:step.yaml",
+            "//examples/Cassie/kinematic_centroidal_mpc/gaits:run.yaml",
             "//examples/Cassie/kinematic_centroidal_mpc:trajectory_parameters.yaml"],
     deps = [
         ":centroidal_mpc",

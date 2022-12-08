@@ -281,7 +281,7 @@ void KinematicCentroidalMPC::AddConstantMomentumReference(
 
 void KinematicCentroidalMPC::AddCosts() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    const double terminal_gain = is_last_knot(knot_point) ? 1 : 1;
+    const double terminal_gain = is_last_knot(knot_point) ? 50 : 1;
     const double collocation_gain =
         (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
     double t = dt_ * knot_point;

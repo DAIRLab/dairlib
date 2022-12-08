@@ -78,10 +78,6 @@ void CassieKinematicCentroidalMPC::AddLoopClosure() {
 }
 
 void CassieKinematicCentroidalMPC::AddPlanarSlipConstraints(int knot_point) {
-
-  Eigen::Vector2d force_bounds = {800.0, 800.0};
-  prog_->AddBoundingBoxConstraint(-force_bounds, force_bounds, slip_force_vars_[knot_point]);
-
   for(int contact_index = 0; contact_index < slip_contact_points_.size(); contact_index ++){
 
     prog_->AddConstraint((slip_contact_pos_vars(knot_point, contact_index) - slip_com_vars_[knot_point]).squaredNorm() <= 2);
@@ -94,8 +90,6 @@ void CassieKinematicCentroidalMPC::AddPlanarSlipConstraints(int knot_point) {
       // Foot is on the ground
       prog_->AddBoundingBoxConstraint(
           slip_ground_offset_, slip_ground_offset_, slip_contact_pos_vars(knot_point, contact_index)[2]);
-
-//      prog_->AddConstraint(slip_force_vars_[knot_point][contact_index] + k_ * ( r0_ - (slip_com_vars_[knot_point]-slip_contact_pos_vars(knot_point,contact_index)).norm() ) >= 0);
     }else{
       prog_->AddBoundingBoxConstraint(0, 0, slip_force_vars_[knot_point][contact_index]);
       // Feet are above the ground
@@ -122,7 +116,22 @@ void CassieKinematicCentroidalMPC::AddPlanarSlipCost(int knot_point, double term
                                  com_ref_traj_->value(t),
                                  slip_com_vars_[knot_point]);
   }
-  // TODO add com Velocity cost
+
+  // Project linear momentum
+  if (mom_ref_traj_){
+    const Eigen::MatrixXd Q_vel =gains_.lin_momentum.asDiagonal() * m_;
+    prog_->AddQuadraticErrorCost(terminal_gain * Q_vel,
+                                 Eigen::VectorXd(mom_ref_traj_->value(t)).tail(3),
+                                 slip_vel_vars_[knot_point]);
+  }
+  // Project com velocity
+  if(v_ref_traj_){
+    const Eigen::MatrixXd Q_vel =Q_v_.block(3,3,3,3);
+    prog_->AddQuadraticErrorCost(terminal_gain * Q_vel,
+                                 Eigen::VectorXd(v_ref_traj_->value(t)).segment(4,3),
+                                 slip_vel_vars_[knot_point]);
+  }
+
   if (contact_ref_traj_) {
     const Eigen::MatrixXd Q_contact_pos =gains_.contact_pos.asDiagonal();
     prog_->AddQuadraticErrorCost(
@@ -197,7 +206,7 @@ void CassieKinematicCentroidalMPC::AddSlipDynamics(int knot_point) {
   if(!is_last_knot(knot_point)) {
     auto slip_com_dynamics =
         std::make_shared<PlanarSlipDynamicsConstraint<double>>(
-            r0_, k_, m_, 2, slip_contact_sequence_[knot_point], dt_, knot_point);
+            r0_, k_, b_,m_, 2, slip_contact_sequence_[knot_point], dt_, knot_point);
 
     prog_->AddConstraint(slip_com_dynamics,
                          {slip_com_vars_[knot_point], slip_vel_vars_[knot_point], slip_contact_pos_vars_[knot_point], slip_force_vars_[knot_point],
@@ -259,25 +268,13 @@ drake::VectorX<double> CassieKinematicCentroidalMPC::LiftSlipSolution(int knot_p
       result_->GetSolution(slip_contact_pos_vars_[knot_point]),
       result_->GetSolution(slip_contact_vel_vars_[knot_point]),
       result_->GetSolution(slip_force_vars_[knot_point]);
-  for(int contact_index = 0; contact_index < slip_contact_points_.size(); contact_index ++) {
-//    Eigen::Vector3d foot_rt_com = (result_->GetSolution(slip_com_vars_[knot_point]) -
-//        result_->GetSolution(slip_contact_pos_vars(knot_point, contact_index)));
-//      std::cout<<"Knot point "<< knot_point << "Contact " << contact_index <<std::endl;
-//////    std::cout<<result_->GetSolution(slip_com_vars_[knot_point])<<std::endl;
-//////    std::cout<<result_->GetSolution(slip_contact_pos_vars(knot_point, contact_index))<<std::endl;
-////    Eigen::Vector3d r_bounds = {2, 2, 2};
-////
-////    std::cout<< ((r_bounds[0] >= foot_rt_com[0]) && (r_bounds[1] >= foot_rt_com[1]) && (r_bounds[2] >= foot_rt_com[2])) << std::endl;
-////    std::cout<< ((foot_rt_com[0] >= -r_bounds[0]) && (foot_rt_com[1] >= -r_bounds[1]) && (foot_rt_com[2] >= -r_bounds[2])) << std::endl;
-//    std::cout<<result_->GetSolution(slip_contact_pos_vars(knot_point, contact_index))<<std::endl;
-  }
       return lifters_[knot_point]->Lift(slip_state).tail(n_q_+n_v_);
 }
 
 void CassieKinematicCentroidalMPC::SetForceGuess(const drake::trajectories::PiecewisePolynomial<double> &force_trajectory) {
   for(const auto& force_vars : slip_force_vars_){
     //TODO find better initial guess
-    prog_->SetInitialGuess(force_vars, 500 * drake::VectorX<double>::Ones(force_vars.size()));
+    prog_->SetInitialGuess(force_vars, 0 * drake::VectorX<double>::Ones(force_vars.size()));
   }
   KinematicCentroidalMPC::SetForceGuess(force_trajectory);
 }

@@ -56,14 +56,33 @@ def print_log_summary(filename, log):
 def passthrough_callback(data, *args, **kwargs):
     return data
 
+import dairlib
+import dairlib.lcmt_robot_output
+
+
+channels = {
+    "FRANKA_OUTPUT": dairlib.lcmt_robot_output,
+}
+
+def processing_callback(data, channel):
+    x = []
+    y = []
+    for msg in data[channel]:
+        x.append(msg.position[11])
+        y.append(msg.position[12])
+    return x, y
 
 def main():
     import lcm
     import sys
+    import matplotlib.pyplot as plt
 
-    logfile = sys.argv[1]
+    logfile = "/home/alpaydinoglu/Desktop/log_test/example_log"
     log = lcm.EventLog(logfile, "r")
-    print_log_summary(logfile, log)
+    # print_log_summary(logfile, log)
+    x, y = get_log_data(log, channels, -1, processing_callback, "FRANKA_OUTPUT")
+    plt.plot(x, y)
+    plt.show()
 
 
 if __name__ == "__main__":

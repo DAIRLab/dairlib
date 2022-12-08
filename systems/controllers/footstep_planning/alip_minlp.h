@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <chrono>
 
 #include "alip_utils.h"
 #include "geometry/convex_foothold.h"
@@ -28,6 +29,25 @@ using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::LinearEqualityConstraint;
 
 using std::vector;
+
+
+struct profile_data {
+  std::chrono::time_point<std::chrono::steady_clock> start_;
+  std::chrono::duration<double> pre_solve_;
+  std::vector<std::chrono::duration<double>> solves_;
+  std::chrono::duration<double> post_solves_;
+  std::chrono::duration<double> finish_;
+  friend std::ostream& operator<<(std::ostream& os, const profile_data& data);
+};
+
+inline std::ostream& operator<<(std::ostream& os, const profile_data& data) {
+  os << data.pre_solve_.count() << ", ";
+  for (const auto& t : data.solves_) {
+    os << t.count() << ", ";
+  }
+  os << data.post_solves_.count() << ", " << data.finish_.count() << "\n";
+  return os;
+}
 
 /*
  * Nonlinear constraint representing the linear ALIP dynamics with ankle torque,
@@ -265,7 +285,6 @@ class AlipMINLP {
   bool built_ = false;
   std::pair<drake::solvers::MathematicalProgramResult,
             vector<Eigen::VectorXd>> solution_;
-
   drake::solvers::OsqpSolver solver_;
 
 };

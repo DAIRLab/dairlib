@@ -52,37 +52,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_alip_minlp_w_osc",
-    srcs = ["run_alip_minlp_w_osc.cc"],
-    deps = [
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie/osc",
-        "//examples/Cassie/systems:cassie_out_to_radio",
-        "//examples/Cassie/systems:simulator_drift",
-        "//examples/perceptive_locomotion/gains:alip_minlp_gains",
-        "//geometry:convex_foothold",
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//multibody:view_frame",
-        "//multibody/kinematic",
-        "//solvers:osqp_solver_options",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers:lcm_trajectory_receiver",
-        "//systems/controllers:swing_foot_target_traj_gen",
-        "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
-        "//systems/controllers/footstep_planning:flat_terrain_foothold_source",
-        "//systems/controllers/footstep_planning:footstep_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "//systems/primitives:fsm_lcm_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "multibody_sim_hiking",
     srcs = ["multibody_sim_hiking.cc"],
     local_defines = select(
@@ -109,7 +78,7 @@ cc_binary(
         {
             "//tools/workspace/ros:dair_ros_on": [
                 "//systems/cameras:drake_to_ros_pointcloud",
-                "//systems/ros:dairlib_ros"
+                "//systems/ros:dairlib_ros",
             ],
             "//tools/workspace/ros:dair_ros_off": [],
         },

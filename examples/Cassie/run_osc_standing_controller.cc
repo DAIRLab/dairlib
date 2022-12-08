@@ -304,7 +304,8 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(std::move(right_hip_yaw_traj), VectorXd::Zero(1));
 
   int n_u = plant_wo_springs.num_actuators();
-  osc->SetInputSmoothingWeights(gains.w_accel * MatrixXd::Identity(n_u, n_u));
+  osc->SetInputSmoothingCostWeights(
+      gains.w_accel * MatrixXd::Identity(n_u, n_u));
 
   // Build OSC problem
   osc->Build();
@@ -313,7 +314,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_robot_output());
   builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
-  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("com_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
@@ -326,7 +326,8 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_publish_osc) {
     auto osc_debug_pub =
         builder.AddSystem(std::move(osc_debug_pub_ptr));
-    builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+    builder.Connect(osc->get_output_port_osc_debug(),
+                    osc_debug_pub->get_input_port());
   }
 
   // Create the diagram

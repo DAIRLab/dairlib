@@ -487,12 +487,6 @@ int DoMain(int argc, char* argv[]) {
   WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local->SetViewFrame(pelvis_view_frame);
 
-  TransTaskSpaceTrackingData swing_ft_traj_global(
-      "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_w_spr);
-  swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
-
   swing_ft_traj_local->SetTimeVaryingGains(
       swing_ft_gain_multiplier_gain_multiplier);
   swing_ft_traj_local->SetFeedforwardAccelMultiplier(

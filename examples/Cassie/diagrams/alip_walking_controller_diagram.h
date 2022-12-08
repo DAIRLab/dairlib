@@ -147,11 +147,6 @@ class AlipWalkingControllerDiagram final
   multibody::FixedJointEvaluator<double> left_fixed_ankle_spring;
   multibody::FixedJointEvaluator<double> right_fixed_ankle_spring;
 
-  std::unique_ptr<TransTaskSpaceTrackingData> swing_foot_data;
-  std::unique_ptr<ComTrackingData> com_data;
-  std::unique_ptr<ComTrackingData> center_of_mass_traj;
-  std::unique_ptr<RelativeTranslationTrackingData> swing_ft_traj_local;
-
   std::unique_ptr<TransTaskSpaceTrackingData> pelvis_traj;
 
   std::unique_ptr<RotTaskSpaceTrackingData> pelvis_balance_traj;

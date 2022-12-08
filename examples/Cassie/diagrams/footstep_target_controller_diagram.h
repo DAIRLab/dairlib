@@ -160,21 +160,6 @@ class FootstepTargetControllerDiagram final
   multibody::FixedJointEvaluator<double> left_fixed_ankle_spring;
   multibody::FixedJointEvaluator<double> right_fixed_ankle_spring;
 
-  std::unique_ptr<TransTaskSpaceTrackingData> swing_foot_data;
-//  std::unique_ptr<ComTrackingData> com_data;
-  std::unique_ptr<ComTrackingData> center_of_mass_traj;
-//  std::unique_ptr<RelativeTranslationTrackingData> swing_ft_traj_local;
-
-  std::unique_ptr<TransTaskSpaceTrackingData> pelvis_traj;
-
-  std::unique_ptr<RotTaskSpaceTrackingData> pelvis_balance_traj;
-  std::unique_ptr<RotTaskSpaceTrackingData> pelvis_heading_traj;
-
-  std::unique_ptr<JointSpaceTrackingData> swing_toe_traj_left;
-  std::unique_ptr<JointSpaceTrackingData> swing_toe_traj_right;
-
-  std::unique_ptr<JointSpaceTrackingData> swing_hip_yaw_traj;
-
   const drake::systems::InputPortIndex state_input_port_index_ = drake::systems::InputPortIndex(0);
   const drake::systems::InputPortIndex radio_input_port_index_ = drake::systems::InputPortIndex(1);
   const drake::systems::InputPortIndex footstep_input_port_index_ = drake::systems::InputPortIndex(2);

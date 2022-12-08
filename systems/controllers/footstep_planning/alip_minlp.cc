@@ -451,8 +451,14 @@ void AlipMINLP::UpdateDynamicsConstraints() {
 }
 
 void AlipMINLP::SolveOCProblemAsIs() {
+//  profile_data prof;
+//  prof.start_ = std::chrono::steady_clock::now();
+
   mode_sequnces_ = GetPossibleModeSequences();
   vector<pair<MathematicalProgramResult, vector<VectorXd>>> solutions;
+
+
+//  prof.pre_solve_ = std::chrono::steady_clock::now() - prof.start_;
   if (mode_sequnces_.empty()) {
     vector<VectorXd> dual_solutions;
     const auto sol = solver_.Solve(*prog_);
@@ -473,7 +479,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
       UpdateFootholdConstraints(seq);
       vector<VectorXd> dual_solutions;
       const auto sol = solver_.Solve(*prog_);
-
+//      prof.solves_.push_back( std::chrono::steady_clock::now() - prof.start_);
       for (int n = 0; n < nmodes_; n++) {
        VectorXd duals = VectorXd::Zero((nknots_.at(n) - 1) * nx_);
         if (sol.is_success()) {
@@ -489,6 +495,7 @@ void AlipMINLP::SolveOCProblemAsIs() {
     }
   }
 
+//  prof.post_solves_ =  std::chrono::steady_clock::now() - prof.start_;
   std::sort(
       solutions.begin(), solutions.end(),
       [](
@@ -508,6 +515,8 @@ void AlipMINLP::SolveOCProblemAsIs() {
     const auto& constraints = prog_->GetAllConstraints();
     solvers::print_constraint(constraints);
   }
+  prof.finish_ =  std::chrono::steady_clock::now() - prof.start_;
+  std::cout << prof;
 }
 
 void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,

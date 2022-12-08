@@ -83,7 +83,7 @@ DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
 DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
 DEFINE_double(ros_state_pub_period, 0.01, "tf and pose publish period");
 DEFINE_double(ros_points_pub_period, 1.0/30.0, "pointcloud publish period");
-DEFINE_double(dt, 8e-5,
+DEFINE_double(dt, 5e-4,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model. Nearly equivalent"
@@ -136,6 +136,7 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
+  plant.set_discrete_contact_solver(drake::multibody::DiscreteContactSolver::kSap);
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
 

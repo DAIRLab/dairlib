@@ -66,14 +66,6 @@ int do_main(int argc, char* argv[]) {
 
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base,
                      "examples/Cassie/urdf/cassie_v2_shells.urdf");
-  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, "examples/Cassie/urdf/cassie_v2_shells.urdf");
-  if (FLAGS_floating_base) {
-    // Ground direction
-    Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
-                                  cos(FLAGS_ground_incline));
-    multibody::AddFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal, false);
-  }
-
   plant.Finalize();
 
   /// Set visualizer lcm url to ttl=0 to avoid sending DrakeViewerDraw

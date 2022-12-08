@@ -24,14 +24,17 @@ using drake::solvers::internal::BindingDynamicCast;
 namespace dairlib {
 namespace solvers {
 namespace {
+
 void ParseQuadraticCosts(const MathematicalProgram& prog,
+                         std::vector<Eigen::Triplet<c_float>>& P_triplets,
                          Eigen::SparseMatrix<c_float>* P,
-                         std::vector<c_float>* q, double* constant_cost_term) {
+                         std::vector<c_float>* q,
+                         double* constant_cost_term) {
   DRAKE_ASSERT(static_cast<int>(q->size()) == prog.num_vars());
 
   // Loop through each quadratic costs in prog, and compute the Hessian matrix
   // P, the linear cost q, and the constant cost term.
-  std::vector<Eigen::Triplet<c_float>> P_triplets;
+  P_triplets.clear();
   for (const auto& quadratic_cost : prog.quadratic_costs()) {
     const VectorXDecisionVariable& x = quadratic_cost.variables();
     // x_indices are the indices of the variables x (the variables bound with
@@ -45,9 +48,6 @@ void ParseQuadraticCosts(const MathematicalProgram& prog,
     for (int col = 0; col < Q.cols(); ++col) {
       for (int row = 0; (row <= col) && (row < Q.rows()); ++row) {
         const double value = Q(row, col);
-//        if (value == 0.0) {
-//          continue;
-//        }
         const int x_row = x_indices[row];
         const int x_col = x_indices[col];
         P_triplets.emplace_back(x_row, x_col, static_cast<c_float>(value));
@@ -190,12 +190,16 @@ void ParseBoundingBoxConstraints(
 }
 
 void ParseAllLinearConstraints(
-    const MathematicalProgram& prog, Eigen::SparseMatrix<c_float>* A,
+    const MathematicalProgram& prog,
+    std::vector<Eigen::Triplet<c_float>>& A_triplets,
+    Eigen::SparseMatrix<c_float>* A,
     std::vector<c_float>* l, std::vector<c_float>* u,
     std::unordered_map<Binding<Constraint>, int>* constraint_start_row) {
-  std::vector<Eigen::Triplet<c_float>> A_triplets;
+
+  A_triplets.clear();
   l->clear();
   u->clear();
+
   int num_A_rows = 0;
   ParseLinearConstraints(prog, prog.linear_constraints(), &A_triplets, l, u,
                          &num_A_rows, constraint_start_row);
@@ -245,6 +249,19 @@ csc* EigenSparseToCSC(const Eigen::SparseMatrix<c_float>& mat) {
   }
   return csc_matrix(mat.rows(), mat.cols(), mat.nonZeros(), values,
                     inner_indices, outer_indices);
+}
+
+void UpdateCSCFromEigenSparse(
+    const Eigen::SparseMatrix<c_float>& mat_from, csc* mat_to)  {
+  DRAKE_DEMAND(mat_to != nullptr);
+
+  for (int i = 0; i < mat_from.nonZeros(); i++) {
+    mat_to->x[i] = *(mat_from.valuePtr() + i);
+    mat_to->i[i] = static_cast<c_int>(*(mat_from.innerIndexPtr() + i));
+  }
+  for (int i = 0; i < mat_from.cols() + 1; i++) {
+    mat_to->p[i] = static_cast<c_int>(*(mat_from.outerIndexPtr() + i));
+  }
 }
 
 template <typename T1, typename T2>
@@ -336,27 +353,23 @@ bool FastOsqpSolver::is_available() { return true; }
 
 void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
                                       const SolverOptions& solver_options) {
-
-  std::cout << "Intializing fast osqp solver" << std::endl;
   // Get the cost for the QP.
-  Eigen::SparseMatrix<c_float> P_sparse;
-  std::vector<c_float> q(prog.num_vars(), 0);
+   q_ = std::vector<c_float>(prog.num_vars(), 0);
   double constant_cost_term{0};
 
-  ParseQuadraticCosts(prog, &P_sparse, &q, &constant_cost_term);
-  ParseLinearCosts(prog, &q, &constant_cost_term);
+  ParseQuadraticCosts(prog, P_triplets_, &P_sparse_, &q_, &constant_cost_term);
+  ParseLinearCosts(prog, &q_, &constant_cost_term);
 
   // linear_constraint_start_row[binding] stores the starting row index in A
   // corresponding to the linear constraint `binding`.
   std::unordered_map<Binding<Constraint>, int> constraint_start_row;
 
   // Parse the linear constraints.
-  Eigen::SparseMatrix<c_float> A_sparse;
-  std::vector<c_float> l, u;
-  ParseAllLinearConstraints(prog, &A_sparse, &l, &u, &constraint_start_row);
+  ParseAllLinearConstraints(
+      prog, A_triplets_, &A_sparse_, &l_, &u_, &constraint_start_row);
 
-  P_prev_ = P_sparse;
-  A_prev_ = A_sparse;
+  P_csc_ = EigenSparseToCSC(P_sparse_);
+  A_csc_ = EigenSparseToCSC(A_sparse_);
 
   // Now pass the constraint and cost to osqp data.
   osqp_data_ = nullptr;
@@ -365,12 +378,12 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   osqp_data_ = static_cast<OSQPData*>(c_malloc(sizeof(OSQPData)));
 
   osqp_data_->n = prog.num_vars();
-  osqp_data_->m = A_sparse.rows();
-  osqp_data_->P = EigenSparseToCSC(P_sparse);
-  osqp_data_->q = q.data();
-  osqp_data_->A = EigenSparseToCSC(A_sparse);
-  osqp_data_->l = l.data();
-  osqp_data_->u = u.data();
+  osqp_data_->m = A_sparse_.rows();
+  osqp_data_->P = P_csc_;
+  osqp_data_->q = q_.data();
+  osqp_data_->A = A_csc_;
+  osqp_data_->l = l_.data();
+  osqp_data_->u = u_.data();
 
   osqp_settings_ = static_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
   osqp_set_default_settings(osqp_settings_);
@@ -383,8 +396,6 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   DRAKE_DEMAND(osqp_setup_err == 0);
   const c_int osqp_solve_err = osqp_solve(workspace_);
 
-//  c_free(osqp_data_);
-//  c_free(osqp_settings_);
   is_init_ = true;
 }
 
@@ -414,37 +425,31 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   // s.t l ≤ Ax ≤ u
   // OSQP is written in C, so this function will be in C style.
 
-  // Get the cost for the QP.
-  Eigen::SparseMatrix<c_float> P_sparse;
-  std::vector<c_float> q(prog.num_vars(), 0);
+  // clear the vectors for cost and constraint bounds
+  std::fill(q_.begin(), q_.end(), 0);
+  l_.clear();
+  u_.clear();
+
   double constant_cost_term{0};
 
-  ParseQuadraticCosts(prog, &P_sparse, &q, &constant_cost_term);
-  ParseLinearCosts(prog, &q, &constant_cost_term);
+  ParseQuadraticCosts(prog, P_triplets_, &P_sparse_, &q_, &constant_cost_term);
+  ParseLinearCosts(prog, &q_, &constant_cost_term);
 
   // linear_constraint_start_row[binding] stores the starting row index in A
   // corresponding to the linear constraint `binding`.
   std::unordered_map<Binding<Constraint>, int> constraint_start_row;
 
   // Parse the linear constraints.
-  Eigen::SparseMatrix<c_float> A_sparse;
-  std::vector<c_float> l, u;
-  ParseAllLinearConstraints(prog, &A_sparse, &l, &u, &constraint_start_row);
+  ParseAllLinearConstraints(
+      prog, A_triplets_, &A_sparse_, &l_, &u_, &constraint_start_row);
 
-  DRAKE_DEMAND(A_prev_.rows() == A_sparse.rows());
-  DRAKE_DEMAND(P_sparse.nonZeros() == P_prev_.nonZeros());
-  DRAKE_DEMAND(A_sparse.nonZeros() == A_prev_.nonZeros());
+  UpdateCSCFromEigenSparse(P_sparse_, P_csc_);
+  UpdateCSCFromEigenSparse(A_sparse_, A_csc_);
 
-  P_prev_ = P_sparse;
-  A_prev_ = A_sparse;
-
-  csc* P_csc = EigenSparseToCSC(P_sparse);
-  csc* A_csc = EigenSparseToCSC(A_sparse);
-
-  osqp_update_lin_cost(workspace_, q.data());
-  osqp_update_bounds(workspace_, l.data(), u.data());
-  osqp_update_P_A(workspace_, P_csc->x, OSQP_NULL, P_csc->nzmax, A_csc->x,
-                  OSQP_NULL, A_csc->nzmax);
+  osqp_update_lin_cost(workspace_, q_.data());
+  osqp_update_bounds(workspace_, l_.data(), u_.data());
+  osqp_update_P_A(workspace_, P_csc_->x, OSQP_NULL, P_csc_->nzmax, A_csc_->x,
+                  OSQP_NULL, A_csc_->nzmax);
 
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
@@ -527,14 +532,14 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   }
   result->set_solution_result(solution_result.value());
 
-  c_free(P_csc->x);
-  c_free(P_csc->i);
-  c_free(P_csc->p);
-  c_free(P_csc);
-  c_free(A_csc->x);
-  c_free(A_csc->i);
-  c_free(A_csc->p);
-  c_free(A_csc);
+//  c_free(P_csc->x);
+//  c_free(P_csc->i);
+//  c_free(P_csc->p);
+//  c_free(P_csc);
+//  c_free(A_csc->x);
+//  c_free(A_csc->i);
+//  c_free(A_csc->p);
+//  c_free(A_csc);
 }
 
 }  // namespace solvers

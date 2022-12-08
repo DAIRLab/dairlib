@@ -89,9 +89,15 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
                drake::solvers::MathematicalProgramResult*) const final;
 
   OSQPData* osqp_data_;
-
-  mutable Eigen::SparseMatrix<c_float> P_prev_;
-  mutable Eigen::SparseMatrix<c_float> A_prev_;
+  mutable csc* P_csc_ = nullptr;
+  mutable csc* A_csc_ = nullptr;
+  mutable Eigen::SparseMatrix<c_float> P_sparse_;
+  mutable Eigen::SparseMatrix<c_float> A_sparse_;
+  mutable std::vector<c_float> l_;
+  mutable std::vector<c_float> u_;
+  mutable std::vector<c_float> q_;
+  mutable std::vector<Eigen::Triplet<c_float>> P_triplets_;
+  mutable std::vector<Eigen::Triplet<c_float>> A_triplets_;
 
   mutable OSQPSettings* osqp_settings_;
   mutable OSQPWorkspace* workspace_;

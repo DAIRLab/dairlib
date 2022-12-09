@@ -99,23 +99,31 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedVelocity(const drake::Ve
                                                                const drake::VectorX<double>& slip_feet_velocities)const {
   DRAKE_DEMAND(slip_feet_velocities.size() == 3*slip_contact_points_.size());
   // Preallocate linear constraint
-  drake::MatrixX<double> A(3 + 3 * slip_contact_points_.size() ,n_v_); // 3 rows for linear momentum, 3 rows for each slip foot
-  drake::VectorX<double> b(3 + 3 * slip_contact_points_.size());
+  drake::MatrixX<double> A(3 + 2 * 3 * slip_contact_points_.size() ,n_v_); // 3 rows for linear momentum, 3 rows for each slip foot, 3 rows for each slip foot
+  drake::VectorX<double> b(3 + 2 * 3 * slip_contact_points_.size());
 
+  // order of constraints are: slip foot velocity, linear momentum, zero toe rotation
+  // Zero toe rotation accomplished by constraining per foot complex contact velocities to be equal
+
+  // set b for linear momentum
   b.segment(3 * slip_contact_points_.size(), 3) = drake::VectorX<double>::Zero(3);
-  b.tail(3) = linear_momentum;
+  // Set b for zero toe rotation
+  b.tail(3 * slip_contact_points_.size()) = drake::VectorX<double>::Zero(3 * slip_contact_points_.size());
 
   dairlib::multibody::SetPositionsIfNew<double>(plant_, generalized_pos, context_);
-
-  slip_contact_points_[0].EvalFull(*context_ );
-
   for(int i = 0; i < slip_contact_points_.size(); i++){
+    // Set A and b for slip foot velocity constraint
     b.segment(3 * i, 3) =slip_feet_velocities.segment(3 * i, 3);
-    slip_contact_points_[i].EvalFullJacobian(*context_ );
-    A.middleRows(3 * i, 3) = slip_contact_points_[i].EvalFullJacobian(*context_ );
+    A.middleRows(3 * i, 3) = slip_contact_points_[i].EvalFullJacobian(*context_);
+    // Set A for zero toe rotation
+    const auto contact_it = simple_foot_index_to_complex_foot_index_.find(i);
+    A.middleRows(3 * slip_contact_points_.size() + 3 + 3 * i, 3) =
+        complex_contact_points_[contact_it->second[0]].EvalFullJacobian(*context_)
+            - complex_contact_points_[contact_it->second[1]].EvalFullJacobian(*context_);
   }
 
   // Finite difference to calculate momentum jacobian
+  // TODO replace this with analytical gradient
   drake::VectorX<double> x_val = drake::VectorX<double>::Zero(n_v_);
   drake::VectorX<double> yi(6);
   dairlib::multibody::SetVelocitiesIfNew<double>(plant_,x_val,context_);
@@ -127,9 +135,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedVelocity(const drake::Ve
     x_val(i) -= eps;
     A.col(i).tail(3) = (plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, com_pos).translational() - y0) / eps;
   }
-
-  // TODO figure out what to do about toe velocity
-
+  
   // solve
   drake::VectorX<double> rv(n_v_);
   // Set base angular velocity to zero

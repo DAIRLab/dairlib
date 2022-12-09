@@ -515,8 +515,8 @@ void AlipMINLP::SolveOCProblemAsIs() {
     const auto& constraints = prog_->GetAllConstraints();
     solvers::print_constraint(constraints);
   }
-  prof.finish_ =  std::chrono::steady_clock::now() - prof.start_;
-  std::cout << prof;
+//  prof.finish_ =  std::chrono::steady_clock::now() - prof.start_;
+//  std::cout << prof;
 }
 
 void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,

@@ -95,12 +95,13 @@ int DoMain(int argc, char* argv[]) {
   // Create MPC and set gains
   CassieKinematicCentroidalMPC mpc(
       plant, traj_params.n_knot_points,
-      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 5000, 10,0.9, traj_params.stance_width);
+      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 5000, 10,
+      sqrt(pow(traj_params.com_height,2) + pow(traj_params.stance_width,2)), traj_params.stance_width);
   mpc.SetGains(gains);
 
   std::vector<Complexity> complexity_schedule(traj_params.n_knot_points);
   std::fill(complexity_schedule.begin(), complexity_schedule.end(),Complexity::KINEMATIC_CENTROIDAL);
-  for(int i = 5; i <traj_params.n_knot_points ; i++){
+  for(int i = 1; i <traj_params.n_knot_points ; i++){
     complexity_schedule[i] = Complexity::PLANAR_SLIP;
   }
   mpc.SetComplexitySchedule(complexity_schedule);

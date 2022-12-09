@@ -247,7 +247,7 @@ void KinematicCentroidalMPC::Build(
           AddSlipReductionConstraint(knot_point + 1);
           AddContactConstraints(knot_point + 1);
           AddCentroidalKinematicConsistency(knot_point + 1);
-//          AddFrictionConeConstraints(knot_point + 1);
+          AddFrictionConeConstraints(knot_point + 1);
           AddFlightContactForceConstraints(knot_point + 1);
         }
         break;

@@ -26,8 +26,9 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
       loop_closure_evaluators(Plant()),
       slip_contact_sequence_(n_knot_points),
       k_(k),
+      r0_(r0),
       b_(b),
-      r0_(r0){
+      nominal_stand_(nominal_stand){
     AddPlantJointLimits(dairlib::JointNames());
     AddLoopClosure();
 
@@ -43,23 +44,6 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
           2*3, "slip_contact_vel_" + std::to_string(knot)));
       slip_force_vars_.push_back(prog_->NewContinuousVariables(
           2, "slip_force_" + std::to_string(knot)));
-      lifters_.emplace_back(new PlanarSlipLifter(plant,
-                                                 contexts_[knot].get(),
-                                                 slip_contact_points_,
-                                                 CreateContactPoints(plant, mu),
-                                                 {{0, {0, 1}}, {1, {2, 3}}},
-                                                 nominal_stand,
-                                                 k,
-                                                 b,
-                                                 r0));
-      reducers.emplace_back(new PlanarSlipReducer(plant,
-                                                 contexts_[knot].get(),
-                                                 slip_contact_points_,
-                                                 CreateContactPoints(plant, mu),
-                                                 {{0, {0, 1}}, {1, {2, 3}}},
-                                                 k,
-                                                 r0));
-
     }
     std::vector<bool> stance_mode(2);
     std::fill(stance_mode.begin(), stance_mode.end(), true);
@@ -111,6 +95,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
   void SetForceGuess(
       const drake::trajectories::PiecewisePolynomial<double>& force_trajectory) override;
 
+  void Build(const drake::solvers::SolverOptions& solver_options) override;
  private:
   void MapModeSequence();
 
@@ -140,7 +125,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
   double r0_;
   double b_;
   double m_;
-
+  const drake::VectorX<double> nominal_stand_;
   const double slip_ground_offset_ = 0;
 
   std::vector<drake::solvers::VectorXDecisionVariable> slip_com_vars_;

@@ -190,7 +190,7 @@ class KinematicCentroidalMPC {
    * @brief Adds standard constraints to optimization problem and sets options
    * @param solver_options
    */
-  void Build(const drake::solvers::SolverOptions& solver_options);
+  virtual void Build(const drake::solvers::SolverOptions& solver_options);
 
   /*!
    * @brief Solve the optimization problem and return a piecewise linear

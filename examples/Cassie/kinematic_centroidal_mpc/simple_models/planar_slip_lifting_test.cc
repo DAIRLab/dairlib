@@ -78,6 +78,8 @@ int main(int argc, char* argv[]) {
 
   dairlib::multibody::SetPositionsAndVelocitiesIfNew<double>(plant, reference_state, context.get());
 //  std::cout<<left_slip_eval.EvalFull(*context)<<std::endl;
+
+  std::vector<bool> contact_mask = {true, true};
   PlanarSlipLifter lifter(plant,
                           context.get(),
                           {left_toe_eval, right_toe_eval},
@@ -86,21 +88,21 @@ int main(int argc, char* argv[]) {
                           reference_state.head(plant.num_positions()),
                           2000,
                           0,
-                          0.5);
+                          0.5, contact_mask);
   PlanarSlipReducer reducer(plant,
-                          context.get(),
-                          {left_toe_eval, right_toe_eval},
-                          {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval},
-                          {{0, {0, 1}}, {1, {2, 3}}},
-                          2000,
-                          0,
-                          0.5);
+                            context.get(),
+                            {left_toe_eval, right_toe_eval},
+                            {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval},
+                            {{0, {0, 1}}, {1, {2, 3}}},
+                            2000,
+                            0,
+                            0.5, contact_mask);
 
   Eigen::Vector3d slip_com = {0.2,0,0.7};
   Eigen::Vector3d slip_vel = {0.1,0,0.1};
   Eigen::VectorXd slip_feet(6); slip_feet  << 0.0, 0.2, 0.0,0.0,-0.2, 0.0;
   Eigen::VectorXd slip_foot_vel(6); slip_foot_vel  << 0.11,0.12,0.0,0.15,0.18,0.0;
-  Eigen::Vector2d slip_force = {0.5,0.5};
+  Eigen::Vector2d slip_force = {0.0,0.0};
 
   Eigen::VectorXd slip_state(3+3+6+6+2);
   slip_state << slip_com,slip_vel,slip_feet,slip_foot_vel,slip_force;
@@ -123,8 +125,8 @@ int main(int argc, char* argv[]) {
   drake::VectorX<double> input(slip_state.size() + complex_state.size());
   input << slip_state,complex_state;
   constraint.DoEval(input, &error);
-//  std::cout<<"Max Error in inverse test: "<< error.cwiseAbs().maxCoeff() << std::endl;
-  std::cout<<error<<std::endl;
+  std::cout<<"Max Error in inverse test: "<< error.cwiseAbs().maxCoeff() << std::endl;
+//  std::cout<<error<<std::endl;
 
   if(true){
     // Build temporary diagram for visualization

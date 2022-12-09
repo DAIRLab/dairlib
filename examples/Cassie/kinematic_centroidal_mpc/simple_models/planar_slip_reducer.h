@@ -12,14 +12,16 @@
 
 class PlanarSlipReducer {
  public:
-  PlanarSlipReducer(const drake::multibody::MultibodyPlant<double>& plant,
-                   drake::systems::Context<double>* context,
-                   const std::vector<dairlib::multibody::WorldPointEvaluator<double>>& slip_contact_points,
-                   const std::vector<dairlib::multibody::WorldPointEvaluator<double>>& complex_contact_points,
-                   const std::map<int, std::vector<int>>& simple_foot_index_to_complex_foot_index,
-                   double k,
-                   double b,
-                   double r0);
+  PlanarSlipReducer(const drake::multibody::MultibodyPlant<double> &plant,
+                    drake::systems::Context<double> *context,
+                    const std::vector<dairlib::multibody::WorldPointEvaluator<double>> &slip_contact_points,
+                    const std::vector<dairlib::multibody::WorldPointEvaluator<double>> &complex_contact_points,
+                    const std::map<int,
+                                   std::vector<int>> &simple_foot_index_to_complex_foot_index,
+                    double k,
+                    double b,
+                    double r0,
+                    const std::vector<bool> &contact_mask);
 
   void Reduce(const Eigen::Ref<const drake::VectorX<double>> &complex_state,
             drake::VectorX<double> *slip_state) const;
@@ -42,7 +44,7 @@ class PlanarSlipReducer {
   const std::map<int, std::vector<int>> simple_foot_index_to_complex_foot_index_;
   const int n_q_;
   const int n_v_;
-
+  const std::vector<bool> slip_contact_mask_;
   const int kSLIP_DIM = 3;
 };
 

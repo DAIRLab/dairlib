@@ -17,7 +17,7 @@ PlanarSlipReductionConstraint::PlanarSlipReductionConstraint(const drake::multib
     "PlanarSlipReductionConstraint[" +
         std::to_string(knot_index) + "]"),
      reducing_function_(reducing_function),
-     slip_dim_(2 + 2 + 2 * 2 * n_slip_feet + n_slip_feet),
+     slip_dim_(3 + 3 + 2 * 3 * n_slip_feet + n_slip_feet),
      complex_dim_(6 + 3 + 3 * 3 * n_complex_feet + plant.num_positions() + plant.num_velocities()) {}
 
 

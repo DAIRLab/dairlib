@@ -185,11 +185,9 @@ void CassieKinematicCentroidalMPC::AddSlipReductionConstraint(int knot_point) {
   auto grf_constraint =
     std::make_shared<SlipGrfReductionConstrain>(
         plant_, reducers[knot_point], 2, 4,knot_point);
-  //TODO why is this constraint bad, probably due to it not thinking about the contact mode
+  //TODO why is this constraint bad
 //  prog_->AddConstraint(grf_constraint,
 //                       {com_pos_vars(knot_point), slip_vel_vars_[knot_point], slip_contact_pos_vars_[knot_point], contact_force_[knot_point], slip_force_vars_[knot_point]});
-
-
 }
 
 void CassieKinematicCentroidalMPC::AddSlipLiftingConstraint(int knot_point) {
@@ -277,4 +275,25 @@ void CassieKinematicCentroidalMPC::SetForceGuess(const drake::trajectories::Piec
     prog_->SetInitialGuess(force_vars, 0 * drake::VectorX<double>::Ones(force_vars.size()));
   }
   KinematicCentroidalMPC::SetForceGuess(force_trajectory);
+}
+void CassieKinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &solver_options) {
+  for (int knot = 0; knot < n_knot_points_; knot++) {
+    lifters_.emplace_back(new PlanarSlipLifter(plant_,
+                                               contexts_[knot].get(),
+                                               slip_contact_points_,
+                                               CreateContactPoints(plant_, 0),
+                                               {{0, {0, 1}}, {1, {2, 3}}},
+                                               nominal_stand_,
+                                               k_,
+                                               b_,
+                                               r0_, slip_contact_sequence_[knot]));
+    reducers.emplace_back(new PlanarSlipReducer(plant_,
+                                                contexts_[knot].get(),
+                                                slip_contact_points_,
+                                                CreateContactPoints(plant_, 0),
+                                                {{0, {0, 1}}, {1, {2, 3}}},
+                                                k_,
+                                                r0_, 0, slip_contact_sequence_[knot]));
+  }
+  KinematicCentroidalMPC::Build(solver_options);
 }

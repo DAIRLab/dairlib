@@ -6,20 +6,23 @@ PlanarSlipReducer::PlanarSlipReducer(const drake::multibody::MultibodyPlant<doub
                                      drake::systems::Context<double> *context,
                                      const std::vector<dairlib::multibody::WorldPointEvaluator<double>> &slip_contact_points,
                                      const std::vector<dairlib::multibody::WorldPointEvaluator<double>> &complex_contact_points,
-                                     const std::map<int, std::vector<int>> &simple_foot_index_to_complex_foot_index,
+                                     const std::map<int,
+                                                    std::vector<int>> &simple_foot_index_to_complex_foot_index,
                                      double k,
                                      double b,
-                                     double r0):plant_(plant),
-                                                context_(context),
-                                                k_(k),
-                                                b_(b),
-                                                r0_(r0),
-                                                m_(plant.CalcTotalMass(*context)),
-                                                slip_contact_points_(slip_contact_points),
-                                                complex_contact_points_(complex_contact_points),
-                                                simple_foot_index_to_complex_foot_index_(simple_foot_index_to_complex_foot_index),
-                                                n_q_(plant.num_positions()),
-                                                n_v_(plant.num_velocities()) {}
+                                     double r0,
+                                     const std::vector<bool> &contact_mask) : plant_(plant),
+                                                                              context_(context),
+                                                                              k_(k),
+                                                                              b_(b),
+                                                                              r0_(r0),
+                                                                              m_(plant.CalcTotalMass(*context)),
+                                                                              slip_contact_points_(slip_contact_points),
+                                                                              complex_contact_points_(complex_contact_points),
+                                                                              simple_foot_index_to_complex_foot_index_(simple_foot_index_to_complex_foot_index),
+                                                                              n_q_(plant.num_positions()),
+                                                                              n_v_(plant.num_velocities()),
+                                                                              slip_contact_mask_(contact_mask){}
 /// Input is of the form:
 ///     complex_com
 ///     complex_ang_momentum
@@ -71,14 +74,16 @@ drake::VectorX<double> PlanarSlipReducer::ReduceGrf(const Eigen::Ref<const drake
   Eigen::VectorXd slip_force(slip_contact_points_.size());
   for(int i = 0; i<slip_contact_points_.size(); i++){
     const double r = (complex_com - slip_contact_pos.segment(3 * i, 3)).norm();
-    const double dr =  (complex_com - slip_contact_pos.segment(3 * i, 3)).normalized().dot(com_vel);
+    const Eigen::VectorXd unit_vec = (complex_com - slip_contact_pos.segment(3 * i, 3)).normalized();
+    const double dr =  unit_vec.dot(com_vel);
     const double spring_force = k_ * (r0_ - r) - b_ * dr;
     auto complex_feet_it = simple_foot_index_to_complex_foot_index_.find(i);
     Eigen::Vector3d complex_force = Eigen::Vector3d::Zero(3);
     for(const auto complex_index : complex_feet_it->second){
       complex_force = complex_force + complex_grf.segment(3 * complex_index, 3);
     }
-    slip_force.coeffRef(i) = complex_force.norm() - spring_force;
+    const double mag = complex_force.dot(unit_vec) > 0 ? complex_force.norm() : -complex_force.norm();
+    slip_force.coeffRef(i) = slip_contact_mask_[i] ? mag - spring_force : 0;
   }
   return slip_force;
 }

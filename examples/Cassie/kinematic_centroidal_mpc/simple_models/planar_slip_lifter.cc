@@ -4,14 +4,16 @@
 #include "multibody/multibody_utils.h"
 
 PlanarSlipLifter::PlanarSlipLifter(const drake::multibody::MultibodyPlant<double> &plant,
-                                      drake::systems::Context<double> *context,
-                                      const std::vector<dairlib::multibody::WorldPointEvaluator<double>> &slip_contact_points,
-                                      const std::vector<dairlib::multibody::WorldPointEvaluator<double>> &complex_contact_points,
-                                      const std::map<int, std::vector<int>>& simple_foot_index_to_complex_foot_index,
-                                      const drake::VectorX<double> &nominal_stand,
-                                      double k,
-                                      double b,
-                                      double r0):
+                                   drake::systems::Context<double> *context,
+                                   const std::vector<dairlib::multibody::WorldPointEvaluator<double>> &slip_contact_points,
+                                   const std::vector<dairlib::multibody::WorldPointEvaluator<double>> &complex_contact_points,
+                                   const std::map<int,
+                                                  std::vector<int>> &simple_foot_index_to_complex_foot_index,
+                                   const drake::VectorX<double> &nominal_stand,
+                                   double k,
+                                   double b,
+                                   double r0,
+                                   const std::vector<bool>& contact_mask) :
     plant_(plant),
     context_(context),
     ik_(plant, context),
@@ -23,7 +25,8 @@ PlanarSlipLifter::PlanarSlipLifter(const drake::multibody::MultibodyPlant<double
     complex_contact_points_(complex_contact_points),
     simple_foot_index_to_complex_foot_index_(simple_foot_index_to_complex_foot_index),
     n_q_(plant.num_positions()),
-    n_v_(plant.num_velocities()){
+    n_v_(plant.num_velocities()),
+    slip_contact_mask_(contact_mask){
   ik_.get_mutable_prog()->SetInitialGuess(ik_.q(), nominal_stand);
   com_vars_ = ik_.get_mutable_prog()->NewContinuousVariables(3);
   auto constraint = std::make_shared<drake::multibody::ComPositionConstraint>(&plant, std::nullopt, plant.world_frame(), context);
@@ -176,8 +179,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &c
     // Calculate the slip grf
     double r = (slip_feet_pos.segment(simple_index * 3, 3) - com_pos).norm();
     double dr = (slip_feet_pos.segment(simple_index * 3, 3) - com_pos).normalized().dot(com_vel);
-    double slip_grf_mag = slip_force[simple_index] + k_ * (r0_ - r) - b_ * dr;
-
+    double slip_grf_mag = slip_contact_mask_[simple_index] ? slip_force[simple_index] + k_ * (r0_ - r) - b_ * dr : 0;
     // Find the average location for all of the complex contact points that make up the SLIP foot
     drake::Vector3<double> average_pos = drake::VectorX<double>::Zero(3);
 

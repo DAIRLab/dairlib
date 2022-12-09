@@ -79,7 +79,7 @@ def main():
     import numpy as np
     import scipy.io
 
-    logfile = "/home/alpaydinoglu/Desktop/log_test/example_log"
+    logfile = "/home/alpaydinoglu/workspace/dairlib/example_log"
     log = lcm.EventLog(logfile, "r")
     # print_log_summary(logfile, log)
     x, y = get_log_data(log, channels, -1, processing_callback, "FRANKA_OUTPUT")

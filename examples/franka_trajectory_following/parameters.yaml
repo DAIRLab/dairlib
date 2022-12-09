@@ -36,7 +36,7 @@ q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
 velocity_limit: 1
-orientation_degrees: 20
+orientation_degrees: 15
 axis_option: 1
 
 # initialization/simulation parameters
@@ -60,7 +60,7 @@ time_increment: 1
 hold_order: 0 # 0 for zero order hold, 1 for first order hold
 
 # if enable_adaptive_path is set to 1, the trajectory above is not used
-lead_angle: 40 # angle in degrees
+lead_angle: 20 # angle in degrees
 enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
 
 # geometry parameters

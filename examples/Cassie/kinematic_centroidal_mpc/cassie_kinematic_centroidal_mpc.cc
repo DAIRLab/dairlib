@@ -187,7 +187,7 @@ void CassieKinematicCentroidalMPC::AddSlipReductionConstraint(int knot_point) {
         plant_, reducers[knot_point], 2, 4,knot_point);
   //TODO why is this constraint bad, probably due to it not thinking about the contact mode
 //  prog_->AddConstraint(grf_constraint,
-//                       {com_pos_vars(knot_point), slip_contact_pos_vars_[knot_point], contact_force_[knot_point], slip_force_vars_[knot_point]});
+//                       {com_pos_vars(knot_point), slip_vel_vars_[knot_point], slip_contact_pos_vars_[knot_point], contact_force_[knot_point], slip_force_vars_[knot_point]});
 
 
 }

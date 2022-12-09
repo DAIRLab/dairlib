@@ -49,7 +49,7 @@ SlipGrfReductionConstrain::SlipGrfReductionConstrain(const drake::multibody::Mul
                                                      int n_complex_feet,
                                                      int knot_index):dairlib::solvers::NonlinearConstraint<double>(
     n_slip_feet,
-    3 + 3 * n_slip_feet + 3 * n_complex_feet + n_slip_feet,
+    3 + 3 * n_slip_feet + 3 * n_complex_feet + n_slip_feet + 3,
     Eigen::VectorXd::Zero(n_slip_feet),
     Eigen::VectorXd::Zero(n_slip_feet),
     "SlipGrfReductionConstraint[" +
@@ -59,18 +59,18 @@ SlipGrfReductionConstrain::SlipGrfReductionConstrain(const drake::multibody::Mul
                                                                      n_complex_feet_(n_complex_feet) {}
 /// Input is of the form:
 ///     complex_com
+///     slip com velocity
 ///     slip_contact_pos
 ///     complex_grf
 ///     slip_contact_force
 void SlipGrfReductionConstrain::EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>> &x,
                                                    drake::VectorX<double> *y) const {
   const auto& complex_com = x.head(3);
-  const auto& slip_contact_pos = x.segment(3,3*n_slip_feet_);
-  const auto& complex_grf = x.segment(3 + 3*n_slip_feet_,3*n_complex_feet_);
-  const auto& slip_contact_force = x.segment(3 + 3*n_slip_feet_ + 3*n_complex_feet_,n_slip_feet_);
-  //TODO eventually fix
-//  *y = reducing_function_->ReduceGrf(complex_com, <#initializer#>, slip_contact_pos, complex_grf) - slip_contact_force;
-
+  const auto& slip_vel = x.segment(3,3);
+  const auto& slip_contact_pos = x.segment(3 + 3,3*n_slip_feet_);
+  const auto& complex_grf = x.segment(3 + 3*n_slip_feet_ + 3,3*n_complex_feet_);
+  const auto& slip_contact_force = x.segment(3 + 3*n_slip_feet_ + 3*n_complex_feet_ + 3,n_slip_feet_);
+  *y = reducing_function_->ReduceGrf(complex_com, slip_vel, slip_contact_pos, complex_grf) - slip_contact_force;
 }
 
 PlanarSlipLiftingConstraint::PlanarSlipLiftingConstraint(const drake::multibody::MultibodyPlant<double> &plant,

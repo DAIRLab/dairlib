@@ -57,7 +57,7 @@ void PlanarSlipReducer::Reduce(const Eigen::Ref<const drake::VectorX<double>> &c
                                                             complex_lin_momentum/m_,
                                                             slip_state->segment(kSLIP_DIM + kSLIP_DIM,
                                                                                 slip_contact_points_.size()
-                                                                                    + kSLIP_DIM),
+                                                                                    * kSLIP_DIM),
                                                             complex_grf);
 }
 
@@ -71,6 +71,8 @@ drake::VectorX<double> PlanarSlipReducer::ReduceGrf(const Eigen::Ref<const drake
                                                     const Eigen::Ref<const drake::VectorX<double>> &com_vel,
                                                     const Eigen::Ref<const drake::VectorX<double>> &slip_contact_pos,
                                                     const Eigen::Ref<const drake::VectorX<double>> &complex_grf) const {
+  DRAKE_DEMAND(complex_com.size() == 3);
+  DRAKE_DEMAND(slip_contact_pos.size() == 3 * slip_contact_points_.size());
   Eigen::VectorXd slip_force(slip_contact_points_.size());
   for(int i = 0; i<slip_contact_points_.size(); i++){
     const double r = (complex_com - slip_contact_pos.segment(3 * i, 3)).norm();

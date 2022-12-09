@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
   Eigen::Vector3d slip_vel = {0.1,0,0.1};
   Eigen::VectorXd slip_feet(6); slip_feet  << 0.0, 0.2, 0.0,0.0,-0.2, 0.0;
   Eigen::VectorXd slip_foot_vel(6); slip_foot_vel  << 0.11,0.12,0.0,0.15,0.18,0.0;
-  Eigen::Vector2d slip_force = {0.0,0.0};
+  Eigen::Vector2d slip_force = {0.5,0.3};
 
   Eigen::VectorXd slip_state(3+3+6+6+2);
   slip_state << slip_com,slip_vel,slip_feet,slip_foot_vel,slip_force;
@@ -127,6 +127,14 @@ int main(int argc, char* argv[]) {
   constraint.DoEval(input, &error);
   std::cout<<"Max Error in inverse test: "<< error.cwiseAbs().maxCoeff() << std::endl;
 //  std::cout<<error<<std::endl;
+
+  auto grf_constraint = SlipGrfReductionConstrain(plant, std::make_shared<PlanarSlipReducer>(reducer), 2, 4, 0);
+  drake::VectorX<double> grf_error(2);
+  drake::VectorX<double> grf_input(3 + 3 * 2 + 3 * 4 + 2 + 3);
+//  grf_input << slip_com, slip_vel, slip_feet, complex_state.segment(3 + 6 + 12 + 12,12),slip_force;
+
+  grf_constraint.DoEval(grf_input, &grf_error);
+  std::cout<<"Max Error in grf inverse test: "<< grf_error.cwiseAbs().maxCoeff() << std::endl;
 
   if(true){
     // Build temporary diagram for visualization

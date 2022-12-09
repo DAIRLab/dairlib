@@ -177,7 +177,7 @@ void CassieKinematicCentroidalMPC::MapModeSequence() {
 }
 void CassieKinematicCentroidalMPC::AddSlipReductionConstraint(int knot_point) {
   prog_->AddConstraint(slip_com_vars_[knot_point] == com_pos_vars(knot_point));
-  prog_->AddConstraint(slip_vel_vars_[knot_point] == momentum_vars(knot_point).tail(3));
+  prog_->AddConstraint(slip_vel_vars_[knot_point] * m_ == momentum_vars(knot_point).tail(3));
   prog_->AddConstraint(slip_contact_pos_vars(knot_point,0) == contact_pos_vars(knot_point,0));
   prog_->AddConstraint(slip_contact_pos_vars(knot_point,1) == contact_pos_vars(knot_point,2));
   prog_->AddConstraint(slip_contact_vel_vars(knot_point,0) == contact_vel_vars(knot_point,0));
@@ -185,9 +185,8 @@ void CassieKinematicCentroidalMPC::AddSlipReductionConstraint(int knot_point) {
   auto grf_constraint =
     std::make_shared<SlipGrfReductionConstrain>(
         plant_, reducers[knot_point], 2, 4,knot_point);
-  //TODO why is this constraint bad
-//  prog_->AddConstraint(grf_constraint,
-//                       {com_pos_vars(knot_point), slip_vel_vars_[knot_point], slip_contact_pos_vars_[knot_point], contact_force_[knot_point], slip_force_vars_[knot_point]});
+  prog_->AddConstraint(grf_constraint,
+                       {com_pos_vars(knot_point), slip_vel_vars_[knot_point], slip_contact_pos_vars_[knot_point], contact_force_[knot_point], slip_force_vars_[knot_point]});
 }
 
 void CassieKinematicCentroidalMPC::AddSlipLiftingConstraint(int knot_point) {
@@ -266,7 +265,22 @@ drake::VectorX<double> CassieKinematicCentroidalMPC::LiftSlipSolution(int knot_p
       result_->GetSolution(slip_contact_pos_vars_[knot_point]),
       result_->GetSolution(slip_contact_vel_vars_[knot_point]),
       result_->GetSolution(slip_force_vars_[knot_point]);
-      return lifters_[knot_point]->Lift(slip_state).tail(n_q_+n_v_);
+  if(knot_point == 1){
+    auto grf_constraint =
+        std::make_shared<SlipGrfReductionConstrain>(
+            plant_, reducers[knot_point], 2, 4,knot_point);
+    drake::VectorX<double> grf_input(3 + 3 * 2 + 3 * 4 + 2 + 3);
+    drake::VectorX<double> grf_error(2);
+    grf_input << result_->GetSolution(com_pos_vars(knot_point)),
+        result_->GetSolution(slip_vel_vars_[knot_point]),
+        result_->GetSolution(slip_contact_pos_vars_[knot_point]),
+        result_->GetSolution(contact_force_[knot_point]),
+        result_->GetSolution(slip_force_vars_[knot_point]);
+    grf_constraint->Eval(grf_input, &grf_error);
+    std::cout<<"Grf error"<<std::endl;
+    std::cout<<grf_error<<std::endl;
+  }
+  return lifters_[knot_point]->Lift(slip_state).tail(n_q_+n_v_);
 }
 
 void CassieKinematicCentroidalMPC::SetForceGuess(const drake::trajectories::PiecewisePolynomial<double> &force_trajectory) {
@@ -293,7 +307,7 @@ void CassieKinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &so
                                                 CreateContactPoints(plant_, 0),
                                                 {{0, {0, 1}}, {1, {2, 3}}},
                                                 k_,
-                                                r0_, 0, slip_contact_sequence_[knot]));
+                                                b_, r0_, slip_contact_sequence_[knot]));
   }
   KinematicCentroidalMPC::Build(solver_options);
 }

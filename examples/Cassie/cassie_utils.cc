@@ -107,7 +107,7 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
 void AddCassieMultibody(MultibodyPlant<double>* plant,
                         SceneGraph<double>* scene_graph, bool floating_base,
                         std::string filename, bool add_leaf_springs,
-                        bool add_loop_closure) {
+                        bool add_loop_closure, bool add_reflected_inertia) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
@@ -162,7 +162,6 @@ void AddCassieMultibody(MultibodyPlant<double>* plant,
         kCassieAchillesLength, achilles_stiffness, achilles_damping);
   }
 
-  bool add_reflected_inertia = true;
   VectorXd rotor_inertias(10);
   rotor_inertias << 61, 61, 61, 61, 365, 365, 365, 365, 4.9, 4.9;
   rotor_inertias *= 1e-6;

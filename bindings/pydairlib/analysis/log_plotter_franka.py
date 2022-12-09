@@ -223,7 +223,6 @@ def main():
         qs = [pos_map[name] for name in ball_pos_names]
         qhold = robot_output['q']
 
-
         tsize = robot_output['t_x'].size
         circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
         plt.gca().add_patch(circle2)
@@ -359,6 +358,25 @@ def main():
       check_flag_and_save(solve_times_ps,
         "{}/{}/figures/c3_solve_times{}.svg".format(logdir, log_num, log_num),
         save_flag = config['save_plots'])
+
+    #st = act_map['solve_times']
+
+    #qhold = c3_output['solve_times']
+    #print(qhold)
+
+    print(np.size( c3_output['solve_times']))
+    print(np.size( c3_output['t'] ))
+
+    ttt = c3_output['t']
+    sss = c3_output['solve_times']
+
+    #plt.plot(ttt, sss)
+
+    #plt.show()
+
+    print("creating mat file for solve times")
+    mdic = {"t": ttt, "s": sss}
+    scipy.io.savemat('solve_times.mat', mdic)
 
     ''' Plot EE error '''
     if config['plot_EE_error']:

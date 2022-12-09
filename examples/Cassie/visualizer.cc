@@ -61,7 +61,7 @@ int do_main(int argc, char* argv[]) {
     // Ground direction
     Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
                                   cos(FLAGS_ground_incline));
-    multibody::AddFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
+    multibody::AddFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal, false);
   }
 
   plant.Finalize();

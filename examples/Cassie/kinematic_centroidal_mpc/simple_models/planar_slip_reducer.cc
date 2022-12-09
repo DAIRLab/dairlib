@@ -8,9 +8,11 @@ PlanarSlipReducer::PlanarSlipReducer(const drake::multibody::MultibodyPlant<doub
                                      const std::vector<dairlib::multibody::WorldPointEvaluator<double>> &complex_contact_points,
                                      const std::map<int, std::vector<int>> &simple_foot_index_to_complex_foot_index,
                                      double k,
+                                     double b,
                                      double r0):plant_(plant),
                                                 context_(context),
                                                 k_(k),
+                                                b_(b),
                                                 r0_(r0),
                                                 m_(plant.CalcTotalMass(*context)),
                                                 slip_contact_points_(slip_contact_points),
@@ -48,7 +50,12 @@ void PlanarSlipReducer::Reduce(const Eigen::Ref<const drake::VectorX<double>> &c
     slip_state->segment(kSLIP_DIM+kSLIP_DIM+kSLIP_DIM * i, kSLIP_DIM) = slip_contact_points_[i].EvalFull(*context_);
     slip_state->segment(kSLIP_DIM+kSLIP_DIM+kSLIP_DIM * slip_contact_points_.size()+kSLIP_DIM * i, kSLIP_DIM) = slip_contact_points_[i].EvalFullTimeDerivative(*context_);
   }
-  slip_state->tail(slip_contact_points_.size()) = ReduceGrf(complex_com, slip_state->segment(kSLIP_DIM+kSLIP_DIM, slip_contact_points_.size()+kSLIP_DIM), complex_grf);
+  slip_state->tail(slip_contact_points_.size()) = ReduceGrf(complex_com,
+                                                            complex_lin_momentum/m_,
+                                                            slip_state->segment(kSLIP_DIM + kSLIP_DIM,
+                                                                                slip_contact_points_.size()
+                                                                                    + kSLIP_DIM),
+                                                            complex_grf);
 }
 
 drake::VectorX<double> PlanarSlipReducer::Reduce(const Eigen::Ref<const drake::VectorX<double>> &complex_state) const {
@@ -58,12 +65,14 @@ drake::VectorX<double> PlanarSlipReducer::Reduce(const Eigen::Ref<const drake::V
 }
 
 drake::VectorX<double> PlanarSlipReducer::ReduceGrf(const Eigen::Ref<const drake::VectorX<double>> &complex_com,
+                                                    const Eigen::Ref<const drake::VectorX<double>> &com_vel,
                                                     const Eigen::Ref<const drake::VectorX<double>> &slip_contact_pos,
-                                                    const Eigen::Ref<const drake::VectorX<double>> &complex_grf)const {
+                                                    const Eigen::Ref<const drake::VectorX<double>> &complex_grf) const {
   Eigen::VectorXd slip_force(slip_contact_points_.size());
   for(int i = 0; i<slip_contact_points_.size(); i++){
     const double r = (complex_com - slip_contact_pos.segment(3 * i, 3)).norm();
-    const double spring_force = k_ * (r0_ - r);
+    const double dr =  (complex_com - slip_contact_pos.segment(3 * i, 3)).normalized().dot(com_vel);
+    const double spring_force = k_ * (r0_ - r) - b_ * dr;
     auto complex_feet_it = simple_foot_index_to_complex_foot_index_.find(i);
     Eigen::Vector3d complex_force = Eigen::Vector3d::Zero(3);
     for(const auto complex_index : complex_feet_it->second){

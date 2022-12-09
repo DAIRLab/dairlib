@@ -10,12 +10,14 @@ PlanarSlipLifter::PlanarSlipLifter(const drake::multibody::MultibodyPlant<double
                                       const std::map<int, std::vector<int>>& simple_foot_index_to_complex_foot_index,
                                       const drake::VectorX<double> &nominal_stand,
                                       double k,
+                                      double b,
                                       double r0):
     plant_(plant),
     context_(context),
     ik_(plant, context),
     m_(plant.CalcTotalMass(*context)),
     k_(k),
+    b_(b),
     r0_(r0),
     slip_contact_points_(slip_contact_points),
     complex_contact_points_(complex_contact_points),
@@ -135,7 +137,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedVelocity(const drake::Ve
     x_val(i) -= eps;
     A.col(i).tail(3) = (plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, com_pos).translational() - y0) / eps;
   }
-  
+
   // solve
   drake::VectorX<double> rv(n_v_);
   // Set base angular velocity to zero
@@ -166,15 +168,17 @@ drake::VectorX<double> PlanarSlipLifter::LiftContactVel(const drake::VectorX<dou
 }
 
 drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &com_pos,
-                                               const drake::VectorX<double> &slip_feet_pos,
-                                               const drake::VectorX<double> &slip_force,
-                                               const drake::VectorX<double> &complex_contact_point_pos)const {
+                                                 const drake::VectorX<double> &com_vel,
+                                                 const drake::VectorX<double> &slip_feet_pos,
+                                                 const drake::VectorX<double> &slip_force,
+                                                 const drake::VectorX<double> &complex_contact_point_pos) const {
   drake::VectorX<double> rv(complex_contact_points_.size() * 3);
   // Loop through the slip feet
   for(int simple_index = 0; simple_index < slip_contact_points_.size(); simple_index ++){
     // Calculate the slip grf
     double r = (slip_feet_pos.segment(simple_index * 3, 3) - com_pos).norm();
-    double slip_grf_mag = slip_force[simple_index] + k_ * (r0_ - r);
+    double dr = (slip_feet_pos.segment(simple_index * 3, 3) - com_pos).normalized().dot(com_vel);
+    double slip_grf_mag = slip_force[simple_index] + k_ * (r0_ - r) - b_ * dr;
 
     // Find the average location for all of the complex contact points that make up the SLIP foot
     drake::Vector3<double> average_pos = drake::VectorX<double>::Zero(3);
@@ -229,6 +233,7 @@ void PlanarSlipLifter::Lift(const Eigen::Ref<const drake::VectorX<double>> &slip
 
   (*complex_state) << slip_com, plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, slip_com)
       .get_coeffs(), complex_contact_pos, LiftContactVel(generalized_pos, generalized_vel), LiftGrf(slip_com,
+                                                                                                    slip_vel,
                                                                                                     slip_contact_pos,
                                                                                                     slip_force,
                                                                                                     complex_contact_pos),

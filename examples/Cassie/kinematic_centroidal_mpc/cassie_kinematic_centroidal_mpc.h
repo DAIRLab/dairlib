@@ -50,6 +50,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
                                                  {{0, {0, 1}}, {1, {2, 3}}},
                                                  nominal_stand,
                                                  k,
+                                                 b,
                                                  r0));
       reducers.emplace_back(new PlanarSlipReducer(plant,
                                                  contexts_[knot].get(),

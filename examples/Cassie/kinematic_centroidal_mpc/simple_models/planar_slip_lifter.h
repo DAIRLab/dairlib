@@ -19,6 +19,7 @@ class PlanarSlipLifter {
                    const std::map<int, std::vector<int>>& simple_foot_index_to_complex_foot_index,
                    const drake::VectorX<double>& nominal_stand,
                    double k,
+                   double b,
                    double r0);
 
   void Lift(const Eigen::Ref<const drake::VectorX<double>> &slip_state,
@@ -56,10 +57,11 @@ class PlanarSlipLifter {
 
   drake::VectorX<double> LiftContactVel(const drake::VectorX<double>& generalized_pos, const drake::VectorX<double>& generalized_vel) const;
 
-  drake::VectorX<double> LiftGrf(const drake::VectorX<double>& com_pos,
-                            const drake::VectorX<double>& slip_feet_pos,
+  drake::VectorX<double> LiftGrf(const drake::VectorX<double> &com_pos,
+                                 const drake::VectorX<double> &com_vel,
+                                 const drake::VectorX<double> &slip_feet_pos,
                                  const drake::VectorX<double> &slip_force,
-                                 const drake::VectorX<double>& complex_contact_point_pos) const;
+                                 const drake::VectorX<double> &complex_contact_point_pos) const;
 
 
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -67,6 +69,7 @@ class PlanarSlipLifter {
   mutable drake::multibody::InverseKinematics ik_;
   const double m_;
   const double k_;
+  const double b_;
   const double r0_;
   const std::vector<double> stance_widths_;
   const std::vector<dairlib::multibody::WorldPointEvaluator<double>> slip_contact_points_;

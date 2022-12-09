@@ -68,7 +68,8 @@ void SlipGrfReductionConstrain::EvaluateConstraint(const Eigen::Ref<const drake:
   const auto& slip_contact_pos = x.segment(3,3*n_slip_feet_);
   const auto& complex_grf = x.segment(3 + 3*n_slip_feet_,3*n_complex_feet_);
   const auto& slip_contact_force = x.segment(3 + 3*n_slip_feet_ + 3*n_complex_feet_,n_slip_feet_);
-  *y = reducing_function_->ReduceGrf(complex_com, slip_contact_pos, complex_grf) - slip_contact_force;
+  //TODO eventually fix
+//  *y = reducing_function_->ReduceGrf(complex_com, <#initializer#>, slip_contact_pos, complex_grf) - slip_contact_force;
 
 }
 

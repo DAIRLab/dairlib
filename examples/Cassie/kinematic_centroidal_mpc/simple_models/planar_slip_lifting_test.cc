@@ -85,6 +85,7 @@ int main(int argc, char* argv[]) {
                           {{0, {0, 1}}, {1, {2, 3}}},
                           reference_state.head(plant.num_positions()),
                           2000,
+                          0,
                           0.5);
   PlanarSlipReducer reducer(plant,
                           context.get(),
@@ -92,6 +93,7 @@ int main(int argc, char* argv[]) {
                           {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval},
                           {{0, {0, 1}}, {1, {2, 3}}},
                           2000,
+                          0,
                           0.5);
 
   Eigen::Vector3d slip_com = {0.2,0,0.7};
@@ -121,7 +123,8 @@ int main(int argc, char* argv[]) {
   drake::VectorX<double> input(slip_state.size() + complex_state.size());
   input << slip_state,complex_state;
   constraint.DoEval(input, &error);
-  std::cout<<"Max Error in inverse test: "<< error.cwiseAbs().maxCoeff() << std::endl;
+//  std::cout<<"Max Error in inverse test: "<< error.cwiseAbs().maxCoeff() << std::endl;
+  std::cout<<error<<std::endl;
 
   if(true){
     // Build temporary diagram for visualization

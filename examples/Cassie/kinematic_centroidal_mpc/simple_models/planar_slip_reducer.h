@@ -18,6 +18,7 @@ class PlanarSlipReducer {
                    const std::vector<dairlib::multibody::WorldPointEvaluator<double>>& complex_contact_points,
                    const std::map<int, std::vector<int>>& simple_foot_index_to_complex_foot_index,
                    double k,
+                   double b,
                    double r0);
 
   void Reduce(const Eigen::Ref<const drake::VectorX<double>> &complex_state,
@@ -26,12 +27,14 @@ class PlanarSlipReducer {
   drake::VectorX<double> Reduce(const Eigen::Ref<const drake::VectorX<double>> &complex_state) const;
 
   drake::VectorX<double> ReduceGrf(const Eigen::Ref<const drake::VectorX<double>> &complex_com,
+                                   const Eigen::Ref<const drake::VectorX<double>> &com_vel,
                                    const Eigen::Ref<const drake::VectorX<double>> &slip_contact_pos,
                                    const Eigen::Ref<const drake::VectorX<double>> &complex_grf) const;
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
   mutable drake::systems::Context<double>* context_;
   const double k_;
+  const double b_;
   const double r0_;
   const double m_;
   const std::vector<dairlib::multibody::WorldPointEvaluator<double>> slip_contact_points_;

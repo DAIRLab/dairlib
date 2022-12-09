@@ -3,7 +3,16 @@
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/common/trajectories/piecewise_polynomial.h>
 #include "multibody/kinematic/world_point_evaluator.h"
-#include "systems/controllers/kinematic_centroidal_mpc/gait.h"
+#include "systems/trajectory_optimization/kinematic_centroidal_planner/gait.h"
+
+/*!
+ * @brief creates vector of world point evaluators for cassie
+ * @param plant cassie plant
+ * @param mu coefficient of friction
+ * @return
+ */
+std::vector<dairlib::multibody::WorldPointEvaluator<double>> CreateContactPoints(const drake::multibody::MultibodyPlant<double>& plant, double mu);
+
 
 /*!
  * @brief given an initial com and velocity of com emrt w, calculate a com trajectory

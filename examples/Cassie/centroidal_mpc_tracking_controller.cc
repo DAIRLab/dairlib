@@ -3,14 +3,14 @@
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_publisher_system.h>
 #include <gflags/gflags.h>
+#include <dairlib/lcmt_timestamped_saved_traj.hpp>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/contact_scheduler.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/kinematic_trajectory_generator.h"
+#include "examples/Cassie/kinematic_centroidal_planner/contact_scheduler.h"
+#include "examples/Cassie/kinematic_centroidal_planner/kinematic_trajectory_generator.h"
 #include "examples/Cassie/osc_jump/osc_jumping_gains.h"
-#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "systems/controllers/controller_failure_aggregator.h"
@@ -63,7 +63,7 @@ DEFINE_string(
     "CASSIE_STATE_DISPATCHER for use on hardware with the state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel where control efforts are published");
-DEFINE_string(channel_reference, "KCMPC_REF",
+DEFINE_string(channel_reference, "KCMPC_OUTPUT",
               "The name of the channel where the reference trajectories from "
               "MPC are published");
 DEFINE_string(folder_path, "examples/Cassie/saved_trajectories/",
@@ -72,11 +72,11 @@ DEFINE_string(traj_name, "kcmpc_solution",
               "File to load saved trajectories from");
 DEFINE_string(
     gains_filename,
-    "examples/Cassie/kinematic_centroidal_mpc/osc_centroidal_gains.yaml",
+    "examples/Cassie/kinematic_centroidal_planner/osc_centroidal_gains.yaml",
     "Filepath containing gains");
 DEFINE_string(
     osqp_settings,
-    "examples/Cassie/kinematic_centroidal_mpc/osc_tracking_qp_settings.yaml",
+    "examples/Cassie/kinematic_centroidal_planner/osc_tracking_qp_settings.yaml",
     "Filepath containing qp settings");
 
 int DoMain(int argc, char* argv[]) {
@@ -135,14 +135,12 @@ int DoMain(int argc, char* argv[]) {
   const int RIGHT_STANCE = 2;
   const int DOUBLE_STANCE = 3;
   contact_state_to_fsm_map[0] = 0;
-  //  contact_state_to_fsm_map[12] = 1; // left stance
-  //  contact_state_to_fsm_map[3] = 2; // right stance
   contact_state_to_fsm_map[12] = 2;  // left stance
   contact_state_to_fsm_map[3] = 1;   // right stance
   contact_state_to_fsm_map[15] = 3;  // double stance
 
   auto trajectory_subscriber =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           FLAGS_channel_reference, &lcm));
   auto state_reference_receiver =
       builder.AddSystem<LcmTrajectoryReceiver>("state_traj");
@@ -486,24 +484,8 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
-
-  /// Fixing the reference trajectories for now.
-  /// TODO(yangwill): set up the subscriber and publisher for the reference
-  /// trajectories
-  const LcmTrajectory& lcm_traj =
-      LcmTrajectory(FindResourceOrThrow(output_traj_path));
-  auto& state_reference_receiver_context =
-      loop.get_diagram()->GetMutableSubsystemContext(
-          *state_reference_receiver, &loop.get_diagram_mutable_context());
-  auto& contact_force_reference_receiver_context =
-      loop.get_diagram()->GetMutableSubsystemContext(
-          *contact_force_reference_receiver,
-          &loop.get_diagram_mutable_context());
-  state_reference_receiver->get_input_port().FixValue(
-      &state_reference_receiver_context, lcm_traj.GenerateLcmObject());
-  contact_force_reference_receiver->get_input_port().FixValue(
-      &contact_force_reference_receiver_context, lcm_traj.GenerateLcmObject());
   DrawAndSaveDiagramGraph(*loop.get_diagram());
+
   loop.Simulate();
 
   return 0;

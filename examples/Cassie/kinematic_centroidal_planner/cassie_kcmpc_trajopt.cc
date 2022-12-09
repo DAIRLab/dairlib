@@ -15,12 +15,13 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/cassie_kinematic_centroidal_mpc.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/cassie_reference_utils.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/trajectory_parameters.h"
-#include "systems/controllers/kinematic_centroidal_mpc/kcmpc_reference_generator.h"
-#include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_gains.h"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "examples/Cassie/kinematic_centroidal_planner/cassie_kinematic_centroidal_solver.h"
+#include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
+#include "examples/Cassie/kinematic_centroidal_planner/trajectory_parameters.h"
 #include "systems/primitives/subvector_pass_through.h"
+#include "systems/trajectory_optimization/kinematic_centroidal_planner/kcmpc_reference_generator.h"
+#include "systems/trajectory_optimization/kinematic_centroidal_planner/kinematic_centroidal_gains.h"
 
 using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
@@ -32,9 +33,14 @@ DEFINE_string(channel_reference, "KCMPC_REF",
               "MPC are published");
 DEFINE_string(
     trajectory_parameters,
-    "examples/Cassie/kinematic_centroidal_mpc/trajectory_parameters.yaml",
+    "examples/Cassie/kinematic_centroidal_planner/motions/motion_test.yaml",
     "YAML file that contains trajectory parameters such as speed, tolerance, "
-    "com_height");
+    "target_com_height");
+DEFINE_string(planner_parameters,
+              "examples/Cassie/kinematic_centroidal_planner/"
+              "kinematic_centroidal_mpc_gains.yaml",
+              "planner parameters containing initial states and other "
+              "regularization parameters");
 DEFINE_double(knot_points_to_publish, 10, "Number of knot points to publish");
 
 int DoMain(int argc, char* argv[]) {
@@ -43,8 +49,7 @@ int DoMain(int argc, char* argv[]) {
   auto traj_params = drake::yaml::LoadYamlFile<TrajectoryParameters>(
       FLAGS_trajectory_parameters);
   auto gains = drake::yaml::LoadYamlFile<KinematicCentroidalGains>(
-      "examples/Cassie/kinematic_centroidal_mpc/"
-      "kinematic_centroidal_mpc_gains.yaml");
+      FLAGS_planner_parameters);
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -57,72 +62,79 @@ int DoMain(int argc, char* argv[]) {
   Parser parser_vis(&plant_vis, &scene_graph);
 
   std::string full_name = dairlib::FindResourceOrThrow(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf");
+      "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf");
   parser.AddModelFromFile(full_name);
   parser_vis.AddModelFromFile(full_name);
   plant.Finalize();
   plant_vis.Finalize();
 
+  auto plant_context = plant.CreateDefaultContext();
+
   // Create gaits
   auto stand = drake::yaml::LoadYamlFile<Gait>(
-      "examples/Cassie/kinematic_centroidal_mpc/gaits/stand.yaml");
-  auto step = drake::yaml::LoadYamlFile<Gait>(
-      "examples/Cassie/kinematic_centroidal_mpc/gaits/step.yaml");
+      "examples/Cassie/kinematic_centroidal_planner/gaits/stand.yaml");
+  auto walk = drake::yaml::LoadYamlFile<Gait>(
+      "examples/Cassie/kinematic_centroidal_planner/gaits/walk.yaml");
+  auto right_step = drake::yaml::LoadYamlFile<Gait>(
+      "examples/Cassie/kinematic_centroidal_planner/gaits/right_step.yaml");
+  auto left_step = drake::yaml::LoadYamlFile<Gait>(
+      "examples/Cassie/kinematic_centroidal_planner/gaits/left_step.yaml");
+  auto jump = drake::yaml::LoadYamlFile<Gait>(
+      "examples/Cassie/kinematic_centroidal_planner/gaits/jump.yaml");
 
+  std::unordered_map<std::string, Gait> gait_library;
+  gait_library["stand"] = stand;
+  gait_library["walk"] = walk;
+  gait_library["right_step"] = right_step;
+  gait_library["left_step"] = left_step;
+  gait_library["jump"] = jump;
   // Create reference
-  // TODO(yangwill): move this into the reference generator
-  // Specify knot points
-  std::vector<Gait> gait_samples = {stand, step, stand};
+  std::vector<Gait> gait_samples;
+  for (auto gait : traj_params.gait_sequence){
+    gait_samples.push_back(gait_library.at(gait));
+  }
   DRAKE_DEMAND(gait_samples.size() == traj_params.duration_scaling.size());
-  std::vector<double> durations = std::vector<double>(gait_samples.size());
-  for (int i = 0; i < gait_samples.size(); ++i) {
-    durations[i] = traj_params.duration_scaling[i] * gait_samples[i].period;
-  }
-  std::vector<double> time_points;
-  double start_time = 0;
-  time_points.push_back(start_time);
-  for (auto duration : durations) {
-    time_points.push_back(time_points.back() + duration);
-  }
+  std::vector<double> time_points = KcmpcReferenceGenerator::GenerateTimePoints(
+      traj_params.duration_scaling, gait_samples);
 
   // Create MPC and set gains
-  CassieKinematicCentroidalMPC mpc(
+  CassieKinematicCentroidalSolver mpc(
       plant, traj_params.n_knot_points,
       time_points.back() / (traj_params.n_knot_points - 1), 0.4);
   mpc.SetGains(gains);
+  mpc.SetMinimumFootClearance(traj_params.swing_foot_minimum_height);
+
+  KcmpcReferenceGenerator generator(plant, plant_context.get(),
+                                    CreateContactPoints(plant, 0));
 
   Eigen::VectorXd reference_state = GenerateNominalStand(
-      plant, traj_params.com_height, traj_params.stance_width, false);
-  KcmpcReferenceGenerator generator(plant,
-                                    reference_state.head(plant.num_positions()),
-                                    mpc.CreateContactPoints(plant, 0));
-
-  std::vector<Eigen::Vector3d> com_vel = {
-      {{0, 0, 0}, {traj_params.vel, 0, 0}, {0, 0, 0}}};
-  generator.SetComKnotPoints({time_points, com_vel});
+      plant, traj_params.target_com_height, traj_params.stance_width, false);
+  generator.SetNominalReferenceConfiguration(
+      reference_state.head(plant.num_positions()));
+  generator.SetComKnotPoints({time_points, traj_params.com_vel_vector});
   generator.SetGaitSequence({time_points, gait_samples});
-  generator.Build();
+  generator.Generate();
 
   // Add reference and mode sequence
-  mpc.AddForceTrackingReference(
+  mpc.SetForceTrackingReference(
       std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(
           generator.grf_traj_));
-  mpc.AddGenPosReference(
+  mpc.SetGenPosReference(
       std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(
           generator.q_trajectory_));
-  mpc.AddGenVelReference(
+  mpc.SetGenVelReference(
       std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(
           generator.v_trajectory_));
-  mpc.AddComReference(
+  mpc.SetComReference(
       std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(
           generator.com_trajectory_));
-  mpc.AddContactTrackingReference(
+  mpc.SetContactTrackingReference(
       std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(
           generator.contact_traj_));
-  mpc.AddConstantMomentumReference(Eigen::VectorXd::Zero(6));
+  mpc.SetConstantMomentumReference(Eigen::VectorXd::Zero(6));
   mpc.SetModeSequence(generator.contact_sequence_);
-
-  // Set initial guess
+  //
+  //  // Set initial guess
   mpc.AddInitialStateConstraint(reference_state);
   mpc.SetRobotStateGuess(generator.q_trajectory_, generator.v_trajectory_);
   mpc.SetComPositionGuess(generator.com_trajectory_);
@@ -132,10 +144,10 @@ int DoMain(int argc, char* argv[]) {
   {
     drake::solvers::SolverOptions options;
     auto id = drake::solvers::IpoptSolver::id();
-    options.SetOption(id, "tol", traj_params.tol);
-    options.SetOption(id, "dual_inf_tol", traj_params.tol);
-    options.SetOption(id, "constr_viol_tol", traj_params.tol);
-    options.SetOption(id, "compl_inf_tol", traj_params.tol);
+    options.SetOption(id, "tol", gains.tol);
+    options.SetOption(id, "dual_inf_tol", gains.tol);
+    options.SetOption(id, "constr_viol_tol", gains.tol);
+    options.SetOption(id, "compl_inf_tol", gains.tol);
     options.SetOption(id, "max_iter", 200);
     options.SetOption(id, "nlp_lower_bound_inf", -1e6);
     options.SetOption(id, "nlp_upper_bound_inf", 1e6);
@@ -144,8 +156,8 @@ int DoMain(int argc, char* argv[]) {
 
     // Set to ignore overall tolerance/dual infeasibility, but terminate when
     // primal feasible and objective fails to increase over 5 iterations.
-    options.SetOption(id, "acceptable_compl_inf_tol", traj_params.tol);
-    options.SetOption(id, "acceptable_constr_viol_tol", traj_params.tol);
+    options.SetOption(id, "acceptable_compl_inf_tol", gains.tol);
+    options.SetOption(id, "acceptable_constr_viol_tol", gains.tol);
     options.SetOption(id, "acceptable_obj_change_tol", 1e-3);
     options.SetOption(id, "acceptable_tol", 1e2);
     options.SetOption(id, "acceptable_iter", 1);
@@ -154,12 +166,15 @@ int DoMain(int argc, char* argv[]) {
     mpc.Build(options);
   }
 
-  //  double alpha = .2;
-  //  mpc.CreateVisualizationCallback(
-  //      "examples/Cassie/urdf/cassie_fixed_springs.urdf", alpha);
-
   std::cout << "Solving optimization\n\n";
-  const auto pp_xtraj = mpc.Solve();
+  auto pp_xtraj = mpc.Solve();
+
+  auto lcm_traj = mpc.GenerateLcmTraj(FLAGS_knot_points_to_publish);
+  auto lcm = std::make_unique<drake::lcm::DrakeLcm>();
+  dairlib::lcmt_timestamped_saved_traj timestamped_msg;
+  timestamped_msg.saved_traj = lcm_traj;
+  timestamped_msg.utime = 1;
+  drake::lcm::Publish(lcm.get(), FLAGS_channel_reference, timestamped_msg);
   try {
     mpc.SaveSolutionToFile("examples/Cassie/saved_trajectories/kcmpc_solution");
   } catch (...) {
@@ -167,8 +182,6 @@ int DoMain(int argc, char* argv[]) {
                  "rather than using bazel run"
               << std::endl;
   }
-
-  mpc.PublishSolution(FLAGS_channel_reference, FLAGS_knot_points_to_publish);
 
   auto traj_source =
       builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);
@@ -198,7 +211,5 @@ int DoMain(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-  //  DoMain(45, 5, 0.8, 0.3, 0.5, 1e-2);
-  //  DoMain(45, 0.8, 0.25, 0.0, 1e-2);
   DoMain(argc, argv);
 }

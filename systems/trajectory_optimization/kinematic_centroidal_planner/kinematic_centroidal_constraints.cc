@@ -1,6 +1,6 @@
 #include <drake/math/quaternion.h>
 #include <iostream>
-#include "kinematic_centroidal_constraints.h"
+#include "systems/trajectory_optimization/kinematic_centroidal_planner/kinematic_centroidal_constraints.h"
 #include "multibody/multibody_utils.h"
 
 template<typename T>

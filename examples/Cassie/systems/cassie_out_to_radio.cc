@@ -17,12 +17,13 @@ CassieOutToRadio::CassieOutToRadio() {
 }
 
 void CassieOutToRadio::CalcRadioOut(
-    const drake::systems::Context<double> &context,
-    dairlib::lcmt_radio_out *output) const {
-  const dairlib::lcmt_cassie_out *cassie_output = this->
-      EvalInputValue<dairlib::lcmt_cassie_out>(context, cassie_out_input_port_);
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_radio_out* output) const {
+  const dairlib::lcmt_cassie_out* cassie_output =
+      this->EvalInputValue<dairlib::lcmt_cassie_out>(context,
+                                                     cassie_out_input_port_);
   *output = cassie_output->pelvis.radio;
 }
 
-}
-}
+}  // namespace systems
+}  // namespace dairlib

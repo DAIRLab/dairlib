@@ -1,7 +1,0 @@
-package(default_visibility = ["//visibility:public"])
-
-exports_files(["stand.yaml"])
-
-exports_files(["walk.yaml"])
-
-exports_files(["step.yaml"])

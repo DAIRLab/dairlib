@@ -113,20 +113,30 @@ Vector4d CalcBd(double com_z, double m, double t) {
 }
 
 std::pair<Vector4d, Vector2d> MakePeriodicAlipGait(
-    const Vector2d& vdes, double com_z, double m, double stance_width,
-    double T_ss, double T_ds, Stance stance) {
+    const AlipGaitParams& gait_params) {
 
-  double s = stance == Stance::kLeft ? -1 : 1;
+  double s = gait_params.intial_stance_foot == Stance::kLeft ? -1 : 1;
 
-  const Vector2d p = Vector2d(vdes(0) * T_ss, s * stance_width);
-  const Matrix4d Ad = CalcAd(com_z, m, T_ss);
-  const Matrix<double, 4, 8> Ar = CalcResetMap(com_z, m, T_ds);
+  const Vector2d p = Vector2d(
+      gait_params.desired_velocity(0) * gait_params.single_stance_duaration,
+      gait_params.stance_width * s
+  );
+  const Matrix4d Ad = CalcAd(
+      gait_params.height,
+      gait_params.mass,
+      gait_params.single_stance_duaration
+  );
+  const Matrix<double, 4, 8> Ar = CalcResetMap(
+      gait_params.height, gait_params.mass, gait_params.double_stance_duration
+  );
 
   Matrix4d Rx = Matrix4d::Identity();
   Rx(1,1) = -1;
   Rx(3,3) = -1;
 
-  const Vector4d offset = 2 * vdes(1) * com_z * m * Vector4d::UnitZ();
+  const Vector4d offset = 2 * gait_params.desired_velocity(1) *
+                              gait_params.height *
+                              gait_params.mass * Vector4d::UnitZ();
   const Matrix4d A = Ar.leftCols<4>() * Ad - Rx;
   const Vector4d b = -Ar.rightCols<2>() * p + offset;
   const Vector4d x0 = A.inverse() * (b);

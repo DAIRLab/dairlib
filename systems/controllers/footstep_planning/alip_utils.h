@@ -10,6 +10,16 @@ namespace dairlib::systems::controllers::alip_utils {
 // (So during left stance, the next footstep will be in the -y direction)
 enum class Stance { kLeft = -1, kRight = 1 };
 
+struct AlipGaitParams {
+  double height;
+  double mass;
+  double single_stance_duaration;
+  double double_stance_duration;
+  double stance_width;
+  Eigen::Vector2d desired_velocity;
+  Stance intial_stance_foot;
+};
+
 inline std::vector<std::vector<int>> cartesian_product(unsigned long range,
                                                        int sets) {
   auto products = std::vector<std::vector<int>>();
@@ -61,7 +71,6 @@ double YImpactTime(double t_start, double H, double m, double y, double Lx,
                    double y_impact);
 
 std::pair<Eigen::Vector4d, Eigen::Vector2d> MakePeriodicAlipGait(
-    const Eigen::Vector2d& vdes,double com_z, double m, double stance_width,
-    double T_ss, double T_ds, Stance stance);
+    const AlipGaitParams& gait_params);
 
 }

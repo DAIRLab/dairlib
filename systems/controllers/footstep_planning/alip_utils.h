@@ -13,7 +13,7 @@ enum class Stance { kLeft = -1, kRight = 1 };
 struct AlipGaitParams {
   double height;
   double mass;
-  double single_stance_duaration;
+  double single_stance_duration;
   double double_stance_duration;
   double stance_width;
   Eigen::Vector2d desired_velocity;
@@ -72,5 +72,8 @@ double YImpactTime(double t_start, double H, double m, double y, double Lx,
 
 std::pair<Eigen::Vector4d, Eigen::Vector2d> MakePeriodicAlipGait(
     const AlipGaitParams& gait_params);
+
+std::vector<Eigen::VectorXd> MakePeriodicAlipGaitTrajectory(
+    const AlipGaitParams& gait_params, int nmodes, int knots_per_mode);
 
 }

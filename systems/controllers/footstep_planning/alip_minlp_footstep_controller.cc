@@ -70,6 +70,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   for (int n = 0; n < gains_.nmodes; n++) {
     trajopt_.AddMode(gains_.knots_per_mode);
   }
+  trajopt_.SetDoubleSupportTime(double_stance_duration);
   auto xd = trajopt_.MakeXdesTrajForVdes(
       Vector2d::Zero(), gains_.stance_width, single_stance_duration_,
       gains_.knots_per_mode, alip_utils::Stance::kLeft);
@@ -80,7 +81,6 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt_.SetMinimumStanceTime(gains_.t_min);
   trajopt_.SetMaximumStanceTime(gains_.t_max);
   trajopt_.SetInputLimit(gains_.u_max);
-  trajopt_.SetDoubleSupportTime(double_stance_duration);
   trajopt_.Build(trajopt_solver_options);
   trajopt_.CalcOptimalFootstepPlan(
       -0.5 * gains_.stance_width * Vector4d::UnitY(),
@@ -246,11 +246,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   auto xd  = trajopt_.MakeXdesTrajForVdes(
       vdes, gains_.stance_width, single_stance_duration_,
       gains_.knots_per_mode, stance);
-
-  xd.at(0) = trajopt_.MakeXdesTrajForCurrentStep(
-      vdes, t - t_prev_impact, t_next_impact - t,
-      single_stance_duration_, gains_.stance_width, stance,
-      gains_.knots_per_mode);
 
   // Update the trajopt_ problem data and solve
   //  trajopt_.set_H(h);

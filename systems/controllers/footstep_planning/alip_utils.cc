@@ -118,16 +118,18 @@ std::pair<Vector4d, Vector2d> MakePeriodicAlipGait(
   double s = gait_params.intial_stance_foot == Stance::kLeft ? -1 : 1;
 
   const Vector2d p = Vector2d(
-      gait_params.desired_velocity(0) * gait_params.single_stance_duaration,
+      gait_params.desired_velocity(0) * gait_params.single_stance_duration,
       gait_params.stance_width * s
   );
   const Matrix4d Ad = CalcAd(
       gait_params.height,
       gait_params.mass,
-      gait_params.single_stance_duaration
+      gait_params.single_stance_duration
   );
   const Matrix<double, 4, 8> Ar = CalcResetMap(
-      gait_params.height, gait_params.mass, gait_params.double_stance_duration
+      gait_params.height,
+      gait_params.mass,
+      gait_params.double_stance_duration
   );
 
   Matrix4d Rx = Matrix4d::Identity();
@@ -137,10 +139,36 @@ std::pair<Vector4d, Vector2d> MakePeriodicAlipGait(
   const Vector4d offset = 2 * gait_params.desired_velocity(1) *
                               gait_params.height *
                               gait_params.mass * Vector4d::UnitZ();
+
   const Matrix4d A = Ar.leftCols<4>() * Ad - Rx;
   const Vector4d b = -Ar.rightCols<2>() * p + offset;
   const Vector4d x0 = A.inverse() * (b);
   return {x0, p};
+}
+
+std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
+    const AlipGaitParams& gait_params, int nmodes, int knots_per_mode) {
+
+  vector<VectorXd> gait = vector<VectorXd>(
+      nmodes, VectorXd::Zero(4 * knots_per_mode));
+  auto [x0, p] = MakePeriodicAlipGait(gait_params);
+
+  Matrix4d Rx = Matrix4d::Identity();
+  Rx(1,1) = -1;
+  Rx(3,3) = -1;
+  const Matrix4d Ad = CalcAd(
+      gait_params.height,
+      gait_params.mass,
+      gait_params.single_stance_duration / (knots_per_mode - 1)
+  );
+
+  for (int i = 0; i < nmodes; i++) {
+    gait.at(i).head<4>() = (i % 2) == 0 ? x0 : Rx * x0;
+    for (int k = 1; k < knots_per_mode; k++) {
+      gait.at(i).segment(4 * k, 4) = Ad * gait.at(i).segment(4 * (k-1), 4);
+    }
+  }
+  return gait;
 }
 
 double XImpactTime(double t_start, double H, double x, double Ly,

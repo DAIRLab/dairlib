@@ -30,7 +30,6 @@ PYBIND11_MODULE(controllers, m) {
       .def("Build", &AlipMINLP::Build)
       .def("UpdateFootholds", &AlipMINLP::UpdateFootholds)
       .def("MakeXdesTrajForVdes", &AlipMINLP::MakeXdesTrajForVdes)
-      .def("MakeXdesTrajForCurrentStep", &AlipMINLP::MakeXdesTrajForCurrentStep)
       .def("UpdateNominalStanceTime", &AlipMINLP::UpdateNominalStanceTime)
       .def("SetInputLimit", &AlipMINLP::SetInputLimit)
       .def("SetMinimumStanceTime", &AlipMINLP::SetMinimumStanceTime)

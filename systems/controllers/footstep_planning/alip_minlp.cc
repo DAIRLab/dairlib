@@ -536,61 +536,17 @@ void AlipMINLP::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
 }
 
 vector<VectorXd> AlipMINLP::MakeXdesTrajForVdes(
-    const Vector2d& vdes, double step_width, double Ts, double nk,
+    const Vector2d& vdes, double step_width, double Ts, int nk,
     alip_utils::Stance stance) const {
-  double omega = sqrt(9.81 / H_);
-  double frac = 1 / (m_ * H_ * omega);
-  double Ly = H_ * m_ * vdes(0);
-  double Lx = H_ * m_ * omega * step_width * tanh(omega * Ts / 2);
-  double dLx = - H_ * m_ * vdes(1);
-  Matrix4d Ad = alip_utils::CalcAd(H_, m_, (Ts / (nk-1)));
-  vector<VectorXd> xx;
-
-  double stance_sign = stance == alip_utils::Stance::kLeft ? -1.0 : 1.0;
-  Eigen::MatrixPower<Matrix4d> APow(Ad);
-  for (int i = 0; i < nmodes_; i++) {
-    double s = stance_sign * ((i % 2 == 0) ? 1.0 : -1.0);
-    Vector4d x0(
-        -frac * tanh(omega * Ts /2) * Ly,
-        s / 2 * step_width,
-        s / 2 * Lx + dLx,
-        Ly);
-    VectorXd x = VectorXd::Zero(nx_ * nknots_.at(i));
-    for (int k = 0; k < nk; k++) {
-      GetStateAtKnot(x, k) = APow(k) * x0;
-    }
-    xx.push_back(x);
-  }
-  return xx;
-}
-
-VectorXd AlipMINLP::MakeXdesTrajForCurrentStep(
-    const Vector2d &vdes, double t_current, double t_remain,
-    double Ts, double step_width, alip_utils::Stance stance, double nk) const {
-
-  double omega = sqrt(9.81 / H_);
-  double frac = 1 / (m_ * H_ * omega);
-  double Ly = H_ * m_ * vdes(0);
-  double Lx = H_ * m_ * omega * step_width * tanh(omega * Ts / 2);
-  double dLx = -H_ * m_ * vdes(1);
-
-  Matrix4d Ad0 = alip_utils::CalcAd(H_, m_, t_current);
-  Matrix4d Ad = alip_utils::CalcAd(H_, m_, t_remain / (nk-1));
-  Eigen::MatrixPower<Matrix4d> APow(Ad);
-
-  double stance_sign = stance == alip_utils::Stance::kLeft ? -1.0 : 1.0;
-
-  Vector4d x0(
-      -frac * tanh(omega * Ts /2) * Ly,
-      stance_sign / 2 * step_width,
-      stance_sign / 2 * Lx + dLx,
-      Ly);
-  x0 = Ad0 * x0;
-  VectorXd x = VectorXd::Zero(nx_ * nknots_.front());
-  for (int k = 0; k < nk; k++) {
-    GetStateAtKnot(x, k) = APow(k) * x0;
-  }
-  return x;
+  alip_utils::AlipGaitParams params;
+  params.height = H_;
+  params.mass = m_;
+  params.single_stance_duration = Ts;
+  params.double_stance_duration = Tds_;
+  params.stance_width = step_width;
+  params.desired_velocity = vdes;
+  params.intial_stance_foot = stance;
+  return alip_utils::MakePeriodicAlipGaitTrajectory(params, nmodes(), nk);
 }
 
 vector<vector<int>> AlipMINLP::GetPossibleModeSequences() {

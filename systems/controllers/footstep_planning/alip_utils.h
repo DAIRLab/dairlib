@@ -18,7 +18,23 @@ struct AlipGaitParams {
   double stance_width;
   Eigen::Vector2d desired_velocity;
   Stance intial_stance_foot;
+  friend std::ostream& operator<<(std::ostream& os, const AlipGaitParams& data);
 };
+
+inline std::ostream& operator<<(std::ostream& os, const AlipGaitParams& data) {
+
+  os << "Periodic Alip Gait Parameters:"
+        "\nHeight: " << data.height <<
+        "\nMass: " << data.mass <<
+        "\nT_ss: " << data.single_stance_duration <<
+        "\nT_ds: " << data.double_stance_duration <<
+        "\nStance Width: " << data.stance_width <<
+        "\nVdes: " << data.desired_velocity.transpose() <<
+        "\nInitial stance foot: " <<
+        (data.intial_stance_foot == Stance::kLeft? "kLeft" : "kRight") << "\n";
+  return os;
+}
+
 
 inline std::vector<std::vector<int>> cartesian_product(unsigned long range,
                                                        int sets) {

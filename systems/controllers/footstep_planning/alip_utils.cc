@@ -132,9 +132,13 @@ std::pair<Vector4d, Vector2d> MakePeriodicAlipGait(
       gait_params.double_stance_duration
   );
 
+//  DRAKE_DEMAND(!p.hasNaN());
+//  DRAKE_DEMAND(!Ad.hasNaN());
+//  DRAKE_DEMAND(!Ar.hasNaN());
+
   Matrix4d Rx = Matrix4d::Identity();
   Rx(1,1) = -1;
-  Rx(3,3) = -1;
+  Rx(2,2) = -1;
 
   const Vector4d offset = 2 * gait_params.desired_velocity(1) *
                               gait_params.height *
@@ -155,7 +159,7 @@ std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
 
   Matrix4d Rx = Matrix4d::Identity();
   Rx(1,1) = -1;
-  Rx(3,3) = -1;
+  Rx(2,2) = -1;
   const Matrix4d Ad = CalcAd(
       gait_params.height,
       gait_params.mass,
@@ -168,7 +172,17 @@ std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
       gait.at(i).segment(4 * k, 4) = Ad * gait.at(i).segment(4 * (k-1), 4);
     }
   }
+
+//
+//  for (const auto& x : gait) {
+//    if (x.hasNaN()) {
+//      std::cout << "Invalid gait generated for " << gait_params;
+//      throw std::logic_error("NaN gait");
+//    }
+//  }
+
   return gait;
+
 }
 
 double XImpactTime(double t_start, double H, double x, double Ly,

@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from pydairlib.geometry.convex_foothold import ConvexFoothold
-from pydairlib.perceptive_locomotion.controllers import AlipMINLP
+from pydairlib.perceptive_locomotion.controllers import AlipMINLP, Stance
 
 
 def PlotCoMTrajSolution(trajopt):
@@ -25,6 +25,18 @@ def PlotCoMTrajSolution(trajopt):
     plt.xlim([-0.5, 0.5])
     plt.ylim([-0.5, pp[-1][0] + xx[-1][-1][0]])
 
+def PlotDesired(xx):
+    import pdb; pdb.set_trace()
+    xy_traj = np.hstack(
+        [
+            np.hstack(
+                [np.expand_dims(xx[n][4 * k:4 * k + 2], axis=-1) for k in
+                 range(int(xx[0].size / 4))]
+            ) for n in range(len(xx))
+        ]
+    )
+    plt.plot(-xy_traj[1], xy_traj[0])
+    plt.xlim([-0.5, 0.5])
 
 def PlotInputSolution(trajopt):
     plt.figure()
@@ -40,6 +52,7 @@ def PlotInputSolution(trajopt):
 
 def main():
     trajopt = AlipMINLP(32, 0.9)
+    trajopt.SetDoubleSupportTime(0.05)
 
     footholds = []
     p0 = [0.0, 0.0, 0.0]
@@ -61,8 +74,10 @@ def main():
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
     trajopt.AddMode(nk)
-    xd = trajopt.MakeXdesTrajForVdes(np.array([1.0, 0]), 0.35, 0.35, nk, -1)
-
+    xd = trajopt.MakeXdesTrajForVdes(np.array([[0.1], [0]]), 0.35, 0.35, nk, Stance.kLeft)
+    PlotDesired(xd)
+    plt.show()
+    import pdb; pdb.set_trace()
     trajopt.AddTrackingCost(xd, 1*np.eye(4), 0*np.eye(4))
     trajopt.UpdateNominalStanceTime(0.35, 0.35)
     trajopt.SetMinimumStanceTime(0.1)
@@ -70,8 +85,12 @@ def main():
     trajopt.SetInputLimit(1)
     trajopt.AddInputCost(10)
     trajopt.Build()
+
     # trajopt.ActivateInitialTimeConstraint(0.35)
-    trajopt.CalcOptimalFootstepPlan(xd[0][0], np.array(p0), False)
+    trajopt.CalcOptimalFootstepPlan(xd[0][:4], np.array(p0), False)
+
+    PlotDesired(trajopt)
+    # PlotCoMTrajSolution(trajopt)
 
     import pdb; pdb.set_trace()
 

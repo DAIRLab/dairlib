@@ -130,6 +130,7 @@ class AlipMINLP {
   }
 
   void Build(const drake::solvers::SolverOptions &solver_options);
+  void Build();
 
   vector<Eigen::VectorXd> MakeXdesTrajForVdes(
       const Eigen::Vector2d &vdes, double step_width, double Ts, int nk,

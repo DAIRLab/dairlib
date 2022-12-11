@@ -130,7 +130,7 @@ void AlipMINLP::UpdateMaximumCurrentStanceTime(double tmax) {
   tmax_.at(0) = tmax;
 }
 
-void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
+void AlipMINLP::Build() {
   DRAKE_ASSERT(td_.size() == nmodes_);
   tt_ = VectorXd::Zero(nmodes_);
   for (int i = 0; i < nmodes_; i++) {
@@ -145,9 +145,12 @@ void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
   MakeNextFootstepReachabilityConstraint();
   MakeInitialStateConstraint();
   MakeInitialFootstepConstraint();
-
-  prog_->SetSolverOptions(options);
   built_ = true;
+}
+
+void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
+  prog_->SetSolverOptions(options);
+  Build();
 }
 
 void AlipMINLP::AddMode(int n_knots) {

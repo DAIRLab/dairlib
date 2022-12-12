@@ -175,12 +175,6 @@ OperationalSpaceControl::OperationalSpaceControl(
   two_models_ = (plant_w_spr.num_positions() == 23) &&
                 (plant_wo_spr.num_positions() == 19);
   if (two_models_) {
-    if (!is_rom_modification) {
-      cout << "WARNING: we have a local modification (not in master branch) by "
-              "translating the knee spring deflection to knee motor "
-              "position/vel when we use two different models in OSC\n";
-    }
-
     const std::map<string, int>& pos_map_w_spr =
         multibody::makeNameToPositionsMap(plant_w_spr);
     const std::map<string, int>& pos_map_wo_spr =
@@ -1357,7 +1351,6 @@ void OperationalSpaceControl::CalcOptimalInput(
       map_velocity_from_spring_to_no_spring_ * v_w_spr;
 
   // Testing -- translating the knee spring to knee joint
-  //  if (is_rom_modification_) {
   if (two_models_) {
     // Position (only do knees)
     x_wo_spr.segment<1>(knee_ankle_pos_idx_list_wo_spr_[0]) +=
@@ -1382,7 +1375,6 @@ void OperationalSpaceControl::CalcOptimalInput(
     //    cout << "x_w_spr.segment<1>(spring_vel_idx_list_w_spr_[1]) = "
     //         << x_w_spr.segment<1>(spring_vel_idx_list_w_spr_[1]) << endl;
   }
-  //  }
 
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {

@@ -2,6 +2,7 @@
 
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
+#include <iostream>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -47,16 +48,8 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
-DEFINE_bool(time_stepping, true,
-            "If 'true', the plant is modeled as a "
-            "discrete system with periodic updates. "
-            "If 'false', the plant is modeled as a continuous system.");
-DEFINE_double(dt, 8e-5,
+DEFINE_double(dt, 1e-3,
               "The step size to use for time_stepping, ignored for continuous");
-DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
-DEFINE_double(penetration_allowance, 1e-5,
-              "Penetration allowance for the contact model. Nearly equivalent"
-              " to (m)");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
@@ -65,7 +58,6 @@ DEFINE_double(init_height, .7,
               "ground");
 DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
-
 DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO",
               "LCM channel for virtual radio command");
 DEFINE_string(channel_u, "CASSIE_INPUT",
@@ -76,8 +68,10 @@ DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
 DEFINE_double(start_time, 0.0,
               "Starting time of the simulator, useful for initializing the "
               "state at a particular configuration");
+DEFINE_string(contact_solver, "SAP",
+              "Contact solver to use. Either TAMSI or SAP.");
 
-int do_main(int argc, char* argv[]) {
+    int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Plant/System initialization
@@ -85,10 +79,10 @@ int do_main(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
+  const double time_step = FLAGS_dt;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1});
+    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1}, false);
   }
 
   std::string urdf;
@@ -98,9 +92,15 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
-  plant.set_discrete_contact_solver(drake::multibody::DiscreteContactSolver::kSap);
-//  plant.set_penetration_allowance(FLAGS_penetration_allowance);
-//  plant.set_stiction_tolerance(FLAGS_v_stiction);
+  if (FLAGS_contact_solver == "SAP") {
+    plant.set_discrete_contact_solver(
+        drake::multibody::DiscreteContactSolver::kSap);
+  } else if (FLAGS_contact_solver == "TAMSI") {
+    plant.set_discrete_contact_solver(
+        drake::multibody::DiscreteContactSolver::kTamsi);
+  } else {
+    std::cerr << "Unknown contact solver setting." << std::endl;
+  }
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
   plant.Finalize();
@@ -214,17 +214,8 @@ int do_main(int argc, char* argv[]) {
   }
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
-  VectorXd x = plant.GetPositionsAndVelocities(plant_context);
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
-
-  if (!FLAGS_time_stepping) {
-    // simulator.get_mutable_integrator()->set_maximum_step_size(0.01);
-    // simulator.get_mutable_integrator()->set_target_accuracy(1e-1);
-    // simulator.get_mutable_integrator()->set_fixed_step_mode(true);
-    simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-        FLAGS_dt);
-  }
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);

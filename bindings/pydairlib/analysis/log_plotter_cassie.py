@@ -124,7 +124,7 @@ def main():
     if plot_config.plot_tracking_costs:
         plot = mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-        plt.ylim([0, 1e4])
+        # plt.ylim([0, 1e4])
     if plot_config.plot_qp_costs:
         plot = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)

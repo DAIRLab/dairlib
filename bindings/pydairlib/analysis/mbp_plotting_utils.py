@@ -437,6 +437,8 @@ def plot_tracking_costs(osc_debug, time_slice):
     data_dict = \
         {key: val for key, val in osc_debug['tracking_cost'].items()}
     data_dict['t_osc'] = osc_debug['t_osc']
+    # import pdb; pdb.set_trace()
+    # data_dict['t_osc'] = osc_debug['trac']
     plotting_utils.make_plot(
         data_dict,
         't_osc',

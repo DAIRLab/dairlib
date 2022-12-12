@@ -75,6 +75,7 @@ DEFINE_int32(n_step_lipm, 0, "Number of foot steps of lipm cascased");
 DEFINE_double(final_position, 2, "The final position for the robot");
 DEFINE_double(stride_length, -10000, "set constant walking stride length");
 DEFINE_double(stride_length_scaling, 1.0, "");
+DEFINE_double(pelvis_height, -1, "set pelvis height");
 
 DEFINE_int32(knots_per_mode, 24, "Number of knots per mode in rom traj opt");
 DEFINE_bool(fix_duration, true,
@@ -189,6 +190,10 @@ int DoMain(int argc, char* argv[]) {
     gains.constant_step_length_x = FLAGS_stride_length;
   }
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
+
+  if (FLAGS_pelvis_height > 0) {
+    gains.pelvis_height = FLAGS_pelvis_height;
+  }
 
   if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
     DRAKE_DEMAND(FLAGS_dir_and_prefix_FOM.empty());

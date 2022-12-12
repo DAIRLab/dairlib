@@ -358,8 +358,13 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   cout << "footstep_during_left_support_ = " << footstep_during_left_support_
        << endl;
 
-  // Desired height
+  // Desired CoM height.
+  // (if "pelvis_height" is not set, we default com height to `y_reg_`)
   desired_com_height_ = y_reg_.col(0)(2);
+  if (param_.gains.pelvis_height > 0) {
+    desired_com_height_ = param_.gains.pelvis_height -
+                          param_.gains.pelvis_com_height_diff_heuristic;
+  }
 
   //   cout << "initial guess duration ~ " << duration << endl;
   //   cout << "h_guess = " << h_guess_ << endl;
@@ -878,14 +883,14 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
         << des_xy_vel_com_rt_init_stance_foot.at(0)(0),
         abs(des_xy_vel_com_rt_init_stance_foot.at(0)(1));
   }
-  cout << "des_com_pos = "
+  /*cout << "des_com_pos = "
        << des_com_pos_rt_stance_foot_at_start_of_mode__during_left_stance
               .transpose()
        << endl;
   cout << "des_com_vel = "
        << des_com_vel_rt_stance_foot_at_start_of_mode__during_left_stance
               .transpose()
-       << endl;
+       << endl;*/
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC

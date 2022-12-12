@@ -87,6 +87,12 @@ vel_scale_rot: -0.5
 vel_scale_trans_sagital: 0.6  # For some reason, Cassie in mujoco walks much faster than desired vel
 vel_scale_trans_lateral: -0.2
 
+# Pelvis height task (primarily used for sim cost eval)
+# Note: This pelvis height is not use in the default swing foot planner (i.e. when we don't use the foot step from the planner).
+#       The "pelvis height" for the default swing foot planner is set by the parameter below (lipm_height)
+pelvis_height: -1.0
+pelvis_com_height_diff_heuristic: 0.06  # 0.06 is a rough guess
+
 
 ### For both planner and controller
 # Finite state machine states

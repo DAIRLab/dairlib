@@ -290,6 +290,18 @@ int DoMain(int argc, char* argv[]) {
     gains.final_foot_height_offset_for_right_leg = 0;
   }
 
+  if (!FLAGS_get_swing_foot_from_planner) {
+    std::string msg =
+        "20221211: WARNING -- I add `pelvis_height` variable to planner thread "
+        "and not controller thread, assuming that planner is the only source "
+        "of pelvis height to the controller. I didn't update the code for the "
+        "case where we don't use the swing foot from the planner (in this "
+        "case, the swing foot placement is dependent on the desired height in "
+        "the controller thread)\n";
+    cout << msg;
+    DRAKE_DEMAND(FLAGS_get_swing_foot_from_planner);
+  }
+
   // Build Cassie MBP
   std::string urdf = FLAGS_spring_model
                          ? "examples/Cassie/urdf/cassie_v2.urdf"

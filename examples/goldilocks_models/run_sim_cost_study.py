@@ -69,9 +69,9 @@ def LogSimCostStudySetting():
   f.write("foot_step_from_planner = %s\n" % foot_step_from_planner)
   f.write("stance_hip_angles_from_planner = %s\n" % stance_hip_angles_from_planner)
   f.write("init_sim_vel = %s\n" % init_sim_vel)
-  f.write("use_nominal_traj_pool = %s\n" % use_nominal_traj_pool)
-  f.write("set_sim_init_state_from_trajopt = %s\n" % set_sim_init_state_from_trajopt)
   f.write("completely_use_trajs_from_model_opt_as_target = %s\n" % completely_use_trajs_from_model_opt_as_target)
+  f.write("hybrid_mpc = %s\n" % hybrid_mpc)
+  f.write("simulation_initialization_mode = %s\n" % simulation_initialization_modes[simulation_initialization_mode])
 
   commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
   git_diff = subprocess.check_output(['git', 'diff'])
@@ -122,7 +122,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   # planner arguments
   realtime_rate_for_time_limit = target_realtime_rate
   dynamic_time_limit = True
-  use_ipopt = False
+  use_ipopt = True if hybrid_mpc else False
   knots_per_mode = 5  # can try smaller number like 3 or 5
   feas_tol = 1e-2
   n_step = 2
@@ -142,9 +142,15 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
 
   # Extract tasks
   task_sl = task[tasks.GetDimIdxByName("stride_length")]
+  task_ph = task[tasks.GetDimIdxByName("pelvis_height")]
+  task_du = task[tasks.GetDimIdxByName("duration")]
 
-  dir_and_prefix_FOM_reg = "" if len(FOM_model_dir) == 0 else "%s0_%d_" % (FOM_model_dir, trajopt_sample_idx_for_planner)
-  path_init_state = "%s%d_%d_x_samples0.csv" % (model_dir, rom_iter_idx, trajopt_sample_idx_for_sim) if set_sim_init_state_from_trajopt else ""
+  dir_and_prefix_FOM_reg = "" if len(FOM_model_dir_for_planner) == 0 else "%s0_%d_" % (FOM_model_dir_for_planner, trajopt_sample_idx_for_planner)
+  path_simulation_init_state = ""
+  if simulation_initialization_mode == 1:
+    path_simulation_init_state = "%s%d_%d_x_samples0.csv" % (model_dir, rom_iter_idx, trajopt_sample_idx_for_sim)
+  elif simulation_initialization_mode == 2:
+    path_simulation_init_state = "%s%d_%d_x_samples0.csv" % (FOM_model_dir_for_sim, 0, trajopt_sample_idx_for_sim)
 
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
@@ -162,12 +168,14 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--feas_tol=%.6f' % feas_tol,
     '--stride_length=%.3f' % task_sl,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
+    '--pelvis_height=%.3f' % task_ph,
     '--time_limit=%.3f' % time_limit,
     '--realtime_rate_for_time_limit=%.3f' % realtime_rate_for_time_limit,
     '--init_file=%s' % planner_init_file,
     '--use_ipopt=%s' % ("true" if use_ipopt else str(get_init_file).lower()),
     '--log_data=%s' % str(get_init_file).lower(),
     '--run_one_loop_to_get_init_file=%s' % str(get_init_file).lower(),
+    '--switch_to_snopt_after_first_loop=%s' % str(not hybrid_mpc).lower(),
     '--spring_model=%s' % str(spring_model).lower(),
     '--dir_and_prefix_FOM=%s' % dir_and_prefix_FOM_reg,
     '--dir_data=%s' % data_dir_this_thread,
@@ -205,7 +213,10 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--pelvis_x_vel=%.3f' % ((init_x_vel_reduction_ratio * task_sl / duration) if init_sim_vel else 0),
     '--target_realtime_rate=%.3f' % target_realtime_rate,
     '--spring_model=%s' % str(spring_model).lower(),
-    '--path_init_state=%s' % path_init_state,
+    '--init_height=%.3f' % task_ph,
+    '--pelvis_x_vel=%.3f' % (task_sl / task_du),
+    '--pelvis_y_vel=%.3f' % 0.15,
+    '--path_init_state=%s' % path_simulation_init_state,
     '--path_init_pose_success=%s' % path_init_pose_success,
     ]
   lcm_logger_cmd = [
@@ -242,6 +253,8 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   planner_process = subprocess.Popen(planner_cmd)
   controller_process = subprocess.Popen(controller_cmd)
   if not get_init_file:
+    # time.sleep(t_no_logging_at_start)  # don't log the beginning. Only do this when you are confident that the start of sim works (e.g. you have visualize every samples)
+    # TODO: double check if the above line would cause any issue in sim eval. Implement this feature (goal is to reduce the lcmlog file size)
     logger_process = subprocess.Popen(lcm_logger_cmd)
   # We don't run simulation thread until both planner and controller are waiting for simulation's message
   while not os.path.exists(planner_wait_identifier) or \
@@ -258,12 +271,14 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     return ([planner_process, controller_process, simulator_process],
             [path_init_pose_success, msg],
             get_init_file,
-            thread_idx)
+            thread_idx,
+            time.time())
   else:
     return ([simulator_process, planner_process, controller_process, logger_process],
             [path_init_pose_success, msg],
             get_init_file,
-            thread_idx)
+            thread_idx,
+            time.time())
 
 
 # sim_end_time is used to check if the simulation ended early
@@ -309,21 +324,22 @@ def CollectAllTrajoptSampleIndices():
 
 
 # trajopt_sample_indices for planner (find the most similar tasks)
-def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, zero_stride_length=False):
+def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, trajopt_sample_dir, zero_stride_length=False):
   trajopt_sample_indices = np.zeros((len(model_indices), len(task_list)),
                                     dtype=np.dtype(int))
   for i in range(len(model_indices)):
     for j in range(len(task_list)):
-      trajopt_sample_indices[i, j] = GetTrajoptSampleIndexGivenTask(model_indices[i],
+      trajopt_sample_indices[i, j] = GetTrajoptSampleIndexGivenTask(model_indices[i] if (simulation_initialization_mode < 2) else 0,
                                                                     task_list[j],
+                                                                    trajopt_sample_dir,
                                                                     zero_stride_length)
   return trajopt_sample_indices
 
 
 # Get trajopt sample idx with the most similar task
 # TODO: This function is currently not perfect yet. It cannot pick sample accurately if the sampling density is much high in one dimension than the other + we randomize tasks
-def GetTrajoptSampleIndexGivenTask(rom_iter, task, zero_stride_length=False):
-  dir = model_dir if len(FOM_model_dir) == 0 else FOM_model_dir
+def GetTrajoptSampleIndexGivenTask(rom_iter, task, trajopt_sample_dir, zero_stride_length=False):
+  dir = model_dir if len(trajopt_sample_dir) == 0 else trajopt_sample_dir
 
   stride_length_idx = list(nominal_task_names).index("stride_length")
 
@@ -388,7 +404,7 @@ def BlockAndDeleteTheLatestThread(working_threads):
   # Question (20220329): why did I have a condition `not InitPoseSolverFailed` (see below)? I found today this was a bug to me, because it ended the process too early and no init_file was created for the planner.
     # while working_threads[-1][0][0].poll() is None and \
     #     not InitPoseSolverFailed(working_threads[-1][1][0]):
-  while working_threads[-1][0][0].poll() is None:
+  while (working_threads[-1][0][0].poll() is None) and (time.time() - working_threads[-1][4] < max_time_for_a_thread):
     time.sleep(0.1)
   EndSim(working_threads, -1, False)
 
@@ -399,7 +415,8 @@ def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
   while (not finish_up and (len(working_threads) >= n_max_thread)) or \
       (finish_up and (len(working_threads) > 0)):
     for j in range(len(working_threads)):
-      if working_threads[j][0][0].poll() is None:
+      # if it's still running and hasn't spent too much time
+      if (working_threads[j][0][0].poll() is None) and (time.time() - working_threads[j][4] < max_time_for_a_thread):
         time.sleep(0.1)
       else:
         # I paused a second in sim script to give lcm-logger time to finish
@@ -412,6 +429,12 @@ def CheckSimThreadAndBlockWhenNecessary(working_threads, n_max_thread,
 def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
                                    do_eval_cost=False):
   # TODO: I wonder if we will break any thing if we run ipopt in parallel for the initial pose? (currently we are not doing this, so we are fine)
+
+  ### Some checks
+  if not parsed_yaml_file.get('use_radio'):
+    raise ValueError("Currently we don't use radio in sim evaluation, although the evaluation script could probably be extended easily")
+  if not parsed_yaml_file.get('use_vitual_radio'):
+    raise ValueError("Currently we don't use virtual radio in sim evaluation, although the evaluation script could probably be extended easily")
 
   ### Channel names
   global ch
@@ -428,8 +451,8 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   ### Construct sample indices from the task list for simulation
   # `trajopt_sample_idx` is also used to initialize simulation state
   # `trajopt_sample_idx` is for planner's initial guess and cost regularization term
-  trajopt_sample_indices_for_sim = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list)
-  trajopt_sample_indices_for_planner = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, use_single_cost_function_for_all_tasks) if use_single_cost_function_for_all_tasks else trajopt_sample_indices_for_sim
+  trajopt_sample_indices_for_sim = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, FOM_model_dir_for_sim)
+  trajopt_sample_indices_for_planner = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, FOM_model_dir_for_planner, use_single_cost_function_for_all_tasks)
   print("trajopt_sample_indices_for_sim = \n" + str(trajopt_sample_indices_for_sim))
   print("trajopt_sample_indices_for_planner = \n" + str(trajopt_sample_indices_for_planner))
 
@@ -438,7 +461,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   n_max_thread = min(int(psutil.cpu_count() / 3) - 1, len(task_list))  # TODO: check if the min is necessary
   n_max_thread = min(int(psutil.cpu_count() / 2), len(task_list)) if target_realtime_rate == 0.1 else n_max_thread
   if target_realtime_rate == 1:
-    n_max_thread = 1
+    n_max_thread = 3
 
   global thread_idx_set
   thread_idx_set = set()
@@ -465,14 +488,16 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
       # if not (rom_iter == 1):
       #   continue
 
-      # skip_this_iter = True
+      # skip_this_eval_loop = True
       # if rom_iter == 201 and log_idx == 138:
-      #   skip_this_iter = False
+      #   skip_this_eval_loop = False
       # if rom_iter == 201 and log_idx == 139:
-      #   skip_this_iter = False
+      #   skip_this_eval_loop = False
       # if rom_iter == 201 and log_idx == 148:
-      #   skip_this_iter = False
-      # if skip_this_iter:
+      #   skip_this_eval_loop = False
+      # if rom_iter == 500 and log_idx >= 300:
+      #   skip_this_eval_loop = False
+      # if skip_this_eval_loop:
       #  continue
 
       print("\n===========\n")
@@ -660,7 +685,12 @@ def PlotNominalCost(model_indices, trajopt_sample_indices_for_viz):
     cost_x = FindVarValueInString(contents, "cost_x =")
     cost_u = FindVarValueInString(contents, "cost_u =")
     cost_accel = FindVarValueInString(contents, "cost_joint_acceleration =")
+
+    # TODO: we haven't implement the all cost for open loop, but it's easy to implement (this is of low priority)
     total_cost = cost_x + cost_u + cost_accel
+    if cost_choice == 2:
+      total_cost = cost_u
+
     costs = np.vstack([costs, total_cost])
 
   # figname = "Nominal cost over model iterations"
@@ -684,7 +714,7 @@ def GetSamplesToPlot(model_indices, log_indices):
       if os.path.exists(path0):
         current_cmt = np.zeros((1, 2 + len(varying_task_element_indices)))
         ### Read cost
-        cost = np.loadtxt(path1, delimiter=',')[idx_sim_cost_element]
+        cost = np.loadtxt(path1, delimiter=',')[idx_closedloop_cost_element]
         current_cmt[0, 0] = cost
         if cost > max_cost_to_ignore:
           continue
@@ -1235,6 +1265,46 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
       plt.savefig("%scost_landscape%s_model_iter_%d.png" % (eval_dir, app_list[i], model_slice_value))
 
 
+def ComputeCostImprovementForIndividualTask(model_indices, cmt):
+  if cmt.shape[1] != 4:
+    raise ValueError("The code assumes cmt is 4D (two dimensinoal task)")
+
+  # The line along which we evaluate the cost (using interpolation)
+  n_model_iter = model_indices[-1] - model_indices[0]  # number of iterations between iter_start and iter_end
+  m = np.linspace(0, n_model_iter, n_model_iter + 1)
+
+  interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
+
+  cost_improvement_grid = np.zeros(task_value_grid_for_computing_cost_improvement[0].shape)
+  for row_idx in range(cost_improvement_grid.shape[0]):
+    for col_idx in range(cost_improvement_grid.shape[1]):
+      task_slice_value = [task_value_grid_for_computing_cost_improvement[0][row_idx,col_idx], task_value_grid_for_computing_cost_improvement[1][row_idx,col_idx]]
+
+      t = np.array(task_slice_value).reshape(2, 1) * np.ones(n_model_iter + 1)
+      z = interpolator(np.vstack((m, t)).T)
+
+      # Log the improvement percentage into a file
+      masked_z = z[~np.isnan(z)]
+      message = ""
+      if len(masked_z) == 0:
+        message = "Max cost improvement for task (sl, ph) = (%.2f, %.2f) m is NaN, because len(masked_z) = 0\n"
+        cost_improvement_grid[row_idx, col_idx] = np.nan
+      else:
+        improvement_percentage = round(float((masked_z[0] - min(masked_z)) / masked_z[0] * 100) , 2)
+        cost_improvement_grid[row_idx, col_idx] = improvement_percentage
+        message = "Max cost improvement for task (sl, ph) = (%.2f, %.2f) m is %.1f %%\n" % (task_slice_value[0], task_slice_value[1], improvement_percentage)
+      print(message, end="")
+      f = open(eval_dir + "costs_info.txt", "a")
+      f.write(message)
+      f.close()
+
+  msg = "\ncost_improvement_grid = \n" + str(cost_improvement_grid)
+  print(msg)
+  f = open(eval_dir + "costs_info.txt", "a")
+  f.write(msg)
+  f.close()
+
+
 def ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_range_to_average):
   if len(stride_length_range_to_average) == 0:
     return
@@ -1494,6 +1564,12 @@ class Tasks:
         name_list.append(key)
     return name_list
 
+# Dictionary of simulation mode
+simulation_initialization_modes = {}
+simulation_initialization_modes[0] = "IK"
+simulation_initialization_modes[1] = "From FOM+ROM trajopt (from the same repo as ROM)"
+simulation_initialization_modes[2] = "From FOM trajopt without embedding (could be a different repo)"  # setting the init sim from trajopt solution is recommended, since IK in simulation doesn't always find solution (for hard task)
+
 
 # TODO (yuming): Generalize this to select any pair of task. Reference: https://github.com/DAIRLab/dairlib/commit/f61df0c583e0b67e00483477b01b1062e38375c7
 
@@ -1505,7 +1581,8 @@ if __name__ == "__main__":
   model_dir = parsed_yaml_file.get('dir_model')
   data_dir = parsed_yaml_file.get('dir_data')
 
-  FOM_model_dir = ""
+  FOM_model_dir_for_sim = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/robot_1/"
+  FOM_model_dir_for_planner = ""
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
@@ -1519,11 +1596,11 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
   # eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
-  # eval_dir = "/home/yuming/Desktop/temp/0511/sim_cost_eval/"
-  # eval_dir = "/home/yuming/Downloads/temp_folder_for_paper/20220506_sim_eval/9_/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/1211/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/3_repeat_previous_but_with_much_better_sim_state_initialization/4_steps_steady_state/sim_cost_eval/"
 
   ### global parameters
-  sim_end_time = 10.0
+  sim_end_time = 12.0
   spring_model = False
   close_sim_gap = True
   # Parameters that are modified often
@@ -1532,23 +1609,46 @@ if __name__ == "__main__":
   stance_hip_angles_from_planner = True
   swing_hip_angle_from_planner = False
   init_sim_vel = True
-  use_nominal_traj_pool = True
-  set_sim_init_state_from_trajopt = True
   completely_use_trajs_from_model_opt_as_target = True
   use_single_cost_function_for_all_tasks = False
+  hybrid_mpc = parsed_yaml_file.get('use_hybrid_rom_mpc')
+  simulation_initialization_mode = 2
+
+  # Parameter adjustment
+  if close_sim_gap and spring_model:
+    print("set close_sim_gap to False, because of spring model")
+    close_sim_gap = False
+  if stance_hip_angles_from_planner and hybrid_mpc:
+    print("set stance_hip_angles_from_planner to False, because of hybrid mpc")
+    stance_hip_angles_from_planner = False
+  if completely_use_trajs_from_model_opt_as_target and hybrid_mpc:
+    print("set completely_use_trajs_from_model_opt_as_target to False, because of hybrid mpc")
+    completely_use_trajs_from_model_opt_as_target = False
+  if simulation_initialization_mode == 2:
+    if len(FOM_model_dir_for_sim) == 0:
+      raise ValueError("Need to specify the path for the FOM trjaopt")
+
+  ### Parameter for multithreading algorithm here
+  # Notes: Sometimes the whole multithread algorithm got stuck, and we can terminate a thread if it's spending too long.
+  #        `max_time_for_a_thread` is a workaround for unknown bugs that sometimes planner or controller are waiting to receive message
+  max_time_for_a_thread = 30
+
+  # Parameter adjustment
+  max_time_for_a_thread = max(max_time_for_a_thread, 3 * sim_end_time)
+  max_time_for_a_thread /= target_realtime_rate
 
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 440
-  idx_spacing = 40
+  model_iter_idx_end = 500
+  idx_spacing = 100
 
   # Task list
-  n_task_sl = 30
-  n_task_ph = 3
+  n_task_sl = 25 #10
+  n_task_ph = 25 #3
   tasks = Tasks()
-  # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
-  tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
+  tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0.2, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
   # stride_length = np.linspace(-0.2, -0.1, n_task)
@@ -1560,7 +1660,8 @@ if __name__ == "__main__":
   tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
   tasks.AddTaskDim([0.0], "turning_rate")
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
-  tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
+  # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
+  tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim([0.95], "pelvis_height")
   tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
 
@@ -1574,7 +1675,9 @@ if __name__ == "__main__":
   save_fig = True
   plot_nominal = True
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
-  plot_main_cost = True  # main cost is the cost of which we take gradient during model optimization
+  cost_choice = 2  # 0: all cost including regularization cost
+                   # 1: main cost (v cost, vdot cost and torque cost); Btw, main cost is the cost of which we take gradient during model optimization
+                   # 2: only torque cost (this is a hack to ignore vdot cost, since vdot cost is too noisy)
 
   # 2D plot (cost vs model)
   task_to_plot = ['stride_length', 'pelvis_height']
@@ -1588,15 +1691,16 @@ if __name__ == "__main__":
 
   # 2D plot (cost vs task)
   # model_slices = []
-  model_slices = [1, 50, 100, 150]
-  model_slices = [1, 50, 100, 150, 200, 250, 300]
+  # model_slices = [1, 50, 100, 150]
+  # model_slices = [1, 50, 100, 150, 200, 250, 300]
   # model_slices = [1, 10, 20, 30, 40, 50, 60]
-  model_slices = [5, 50, 95]
-  model_slices = [5, 95]
-  model_slices = [1, 50, 100]
+  # model_slices = [5, 50, 95]
+  # model_slices = [5, 95]
+  # model_slices = [1, 50, 100]
   # model_slices = [1, 60]
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
+  model_slices = [1, 100, 200, 300, 400, 500]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1615,6 +1719,12 @@ if __name__ == "__main__":
   #model_slices_cost_landsacpe = [1, 11, 50, 70]
   # model_slices_cost_landsacpe = [75]
 
+  # cost improvement for individual task
+  task_grid_sl = np.linspace(-0.3, 0.3, 7)
+  task_grid_ph = np.linspace(1.1, 0.6, 11)
+  x_1, y_1 = np.meshgrid(task_grid_sl, task_grid_ph)
+  task_value_grid_for_computing_cost_improvement = [x_1, y_1]
+
   # Expected (averaged) cost over a task range
   stride_length_range_to_average = [-0.4, 0.4]
   # stride_length_range_to_average = [0.2, 0.4]
@@ -1625,12 +1735,13 @@ if __name__ == "__main__":
 
   if use_single_cost_function_for_all_tasks:
     completely_use_trajs_from_model_opt_as_target = False
-    FOM_model_dir = ""
+    FOM_model_dir_for_planner = ""
 
   # Check directory names
   EnforceSlashEnding(model_dir)
   EnforceSlashEnding(data_dir)
-  EnforceSlashEnding(FOM_model_dir)
+  EnforceSlashEnding(FOM_model_dir_for_sim)
+  EnforceSlashEnding(FOM_model_dir_for_planner)
   EnforceSlashEnding(eval_dir)
 
   # Create folder if not exist
@@ -1650,7 +1761,11 @@ if __name__ == "__main__":
   # example list: [1, 5, 10, 15]
   # model_indices = [1, 60]  # Overwrite
   # model_indices = [1, 100]  # Overwrite
-  # model_indices = [1, 60, 100]  # Overwrite
+  # model_indices = [1, 100, 200, 300, 400]  # Overwrite
+  # model_indices = [1, 100, 200, 300, 400, 500]  # Overwrite
+  # model_indices = [1, 100, 200, 300, 400, 450]  # Overwrite
+  # model_indices = [300, 400]  # Overwrite
+  # model_indices = [500]  # Overwrite
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -1684,7 +1799,11 @@ if __name__ == "__main__":
   print("varying_task_element_indices = " + str(varying_task_element_indices))
 
   # Plotting setups
-  idx_sim_cost_element = -2 if plot_main_cost else -1
+  idx_closedloop_cost_element = -1
+  if cost_choice == 1:
+    idx_closedloop_cost_element = -2
+  elif cost_choice == 2:
+    idx_closedloop_cost_element = 1
 
   # Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.
@@ -1708,6 +1827,29 @@ if __name__ == "__main__":
 
   # Delete all logs but a few successful ones (for analysis later)
   # DeleteMostLogs(model_indices, log_indices)
+
+  ### if the evluation sample size is too big, we can break it down using the code below
+  # for model_index in model_indices:
+  #   A = log_indices
+  #   B = A[:len(A)//2]
+  #   C = A[len(A)//2:]
+  #   A = task_list
+  #   task_listB = A[:len(A)//2]
+  #   task_listC = A[len(A)//2:]
+  #
+  #   # Simulation
+  #   RunSimAndEvalCostInMultithread([model_index], B, task_listB)
+  #   # Cost evaluate only
+  #   EvalCostInMultithread([model_index], B)
+  #   # Delete all logs but a few successful ones (for analysis later)
+  #   # DeleteMostLogs([model_index], B)
+  #
+  #   # Simulation
+  #   RunSimAndEvalCostInMultithread([model_index], C, task_listC)
+  #   # Cost evaluate only
+  #   EvalCostInMultithread([model_index], C)
+  #   # Delete all logs but a few successful ones (for analysis later)
+  #   # DeleteMostLogs([model_index], C)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)
@@ -1755,6 +1897,9 @@ if __name__ == "__main__":
   try:
     Generate3dPlots(cmt, nominal_cmt, plot_nominal)
     Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal)
+
+    ### Compute cost improvement for inidividual task
+    ComputeCostImprovementForIndividualTask(model_indices, cmt)
 
     ### Compute expected (averaged) cost
     ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_range_to_average)

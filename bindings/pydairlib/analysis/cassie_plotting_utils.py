@@ -55,10 +55,11 @@ def make_plant_and_context(floating_base=True, springs=True):
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
     if springs:
         AddCassieMultibody(plant, scene_graph,
-                           floating_base, cassie_urdf, True, True)
+                           floating_base, cassie_urdf, True, True, True)
     else:
         AddCassieMultibody(plant, scene_graph,
-                           floating_base, cassie_urdf_no_springs, False, True)
+                           floating_base, cassie_urdf_no_springs,
+                           False, True, True)
 
     plant.Finalize()
     return plant, plant.CreateDefaultContext()

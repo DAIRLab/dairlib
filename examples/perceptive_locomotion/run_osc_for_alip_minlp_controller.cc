@@ -513,16 +513,16 @@ int DoMain(int argc, char* argv[]) {
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
-  if (gains.W_com(0,0) == 0){
-    osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_left_motor", left_stance_state, 1.0);
-    osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_left_motor", post_right_double_support_state, 1.0);
-    osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_right_motor", right_stance_state, 1.0);
-    osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_right_motor", post_left_double_support_state, 1.0);
-  }
+//  if (gains.W_com(0,0) == 0){
+//    osc->SetInputCostForJointAndFsmStateWeight(
+//        "toe_left_motor", left_stance_state, 1.0);
+//    osc->SetInputCostForJointAndFsmStateWeight(
+//        "toe_left_motor", post_right_double_support_state, 1.0);
+//    osc->SetInputCostForJointAndFsmStateWeight(
+//        "toe_right_motor", right_stance_state, 1.0);
+//    osc->SetInputCostForJointAndFsmStateWeight(
+//        "toe_right_motor", post_left_double_support_state, 1.0);
+//  }
   osc->Build();
 
   // Connect ports

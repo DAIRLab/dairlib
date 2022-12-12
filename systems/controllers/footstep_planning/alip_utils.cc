@@ -145,7 +145,7 @@ std::pair<Vector4d, Vector2d> MakePeriodicAlipGait(
                               gait_params.mass * Vector4d::UnitZ();
 
   const Matrix4d A = Ar.leftCols<4>() * Ad - Rx;
-  const Vector4d b = -Ar.rightCols<2>() * p + offset;
+  const Vector4d b = -Ar.rightCols<2>() * p - offset;
   const Vector4d x0 = A.inverse() * (b);
   return {x0, p};
 }

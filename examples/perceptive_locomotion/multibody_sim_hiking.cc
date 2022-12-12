@@ -78,16 +78,12 @@ DEFINE_bool(time_stepping, true,
             "discrete system with periodic updates. "
             "If 'false', the plant is modeled as a continuous system.");
 
-DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
 DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
 DEFINE_double(ros_state_pub_period, 0.01, "tf and pose publish period");
 DEFINE_double(ros_points_pub_period, 1.0/30.0, "pointcloud publish period");
 DEFINE_double(dt, 5e-4,
               "The step size to use for time_stepping, ignored for continuous");
-DEFINE_double(penetration_allowance, 1e-5,
-              "Penetration allowance for the contact model. Nearly equivalent"
-              " to (m)");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
 DEFINE_double(init_height, .95,
@@ -148,9 +144,6 @@ int do_main(int argc, char* argv[]) {
   plant.Finalize();
 
   auto context = plant.CreateDefaultContext();
-
-  plant.set_penetration_allowance(FLAGS_penetration_allowance);
-  plant.set_stiction_tolerance(FLAGS_v_stiction);
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();

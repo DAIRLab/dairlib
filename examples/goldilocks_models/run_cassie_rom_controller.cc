@@ -241,6 +241,10 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(gains.global_target_position_x >= 100);
   }
 
+  if (gains.swing_foot_target_offset_x > 0) {
+    DRAKE_DEMAND(gains.relative_swing_ft);
+  }
+
   // TODO: (low priority) Check why it can only turn 180 degree with constant
   //  walking turning rate.
   //  20220103 Update: There were two causes. Fixed in master.
@@ -260,9 +264,6 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(gains.double_support_duration == 0);
     DRAKE_DEMAND(!gains.constant_rom_vel_during_double_support);
     DRAKE_DEMAND(FLAGS_get_swing_foot_from_planner);
-    DRAKE_DEMAND(!gains.relative_swing_ft);  // I guess this doesn't matter
-    // TODO (20221110): relative_swing_ft should be true if we are using
-    //  `swing_foot_target_offset_x`.
 
     // TODO: you can add more checks here if you find important factors in the
     //  future
@@ -270,6 +271,8 @@ int DoMain(int argc, char* argv[]) {
   }
   // More checks for hardware setting
   if (FLAGS_hardware) {
+    // hardware doesn't work without double support
+    DRAKE_DEMAND(gains.double_support_duration > 0);
     if (gains.double_support_duration > 0) {
       DRAKE_DEMAND(gains.constant_rom_vel_during_double_support);
     }

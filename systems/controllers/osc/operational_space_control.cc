@@ -447,6 +447,7 @@ void OperationalSpaceControl::Build() {
   }
 
   // 5. Joint Limit cost
+  // TODO(yangwill) discuss best way to implement joint limit cost
   if (w_joint_limit_ > 0) {
     K_joint_pos_ = w_joint_limit_ * W_joint_accel_.bottomRightCorner(
                                         n_revolute_joints_, n_revolute_joints_);
@@ -762,7 +763,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // (Testing) 7. Cost for staying close to the previous input
-  if (W_input_smoothing_.size() > 0 && initial_guess_x_.count(fsm_state) > 0) {
+  if (W_input_smoothing_.size() > 0 && u_prev_) {
     input_smoothing_cost_->UpdateCoefficients(
         W_input_smoothing_, -W_input_smoothing_ * *u_prev_,
         0.5 * u_prev_->transpose() * W_input_smoothing_ * *u_prev_);
@@ -793,8 +794,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
-    initial_guess_x_[0] = result.GetSolution();
-    initial_guess_y_[0] = result.get_solver_details<OsqpSolver>().y;
   } else {
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
   }
@@ -824,7 +823,6 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   int row_start = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
     if (next_contact_set.find(i) != next_contact_set.end()) {
-      //      std::cout << i << std::endl;
       J_next.block(row_start, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
       row_start += kSpaceDim;
@@ -965,7 +963,6 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->regularization_costs.clear();
   output->regularization_cost_names.clear();
 
-  //  output->regularization_costs.reserve(4);
   output->regularization_costs.push_back(input_cost);
   output->regularization_cost_names.emplace_back("input_cost");
   output->regularization_costs.push_back(acceleration_cost);

@@ -453,9 +453,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // single_contact_mode_ is true if there is only 1 contact mode in OSC
   bool single_contact_mode_ = false;
 
-  mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_x_ = {};
-  mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_y_ = {};
-
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
       tracking_data_vec_ =

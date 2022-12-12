@@ -24,6 +24,7 @@ from scipy.interpolate import LinearNDInterpolator
 import matplotlib.patches as mpatches
 import codecs
 import math
+from matplotlib.patches import Rectangle
 
 from py_utils import FindVarValueInString
 
@@ -1201,6 +1202,12 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   cbar.set_ticks([round(m, 3) for m in levels])
   cbar.ax.set_yticklabels([round(m, 3) for m in levels])
 
+  if visualize_training_task_range:
+    ave = np.average(training_task_range, axis=1)
+    delta = np.diff(training_task_range)
+    rect = Rectangle((ave[0] - delta[0]/2, ave[1] - delta[1]/2), delta[0], delta[1], ls="--", ec="k", fc="none", linewidth=3)
+    ax.add_patch(rect)
+
   # plt.xlim([-1, 1])
   # plt.ylim([0.85, 1.05])
   plt.xlabel('stride length (m)')
@@ -1403,7 +1410,7 @@ def ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_r
   f.close()
 
 
-def ComputeAchievableTaskRangeOverIter(cmt):
+def ComputeAchievableTaskRangeOverIter(cmt, task_slice_value_ph):
   print("\nPlotting achievable task range over iter...")
   interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
 
@@ -1453,7 +1460,8 @@ def ComputeAchievableTaskRangeOverIter(cmt):
   plt.plot(model_indices, task_range, 'k-', linewidth=3)
   plt.xlabel('model iteration')
   plt.ylabel('achievable task space size (m)')
-  plt.title("Achievable task space size (stride length)")
+  # plt.title("Achievable task space size (stride length)")
+  plt.title("Achievable %s size (at %s=%.2f)" % ("stride_length", "pelvis_height", task_slice_value_ph))
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
@@ -1731,6 +1739,10 @@ if __name__ == "__main__":
   final_iter_ave_cost = model_iter_idx_end
   # final_iter_ave_cost = 30
 
+  # Task range improvement for each value of the second task
+  task_grid_for_range_improvement = {}
+  task_grid_for_range_improvement["pelvis_height"] = np.linspace(1.0, 0.5, 6)
+
   ### Set up environment
 
   if use_single_cost_function_for_all_tasks:
@@ -1805,7 +1817,15 @@ if __name__ == "__main__":
   elif cost_choice == 2:
     idx_closedloop_cost_element = 1
 
-  # Some other checks
+  ### Box visualization for training task range
+  visualize_training_task_range = True
+  training_task_range = []
+  if visualize_training_task_range:
+    nominal_task_ranges = np.loadtxt(model_dir + "task_ranges.csv", delimiter=',')
+    training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[0])[0][0]])
+    training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[1])[0][0]])
+
+  ### Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.
   if not math.isclose(
       parsed_yaml_file.get('left_support_duration') + parsed_yaml_file.get(
@@ -1905,7 +1925,8 @@ if __name__ == "__main__":
     ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, stride_length_range_to_average)
 
     ### Compute task range over iteration
-    ComputeAchievableTaskRangeOverIter(cmt)
+    for task_slice_value_ph in task_grid_for_range_improvement["pelvis_height"]:
+      ComputeAchievableTaskRangeOverIter(cmt, task_slice_value_ph)
 
     ### Success percentage vs iteration
     # TODO: Plot one wrt all sample numbers

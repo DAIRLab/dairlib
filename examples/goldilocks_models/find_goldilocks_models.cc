@@ -1642,6 +1642,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   writeCSV(dir + string("n_samples.csv"), n_samples);
   writeCSV(dir + string("n_sample.csv"), N_sample * VectorXd::Ones(1));
   SaveStringVecToCsv(task_gen->names(), dir + string("task_names.csv"));
+  MatrixXd task_range_for_print(task_gen->dim(), 2);
+  for (int i = 0; i < task_gen->dim(); i++) {
+    task_range_for_print(i, 0) = task_gen->task_min_range().at(i);
+    task_range_for_print(i, 1) = task_gen->task_max_range().at(i);
+  }
+  writeCSV(dir + string("task_ranges.csv"), task_range_for_print);
 
   // Parameters for the outer loop optimization
   cout << "\nOptimization setting (outer loop):\n";

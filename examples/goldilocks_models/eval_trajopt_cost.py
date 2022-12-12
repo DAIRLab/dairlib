@@ -26,6 +26,7 @@ import matplotlib.patches as mpatches
 from scipy.interpolate import LinearNDInterpolator
 import codecs
 import math
+from matplotlib.patches import Rectangle
 
 from py_utils import FindVarValueInString
 
@@ -417,9 +418,15 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   cbar.set_ticks([round(m, 3) for m in levels])
   cbar.ax.set_yticklabels([round(m, 3) for m in levels])
 
+  if visualize_training_task_range:
+    ave = np.average(training_task_range, axis=1)
+    delta = np.diff(training_task_range)
+    rect = Rectangle((ave[0] - delta[0]/2, ave[1] - delta[1]/2), delta[0], delta[1], ls="--", ec="k", fc="none", linewidth=3)
+    ax.add_patch(rect)
+
   # plt.xlim([-1, 1])
   # plt.ylim([0.65, 1.05])
-  plt.ylim([0.65, 1.])
+  # plt.ylim([0.65, 1.])
   # plt.ylim([0.9, 1.])
   plt.xlabel(name_with_unit[task_to_plot[0]])
   plt.ylabel(name_with_unit[task_to_plot[1]])
@@ -474,6 +481,47 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
       plt.savefig("%scost_landscape%s_model_iter_%d.png" % (output_dir, app_list[i], model_slice_value))
+
+
+def ComputeCostImprovementForIndividualTask(model_indices, cmt):
+  if cmt.shape[1] != 4:
+    raise ValueError("The code assumes cmt is 4D (two dimensinoal task)")
+
+  # The line along which we evaluate the cost (using interpolation)
+  n_model_iter = model_indices[-1] - model_indices[0]  # number of iterations between iter_start and iter_end
+  m = np.linspace(0, n_model_iter, n_model_iter + 1)
+
+  interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
+
+  cost_improvement_grid = np.zeros(task_value_grid_for_computing_cost_improvement[0].shape)
+  for row_idx in range(cost_improvement_grid.shape[0]):
+    for col_idx in range(cost_improvement_grid.shape[1]):
+      task_slice_value = [task_value_grid_for_computing_cost_improvement[0][row_idx,col_idx], task_value_grid_for_computing_cost_improvement[1][row_idx,col_idx]]
+
+      t = np.array(task_slice_value).reshape(2, 1) * np.ones(n_model_iter + 1)
+      z = interpolator(np.vstack((m, t)).T)
+
+      # Log the improvement percentage into a file
+      masked_z = z[~np.isnan(z)]
+      message = ""
+      if len(masked_z) == 0:
+        message = "Max cost improvement for task (%s, %s) = (%.2f, %.2f) m is NaN, because len(masked_z) = 0\n" % (name_abbrev[task_to_plot[0]], name_abbrev[task_to_plot[1]], task_slice_value[0], task_slice_value[1])
+        cost_improvement_grid[row_idx, col_idx] = np.nan
+      else:
+        improvement_percentage = round(float((masked_z[0] - min(masked_z)) / masked_z[0] * 100) , 2)
+        cost_improvement_grid[row_idx, col_idx] = improvement_percentage
+        message = "Max cost improvement for task (%s, %s) = (%.2f, %.2f) m is %.1f %%\n" % (name_abbrev[task_to_plot[0]], name_abbrev[task_to_plot[1]], task_slice_value[0], task_slice_value[1], improvement_percentage)
+      print(message, end="")
+      f = open(output_dir + "costs_info.txt", "a")
+      f.write(message)
+      f.close()
+
+  np.set_printoptions(linewidth=100)  # number of characters per line for wrapping
+  msg = "\ncost_improvement_grid = \n" + str(cost_improvement_grid)
+  print(msg)
+  f = open(output_dir + "costs_info.txt", "a")
+  f.write(msg)
+  f.close()
 
 
 def ComputeExpectedCostOverTask(model_indices, cmt, task_range_to_average_over):
@@ -546,7 +594,7 @@ def ComputeExpectedCostOverTask(model_indices, cmt, task_range_to_average_over):
   print(message)
 
 
-def ComputeAchievableTaskRangeOverIter(cmt):
+def ComputeAchievableTaskRangeOverIter(cmt, second_task_value):
   print("\nPlotting achievable task range over iter...")
   interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
 
@@ -596,7 +644,8 @@ def ComputeAchievableTaskRangeOverIter(cmt):
   plt.plot(model_indices, task_range, 'k-', linewidth=3)
   plt.xlabel('model iteration')
   plt.ylabel('achievable task space size (m)')
-  plt.title("Achievable task space size (%s)" % task_to_plot[0])
+  # plt.title("Achievable task space size (%s)" % task_to_plot[0])
+  plt.title("Achievable %s size (at %s=%.2f)" % (task_to_plot[0], task_to_plot[1], second_task_value))
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
@@ -622,6 +671,7 @@ if __name__ == "__main__":
   trajopt_base_dir = "/home/yuming/Desktop/temp/0405/20220108_big_vel_weight_and_grad_main_cost_and_big_range_0_pelvis_omega/"
   trajopt_base_dir = "/home/yuming/Desktop/temp/20220224_explore_task_boundary_2D--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   trajopt_base_dir = "/home/yuming/Desktop/temp/0601/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/"
+  trajopt_base_dir = "/home/yuming/Desktop/data_on_desktop/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -666,10 +716,10 @@ if __name__ == "__main__":
   task_slice_value_list = [[slice, second_task_value] for slice in all_task_slice_value_map[task_to_plot[0]]]
   name_abbrev = {'stride_length': "sl", 'pelvis_height': "ph",
                  'ground_incline': "gi", 'turning_rate': "tr"}
-  name_with_unit = {'stride_length': "stride_length (m)",
-                    'pelvis_height': "pelvis_height (m)",
-                    'ground_incline': "ground_incline (rad)",
-                    'turning_rate': "turning_rate (rad/s)"}
+  name_with_unit = {'stride_length': "stride length (m)",
+                    'pelvis_height': "pelvis height (m)",
+                    'ground_incline': "ground incline (rad)",
+                    'turning_rate': "turning rate (rad/s)"}  # Note that I remove hyphen in `name_with_unit`
 
   # 2D plot (cost vs task)
   # model_slices = []
@@ -688,6 +738,14 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [50]
   # model_slices_cost_landsacpe = [1, 100, 150, 200, 250, 300, 320, 350, 400, 450, 500]
+  model_slices_cost_landsacpe = [1, 100, 200, 300, 400]
+
+  # cost improvement for individual task
+  task_grid_for_cost_improvement = {}
+  task_grid_for_cost_improvement["stride_length"] = np.linspace(-0.7, 0.7, 15)
+  task_grid_for_cost_improvement["pelvis_height"] = np.linspace(1.1, 0.6, 11)
+  x_1, y_1 = np.meshgrid(task_grid_for_cost_improvement[task_to_plot[0]], task_grid_for_cost_improvement[task_to_plot[1]])
+  task_value_grid_for_computing_cost_improvement = [x_1, y_1]
 
   # Expected (averaged) cost over a task range
   task_ranges_to_average_over = {}
@@ -698,6 +756,10 @@ if __name__ == "__main__":
   task_ranges_to_average_over["turning_rate"] = [-4, 4]
   final_iter_ave_cost = model_iter_idx_end
   # final_iter_ave_cost = 30
+
+  # Task range improvement for each value of the second task
+  task_grid_for_range_improvement = {}
+  task_grid_for_range_improvement["pelvis_height"] = np.linspace(1.0, 0.5, 6)
 
   # Parameters for visualization
   max_cost_to_ignore = 2  # 2
@@ -725,6 +787,14 @@ if __name__ == "__main__":
   varying_task_element_indices = GetVaryingTaskElementIdx(list(nominal_task_names))
   print("varying_task_element_indices = " + str(varying_task_element_indices))
 
+  ### Box visualization for training task range
+  visualize_training_task_range = True
+  training_task_range = []
+  if visualize_training_task_range:
+    nominal_task_ranges = np.loadtxt(trajopt_data_dir + "task_ranges.csv", delimiter=',')
+    training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[0])[0][0]])
+    training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[1])[0][0]])
+
   ### Get samples to plot
   # cmt is a list of (model index, task value, and cost)
   cmt = GetSamplesToPlot(model_indices, log_indices)
@@ -738,10 +808,14 @@ if __name__ == "__main__":
   Generate3dPlots(cmt)
   Generate2dPlots(model_indices, cmt)
 
+  ### Compute cost improvement for inidividual task
+  ComputeCostImprovementForIndividualTask(model_indices, cmt)
+
   ### Compute expected (averaged) cost
   ComputeExpectedCostOverTask(model_indices, cmt, task_ranges_to_average_over[task_to_plot[0]])
 
   ### Compute task range over iteration
-  ComputeAchievableTaskRangeOverIter(cmt)
+  for second_task_value in task_grid_for_range_improvement[task_to_plot[1]]:
+    ComputeAchievableTaskRangeOverIter(cmt, second_task_value)
 
   plt.show()

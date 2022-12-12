@@ -431,9 +431,9 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   # TODO: I wonder if we will break any thing if we run ipopt in parallel for the initial pose? (currently we are not doing this, so we are fine)
 
   ### Some checks
-  if not parsed_yaml_file.get('use_radio'):
+  if parsed_yaml_file.get('use_radio'):
     raise ValueError("Currently we don't use radio in sim evaluation, although the evaluation script could probably be extended easily")
-  if not parsed_yaml_file.get('use_vitual_radio'):
+  if parsed_yaml_file.get('use_vitual_radio'):
     raise ValueError("Currently we don't use virtual radio in sim evaluation, although the evaluation script could probably be extended easily")
 
   ### Channel names

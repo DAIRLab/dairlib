@@ -51,7 +51,7 @@ def PrintAndLogStatus(msg):
 
 def IsSimLogGood(x, t_x, desried_sim_end_time):
   # Check if the simulation ended early
-  sim_time_tolerance = 2  # Sometimes the script stopped the logger too early
+  sim_time_tolerance = 3  # Sometimes the script stopped the logger too early
   if desried_sim_end_time > 0:
     if abs(t_x[-1] - desried_sim_end_time) > sim_time_tolerance:
       msg = msg_first_column + ": sim end time (" + str(

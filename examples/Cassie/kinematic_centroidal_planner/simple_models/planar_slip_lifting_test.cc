@@ -11,12 +11,12 @@
 #include <drake/common/yaml/yaml_io.h>
 #include "common/find_resource.h"
 #include "systems/primitives/subvector_pass_through.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/cassie_reference_utils.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_lifter.h"
+#include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_lifter.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/visualization_utils.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_constraints.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_reducer.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_constraints.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_reducer.h"
 
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;

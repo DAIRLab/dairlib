@@ -1,5 +1,5 @@
 #include <iostream>
-#include "examples/Cassie/kinematic_centroidal_mpc/contact_scheduler.h"
+#include "examples/Cassie/kinematic_centroidal_planner/contact_scheduler.h"
 
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;

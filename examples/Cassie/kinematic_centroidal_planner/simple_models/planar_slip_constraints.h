@@ -8,8 +8,8 @@
 #include "solvers/nonlinear_cost.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_lifter.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_reducer.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_lifter.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_reducer.h"
 
 class PlanarSlipReductionConstraint : public dairlib::solvers::NonlinearConstraint<double> {
  public:

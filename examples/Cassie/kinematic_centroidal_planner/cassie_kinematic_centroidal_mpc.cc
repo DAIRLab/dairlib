@@ -2,7 +2,7 @@
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/parsing/parser.h"
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_constraints.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_constraints.h"
 
 std::vector<dairlib::multibody::WorldPointEvaluator<double>> CassieKinematicCentroidalMPC::CreateContactPoints(const drake::multibody::MultibodyPlant<
     double> &plant,

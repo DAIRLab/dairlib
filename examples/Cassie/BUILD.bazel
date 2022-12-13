@@ -355,7 +355,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//examples/Cassie/osc_jump",
-        "//examples/Cassie/kinematic_centroidal_mpc:centroidal_mpc",
+        "//examples/Cassie/kinematic_centroidal_planner:centroidal_mpc",
         "//lcm:trajectory_saver",
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "//multibody:utils",

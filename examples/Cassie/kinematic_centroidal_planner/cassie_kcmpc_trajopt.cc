@@ -15,9 +15,9 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/cassie_kinematic_centroidal_mpc.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/cassie_reference_utils.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/trajectory_parameters.h"
+#include "examples/Cassie/kinematic_centroidal_planner/cassie_kinematic_centroidal_mpc.h"
+#include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
+#include "examples/Cassie/kinematic_centroidal_planner/trajectory_parameters.h"
 #include "systems/controllers/kinematic_centroidal_mpc/kcmpc_reference_generator.h"
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_gains.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -32,7 +32,7 @@ DEFINE_string(channel_reference, "KCMPC_REF",
               "MPC are published");
 DEFINE_string(
     trajectory_parameters,
-    "examples/Cassie/kinematic_centroidal_mpc/trajectory_parameters.yaml",
+    "examples/Cassie/kinematic_centroidal_planner/trajectory_parameters.yaml",
     "YAML file that contains trajectory parameters such as speed, tolerance, "
     "com_height");
 DEFINE_double(knot_points_to_publish, 10, "Number of knot points to publish");
@@ -43,7 +43,7 @@ int DoMain(int argc, char* argv[]) {
   auto traj_params = drake::yaml::LoadYamlFile<TrajectoryParameters>(
       FLAGS_trajectory_parameters);
   auto gains = drake::yaml::LoadYamlFile<KinematicCentroidalGains>(
-      "examples/Cassie/kinematic_centroidal_mpc/"
+      "examples/Cassie/kinematic_centroidal_planner/"
       "kinematic_centroidal_mpc_gains.yaml");
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
@@ -65,13 +65,13 @@ int DoMain(int argc, char* argv[]) {
 
   // Create gaits
   auto stand = drake::yaml::LoadYamlFile<Gait>(
-      "examples/Cassie/kinematic_centroidal_mpc/gaits/stand.yaml");
+      "examples/Cassie/kinematic_centroidal_planner/gaits/stand.yaml");
   auto walk = drake::yaml::LoadYamlFile<Gait>(
-      "examples/Cassie/kinematic_centroidal_mpc/gaits/walk.yaml");
+      "examples/Cassie/kinematic_centroidal_planner/gaits/walk.yaml");
   auto step = drake::yaml::LoadYamlFile<Gait>(
-      "examples/Cassie/kinematic_centroidal_mpc/gaits/step.yaml");
+      "examples/Cassie/kinematic_centroidal_planner/gaits/step.yaml");
   auto run = drake::yaml::LoadYamlFile<Gait>(
-      "examples/Cassie/kinematic_centroidal_mpc/gaits/run.yaml");
+      "examples/Cassie/kinematic_centroidal_planner/gaits/run.yaml");
   walk.period = 1.6;
   // Create reference
   // TODO(yangwill): move this into the reference generator
@@ -215,7 +215,5 @@ int DoMain(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-  //  DoMain(45, 5, 0.8, 0.3, 0.5, 1e-2);
-  //  DoMain(45, 0.8, 0.25, 0.0, 1e-2);
   DoMain(argc, argv);
 }

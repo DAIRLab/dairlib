@@ -3,8 +3,8 @@
 #include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_mpc.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_lifter.h"
-#include "examples/Cassie/kinematic_centroidal_mpc/simple_models/planar_slip_reducer.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_lifter.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_reducer.h"
 
 /*!
  * @brief Cassie specific child class for kinematic centroidal mpc. Adds loop closure, joint limits, and cassie contact points

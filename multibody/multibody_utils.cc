@@ -143,6 +143,15 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
   }
 }
 
+/// Get the ordered names from a NameTo___Map
+vector<string> ExtractOrderedNamesFromMap(const map<string, int>& map) {
+  vector<string> names(map.size());
+  for (const auto& entry : map) {
+    names[entry.second] = entry.first;
+  }
+  return names;
+}
+
 /// Construct a map between joint names and position indices
 ///     <name,index> such that q(index) has the given name
 ///  -Only accurately includes joints with a single position and single velocity
@@ -334,12 +343,7 @@ template <typename T>
 vector<string> CreateActuatorNameVectorFromMap(
     const MultibodyPlant<T>& plant) {
   map<string, int> act_map = MakeNameToActuatorsMap(plant);
-  vector<string> actuator_names(act_map.size());
-
-  for (const auto& name_index_pair : act_map) {
-    actuator_names[name_index_pair.second] = name_index_pair.first;
-  }
-  return actuator_names;
+  return ExtractOrderedNamesFromMap(act_map);
 }
 
 template <typename T>

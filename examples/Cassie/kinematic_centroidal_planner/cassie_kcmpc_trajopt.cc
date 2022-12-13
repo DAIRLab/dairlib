@@ -34,7 +34,7 @@ DEFINE_string(channel_reference, "KCMPC_REF",
               "MPC are published");
 DEFINE_string(
     trajectory_parameters,
-    "examples/Cassie/kinematic_centroidal_planner/motions/motion_test.yaml",
+    "examples/Cassie/kinematic_centroidal_planner/motions/motion_walk.yaml",
     "YAML file that contains trajectory parameters such as speed, tolerance, "
     "target_com_height");
 DEFINE_string(planner_parameters,
@@ -111,7 +111,7 @@ int DoMain(int argc, char* argv[]) {
 
   std::vector<Complexity> complexity_schedule(traj_params.n_knot_points);
   std::fill(complexity_schedule.begin(), complexity_schedule.end(),Complexity::KINEMATIC_CENTROIDAL);
-  for(int i = 3; i <traj_params.n_knot_points ; i++){
+  for(int i = 1; i <traj_params.n_knot_points ; i++){
     complexity_schedule[i] = Complexity::PLANAR_SLIP;
   }
   mpc.SetComplexitySchedule(complexity_schedule);

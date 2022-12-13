@@ -228,7 +228,7 @@ drake::VectorX<double> CassieKinematicCentroidalSolver::LiftSlipSolution(int kno
       result_->GetSolution(slip_contact_pos_vars_[knot_point]),
       result_->GetSolution(slip_contact_vel_vars_[knot_point]),
       result_->GetSolution(slip_force_vars_[knot_point]);
-  if(knot_point == 3){
+  if(knot_point == 1){
     auto grf_constraint =
         std::make_shared<SlipGrfReductionConstrain>(
             plant_, reducers[knot_point], 2, 4,knot_point);

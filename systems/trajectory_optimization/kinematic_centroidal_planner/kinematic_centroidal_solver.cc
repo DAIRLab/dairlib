@@ -664,6 +664,7 @@ void KinematicCentroidalSolver::UpdateInitialStateConstraint(
 
 void KinematicCentroidalSolver::SetGains(
     const KinematicCentroidalGains& gains) {
+  gains_ = gains;
   std::map<std::string, int> positions_map =
       dairlib::multibody::MakeNameToPositionsMap(plant_);
   std::map<std::string, int> velocities_map =

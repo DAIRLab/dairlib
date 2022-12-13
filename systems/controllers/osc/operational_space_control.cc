@@ -492,7 +492,7 @@ void OperationalSpaceControl::Build() {
   //          .get();
 
   for (int i = -1; i < 5; ++i) {
-//    solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
+    //    solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
     solvers_[i] = std::make_unique<drake::solvers::OsqpSolver>();
   }
   prog_->SetSolverOptions(solver_options_);
@@ -711,7 +711,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
       tracking_costs_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t),
+          2 * J_t.transpose() * W * J_t, 2 * J_t.transpose() * W * (JdotV_t - ddy_t),
           constant_term.transpose() * W * constant_term, true);
     } else {
       tracking_costs_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
@@ -791,14 +791,14 @@ VectorXd OperationalSpaceControl::SolveQp(
                                        VectorXd::Zero(n_h_));
   }
 
-//  if (!solvers_.at(0)->IsInitialized()) {
-//    solvers_.at(0)->InitializeSolver(*prog_, solver_options_);
-//  }
-//
-//  if (initial_guess_x_.count(0) > 0) {
-//    solvers_.at(0)->WarmStart(initial_guess_x_.at(0),
-//                              initial_guess_y_.at(0));
-//  }
+  //  if (!solvers_.at(0)->IsInitialized()) {
+  //    solvers_.at(0)->InitializeSolver(*prog_, solver_options_);
+  //  }
+  //
+  //  if (initial_guess_x_.count(0) > 0) {
+  //    solvers_.at(0)->WarmStart(initial_guess_x_.at(0),
+  //                              initial_guess_y_.at(0));
+  //  }
 
   // Solve the QP
   MathematicalProgramResult result;
@@ -846,7 +846,6 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   int row_start = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
     if (next_contact_set.find(i) != next_contact_set.end()) {
-      //      std::cout << i << std::endl;
       J_next.block(row_start, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
       row_start += kSpaceDim;
@@ -1021,15 +1020,18 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;
 
-  output->tracking_data =
-      std::vector<lcmt_osc_tracking_data>(tracking_data_vec_->size());
-  output->tracking_costs = std::vector<double>(tracking_data_vec_->size());
-  output->tracking_data_names =
-      std::vector<std::string>(tracking_data_vec_->size());
+  //  output->tracking_data =
+  //      std::vector<lcmt_osc_tracking_data>(tracking_data_vec_->size());
+  //  output->tracking_costs = std::vector<double>(tracking_data_vec_->size());
+  //  output->tracking_data_names =
+  //      std::vector<std::string>(tracking_data_vec_->size());
+  output->tracking_data = std::vector<lcmt_osc_tracking_data>();
+  output->tracking_costs = std::vector<double>();
+  output->tracking_data_names = std::vector<std::string>();
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i).get();
-    output->tracking_data_names[i] = tracking_data->GetName();
+    //    output->tracking_data_names[i] = tracking_data->GetName();
 
     lcmt_osc_tracking_data osc_output;
     osc_output.y_dim = tracking_data->GetYDim();
@@ -1046,7 +1048,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     osc_output.yddot_command = std::vector<double>(osc_output.ydot_dim);
     osc_output.yddot_command_sol = std::vector<double>(osc_output.ydot_dim);
 
-    output->tracking_costs[i] = 0;
+    //    output->tracking_costs[i] = 0;
+
     if (tracking_data->IsActive(fsm_state) &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
@@ -1066,14 +1069,17 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
 
       VectorXd y_tracking_cost = VectorXd::Zero(1);
-      tracking_costs_[i]->Eval(*dv_sol_, &y_tracking_cost);
-      output->tracking_costs[i] = y_tracking_cost[0];
-      total_cost += output->tracking_costs[i];
+      tracking_costs_.at(i)->Eval(*dv_sol_, &y_tracking_cost);
+      total_cost += y_tracking_cost[0];
+      output->tracking_costs.push_back(y_tracking_cost[0]);
+      output->tracking_data.push_back(osc_output);
+      output->tracking_data_names.push_back(tracking_data->GetName());
+    } else {
+      output->tracking_costs.push_back(0);
+      output->tracking_data.push_back(osc_output);
+      output->tracking_data_names.push_back(tracking_data->GetName());
     }
-    output->tracking_data[i] = osc_output;
   }
-  //  output->regularization_costs.push_back(total_cost);
-  //  output->regularization_cost_names.push_back("total_cost");
 
   *u_prev_ = *u_sol_;
   output->num_tracking_data = output->tracking_data_names.size();

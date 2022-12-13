@@ -13,6 +13,7 @@ from spring_compensation import SpringCompensation
 
 def main():
     config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
+    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_kcmpc_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_standing_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
@@ -57,21 +58,8 @@ def main():
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
-    print('Log start time: ', robot_output['t_x'][0])
 
     print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
-    # import time
-    # time_start = time.time()
-    # time.sleep(1)
-    # print(time.time() - time_start)
-    # spring_compensation = SpringCompensation()
-    # samples, t_samples = spring_compensation.sample_simulate_forward(robot_output['q'][0], robot_output['v'][0], robot_output['u'][0], 10)
-    # print(time.time() - time_start)
-    # plt.plot(t_samples, samples[:, :23])
-    # plt.plot(t_samples, samples[:, -22:])
-    # print(t_samples)
-    # plt.show()
-    # import pdb; pdb.set_trace()
 
     ''' Plot Positions '''
     # Plot floating base positions if applicable
@@ -136,12 +124,12 @@ def main():
     if plot_config.plot_tracking_costs:
         plot = mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-        plt.ylim([0, 400])
+        # plt.ylim([0, 1e4])
     if plot_config.plot_qp_costs:
         plot = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
     if plot_config.plot_qp_solutions:
-        plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 6))
+        plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 12))
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
         plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0, 6))
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)

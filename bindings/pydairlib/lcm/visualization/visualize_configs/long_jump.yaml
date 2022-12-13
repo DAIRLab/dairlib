@@ -1,0 +1,8 @@
+filename: examples/Cassie/saved_trajectories/jumping_0.0h_0.4d_3
+spring_urdf: examples/Cassie/urdf/cassie_v2_shells.urdf
+fixed_spring_urdf: examples/Cassie/urdf/cassie_fixed_springs.urdf
+visualize_mode: 1
+realtime_rate: 0.2
+num_poses: 10
+use_transparency: 1
+use_springs: 1

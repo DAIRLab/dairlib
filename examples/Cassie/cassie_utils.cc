@@ -107,7 +107,7 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
 void AddCassieMultibody(MultibodyPlant<double>* plant,
                         SceneGraph<double>* scene_graph, bool floating_base,
                         std::string filename, bool add_leaf_springs,
-                        bool add_loop_closure) {
+                        bool add_loop_closure, bool add_reflected_inertia) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
@@ -153,16 +153,27 @@ void AddCassieMultibody(MultibodyPlant<double>* plant,
     Vector3d rod_on_thigh_left = LeftRodOnThigh(*plant).first;
     Vector3d rod_on_thigh_right = RightRodOnThigh(*plant).first;
 
-    plant->AddForceElement<drake::multibody::LinearSpringDamper>(
-        heel_spring_left, rod_on_heel_spring, thigh_left, rod_on_thigh_left,
-        kCassieAchillesLength, achilles_stiffness, achilles_damping);
+    if (plant->get_discrete_contact_solver() ==
+        drake::multibody::DiscreteContactSolver::kSap) {
+      plant->AddDistanceConstraint(
+          heel_spring_left, rod_on_heel_spring, thigh_left, rod_on_thigh_left,
+          kCassieAchillesLength, achilles_stiffness, achilles_damping);
+      plant->AddDistanceConstraint(heel_spring_right, rod_on_heel_spring,
+                                   thigh_right, rod_on_thigh_right,
+                                   kCassieAchillesLength, achilles_stiffness,
+                                   achilles_damping);
+    } else {
+      plant->AddForceElement<drake::multibody::LinearSpringDamper>(
+          heel_spring_left, rod_on_heel_spring, thigh_left, rod_on_thigh_left,
+          kCassieAchillesLength, achilles_stiffness, achilles_damping);
 
-    plant->AddForceElement<drake::multibody::LinearSpringDamper>(
-        heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
-        kCassieAchillesLength, achilles_stiffness, achilles_damping);
+      plant->AddForceElement<drake::multibody::LinearSpringDamper>(
+          heel_spring_right, rod_on_heel_spring, thigh_right,
+          rod_on_thigh_right, kCassieAchillesLength, achilles_stiffness,
+          achilles_damping);
+    }
   }
 
-  bool add_reflected_inertia = true;
   VectorXd rotor_inertias(10);
   rotor_inertias << 61, 61, 61, 61, 365, 365, 365, 365, 4.9, 4.9;
   rotor_inertias *= 1e-6;
@@ -226,7 +237,8 @@ const systems::GearedMotor& AddMotorModel(
       {"hip_pitch_left_motor", 136.136}, {"hip_pitch_right_motor", 136.136},
       {"knee_left_motor", 136.136},      {"knee_right_motor", 136.136},
       {"toe_left_motor", 575.958},       {"toe_right_motor", 575.958}};
-  auto cassie_motor = builder->AddSystem<systems::GearedMotor>(plant, omega_max);
+  auto cassie_motor =
+      builder->AddSystem<systems::GearedMotor>(plant, omega_max);
   return *cassie_motor;
 }
 

@@ -102,7 +102,6 @@ class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
   void CheckSquareMatrixDimensions(const Eigen::MatrixXd& M, int n) const;
   void GetMostRecentMotionPlan(const drake::systems::Context<double>& context,
                                lcmt_saved_traj* traj_msg) const;
-  void MakeKinematicReachabilityConstraints();
   void MakeTerrainConstraints(const Eigen::Vector3d& normal = {0, 0, 1},
                               const Eigen::Vector3d& origin = {0, 0, 0});
   void MakeDynamicsConstraints();
@@ -177,17 +176,6 @@ class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
 
 
 
-
-
-
-
-
-  // parameters and constants
-  //  const bool use_fsm_;
-  //  const bool use_residuals_;
-  //  const bool traj_tracking_;
-  //  static constexpr int nx_ = 12;
-  //  static constexpr int nu_ = 5;
   static constexpr int kLinearDim_ = 3;
   static constexpr int kAngularDim_ = 3;
   //  const double dt_;

@@ -48,13 +48,21 @@ class OptionsTrackingData : public OscTrackingData {
   };
 
  private:
+  // This method is called from the parent class (OscTrackingData) due to C++
+  // polymorphism.
   void UpdateActual(const Eigen::VectorXd& x_w_spr,
                     const drake::systems::Context<double>& context_w_spr,
                     const Eigen::VectorXd& x_wo_spr,
                     const drake::systems::Context<double>& context_wo_spr,
                     double t) override;
 
-  void UpdateFilters(double t);
+  // We don't override the following methods (leave them to children classes):
+  //   UpdateY
+  //   UpdateYdot
+  //   UpdateJ
+  //   UpdateJdotV
+
+  // Override the error method
   void UpdateYError() override;
   void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
   void UpdateYddotDes(double t, double t_since_state_switch) override;
@@ -63,6 +71,8 @@ class OptionsTrackingData : public OscTrackingData {
 
   const drake::trajectories::Trajectory<double>* gain_multiplier_ = nullptr;
   const drake::trajectories::Trajectory<double>* weight_trajectory_ = nullptr;
+
+  void UpdateFilters(double t);
 
   bool with_view_frame_ = false;
 

@@ -52,6 +52,7 @@ cc_library(
         "//examples/Cassie:run_osc_walking_controller",
         "//examples/Cassie:run_osc_walking_controller_alip",
         "//examples/Cassie:run_pd_controller",
+        "//examples/Cassie/contact_scheduler:state_based_controller_switch",
         "//examples/Cassie/osc",
     ],
 )

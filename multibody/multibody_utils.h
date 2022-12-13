@@ -71,6 +71,10 @@ void AddFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     double stiffness = 0, double dissipation_rate = 0,
                     bool show_ground = true);
 
+/// Get the ordered names from a NameTo___Map
+std::vector<std::string> ExtractOrderedNamesFromMap(
+    const std::map<std::string, int>& map);
+
 /// Given a MultibodyPlant, builds a map from position name to position index
 template <typename T>
 std::map<std::string, int> MakeNameToPositionsMap(

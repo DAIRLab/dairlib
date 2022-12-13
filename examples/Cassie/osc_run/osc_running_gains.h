@@ -8,6 +8,8 @@
 using Eigen::MatrixXd;
 
 struct OSCRunningGains : OSCGains {
+  double controller_frequency;
+
   double weight_scaling;
   double w_swing_toe;
   double swing_toe_kp;
@@ -85,6 +87,7 @@ struct OSCRunningGains : OSCGains {
   template <typename Archive>
   void Serialize(Archive* a) {
     OSCGains::Serialize(a);
+    a->Visit(DRAKE_NVP(controller_frequency));
     a->Visit(DRAKE_NVP(weight_scaling));
     a->Visit(DRAKE_NVP(relative_feet));
     a->Visit(DRAKE_NVP(relative_pelvis));

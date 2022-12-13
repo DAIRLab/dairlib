@@ -49,12 +49,20 @@ def BuildFiles(bazel_file_argument):
   while build_process.poll() is None:  # while subprocess is alive
     time.sleep(0.1)
 
+# We assume cmd is string or a list of string
+def RunCommand(cmd, blocking_thread=True):
+  if (type(cmd) != list) and (type(cmd) != str):
+    raise ValueError("the command has to be either list or str")
 
-# cmd should be a list if shell=False. Otherwise, a string.
-def RunCommand(cmd, use_shell=False):
-  process = subprocess.Popen(cmd, shell=use_shell)
-  while process.poll() is None:  # while subprocess is alive
-    time.sleep(0.1)
+  if type(cmd) == list:
+    cmd = ' '.join(cmd)
+
+  process = subprocess.Popen(cmd, shell=True)
+  if blocking_thread:
+    while process.poll() is None:  # while subprocess is alive
+      time.sleep(0.1)
+  else:
+    return process
 
 def EnforceSlashEnding(dir):
   if len(dir) > 0 and dir[-1] != "/":
@@ -66,6 +74,8 @@ def LogSimCostStudySetting():
   f.write("Current time : %s\n" % str(datetime.now()))
   f.write("model_dir = %s\n" % model_dir)
   f.write("spring_model = %s\n" % spring_model)
+  f.write("sim_end_time = %s\n" % sim_end_time)
+  f.write("t_no_logging_at_start = %s\n" % t_no_logging_at_start)
   f.write("target_realtime_rate = %s\n" % target_realtime_rate)
   f.write("foot_step_from_planner = %s\n" % foot_step_from_planner)
   f.write("stance_hip_angles_from_planner = %s\n" % stance_hip_angles_from_planner)
@@ -221,6 +231,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--path_init_pose_success=%s' % path_init_pose_success,
     ]
   lcm_logger_cmd = [
+    'sleep %.1f && ' % t_no_logging_at_start,
     'lcm-logger',
     '--lcm-url=udpm://239.255.76.67:%d' % port_idx,
     '-f',
@@ -248,22 +259,20 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
 
   # Remove file for init pose success/fail flag
   if os.path.exists(path_init_pose_success):
-    RunCommand("rm " + path_init_pose_success, True)
+    RunCommand("rm " + path_init_pose_success)
 
   # Run all processes
-  planner_process = subprocess.Popen(planner_cmd)
-  controller_process = subprocess.Popen(controller_cmd)
+  planner_process = RunCommand(planner_cmd, False)
+  controller_process = RunCommand(controller_cmd, False)
   if not get_init_file:
-    # time.sleep(t_no_logging_at_start)  # don't log the beginning. Only do this when you are confident that the start of sim works (e.g. you have visualize every samples)
-    # TODO: double check if the above line would cause any issue in sim eval. Implement this feature (goal is to reduce the lcmlog file size)
-    logger_process = subprocess.Popen(lcm_logger_cmd)
+    logger_process = RunCommand(lcm_logger_cmd, False)
   # We don't run simulation thread until both planner and controller are waiting for simulation's message
   while not os.path.exists(planner_wait_identifier) or \
       not os.path.exists(control_wait_identifier):
     time.sleep(0.1)
-  RunCommand("rm " + planner_wait_identifier, True)
-  RunCommand("rm " + control_wait_identifier, True)
-  simulator_process = subprocess.Popen(simulator_cmd)
+  RunCommand("rm " + planner_wait_identifier)
+  RunCommand("rm " + control_wait_identifier)
+  simulator_process = RunCommand(simulator_cmd, False)
 
   # Message to return
   msg = "iteration #%d log #%d: init pose solver failed to find a pose\n" % (rom_iter_idx, log_idx)
@@ -669,9 +678,9 @@ def DeleteMostLogs(model_indices, log_indices):
   input("WARNING: Going to delete lcmlog files! (type anything to continue)")
 
   # Delete the rest of the file
-  RunCommand('rm ' + eval_dir + 'lcmlog-idx_*', True)
+  RunCommand('rm ' + eval_dir + 'lcmlog-idx_*')
   # Copy back the successful files
-  RunCommand('cp ' + eval_dir + 'temp/lcmlog-idx_* ' + eval_dir, True)
+  RunCommand('cp ' + eval_dir + 'temp/lcmlog-idx_* ' + eval_dir)
   # Delete temp folder
   RunCommand(['rm', '-rf', eval_dir + 'temp/'])
 
@@ -1608,7 +1617,8 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/3_repeat_previous_but_with_much_better_sim_state_initialization/4_steps_steady_state/sim_cost_eval/"
 
   ### global parameters
-  sim_end_time = 12.0
+  sim_end_time = 14.0
+  t_no_logging_at_start = 10.0  # WARNING: only use this when we are confident that simulation is initialized correctly, and the controller behaves as we expect
   spring_model = False
   close_sim_gap = True
   # Parameters that are modified often
@@ -1623,6 +1633,9 @@ if __name__ == "__main__":
   simulation_initialization_mode = 2
 
   # Parameter adjustment
+  if t_no_logging_at_start + 4 > sim_end_time:
+    raise ValueError("We want at least 4 seconds of lcm logging time")
+  t_no_logging_at_start /= target_realtime_rate
   if close_sim_gap and spring_model:
     print("set close_sim_gap to False, because of spring model")
     close_sim_gap = False
@@ -1639,11 +1652,11 @@ if __name__ == "__main__":
   ### Parameter for multithreading algorithm here
   # Notes: Sometimes the whole multithread algorithm got stuck, and we can terminate a thread if it's spending too long.
   #        `max_time_for_a_thread` is a workaround for unknown bugs that sometimes planner or controller are waiting to receive message
-  max_time_for_a_thread = 30
+  max_time_for_a_thread = 30.0
 
   # Parameter adjustment
-  max_time_for_a_thread = max(max_time_for_a_thread, 3 * sim_end_time)
   max_time_for_a_thread /= target_realtime_rate
+  max_time_for_a_thread = max(max_time_for_a_thread, sim_end_time/target_realtime_rate + 15)  # give 15 seconds wall time of buffer
 
   ### parameters for model, task, and log indices
   # Model iteration list
@@ -1874,7 +1887,7 @@ if __name__ == "__main__":
   ### Plotting
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
-  RunCommand("rm " + eval_dir + "costs_info.txt", True)
+  RunCommand("rm " + eval_dir + "costs_info.txt")
 
   # Parameters for visualization
   max_cost_to_ignore = 2  # 1.15  # 2

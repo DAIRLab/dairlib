@@ -50,6 +50,7 @@ def BuildFiles(bazel_file_argument):
     time.sleep(0.1)
 
 # We assume cmd is string or a list of string
+# WARNING: when we use shell=True, p.kill() won't kill the process. Need to use the function `KillProcess` below.
 def RunCommand(cmd, blocking_thread=True):
   if (type(cmd) != list) and (type(cmd) != str):
     raise ValueError("the command has to be either list or str")
@@ -63,6 +64,13 @@ def RunCommand(cmd, blocking_thread=True):
       time.sleep(0.1)
   else:
     return process
+
+def KillProcess(proc_pid):
+  process = psutil.Process(proc_pid)
+  for proc in process.children(recursive=True):
+    proc.kill()
+  process.kill()
+
 
 def EnforceSlashEnding(dir):
   if len(dir) > 0 and dir[-1] != "/":
@@ -397,7 +405,12 @@ def EndSim(working_threads, idx, recycle_idx=True):
 
   # Kill the rest of processes (necessary)
   for i in range(0, len(working_threads[idx][0])):
-    working_threads[idx][0][i].kill()
+    if working_threads[idx][0][i].poll() is None:  # if the process is still running
+      # I added try-catch in case the process ended between p.poll() and os.killpg()
+      try:
+        KillProcess(working_threads[idx][0][i].pid)
+      except Exception:
+        print("attempted to kill a non-existing process")
 
   # Add back available thread idx.
   # We don't add back avaible thread idx when the sim is used to initialize the

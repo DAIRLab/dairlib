@@ -117,10 +117,10 @@ void CassieKinematicCentroidalSolver::AddPlanarSlipCost(int knot_point, double t
         slip_contact_vel_vars(knot_point,1));
   }
   if (force_ref_traj_) {
-    const Eigen::MatrixXd Q_contact_pos =Eigen::Vector2d(gains_.contact_force[2], gains_.contact_force[2]).asDiagonal();
-    prog_->AddQuadraticErrorCost(terminal_gain * Q_contact_pos,
-                                 Eigen::Vector2d::Zero(2),
-                                 slip_force_vars_[knot_point]);
+//    const Eigen::MatrixXd Q_contact_pos =Eigen::Vector2d(gains_.contact_force[2], gains_.contact_force[2]).asDiagonal();
+//    prog_->AddQuadraticErrorCost(terminal_gain * Q_contact_pos,
+//                                 Eigen::Vector2d::Zero(2),
+//                                 slip_force_vars_[knot_point]);
   }
 }
 

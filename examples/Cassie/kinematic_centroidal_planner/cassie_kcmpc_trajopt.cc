@@ -104,7 +104,7 @@ int DoMain(int argc, char* argv[]) {
   // Create MPC and set gains
   CassieKinematicCentroidalSolver mpc(
       plant, traj_params.n_knot_points,
-      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 5000, 10,
+      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 6000, 80,
       sqrt(pow(traj_params.target_com_height,2) + pow(traj_params.stance_width,2)), traj_params.stance_width);
   mpc.SetGains(gains);
   mpc.SetMinimumFootClearance(traj_params.swing_foot_minimum_height);
@@ -162,7 +162,7 @@ int DoMain(int argc, char* argv[]) {
     options.SetOption(id, "dual_inf_tol", gains.tol);
     options.SetOption(id, "constr_viol_tol", gains.tol);
     options.SetOption(id, "compl_inf_tol", gains.tol);
-    options.SetOption(id, "max_iter", 200);
+    options.SetOption(id, "max_iter", 800);
     options.SetOption(id, "nlp_lower_bound_inf", -1e6);
     options.SetOption(id, "nlp_upper_bound_inf", 1e6);
     options.SetOption(id, "print_timing_statistics", "yes");

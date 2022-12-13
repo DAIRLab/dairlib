@@ -2,4 +2,4 @@ gait_pattern:
   - start_phase: 0.0
     end_phase: 1.0
     contact_status: [true, true, true, true]
-period: 1.0
+period: 0.8

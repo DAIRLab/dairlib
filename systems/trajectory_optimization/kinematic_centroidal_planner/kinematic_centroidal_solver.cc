@@ -277,7 +277,7 @@ void KinematicCentroidalSolver::SetConstantMomentumReference(
 }
 
 double KinematicCentroidalSolver::GetKnotpointGain(int knot_point) const {
-  const double terminal_gain = is_last_knot(knot_point) ? 100 : 1;
+  const double terminal_gain = is_last_knot(knot_point) ? 50 : 1;
   const double collocation_gain =
       (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
   return terminal_gain * collocation_gain;
@@ -329,7 +329,7 @@ void KinematicCentroidalSolver::AddCosts() {
   }
 }
 
-void KinematicCentroidalSolver::UpdateCosts() {}
+void KinematicCentroidalSolver::UpdateCosts() { DRAKE_DEMAND(false);}
 
 void KinematicCentroidalSolver::SetZeroInitialGuess() {
   Eigen::VectorXd initialGuess =
